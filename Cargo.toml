@@ -6,6 +6,7 @@ members = [
     "wallet-cli",
     "protocol",
     "storage",
+    "hermes",
 ]
 [dependencies]
 printer = { path = "rust-crypto-wasm" }
