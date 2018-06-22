@@ -2,7 +2,6 @@
 members = [
     "rcw",
     "cardano",
-    "blockchain",
     "wallet-cli",
     "protocol",
     "storage",
