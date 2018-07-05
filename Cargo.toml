@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "rcw",
+    "cryptoxide",
     "cardano",
     "wallet-cli",
     "protocol",
