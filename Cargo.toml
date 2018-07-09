@@ -7,6 +7,7 @@ members = [
     "storage",
     "hermes",
     "cbor_event",
+    "cardano-c",
 ]
 [dependencies]
 printer = { path = "rust-crypto-wasm" }
