@@ -8,31 +8,30 @@ environment:
     CRATE_NAME: rust-cardano
 
   matrix:
-    # MinGW
-    - TARGET: i686-pc-windows-gnu
-    - TARGET: x86_64-pc-windows-gnu
+    # MinGW i686 - Enable?
+#    - TARGET: i686-pc-windows-gnu
+#    - TARGET: i686-pc-windows-gnu
+#      RUST_VERSION: beta
+#    - TARGET: i686-pc-windows-gnu
+#      RUST_VERSION: nightly
 
-    - TARGET: i686-pc-windows-gnu
-      RUST_VERSION: beta
-    - TARGET: x86_64-pc-windows-gnu
-      RUST_VERSION: beta
+    # MinGW x86_64 - Enable?
+#    - TARGET: x86_64-pc-windows-gnu
+#    - TARGET: x86_64-pc-windows-gnu
+#      RUST_VERSION: beta
+#    - TARGET: x86_64-pc-windows-gnu
+#      RUST_VERSION: nightly
 
-    - TARGET: i686-pc-windows-gnu
-      RUST_VERSION: nightly
-    - TARGET: x86_64-pc-windows-gnu
-      RUST_VERSION: nightly
+    # MSVC i686 - Enable?
+#    - TARGET: i686-pc-windows-msvc
+#    - TARGET: i686-pc-windows-msvc
+#      RUST_VERSION: beta
+#    - TARGET: i686-pc-windows-msvc
+#      RUST_VERSION: nightly
 
-    # MSVC
-    - TARGET: i686-pc-windows-msvc
     - TARGET: x86_64-pc-windows-msvc
-
-    - TARGET: i686-pc-windows-msvc
-      RUST_VERSION: beta
     - TARGET: x86_64-pc-windows-msvc
       RUST_VERSION: beta
-
-    - TARGET: i686-pc-windows-msvc
-      RUST_VERSION: nightly
     - TARGET: x86_64-pc-windows-msvc
       RUST_VERSION: nightly
 
@@ -52,12 +51,8 @@ install:
 test_script:
   # we don't run the "test phase" when doing deploys
   - if [%APPVEYOR_REPO_TAG%]==[false] (
-      cargo build --target %TARGET% &&
-      cargo build --target %TARGET% --release &&
-      cargo test --target %TARGET% &&
-      cargo test --target %TARGET% --release &&
-      cargo run --target %TARGET% &&
-      cargo run --target %TARGET% --release
+      cargo build --verbose --all &&
+      cargo test --verbose --all
     )
 
 #before_deploy:
