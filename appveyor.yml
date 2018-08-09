@@ -63,7 +63,7 @@ test_script:
 #before_deploy:
 #  # TODO Update this to build the artifacts that matter to you
 #  - cargo rustc --target %TARGET% --release --bin hello -- -C lto
-#  - ps: ci\before_deploy.ps1
+#  - ps: .ci\before_deploy.ps1
 #
 # deploy:
 #   artifact: /.*\.zip/
