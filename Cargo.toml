@@ -2,7 +2,6 @@
 members = [
     "cryptoxide",
     "cardano",
-    "wallet-cli",
     "protocol",
     "storage",
     "hermes",
