@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "cryptoxide",
     "cardano",
     "protocol",
     "storage-units",
