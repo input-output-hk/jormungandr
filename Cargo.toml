@@ -6,7 +6,6 @@ members = [
     "storage-units",
     "storage",
     "hermes",
-    "cbor_event",
     "cardano-c",
 ]
 [dependencies]
