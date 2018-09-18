@@ -3,6 +3,7 @@ members = [
     "cryptoxide",
     "cardano",
     "protocol",
+    "storage-units",
     "storage",
     "hermes",
     "cbor_event",
