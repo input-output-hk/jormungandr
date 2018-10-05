@@ -4,7 +4,6 @@ members = [
     "protocol",
     "storage-units",
     "storage",
-    "hermes",
     "cardano-c",
 ]
 [dependencies]
