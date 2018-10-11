@@ -1,0 +1,3 @@
+[submodule "cardano-deps"]
+	path = cardano-deps
+	url = https://github.com/input-output-hk/rust-cardano
