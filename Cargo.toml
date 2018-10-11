@@ -1,0 +1,37 @@
+[package]
+name = "jormungandr"
+version = "0.0.1"
+authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
+          , "Vincent Hanquez <vincent.hanquez@iohk.io>"
+          ]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/input-output-hk/jormungandr"
+homepage = "https://github.com/input-output-hk/jormungandr#README.md"
+documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
+description = """
+Midgard Serpent
+"""
+
+
+[dependencies]
+log = "0.4"
+dirs = "1.0"
+rand = "0.5"
+serde = "1.0"
+serde_derive = "1.0"
+serde_yaml = "0.8"
+env_logger = "0.5"
+humantime = "1.1"
+cbor_event = "1.0"
+cryptoxide = "0.1"
+cardano         = { path = "cardano-deps/cardano" }
+protocol        = { path = "cardano-deps/protocol" }
+exe-common      = { path = "cardano-deps/exe-common" }
+cardano-storage = { path = "cardano-deps/storage" }
+storage-units   = { path = "cardano-deps/storage-units" }
+
+[dependencies.clap]
+version = "2.32"
+default-features = false
+features = [ "suggestions", "color", "wrap_help" ]
+
