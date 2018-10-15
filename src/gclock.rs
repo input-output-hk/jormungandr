@@ -1,7 +1,22 @@
-use std::time::SystemTime;
+use std::time::{SystemTime, Duration};
 
 /// This represent (in spirit) the agreed time of the whole network
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GlobalTime(SystemTime);
+
+impl GlobalTime {
+    pub fn now() -> GlobalTime {
+        let gtime = SystemTime::now();
+        GlobalTime(gtime)
+    }
+
+    pub fn differential(&self, earlier: GlobalTime) -> Duration {
+        match self.0.duration_since(earlier.0) {
+            Ok(duration) => duration,
+            Err(e)       => e.duration(),
+        }
+    }
+}
 
 /// This is absolute time the blockchain starts expressed in system time.
 ///
@@ -10,9 +25,4 @@ pub struct BlockchainStart(GlobalTime);
 
 /// Current time expressed in the number of seconds elapsed since the blockchain start time.
 pub struct BlockchainTime(u32);
-
-pub fn get_time_now() -> GlobalTime {
-    let gtime = SystemTime::now();
-    GlobalTime(gtime)
-}
 
