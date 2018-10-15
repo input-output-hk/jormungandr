@@ -2,6 +2,7 @@
 members = [
     "cardano",
     "protocol",
+    "protocol-tokio",
     "storage-units",
     "storage",
     "cardano-c",
