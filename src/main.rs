@@ -15,17 +15,40 @@ extern crate jormungandr;
 
 use std::path::{PathBuf};
 
-use jormungandr::gclock;
-use jormungandr::tpool::TPool;
+use jormungandr::{gclock, state};
+use jormungandr::state::State;
+use jormungandr::tpool::{TPool};
+use jormungandr::blockchain::{Blockchain};
+use jormungandr::utils::{task_create, task_create_with_inputs, Task};
+
+use std::sync::{Arc, RwLock, mpsc::Receiver};
+use std::{time, thread};
 
 use cardano::tx::{TxId, TxAux};
+use cardano_storage::StorageConfig;
 
-pub struct State {
+pub type TODO = u32;
+pub type BlockchainR = Arc<RwLock<Blockchain>>;
+pub type TPoolR = Arc<RwLock<TPool<TxId, TxAux>>>;
+
+fn transaction_task(_tpool: &TPoolR, r: Receiver<TODO>) {
+    loop {
+        let tquery = r.recv().unwrap();
+        println!("transaction received: {}", tquery)
+    }
 }
 
-impl State {
-    pub fn new() -> Self {
-        State {}
+fn block_task(_blockchain: &BlockchainR, r: Receiver<TODO>) {
+    loop {
+        let tquery = r.recv().unwrap();
+        println!("transaction received: {}", tquery)
+    }
+}
+
+fn client_task(_blockchain: &BlockchainR, r: Receiver<TODO>) {
+    loop {
+        let query = r.recv().unwrap();
+        println!("client query received: {}", query)
     }
 }
 
@@ -35,6 +58,11 @@ fn main() {
     // parse the command line arguments, the config files supplied
     // and setup the initial values
     let mut state = State::new();
+
+    let pathbuf = PathBuf::from(r"pool-storage");
+    let storage_config = StorageConfig::new(&pathbuf); // FIXME HARDCODED should come from config
+    let blockchain_data = Blockchain::from_storage(&storage_config);
+    let blockchain = Arc::new(RwLock::new(blockchain_data));
 
     // # Bootstrap phase
     //
@@ -47,6 +75,10 @@ fn main() {
     // * verify all the downloaded blocks
     // * network / peer discoveries (?)
     // * gclock sync ?
+
+    // Read block state
+    // init storage
+    // create blockchain storage
 
     // ** TODO **
 
@@ -63,7 +95,9 @@ fn main() {
     // * new nodes subscribing to updates (blocks, transactions)
     // * client GetBlocks/Headers ...
 
-    let mut tpool : TPool<TxId, TxAux> = TPool::new();
+    //let mut tpool : TPool<TxId, TxAux> = TPool::new();
+    let tpool_data : TPool<TxId, TxAux> = TPool::new();
+    let tpool = Arc::new(RwLock::new(tpool_data));
 
     // ** TODO **
     // setup_network
@@ -80,16 +114,45 @@ fn main() {
     //      get block(s):
     //         try to answer
     //
-    // periodically (protocol speed):
-    //   check elected
-    //   if elected
-    //     take set of transactions from pool
-    //     create a block
-    //     send it async to peers
-    //
+    //let network_ntt_task = task_create("network", || {
+        // listen to native network
+        // connect to other nodes
+    //});
+
+    let transaction_task = {
+        let tpool = Arc::clone(&tpool);
+        task_create_with_inputs("transaction", move |r| transaction_task(&tpool, r));
+    };
+    let block_task = task_create_with_inputs("block", move |r| block_task(&blockchain, r));
+
+    //let client_tasks = task_create_with_inputs("client-query", |r| client_task(&blockchain, r));
+
+    let leadership = {
+        let tpool = Arc::clone(&tpool);
+        task_create("leadership", move || {
+            // FIXME this is handled in thread, but the event will come from the clock on new slot event
+            let sleep_time = time::Duration::from_secs(20);
+            loop {
+                thread::sleep(sleep_time);
+                let len = {
+                    let t = tpool.read().unwrap();
+                    (*t).content.len()
+                };
+                println!("leadership thread waking up (tpool = {} transactions)", len)
+                //   check elected
+                //   if elected
+                //     take set of transactions from pool
+                //     create a block
+                //     send it async to peers
+            }
+        })
+    };
+
+
     // periodically cleanup (custom):
     //   storage cleanup/packing
     //   tpool.gc()
 
+    // FIXME some sort of join so that the main thread does something ...
     println!("Hello, world!");
 }
