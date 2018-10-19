@@ -24,8 +24,10 @@ env_logger = "0.5"
 humantime = "1.1"
 cbor_event = "1.0"
 cryptoxide = "0.1"
+futures    = "^0.1.25"
+tokio      = "^0.1.11"
 cardano         = { path = "cardano-deps/cardano" }
-protocol        = { path = "cardano-deps/protocol" }
+protocol-tokio  = { path = "cardano-deps/protocol-tokio" }
 exe-common      = { path = "cardano-deps/exe-common" }
 cardano-storage = { path = "cardano-deps/storage" }
 storage-units   = { path = "cardano-deps/storage-units" }
@@ -34,4 +36,3 @@ storage-units   = { path = "cardano-deps/storage-units" }
 version = "2.32"
 default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
-
