@@ -31,21 +31,21 @@ pub type TODO = u32;
 pub type BlockchainR = Arc<RwLock<Blockchain>>;
 pub type TPoolR = Arc<RwLock<TPool<TxId, TxAux>>>;
 
-fn transaction_task(_tpool: &TPoolR, r: Receiver<TODO>) {
+fn transaction_task(_tpool: TPoolR, r: Receiver<TODO>) {
     loop {
         let tquery = r.recv().unwrap();
         println!("transaction received: {}", tquery)
     }
 }
 
-fn block_task(_blockchain: &BlockchainR, r: Receiver<TODO>) {
+fn block_task(_blockchain: BlockchainR, r: Receiver<TODO>) {
     loop {
         let tquery = r.recv().unwrap();
         println!("transaction received: {}", tquery)
     }
 }
 
-fn client_task(_blockchain: &BlockchainR, r: Receiver<TODO>) {
+fn client_task(_blockchain: BlockchainR, r: Receiver<TODO>) {
     loop {
         let query = r.recv().unwrap();
         println!("client query received: {}", query)
@@ -59,8 +59,8 @@ fn main() {
     // and setup the initial values
     let mut state = State::new();
 
-    let pathbuf = PathBuf::from(r"pool-storage");
-    let storage_config = StorageConfig::new(&pathbuf); // FIXME HARDCODED should come from config
+    let pathbuf = PathBuf::from(r"pool-storage"); // FIXME HARDCODED should come from config
+    let storage_config = StorageConfig::new(&pathbuf);
     let blockchain_data = Blockchain::from_storage(&storage_config);
     let blockchain = Arc::new(RwLock::new(blockchain_data));
 
@@ -95,7 +95,6 @@ fn main() {
     // * new nodes subscribing to updates (blocks, transactions)
     // * client GetBlocks/Headers ...
 
-    //let mut tpool : TPool<TxId, TxAux> = TPool::new();
     let tpool_data : TPool<TxId, TxAux> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
@@ -114,18 +113,25 @@ fn main() {
     //      get block(s):
     //         try to answer
     //
+
+    let transaction_task = {
+        let tpool = Arc::clone(&tpool);
+        task_create_with_inputs("transaction", move |r| transaction_task(tpool, r));
+    };
+    let block_task = {
+        let blockchain = Arc::clone(&blockchain);
+        task_create_with_inputs("block", move |r| block_task(blockchain, r));
+    };
+
+    let client_task = {
+        let blockchain = Arc::clone(&blockchain);
+        task_create_with_inputs("client-query", move |r| client_task(blockchain, r));
+    };
+
     //let network_ntt_task = task_create("network", || {
         // listen to native network
         // connect to other nodes
     //});
-
-    let transaction_task = {
-        let tpool = Arc::clone(&tpool);
-        task_create_with_inputs("transaction", move |r| transaction_task(&tpool, r));
-    };
-    let block_task = task_create_with_inputs("block", move |r| block_task(&blockchain, r));
-
-    //let client_tasks = task_create_with_inputs("client-query", |r| client_task(&blockchain, r));
 
     let leadership = {
         let tpool = Arc::clone(&tpool);
@@ -147,7 +153,6 @@ fn main() {
             }
         })
     };
-
 
     // periodically cleanup (custom):
     //   storage cleanup/packing
