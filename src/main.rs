@@ -22,7 +22,7 @@ use jormungandr::{gclock, state};
 use jormungandr::state::State;
 use jormungandr::tpool::{TPool};
 use jormungandr::blockchain::{Blockchain};
-use jormungandr::utils::task::{task_create, task_create_with_inputs, Task};
+use jormungandr::utils::task::{task_create, task_create_with_inputs, Task, TaskMessageBox};
 use jormungandr::command_arguments::{CommandArguments, StructOpt};
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
@@ -73,6 +73,62 @@ fn leadership_task(tpool: TPoolR) {
         //     create a block
         //     send it async to peers
     }
+}
+
+fn network_task(_client_msgbox: TaskMessageBox<TODO>, _transaction_msgbox: TaskMessageBox<TODO>, _block_msgbox: TaskMessageBox<TODO>,
+                listen_from: SocketAddr, listen_to: Vec<SocketAddr>) -> () {
+    use tokio::net::{TcpListener};
+    use protocol::{Inbound, Message, Connection};
+    use futures::{future, sync::mpsc, prelude::{*}};
+
+    let server = TcpListener::bind(&listen_from).unwrap().incoming()
+        .map_err(|err| {
+            println!("incoming error = {:?}", err);
+        })
+        .for_each( move | stream | {
+            Connection::accept(stream)
+                .map_err(|err| println!("accepting connection error {:?}", err))
+                .and_then(|connection| {
+                    let (sink, stream) = connection.split();
+
+                    let (sink_tx, sink_rx) = mpsc::unbounded();
+
+                    let stream = stream.for_each(move |inbound| {
+                        match inbound {
+                            Inbound::NewNode(lwcid, node_id) => {
+                                sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
+                            },
+                            inbound => {
+                                println!("inbound: {:?}", inbound);
+                            }
+                        }
+                        future::ok(())
+                    }).map_err(|err| {
+                        println!("connection stream error {:#?}", err)
+                    });
+
+                    let sink = sink_rx.fold(sink, |sink, outbound| {
+                        match outbound {
+                            Message::AckNodeId(_lwcid, node_id) => {
+                                future::Either::A(sink.ack_node_id(node_id)
+                                    .map_err(|err| println!("err {:?}", err)))
+                            },
+                            message => future::Either::B(sink.send(message)
+                                    .map_err(|err| println!("err {:?}", err)))
+                        }
+                    }).map(|_| ());
+
+                    let connection_task = stream.select(sink)
+                        .then(|_| { println!("closing connection"); Ok(()) });
+
+                    tokio::spawn(connection_task)
+                })
+        }).map(|_| {
+            println!("stopping to accept new connections");
+        });
+
+    println!("About to create the server and wait for connection...");
+    tokio::run(server);
 }
 
 fn main() {
@@ -136,17 +192,17 @@ fn main() {
 
     let transaction_task = {
         let tpool = Arc::clone(&tpool);
-        task_create_with_inputs("transaction", move |r| transaction_task(tpool, r));
+        task_create_with_inputs("transaction", move |r| transaction_task(tpool, r))
     };
 
     let block_task = {
         let blockchain = Arc::clone(&blockchain);
-        task_create_with_inputs("block", move |r| block_task(blockchain, r));
+        task_create_with_inputs("block", move |r| block_task(blockchain, r))
     };
 
     let client_task = {
         let blockchain = Arc::clone(&blockchain);
-        task_create_with_inputs("client-query", move |r| client_task(blockchain, r));
+        task_create_with_inputs("client-query", move |r| client_task(blockchain, r))
     };
 
     // ** TODO **
@@ -165,9 +221,11 @@ fn main() {
     //         try to answer
     //
     let network_ntt_task = task_create("network", move || {
-        // listen to native network
-        // connect to other nodes
-        network_task(command_arguments.listen_addr.clone(), command_arguments.connect_to.clone())
+        let client_msgbox = client_task.get_message_box();
+        let transaction_msgbox = transaction_task.get_message_box();
+        let block_msgbox = block_task.get_message_box();
+        network_task(client_msgbox, transaction_msgbox, block_msgbox,
+                     command_arguments.listen_addr.clone(), command_arguments.connect_to.clone())
     });
 
     let leadership = {
@@ -181,59 +239,4 @@ fn main() {
 
     // FIXME some sort of join so that the main thread does something ...
     println!("Hello, world!");
-}
-
-fn network_task(listen_from: SocketAddr, listen_to: Vec<SocketAddr>) -> () {
-    use tokio::net::{TcpListener};
-    use protocol::{Inbound, Message, Connection};
-    use futures::{future, sync::mpsc, prelude::{*}};
-
-    let server = TcpListener::bind(&listen_from).unwrap().incoming()
-        .map_err(|err| {
-            println!("incoming error = {:?}", err);
-        })
-        .for_each( move | stream | {
-            Connection::accept(stream)
-                .map_err(|err| println!("accepting connection error {:?}", err))
-                .and_then(|connection| {
-                    let (sink, stream) = connection.split();
-
-                    let (sink_tx, sink_rx) = mpsc::unbounded();
-
-                    let stream = stream.for_each(move |inbound| {
-                        match inbound {
-                            Inbound::NewNode(lwcid, node_id) => {
-                                sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
-                            },
-                            inbound => {
-                                println!("inbound: {:?}", inbound);
-                            }
-                        }
-                        future::ok(())
-                    }).map_err(|err| {
-                        println!("connection stream error {:#?}", err)
-                    });
-
-                    let sink = sink_rx.fold(sink, |sink, outbound| {
-                        match outbound {
-                            Message::AckNodeId(_lwcid, node_id) => {
-                                future::Either::A(sink.ack_node_id(node_id)
-                                    .map_err(|err| println!("err {:?}", err)))
-                            },
-                            message => future::Either::B(sink.send(message)
-                                    .map_err(|err| println!("err {:?}", err)))
-                        }
-                    }).map(|_| ());
-
-                    let connection_task = stream.select(sink)
-                        .then(|_| { println!("closing connection"); Ok(()) });
-
-                    tokio::spawn(connection_task)
-                })
-        }).map(|_| {
-            println!("stopping to accept new connections");
-        });
-
-    println!("About to create the server and wait for connection...");
-    tokio::run(server);
 }
