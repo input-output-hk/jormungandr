@@ -22,7 +22,7 @@ use jormungandr::{gclock, state};
 use jormungandr::state::State;
 use jormungandr::tpool::{TPool};
 use jormungandr::blockchain::{Blockchain};
-use jormungandr::utils::{task_create, task_create_with_inputs, Task};
+use jormungandr::utils::task::{task_create, task_create_with_inputs, Task};
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 use std::{time, thread};
@@ -157,8 +157,8 @@ fn main() {
 
     let leadership = {
         let tpool = Arc::clone(&tpool);
-        task_create("leadership", move || leadership_task(&tpool));
-    }
+        task_create("leadership", move || leadership_task(tpool));
+    };
 
     // periodically cleanup (custom):
     //   storage cleanup/packing
