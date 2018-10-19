@@ -55,7 +55,7 @@ fn client_task(_blockchain: BlockchainR, r: Receiver<TODO>) {
     }
 }
 
-fn leadership_task(_tpool: TPoolR) {
+fn leadership_task(tpool: TPoolR) {
     // FIXME this is handled in thread, but the event will come from the clock on new slot event
     let sleep_time = time::Duration::from_secs(20);
     loop {
