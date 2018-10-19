@@ -55,6 +55,24 @@ fn client_task(_blockchain: BlockchainR, r: Receiver<TODO>) {
     }
 }
 
+fn leadership_task(_tpool: TPoolR) {
+    // FIXME this is handled in thread, but the event will come from the clock on new slot event
+    let sleep_time = time::Duration::from_secs(20);
+    loop {
+        thread::sleep(sleep_time);
+        let len = {
+            let t = tpool.read().unwrap();
+            (*t).content.len()
+        };
+        println!("leadership thread waking up (tpool = {} transactions)", len)
+        //   check elected
+        //   if elected
+        //     take set of transactions from pool
+        //     create a block
+        //     send it async to peers
+    }
+}
+
 fn main() {
     // # load parameters & config
     //
@@ -105,6 +123,7 @@ fn main() {
         let tpool = Arc::clone(&tpool);
         task_create_with_inputs("transaction", move |r| transaction_task(tpool, r));
     };
+
     let block_task = {
         let blockchain = Arc::clone(&blockchain);
         task_create_with_inputs("block", move |r| block_task(blockchain, r));
@@ -138,24 +157,8 @@ fn main() {
 
     let leadership = {
         let tpool = Arc::clone(&tpool);
-        task_create("leadership", move || {
-            // FIXME this is handled in thread, but the event will come from the clock on new slot event
-            let sleep_time = time::Duration::from_secs(20);
-            loop {
-                thread::sleep(sleep_time);
-                let len = {
-                    let t = tpool.read().unwrap();
-                    (*t).content.len()
-                };
-                println!("leadership thread waking up (tpool = {} transactions)", len)
-                //   check elected
-                //   if elected
-                //     take set of transactions from pool
-                //     create a block
-                //     send it async to peers
-            }
-        })
-    };
+        task_create("leadership", move || leadership_task(&tpool));
+    }
 
     // periodically cleanup (custom):
     //   storage cleanup/packing
