@@ -7,9 +7,10 @@ extern crate tokio;
 #[macro_use]
 extern crate structopt;
 
-pub mod gclock;
+pub mod clock;
 pub mod blockchain;
 pub mod tpool;
 pub mod state;
 pub mod utils;
+pub mod intercom;
 pub mod command_arguments;

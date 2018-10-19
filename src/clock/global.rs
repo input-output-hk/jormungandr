@@ -24,5 +24,6 @@ impl GlobalTime {
 pub struct BlockchainStart(GlobalTime);
 
 /// Current time expressed in the number of seconds elapsed since the blockchain start time.
+///
+/// only 68 years available :)
 pub struct BlockchainTime(u32);
-

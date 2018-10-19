@@ -18,12 +18,13 @@ extern crate jormungandr;
 
 use std::path::{PathBuf};
 
-use jormungandr::{gclock, state};
+use jormungandr::{clock, state};
 use jormungandr::state::State;
 use jormungandr::tpool::{TPool};
 use jormungandr::blockchain::{Blockchain};
 use jormungandr::utils::task::{task_create, task_create_with_inputs, Task, TaskMessageBox};
 use jormungandr::command_arguments::{CommandArguments, StructOpt};
+use jormungandr::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 use std::{time, thread};
@@ -36,21 +37,21 @@ pub type TODO = u32;
 pub type BlockchainR = Arc<RwLock<Blockchain>>;
 pub type TPoolR = Arc<RwLock<TPool<TxId, TxAux>>>;
 
-fn transaction_task(_tpool: TPoolR, r: Receiver<TODO>) {
+fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg>) {
     loop {
         let tquery = r.recv().unwrap();
         println!("transaction received: {}", tquery)
     }
 }
 
-fn block_task(_blockchain: BlockchainR, r: Receiver<TODO>) {
+fn block_task(_blockchain: BlockchainR, r: Receiver<BlockMsg>) {
     loop {
         let tquery = r.recv().unwrap();
         println!("transaction received: {}", tquery)
     }
 }
 
-fn client_task(_blockchain: BlockchainR, r: Receiver<TODO>) {
+fn client_task(_blockchain: BlockchainR, r: Receiver<ClientMsg>) {
     loop {
         let query = r.recv().unwrap();
         println!("client query received: {}", query)

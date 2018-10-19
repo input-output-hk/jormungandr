@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use gclock::GlobalTime;
+use clock::global::GlobalTime;
 use std::time::Duration;
 use std::sync::{Arc, RwLock};
 //use std::hash::{Hash, Hasher};
