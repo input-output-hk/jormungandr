@@ -23,9 +23,11 @@ use jormungandr::state::State;
 use jormungandr::tpool::{TPool};
 use jormungandr::blockchain::{Blockchain};
 use jormungandr::utils::task::{task_create, task_create_with_inputs, Task};
+use jormungandr::command_arguments::{CommandArguments, StructOpt};
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 use std::{time, thread};
+use std::net::SocketAddr;
 
 use cardano::tx::{TxId, TxAux};
 use cardano_storage::StorageConfig;
@@ -78,6 +80,19 @@ fn main() {
     //
     // parse the command line arguments, the config files supplied
     // and setup the initial values
+    let command_arguments = CommandArguments::from_args();
+
+    // setup the logging level
+    let log_level = match command_arguments.verbose {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
+    };
+    env_logger::Builder::from_default_env()
+        .filter_level(log_level)
+        .init();
+
     let mut state = State::new();
 
     let pathbuf = PathBuf::from(r"pool-storage"); // FIXME HARDCODED should come from config
@@ -149,10 +164,10 @@ fn main() {
     //      get block(s):
     //         try to answer
     //
-    let network_ntt_task = task_create("network", || {
+    let network_ntt_task = task_create("network", move || {
         // listen to native network
         // connect to other nodes
-        network_task()
+        network_task(command_arguments.listen_addr.clone(), command_arguments.connect_to.clone())
     });
 
     let leadership = {
@@ -168,14 +183,12 @@ fn main() {
     println!("Hello, world!");
 }
 
-fn network_task() -> () {
+fn network_task(listen_from: SocketAddr, listen_to: Vec<SocketAddr>) -> () {
     use tokio::net::{TcpListener};
     use protocol::{Inbound, Message, Connection};
     use futures::{future, sync::mpsc, prelude::{*}};
 
-    let addr = "127.0.0.1:3000".parse().unwrap();
-
-    let server = TcpListener::bind(&addr).unwrap().incoming()
+    let server = TcpListener::bind(&listen_from).unwrap().incoming()
         .map_err(|err| {
             println!("incoming error = {:?}", err);
         })

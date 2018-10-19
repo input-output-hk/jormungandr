@@ -26,6 +26,7 @@ cbor_event = "1.0"
 cryptoxide = "0.1"
 futures    = "^0.1.25"
 tokio      = "^0.1.11"
+structopt = "^0.2.12"
 cardano         = { path = "cardano-deps/cardano" }
 protocol-tokio  = { path = "cardano-deps/protocol-tokio" }
 exe-common      = { path = "cardano-deps/exe-common" }
