@@ -2,6 +2,11 @@ mod command_arguments;
 pub mod network;
 
 use std::path::PathBuf;
+use cardano::config;
+use std::fs::File;
+use std::io::Read;
+
+use exe_common::parse_genesis_data::parse_genesis_data;
 
 pub use self::command_arguments::CommandArguments;
 
@@ -38,5 +43,14 @@ impl Settings {
             _ => log::LevelFilter::Trace,
         };
         log_level
+    }
+
+    pub fn read_genesis_data(&self) -> config::GenesisData {
+        let filepath = &self.cmd_args.genesis_data_config;
+        let mut f = File::open(filepath).unwrap();
+        let mut buffer = vec![0u8; 4096];
+        f.read_to_end(&mut buffer).unwrap();
+
+        parse_genesis_data(&buffer[..])
     }
 }

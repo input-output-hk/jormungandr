@@ -38,6 +38,7 @@ use std::sync::{Arc, RwLock, mpsc::Receiver};
 use std::{time, thread};
 use std::net::SocketAddr;
 
+use cardano::config::GenesisData;
 use cardano::tx::{TxId, TxAux};
 use cardano_storage::StorageConfig;
 
@@ -83,6 +84,10 @@ fn leadership_task(tpool: TPoolR) {
     }
 }
 
+fn info(gd: &GenesisData) {
+    println!("protocol magic={} prev={}", gd.protocol_magic, gd.genesis_prev);
+}
+
 fn main() {
     // # load parameters & config
     //
@@ -93,6 +98,10 @@ fn main() {
     env_logger::Builder::from_default_env()
         .filter_level(settings.get_log_level())
         .init();
+
+    let genesis_data = settings.read_genesis_data();
+
+    info(&genesis_data);
 
     let mut state = State::new();
 
