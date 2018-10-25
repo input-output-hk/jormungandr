@@ -40,7 +40,7 @@ pub fn run( config: network::Configuration
         channels: channels,
     };
 
-    let peer_iter = stream::iter_ok(config.peer_nodes).for_each(move |peer| {
+    let peer_iter = stream::iter_ok(config.listen_to).for_each(move |peer| {
         match peer.connection {
             network::Connection::Socket(sockaddr) => {
                 run_listen_socket(sockaddr, peer, state.clone())
@@ -53,7 +53,7 @@ pub fn run( config: network::Configuration
     tokio::run(peer_iter);
 }
 
-fn run_listen_socket(sockaddr: SocketAddr, peer: Peer, state: State)
+fn run_listen_socket(sockaddr: SocketAddr, peer: Listen, state: State)
     -> tokio::executor::Spawn
 {
     let server = TcpListener::bind(&sockaddr).unwrap().incoming()
