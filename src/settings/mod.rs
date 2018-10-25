@@ -1,18 +1,23 @@
 mod command_arguments;
 
+use std::path::PathBuf;
+
 pub use self::command_arguments::CommandArguments;
 
 pub struct Settings {
     pub cmd_args: CommandArguments,
+    pub genesis_data_config: PathBuf,
 }
 
 
 impl Settings {
     pub fn load() -> Self {
         let command_arguments = CommandArguments::load();
-        Settings
-            { cmd_args: command_arguments,
-            }
+
+        Settings {
+            genesis_data_config: command_arguments.genesis_data_config.clone(),
+            cmd_args: command_arguments,
+        }
     }
 
     pub fn get_log_level(&self) -> log::LevelFilter {

@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 use structopt::{StructOpt};
 
@@ -26,6 +27,11 @@ pub struct CommandArguments {
     ///
     #[structopt(long = "connect-to", parse(try_from_str))]
     pub connect_to: Vec<SocketAddr>,
+
+    /// Set the genesis data config (in JSON format) to use as configuration
+    /// for the node's blockchain
+    #[structopt(long = "genesis-config", parse(from_os_str))]
+    pub genesis_data_config: PathBuf,
 }
 
 impl CommandArguments {
