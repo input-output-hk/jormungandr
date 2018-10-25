@@ -19,11 +19,11 @@ extern crate jormungandr;
 use std::path::{PathBuf};
 
 use jormungandr::{clock, state, blockchain};
+use jormungandr::{settings::Settings};
 use jormungandr::state::State;
 use jormungandr::tpool::{TPool};
 use jormungandr::blockchain::{Blockchain, BlockchainR};
 use jormungandr::utils::task::{task_create, task_create_with_inputs, Task, TaskMessageBox};
-use jormungandr::settings::command_arguments::{CommandArguments};
 use jormungandr::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
@@ -136,17 +136,10 @@ fn main() {
     //
     // parse the command line arguments, the config files supplied
     // and setup the initial values
-    let command_arguments = CommandArguments::load();
+    let settings = Settings::load();
 
-    // setup the logging level
-    let log_level = match command_arguments.verbose {
-        0 => log::LevelFilter::Warn,
-        1 => log::LevelFilter::Info,
-        2 => log::LevelFilter::Debug,
-        _ => log::LevelFilter::Trace,
-    };
     env_logger::Builder::from_default_env()
-        .filter_level(log_level)
+        .filter_level(settings.get_log_level())
         .init();
 
     let mut state = State::new();
@@ -225,7 +218,7 @@ fn main() {
         let transaction_msgbox = transaction_task.get_message_box();
         let block_msgbox = block_task.get_message_box();
         network_task(client_msgbox, transaction_msgbox, block_msgbox,
-                     command_arguments.listen_addr.clone(), command_arguments.connect_to.clone())
+                     settings.cmd_args.listen_addr.clone(), settings.cmd_args.connect_to.clone())
     });
 
     let leadership = {
