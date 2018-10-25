@@ -1,6 +1,8 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+use super::network::{Listen, Peer};
+
 use structopt::{StructOpt};
 
 #[derive(StructOpt, Debug)]
@@ -19,14 +21,14 @@ pub struct CommandArguments {
     /// open an listening socket to the given address. You might need to have
     /// special privileges to open the TcpSocket from this address.
     #[structopt(long = "listen-from", parse(try_from_str))]
-    pub listen_addr: SocketAddr,
+    pub listen_addr: Vec<Listen>,
 
     /// list of the nodes to connect too. They are the nodes we know
     /// we need to connect too and to start processing blocks, transactions
     /// and participate with.
     ///
     #[structopt(long = "connect-to", parse(try_from_str))]
-    pub connect_to: Vec<SocketAddr>,
+    pub connect_to: Vec<Peer>,
 
     /// Set the genesis data config (in JSON format) to use as configuration
     /// for the node's blockchain

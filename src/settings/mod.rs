@@ -7,6 +7,9 @@ pub use self::command_arguments::CommandArguments;
 
 pub struct Settings {
     pub cmd_args: CommandArguments,
+
+    pub network: network::Configuration,
+
     pub genesis_data_config: PathBuf,
 }
 
@@ -15,8 +18,14 @@ impl Settings {
     pub fn load() -> Self {
         let command_arguments = CommandArguments::load();
 
+        let network = network::Configuration {
+            peer_nodes: command_arguments.connect_to.clone(),
+            listen_to:  command_arguments.listen_addr.clone(),
+        };
+
         Settings {
             genesis_data_config: command_arguments.genesis_data_config.clone(),
+            network: network,
             cmd_args: command_arguments,
         }
     }
