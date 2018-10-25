@@ -18,10 +18,10 @@ extern crate jormungandr;
 
 use std::path::{PathBuf};
 
-use jormungandr::{clock, state};
+use jormungandr::{clock, state, blockchain};
 use jormungandr::state::State;
 use jormungandr::tpool::{TPool};
-use jormungandr::blockchain::{Blockchain};
+use jormungandr::blockchain::{Blockchain, BlockchainR};
 use jormungandr::utils::task::{task_create, task_create_with_inputs, Task, TaskMessageBox};
 use jormungandr::command_arguments::{CommandArguments, StructOpt};
 use jormungandr::intercom::{BlockMsg, ClientMsg, TransactionMsg};
@@ -34,7 +34,6 @@ use cardano::tx::{TxId, TxAux};
 use cardano_storage::StorageConfig;
 
 pub type TODO = u32;
-pub type BlockchainR = Arc<RwLock<Blockchain>>;
 pub type TPoolR = Arc<RwLock<TPool<TxId, TxAux>>>;
 
 fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg>) {
@@ -44,10 +43,10 @@ fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg>) {
     }
 }
 
-fn block_task(_blockchain: BlockchainR, r: Receiver<BlockMsg>) {
+fn block_task(blockchain: BlockchainR, r: Receiver<BlockMsg>) {
     loop {
-        let tquery = r.recv().unwrap();
-        println!("transaction received: {}", tquery)
+        let bquery = r.recv().unwrap();
+        blockchain::process(&blockchain, bquery);
     }
 }
 
