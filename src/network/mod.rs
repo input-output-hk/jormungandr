@@ -7,9 +7,9 @@
 
 use std::net::{SocketAddr};
 
-use tokio::net::{TcpListener};
+use tokio::net::{TcpListener, TcpStream};
 use protocol::{Inbound, Message, Connection};
-use futures::{future, stream, sync::mpsc, prelude::{*}};
+use futures::{future, stream::{self, Stream}, sync::mpsc, prelude::{*}};
 use intercom::{ClientMsg, TransactionMsg, BlockMsg};
 
 use utils::task::{TaskMessageBox};
@@ -40,20 +40,33 @@ pub fn run( config: network::Configuration
         channels: channels,
     };
 
-    let peer_iter = stream::iter_ok(config.listen_to).for_each(move |peer| {
-        match peer.connection {
+    let state_listener = state.clone();
+    // open the port for listenting/accepting other peers to connect too
+    let listener = stream::iter_ok(config.listen_to).for_each(move |listen| {
+        match listen.connection {
             network::Connection::Socket(sockaddr) => {
-                run_listen_socket(sockaddr, peer, state.clone())
+                run_listen_socket(sockaddr, listen, state_listener.clone())
             },
             #[cfg(unix)]
             network::Connection::Unix(path) => unimplemented!()
         }
     });
 
-    tokio::run(peer_iter);
+    let state_connection = state.clone();
+    let connections = stream::iter_ok(config.peer_nodes).for_each(move |peer| {
+        match peer.connection {
+            network::Connection::Socket(sockaddr) => {
+                run_connect_socket(sockaddr, peer, state_connection.clone())
+            },
+            #[cfg(unix)]
+            network::Connection::Unix(path) => unimplemented!()
+        }
+    });
+
+    tokio::run(connections.join(listener).map(|_| ()));
 }
 
-fn run_listen_socket(sockaddr: SocketAddr, peer: Listen, state: State)
+fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: State)
     -> tokio::executor::Spawn
 {
     let server = TcpListener::bind(&sockaddr).unwrap().incoming()
@@ -70,6 +83,25 @@ fn run_listen_socket(sockaddr: SocketAddr, peer: Listen, state: State)
         });
     tokio::spawn(server)
 }
+
+fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: State)
+    -> tokio::executor::Spawn
+{
+    let server = TcpStream::connect(&sockaddr)
+        .map_err(move |err| {
+            error!("Error while accepting connection from {:?}: {:?}", sockaddr, err)
+        }).and_then(move |stream| {
+            let state = state.clone();
+            Connection::accept(stream)
+                .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
+                .and_then(move |connection| {
+                    let state = state.clone();
+                    tokio::spawn(run_connection(state, connection))
+                })
+        });
+    tokio::spawn(server)
+}
+
 
 fn run_connection<T>(state: State, connection: Connection<T>)
     -> impl future::Future<Item = (), Error = ()>
