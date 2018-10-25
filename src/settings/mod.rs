@@ -1,4 +1,5 @@
 mod command_arguments;
+pub mod network;
 
 pub use self::command_arguments::CommandArguments;
 
