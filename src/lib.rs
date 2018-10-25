@@ -13,4 +13,4 @@ pub mod tpool;
 pub mod state;
 pub mod utils;
 pub mod intercom;
-pub mod command_arguments;
+pub mod settings;

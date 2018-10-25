@@ -23,7 +23,7 @@ use jormungandr::state::State;
 use jormungandr::tpool::{TPool};
 use jormungandr::blockchain::{Blockchain, BlockchainR};
 use jormungandr::utils::task::{task_create, task_create_with_inputs, Task, TaskMessageBox};
-use jormungandr::command_arguments::{CommandArguments, StructOpt};
+use jormungandr::settings::command_arguments::{CommandArguments};
 use jormungandr::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
@@ -136,7 +136,7 @@ fn main() {
     //
     // parse the command line arguments, the config files supplied
     // and setup the initial values
-    let command_arguments = CommandArguments::from_args();
+    let command_arguments = CommandArguments::load();
 
     // setup the logging level
     let log_level = match command_arguments.verbose {
