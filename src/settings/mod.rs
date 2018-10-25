@@ -1,4 +1,5 @@
 mod command_arguments;
+pub mod network;
 
 use std::path::PathBuf;
 
