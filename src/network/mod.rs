@@ -20,9 +20,9 @@ type TODO = u32;
 /// all the different channels the network may need to talk to
 #[derive(Clone)]
 pub struct Channels {
-    client_box:      TaskMessageBox<ClientMsg>,
-    transaction_box: TaskMessageBox<TransactionMsg>,
-    block_box:       TaskMessageBox<BlockMsg>,
+    pub client_box:      TaskMessageBox<ClientMsg>,
+    pub transaction_box: TaskMessageBox<TransactionMsg>,
+    pub block_box:       TaskMessageBox<BlockMsg>,
 }
 
 #[derive(Clone)]
