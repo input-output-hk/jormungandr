@@ -30,6 +30,10 @@ pub struct CommandArguments {
     #[structopt(long = "connect-to", parse(try_from_str))]
     pub connect_to: Vec<Peer>,
 
+    /// Set the node config (in YAML format) to use as general configuration
+    #[structopt(long = "config", parse(from_os_str))]
+    pub node_config: PathBuf,
+
     /// Set the genesis data config (in JSON format) to use as configuration
     /// for the node's blockchain
     #[structopt(long = "genesis-config", parse(from_os_str))]
