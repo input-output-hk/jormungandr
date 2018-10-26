@@ -24,6 +24,7 @@ pub mod network;
 pub mod utils;
 pub mod intercom;
 pub mod settings;
+pub mod blockcfg;
 
 use std::path::{PathBuf};
 
@@ -34,16 +35,16 @@ use blockchain::{Blockchain, BlockchainR};
 use utils::task::{task_create, task_create_with_inputs, Task, TaskMessageBox};
 use intercom::{BlockMsg, ClientMsg, TransactionMsg};
 
+use blockcfg::*;
+
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 use std::{time, thread};
 use std::net::SocketAddr;
 
-use cardano::config::GenesisData;
-use cardano::tx::{TxId, TxAux};
 use cardano_storage::StorageConfig;
 
 pub type TODO = u32;
-pub type TPoolR = Arc<RwLock<TPool<TxId, TxAux>>>;
+pub type TPoolR = Arc<RwLock<TPool<TransactionId, Transaction>>>;
 
 fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg>) {
     loop {
