@@ -52,7 +52,7 @@ fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg>) {
     }
 }
 
-fn block_task(blockchain: BlockchainR, r: Receiver<BlockMsg>) {
+fn block_task(blockchain: BlockchainR, clock: clock::Clock, r: Receiver<BlockMsg>) {
     loop {
         let bquery = r.recv().unwrap();
         blockchain::process(&blockchain, bquery);
@@ -66,7 +66,7 @@ fn client_task(_blockchain: BlockchainR, r: Receiver<ClientMsg>) {
     }
 }
 
-fn leadership_task(tpool: TPoolR) {
+fn leadership_task(tpool: TPoolR, clock: clock::Clock) {
     // FIXME this is handled in thread, but the event will come from the clock on new slot event
     let sleep_time = time::Duration::from_secs(20);
     loop {
@@ -85,7 +85,7 @@ fn leadership_task(tpool: TPoolR) {
 }
 
 fn info(gd: &GenesisData) {
-    println!("protocol magic={} prev={}", gd.protocol_magic, gd.genesis_prev);
+    println!("protocol magic={} prev={} k={}", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth);
 }
 
 fn main() {
@@ -102,6 +102,15 @@ fn main() {
     let genesis_data = settings.read_genesis_data();
 
     info(&genesis_data);
+
+    let clock = {
+        let initial_epoch = clock::ClockEpochConfiguration {
+            slot_duration: genesis_data.slot_duration,
+            slots_per_epoch: genesis_data.epoch_stability_depth * 10,
+        };
+        let config = clock::ClockConfiguration::new(initial_epoch);
+        clock::Clock::new(config)
+    };
 
     let mut state = State::new();
 
@@ -151,7 +160,8 @@ fn main() {
 
     let block_task = {
         let blockchain = Arc::clone(&blockchain);
-        task_create_with_inputs("block", move |r| block_task(blockchain, r))
+        let clock = clock.clone();
+        task_create_with_inputs("block", move |r| block_task(blockchain, clock, r))
     };
 
     let client_task = {
@@ -189,7 +199,8 @@ fn main() {
 
     let leadership = {
         let tpool = Arc::clone(&tpool);
-        task_create("leadership", move || leadership_task(tpool));
+        let clock = clock.clone();
+        task_create("leadership", move || leadership_task(tpool, clock));
     };
 
     // periodically cleanup (custom):
