@@ -18,7 +18,7 @@ extern crate tokio;
 
 pub mod clock;
 pub mod blockchain;
-pub mod tpool;
+pub mod transaction;
 pub mod state;
 pub mod network;
 pub mod utils;
@@ -29,7 +29,7 @@ use std::path::{PathBuf};
 
 use settings::Settings;
 use state::State;
-use tpool::{TPool};
+use transaction::{TPool};
 use blockchain::{Blockchain, BlockchainR};
 use utils::task::{task_create, task_create_with_inputs, Task, TaskMessageBox};
 use intercom::{BlockMsg, ClientMsg, TransactionMsg};

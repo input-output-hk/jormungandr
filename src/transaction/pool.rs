@@ -2,8 +2,6 @@ use std::collections::HashMap;
 use clock::global::GlobalTime;
 use std::time::Duration;
 use std::sync::{Arc, RwLock};
-//use std::hash::{Hash, Hasher};
-//use cardano::tx::{TxId, TxAux};
 
 /// The current transaction pool, containing all the transaction
 /// that are potential for being inserted into a block, and their
@@ -11,14 +9,6 @@ use std::sync::{Arc, RwLock};
 pub struct TPool<TransId, Trans> {
     pub content: HashMap<TransId, (GlobalTime, Trans)>,
 }
-
-/*
-impl Hash for TxId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state)
-    }
-}
-*/
 
 impl<TransId: std::hash::Hash+std::cmp::Eq, Trans> TPool<TransId, Trans> {
     /// Create a new pool
@@ -45,29 +35,5 @@ impl<TransId: std::hash::Hash+std::cmp::Eq, Trans> TPool<TransId, Trans> {
         let t = GlobalTime::now();
         self.content.retain(|_, (ttime, _)| t.differential(*ttime) > expired_duration);
         orig_length - self.content.len()
-    }
-}
-
-#[derive(Clone)]
-pub struct TPoolR<TransId, Trans>(Arc<RwLock<TPool<TransId, Trans>>>);
-
-impl<TransId: std::hash::Hash+std::cmp::Eq, Trans> TPoolR<TransId, Trans> {
-    pub fn new() -> Self {
-        TPoolR(Arc::new(RwLock::new(TPool::new())))
-    }
-
-    pub fn exist(&self, id: &TransId) -> bool {
-        let v = self.0.read().unwrap();
-        (*v).exist(id)
-    }
-
-    pub fn add(&mut self, id: TransId, trans: Trans) {
-        let mut v = self.0.write().unwrap();
-        (*v).add(id, trans)
-    }
-
-    pub fn len(&self) -> usize {
-        let v = self.0.read().unwrap();
-        (*v).content.len()
     }
 }
