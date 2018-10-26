@@ -48,7 +48,7 @@ impl Settings {
     pub fn read_genesis_data(&self) -> config::GenesisData {
         let filepath = &self.cmd_args.genesis_data_config;
         let mut f = File::open(filepath).unwrap();
-        let mut buffer = vec![0u8; 4096];
+        let mut buffer = Vec::new();
         f.read_to_end(&mut buffer).unwrap();
 
         parse_genesis_data(&buffer[..])
