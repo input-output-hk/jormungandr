@@ -67,10 +67,18 @@ pub fn run( config: network::Configuration
 fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: State)
     -> tokio::executor::Spawn
 {
-    let server = TcpListener::bind(&sockaddr).unwrap().incoming()
+    info!("start listening and accepting connection to {}", listen.connection);
+    let server = TcpListener::bind(&sockaddr)
+        .unwrap() // TODO, handle on error to provide better error message
+        .incoming()
         .map_err(move |err| {
+            // error while receiving an incoming connection
+            // here we might need to log the error and try
+            // to listen again on the sockaddr
             error!("Error while accepting connection from {:?}: {:?}", sockaddr, err)
         }).for_each(move |stream| {
+            // received incoming connection
+            info!("{} connected to {}", stream.peer_addr().unwrap(), stream.local_addr().unwrap());
             let state = state.clone();
             Connection::accept(stream)
                 .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
@@ -85,11 +93,13 @@ fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: State)
 fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: State)
     -> tokio::executor::Spawn
 {
+    info!("connecting to {}", peer.connection);
     let server = TcpStream::connect(&sockaddr)
         .map_err(move |err| {
-            error!("Error while accepting connection from {:?}: {:?}", sockaddr, err)
+            error!("Error while connecting to {:?}: {:?}", sockaddr, err)
         }).and_then(move |stream| {
             let state = state.clone();
+            info!("{} connected to {}", stream.local_addr().unwrap(), stream.peer_addr().unwrap());
             Connection::accept(stream)
                 .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
                 .and_then(move |connection| {
@@ -115,25 +125,25 @@ fn run_connection<T>(state: State, connection: Connection<T>)
                 sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
             },
             inbound => {
-                println!("inbound: {:?}", inbound);
+                debug!("inbound: {:?}", inbound);
             }
         }
         future::ok(())
     }).map_err(|err| {
-        println!("connection stream error {:#?}", err)
+        error!("connection stream error {:#?}", err)
     });
 
     let sink = sink_rx.fold(sink, |sink, outbound| {
         match outbound {
             Message::AckNodeId(_lwcid, node_id) => {
                 future::Either::A(sink.ack_node_id(node_id)
-                    .map_err(|err| println!("err {:?}", err)))
+                    .map_err(|err| error!("err {:?}", err)))
             },
             message => future::Either::B(sink.send(message)
-                    .map_err(|err| println!("err {:?}", err)))
+                    .map_err(|err| error!("err {:?}", err)))
         }
     }).map(|_| ());
 
     stream.select(sink)
-        .then(|_| { println!("closing connection"); Ok(()) })
+        .then(|_| { info!("closing connection"); Ok(()) })
 }
