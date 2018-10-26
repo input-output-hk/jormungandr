@@ -15,8 +15,6 @@ use intercom::{ClientMsg, TransactionMsg, BlockMsg};
 use utils::task::{TaskMessageBox};
 use settings::network::{self, Peer, Listen};
 
-type TODO = u32;
-
 /// all the different channels the network may need to talk to
 #[derive(Clone)]
 pub struct Channels {
