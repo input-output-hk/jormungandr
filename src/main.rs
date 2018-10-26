@@ -39,7 +39,8 @@ use blockcfg::*;
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 use std::{time, thread};
-use std::net::SocketAddr;
+
+use cardano::tx::{TxId, TxAux};
 
 use cardano_storage::StorageConfig;
 

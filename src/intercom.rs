@@ -6,6 +6,7 @@ pub type TransactionMsg = u32;
 pub type ClientMsg = u32;
 
 /// General Block Message for the block task
+#[derive(Debug, Clone)]
 pub enum BlockMsg {
     /// A untrusted Block has been received from the network task
     NetworkBlock(Block),
