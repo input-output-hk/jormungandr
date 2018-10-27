@@ -14,36 +14,48 @@ pub struct TaskWithInputs<A> {
     channel_input: TaskMessageBox<A>,
 }
 
-pub fn task_create<F>(name: &'static str, f: F) -> Task
-  where F: FnOnce() -> (),
-        F: Send + 'static,
-{
-    let handler = thread::spawn(move || { f() });
-    Task {
-        handler: handler,
-        name: name,
+pub struct Tasks {
+    all_tasks: Vec<Task>
+}
+impl Tasks {
+    pub fn new() -> Self {
+        Tasks {
+            all_tasks: Vec::new(),
+        }
+    }
+
+    pub fn task_create<F>(&mut self, name: &'static str, f: F)
+      where F: FnOnce() -> (),
+            F: Send + 'static,
+    {
+        let handler = thread::spawn(move || { f() });
+        let task = Task {
+            handler: handler,
+            name: name,
+        };
+        self.all_tasks.push(task);
+    }
+
+    pub fn task_create_with_inputs<F, A>(&mut self, name: &'static str, f: F) -> TaskMessageBox<A>
+      where F: FnOnce(Receiver<A>) -> (),
+            F: Send + 'static,
+            A: Send + 'static,
+    {
+        let (tx, rx) = channel();
+
+        self.task_create(name, move || { f(rx) });
+
+        TaskMessageBox(tx)
+    }
+
+    pub fn join(self) {
+        for thread in self.all_tasks {
+            // TODO
+            thread.handler.join();
+        }
     }
 }
 
-pub fn task_create_with_inputs<F, A>(name: &'static str, f: F) -> TaskWithInputs<A>
-  where F: FnOnce(Receiver<A>) -> (),
-        F: Send + 'static,
-        A: Send + 'static,
-{
-    let (tx, rx) = channel();
-
-    let handler = thread::spawn(move || {
-        f(rx)
-    });
-    let task = Task {
-        handler: handler,
-        name: name,
-    };
-    TaskWithInputs {
-        task: task,
-        channel_input: TaskMessageBox(tx),
-    }
-}
 
 #[derive(Clone)]
 pub struct TaskMessageBox<A>(Sender<A>);

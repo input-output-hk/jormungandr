@@ -32,7 +32,7 @@ use settings::Settings;
 use state::State;
 use transaction::{TPool};
 use blockchain::{Blockchain, BlockchainR};
-use utils::task::{task_create, task_create_with_inputs, Task, TaskMessageBox};
+use utils::task::{Tasks, Task, TaskMessageBox};
 use intercom::{BlockMsg, ClientMsg, TransactionMsg};
 
 use blockcfg::*;
@@ -121,6 +121,8 @@ fn main() {
     let blockchain_data = Blockchain::from_storage(&storage_config);
     let blockchain = Arc::new(RwLock::new(blockchain_data));
 
+    let mut tasks = Tasks::new();
+
     // # Bootstrap phase
     //
     // done at every startup: we need to bootstrap from whatever local state (including nothing)
@@ -157,18 +159,18 @@ fn main() {
 
     let transaction_task = {
         let tpool = Arc::clone(&tpool);
-        task_create_with_inputs("transaction", move |r| transaction_task(tpool, r))
+        tasks.task_create_with_inputs("transaction", move |r| transaction_task(tpool, r))
     };
 
     let block_task = {
         let blockchain = Arc::clone(&blockchain);
         let clock = clock.clone();
-        task_create_with_inputs("block", move |r| block_task(blockchain, clock, r))
+        tasks.task_create_with_inputs("block", move |r| block_task(blockchain, clock, r))
     };
 
     let client_task = {
         let blockchain = Arc::clone(&blockchain);
-        task_create_with_inputs("client-query", move |r| client_task(blockchain, r))
+        tasks.task_create_with_inputs("client-query", move |r| client_task(blockchain, r))
     };
 
     // ** TODO **
@@ -186,23 +188,25 @@ fn main() {
     //      get block(s):
     //         try to answer
     //
-    let network_ntt_task = task_create("network", move || {
-        let client_msgbox = client_task.get_message_box();
-        let transaction_msgbox = transaction_task.get_message_box();
-        let block_msgbox = block_task.get_message_box();
+    {
+        let client_msgbox = client_task.clone();
+        let transaction_msgbox = transaction_task.clone();
+        let block_msgbox = block_task.clone();
         let config = settings.network.clone();
         let channels = network::Channels {
             client_box:      client_msgbox,
             transaction_box: transaction_msgbox,
             block_box:       block_msgbox,
         };
-        network::run(config, channels);
-    });
+        tasks.task_create("network", move || {
+            network::run(config, channels);
+        });
+    };
 
-    let leadership = {
+    {
         let tpool = Arc::clone(&tpool);
         let clock = clock.clone();
-        task_create("leadership", move || leadership_task(tpool, clock));
+        tasks.task_create("leadership", move || leadership_task(tpool, clock));
     };
 
     // periodically cleanup (custom):
@@ -210,5 +214,5 @@ fn main() {
     //   tpool.gc()
 
     // FIXME some sort of join so that the main thread does something ...
-    println!("Hello, world!");
+    tasks.join();
 }
