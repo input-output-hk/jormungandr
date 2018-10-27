@@ -5,7 +5,7 @@
 //! transactions...);
 //!
 
-use std::net::{SocketAddr};
+use std::{net::{SocketAddr}, sync::{Arc}, time::{Duration}};
 
 use tokio::net::{TcpListener, TcpStream};
 use protocol::{Inbound, Message, Connection};
@@ -24,17 +24,60 @@ pub struct Channels {
 }
 
 #[derive(Clone)]
-pub struct State {
-    pub config:   network::Configuration,
+pub struct GlobalState {
+    pub config:   Arc<network::Configuration>,
     pub channels: Channels,
+}
+
+#[derive(Clone)]
+pub struct ConnectionState {
+    /// The global network configuration
+    pub global_network_configuration: Arc<network::Configuration>,
+
+    /// the channels the connection will need to have to
+    /// send messages too
+    pub channels: Channels,
+
+    /// the timeout to wait for unbefore the connection replies
+    pub timeout: Duration,
+
+    /// the local (to the task) connection details
+    pub connection: network::Connection,
+
+    pub connected: Option<network::Connection>,
+}
+impl ConnectionState {
+    fn new_listen(global: &GlobalState, listen: Listen) -> Self {
+        ConnectionState {
+            global_network_configuration: global.config.clone(),
+            channels: global.channels.clone(),
+            timeout: listen.timeout,
+            connection: listen.connection,
+            connected: None,
+        }
+    }
+    fn new_peer(global: &GlobalState, peer: Peer) -> Self {
+        ConnectionState {
+            global_network_configuration: global.config.clone(),
+            channels: global.channels.clone(),
+            timeout: peer.timeout,
+            connection: peer.connection,
+            connected: None,
+        }
+    }
+    fn connected(mut self, connection: network::Connection) -> Self {
+        self.connected = Some(connection);
+        self
+    }
 }
 
 pub fn run( config: network::Configuration
           , channels: Channels
           )
 {
-    let state = State {
-        config:   config.clone(),
+    let arc_config = Arc::new(config.clone());
+    let state = GlobalState {
+        config:   arc_config,
         channels: channels,
     };
 
@@ -64,10 +107,12 @@ pub fn run( config: network::Configuration
     tokio::run(connections.join(listener).map(|_| ()));
 }
 
-fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: State)
+fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: GlobalState)
     -> tokio::executor::Spawn
 {
-    info!("start listening and accepting connection to {}", listen.connection);
+    let state = ConnectionState::new_listen(&state, listen);
+
+    info!("start listening and accepting connection to {}", state.connection);
     let server = TcpListener::bind(&sockaddr)
         .unwrap() // TODO, handle on error to provide better error message
         .incoming()
@@ -79,7 +124,7 @@ fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: State)
         }).for_each(move |stream| {
             // received incoming connection
             info!("{} connected to {}", stream.peer_addr().unwrap(), stream.local_addr().unwrap());
-            let state = state.clone();
+            let state = state.clone().connected(network::Connection::Socket(stream.peer_addr().unwrap()));
             Connection::accept(stream)
                 .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
                 .and_then(move |connection| {
@@ -90,15 +135,17 @@ fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: State)
     tokio::spawn(server)
 }
 
-fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: State)
+fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: GlobalState)
     -> tokio::executor::Spawn
 {
-    info!("connecting to {}", peer.connection);
+    let state = ConnectionState::new_peer(&state, peer);
+
+    info!("connecting to {}", state.connection);
     let server = TcpStream::connect(&sockaddr)
         .map_err(move |err| {
             error!("Error while connecting to {:?}: {:?}", sockaddr, err)
         }).and_then(move |stream| {
-            let state = state.clone();
+            let state = state.clone().connected(network::Connection::Socket(stream.local_addr().unwrap()));
             info!("{} connected to {}", stream.local_addr().unwrap(), stream.peer_addr().unwrap());
             Connection::accept(stream)
                 .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
@@ -111,7 +158,7 @@ fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: State)
 }
 
 
-fn run_connection<T>(state: State, connection: Connection<T>)
+fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
     -> impl future::Future<Item = (), Error = ()>
   where T: tokio::io::AsyncRead + tokio::io::AsyncWrite
 {
@@ -120,12 +167,12 @@ fn run_connection<T>(state: State, connection: Connection<T>)
     let (sink_tx, sink_rx) = mpsc::unbounded();
 
     let stream = stream.for_each(move |inbound| {
+        debug!("[{}] inbound: {:?}", state.connection, inbound);
         match inbound {
             Inbound::NewNode(lwcid, node_id) => {
                 sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
             },
             inbound => {
-                debug!("inbound: {:?}", inbound);
             }
         }
         future::ok(())
@@ -134,6 +181,7 @@ fn run_connection<T>(state: State, connection: Connection<T>)
     });
 
     let sink = sink_rx.fold(sink, |sink, outbound| {
+        // debug!("[{}] outbound: {:?}", state.connection, outbound);
         match outbound {
             Message::AckNodeId(_lwcid, node_id) => {
                 future::Either::A(sink.ack_node_id(node_id)
