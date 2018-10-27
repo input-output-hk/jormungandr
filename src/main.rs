@@ -40,8 +40,6 @@ use blockcfg::*;
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 use std::{time, thread};
 
-use cardano::tx::{TxId, TxAux};
-
 use cardano_storage::StorageConfig;
 
 pub type TODO = u32;
@@ -154,7 +152,7 @@ fn main() {
     // * new nodes subscribing to updates (blocks, transactions)
     // * client GetBlocks/Headers ...
 
-    let tpool_data : TPool<TxId, TxAux> = TPool::new();
+    let tpool_data : TPool<TransactionId, Transaction> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
     let transaction_task = {
