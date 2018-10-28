@@ -84,7 +84,7 @@ fn leadership_task(tpool: TPoolR, clock: clock::Clock) {
     }
 }
 
-fn info(gd: &GenesisData) {
+fn startup_info(gd: &GenesisData) {
     println!("protocol magic={} prev={} k={}", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth);
 }
 
@@ -101,7 +101,7 @@ fn main() {
 
     let genesis_data = settings.read_genesis_data();
 
-    info(&genesis_data);
+    startup_info(&genesis_data);
 
     let clock = {
         let initial_epoch = clock::ClockEpochConfiguration {
