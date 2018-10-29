@@ -2,9 +2,11 @@
 members = [
     "cardano",
     "protocol",
+    "protocol-tokio",
     "storage-units",
     "storage",
     "cardano-c",
+    "exe-common",
 ]
 [dependencies]
 printer = { path = "rust-crypto-wasm" }
