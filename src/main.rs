@@ -29,7 +29,7 @@ pub mod blockcfg;
 use std::path::{PathBuf};
 
 use settings::Settings;
-use state::State;
+//use state::State;
 use transaction::{TPool};
 use blockchain::{Blockchain, BlockchainR};
 use utils::task::{Tasks, Task, TaskMessageBox};
@@ -66,11 +66,8 @@ fn client_task(_blockchain: BlockchainR, r: Receiver<ClientMsg>) {
     }
 }
 
-fn leadership_task(tpool: TPoolR, clock: clock::Clock) {
-    // FIXME this is handled in thread, but the event will come from the clock on new slot event
-    //let sleep_time = time::Duration::from_secs(20);
+fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock) {
     loop {
-        //println!("sleeping for {:?}", sleep_time);
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
         println!("slept for {:?} epoch {} slot {} next_slot {:?}", d, epoch.0, idx, next_time);
@@ -78,19 +75,30 @@ fn leadership_task(tpool: TPoolR, clock: clock::Clock) {
             let t = tpool.read().unwrap();
             (*t).content.len()
         };
-        println!("leadership thread waking up (tpool = {} transactions)", len);
 
-        // simulated task: take between 1 to 21 seconds.
-        {
-            let v = 1u64 + (rand::random::<u64>() % 20);
-            thread::sleep(time::Duration::from_secs(v))
-        };
+        // TODO: check if this node is "elected" (by design or by stake) for this slot
+        let elected = true;
 
-        //   check elected
-        //   if elected
-        //     take set of transactions from pool
-        //     create a block
-        //     send it async to peers
+        if elected {
+            // create a new block to broadcast:
+            // * get the transactions to put in the transactions
+            // * mint the block
+            // * sign it
+            let latest_tip = {
+                let b = blockchain.read().unwrap();
+                b.get_tip()
+            };
+
+            println!("leadership create tpool={} transactions tip={}", len, latest_tip);
+
+            // SIMULATING busy task: take between 1 to 21 seconds.
+            {
+                let v = 1u64 + (rand::random::<u64>() % 20);
+                thread::sleep(time::Duration::from_secs(v))
+            };
+            // TODO: send it to block thread for appending/broadcasting
+        }
+
     }
 }
 
@@ -121,11 +129,11 @@ fn main() {
         clock::Clock::new(genesis_data.start_time, initial_epoch)
     };
 
-    let mut state = State::new();
+    //let mut state = State::new();
 
     let pathbuf = PathBuf::from(r"pool-storage"); // FIXME HARDCODED should come from config
     let storage_config = StorageConfig::new(&pathbuf);
-    let blockchain_data = Blockchain::from_storage(&storage_config);
+    let blockchain_data = Blockchain::from_storage(&genesis_data, &storage_config);
     let blockchain = Arc::new(RwLock::new(blockchain_data));
 
     let mut tasks = Tasks::new();
@@ -213,7 +221,8 @@ fn main() {
     {
         let tpool = Arc::clone(&tpool);
         let clock = clock.clone();
-        tasks.task_create("leadership", move || leadership_task(tpool, clock));
+        let blockchain = Arc::clone(&blockchain);
+        tasks.task_create("leadership", move || leadership_task(tpool, blockchain, clock));
     };
 
     // periodically cleanup (custom):
