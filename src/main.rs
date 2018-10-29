@@ -68,14 +68,24 @@ fn client_task(_blockchain: BlockchainR, r: Receiver<ClientMsg>) {
 
 fn leadership_task(tpool: TPoolR, clock: clock::Clock) {
     // FIXME this is handled in thread, but the event will come from the clock on new slot event
-    let sleep_time = time::Duration::from_secs(20);
+    //let sleep_time = time::Duration::from_secs(20);
     loop {
-        thread::sleep(sleep_time);
+        //println!("sleeping for {:?}", sleep_time);
+        let d = clock.wait_next_slot();
+        let (epoch, idx, next_time) = clock.current_slot().unwrap();
+        println!("slept for {:?} epoch {} slot {} next_slot {:?}", d, epoch.0, idx, next_time);
         let len = {
             let t = tpool.read().unwrap();
             (*t).content.len()
         };
-        println!("leadership thread waking up (tpool = {} transactions)", len)
+        println!("leadership thread waking up (tpool = {} transactions)", len);
+
+        // simulated task: take between 1 to 21 seconds.
+        {
+            let v = 1u64 + (rand::random::<u64>() % 20);
+            thread::sleep(time::Duration::from_secs(v))
+        };
+
         //   check elected
         //   if elected
         //     take set of transactions from pool
@@ -108,8 +118,7 @@ fn main() {
             slot_duration: genesis_data.slot_duration,
             slots_per_epoch: genesis_data.epoch_stability_depth * 10,
         };
-        let config = clock::ClockConfiguration::new(initial_epoch);
-        clock::Clock::new(config)
+        clock::Clock::new(genesis_data.start_time, initial_epoch)
     };
 
     let mut state = State::new();

@@ -1,5 +1,4 @@
 use std::time::Duration;
-use std::sync::{Arc,RwLock};
 
 /// epochs. TODO figure out if reusing the epoch from cardano make sense
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -18,41 +17,8 @@ pub struct ClockEpochConfiguration {
     pub slots_per_epoch: usize,
 }
 
-pub struct ClockConfiguration {
-    initial: ClockEpochConfiguration,
-    updates: Arc<RwLock<Vec<(Epoch, ClockEpochConfiguration)>>>,
-}
-
-impl ClockConfiguration {
-    pub fn new(initial: ClockEpochConfiguration) -> Self {
-        ClockConfiguration {
-            initial: initial,
-            updates: Arc::new(RwLock::new(Vec::new())),
-        }
-    }
-
-    pub fn push_configuration(&self, epoch_era: Epoch, cfg: ClockEpochConfiguration) {
-        let mut u = self.updates.write().unwrap();
-        (*u).push((epoch_era, cfg))
-    }
-
-    pub fn get_epoch_configuration(&self, epoch_era: Epoch) -> ClockEpochConfiguration {
-        let updates = self.updates.read().unwrap();
-        for (e, cec) in (*updates).iter().rev() {
-            if &epoch_era >= e {
-                return cec.clone();
-            }
-        }
-        return self.initial.clone();
-    }
-
-    pub fn get_latest_configuration(&self) -> ClockEpochConfiguration {
-        let updates = self.updates.read().unwrap();
-        let len = (*updates).len();
-        if len > 0 {
-            return (*updates)[len - 1].1.clone()
-        } else {
-            return self.initial.clone()
-        }
+impl ClockEpochConfiguration {
+    pub fn epoch_duration(&self) -> Duration {
+        self.slot_duration * (self.slots_per_epoch as u32)
     }
 }
