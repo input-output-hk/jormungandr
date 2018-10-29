@@ -4,6 +4,7 @@
 
 ## Internal Design
 
+
 glossary:
 
 * blockchains: the current blockchain and possibly different known forks.
@@ -30,3 +31,7 @@ General tasks:
 
 * Transaction task: receive new transaction from the network, validate transaction and handle duplicates.
   Also broadcast to other nodes new (valid) transaction received.
+
+![Internal Architecture](/.architecture-1.png?raw=true "Internal Architecture")
+
+
