@@ -62,7 +62,7 @@ fn block_task(blockchain: BlockchainR, clock: clock::Clock, r: Receiver<BlockMsg
 fn client_task(_blockchain: BlockchainR, r: Receiver<ClientMsg>) {
     loop {
         let query = r.recv().unwrap();
-        println!("client query received: {}", query)
+        println!("client query received: {:?}", query)
     }
 }
 
