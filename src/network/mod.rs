@@ -147,7 +147,7 @@ fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: GlobalState)
         }).and_then(move |stream| {
             let state = state.clone().connected(network::Connection::Socket(stream.local_addr().unwrap()));
             info!("{} connected to {}", stream.local_addr().unwrap(), stream.peer_addr().unwrap());
-            Connection::accept(stream)
+            Connection::connect(stream)
                 .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
                 .and_then(move |connection| {
                     let state = state.clone();
