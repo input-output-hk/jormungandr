@@ -61,7 +61,7 @@ impl Tasks {
 pub struct TaskMessageBox<A>(Sender<A>);
 
 impl<A> TaskMessageBox<A> {
-    pub fn send_to(self, a: A) {
+    pub fn send_to(&self, a: A) {
         self.0.send(a).unwrap()
     }
 }
