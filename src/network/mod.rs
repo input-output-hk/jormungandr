@@ -167,7 +167,7 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
     let (sink_tx, sink_rx) = mpsc::unbounded();
 
     let stream = stream.for_each(move |inbound| {
-        debug!("[{}] inbound: {:?}", state.connection, inbound);
+        debug!("[{}] inbound: {:#?}", state.connection, inbound);
         match inbound {
             Inbound::NewNode(lwcid, node_id) => {
                 sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
