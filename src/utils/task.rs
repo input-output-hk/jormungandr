@@ -51,7 +51,7 @@ impl Tasks {
     pub fn join(self) {
         for thread in self.all_tasks {
             // TODO
-            thread.handler.join();
+            thread.handler.join().unwrap();
         }
     }
 }
