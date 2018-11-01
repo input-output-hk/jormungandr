@@ -140,18 +140,18 @@ fn main() {
     let tpool = Arc::new(RwLock::new(tpool_data));
 
     let transaction_task = {
-        let tpool = Arc::clone(&tpool);
+        let tpool = tpool.clone();
         tasks.task_create_with_inputs("transaction", move |r| transaction_task(tpool, r))
     };
 
     let block_task = {
-        let blockchain = Arc::clone(&blockchain);
+        let blockchain = blockchain.clone();
         let clock = clock.clone();
         tasks.task_create_with_inputs("block", move |r| block_task(blockchain, clock, r))
     };
 
     let client_task = {
-        let blockchain = Arc::clone(&blockchain);
+        let blockchain = blockchain.clone();
         tasks.task_create_with_inputs("client-query", move |r| client_task(blockchain, r))
     };
 
@@ -186,9 +186,9 @@ fn main() {
     };
 
     {
-        let tpool = Arc::clone(&tpool);
+        let tpool = tpool.clone();
         let clock = clock.clone();
-        let blockchain = Arc::clone(&blockchain);
+        let blockchain = blockchain.clone();
         tasks.task_create("leadership", move || leadership_task(tpool, blockchain, clock));
     };
 
