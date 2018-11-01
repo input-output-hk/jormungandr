@@ -36,6 +36,7 @@ use transaction::{TPool};
 use blockchain::{Blockchain, BlockchainR};
 use utils::task::{Tasks, Task, TaskMessageBox};
 use intercom::{BlockMsg, ClientMsg, TransactionMsg};
+use leadership::leadership_task;
 
 use blockcfg::*;
 
