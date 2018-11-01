@@ -1,22 +1,56 @@
 use blockcfg::{Block, Header, BlockHash};
-use std::{sync::{Arc}, fmt, ops::{Deref}};
+use std::{marker::{PhantomData}};
+use protocol::{protocol, network_transport::LightWeightConnectionId};
+use futures::{self, Stream, Future};
 
-/// Simple RAII for the Reply lambda wrapping
-#[derive(Clone)]
-pub struct Reply<A>(Arc<Fn(A) + 'static + Send + Sync>);
-impl<A, F> From<F> for Reply<A>
-where F: Fn(A) + 'static + Send + Sync,
-{
-    fn from(f: F) -> Self { Reply(Arc::new(f)) }
+/// Simple RAII for the Reply to network commands
+#[derive(Clone, Debug)]
+pub struct NetworkHandler<A> {
+    /// the identifier of the connection we are replying to
+    pub identifier: LightWeightConnectionId,
+    /// the appropriate sink to send the messages to
+    pub sink: futures::sync::mpsc::UnboundedSender<protocol::Message>,
+    /// marker for the type we are sending
+    pub marker: PhantomData<A>,
 }
-impl<A> fmt::Debug for Reply<A> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Reply<T>")
+pub trait Reply: Sized {
+    type Item;
+    type Error;
+    fn reply_ok(&self, handler: &NetworkHandler<Self>, item: Self::Item);
+    fn reply_error(&self, handler: &NetworkHandler<Self>, item: Self::Error);
+}
+
+#[derive(Clone, Debug)]
+pub struct ClientMsgGetBlocks;
+impl Reply for ClientMsgGetBlocks {
+    type Item = Vec<Block>;
+    type Error = ();
+    fn reply_ok(&self, handler: &NetworkHandler<Self>, item: Self::Item) {
+        futures::stream::iter_ok::<_, futures::sync::mpsc::SendError<protocol::Message>>(item)
+            .map(|blk| protocol::Message::Block(handler.identifier, protocol::Response::Ok(blk)))
+            .forward(&handler.sink).wait().unwrap();
+    }
+    fn reply_error(&self, handler: &NetworkHandler<Self>, item: Self::Error) {
+        unimplemented!()
     }
 }
-impl<A> Deref for Reply<A> {
-    type Target = Fn(A) + 'static + Send + Sync;
-    fn deref(&self) -> &Self::Target { self.0.deref() }
+
+#[derive(Clone, Debug)]
+pub struct ClientMsgGetHeaders;
+impl Reply for ClientMsgGetHeaders {
+    type Item = Vec<Header>;
+    type Error = ();
+    fn reply_ok(&self, handler: &NetworkHandler<Self>, item: Self::Item) {
+        handler.sink.unbounded_send(
+            protocol::Message::BlockHeaders(
+                handler.identifier,
+                protocol::Response::Ok(item.into())
+            )
+        ).unwrap()
+    }
+    fn reply_error(&self, handler: &NetworkHandler<Self>, item: Self::Error) {
+        unimplemented!()
+    }
 }
 
 // TODO
@@ -27,9 +61,9 @@ pub type TransactionMsg = u32;
 /// Fetching the block headers, the block, the tip
 #[derive(Debug, Clone)]
 pub enum ClientMsg {
-    GetBlockTip(Reply<Header>),
-    GetBlockHeaders(Vec<BlockHash>, BlockHash, Reply<Vec<Header>>),
-    GetBlocks(BlockHash, BlockHash, Reply<Vec<Block>>),
+    GetBlockTip(NetworkHandler<ClientMsgGetHeaders>),
+    GetBlockHeaders(Vec<BlockHash>, BlockHash, NetworkHandler<ClientMsgGetHeaders>),
+    GetBlocks(BlockHash, BlockHash, NetworkHandler<ClientMsgGetBlocks>),
 }
 
 /// General Block Message for the block task
@@ -39,18 +73,4 @@ pub enum BlockMsg {
     NetworkBlock(Block),
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
-}
-
-#[cfg(test)]
-mod test {
-    use super::{*};
-
-    #[test]
-    fn reply_test() {
-        let reply : Reply<u32> = Reply::from(|v| {
-            println!("value: {}", v)
-        });
-
-        (*reply)(42u32);
-    }
 }

@@ -10,7 +10,7 @@ use std::{net::{SocketAddr}, sync::{Arc}, time::{Duration}};
 use tokio::net::{TcpListener, TcpStream};
 use protocol::{Inbound, Message, Connection};
 use futures::{future, stream::{self, Stream}, sync::mpsc, prelude::{*}};
-use intercom::{ClientMsg, TransactionMsg, BlockMsg};
+use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkHandler};
 
 use utils::task::{TaskMessageBox};
 use settings::network::{self, Peer, Listen};
@@ -172,6 +172,35 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
             Inbound::NewNode(lwcid, node_id) => {
                 sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
             },
+            Inbound::GetBlockHeaders(lwcid, get_block_header) => {
+                let handler = NetworkHandler {
+                    identifier: lwcid,
+                    sink: sink_tx.clone(),
+                    marker: std::marker::PhantomData,
+                };
+                if let Some(to) = get_block_header.to {
+                    state.channels.client_box.send_to(
+                        ClientMsg::GetBlockHeaders(get_block_header.from, to, handler)
+                    );
+                } else {
+                    state.channels.client_box.send_to(
+                        ClientMsg::GetBlockTip(handler)
+                    );
+                }
+            }
+            Inbound::GetBlocks(lwcid, get_blocks) => {
+                state.channels.client_box.send_to(
+                    ClientMsg::GetBlocks(
+                        get_blocks.from,
+                        get_blocks.to,
+                        NetworkHandler {
+                            identifier: lwcid,
+                            sink: sink_tx.clone(),
+                            marker: std::marker::PhantomData,
+                        }
+                    )
+                );
+            }
             inbound => {
             }
         }
