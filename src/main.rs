@@ -170,19 +170,21 @@ fn main() {
     //      get block(s):
     //         try to answer
     //
-    {
+    let network_broadcast_sender = {
         let client_msgbox = client_task.clone();
         let transaction_msgbox = transaction_task.clone();
         let block_msgbox = block_task.clone();
         let config = settings.network.clone();
+        let (sender, receiver) = futures::sync::mpsc::unbounded();
         let channels = network::Channels {
             client_box:      client_msgbox,
             transaction_box: transaction_msgbox,
             block_box:       block_msgbox,
         };
         tasks.task_create("network", move || {
-            network::run(config, channels);
+            network::run(config, receiver, channels);
         });
+        sender
     };
 
     {

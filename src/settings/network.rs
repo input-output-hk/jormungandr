@@ -6,7 +6,7 @@ use std::{net::SocketAddr, path::PathBuf, fmt, str, time::Duration};
 /// On unix we also support `UnixSocket`. Otherwise the option
 /// is not available.
 ///
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Connection {
     Socket(SocketAddr),
     #[cfg(unix)]

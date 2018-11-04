@@ -5,10 +5,10 @@
 //! transactions...);
 //!
 
-use std::{net::{SocketAddr}, sync::{Arc}, time::{Duration}};
+use std::{net::{SocketAddr}, sync::{Arc, RwLock, Mutex}, time::{Duration}, collections::{HashMap}};
 
 use tokio::net::{TcpListener, TcpStream};
-use protocol::{Inbound, Message, Connection};
+use protocol::{Inbound, Message, Connection, network_transport::LightWeightConnectionId};
 use futures::{future, stream::{self, Stream}, sync::mpsc, prelude::{*}};
 use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkHandler};
 
@@ -23,10 +23,31 @@ pub struct Channels {
     pub block_box:       TaskMessageBox<BlockMsg>,
 }
 
+/// Identifier to manage subscriptions
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SubscriptionId(network::Connection, LightWeightConnectionId);
+
+/// all the subscriptions
+pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>;
+/*
+#[derive(Clone, Debug)]
+pub struct Subscriptions(HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>);
+impl std::ops::Deref for Subscriptions {
+    type Target = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl Default for Subscriptions {
+    fn default() -> Self { Subscriptions(HashMap::default()) }
+}
+*/
+
+pub type SubscriptionsR = Arc<RwLock<Subscriptions>>;
+
 #[derive(Clone)]
 pub struct GlobalState {
     pub config:   Arc<network::Configuration>,
     pub channels: Channels,
+    pub subscriptions: SubscriptionsR,
 }
 
 #[derive(Clone)]
@@ -41,6 +62,8 @@ pub struct ConnectionState {
     /// the timeout to wait for unbefore the connection replies
     pub timeout: Duration,
 
+    pub subscriptions: SubscriptionsR,
+
     /// the local (to the task) connection details
     pub connection: network::Connection,
 
@@ -52,6 +75,7 @@ impl ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
             timeout: listen.timeout,
+            subscriptions: global.subscriptions.clone(),
             connection: listen.connection,
             connected: None,
         }
@@ -61,6 +85,7 @@ impl ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
             timeout: peer.timeout,
+            subscriptions: global.subscriptions.clone(),
             connection: peer.connection,
             connected: None,
         }
@@ -72,17 +97,62 @@ impl ConnectionState {
 }
 
 pub fn run( config: network::Configuration
+          , subscription_msg_box: mpsc::UnboundedReceiver<Message>
           , channels: Channels
           )
 {
     let arc_config = Arc::new(config.clone());
+    let subscriptions = Arc::new(RwLock::new(Subscriptions::default()));
     let state = GlobalState {
         config:   arc_config,
         channels: channels,
+        subscriptions: subscriptions.clone(),
     };
 
+    let subscriptions = subscription_msg_box.fold(subscriptions, |subscriptions, msg| {
+        info!("Sending a subscription message");
+        debug!("subscription message is : {:#?}", msg);
+
+        let subscriptions_clone = Arc::clone(&subscriptions);
+        let subscriptions_err = Arc::clone(&subscriptions);
+
+        // clone the subscribed ends into a temporary array, the RwLock will
+        // lock the variable only the time to build this collection, so we should
+        // be able to free it for the error handling part
+        let subscriptions_col : Vec<_>
+            = subscriptions_clone.read()
+                                 .unwrap()
+                                 .iter()
+                                 .map(|(k, v)| (k.clone(), v.clone()))
+                                 .collect();
+
+        // create a stream of all the subscriptions, for every broadcast
+        // messages we will send the message to broadcast
+        //
+        futures::stream::iter_ok::<_, ()>(subscriptions_col)
+            .for_each(move |(identifier, sink)| {
+                let msg = msg.clone();
+                sink.unbounded_send(msg)
+                    .map(|_| ())
+                    .map_err(|_| {
+                        // in case of an error we can remove the element from the subscription
+                        //
+                        // This is because the only reason the subscription would fail to be sent
+                        // is if the other end of the unbound channel is disconnected/dropped.
+                        // So we can assume the other end *is* disconnected.
+                        //
+                        // TODO: we might want to double check that and actually tell the
+                        //       other end that an error occurred or at least force-drop the
+                        //       connection so the client need to reconnect.
+                        warn!("Subscription for {:?} failed, removing subscription...", identifier);
+                        let mut subscriptions_write = subscriptions_err.write().unwrap();
+                        subscriptions_write.remove(&identifier);
+                    })
+            }).map(|_| subscriptions)
+    });
+
     let state_listener = state.clone();
-    // open the port for listenting/accepting other peers to connect too
+    // open the port for listening/accepting other peers to connect too
     let listener = stream::iter_ok(config.listen_to).for_each(move |listen| {
         match listen.connection {
             network::Connection::Socket(sockaddr) => {
@@ -104,7 +174,7 @@ pub fn run( config: network::Configuration
         }
     });
 
-    tokio::run(connections.join(listener).map(|_| ()));
+    tokio::run(subscriptions.join3(connections, listener).map(|_| ()));
 }
 
 fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: GlobalState)
