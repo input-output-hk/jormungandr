@@ -39,4 +39,8 @@ impl Blockchain {
     pub fn get_tip(&self) -> BlockHash {
         self.tip.clone()
     }
+
+    pub fn get_storage(&self) -> &Storage {
+        &self.storage
+    }
 }

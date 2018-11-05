@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate clap;
 #[macro_use]
 extern crate serde_derive;
@@ -28,6 +27,7 @@ pub mod utils;
 pub mod intercom;
 pub mod settings;
 pub mod blockcfg;
+pub mod client;
 
 use std::path::{PathBuf};
 
@@ -35,16 +35,15 @@ use settings::Settings;
 //use state::State;
 use transaction::{TPool};
 use blockchain::{Blockchain, BlockchainR};
-use utils::task::{Tasks, Task, TaskMessageBox};
-use intercom::{BlockMsg, ClientMsg, TransactionMsg};
+use utils::task::{Tasks};
+use intercom::{BlockMsg, TransactionMsg};
 use leadership::leadership_task;
 
 use blockcfg::*;
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
-use std::{time, thread};
 
-use cardano_storage::StorageConfig;
+use cardano_storage::{StorageConfig};
 
 pub type TODO = u32;
 pub type TPoolR = Arc<RwLock<TPool<TransactionId, Transaction>>>;
@@ -60,13 +59,6 @@ fn block_task(blockchain: BlockchainR, clock: clock::Clock, r: Receiver<BlockMsg
     loop {
         let bquery = r.recv().unwrap();
         blockchain::process(&blockchain, bquery);
-    }
-}
-
-fn client_task(_blockchain: BlockchainR, r: Receiver<ClientMsg>) {
-    loop {
-        let query = r.recv().unwrap();
-        println!("client query received: {:?}", query)
     }
 }
 
@@ -154,7 +146,7 @@ fn main() {
 
     let client_task = {
         let blockchain = blockchain.clone();
-        tasks.task_create_with_inputs("client-query", move |r| client_task(blockchain, r))
+        tasks.task_create_with_inputs("client-query", move |r| client::client_task(blockchain, r))
     };
 
     // ** TODO **

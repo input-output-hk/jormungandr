@@ -87,7 +87,7 @@ impl Clock {
     }
 
     pub fn wait_next_slot(&self) -> Option<Duration> {
-        /// could just calculate the duration
+        // could just calculate the duration
         self.current_slot().map(|(_,_,d)| {thread::sleep(d); d})
     }
 }
