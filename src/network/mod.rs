@@ -239,6 +239,9 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
     let stream = stream.for_each(move |inbound| {
         debug!("[{}] inbound: {:#?}", state.connection, inbound);
         match inbound {
+            Inbound::NewConnection(lwcid) => {
+                debug!("new light connection {:?}", lwcid);
+            }
             Inbound::NewNode(lwcid, node_id) => {
                 sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
             },
@@ -272,6 +275,7 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
                 );
             }
             inbound => {
+                error!("unrecognized message {:#?}", inbound);
             }
         }
         future::ok(())

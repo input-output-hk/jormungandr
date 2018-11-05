@@ -43,4 +43,8 @@ impl Blockchain {
     pub fn get_storage(&self) -> &Storage {
         &self.storage
     }
+
+    pub fn get_genesis_hash(&self) -> &BlockHash {
+        &self.genesis_hash
+    }
 }
