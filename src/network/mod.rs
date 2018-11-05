@@ -10,7 +10,7 @@ use std::{net::{SocketAddr}, sync::{Arc, RwLock, Mutex}, time::{Duration}, colle
 use tokio::net::{TcpListener, TcpStream};
 use protocol::{Inbound, Message, Connection, network_transport::LightWeightConnectionId};
 use futures::{future, stream::{self, Stream}, sync::mpsc, prelude::{*}};
-use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkHandler};
+use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkHandler, NetworkBroadcastMsg};
 
 use utils::task::{TaskMessageBox};
 use settings::network::{self, Peer, Listen};
@@ -28,7 +28,7 @@ pub struct Channels {
 pub struct SubscriptionId(network::Connection, LightWeightConnectionId);
 
 /// all the subscriptions
-pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>;
+pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<NetworkBroadcastMsg>>;
 /*
 #[derive(Clone, Debug)]
 pub struct Subscriptions(HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>);
@@ -97,7 +97,7 @@ impl ConnectionState {
 }
 
 pub fn run( config: network::Configuration
-          , subscription_msg_box: mpsc::UnboundedReceiver<Message>
+          , subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg>
           , channels: Channels
           )
 {

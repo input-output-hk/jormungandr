@@ -1,4 +1,4 @@
-use blockcfg::{Block, Header, BlockHash};
+use blockcfg::{Block, Header, BlockHash, Transaction};
 use std::{marker::{PhantomData}};
 use protocol::{protocol, network_transport::LightWeightConnectionId};
 use futures::{self, Stream, Future};
@@ -73,4 +73,14 @@ pub enum BlockMsg {
     NetworkBlock(Block),
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
+}
+
+/// Message to broadcast to all the connected peers (that requested to subscribe
+/// to our blockchain).
+///
+#[derive(Debug, Clone)]
+pub enum NetworkBroadcastMsg {
+    Block(Block),
+    Header(Header),
+    Transaction(Transaction),
 }
