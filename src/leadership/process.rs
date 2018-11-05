@@ -4,7 +4,56 @@ use rand;
 
 use super::super::{clock, BlockchainR, TPoolR};
 
+use cardano::config::ProtocolMagic;
+use cardano::block::{normal, update, HeaderExtraData, ChainDifficulty, EpochSlotId, BlockVersion, SoftwareVersion, BlockHeaderAttributes, HeaderHash};
+use cardano::hdwallet;
+use cardano::tx::TxAux;
+use cardano::hash::Blake2b256;
+use cbor_event::Value;
+
+fn make_block(my_pub: &hdwallet::XPub, previous_hash: &HeaderHash, slot_id: EpochSlotId, txs: &[TxAux]) -> normal::Block {
+    let fake_sig = normal::BlockSignature::Signature(hdwallet::Signature::from_bytes([0u8;hdwallet::SIGNATURE_SIZE]));
+    let pm = ProtocolMagic::default();
+    let bver = BlockVersion::new(1,0,0);
+    let sver = SoftwareVersion::new("jorgunmandr", 1).unwrap();
+
+    let body = normal::Body {
+        tx: normal::TxPayload::new(txs.to_vec()),
+        ssc: normal::SscPayload::fake(),
+        delegation: normal::DlgPayload(Value::U64(0)),
+        update: update::UpdatePayload {
+            proposal: None,
+            votes: Vec::new(),
+        },
+    };
+    let body_proof = normal::BodyProof::generate_from_body(&body);
+
+    let hdr = normal::BlockHeader {
+        protocol_magic: pm,
+        previous_header: previous_hash.clone(),
+        body_proof: body_proof,
+        consensus: normal::Consensus {
+            slot_id: slot_id,
+            leader_key: my_pub.clone(),
+            chain_difficulty: ChainDifficulty::from(0u64),
+            block_signature: fake_sig,
+        },
+        extra_data: HeaderExtraData {
+            block_version: bver,
+            software_version: sver,
+            attributes: BlockHeaderAttributes(Value::U64(0)),
+            extra_data_proof: Blake2b256::from([0u8;Blake2b256::HASH_SIZE]), // hash of the Extra body data
+        },
+    };
+    normal::Block {
+        header: hdr,
+        body: body,
+        extra: Value::U64(0),
+    }
+}
+
 pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock) {
+    let fake_pub = hdwallet::XPub::from_slice(&[0u8; hdwallet::XPUB_SIZE]).unwrap();
     loop {
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
@@ -29,11 +78,8 @@ pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clo
 
             println!("leadership create tpool={} transactions tip={}", len, latest_tip);
 
-            // SIMULATING busy task: take between 1 to 21 seconds.
-            {
-                let v = 1u64 + (rand::random::<u64>() % 20);
-                thread::sleep(time::Duration::from_secs(v))
-            };
+            let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
+            let _block = make_block(&fake_pub, &latest_tip, epochslot, &[]);
             // TODO: send it to block thread for appending/broadcasting
         }
 
