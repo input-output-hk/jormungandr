@@ -188,8 +188,9 @@ fn main() {
     {
         let tpool = tpool.clone();
         let clock = clock.clone();
+        let block_task = block_task.clone();
         let blockchain = blockchain.clone();
-        tasks.task_create("leadership", move || leadership_task(tpool, blockchain, clock));
+        tasks.task_create("leadership", move || leadership_task(tpool, blockchain, clock, block_task));
     };
 
     // periodically cleanup (custom):

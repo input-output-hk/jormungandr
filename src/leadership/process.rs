@@ -2,10 +2,12 @@ use std::thread;
 use std::time;
 use rand;
 
-use super::super::{clock, BlockchainR, TPoolR};
+use super::super::{
+    clock, BlockchainR, TPoolR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}
+};
 
 use cardano::config::ProtocolMagic;
-use cardano::block::{normal, update, HeaderExtraData, ChainDifficulty, EpochSlotId, BlockVersion, SoftwareVersion, BlockHeaderAttributes, HeaderHash};
+use cardano::block::{Block, normal, update, HeaderExtraData, ChainDifficulty, EpochSlotId, BlockVersion, SoftwareVersion, BlockHeaderAttributes, HeaderHash};
 use cardano::hdwallet;
 use cardano::tx::TxAux;
 use cardano::hash::Blake2b256;
@@ -52,7 +54,8 @@ fn make_block(my_pub: &hdwallet::XPub, previous_hash: &HeaderHash, slot_id: Epoc
     }
 }
 
-pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock) {
+pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg>)
+{
     let fake_pub = hdwallet::XPub::from_slice(&[0u8; hdwallet::XPUB_SIZE]).unwrap();
     loop {
         let d = clock.wait_next_slot();
@@ -79,8 +82,13 @@ pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clo
             info!("leadership create tpool={} transactions tip={}", len, latest_tip);
 
             let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
-            let _block = make_block(&fake_pub, &latest_tip, epochslot, &[]);
-            // TODO: send it to block thread for appending/broadcasting
+            let block = make_block(&fake_pub, &latest_tip, epochslot, &[]);
+
+            block_task.send_to(
+                BlockMsg::LeadershipBlock(
+                    Block::MainBlock(block)
+                )
+            );
         }
 
     }
