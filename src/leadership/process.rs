@@ -57,7 +57,7 @@ pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clo
     loop {
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
-        println!("slept for {:?} epoch {} slot {} next_slot {:?}", d, epoch.0, idx, next_time);
+        debug!("slept for {:?} epoch {} slot {} next_slot {:?}", d, epoch.0, idx, next_time);
         let len = {
             let t = tpool.read().unwrap();
             (*t).content.len()
@@ -76,7 +76,7 @@ pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clo
                 b.get_tip()
             };
 
-            println!("leadership create tpool={} transactions tip={}", len, latest_tip);
+            info!("leadership create tpool={} transactions tip={}", len, latest_tip);
 
             let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
             let _block = make_block(&fake_pub, &latest_tip, epochslot, &[]);
