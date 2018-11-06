@@ -249,6 +249,10 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
     let stream = stream.for_each(move |inbound| {
         debug!("[{}] inbound: {:#?}", state.connection, inbound);
         match inbound {
+            Inbound::NothingExciting => {}
+            Inbound::Block(lwcid, block) => {
+                info!("received block from {}{:?}", state.connection, lwcid);
+            }
             Inbound::NewConnection(lwcid) => {
                 debug!("new light connection {:?}", lwcid);
             }
@@ -307,17 +311,21 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
         error!("connection stream error {:#?}", err)
     });
 
-    let sink = sink_rx.fold(sink, |sink, outbound| {
-        // debug!("[{}] outbound: {:?}", state.connection, outbound);
-        match outbound {
-            Message::AckNodeId(_lwcid, node_id) => {
-                future::Either::A(sink.ack_node_id(node_id)
-                    .map_err(|err| error!("err {:?}", err)))
-            },
-            message => future::Either::B(sink.send(message)
-                    .map_err(|err| error!("err {:?}", err)))
-        }
-    }).map(|_| ());
+    let sink = sink.subscribe(false)
+        .map_err(|err| error!("cannot subscribe {:#?}", err))
+        .and_then(move |(lwcid, sink)| {
+            sink_rx.fold(sink, |sink, outbound| {
+                // debug!("[{}] outbound: {:?}", state.connection, outbound);
+                match outbound {
+                    Message::AckNodeId(_lwcid, node_id) => {
+                        future::Either::A(sink.ack_node_id(node_id)
+                            .map_err(|err| error!("err {:?}", err)))
+                    },
+                    message => future::Either::B(sink.send(message)
+                            .map_err(|err| error!("err {:?}", err)))
+                }
+            }).map(|_| ())
+        });// .map_err(|err| { error!("failed to subscribe: {:#?}", err) });
 
     stream.select(sink)
         .then(|_| { info!("closing connection"); Ok(()) })
