@@ -65,8 +65,9 @@ fn block_task(blockchain: BlockchainR, clock: clock::Clock, r: Receiver<BlockMsg
     }
 }
 
-fn startup_info(gd: &GenesisData, blockchain: &Blockchain) {
+fn startup_info(gd: &GenesisData, blockchain: &Blockchain, settings: &Settings) {
     println!("protocol magic={} prev={} k={} tip={}", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth, blockchain.get_tip());
+    println!("consensus: {:?}", settings.consensus);
 }
 
 fn main() {
@@ -96,7 +97,7 @@ fn main() {
     let storage_config = StorageConfig::new(&pathbuf);
     let blockchain_data = Blockchain::from_storage(&genesis_data, &storage_config);
 
-    startup_info(&genesis_data, &blockchain_data);
+    startup_info(&genesis_data, &blockchain_data, &settings);
 
     let blockchain = Arc::new(RwLock::new(blockchain_data));
 

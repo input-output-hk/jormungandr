@@ -34,6 +34,10 @@ pub struct CommandArguments {
     #[structopt(long = "config", parse(from_os_str))]
     pub node_config: PathBuf,
 
+    /// Set the secret node config (in YAML format)
+    #[structopt(long = "secret", parse(from_os_str))]
+    pub secret: PathBuf,
+
     /// Set the genesis data config (in JSON format) to use as configuration
     /// for the node's blockchain
     #[structopt(long = "genesis-config", parse(from_os_str))]
