@@ -15,7 +15,7 @@ fn make_block(my_pub: &hdwallet::XPub, previous_hash: &HeaderHash, slot_id: Epoc
     let fake_sig = normal::BlockSignature::Signature(hdwallet::Signature::from_bytes([0u8;hdwallet::SIGNATURE_SIZE]));
     let pm = ProtocolMagic::default();
     let bver = BlockVersion::new(1,0,0);
-    let sver = SoftwareVersion::new("jorgunmandr", 1).unwrap();
+    let sver = SoftwareVersion::new(env!("CARGO_PKG_NAME"), 1).unwrap();
 
     let body = normal::Body {
         tx: normal::TxPayload::new(txs.to_vec()),
