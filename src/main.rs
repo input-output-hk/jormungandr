@@ -39,6 +39,8 @@ use blockchain::{Blockchain, BlockchainR};
 use utils::task::{Tasks};
 use intercom::{BlockMsg, TransactionMsg};
 use leadership::leadership_task;
+use futures::sync::mpsc::UnboundedSender;
+use intercom::NetworkBroadcastMsg;
 
 use blockcfg::*;
 
@@ -56,10 +58,10 @@ fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg>) {
     }
 }
 
-fn block_task(blockchain: BlockchainR, clock: clock::Clock, r: Receiver<BlockMsg>) {
+fn block_task(blockchain: BlockchainR, clock: clock::Clock, r: Receiver<BlockMsg>, network_broadcast: UnboundedSender<NetworkBroadcastMsg>) {
     loop {
         let bquery = r.recv().unwrap();
-        blockchain::process(&blockchain, bquery);
+        blockchain::process(&blockchain, bquery, &network_broadcast);
     }
 }
 
@@ -134,6 +136,9 @@ fn main() {
     let tpool_data : TPool<TransactionId, Transaction> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
+    // initialize the transaction broadcast channel
+    let (broadcast_sender, broadcast_receiver) = futures::sync::mpsc::unbounded();
+
     let transaction_task = {
         let tpool = tpool.clone();
         tasks.task_create_with_inputs("transaction", move |r| transaction_task(tpool, r))
@@ -142,7 +147,7 @@ fn main() {
     let block_task = {
         let blockchain = blockchain.clone();
         let clock = clock.clone();
-        tasks.task_create_with_inputs("block", move |r| block_task(blockchain, clock, r))
+        tasks.task_create_with_inputs("block", move |r| block_task(blockchain, clock, r, broadcast_sender))
     };
 
     let client_task = {
@@ -165,21 +170,19 @@ fn main() {
     //      get block(s):
     //         try to answer
     //
-    let network_broadcast_sender = {
+    {
         let client_msgbox = client_task.clone();
         let transaction_msgbox = transaction_task.clone();
         let block_msgbox = block_task.clone();
         let config = settings.network.clone();
-        let (sender, receiver) = futures::sync::mpsc::unbounded();
         let channels = network::Channels {
             client_box:      client_msgbox,
             transaction_box: transaction_msgbox,
             block_box:       block_msgbox,
         };
         tasks.task_create("network", move || {
-            network::run(config, receiver, channels);
+            network::run(config, broadcast_receiver, channels);
         });
-        sender
     };
 
     {
