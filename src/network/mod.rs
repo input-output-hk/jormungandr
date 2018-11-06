@@ -8,7 +8,7 @@
 use std::{net::{SocketAddr}, sync::{Arc, RwLock}, time::{Duration}, collections::{HashMap}};
 
 use tokio::net::{TcpListener, TcpStream};
-use protocol::{Inbound, Message, Connection, network_transport::LightWeightConnectionId};
+use protocol::{Inbound, Message, MessageType, Connection, network_transport::LightWeightConnectionId, Response};
 use futures::{future, stream::{self, Stream}, sync::mpsc, prelude::{*}};
 use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkHandler, NetworkBroadcastMsg};
 
@@ -122,13 +122,23 @@ pub fn run( config: network::Configuration
         futures::stream::iter_ok::<_, ()>(subscriptions_col)
             .for_each(move |(identifier, sink)| {
                 let msg = match msg.clone() {
-                    NetworkBroadcastMsg::Block(block)             => {
-                        Message::Bytes(identifier.1, cbor!(block).unwrap().into())
+                    NetworkBroadcastMsg::Block(block) => {
+                        Message::Bytes(
+                            identifier.1,
+                            MessageType::MsgBlock.encode_with(
+                                &Response::Ok::<_, String>(block)
+                            )
+                        )
                     }
-                    NetworkBroadcastMsg::Header(header)             => {
-                        Message::Bytes(identifier.1, cbor!(header).unwrap().into())
+                    NetworkBroadcastMsg::Header(header) => {
+                        Message::Bytes(
+                            identifier.1,
+                            MessageType::MsgHeaders.encode_with(
+                                &Response::Ok::<_, String>(cardano::block::BlockHeaders(vec![header]))
+                            )
+                        )
                     }
-                    NetworkBroadcastMsg::Transaction(transaction)             => {
+                    NetworkBroadcastMsg::Transaction(transaction) => {
                         Message::Bytes(identifier.1, cbor!(transaction).unwrap().into())
                     }
                 };
