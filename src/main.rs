@@ -11,6 +11,7 @@ extern crate structopt;
 
 extern crate cardano;
 extern crate cardano_storage;
+#[macro_use]
 extern crate cbor_event;
 extern crate exe_common;
 extern crate protocol_tokio as protocol;

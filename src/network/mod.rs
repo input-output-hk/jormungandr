@@ -5,7 +5,7 @@
 //! transactions...);
 //!
 
-use std::{net::{SocketAddr}, sync::{Arc, RwLock, Mutex}, time::{Duration}, collections::{HashMap}};
+use std::{net::{SocketAddr}, sync::{Arc, RwLock}, time::{Duration}, collections::{HashMap}};
 
 use tokio::net::{TcpListener, TcpStream};
 use protocol::{Inbound, Message, Connection, network_transport::LightWeightConnectionId};
@@ -28,18 +28,7 @@ pub struct Channels {
 pub struct SubscriptionId(network::Connection, LightWeightConnectionId);
 
 /// all the subscriptions
-pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<NetworkBroadcastMsg>>;
-/*
-#[derive(Clone, Debug)]
-pub struct Subscriptions(HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>);
-impl std::ops::Deref for Subscriptions {
-    type Target = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Default for Subscriptions {
-    fn default() -> Self { Subscriptions(HashMap::default()) }
-}
-*/
+pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>;
 
 pub type SubscriptionsR = Arc<RwLock<Subscriptions>>;
 
@@ -126,12 +115,23 @@ pub fn run( config: network::Configuration
                                  .map(|(k, v)| (k.clone(), v.clone()))
                                  .collect();
 
+
         // create a stream of all the subscriptions, for every broadcast
         // messages we will send the message to broadcast
         //
         futures::stream::iter_ok::<_, ()>(subscriptions_col)
             .for_each(move |(identifier, sink)| {
-                let msg = msg.clone();
+                let msg = match msg.clone() {
+                    NetworkBroadcastMsg::Block(block)             => {
+                        Message::Bytes(identifier.1, cbor!(block).unwrap().into())
+                    }
+                    NetworkBroadcastMsg::Header(header)             => {
+                        Message::Bytes(identifier.1, cbor!(header).unwrap().into())
+                    }
+                    NetworkBroadcastMsg::Transaction(transaction)             => {
+                        Message::Bytes(identifier.1, cbor!(transaction).unwrap().into())
+                    }
+                };
                 sink.unbounded_send(msg)
                     .map(|_| ())
                     .map_err(|_| {
@@ -244,7 +244,21 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
             }
             Inbound::NewNode(lwcid, node_id) => {
                 sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
-            },
+            }
+            Inbound::Subscribe(lwcid, _keep_alive) => {
+                // add the subscription of this LWCID in the loop, the duplicates will be silently
+                // replaced for now. we might want to report the error to the client in future
+                //
+                state.subscriptions.write()
+                    .unwrap()
+                    .insert(
+                        SubscriptionId(
+                            state.connection.clone(),
+                            lwcid
+                        ),
+                        sink_tx.clone()
+                    );
+            }
             Inbound::GetBlockHeaders(lwcid, get_block_header) => {
                 let handler = NetworkHandler {
                     identifier: lwcid,
