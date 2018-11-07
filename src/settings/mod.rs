@@ -13,6 +13,7 @@ use exe_common::parse_genesis_data::parse_genesis_data;
 pub use self::command_arguments::CommandArguments;
 pub use self::config::{Bft, BftConstants, Genesis, GenesisConstants, BftLeader};
 
+/// Overall Settings for node
 pub struct Settings {
     pub cmd_args: CommandArguments,
 
@@ -33,6 +34,11 @@ pub enum Consensus {
 
 
 impl Settings {
+    /// Load the settings
+    /// - from the command arguments
+    /// - from the config
+    ///
+    /// This function will print&exit if anything is not as it should be.
     pub fn load() -> Self {
         let command_arguments = CommandArguments::load();
 
@@ -81,6 +87,7 @@ impl Settings {
         log_level
     }
 
+    /// read and parse the genesis data, from the file specified in the Settings
     pub fn read_genesis_data(&self) -> GenesisData {
         let filepath = &self.cmd_args.genesis_data_config;
         let mut f = File::open(filepath).unwrap();

@@ -35,3 +35,15 @@ General tasks:
 ![Internal Architecture](/.architecture-1.png?raw=true "Internal Architecture")
 
 
+## Config
+
+Example of node config:
+
+```
+bft:
+  constants:
+    t: 10
+  leaders:
+    - abc
+    - def
+```
