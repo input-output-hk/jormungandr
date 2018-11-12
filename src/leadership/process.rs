@@ -3,7 +3,7 @@ use std::time;
 use rand;
 
 use super::super::{
-    clock, BlockchainR, TPoolR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}
+    clock, BlockchainR, TPoolR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret, settings::Consensus,
 };
 
 use cardano::config::ProtocolMagic;
@@ -13,11 +13,12 @@ use cardano::tx::TxAux;
 use cardano::hash::Blake2b256;
 use cbor_event::Value;
 
-fn make_block(my_pub: &hdwallet::XPub, previous_hash: &HeaderHash, slot_id: EpochSlotId, txs: &[TxAux]) -> normal::Block {
-    let fake_sig = normal::BlockSignature::Signature(hdwallet::Signature::from_bytes([0u8;hdwallet::SIGNATURE_SIZE]));
+fn make_block(secret: &NodeSecret, my_pub: &hdwallet::XPub, previous_hash: &HeaderHash, slot_id: EpochSlotId, txs: &[TxAux]) -> normal::Block {
     let pm = ProtocolMagic::default();
     let bver = BlockVersion::new(1,0,0);
     let sver = SoftwareVersion::new(env!("CARGO_PKG_NAME"), 1).unwrap();
+
+    let sig = secret.sign_block();
 
     let body = normal::Body {
         tx: normal::TxPayload::new(txs.to_vec()),
@@ -38,7 +39,7 @@ fn make_block(my_pub: &hdwallet::XPub, previous_hash: &HeaderHash, slot_id: Epoc
             slot_id: slot_id,
             leader_key: my_pub.clone(),
             chain_difficulty: ChainDifficulty::from(0u64),
-            block_signature: fake_sig,
+            block_signature: sig,
         },
         extra_data: HeaderExtraData {
             block_version: bver,
@@ -54,9 +55,9 @@ fn make_block(my_pub: &hdwallet::XPub, previous_hash: &HeaderHash, slot_id: Epoc
     }
 }
 
-pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg>)
+pub fn leadership_task(secret: NodeSecret, consensus: &Consensus, tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg>)
 {
-    let fake_pub = hdwallet::XPub::from_slice(&[0u8; hdwallet::XPUB_SIZE]).unwrap();
+    let my_pub = secret.public.block_publickey;
     loop {
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
@@ -82,7 +83,7 @@ pub fn leadership_task(tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clo
             info!("leadership create tpool={} transactions tip={}", len, latest_tip);
 
             let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
-            let block = make_block(&fake_pub, &latest_tip, epochslot, &[]);
+            let block = make_block(&secret, &my_pub, &latest_tip, epochslot, &[]);
 
             block_task.send_to(
                 BlockMsg::LeadershipBlock(

@@ -29,6 +29,7 @@ pub mod intercom;
 pub mod settings;
 pub mod blockcfg;
 pub mod client;
+pub mod secure;
 
 use std::path::{PathBuf};
 
@@ -38,7 +39,7 @@ use transaction::{TPool};
 use blockchain::{Blockchain, BlockchainR};
 use utils::task::{Tasks};
 use intercom::{BlockMsg, TransactionMsg};
-use leadership::leadership_task;
+use leadership::{can_node_lead, leadership_task};
 use futures::sync::mpsc::UnboundedSender;
 use intercom::NetworkBroadcastMsg;
 
@@ -90,6 +91,8 @@ fn main() {
         };
         clock::Clock::new(genesis_data.start_time, initial_epoch)
     };
+
+    let secret = secure::NodeSecret::load_from_file(settings.secret_config.as_path()).unwrap();
 
     //let mut state = State::new();
 
@@ -186,12 +189,12 @@ fn main() {
         });
     };
 
-    {
+    if settings.leadership == settings::Leadership::Yes && can_node_lead(&secret.to_public(), &settings.consensus) {
         let tpool = tpool.clone();
         let clock = clock.clone();
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
-        tasks.task_create("leadership", move || leadership_task(tpool, blockchain, clock, block_task));
+        tasks.task_create("leadership", move || leadership_task(secret, &settings.consensus, tpool, blockchain, clock, block_task));
     };
 
     // periodically cleanup (custom):

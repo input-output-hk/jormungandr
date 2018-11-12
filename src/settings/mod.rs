@@ -13,6 +13,16 @@ use exe_common::parse_genesis_data::parse_genesis_data;
 pub use self::command_arguments::CommandArguments;
 pub use self::config::{Bft, BftConstants, Genesis, GenesisConstants, BftLeader};
 
+#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+pub enum Leadership {
+    Yes,
+    No,
+}
+
+impl From<bool> for Leadership {
+    fn from(b: bool) -> Self { if b { Leadership::Yes } else { Leadership::No } }
+}
+
 /// Overall Settings for node
 pub struct Settings {
     pub cmd_args: CommandArguments,
@@ -21,7 +31,11 @@ pub struct Settings {
 
     pub genesis_data_config: PathBuf,
 
+    pub secret_config: PathBuf,
+
     pub consensus: Consensus,
+
+    pub leadership: Leadership,
 }
 
 #[derive(Debug)]
@@ -71,9 +85,11 @@ impl Settings {
 
         Settings {
             genesis_data_config: command_arguments.genesis_data_config.clone(),
+            secret_config: command_arguments.secret.clone().or(config.secret_file).expect("secret config unspecified"),
             network: network,
-            cmd_args: command_arguments,
+            leadership: Leadership::from(!command_arguments.without_leadership.clone()),
             consensus: consensus,
+            cmd_args: command_arguments,
         }
     }
 

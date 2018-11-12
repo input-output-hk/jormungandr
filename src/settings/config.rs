@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
+    pub secret_file: Option<PathBuf>,
     pub bft: Option<Bft>,
     pub genesis: Option<Genesis>,
 }
