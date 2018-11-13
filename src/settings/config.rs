@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use cardano::hdwallet;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -31,4 +32,4 @@ pub struct GenesisConstants {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct BftLeader(String);
+pub struct BftLeader(hdwallet::XPub);

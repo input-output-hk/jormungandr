@@ -4,6 +4,7 @@ use std::io;
 use std::io::Read;
 use cardano::hdwallet;
 use cardano::block;
+use cardano::util::hex;
 
 /// Node Secret(s)
 pub struct NodeSecret {
@@ -26,9 +27,14 @@ impl NodeSecret {
         let mut fs = fs::File::open(path)?;
         let mut vec = Vec::new();
         fs.read_to_end(&mut vec)?;
+        let v = hex::decode(String::from_utf8(vec).unwrap().as_ref()).unwrap();
         // TODO propagate error properly
+        if v.len() != hdwallet::XPRV_SIZE {
+            panic!("wrong size for secret")
+        }
+
         let mut b = [0u8;hdwallet::XPRV_SIZE];
-        b.copy_from_slice(&vec[0..hdwallet::XPRV_SIZE]);
+        b.copy_from_slice(&v);
         let prv = hdwallet::XPrv::from_bytes_verified(b).expect("secret key is invalid");
         let np = NodePublic {
             block_publickey: prv.public(),
