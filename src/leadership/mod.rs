@@ -1,4 +1,5 @@
 pub mod process;
+mod selection;
 
 pub use self::process::leadership_task;
 
@@ -8,8 +9,8 @@ use super::settings::{Consensus, BftLeader};
 pub fn can_node_lead(public: &NodePublic, consensus: &Consensus) -> bool {
     match consensus {
         Consensus::Bft(bft) => {
-            let p = BftLeader(public.block_publickey);
-            let found = bft.leaders.contains(&p);
+            let p = &BftLeader(public.block_publickey);
+            let found = bft.leaders.contains(p);
             println!("BFT our node can lead: {}", found);
             found
         },

@@ -1,6 +1,7 @@
 use std::thread;
 use std::time;
 use rand;
+use super::selection;
 
 use super::super::{
     clock, BlockchainR, TPoolR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret, settings::Consensus,
@@ -58,6 +59,8 @@ fn make_block(secret: &NodeSecret, my_pub: &hdwallet::XPub, previous_hash: &Head
 pub fn leadership_task(secret: NodeSecret, consensus: &Consensus, tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg>)
 {
     let my_pub = secret.public.block_publickey;
+    // TODO only support BFT right now
+    let selection = selection::prepare(&secret.public, &consensus);
     loop {
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
@@ -67,8 +70,8 @@ pub fn leadership_task(secret: NodeSecret, consensus: &Consensus, tpool: TPoolR,
             (*t).content.len()
         };
 
-        // TODO: check if this node is "elected" (by design or by stake) for this slot
-        let elected = true;
+        // TODO in the future "current stake" will be one of the parameter
+        let elected = selection::test(&selection, idx);
 
         if elected {
             // create a new block to broadcast:
