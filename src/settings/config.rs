@@ -10,8 +10,8 @@ pub struct Config {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Bft {
-    constants: BftConstants,
-    leaders: Vec<BftLeader>,
+    pub constants: BftConstants,
+    pub leaders: Vec<BftLeader>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -22,7 +22,7 @@ pub struct BftConstants {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Genesis {
-    constant: GenesisConstants,
+    pub constant: GenesisConstants,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -32,4 +32,4 @@ pub struct GenesisConstants {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct BftLeader(hdwallet::XPub);
+pub struct BftLeader(pub hdwallet::XPub);
