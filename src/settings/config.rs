@@ -31,5 +31,5 @@ pub struct GenesisConstants {
     k: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BftLeader(pub hdwallet::XPub);

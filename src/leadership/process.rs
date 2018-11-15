@@ -1,10 +1,8 @@
-use std::thread;
-use std::time;
-use rand;
-use super::selection;
+use std::sync::Arc;
+use super::selection::{self, IsLeading, Selection};
 
 use super::super::{
-    clock, BlockchainR, TPoolR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret, settings::Consensus,
+    clock, BlockchainR, TPoolR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret,
 };
 
 use cardano::config::ProtocolMagic;
@@ -56,11 +54,9 @@ fn make_block(secret: &NodeSecret, my_pub: &hdwallet::XPub, previous_hash: &Head
     }
 }
 
-pub fn leadership_task(secret: NodeSecret, consensus: &Consensus, tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg>)
+pub fn leadership_task(secret: NodeSecret, selection: Arc<Selection>, tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg>)
 {
     let my_pub = secret.public.block_publickey;
-    // TODO only support BFT right now
-    let selection = selection::prepare(&secret.public, &consensus);
     loop {
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
@@ -71,9 +67,9 @@ pub fn leadership_task(secret: NodeSecret, consensus: &Consensus, tpool: TPoolR,
         };
 
         // TODO in the future "current stake" will be one of the parameter
-        let elected = selection::test(&selection, idx);
+        let leader = selection::test(&selection, idx as u64);
 
-        if elected {
+        if leader == IsLeading::Yes {
             // create a new block to broadcast:
             // * get the transactions to put in the transactions
             // * mint the block

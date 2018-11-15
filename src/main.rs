@@ -39,7 +39,7 @@ use transaction::{TPool};
 use blockchain::{Blockchain, BlockchainR};
 use utils::task::{Tasks};
 use intercom::{BlockMsg, TransactionMsg};
-use leadership::{can_node_lead, leadership_task};
+use leadership::{leadership_task, Selection};
 use futures::sync::mpsc::UnboundedSender;
 use intercom::NetworkBroadcastMsg;
 
@@ -59,10 +59,10 @@ fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg>) {
     }
 }
 
-fn block_task(blockchain: BlockchainR, clock: clock::Clock, r: Receiver<BlockMsg>, network_broadcast: UnboundedSender<NetworkBroadcastMsg>) {
+fn block_task(blockchain: BlockchainR, selection: Arc<Selection>, clock: clock::Clock, r: Receiver<BlockMsg>, network_broadcast: UnboundedSender<NetworkBroadcastMsg>) {
     loop {
         let bquery = r.recv().unwrap();
-        blockchain::process(&blockchain, bquery, &network_broadcast);
+        blockchain::process(&blockchain, &selection, bquery, &network_broadcast);
     }
 }
 
@@ -140,6 +140,9 @@ fn main() {
     let tpool_data : TPool<TransactionId, Transaction> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
+    let selection_data = leadership::selection::prepare(&secret.to_public(), &settings.consensus).unwrap();
+    let selection = Arc::new(selection_data);
+
     // initialize the transaction broadcast channel
     let (broadcast_sender, broadcast_receiver) = futures::sync::mpsc::unbounded();
 
@@ -151,7 +154,8 @@ fn main() {
     let block_task = {
         let blockchain = blockchain.clone();
         let clock = clock.clone();
-        tasks.task_create_with_inputs("block", move |r| block_task(blockchain, clock, r, broadcast_sender))
+        let selection = Arc::clone(&selection);
+        tasks.task_create_with_inputs("block", move |r| block_task(blockchain, selection, clock, r, broadcast_sender))
     };
 
     let client_task = {
@@ -189,12 +193,13 @@ fn main() {
         });
     };
 
-    if settings.leadership == settings::Leadership::Yes && can_node_lead(&secret.to_public(), &settings.consensus) {
+    if settings.leadership == settings::Leadership::Yes && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes {
         let tpool = tpool.clone();
         let clock = clock.clone();
+        let selection = Arc::clone(&selection);
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
-        tasks.task_create("leadership", move || leadership_task(secret, &settings.consensus, tpool, blockchain, clock, block_task));
+        tasks.task_create("leadership", move || leadership_task(secret, selection, tpool, blockchain, clock, block_task));
     };
 
     // periodically cleanup (custom):

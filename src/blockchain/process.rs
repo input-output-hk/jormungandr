@@ -1,10 +1,13 @@
 use futures::sync::mpsc::UnboundedSender;
 use super::super::intercom::{BlockMsg, NetworkBroadcastMsg};
+use super::super::leadership::selection;
+use std::sync::Arc;
 
 use super::chain;
 
 pub fn process(
     blockchain: &chain::BlockchainR,
+    selection: &Arc<selection::Selection>,
     bquery: BlockMsg,
     network_broadcast: &UnboundedSender<NetworkBroadcastMsg>
 )
