@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+import "types.proto";
+
+message TipRequest {}
+
+message TipResponse {
+    BlockDate blockdate = 1;
+    HeaderHash hash = 2;
+}
+
+service Node {
+    rpc Tip (TipRequest) returns (TipResponse);
+}

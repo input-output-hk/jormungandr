@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+message BlockDate {
+    uint64 epoch = 1;
+    uint32 slot = 2;
+}
+
+message HeaderHash {
+    bytes hash = 1;
+}
