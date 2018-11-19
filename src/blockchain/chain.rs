@@ -1,7 +1,5 @@
 use std::sync::{Arc, RwLock};
 use std::collections::BTreeMap;
-use std::ops::Bound::Included;
-use std::str::FromStr;
 
 use cardano_storage::StorageConfig;
 use cardano_storage::{tag, Storage, blob, block_read};
@@ -25,13 +23,7 @@ pub struct Blockchain {
     /// parent.
     ///
     /// FIXME: need some way to GC unconnected blocks after a while.
-    unconnected_blocks: BTreeMap<UnconnectedBlockKey, Block>,
-}
-
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-struct UnconnectedBlockKey {
-    parent_hash: BlockHash,
-    block_hash: BlockHash,
+    unconnected_blocks: BTreeMap<BlockHash, BTreeMap<BlockHash, Block>>,
 }
 
 pub type BlockchainR = Arc<RwLock<Blockchain>>;
@@ -77,73 +69,54 @@ impl Blockchain {
         let parent_hash = block.get_header().get_previous_header();
 
         if self.block_exists(&parent_hash) {
-            self.handle_connected_block(block_hash, parent_hash, block);
+            self.handle_connected_block(block_hash, block);
         } else {
-            info!("solliciting block {} from the network", parent_hash);
             self.sollicit_block(&parent_hash);
-            self.unconnected_blocks.insert(
-                UnconnectedBlockKey {
-                    parent_hash,
-                    block_hash,
-                }, block);
+            self.unconnected_blocks.entry(parent_hash)
+                .or_insert(BTreeMap::new())
+                .insert(block_hash, block);
         }
     }
 
     /// Handle a block whose ancestors are on disk.
-    fn handle_connected_block(&mut self, block_hash: BlockHash, parent_hash: BlockHash, block: Block) {
+    fn handle_connected_block(&mut self, block_hash: BlockHash, block: Block) {
 
         // Quick optimization: don't do anything if the incoming block
         // is already the tip. Ideally we would bail out if the
         // incoming block is on the tip chain, but there is no quick
         // way to check that.
-        if block_hash == self.chain_state.last_block { return; }
+        if block_hash != self.chain_state.last_block {
 
-        blob::write(&self.storage, &block_hash, cbor!(block).unwrap().as_ref())
-            .expect("unable to write block to disk");
+            blob::write(&self.storage, &block_hash, cbor!(block).unwrap().as_ref())
+                .expect("unable to write block to disk");
 
-        // FIXME: optimize for the case where new_tip is a child of
-        // the current tip. In that case we can clone chain_state and
-        // apply the new blocks.
-        match restore_chain_state(&self.storage, &self.genesis_data, &block_hash) {
-            Ok(new_chain_state) => {
-                assert_eq!(new_chain_state.last_block, block_hash);
-                if new_chain_state.chain_length > self.chain_state.chain_length {
-                    info!("switching to new tip {} ({:?}), previous length {}, new length {}",
-                          block_hash, new_chain_state.last_date,
-                          self.chain_state.chain_length, new_chain_state.chain_length);
-                    self.chain_state = new_chain_state;
-                    tag::write_hash(&self.storage, &LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash);
-                } else {
-                    info!("discarding shorter incoming fork {} ({:?}, length {}), tip length {}",
-                          block_hash, new_chain_state.last_date,
-                          new_chain_state.chain_length, self.chain_state.chain_length);
+            // FIXME: optimize for the case where new_tip is a child of
+            // the current tip. In that case we can clone chain_state and
+            // apply the new blocks.
+            match restore_chain_state(&self.storage, &self.genesis_data, &block_hash) {
+                Ok(new_chain_state) => {
+                    assert_eq!(new_chain_state.last_block, block_hash);
+                    if new_chain_state.chain_length > self.chain_state.chain_length {
+                        info!("switching to new tip {} ({:?}), previous length {}, new length {}",
+                              block_hash, new_chain_state.last_date,
+                              self.chain_state.chain_length, new_chain_state.chain_length);
+                        self.chain_state = new_chain_state;
+                        tag::write_hash(&self.storage, &LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash);
+                    } else {
+                        info!("discarding shorter incoming fork {} ({:?}, length {}), tip length {}",
+                              block_hash, new_chain_state.last_date,
+                              new_chain_state.chain_length, self.chain_state.chain_length);
+                    }
                 }
+                Err(err) => error!("cannot compute chain state for incoming fork {}: {:?}", block_hash, err)
             }
-            Err(err) => error!("cannot compute chain state for incoming fork {}: {}", block_hash, err)
         }
 
         // Process previously received children of this block.
-        let from = UnconnectedBlockKey {
-            parent_hash: parent_hash.clone(),
-            block_hash: BlockHash::from_str(&"0000000000000000000000000000000000000000000000000000000000000000").unwrap()
-        };
-
-        let to = UnconnectedBlockKey {
-            parent_hash: parent_hash.clone(),
-            block_hash: BlockHash::from_str(&"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()
-        };
-
-        let mut children = vec![];
-
-        for (k, v) in self.unconnected_blocks.range((Included(from), Included(to))) {
-            assert_eq!(k.parent_hash, block_hash);
-            info!("triggering child block {}", k.block_hash);
-            children.push(k.clone())
-        }
-
-        for k in children {
-            if let Some(v) = self.unconnected_blocks.remove(&k) {
-                self.handle_connected_block(k.block_hash.clone(), k.parent_hash.clone(), block.clone());
+        if let Some(children) = self.unconnected_blocks.remove(&block_hash) {
+            for (child_hash, child_block) in children {
+                info!("triggering child block {}", child_hash);
+                self.handle_connected_block(child_hash, child_block);
             }
         }
     }
@@ -159,6 +132,7 @@ impl Blockchain {
 
     /// Request a missing block from the network.
     fn sollicit_block(&mut self, block_hash: &BlockHash) {
-        unimplemented!();
+        info!("solliciting block {} from the network", block_hash);
+        //unimplemented!();
     }
 }
