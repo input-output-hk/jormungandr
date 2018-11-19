@@ -114,7 +114,7 @@ impl Blockchain {
                               block_hash, new_chain_state.last_date,
                               self.chain_state.chain_length, new_chain_state.chain_length);
                         self.chain_state = new_chain_state;
-                        //tag::write_hash(&self.storage, &LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash);
+                        tag::write_hash(&self.storage, &LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash);
                     } else {
                         info!("discarding shorter incoming fork {} ({:?}, length {}), tip length {}",
                               block_hash, new_chain_state.last_date,
