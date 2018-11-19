@@ -90,10 +90,23 @@ impl Blockchain {
             blob::write(&self.storage, &block_hash, cbor!(block).unwrap().as_ref())
                 .expect("unable to write block to disk");
 
-            // FIXME: optimize for the case where new_tip is a child of
-            // the current tip. In that case we can clone chain_state and
-            // apply the new blocks.
-            match restore_chain_state(&self.storage, &self.genesis_data, &block_hash) {
+            // Compute the new chain state. In the common case, the
+            // incoming block is a direct successor of the tip, so we
+            // just apply the block to our current chain
+            // state. Otherwise we use restore_chain_state() to
+            // compute the chain state from the last state snapshot on
+            // disk.
+            let new_chain_state = if block.get_header().get_previous_header() == self.chain_state.last_block {
+                let mut new_chain_state = self.chain_state.clone();
+                match new_chain_state.verify_block(&block_hash, &block) {
+                    Ok(()) => Ok(new_chain_state),
+                    Err(err) => Err(err.into())
+                }
+            } else {
+                restore_chain_state(&self.storage, &self.genesis_data, &block_hash)
+            };
+
+            match new_chain_state {
                 Ok(new_chain_state) => {
                     assert_eq!(new_chain_state.last_block, block_hash);
                     if new_chain_state.chain_length > self.chain_state.chain_length {
@@ -101,7 +114,7 @@ impl Blockchain {
                               block_hash, new_chain_state.last_date,
                               self.chain_state.chain_length, new_chain_state.chain_length);
                         self.chain_state = new_chain_state;
-                        tag::write_hash(&self.storage, &LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash);
+                        //tag::write_hash(&self.storage, &LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash);
                     } else {
                         info!("discarding shorter incoming fork {} ({:?}, length {}), tip length {}",
                               block_hash, new_chain_state.last_date,
