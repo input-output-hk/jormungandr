@@ -14,11 +14,13 @@ pub fn process(
 {
     match bquery {
         BlockMsg::NetworkBlock(block) => {
-           debug!("received block from the network: {:#?}", block);
+            debug!("received block from the network: {:#?}", block);
+            blockchain.write().unwrap().handle_incoming_block(block);
         }
         BlockMsg::LeadershipBlock(block) => {
-            network_broadcast.unbounded_send(NetworkBroadcastMsg::Block(block.clone())).unwrap();
-           debug!("received block from the leadership: {:#?}", block);
+            debug!("received block from the leadership: {:#?}", block);
+            blockchain.write().unwrap().handle_incoming_block(block.clone());
+            network_broadcast.unbounded_send(NetworkBroadcastMsg::Block(block)).unwrap();
         }
     }
 }

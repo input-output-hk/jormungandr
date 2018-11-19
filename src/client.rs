@@ -27,7 +27,7 @@ fn handle_get_block_tip(
     handler: NetworkHandler<ClientMsgGetHeaders>)
 {
     let blockchain = blockchain.read().unwrap();
-    let tip = blockchain.get_tip();
+    let tip = blockchain.get_tip().0;
     let resp = match block_read(blockchain.get_storage(), &tip) {
         None => Response::Err(format!("Cannot read block '{}'", tip)),
         Some(rblk) => {
