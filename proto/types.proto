@@ -8,3 +8,8 @@ message BlockDate {
 message HeaderHash {
     bytes hash = 1;
 }
+
+message Block {
+    // TODO: add header
+    bytes body = 2;
+}
