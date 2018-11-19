@@ -79,6 +79,7 @@ impl Blockchain {
         if self.block_exists(&parent_hash) {
             self.handle_connected_block(block_hash, parent_hash, block);
         } else {
+            info!("solliciting block {} from the network", parent_hash);
             self.sollicit_block(&parent_hash);
             self.unconnected_blocks.insert(
                 UnconnectedBlockKey {
@@ -90,6 +91,13 @@ impl Blockchain {
 
     /// Handle a block whose ancestors are on disk.
     fn handle_connected_block(&mut self, block_hash: BlockHash, parent_hash: BlockHash, block: Block) {
+
+        // Quick optimization: don't do anything if the incoming block
+        // is already the tip. Ideally we would bail out if the
+        // incoming block is on the tip chain, but there is no quick
+        // way to check that.
+        if block_hash == self.chain_state.last_block { return; }
+
         blob::write(&self.storage, &block_hash, cbor!(block).unwrap().as_ref())
             .expect("unable to write block to disk");
 
@@ -104,6 +112,7 @@ impl Blockchain {
                           block_hash, new_chain_state.last_date,
                           self.chain_state.chain_length, new_chain_state.chain_length);
                     self.chain_state = new_chain_state;
+                    tag::write_hash(&self.storage, &LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash);
                 } else {
                     info!("discarding shorter incoming fork {} ({:?}, length {}), tip length {}",
                           block_hash, new_chain_state.last_date,
