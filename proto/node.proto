@@ -18,5 +18,7 @@ message GetBlocksRequest {
 
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
-    rpc GetBlocks (GetBlocksRequest) returns (stream cardano.Block);
+    rpc GetBlocks (GetBlocksRequest) returns (stream cardano.Block) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
 }
