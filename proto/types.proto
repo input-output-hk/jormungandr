@@ -10,6 +10,5 @@ message HeaderHash {
 }
 
 message Block {
-    // TODO: add header
-    bytes body = 2;
+    bytes content = 1;
 }
