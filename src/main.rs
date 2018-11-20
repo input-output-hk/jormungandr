@@ -23,6 +23,10 @@ extern crate sha2;
 extern crate curve25519_dalek;
 extern crate generic_array;
 
+extern crate prost;
+#[macro_use]
+extern crate prost_derive;
+
 pub mod clock;
 pub mod blockchain;
 pub mod transaction;

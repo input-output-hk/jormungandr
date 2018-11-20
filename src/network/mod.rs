@@ -6,6 +6,7 @@
 //!
 
 mod ntt;
+pub mod protobuf;
 
 use std::{
     collections::HashMap,
