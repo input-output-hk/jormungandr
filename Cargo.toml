@@ -45,5 +45,10 @@ version = "2.32"
 default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
 
-[build-dependencies]
-prost-build = "0.4"
+[dependencies.tower-grpc]
+git = "https://github.com/tower-rs/tower-grpc.git"
+commit = "40b059abac9ca07edac252f4d0b69c55f6ecf88d"
+
+[build-dependencies.tower-grpc-build]
+git = "https://github.com/tower-rs/tower-grpc.git"
+commit = "40b059abac9ca07edac252f4d0b69c55f6ecf88d"

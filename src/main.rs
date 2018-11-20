@@ -26,6 +26,7 @@ extern crate generic_array;
 extern crate prost;
 #[macro_use]
 extern crate prost_derive;
+extern crate tower_grpc;
 
 pub mod clock;
 pub mod blockchain;
