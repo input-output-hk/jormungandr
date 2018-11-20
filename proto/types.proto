@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package cardano;
+
 message BlockDate {
     uint64 epoch = 1;
     uint32 slot = 2;
