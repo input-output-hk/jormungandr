@@ -9,13 +9,15 @@ use std::{net::SocketAddr, path::PathBuf, fmt, str, time::Duration};
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Connection {
     Socket(SocketAddr),
+    Grpc(SocketAddr),
     #[cfg(unix)]
     Unix(PathBuf),
 }
 impl fmt::Display for Connection {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Connection::Socket(addr) => write!(f, "{}", addr),
+            Connection::Socket(addr) => write!(f, "NTT at {}", addr),
+            Connection::Grpc(addr) => write!(f, "gRPC at {}", addr),
             #[cfg(unix)]
             Connection::Unix(path)   => write!(f, "{:?}", path),
         }

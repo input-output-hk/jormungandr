@@ -183,6 +183,9 @@ pub fn run( config: network::Configuration
             network::Connection::Socket(sockaddr) => {
                 ntt::run_listen_socket(sockaddr, listen, state_listener.clone())
             },
+            network::Connection::Grpc(sockaddr) => {
+                grpc::run_listen_socket(sockaddr, listen, state_listener.clone())
+            },
             #[cfg(unix)]
             network::Connection::Unix(path) => unimplemented!()
         }
@@ -194,6 +197,7 @@ pub fn run( config: network::Configuration
             network::Connection::Socket(sockaddr) => {
                 ntt::run_connect_socket(sockaddr, peer, state_connection.clone())
             },
+            network::Connection::Grpc(sockaddr) => unimplemented!(),
             #[cfg(unix)]
             network::Connection::Unix(path) => unimplemented!()
         }

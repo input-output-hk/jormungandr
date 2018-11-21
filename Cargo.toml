@@ -25,7 +25,7 @@ humantime = "1.1"
 cbor_event = "1.0"
 cryptoxide = "0.1"
 futures    = "^0.1.25"
-tokio      = "^0.1.11"
+tokio      = "^0.1.13"
 structopt = "^0.2.12"
 curve25519-dalek = "*"
 sha2 = "^0.7"
@@ -34,6 +34,8 @@ generic-array = "^0.9"
 bytes = "0.4"
 prost = "0.4"
 prost-derive = "0.4"
+tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
+tower-grpc = { git = "https://github.com/tower-rs/tower-grpc" }
 cardano         = { path = "cardano-deps/cardano" }
 protocol-tokio  = { path = "cardano-deps/protocol-tokio" }
 exe-common      = { path = "cardano-deps/exe-common" }
@@ -45,10 +47,5 @@ version = "2.32"
 default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
 
-[dependencies.tower-grpc]
-git = "https://github.com/tower-rs/tower-grpc.git"
-commit = "40b059abac9ca07edac252f4d0b69c55f6ecf88d"
-
-[build-dependencies.tower-grpc-build]
-git = "https://github.com/tower-rs/tower-grpc.git"
-commit = "40b059abac9ca07edac252f4d0b69c55f6ecf88d"
+[build-dependencies]
+tower-grpc-build = { git = "https://github.com/tower-rs/tower-grpc" }
