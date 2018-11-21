@@ -5,12 +5,14 @@
 //! transactions...);
 //!
 
+pub mod ntt;
+
 use std::{net::{SocketAddr}, sync::{Arc, RwLock}, time::{Duration}, collections::{HashMap}};
 
 use tokio::net::{TcpListener, TcpStream};
 use protocol::{Inbound, Message, MessageType, Connection, network_transport::LightWeightConnectionId, Response};
 use futures::{future, stream::{self, Stream}, sync::mpsc, prelude::{*}};
-use intercom::{ClientMsg, TransactionMsg, BlockMsg, NttReplyHandle, NetworkBroadcastMsg};
+use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkBroadcastMsg};
 
 use utils::task::{TaskMessageBox};
 use settings::network::{self, Peer, Listen};
@@ -275,7 +277,7 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
             }
             Inbound::GetBlockHeaders(lwcid, get_block_header) => {
                 let handler = Box::new(
-                    NttReplyHandle::new(lwcid, sink_tx.clone())
+                    ntt::ReplyHandle::new(lwcid, sink_tx.clone())
                 );
                 if let Some(to) = get_block_header.to {
                     state.channels.client_box.send_to(
@@ -293,7 +295,7 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
             }
             Inbound::GetBlocks(lwcid, get_blocks) => {
                 let handler = Box::new(
-                    NttReplyHandle::new(lwcid, sink_tx.clone())
+                    ntt::ReplyHandle::new(lwcid, sink_tx.clone())
                 );
                 state.channels.client_box.send_to(
                     ClientMsg::GetBlocks(
