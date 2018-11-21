@@ -67,7 +67,8 @@ fn block_task(blockchain: BlockchainR, selection: Arc<Selection>, clock: clock::
 }
 
 fn startup_info(gd: &GenesisData, blockchain: &Blockchain, settings: &Settings) {
-    println!("protocol magic={} prev={} k={} tip={}", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth, blockchain.get_tip());
+    let (tip, tip_date) = blockchain.get_tip();
+    println!("protocol magic={} prev={} k={} tip={} ({})", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth, tip, tip_date);
     println!("consensus: {:?}", settings.consensus);
 }
 
@@ -98,7 +99,7 @@ fn main() {
 
     let pathbuf = PathBuf::from(r"pool-storage"); // FIXME HARDCODED should come from config
     let storage_config = StorageConfig::new(&pathbuf);
-    let blockchain_data = Blockchain::from_storage(&genesis_data, &storage_config);
+    let blockchain_data = Blockchain::from_storage(genesis_data.clone(), &storage_config);
 
     startup_info(&genesis_data, &blockchain_data, &settings);
 

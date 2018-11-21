@@ -74,12 +74,12 @@ pub fn leadership_task(secret: NodeSecret, selection: Arc<Selection>, tpool: TPo
             // * get the transactions to put in the transactions
             // * mint the block
             // * sign it
-            let latest_tip = {
+            let (latest_tip, latest_tip_date) = {
                 let b = blockchain.read().unwrap();
                 b.get_tip()
             };
 
-            info!("leadership create tpool={} transactions tip={}", len, latest_tip);
+            info!("leadership create tpool={} transactions tip={} ({})", len, latest_tip, latest_tip_date);
 
             let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
             let block = make_block(&secret, &my_pub, &latest_tip, epochslot, &[]);
