@@ -11,12 +11,12 @@ pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
         debug!("client query received: {:?}", query);
 
         match query {
-            ClientMsg::GetBlockTip(handler) =>
+            ClientMsg::GetBlockTip(mut handler) =>
                 handler.reply(handle_get_block_tip(&blockchain)),
-            ClientMsg::GetBlockHeaders(checkpoints, to, handler) =>
+            ClientMsg::GetBlockHeaders(checkpoints, to, mut handler) =>
                 handler.reply(handle_get_block_headers(&blockchain, checkpoints, to)),
-            ClientMsg::GetBlocks(from, to, handler) =>
-                handle_get_blocks(&blockchain, from, to, &*handler),
+            ClientMsg::GetBlocks(from, to, mut handler) =>
+                handle_get_blocks(&blockchain, from, to, &mut *handler),
             _ => unimplemented!()
         }
     }
@@ -97,7 +97,7 @@ fn handle_get_blocks(
     blockchain: &BlockchainR,
     from: BlockHash,
     to: BlockHash,
-    reply: &StreamReply<Block>)
+    reply: &mut StreamReply<Block>)
 {
     let blockchain = blockchain.read().unwrap();
 

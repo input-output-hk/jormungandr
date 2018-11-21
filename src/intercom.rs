@@ -36,10 +36,10 @@ impl std::error::Error for Error {
 }
 
 pub trait Reply<T>: Debug {
-    fn reply_ok(&self, item: T);
-    fn reply_error(&self, error: Error);
+    fn reply_ok(&mut self, item: T);
+    fn reply_error(&mut self, error: Error);
 
-    fn reply(&self, result: Result<T, Error>) {
+    fn reply(&mut self, result: Result<T, Error>) {
         match result {
             Ok(item) => self.reply_ok(item),
             Err(error) => self.reply_error(error),
@@ -48,9 +48,9 @@ pub trait Reply<T>: Debug {
 }
 
 pub trait StreamReply<T>: Debug {
-    fn send(&self, item: T);
-    fn send_error(&self, error: Error);
-    fn close(&self);
+    fn send(&mut self, item: T);
+    fn send_error(&mut self, error: Error);
+    fn close(&mut self);
 }
 
 pub type BoxReply<T> = Box<dyn Reply<T> + Send>;
@@ -63,6 +63,7 @@ pub struct NttReplyHandle {
     identifier: LightWeightConnectionId,
     // the appropriate sink to send the messages to
     sink: UnboundedSender<protocol::Message>,
+    closed: bool,
 }
 
 impl NttReplyHandle {
@@ -70,22 +71,36 @@ impl NttReplyHandle {
         identifier: LightWeightConnectionId,
         sink: UnboundedSender<protocol::Message>,
     ) -> Self {
-        NttReplyHandle { identifier, sink }
+        NttReplyHandle { identifier, sink, closed: false }
     }
 
     fn send_message(&self, message: protocol::Message) {
+        debug_assert!(!self.closed);
         self.sink.unbounded_send(message).unwrap();
     }
 
-    fn send_close(&self) {
+    fn send_close(&mut self) {
+        debug_assert!(!self.closed);
         self.sink.unbounded_send(
             protocol::Message::CloseConnection(self.identifier)
         ).unwrap();
+        self.closed = true;
+    }
+}
+
+impl Drop for NttReplyHandle {
+    fn drop(&mut self) {
+        if !self.closed {
+            warn!("protocol reply was not properly finalized");
+            self.sink.unbounded_send(
+                protocol::Message::CloseConnection(self.identifier)
+            ).unwrap_or_default();
+        }
     }
 }
 
 impl Reply<Vec<Header>> for NttReplyHandle {
-    fn reply_ok(&self, item: Vec<Header>) {
+    fn reply_ok(&mut self, item: Vec<Header>) {
         self.send_message(
             protocol::Message::BlockHeaders(
                 self.identifier,
@@ -95,7 +110,7 @@ impl Reply<Vec<Header>> for NttReplyHandle {
         self.send_close();
     }
 
-    fn reply_error(&self, error: Error) {
+    fn reply_error(&mut self, error: Error) {
         self.send_message(
             protocol::Message::BlockHeaders(
                 self.identifier,
@@ -107,7 +122,7 @@ impl Reply<Vec<Header>> for NttReplyHandle {
 }
 
 impl Reply<Header> for NttReplyHandle {
-    fn reply_ok(&self, item: Header) {
+    fn reply_ok(&mut self, item: Header) {
         self.send_message(
             protocol::Message::BlockHeaders(
                 self.identifier,
@@ -117,7 +132,7 @@ impl Reply<Header> for NttReplyHandle {
         self.send_close();
     }
 
-    fn reply_error(&self, error: Error) {
+    fn reply_error(&mut self, error: Error) {
         self.send_message(
             protocol::Message::BlockHeaders(
                 self.identifier,
@@ -129,7 +144,7 @@ impl Reply<Header> for NttReplyHandle {
 }
 
 impl StreamReply<Block> for NttReplyHandle {
-    fn send(&self, blk: Block) {
+    fn send(&mut self, blk: Block) {
         self.send_message(
             protocol::Message::Block(
                 self.identifier,
@@ -138,7 +153,7 @@ impl StreamReply<Block> for NttReplyHandle {
         );
     }
 
-    fn send_error(&self, error: Error) {
+    fn send_error(&mut self, error: Error) {
         self.send_message(
             protocol::Message::Block(
                 self.identifier,
@@ -147,7 +162,7 @@ impl StreamReply<Block> for NttReplyHandle {
         );
     }
 
-    fn close(&self) {
+    fn close(&mut self) {
         self.send_close()
     }
 }
