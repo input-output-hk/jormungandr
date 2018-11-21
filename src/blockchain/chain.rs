@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use cardano_storage::StorageConfig;
 use cardano_storage::{tag, Storage, blob, block_read};
-use cardano_storage::chain_state::read_chain_state;
+use cardano_storage::chain_state::restore_chain_state;
 use cardano::block::{ChainState, Block, BlockDate};
 
 use super::super::blockcfg::{GenesisData, BlockHash};
@@ -35,7 +35,7 @@ impl Blockchain {
     pub fn from_storage(genesis_data: GenesisData, storage_config: &StorageConfig) -> Self {
         let storage = Storage::init(storage_config).unwrap();
         let tip = tag::read_hash(&storage, &LOCAL_BLOCKCHAIN_TIP_TAG).unwrap_or(genesis_data.genesis_prev.clone());
-        let chain_state = read_chain_state(&storage, &genesis_data, &tip)
+        let chain_state = restore_chain_state(&storage, &genesis_data, &tip)
             .expect("restoring chain state");
         Blockchain {
             genesis_data,
@@ -103,7 +103,7 @@ impl Blockchain {
                     Err(err) => Err(err.into())
                 }
             } else {
-                read_chain_state(&self.storage, &self.genesis_data, &block_hash)
+                restore_chain_state(&self.storage, &self.genesis_data, &block_hash)
             };
 
             match new_chain_state {
