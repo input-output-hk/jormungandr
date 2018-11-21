@@ -17,7 +17,6 @@ pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
                 handler.reply(handle_get_block_headers(&blockchain, checkpoints, to)),
             ClientMsg::GetBlocks(from, to, mut handler) =>
                 handle_get_blocks(&blockchain, from, to, &mut *handler),
-            _ => unimplemented!()
         }
     }
 }
