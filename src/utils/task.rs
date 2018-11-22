@@ -56,9 +56,13 @@ impl Tasks {
     }
 }
 
-
-#[derive(Clone)]
 pub struct TaskMessageBox<A>(Sender<A>);
+
+impl<A> Clone for TaskMessageBox<A> {
+    fn clone(&self) -> Self {
+        TaskMessageBox(self.0.clone())
+    }
+}
 
 impl<A> TaskMessageBox<A> {
     pub fn send_to(&self, a: A) {

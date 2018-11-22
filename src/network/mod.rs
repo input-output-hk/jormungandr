@@ -5,15 +5,29 @@
 //! transactions...);
 //!
 
-use std::{net::{SocketAddr}, sync::{Arc, RwLock}, time::{Duration}, collections::{HashMap}};
+mod ntt;
 
-use tokio::net::{TcpListener, TcpStream};
-use protocol::{Inbound, Message, MessageType, Connection, network_transport::LightWeightConnectionId, Response};
-use futures::{future, stream::{self, Stream}, sync::mpsc, prelude::{*}};
-use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkHandler, NetworkBroadcastMsg};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
+use protocol::{
+    Message,
+    MessageType,
+    Response,
+    network_transport::LightWeightConnectionId,
+};
+use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkBroadcastMsg};
 use utils::task::{TaskMessageBox};
 use settings::network::{self, Peer, Listen};
+
+use futures::prelude::*;
+use futures::{
+    stream::{self, Stream},
+    sync::mpsc,
+};
 
 /// all the different channels the network may need to talk to
 #[derive(Clone)]
@@ -166,7 +180,7 @@ pub fn run( config: network::Configuration
     let listener = stream::iter_ok(config.listen_to).for_each(move |listen| {
         match listen.connection {
             network::Connection::Socket(sockaddr) => {
-                run_listen_socket(sockaddr, listen, state_listener.clone())
+                ntt::run_listen_socket(sockaddr, listen, state_listener.clone())
             },
             #[cfg(unix)]
             network::Connection::Unix(path) => unimplemented!()
@@ -177,7 +191,7 @@ pub fn run( config: network::Configuration
     let connections = stream::iter_ok(config.peer_nodes).for_each(move |peer| {
         match peer.connection {
             network::Connection::Socket(sockaddr) => {
-                run_connect_socket(sockaddr, peer, state_connection.clone())
+                ntt::run_connect_socket(sockaddr, peer, state_connection.clone())
             },
             #[cfg(unix)]
             network::Connection::Unix(path) => unimplemented!()
@@ -185,148 +199,4 @@ pub fn run( config: network::Configuration
     });
 
     tokio::run(subscriptions.join3(connections, listener).map(|_| ()));
-}
-
-fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: GlobalState)
-    -> tokio::executor::Spawn
-{
-    let state = ConnectionState::new_listen(&state, listen);
-
-    info!("start listening and accepting connection to {}", state.connection);
-    let server = TcpListener::bind(&sockaddr)
-        .unwrap() // TODO, handle on error to provide better error message
-        .incoming()
-        .map_err(move |err| {
-            // error while receiving an incoming connection
-            // here we might need to log the error and try
-            // to listen again on the sockaddr
-            error!("Error while accepting connection from {:?}: {:?}", sockaddr, err)
-        }).for_each(move |stream| {
-            // received incoming connection
-            info!("{} connected to {}", stream.peer_addr().unwrap(), stream.local_addr().unwrap());
-            let state = state.clone().connected(network::Connection::Socket(stream.peer_addr().unwrap()));
-            Connection::accept(stream)
-                .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
-                .and_then(move |connection| {
-                    let state = state.clone();
-                    tokio::spawn(run_connection(state, connection))
-                })
-        });
-    tokio::spawn(server)
-}
-
-fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: GlobalState)
-    -> tokio::executor::Spawn
-{
-    let state = ConnectionState::new_peer(&state, peer);
-
-    info!("connecting to {}", state.connection);
-    let server = TcpStream::connect(&sockaddr)
-        .map_err(move |err| {
-            error!("Error while connecting to {:?}: {:?}", sockaddr, err)
-        }).and_then(move |stream| {
-            let state = state.clone().connected(network::Connection::Socket(stream.local_addr().unwrap()));
-            info!("{} connected to {}", stream.local_addr().unwrap(), stream.peer_addr().unwrap());
-            Connection::connect(stream)
-                .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
-                .and_then(move |connection| {
-                    let state = state.clone();
-                    tokio::spawn(run_connection(state, connection))
-                })
-        });
-    tokio::spawn(server)
-}
-
-
-fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
-    -> impl future::Future<Item = (), Error = ()>
-  where T: tokio::io::AsyncRead + tokio::io::AsyncWrite
-{
-    let (sink, stream) = connection.split();
-
-    let (sink_tx, sink_rx) = mpsc::unbounded();
-
-    let stream = stream.for_each(move |inbound| {
-        debug!("[{}] inbound: {:#?}", state.connection, inbound);
-        match inbound {
-            Inbound::NothingExciting => {}
-            Inbound::Block(lwcid, block) => {
-                info!("received block from {}{:?}", state.connection, lwcid);
-            }
-            Inbound::NewConnection(lwcid) => {
-                debug!("new light connection {:?}", lwcid);
-            }
-            Inbound::NewNode(lwcid, node_id) => {
-                sink_tx.unbounded_send(Message::AckNodeId(lwcid, node_id)).unwrap();
-            }
-            Inbound::Subscribe(lwcid, _keep_alive) => {
-                // add the subscription of this LWCID in the loop, the duplicates will be silently
-                // replaced for now. we might want to report the error to the client in future
-                //
-                state.subscriptions.write()
-                    .unwrap()
-                    .insert(
-                        SubscriptionId(
-                            state.connection.clone(),
-                            lwcid
-                        ),
-                        sink_tx.clone()
-                    );
-            }
-            Inbound::GetBlockHeaders(lwcid, get_block_header) => {
-                let handler = NetworkHandler {
-                    identifier: lwcid,
-                    sink: sink_tx.clone(),
-                    marker: std::marker::PhantomData,
-                };
-                if let Some(to) = get_block_header.to {
-                    state.channels.client_box.send_to(
-                        ClientMsg::GetBlockHeaders(get_block_header.from, to, handler)
-                    );
-                } else {
-                    state.channels.client_box.send_to(
-                        ClientMsg::GetBlockTip(handler)
-                    );
-                }
-            }
-            Inbound::GetBlocks(lwcid, get_blocks) => {
-                state.channels.client_box.send_to(
-                    ClientMsg::GetBlocks(
-                        get_blocks.from,
-                        get_blocks.to,
-                        NetworkHandler {
-                            identifier: lwcid,
-                            sink: sink_tx.clone(),
-                            marker: std::marker::PhantomData,
-                        }
-                    )
-                );
-            }
-            inbound => {
-                error!("unrecognized message {:#?}", inbound);
-            }
-        }
-        future::ok(())
-    }).map_err(|err| {
-        error!("connection stream error {:#?}", err)
-    });
-
-    let sink = sink.subscribe(false)
-        .map_err(|err| error!("cannot subscribe {:#?}", err))
-        .and_then(move |(lwcid, sink)| {
-            sink_rx.fold(sink, |sink, outbound| {
-                // debug!("[{}] outbound: {:?}", state.connection, outbound);
-                match outbound {
-                    Message::AckNodeId(_lwcid, node_id) => {
-                        future::Either::A(sink.ack_node_id(node_id)
-                            .map_err(|err| error!("err {:?}", err)))
-                    },
-                    message => future::Either::B(sink.send(message)
-                            .map_err(|err| error!("err {:?}", err)))
-                }
-            }).map(|_| ())
-        });// .map_err(|err| { error!("failed to subscribe: {:#?}", err) });
-
-    stream.select(sink)
-        .then(|_| { info!("closing connection"); Ok(()) })
 }

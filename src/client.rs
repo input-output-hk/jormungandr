@@ -1,8 +1,8 @@
 use super::{BlockHash};
+use blockcfg::{Header, Block};
 use blockchain::{BlockchainR};
 use cardano_storage::{block_read, iter};
 use intercom::*;
-use protocol::{Message, protocol::{Response, BlockHeaders}};
 use std::sync::{mpsc::Receiver};
 
 pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
@@ -11,34 +11,30 @@ pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
         debug!("client query received: {:?}", query);
 
         match query {
-            ClientMsg::GetBlockTip(handler) =>
-                handle_get_block_tip(&blockchain, handler),
-            ClientMsg::GetBlockHeaders(checkpoints, to, handler) =>
-                handle_get_block_headers(&blockchain, checkpoints, to, handler),
-            ClientMsg::GetBlocks(from, to, handler) =>
-                handle_get_blocks(&blockchain, from, to, handler),
-            _ => unimplemented!()
+            ClientMsg::GetBlockTip(mut handler) =>
+                handler.reply(handle_get_block_tip(&blockchain)),
+            ClientMsg::GetBlockHeaders(checkpoints, to, mut handler) =>
+                handler.reply(handle_get_block_headers(&blockchain, checkpoints, to)),
+            ClientMsg::GetBlocks(from, to, mut handler) =>
+                handle_get_blocks(&blockchain, from, to, &mut *handler),
         }
     }
 }
 
 fn handle_get_block_tip(
-    blockchain: &BlockchainR,
-    handler: NetworkHandler<ClientMsgGetHeaders>)
-{
+    blockchain: &BlockchainR
+) -> Result<Header, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip().0;
-    let resp = match block_read(blockchain.get_storage(), &tip) {
-        None => Response::Err(format!("Cannot read block '{}'", tip)),
+    match block_read(blockchain.get_storage(), &tip) {
+        None => {
+            Err(format!("Cannot read block '{}'", tip).into())
+        }
         Some(rblk) => {
             let blk = rblk.decode().unwrap();
-            Response::Ok(BlockHeaders(vec![blk.get_header()]))
+            Ok(blk.get_header())
         }
-    };
-    handler.sink.unbounded_send(
-        Message::BlockHeaders(handler.identifier, resp)).unwrap();
-    handler.sink.unbounded_send(
-        Message::CloseConnection(handler.identifier)).unwrap();
+    }
 }
 
 const MAX_HEADERS: usize = 2000;
@@ -46,9 +42,8 @@ const MAX_HEADERS: usize = 2000;
 fn handle_get_block_headers(
     blockchain: &BlockchainR,
     checkpoints: Vec<BlockHash>,
-    to: BlockHash,
-    handler: NetworkHandler<ClientMsgGetHeaders>)
-{
+    to: BlockHash
+) -> Result<Vec<Header>, Error> {
     let blockchain = blockchain.read().unwrap();
 
     /* Filter out the checkpoints that don't exist and sort them by
@@ -88,36 +83,29 @@ fn handle_get_block_headers(
             };
         }
 
-        let resp = match err {
-            Some(err) => Response::Err(err.to_string()),
-            None => Response::Ok(BlockHeaders(headers))
-        };
-
-        handler.sink.unbounded_send(
-            Message::BlockHeaders(handler.identifier, resp)).unwrap();
+        match err {
+            Some(err) => Err(Error::from_error(err)),
+            None => Ok(headers),
+        }
+    } else {
+        Ok(vec![])
     }
-
-    handler.sink.unbounded_send(
-        Message::CloseConnection(handler.identifier)).unwrap();
 }
 
 fn handle_get_blocks(
     blockchain: &BlockchainR,
     from: BlockHash,
     to: BlockHash,
-    handler: NetworkHandler<ClientMsgGetBlocks>)
+    reply: &mut StreamReply<Block>)
 {
     let blockchain = blockchain.read().unwrap();
 
     for x in iter::Iter::new(&blockchain.get_storage(), from, to).unwrap() {
-        let resp = match x {
-            Err(err) => Response::Err(err.to_string()),
-            Ok((rblk, blk)) => Response::Ok(blk) // FIXME: use rblk
-        };
-        handler.sink.unbounded_send(
-            Message::Block(handler.identifier, resp)).unwrap();
+        match x {
+            Err(err) => reply.send_error(Error::from_error(err)),
+            Ok((_rblk, blk)) => reply.send(blk), // FIXME: use rblk
+        }
     }
 
-    handler.sink.unbounded_send(
-        Message::CloseConnection(handler.identifier)).unwrap();
+    reply.close();
 }
