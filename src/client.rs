@@ -25,7 +25,7 @@ fn handle_get_block_tip(
     blockchain: &BlockchainR
 ) -> Result<Header, Error> {
     let blockchain = blockchain.read().unwrap();
-    let tip = blockchain.get_tip().0;
+    let tip = blockchain.get_tip();
     match block_read(blockchain.get_storage(), &tip) {
         None => {
             Err(format!("Cannot read block '{}'", tip).into())

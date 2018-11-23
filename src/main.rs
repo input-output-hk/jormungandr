@@ -67,8 +67,7 @@ fn block_task(blockchain: BlockchainR, selection: Arc<Selection>, clock: clock::
 }
 
 fn startup_info(gd: &GenesisData, blockchain: &Blockchain, settings: &Settings) {
-    let (tip, tip_date) = blockchain.get_tip();
-    println!("protocol magic={} prev={} k={} tip={} ({})", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth, tip, tip_date);
+    println!("protocol magic={} prev={} k={} tip={}", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth, blockchain.get_tip());
     println!("consensus: {:?}", settings.consensus);
 }
 
