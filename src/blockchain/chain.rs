@@ -46,8 +46,8 @@ impl Blockchain {
     }
 
     /// return the current tip hash and date
-    pub fn get_tip(&self) -> (BlockHash, BlockDate) {
-        (self.chain_state.last_block.clone(), self.chain_state.last_date.unwrap())
+    pub fn get_tip(&self) -> BlockHash {
+        self.chain_state.last_block.clone()
     }
 
     pub fn get_storage(&self) -> &Storage {
