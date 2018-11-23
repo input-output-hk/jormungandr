@@ -18,6 +18,10 @@ else
 			pubkey=$stub'.xpub'
 			echo "Making keys"
 			./genkeypair.sh $privkey $pubkey
+			echo "Adding key to config"
+			pubkeycontents=`cat $pubkey` 
+			echo "Key = $pubkeycontents"
+			echo "    - $pubkeycontents" >> $config
 			echo "Starting Node with keys"
 			screen -dmS $stub cargo run  -- --genesis-config $genesis --config $config --secret $privkey  -vvv 
 			let counter=$counter+1
