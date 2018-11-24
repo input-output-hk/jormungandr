@@ -15,8 +15,8 @@ pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
                 handler.reply(handle_get_block_tip(&blockchain)),
             ClientMsg::GetBlockHeaders(checkpoints, to, mut handler) =>
                 handler.reply(handle_get_block_headers(&blockchain, checkpoints, to)),
-            ClientMsg::GetBlocks(from, to, mut handler) =>
-                handle_get_blocks(&blockchain, from, to, &mut *handler),
+            ClientMsg::GetBlocks(from, to, handler) =>
+                handle_get_blocks(&blockchain, from, to, handler),
         }
     }
 }
@@ -96,7 +96,7 @@ fn handle_get_blocks(
     blockchain: &BlockchainR,
     from: BlockHash,
     to: BlockHash,
-    reply: &mut StreamReply<Block>)
+    mut reply: Box<StreamReply<Block>>)
 {
     let blockchain = blockchain.read().unwrap();
 
