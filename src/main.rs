@@ -18,6 +18,10 @@ extern crate protocol_tokio as protocol;
 extern crate futures;
 extern crate tokio;
 
+extern crate sha2;
+extern crate curve25519_dalek;
+extern crate generic_array;
+
 pub mod clock;
 pub mod blockchain;
 pub mod transaction;

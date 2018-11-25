@@ -1,3 +1,5 @@
+pub mod crypto;
+
 use std::path::Path;
 use std::fs;
 use std::io;
