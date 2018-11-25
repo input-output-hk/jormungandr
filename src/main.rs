@@ -18,6 +18,7 @@ extern crate protocol_tokio as protocol;
 extern crate futures;
 extern crate tokio;
 
+extern crate cryptoxide;
 extern crate sha2;
 extern crate curve25519_dalek;
 extern crate generic_array;
