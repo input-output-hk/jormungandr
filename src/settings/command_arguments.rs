@@ -17,23 +17,21 @@ pub struct CommandArguments {
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     pub verbose: u8,
 
-    /// the address to listen inbound connections from. The network will
-    /// open an listening socket to the given address. You might need to have
-    /// special privileges to open the TcpSocket from this address.
+    /// The address to listen inbound connections from.
+    /// The program will open a listening socket on the given address.
+    /// You might need to have special privileges to open the TCP socket
+    /// at this address.
     #[structopt(long = "listen-from", parse(try_from_str))]
     pub listen_addr: Vec<Listen>,
 
-    /// list of the nodes to connect too. They are the nodes we know
-    /// we need to connect too and to start processing blocks, transactions
+    /// List of the nodes to connect to. They are the nodes we know
+    /// we need to connect to and to start processing blocks, transactions
     /// and participate with.
     ///
     #[structopt(long = "connect-to", parse(try_from_str))]
     pub connect_to: Vec<Peer>,
 
-    /// list of the nodes to connect too. They are the nodes we know
-    /// we need to connect too and to start processing blocks, transactions
-    /// and participate with.
-    ///
+    /// Work without the leadership task.
     #[structopt(long = "without-leadership")]
     pub without_leadership: bool,
 
