@@ -27,6 +27,10 @@ cryptoxide = "0.1"
 futures    = "^0.1.25"
 tokio      = "^0.1.11"
 structopt = "^0.2.12"
+curve25519-dalek = "*"
+sha2 = "^0.7"
+digest = "^0.7"
+generic-array = "^0.9"
 cardano         = { path = "cardano-deps/cardano" }
 protocol-tokio  = { path = "cardano-deps/protocol-tokio" }
 exe-common      = { path = "cardano-deps/exe-common" }
