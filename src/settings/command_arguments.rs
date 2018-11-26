@@ -1,8 +1,6 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use super::network::{Listen, Peer};
-
 use structopt::{StructOpt};
 
 #[derive(StructOpt, Debug)]
@@ -22,14 +20,21 @@ pub struct CommandArguments {
     /// You might need to have special privileges to open the TCP socket
     /// at this address.
     #[structopt(long = "listen-from", parse(try_from_str))]
-    pub listen_addr: Vec<Listen>,
+    pub ntt_listen: Vec<SocketAddr>,
+
+    /// The address to listen for gRPC inbound connections from.
+    /// The program will open a listening socket on the given address.
+    /// You might need to have special privileges to open the TCP socket
+    /// at this address.
+    #[structopt(long = "grpc-listen", parse(try_from_str))]
+    pub grpc_listen: Vec<SocketAddr>,
 
     /// List of the nodes to connect to. They are the nodes we know
     /// we need to connect to and to start processing blocks, transactions
     /// and participate with.
     ///
     #[structopt(long = "connect-to", parse(try_from_str))]
-    pub connect_to: Vec<Peer>,
+    pub connect_to: Vec<SocketAddr>,
 
     /// Work without the leadership task.
     #[structopt(long = "without-leadership")]

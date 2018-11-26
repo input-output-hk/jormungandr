@@ -147,7 +147,7 @@ pub fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: GlobalStat
         }).for_each(move |stream| {
             // received incoming connection
             info!("{} connected to {}", stream.peer_addr().unwrap(), stream.local_addr().unwrap());
-            let state = state.clone().connected(network::Connection::Socket(stream.peer_addr().unwrap()));
+            let state = state.clone().connected(network::Connection::Tcp(stream.peer_addr().unwrap()));
             Connection::accept(stream)
                 .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))
                 .and_then(move |connection| {
@@ -168,7 +168,7 @@ pub fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: GlobalState)
         .map_err(move |err| {
             error!("Error while connecting to {:?}: {:?}", sockaddr, err)
         }).and_then(move |stream| {
-            let state = state.clone().connected(network::Connection::Socket(stream.local_addr().unwrap()));
+            let state = state.clone().connected(network::Connection::Tcp(stream.local_addr().unwrap()));
             info!("{} connected to {}", stream.local_addr().unwrap(), stream.peer_addr().unwrap());
             Connection::connect(stream)
                 .map_err(move |err| error!("Rejecting NTT connection from {:?}: {:?}", sockaddr, err))

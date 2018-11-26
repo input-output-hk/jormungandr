@@ -180,26 +180,34 @@ pub fn run( config: network::Configuration
     // open the port for listening/accepting other peers to connect too
     let listener = stream::iter_ok(config.listen_to).for_each(move |listen| {
         match listen.connection {
-            network::Connection::Socket(sockaddr) => {
-                ntt::run_listen_socket(sockaddr, listen, state_listener.clone())
-            },
-            network::Connection::Grpc(sockaddr) => {
-                grpc::run_listen_socket(sockaddr, listen, state_listener.clone())
-            },
+            network::Connection::Tcp(sockaddr) => {
+                match listen.protocol {
+                    network::Protocol::Ntt => ntt::run_listen_socket(
+                        sockaddr, listen, state_listener.clone()
+                    ),
+                    network::Protocol::Grpc => grpc::run_listen_socket(
+                        sockaddr, listen, state_listener.clone()
+                    ),
+                }
+            }
             #[cfg(unix)]
-            network::Connection::Unix(path) => unimplemented!()
+            network::Connection::Unix(_path) => unimplemented!()
         }
     });
 
     let state_connection = state.clone();
     let connections = stream::iter_ok(config.peer_nodes).for_each(move |peer| {
         match peer.connection {
-            network::Connection::Socket(sockaddr) => {
-                ntt::run_connect_socket(sockaddr, peer, state_connection.clone())
+            network::Connection::Tcp(sockaddr) => {
+                match peer.protocol {
+                    network::Protocol::Ntt => ntt::run_connect_socket(
+                        sockaddr, peer, state_connection.clone()
+                    ),
+                    network::Protocol::Grpc => unimplemented!(),
+                }
             },
-            network::Connection::Grpc(sockaddr) => unimplemented!(),
             #[cfg(unix)]
-            network::Connection::Unix(path) => unimplemented!()
+            network::Connection::Unix(_path) => unimplemented!()
         }
     });
 
