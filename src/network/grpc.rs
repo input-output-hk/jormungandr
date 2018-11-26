@@ -1,5 +1,5 @@
 use super::{ConnectionState, GlobalState};
-use blockcfg::{BlockHash, Header};
+use blockcfg::{Block, BlockHash, Header};
 use intercom::{self, ClientMsg};
 use settings::network::Listen;
 
@@ -8,6 +8,7 @@ use cardano::block::EpochSlotId;
 
 use futures::prelude::*;
 use futures::{
+    future::{self, FutureResult},
     sync::{mpsc, oneshot},
 };
 use tokio::{
@@ -29,6 +30,7 @@ mod cardano {
     include!(concat!(env!("OUT_DIR"), "/cardano.rs"));
 }
 
+#[allow(dead_code)]
 mod iohk {
     pub mod jormungandr {
         include!(concat!(env!("OUT_DIR"), "/iohk.jormungandr.rs"));
@@ -37,13 +39,28 @@ mod iohk {
 
 use self::iohk::jormungandr as gen;
 
-// Conversions from library data types to their generated
+// Conversions between library data types and their generated
 // protobuf counterparts
 
 impl From<BlockHash> for cardano::HeaderHash {
     fn from(hash: BlockHash) -> Self {
         cardano::HeaderHash {
             hash: hash.as_ref().into(),
+        }
+    }
+}
+
+impl From<cardano::HeaderHash> for BlockHash {
+    fn from(protobuf_hash: cardano::HeaderHash) -> Self {
+        BlockHash::new(&protobuf_hash.hash)
+    }
+}
+
+impl From<Block> for cardano::Block {
+    fn from(block: Block) -> Self {
+        let content = cbor!(&block).unwrap();
+        cardano::Block {
+            content,
         }
     }
 }
@@ -119,7 +136,7 @@ impl intercom::Reply<Header> for ReplyHandle<gen::TipResponse> {
 }
 
 struct GrpcResponseStream<T> {
-    receiver: mpsc::UnboundedReceiver<T>,
+    receiver: mpsc::UnboundedReceiver<Result<T, intercom::Error>>,
 }
 
 impl<T> Stream for GrpcResponseStream<T> {
@@ -127,14 +144,45 @@ impl<T> Stream for GrpcResponseStream<T> {
     type Error = tower_grpc::Error;
 
     fn poll(&mut self) -> Poll<Option<T>, tower_grpc::Error> {
-        let item_or_eof = try_ready!(self.receiver.poll());
-        Ok(Async::Ready(item_or_eof))
+        match try_ready!(self.receiver.poll()) {
+            None => Ok(Async::Ready(None)),
+            Some(Ok(item)) => Ok(Async::Ready(Some(item))),
+            // FIXME: send a more informative error
+            Some(Err(_)) => Err(tower_grpc::Error::from(())),
+        }
     }
 }
 
-fn response_channel<T>() -> (ReplyHandle<T>, GrpcFuture<T>) {
+#[derive(Debug)]
+struct StreamReplyHandle<T> {
+    sender: mpsc::UnboundedSender<Result<T, intercom::Error>>,
+}
+
+impl intercom::StreamReply<Block>
+    for StreamReplyHandle<cardano::Block>
+{
+    fn send(&mut self, item: Block) {
+        self.sender.unbounded_send(Ok(item.into())).unwrap()
+    }
+
+    fn send_error(&mut self, error: intercom::Error) {
+        self.sender.unbounded_send(Err(error)).unwrap()
+    }
+
+    fn close(&mut self) {
+        self.sender.close().unwrap();
+    }
+}
+
+fn unary_response_channel<T>() -> (ReplyHandle<T>, GrpcFuture<T>) {
     let (sender, receiver) = oneshot::channel();
     (ReplyHandle { sender: Some(sender) }, GrpcFuture { receiver })
+}
+
+fn server_streaming_response_channel<T>(
+) -> (StreamReplyHandle<T>, GrpcResponseStream<T>) {
+    let (sender, receiver) = mpsc::unbounded();
+    (StreamReplyHandle { sender }, GrpcResponseStream { receiver })
 }
 
 #[derive(Clone)]
@@ -145,10 +193,12 @@ struct GrpcServer {
 impl gen::server::Node for GrpcServer {
     type TipFuture = GrpcFuture<gen::TipResponse>;
     type GetBlocksStream = GrpcResponseStream<cardano::Block>;
-    type GetBlocksFuture = GrpcFuture<Self::GetBlocksStream>;
+    type GetBlocksFuture = FutureResult<
+        Response<Self::GetBlocksStream>, tower_grpc::Error
+    >;
 
     fn tip(&mut self, _request: Request<gen::TipRequest>) -> Self::TipFuture {
-        let (handle, future) = response_channel();
+        let (handle, future) = unary_response_channel();
         self.state.channels.client_box.send_to(
             ClientMsg::GetBlockTip(Box::new(handle))
         );
@@ -159,7 +209,16 @@ impl gen::server::Node for GrpcServer {
         &mut self,
         request: Request<gen::GetBlocksRequest>,
     ) -> Self::GetBlocksFuture {
-        unimplemented!()
+        let params = request.get_ref();
+        // FIXME: handle multiple references
+        let from = params.from[0].clone();
+        // FIXME: handle missing parameter
+        let to = params.to.as_ref().unwrap().clone();
+        let (handle, stream) = server_streaming_response_channel();
+        self.state.channels.client_box.send_to(
+            ClientMsg::GetBlocks(from.into(), to.into(), Box::new(handle))
+        );
+        future::ok(Response::new(stream))
     }
 }
 
