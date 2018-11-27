@@ -57,7 +57,7 @@ impl Settings {
     pub fn load() -> Self {
         let command_arguments = CommandArguments::load();
 
-        let peer_nodes = command_arguments.connect_to.iter().cloned()
+        let peer_nodes = command_arguments.ntt_connect.iter().cloned()
             .map(|addr| {
                 Peer::new(Connection::Tcp(addr), Protocol::Ntt)
             }).collect();

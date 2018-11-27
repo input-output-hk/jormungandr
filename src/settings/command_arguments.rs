@@ -15,26 +15,26 @@ pub struct CommandArguments {
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     pub verbose: u8,
 
-    /// The address to listen inbound connections from.
+    /// The address to listen for inbound legacy protocol connections at.
     /// The program will open a listening socket on the given address.
     /// You might need to have special privileges to open the TCP socket
     /// at this address.
-    #[structopt(long = "listen-from", parse(try_from_str))]
+    #[structopt(long = "legacy-listen", parse(try_from_str))]
     pub ntt_listen: Vec<SocketAddr>,
 
-    /// The address to listen for gRPC inbound connections from.
+    /// The address to listen for inbound gRPC connections at.
     /// The program will open a listening socket on the given address.
     /// You might need to have special privileges to open the TCP socket
     /// at this address.
     #[structopt(long = "grpc-listen", parse(try_from_str))]
     pub grpc_listen: Vec<SocketAddr>,
 
-    /// List of the nodes to connect to. They are the nodes we know
-    /// we need to connect to and to start processing blocks, transactions
-    /// and participate with.
+    /// List of the nodes to connect to using the legacy protocol.
+    /// These are the nodes we know we need to connect to and
+    /// start processing blocks, transactions and participate with.
     ///
-    #[structopt(long = "connect-to", parse(try_from_str))]
-    pub connect_to: Vec<SocketAddr>,
+    #[structopt(long = "legacy-connect", parse(try_from_str))]
+    pub ntt_connect: Vec<SocketAddr>,
 
     /// Work without the leadership task.
     #[structopt(long = "without-leadership")]
