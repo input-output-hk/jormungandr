@@ -29,6 +29,8 @@ pub struct Settings {
 
     pub network: network::Configuration,
 
+    pub storage: PathBuf,
+
     pub genesis_data_config: PathBuf,
 
     pub secret_config: PathBuf,
@@ -84,6 +86,7 @@ impl Settings {
         };
 
         Settings {
+            storage: command_arguments.storage.clone(),
             genesis_data_config: command_arguments.genesis_data_config.clone(),
             secret_config: command_arguments.secret.clone().or(config.secret_file).expect("secret config unspecified"),
             network: network,
