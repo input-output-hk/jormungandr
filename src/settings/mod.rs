@@ -12,6 +12,7 @@ use exe_common::parse_genesis_data::parse_genesis_data;
 
 pub use self::command_arguments::CommandArguments;
 pub use self::config::{Bft, BftConstants, Genesis, GenesisConstants, BftLeader};
+use self::network::{Connection, Listen, Peer, Protocol};
 
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
 pub enum Leadership {
@@ -58,9 +59,23 @@ impl Settings {
     pub fn load() -> Self {
         let command_arguments = CommandArguments::load();
 
+        let peer_nodes = command_arguments.ntt_connect.iter().cloned()
+            .map(|addr| {
+                Peer::new(Connection::Tcp(addr), Protocol::Ntt)
+            }).collect();
+
+        let mut listen_to: Vec<_> = command_arguments.ntt_listen.iter().cloned()
+            .map(|addr| {
+                Listen::new(Connection::Tcp(addr), Protocol::Ntt)
+            }).collect();
+        listen_to.extend(command_arguments.grpc_listen.iter().cloned()
+            .map(|addr| {
+                Listen::new(Connection::Tcp(addr), Protocol::Grpc)
+            }));
+
         let network = network::Configuration {
-            peer_nodes: command_arguments.connect_to.clone(),
-            listen_to:  command_arguments.listen_addr.clone(),
+            peer_nodes,
+            listen_to,
         };
 
         let config : config::Config = {

@@ -15,6 +15,8 @@ extern crate cardano_storage;
 extern crate cbor_event;
 extern crate exe_common;
 extern crate protocol_tokio as protocol;
+
+#[macro_use]
 extern crate futures;
 extern crate tokio;
 
@@ -22,6 +24,12 @@ extern crate cryptoxide;
 extern crate sha2;
 extern crate curve25519_dalek;
 extern crate generic_array;
+
+extern crate prost;
+#[macro_use]
+extern crate prost_derive;
+extern crate tower_h2;
+extern crate tower_grpc;
 
 pub mod clock;
 pub mod blockchain;
