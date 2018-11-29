@@ -37,6 +37,10 @@ pub struct CommandArguments {
     #[structopt(long = "without-leadership")]
     pub without_leadership: bool,
 
+    /// Path to the blockchain pool storage directory
+    #[structopt(long = "storage", parse(from_os_str))]
+    pub storage: PathBuf,
+
     /// Set the node config (in YAML format) to use as general configuration
     #[structopt(long = "config", parse(from_os_str))]
     pub node_config: PathBuf,
