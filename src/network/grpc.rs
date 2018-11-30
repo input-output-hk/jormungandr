@@ -196,7 +196,8 @@ impl gen::server::Node for GrpcServer {
     type GetBlocksFuture = FutureResult<
         Response<Self::GetBlocksStream>, tower_grpc::Error
     >;
-    type SetTransactionFuture = GrpcFuture<gen::SetTransactionResponse>;
+    type ProposeTransactionsFuture = GrpcFuture<gen::ProposeTransactionsResponse>;
+    type RecordTransactionFuture = GrpcFuture<gen::RecordTransactionResponse>;
 
     fn tip(&mut self, _request: Request<gen::TipRequest>) -> Self::TipFuture {
         let (handle, future) = unary_response_channel();
@@ -222,10 +223,17 @@ impl gen::server::Node for GrpcServer {
         future::ok(Response::new(stream))
     }
 
-    fn set_transaction(
+    fn propose_transactions(
         &mut self,
-        _request: Request<gen::SetTransactionRequest>
-    ) -> Self::SetTransactionFuture {
+        _request: Request<gen::ProposeTransactionsRequest>
+    ) -> Self::ProposeTransactionsFuture {
+        unimplemented!()
+    }
+
+    fn record_transaction(
+        &mut self,
+        _request: Request<gen::RecordTransactionRequest>
+    ) -> Self::RecordTransactionFuture {
         unimplemented!()
     }
 }
