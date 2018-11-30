@@ -16,9 +16,55 @@ message GetBlocksRequest {
     cardano.HeaderHash to = 2;
 }
 
+message ProposeTransactionsRequest {
+    repeated bytes ids = 1;
+}
+
+message ProposeTransactionsResponse {
+    // Status of each proposed transaction.
+    enum Status {
+        // The transaction ID is new to the recipient node.
+        NEW = 0;
+        // The proposed transaction has already been recorded by the node.
+        ALREADY_EXISTS = 1;
+    }
+
+    message Item {
+        bytes id = 1;
+        Status status = 2;
+    }
+
+    repeated Item items = 1;
+}
+
+message RecordTransactionRequest {
+    cardano.Transaction tx = 1;
+}
+
+message RecordTransactionResponse {
+    // The result of processing a transaction.
+    enum Result {
+        // The transaction has been accepted.
+        ACCEPTED = 0;
+        // Unknown/internal error.
+        UNKNOWN_ERROR = 1;
+        // The signature is invalid.
+        INVALID_SIGNATURE = 2;
+        // The proposed transaction would result in a double spend.
+        DOUBLE_SPEND = 3;
+        // The proposed transaction has already been recorded by the node.
+        ALREADY_EXISTS = 4;
+    }
+
+    Result result = 1;
+    bytes id = 2;
+}
+
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
     rpc GetBlocks (GetBlocksRequest) returns (stream cardano.Block) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
+    rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);
+    rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
 }
