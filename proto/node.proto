@@ -11,9 +11,15 @@ message TipResponse {
     cardano.HeaderHash hash = 2;
 }
 
+// Parameters for GetBlocks and GetHeaders
 message GetBlocksRequest {
-    repeated cardano.HeaderHash from = 1;
-    cardano.HeaderHash to = 2;
+    // The hash of the tip to trace the chain from.
+    cardano.HeaderHash tip = 1;
+    // The offset back in the chain to start block or header retrieval from,
+    // going backwards in the chain.
+    uint64 offset = 2;
+    // Maximum number of blocks or headers to retrieve.
+    uint64 size = 3;
 }
 
 message ProposeTransactionsRequest {
@@ -63,6 +69,9 @@ message RecordTransactionResponse {
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
     rpc GetBlocks (GetBlocksRequest) returns (stream cardano.Block) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+    rpc GetHeaders (GetBlocksRequest) returns (stream cardano.Header) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
     rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);

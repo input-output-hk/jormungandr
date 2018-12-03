@@ -196,6 +196,10 @@ impl gen::server::Node for GrpcServer {
     type GetBlocksFuture = FutureResult<
         Response<Self::GetBlocksStream>, tower_grpc::Error
     >;
+    type GetHeadersStream = GrpcResponseStream<cardano::Header>;
+    type GetHeadersFuture = FutureResult<
+        Response<Self::GetHeadersStream>, tower_grpc::Error
+    >;
     type ProposeTransactionsFuture = GrpcFuture<gen::ProposeTransactionsResponse>;
     type RecordTransactionFuture = GrpcFuture<gen::RecordTransactionResponse>;
 
@@ -209,18 +213,16 @@ impl gen::server::Node for GrpcServer {
 
     fn get_blocks(
         &mut self,
-        request: Request<gen::GetBlocksRequest>,
+        _request: Request<gen::GetBlocksRequest>,
     ) -> Self::GetBlocksFuture {
-        let params = request.get_ref();
-        // FIXME: handle multiple references
-        let from = params.from[0].clone();
-        // FIXME: handle missing parameter
-        let to = params.to.as_ref().unwrap().clone();
-        let (handle, stream) = server_streaming_response_channel();
-        self.state.channels.client_box.send_to(
-            ClientMsg::GetBlocks(from.into(), to.into(), Box::new(handle))
-        );
-        future::ok(Response::new(stream))
+        unimplemented!()
+    }
+
+    fn get_headers(
+        &mut self,
+        _request: Request<gen::GetBlocksRequest>,
+    ) -> Self::GetHeadersFuture {
+        unimplemented!()
     }
 
     fn propose_transactions(
