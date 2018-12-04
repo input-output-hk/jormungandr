@@ -22,7 +22,7 @@ genesis=${3:-0}
 config=${4:-'demo-config.yaml'}
 
 # cardano-cli - location of cardano-cli 
-cli=${5:-"$HOME/iohk/code/cardano-cli/target/debug/cardano-cli"}
+cli=${5:-"cardano-cli"}
 
 
 echo "Using these options:"
