@@ -4,7 +4,11 @@ use intercom::{self, ClientMsg};
 use settings::network::Listen;
 
 use cardano as cardano_api;
-use cardano::block::EpochSlotId;
+use cardano::{
+    block::EpochSlotId,
+    hash,
+    util::try_from_slice::TryFromSlice,
+};
 
 use futures::prelude::*;
 use futures::{
@@ -42,17 +46,23 @@ use self::iohk::jormungandr as gen;
 // Conversions between library data types and their generated
 // protobuf counterparts
 
+fn try_hash_from_protobuf(
+    pb: &cardano::HeaderHash
+) -> Result<BlockHash, hash::Error> {
+    BlockHash::try_from_slice(&pb.hash)
+}
+
+fn try_hashes_from_protobuf(
+    pb: &cardano::HeaderHashes
+) -> Result<Vec<BlockHash>, hash::Error> {
+    pb.hashes.iter().map(|v| BlockHash::try_from_slice(&v[..])).collect()
+}
+
 impl From<BlockHash> for cardano::HeaderHash {
     fn from(hash: BlockHash) -> Self {
         cardano::HeaderHash {
             hash: hash.as_ref().into(),
         }
-    }
-}
-
-impl From<cardano::HeaderHash> for BlockHash {
-    fn from(protobuf_hash: cardano::HeaderHash) -> Self {
-        BlockHash::new(&protobuf_hash.hash)
     }
 }
 
