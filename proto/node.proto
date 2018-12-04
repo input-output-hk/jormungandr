@@ -74,6 +74,7 @@ service Node {
     rpc GetHeaders (GetBlocksRequest) returns (stream cardano.Header) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
+    rpc StreamBlocksToTop (cardano.HeaderHashes) returns (stream cardano.Block);
     rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);
     rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
 }

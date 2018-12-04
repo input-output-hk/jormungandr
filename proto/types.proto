@@ -11,6 +11,10 @@ message HeaderHash {
     bytes hash = 1;
 }
 
+message HeaderHashes {
+    repeated bytes hashes = 1;
+}
+
 message Block {
     bytes content = 1;
 }

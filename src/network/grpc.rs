@@ -200,6 +200,10 @@ impl gen::server::Node for GrpcServer {
     type GetHeadersFuture = FutureResult<
         Response<Self::GetHeadersStream>, tower_grpc::Error
     >;
+    type StreamBlocksToTopStream = GrpcResponseStream<cardano::Block>;
+    type StreamBlocksToTopFuture = FutureResult<
+        Response<Self::StreamBlocksToTopStream>, tower_grpc::Error
+    >;
     type ProposeTransactionsFuture = GrpcFuture<gen::ProposeTransactionsResponse>;
     type RecordTransactionFuture = GrpcFuture<gen::RecordTransactionResponse>;
 
@@ -222,6 +226,13 @@ impl gen::server::Node for GrpcServer {
         &mut self,
         _request: Request<gen::GetBlocksRequest>,
     ) -> Self::GetHeadersFuture {
+        unimplemented!()
+    }
+
+    fn stream_blocks_to_top(
+        &mut self,
+        _from: Request<cardano::HeaderHashes>,
+    ) -> Self::StreamBlocksToTopFuture {
         unimplemented!()
     }
 
