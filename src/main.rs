@@ -68,7 +68,7 @@ pub type TPoolR = Arc<RwLock<TPool<TransactionId, Transaction>>>;
 fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg>) {
     loop {
         let tquery = r.recv().unwrap();
-        println!("transaction received: {}", tquery)
+        println!("transaction received: {:?}", tquery)
     }
 }
 

@@ -1,6 +1,6 @@
 use super::{GlobalState, ConnectionState, SubscriptionId};
 use blockcfg::{Block, Header};
-use intercom::{ClientMsg, Error, Reply, StreamReply};
+use intercom::{ClientMsg, TransactionMsg, Error, Reply, StreamReply};
 use protocol::{
     Inbound, Message, Connection,
     network_transport::LightWeightConnectionId,
@@ -245,6 +245,16 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
                         handler,
                     )
                 );
+            }
+            Inbound::SendTransaction(lwcid, tx) => {
+                let handler = Box::new(
+                    ReplyHandle::new(lwcid, sink_tx.clone())
+                );
+                state.channels.transaction_box.send_to(
+                    TransactionMsg::SendTransaction(
+                        vec![tx]
+                    )
+                )
             }
             inbound => {
                 error!("unrecognized message {:#?}", inbound);
