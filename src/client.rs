@@ -49,10 +49,10 @@ fn handle_get_block_tip(
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
     match block_read(blockchain.get_storage(), &tip) {
-        None => {
-            Err(format!("Cannot read block '{}'", tip).into())
+        Err(err) => {
+            Err(format!("Cannot read block '{}': {}", tip, err).into())
         }
-        Some(rblk) => {
+        Ok(rblk) => {
             let blk = rblk.decode().unwrap();
             Ok(blk.get_header())
         }
@@ -73,8 +73,8 @@ fn handle_get_block_headers(
     let mut checkpoints = checkpoints.iter().filter_map(
         |checkpoint|
         match block_read(blockchain.get_storage(), &checkpoint) {
-            None => None,
-            Some(rblk) => Some((rblk.decode().unwrap().get_header().get_blockdate(), checkpoint))
+            Err(err) => None,
+            Ok(rblk) => Some((rblk.decode().unwrap().get_header().get_blockdate(), checkpoint))
         }
     ).collect::<Vec<_>>();
 
