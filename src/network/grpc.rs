@@ -4,7 +4,11 @@ use intercom::{self, ClientMsg};
 use settings::network::Listen;
 
 use cardano as cardano_api;
-use cardano::block::EpochSlotId;
+use cardano::{
+    block::EpochSlotId,
+    hash,
+    util::try_from_slice::TryFromSlice,
+};
 
 use futures::prelude::*;
 use futures::{
@@ -42,17 +46,23 @@ use self::iohk::jormungandr as gen;
 // Conversions between library data types and their generated
 // protobuf counterparts
 
+fn try_hash_from_protobuf(
+    pb: &cardano::HeaderHash
+) -> Result<BlockHash, hash::Error> {
+    BlockHash::try_from_slice(&pb.hash)
+}
+
+fn try_hashes_from_protobuf(
+    pb: &cardano::HeaderHashes
+) -> Result<Vec<BlockHash>, hash::Error> {
+    pb.hashes.iter().map(|v| BlockHash::try_from_slice(&v[..])).collect()
+}
+
 impl From<BlockHash> for cardano::HeaderHash {
     fn from(hash: BlockHash) -> Self {
         cardano::HeaderHash {
             hash: hash.as_ref().into(),
         }
-    }
-}
-
-impl From<cardano::HeaderHash> for BlockHash {
-    fn from(protobuf_hash: cardano::HeaderHash) -> Self {
-        BlockHash::new(&protobuf_hash.hash)
     }
 }
 
@@ -196,6 +206,14 @@ impl gen::server::Node for GrpcServer {
     type GetBlocksFuture = FutureResult<
         Response<Self::GetBlocksStream>, tower_grpc::Error
     >;
+    type GetHeadersStream = GrpcResponseStream<cardano::Header>;
+    type GetHeadersFuture = FutureResult<
+        Response<Self::GetHeadersStream>, tower_grpc::Error
+    >;
+    type StreamBlocksToTipStream = GrpcResponseStream<cardano::Block>;
+    type StreamBlocksToTipFuture = FutureResult<
+        Response<Self::StreamBlocksToTipStream>, tower_grpc::Error
+    >;
     type ProposeTransactionsFuture = GrpcFuture<gen::ProposeTransactionsResponse>;
     type RecordTransactionFuture = GrpcFuture<gen::RecordTransactionResponse>;
 
@@ -209,16 +227,32 @@ impl gen::server::Node for GrpcServer {
 
     fn get_blocks(
         &mut self,
-        request: Request<gen::GetBlocksRequest>,
+        _request: Request<gen::GetBlocksRequest>,
     ) -> Self::GetBlocksFuture {
-        let params = request.get_ref();
-        // FIXME: handle multiple references
-        let from = params.from[0].clone();
-        // FIXME: handle missing parameter
-        let to = params.to.as_ref().unwrap().clone();
+        unimplemented!()
+    }
+
+    fn get_headers(
+        &mut self,
+        _request: Request<gen::GetBlocksRequest>,
+    ) -> Self::GetHeadersFuture {
+        unimplemented!()
+    }
+
+    fn stream_blocks_to_tip(
+        &mut self,
+        from: Request<cardano::HeaderHashes>,
+    ) -> Self::StreamBlocksToTipFuture {
+        let hashes = match try_hashes_from_protobuf(from.get_ref()) {
+            Ok(hashes) => hashes,
+            Err(e) => {
+                // FIXME: send a more detailed error
+                return future::err(tower_grpc::Error::from(()));
+            }
+        };
         let (handle, stream) = server_streaming_response_channel();
         self.state.channels.client_box.send_to(
-            ClientMsg::GetBlocks(from.into(), to.into(), Box::new(handle))
+            ClientMsg::StreamBlocksToTip(hashes, Box::new(handle))
         );
         future::ok(Response::new(stream))
     }
