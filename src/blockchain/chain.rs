@@ -140,7 +140,7 @@ impl Blockchain {
         // sure that this invariant is preserved everywhere
         // (e.g. loose block GC should delete blocks in reverse
         // order).
-        block_read(&self.storage, block_hash).is_some()
+        block_read(&self.storage, block_hash).is_ok()
     }
 
     /// Request a missing block from the network.

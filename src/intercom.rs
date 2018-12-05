@@ -1,4 +1,4 @@
-use blockcfg::{Block, Header, BlockHash, Transaction};
+use blockcfg::{Block, Header, BlockHash, Transaction, TransactionId};
 
 use std::fmt::{self, Debug, Display};
 
@@ -60,9 +60,12 @@ pub trait StreamReply<T>: Debug {
 pub type BoxReply<T> = Box<dyn Reply<T> + Send>;
 pub type BoxStreamReply<T> = Box<dyn StreamReply<T> + Send>;
 
-// TODO
-
-pub type TransactionMsg = u32;
+/// ...
+#[derive(Debug)]
+pub enum TransactionMsg {
+    ProposeTransaction(Vec<TransactionId>, BoxReply<bool>),
+    SendTransaction(Vec<Transaction>),
+}
 
 /// Client messages, mainly requests from connected peers to our node.
 /// Fetching the block headers, the block, the tip
