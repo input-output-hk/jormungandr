@@ -241,9 +241,20 @@ impl gen::server::Node for GrpcServer {
 
     fn stream_blocks_to_tip(
         &mut self,
-        _from: Request<cardano::HeaderHashes>,
+        from: Request<cardano::HeaderHashes>,
     ) -> Self::StreamBlocksToTipFuture {
-        unimplemented!()
+        let hashes = match try_hashes_from_protobuf(from.get_ref()) {
+            Ok(hashes) => hashes,
+            Err(e) => {
+                // FIXME: send a more detailed error
+                return future::err(tower_grpc::Error::from(()));
+            }
+        };
+        let (handle, stream) = server_streaming_response_channel();
+        self.state.channels.client_box.send_to(
+            ClientMsg::StreamBlocksToTip(hashes, Box::new(handle))
+        );
+        future::ok(Response::new(stream))
     }
 
     fn propose_transactions(

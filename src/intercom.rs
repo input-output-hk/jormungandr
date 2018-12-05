@@ -21,6 +21,12 @@ impl From<String> for Error {
     }
 }
 
+impl<'a> From<&'a str> for Error {
+    fn from(s: &'a str) -> Error {
+        Error(s.into())
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&self.0, f)
@@ -65,6 +71,7 @@ pub enum ClientMsg {
     GetBlockTip(BoxReply<Header>),
     GetBlockHeaders(Vec<BlockHash>, BlockHash, BoxReply<Vec<Header>>),
     GetBlocks(BlockHash, BlockHash, BoxStreamReply<Block>),
+    StreamBlocksToTip(Vec<BlockHash>, BoxStreamReply<Block>),
 }
 
 /// General Block Message for the block task

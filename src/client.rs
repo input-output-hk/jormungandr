@@ -16,9 +16,31 @@ pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
             ClientMsg::GetBlockHeaders(checkpoints, to, mut handler) =>
                 handler.reply(handle_get_block_headers(&blockchain, checkpoints, to)),
             ClientMsg::GetBlocks(from, to, handler) =>
-                handle_get_blocks(&blockchain, from, to, handler),
+                do_stream_reply(
+                    || handle_get_blocks(&blockchain, from, to, handler),
+                ),
+            ClientMsg::StreamBlocksToTip(from, handler) =>
+                do_stream_reply(
+                    || handle_stream_blocks_to_tip(&blockchain, from, handler),
+                ),
         }
     }
+}
+
+struct StreamReplyError<T>(Error, BoxStreamReply<T>);
+
+fn do_stream_reply<T, F>(f: F)
+where
+    F: FnOnce() -> Result<BoxStreamReply<T>, StreamReplyError<T>>,
+{
+    let mut handler = match f() {
+        Ok(handler) => handler,
+        Err(StreamReplyError(e, mut handler)) => {
+            handler.send_error(e.into());
+            handler
+        }
+    };
+    handler.close();
 }
 
 fn handle_get_block_tip(
@@ -96,16 +118,46 @@ fn handle_get_blocks(
     blockchain: &BlockchainR,
     from: BlockHash,
     to: BlockHash,
-    mut reply: Box<StreamReply<Block>>)
-{
+    mut reply: BoxStreamReply<Block>
+) -> Result<BoxStreamReply<Block>, StreamReplyError<Block>> {
     let blockchain = blockchain.read().unwrap();
 
     for x in iter::Iter::new(&blockchain.get_storage(), from, to).unwrap() {
         match x {
-            Err(err) => reply.send_error(Error::from_error(err)),
+            Err(err) => return Err(StreamReplyError(Error::from_error(err), reply)),
             Ok((_rblk, blk)) => reply.send(blk), // FIXME: use rblk
         }
     }
 
-    reply.close();
+    Ok(reply)
+}
+
+fn handle_stream_blocks_to_tip(
+    blockchain: &BlockchainR,
+    mut from: Vec<BlockHash>,
+    mut reply: BoxStreamReply<Block>,
+) -> Result<BoxStreamReply<Block>, StreamReplyError<Block>> {
+    let blockchain = blockchain.read().unwrap();
+
+    // FIXME: handle multiple from addresses
+    if from.len() != 1 {
+        return Err(
+            StreamReplyError(
+                Error::from("only one checkpoint address is currently supported"),
+                reply,
+            )
+        );
+    }
+    let from = from.remove(0);
+
+    let tip = blockchain.get_tip();
+
+    for x in iter::Iter::new(&blockchain.get_storage(), from, tip).unwrap() {
+        match x {
+            Err(err) => return Err(StreamReplyError(Error::from_error(err), reply)),
+            Ok((_rblk, blk)) => reply.send(blk), // FIXME: use rblk
+        }
+    }
+
+    Ok(reply)
 }
