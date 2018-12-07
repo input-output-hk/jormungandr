@@ -166,3 +166,57 @@ mod tests {
         assert_eq!(proof.verify(&pk_other, &b2[..], &output), false);
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "with-bench")]
+mod bench {
+    use rand::OsRng;
+    use super::{SecretKey, PublicKey};
+    use test;
+
+    fn common() -> (OsRng, SecretKey, PublicKey, [u8;10], [u8;10]) {
+        let mut csprng: OsRng = OsRng::new().unwrap();
+        let sk = SecretKey::random(&mut csprng);
+        let pk = sk.public();
+
+        let sk_other = SecretKey::random(&mut csprng);
+        let pk_other = sk_other.public();
+
+        let mut b1 = [0u8; 10];
+        for i in b1.iter_mut() { *i = rand::random() }
+        let mut b2 = [0u8; 10];
+        for i in b2.iter_mut() { *i = rand::random() }
+
+        (csprng, sk, pk, b1, b2)
+    }
+
+    #[bench]
+    fn generate(b: &mut test::Bencher) {
+        let (mut csprng, sk, pk, b1, _) = common();
+
+        b.iter(|| {
+            let _ = sk.evaluate_simple(&mut csprng, &b1[..]);
+        })
+    }
+
+    #[bench]
+    fn verify_success(b: &mut test::Bencher) {
+        let (mut csprng, sk, pk, b1, _) = common();
+        let (output, proof) = sk.evaluate_simple(&mut csprng, &b1[..]);
+
+        b.iter(|| {
+            let _ = proof.verify(&pk, &b1[..], &output);
+        })
+    }
+
+    #[bench]
+    fn verify_fail(b: &mut test::Bencher) {
+        let (mut csprng, sk, pk, b1, b2) = common();
+        let (_, _, pk2, _, _) = common();
+        let (output, proof) = sk.evaluate_simple(&mut csprng, &b1[..]);
+
+        b.iter(|| {
+            let _ = proof.verify(&pk2, &b1[..], &output);
+        })
+    }
+}

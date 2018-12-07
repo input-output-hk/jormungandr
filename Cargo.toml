@@ -53,3 +53,6 @@ rev = "d1dfb573cd3d513720668894b23a58ae7299ed59"
 [build-dependencies.tower-grpc-build]
 git = "https://github.com/tower-rs/tower-grpc"
 rev = "d1dfb573cd3d513720668894b23a58ae7299ed59"
+
+[features]
+with-bench = []
