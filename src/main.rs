@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "with-bench", feature(test))]
 extern crate clap;
 #[macro_use]
 extern crate serde_derive;
@@ -30,6 +31,10 @@ extern crate prost;
 extern crate prost_derive;
 extern crate tower_h2;
 extern crate tower_grpc;
+
+#[cfg(test)]
+#[cfg(feature = "with-bench")]
+extern crate test;
 
 pub mod clock;
 pub mod blockchain;
