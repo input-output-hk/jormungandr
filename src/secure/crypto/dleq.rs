@@ -11,6 +11,32 @@ pub struct Proof {
     z: Scalar,
 }
 
+const PROOF_SIZE : usize = 64; // Scalar is 32 bytes
+
+impl Proof {
+    pub fn to_bytes(&self, output: &mut [u8]) {
+        assert_eq!(output.len(), PROOF_SIZE);
+        output[0..32].copy_from_slice(self.c.0.as_bytes());
+        output[32..64].copy_from_slice(self.z.as_bytes());
+    }
+
+    pub fn from_bytes(slice: &[u8]) -> Option<Self> {
+        if slice.len() != PROOF_SIZE {
+            return None;
+        }
+        let mut c_array = [0u8;32];
+        c_array.copy_from_slice(&slice[0..32]);
+        let c = Scalar::from_canonical_bytes(c_array)?;
+
+        let mut z_array = [0u8;32];
+        z_array.copy_from_slice(&slice[32..64]);
+        let z = Scalar::from_canonical_bytes(z_array)?;
+
+        let proof = Proof { c: Challenge(c), z: z };
+        Some(proof)
+    }
+}
+
 /// Parameters for DLEQ where g1^a = h1, h2^a = h2
 pub struct DLEQ<'a> {
     pub g1: &'a RistrettoPoint,
