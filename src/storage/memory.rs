@@ -4,8 +4,9 @@ use std::collections::HashMap;
 pub struct MemoryBlockStore<B> where B: Block {
     genesis_hash: Hash,
     // FIXME: store serialized blocks?
-    blocks: HashMap<Hash, (B, BlockInfo)>,
+    blocks: HashMap<Hash, (Vec<u8>, BlockInfo)>,
     tags: HashMap<String, Hash>,
+    dummy: std::marker::PhantomData<B>,
 }
 
 impl<B> MemoryBlockStore<B> where B: Block {
@@ -14,6 +15,7 @@ impl<B> MemoryBlockStore<B> where B: Block {
             genesis_hash,
             blocks: HashMap::new(),
             tags: HashMap::new(),
+            dummy: std::marker::PhantomData,
         }
     }
 }
@@ -22,7 +24,7 @@ impl<B> BlockStore<B> for MemoryBlockStore<B> where B: Block {
 
     fn put_block_internal(&mut self, block: B, block_info: BlockInfo) -> Result<(), Error>
     {
-        self.blocks.insert(block_info.block_hash.clone(), (block, block_info));
+        self.blocks.insert(block_info.block_hash.clone(), (block.serialize(), block_info));
         Ok(())
     }
 
@@ -30,7 +32,7 @@ impl<B> BlockStore<B> for MemoryBlockStore<B> where B: Block {
     {
         match self.blocks.get(block_hash) {
             None => Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
-            Some((block, block_info)) => Ok((block.clone(), block_info.clone()))
+            Some((block, block_info)) => Ok((B::deserialize(block), block_info.clone()))
         }
     }
 
