@@ -41,6 +41,8 @@ extern crate quickcheck;
 #[macro_use]
 mod log_wrapper;
 
+extern crate sqlite;
+
 pub mod clock;
 pub mod blockchain;
 pub mod consensus;

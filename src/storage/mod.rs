@@ -1,4 +1,5 @@
 pub mod memory;
+pub mod sqlite;
 
 use cardano;
 use cardano_storage;
