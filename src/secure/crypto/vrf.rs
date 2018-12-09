@@ -172,9 +172,9 @@ impl ProvenOutputSeed {
         }
     }
 
-    pub fn to_verifiable_output(self, public_key: &PublicKey, input: &[u8]) -> Option<OutputSeed> {
+    pub fn to_verifiable_output(&self, public_key: &PublicKey, input: &[u8]) -> Option<OutputSeed> {
         if self.verify(public_key, input) {
-            Some(self.u)
+            Some(self.u.clone())
         } else {
             None
         }
