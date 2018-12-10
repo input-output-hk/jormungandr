@@ -11,11 +11,11 @@ This code will allow you to setup a demo instance of jormnugndr with a configura
 
 First you need to create the environment to run jormungandr
 
-`./setup.sh <folder> <nodecount> <genesis-file> <cardano-cli-path> `
+`./setup.sh <folder> <nodecount> <genesis-file> <node-config> <cardano-cli-path>`
 
-This will create the required environment in a folder. 
+This will create the required environment in a folder.
 
-## Running 
+## Running
 
 ### Starting nodes
 

@@ -64,7 +64,7 @@ echo "Building Jormungandr"
 echo
 cd ..
 cargo build
-cd tools  
+cd demo
 echo
 echo "Build finished"
 echo
@@ -94,23 +94,24 @@ while [ $counter -lt $nodes ]; do
     mkdir -p $node_folder
     cd $node_folder
     
-		let counter=$counter+1			
-		
-		stub='node_'$counter
-		privkey=$node_folder/$stub'.xprv'
-		pubkey=$node_folder/$stub'.xpub'
+    let counter=$counter+1
+    stub='node_'$counter
+    privkey=$stub'.xprv'
+    pubkey=$stub'.xpub'
 
-		echo "Making keys for $stub"
-		echo "PRIV = $privkey"
+    echo "Making keys for $stub"
+    echo "PRIV = $privkey"
     echo "PUB  = $pubkey"
 
+    echo "$cli debug generate-xprv $privkey"
     $cli debug generate-xprv $privkey
+    echo "$cli debug xprv-to-xpub $privkey $pubkey"
     $cli debug xprv-to-xpub $privkey $pubkey
 
-		echo "Adding key to global config"
-		pubkeycontents=`cat $pubkey` 
-		echo "    - $pubkeycontents" >> $folder'/config.yaml'
-		echo
+    echo "Adding key to global config"
+    pubkeycontents=`cat $pubkey` 
+    echo "    - $pubkeycontents" >> '../../config.yaml'
+    echo
 done  
 
 echo "Setup is complete"
