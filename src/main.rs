@@ -38,6 +38,7 @@ extern crate test;
 
 pub mod clock;
 pub mod blockchain;
+pub mod consensus;
 pub mod transaction;
 pub mod state;
 pub mod leadership;
