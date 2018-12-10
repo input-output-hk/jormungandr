@@ -1,7 +1,7 @@
 use cardano;
 
-use blockcfg::chain::generic as chain;
-use blockcfg::ledger::generic as ledger;
+use blockcfg::chain;
+use blockcfg::ledger;
 
 pub type GenesisData = cardano::config::GenesisData;
 pub type TransactionId = cardano::tx::TxId;

@@ -1,1 +1,1 @@
-use crate::blockcfg::ledger::generic as ledger;
+use crate::blockcfg::ledger;

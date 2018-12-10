@@ -1,5 +1,5 @@
 use crate::blockcfg::chain::mock::{Transaction, Input, Output, Signature};
-use crate::blockcfg::ledger::generic as ledger;
+use crate::blockcfg::ledger;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -108,29 +108,6 @@ impl ledger::Ledger for Ledger {
         }
 
         Ok(diff)
-    }
-
-    fn verify_transaction(&self, transaction: &Self::Transaction) -> Result<bool, Self::Error> {
-        use crate::ledger::generic::Transaction;
-
-        let mut diff = Diff::new();
-        let id = transaction.id();
-
-        for input in transaction.inputs.iter() {
-            if let Some(output) = self.unspent_outputs.get(&input.input) {
-                if ! input.verify(&output) {
-                    return Err(Error::InvalidSignature(input.input, *output, input.signature));
-                }
-                if let Some(output) = diff.spent_outputs.insert(input.input, *output) {
-                    return Err(Error::DoubleSpend(input.input, output));
-                }
-
-            } else {
-                return Err(Error::InputDoesNotResolve(input.input));
-            }
-        }
-
-        Ok(true)
     }
 
     fn diff<'a, I>(&self, transactions: I) -> Result<Self::Diff, Self::Error>

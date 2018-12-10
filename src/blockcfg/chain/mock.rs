@@ -1,5 +1,8 @@
-use crate::chain::generic as chain;
-use crate::ledger::generic as ledger;
+//! This module defines some basic type to try to mock the blockchain
+//! and be able to run simpler tests.
+
+use crate::blockcfg::chain;
+use crate::blockcfg::ledger;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SlotId(u32, u32);
