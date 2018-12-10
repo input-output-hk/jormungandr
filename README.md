@@ -1,6 +1,6 @@
 # Full Node
 
-> Just because you call something a blockchain, that doesn't mean you aren't subject to normal engineering laws. 
+> Just because you call something a blockchain, that doesn't mean you aren't subject to normal engineering laws.
 
 ## Internal Design
 
@@ -46,4 +46,10 @@ bft:
   leaders:
     - 482ec7835412bcc18ca5c1f15baef53e0d62092fe1bbf40ea30fac895fd0f98c3b009cfd62715a5b871aabf5d603bec5aa5c8b3eae537fb254dd83ef88950d7d
     - b77f6ed6edbb0a63e09764ccaf2bb6bb5cdc8e54ce1bab6aeccacb98848dfe01b77a9be9254a0f2d103953264df9b7957d8e61608b196723c109c28c89c1bb1e
+legacy_listen:
+       - "127.0.0.1:8080"
+grpc_listen:
+       - "127.0.0.1:8081"
 ```
+
+`legacy_listen` and `grpc_listen` fields are optional and can be omitted.

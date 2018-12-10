@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::net::SocketAddr;
 use cardano::hdwallet;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -6,6 +7,8 @@ pub struct Config {
     pub secret_file: Option<PathBuf>,
     pub bft: Option<Bft>,
     pub genesis: Option<Genesis>,
+    pub legacy_listen: Option<Vec<SocketAddr>>,
+    pub grpc_listen: Option<Vec<SocketAddr>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
