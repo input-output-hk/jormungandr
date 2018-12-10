@@ -35,6 +35,8 @@ extern crate tower_grpc;
 #[cfg(test)]
 #[cfg(feature = "with-bench")]
 extern crate test;
+#[cfg(test)]
+extern crate quickcheck;
 
 pub mod clock;
 pub mod blockchain;
