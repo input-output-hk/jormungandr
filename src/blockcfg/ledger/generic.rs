@@ -74,14 +74,6 @@ pub trait Transaction {
     fn id(&self) -> Self::Id;
 }
 
-impl<'a, T: Transaction> Transaction for &'a T {
-    type Input = <T as Transaction>::Input;
-    type Output = <T as Transaction>::Output;
-    type Id = <T as Transaction>::Id;
-
-    fn id(&self) -> Self::Id { (*self).id() }
-}
-
 /// accessor to a trait with `Transactions` in it. Transactions that can
 /// be used by a Ledger.
 ///
@@ -95,11 +87,4 @@ pub trait HasTransaction
     /// access all the transactions of the implementor via the returned
     /// iterator.
     fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>;
-}
-impl<'b, B: HasTransaction> HasTransaction for &'b B {
-    type Transaction = <B as HasTransaction>::Transaction;
-
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
-        (*self).transactions()
-    }
 }
