@@ -79,14 +79,12 @@ pub trait Transaction {
 ///
 /// This trait simply provides a generic way to access all the transactions
 /// of a block in the chain.
-pub trait HasTransaction<'a> {
+pub trait HasTransaction
+{
     /// the transaction Type.
-    type Transaction: 'a + Transaction;
-
-    /// the transactions iterator type
-    type TransactionIterator: Iterator<Item = &'a Self::Transaction>;
+    type Transaction: Transaction;
 
     /// access all the transactions of the implementor via the returned
     /// iterator.
-    fn transactions(&'a self) -> Self::TransactionIterator;
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>;
 }

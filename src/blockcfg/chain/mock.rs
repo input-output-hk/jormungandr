@@ -74,11 +74,10 @@ impl chain::Block for Block {
     fn parent_hash(&self) -> &Self::Hash { &self.parent_hash }
     fn slot_id(&self) -> Self::Id { self.slot_id }
 }
-impl<'a> ledger::HasTransaction<'a> for Block {
+impl ledger::HasTransaction for Block {
     type Transaction = Transaction;
-    type TransactionIterator = std::slice::Iter<'a, Self::Transaction>;
 
-    fn transactions(&'a self) -> Self::TransactionIterator
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>
     {
         self.transactions.iter()
     }
