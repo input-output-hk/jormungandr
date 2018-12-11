@@ -32,6 +32,7 @@ do
 
   if [[ -e launch_cmd ]]; then
     screen -X -S $stub quit
+    rm launch_cmd
   else
     echo "Doesn't seem to be running"
   fi

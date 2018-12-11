@@ -27,7 +27,8 @@ do
   stub='node_'$counter
   log=$stub'.log'
   path='../nodes/'$counter'/'
-  command="../../bin/jormungandr --genesis-config ../../genesis.json --config ../../config.yaml --secret $stub.xprv --storage . -vvv "
+  # patch this when you have moved the config.yaml with topology in to the node folder
+  command="../../bin/jormungandr --genesis-config genesis.json --config config.yaml --secret $stub.xprv --storage . -vvv "
 
   cd $path
   if [[ -e launch_cmd ]]; then
