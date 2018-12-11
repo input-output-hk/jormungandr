@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#/bin/bash -e
 
 # Jormaungandr setup tool - Amias Channer
 #
@@ -11,8 +10,6 @@ echo
 
 clipath=$(which cardano-cli)
 
-echo "cli found at $clipath"
-
 # params
 # folder - folder to prepare for a demo
 folder=$1
@@ -21,7 +18,7 @@ folder=$1
 nodes=${2:-0}
 
 # genesis - genesis data for nodes to use
-genesis=${3:-0}
+genesis=${3:-'demo-genesis.yaml'}
 
 # cardano-cli - location of cardano-cli 
 cli=${4:-$clipath}
@@ -38,39 +35,39 @@ echo "  CLI: $cli"
 echo "  Config: $config"
 echo
 
-if [ ! $folder ]; then
+if [[ ! $folder ]]; then
   echo  "Error: Please supply a fully qualified folder name as the first parameter"
-  exit
+  exit 1
 fi
 
-if [ -d $folder ]; then
+if [[ -d $folder ]]; then
   echo  "Error: $folder already exists"
-  exit
+  exit 1
 fi
 
-if [ $nodes == 0 ]; then
+if [[ $nodes == 0 ]]; then
   echo "Error: Please supply a node count as the second parameter"
-  exit
+  exit 1
 fi
 
-if [ $genesis ]; then
-  if [ ! -e $genesis ]; then
+if [[ $genesis ]]; then
+  if [[ ! -e $genesis ]]; then
     echo "Error: Cannot read genesis from $genesis"
-    exit
+    exit 1
   fi
 else
   echo "Error: Please supply a genesis file as the third parameter"
-  exit
+  exit 1
 fi
 
-if [ $cli ]; then
-  if [ ! -e $cli ]; then
+if [[ $cli ]]; then
+  if [[ ! -e $cli ]]; then
     echo "Error: could not read cardano-cli at $cli"
-    exit
+    exit 1
   fi
 else
   echo "Error: Please supply a cardano-cli executable as the fourth parameter"
-  exit
+  exit 1
 fi
 
 # we have all the info we need at this point
@@ -104,33 +101,32 @@ keys_for_genesis=''
 
 pushd .
 
-while [ $counter -lt $nodes ]; do
+while [[ $counter -lt $nodes ]]; do
+  node_folder=$folder/nodes/$(($counter+1))
+  mkdir -p $node_folder
+  cd $node_folder
     
-    node_folder=$folder/nodes/$(($counter+1))
-    mkdir -p $node_folder
-    cd $node_folder
-    
-    let counter=$counter+1			
+  let counter=$counter+1
 		
-    stub='node_'$counter
-    privkey=$node_folder/$stub'.xprv' 
-    pubkey=$node_folder/$stub'.xpub'
+  stub='node_'$counter
+  privkey=$node_folder/$stub'.xprv'
+  pubkey=$node_folder/$stub'.xpub'
 
-    echo "Making keys for $stub"
-    echo "PRIV = $privkey"
-    echo "PUB  = $pubkey"
+  echo "Making keys for $stub"
+  echo "PRIV = $privkey"
+  echo "PUB  = $pubkey"
 
-    ../../bin/cardano-cli debug generate-xprv $privkey
-    ../../bin/cardano-cli debug xprv-to-xpub $privkey $pubkey
+  ../../bin/cardano-cli debug generate-xprv $privkey
+  ../../bin/cardano-cli debug xprv-to-xpub $privkey $pubkey
 
-    echo "Adding key to global config"
-    pubkeycontents=`cat $pubkey` 
-    echo "    - $pubkeycontents" >> $folder'/config.yaml'
-    echo  
+  echo "Adding key to global config"
+  pubkeycontents=`cat $pubkey`
+  echo "    - $pubkeycontents" >> $folder'/config.yaml'
+  echo
     
-    # put the private key
-    privkeycontents=`cat $privkey`
-    keys_for_genesis+='"'$privkeycontents'":1,'
+  # put the private key
+  privkeycontents=`cat $privkey`
+  keys_for_genesis+='"'$privkeycontents'":1,'
 done  
 
 

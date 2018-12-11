@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # genkeypair - uses cardano-cli to create public and private keys
 CLI='./cardano-cli'

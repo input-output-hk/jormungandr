@@ -1,4 +1,4 @@
-#/bin/bash
+#!/usr/bin/env bash
 
 # Stop Nodes - Amias Channer
 #
@@ -11,27 +11,30 @@ node_min=${1:-'1'}
 node_max=${2:-$nodes_found}
 
 
-if [ $node_max -gt $nodes_found ]; then
+if [[ $node_max -gt $nodes_found ]]; then
   echo "Cannot Stop $node_max nodes , only $nodes_found are configured"
-  exit
+  exit 1
 fi
 
 node_count=$((1 + $node_max - $node_min)) 
 
-echo "Stoping $node_count Nodes"		
+echo "Stopping $node_count Nodes"
 
 for counter in $(seq $node_min $node_max)	
 do
+  echo "Stopping Node $counter"
+
+  stub='node_'$counter
+  path='../nodes/'$counter'/'
+  log=$stub'.log'
+
+  cd $path
+
+  if [[ -e launch_cmd ]]; then
+    screen -X -S $stub quit
+  else
+    echo "Doesn't seem to be running"
+  fi
 	
-			echo "Stopping Node $counter"
-			stub='node_'$counter
-			path='../nodes/'$counter'/'
-			log=$stub'.log'
-			cd $path
-		  if [ -e launch_cmd ]; then
-			  screen -X -S $stub quit
-			else
-			  echo "Doesn't seem to be running"
-			fi
-			cd ../../bin		
+  cd ../../bin
 done

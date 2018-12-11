@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # List nodes - Amias Channer
 
@@ -16,9 +16,9 @@ do
   echo -n "Checking $i: "
   number=$(echo "$i" | sed 's/[^0-9]*//g')
 
-  if [ -e ../nodes/$number/launch_cmd ]; then
+  if [[ -e ../nodes/$number/launch_cmd ]]; then
     running=$(ps ax | grep $i | grep jormungandr | wc -l)
-    if [ $running -gt 0 ]; then
+    if [[ $running -gt 0 ]]; then
       echo " Running"
     else
       echo " Not Running"

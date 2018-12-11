@@ -1,11 +1,18 @@
 # Jormungandr Demo script
 
-This code will allow you to setup a demo instance of jormnugndr with a configurable amount of nodes
+This code will allow you to setup a demo instance of jormnugndr in a specific location with a configurable amount of nodes
+It will configure all the nodes to use the same genesis, generate keys, create a list of leaders and provide scripts to manage the nodes.
 
 ## Prerequistes
 
 * cardano-cli - a built version of cardano-cli will be used to generate keys
 * genesis.json - a json file containing genesis data , look in cardano-deps/exe-common/genesis/
+
+## TLDR
+
+`setup.sh ~/demo 5 `
+`cd ~/demo/bin `
+`./start_nodes.sh `
 
 ## Setup
 
@@ -14,7 +21,12 @@ First you need to create the environment to run jormungandr
 `./setup.sh <folder> <nodecount> <genesis-file> <cardano-cli-path> <config.yaml> `
 
 This will create the required environment in a folder, you only need to specify
-the first 3 most of the time.
+the first 2 most of the time. 
+
+### Notes
+
+The scripts in the template/bin folder should not be run in place, they will be copied
+into the bin folder of the environment that setup.sh creates. 
 
 ## Running 
 
