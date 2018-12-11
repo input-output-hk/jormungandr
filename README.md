@@ -50,6 +50,8 @@ legacy_listen:
        - "127.0.0.1:8080"
 grpc_listen:
        - "127.0.0.1:8081"
+legacy_peers:
+       - "127.0.0.1:9000"
 ```
 
 `legacy_listen` and `grpc_listen` fields are optional and can be omitted.
