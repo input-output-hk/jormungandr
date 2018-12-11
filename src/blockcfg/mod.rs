@@ -32,17 +32,3 @@ impl BlockConfig for Cardano {
     type TransactionId = chain::cardano::TransactionId;
     type GenesisData = chain::cardano::GenesisData;
 }
-
-// ---------------------------------------------------------------
-// below we defined what we are using at the moment in jormungandr
-// for the blockchain, we might want to change this in the future
-// and have a more explicit choice at the top level.
-//
-pub use chain::cardano::{
-    Block,
-    Header,
-    BlockHash,
-    Transaction,
-    TransactionId,
-    GenesisData,
-};
