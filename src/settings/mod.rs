@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use cardano::config::GenesisData;
 use std::fs::File;
 use std::io::Read;
+use std::collections::HashMap;
 use std;
 
 use exe_common::parse_genesis_data::parse_genesis_data;
@@ -59,25 +60,6 @@ impl Settings {
     pub fn load() -> Self {
         let command_arguments = CommandArguments::load();
 
-        let peer_nodes = command_arguments.ntt_connect.iter().cloned()
-            .map(|addr| {
-                Peer::new(Connection::Tcp(addr), Protocol::Ntt)
-            }).collect();
-
-        let mut listen_to: Vec<_> = command_arguments.ntt_listen.iter().cloned()
-            .map(|addr| {
-                Listen::new(Connection::Tcp(addr), Protocol::Ntt)
-            }).collect();
-        listen_to.extend(command_arguments.grpc_listen.iter().cloned()
-            .map(|addr| {
-                Listen::new(Connection::Tcp(addr), Protocol::Grpc)
-            }));
-
-        let network = network::Configuration {
-            peer_nodes,
-            listen_to,
-        };
-
         let config : config::Config = {
             let mut file = File::open(command_arguments.node_config.clone()).unwrap();
             match serde_yaml::from_reader(&mut file) {
@@ -89,10 +71,12 @@ impl Settings {
             }
         };
 
+        let network = generate_network(&command_arguments, &config);
+
         let consensus = {
             if let Some(bft) = config.bft {
                 Consensus::Bft(bft)
-            } else if let Some(genesis) = config.genesis {
+            } else if let Some(_genesis) = config.genesis {
                 Consensus::Genesis
             } else {
                 println!("no consensus algorithm defined");
@@ -129,5 +113,33 @@ impl Settings {
         f.read_to_end(&mut buffer).unwrap();
 
         parse_genesis_data(&buffer[..])
+    }
+
+
+}
+
+fn generate_network(command_arguments: &CommandArguments, config: &config::Config) -> network::Configuration {
+    let peer_nodes = command_arguments.ntt_connect.iter().cloned()
+        .map(|addr| {
+            Peer::new(Connection::Tcp(addr), Protocol::Ntt)
+        }).collect();
+
+    let mut listen_map: HashMap<_,_> =
+        config.legacy_listen.as_ref().map_or(HashMap::new(),|addresses|
+        addresses.iter().cloned().map(|addr| (addr,Protocol::Ntt)).collect()
+        );
+    if let Some(addresses) = config.grpc_listen.as_ref() {
+        listen_map.extend(addresses.iter().cloned().map(|addr| (addr,Protocol::Grpc)));
+    };
+    listen_map.extend(
+        command_arguments.ntt_listen.iter().cloned().map(|addr| (addr,Protocol::Ntt)));
+    listen_map.extend(
+        command_arguments.grpc_listen.iter().cloned().map(|addr| (addr,Protocol::Grpc)));
+    let listen_to: Vec<_> = listen_map.iter().map(|(&addr, proto)|
+        Listen::new(Connection::Tcp(addr), proto.clone())).collect();
+
+    network::Configuration {
+        peer_nodes,
+        listen_to,
     }
 }
