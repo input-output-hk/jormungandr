@@ -92,10 +92,14 @@ pub trait HasTransaction
     /// the transaction Type.
     type Transaction: Transaction;
 
-    /// the transactions iterator type
-    type TransactionIterator: Iterator;
-
     /// access all the transactions of the implementor via the returned
     /// iterator.
-    fn transactions(self) -> Self::TransactionIterator;
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>;
+}
+impl<'b, B: HasTransaction> HasTransaction for &'b B {
+    type Transaction = <B as HasTransaction>::Transaction;
+
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
+        (*self).transactions()
+    }
 }
