@@ -28,11 +28,11 @@ impl chain::Block for Block {
         self.get_header().get_slotid()
     }
 }
-impl<'a> ledger::HasTransaction<'a> for Block {
+impl<'a> ledger::HasTransaction for &'a Block {
     type Transaction = Transaction;
     type TransactionIterator = std::slice::Iter<'a, Self::Transaction>;
 
-    fn transactions(&'a self) -> Self::TransactionIterator
+    fn transactions(self) -> Self::TransactionIterator
     {
         match self {
             cardano::block::Block::BoundaryBlock(ref bb) => {

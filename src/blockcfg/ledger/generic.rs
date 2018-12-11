@@ -87,14 +87,15 @@ impl<'a, T: Transaction> Transaction for &'a T {
 ///
 /// This trait simply provides a generic way to access all the transactions
 /// of a block in the chain.
-pub trait HasTransaction<'a> {
+pub trait HasTransaction
+{
     /// the transaction Type.
-    type Transaction: 'a + Transaction;
+    type Transaction: Transaction;
 
     /// the transactions iterator type
-    type TransactionIterator: Iterator<Item = &'a Self::Transaction>;
+    type TransactionIterator: Iterator;
 
     /// access all the transactions of the implementor via the returned
     /// iterator.
-    fn transactions(&'a self) -> Self::TransactionIterator;
+    fn transactions(self) -> Self::TransactionIterator;
 }
