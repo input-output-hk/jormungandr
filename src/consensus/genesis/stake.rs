@@ -68,7 +68,7 @@ pub struct StakerPublicInformation {
 /// Distribution of stake according to identities
 #[derive(Clone)]
 pub struct StakeDistribution {
-    total: StakeTotal,
+    pub total: StakeTotal,
     map: BTreeMap<StakerIdentity, StakeUnits>,
 }
 
@@ -93,6 +93,10 @@ impl StakeDistribution {
                 self.total = self.total - units;
             },
         }
+    }
+
+    pub fn get(&self, id: &StakerIdentity) -> Option<StakeUnits> {
+        self.map.get(id).map(|e| e.clone())
     }
 }
 
