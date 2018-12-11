@@ -23,6 +23,7 @@ use protocol::{
 use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkBroadcastMsg};
 use utils::task::{TaskMessageBox};
 use settings::network::{self, Peer, Listen};
+use blockcfg::{Cardano};
 
 use futures::prelude::*;
 use futures::{
@@ -33,9 +34,9 @@ use futures::{
 /// all the different channels the network may need to talk to
 #[derive(Clone)]
 pub struct Channels {
-    pub client_box:      TaskMessageBox<ClientMsg>,
-    pub transaction_box: TaskMessageBox<TransactionMsg>,
-    pub block_box:       TaskMessageBox<BlockMsg>,
+    pub client_box:      TaskMessageBox<ClientMsg<Cardano>>,
+    pub transaction_box: TaskMessageBox<TransactionMsg<Cardano>>,
+    pub block_box:       TaskMessageBox<BlockMsg<Cardano>>,
 }
 
 /// Identifier to manage subscriptions
@@ -101,7 +102,7 @@ impl ConnectionState {
 }
 
 pub fn run( config: network::Configuration
-          , subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg>
+          , subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<Cardano>>
           , channels: Channels
           )
 {

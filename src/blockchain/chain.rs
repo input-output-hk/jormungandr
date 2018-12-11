@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 use cardano_storage::StorageConfig;
 use cardano_storage::{tag, Storage, blob, block_read};
 use cardano_storage::chain_state::restore_chain_state;
-use cardano::block::{ChainState, Block, BlockDate};
+use cardano::block::{ChainState};
 
-use super::super::blockcfg::{GenesisData, BlockHash};
+use crate::blockcfg::chain::cardano::{GenesisData, Block, BlockHash};
 
 #[allow(dead_code)]
 pub struct Blockchain {

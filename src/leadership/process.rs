@@ -4,6 +4,7 @@ use super::selection::{self, IsLeading, Selection};
 use super::super::{
     clock, BlockchainR, TPoolR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret,
 };
+use crate::blockcfg::{Cardano, BlockConfig};
 
 use cardano::config::ProtocolMagic;
 use cardano::block::{Block, normal, update, HeaderExtraData, ChainDifficulty, EpochSlotId, BlockVersion, SoftwareVersion, BlockHeaderAttributes, HeaderHash};
@@ -54,7 +55,7 @@ fn make_block(secret: &NodeSecret, my_pub: &hdwallet::XPub, previous_hash: &Head
     }
 }
 
-pub fn leadership_task(secret: NodeSecret, selection: Arc<Selection>, tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg>)
+pub fn leadership_task(secret: NodeSecret, selection: Arc<Selection>, tpool: TPoolR, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg<Cardano>>)
 {
     let my_pub = secret.public.block_publickey;
     loop {
