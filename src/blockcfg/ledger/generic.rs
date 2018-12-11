@@ -74,6 +74,14 @@ pub trait Transaction {
     fn id(&self) -> Self::Id;
 }
 
+impl<'a, T: Transaction> Transaction for &'a T {
+    type Input = <T as Transaction>::Input;
+    type Output = <T as Transaction>::Output;
+    type Id = <T as Transaction>::Id;
+
+    fn id(&self) -> Self::Id { (*self).id() }
+}
+
 /// accessor to a trait with `Transactions` in it. Transactions that can
 /// be used by a Ledger.
 ///
