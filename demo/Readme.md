@@ -11,9 +11,10 @@ This code will allow you to setup a demo instance of jormnugndr with a configura
 
 First you need to create the environment to run jormungandr
 
-`./setup.sh <folder> <nodecount> <genesis-file> <cardano-cli-path> `
+`./setup.sh <folder> <nodecount> <genesis-file> <cardano-cli-path> <config.yaml> `
 
-This will create the required environment in a folder. 
+This will create the required environment in a folder, you only need to specify
+the first 3 most of the time.
 
 ## Running 
 
@@ -23,10 +24,10 @@ once the folder is generated you can use the tools within it to start the nodes
 
 `cd $folder/bin`
 
-`./start_nodes.sh`
+`./start_nodes.sh <min> <max>`
 
-
-This will start the configured amount of nodes in individual screen sessions
+This will start the configured amount of nodes in individual screen sessions.
+You can specify no parameters to start them all or a min and max to start all nodes in a range. 
 
 ### Stopping nodes
 
@@ -34,7 +35,10 @@ You can stop the nodes manually or with this script
 
 `cd $folder/bin`
 
-`./stop_nodes`
+`./stop_nodes.sh <min> <max>`
+
+This will stop the configured amount of nodes in individual screen sessions.
+You can specify no parameters to stop them all or a min and max to stop all nodes in a range.
 
 
 ### Node Status
@@ -43,8 +47,9 @@ You can see available nodes by running
 
 `cd $folder/bin`
 
-`./list_nodes`
+`./list_nodes.sh`
 
+This will show you a list of running nodes and their status.
 
 ## Advanced
 
