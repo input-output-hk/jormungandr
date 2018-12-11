@@ -42,7 +42,7 @@ pub struct CommandArguments {
 
     /// Path to the blockchain pool storage directory
     #[structopt(long = "storage", parse(from_os_str))]
-    pub storage: PathBuf,
+    pub storage: Option<PathBuf>,
 
     /// Set the node config (in YAML format) to use as general configuration
     #[structopt(long = "config", parse(from_os_str))]

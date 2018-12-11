@@ -52,6 +52,8 @@ grpc_listen:
        - "127.0.0.1:8081"
 legacy_peers:
        - "127.0.0.1:9000"
+storage:
+       - "/tmp/storage"
 ```
 
-`legacy_listen` and `grpc_listen` fields are optional and can be omitted.
+`legacy_listen`, `grpc_listen` and `storage` fields are optional and can be omitted.
