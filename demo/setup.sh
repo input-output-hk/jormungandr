@@ -1,12 +1,14 @@
-#/bin/bash -e
+#!/usr/bin/env bash
 
 # Jormaungandr setup tool - Amias Channer
 #
 # Generates a folder with a specified amount of interoperating jormungandr nodes
 #
 echo
-echo "Jormunandr - Setup generator"
+echo "Jormungandr - Setup generator"
 echo
+
+clipath=$(which cardano-cli)
 
 # params
 # folder - folder to prepare for a demo
@@ -16,55 +18,65 @@ folder=$1
 nodes=${2:-0}
 
 # genesis - genesis data for nodes to use
-genesis=${3:-0}
-
-# config - template for config
-config=${4:-'demo-config.yaml'}
+genesis=${3:-'demo-genesis.yaml'}
 
 # cardano-cli - location of cardano-cli 
-cli=${5:-"cardano-cli"}
+cli=${4:-$clipath}
+
+# config - template for config
+config=${5:-'demo-config.yaml'}
 
 
 echo "Using these options:"
 echo "  Folder: $folder"
 echo "  Nodes: $nodes"
 echo "  Genesis: $genesis"
-echo "  Config: $config"
 echo "  CLI: $cli"
+echo "  Config: $config"
 echo
 
-if [ ! $folder ]; then
+if [[ ! $folder ]]; then
   echo  "Error: Please supply a fully qualified folder name as the first parameter"
-  exit
+  exit 1
 fi
 
-if [ -d $folder ]; then
+if [[ -d $folder ]]; then
   echo  "Error: $folder already exists"
-  exit
+  exit 1
 fi
 
-if [ $nodes == 0 ]; then
+if [[ $nodes == 0 ]]; then
   echo "Error: Please supply a node count as the second parameter"
-  exit
+  exit 1
 fi
 
-if [ $genesis ]; then
-  if [ ! -e $genesis ]; then
+if [[ $genesis ]]; then
+  if [[ ! -e $genesis ]]; then
     echo "Error: Cannot read genesis from $genesis"
-    exit
+    exit 1
   fi
 else
   echo "Error: Please supply a genesis file as the third parameter"
-  exit
+  exit 1
+fi
+
+if [[ $cli ]]; then
+  if [[ ! -e $cli ]]; then
+    echo "Error: could not read cardano-cli at $cli"
+    exit 1
+  fi
+else
+  echo "Error: Please supply a cardano-cli executable as the fourth parameter"
+  exit 1
 fi
 
 # we have all the info we need at this point
 
 echo "Building Jormungandr"
 echo
-cd ..
-cargo build
-cd tools  
+# cd ..
+# cargo build
+# cd demo  
 echo
 echo "Build finished"
 echo
@@ -76,42 +88,56 @@ cp -rv template/* $folder/
 echo
 
 echo "Copying in binaries"
-cp $cli $folder/bin/
+cp $cli $folder/bin/cardano-cli
 cp ../target/debug/jormungandr $folder/bin/
 echo
 
-echo "Copying in genesis"
-cp $genesis $folder/genesis.json
-echo
 
 echo "Making Configs for $nodes nodes"
 counter=0
 cp $config $folder'/config.yaml'
 
-while [ $counter -lt $nodes ]; do
+keys_for_genesis=''
+
+pushd .
+
+while [[ $counter -lt $nodes ]]; do
+  node_folder=$folder/nodes/$(($counter+1))
+  mkdir -p $node_folder
+  cd $node_folder
     
-    node_folder=$folder/nodes/$(($counter+1))
-    mkdir -p $node_folder
-    cd $node_folder
-    
-		let counter=$counter+1			
+  let counter=$counter+1
 		
-		stub='node_'$counter
-		privkey=$node_folder/$stub'.xprv'
-		pubkey=$node_folder/$stub'.xpub'
+  stub='node_'$counter
+  privkey=$node_folder/$stub'.xprv'
+  pubkey=$node_folder/$stub'.xpub'
 
-		echo "Making keys for $stub"
-		echo "PRIV = $privkey"
-    echo "PUB  = $pubkey"
+  echo "Making keys for $stub"
+  echo "PRIV = $privkey"
+  echo "PUB  = $pubkey"
 
-    $cli debug generate-xprv $privkey
-    $cli debug xprv-to-xpub $privkey $pubkey
+  ../../bin/cardano-cli debug generate-xprv $privkey
+  ../../bin/cardano-cli debug xprv-to-xpub $privkey $pubkey
 
-		echo "Adding key to global config"
-		pubkeycontents=`cat $pubkey` 
-		echo "    - $pubkeycontents" >> $folder'/config.yaml'
-		echo
+  echo "Adding key to global config"
+  pubkeycontents=`cat $pubkey`
+  echo "    - $pubkeycontents" >> $folder'/config.yaml'
+  echo
+    
+  # put the private key
+  privkeycontents=`cat $privkey`
+  keys_for_genesis+='"'$privkeycontents'":1,'
 done  
+
+
+popd
+
+# remove trailing comma from list of keys
+trimmed_keys=${keys_for_genesis::-1}
+
+echo "Copying in genesis and patching in keys"
+cat $genesis  | jq -r '.bootStakeholders |= {'$trimmed_keys'}' > $folder/genesis.json
+echo
 
 echo "Setup is complete"
 echo 

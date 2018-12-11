@@ -1,34 +1,41 @@
-#/bin/bash
+#!/usr/bin/env bash
 
 # Start Nodes - Amias Channer
 #
-# optional param - node count , amount of nodes to start
-
-node_count=${1:-'0'}
+# optional param - node min , lowest numberd node to start, defaults to 0
+# optional param - node max , highest numberd node to start , defaults to all 
 
 nodes_found=`ls -1 ../nodes/ | wc -l`
 
-if [ $node_count -gt $nodes_found ]; then
-  echo "Cannot start $node_count nodes , only $nodes_found are configured"
-  exit
+node_min=${1:-'1'}
+node_max=${2:-$nodes_found}
+
+
+if [[ $node_max -gt $nodes_found ]]; then
+  echo "Cannot start $node_max nodes , only $nodes_found are configured"
+  exit 1
 fi
 
-if [ $node_count == 0 ]; then
-  echo "Starting all nodes"
-  node_count=$nodes_found
-fi
+node_count=$((1 + $node_max - $node_min)) 
 
 echo "Starting $node_count Nodes"		
-counter=0
-while [ $counter -lt $node_count ]; do
-			let counter=$counter+1		
-	
-			echo "Starting Node $counter"
-			stub='node_'$counter
-			path='../nodes/'$counter'/'
-			log=$stub'.log'
-			cd $path
-			
-			screen -dmS $stub ../../bin/jormungandr --genesis-config ../../genesis.json --config ../../config.yaml --secret $stub.xprv  -vvv
-			cd ../../bin		
+
+for counter in $(seq $node_min $node_max)	
+do
+  echo "Starting Node $counter"
+
+  stub='node_'$counter
+  log=$stub'.log'
+  path='../nodes/'$counter'/'
+  command="../../bin/jormungandr --genesis-config ../../genesis.json --config ../../config.yaml --secret $stub.xprv --storage . -vvv "
+
+  cd $path
+  if [[ -e launch_cmd ]]; then
+    echo "$stub is already running"
+  else
+    echo $command > launch_cmd
+    echo "Running: $command"
+    screen -dmS $stub -t $stub $command 2> $stub.log 1> $stub-error.log
+  fi
+  cd ../../bin
 done
