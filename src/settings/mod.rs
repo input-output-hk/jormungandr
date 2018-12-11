@@ -119,10 +119,15 @@ impl Settings {
 }
 
 fn generate_network(command_arguments: &CommandArguments, config: &config::Config) -> network::Configuration {
-    let peer_nodes = command_arguments.ntt_connect.iter().cloned()
-        .map(|addr| {
-            Peer::new(Connection::Tcp(addr), Protocol::Ntt)
-        }).collect();
+    let mut peer_nodes_map: HashMap<_,_> =
+          config.legacy_peers.as_ref().map_or(HashMap::new(),|addresses|
+             addresses.iter().cloned().map(|addr| (addr,Protocol::Ntt)).collect()
+          );
+    peer_nodes_map.extend(command_arguments.ntt_connect.iter().cloned()
+        .map(|addr| (addr,Protocol::Ntt)));
+    let peer_nodes = peer_nodes_map.iter().map(|(&addr,proto)|
+          Peer::new(Connection::Tcp(addr), proto.clone())
+        ).collect();
 
     let mut listen_map: HashMap<_,_> =
         config.legacy_listen.as_ref().map_or(HashMap::new(),|addresses|

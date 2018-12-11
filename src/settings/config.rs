@@ -9,6 +9,7 @@ pub struct Config {
     pub genesis: Option<Genesis>,
     pub legacy_listen: Option<Vec<SocketAddr>>,
     pub grpc_listen: Option<Vec<SocketAddr>>,
+    pub legacy_peers: Option<Vec<SocketAddr>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
