@@ -84,8 +84,15 @@ impl Settings {
             }
         };
 
+        let storage = match command_arguments.storage.as_ref() {
+              Some(path) => path.clone(),
+              None => config.storage
+                .expect("Storage is needed for persistently saving the blocks of the blockchain")
+                .clone(),
+        };
+
         Settings {
-            storage: command_arguments.storage.clone(),
+            storage: storage,
             genesis_data_config: command_arguments.genesis_data_config.clone(),
             secret_config: command_arguments.secret.clone().or(config.secret_file).expect("secret config unspecified"),
             network: network,
