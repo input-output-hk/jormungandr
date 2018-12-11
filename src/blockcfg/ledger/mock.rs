@@ -79,7 +79,7 @@ impl ledger::Ledger for Ledger {
     type Error = Error;
 
     fn diff_transaction(&self, transaction: &Self::Transaction) -> Result<Self::Diff, Self::Error> {
-        use crate::ledger::generic::Transaction;
+        use crate::blockcfg::ledger::generic::Transaction;
 
         let mut diff = Diff::new();
         let id = transaction.id();
