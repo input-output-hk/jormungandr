@@ -1,4 +1,4 @@
-use blockcfg::chain::cardano::Block;
+use blockcfg::{BlockConfig, Cardano, chain::cardano::Block};
 use blockchain::BlockchainR;
 use settings::network::{Connection, Peer};
 
@@ -18,7 +18,7 @@ fn deserialize_block(block: cardano_proto::Block) -> Result<Block, cbor_event::E
     cbor_event::de::RawCbor::from(&block.content).deserialize_complete()
 }
 
-pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
+pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR<Cardano>) {
     info!("connecting to bootstrap peer {}", peer.connection);
 
     let mut make_client = client::Connect::new(
@@ -64,7 +64,7 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
 }
 
 fn bootstrap_to_tip(
-    blockchain: BlockchainR,
+    blockchain: BlockchainR<Cardano>,
     stream: Streaming<cardano_proto::Block, tower_h2::RecvBody>,
 ) -> impl Future<Item = (), Error = ()> {
     // Take a write lock of the blockchain for the duration
