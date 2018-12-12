@@ -34,6 +34,7 @@ generic-array = "^0.9"
 bytes = "0.4"
 prost = "0.4"
 prost-derive = "0.4"
+tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
 tower-util = { git = "https://github.com/tower-rs/tower" }
 cardano         = { path = "cardano-deps/cardano" }

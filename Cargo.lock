@@ -510,6 +510,7 @@ dependencies = [
  "storage-units 0.1.0",
  "structopt 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
  "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=7ffa9d3b610d1c84559a811d08a25bd1670babed)",
  "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=7ffa9d3b610d1c84559a811d08a25bd1670babed)",
  "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",

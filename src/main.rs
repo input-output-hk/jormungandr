@@ -29,8 +29,10 @@ extern crate generic_array;
 extern crate prost;
 #[macro_use]
 extern crate prost_derive;
+extern crate tokio_connect;
 extern crate tower_h2;
 extern crate tower_grpc;
+extern crate tower_util;
 
 #[cfg(test)]
 #[cfg(feature = "with-bench")]
@@ -134,7 +136,7 @@ fn main() {
     // init storage
     // create blockchain storage
 
-    // ** TODO **
+    network::bootstrap(&settings.network, blockchain.clone());
 
     // # Active phase
     //

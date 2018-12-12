@@ -14,6 +14,7 @@ use std::{
     time::Duration,
 };
 
+use blockchain::BlockchainR;
 use protocol::{
     Message,
     MessageType,
@@ -22,7 +23,7 @@ use protocol::{
 };
 use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkBroadcastMsg};
 use utils::task::{TaskMessageBox};
-use settings::network::{self, Peer, Listen};
+use settings::network::{Connection, Configuration, Listen, Peer, Protocol};
 use blockcfg::{Cardano};
 
 use futures::prelude::*;
@@ -41,7 +42,7 @@ pub struct Channels {
 
 /// Identifier to manage subscriptions
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SubscriptionId(network::Connection, LightWeightConnectionId);
+pub struct SubscriptionId(Connection, LightWeightConnectionId);
 
 /// all the subscriptions
 pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>;
@@ -50,7 +51,7 @@ pub type SubscriptionsR = Arc<RwLock<Subscriptions>>;
 
 #[derive(Clone)]
 pub struct GlobalState {
-    pub config:   Arc<network::Configuration>,
+    pub config:   Arc<Configuration>,
     pub channels: Channels,
     pub subscriptions: SubscriptionsR,
 }
@@ -58,7 +59,7 @@ pub struct GlobalState {
 #[derive(Clone)]
 pub struct ConnectionState {
     /// The global network configuration
-    pub global_network_configuration: Arc<network::Configuration>,
+    pub global_network_configuration: Arc<Configuration>,
 
     /// the channels the connection will need to have to
     /// send messages too
@@ -70,9 +71,9 @@ pub struct ConnectionState {
     pub subscriptions: SubscriptionsR,
 
     /// the local (to the task) connection details
-    pub connection: network::Connection,
+    pub connection: Connection,
 
-    pub connected: Option<network::Connection>,
+    pub connected: Option<Connection>,
 }
 impl ConnectionState {
     fn new_listen(global: &GlobalState, listen: Listen) -> Self {
@@ -95,13 +96,13 @@ impl ConnectionState {
             connected: None,
         }
     }
-    fn connected(mut self, connection: network::Connection) -> Self {
+    fn connected(mut self, connection: Connection) -> Self {
         self.connected = Some(connection);
         self
     }
 }
 
-pub fn run( config: network::Configuration
+pub fn run( config: Configuration
           , subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<Cardano>>
           , channels: Channels
           )
@@ -181,36 +182,53 @@ pub fn run( config: network::Configuration
     // open the port for listening/accepting other peers to connect too
     let listener = stream::iter_ok(config.listen_to).for_each(move |listen| {
         match listen.connection {
-            network::Connection::Tcp(sockaddr) => {
+            Connection::Tcp(sockaddr) => {
                 match listen.protocol {
-                    network::Protocol::Ntt => ntt::run_listen_socket(
+                    Protocol::Ntt => ntt::run_listen_socket(
                         sockaddr, listen, state_listener.clone()
                     ),
-                    network::Protocol::Grpc => grpc::run_listen_socket(
+                    Protocol::Grpc => grpc::run_listen_socket(
                         sockaddr, listen, state_listener.clone()
                     ),
                 }
             }
             #[cfg(unix)]
-            network::Connection::Unix(_path) => unimplemented!()
+            Connection::Unix(_path) => unimplemented!()
         }
     });
 
     let state_connection = state.clone();
     let connections = stream::iter_ok(config.peer_nodes).for_each(move |peer| {
         match peer.connection {
-            network::Connection::Tcp(sockaddr) => {
+            Connection::Tcp(sockaddr) => {
                 match peer.protocol {
-                    network::Protocol::Ntt => ntt::run_connect_socket(
+                    Protocol::Ntt => ntt::run_connect_socket(
                         sockaddr, peer, state_connection.clone()
                     ),
-                    network::Protocol::Grpc => unimplemented!(),
+                    Protocol::Grpc => unimplemented!(),
                 }
             },
             #[cfg(unix)]
-            network::Connection::Unix(_path) => unimplemented!()
+            Connection::Unix(_path) => unimplemented!()
         }
     });
 
     tokio::run(subscriptions.join3(connections, listener).map(|_| ()));
+}
+
+pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
+    let grpc_peer = config.peer_nodes
+        .iter()
+        .filter(|peer| {
+            peer.protocol == Protocol::Grpc
+        })
+        .next();
+    match grpc_peer {
+        Some(peer) => {
+            grpc::bootstrap_from_peer(peer.clone(), blockchain)
+        }
+        None => {
+            warn!("no gRPC peers specified, skipping bootstrap");
+        }
+    }
 }
