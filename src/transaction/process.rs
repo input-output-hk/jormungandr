@@ -4,13 +4,18 @@ use std::sync::{
 };
 
 use crate::transaction::{TPool};
-use crate::blockcfg::{BlockConfig, ledger::{Transaction}};
+use crate::blockcfg::{BlockConfig, ledger::{Ledger, Transaction}};
+use crate::blockchain::BlockchainR;
 use crate::intercom::{TransactionMsg};
 
 #[allow(type_alias_bounds)]
 pub type TPoolR<B: BlockConfig> = Arc<RwLock<TPool<B::TransactionId, B::Transaction>>>;
 
-pub fn transaction_task<B>(tpool: TPoolR<B>, r: Receiver<TransactionMsg<B>>)
+pub fn transaction_task<B>(
+    blockchain: BlockchainR<B>,
+    tpool: TPoolR<B>,
+    r: Receiver<TransactionMsg<B>>
+)
     -> !
     where B: BlockConfig
         , B::TransactionId: Eq+std::hash::Hash
@@ -26,8 +31,21 @@ pub fn transaction_task<B>(tpool: TPoolR<B>, r: Receiver<TransactionMsg<B>>)
             }
             TransactionMsg::SendTransaction(txs) => {
                 let mut tpool = tpool.write().unwrap();
-                for tx in txs {
-                    tpool.add(tx.id(), tx);
+                let blockchain = blockchain.read().unwrap();
+                let chain_state = &blockchain.chain_state;
+
+                // this will test the transaction is valid within the current
+                // state of the local state of the global ledger.
+                //
+                // We don't want to keep transactions that are not valid within
+                // our state of the blockchain as we will not be able to add them
+                // in the blockchain.
+                if let Err(error) = chain_state.diff(txs.iter()) {
+                    // TODO
+                } else {
+                    for tx in txs {
+                        tpool.add(tx.id(), tx);
+                    }
                 }
             }
         }

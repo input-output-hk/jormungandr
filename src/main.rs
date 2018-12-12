@@ -160,7 +160,8 @@ fn main() {
 
     let transaction_task = {
         let tpool = tpool.clone();
-        tasks.task_create_with_inputs("transaction", move |r| transaction_task(tpool, r))
+        let blockchain = blockchain.clone();
+        tasks.task_create_with_inputs("transaction", move |r| transaction_task(blockchain, tpool, r))
     };
 
     let block_task = {
