@@ -1,5 +1,5 @@
 use super::{ConnectionState, GlobalState};
-use blockcfg::{Block, BlockHash, Header};
+use blockcfg::{chain::cardano::{Block, BlockHash, Header}};
 use intercom::{self, ClientMsg};
 use settings::network::Listen;
 

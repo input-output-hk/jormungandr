@@ -1,4 +1,4 @@
-use blockcfg::{Block, Header, BlockHash, Transaction, TransactionId};
+use blockcfg::{BlockConfig};
 
 use std::fmt::{self, Debug, Display};
 
@@ -62,36 +62,36 @@ pub type BoxStreamReply<T> = Box<dyn StreamReply<T> + Send>;
 
 /// ...
 #[derive(Debug)]
-pub enum TransactionMsg {
-    ProposeTransaction(Vec<TransactionId>, BoxReply<bool>),
-    SendTransaction(Vec<Transaction>),
+pub enum TransactionMsg<B: BlockConfig> {
+    ProposeTransaction(Vec<B::TransactionId>, BoxReply<bool>),
+    SendTransaction(Vec<B::Transaction>),
 }
 
 /// Client messages, mainly requests from connected peers to our node.
 /// Fetching the block headers, the block, the tip
 #[derive(Debug)]
-pub enum ClientMsg {
-    GetBlockTip(BoxReply<Header>),
-    GetBlockHeaders(Vec<BlockHash>, BlockHash, BoxReply<Vec<Header>>),
-    GetBlocks(BlockHash, BlockHash, BoxStreamReply<Block>),
-    StreamBlocksToTip(Vec<BlockHash>, BoxStreamReply<Block>),
+pub enum ClientMsg<B: BlockConfig> {
+    GetBlockTip(BoxReply<B::BlockHeader>),
+    GetBlockHeaders(Vec<B::BlockHash>, B::BlockHash, BoxReply<Vec<B::BlockHeader>>),
+    GetBlocks(B::BlockHash, B::BlockHash, BoxStreamReply<B::Block>),
+    StreamBlocksToTip(Vec<B::BlockHash>, BoxStreamReply<B::Block>),
 }
 
 /// General Block Message for the block task
 #[derive(Debug, Clone)]
-pub enum BlockMsg {
+pub enum BlockMsg<B: BlockConfig> {
     /// A untrusted Block has been received from the network task
-    NetworkBlock(Block),
+    NetworkBlock(B::Block),
     /// A trusted Block has been received from the leadership task
-    LeadershipBlock(Block),
+    LeadershipBlock(B::Block),
 }
 
 /// Message to broadcast to all the connected peers (that requested to subscribe
 /// to our blockchain).
 ///
 #[derive(Debug, Clone)]
-pub enum NetworkBroadcastMsg {
-    Block(Block),
-    Header(Header),
-    Transaction(Transaction),
+pub enum NetworkBroadcastMsg<B: BlockConfig> {
+    Block(B::Block),
+    Header(B::BlockHeader),
+    Transaction(B::Transaction),
 }
