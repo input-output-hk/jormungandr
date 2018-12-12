@@ -3,7 +3,6 @@ extern crate clap;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
-#[macro_use]
 extern crate log;
 extern crate rand;
 extern crate env_logger;
@@ -39,6 +38,9 @@ extern crate tower_util;
 extern crate test;
 #[cfg(test)]
 extern crate quickcheck;
+
+#[macro_use]
+mod log_wapper;
 
 pub mod clock;
 pub mod blockchain;
