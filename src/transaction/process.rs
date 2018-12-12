@@ -41,6 +41,7 @@ pub fn transaction_task<B>(
                 // our state of the blockchain as we will not be able to add them
                 // in the blockchain.
                 if let Err(error) = chain_state.diff(txs.iter()) {
+                    warn!("Received transactions where some are invalid, {}", error);
                     // TODO
                 } else {
                     for tx in txs {
