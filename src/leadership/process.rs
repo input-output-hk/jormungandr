@@ -56,7 +56,7 @@ fn make_block(secret: &NodeSecret, my_pub: &hdwallet::XPub, previous_hash: &Head
     }
 }
 
-pub fn leadership_task(secret: NodeSecret, selection: Arc<Selection>, tpool: TPoolR<Cardano>, blockchain: BlockchainR, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg<Cardano>>)
+pub fn leadership_task(secret: NodeSecret, selection: Arc<Selection>, tpool: TPoolR<Cardano>, blockchain: BlockchainR<Cardano>, clock: clock::Clock, block_task: TaskMessageBox<BlockMsg<Cardano>>)
 {
     let my_pub = secret.public.block_publickey;
     loop {

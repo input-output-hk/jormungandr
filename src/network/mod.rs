@@ -216,7 +216,7 @@ pub fn run( config: Configuration
     tokio::run(subscriptions.join3(connections, listener).map(|_| ()));
 }
 
-pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
+pub fn bootstrap(config: &Configuration, blockchain: BlockchainR<Cardano>) {
     let grpc_peer = config.peer_nodes
         .iter()
         .filter(|peer| {

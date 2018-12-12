@@ -54,14 +54,12 @@ pub mod blockcfg;
 pub mod client;
 pub mod secure;
 
-use std::path::{PathBuf};
-
 use settings::Settings;
 //use state::State;
 use transaction::{TPool, transaction_task};
 use blockchain::{Blockchain, BlockchainR};
 use utils::task::{Tasks};
-use intercom::{BlockMsg, TransactionMsg};
+use intercom::{BlockMsg};
 use leadership::{leadership_task, Selection};
 use futures::sync::mpsc::UnboundedSender;
 use intercom::NetworkBroadcastMsg;
@@ -74,14 +72,14 @@ use cardano_storage::{StorageConfig};
 
 pub type TODO = u32;
 
-fn block_task(blockchain: BlockchainR, selection: Arc<Selection>, clock: clock::Clock, r: Receiver<BlockMsg<Cardano>>, network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>) {
+fn block_task(blockchain: BlockchainR<Cardano>, selection: Arc<Selection>, clock: clock::Clock, r: Receiver<BlockMsg<Cardano>>, network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>) {
     loop {
         let bquery = r.recv().unwrap();
         blockchain::process(&blockchain, &selection, bquery, &network_broadcast);
     }
 }
 
-fn startup_info(gd: &GenesisData, blockchain: &Blockchain, settings: &Settings) {
+fn startup_info(gd: &GenesisData, blockchain: &Blockchain<Cardano>, settings: &Settings) {
     println!("protocol magic={} prev={} k={} tip={}", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth, blockchain.get_tip());
     println!("consensus: {:?}", settings.consensus);
 }
@@ -162,7 +160,8 @@ fn main() {
 
     let transaction_task = {
         let tpool = tpool.clone();
-        tasks.task_create_with_inputs("transaction", move |r| transaction_task(tpool, r))
+        let blockchain = blockchain.clone();
+        tasks.task_create_with_inputs("transaction", move |r| transaction_task(blockchain, tpool, r))
     };
 
     let block_task = {

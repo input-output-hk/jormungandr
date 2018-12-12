@@ -6,32 +6,32 @@ use cardano_storage::{tag, Storage, blob, block_read};
 use cardano_storage::chain_state::restore_chain_state;
 use cardano::block::{ChainState};
 
-use crate::blockcfg::chain::cardano::{GenesisData, Block, BlockHash};
+use crate::blockcfg::{chain::cardano::{GenesisData, Block, BlockHash}, BlockConfig, Cardano};
 
 #[allow(dead_code)]
-pub struct Blockchain {
-    genesis_data: GenesisData,
+pub struct Blockchain<B: BlockConfig> {
+    pub genesis_data: B::GenesisData,
 
     /// the storage for the overall blockchains (blocks)
-    storage: Storage,
+    pub storage: Storage,
 
     /// The current chain state corresponding to our tip.
-    chain_state: ChainState,
+    pub chain_state: B::Ledger,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
     /// parent.
     ///
     /// FIXME: need some way to GC unconnected blocks after a while.
-    unconnected_blocks: BTreeMap<BlockHash, BTreeMap<BlockHash, Block>>,
+    pub unconnected_blocks: BTreeMap<B::BlockHash, BTreeMap<B::BlockHash, B::Block>>,
 }
 
-pub type BlockchainR = Arc<RwLock<Blockchain>>;
+pub type BlockchainR<B> = Arc<RwLock<Blockchain<B>>>;
 
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG : &'static str = "tip";
 
-impl Blockchain {
+impl Blockchain<Cardano> {
     pub fn from_storage(genesis_data: GenesisData, storage_config: &StorageConfig) -> Self {
         let storage = Storage::init(storage_config).unwrap();
         let tip = tag::read_hash(&storage, &LOCAL_BLOCKCHAIN_TIP_TAG).unwrap_or(genesis_data.genesis_prev.clone());
