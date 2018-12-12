@@ -36,6 +36,13 @@ pub struct CommandArguments {
     #[structopt(long = "legacy-connect", parse(try_from_str))]
     pub ntt_connect: Vec<SocketAddr>,
 
+    /// List of the nodes to connect to using the grpc protocol.
+    /// These are the nodes we know we need to connect to and
+    /// start processing blocks, transactions and participate with.
+    ///
+    #[structopt(long = "grpc-connect", parse(try_from_str))]
+    pub grpc_connect: Vec<SocketAddr>,
+
     /// Work without the leadership task.
     #[structopt(long = "without-leadership")]
     pub without_leadership: bool,
