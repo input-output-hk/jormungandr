@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use clock::global::GlobalTime;
 use std::time::Duration;
-use std::sync::{Arc, RwLock};
 
 /// The current transaction pool, containing all the transaction
 /// that are potential for being inserted into a block, and their

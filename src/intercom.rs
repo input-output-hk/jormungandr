@@ -63,7 +63,7 @@ pub type BoxStreamReply<T> = Box<dyn StreamReply<T> + Send>;
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg<B: BlockConfig> {
-    ProposeTransaction(Vec<B::TransactionId>, BoxReply<bool>),
+    ProposeTransaction(Vec<B::TransactionId>, BoxReply<Vec<bool>>),
     SendTransaction(Vec<B::Transaction>),
 }
 
