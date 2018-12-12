@@ -48,6 +48,6 @@ impl ledger::Transaction for Transaction {
     type Output = cardano::tx::TxOut;
     type Id = TransactionId;
     fn id(&self) -> Self::Id {
-        self.id()
+        self.tx.id()
     }
 }
