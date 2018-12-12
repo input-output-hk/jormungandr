@@ -34,7 +34,7 @@ impl ledger::HasTransaction for Block {
     fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>
     {
         match self {
-            cardano::block::Block::BoundaryBlock(ref bb) => {
+            cardano::block::Block::BoundaryBlock(ref _bb) => {
                 [].iter()
             }
             cardano::block::Block::MainBlock(ref mb) => {
