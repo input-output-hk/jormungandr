@@ -20,6 +20,8 @@ pub trait BlockConfig {
     type Transaction: ledger::Transaction<Id = Self::TransactionId>;
     type TransactionId;
     type GenesisData;
+
+    type Ledger: ledger::Ledger<Transaction = Self::Transaction>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -31,4 +33,5 @@ impl BlockConfig for Cardano {
     type Transaction = chain::cardano::Transaction;
     type TransactionId = chain::cardano::TransactionId;
     type GenesisData = chain::cardano::GenesisData;
+    type Ledger = cardano::block::verify_chain::ChainState;
 }
