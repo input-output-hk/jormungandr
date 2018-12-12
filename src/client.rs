@@ -4,7 +4,7 @@ use cardano_storage::{block_read, iter};
 use intercom::*;
 use std::sync::{mpsc::Receiver};
 
-pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg<Cardano>>) {
+pub fn client_task(blockchain: BlockchainR<Cardano>, r: Receiver<ClientMsg<Cardano>>) {
     loop {
         let query = r.recv().unwrap();
         debug!("client query received: {:?}", query);
@@ -43,7 +43,7 @@ where
 }
 
 fn handle_get_block_tip(
-    blockchain: &BlockchainR
+    blockchain: &BlockchainR<Cardano>
 ) -> Result<chain::cardano::Header, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
@@ -61,7 +61,7 @@ fn handle_get_block_tip(
 const MAX_HEADERS: usize = 2000;
 
 fn handle_get_block_headers(
-    blockchain: &BlockchainR,
+    blockchain: &BlockchainR<Cardano>,
     checkpoints: Vec<chain::cardano::BlockHash>,
     to: chain::cardano::BlockHash
 ) -> Result<Vec<chain::cardano::Header>, Error> {
@@ -114,7 +114,7 @@ fn handle_get_block_headers(
 }
 
 fn handle_get_blocks(
-    blockchain: &BlockchainR,
+    blockchain: &BlockchainR<Cardano>,
     from: chain::cardano::BlockHash,
     to: chain::cardano::BlockHash,
     mut reply: BoxStreamReply<chain::cardano::Block>
@@ -132,7 +132,7 @@ fn handle_get_blocks(
 }
 
 fn handle_stream_blocks_to_tip(
-    blockchain: &BlockchainR,
+    blockchain: &BlockchainR<Cardano>,
     mut from: Vec<chain::cardano::BlockHash>,
     mut reply: BoxStreamReply<chain::cardano::Block>,
 ) -> Result<BoxStreamReply<chain::cardano::Block>, StreamReplyError<chain::cardano::Block>> {

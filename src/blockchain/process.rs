@@ -7,7 +7,7 @@ use crate::blockcfg::{Cardano};
 use super::chain;
 
 pub fn process(
-    blockchain: &chain::BlockchainR,
+    blockchain: &chain::BlockchainR<Cardano>,
     selection: &Arc<selection::Selection>,
     bquery: BlockMsg<Cardano>,
     network_broadcast: &UnboundedSender<NetworkBroadcastMsg<Cardano>>
