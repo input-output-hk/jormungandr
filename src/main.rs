@@ -56,7 +56,7 @@ use std::path::{PathBuf};
 
 use settings::Settings;
 //use state::State;
-use transaction::{TPool};
+use transaction::{TPool, transaction_task};
 use blockchain::{Blockchain, BlockchainR};
 use utils::task::{Tasks};
 use intercom::{BlockMsg, TransactionMsg};
@@ -71,14 +71,6 @@ use std::sync::{Arc, RwLock, mpsc::Receiver};
 use cardano_storage::{StorageConfig};
 
 pub type TODO = u32;
-pub type TPoolR = Arc<RwLock<TPool<TransactionId, Transaction>>>;
-
-fn transaction_task(_tpool: TPoolR, r: Receiver<TransactionMsg<Cardano>>) {
-    loop {
-        let tquery = r.recv().unwrap();
-        println!("transaction received: {:?}", tquery)
-    }
-}
 
 fn block_task(blockchain: BlockchainR, selection: Arc<Selection>, clock: clock::Clock, r: Receiver<BlockMsg<Cardano>>, network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>) {
     loop {
