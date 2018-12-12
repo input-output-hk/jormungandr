@@ -10,6 +10,7 @@ pub struct Config {
     pub legacy_listen: Option<Vec<SocketAddr>>,
     pub grpc_listen: Option<Vec<SocketAddr>>,
     pub legacy_peers: Option<Vec<SocketAddr>>,
+    pub grpc_peers: Option<Vec<SocketAddr>>,
     pub storage: Option<PathBuf>,
 }
 

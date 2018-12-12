@@ -1,14 +1,9 @@
-use super::{ConnectionState, GlobalState};
+use network::{ConnectionState, GlobalState};
 use blockcfg::{chain::cardano::{Block, BlockHash, Header}};
 use intercom::{self, ClientMsg};
 use settings::network::Listen;
 
-use cardano as cardano_api;
-use cardano::{
-    block::EpochSlotId,
-    hash,
-    util::try_from_slice::TryFromSlice,
-};
+use cardano::block::{BlockDate, EpochSlotId};
 
 use futures::prelude::*;
 use futures::{
@@ -27,62 +22,35 @@ use tower_h2::Server;
 
 use std::net::SocketAddr;
 
-// Included generated protobuf/gRPC code,
-// namespaced into submodules corresponding to the .proto package names
+use super::cardano as cardano_proto;
+use super::iohk::jormungandr as gen;
+use super::try_hashes_from_protobuf;
 
-mod cardano {
-    include!(concat!(env!("OUT_DIR"), "/cardano.rs"));
-}
-
-#[allow(dead_code)]
-mod iohk {
-    pub mod jormungandr {
-        include!(concat!(env!("OUT_DIR"), "/iohk.jormungandr.rs"));
-    }
-}
-
-use self::iohk::jormungandr as gen;
-
-// Conversions between library data types and their generated
-// protobuf counterparts
-
-fn try_hash_from_protobuf(
-    pb: &cardano::HeaderHash
-) -> Result<BlockHash, hash::Error> {
-    BlockHash::try_from_slice(&pb.hash)
-}
-
-fn try_hashes_from_protobuf(
-    pb: &cardano::HeaderHashes
-) -> Result<Vec<BlockHash>, hash::Error> {
-    pb.hashes.iter().map(|v| BlockHash::try_from_slice(&v[..])).collect()
-}
-
-impl From<BlockHash> for cardano::HeaderHash {
+impl From<BlockHash> for cardano_proto::HeaderHash {
     fn from(hash: BlockHash) -> Self {
-        cardano::HeaderHash {
+        cardano_proto::HeaderHash {
             hash: hash.as_ref().into(),
         }
     }
 }
 
-impl From<Block> for cardano::Block {
+impl From<Block> for cardano_proto::Block {
     fn from(block: Block) -> Self {
         let content = cbor!(&block).unwrap();
-        cardano::Block {
+        cardano_proto::Block {
             content,
         }
     }
 }
 
-impl From<cardano_api::block::BlockDate> for cardano::BlockDate {
-    fn from(date: cardano_api::block::BlockDate) -> Self {
-        use self::cardano_api::block::BlockDate::*;
+impl From<BlockDate> for cardano_proto::BlockDate {
+    fn from(date: BlockDate) -> Self {
+        use self::BlockDate::*;
         let (epoch, slot) = match date {
             Boundary(epoch) => (epoch, 0),
             Normal(EpochSlotId { epoch, slotid }) => (epoch, slotid as u32),
         };
-        cardano::BlockDate {
+        cardano_proto::BlockDate {
             epoch,
             slot
         }
@@ -169,7 +137,7 @@ struct StreamReplyHandle<T> {
 }
 
 impl intercom::StreamReply<Block>
-    for StreamReplyHandle<cardano::Block>
+    for StreamReplyHandle<cardano_proto::Block>
 {
     fn send(&mut self, item: Block) {
         self.sender.unbounded_send(Ok(item.into())).unwrap()
@@ -202,15 +170,15 @@ struct GrpcServer {
 
 impl gen::server::Node for GrpcServer {
     type TipFuture = GrpcFuture<gen::TipResponse>;
-    type GetBlocksStream = GrpcResponseStream<cardano::Block>;
+    type GetBlocksStream = GrpcResponseStream<cardano_proto::Block>;
     type GetBlocksFuture = FutureResult<
         Response<Self::GetBlocksStream>, tower_grpc::Error
     >;
-    type GetHeadersStream = GrpcResponseStream<cardano::Header>;
+    type GetHeadersStream = GrpcResponseStream<cardano_proto::Header>;
     type GetHeadersFuture = FutureResult<
         Response<Self::GetHeadersStream>, tower_grpc::Error
     >;
-    type StreamBlocksToTipStream = GrpcResponseStream<cardano::Block>;
+    type StreamBlocksToTipStream = GrpcResponseStream<cardano_proto::Block>;
     type StreamBlocksToTipFuture = FutureResult<
         Response<Self::StreamBlocksToTipStream>, tower_grpc::Error
     >;
@@ -241,7 +209,7 @@ impl gen::server::Node for GrpcServer {
 
     fn stream_blocks_to_tip(
         &mut self,
-        from: Request<cardano::HeaderHashes>,
+        from: Request<cardano_proto::HeaderHashes>,
     ) -> Self::StreamBlocksToTipFuture {
         let hashes = match try_hashes_from_protobuf(from.get_ref()) {
             Ok(hashes) => hashes,
