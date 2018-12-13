@@ -92,10 +92,14 @@ impl tokio_connect::Connect for Peer {
     type Future = ConnectFuture;
 
     fn connect(&self) -> Self::Future {
-        if let Connection::Tcp(addr) = self.connection {
-            TcpStream::connect(&addr)
-        } else {
-            unimplemented!()
+        match &self.connection {
+            Connection::Tcp(ref addr) => {
+                TcpStream::connect(addr)
+            }
+            #[cfg(unix)]
+            Connection::Unix(_) => {
+                unimplemented!()
+            }
         }
     }
 }
