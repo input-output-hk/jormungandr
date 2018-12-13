@@ -67,7 +67,6 @@ fn bootstrap_to_tip(
     blockchain: BlockchainR<Cardano>,
     stream: Streaming<cardano_proto::Block, tower_h2::RecvBody>,
 ) -> impl Future<Item = (), Error = ()> {
-    // Take a write lock of the blockchain for the duration
     stream
         .fold(blockchain, |blockchain, block| {
             let block = match deserialize_block(block) {
