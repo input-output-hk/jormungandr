@@ -28,6 +28,22 @@ impl<TransId: std::hash::Hash+std::cmp::Eq, Trans> TPool<TransId, Trans> {
         ()
     }
 
+    /// remove the `count` transaction from the pool
+    pub fn collect(&mut self, count: usize) -> Vec<Trans> {
+        let content = std::mem::replace(&mut self.content, HashMap::new());
+        let mut selected = Vec::with_capacity(count);
+
+        for (index, kv) in content.into_iter().enumerate() {
+            if index < count {
+                selected.push((kv.1).1);
+            } else {
+                self.content.insert(kv.0, kv.1);
+            }
+        }
+
+        selected
+    }
+
     /// Garbage collect all the necessary transactions
     pub fn gc(&mut self, expired_duration: Duration) -> usize {
         let orig_length = self.content.len();

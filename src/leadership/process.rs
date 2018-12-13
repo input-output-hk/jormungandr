@@ -63,28 +63,30 @@ pub fn leadership_task(secret: NodeSecret, selection: Arc<Selection>, tpool: TPo
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
         debug!("slept for {:?} epoch {} slot {} next_slot {:?}", d, epoch.0, idx, next_time);
-        let len = {
-            let t = tpool.read().unwrap();
-            (*t).content.len()
-        };
 
         // TODO in the future "current stake" will be one of the parameter
         let leader = selection::test(&selection, idx as u64);
 
         if leader == IsLeading::Yes {
+            // if we have the leadership to create a new block we can require the lock
+            // on the blockchain as we are not expecting to be _blocked_ while creating
+            // the block.
+            let b = blockchain.read().unwrap();
+
+            // collect up to `nr_transactions` from the transaction pool.
+            //
+            let transactions =
+                tpool.write().unwrap().collect(b.chain_state.nr_transactions as usize);
             // create a new block to broadcast:
             // * get the transactions to put in the transactions
             // * mint the block
             // * sign it
-            let latest_tip = {
-                let b = blockchain.read().unwrap();
-                b.get_tip()
-            };
+            let latest_tip = b.get_tip();
 
-            info!("leadership create tpool={} transactions tip={}", len, latest_tip);
+            info!("leadership create tpool={} transactions tip={}", transactions.len(), latest_tip);
 
             let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
-            let block = make_block(&secret, &my_pub, &latest_tip, epochslot, &[]);
+            let block = make_block(&secret, &my_pub, &latest_tip, epochslot, &transactions);
 
             block_task.send_to(
                 BlockMsg::LeadershipBlock(
