@@ -4,6 +4,8 @@
 use crate::blockcfg::chain;
 use crate::blockcfg::ledger;
 
+use cardano::hdwallet as crypto;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SlotId(u32, u32);
 
@@ -19,12 +21,12 @@ impl Hash {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PublicKey(u64);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PrivateKey(u64);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Signature(u64);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PublicKey(crypto::XPub);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrivateKey(crypto::XPrv);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Signature(crypto::Signature<()>);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Value(u64);
@@ -35,7 +37,7 @@ pub struct Address(Hash);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Input(pub TransactionId, pub u32);
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedInput {
     pub input: Input,
     pub signature: Signature,
@@ -53,13 +55,13 @@ pub struct Output(pub Address, pub Value);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TransactionId(Hash);
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
     pub inputs: Vec<SignedInput>,
     pub outputs: Vec<Output>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     pub slot_id: SlotId,
     pub parent_hash: Hash,
@@ -87,7 +89,7 @@ impl ledger::Transaction for Transaction {
     type Output = Output;
     type Id = TransactionId;
     fn id(&self) -> Self::Id {
-        TransactionId(Hash::hash(self))
+        unimplemented!()
     }
 }
 
@@ -138,19 +140,37 @@ impl Arbitrary for TransactionId {
 #[cfg(test)]
 impl Arbitrary for Signature {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Signature(Arbitrary::arbitrary(g))
+        let mut signature = [0;crypto::SIGNATURE_SIZE];
+        for byte in signature.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
+        }
+        Signature(
+            crypto::Signature::from_bytes(signature)
+        )
     }
 }
 #[cfg(test)]
 impl Arbitrary for PrivateKey {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        PrivateKey(Arbitrary::arbitrary(g))
+        let mut xprv = [0;crypto::XPRV_SIZE];
+        for byte in xprv.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
+        }
+        PrivateKey(
+            crypto::XPrv::normalize_bytes(xprv)
+        )
     }
 }
 #[cfg(test)]
 impl Arbitrary for PublicKey {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        PublicKey(Arbitrary::arbitrary(g))
+        let mut xpub = [0;crypto::XPUB_SIZE];
+        for byte in xpub.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
+        }
+        PublicKey(
+            crypto::XPub::from_bytes(xpub)
+        )
     }
 }
 #[cfg(test)]

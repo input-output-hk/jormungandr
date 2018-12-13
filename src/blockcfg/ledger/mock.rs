@@ -88,7 +88,7 @@ impl ledger::Ledger for Ledger {
         for input in transaction.inputs.iter() {
             if let Some(output) = self.unspent_outputs.get(&input.input) {
                 if ! input.verify(&output) {
-                    return Err(Error::InvalidSignature(input.input, *output, input.signature));
+                    return Err(Error::InvalidSignature(input.input, *output, input.signature.clone()));
                 }
                 if let Some(output) = diff.spent_outputs.insert(input.input, *output) {
                     return Err(Error::DoubleSpend(input.input, output));
