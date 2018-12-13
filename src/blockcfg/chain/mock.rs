@@ -21,6 +21,9 @@ impl AsRef<[u8]> for Hash {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
+/// TODO: this public key contains the chain code in it too
+/// during serialisation this might not be needed
+/// removing it will save 32bytes of non necessary storage (github #93)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PublicKey(crypto::XPub);
 impl AsRef<[u8]> for PublicKey {
@@ -124,7 +127,9 @@ impl ledger::Transaction for Transaction {
             #[cfg(nightly)] // TODO: github's issue #91
             bytes.extend(signed_input.input.1.to_be_bytes().as_ref());
             bytes.extend(signed_input.signature.as_ref());
-            bytes.extend(signed_input.public_key.as_ref());
+            // remove the chain code from the serialisation
+            // see github #93
+            bytes.extend(signed_input.public_key.as_ref()[..32].as_ref());
         }
         for output in self.outputs.iter() {
             bytes.extend(output.0.as_ref());
