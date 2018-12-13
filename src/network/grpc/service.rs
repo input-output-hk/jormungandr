@@ -17,6 +17,7 @@ use tokio::{
 use tower_grpc::{
     self,
     Request, Response,
+    Status, Code,
 };
 use tower_h2::Server;
 
@@ -68,16 +69,19 @@ impl<T> Future for GrpcFuture<T> {
     fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Error> {
         let item = match self.receiver.poll() {
             Err(oneshot::Canceled) => {
-                warn!("gRPC response canceled by the client task");
-                return Err(tower_grpc::Error::from(()));
+                warn!("gRPC response canceled by the client request task");
+                let status = Status::with_code(Code::Aborted);
+                return Err(tower_grpc::Error::Grpc(status));
             }
             Ok(Async::NotReady) => {
                 return Ok(Async::NotReady);
             }
             Ok(Async::Ready(Err(e))) => {
                 warn!("error processing gRPC request: {:?}", e);
-                // FIXME: send a more informative error
-                return Err(tower_grpc::Error::from(()));
+                // Not forwarding error message to the client
+                // because it may expose arbitrary internal information.
+                let status = Status::with_code(Code::Unknown);
+                return Err(tower_grpc::Error::Grpc(status));
             }
             Ok(Async::Ready(Ok(item))) => item,
         };
@@ -125,8 +129,13 @@ impl<T> Stream for GrpcResponseStream<T> {
         match try_ready!(self.receiver.poll()) {
             None => Ok(Async::Ready(None)),
             Some(Ok(item)) => Ok(Async::Ready(Some(item))),
-            // FIXME: send a more informative error
-            Some(Err(_)) => Err(tower_grpc::Error::from(())),
+            Some(Err(e)) => {
+                warn!("error while streaming response: {:?}", e);
+                // Not forwarding error message to the client
+                // because it may expose arbitrary internal information.
+                let status = Status::with_code(Code::Unknown);
+                Err(tower_grpc::Error::Grpc(status))
+            }
         }
     }
 }
@@ -214,8 +223,12 @@ impl gen::server::Node for GrpcServer {
         let hashes = match try_hashes_from_protobuf(from.get_ref()) {
             Ok(hashes) => hashes,
             Err(e) => {
-                // FIXME: send a more detailed error
-                return future::err(tower_grpc::Error::from(()));
+                info!("failed to decode hashes from StreamBlocksToTip request: {:?}", e);
+                let status = Status::with_code_and_message(
+                    Code::InvalidArgument,
+                    format!("{}", e),
+                );
+                return future::err(tower_grpc::Error::Grpc(status));
             }
         };
         let (handle, stream) = server_streaming_response_channel();
