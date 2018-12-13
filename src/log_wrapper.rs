@@ -1,5 +1,4 @@
 pub use log::log;
-use log::Level;
 
 /// Logs a message at the debug level.
 ///
