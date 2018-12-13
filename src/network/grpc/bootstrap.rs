@@ -1,4 +1,4 @@
-use blockcfg::{BlockConfig, Cardano, chain::cardano::Block};
+use blockcfg::{Cardano, chain::cardano::Block};
 use blockchain::BlockchainR;
 use settings::network::{Connection, Peer};
 

@@ -1,5 +1,3 @@
-use std::sync;
-
 pub struct State {
     // utxo, protocol parameters
 }

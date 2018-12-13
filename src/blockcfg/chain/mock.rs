@@ -42,7 +42,7 @@ pub struct SignedInput {
     pub public_key: PublicKey,
 }
 impl SignedInput {
-    pub fn verify(&self, output: &Output) -> bool {
+    pub fn verify(&self, _output: &Output) -> bool {
         unimplemented!()
     }
 }

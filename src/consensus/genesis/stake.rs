@@ -3,9 +3,8 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
 // TODO: PublicKey
-use super::super::super::secure::crypto::{vrf, kes, sign};
+use super::super::super::secure::crypto::{vrf, sign};
 use super::super::super::secure::crypto::sign::SignatureAlgorithm;
-use super::super::super::secure::crypto::kes::KES;
 
 use super::identity::StakerIdentity;
 
@@ -61,8 +60,8 @@ impl StakeTotal {
 }
 
 pub struct StakerPublicInformation {
-    vrf_key: vrf::PublicKey,
-    block_key: Option<<sign::Ed25519 as SignatureAlgorithm>::PublicKey>,
+    _vrf_key: vrf::PublicKey,
+    _block_key: Option<<sign::Ed25519 as SignatureAlgorithm>::PublicKey>,
 }
 
 /// Distribution of stake according to identities
@@ -102,5 +101,5 @@ impl StakeDistribution {
 
 /// Delegation of stake from one staker to another
 pub struct StakeDelegation {
-    map: BTreeMap<StakerIdentity, StakerIdentity>,
+    _map: BTreeMap<StakerIdentity, StakerIdentity>,
 }

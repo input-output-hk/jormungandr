@@ -8,7 +8,7 @@ use super::chain;
 
 pub fn process(
     blockchain: &chain::BlockchainR<Cardano>,
-    selection: &Arc<selection::Selection>,
+    _selection: &Arc<selection::Selection>,
     bquery: BlockMsg<Cardano>,
     network_broadcast: &UnboundedSender<NetworkBroadcastMsg<Cardano>>
 )

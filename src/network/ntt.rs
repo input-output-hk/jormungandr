@@ -1,5 +1,5 @@
 use super::{GlobalState, ConnectionState, SubscriptionId};
-use blockcfg::{chain, Cardano, BlockConfig};
+use blockcfg::chain;
 use intercom::{ClientMsg, TransactionMsg, Error, Reply, StreamReply};
 use protocol::{
     Inbound, Message, Connection,
@@ -193,7 +193,7 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
         debug!("[{}] inbound: {:#?}", state.connection, inbound);
         match inbound {
             Inbound::NothingExciting => {}
-            Inbound::Block(lwcid, block) => {
+            Inbound::Block(lwcid, _block) => {
                 info!("received block from {}{:?}", state.connection, lwcid);
             }
             Inbound::NewConnection(lwcid) => {
@@ -246,10 +246,7 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
                     )
                 );
             }
-            Inbound::SendTransaction(lwcid, tx) => {
-                let handler = Box::new(
-                    ReplyHandle::new(lwcid, sink_tx.clone())
-                );
+            Inbound::SendTransaction(_lwcid, tx) => {
                 state.channels.transaction_box.send_to(
                     TransactionMsg::SendTransaction(
                         vec![tx]
@@ -267,7 +264,7 @@ fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
 
     let sink = sink.subscribe(false)
         .map_err(|err| error!("cannot subscribe {:#?}", err))
-        .and_then(move |(lwcid, sink)| {
+        .and_then(move |(_lwcid, sink)| {
             sink_rx.fold(sink, |sink, outbound| {
                 // debug!("[{}] outbound: {:?}", state.connection, outbound);
                 match outbound {
