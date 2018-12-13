@@ -1,4 +1,6 @@
-pub use log::log;
+pub mod logger;
+
+pub use slog::Level;
 
 /// Logs a message at the debug level.
 ///
@@ -10,7 +12,7 @@ pub use log::log;
 /// ```
 #[macro_export]
 macro_rules!debug  {
-    ($($arg:tt)*) => { log!(level: log::Level::Debug, $($arg)*)};
+    ($($arg:tt)*) => { log!(level: slog::Level::Debug, $($arg)*)};
 }
 
 /// Logs a message at the error level.
@@ -23,7 +25,7 @@ macro_rules!debug  {
 /// ```
 #[macro_export]
 macro_rules!error {
-    ($($arg:tt)*) => { log!(level: log::Level::Error, $($arg)*)};
+    ($($arg:tt)*) => { log!(level: slog::Level::Error, $($arg)*)};
 }
 
 /// Logs a message at the info level.
@@ -36,7 +38,7 @@ macro_rules!error {
 /// ```
 #[macro_export]
 macro_rules!info{
-    ($($arg:tt)*) => { log!(level: log::Level::Info, $($arg)*)};
+    ($($arg:tt)*) => { log!(level: slog::Level::Info, $($arg)*)};
 }
 
 /// Logs a message at the trace level.
@@ -49,7 +51,7 @@ macro_rules!info{
 /// ```
 #[macro_export]
 macro_rules!trace {
-    ($($arg:tt)*) => { log!(level: log::Level::Trace, $($arg)*)};
+    ($($arg:tt)*) => { log!(level: slog::Level::Trace, $($arg)*)};
 }
 
 /// Logs a message at the warn level.
@@ -62,7 +64,7 @@ macro_rules!trace {
 /// ```
 #[macro_export]
 macro_rules!warn {
-    ($($arg:tt)*) => { log!(level: log::Level::Warn, $($arg)*)};
+    ($($arg:tt)*) => { log!(level: slog::Level::Warning, $($arg)*)};
 }
 
 /// Standard logging macros.
@@ -77,14 +79,27 @@ macro_rules!warn {
 #[macro_export]
 macro_rules!log {
     (level: $lvl:expr, $msg:expr ; $($name:ident = $val:expr),+ ) =>
-        { log::log!($lvl, concat!(concat!($("[",stringify!($name),"= {:#?} ]",)+),$msg),$($val),+ ) };
+        {
+        $crate::log_wrapper::logger::with_logger(|l|
+            slog::slog_log!(l
+              $lvl,
+              "",
+              concat!(concat!($("[",stringify!($name),"= {:#?}]",)+),$msg),
+              $($val),+ ))
+        };
     (level: $lvl:expr, $msg:expr, $($params:expr),+ ; $($name:ident = $val:expr),+ ) =>
-        { log::log!($lvl, concat!(concat!($("[",stringify!($name),"=","{:?}","]",)+),$msg), $($val,)+ $($params,)* ) };
+        {
+        $crate::log_wrapper::logger::with_logger(|l|
+            slog::slog_log!(l,
+               $lvl,
+               "",
+               concat!(concat!($("[",stringify!($name),"= {:?}]",)+),$msg), $($val,)+ $($params,)* ));
+        };
     (level: $lvl:expr, $msg:expr, $($params:expr),+) =>
-        { log::log!($lvl, $msg, $( $params,)+ ) };
+        { $crate::log_wrapper::logger::with_logger(|l| slog::log!(l, $lvl, "", $msg, $( $params,)+ ));
+        };
     (level: $lvl:expr, $msg:expr, $($params:expr),+ , ) =>
-        { log::log!($lvl, $msg, $( $params,)+ ) };
+        { $crate::log_wrapper::logger::with_logger(|l| slog::log!(l, $lvl, "", $msg, $( $params,)+ )); };
     (level: $lvl:expr, $msg:expr) =>
-        { log::log!($lvl, $msg ) };
-
+        { $crate::log_wrapper::logger::with_logger(|l| slog::log!(l, $lvl, "", $msg)); };
 }
