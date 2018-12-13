@@ -6,7 +6,6 @@ extern crate serde_yaml;
 extern crate log;
 extern crate rand;
 extern crate env_logger;
-#[macro_use]
 extern crate structopt;
 
 extern crate cardano;
@@ -74,7 +73,13 @@ use cardano_storage::{StorageConfig};
 
 pub type TODO = u32;
 
-fn block_task(blockchain: BlockchainR<Cardano>, selection: Arc<Selection>, clock: clock::Clock, r: Receiver<BlockMsg<Cardano>>, network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>) {
+fn block_task(
+    blockchain: BlockchainR<Cardano>,
+    selection: Arc<Selection>,
+    _clock: clock::Clock, // FIXME: use it or lose it
+    r: Receiver<BlockMsg<Cardano>>,
+    network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>,
+) {
     loop {
         let bquery = r.recv().unwrap();
         blockchain::process(&blockchain, &selection, bquery, &network_broadcast);

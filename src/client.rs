@@ -1,4 +1,4 @@
-use blockcfg::{chain, BlockConfig, Cardano};
+use blockcfg::{chain, Cardano};
 use blockchain::{BlockchainR};
 use cardano_storage::{block_read, iter};
 use intercom::*;
@@ -72,7 +72,7 @@ fn handle_get_block_headers(
     let mut checkpoints = checkpoints.iter().filter_map(
         |checkpoint|
         match block_read(blockchain.get_storage(), &checkpoint) {
-            Err(err) => None,
+            Err(_) => None,
             Ok(rblk) => Some((rblk.decode().unwrap().get_header().get_blockdate(), checkpoint))
         }
     ).collect::<Vec<_>>();
@@ -93,7 +93,7 @@ fn handle_get_block_headers(
         for x in iter::Iter::new(&blockchain.get_storage(), from.clone(), to).unwrap() {
             match x {
                 Err(err2) => { err = Some(err2); },
-                Ok((rblk, blk)) => {
+                Ok((_, blk)) => {
                     if skip {
                         skip = false;
                     } else {
