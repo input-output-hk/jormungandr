@@ -40,7 +40,7 @@ extern crate test;
 extern crate quickcheck;
 
 #[macro_use]
-mod log_wapper;
+mod log_wrapper;
 
 pub mod clock;
 pub mod blockchain;
