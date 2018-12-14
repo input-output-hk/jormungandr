@@ -45,12 +45,25 @@ pub struct Value(u64);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Address(Hash);
+impl Address {
+    pub fn new(public_key: &PublicKey) -> Self {
+        Address(Hash::hash_bytes(public_key.as_ref()))
+    }
+}
 impl AsRef<[u8]> for Address {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Input(pub TransactionId, pub u32);
+pub struct Input {
+    pub transaction_id: TransactionId,
+    pub output_index: u32,
+}
+impl Input {
+    pub fn new(transaction_id: TransactionId, output_index: u32) -> Self {
+        Input { transaction_id, output_index }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedInput {
@@ -123,9 +136,9 @@ impl ledger::Transaction for Transaction {
         use std::convert::AsRef;
         let mut bytes : Vec<u8> = vec![];
         for signed_input in self.inputs.iter() {
-            bytes.extend(signed_input.input.0.as_ref());
+            bytes.extend(signed_input.input.transaction_id.as_ref());
             #[cfg(nightly)] // TODO: github's issue #91
-            bytes.extend(signed_input.input.1.to_be_bytes().as_ref());
+            bytes.extend(signed_input.input.output_index.to_be_bytes().as_ref());
             bytes.extend(signed_input.signature.as_ref());
             // remove the chain code from the serialisation
             // see github #93
@@ -227,7 +240,10 @@ impl Arbitrary for PublicKey {
 #[cfg(test)]
 impl Arbitrary for Input {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Input(Arbitrary::arbitrary(g),Arbitrary::arbitrary(g))
+        Input {
+            transaction_id: Arbitrary::arbitrary(g),
+            output_index: Arbitrary::arbitrary(g)
+        }
     }
 }
 #[cfg(test)]
