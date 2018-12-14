@@ -102,7 +102,7 @@ impl ledger::Ledger for Ledger {
         // 2. prepare to add the new outputs
         for (index, output) in transaction.outputs.iter().enumerate() {
             diff.new_unspent_outputs.insert(
-                Input(id, index as u32),
+                Input::new(id, index as u32),
                 *output
             );
         }
