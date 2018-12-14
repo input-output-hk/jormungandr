@@ -1,4 +1,7 @@
 use std::{net::SocketAddr, fmt, str, time::Duration};
+#[cfg(unix)]
+use std::path::{PathBuf};
+
 
 /// configuration for the connection type.
 /// Either to listen from, or to connect too.
