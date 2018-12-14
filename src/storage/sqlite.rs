@@ -20,7 +20,7 @@ impl<B> SQLiteBlockStore<B> where B: Block {
             hash blob primary key,
             depth integer not null,
             parent blob not null,
-            fast_delta blob,
+            fast_distance blob,
             fast_hash blob,
             block blob not null
           );
@@ -75,14 +75,14 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
     {
         self.do_change();
         let mut statement = self.connection.prepare(
-            "insert into Blocks (hash, depth, parent, fast_delta, fast_hash, block) values(?, ?, ?, ?, ?, ?)").unwrap();
+            "insert into Blocks (hash, depth, parent, fast_distance, fast_hash, block) values(?, ?, ?, ?, ?, ?)").unwrap();
         statement.bind(1, &block_info.block_hash[..]).unwrap();
         statement.bind(2, block_info.depth as i64).unwrap();
-        let parent = block_info.back_links.iter().find(|x| x.delta == 1).unwrap();
+        let parent = block_info.back_links.iter().find(|x| x.distance == 1).unwrap();
         statement.bind(3, &parent.block_hash[..]).unwrap();
-        match block_info.back_links.iter().find(|x| x.delta != 1) {
+        match block_info.back_links.iter().find(|x| x.distance != 1) {
             Some(fast_link) => {
-                statement.bind(4, fast_link.delta as i64).unwrap();
+                statement.bind(4, fast_link.distance as i64).unwrap();
                 statement.bind(5, &fast_link.block_hash[..]).unwrap();
             },
             None => {
@@ -103,7 +103,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
     fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo, Error>
     {
         let mut statement = self.connection.prepare(
-            "select depth, parent, fast_delta, fast_hash from Blocks where hash = ?").unwrap();
+            "select depth, parent, fast_distance, fast_hash from Blocks where hash = ?").unwrap();
         statement.bind(1, &block_hash[..]).unwrap();
 
         match statement.next().unwrap() {
@@ -113,15 +113,15 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
 
                 let mut back_links = vec![
                     BackLink {
-                        delta: 1,
+                        distance: 1,
                         block_hash: blob_to_hash(statement.read::<Vec<u8>>(1).unwrap())
                     }
                 ];
 
-                let fast_delta = statement.read::<i64>(2).unwrap() as u64;
-                if fast_delta != 0 {
+                let fast_distance = statement.read::<i64>(2).unwrap() as u64;
+                if fast_distance != 0 {
                     back_links.push(BackLink {
-                        delta: fast_delta,
+                        distance: fast_distance,
                         block_hash: blob_to_hash(statement.read::<Vec<u8>>(3).unwrap())
                     });
                 }
