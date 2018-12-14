@@ -1,5 +1,5 @@
 use super::{GlobalState, ConnectionState, SubscriptionId};
-use blockcfg::chain;
+use blockcfg::cardano;
 use intercom::{ClientMsg, TransactionMsg, Error, Reply, StreamReply};
 use protocol::{
     Inbound, Message, Connection,
@@ -61,8 +61,8 @@ impl Drop for ReplyHandle {
     }
 }
 
-impl Reply<Vec<chain::cardano::Header>> for ReplyHandle {
-    fn reply_ok(&mut self, item: Vec<chain::cardano::Header>) {
+impl Reply<Vec<cardano::Header>> for ReplyHandle {
+    fn reply_ok(&mut self, item: Vec<cardano::Header>) {
         self.send_message(
             protocol::Message::BlockHeaders(
                 self.identifier,
@@ -83,8 +83,8 @@ impl Reply<Vec<chain::cardano::Header>> for ReplyHandle {
     }
 }
 
-impl Reply<chain::cardano::Header> for ReplyHandle {
-    fn reply_ok(&mut self, item: chain::cardano::Header) {
+impl Reply<cardano::Header> for ReplyHandle {
+    fn reply_ok(&mut self, item: cardano::Header) {
         self.send_message(
             protocol::Message::BlockHeaders(
                 self.identifier,
@@ -105,8 +105,8 @@ impl Reply<chain::cardano::Header> for ReplyHandle {
     }
 }
 
-impl StreamReply<chain::cardano::Block> for ReplyHandle {
-    fn send(&mut self, blk: chain::cardano::Block) {
+impl StreamReply<cardano::Block> for ReplyHandle {
+    fn send(&mut self, blk: cardano::Block) {
         self.send_message(
             protocol::Message::Block(
                 self.identifier,

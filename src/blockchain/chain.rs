@@ -5,7 +5,9 @@ use cardano_storage::StorageConfig;
 use cardano_storage::{tag, Storage, blob, block_read};
 use cardano_storage::chain_state::restore_chain_state;
 
-use crate::blockcfg::{chain::cardano::{GenesisData, Block, BlockHash}, BlockConfig, Cardano};
+use crate::blockcfg::{
+    cardano::{GenesisData, Block, BlockHash, Cardano}, BlockConfig
+};
 
 #[allow(dead_code)]
 pub struct Blockchain<B: BlockConfig> {

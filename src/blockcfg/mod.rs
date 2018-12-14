@@ -10,32 +10,29 @@
 
 use crate::secure;
 
-pub mod chain;
-pub mod ledger;
-pub mod update;
-// TODO: pub mod consensus;
+pub mod generic;
 
-mod cardano;
-
-pub use self::cardano::{Cardano};
+pub mod cardano;
+#[cfg(test)]
+pub mod mock;
 
 pub trait BlockConfig {
-    type Block: chain::Block<Hash = Self::BlockHash>
-        + ledger::HasTransaction<Transaction = Self::Transaction>;
+    type Block: generic::Block<Hash = Self::BlockHash>
+        + generic::HasTransaction<Transaction = Self::Transaction>;
     type BlockHash;
     type BlockHeader;
-    type Transaction: ledger::Transaction<Id = Self::TransactionId>;
+    type Transaction: generic::Transaction<Id = Self::TransactionId>;
     type TransactionId;
     type GenesisData;
 
-    type Ledger: ledger::Ledger<Transaction = Self::Transaction>
-        + update::Update<Block = Self::Block>;
+    type Ledger: generic::Ledger<Transaction = Self::Transaction>
+        + generic::Update<Block = Self::Block>;
 
     fn make_block(
         secret_key: &secure::NodeSecret,
         public_key: &secure::NodePublic,
         ledger: &Self::Ledger,
-        block_id: <Self::Block as chain::Block>::Id,
+        block_id: <Self::Block as generic::Block>::Id,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block;
 }

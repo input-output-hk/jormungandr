@@ -1,4 +1,4 @@
-use blockcfg::{chain, Cardano};
+use blockcfg::{cardano, cardano::Cardano};
 use blockchain::{BlockchainR};
 use cardano_storage::{block_read, iter};
 use intercom::*;
@@ -44,7 +44,7 @@ where
 
 fn handle_get_block_tip(
     blockchain: &BlockchainR<Cardano>
-) -> Result<chain::cardano::Header, Error> {
+) -> Result<cardano::Header, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
     match block_read(blockchain.get_storage(), &tip) {
@@ -62,9 +62,9 @@ const MAX_HEADERS: usize = 2000;
 
 fn handle_get_block_headers(
     blockchain: &BlockchainR<Cardano>,
-    checkpoints: Vec<chain::cardano::BlockHash>,
-    to: chain::cardano::BlockHash
-) -> Result<Vec<chain::cardano::Header>, Error> {
+    checkpoints: Vec<cardano::BlockHash>,
+    to: cardano::BlockHash
+) -> Result<Vec<cardano::Header>, Error> {
     let blockchain = blockchain.read().unwrap();
 
     /* Filter out the checkpoints that don't exist and sort them by
@@ -115,10 +115,10 @@ fn handle_get_block_headers(
 
 fn handle_get_blocks(
     blockchain: &BlockchainR<Cardano>,
-    from: chain::cardano::BlockHash,
-    to: chain::cardano::BlockHash,
-    mut reply: BoxStreamReply<chain::cardano::Block>
-) -> Result<BoxStreamReply<chain::cardano::Block>, StreamReplyError<chain::cardano::Block>> {
+    from: cardano::BlockHash,
+    to: cardano::BlockHash,
+    mut reply: BoxStreamReply<cardano::Block>
+) -> Result<BoxStreamReply<cardano::Block>, StreamReplyError<cardano::Block>> {
     let blockchain = blockchain.read().unwrap();
 
     for x in iter::Iter::new(&blockchain.get_storage(), from, to).unwrap() {
@@ -133,9 +133,9 @@ fn handle_get_blocks(
 
 fn handle_stream_blocks_to_tip(
     blockchain: &BlockchainR<Cardano>,
-    mut from: Vec<chain::cardano::BlockHash>,
-    mut reply: BoxStreamReply<chain::cardano::Block>,
-) -> Result<BoxStreamReply<chain::cardano::Block>, StreamReplyError<chain::cardano::Block>> {
+    mut from: Vec<cardano::BlockHash>,
+    mut reply: BoxStreamReply<cardano::Block>,
+) -> Result<BoxStreamReply<cardano::Block>, StreamReplyError<cardano::Block>> {
     let blockchain = blockchain.read().unwrap();
 
     // FIXME: handle multiple from addresses

@@ -24,7 +24,7 @@ use protocol::{
 use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkBroadcastMsg};
 use utils::task::{TaskMessageBox};
 use settings::network::{Connection, Configuration, Listen, Peer, Protocol};
-use blockcfg::{Cardano};
+use blockcfg::cardano::{Cardano};
 
 use futures::prelude::*;
 use futures::{
