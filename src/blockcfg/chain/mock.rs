@@ -4,38 +4,55 @@
 use crate::blockcfg::chain;
 use crate::blockcfg::ledger;
 
+use cardano::hdwallet as crypto;
+use cardano::hash;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SlotId(u32, u32);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Hash(u64);
+pub struct Hash(hash::Blake2b256);
 impl Hash {
-    pub fn hash<T: std::hash::Hash>(t: T) -> Self {
-      use std::collections::hash_map::DefaultHasher;
-      use std::hash::{Hasher};
-      let mut s = DefaultHasher::new();
-      t.hash(&mut s);
-      Hash(s.finish())
+    pub fn hash_bytes(bytes: &[u8]) -> Self {
+        Hash(hash::Blake2b256::new(bytes))
     }
 }
+impl AsRef<[u8]> for Hash {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PublicKey(u64);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PrivateKey(u64);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Signature(u64);
+/// TODO: this public key contains the chain code in it too
+/// during serialisation this might not be needed
+/// removing it will save 32bytes of non necessary storage (github #93)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PublicKey(crypto::XPub);
+impl AsRef<[u8]> for PublicKey {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrivateKey(crypto::XPrv);
+impl AsRef<[u8]> for PrivateKey {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Signature(crypto::Signature<()>);
+impl AsRef<[u8]> for Signature {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Value(u64);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Address(Hash);
+impl AsRef<[u8]> for Address {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Input(pub TransactionId, pub u32);
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedInput {
     pub input: Input,
     pub signature: Signature,
@@ -52,14 +69,17 @@ pub struct Output(pub Address, pub Value);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TransactionId(Hash);
+impl AsRef<[u8]> for TransactionId {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
     pub inputs: Vec<SignedInput>,
     pub outputs: Vec<Output>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     pub slot_id: SlotId,
     pub parent_hash: Hash,
@@ -67,6 +87,19 @@ pub struct Block {
     pub transactions: Vec<Transaction>,
 }
 
+impl PrivateKey {
+    pub fn public(&self) -> PublicKey {
+        PublicKey(self.0.public())
+    }
+    pub fn sign(&self, data: &[u8]) -> Signature {
+        Signature(self.0.sign(data))
+    }
+}
+impl PublicKey {
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
+        self.0.verify(message, &signature.0)
+    }
+}
 impl chain::Block for Block {
     type Hash = Hash;
     type Id = SlotId;
@@ -87,7 +120,23 @@ impl ledger::Transaction for Transaction {
     type Output = Output;
     type Id = TransactionId;
     fn id(&self) -> Self::Id {
-        TransactionId(Hash::hash(self))
+        use std::convert::AsRef;
+        let mut bytes : Vec<u8> = vec![];
+        for signed_input in self.inputs.iter() {
+            bytes.extend(signed_input.input.0.as_ref());
+            #[cfg(nightly)] // TODO: github's issue #91
+            bytes.extend(signed_input.input.1.to_be_bytes().as_ref());
+            bytes.extend(signed_input.signature.as_ref());
+            // remove the chain code from the serialisation
+            // see github #93
+            bytes.extend(signed_input.public_key.as_ref()[..32].as_ref());
+        }
+        for output in self.outputs.iter() {
+            bytes.extend(output.0.as_ref());
+            #[cfg(nightly)] // TODO: github's issue #91
+            bytes.extend(output.1.to_be_bytes().as_ref());
+        }
+        TransactionId(Hash::hash_bytes(&bytes))
     }
 }
 
@@ -106,8 +155,12 @@ impl Arbitrary for SlotId {
 #[cfg(test)]
 impl Arbitrary for Hash {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let mut bytes = [0u8;16];
+        for byte in bytes.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
+        }
         Hash(
-            Arbitrary::arbitrary(g)
+            hash::Blake2b256::new(&bytes)
         )
     }
 }
@@ -138,19 +191,37 @@ impl Arbitrary for TransactionId {
 #[cfg(test)]
 impl Arbitrary for Signature {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Signature(Arbitrary::arbitrary(g))
+        let mut signature = [0;crypto::SIGNATURE_SIZE];
+        for byte in signature.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
+        }
+        Signature(
+            crypto::Signature::from_bytes(signature)
+        )
     }
 }
 #[cfg(test)]
 impl Arbitrary for PrivateKey {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        PrivateKey(Arbitrary::arbitrary(g))
+        let mut xprv = [0;crypto::XPRV_SIZE];
+        for byte in xprv.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
+        }
+        PrivateKey(
+            crypto::XPrv::normalize_bytes(xprv)
+        )
     }
 }
 #[cfg(test)]
 impl Arbitrary for PublicKey {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        PublicKey(Arbitrary::arbitrary(g))
+        let mut xpub = [0;crypto::XPUB_SIZE];
+        for byte in xpub.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
+        }
+        PublicKey(
+            crypto::XPub::from_bytes(xpub)
+        )
     }
 }
 #[cfg(test)]
