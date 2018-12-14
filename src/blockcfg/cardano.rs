@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap};
 
 use crate::secure;
-use crate::blockcfg::{generic, BlockConfig};
+use crate::blockcfg::{property, BlockConfig};
 
 use cardano;
 use cardano::{
@@ -19,7 +19,7 @@ pub type BlockHash = cardano::block::HeaderHash;
 pub type Block = cardano::block::Block;
 pub type Header = cardano::block::BlockHeader;
 
-impl generic::Block for Block {
+impl property::Block for Block {
     type Hash = BlockHash;
     type Id = cardano::block::BlockDate;
 
@@ -37,7 +37,7 @@ impl generic::Block for Block {
         self.get_header().get_slotid()
     }
 }
-impl generic::HasTransaction for Block {
+impl property::HasTransaction for Block {
     type Transaction = Transaction;
 
     fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>
@@ -52,7 +52,7 @@ impl generic::HasTransaction for Block {
         }
     }
 }
-impl generic::Transaction for Transaction {
+impl property::Transaction for Transaction {
     type Input  = cardano::tx::TxoPointer;
     type Output = cardano::tx::TxOut;
     type Id = TransactionId;
@@ -80,7 +80,7 @@ impl Diff {
     }
 }
 
-impl generic::Ledger for ChainState {
+impl property::Ledger for ChainState {
     type Transaction = Transaction;
     type Diff = Diff;
     type Error = Error;
@@ -163,10 +163,10 @@ impl BlockConfig for Cardano {
         secret_key: &secure::NodeSecret,
         public_key: &secure::NodePublic,
         ledger: &Self::Ledger,
-        block_id: <Self::Block as generic::Block>::Id,
+        block_id: <Self::Block as property::Block>::Id,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block {
-        use crate::blockcfg::generic::Update;
+        use crate::blockcfg::property::Update;
         use cardano::block::*;
         use cardano::hash::Blake2b256;
         use cbor_event::Value;
@@ -225,14 +225,14 @@ impl BlockConfig for Cardano {
     }
 }
 
-impl generic::Update for ChainState {
+impl property::Update for ChainState {
     type Block = Block;
 
     fn number_transactions_per_block(&self) -> usize {
         self.nr_transactions as usize
     }
 
-    fn get_tip(&self) -> <Self::Block as generic::Block>::Hash {
+    fn get_tip(&self) -> <Self::Block as property::Block>::Hash {
         self.last_block.clone()
     }
 }

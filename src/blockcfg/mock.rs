@@ -4,7 +4,7 @@
 
 use std::collections::{HashMap};
 
-use crate::blockcfg::generic;
+use crate::blockcfg::property;
 
 use cardano::hdwallet as crypto;
 use cardano::hash;
@@ -115,14 +115,14 @@ impl PublicKey {
         self.0.verify(message, &signature.0)
     }
 }
-impl generic::Block for Block {
+impl property::Block for Block {
     type Hash = Hash;
     type Id = SlotId;
 
     fn parent_hash(&self) -> &Self::Hash { &self.parent_hash }
     fn slot_id(&self) -> Self::Id { self.slot_id }
 }
-impl generic::HasTransaction for Block {
+impl property::HasTransaction for Block {
     type Transaction = Transaction;
 
     fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>
@@ -130,7 +130,7 @@ impl generic::HasTransaction for Block {
         self.transactions.iter()
     }
 }
-impl generic::Transaction for Transaction {
+impl property::Transaction for Transaction {
     type Input  = Input;
     type Output = Output;
     type Id = TransactionId;
@@ -226,13 +226,13 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
-impl generic::Ledger for Ledger {
+impl property::Ledger for Ledger {
     type Transaction = Transaction;
     type Diff = Diff;
     type Error = Error;
 
     fn diff_transaction(&self, transaction: &Self::Transaction) -> Result<Self::Diff, Self::Error> {
-        use crate::blockcfg::generic::Transaction;
+        use crate::blockcfg::property::Transaction;
 
         let mut diff = Diff::new();
         let id = transaction.id();

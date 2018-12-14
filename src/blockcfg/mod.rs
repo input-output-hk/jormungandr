@@ -10,29 +10,29 @@
 
 use crate::secure;
 
-pub mod generic;
+pub mod property;
 
 pub mod cardano;
 #[cfg(test)]
 pub mod mock;
 
 pub trait BlockConfig {
-    type Block: generic::Block<Hash = Self::BlockHash>
-        + generic::HasTransaction<Transaction = Self::Transaction>;
+    type Block: property::Block<Hash = Self::BlockHash>
+        + property::HasTransaction<Transaction = Self::Transaction>;
     type BlockHash;
     type BlockHeader;
-    type Transaction: generic::Transaction<Id = Self::TransactionId>;
+    type Transaction: property::Transaction<Id = Self::TransactionId>;
     type TransactionId;
     type GenesisData;
 
-    type Ledger: generic::Ledger<Transaction = Self::Transaction>
-        + generic::Update<Block = Self::Block>;
+    type Ledger: property::Ledger<Transaction = Self::Transaction>
+        + property::Update<Block = Self::Block>;
 
     fn make_block(
         secret_key: &secure::NodeSecret,
         public_key: &secure::NodePublic,
         ledger: &Self::Ledger,
-        block_id: <Self::Block as generic::Block>::Id,
+        block_id: <Self::Block as property::Block>::Id,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block;
 }
