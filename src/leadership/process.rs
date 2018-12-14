@@ -4,7 +4,7 @@ use super::selection::{self, IsLeading, Selection};
 use super::super::{
     clock, BlockchainR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret,
 };
-use crate::blockcfg::{BlockConfig, chain, update::Update};
+use crate::blockcfg::{BlockConfig, property, property::Update};
 use crate::transaction::{TPoolR};
 
 use cardano::block::{EpochSlotId, BlockDate};
@@ -20,7 +20,7 @@ pub fn leadership_task<B>(
   where B: BlockConfig
       , <B as BlockConfig>::TransactionId: Eq + std::hash::Hash
       , <B as BlockConfig>::Ledger: Update
-      , <B as BlockConfig>::Block : chain::Block<Id = BlockDate>
+      , <B as BlockConfig>::Block : property::Block<Id = BlockDate>
 {
     let my_pub = secret.public.clone();
     loop {

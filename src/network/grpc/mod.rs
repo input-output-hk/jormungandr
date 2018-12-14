@@ -1,4 +1,4 @@
-use blockcfg::chain::cardano::BlockHash;
+use blockcfg::cardano::BlockHash;
 use cardano::{
     hash,
     util::try_from_slice::TryFromSlice,

@@ -2,7 +2,7 @@ use futures::sync::mpsc::UnboundedSender;
 use super::super::intercom::{BlockMsg, NetworkBroadcastMsg};
 use super::super::leadership::selection;
 use std::sync::Arc;
-use crate::blockcfg::{Cardano};
+use crate::blockcfg::cardano::{Cardano};
 
 use super::chain;
 

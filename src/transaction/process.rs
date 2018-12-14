@@ -4,7 +4,7 @@ use std::sync::{
 };
 
 use crate::transaction::{TPool};
-use crate::blockcfg::{BlockConfig, ledger::{Ledger, Transaction}};
+use crate::blockcfg::{BlockConfig, property::{Ledger, Transaction}};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{TransactionMsg};
 

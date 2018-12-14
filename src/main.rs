@@ -65,7 +65,7 @@ use leadership::{leadership_task, Selection};
 use futures::sync::mpsc::UnboundedSender;
 use intercom::NetworkBroadcastMsg;
 
-use blockcfg::{chain::cardano::{Transaction, TransactionId, GenesisData}, Cardano};
+use blockcfg::cardano::{Transaction, TransactionId, GenesisData, Cardano};
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 
