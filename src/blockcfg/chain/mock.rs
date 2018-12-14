@@ -45,6 +45,11 @@ pub struct Value(u64);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Address(Hash);
+impl Address {
+    pub fn new(public_key: &PublicKey) -> Self {
+        Address(Hash::hash_bytes(public_key.as_ref()))
+    }
+}
 impl AsRef<[u8]> for Address {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
