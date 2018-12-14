@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 use std::collections::BTreeMap;
 
 use cardano_storage::StorageConfig;
-use cardano_storage::{tag, Storage, blob, block_read};
+use cardano_storage::{tag, Storage, blob, block_exists};
 use cardano_storage::chain_state::restore_chain_state;
 
 use crate::blockcfg::{chain::cardano::{GenesisData, Block, BlockHash}, BlockConfig, Cardano};
@@ -67,7 +67,12 @@ impl Blockchain<Cardano> {
         let block_hash = block.get_header().compute_hash();
         let parent_hash = block.get_header().get_previous_header();
 
-        if self.block_exists(&parent_hash) {
+        // TODO: we assume as an invariant that if a block exists on
+        // disk, its ancestors exist on disk as well. Need to make
+        // sure that this invariant is preserved everywhere
+        // (e.g. loose block GC should delete blocks in reverse
+        // order).
+        if block_exists(&self.storage, &parent_hash).unwrap() {
             self.handle_connected_block(block_hash, block);
         } else {
             self.sollicit_block(&parent_hash);
@@ -131,15 +136,6 @@ impl Blockchain<Cardano> {
                 self.handle_connected_block(child_hash, child_block);
             }
         }
-    }
-
-    fn block_exists(&self, block_hash: &BlockHash) -> bool {
-        // TODO: we assume as an invariant that if a block exists on
-        // disk, its ancestors exist on disk as well. Need to make
-        // sure that this invariant is preserved everywhere
-        // (e.g. loose block GC should delete blocks in reverse
-        // order).
-        block_read(&self.storage, block_hash).is_ok()
     }
 
     /// Request a missing block from the network.
