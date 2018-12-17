@@ -1,6 +1,7 @@
 use super::{Hash, Block, BlockInfo, BackLink, BlockStore, Error};
 use sqlite;
 use cardano::util::try_from_slice::TryFromSlice;
+use blockchain::Date;
 
 pub struct SQLiteBlockStore<B> where B: Block {
     genesis_hash: Hash,
@@ -18,6 +19,7 @@ impl<B> SQLiteBlockStore<B> where B: Block {
         connection.execute(r#"
           create table if not exists Blocks (
             hash blob primary key,
+            date integer not null,
             depth integer not null,
             parent blob not null,
             fast_distance blob,
@@ -71,39 +73,40 @@ impl<B> Drop for SQLiteBlockStore<B> where B: Block {
 
 impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
 
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo) -> Result<(), Error>
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B>) -> Result<(), Error>
     {
         self.do_change();
         let mut statement = self.connection.prepare(
-            "insert into Blocks (hash, depth, parent, fast_distance, fast_hash, block) values(?, ?, ?, ?, ?, ?)").unwrap();
+            "insert into Blocks (hash, date, depth, parent, fast_distance, fast_hash, block) values(?, ?, ?, ?, ?, ?, ?)").unwrap();
         statement.bind(1, &block_info.block_hash[..]).unwrap();
-        statement.bind(2, block_info.depth as i64).unwrap();
+        statement.bind(2, block_info.block_date.serialize() as i64).unwrap();
+        statement.bind(3, block_info.depth as i64).unwrap();
         let parent = block_info.back_links.iter().find(|x| x.distance == 1).unwrap();
-        statement.bind(3, &parent.block_hash[..]).unwrap();
+        statement.bind(4, &parent.block_hash[..]).unwrap();
         match block_info.back_links.iter().find(|x| x.distance != 1) {
             Some(fast_link) => {
-                statement.bind(4, fast_link.distance as i64).unwrap();
-                statement.bind(5, &fast_link.block_hash[..]).unwrap();
+                statement.bind(5, fast_link.distance as i64).unwrap();
+                statement.bind(6, &fast_link.block_hash[..]).unwrap();
             },
             None => {
-                statement.bind(4, ()).unwrap();
                 statement.bind(5, ()).unwrap();
+                statement.bind(6, ()).unwrap();
             }
         };
-        statement.bind(6, &block.serialize()[..]).unwrap();
+        statement.bind(7, &block.serialize()[..]).unwrap();
         statement.next().unwrap();
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo), Error>
+    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error>
     {
         unimplemented!()
     }
 
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo, Error>
+    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error>
     {
         let mut statement = self.connection.prepare(
-            "select depth, parent, fast_distance, fast_hash from Blocks where hash = ?").unwrap();
+            "select depth, parent, fast_distance, fast_hash, date from Blocks where hash = ?").unwrap();
         statement.bind(1, &block_hash[..]).unwrap();
 
         match statement.next().unwrap() {
@@ -128,6 +131,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
 
                 Ok(BlockInfo {
                     block_hash: block_hash.clone(),
+                    block_date: B::Date::deserialize(statement.read::<i64>(0).unwrap() as u64),
                     depth: statement.read::<i64>(0).unwrap() as u64,
                     back_links
                 })

@@ -8,8 +8,10 @@ use super::blockchain::{Block, Hash};
 type Error = cardano_storage::Error; // FIXME
 
 #[derive(Clone, Debug)]
-pub struct BlockInfo {
+pub struct BlockInfo<B: Block> {
     pub block_hash: Hash,
+
+    pub block_date: B::Date,
 
     /// Distance to the genesis hash (a.k.a chain length). I.e. a
     /// block whose parent is the genesis hash has depth 1, its
@@ -44,6 +46,7 @@ pub trait BlockStore<B> where B: Block {
     /// actual write.
     fn put_block(&mut self, block: B) -> Result<(), Error> {
         let block_hash = block.get_hash();
+        let block_date = block.get_date();
 
         if self.block_exists(&block_hash)? { return Ok(()); }
 
@@ -78,19 +81,20 @@ pub trait BlockStore<B> where B: Block {
 
         self.put_block_internal(block, BlockInfo {
             block_hash: block_hash.clone(),
+            block_date,
             depth,
             back_links
         })
     }
 
     /// Write a block and associated info to the store.
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo) -> Result<(), Error>;
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B>) -> Result<(), Error>;
 
     /// Fetch a block.
-    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo), Error>;
+    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error>;
 
     /// Fetch a block.
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo, Error>;
+    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error>;
 
     /// Check whether a block exists.
     fn block_exists(&self, block_hash: &Hash) -> Result<bool, Error> {
@@ -108,7 +112,7 @@ pub trait BlockStore<B> where B: Block {
     fn get_tag(&self, tag_name: &str) -> Result<Option<Hash>, Error>;
 
     /// Get the n'th ancestor of the specified block.
-    fn get_nth_ancestor(&self, block_hash: &Hash, distance: u64) -> Result<BlockInfo, Error>
+    fn get_nth_ancestor(&self, block_hash: &Hash, distance: u64) -> Result<BlockInfo<B>, Error>
     {
         let mut cur_block_info = self.get_block_info(block_hash)?;
 

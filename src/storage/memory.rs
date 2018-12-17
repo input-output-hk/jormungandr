@@ -4,7 +4,7 @@ use std::collections::HashMap;
 pub struct MemoryBlockStore<B> where B: Block {
     genesis_hash: Hash,
     // FIXME: store serialized blocks?
-    blocks: HashMap<Hash, (Vec<u8>, BlockInfo)>,
+    blocks: HashMap<Hash, (Vec<u8>, BlockInfo<B>)>,
     tags: HashMap<String, Hash>,
     dummy: std::marker::PhantomData<B>,
 }
@@ -22,13 +22,13 @@ impl<B> MemoryBlockStore<B> where B: Block {
 
 impl<B> BlockStore<B> for MemoryBlockStore<B> where B: Block {
 
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo) -> Result<(), Error>
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B>) -> Result<(), Error>
     {
         self.blocks.insert(block_info.block_hash.clone(), (block.serialize(), block_info));
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo), Error>
+    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error>
     {
         match self.blocks.get(block_hash) {
             None => Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
@@ -36,7 +36,7 @@ impl<B> BlockStore<B> for MemoryBlockStore<B> where B: Block {
         }
     }
 
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo, Error>
+    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error>
     {
         match self.blocks.get(block_hash) {
             None => Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
