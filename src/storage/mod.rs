@@ -144,6 +144,33 @@ pub trait BlockStore<B> where B: Block {
 
         Ok(cur_block_info)
     }
+
+    /// Determine whether block 'ancestor' is an ancestor block
+    /// 'descendent'. If so, return the chain distance between them.
+    fn is_ancestor(&self, ancestor: &Hash, descendent: &Hash) -> Result<Option<u64>, Error> {
+
+        // Optimization.
+        if ancestor == descendent { return Ok(Some(0)); }
+
+        let descendent = self.get_block_info(&descendent)?;
+        let ancestor = self.get_block_info(&ancestor)?;
+
+        // Bail out right away if the "descendent" does not have a
+        // later date or higher depth.
+        if descendent.depth <= ancestor.depth || descendent.block_date <= ancestor.block_date {
+            return Ok(None)
+        }
+
+        // Seek back from the descendent to check whether it has the
+        // ancestor at the expected place.
+        let info = self.get_nth_ancestor(&descendent.block_hash, descendent.depth - ancestor.depth)?;
+
+        if info.block_hash == ancestor.block_hash {
+            Ok(Some(descendent.depth - ancestor.depth))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 /// Compute the fast link for a block with a given depth. Successive
