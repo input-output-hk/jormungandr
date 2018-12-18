@@ -63,6 +63,46 @@ impl<B> SQLiteBlockStore<B> where B: Block {
             self.pending_changes = 1;
         }
     }
+
+    fn get_block_internal(&self, block_hash: &Hash, get_block: bool) -> Result<(BlockInfo<B>, Option<B>), Error>
+    {
+        let mut statement = self.connection.prepare(
+            if get_block {
+                "select depth, parent, fast_distance, fast_hash, date, block from Blocks where hash = ?"
+            } else {
+                "select depth, parent, fast_distance, fast_hash, date from Blocks where hash = ?"
+            }).unwrap();
+        statement.bind(1, &block_hash[..]).unwrap();
+
+        match statement.next().unwrap() {
+            sqlite::State::Done =>
+                Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
+            sqlite::State::Row => {
+
+                let mut back_links = vec![
+                    BackLink {
+                        distance: 1,
+                        block_hash: blob_to_hash(statement.read::<Vec<u8>>(1).unwrap())
+                    }
+                ];
+
+                let fast_distance = statement.read::<i64>(2).unwrap() as u64;
+                if fast_distance != 0 {
+                    back_links.push(BackLink {
+                        distance: fast_distance,
+                        block_hash: blob_to_hash(statement.read::<Vec<u8>>(3).unwrap())
+                    });
+                }
+
+                Ok((BlockInfo {
+                    block_hash: block_hash.clone(),
+                    block_date: B::Date::deserialize(statement.read::<i64>(0).unwrap() as u64),
+                    depth: statement.read::<i64>(0).unwrap() as u64,
+                    back_links
+                }, if get_block { Some(B::deserialize(&statement.read::<Vec<u8>>(5).unwrap())) } else { None }))
+            }
+        }
+    }
 }
 
 impl<B> Drop for SQLiteBlockStore<B> where B: Block {
@@ -98,45 +138,14 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error>
-    {
-        unimplemented!()
+    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error> {
+        let (info, block) = self.get_block_internal(block_hash, true)?;
+        Ok((block.unwrap(), info))
     }
 
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error>
-    {
-        let mut statement = self.connection.prepare(
-            "select depth, parent, fast_distance, fast_hash, date from Blocks where hash = ?").unwrap();
-        statement.bind(1, &block_hash[..]).unwrap();
-
-        match statement.next().unwrap() {
-            sqlite::State::Done =>
-                Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
-            sqlite::State::Row => {
-
-                let mut back_links = vec![
-                    BackLink {
-                        distance: 1,
-                        block_hash: blob_to_hash(statement.read::<Vec<u8>>(1).unwrap())
-                    }
-                ];
-
-                let fast_distance = statement.read::<i64>(2).unwrap() as u64;
-                if fast_distance != 0 {
-                    back_links.push(BackLink {
-                        distance: fast_distance,
-                        block_hash: blob_to_hash(statement.read::<Vec<u8>>(3).unwrap())
-                    });
-                }
-
-                Ok(BlockInfo {
-                    block_hash: block_hash.clone(),
-                    block_date: B::Date::deserialize(statement.read::<i64>(0).unwrap() as u64),
-                    depth: statement.read::<i64>(0).unwrap() as u64,
-                    back_links
-                })
-            }
-        }
+    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error> {
+        let (info, _) = self.get_block_internal(block_hash, false)?;
+        Ok(info)
     }
 
     fn put_tag(&mut self, tag_name: &str, block_hash: &Hash) -> Result<(), Error>
