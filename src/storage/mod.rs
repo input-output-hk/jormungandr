@@ -24,6 +24,12 @@ pub struct BlockInfo<B: Block> {
     pub back_links: Vec<BackLink>,
 }
 
+impl<B> BlockInfo<B> where B: Block {
+    pub fn get_parent(&self) -> Hash {
+        self.back_links.iter().find(|x| x.distance == 1).unwrap().block_hash
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BackLink {
     /// The distance to this ancestor.
@@ -226,5 +232,12 @@ fn compute_fast_link(depth: u64) -> u64 {
 }
 
 pub trait ChainStateStore<C> where C: ChainState {
+
+    /// Retrieve the state of the chain up to and including the
+    /// specified block.
     fn get_chain_state_at(&self, block_hash: &Hash) -> Result<C, C::Error>;
+
+    /// Optionally store the specified chain state. (Implementations
+    /// are free to store chain state only at certain checkpoints.)
+    fn put_chain_state(&mut self, chain_state: &C) -> Result<(), C::Error>;
 }

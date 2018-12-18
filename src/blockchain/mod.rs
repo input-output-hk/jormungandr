@@ -42,4 +42,6 @@ pub trait ChainState: std::marker::Sized + Clone {
     fn apply_block(&mut self, block: &Self::Block) -> Result<(), Self::Error>;
 
     fn get_last_block(&self) -> Hash;
+
+    fn get_chain_length(&self) -> u64;
 }

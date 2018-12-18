@@ -4,10 +4,9 @@ use std::collections::HashMap;
 pub struct MemoryBlockStore<C> where C: ChainState {
     genesis_hash: Hash,
     genesis_chain_state: C,
-    // FIXME: store serialized blocks?
     blocks: HashMap<Hash, (Vec<u8>, BlockInfo<C::Block>)>,
+    chain_states: HashMap<Hash, C>,
     tags: HashMap<String, Hash>,
-    phantom: std::marker::PhantomData<C>,
 }
 
 impl<C> MemoryBlockStore<C> where C: ChainState {
@@ -17,8 +16,8 @@ impl<C> MemoryBlockStore<C> where C: ChainState {
             genesis_hash: genesis_chain_state.get_last_block(),
             genesis_chain_state,
             blocks: HashMap::new(),
+            chain_states: HashMap::new(),
             tags: HashMap::new(),
-            phantom: std::marker::PhantomData,
         }
     }
 }
@@ -72,14 +71,40 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
 
     fn get_chain_state_at(&self, block_hash: &Hash) -> Result<C, C::Error> {
 
-        let mut chain_state = self.genesis_chain_state.clone();
+        // Iterate backwards to the first block for which we know the chain state.
+        let mut blocks_to_apply = vec![];
+        let mut cur_hash = block_hash.clone();
+        let mut chain_state = loop {
+            if cur_hash == self.genesis_hash {
+                break self.genesis_chain_state.clone();
+            } else {
+                if let Some(chain_state) = self.chain_states.get(&cur_hash) {
+                    break chain_state.clone();
+                }
+                blocks_to_apply.push(cur_hash.clone());
+                cur_hash = self.get_block_info(&cur_hash).unwrap().get_parent();
+            }
+        };
 
-        for block_info in self.iterate_range(&self.genesis_hash, block_hash).unwrap() {
-            let block_info = block_info.unwrap();
-            chain_state.apply_block(&self.get_block(&block_info.block_hash).unwrap().0)?;
+        // Apply the remaining blocks.
+        for hash in blocks_to_apply.iter().rev() {
+            chain_state.apply_block(&self.get_block(&hash).unwrap().0)?;
+
+            // Store the chain state, if this has not been done
+            // previously. FIXME: requires (interior) mutability.
+            //self.put_chain_state(chain_state);
         }
 
         Ok(chain_state)
+    }
+
+    fn put_chain_state(&mut self, chain_state: &C) -> Result<(), C::Error> {
+
+        if chain_state.get_chain_length() % 1000 != 0 { return Ok(()); }
+
+        self.chain_states.insert(chain_state.get_last_block(), chain_state.clone());
+
+        Ok(())
     }
 
 }

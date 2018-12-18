@@ -61,4 +61,8 @@ impl ChainState for cardano::block::ChainState {
     fn get_last_block(&self) -> Hash {
         (*self.last_block.clone()).into()
     }
+
+    fn get_chain_length(&self) -> u64 {
+        self.chain_length
+    }
 }
