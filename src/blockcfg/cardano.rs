@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap};
 
 use crate::secure;
-use crate::blockcfg::{property, BlockConfig};
+use crate::blockcfg::{BlockConfig, property, serialization::Deserialize};
 
 use cardano;
 use cardano::{
@@ -134,7 +134,13 @@ impl property::HasTransaction for Block {
     }
 }
 
+impl Deserialize for Block {
+    type Error = cbor_event::Error;
 
+    fn deserialize(data: &[u8]) -> Result<Block, cbor_event::Error> {
+        cbor_event::de::RawCbor::from(data).deserialize_complete()
+    }
+}
 
 impl property::Transaction for Transaction {
     type Input  = cardano::tx::TxoPointer;

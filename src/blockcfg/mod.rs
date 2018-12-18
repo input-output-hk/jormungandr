@@ -11,6 +11,7 @@
 use crate::secure;
 
 pub mod property;
+pub mod serialization;
 
 pub mod cardano;
 #[cfg(test)]
