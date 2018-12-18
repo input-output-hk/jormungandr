@@ -295,9 +295,10 @@ impl property::Ledger for Ledger {
 }
 
 #[cfg(test)]
+mod quickcheck {
+    use super::*;
 use quickcheck::{Arbitrary, Gen};
 
-#[cfg(test)]
 impl Arbitrary for SlotId {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         SlotId(
@@ -306,7 +307,7 @@ impl Arbitrary for SlotId {
         )
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for Hash {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let mut bytes = [0u8;16];
@@ -318,7 +319,7 @@ impl Arbitrary for Hash {
         )
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for Value {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Value(
@@ -326,7 +327,7 @@ impl Arbitrary for Value {
         )
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for Address {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Address(
@@ -334,7 +335,7 @@ impl Arbitrary for Address {
         )
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for TransactionId {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         TransactionId(
@@ -342,7 +343,7 @@ impl Arbitrary for TransactionId {
         )
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for Signature {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let mut signature = [0;crypto::SIGNATURE_SIZE];
@@ -354,7 +355,7 @@ impl Arbitrary for Signature {
         )
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for PrivateKey {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let mut xprv = [0;crypto::XPRV_SIZE];
@@ -366,7 +367,7 @@ impl Arbitrary for PrivateKey {
         )
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for PublicKey {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let mut xpub = [0;crypto::XPUB_SIZE];
@@ -378,7 +379,7 @@ impl Arbitrary for PublicKey {
         )
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for Input {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Input {
@@ -387,7 +388,7 @@ impl Arbitrary for Input {
         }
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for SignedInput {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         SignedInput {
@@ -397,13 +398,13 @@ impl Arbitrary for SignedInput {
         }
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for Output {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Output(Arbitrary::arbitrary(g),Arbitrary::arbitrary(g))
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for Transaction {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Transaction {
@@ -412,7 +413,7 @@ impl Arbitrary for Transaction {
         }
     }
 }
-#[cfg(test)]
+
 impl Arbitrary for Block {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Block {
@@ -421,4 +422,5 @@ impl Arbitrary for Block {
             transactions: Arbitrary::arbitrary(g),
         }
     }
+}
 }
