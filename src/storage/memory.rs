@@ -1,17 +1,16 @@
 use super::{Hash, Block, BlockInfo, BlockStore, Error, ChainState, ChainStateStore};
 use std::collections::HashMap;
 
-pub struct MemoryBlockStore<B, C> where B: Block, C: ChainState<Block = B> {
+pub struct MemoryBlockStore<C> where C: ChainState {
     genesis_hash: Hash,
     genesis_chain_state: C,
     // FIXME: store serialized blocks?
-    blocks: HashMap<Hash, (Vec<u8>, BlockInfo<B>)>,
+    blocks: HashMap<Hash, (Vec<u8>, BlockInfo<C::Block>)>,
     tags: HashMap<String, Hash>,
-    phantom1: std::marker::PhantomData<B>,
-    phantom2: std::marker::PhantomData<C>,
+    phantom: std::marker::PhantomData<C>,
 }
 
-impl<B, C> MemoryBlockStore<B, C> where B: Block, C: ChainState<Block = B> {
+impl<C> MemoryBlockStore<C> where C: ChainState {
     pub fn new(genesis_data: &C::GenesisData) -> Self {
         let genesis_chain_state = C::new(genesis_data).unwrap();
         MemoryBlockStore {
@@ -19,29 +18,28 @@ impl<B, C> MemoryBlockStore<B, C> where B: Block, C: ChainState<Block = B> {
             genesis_chain_state,
             blocks: HashMap::new(),
             tags: HashMap::new(),
-            phantom1: std::marker::PhantomData,
-            phantom2: std::marker::PhantomData,
+            phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<B, C> BlockStore<B> for MemoryBlockStore<B, C> where B: Block, C: ChainState<Block = B> {
+impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
 
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B>) -> Result<(), Error>
+    fn put_block_internal(&mut self, block: C::Block, block_info: BlockInfo<C::Block>) -> Result<(), Error>
     {
         self.blocks.insert(block_info.block_hash.clone(), (block.serialize(), block_info));
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error>
+    fn get_block(&self, block_hash: &Hash) -> Result<(C::Block, BlockInfo<C::Block>), Error>
     {
         match self.blocks.get(block_hash) {
             None => Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
-            Some((block, block_info)) => Ok((B::deserialize(block), block_info.clone()))
+            Some((block, block_info)) => Ok((C::Block::deserialize(block), block_info.clone()))
         }
     }
 
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error>
+    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<C::Block>, Error>
     {
         match self.blocks.get(block_hash) {
             None => Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
@@ -70,7 +68,7 @@ impl<B, C> BlockStore<B> for MemoryBlockStore<B, C> where B: Block, C: ChainStat
     }
 }
 
-impl<B, C> ChainStateStore<C> for MemoryBlockStore<B, C> where B: Block, C: ChainState<Block = B> {
+impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
 
     fn get_chain_state_at(&self, block_hash: &Hash) -> Result<C, C::Error> {
 
