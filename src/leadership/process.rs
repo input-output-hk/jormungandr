@@ -40,7 +40,7 @@ pub fn leadership_task<B>(
             // collect up to `nr_transactions` from the transaction pool.
             //
             let transactions =
-                transaction_pool.write().unwrap().collect(b.chain_state.number_transactions_per_block());
+                transaction_pool.write().unwrap().collect(b.chain_state.transactions_per_block());
 
             let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
             info!("leadership create tpool={} transactions ({})", transactions.len(), epochslot);

@@ -232,11 +232,11 @@ impl BlockConfig for Cardano {
 impl property::Update for ChainState {
     type Block = Block;
 
-    fn number_transactions_per_block(&self) -> usize {
+    fn transactions_per_block(&self) -> usize {
         self.nr_transactions as usize
     }
 
-    fn get_tip(&self) -> <Self::Block as property::Block>::Id {
+    fn tip(&self) -> <Self::Block as property::Block>::Id {
         self.last_block.clone()
     }
 }
