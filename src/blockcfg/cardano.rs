@@ -20,10 +20,14 @@ pub type Block = cardano::block::Block;
 pub type Header = cardano::block::BlockHeader;
 
 impl property::Block for Block {
-    type Hash = BlockHash;
-    type Id = cardano::block::BlockDate;
+    type Id = BlockHash;
+    type Date = cardano::block::BlockDate;
 
-    fn parent_hash(&self) -> &Self::Hash {
+    fn id(&self) -> Self::Id {
+        self.get_header().compute_hash()
+    }
+
+    fn parent_id(&self) -> &Self::Id {
         match self {
             cardano::block::Block::BoundaryBlock(ref bb) => {
                 &bb.header.previous_header
@@ -33,7 +37,7 @@ impl property::Block for Block {
             }
         }
     }
-    fn slot_id(&self) -> Self::Id {
+    fn date(&self) -> Self::Date {
         self.get_header().get_slotid()
     }
 }
@@ -163,7 +167,7 @@ impl BlockConfig for Cardano {
         secret_key: &secure::NodeSecret,
         public_key: &secure::NodePublic,
         ledger: &Self::Ledger,
-        block_id: <Self::Block as property::Block>::Id,
+        block_date: <Self::Block as property::Block>::Date,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block {
         use crate::blockcfg::property::Update;
@@ -173,7 +177,7 @@ impl BlockConfig for Cardano {
 
         let previous_hash = ledger.get_tip();
 
-        match block_id {
+        match block_date {
             BlockDate::Boundary(_) => unimplemented!(),
             BlockDate::Normal(block_id) => {
                 let pm = ledger.protocol_magic;
@@ -232,7 +236,7 @@ impl property::Update for ChainState {
         self.nr_transactions as usize
     }
 
-    fn get_tip(&self) -> <Self::Block as property::Block>::Hash {
+    fn get_tip(&self) -> <Self::Block as property::Block>::Id {
         self.last_block.clone()
     }
 }

@@ -12,16 +12,23 @@
 pub trait Block {
     /// define what is the type of the Hash to use to identify
     /// a Block in the Chain.
-    type Hash;
-
-    /// define what identify the slot of the Block within the chain
+    ///
+    /// for 2 different blocs, we will always have 2 different Id.
     type Id;
 
+    /// define what identify the slot of the Block within the chain.
+    /// It is possible 2 slots have the same date.
+    type Date;
+
+    /// return the identifier of the Block
+    fn id(&self) -> Self::Id;
+
     /// the Hash of the parent of this block within the Chain
-    fn parent_hash(&self) -> &Self::Hash;
+    fn parent_id(&self) -> &Self::Id;
+
     /// the slot identifier that identify where the block lies within
     /// the chain.
-    fn slot_id(&self) -> Self::Id;
+    fn date(&self) -> Self::Date;
 }
 
 
@@ -125,5 +132,5 @@ pub trait Update {
     /// get the number of transaction per block
     fn number_transactions_per_block(&self) -> usize;
 
-    fn get_tip(&self) -> <Self::Block as Block>::Hash;
+    fn get_tip(&self) -> <Self::Block as Block>::Id;
 }
