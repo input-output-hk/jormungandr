@@ -116,11 +116,12 @@ impl PublicKey {
     }
 }
 impl property::Block for Block {
-    type Hash = Hash;
-    type Id = SlotId;
+    type Id = Hash;
+    type Date = SlotId;
 
-    fn parent_hash(&self) -> &Self::Hash { &self.parent_hash }
-    fn slot_id(&self) -> Self::Id { self.slot_id }
+    fn id(&self) -> Self::Id { unimplemented!() }
+    fn parent_id(&self) -> &Self::Id { &self.parent_hash }
+    fn date(&self) -> Self::Date { self.slot_id }
 }
 impl property::HasTransaction for Block {
     type Transaction = Transaction;

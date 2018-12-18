@@ -17,7 +17,7 @@ pub mod cardano;
 pub mod mock;
 
 pub trait BlockConfig {
-    type Block: property::Block<Hash = Self::BlockHash>
+    type Block: property::Block<Id = Self::BlockHash>
         + property::HasTransaction<Transaction = Self::Transaction>;
     type BlockHash;
     type BlockHeader;
@@ -32,7 +32,7 @@ pub trait BlockConfig {
         secret_key: &secure::NodeSecret,
         public_key: &secure::NodePublic,
         ledger: &Self::Ledger,
-        block_id: <Self::Block as property::Block>::Id,
+        block_date: <Self::Block as property::Block>::Date,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block;
 }

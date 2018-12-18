@@ -20,7 +20,7 @@ pub fn leadership_task<B>(
   where B: BlockConfig
       , <B as BlockConfig>::TransactionId: Eq + std::hash::Hash
       , <B as BlockConfig>::Ledger: Update
-      , <B as BlockConfig>::Block : property::Block<Id = BlockDate>
+      , <B as BlockConfig>::Block : property::Block<Date = BlockDate>
 {
     let my_pub = secret.public.clone();
     loop {
