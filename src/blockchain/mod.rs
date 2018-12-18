@@ -32,10 +32,11 @@ pub trait Block : Clone {
     fn deserialize(bytes: &[u8]) -> Self;
 }
 
-pub trait ChainState: std::marker::Sized + Clone {
+pub trait ChainState: std::marker::Sized + Clone + Eq {
     type Block: Block;
     type Error: std::error::Error; // FIXME: introduce local error type
     type GenesisData;
+    type Delta: ChainStateDelta;
 
     fn new(genesis_data: &Self::GenesisData) -> Result<Self, Self::Error>;
 
@@ -44,4 +45,15 @@ pub trait ChainState: std::marker::Sized + Clone {
     fn get_last_block(&self) -> Hash;
 
     fn get_chain_length(&self) -> u64;
+
+    fn diff(from: &Self, to: &Self) -> Result<Self::Delta, Self::Error>;
+
+    fn apply_delta(&mut self, delta: Self::Delta) -> Result<(), Self::Error>;
+}
+
+pub trait ChainStateDelta {
+    //fn merge(a: &Self, b: &Self) -> Self;
+
+    fn serialize(&self) -> Vec<u8>;
+    fn deserialize(bytes: &[u8]) -> Self;
 }

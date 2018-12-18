@@ -1,11 +1,12 @@
 use super::{Hash, Block, BlockInfo, BlockStore, Error, ChainState, ChainStateStore};
 use std::collections::HashMap;
+use blockchain::ChainStateDelta;
 
 pub struct MemoryBlockStore<C> where C: ChainState {
     genesis_hash: Hash,
     genesis_chain_state: C,
     blocks: HashMap<Hash, (Vec<u8>, BlockInfo<C::Block>)>,
-    chain_states: HashMap<Hash, C>,
+    chain_state_deltas: HashMap<Hash, (Hash, Vec<u8>)>,
     tags: HashMap<String, Hash>,
 }
 
@@ -16,7 +17,7 @@ impl<C> MemoryBlockStore<C> where C: ChainState {
             genesis_hash: genesis_chain_state.get_last_block(),
             genesis_chain_state,
             blocks: HashMap::new(),
-            chain_states: HashMap::new(),
+            chain_state_deltas: HashMap::new(),
             tags: HashMap::new(),
         }
     }
@@ -78,8 +79,23 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
             if cur_hash == self.genesis_hash {
                 break self.genesis_chain_state.clone();
             } else {
-                if let Some(chain_state) = self.chain_states.get(&cur_hash) {
-                    break chain_state.clone();
+                if let Some(_) = self.chain_state_deltas.get(&cur_hash) {
+                    // Get the chain of deltas.
+                    let mut bases = vec![];
+                    let mut cur_base = cur_hash.clone();
+                    while cur_base != self.genesis_hash {
+                        bases.push(cur_base);
+                        cur_base = self.chain_state_deltas.get(&cur_base).unwrap().0;
+                    };
+
+                    // Apply them to the genesis state.
+                    let mut chain_state = self.genesis_chain_state.clone();
+                    for base in bases.iter().rev() {
+                        chain_state.apply_delta(C::Delta::deserialize(
+                            &self.chain_state_deltas.get(base).unwrap().1))?;
+                    }
+                    assert_eq!(chain_state.get_last_block(), cur_hash);
+                    break chain_state;
                 }
                 blocks_to_apply.push(cur_hash.clone());
                 cur_hash = self.get_block_info(&cur_hash).unwrap().get_parent();
@@ -95,16 +111,48 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
             //self.put_chain_state(chain_state);
         }
 
+        assert_eq!(&chain_state.get_last_block(), block_hash);
+
         Ok(chain_state)
     }
 
     fn put_chain_state(&mut self, chain_state: &C) -> Result<(), C::Error> {
 
-        if chain_state.get_chain_length() % 1000 != 0 { return Ok(()); }
+        let interval = 5000;
 
-        self.chain_states.insert(chain_state.get_last_block(), chain_state.clone());
+        let depth = chain_state.get_chain_length();
+
+        if depth % interval != 0 { return Ok(()); }
+
+        let base_depth = clear_lsb(depth / interval) * interval;
+
+        let base = if base_depth == 0 {
+            self.genesis_chain_state.clone()
+        } else {
+            let base_block = self.get_nth_ancestor(&chain_state.get_last_block(), depth - base_depth).unwrap();
+            self.get_chain_state_at(&base_block.block_hash)?
+        };
+
+        let delta = C::diff(&base, chain_state)?;
+
+        self.chain_state_deltas.insert(
+            chain_state.get_last_block(),
+            (base.get_last_block(), delta.serialize()));
+
+        debug_assert!(chain_state == &self.get_chain_state_at(&chain_state.get_last_block()).unwrap());
 
         Ok(())
     }
 
+}
+
+// Clear the least-significant bit in `x`.
+fn clear_lsb(x: u64) -> u64 {
+    assert_ne!(x, 0);
+    for n in 0..63 {
+        if x & (1 << n) != 0 {
+            return x & !(1 << n);
+        }
+    }
+    unreachable!();
 }

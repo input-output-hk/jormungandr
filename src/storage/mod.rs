@@ -127,7 +127,6 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
         }
 
         let target = cur_block_info.depth - distance;
-        let mut nr_steps = 1;
 
         // Travel back through the chain using the back links until we
         // reach the desired block.
@@ -142,7 +141,6 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
                 .unwrap()
                 .clone();
             cur_block_info = self.get_block_info(&best_link.block_hash)?;
-            nr_steps += 1;
         }
 
         assert_eq!(target, cur_block_info.depth);
