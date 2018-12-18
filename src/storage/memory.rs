@@ -1,4 +1,4 @@
-use super::{Hash, Block, BlockInfo, BackLink, BlockStore, Error};
+use super::{Hash, Block, BlockInfo, BlockStore, Error};
 use std::collections::HashMap;
 
 pub struct MemoryBlockStore<B> where B: Block {

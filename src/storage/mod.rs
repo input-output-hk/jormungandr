@@ -1,7 +1,6 @@
 pub mod memory;
 pub mod sqlite;
 
-use cardano;
 use cardano_storage;
 use super::blockchain::{Block, Hash};
 
@@ -33,7 +32,7 @@ pub struct BackLink {
     pub block_hash: Hash,
 }
 
-pub trait BlockStore<B> where B: Block {
+pub trait BlockStore<B>: std::marker::Sized where B: Block {
 
     fn get_genesis_hash(&self) -> Hash;
 
@@ -153,6 +152,11 @@ pub trait BlockStore<B> where B: Block {
         if ancestor == descendent { return Ok(Some(0)); }
 
         let descendent = self.get_block_info(&descendent)?;
+
+        if ancestor == &self.get_genesis_hash() {
+            return Ok(Some(descendent.depth));
+        }
+
         let ancestor = self.get_block_info(&ancestor)?;
 
         // Bail out right away if the "descendent" does not have a
@@ -169,6 +173,45 @@ pub trait BlockStore<B> where B: Block {
             Ok(Some(descendent.depth - ancestor.depth))
         } else {
             Ok(None)
+        }
+    }
+
+    /// Return an iterator that yields block info for the blocks in
+    /// the half-open range `(from, to]`. `from` must be an ancestor
+    /// of `to` and may be the genesis hash.
+    fn iterate_range(&self, from: &Hash, to: &Hash) -> Result<BlockIterator<B, Self>, Error> {
+        match self.is_ancestor(from, to)? {
+            None => panic!(), // FIXME: return error
+            Some(distance) => {
+                Ok(BlockIterator {
+                    store: &self,
+                    to: to.clone(),
+                    distance,
+                    dummy: std::marker::PhantomData,
+                })
+            }
+        }
+    }
+}
+
+pub struct BlockIterator<'store, B, S> where B: Block, S: BlockStore<B> + 'store {
+    store: &'store S,
+    to: Hash,
+    distance: u64,
+    dummy: std::marker::PhantomData<B>,
+}
+
+impl<'store, B, S> Iterator for BlockIterator<'store, B, S> where B: Block, S: BlockStore<B> + 'store {
+    type Item = Result<BlockInfo<B>, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.distance == 0 {
+            None
+        } else {
+            self.distance -= 1;
+            // FIXME: this can be optimized by seeking back from a
+            // closer ancestor than 'to'.
+            Some(self.store.get_nth_ancestor(&self.to, self.distance))
         }
     }
 }
