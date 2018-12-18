@@ -2,7 +2,7 @@ pub mod memory;
 pub mod sqlite;
 
 use cardano_storage;
-use super::blockchain::{Block, Hash};
+use super::blockchain::{Block, Hash, ChainState};
 
 type Error = cardano_storage::Error; // FIXME
 
@@ -223,4 +223,8 @@ fn compute_fast_link(depth: u64) -> u64 {
     let order = depth % 32;
     let distance = if order == 0 { 1 } else { (1 << order) - 1 };
     if distance < depth { depth - distance } else { 0 }
+}
+
+pub trait ChainStateStore<C> where C: ChainState {
+    fn get_chain_state_at(&self, block_hash: &Hash) -> Result<C, C::Error>;
 }

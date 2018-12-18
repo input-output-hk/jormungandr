@@ -1,4 +1,4 @@
-use super::{Hash, Date, Block};
+use super::{Hash, Date, Block, ChainState};
 use cbor_event::{de::RawCbor};
 
 impl Date for cardano::block::date::BlockDate {
@@ -42,5 +42,23 @@ impl Block for cardano::block::Block {
 
     fn deserialize(bytes: &[u8]) -> Self {
         RawCbor::from(bytes).deserialize_complete().unwrap()
+    }
+}
+
+impl ChainState for cardano::block::ChainState {
+    type Block = cardano::block::Block;
+    type Error = cardano::block::verify::Error;
+    type GenesisData = cardano::config::GenesisData;
+
+    fn new(genesis_data: &Self::GenesisData) -> Result<Self, Self::Error> {
+        Ok(cardano::block::ChainState::new(&genesis_data))
+    }
+
+    fn apply_block(&mut self, block: &Self::Block) -> Result<(), Self::Error> {
+        self.verify_block(&block.get_hash().into(), block)
+    }
+
+    fn get_last_block(&self) -> Hash {
+        (*self.last_block.clone()).into()
     }
 }
