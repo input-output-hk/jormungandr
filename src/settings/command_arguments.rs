@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use structopt::{StructOpt};
+use super::config::LogFormat;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -63,6 +64,13 @@ pub struct CommandArguments {
     /// for the node's blockchain
     #[structopt(long = "genesis-config", parse(from_os_str))]
     pub genesis_data_config: PathBuf,
+
+    /// Set format of the log emitted. Can be "json" or "plain"
+    #[structopt(
+        long = "log-format",
+        parse(try_from_str)
+    )]
+    pub log_format: Option<LogFormat>,
 }
 
 impl CommandArguments {

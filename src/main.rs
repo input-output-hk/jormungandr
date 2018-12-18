@@ -7,6 +7,7 @@ extern crate serde_yaml;
 extern crate slog;
 extern crate rand;
 extern crate slog_async;
+extern crate slog_json;
 extern crate slog_term;
 extern crate structopt;
 
@@ -60,7 +61,7 @@ pub mod blockcfg;
 pub mod client;
 pub mod secure;
 
-use settings::Settings;
+use settings::{Settings};
 //use state::State;
 use transaction::{TPool, transaction_task};
 use blockchain::{Blockchain, BlockchainR};
@@ -72,7 +73,6 @@ use intercom::NetworkBroadcastMsg;
 
 use blockcfg::cardano::{Transaction, TransactionId, GenesisData, Cardano};
 
-use slog::Drain;
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 
 use cardano_storage::{StorageConfig};
@@ -97,6 +97,7 @@ fn startup_info(gd: &GenesisData, blockchain: &Blockchain<Cardano>, settings: &S
     println!("consensus: {:?}", settings.consensus);
 }
 
+
 fn main() {
     // # load parameters & config
     //
@@ -104,11 +105,7 @@ fn main() {
     // and setup the initial values
     let settings = Settings::load();
 
-    let decorator = slog_term::TermDecorator::new().build();
-    let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
-    let log = slog::Logger::root(drain, o!());
-    log_wrapper::logger::set_global_logger(log);
+    settings.log_settings.apply();
 
     let genesis_data = settings.read_genesis_data();
 
