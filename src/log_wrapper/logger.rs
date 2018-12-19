@@ -89,7 +89,9 @@ where
 /// that were defined for the threads earlier.
 pub fn set_global_logger(logger: slog::Logger) {
     let logger2 = logger.clone();
-    let ref_cell = TOP_LOGGER.lock().unwrap();
-    ref_cell.replace(logger);
+    {
+        let ref_cell = TOP_LOGGER.lock().unwrap();
+        ref_cell.replace(logger);
+    }
     update_thread_logger(|_| logger2.clone());
 }
