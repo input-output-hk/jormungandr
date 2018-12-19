@@ -4,15 +4,17 @@
 
 use std::collections::{HashMap};
 
-use crate::blockcfg::property;
+use crate::blockcfg::{property, serialization};
 
 use cardano::hdwallet as crypto;
 use cardano::hash;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Deserialize, Serialize)]
 pub struct SlotId(u32, u32);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Deserialize, Serialize)]
 pub struct Hash(hash::Blake2b256);
 impl Hash {
     pub fn hash_bytes(bytes: &[u8]) -> Self {
@@ -27,6 +29,7 @@ impl AsRef<[u8]> for Hash {
 /// during serialisation this might not be needed
 /// removing it will save 32bytes of non necessary storage (github #93)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Deserialize, Serialize)]
 pub struct PublicKey(crypto::XPub);
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
@@ -36,16 +39,20 @@ pub struct PrivateKey(crypto::XPrv);
 impl AsRef<[u8]> for PrivateKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize)]
 pub struct Signature(crypto::Signature<()>);
 impl AsRef<[u8]> for Signature {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Deserialize, Serialize)]
 pub struct Value(u64);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Deserialize, Serialize)]
 pub struct Address(Hash);
 impl Address {
     pub fn new(public_key: &PublicKey) -> Self {
@@ -57,6 +64,7 @@ impl AsRef<[u8]> for Address {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Deserialize, Serialize)]
 pub struct Input {
     pub transaction_id: TransactionId,
     pub output_index: u32,
@@ -68,6 +76,7 @@ impl Input {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize)]
 pub struct SignedInput {
     pub input: Input,
     pub signature: Signature,
@@ -80,21 +89,25 @@ impl SignedInput {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Deserialize, Serialize)]
 pub struct Output(pub Address, pub Value);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Deserialize, Serialize)]
 pub struct TransactionId(Hash);
 impl AsRef<[u8]> for TransactionId {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize)]
 pub struct Transaction {
     pub inputs: Vec<SignedInput>,
     pub outputs: Vec<Output>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize)]
 pub struct Block {
     pub slot_id: SlotId,
     pub parent_hash: Hash,
@@ -115,6 +128,17 @@ impl PublicKey {
         self.0.verify(message, &signature.0)
     }
 }
+
+impl serialization::Deserialize for Block {
+    // FIXME: decide on appropriate format for mock blockchain
+
+    type Error = crate::serde_yaml::Error;
+
+    fn deserialize(data: &[u8]) -> Result<Block, crate::serde_yaml::Error> {
+        serde_yaml::from_slice(data)
+    }
+}
+
 impl property::Block for Block {
     type Id = Hash;
     type Date = SlotId;
@@ -131,6 +155,7 @@ impl property::HasTransaction for Block {
         self.transactions.iter()
     }
 }
+
 impl property::Transaction for Transaction {
     type Input  = Input;
     type Output = Output;
@@ -295,130 +320,132 @@ impl property::Ledger for Ledger {
 }
 
 #[cfg(test)]
-use quickcheck::{Arbitrary, Gen};
+mod quickcheck {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
 
-#[cfg(test)]
-impl Arbitrary for SlotId {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        SlotId(
-            Arbitrary::arbitrary(g),
-            Arbitrary::arbitrary(g)
-        )
-    }
-}
-#[cfg(test)]
-impl Arbitrary for Hash {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut bytes = [0u8;16];
-        for byte in bytes.iter_mut() {
-            *byte = Arbitrary::arbitrary(g);
-        }
-        Hash(
-            hash::Blake2b256::new(&bytes)
-        )
-    }
-}
-#[cfg(test)]
-impl Arbitrary for Value {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Value(
-            Arbitrary::arbitrary(g)
-        )
-    }
-}
-#[cfg(test)]
-impl Arbitrary for Address {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Address(
-            Arbitrary::arbitrary(g)
-        )
-    }
-}
-#[cfg(test)]
-impl Arbitrary for TransactionId {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        TransactionId(
-            Arbitrary::arbitrary(g)
-        )
-    }
-}
-#[cfg(test)]
-impl Arbitrary for Signature {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut signature = [0;crypto::SIGNATURE_SIZE];
-        for byte in signature.iter_mut() {
-            *byte = Arbitrary::arbitrary(g);
-        }
-        Signature(
-            crypto::Signature::from_bytes(signature)
-        )
-    }
-}
-#[cfg(test)]
-impl Arbitrary for PrivateKey {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut xprv = [0;crypto::XPRV_SIZE];
-        for byte in xprv.iter_mut() {
-            *byte = Arbitrary::arbitrary(g);
-        }
-        PrivateKey(
-            crypto::XPrv::normalize_bytes(xprv)
-        )
-    }
-}
-#[cfg(test)]
-impl Arbitrary for PublicKey {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut xpub = [0;crypto::XPUB_SIZE];
-        for byte in xpub.iter_mut() {
-            *byte = Arbitrary::arbitrary(g);
-        }
-        PublicKey(
-            crypto::XPub::from_bytes(xpub)
-        )
-    }
-}
-#[cfg(test)]
-impl Arbitrary for Input {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Input {
-            transaction_id: Arbitrary::arbitrary(g),
-            output_index: Arbitrary::arbitrary(g)
+    impl Arbitrary for SlotId {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            SlotId(
+                Arbitrary::arbitrary(g),
+                Arbitrary::arbitrary(g)
+            )
         }
     }
-}
-#[cfg(test)]
-impl Arbitrary for SignedInput {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        SignedInput {
-            input: Arbitrary::arbitrary(g),
-            signature: Arbitrary::arbitrary(g),
-            public_key: Arbitrary::arbitrary(g),
+
+    impl Arbitrary for Hash {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut bytes = [0u8;16];
+            for byte in bytes.iter_mut() {
+                *byte = Arbitrary::arbitrary(g);
+            }
+            Hash(
+                hash::Blake2b256::new(&bytes)
+            )
         }
     }
-}
-#[cfg(test)]
-impl Arbitrary for Output {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Output(Arbitrary::arbitrary(g),Arbitrary::arbitrary(g))
-    }
-}
-#[cfg(test)]
-impl Arbitrary for Transaction {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Transaction {
-            inputs: Arbitrary::arbitrary(g),
-            outputs: Arbitrary::arbitrary(g),
+
+    impl Arbitrary for Value {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Value(
+                Arbitrary::arbitrary(g)
+            )
         }
     }
-}
-#[cfg(test)]
-impl Arbitrary for Block {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Block {
-            slot_id: Arbitrary::arbitrary(g),
-            parent_hash: Arbitrary::arbitrary(g),
-            transactions: Arbitrary::arbitrary(g),
+
+    impl Arbitrary for Address {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Address(
+                Arbitrary::arbitrary(g)
+            )
+        }
+    }
+
+    impl Arbitrary for TransactionId {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            TransactionId(
+                Arbitrary::arbitrary(g)
+            )
+        }
+    }
+
+    impl Arbitrary for Signature {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut signature = [0;crypto::SIGNATURE_SIZE];
+            for byte in signature.iter_mut() {
+                *byte = Arbitrary::arbitrary(g);
+            }
+            Signature(
+                crypto::Signature::from_bytes(signature)
+            )
+        }
+    }
+
+    impl Arbitrary for PrivateKey {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut xprv = [0;crypto::XPRV_SIZE];
+            for byte in xprv.iter_mut() {
+                *byte = Arbitrary::arbitrary(g);
+            }
+            PrivateKey(
+                crypto::XPrv::normalize_bytes(xprv)
+            )
+        }
+    }
+
+    impl Arbitrary for PublicKey {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut xpub = [0;crypto::XPUB_SIZE];
+            for byte in xpub.iter_mut() {
+                *byte = Arbitrary::arbitrary(g);
+            }
+            PublicKey(
+                crypto::XPub::from_bytes(xpub)
+            )
+        }
+    }
+
+    impl Arbitrary for Input {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Input {
+                transaction_id: Arbitrary::arbitrary(g),
+                output_index: Arbitrary::arbitrary(g)
+            }
+        }
+    }
+
+    impl Arbitrary for SignedInput {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            SignedInput {
+                input: Arbitrary::arbitrary(g),
+                signature: Arbitrary::arbitrary(g),
+                public_key: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for Output {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Output(Arbitrary::arbitrary(g),Arbitrary::arbitrary(g))
+        }
+    }
+
+    impl Arbitrary for Transaction {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Transaction {
+                inputs: Arbitrary::arbitrary(g),
+                outputs: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for Block {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Block {
+                slot_id: Arbitrary::arbitrary(g),
+                parent_hash: Arbitrary::arbitrary(g),
+                transactions: Arbitrary::arbitrary(g),
+            }
         }
     }
 }

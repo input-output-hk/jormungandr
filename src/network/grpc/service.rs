@@ -1,5 +1,10 @@
 use network::{ConnectionState, GlobalState};
-use blockcfg::{cardano::{Block, BlockHash, Header}};
+use blockcfg::{
+    BlockConfig,
+    cardano::{Block, BlockHash},
+    property,
+    serialization::Deserialize,
+};
 use intercom::{self, ClientMsg};
 use settings::network::Listen;
 
@@ -25,7 +30,6 @@ use std::net::SocketAddr;
 
 use super::cardano as cardano_proto;
 use super::iohk::jormungandr as gen;
-use super::try_hashes_from_protobuf;
 
 impl From<BlockHash> for cardano_proto::HeaderHash {
     fn from(hash: BlockHash) -> Self {
@@ -103,11 +107,16 @@ impl<T> ReplyHandle<T> {
     }
 }
 
-impl intercom::Reply<Header> for ReplyHandle<gen::TipResponse> {
-    fn reply_ok(&mut self, header: Header) {
+impl<H> intercom::Reply<H> for ReplyHandle<gen::TipResponse>
+where
+    H: property::Block,
+    H::Date: Into<cardano_proto::BlockDate>,
+    H::Id: Into<cardano_proto::HeaderHash>,
+{
+    fn reply_ok(&mut self, header: H) {
         let response = gen::TipResponse {
-            blockdate: Some(header.get_blockdate().into()),
-            hash: Some(header.compute_hash().into()),
+            blockdate: Some(header.date().into()),
+            hash: Some(header.id().into()),
         };
         self.take_sender().send(Ok(response)).unwrap();
     }
@@ -145,10 +154,11 @@ struct StreamReplyHandle<T> {
     sender: mpsc::UnboundedSender<Result<T, intercom::Error>>,
 }
 
-impl intercom::StreamReply<Block>
-    for StreamReplyHandle<cardano_proto::Block>
+impl<B> intercom::StreamReply<B> for StreamReplyHandle<cardano_proto::Block>
+where
+    B: Into<cardano_proto::Block>,
 {
-    fn send(&mut self, item: Block) {
+    fn send(&mut self, item: B) {
         self.sender.unbounded_send(Ok(item.into())).unwrap()
     }
 
@@ -172,12 +182,29 @@ fn server_streaming_response_channel<T>(
     (StreamReplyHandle { sender }, GrpcResponseStream { receiver })
 }
 
-#[derive(Clone)]
-struct GrpcServer {
-    state: ConnectionState,
+struct GrpcServer<B: BlockConfig> {
+    state: ConnectionState<B>,
 }
 
-impl gen::server::Node for GrpcServer {
+impl<B: BlockConfig> Clone for GrpcServer<B> {
+    fn clone(&self) -> Self {
+        GrpcServer { state: self.state.clone() }
+    }
+}
+
+fn deserialize_hashes<H: Deserialize>(
+    pb: &cardano_proto::HeaderHashes
+) -> Result<Vec<H>, <H as Deserialize>::Error> {
+    pb.hashes.iter().map(|v| Deserialize::deserialize(&v[..])).collect()
+}
+
+impl<B> gen::server::Node for GrpcServer<B>
+where
+    B: BlockConfig,
+    <B as BlockConfig>::Block: Into<cardano_proto::Block>,
+    <B as BlockConfig>::BlockHash: Into<cardano_proto::HeaderHash> + Deserialize,
+    <B as BlockConfig>::BlockDate: Into<cardano_proto::BlockDate>,
+{
     type TipFuture = GrpcFuture<gen::TipResponse>;
     type GetBlocksStream = GrpcResponseStream<cardano_proto::Block>;
     type GetBlocksFuture = FutureResult<
@@ -220,7 +247,7 @@ impl gen::server::Node for GrpcServer {
         &mut self,
         from: Request<cardano_proto::HeaderHashes>,
     ) -> Self::StreamBlocksToTipFuture {
-        let hashes = match try_hashes_from_protobuf(from.get_ref()) {
+        let hashes = match deserialize_hashes(from.get_ref()) {
             Ok(hashes) => hashes,
             Err(e) => {
                 info!("failed to decode hashes from StreamBlocksToTip request: {:?}", e);
@@ -253,8 +280,18 @@ impl gen::server::Node for GrpcServer {
     }
 }
 
-pub fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: GlobalState)
-    -> tokio::executor::Spawn
+pub fn run_listen_socket<B>(
+    sockaddr: SocketAddr,
+    listen: Listen,
+    state: GlobalState<B>,
+) -> tokio::executor::Spawn
+where
+    B: 'static + BlockConfig,
+    <B as BlockConfig>::Block: Into<cardano_proto::Block> + Send,
+    <B as BlockConfig>::BlockHash: Into<cardano_proto::HeaderHash> + Deserialize + Send,
+    <B as BlockConfig>::BlockDate: Into<cardano_proto::BlockDate>,
+    <B as BlockConfig>::Transaction: Send,
+    <B as BlockConfig>::TransactionId: Send,
 {
     let state = ConnectionState::new_listen(&state, listen);
 

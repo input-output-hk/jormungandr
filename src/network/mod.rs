@@ -24,7 +24,7 @@ use protocol::{
 use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkBroadcastMsg};
 use utils::task::{TaskMessageBox};
 use settings::network::{Connection, Configuration, Listen, Peer, Protocol};
-use blockcfg::cardano::{Cardano};
+use blockcfg::{BlockConfig, cardano::Cardano};
 
 use futures::prelude::*;
 use futures::{
@@ -33,11 +33,20 @@ use futures::{
 };
 
 /// all the different channels the network may need to talk to
-#[derive(Clone)]
-pub struct Channels {
-    pub client_box:      TaskMessageBox<ClientMsg<Cardano>>,
-    pub transaction_box: TaskMessageBox<TransactionMsg<Cardano>>,
-    pub block_box:       TaskMessageBox<BlockMsg<Cardano>>,
+pub struct Channels<B: BlockConfig> {
+    pub client_box:      TaskMessageBox<ClientMsg<B>>,
+    pub transaction_box: TaskMessageBox<TransactionMsg<B>>,
+    pub block_box:       TaskMessageBox<BlockMsg<B>>,
+}
+
+impl<B: BlockConfig> Clone for Channels<B> {
+    fn clone(&self) -> Self {
+        Channels {
+            client_box: self.client_box.clone(),
+            transaction_box: self.transaction_box.clone(),
+            block_box: self.block_box.clone(),
+        }
+    }
 }
 
 /// Identifier to manage subscriptions
@@ -49,21 +58,29 @@ pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>
 
 pub type SubscriptionsR = Arc<RwLock<Subscriptions>>;
 
-#[derive(Clone)]
-pub struct GlobalState {
+pub struct GlobalState<B: BlockConfig> {
     pub config:   Arc<Configuration>,
-    pub channels: Channels,
+    pub channels: Channels<B>,
     pub subscriptions: SubscriptionsR,
 }
 
-#[derive(Clone)]
-pub struct ConnectionState {
+impl<B: BlockConfig> Clone for GlobalState<B> {
+    fn clone(&self) -> Self {
+        GlobalState {
+            config: self.config.clone(),
+            channels: self.channels.clone(),
+            subscriptions: self.subscriptions.clone(),
+        }
+    }
+}
+
+pub struct ConnectionState<B: BlockConfig> {
     /// The global network configuration
     pub global_network_configuration: Arc<Configuration>,
 
     /// the channels the connection will need to have to
     /// send messages too
-    pub channels: Channels,
+    pub channels: Channels<B>,
 
     /// the timeout to wait for unbefore the connection replies
     pub timeout: Duration,
@@ -75,8 +92,22 @@ pub struct ConnectionState {
 
     pub connected: Option<Connection>,
 }
-impl ConnectionState {
-    fn new_listen(global: &GlobalState, listen: Listen) -> Self {
+
+impl<B: BlockConfig> Clone for ConnectionState<B> {
+    fn clone(&self) -> Self {
+        ConnectionState {
+            global_network_configuration: self.global_network_configuration.clone(),
+            channels: self.channels.clone(),
+            timeout: self.timeout,
+            subscriptions: self.subscriptions.clone(),
+            connection: self.connection.clone(),
+            connected: self.connected.clone(),
+        }
+    }
+}
+
+impl<B: BlockConfig> ConnectionState<B> {
+    fn new_listen(global: &GlobalState<B>, listen: Listen) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
@@ -86,7 +117,8 @@ impl ConnectionState {
             connected: None,
         }
     }
-    fn new_peer(global: &GlobalState, peer: Peer) -> Self {
+
+    fn new_peer(global: &GlobalState<B>, peer: Peer) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
@@ -102,11 +134,11 @@ impl ConnectionState {
     }
 }
 
-pub fn run( config: Configuration
-          , subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<Cardano>>
-          , channels: Channels
-          )
-{
+pub fn run(
+    config: Configuration,
+    subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<Cardano>>,  // TODO: abstract away Cardano
+    channels: Channels<Cardano>,
+) {
     let arc_config = Arc::new(config.clone());
     let subscriptions = Arc::new(RwLock::new(Subscriptions::default()));
     let state = GlobalState {

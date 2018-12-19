@@ -129,8 +129,9 @@ pub trait HasTransaction
 pub trait Update {
     type Block: Block;
 
-    /// get the number of transaction per block
-    fn number_transactions_per_block(&self) -> usize;
+    /// Returns the number of transactions per block.
+    fn transactions_per_block(&self) -> usize;
 
-    fn get_tip(&self) -> <Self::Block as Block>::Id;
+    /// Returns the hash of current block tip.
+    fn tip(&self) -> <Self::Block as Block>::Id;
 }
