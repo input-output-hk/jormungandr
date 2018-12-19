@@ -15,6 +15,7 @@ use cardano::{
 pub type GenesisData = cardano::config::GenesisData;
 pub type TransactionId = cardano::tx::TxId;
 pub type Transaction = cardano::tx::TxAux;
+pub type BlockDate = cardano::block::BlockDate;
 pub type BlockHash = cardano::block::HeaderHash;
 pub type Block = cardano::block::Block;
 pub type Header = cardano::block::BlockHeader;
@@ -23,6 +24,7 @@ pub type Header = cardano::block::BlockHeader;
 pub struct Cardano;
 impl BlockConfig for Cardano {
     type Block = Block;
+    type BlockDate = BlockDate;
     type BlockHash = BlockHash;
     type BlockHeader = Header;
     type Transaction = Transaction;

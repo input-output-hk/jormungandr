@@ -4,7 +4,7 @@ use super::selection::{self, IsLeading, Selection};
 use super::super::{
     clock, BlockchainR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret,
 };
-use crate::blockcfg::{BlockConfig, property, property::Update};
+use crate::blockcfg::{BlockConfig, property::Update};
 use crate::transaction::{TPoolR};
 
 use cardano::block::{EpochSlotId, BlockDate};
@@ -17,10 +17,10 @@ pub fn leadership_task<B>(
     clock: clock::Clock,
     block_task: TaskMessageBox<BlockMsg<B>>
 )
-  where B: BlockConfig
-      , <B as BlockConfig>::TransactionId: Eq + std::hash::Hash
-      , <B as BlockConfig>::Ledger: Update
-      , <B as BlockConfig>::Block : property::Block<Date = BlockDate>
+  where B: BlockConfig,
+      <B as BlockConfig>::TransactionId: Eq + std::hash::Hash,
+      <B as BlockConfig>::Ledger: Update,
+      <B as BlockConfig>::BlockDate: From<BlockDate>,
 {
     let my_pub = secret.public.clone();
     loop {
@@ -45,7 +45,13 @@ pub fn leadership_task<B>(
             let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
             info!("leadership create tpool={} transactions ({})", transactions.len(), epochslot);
 
-            let block = B::make_block(&secret, &my_pub, &b.chain_state, BlockDate::Normal(epochslot), transactions);
+            let block = B::make_block(
+                &secret,
+                &my_pub,
+                &b.chain_state,
+                BlockDate::Normal(epochslot).into(),
+                transactions,
+            );
 
             block_task.send_to(
                 BlockMsg::LeadershipBlock(

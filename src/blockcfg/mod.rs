@@ -18,10 +18,11 @@ pub mod cardano;
 pub mod mock;
 
 pub trait BlockConfig {
-    type Block: property::Block<Id = Self::BlockHash>
+    type Block: property::Block<Id = Self::BlockHash, Date = Self::BlockDate>
         + property::HasTransaction<Transaction = Self::Transaction>;
+    type BlockDate;
     type BlockHash;
-    type BlockHeader;
+    type BlockHeader: property::Block<Id = Self::BlockHash, Date = Self::BlockDate>;
     type Transaction: property::Transaction<Id = Self::TransactionId>;
     type TransactionId;
     type GenesisData;
