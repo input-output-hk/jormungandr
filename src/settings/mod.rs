@@ -102,12 +102,12 @@ impl Settings {
         }
     }
 
-    pub fn get_log_level(&self) -> log::LevelFilter {
+    pub fn get_log_level(&self) -> slog::FilterLevel {
         let log_level = match self.cmd_args.verbose {
-            0 => log::LevelFilter::Warn,
-            1 => log::LevelFilter::Info,
-            2 => log::LevelFilter::Debug,
-            _ => log::LevelFilter::Trace,
+            0 => slog::FilterLevel::Warning,
+            1 => slog::FilterLevel::Info,
+            2 => slog::FilterLevel::Debug,
+            _ => slog::FilterLevel::Trace,
         };
         log_level
     }

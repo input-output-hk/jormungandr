@@ -14,13 +14,14 @@ Midgard Serpent
 
 
 [dependencies]
-log = "0.4"
 dirs = "1.0"
 rand = "0.5"
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.8"
-env_logger = "0.5"
+slog = "2.4.1"
+slog-term = "2.4.0"
+slog-async = "2.3.0"
 humantime = "1.1"
 cbor_event = "1.0"
 cryptoxide = "0.1"
@@ -33,6 +34,7 @@ digest = "^0.7"
 generic-array = "^0.9"
 bytes = "0.4"
 prost = "0.4"
+lazy_static = "1.2.0"
 prost-derive = "0.4"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }

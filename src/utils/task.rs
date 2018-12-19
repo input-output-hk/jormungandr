@@ -1,6 +1,7 @@
 use std::thread;
 use std::clone::Clone;
 use std::sync::mpsc::{Sender, Receiver, channel};
+use log_wrapper::logger::{update_thread_logger};
 
 #[allow(dead_code)]
 pub struct Task {
@@ -28,7 +29,12 @@ impl Tasks {
       where F: FnOnce() -> (),
             F: Send + 'static,
     {
-        let handler = thread::spawn(move || { f() });
+        let handler = thread::spawn(move || {
+            update_thread_logger(|logger| {
+                logger.new(o!("task"=> name.to_string()))
+            });
+            f()
+        });
         let task = Task {
             handler: handler,
             name: name,

@@ -3,9 +3,11 @@ extern crate clap;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
-extern crate log;
+#[macro_use(o)]
+extern crate slog;
 extern crate rand;
-extern crate env_logger;
+extern crate slog_async;
+extern crate slog_term;
 extern crate structopt;
 
 extern crate cardano;
@@ -39,7 +41,10 @@ extern crate test;
 extern crate quickcheck;
 
 #[macro_use]
-mod log_wrapper;
+extern crate lazy_static;
+
+#[macro_use]
+pub mod log_wrapper;
 
 pub mod clock;
 pub mod blockchain;
@@ -67,6 +72,7 @@ use intercom::NetworkBroadcastMsg;
 
 use blockcfg::cardano::{Transaction, TransactionId, GenesisData, Cardano};
 
+use slog::Drain;
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 
 use cardano_storage::{StorageConfig};
@@ -98,9 +104,11 @@ fn main() {
     // and setup the initial values
     let settings = Settings::load();
 
-    env_logger::Builder::from_default_env()
-        .filter_level(settings.get_log_level())
-        .init();
+    let decorator = slog_term::TermDecorator::new().build();
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
+    let log = slog::Logger::root(drain, o!());
+    log_wrapper::logger::set_global_logger(log);
 
     let genesis_data = settings.read_genesis_data();
 
