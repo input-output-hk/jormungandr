@@ -1,4 +1,6 @@
 pub mod memory;
+
+#[cfg(sqlite)]
 pub mod sqlite;
 
 use cardano_storage;

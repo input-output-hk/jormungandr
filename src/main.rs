@@ -41,6 +41,7 @@ extern crate quickcheck;
 #[macro_use]
 mod log_wrapper;
 
+#[cfg(sqlite)]
 extern crate sqlite;
 
 pub mod clock;
@@ -56,6 +57,7 @@ pub mod settings;
 pub mod blockcfg;
 pub mod client;
 pub mod secure;
+pub mod storage;
 
 use settings::Settings;
 //use state::State;

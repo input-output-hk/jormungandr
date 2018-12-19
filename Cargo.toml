@@ -42,7 +42,7 @@ protocol-tokio  = { path = "cardano-deps/protocol-tokio" }
 exe-common      = { path = "cardano-deps/exe-common" }
 cardano-storage = { path = "cardano-deps/storage" }
 storage-units   = { path = "cardano-deps/storage-units" }
-sqlite = "0.24"
+sqlite = { version = "0.24", optional = true }
 
 [dependencies.clap]
 version = "2.32"
