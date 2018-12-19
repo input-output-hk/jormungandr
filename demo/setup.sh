@@ -10,54 +10,78 @@ echo
 
 clipath=$(which cardano-cli)
 
-# params
-# folder - folder to prepare for a demo
-if [[ $1 = /* ]]; then
-    folder="$1"
-else
-    folder="$PWD/${1#./}"
-fi
+TEMP=`getopt -o -n:g:c:f: --long nodes:,config::,genesis:,flavour: -n 'setup.sh' -- "$@"`
+eval set -- "$TEMP"
 
 # nodes - amount of nodes to prepare
-nodes=${2:-0}
-
+nodes=0;
 # genesis - genesis data for nodes to use
-genesis=${3:-'demo-genesis.json'}
+genesis="demo-genesis.json"
+# config - template for config
+config="demo-config.yaml"
+# build flavour
+flavour="local:127.0.0.1:8000"
+
+while true; do
+  case $1 in
+    -n|--nodes) nodes=$2;shift 2 ;;
+    -g|--genenis) genesis=$2;shift 2 ;;
+    -c|--config) config=$2; shift 2 ;;
+    -f|--flavour) flavour=$2; shift 2 ;;
+    --) shift ; break ;;
+    *) folder=$1; shift 1; ;;
+  esac
+done
+
+
+OFS=$IFS
+IFS=":"
+eval set -- $flavour
+if [ x$1 = xlocal ] ; then
+  ip_address=$2
+  minport=$3
+  flavourdesc="Local setup { ip: $ip_address, minport: $minport }"
+elif [ x$1 = xdocker ] ; then
+  flavourdesc="Docker setup"
+else
+  echo "unknown flavour: $1"
+  exit 1
+fi
+IFS=$OFS
+
+# params
+# folder - folder to prepare for a demo
+if [[ $folder = /* ]]; then
+    folder="$folder"
+else
+    folder="$PWD/${folder#./}"
+fi
 
 # cardano-cli - location of cardano-cli 
-cli=${4:-$clipath}
+cli=$clipath
 
-# config - template for config
-config=${5:-'demo-config.yaml'}
-
-# IP - address to bind to
-ip_address=${6:-'127.0.0.1'}
-
-# port number to start from
-minport=${7:-8000}
-
-echo -e "Using these options:"
-echo -e "\t Folder: $folder"
-echo -e "\t Nodes: $nodes"
-echo -e "\t Genesis: $genesis"
-echo -e "\t CLI: $cli"
-echo -e "\t Config: $config"
-echo -e "\t IP: $ip_address"
-echo -e "\t FirstPort: $minport"
-echo
+cat << OPTIONS
+Using these options:
+	Folder: $folder
+	Nodes: $nodes
+	Genesis: $genesis
+	CLI: $cli
+	Config: $config
+        Flavour: $flavourdesc
+OPTIONS
 
 if [[ ! $folder ]]; then
   echo  "Error: Please supply a fully qualified folder name as the first parameter"
   exit 1
 fi
-
+#
 if [[ -d $folder ]]; then
   echo  "Error: $folder already exists"
   exit 1
 fi
 
 if [[ $nodes == 0 ]]; then
-  echo "Error: Please supply a node count as the second parameter"
+  echo "Error: Please supply a node count using -n or --nodes"
   exit 1
 fi
 
@@ -67,7 +91,7 @@ if [[ $genesis ]]; then
     exit 1
   fi
 else
-  echo "Error: Please supply a genesis file as the third parameter"
+  echo "Error: Please supply a genesis file using -g or --genesis"
   exit 1
 fi
 
@@ -77,13 +101,13 @@ if [[ $cli ]]; then
     exit 1
   fi
 else
-  echo "Error: Please supply a cardano-cli executable as the fourth parameter"
+  echo "Error: Please supply a cardano-cli in environment"
   exit 1
 fi
 
-# we have all the info we need at this point
-
-# exit if a command fails
+## we have all the info we need at this point
+#
+## exit if a command fails
 set +e
 
 echo "Building Jormungandr"
@@ -158,6 +182,7 @@ echo
 
 # we loop again because we need all the keys in the config.yaml
 # we will then apply the individual connection details to each nodes copy
+if [ $flavour == "local" ]; then
 echo "Applying Topology"
 lastport=$minport
 counter=1
@@ -210,4 +235,96 @@ echo "Its not Ragnarok yet but if you want to unleash your jormungandr do this:"
 echo
 echo "cd $folder/bin/" 
 echo "./start_nodes.sh"
+
+elif [ $flavour = "docker" ] ; then
+
+compose=$folder/docker-compose.yaml
+
+docker_nodes=""
+for (( counter=1; counter<=$nodes; counter+=1 )); do
+   docker_nodes="${docker_nodes}    - node${counter}:10000
+"
+done
+
+
+nodeslist=""
+for ((i=1; $i <= $nodes; i=$i+1)) ; do
+  nodeslist="${nodeslist} node${i}"
+done
+
+# Update config
+for ((i=1; $i <= $nodes; i=$i+1)); do
+   remote_nodes=`sed /node${i}/d <<< $docker_nodes`
+   node_folder="$folder"/nodes/"${i}"
+   echo "Copying node-${i} genesis"
+   cp $folder/genesis.json $node_folder/genesis.json
+   echo "Copying node-${i} config"
+   cp $folder/config.yaml $node_folder/config.yaml
+   cat >> $node_folder/config.yaml << END
+legacy_listen:
+  - node${i}:10000
+legacy_peers:   
+$remote_nodes
+END
+done
+
+cat > ${compose} << END
+# Docker compose file for the demo jormungandr networks
+version: '3'
+
+services:
+END
+
+for ((i=1; $i<=$nodes; i=$i+1)); do
+
+cat >> ${compose} << END
+    node${i}:
+       build: ./
+       image: "jormungandr"
+       networks:
+         - private
+       volumes:
+         - node${i}_volume:/var/lib/cardano/data
+         - ./genesis.json:/etc/jormungandr/genesis.json
+         - ./nodes/${i}/:/var/lib/cardano/etc/
+       environment:
+         - RUST_BACKTRACE=1
+       command:
+         - /var/lib/cardano/bin/jormungandr_wrapper
+         - ${nodeslist}
+         - /var/lib/cardano/etc/config.yaml
+         - /var/lib/cardano/bin/jormungandr
+         - --config
+         - /var/lib/cardano/etc/config.yaml.tmp
+         - --genesis-config
+         - /etc/jormungandr/genesis.json
+         - --secret
+         - /var/lib/cardano/etc/node_${i}.xprv
+         - --storage
+         - /var/lib/cardano/data
+         - -vvv
+END
+
+done;
+
+cat >> ${compose} << END
+volumes:
+END
+for ((i=1; $i <= $nodes; i=$i+1)); do
+cat >> ${compose} << END
+    node${i}_volume:
+END
+done
+
+cat >> ${compose} << END
+networks:
+   private:
+END
+
 echo 
+echo "If you prefer to use docker containers, then:"
+echo "cd $folder"
+echo "./bin/gen_compose.sh"
+echo
+echo " And follow instructions"
+fi

@@ -1,0 +1,13 @@
+#!/bin/bash
+sleep 2
+OFS=$IFS
+IFS=' '
+cp "$2" "${2}.tmp"
+for h in $1 ; do
+    ip=$(getent hosts $h | awk '{print $1}')
+    echo "renaming $h -> $ip"
+    sed -i "s/$h:10000/$ip:10000/g" "${2}.tmp"
+done;	
+shift 2
+echo "starting $@"
+exec $@
