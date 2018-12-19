@@ -144,6 +144,40 @@ impl Deserialize for Block {
     }
 }
 
+impl Deserialize for BlockHash {
+    type Error = cbor_event::Error;
+
+    fn deserialize(data: &[u8]) -> Result<BlockHash, cbor_event::Error> {
+        cbor_event::de::RawCbor::from(data).deserialize_complete()
+    }
+}
+
+impl property::Block for Header {
+    type Id = BlockHash;
+    type Date = cardano::block::BlockDate;
+
+    fn id(&self) -> Self::Id {
+        self.compute_hash()
+    }
+
+    fn parent_id(&self) -> &Self::Id {
+        use cardano::block::BlockHeader::*;
+
+        match self {
+            BoundaryBlockHeader(ref h) => {
+                &h.previous_header
+            }
+            MainBlockHeader(ref h) => {
+                &h.previous_header
+            }
+        }
+    }
+
+    fn date(&self) -> Self::Date {
+        self.get_slotid()
+    }
+}
+
 impl property::Transaction for Transaction {
     type Input  = cardano::tx::TxoPointer;
     type Output = cardano::tx::TxOut;

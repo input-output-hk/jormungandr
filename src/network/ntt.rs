@@ -1,5 +1,5 @@
 use super::{GlobalState, ConnectionState, SubscriptionId};
-use blockcfg::cardano;
+use blockcfg::cardano::{self, Cardano};
 use intercom::{ClientMsg, TransactionMsg, Error, Reply, StreamReply};
 use protocol::{
     Inbound, Message, Connection,
@@ -129,10 +129,11 @@ impl StreamReply<cardano::Block> for ReplyHandle {
     }
 }
 
-
-pub fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: GlobalState)
-    -> tokio::executor::Spawn
-{
+pub fn run_listen_socket(
+    sockaddr: SocketAddr,
+    listen: Listen,
+    state: GlobalState<Cardano>,
+) -> tokio::executor::Spawn {
     let state = ConnectionState::new_listen(&state, listen);
 
     info!("start listening and accepting connection to {}", state.connection);
@@ -158,9 +159,11 @@ pub fn run_listen_socket(sockaddr: SocketAddr, listen: Listen, state: GlobalStat
     tokio::spawn(server)
 }
 
-pub fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: GlobalState)
-    -> tokio::executor::Spawn
-{
+pub fn run_connect_socket(
+    sockaddr: SocketAddr,
+    peer: Peer,
+    state: GlobalState<Cardano>,
+) -> tokio::executor::Spawn {
     let state = ConnectionState::new_peer(&state, peer);
 
     info!("connecting to {}", state.connection);
@@ -180,10 +183,12 @@ pub fn run_connect_socket(sockaddr: SocketAddr, peer: Peer, state: GlobalState)
     tokio::spawn(server)
 }
 
-
-fn run_connection<T>(state: ConnectionState, connection: Connection<T>)
-    -> impl future::Future<Item = (), Error = ()>
-  where T: tokio::io::AsyncRead + tokio::io::AsyncWrite
+fn run_connection<T>(
+    state: ConnectionState<Cardano>,
+    connection: Connection<T>,
+) -> impl future::Future<Item = (), Error = ()>
+where
+    T: tokio::io::AsyncRead + tokio::io::AsyncWrite,
 {
     let (sink, stream) = connection.split();
 
