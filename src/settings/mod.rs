@@ -4,6 +4,8 @@ pub mod network;
 
 use std::path::PathBuf;
 use cardano::config::GenesisData;
+use slog::Drain;
+use slog_async;
 use std::fs::File;
 use std::io::Read;
 use std::collections::HashMap;
@@ -12,8 +14,10 @@ use std;
 use exe_common::parse_genesis_data::parse_genesis_data;
 
 pub use self::command_arguments::CommandArguments;
-pub use self::config::{Bft, BftConstants, Genesis, GenesisConstants, BftLeader};
+use self::config::ConfigLogSettings;
+pub use self::config::{Bft, BftConstants, BftLeader, Genesis, GenesisConstants, LogFormat};
 use self::network::{Connection, Listen, Peer, Protocol};
+use crate::log_wrapper;
 
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
 pub enum Leadership {
@@ -40,6 +44,8 @@ pub struct Settings {
     pub consensus: Consensus,
 
     pub leadership: Leadership,
+
+    pub log_settings: LogSettings,
 }
 
 #[derive(Debug)]
@@ -50,6 +56,36 @@ pub enum Consensus {
     Genesis,
 }
 
+#[derive(Debug)]
+pub struct LogSettings {
+    pub verbosity: slog::Level,
+    pub format: LogFormat,
+}
+
+impl LogSettings {
+
+    /// Configure logger subsystem based on the options that were passed.
+    pub fn apply(&self) {
+        let log = match self.format {
+            // XXX: Some code duplication here as rust compiler dislike
+            // that branches return Drain's of different type.
+            LogFormat::Plain => {
+                let decorator = slog_term::TermDecorator::new().build();
+                let drain = slog_term::FullFormat::new(decorator).build().fuse();
+                let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
+                let drain = slog_async::Async::new(drain).build().fuse();
+                slog::Logger::root(drain, o!())
+            },
+            LogFormat::Json => {
+                let drain = slog_json::Json::default(std::io::stderr()).fuse();
+                let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
+                let drain = slog_async::Async::new(drain).build().fuse();
+                slog::Logger::root(drain, o!())
+            },
+        };
+        log_wrapper::logger::set_global_logger(log);
+    }
+}
 
 impl Settings {
     /// Load the settings
@@ -64,7 +100,7 @@ impl Settings {
             let mut file = File::open(command_arguments.node_config.clone()).unwrap();
             match serde_yaml::from_reader(&mut file) {
                 Err(e) => {
-                    println!("config error: {}", e);
+                    error!("config error: {}", e);
                     std::process::exit(1);
                 },
                 Ok(c) => c,
@@ -72,6 +108,7 @@ impl Settings {
         };
 
         let network = generate_network(&command_arguments, &config);
+        let log_settings = generate_log_settings(&command_arguments, &config);
 
         let consensus = {
             if let Some(bft) = config.bft {
@@ -79,7 +116,7 @@ impl Settings {
             } else if let Some(_genesis) = config.genesis {
                 Consensus::Genesis
             } else {
-                println!("no consensus algorithm defined");
+                error!("no consensus algorithm defined");
                 std::process::exit(1);
             }
         };
@@ -99,17 +136,8 @@ impl Settings {
             leadership: Leadership::from(!command_arguments.without_leadership.clone()),
             consensus: consensus,
             cmd_args: command_arguments,
+            log_settings: log_settings,
         }
-    }
-
-    pub fn get_log_level(&self) -> slog::FilterLevel {
-        let log_level = match self.cmd_args.verbose {
-            0 => slog::FilterLevel::Warning,
-            1 => slog::FilterLevel::Info,
-            2 => slog::FilterLevel::Debug,
-            _ => slog::FilterLevel::Trace,
-        };
-        log_level
     }
 
     /// read and parse the genesis data, from the file specified in the Settings
@@ -121,8 +149,36 @@ impl Settings {
 
         parse_genesis_data(&buffer[..])
     }
+}
 
-
+fn generate_log_settings(
+    command_arguments: &CommandArguments,
+    config: &config::Config,
+) -> LogSettings {
+    let level = if command_arguments.verbose == 0 {
+        match config.logger {
+            Some(ConfigLogSettings {
+                verbosity: Some(v),
+                format: _,
+            }) => v.clone(),
+            _ => 0,
+        }
+    } else {
+        command_arguments.verbose
+    };
+    LogSettings {
+        verbosity: match level {
+            0 => slog::Level::Warning,
+            1 => slog::Level::Info,
+            2 => slog::Level::Debug,
+            _ => slog::Level::Trace,
+        },
+        format: command_arguments.log_format.clone().unwrap_or_else(
+            || { config.logger
+                    .clone()
+                    .and_then(|logger| logger.format)
+                    .unwrap_or(LogFormat::Plain) })
+    }
 }
 
 fn generate_network(command_arguments: &CommandArguments, config: &config::Config) -> network::Configuration {

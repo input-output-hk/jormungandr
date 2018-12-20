@@ -54,6 +54,11 @@ legacy_peers:
        - "127.0.0.1:9000"
 storage:
        - "/tmp/storage"
+logger:
+  verbosity: 1
+  format: json
 ```
 
-`legacy_listen`, `grpc_listen` and `storage` fields are optional and can be omitted.
+`legacy_listen`, `grpc_listen`, `storage` and `logger` fields are optional and can be omitted.
+Verbosity levels are descripbed as an integer where 0 - warning, 1 - info, 3 - debug, 4 and above - trace.
+Format is one of "json" or "plain".
