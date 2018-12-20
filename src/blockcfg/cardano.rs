@@ -10,6 +10,7 @@ use cardano::{
         verify::{Error},
     },
     tx::{TxoPointer, TxOut},
+    util::try_from_slice::TryFromSlice,
 };
 
 pub type GenesisData = cardano::config::GenesisData;
@@ -145,10 +146,10 @@ impl Deserialize for Block {
 }
 
 impl Deserialize for BlockHash {
-    type Error = cbor_event::Error;
+    type Error = cardano::hash::Error;
 
-    fn deserialize(data: &[u8]) -> Result<BlockHash, cbor_event::Error> {
-        cbor_event::de::RawCbor::from(data).deserialize_complete()
+    fn deserialize(data: &[u8]) -> Result<BlockHash, Self::Error> {
+        BlockHash::try_from_slice(data)
     }
 }
 
