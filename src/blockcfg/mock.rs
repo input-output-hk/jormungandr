@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use crate::blockcfg::{property, serialization};
 
+use bincode;
 use cardano::hash;
 use cardano::hdwallet as crypto;
 
@@ -135,10 +136,10 @@ impl PublicKey {
 impl serialization::Deserialize for Block {
     // FIXME: decide on appropriate format for mock blockchain
 
-    type Error = crate::serde_yaml::Error;
+    type Error = bincode::Error;
 
-    fn deserialize(data: &[u8]) -> Result<Block, crate::serde_yaml::Error> {
-        serde_yaml::from_slice(data)
+    fn deserialize(data: &[u8]) -> Result<Block, bincode::Error> {
+        bincode::deserialize(data)
     }
 }
 
