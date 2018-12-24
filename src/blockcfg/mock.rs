@@ -84,13 +84,16 @@ impl UtxoPointer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct SignedInput {
-    pub input: UtxoPointer,
+pub struct Witness {
     pub signature: Signature,
     pub public_key: PublicKey,
 }
-impl SignedInput {
-    pub fn verify(&self, _output: &Output) -> bool {
+impl Witness {
+    pub fn matches(&self, _output: &Output) -> bool {
+        unimplemented!()
+    }
+
+    pub fn verifies(&self, _tx: &Transaction) -> bool {
         unimplemented!()
     }
 }
@@ -108,8 +111,14 @@ impl AsRef<[u8]> for TransactionId {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Transaction {
-    pub inputs: Vec<SignedInput>,
+    pub inputs: Vec<UtxoPointer>,
     pub outputs: Vec<Output>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct SignedTransaction {
+    pub tx: Transaction,
+    pub witnesses: Vec<Witness>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -177,6 +186,15 @@ impl property::Transaction for Transaction {
     }
 }
 
+impl property::Transaction for SignedTransaction {
+    type Input = UtxoPointer;
+    type Output = Output;
+    type Id = TransactionId;
+    fn id(&self) -> Self::Id {
+        self.tx.id()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Ledger {
     unspent_outputs: HashMap<UtxoPointer, Output>,
@@ -235,6 +253,13 @@ pub enum Error {
     /// error occurs if the signature is invalid: either does not match the initial output
     /// or it is not cryptographically valid.
     InvalidSignature(UtxoPointer, Output, Signature),
+
+    /// No signature for the output
+    NoSignatureFor(UtxoPointer, Output, Vec<Witness>),
+
+    /// error occurs when one of the witness does not sing entire
+    /// transaction properly.
+    InvalidTxSignature(Witness),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -245,13 +270,15 @@ impl std::fmt::Display for Error {
                 write!(f, "Input was already present in the Ledger")
             }
             Error::InvalidSignature(_, _, _) => write!(f, "Input is not signed properly"),
+            Error::NoSignatureFor(_, _, _) => write!(f, "Input is not signed by holder key"),
+            Error::InvalidTxSignature(_) => write!(f, "Transaction was not signed"),
         }
     }
 }
 impl std::error::Error for Error {}
 
 impl property::Ledger for Ledger {
-    type Transaction = Transaction;
+    type Transaction = SignedTransaction;
     type Diff = Diff;
     type Error = Error;
 
@@ -260,31 +287,36 @@ impl property::Ledger for Ledger {
 
         let mut diff = Diff::new();
         let id = transaction.id();
-
-        // 1. validate the inputs
-        for input in transaction.inputs.iter() {
-            if let Some(output) = self.unspent_outputs.get(&input.input) {
-                if !input.verify(&output) {
-                    return Err(Error::InvalidSignature(
-                        input.input,
-                        *output,
-                        input.signature.clone(),
-                    ));
-                }
-                if let Some(output) = diff.spent_outputs.insert(input.input, *output) {
-                    return Err(Error::DoubleSpend(input.input, output));
-                }
-            } else {
-                return Err(Error::InputDoesNotResolve(input.input));
+        // 0. validate transaction without looking into the context.
+        for witness in transaction.witnesses.iter() {
+            if !witness.verifies(&transaction.tx) {
+                return Err(Error::InvalidTxSignature(witness.clone()));
             }
         }
-
+        // 1. validate the inputs
+        // For each input there must be a key that verifies wallet.
+        for input in transaction.tx.inputs.iter() {
+            if let Some(output) = self.unspent_outputs.get(&input) {
+                let signed = transaction.witnesses.iter().any(|w| w.matches(&output));
+                if !signed {
+                    return Err(Error::NoSignatureFor(
+                        *input,
+                        *output,
+                        transaction.witnesses.clone(),
+                    ));
+                }
+                if let Some(output) = diff.spent_outputs.insert(*input, *output) {
+                    return Err(Error::DoubleSpend(*input, output));
+                }
+            } else {
+                return Err(Error::InputDoesNotResolve(*input));
+            }
+        }
         // 2. prepare to add the new outputs
-        for (index, output) in transaction.outputs.iter().enumerate() {
+        for (index, output) in transaction.tx.outputs.iter().enumerate() {
             diff.new_unspent_outputs
                 .insert(UtxoPointer::new(id, index as u32), *output);
         }
-
         Ok(diff)
     }
 
@@ -397,10 +429,9 @@ mod quickcheck {
         }
     }
 
-    impl Arbitrary for SignedInput {
+    impl Arbitrary for Witness {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            SignedInput {
-                input: Arbitrary::arbitrary(g),
+            Witness {
                 signature: Arbitrary::arbitrary(g),
                 public_key: Arbitrary::arbitrary(g),
             }
