@@ -10,6 +10,9 @@ use bincode;
 use cardano::hash;
 use cardano::hdwallet as crypto;
 
+/// Non unique identifier of the transaction position in the
+/// blockchain. There may be many transactions related to the same
+/// `SlotId`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct SlotId(u32, u32);
 
@@ -36,6 +39,8 @@ impl AsRef<[u8]> for PublicKey {
         self.0.as_ref()
     }
 }
+
+/// Private key of the entity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrivateKey(crypto::XPrv);
 impl AsRef<[u8]> for PrivateKey {
@@ -43,7 +48,16 @@ impl AsRef<[u8]> for PrivateKey {
         self.0.as_ref()
     }
 }
+impl PrivateKey {
+    pub fn public(&self) -> PublicKey {
+        PublicKey(self.0.public())
+    }
+    pub fn sign(&self, data: &[u8]) -> Signature {
+        Signature(self.0.sign(data))
+    }
+}
 
+/// Cryptographic signature.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Signature(crypto::Signature<()>);
 impl AsRef<[u8]> for Signature {
@@ -52,9 +66,12 @@ impl AsRef<[u8]> for Signature {
     }
 }
 
+/// Unspent transaction counter.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Value(u64);
 
+/// Address. Currently address is just a hash of
+/// the public key.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Address(Hash);
 impl Address {
@@ -121,9 +138,12 @@ impl Witness {
     }
 }
 
+/// Information how tokens are spent.
+/// A value of tokens is sent to the address.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Output(pub Address, pub Value);
 
+/// Id of the transaction.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct TransactionId(Hash);
 impl AsRef<[u8]> for TransactionId {
@@ -132,33 +152,31 @@ impl AsRef<[u8]> for TransactionId {
     }
 }
 
+/// Transaction, transaction maps old unspent tokens into the
+/// set of the new addresses.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Transaction {
     pub inputs: Vec<UtxoPointer>,
     pub outputs: Vec<Output>,
 }
 
+/// Each transaction must be signed in order to be executed
+/// by the ledger. `SignedTransaction` represents such a transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct SignedTransaction {
     pub tx: Transaction,
     pub witnesses: Vec<Witness>,
 }
 
+/// `Block` is an element of the blockchain it contains multiple
+/// transaction and a reference to the parent block. Alongside
+/// with the position of that block in the chain.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Block {
     pub slot_id: SlotId,
     pub parent_hash: Hash,
 
-    pub transactions: Vec<Transaction>,
-}
-
-impl PrivateKey {
-    pub fn public(&self) -> PublicKey {
-        PublicKey(self.0.public())
-    }
-    pub fn sign(&self, data: &[u8]) -> Signature {
-        Signature(self.0.sign(data))
-    }
+    pub transactions: Vec<SignedTransaction>,
 }
 impl PublicKey {
     pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
@@ -192,7 +210,7 @@ impl property::Block for Block {
     }
 }
 impl property::HasTransaction for Block {
-    type Transaction = Transaction;
+    type Transaction = SignedTransaction;
 
     fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
         self.transactions.iter()
@@ -472,6 +490,15 @@ mod quickcheck {
             Transaction {
                 inputs: Arbitrary::arbitrary(g),
                 outputs: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for SignedTransaction {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            SignedTransaction {
+                tx: Arbitrary::arbitrary(g),
+                witnesses: Arbitrary::arbitrary(g),
             }
         }
     }
