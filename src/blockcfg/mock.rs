@@ -171,22 +171,7 @@ impl property::Transaction for Transaction {
     type Output = Output;
     type Id = TransactionId;
     fn id(&self) -> Self::Id {
-        use std::convert::AsRef;
-        let mut bytes: Vec<u8> = vec![];
-        for signed_input in self.inputs.iter() {
-            bytes.extend(signed_input.input.transaction_id.as_ref());
-            #[cfg(nightly)] // TODO: github's issue #91
-            bytes.extend(signed_input.input.output_index.to_be_bytes().as_ref());
-            bytes.extend(signed_input.signature.as_ref());
-            // remove the chain code from the serialisation
-            // see github #93
-            bytes.extend(signed_input.public_key.as_ref()[..32].as_ref());
-        }
-        for output in self.outputs.iter() {
-            bytes.extend(output.0.as_ref());
-            #[cfg(nightly)] // TODO: github's issue #91
-            bytes.extend(output.1.to_be_bytes().as_ref());
-        }
+        let bytes = bincode::serialize(self).expect("unable to serialize transaction");
         TransactionId(Hash::hash_bytes(&bytes))
     }
 }
