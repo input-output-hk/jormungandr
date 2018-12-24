@@ -149,7 +149,8 @@ impl property::Block for Block {
     type Date = SlotId;
 
     fn id(&self) -> Self::Id {
-        unimplemented!()
+        let bytes = bincode::serialize(self).expect("unable to serialize block");
+        Hash::hash_bytes(&bytes)
     }
     fn parent_id(&self) -> &Self::Id {
         &self.parent_hash
