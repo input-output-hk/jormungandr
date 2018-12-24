@@ -83,12 +83,20 @@ impl UtxoPointer {
     }
 }
 
+/// Structure that proofs that certain user agrees with
+/// some data. This structure is used to sign `Transaction`
+/// and get `SignedTransaction` out.
+///
+/// It's important that witness works with opaque structures
+/// and may not know the contents of the internal transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Witness {
     pub signature: Signature,
     pub public_key: PublicKey,
 }
+
 impl Witness {
+    /// Creates new `Witness` value.
     pub fn new(transaction_id: TransactionId, private_key: PrivateKey) -> Self {
         let sig = private_key.sign(transaction_id.as_ref());
         Witness {
@@ -96,10 +104,17 @@ impl Witness {
             public_key: private_key.public(),
         }
     }
-    pub fn matches(&self, _output: &Output) -> bool {
-        unimplemented!()
+
+    /// Checks if a witness emitter matches the `Output` address.
+    ///
+    /// This check is needed because each Utxo in the transaction
+    /// must be signed by the wallet holder.
+    pub fn matches(&self, output: &Output) -> bool {
+        let addr = Address::new(&self.public_key);
+        addr == output.0
     }
 
+    /// Verify the given `TransactionId` using the witness.
     pub fn verifies(&self, transaction_id: TransactionId) -> bool {
         self.public_key
             .verify(transaction_id.as_ref(), &self.signature)
