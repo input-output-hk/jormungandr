@@ -68,14 +68,15 @@ impl AsRef<[u8]> for Address {
     }
 }
 
+// Unspent transaction pointer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
-pub struct Input {
+pub struct UtxoPointer {
     pub transaction_id: TransactionId,
     pub output_index: u32,
 }
-impl Input {
+impl UtxoPointer {
     pub fn new(transaction_id: TransactionId, output_index: u32) -> Self {
-        Input {
+        UtxoPointer {
             transaction_id,
             output_index,
         }
@@ -84,7 +85,7 @@ impl Input {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct SignedInput {
-    pub input: Input,
+    pub input: UtxoPointer,
     pub signature: Signature,
     pub public_key: PublicKey,
 }
@@ -166,7 +167,7 @@ impl property::HasTransaction for Block {
 }
 
 impl property::Transaction for Transaction {
-    type Input = Input;
+    type Input = UtxoPointer;
     type Output = Output;
     type Id = TransactionId;
     fn id(&self) -> Self::Id {
@@ -192,7 +193,7 @@ impl property::Transaction for Transaction {
 
 #[derive(Debug, Clone)]
 pub struct Ledger {
-    unspent_outputs: HashMap<Input, Output>,
+    unspent_outputs: HashMap<UtxoPointer, Output>,
 }
 impl Ledger {
     pub fn new() -> Self {
@@ -204,8 +205,8 @@ impl Ledger {
 
 #[derive(Debug, Clone)]
 pub struct Diff {
-    spent_outputs: HashMap<Input, Output>,
-    new_unspent_outputs: HashMap<Input, Output>,
+    spent_outputs: HashMap<UtxoPointer, Output>,
+    new_unspent_outputs: HashMap<UtxoPointer, Output>,
 }
 impl Diff {
     fn new() -> Self {
@@ -225,7 +226,7 @@ impl Diff {
 pub enum Error {
     /// If the Ledger could not find the given input in the UTxO list it will
     /// report this error.
-    InputDoesNotResolve(Input),
+    InputDoesNotResolve(UtxoPointer),
 
     /// if the Ledger finds that the input has already been used once in a given
     /// transaction or block of transactions it will report this error.
@@ -233,7 +234,7 @@ pub enum Error {
     /// the input here is the given input used twice,
     /// the output here is the output set in the first occurrence of the input, it
     /// will provide a bit of information to the user to figure out what went wrong
-    DoubleSpend(Input, Output),
+    DoubleSpend(UtxoPointer, Output),
 
     /// This error will happen if the input was already set and is now replaced
     /// by another output.
@@ -243,11 +244,11 @@ pub enum Error {
     /// associated to this output.
     ///
     /// first the input in common, then the original output and finally the new output
-    InputWasAlreadySet(Input, Output, Output),
+    InputWasAlreadySet(UtxoPointer, Output, Output),
 
     /// error occurs if the signature is invalid: either does not match the initial output
     /// or it is not cryptographically valid.
-    InvalidSignature(Input, Output, Signature),
+    InvalidSignature(UtxoPointer, Output, Signature),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -295,7 +296,7 @@ impl property::Ledger for Ledger {
         // 2. prepare to add the new outputs
         for (index, output) in transaction.outputs.iter().enumerate() {
             diff.new_unspent_outputs
-                .insert(Input::new(id, index as u32), *output);
+                .insert(UtxoPointer::new(id, index as u32), *output);
         }
 
         Ok(diff)
@@ -401,9 +402,9 @@ mod quickcheck {
         }
     }
 
-    impl Arbitrary for Input {
+    impl Arbitrary for UtxoPointer {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Input {
+            UtxoPointer {
                 transaction_id: Arbitrary::arbitrary(g),
                 output_index: Arbitrary::arbitrary(g),
             }
