@@ -89,12 +89,20 @@ pub struct Witness {
     pub public_key: PublicKey,
 }
 impl Witness {
+    pub fn new(transaction_id: TransactionId, private_key: PrivateKey) -> Self {
+        let sig = private_key.sign(transaction_id.as_ref());
+        Witness {
+            signature: sig,
+            public_key: private_key.public(),
+        }
+    }
     pub fn matches(&self, _output: &Output) -> bool {
         unimplemented!()
     }
 
-    pub fn verifies(&self, _tx: &Transaction) -> bool {
-        unimplemented!()
+    pub fn verifies(&self, transaction_id: TransactionId) -> bool {
+        self.public_key
+            .verify(transaction_id.as_ref(), &self.signature)
     }
 }
 
@@ -289,7 +297,7 @@ impl property::Ledger for Ledger {
         let id = transaction.id();
         // 0. validate transaction without looking into the context.
         for witness in transaction.witnesses.iter() {
-            if !witness.verifies(&transaction.tx) {
+            if !witness.verifies(transaction.tx.id()) {
                 return Err(Error::InvalidTxSignature(witness.clone()));
             }
         }
