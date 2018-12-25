@@ -71,7 +71,7 @@ impl AsRef<[u8]> for Signature {
     }
 }
 
-/// Unspent transaction counter.
+/// Unspent transaction value.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Value(u64);
 
@@ -293,10 +293,7 @@ pub enum Error {
 
     /// error occurs if the signature is invalid: either does not match the initial output
     /// or it is not cryptographically valid.
-    InvalidSignature(UtxoPointer, Output, Signature),
-
-    /// No signature for the output
-    NoSignatureFor(UtxoPointer, Output, Vec<Witness>),
+    InvalidSignature(UtxoPointer, Output, Witness),
 
     /// error occurs when one of the witness does not sing entire
     /// transaction properly.
@@ -311,7 +308,6 @@ impl std::fmt::Display for Error {
                 write!(f, "Input was already present in the Ledger")
             }
             Error::InvalidSignature(_, _, _) => write!(f, "Input is not signed properly"),
-            Error::NoSignatureFor(_, _, _) => write!(f, "Input is not signed by holder key"),
             Error::InvalidTxSignature(_) => write!(f, "Transaction was not signed"),
         }
     }
@@ -341,11 +337,7 @@ impl property::Ledger for Ledger {
             }
             if let Some(output) = self.unspent_outputs.get(&input) {
                 if !witness.matches(&output) {
-                    return Err(Error::NoSignatureFor(
-                        *input,
-                        *output,
-                        transaction.witnesses.clone(),
-                    ));
+                    return Err(Error::InvalidSignature(*input, *output, witness.clone()));
                 }
                 if let Some(output) = diff.spent_outputs.insert(*input, *output) {
                     return Err(Error::DoubleSpend(*input, output));
