@@ -39,6 +39,11 @@ impl AsRef<[u8]> for PublicKey {
         self.0.as_ref()
     }
 }
+impl PublicKey {
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
+        self.0.verify(message, &signature.0)
+    }
+}
 
 /// Private key of the entity.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -177,11 +182,6 @@ pub struct Block {
     pub parent_hash: Hash,
 
     pub transactions: Vec<SignedTransaction>,
-}
-impl PublicKey {
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
-        self.0.verify(message, &signature.0)
-    }
 }
 
 impl serialization::Deserialize for Block {
@@ -328,18 +328,19 @@ impl property::Ledger for Ledger {
 
         let mut diff = Diff::new();
         let id = transaction.id();
-        // 0. validate transaction without looking into the context.
-        for witness in transaction.witnesses.iter() {
+        // 1. validate transaction without looking into the context
+        // and that each input is validated by the matching key.
+        for (input, witness) in transaction
+            .tx
+            .inputs
+            .iter()
+            .zip(transaction.witnesses.iter())
+        {
             if !witness.verifies(transaction.tx.id()) {
                 return Err(Error::InvalidTxSignature(witness.clone()));
             }
-        }
-        // 1. validate the inputs
-        // For each input there must be a key that verifies wallet.
-        for input in transaction.tx.inputs.iter() {
             if let Some(output) = self.unspent_outputs.get(&input) {
-                let signed = transaction.witnesses.iter().any(|w| w.matches(&output));
-                if !signed {
+                if !witness.matches(&output) {
                     return Err(Error::NoSignatureFor(
                         *input,
                         *output,
