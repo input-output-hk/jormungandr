@@ -1,8 +1,8 @@
 use blockcfg::{cardano, cardano::Cardano};
-use blockchain::{BlockchainR};
+use blockchain::BlockchainR;
 use cardano_storage::{block_read, iter};
 use intercom::*;
-use std::sync::{mpsc::Receiver};
+use std::sync::mpsc::Receiver;
 
 pub fn client_task(blockchain: BlockchainR<Cardano>, r: Receiver<ClientMsg<Cardano>>) {
     loop {
@@ -10,18 +10,16 @@ pub fn client_task(blockchain: BlockchainR<Cardano>, r: Receiver<ClientMsg<Carda
         debug!("client query received: {:?}", query);
 
         match query {
-            ClientMsg::GetBlockTip(mut handler) =>
-                handler.reply(handle_get_block_tip(&blockchain)),
-            ClientMsg::GetBlockHeaders(checkpoints, to, mut handler) =>
-                handler.reply(handle_get_block_headers(&blockchain, checkpoints, to)),
-            ClientMsg::GetBlocks(from, to, handler) =>
-                do_stream_reply(
-                    || handle_get_blocks(&blockchain, from, to, handler),
-                ),
-            ClientMsg::StreamBlocksToTip(from, handler) =>
-                do_stream_reply(
-                    || handle_stream_blocks_to_tip(&blockchain, from, handler),
-                ),
+            ClientMsg::GetBlockTip(mut handler) => handler.reply(handle_get_block_tip(&blockchain)),
+            ClientMsg::GetBlockHeaders(checkpoints, to, mut handler) => {
+                handler.reply(handle_get_block_headers(&blockchain, checkpoints, to))
+            }
+            ClientMsg::GetBlocks(from, to, handler) => {
+                do_stream_reply(|| handle_get_blocks(&blockchain, from, to, handler))
+            }
+            ClientMsg::StreamBlocksToTip(from, handler) => {
+                do_stream_reply(|| handle_stream_blocks_to_tip(&blockchain, from, handler))
+            }
         }
     }
 }
@@ -42,15 +40,11 @@ where
     handler.close();
 }
 
-fn handle_get_block_tip(
-    blockchain: &BlockchainR<Cardano>
-) -> Result<cardano::Header, Error> {
+fn handle_get_block_tip(blockchain: &BlockchainR<Cardano>) -> Result<cardano::Header, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
     match block_read(blockchain.get_storage(), &tip) {
-        Err(err) => {
-            Err(format!("Cannot read block '{}': {}", tip, err).into())
-        }
+        Err(err) => Err(format!("Cannot read block '{}': {}", tip, err).into()),
         Ok(rblk) => {
             let blk = rblk.decode().unwrap();
             Ok(blk.get_header())
@@ -63,22 +57,26 @@ const MAX_HEADERS: usize = 2000;
 fn handle_get_block_headers(
     blockchain: &BlockchainR<Cardano>,
     checkpoints: Vec<cardano::BlockHash>,
-    to: cardano::BlockHash
+    to: cardano::BlockHash,
 ) -> Result<Vec<cardano::Header>, Error> {
     let blockchain = blockchain.read().unwrap();
 
     /* Filter out the checkpoints that don't exist and sort them by
      * block date. */
-    let mut checkpoints = checkpoints.iter().filter_map(
-        |checkpoint|
-        match block_read(blockchain.get_storage(), &checkpoint) {
-            Err(_) => None,
-            Ok(rblk) => Some((rblk.decode().unwrap().get_header().get_blockdate(), checkpoint))
-        }
-    ).collect::<Vec<_>>();
+    let mut checkpoints = checkpoints
+        .iter()
+        .filter_map(
+            |checkpoint| match block_read(blockchain.get_storage(), &checkpoint) {
+                Err(_) => None,
+                Ok(rblk) => Some((
+                    rblk.decode().unwrap().get_header().get_blockdate(),
+                    checkpoint,
+                )),
+            },
+        )
+        .collect::<Vec<_>>();
 
     if !checkpoints.is_empty() {
-
         /* Start at the newest checkpoint. */
         checkpoints.sort_unstable();
         let from = checkpoints.last().unwrap().1;
@@ -92,13 +90,17 @@ fn handle_get_block_headers(
         let mut err = None;
         for x in iter::Iter::new(&blockchain.get_storage(), from.clone(), to).unwrap() {
             match x {
-                Err(err2) => { err = Some(err2); },
+                Err(err2) => {
+                    err = Some(err2);
+                }
                 Ok((_, blk)) => {
                     if skip {
                         skip = false;
                     } else {
                         headers.push(blk.get_header());
-                        if headers.len() >= MAX_HEADERS { break; }
+                        if headers.len() >= MAX_HEADERS {
+                            break;
+                        }
                     }
                 }
             };
@@ -117,7 +119,7 @@ fn handle_get_blocks(
     blockchain: &BlockchainR<Cardano>,
     from: cardano::BlockHash,
     to: cardano::BlockHash,
-    mut reply: BoxStreamReply<cardano::Block>
+    mut reply: BoxStreamReply<cardano::Block>,
 ) -> Result<BoxStreamReply<cardano::Block>, StreamReplyError<cardano::Block>> {
     let blockchain = blockchain.read().unwrap();
 
@@ -140,12 +142,10 @@ fn handle_stream_blocks_to_tip(
 
     // FIXME: handle multiple from addresses
     if from.len() != 1 {
-        return Err(
-            StreamReplyError(
-                Error::from("only one checkpoint address is currently supported"),
-                reply,
-            )
-        );
+        return Err(StreamReplyError(
+            Error::from("only one checkpoint address is currently supported"),
+            reply,
+        ));
     }
     let from = from.remove(0);
 

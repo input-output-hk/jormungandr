@@ -1,7 +1,6 @@
-use std::{net::SocketAddr, fmt, str, time::Duration};
 #[cfg(unix)]
-use std::path::{PathBuf};
-
+use std::path::PathBuf;
+use std::{fmt, net::SocketAddr, str, time::Duration};
 
 /// configuration for the connection type.
 /// Either to listen from, or to connect too.
@@ -20,7 +19,7 @@ impl fmt::Display for Connection {
         match self {
             Connection::Tcp(addr) => write!(f, "{}", addr),
             #[cfg(unix)]
-            Connection::Unix(path)   => write!(f, "{}", path.to_string_lossy()),
+            Connection::Unix(path) => write!(f, "{}", path.to_string_lossy()),
         }
     }
 }
@@ -32,7 +31,7 @@ pub enum Protocol {
     Grpc,
 }
 
-const DEFAULT_TIMEOUT_MICROSECONDS : u64 = 500_000;
+const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 
 /// represent a connection peer
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,7 +41,7 @@ pub struct Peer {
     /// Network protocol to use for this connection.
     pub protocol: Protocol,
     /// a timeout in case of inactivity or timout between request.
-    pub timeout:    Duration,
+    pub timeout: Duration,
 }
 
 impl Peer {
@@ -50,7 +49,7 @@ impl Peer {
         Peer {
             connection,
             protocol,
-            timeout: Duration::from_micros(DEFAULT_TIMEOUT_MICROSECONDS)
+            timeout: Duration::from_micros(DEFAULT_TIMEOUT_MICROSECONDS),
         }
     }
 }
@@ -65,7 +64,7 @@ pub struct Listen {
     /// send them commands, queries or else and they timedout.
     ///
     /// Every derived connection will receive this timeout
-    pub timeout:    Duration,
+    pub timeout: Duration,
 }
 
 impl Listen {
@@ -73,7 +72,7 @@ impl Listen {
         Listen {
             connection,
             protocol,
-            timeout: Duration::from_micros(DEFAULT_TIMEOUT_MICROSECONDS)
+            timeout: Duration::from_micros(DEFAULT_TIMEOUT_MICROSECONDS),
         }
     }
 }

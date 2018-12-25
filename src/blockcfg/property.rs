@@ -31,7 +31,6 @@ pub trait Block {
     fn date(&self) -> Self::Date;
 }
 
-
 /// Ledger for the blockchain, maintain the validity of the transactions
 /// happening within the blockchain.
 ///
@@ -75,8 +74,9 @@ pub trait Ledger {
     ///
     /// The diff here is an accumulated diff.
     fn diff<'a, I>(&self, transactions: I) -> Result<Self::Diff, Self::Error>
-        where I: Iterator<Item = &'a Self::Transaction> + Sized
-            , Self::Transaction: 'a;
+    where
+        I: Iterator<Item = &'a Self::Transaction> + Sized,
+        Self::Transaction: 'a;
 
     /// add/apply a diff to the given ledger.
     fn add(&mut self, diff: Self::Diff) -> Result<&mut Self, Self::Error>;
@@ -84,8 +84,9 @@ pub trait Ledger {
     /// this is a convenient function to both diff and apply the diff
     /// of the given transactions.
     fn update<'a, I>(&mut self, transactions: I) -> Result<&mut Self, Self::Error>
-        where I: Iterator<Item = &'a Self::Transaction> + Sized
-            , Self::Transaction: 'a
+    where
+        I: Iterator<Item = &'a Self::Transaction> + Sized,
+        Self::Transaction: 'a,
     {
         let diff = self.diff(transactions)?;
         self.add(diff)
@@ -113,8 +114,7 @@ pub trait Transaction {
 ///
 /// This trait simply provides a generic way to access all the transactions
 /// of a block in the chain.
-pub trait HasTransaction
-{
+pub trait HasTransaction {
     /// the transaction Type.
     type Transaction: Transaction;
 

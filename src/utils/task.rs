@@ -1,7 +1,7 @@
-use std::thread;
+use log_wrapper::logger::update_thread_logger;
 use std::clone::Clone;
-use std::sync::mpsc::{Sender, Receiver, channel};
-use log_wrapper::logger::{update_thread_logger};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread;
 
 #[allow(dead_code)]
 pub struct Task {
@@ -16,7 +16,7 @@ pub struct TaskWithInputs<A> {
 }
 
 pub struct Tasks {
-    all_tasks: Vec<Task>
+    all_tasks: Vec<Task>,
 }
 impl Tasks {
     pub fn new() -> Self {
@@ -26,13 +26,12 @@ impl Tasks {
     }
 
     pub fn task_create<F>(&mut self, name: &'static str, f: F)
-      where F: FnOnce() -> (),
-            F: Send + 'static,
+    where
+        F: FnOnce() -> (),
+        F: Send + 'static,
     {
         let handler = thread::spawn(move || {
-            update_thread_logger(|logger| {
-                logger.new(o!("task"=> name.to_string()))
-            });
+            update_thread_logger(|logger| logger.new(o!("task"=> name.to_string())));
             f()
         });
         let task = Task {
@@ -43,13 +42,14 @@ impl Tasks {
     }
 
     pub fn task_create_with_inputs<F, A>(&mut self, name: &'static str, f: F) -> TaskMessageBox<A>
-      where F: FnOnce(Receiver<A>) -> (),
-            F: Send + 'static,
-            A: Send + 'static,
+    where
+        F: FnOnce(Receiver<A>) -> (),
+        F: Send + 'static,
+        A: Send + 'static,
     {
         let (tx, rx) = channel();
 
-        self.task_create(name, move || { f(rx) });
+        self.task_create(name, move || f(rx));
 
         TaskMessageBox(tx)
     }

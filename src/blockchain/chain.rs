@@ -1,12 +1,13 @@
-use std::sync::{Arc, RwLock};
 use std::collections::BTreeMap;
+use std::sync::{Arc, RwLock};
 
-use cardano_storage::StorageConfig;
-use cardano_storage::{tag, Storage, blob, block_read};
 use cardano_storage::chain_state::restore_chain_state;
+use cardano_storage::StorageConfig;
+use cardano_storage::{blob, block_read, tag, Storage};
 
 use crate::blockcfg::{
-    cardano::{GenesisData, Block, BlockHash, Cardano}, BlockConfig
+    cardano::{Block, BlockHash, Cardano, GenesisData},
+    BlockConfig,
 };
 
 #[allow(dead_code)]
@@ -30,14 +31,15 @@ pub struct Blockchain<B: BlockConfig> {
 pub type BlockchainR<B> = Arc<RwLock<Blockchain<B>>>;
 
 // FIXME: copied from cardano-cli
-pub const LOCAL_BLOCKCHAIN_TIP_TAG : &'static str = "tip";
+pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
 impl Blockchain<Cardano> {
     pub fn from_storage(genesis_data: GenesisData, storage_config: &StorageConfig) -> Self {
         let storage = Storage::init(storage_config).unwrap();
-        let tip = tag::read_hash(&storage, &LOCAL_BLOCKCHAIN_TIP_TAG).unwrap_or(genesis_data.genesis_prev.clone());
-        let chain_state = restore_chain_state(&storage, &genesis_data, &tip)
-            .expect("restoring chain state");
+        let tip = tag::read_hash(&storage, &LOCAL_BLOCKCHAIN_TIP_TAG)
+            .unwrap_or(genesis_data.genesis_prev.clone());
+        let chain_state =
+            restore_chain_state(&storage, &genesis_data, &tip).expect("restoring chain state");
         Blockchain {
             genesis_data,
             storage,
@@ -65,7 +67,6 @@ impl Blockchain<Cardano> {
     /// chain than the current tip, then switch the tip. If it is
     /// connected but is not a longer valid chain, then discard it.
     pub fn handle_incoming_block(&mut self, block: Block) {
-
         let block_hash = block.get_header().compute_hash();
         let parent_hash = block.get_header().get_previous_header();
 
@@ -73,7 +74,8 @@ impl Blockchain<Cardano> {
             self.handle_connected_block(block_hash, block);
         } else {
             self.sollicit_block(&parent_hash);
-            self.unconnected_blocks.entry(parent_hash)
+            self.unconnected_blocks
+                .entry(parent_hash)
                 .or_insert(BTreeMap::new())
                 .insert(block_hash, block);
         }
@@ -81,13 +83,11 @@ impl Blockchain<Cardano> {
 
     /// Handle a block whose ancestors are on disk.
     fn handle_connected_block(&mut self, block_hash: BlockHash, block: Block) {
-
         // Quick optimization: don't do anything if the incoming block
         // is already the tip. Ideally we would bail out if the
         // incoming block is on the tip chain, but there is no quick
         // way to check that.
         if block_hash != self.chain_state.last_block {
-
             blob::write(&self.storage, &block_hash, cbor!(block).unwrap().as_ref())
                 .expect("unable to write block to disk");
 
@@ -97,32 +97,44 @@ impl Blockchain<Cardano> {
             // state. Otherwise we use restore_chain_state() to
             // compute the chain state from the last state snapshot on
             // disk.
-            let new_chain_state = if block.get_header().get_previous_header() == self.chain_state.last_block {
-                let mut new_chain_state = self.chain_state.clone();
-                match new_chain_state.verify_block(&block_hash, &block) {
-                    Ok(()) => Ok(new_chain_state),
-                    Err(err) => Err(err.into())
-                }
-            } else {
-                restore_chain_state(&self.storage, &self.genesis_data, &block_hash)
-            };
+            let new_chain_state =
+                if block.get_header().get_previous_header() == self.chain_state.last_block {
+                    let mut new_chain_state = self.chain_state.clone();
+                    match new_chain_state.verify_block(&block_hash, &block) {
+                        Ok(()) => Ok(new_chain_state),
+                        Err(err) => Err(err.into()),
+                    }
+                } else {
+                    restore_chain_state(&self.storage, &self.genesis_data, &block_hash)
+                };
 
             match new_chain_state {
                 Ok(new_chain_state) => {
                     assert_eq!(new_chain_state.last_block, block_hash);
                     if new_chain_state.chain_length > self.chain_state.chain_length {
-                        info!("switching to new tip {} ({:?}), previous length {}, new length {}",
-                              block_hash, new_chain_state.last_date,
-                              self.chain_state.chain_length, new_chain_state.chain_length);
+                        info!(
+                            "switching to new tip {} ({:?}), previous length {}, new length {}",
+                            block_hash,
+                            new_chain_state.last_date,
+                            self.chain_state.chain_length,
+                            new_chain_state.chain_length
+                        );
                         self.chain_state = new_chain_state;
                         tag::write_hash(&self.storage, &LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash);
                     } else {
-                        info!("discarding shorter incoming fork {} ({:?}, length {}), tip length {}",
-                              block_hash, new_chain_state.last_date,
-                              new_chain_state.chain_length, self.chain_state.chain_length);
+                        info!(
+                            "discarding shorter incoming fork {} ({:?}, length {}), tip length {}",
+                            block_hash,
+                            new_chain_state.last_date,
+                            new_chain_state.chain_length,
+                            self.chain_state.chain_length
+                        );
                     }
                 }
-                Err(err) => error!("cannot compute chain state for incoming fork {}: {:?}", block_hash, err)
+                Err(err) => error!(
+                    "cannot compute chain state for incoming fork {}: {:?}",
+                    block_hash, err
+                ),
             }
         }
 

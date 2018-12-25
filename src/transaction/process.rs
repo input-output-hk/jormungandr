@@ -1,12 +1,12 @@
-use std::sync::{
-    Arc, RwLock,
-    mpsc::{Receiver},
-};
+use std::sync::{mpsc::Receiver, Arc, RwLock};
 
-use crate::transaction::{TPool};
-use crate::blockcfg::{BlockConfig, property::{Ledger, Transaction}};
+use crate::blockcfg::{
+    property::{Ledger, Transaction},
+    BlockConfig,
+};
 use crate::blockchain::BlockchainR;
-use crate::intercom::{TransactionMsg};
+use crate::intercom::TransactionMsg;
+use crate::transaction::TPool;
 
 #[allow(type_alias_bounds)]
 pub type TPoolR<B: BlockConfig> = Arc<RwLock<TPool<B::TransactionId, B::Transaction>>>;
@@ -14,11 +14,11 @@ pub type TPoolR<B: BlockConfig> = Arc<RwLock<TPool<B::TransactionId, B::Transact
 pub fn transaction_task<B>(
     blockchain: BlockchainR<B>,
     tpool: TPoolR<B>,
-    r: Receiver<TransactionMsg<B>>
-)
-    -> !
-    where B: BlockConfig
-        , B::TransactionId: Eq+std::hash::Hash
+    r: Receiver<TransactionMsg<B>>,
+) -> !
+where
+    B: BlockConfig,
+    B::TransactionId: Eq + std::hash::Hash,
 {
     loop {
         let tquery = r.recv().unwrap();
@@ -26,7 +26,7 @@ pub fn transaction_task<B>(
         match tquery {
             TransactionMsg::ProposeTransaction(txids, mut reply) => {
                 let tpool = tpool.read().unwrap();
-                let rep : Vec<_> = txids.into_iter().map(|txid| tpool.exist(&txid)).collect();
+                let rep: Vec<_> = txids.into_iter().map(|txid| tpool.exist(&txid)).collect();
                 reply.reply_ok(rep);
             }
             TransactionMsg::SendTransaction(txs) => {
@@ -42,7 +42,7 @@ pub fn transaction_task<B>(
                 // in the blockchain.
                 if let Err(error) = chain_state.diff(txs.iter()) {
                     warn!("Received transactions where some are invalid, {}", error);
-                    // TODO
+                // TODO
                 } else {
                     for tx in txs {
                         tpool.add(tx.id(), tx);
@@ -51,5 +51,4 @@ pub fn transaction_task<B>(
             }
         }
     }
-
 }

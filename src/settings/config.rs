@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-use std::net::SocketAddr;
 use cardano::hdwallet;
+use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,7 +43,7 @@ pub struct GenesisConstants {
 pub struct BftLeader(pub hdwallet::XPub);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all="lowercase")]
+#[serde(rename_all = "lowercase")]
 /// Format of the logger.
 pub enum LogFormat {
     Plain,

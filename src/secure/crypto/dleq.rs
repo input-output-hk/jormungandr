@@ -1,6 +1,6 @@
-use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::ristretto::RistrettoPoint;
-use sha2::{Sha512, Digest};
+use curve25519_dalek::scalar::Scalar;
+use sha2::{Digest, Sha512};
 
 type Point = RistrettoPoint;
 
@@ -11,7 +11,7 @@ pub struct Proof {
     z: Scalar,
 }
 
-const PROOF_SIZE : usize = 64; // Scalar is 32 bytes
+const PROOF_SIZE: usize = 64; // Scalar is 32 bytes
 
 impl Proof {
     pub fn to_bytes(&self, output: &mut [u8]) {
@@ -24,15 +24,18 @@ impl Proof {
         if slice.len() != PROOF_SIZE {
             return None;
         }
-        let mut c_array = [0u8;32];
+        let mut c_array = [0u8; 32];
         c_array.copy_from_slice(&slice[0..32]);
         let c = Scalar::from_canonical_bytes(c_array)?;
 
-        let mut z_array = [0u8;32];
+        let mut z_array = [0u8; 32];
         z_array.copy_from_slice(&slice[32..64]);
         let z = Scalar::from_canonical_bytes(z_array)?;
 
-        let proof = Proof { c: Challenge(c), z: z };
+        let proof = Proof {
+            c: Challenge(c),
+            z: z,
+        };
         Some(proof)
     }
 }
@@ -45,7 +48,7 @@ pub struct DLEQ<'a> {
     pub h2: &'a RistrettoPoint,
 }
 
-#[derive(Clone,PartialEq,Eq)]
+#[derive(Clone, PartialEq, Eq)]
 struct Challenge(Scalar);
 
 fn challenge(h1: &Point, h2: &Point, a1: &Point, a2: &Point) -> Challenge {
@@ -83,11 +86,11 @@ pub fn verify(dleq: &DLEQ, proof: &Proof) -> bool {
 #[cfg(test)]
 mod tests {
     use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-    use curve25519_dalek::{scalar::Scalar, ristretto::RistrettoPoint};
-    use sha2::{Sha512};
+    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use rand::OsRng;
+    use sha2::Sha512;
 
-    use super::{DLEQ, generate, verify};
+    use super::{generate, verify, DLEQ};
 
     #[test]
     #[allow(non_snake_case)]
@@ -99,11 +102,21 @@ mod tests {
         let a = Scalar::random(&mut csprng);
         let w = Scalar::random(&mut csprng);
 
-        let dleq = DLEQ { g1: G, h1: &(G * a), g2: &H, h2: &(H * a) };
+        let dleq = DLEQ {
+            g1: G,
+            h1: &(G * a),
+            g2: &H,
+            h2: &(H * a),
+        };
         let proof = generate(&w, &a, &dleq);
         assert_eq!(verify(&dleq, &proof), true);
 
-        let dleq_bad = DLEQ { g1: G, h1: &(G * a), g2: &H, h2: &(H * w) };
+        let dleq_bad = DLEQ {
+            g1: G,
+            h1: &(G * a),
+            g2: &H,
+            h2: &(H * w),
+        };
 
         assert_eq!(verify(&dleq_bad, &proof), false);
     }

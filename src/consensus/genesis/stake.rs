@@ -1,17 +1,17 @@
-use std::ops::{Add,Sub};
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
+use std::ops::{Add, Sub};
 
 // TODO: PublicKey
-use super::super::super::secure::crypto::{vrf, sign};
 use super::super::super::secure::crypto::sign::SignatureAlgorithm;
+use super::super::super::secure::crypto::{sign, vrf};
 
 use super::identity::StakerIdentity;
 
 /// Units of stake
 ///
 /// This should always be <= to StakeTotal
-#[derive(Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StakeUnits(u128);
 
 impl Add<StakeUnits> for StakeUnits {
@@ -27,9 +27,8 @@ impl Sub<StakeUnits> for StakeUnits {
     }
 }
 
-
 /// Total amount of unit of stake in the system
-#[derive(Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StakeTotal(u128);
 
 impl Add<StakeUnits> for StakeTotal {
@@ -49,7 +48,7 @@ impl Sub<StakeUnits> for StakeTotal {
 ///
 /// * 0.0: no stake in the system
 /// * 1.0: full stake in the system
-#[derive(Clone,Copy,PartialEq,PartialOrd)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct PercentStake(pub f64);
 
 impl StakeTotal {
@@ -73,11 +72,17 @@ pub struct StakeDistribution {
 
 impl StakeDistribution {
     pub fn create() -> Self {
-        StakeDistribution { total: StakeTotal(0), map: BTreeMap::new() }
+        StakeDistribution {
+            total: StakeTotal(0),
+            map: BTreeMap::new(),
+        }
     }
 
     pub fn add(&mut self, id: StakerIdentity, units: StakeUnits) {
-        self.map.entry(id).and_modify(|v| *v = *v + units).or_insert(units);
+        self.map
+            .entry(id)
+            .and_modify(|v| *v = *v + units)
+            .or_insert(units);
         self.total = self.total + units;
     }
 
@@ -85,12 +90,12 @@ impl StakeDistribution {
         match self.map.entry(id) {
             Entry::Vacant(_) => {
                 // FIXME don't do anything for now, but it should likely be reported back.
-            },
+            }
             Entry::Occupied(mut entry) => {
                 let mut e = entry.get_mut();
                 *e = *e - units;
                 self.total = self.total - units;
-            },
+            }
         }
     }
 

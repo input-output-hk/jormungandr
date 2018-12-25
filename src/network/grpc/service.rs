@@ -1,11 +1,11 @@
-use network::{ConnectionState, GlobalState};
 use blockcfg::{
-    BlockConfig,
     cardano::{Block, BlockHash},
     property,
     serialization::Deserialize,
+    BlockConfig,
 };
 use intercom::{self, ClientMsg};
+use network::{ConnectionState, GlobalState};
 use settings::network::Listen;
 
 use cardano::block::{BlockDate, EpochSlotId};
@@ -15,15 +15,8 @@ use futures::{
     future::{self, FutureResult},
     sync::{mpsc, oneshot},
 };
-use tokio::{
-    executor::DefaultExecutor,
-    net::TcpListener,
-};
-use tower_grpc::{
-    self,
-    Request, Response,
-    Status, Code,
-};
+use tokio::{executor::DefaultExecutor, net::TcpListener};
+use tower_grpc::{self, Code, Request, Response, Status};
 use tower_h2::Server;
 
 use std::net::SocketAddr;
@@ -42,9 +35,7 @@ impl From<BlockHash> for cardano_proto::HeaderHash {
 impl From<Block> for cardano_proto::Block {
     fn from(block: Block) -> Self {
         let content = cbor!(&block).unwrap();
-        cardano_proto::Block {
-            content,
-        }
+        cardano_proto::Block { content }
     }
 }
 
@@ -55,10 +46,7 @@ impl From<BlockDate> for cardano_proto::BlockDate {
             Boundary(epoch) => (epoch, 0),
             Normal(EpochSlotId { epoch, slotid }) => (epoch, slotid as u32),
         };
-        cardano_proto::BlockDate {
-            epoch,
-            slot
-        }
+        cardano_proto::BlockDate { epoch, slot }
     }
 }
 
@@ -173,13 +161,20 @@ where
 
 fn unary_response_channel<T>() -> (ReplyHandle<T>, GrpcFuture<T>) {
     let (sender, receiver) = oneshot::channel();
-    (ReplyHandle { sender: Some(sender) }, GrpcFuture { receiver })
+    (
+        ReplyHandle {
+            sender: Some(sender),
+        },
+        GrpcFuture { receiver },
+    )
 }
 
-fn server_streaming_response_channel<T>(
-) -> (StreamReplyHandle<T>, GrpcResponseStream<T>) {
+fn server_streaming_response_channel<T>() -> (StreamReplyHandle<T>, GrpcResponseStream<T>) {
     let (sender, receiver) = mpsc::unbounded();
-    (StreamReplyHandle { sender }, GrpcResponseStream { receiver })
+    (
+        StreamReplyHandle { sender },
+        GrpcResponseStream { receiver },
+    )
 }
 
 struct GrpcServer<B: BlockConfig> {
@@ -188,14 +183,19 @@ struct GrpcServer<B: BlockConfig> {
 
 impl<B: BlockConfig> Clone for GrpcServer<B> {
     fn clone(&self) -> Self {
-        GrpcServer { state: self.state.clone() }
+        GrpcServer {
+            state: self.state.clone(),
+        }
     }
 }
 
 fn deserialize_hashes<H: Deserialize>(
-    pb: &cardano_proto::HeaderHashes
+    pb: &cardano_proto::HeaderHashes,
 ) -> Result<Vec<H>, <H as Deserialize>::Error> {
-    pb.hashes.iter().map(|v| Deserialize::deserialize(&v[..])).collect()
+    pb.hashes
+        .iter()
+        .map(|v| Deserialize::deserialize(&v[..]))
+        .collect()
 }
 
 impl<B> gen::server::Node for GrpcServer<B>
@@ -207,39 +207,29 @@ where
 {
     type TipFuture = GrpcFuture<gen::TipResponse>;
     type GetBlocksStream = GrpcResponseStream<cardano_proto::Block>;
-    type GetBlocksFuture = FutureResult<
-        Response<Self::GetBlocksStream>, tower_grpc::Error
-    >;
+    type GetBlocksFuture = FutureResult<Response<Self::GetBlocksStream>, tower_grpc::Error>;
     type GetHeadersStream = GrpcResponseStream<cardano_proto::Header>;
-    type GetHeadersFuture = FutureResult<
-        Response<Self::GetHeadersStream>, tower_grpc::Error
-    >;
+    type GetHeadersFuture = FutureResult<Response<Self::GetHeadersStream>, tower_grpc::Error>;
     type StreamBlocksToTipStream = GrpcResponseStream<cardano_proto::Block>;
-    type StreamBlocksToTipFuture = FutureResult<
-        Response<Self::StreamBlocksToTipStream>, tower_grpc::Error
-    >;
+    type StreamBlocksToTipFuture =
+        FutureResult<Response<Self::StreamBlocksToTipStream>, tower_grpc::Error>;
     type ProposeTransactionsFuture = GrpcFuture<gen::ProposeTransactionsResponse>;
     type RecordTransactionFuture = GrpcFuture<gen::RecordTransactionResponse>;
 
     fn tip(&mut self, _request: Request<gen::TipRequest>) -> Self::TipFuture {
         let (handle, future) = unary_response_channel();
-        self.state.channels.client_box.send_to(
-            ClientMsg::GetBlockTip(Box::new(handle))
-        );
+        self.state
+            .channels
+            .client_box
+            .send_to(ClientMsg::GetBlockTip(Box::new(handle)));
         future
     }
 
-    fn get_blocks(
-        &mut self,
-        _request: Request<gen::GetBlocksRequest>,
-    ) -> Self::GetBlocksFuture {
+    fn get_blocks(&mut self, _request: Request<gen::GetBlocksRequest>) -> Self::GetBlocksFuture {
         unimplemented!()
     }
 
-    fn get_headers(
-        &mut self,
-        _request: Request<gen::GetBlocksRequest>,
-    ) -> Self::GetHeadersFuture {
+    fn get_headers(&mut self, _request: Request<gen::GetBlocksRequest>) -> Self::GetHeadersFuture {
         unimplemented!()
     }
 
@@ -250,31 +240,32 @@ where
         let hashes = match deserialize_hashes(from.get_ref()) {
             Ok(hashes) => hashes,
             Err(e) => {
-                info!("failed to decode hashes from StreamBlocksToTip request: {:?}", e);
-                let status = Status::with_code_and_message(
-                    Code::InvalidArgument,
-                    format!("{}", e),
+                info!(
+                    "failed to decode hashes from StreamBlocksToTip request: {:?}",
+                    e
                 );
+                let status = Status::with_code_and_message(Code::InvalidArgument, format!("{}", e));
                 return future::err(tower_grpc::Error::Grpc(status));
             }
         };
         let (handle, stream) = server_streaming_response_channel();
-        self.state.channels.client_box.send_to(
-            ClientMsg::StreamBlocksToTip(hashes, Box::new(handle))
-        );
+        self.state
+            .channels
+            .client_box
+            .send_to(ClientMsg::StreamBlocksToTip(hashes, Box::new(handle)));
         future::ok(Response::new(stream))
     }
 
     fn propose_transactions(
         &mut self,
-        _request: Request<gen::ProposeTransactionsRequest>
+        _request: Request<gen::ProposeTransactionsRequest>,
     ) -> Self::ProposeTransactionsFuture {
         unimplemented!()
     }
 
     fn record_transaction(
         &mut self,
-        _request: Request<gen::RecordTransactionRequest>
+        _request: Request<gen::RecordTransactionRequest>,
     ) -> Self::RecordTransactionFuture {
         unimplemented!()
     }
@@ -295,15 +286,14 @@ where
 {
     let state = ConnectionState::new_listen(&state, listen);
 
-    info!("start listening and accepting gRPC connections on {}", sockaddr);
+    info!(
+        "start listening and accepting gRPC connections on {}",
+        sockaddr
+    );
 
     let node_service = gen::server::NodeServer::new(GrpcServer { state });
 
-    let h2 = Server::new(
-        node_service,
-        Default::default(),
-        DefaultExecutor::current(),
-    );
+    let h2 = Server::new(node_service, Default::default(), DefaultExecutor::current());
 
     let server = TcpListener::bind(&sockaddr)
         .unwrap() // TODO, handle on error to provide better error message
@@ -312,8 +302,12 @@ where
             // error while receiving an incoming connection
             // here we might need to log the error and try
             // to listen again on the sockaddr
-            error!("Error while accepting connection on {}: {:?}", sockaddr, err);
-        }).fold(h2, |mut h2, stream| {
+            error!(
+                "Error while accepting connection on {}: {:?}",
+                sockaddr, err
+            );
+        })
+        .fold(h2, |mut h2, stream| {
             // received incoming connection
             info!(
                 "{} connected to {}",
@@ -334,7 +328,8 @@ where
             tokio::spawn(serve.map_err(|e| error!("h2 error: {:?}", e)));
 
             Ok(h2)
-        }).map(|_| {});
+        })
+        .map(|_| {});
 
     tokio::spawn(server)
 }

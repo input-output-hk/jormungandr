@@ -1,15 +1,12 @@
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 
+use crate::blockcfg::{property, serialization::Deserialize, BlockConfig};
 use crate::secure;
-use crate::blockcfg::{BlockConfig, property, serialization::Deserialize};
 
 use cardano;
 use cardano::{
-    block::{
-        verify_chain::{ChainState},
-        verify::{Error},
-    },
-    tx::{TxoPointer, TxOut},
+    block::{verify::Error, verify_chain::ChainState},
+    tx::{TxOut, TxoPointer},
     util::try_from_slice::TryFromSlice,
 };
 
@@ -109,12 +106,8 @@ impl property::Block for Block {
 
     fn parent_id(&self) -> &Self::Id {
         match self {
-            cardano::block::Block::BoundaryBlock(ref bb) => {
-                &bb.header.previous_header
-            }
-            cardano::block::Block::MainBlock(ref mb) => {
-                &mb.header.previous_header
-            }
+            cardano::block::Block::BoundaryBlock(ref bb) => &bb.header.previous_header,
+            cardano::block::Block::MainBlock(ref mb) => &mb.header.previous_header,
         }
     }
     fn date(&self) -> Self::Date {
@@ -124,15 +117,10 @@ impl property::Block for Block {
 impl property::HasTransaction for Block {
     type Transaction = Transaction;
 
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>
-    {
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
         match self {
-            cardano::block::Block::BoundaryBlock(ref _bb) => {
-                [].iter()
-            }
-            cardano::block::Block::MainBlock(ref mb) => {
-                mb.body.tx.iter()
-            }
+            cardano::block::Block::BoundaryBlock(ref _bb) => [].iter(),
+            cardano::block::Block::MainBlock(ref mb) => mb.body.tx.iter(),
         }
     }
 }
@@ -165,12 +153,8 @@ impl property::Block for Header {
         use cardano::block::BlockHeader::*;
 
         match self {
-            BoundaryBlockHeader(ref h) => {
-                &h.previous_header
-            }
-            MainBlockHeader(ref h) => {
-                &h.previous_header
-            }
+            BoundaryBlockHeader(ref h) => &h.previous_header,
+            MainBlockHeader(ref h) => &h.previous_header,
         }
     }
 
@@ -180,7 +164,7 @@ impl property::Block for Header {
 }
 
 impl property::Transaction for Transaction {
-    type Input  = cardano::tx::TxoPointer;
+    type Input = cardano::tx::TxoPointer;
     type Output = cardano::tx::TxOut;
     type Id = TransactionId;
     fn id(&self) -> Self::Id {
@@ -213,7 +197,7 @@ impl property::Ledger for ChainState {
     type Error = Error;
 
     fn diff_transaction(&self, transaction: &Self::Transaction) -> Result<Self::Diff, Self::Error> {
-        use cardano::block::verify::{Verify};
+        use cardano::block::verify::Verify;
 
         let id = transaction.tx.id();
         let mut diff = Diff::new();
@@ -223,13 +207,12 @@ impl property::Ledger for ChainState {
 
         for (input, witness) in transaction.tx.inputs.iter().zip(transaction.witness.iter()) {
             if let Some(output) = self.utxos.get(&input) {
-                if ! witness.verify_address(&output.address) {
+                if !witness.verify_address(&output.address) {
                     return Err(Error::AddressMismatch);
                 }
                 if let Some(_output) = diff.spent_outputs.insert(input.clone(), output.clone()) {
                     return Err(Error::DuplicateInputs);
                 }
-
             } else {
                 return Err(Error::MissingUtxo);
             }
@@ -237,17 +220,16 @@ impl property::Ledger for ChainState {
 
         // 2. prepare to add the new outputs
         for (index, output) in transaction.tx.outputs.iter().enumerate() {
-            diff.new_unspent_outputs.insert(
-                TxoPointer::new(id, index as u32),
-                output.clone()
-            );
+            diff.new_unspent_outputs
+                .insert(TxoPointer::new(id, index as u32), output.clone());
         }
 
         Ok(diff)
     }
     fn diff<'a, I>(&self, transactions: I) -> Result<Self::Diff, Self::Error>
-        where I: Iterator<Item = &'a Self::Transaction> + Sized
-            , Self::Transaction: 'a
+    where
+        I: Iterator<Item = &'a Self::Transaction> + Sized,
+        Self::Transaction: 'a,
     {
         let mut diff = Diff::new();
 
@@ -257,8 +239,7 @@ impl property::Ledger for ChainState {
 
         Ok(diff)
     }
-    fn add(&mut self, diff: Self::Diff) -> Result<&mut Self, Self::Error>
-    {
+    fn add(&mut self, diff: Self::Diff) -> Result<&mut Self, Self::Error> {
         for spent_output in diff.spent_outputs.keys() {
             if let None = self.utxos.remove(spent_output) {
                 return Err(Error::MissingUtxo);

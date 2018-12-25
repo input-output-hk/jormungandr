@@ -6,7 +6,7 @@ pub use self::process::process;
 
 pub type Hash = cardano::hash::Blake2b256;
 
-pub trait Block : Clone {
+pub trait Block: Clone {
     fn get_hash(&self) -> Hash;
 
     fn get_parent(&self) -> Hash;

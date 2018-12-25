@@ -2,14 +2,14 @@
 //! using the 2-Hash-DH verifiable oblivious PRF
 //! defined in the Ouroboros Praos paper
 
-use rand::{CryptoRng, Rng};
-use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
+use curve25519_dalek::scalar::Scalar;
+use generic_array::GenericArray;
+use rand::{CryptoRng, Rng};
 use sha2::Digest;
 use sha2::Sha512;
-use generic_array::GenericArray;
 
 use super::dleq;
 
@@ -23,7 +23,7 @@ pub struct SecretKey {
 }
 
 /// VRF Public Key
-#[derive(Clone,PartialEq,Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PublicKey(Point);
 
 /// VRF Output (Point)
@@ -39,13 +39,13 @@ pub struct ProvenOutputSeed {
     dleq_proof: dleq::Proof,
 }
 
-const PROOF_SIZE : usize = 96;
-const SECRET_SIZE : usize = 32;
-const PUBLIC_SIZE : usize = 32;
+const PROOF_SIZE: usize = 96;
+const SECRET_SIZE: usize = 32;
+const PUBLIC_SIZE: usize = 32;
 
 impl SecretKey {
     /// Create a new random secret key
-    pub fn random<T: Rng+CryptoRng>(rng: &mut T) -> Self {
+    pub fn random<T: Rng + CryptoRng>(rng: &mut T) -> Self {
         let sk = Scalar::random(rng);
         let pk = RISTRETTO_BASEPOINT_POINT * sk;
         SecretKey {
@@ -55,16 +55,19 @@ impl SecretKey {
     }
 
     /// Serialize the secret key in binary form
-    pub fn to_bytes(&self) -> [u8;SECRET_SIZE] {
-        let mut v = [0u8;SECRET_SIZE];
+    pub fn to_bytes(&self) -> [u8; SECRET_SIZE] {
+        let mut v = [0u8; SECRET_SIZE];
         v.copy_from_slice(self.secret.as_bytes());
         v
     }
 
-    pub fn from_bytes(bytes: [u8;SECRET_SIZE]) -> Option<Self> {
+    pub fn from_bytes(bytes: [u8; SECRET_SIZE]) -> Option<Self> {
         let sk = Scalar::from_canonical_bytes(bytes)?;
         let pk = RISTRETTO_BASEPOINT_POINT * sk;
-        Some(SecretKey { secret: sk, public: pk })
+        Some(SecretKey {
+            secret: sk,
+            public: pk,
+        })
     }
 
     /// Get the verifiable output and the associated input base point.
@@ -99,7 +102,12 @@ impl SecretKey {
         proof
     }
 
-    pub fn proove_simple<T: Rng+CryptoRng>(&self, rng: &mut T, m_point: Point, output: OutputSeed) -> ProvenOutputSeed {
+    pub fn proove_simple<T: Rng + CryptoRng>(
+        &self,
+        rng: &mut T,
+        m_point: Point,
+        output: OutputSeed,
+    ) -> ProvenOutputSeed {
         let w = Scalar::random(rng);
         self.proove(&w, m_point, output)
     }
@@ -113,7 +121,11 @@ impl SecretKey {
         self.proove(r, m_point, output)
     }
 
-    pub fn evaluate_simple<T: Rng+CryptoRng>(&self, rng: &mut T, input: &[u8]) -> ProvenOutputSeed {
+    pub fn evaluate_simple<T: Rng + CryptoRng>(
+        &self,
+        rng: &mut T,
+        input: &[u8],
+    ) -> ProvenOutputSeed {
         let (m_point, output) = self.verifiable_output(input);
         self.proove_simple(rng, m_point, output)
     }
@@ -160,7 +172,10 @@ impl ProvenOutputSeed {
         }
         let u = CompressedRistretto::from_slice(&bytes[0..32]).decompress()?;
         let proof = dleq::Proof::from_bytes(&bytes[32..])?;
-        Some(ProvenOutputSeed { u: OutputSeed(u), dleq_proof: proof })
+        Some(ProvenOutputSeed {
+            u: OutputSeed(u),
+            dleq_proof: proof,
+        })
     }
 
     pub fn from_bytes(public_key: &PublicKey, bytes: &[u8], input: &[u8]) -> Option<Self> {
@@ -194,7 +209,11 @@ impl OutputSeed {
     }
 
     /// Get the output for this input and a known suffix
-    pub fn to_output<D: Digest>(&self, input: &[u8], suffix: &[u8]) -> GenericArray<u8, D::OutputSize> {
+    pub fn to_output<D: Digest>(
+        &self,
+        input: &[u8],
+        suffix: &[u8],
+    ) -> GenericArray<u8, D::OutputSize> {
         let mut c = self.to_output_digest_generator::<D>(input);
         c.input(suffix);
         c.result()
@@ -212,8 +231,8 @@ fn make_message_hash_point(data: &[u8]) -> Point {
 
 #[cfg(test)]
 mod tests {
+    use super::SecretKey;
     use rand::OsRng;
-    use super::{SecretKey};
 
     #[test]
     fn it_works() {
@@ -225,9 +244,13 @@ mod tests {
         let pk_other = sk_other.public();
 
         let mut b1 = [0u8; 10];
-        for i in b1.iter_mut() { *i = rand::random() }
+        for i in b1.iter_mut() {
+            *i = rand::random()
+        }
         let mut b2 = [0u8; 10];
-        for i in b2.iter_mut() { *i = rand::random() }
+        for i in b2.iter_mut() {
+            *i = rand::random()
+        }
 
         let proof = sk.evaluate_simple(&mut csprng, &b1[..]);
 
@@ -244,11 +267,11 @@ mod tests {
 #[cfg(test)]
 #[cfg(feature = "with-bench")]
 mod bench {
+    use super::{PublicKey, SecretKey};
     use rand::OsRng;
-    use super::{SecretKey, PublicKey};
     use test;
 
-    fn common() -> (OsRng, SecretKey, PublicKey, [u8;10], [u8;10]) {
+    fn common() -> (OsRng, SecretKey, PublicKey, [u8; 10], [u8; 10]) {
         let mut csprng: OsRng = OsRng::new().unwrap();
         let sk = SecretKey::random(&mut csprng);
         let pk = sk.public();
@@ -257,9 +280,13 @@ mod bench {
         let pk_other = sk_other.public();
 
         let mut b1 = [0u8; 10];
-        for i in b1.iter_mut() { *i = rand::random() }
+        for i in b1.iter_mut() {
+            *i = rand::random()
+        }
         let mut b2 = [0u8; 10];
-        for i in b2.iter_mut() { *i = rand::random() }
+        for i in b2.iter_mut() {
+            *i = rand::random()
+        }
 
         (csprng, sk, pk, b1, b2)
     }

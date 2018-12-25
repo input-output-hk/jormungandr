@@ -1,4 +1,4 @@
-use blockcfg::{BlockConfig};
+use blockcfg::BlockConfig;
 
 use std::fmt::{self, Debug, Display};
 
@@ -9,7 +9,7 @@ pub struct Error(Box<dyn std::error::Error + Send + Sync>);
 impl Error {
     pub fn from_error<E>(error: E) -> Self
     where
-        E: std::error::Error + Send + Sync + 'static
+        E: std::error::Error + Send + Sync + 'static,
     {
         Error(error.into())
     }
@@ -72,7 +72,11 @@ pub enum TransactionMsg<B: BlockConfig> {
 #[derive(Debug)]
 pub enum ClientMsg<B: BlockConfig> {
     GetBlockTip(BoxReply<B::BlockHeader>),
-    GetBlockHeaders(Vec<B::BlockHash>, B::BlockHash, BoxReply<Vec<B::BlockHeader>>),
+    GetBlockHeaders(
+        Vec<B::BlockHash>,
+        B::BlockHash,
+        BoxReply<Vec<B::BlockHeader>>,
+    ),
     GetBlocks(B::BlockHash, B::BlockHash, BoxStreamReply<B::Block>),
     StreamBlocksToTip(Vec<B::BlockHash>, BoxStreamReply<B::Block>),
 }

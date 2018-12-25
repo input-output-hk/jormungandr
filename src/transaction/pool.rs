@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use clock::global::GlobalTime;
+use std::collections::HashMap;
 use std::time::Duration;
 
 /// The current transaction pool, containing all the transaction
@@ -9,10 +9,12 @@ pub struct TPool<TransId, Trans> {
     pub content: HashMap<TransId, (GlobalTime, Trans)>,
 }
 
-impl<TransId: std::hash::Hash+std::cmp::Eq, Trans> TPool<TransId, Trans> {
+impl<TransId: std::hash::Hash + std::cmp::Eq, Trans> TPool<TransId, Trans> {
     /// Create a new pool
     pub fn new() -> Self {
-        TPool { content: HashMap::new() }
+        TPool {
+            content: HashMap::new(),
+        }
     }
 
     /// Check a transaction exist already in the pool
@@ -48,7 +50,8 @@ impl<TransId: std::hash::Hash+std::cmp::Eq, Trans> TPool<TransId, Trans> {
     pub fn gc(&mut self, expired_duration: Duration) -> usize {
         let orig_length = self.content.len();
         let t = GlobalTime::now();
-        self.content.retain(|_, (ttime, _)| t.differential(*ttime) > expired_duration);
+        self.content
+            .retain(|_, (ttime, _)| t.differential(*ttime) > expired_duration);
         orig_length - self.content.len()
     }
 }

@@ -19,7 +19,7 @@
 //
 
 use super::super::super::secure::crypto::vrf;
-use super::params::{Threshold, phi, F};
+use super::params::{phi, Threshold, F};
 use super::stake::PercentStake;
 use rand::OsRng;
 use sha2::Sha256;
@@ -30,15 +30,15 @@ pub type PublicKey = vrf::PublicKey;
 pub type Witness = vrf::ProvenOutputSeed;
 
 /// Nonce generated per block
-pub struct Nonce([u8;32]);
+pub struct Nonce([u8; 32]);
 
 /// previous epoch nonce and the slotid encoded in big endian
-pub struct Input([u8;36]);
+pub struct Input([u8; 36]);
 
 impl Input {
     /// Create an Input from previous epoch nonce and the current slotid
     pub fn create(epoch_nonce: &Nonce, slotid: u32) -> Self {
-        let mut input = [0u8;36];
+        let mut input = [0u8; 36];
         input[0..32].copy_from_slice(&epoch_nonce.0[..]);
         input[32] = (slotid >> 24) as u8;
         input[33] = (slotid >> 16) as u8;
@@ -67,9 +67,14 @@ pub fn evaluate(my_stake: PercentStake, key: &SecretKey, input: &Input) -> Optio
 /// key and its associated stake.
 ///
 /// On success, the nonce is returned, otherwise None is returned
-pub fn verify(key_stake: PercentStake, key: &PublicKey, input: &Input, witness: &Witness) -> Option<Nonce> {
+pub fn verify(
+    key_stake: PercentStake,
+    key: &PublicKey,
+    input: &Input,
+    witness: &Witness,
+) -> Option<Nonce> {
     match witness.to_verifiable_output(key, &input.0) {
-        None      => None,
+        None => None,
         Some(vof) => {
             let t = get_threshold(input, &vof);
             if above_stake_threshold(t, key_stake) {
@@ -86,8 +91,8 @@ fn above_stake_threshold(threshold: Threshold, stake: PercentStake) -> bool {
     threshold >= phi(F::create(0.5), stake)
 }
 
-const DOMAIN_NONCE : &'static [u8] = b"NONCE";
-const DOMAIN_THRESHOLD : &'static [u8] = b"TEST";
+const DOMAIN_NONCE: &'static [u8] = b"NONCE";
+const DOMAIN_THRESHOLD: &'static [u8] = b"TEST";
 
 fn get_threshold(input: &Input, os: &vrf::OutputSeed) -> Threshold {
     let out = os.to_output::<Sha256>(&input.0, DOMAIN_THRESHOLD);
@@ -96,7 +101,7 @@ fn get_threshold(input: &Input, os: &vrf::OutputSeed) -> Threshold {
 }
 
 fn get_nonce(input: &Input, os: &vrf::OutputSeed) -> Nonce {
-    let mut nonce = [0u8;32];
+    let mut nonce = [0u8; 32];
     let out = os.to_output::<Sha256>(&input.0, DOMAIN_NONCE);
     nonce.copy_from_slice(out.as_slice());
     Nonce(nonce)

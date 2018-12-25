@@ -1,4 +1,4 @@
 pub mod dleq;
-pub mod vrf;
-pub mod sign;
 pub mod kes;
+pub mod sign;
+pub mod vrf;

@@ -1,4 +1,4 @@
-use blockcfg::{cardano::{Cardano, Block}};
+use blockcfg::cardano::{Block, Cardano};
 use blockchain::BlockchainR;
 use settings::network::{Connection, Peer};
 
@@ -49,9 +49,7 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR<Cardano>) {
                 .map_err(|e| {
                     error!("StreamBlocksToTip request failed: {:?}", e);
                 })
-                .and_then(|response| {
-                    bootstrap_to_tip(blockchain, response.into_inner())
-                })
+                .and_then(|response| bootstrap_to_tip(blockchain, response.into_inner()))
         });
 
     match current_thread::block_on_all(bootstrap) {
@@ -77,7 +75,10 @@ fn bootstrap_to_tip(
                 }
             };
             debug!("received block from the bootstrap node: {:#?}", &block);
-            blockchain.write().unwrap().handle_incoming_block(block.into());
+            blockchain
+                .write()
+                .unwrap()
+                .handle_incoming_block(block.into());
             future::ok(blockchain)
         })
         .map(|_| ())
@@ -93,13 +94,9 @@ impl tokio_connect::Connect for Peer {
 
     fn connect(&self) -> Self::Future {
         match &self.connection {
-            Connection::Tcp(ref addr) => {
-                TcpStream::connect(addr)
-            }
+            Connection::Tcp(ref addr) => TcpStream::connect(addr),
             #[cfg(unix)]
-            Connection::Unix(_) => {
-                unimplemented!()
-            }
+            Connection::Unix(_) => unimplemented!(),
         }
     }
 }

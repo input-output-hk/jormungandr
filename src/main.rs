@@ -23,23 +23,23 @@ extern crate futures;
 extern crate tokio;
 
 extern crate cryptoxide;
-extern crate sha2;
 extern crate curve25519_dalek;
 extern crate generic_array;
+extern crate sha2;
 
 extern crate prost;
 #[macro_use]
 extern crate prost_derive;
 extern crate tokio_connect;
-extern crate tower_h2;
 extern crate tower_grpc;
+extern crate tower_h2;
 extern crate tower_util;
 
 #[cfg(test)]
+extern crate quickcheck;
+#[cfg(test)]
 #[cfg(feature = "with-bench")]
 extern crate test;
-#[cfg(test)]
-extern crate quickcheck;
 
 #[macro_use]
 extern crate lazy_static;
@@ -47,35 +47,35 @@ extern crate lazy_static;
 #[macro_use]
 pub mod log_wrapper;
 
-pub mod clock;
+pub mod blockcfg;
 pub mod blockchain;
+pub mod client;
+pub mod clock;
 pub mod consensus;
-pub mod transaction;
-pub mod state;
+pub mod intercom;
 pub mod leadership;
 pub mod network;
-pub mod utils;
-pub mod intercom;
-pub mod settings;
-pub mod blockcfg;
-pub mod client;
 pub mod secure;
+pub mod settings;
+pub mod state;
+pub mod transaction;
+pub mod utils;
 
-use settings::{Settings};
+use settings::Settings;
 //use state::State;
-use transaction::{TPool, transaction_task};
 use blockchain::{Blockchain, BlockchainR};
-use utils::task::{Tasks};
-use intercom::{BlockMsg};
-use leadership::{leadership_task, Selection};
 use futures::sync::mpsc::UnboundedSender;
+use intercom::BlockMsg;
 use intercom::NetworkBroadcastMsg;
+use leadership::{leadership_task, Selection};
+use transaction::{transaction_task, TPool};
+use utils::task::Tasks;
 
-use blockcfg::cardano::{Transaction, TransactionId, GenesisData, Cardano};
+use blockcfg::cardano::{Cardano, GenesisData, Transaction, TransactionId};
 
-use std::sync::{Arc, RwLock, mpsc::Receiver};
+use std::sync::{mpsc::Receiver, Arc, RwLock};
 
-use cardano_storage::{StorageConfig};
+use cardano_storage::StorageConfig;
 
 pub type TODO = u32;
 
@@ -93,10 +93,15 @@ fn block_task(
 }
 
 fn startup_info(gd: &GenesisData, blockchain: &Blockchain<Cardano>, settings: &Settings) {
-    println!("protocol magic={} prev={} k={} tip={}", gd.protocol_magic, gd.genesis_prev, gd.epoch_stability_depth, blockchain.get_tip());
+    println!(
+        "protocol magic={} prev={} k={} tip={}",
+        gd.protocol_magic,
+        gd.genesis_prev,
+        gd.epoch_stability_depth,
+        blockchain.get_tip()
+    );
     println!("consensus: {:?}", settings.consensus);
 }
-
 
 fn main() {
     // # load parameters & config
@@ -161,10 +166,11 @@ fn main() {
     // * new nodes subscribing to updates (blocks, transactions)
     // * client GetBlocks/Headers ...
 
-    let tpool_data : TPool<TransactionId, Transaction> = TPool::new();
+    let tpool_data: TPool<TransactionId, Transaction> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
-    let selection_data = leadership::selection::prepare(&secret.to_public(), &settings.consensus).unwrap();
+    let selection_data =
+        leadership::selection::prepare(&secret.to_public(), &settings.consensus).unwrap();
     let selection = Arc::new(selection_data);
 
     // initialize the transaction broadcast channel
@@ -173,14 +179,18 @@ fn main() {
     let transaction_task = {
         let tpool = tpool.clone();
         let blockchain = blockchain.clone();
-        tasks.task_create_with_inputs("transaction", move |r| transaction_task(blockchain, tpool, r))
+        tasks.task_create_with_inputs("transaction", move |r| {
+            transaction_task(blockchain, tpool, r)
+        })
     };
 
     let block_task = {
         let blockchain = blockchain.clone();
         let clock = clock.clone();
         let selection = Arc::clone(&selection);
-        tasks.task_create_with_inputs("block", move |r| block_task(blockchain, selection, clock, r, broadcast_sender))
+        tasks.task_create_with_inputs("block", move |r| {
+            block_task(blockchain, selection, clock, r, broadcast_sender)
+        })
     };
 
     let client_task = {
@@ -209,22 +219,26 @@ fn main() {
         let block_msgbox = block_task.clone();
         let config = settings.network.clone();
         let channels = network::Channels {
-            client_box:      client_msgbox,
+            client_box: client_msgbox,
             transaction_box: transaction_msgbox,
-            block_box:       block_msgbox,
+            block_box: block_msgbox,
         };
         tasks.task_create("network", move || {
             network::run(config, broadcast_receiver, channels);
         });
     };
 
-    if settings.leadership == settings::Leadership::Yes && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes {
+    if settings.leadership == settings::Leadership::Yes
+        && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes
+    {
         let tpool = tpool.clone();
         let clock = clock.clone();
         let selection = Arc::clone(&selection);
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
-        tasks.task_create("leadership", move || leadership_task(secret, selection, tpool, blockchain, clock, block_task));
+        tasks.task_create("leadership", move || {
+            leadership_task(secret, selection, tpool, blockchain, clock, block_task)
+        });
     };
 
     // periodically cleanup (custom):

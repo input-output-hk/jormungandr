@@ -1,13 +1,13 @@
-use std::sync::Arc;
 use super::selection::{self, IsLeading, Selection};
+use std::sync::Arc;
 
 use super::super::{
-    clock, BlockchainR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret,
+    clock, intercom::BlockMsg, secure::NodeSecret, utils::task::TaskMessageBox, BlockchainR,
 };
-use crate::blockcfg::{BlockConfig, property::Update};
-use crate::transaction::{TPoolR};
+use crate::blockcfg::{property::Update, BlockConfig};
+use crate::transaction::TPoolR;
 
-use cardano::block::{EpochSlotId, BlockDate};
+use cardano::block::{BlockDate, EpochSlotId};
 
 pub fn leadership_task<B>(
     secret: NodeSecret,
@@ -15,18 +15,21 @@ pub fn leadership_task<B>(
     transaction_pool: TPoolR<B>,
     blockchain: BlockchainR<B>,
     clock: clock::Clock,
-    block_task: TaskMessageBox<BlockMsg<B>>
-)
-  where B: BlockConfig,
-      <B as BlockConfig>::TransactionId: Eq + std::hash::Hash,
-      <B as BlockConfig>::Ledger: Update,
-      <B as BlockConfig>::BlockDate: From<BlockDate>,
+    block_task: TaskMessageBox<BlockMsg<B>>,
+) where
+    B: BlockConfig,
+    <B as BlockConfig>::TransactionId: Eq + std::hash::Hash,
+    <B as BlockConfig>::Ledger: Update,
+    <B as BlockConfig>::BlockDate: From<BlockDate>,
 {
     let my_pub = secret.public.clone();
     loop {
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
-        debug!("slept for {:?} epoch {} slot {} next_slot {:?}", d, epoch.0, idx, next_time);
+        debug!(
+            "slept for {:?} epoch {} slot {} next_slot {:?}",
+            d, epoch.0, idx, next_time
+        );
 
         // TODO in the future "current stake" will be one of the parameter
         let leader = selection::test(&selection, idx as u64);
@@ -39,11 +42,20 @@ pub fn leadership_task<B>(
 
             // collect up to `nr_transactions` from the transaction pool.
             //
-            let transactions =
-                transaction_pool.write().unwrap().collect(b.chain_state.transactions_per_block());
+            let transactions = transaction_pool
+                .write()
+                .unwrap()
+                .collect(b.chain_state.transactions_per_block());
 
-            let epochslot = EpochSlotId { epoch: epoch.0 as u64, slotid: idx as u16 };
-            info!("leadership create tpool={} transactions ({})", transactions.len(), epochslot);
+            let epochslot = EpochSlotId {
+                epoch: epoch.0 as u64,
+                slotid: idx as u16,
+            };
+            info!(
+                "leadership create tpool={} transactions ({})",
+                transactions.len(),
+                epochslot
+            );
 
             let block = B::make_block(
                 &secret,
@@ -53,11 +65,7 @@ pub fn leadership_task<B>(
                 transactions,
             );
 
-            block_task.send_to(
-                BlockMsg::LeadershipBlock(
-                    block
-                )
-            );
+            block_task.send_to(BlockMsg::LeadershipBlock(block));
         }
     }
 }

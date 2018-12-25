@@ -12,21 +12,21 @@ impl F {
 }
 
 /// Threshold between 0.0 and 1.0
-#[derive(Clone,Copy,PartialEq,PartialOrd)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct Threshold(f64);
 
 impl Threshold {
     pub fn from_u256(v: &[u8]) -> Self {
         assert_eq!(v.len(), 32);
         // TODO, only consider the highest part
-        let v64 = (v[0] as u64) << 56 |
-                  (v[1] as u64) << 48 |
-                  (v[2] as u64) << 40 |
-                  (v[3] as u64) << 32 |
-                  (v[4] as u64) << 24 |
-                  (v[5] as u64) << 16 |
-                  (v[6] as u64) << 8  |
-                  (v[7] as u64);
+        let v64 = (v[0] as u64) << 56
+            | (v[1] as u64) << 48
+            | (v[2] as u64) << 40
+            | (v[3] as u64) << 32
+            | (v[4] as u64) << 24
+            | (v[5] as u64) << 16
+            | (v[6] as u64) << 8
+            | (v[7] as u64);
         Threshold((v64 as f64) / 18446744073709551616.0)
     }
 }

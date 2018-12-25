@@ -1,8 +1,8 @@
 use slog;
 use slog::Drain;
-use slog_term;
-use slog_async;
 pub use slog::Level;
+use slog_async;
+use slog_term;
 
 use std::cell::RefCell;
 use std::sync::Mutex;
@@ -46,7 +46,7 @@ where
                     let logger = get_global_logger();
                     f(&logger);
                     Some(logger)
-                },
+                }
                 Some(ref logger) => {
                     f(&logger);
                     None

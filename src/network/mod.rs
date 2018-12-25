@@ -5,8 +5,8 @@
 //! transactions...);
 //!
 
-mod ntt;
 mod grpc;
+mod ntt;
 
 use std::{
     collections::HashMap,
@@ -14,17 +14,12 @@ use std::{
     time::Duration,
 };
 
+use blockcfg::{cardano::Cardano, BlockConfig};
 use blockchain::BlockchainR;
-use protocol::{
-    Message,
-    MessageType,
-    Response,
-    network_transport::LightWeightConnectionId,
-};
-use intercom::{ClientMsg, TransactionMsg, BlockMsg, NetworkBroadcastMsg};
-use utils::task::{TaskMessageBox};
-use settings::network::{Connection, Configuration, Listen, Peer, Protocol};
-use blockcfg::{BlockConfig, cardano::Cardano};
+use intercom::{BlockMsg, ClientMsg, NetworkBroadcastMsg, TransactionMsg};
+use protocol::{network_transport::LightWeightConnectionId, Message, MessageType, Response};
+use settings::network::{Configuration, Connection, Listen, Peer, Protocol};
+use utils::task::TaskMessageBox;
 
 use futures::prelude::*;
 use futures::{
@@ -34,9 +29,9 @@ use futures::{
 
 /// all the different channels the network may need to talk to
 pub struct Channels<B: BlockConfig> {
-    pub client_box:      TaskMessageBox<ClientMsg<B>>,
+    pub client_box: TaskMessageBox<ClientMsg<B>>,
     pub transaction_box: TaskMessageBox<TransactionMsg<B>>,
-    pub block_box:       TaskMessageBox<BlockMsg<B>>,
+    pub block_box: TaskMessageBox<BlockMsg<B>>,
 }
 
 impl<B: BlockConfig> Clone for Channels<B> {
@@ -59,7 +54,7 @@ pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>
 pub type SubscriptionsR = Arc<RwLock<Subscriptions>>;
 
 pub struct GlobalState<B: BlockConfig> {
-    pub config:   Arc<Configuration>,
+    pub config: Arc<Configuration>,
     pub channels: Channels<B>,
     pub subscriptions: SubscriptionsR,
 }
@@ -136,13 +131,13 @@ impl<B: BlockConfig> ConnectionState<B> {
 
 pub fn run(
     config: Configuration,
-    subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<Cardano>>,  // TODO: abstract away Cardano
+    subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<Cardano>>, // TODO: abstract away Cardano
     channels: Channels<Cardano>,
 ) {
     let arc_config = Arc::new(config.clone());
     let subscriptions = Arc::new(RwLock::new(Subscriptions::default()));
     let state = GlobalState {
-        config:   arc_config,
+        config: arc_config,
         channels: channels,
         subscriptions: subscriptions.clone(),
     };
@@ -157,13 +152,12 @@ pub fn run(
         // clone the subscribed ends into a temporary array, the RwLock will
         // lock the variable only the time to build this collection, so we should
         // be able to free it for the error handling part
-        let subscriptions_col : Vec<_>
-            = subscriptions_clone.read()
-                                 .unwrap()
-                                 .iter()
-                                 .map(|(k, v)| (k.clone(), v.clone()))
-                                 .collect();
-
+        let subscriptions_col: Vec<_> = subscriptions_clone
+            .read()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
 
         // create a stream of all the subscriptions, for every broadcast
         // messages we will send the message to broadcast
@@ -171,94 +165,75 @@ pub fn run(
         futures::stream::iter_ok::<_, ()>(subscriptions_col)
             .for_each(move |(identifier, sink)| {
                 let msg = match msg.clone() {
-                    NetworkBroadcastMsg::Block(block) => {
-                        Message::Bytes(
-                            identifier.1,
-                            MessageType::MsgBlock.encode_with(
-                                &Response::Ok::<_, String>(block)
-                            )
-                        )
-                    }
-                    NetworkBroadcastMsg::Header(header) => {
-                        Message::Bytes(
-                            identifier.1,
-                            MessageType::MsgHeaders.encode_with(
-                                &Response::Ok::<_, String>(cardano::block::BlockHeaders(vec![header]))
-                            )
-                        )
-                    }
+                    NetworkBroadcastMsg::Block(block) => Message::Bytes(
+                        identifier.1,
+                        MessageType::MsgBlock.encode_with(&Response::Ok::<_, String>(block)),
+                    ),
+                    NetworkBroadcastMsg::Header(header) => Message::Bytes(
+                        identifier.1,
+                        MessageType::MsgHeaders.encode_with(&Response::Ok::<_, String>(
+                            cardano::block::BlockHeaders(vec![header]),
+                        )),
+                    ),
                     NetworkBroadcastMsg::Transaction(transaction) => {
                         Message::Bytes(identifier.1, cbor!(transaction).unwrap().into())
                     }
                 };
-                sink.unbounded_send(msg)
-                    .map(|_| ())
-                    .map_err(|_| {
-                        // in case of an error we can remove the element from the subscription
-                        //
-                        // This is because the only reason the subscription would fail to be sent
-                        // is if the other end of the unbound channel is disconnected/dropped.
-                        // So we can assume the other end *is* disconnected.
-                        //
-                        // TODO: we might want to double check that and actually tell the
-                        //       other end that an error occurred or at least force-drop the
-                        //       connection so the client need to reconnect.
-                        warn!("Subscription for {:?} failed, removing subscription...", identifier);
-                        let mut subscriptions_write = subscriptions_err.write().unwrap();
-                        subscriptions_write.remove(&identifier);
-                    })
-            }).map(|_| subscriptions)
+                sink.unbounded_send(msg).map(|_| ()).map_err(|_| {
+                    // in case of an error we can remove the element from the subscription
+                    //
+                    // This is because the only reason the subscription would fail to be sent
+                    // is if the other end of the unbound channel is disconnected/dropped.
+                    // So we can assume the other end *is* disconnected.
+                    //
+                    // TODO: we might want to double check that and actually tell the
+                    //       other end that an error occurred or at least force-drop the
+                    //       connection so the client need to reconnect.
+                    warn!(
+                        "Subscription for {:?} failed, removing subscription...",
+                        identifier
+                    );
+                    let mut subscriptions_write = subscriptions_err.write().unwrap();
+                    subscriptions_write.remove(&identifier);
+                })
+            })
+            .map(|_| subscriptions)
     });
 
     let state_listener = state.clone();
     // open the port for listening/accepting other peers to connect too
-    let listener = stream::iter_ok(config.listen_to).for_each(move |listen| {
-        match listen.connection {
-            Connection::Tcp(sockaddr) => {
-                match listen.protocol {
-                    Protocol::Ntt => ntt::run_listen_socket(
-                        sockaddr, listen, state_listener.clone()
-                    ),
-                    Protocol::Grpc => grpc::run_listen_socket(
-                        sockaddr, listen, state_listener.clone()
-                    ),
-                }
-            }
-            #[cfg(unix)]
-            Connection::Unix(_path) => unimplemented!()
-        }
-    });
-
-    let state_connection = state.clone();
-    let connections = stream::iter_ok(config.peer_nodes).for_each(move |peer| {
-        match peer.connection {
-            Connection::Tcp(sockaddr) => {
-                match peer.protocol {
-                    Protocol::Ntt => ntt::run_connect_socket(
-                        sockaddr, peer, state_connection.clone()
-                    ),
-                    Protocol::Grpc => unimplemented!(),
-                }
+    let listener =
+        stream::iter_ok(config.listen_to).for_each(move |listen| match listen.connection {
+            Connection::Tcp(sockaddr) => match listen.protocol {
+                Protocol::Ntt => ntt::run_listen_socket(sockaddr, listen, state_listener.clone()),
+                Protocol::Grpc => grpc::run_listen_socket(sockaddr, listen, state_listener.clone()),
             },
             #[cfg(unix)]
-            Connection::Unix(_path) => unimplemented!()
-        }
-    });
+            Connection::Unix(_path) => unimplemented!(),
+        });
+
+    let state_connection = state.clone();
+    let connections =
+        stream::iter_ok(config.peer_nodes).for_each(move |peer| match peer.connection {
+            Connection::Tcp(sockaddr) => match peer.protocol {
+                Protocol::Ntt => ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                Protocol::Grpc => unimplemented!(),
+            },
+            #[cfg(unix)]
+            Connection::Unix(_path) => unimplemented!(),
+        });
 
     tokio::run(subscriptions.join3(connections, listener).map(|_| ()));
 }
 
 pub fn bootstrap(config: &Configuration, blockchain: BlockchainR<Cardano>) {
-    let grpc_peer = config.peer_nodes
+    let grpc_peer = config
+        .peer_nodes
         .iter()
-        .filter(|peer| {
-            peer.protocol == Protocol::Grpc
-        })
+        .filter(|peer| peer.protocol == Protocol::Grpc)
         .next();
     match grpc_peer {
-        Some(peer) => {
-            grpc::bootstrap_from_peer(peer.clone(), blockchain)
-        }
+        Some(peer) => grpc::bootstrap_from_peer(peer.clone(), blockchain),
         None => {
             warn!("no gRPC peers specified, skipping bootstrap");
         }

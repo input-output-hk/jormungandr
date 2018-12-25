@@ -1,12 +1,22 @@
 use super::super::{
-    secure::NodePublic, settings::{BftLeader, Consensus},
+    secure::NodePublic,
+    settings::{BftLeader, Consensus},
 };
 
 #[derive(PartialEq, Eq)]
-pub enum IsLeading { Yes, No }
+pub enum IsLeading {
+    Yes,
+    No,
+}
 
 impl From<bool> for IsLeading {
-    fn from(b: bool) -> Self { if b { IsLeading::Yes } else { IsLeading::No } }
+    fn from(b: bool) -> Self {
+        if b {
+            IsLeading::Yes
+        } else {
+            IsLeading::No
+        }
+    }
 }
 
 pub trait BlockLeaderSelection {
@@ -15,7 +25,7 @@ pub trait BlockLeaderSelection {
     fn is_leader(&self, dp: Self::DecisionParams) -> IsLeading;
 }
 
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BftRoundRobinIndex(usize);
 
 /// The BFT Leader selection is based on a round robin of the expected leaders
@@ -32,7 +42,10 @@ impl<LeaderId: Eq> BftLeaderSelection<LeaderId> {
             return None;
         }
 
-        let pos = leaders.iter().position(|x| x == &me).map(BftRoundRobinIndex);
+        let pos = leaders
+            .iter()
+            .position(|x| x == &me)
+            .map(BftRoundRobinIndex);
         Some(BftLeaderSelection {
             my: pos,
             leaders: leaders,
@@ -99,9 +112,7 @@ pub fn prepare(public: &NodePublic, consensus: &Consensus) -> Option<Selection> 
 
 pub fn test(selection: &Selection, flat_slotid: u64) -> IsLeading {
     match selection {
-        Selection::Bft(sel) => {
-            sel.am_leader_at(flat_slotid)
-        },
+        Selection::Bft(sel) => sel.am_leader_at(flat_slotid),
         // TODO: genesis never elected for now
         Selection::Genesis => IsLeading::No,
     }

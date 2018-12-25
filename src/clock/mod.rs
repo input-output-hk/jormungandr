@@ -1,12 +1,12 @@
 pub mod configuration;
 pub mod global;
 
-use std::thread;
-use std::time::{SystemTime, Duration};
+use self::configuration::Epoch;
 use std::sync::{Arc, RwLock};
-use self::configuration::{Epoch};
+use std::thread;
+use std::time::{Duration, SystemTime};
 
-pub use self::configuration::{ClockEpochConfiguration};
+pub use self::configuration::ClockEpochConfiguration;
 
 pub struct FlatSlotId(u64);
 
@@ -34,21 +34,25 @@ impl Clock {
             for (era_st, e, cfg) in eras.iter().rev() {
                 if era_st < at {
                     match at.duration_since(*era_st) {
-                        Err(_) => {},
-                        Ok(d) => { return Some((d, *e, cfg.clone())) },
+                        Err(_) => {}
+                        Ok(d) => return Some((d, *e, cfg.clone())),
                     }
                 }
             }
             match at.duration_since(self.initial_time) {
                 Err(_) => None,
-                Ok(d)  => Some((d, Epoch(0), self.initial_configuration.clone())),
+                Ok(d) => Some((d, Epoch(0), self.initial_configuration.clone())),
             }
         }
     }
 
     fn get_last_era(&self) -> (SystemTime, Epoch, ClockEpochConfiguration) {
         let e = self.eras.read().unwrap();
-        (*e).last().map(|t| t.clone()).unwrap_or((self.initial_time, Epoch(0), self.initial_configuration.clone()))
+        (*e).last().map(|t| t.clone()).unwrap_or((
+            self.initial_time,
+            Epoch(0),
+            self.initial_configuration.clone(),
+        ))
     }
 
     pub fn append_era(&self, epoch: Epoch, config: ClockEpochConfiguration) {
@@ -69,16 +73,18 @@ impl Clock {
     /// Return the slot id and the remaining duration of this slot
     fn current_slot_at(&self, at: &SystemTime) -> Option<(Epoch, u32, Duration)> {
         match self.get_era_at(at) {
-            None => { None },
+            None => None,
             Some((time_offset_in_era, era_epoch, era_cfg)) => {
-                let flat_slot_index = time_offset_in_era.as_secs() / era_cfg.slot_duration.as_secs();
-                let epoch = Epoch(era_epoch.0 + (flat_slot_index / era_cfg.slots_per_epoch as u64) as u32);
+                let flat_slot_index =
+                    time_offset_in_era.as_secs() / era_cfg.slot_duration.as_secs();
+                let epoch =
+                    Epoch(era_epoch.0 + (flat_slot_index / era_cfg.slots_per_epoch as u64) as u32);
                 let slot = (flat_slot_index as u32) % (era_cfg.slots_per_epoch as u32);
 
                 let next_slot_time = era_cfg.slot_duration * ((flat_slot_index + 1) as u32);
 
                 Some((epoch, slot, next_slot_time - time_offset_in_era))
-            },
+            }
         }
     }
 
@@ -88,6 +94,9 @@ impl Clock {
 
     pub fn wait_next_slot(&self) -> Option<Duration> {
         // could just calculate the duration
-        self.current_slot().map(|(_,_,d)| {thread::sleep(d); d})
+        self.current_slot().map(|(_, _, d)| {
+            thread::sleep(d);
+            d
+        })
     }
 }

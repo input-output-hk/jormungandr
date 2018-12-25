@@ -1,4 +1,4 @@
-use super::sign::{SignatureAlgorithm, Ed25519};
+use super::sign::{Ed25519, SignatureAlgorithm};
 
 // General Key Evolving Signature algorithm Trait
 pub trait KES {
@@ -12,7 +12,8 @@ pub trait KES {
     /// Verify that a signature has been made by a given (public key, message)
     ///
     /// This is idential to usual asymetric cryptographic signature algorithm
-    fn verify(&self, publickey: &Self::PublicKey, data: &[u8], signature: &Self::Signature) -> bool;
+    fn verify(&self, publickey: &Self::PublicKey, data: &[u8], signature: &Self::Signature)
+        -> bool;
 }
 
 pub type MockKES = Ed25519;
@@ -26,7 +27,12 @@ impl KES for MockKES {
         self.sign(secretkey, data)
     }
 
-    fn verify(&self, publickey: &Self::PublicKey, data: &[u8], signature: &Self::Signature) -> bool {
+    fn verify(
+        &self,
+        publickey: &Self::PublicKey,
+        data: &[u8],
+        signature: &Self::Signature,
+    ) -> bool {
         <Ed25519 as SignatureAlgorithm>::verify(self, publickey, data, signature)
     }
 }

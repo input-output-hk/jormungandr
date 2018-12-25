@@ -1,4 +1,4 @@
-use std::time::{SystemTime, Duration};
+use std::time::{Duration, SystemTime};
 
 /// This represent (in spirit) the agreed time of the whole network
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -13,7 +13,7 @@ impl GlobalTime {
     pub fn differential(&self, earlier: GlobalTime) -> Duration {
         match self.0.duration_since(earlier.0) {
             Ok(duration) => duration,
-            Err(e)       => e.duration(),
+            Err(e) => e.duration(),
         }
     }
 }

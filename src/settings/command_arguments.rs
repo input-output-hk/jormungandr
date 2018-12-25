@@ -6,10 +6,9 @@ use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
-        name = "jormungandr",
-        raw(setting = "structopt::clap::AppSettings::ColoredHelp"),
-    )
-]
+    name = "jormungandr",
+    raw(setting = "structopt::clap::AppSettings::ColoredHelp")
+)]
 pub struct CommandArguments {
     /// activate the verbosity, the more occurrences the more verbose.
     /// (-v, -vv, -vvv)
@@ -66,10 +65,7 @@ pub struct CommandArguments {
     pub genesis_data_config: PathBuf,
 
     /// Set format of the log emitted. Can be "json" or "plain"
-    #[structopt(
-        long = "log-format",
-        parse(try_from_str)
-    )]
+    #[structopt(long = "log-format", parse(try_from_str))]
     pub log_format: Option<LogFormat>,
 }
 
@@ -80,5 +76,7 @@ impl CommandArguments {
     /// function will print an error message and will terminate
     /// the process.
     ///
-    pub fn load() -> Self { Self::from_args() }
+    pub fn load() -> Self {
+        Self::from_args()
+    }
 }
