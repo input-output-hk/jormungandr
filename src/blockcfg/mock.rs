@@ -119,7 +119,7 @@ pub struct Witness {
 
 impl Witness {
     /// Creates new `Witness` value.
-    pub fn new(transaction_id: TransactionId, private_key: PrivateKey) -> Self {
+    pub fn new(transaction_id: TransactionId, private_key: &PrivateKey) -> Self {
         let sig = private_key.sign(transaction_id.as_ref());
         Witness {
             signature: sig,
