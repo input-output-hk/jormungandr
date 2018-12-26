@@ -90,10 +90,12 @@ impl AsRef<[u8]> for Address {
     }
 }
 
-// Unspent transaction pointer.
+/// Unspent transaction pointer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct UtxoPointer {
+    /// Id of the transaction there UT was created.
     pub transaction_id: TransactionId,
+    /// Index of the output (wallet) that UT represents.
     pub output_index: u32,
 }
 impl UtxoPointer {
@@ -241,6 +243,8 @@ pub struct Ledger {
     unspent_outputs: HashMap<UtxoPointer, Output>,
 }
 impl Ledger {
+
+    /// Generate new ledges with an empty state.
     pub fn new() -> Self {
         Ledger {
             unspent_outputs: HashMap::new(),
@@ -319,6 +323,9 @@ impl property::Ledger for Ledger {
     type Diff = Diff;
     type Error = Error;
 
+    /// Create and a diff based on the transaction. The
+    /// transaction is validated. In case if validation
+    /// fails corresponding error will be returned.
     fn diff_transaction(&self, transaction: &Self::Transaction) -> Result<Self::Diff, Self::Error> {
         use crate::blockcfg::property::Transaction;
 
@@ -354,6 +361,7 @@ impl property::Ledger for Ledger {
         Ok(diff)
     }
 
+    /// Compose a single diff into a larger diff.
     fn diff<'a, I>(&self, transactions: I) -> Result<Self::Diff, Self::Error>
     where
         I: Iterator<Item = &'a Self::Transaction> + Sized,
@@ -368,6 +376,7 @@ impl property::Ledger for Ledger {
         Ok(diff)
     }
 
+    /// Apply the diff.
     fn add(&mut self, diff: Self::Diff) -> Result<&mut Self, Self::Error> {
         for spent_output in diff.spent_outputs.keys() {
             if let None = self.unspent_outputs.remove(spent_output) {
