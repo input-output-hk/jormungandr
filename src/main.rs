@@ -37,6 +37,7 @@ extern crate tower_h2;
 extern crate tower_util;
 
 #[cfg(test)]
+#[macro_use]
 extern crate quickcheck;
 #[cfg(test)]
 #[cfg(feature = "with-bench")]

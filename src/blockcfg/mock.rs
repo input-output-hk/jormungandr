@@ -390,6 +390,33 @@ mod quickcheck {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
+    quickcheck! {
+
+        /// If witness was created for a transaction it verifies that.
+        fn prop_witness_verfies_own_tx(pk: PrivateKey, tx: TransactionId) -> bool {
+           let witness = Witness::new(tx, &pk);
+           witness.verifies(tx)
+        }
+
+        fn witness_verifies_only_own_tx(pk: PrivateKey, tx1: Transaction, tx2: Transaction) -> bool {
+            use blockcfg::property::Transaction;
+            let witness1 = Witness::new(tx1.id(), &pk);
+            let witness2 = Witness::new(tx2.id(), &pk);
+            (witness1.verifies(tx2.id()) && witness1 == witness2) || (! witness1.verifies(tx2.id()))
+        }
+
+        /// id uniquelly identifies transaction.
+        /// $$\forall tx1, tx2: id(tx1) == id(tx2) => tx1 == tx2$$
+        fn prop_tx_id_uniqueness(tx1: Transaction, tx2: Transaction) -> bool {
+            use blockcfg::property::Transaction;
+            let id1 = tx1.id();
+            let id2 = tx2.id();
+            (id1 == id2 && tx1 == tx2) || (id1 != id2)
+        }
+
+
+    }
+
     impl Arbitrary for SlotId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             SlotId(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g))
