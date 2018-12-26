@@ -243,11 +243,17 @@ pub struct Ledger {
     unspent_outputs: HashMap<UtxoPointer, Output>,
 }
 impl Ledger {
-
     /// Generate new ledges with an empty state.
     pub fn new() -> Self {
         Ledger {
             unspent_outputs: HashMap::new(),
+        }
+    }
+
+    /// Generate a new input with initial state.
+    pub fn new_with(genesis: HashMap<UtxoPointer, Output>) -> Self {
+        Ledger {
+            unspent_outputs: genesis,
         }
     }
 }
