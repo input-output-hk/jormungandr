@@ -244,18 +244,12 @@ pub struct Ledger {
 }
 impl Ledger {
     /// Generate new ledges with an empty state.
-    pub fn new() -> Self {
-        Ledger {
-            unspent_outputs: HashMap::new(),
-        }
-    }
-
-    /// Generate a new input with initial state.
-    pub fn new_with(genesis: HashMap<UtxoPointer, Output>) -> Self {
+    pub fn new(genesis: HashMap<UtxoPointer, Output>) -> Self {
         Ledger {
             unspent_outputs: genesis,
         }
     }
+
 }
 
 #[derive(Debug, Clone)]
@@ -308,6 +302,11 @@ pub enum Error {
     /// error occurs when one of the witness does not sing entire
     /// transaction properly.
     InvalidTxSignature(Witness),
+
+    /// Transaction summ is not equal to zero, this means that there
+    /// were some money taken out of the nowhere, or some money that
+    /// had dissapeared.
+    TransactionSumIsNonZero(u64, u64),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -319,6 +318,7 @@ impl std::fmt::Display for Error {
             }
             Error::InvalidSignature(_, _, _) => write!(f, "Input is not signed properly"),
             Error::InvalidTxSignature(_) => write!(f, "Transaction was not signed"),
+            Error::TransactionSumIsNonZero(_, _) => write!(f, "Transaction is not zero"),
         }
     }
 }
@@ -364,6 +364,19 @@ impl property::Ledger for Ledger {
             diff.new_unspent_outputs
                 .insert(UtxoPointer::new(id, index as u32), *output);
         }
+        // 3. verify that transaction sum is zero.
+        let spent = diff
+            .spent_outputs
+            .iter()
+            .fold(0, |acc, (_, Output(_, Value(x)))| acc + x);
+        let new_unspent = diff
+            .new_unspent_outputs
+            .iter()
+            .fold(0, |acc, (_, Output(_, Value(x)))| acc + x);
+        if spent != new_unspent {
+            return Err(Error::TransactionSumIsNonZero(spent, new_unspent));
+        }
+
         Ok(diff)
     }
 
@@ -398,6 +411,289 @@ impl property::Ledger for Ledger {
 
         Ok(self)
     }
+}
+
+#[cfg(test)]
+mod ledger {
+
+    use super::*;
+    use quickcheck::{Arbitrary, StdGen};
+    use rand::prelude::*;
+
+    /// Helper structure that keeps information about
+    /// the users it can be used for a simple generation of
+    /// new keys.
+    struct Environment {
+        gen: StdGen<rand::ThreadRng>,
+        users: HashMap<usize, PrivateKey>,
+        keys: HashMap<Address, PrivateKey>,
+    }
+
+    impl Environment {
+        pub fn new() -> Self {
+            let g = StdGen::new(thread_rng(), 10);
+            Environment {
+                gen: g,
+                users: HashMap::new(),
+                keys: HashMap::new(),
+            }
+        }
+
+        pub fn genesis(&mut self, users: HashMap<usize, u64>) -> (Transaction, Ledger) {
+            use blockcfg::mock;
+            use blockcfg::property::Transaction;
+
+            let genesis = mock::Transaction {
+                inputs: Vec::new(),
+                outputs: users
+                    .iter()
+                    .map(|(key, &u)| Output(Address::new(&self.user(*key).public()), Value(u)))
+                    .collect(),
+            };
+
+            let initial_state: HashMap<UtxoPointer, Output> = users
+                .iter()
+                .enumerate()
+                .map(|(idx, (i, &u))| {
+                    (
+                        UtxoPointer {
+                            transaction_id: genesis.id(),
+                            output_index: idx as u32,
+                        },
+                        Output(Address::new(&self.user(*i).public()), Value(u)),
+                    )
+                })
+                .collect();
+
+            (genesis, Ledger::new(initial_state))
+        }
+
+        pub fn user(&mut self, id: usize) -> PrivateKey {
+            let gen = &mut self.gen;
+            let pk = self
+                .users
+                .entry(id)
+                .or_insert_with(|| Arbitrary::arbitrary(gen));
+            self.keys.insert(Address::new(&pk.public()), pk.clone());
+            pk.clone()
+        }
+
+        pub fn address(&mut self, id: usize) -> Address {
+            Address::new(&self.user(id).public()).clone()
+        }
+
+        pub fn private(&self, public: &Address) -> PrivateKey {
+            self.keys
+                .get(public)
+                .expect("private key should exist")
+                .clone()
+        }
+    }
+
+    /// Helper for building transactions in testing environment.
+    struct TxBuilder {
+        input: Vec<(Address, UtxoPointer)>,
+        output: Vec<(usize, u64)>,
+    }
+
+    impl TxBuilder {
+        // Create new builder.
+        pub fn new() -> Self {
+            TxBuilder {
+                input: vec![],
+                output: vec![],
+            }
+        }
+
+        pub fn from_tx(&mut self, tx: &Transaction, idx: u32) -> &mut Self {
+            use blockcfg::property::Transaction;
+            let Output(address, _) = tx
+                .outputs
+                .get(idx as usize)
+                .expect("expecting an output in the transaction");
+            let utxo = UtxoPointer {
+                transaction_id: tx.id(),
+                output_index: idx,
+            };
+            self.input.push((*address, utxo));
+            self
+        }
+
+        pub fn to(&mut self, uid: usize, value: u64) -> &mut Self {
+            self.output.push((uid, value));
+            self
+        }
+
+        pub fn build(&mut self, env: &mut Environment) -> SignedTransaction {
+            use blockcfg::mock;
+            use blockcfg::property::Transaction;
+            let tx = mock::Transaction {
+                inputs: self.input.iter().map(|(_, u)| u).cloned().collect(),
+                outputs: self
+                    .output
+                    .iter()
+                    .map(|(i, u)| Output(env.address(*i), Value(*u)))
+                    .collect(),
+            };
+            let tx_id = tx.id();
+            SignedTransaction {
+                tx: tx,
+                witnesses: self
+                    .input
+                    .iter()
+                    .map(|(public, _)| Witness::new(tx_id, &env.private(public)))
+                    .collect(),
+            }
+        }
+    }
+
+    #[test]
+    fn can_pass_all_money_to_another() {
+        use blockcfg::property::Ledger;
+        let mut env = Environment::new();
+        let (genesis, mut ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let stx = TxBuilder::new()
+            .from_tx(&genesis, 0)
+            .to(2, 100)
+            .build(&mut env);
+        let diff = match ledger.diff_transaction(&stx) {
+            Ok(diff) => diff,
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        };
+        ledger.add(diff).unwrap();
+    }
+
+    #[test]
+    fn can_split_money() {
+        use blockcfg::property::Ledger;
+        let mut env = Environment::new();
+        let (genesis, mut ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let stx = TxBuilder::new()
+            .from_tx(&genesis, 0)
+            .to(1, 50)
+            .to(1, 50)
+            .build(&mut env);
+        let diff = match ledger.diff_transaction(&stx) {
+            Ok(diff) => diff,
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        };
+        ledger.add(diff).unwrap();
+    }
+
+    #[test]
+    fn can_collect_money() {
+        use blockcfg::property::Ledger;
+        let mut env = Environment::new();
+        let (genesis, mut ledger) = env.genesis([(1, 50u64), (2, 50u64)].iter().cloned().collect());
+        let stx = TxBuilder::new()
+            .from_tx(&genesis, 0)
+            .from_tx(&genesis, 1)
+            .to(1, 100)
+            .build(&mut env);
+        let diff = match ledger.diff_transaction(&stx) {
+            Ok(diff) => diff,
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        };
+        ledger.add(diff).unwrap();
+    }
+
+    #[test]
+    fn it_works() {
+        use blockcfg::property::Ledger;
+        let mut env = Environment::new();
+        let (genesis, mut ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let stx = TxBuilder::new()
+            .from_tx(&genesis, 0)
+            .to(2, 50)
+            .to(3, 50)
+            .build(&mut env);
+        let diff = match ledger.diff_transaction(&stx) {
+            Ok(diff) => diff,
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        };
+        ledger.add(diff).unwrap();
+        let stx2 = TxBuilder::new()
+            .from_tx(&stx.tx, 0) // Get utxop in a better way
+            .from_tx(&stx.tx, 1) // Get utxop in a better way
+            .to(1, 100)
+            .build(&mut env);
+        let diff = match ledger.diff_transaction(&stx2) {
+            Ok(diff) => diff,
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        };
+        ledger.add(diff).unwrap();
+    }
+
+    #[test]
+    fn cant_loose_money() {
+        use blockcfg::property::Ledger;
+        let mut env = Environment::new();
+        let (genesis, ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let stx = TxBuilder::new()
+            .from_tx(&genesis, 0)
+            .to(1, 50)
+            .build(&mut env);
+        match ledger.diff_transaction(&stx) {
+            Ok(diff) => panic!("Unexpected transaction {:#?}", diff),
+            Err(Error::TransactionSumIsNonZero(_, _)) => (),
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        }
+    }
+
+    #[test]
+    fn cant_generate_money() {
+        use blockcfg::property::Ledger;
+        let mut env = Environment::new();
+        let (genesis, ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let stx = TxBuilder::new()
+            .from_tx(&genesis, 0)
+            .to(1, 150)
+            .build(&mut env);
+        match ledger.diff_transaction(&stx) {
+            Ok(diff) => panic!("Unexpected transaction {:#?}", diff),
+            Err(Error::TransactionSumIsNonZero(_, _)) => (),
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        }
+    }
+
+    #[test]
+    fn test_double_spend() {
+        use blockcfg::property::Ledger;
+        let mut env = Environment::new();
+        let (genesis, ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let stx = TxBuilder::new()
+            .from_tx(&genesis, 0)
+            .from_tx(&genesis, 0)
+            .to(2, 200)
+            .build(&mut env);
+        match ledger.diff_transaction(&stx) {
+            Ok(diff) => panic!("Transaction succeeded {:#?}",diff),
+            Err(Error::DoubleSpend(_,_)) => (),
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        };
+    }
+
+    #[test]
+    fn test_unresolved() {
+        use blockcfg::property::Ledger;
+        let mut env = Environment::new();
+        let (genesis, mut ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let stx = TxBuilder::new()
+            .from_tx(&genesis, 0)
+            .to(2, 100)
+            .build(&mut env);
+        let diff = match ledger.diff_transaction(&stx) {
+            Ok(diff) => diff,
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        };
+        ledger.add(diff).unwrap();
+        match ledger.diff_transaction(&stx) {
+            Ok(diff) => panic!("Unexpected success {:#?}", diff),
+            Err(Error::InputDoesNotResolve(_)) => (),
+            Err(e) => panic!("Unexpected error {:#?}", e),
+        };
+    }
+
 }
 
 #[cfg(test)]
