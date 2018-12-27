@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "with-bench", feature(test))]
+extern crate bincode;
 extern crate clap;
 #[macro_use]
 extern crate serde_derive;

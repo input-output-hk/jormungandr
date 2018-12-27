@@ -6,9 +6,13 @@ use std::collections::HashMap;
 
 use crate::blockcfg::{property, serialization};
 
+use bincode;
 use cardano::hash;
 use cardano::hdwallet as crypto;
 
+/// Non unique identifier of the transaction position in the
+/// blockchain. There may be many transactions related to the same
+/// `SlotId`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct SlotId(u32, u32);
 
@@ -35,6 +39,13 @@ impl AsRef<[u8]> for PublicKey {
         self.0.as_ref()
     }
 }
+impl PublicKey {
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
+        self.0.verify(message, &signature.0)
+    }
+}
+
+/// Private key of the entity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrivateKey(crypto::XPrv);
 impl AsRef<[u8]> for PrivateKey {
@@ -42,7 +53,16 @@ impl AsRef<[u8]> for PrivateKey {
         self.0.as_ref()
     }
 }
+impl PrivateKey {
+    pub fn public(&self) -> PublicKey {
+        PublicKey(self.0.public())
+    }
+    pub fn sign(&self, data: &[u8]) -> Signature {
+        Signature(self.0.sign(data))
+    }
+}
 
+/// Cryptographic signature.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Signature(crypto::Signature<()>);
 impl AsRef<[u8]> for Signature {
@@ -51,9 +71,12 @@ impl AsRef<[u8]> for Signature {
     }
 }
 
+/// Unspent transaction value.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Value(u64);
 
+/// Address. Currently address is just a hash of
+/// the public key.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Address(Hash);
 impl Address {
@@ -67,35 +90,65 @@ impl AsRef<[u8]> for Address {
     }
 }
 
+// Unspent transaction pointer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
-pub struct Input {
+pub struct UtxoPointer {
     pub transaction_id: TransactionId,
     pub output_index: u32,
 }
-impl Input {
+impl UtxoPointer {
     pub fn new(transaction_id: TransactionId, output_index: u32) -> Self {
-        Input {
+        UtxoPointer {
             transaction_id,
             output_index,
         }
     }
 }
 
+/// Structure that proofs that certain user agrees with
+/// some data. This structure is used to sign `Transaction`
+/// and get `SignedTransaction` out.
+///
+/// It's important that witness works with opaque structures
+/// and may not know the contents of the internal transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct SignedInput {
-    pub input: Input,
+pub struct Witness {
     pub signature: Signature,
     pub public_key: PublicKey,
 }
-impl SignedInput {
-    pub fn verify(&self, _output: &Output) -> bool {
-        unimplemented!()
+
+impl Witness {
+    /// Creates new `Witness` value.
+    pub fn new(transaction_id: TransactionId, private_key: &PrivateKey) -> Self {
+        let sig = private_key.sign(transaction_id.as_ref());
+        Witness {
+            signature: sig,
+            public_key: private_key.public(),
+        }
+    }
+
+    /// Checks if a witness emitter matches the `Output` address.
+    ///
+    /// This check is needed because each Utxo in the transaction
+    /// must be signed by the wallet holder.
+    pub fn matches(&self, output: &Output) -> bool {
+        let addr = Address::new(&self.public_key);
+        addr == output.0
+    }
+
+    /// Verify the given `TransactionId` using the witness.
+    pub fn verifies(&self, transaction_id: TransactionId) -> bool {
+        self.public_key
+            .verify(transaction_id.as_ref(), &self.signature)
     }
 }
 
+/// Information how tokens are spent.
+/// A value of tokens is sent to the address.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Output(pub Address, pub Value);
 
+/// Id of the transaction.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct TransactionId(Hash);
 impl AsRef<[u8]> for TransactionId {
@@ -104,41 +157,40 @@ impl AsRef<[u8]> for TransactionId {
     }
 }
 
+/// Transaction, transaction maps old unspent tokens into the
+/// set of the new addresses.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Transaction {
-    pub inputs: Vec<SignedInput>,
+    pub inputs: Vec<UtxoPointer>,
     pub outputs: Vec<Output>,
 }
 
+/// Each transaction must be signed in order to be executed
+/// by the ledger. `SignedTransaction` represents such a transaction.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct SignedTransaction {
+    pub tx: Transaction,
+    pub witnesses: Vec<Witness>,
+}
+
+/// `Block` is an element of the blockchain it contains multiple
+/// transaction and a reference to the parent block. Alongside
+/// with the position of that block in the chain.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Block {
     pub slot_id: SlotId,
     pub parent_hash: Hash,
 
-    pub transactions: Vec<Transaction>,
-}
-
-impl PrivateKey {
-    pub fn public(&self) -> PublicKey {
-        PublicKey(self.0.public())
-    }
-    pub fn sign(&self, data: &[u8]) -> Signature {
-        Signature(self.0.sign(data))
-    }
-}
-impl PublicKey {
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
-        self.0.verify(message, &signature.0)
-    }
+    pub transactions: Vec<SignedTransaction>,
 }
 
 impl serialization::Deserialize for Block {
     // FIXME: decide on appropriate format for mock blockchain
 
-    type Error = crate::serde_yaml::Error;
+    type Error = bincode::Error;
 
-    fn deserialize(data: &[u8]) -> Result<Block, crate::serde_yaml::Error> {
-        serde_yaml::from_slice(data)
+    fn deserialize(data: &[u8]) -> Result<Block, bincode::Error> {
+        bincode::deserialize(data)
     }
 }
 
@@ -147,7 +199,8 @@ impl property::Block for Block {
     type Date = SlotId;
 
     fn id(&self) -> Self::Id {
-        unimplemented!()
+        let bytes = bincode::serialize(self).expect("unable to serialize block");
+        Hash::hash_bytes(&bytes)
     }
     fn parent_id(&self) -> &Self::Id {
         &self.parent_hash
@@ -157,7 +210,7 @@ impl property::Block for Block {
     }
 }
 impl property::HasTransaction for Block {
-    type Transaction = Transaction;
+    type Transaction = SignedTransaction;
 
     fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
         self.transactions.iter()
@@ -165,33 +218,27 @@ impl property::HasTransaction for Block {
 }
 
 impl property::Transaction for Transaction {
-    type Input = Input;
+    type Input = UtxoPointer;
     type Output = Output;
     type Id = TransactionId;
     fn id(&self) -> Self::Id {
-        use std::convert::AsRef;
-        let mut bytes: Vec<u8> = vec![];
-        for signed_input in self.inputs.iter() {
-            bytes.extend(signed_input.input.transaction_id.as_ref());
-            #[cfg(nightly)] // TODO: github's issue #91
-            bytes.extend(signed_input.input.output_index.to_be_bytes().as_ref());
-            bytes.extend(signed_input.signature.as_ref());
-            // remove the chain code from the serialisation
-            // see github #93
-            bytes.extend(signed_input.public_key.as_ref()[..32].as_ref());
-        }
-        for output in self.outputs.iter() {
-            bytes.extend(output.0.as_ref());
-            #[cfg(nightly)] // TODO: github's issue #91
-            bytes.extend(output.1.to_be_bytes().as_ref());
-        }
+        let bytes = bincode::serialize(self).expect("unable to serialize transaction");
         TransactionId(Hash::hash_bytes(&bytes))
+    }
+}
+
+impl property::Transaction for SignedTransaction {
+    type Input = UtxoPointer;
+    type Output = Output;
+    type Id = TransactionId;
+    fn id(&self) -> Self::Id {
+        self.tx.id()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Ledger {
-    unspent_outputs: HashMap<Input, Output>,
+    unspent_outputs: HashMap<UtxoPointer, Output>,
 }
 impl Ledger {
     pub fn new() -> Self {
@@ -203,8 +250,8 @@ impl Ledger {
 
 #[derive(Debug, Clone)]
 pub struct Diff {
-    spent_outputs: HashMap<Input, Output>,
-    new_unspent_outputs: HashMap<Input, Output>,
+    spent_outputs: HashMap<UtxoPointer, Output>,
+    new_unspent_outputs: HashMap<UtxoPointer, Output>,
 }
 impl Diff {
     fn new() -> Self {
@@ -224,7 +271,7 @@ impl Diff {
 pub enum Error {
     /// If the Ledger could not find the given input in the UTxO list it will
     /// report this error.
-    InputDoesNotResolve(Input),
+    InputDoesNotResolve(UtxoPointer),
 
     /// if the Ledger finds that the input has already been used once in a given
     /// transaction or block of transactions it will report this error.
@@ -232,7 +279,7 @@ pub enum Error {
     /// the input here is the given input used twice,
     /// the output here is the output set in the first occurrence of the input, it
     /// will provide a bit of information to the user to figure out what went wrong
-    DoubleSpend(Input, Output),
+    DoubleSpend(UtxoPointer, Output),
 
     /// This error will happen if the input was already set and is now replaced
     /// by another output.
@@ -242,11 +289,15 @@ pub enum Error {
     /// associated to this output.
     ///
     /// first the input in common, then the original output and finally the new output
-    InputWasAlreadySet(Input, Output, Output),
+    InputWasAlreadySet(UtxoPointer, Output, Output),
 
     /// error occurs if the signature is invalid: either does not match the initial output
     /// or it is not cryptographically valid.
-    InvalidSignature(Input, Output, Signature),
+    InvalidSignature(UtxoPointer, Output, Witness),
+
+    /// error occurs when one of the witness does not sing entire
+    /// transaction properly.
+    InvalidTxSignature(Witness),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -257,13 +308,14 @@ impl std::fmt::Display for Error {
                 write!(f, "Input was already present in the Ledger")
             }
             Error::InvalidSignature(_, _, _) => write!(f, "Input is not signed properly"),
+            Error::InvalidTxSignature(_) => write!(f, "Transaction was not signed"),
         }
     }
 }
 impl std::error::Error for Error {}
 
 impl property::Ledger for Ledger {
-    type Transaction = Transaction;
+    type Transaction = SignedTransaction;
     type Diff = Diff;
     type Error = Error;
 
@@ -272,31 +324,33 @@ impl property::Ledger for Ledger {
 
         let mut diff = Diff::new();
         let id = transaction.id();
-
-        // 1. validate the inputs
-        for input in transaction.inputs.iter() {
-            if let Some(output) = self.unspent_outputs.get(&input.input) {
-                if !input.verify(&output) {
-                    return Err(Error::InvalidSignature(
-                        input.input,
-                        *output,
-                        input.signature.clone(),
-                    ));
+        // 1. validate transaction without looking into the context
+        // and that each input is validated by the matching key.
+        for (input, witness) in transaction
+            .tx
+            .inputs
+            .iter()
+            .zip(transaction.witnesses.iter())
+        {
+            if !witness.verifies(transaction.tx.id()) {
+                return Err(Error::InvalidTxSignature(witness.clone()));
+            }
+            if let Some(output) = self.unspent_outputs.get(&input) {
+                if !witness.matches(&output) {
+                    return Err(Error::InvalidSignature(*input, *output, witness.clone()));
                 }
-                if let Some(output) = diff.spent_outputs.insert(input.input, *output) {
-                    return Err(Error::DoubleSpend(input.input, output));
+                if let Some(output) = diff.spent_outputs.insert(*input, *output) {
+                    return Err(Error::DoubleSpend(*input, output));
                 }
             } else {
-                return Err(Error::InputDoesNotResolve(input.input));
+                return Err(Error::InputDoesNotResolve(*input));
             }
         }
-
         // 2. prepare to add the new outputs
-        for (index, output) in transaction.outputs.iter().enumerate() {
+        for (index, output) in transaction.tx.outputs.iter().enumerate() {
             diff.new_unspent_outputs
-                .insert(Input::new(id, index as u32), *output);
+                .insert(UtxoPointer::new(id, index as u32), *output);
         }
-
         Ok(diff)
     }
 
@@ -400,19 +454,18 @@ mod quickcheck {
         }
     }
 
-    impl Arbitrary for Input {
+    impl Arbitrary for UtxoPointer {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Input {
+            UtxoPointer {
                 transaction_id: Arbitrary::arbitrary(g),
                 output_index: Arbitrary::arbitrary(g),
             }
         }
     }
 
-    impl Arbitrary for SignedInput {
+    impl Arbitrary for Witness {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            SignedInput {
-                input: Arbitrary::arbitrary(g),
+            Witness {
                 signature: Arbitrary::arbitrary(g),
                 public_key: Arbitrary::arbitrary(g),
             }
@@ -430,6 +483,15 @@ mod quickcheck {
             Transaction {
                 inputs: Arbitrary::arbitrary(g),
                 outputs: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for SignedTransaction {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            SignedTransaction {
+                tx: Arbitrary::arbitrary(g),
+                witnesses: Arbitrary::arbitrary(g),
             }
         }
     }
