@@ -1,3 +1,5 @@
+pub mod testing;
+
 /// this defines the Chain part of a Block. A Block must always
 /// have (in our model) a parent's Hash and an Identifier.
 ///

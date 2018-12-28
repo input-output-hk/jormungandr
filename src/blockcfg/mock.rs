@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 
 use crate::blockcfg::{property, serialization};
+use crate::blockcfg::property::testing;
 
 use bincode;
 use cardano::hash;
@@ -726,6 +727,11 @@ mod quickcheck {
         }
 
 
+        fn prop_bad_tx_fails(l: Ledger, tx: SignedTransaction) -> bool {
+
+            testing::prop_bad_transactions_fails(l, tx)
+        }
+
     }
 
     impl Arbitrary for SlotId {
@@ -840,6 +846,14 @@ mod quickcheck {
                 slot_id: Arbitrary::arbitrary(g),
                 parent_hash: Arbitrary::arbitrary(g),
                 transactions: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for Ledger {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Ledger {
+                unspent_outputs: Arbitrary::arbitrary(g),
             }
         }
     }
