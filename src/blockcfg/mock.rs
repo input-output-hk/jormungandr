@@ -11,7 +11,7 @@ use bincode;
 use cardano::hash;
 use cardano::hdwallet as crypto;
 
-use quickcheck::{Arbitrary, StdGen};
+use quickcheck::{Arbitrary, Gen, StdGen};
 use rand::prelude::*;
 
 /// Non unique identifier of the transaction position in the
@@ -416,27 +416,93 @@ impl property::Ledger for Ledger {
     }
 }
 
-/// Helper structure that keeps information about
-/// the users it can be used for a simple generation of
-/// new keys.
+/// Helper structure that keeps information about the users
+/// and addresses. This information is required for implementing
+/// cryptography operations, and keeping information about the
+/// addresses participated in the scenario.
+///
+/// Environment keeps list of the mapping from natural numbers
+/// to the user's `PrivateKeys`. So one can use numbers as
+/// addresses. This approach allows simpler definition of the
+/// scenarios.
 pub struct Environment {
+    ledger: Ledger,
     gen: StdGen<rand::ThreadRng>,
     users: HashMap<usize, PrivateKey>,
     keys: HashMap<Address, PrivateKey>,
 }
 
-impl Environment {
+/// Envrionment provides interface to the underlying ledger.
+impl property::Ledger for Environment {
+    type Transaction = SignedTransaction;
+    type Diff = Diff;
+    type Error = Error;
 
+    fn diff_transaction(&self, transaction: &Self::Transaction) -> Result<Self::Diff, Self::Error> {
+        self.ledger.diff_transaction(transaction)
+    }
+
+    fn add(&mut self, diff: Self::Diff) -> Result<&mut Self, Self::Error> {
+        match self.ledger.add(diff) {
+            Err(e) => Err(e),
+            Ok(_) => Ok(self),
+        }
+    }
+
+    fn diff<'a, I>(&self, transactions: I) -> Result<Self::Diff, Self::Error>
+    where
+        I: Iterator<Item = &'a Self::Transaction> + Sized,
+        Self::Transaction: 'a,
+    {
+        self.ledger.diff(transactions)
+    }
+}
+
+impl Environment {
+    /// Initialize new environment.
     pub fn new() -> Self {
         let g = StdGen::new(thread_rng(), 10);
         Environment {
+            ledger: Ledger::new(HashMap::new()),
             gen: g,
             users: HashMap::new(),
             keys: HashMap::new(),
         }
     }
 
-    pub fn genesis(&mut self, users: HashMap<usize, u64>) -> (Transaction, Ledger) {
+    /// Get users private key based on it's index, if
+    /// there is no such user - it will be generated.
+    pub fn user(&mut self, id: usize) -> PrivateKey {
+        let gen = &mut self.gen;
+        let pk = self
+            .users
+            .entry(id)
+            .or_insert_with(|| Arbitrary::arbitrary(gen));
+        self.keys.insert(Address::new(&pk.public()), pk.clone());
+        pk.clone()
+    }
+
+    /// Get user's address based on it's index, if user
+    /// does not exist, it will be generated.
+    pub fn address(&mut self, id: usize) -> Address {
+        Address::new(&self.user(id).public()).clone()
+    }
+
+    /// Get user's private key based on his address.
+    /// panics if user is not in the environment yet.
+    pub fn private(&mut self, public: &Address) -> PrivateKey {
+        self.keys
+            .get(public)
+            .expect("Public key should be registered in env")
+            .clone()
+    }
+
+    /// Generate ledger with the given genesis, if there was
+    /// a previous ledger state it's thrown away.
+    /// Returns a transaction corresponding to the genesis
+    /// transaction, this transaction can be used for generating
+    /// next operations.
+    pub fn genesis(&mut self, users: HashMap<usize, u64>) -> Transaction {
         use blockcfg::mock;
         use blockcfg::property::Transaction;
 
@@ -462,31 +528,65 @@ impl Environment {
             })
             .collect();
 
-        (genesis, Ledger::new(initial_state))
-    }
-
-    pub fn user(&mut self, id: usize) -> PrivateKey {
-        let gen = &mut self.gen;
-        let pk = self
-            .users
-            .entry(id)
-            .or_insert_with(|| Arbitrary::arbitrary(gen));
-        self.keys.insert(Address::new(&pk.public()), pk.clone());
-        pk.clone()
-    }
-
-    pub fn address(&mut self, id: usize) -> Address {
-        Address::new(&self.user(id).public()).clone()
-    }
-
-    pub fn private(&mut self, public: &Address) -> PrivateKey {
-        self.keys
-            .get(public)
-            .expect("Public key should be registered in env")
-            .clone()
+        self.ledger = Ledger::new(initial_state);
+        genesis
     }
 }
 
+/// Environment can generate valid transaction.
+impl testing::MkValidTransaction for Environment {
+    type Transaction = SignedTransaction;
+
+    fn generate_transaction<G>(&mut self, g: &mut G) -> Self::Transaction
+    where
+        G: Gen,
+    {
+        use blockcfg::mock;
+        use blockcfg::property::Transaction;
+        use std::cmp::min;
+        // Now we may extract all the information from the state
+        // to build possible transaction.
+        let inputs_outputs: Vec<_> = self
+            .ledger
+            .unspent_outputs
+            .iter()
+            .filter(|_| Arbitrary::arbitrary(g))
+            .map(|(&i, &o)| (i, o))
+            .collect();
+        let mut output_sum: u64 = inputs_outputs
+            .iter()
+            .map(|(_, Output(_, Value(v)))| v)
+            .sum();
+        let mut outputs = Vec::new();
+        loop {
+            let address = self.address(Arbitrary::arbitrary(g));
+            let value = min(Arbitrary::arbitrary(g), output_sum);
+            outputs.push(Output(address, Value(value)));
+            output_sum = output_sum - value;
+            if output_sum == 0 {
+                break;
+            };
+        }
+        let tx = mock::Transaction {
+            inputs: inputs_outputs.iter().cloned().map(|(i, _)| i).collect(),
+            outputs: outputs,
+        };
+        let tx_id = tx.id();
+        SignedTransaction {
+            tx: tx,
+            witnesses: inputs_outputs
+                .iter()
+                .map(|(_, Output(public, _))| Witness::new(tx_id, &self.private(public)))
+                .collect(),
+        }
+    }
+}
+
+/// Unit tests for the mockchain. These tests are mockchain
+/// specific and allowed to use it's internal structures.
+///
+/// These tests check the corner cases that may be missing
+/// in more general automated testing.
 #[cfg(test)]
 mod ledger {
 
@@ -553,89 +653,62 @@ mod ledger {
     fn can_pass_all_money_to_another() {
         use blockcfg::property::Ledger;
         let mut env = Environment::new();
-        let (genesis, mut ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let genesis = env.genesis([(1, 100u64)].iter().cloned().collect());
         let stx = TxBuilder::new()
             .from_tx(&genesis, 0)
             .to(2, 100)
             .build(&mut env);
-        let diff = match ledger.diff_transaction(&stx) {
+        let diff = match env.diff_transaction(&stx) {
             Ok(diff) => diff,
             Err(e) => panic!("Unexpected error {:#?}", e),
         };
-        ledger.add(diff).unwrap();
+        env.add(diff).unwrap();
     }
 
     #[test]
     fn can_split_money() {
         use blockcfg::property::Ledger;
         let mut env = Environment::new();
-        let (genesis, mut ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let genesis = env.genesis([(1, 100u64)].iter().cloned().collect());
         let stx = TxBuilder::new()
             .from_tx(&genesis, 0)
             .to(1, 50)
             .to(1, 50)
             .build(&mut env);
-        let diff = match ledger.diff_transaction(&stx) {
+        let diff = match env.diff_transaction(&stx) {
             Ok(diff) => diff,
             Err(e) => panic!("Unexpected error {:#?}", e),
         };
-        ledger.add(diff).unwrap();
+        env.add(diff).unwrap();
     }
 
     #[test]
     fn can_collect_money() {
         use blockcfg::property::Ledger;
         let mut env = Environment::new();
-        let (genesis, mut ledger) = env.genesis([(1, 50u64), (2, 50u64)].iter().cloned().collect());
+        let genesis = env.genesis([(1, 50u64), (2, 50u64)].iter().cloned().collect());
         let stx = TxBuilder::new()
             .from_tx(&genesis, 0)
             .from_tx(&genesis, 1)
             .to(1, 100)
             .build(&mut env);
-        let diff = match ledger.diff_transaction(&stx) {
+        let diff = match env.diff_transaction(&stx) {
             Ok(diff) => diff,
             Err(e) => panic!("Unexpected error {:#?}", e),
         };
-        ledger.add(diff).unwrap();
-    }
-
-    #[test]
-    fn it_works() {
-        use blockcfg::property::Ledger;
-        let mut env = Environment::new();
-        let (genesis, mut ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
-        let stx = TxBuilder::new()
-            .from_tx(&genesis, 0)
-            .to(2, 50)
-            .to(3, 50)
-            .build(&mut env);
-        let diff = match ledger.diff_transaction(&stx) {
-            Ok(diff) => diff,
-            Err(e) => panic!("Unexpected error {:#?}", e),
-        };
-        ledger.add(diff).unwrap();
-        let stx2 = TxBuilder::new()
-            .from_tx(&stx.tx, 0) // Get utxop in a better way
-            .from_tx(&stx.tx, 1) // Get utxop in a better way
-            .to(1, 100)
-            .build(&mut env);
-        let diff = match ledger.diff_transaction(&stx2) {
-            Ok(diff) => diff,
-            Err(e) => panic!("Unexpected error {:#?}", e),
-        };
-        ledger.add(diff).unwrap();
+        env.add(diff).unwrap();
     }
 
     #[test]
     fn cant_loose_money() {
         use blockcfg::property::Ledger;
         let mut env = Environment::new();
-        let (genesis, ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let genesis = env.genesis([(1, 100u64)].iter().cloned().collect());
         let stx = TxBuilder::new()
             .from_tx(&genesis, 0)
             .to(1, 50)
             .build(&mut env);
-        match ledger.diff_transaction(&stx) {
+        match env.diff_transaction(&stx) {
             Ok(diff) => panic!("Unexpected transaction {:#?}", diff),
             Err(Error::TransactionSumIsNonZero(_, _)) => (),
             Err(e) => panic!("Unexpected error {:#?}", e),
@@ -646,12 +719,12 @@ mod ledger {
     fn cant_generate_money() {
         use blockcfg::property::Ledger;
         let mut env = Environment::new();
-        let (genesis, ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let genesis = env.genesis([(1, 100u64)].iter().cloned().collect());
         let stx = TxBuilder::new()
             .from_tx(&genesis, 0)
             .to(1, 150)
             .build(&mut env);
-        match ledger.diff_transaction(&stx) {
+        match env.diff_transaction(&stx) {
             Ok(diff) => panic!("Unexpected transaction {:#?}", diff),
             Err(Error::TransactionSumIsNonZero(_, _)) => (),
             Err(e) => panic!("Unexpected error {:#?}", e),
@@ -662,13 +735,13 @@ mod ledger {
     fn test_double_spend() {
         use blockcfg::property::Ledger;
         let mut env = Environment::new();
-        let (genesis, ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let genesis = env.genesis([(1, 100u64)].iter().cloned().collect());
         let stx = TxBuilder::new()
             .from_tx(&genesis, 0)
             .from_tx(&genesis, 0)
             .to(2, 200)
             .build(&mut env);
-        match ledger.diff_transaction(&stx) {
+        match env.diff_transaction(&stx) {
             Ok(diff) => panic!("Transaction succeeded {:#?}", diff),
             Err(Error::DoubleSpend(_, _)) => (),
             Err(e) => panic!("Unexpected error {:#?}", e),
@@ -679,17 +752,17 @@ mod ledger {
     fn test_unresolved() {
         use blockcfg::property::Ledger;
         let mut env = Environment::new();
-        let (genesis, mut ledger) = env.genesis([(1, 100u64)].iter().cloned().collect());
+        let genesis = env.genesis([(1, 100u64)].iter().cloned().collect());
         let stx = TxBuilder::new()
             .from_tx(&genesis, 0)
             .to(2, 100)
             .build(&mut env);
-        let diff = match ledger.diff_transaction(&stx) {
+        let diff = match env.diff_transaction(&stx) {
             Ok(diff) => diff,
             Err(e) => panic!("Unexpected error {:#?}", e),
         };
-        ledger.add(diff).unwrap();
-        match ledger.diff_transaction(&stx) {
+        env.add(diff).unwrap();
+        match env.diff_transaction(&stx) {
             Ok(diff) => panic!("Unexpected success {:#?}", diff),
             Err(Error::InputDoesNotResolve(_)) => (),
             Err(e) => panic!("Unexpected error {:#?}", e),
@@ -697,7 +770,10 @@ mod ledger {
     }
 }
 
-
+/// Properties of the ledger, it contains general
+/// properties applicable to all ledgers as well as
+/// mock ledger specific properties, that can check it's
+/// structure.
 #[cfg(test)]
 mod quickcheck {
     use super::*;
@@ -711,6 +787,10 @@ mod quickcheck {
            witness.verifies(tx)
         }
 
+        /// $$
+        /// \forall w1,w2:Witness, w1.verifies(t1), w2.verifies(t2),
+        ///   w1.verifies(t2) => w1==w2
+        /// $$
         fn witness_verifies_only_own_tx(pk: PrivateKey, tx1: Transaction, tx2: Transaction) -> bool {
             use blockcfg::property::Transaction;
             let witness1 = Witness::new(tx1.id(), &pk);
@@ -728,10 +808,12 @@ mod quickcheck {
         }
 
 
+        /// General property - randomly generated transaction should fail.
         fn prop_bad_tx_fails(l: Ledger, tx: SignedTransaction) -> bool {
             testing::prop_bad_transactions_fails(l, tx)
         }
 
+        /// Valid transaction should always succeed.
         fn prop_good_tx_succeeds(v: testing::LedgerWithValidTransaction<Ledger, SignedTransaction>) -> bool {
             let mut v = v.clone();
             testing::prop_good_transactions_succeed(&mut v)
@@ -865,60 +947,12 @@ mod quickcheck {
 
     // More complex types with internal dependencies.
 
-    /// Generate a valid transaction for the given ledger
-    /// state.
-    fn generate_tx_for_ledger<G: Gen>(
-        g: &mut G,
-        env: &mut Environment,
-        ledger: &Ledger,
-    ) -> SignedTransaction {
-        use blockcfg::mock;
-        use blockcfg::property::Transaction;
-        use std::cmp::min;
-        // Now we may extract all the information from the state
-        // to build possible transaction.
-        let inputs_outputs: Vec<_> = ledger
-            .unspent_outputs
-            .iter()
-            .filter(|_| Arbitrary::arbitrary(g))
-            .map(|(&i, &o)| (i, o))
-            .collect();
-        let mut output_sum: u64 = inputs_outputs
-            .iter()
-            .map(|(_, Output(_, Value(v)))| v)
-            .sum();
-        let mut outputs = Vec::new();
-        loop {
-            let address = env.address(Arbitrary::arbitrary(g));
-            let value = min(Arbitrary::arbitrary(g), output_sum);
-            outputs.push(Output(address, Value(value)));
-            output_sum = output_sum - value;
-            if output_sum == 0 {
-                break;
-            };
-        }
-        let tx = mock::Transaction {
-            inputs: inputs_outputs.iter().cloned().map(|(i, _)| i).collect(),
-            outputs: outputs,
-        };
-        let tx_id = tx.id();
-        SignedTransaction {
-            tx: tx,
-            witnesses: inputs_outputs
-                .iter()
-                .map(|(_, Output(public, _))| Witness::new(tx_id, &env.private(public)))
-                .collect(),
-        }
-    }
-
     impl Arbitrary for testing::LedgerWithValidTransaction<Ledger, SignedTransaction> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             use blockcfg::mock;
+            use blockcfg::mock::property::testing::MkValidTransaction;
             // We need environment to keep track of the keys.
             let mut env = Environment::new();
-            // We can generate arbitrary ledger
-            // then the only problem is in making
-            // a valid transaction.
             let ledger: Ledger = Arbitrary::arbitrary(g);
             let ledger: Ledger = mock::Ledger::new(
                 ledger
@@ -928,8 +962,9 @@ mod quickcheck {
                     .map(|(n, (&i, Output(_, value)))| (i, Output(env.address(n), *value)))
                     .collect(),
             );
-            let signed_tx = generate_tx_for_ledger(g, &mut env, &ledger);
-            testing::LedgerWithValidTransaction(ledger, signed_tx)
+            env.ledger = ledger;
+            let signed_tx = env.generate_transaction(g);
+            testing::LedgerWithValidTransaction(env.ledger, signed_tx)
         }
     }
 
