@@ -4,8 +4,8 @@
 
 use std::collections::HashMap;
 
-use crate::blockcfg::{property, serialization};
 use crate::blockcfg::property::testing;
+use crate::blockcfg::{property, serialization};
 
 use bincode;
 use cardano::hash;
@@ -250,7 +250,6 @@ impl Ledger {
             unspent_outputs: genesis,
         }
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -424,7 +423,7 @@ mod ledger {
     /// Helper structure that keeps information about
     /// the users it can be used for a simple generation of
     /// new keys.
-    struct Environment {
+    pub struct Environment {
         gen: StdGen<rand::ThreadRng>,
         users: HashMap<usize, PrivateKey>,
         keys: HashMap<Address, PrivateKey>,
@@ -483,10 +482,10 @@ mod ledger {
             Address::new(&self.user(id).public()).clone()
         }
 
-        pub fn private(&self, public: &Address) -> PrivateKey {
+        pub fn private(&mut self, public: &Address) -> PrivateKey {
             self.keys
                 .get(public)
-                .expect("private key should exist")
+                .expect("Public key should be registered in env")
                 .clone()
         }
     }
@@ -668,8 +667,8 @@ mod ledger {
             .to(2, 200)
             .build(&mut env);
         match ledger.diff_transaction(&stx) {
-            Ok(diff) => panic!("Transaction succeeded {:#?}",diff),
-            Err(Error::DoubleSpend(_,_)) => (),
+            Ok(diff) => panic!("Transaction succeeded {:#?}", diff),
+            Err(Error::DoubleSpend(_, _)) => (),
             Err(e) => panic!("Unexpected error {:#?}", e),
         };
     }
@@ -728,8 +727,11 @@ mod quickcheck {
 
 
         fn prop_bad_tx_fails(l: Ledger, tx: SignedTransaction) -> bool {
-
             testing::prop_bad_transactions_fails(l, tx)
+        }
+
+        fn prop_good_tx_succeeds(v: testing::LedgerWithValidTransaction<Ledger, SignedTransaction>) -> () {
+            testing::prop_good_transactions_succeed(v)
         }
 
     }
@@ -857,4 +859,75 @@ mod quickcheck {
             }
         }
     }
+
+    // More complex types with internal dependencies.
+
+    /// Generate a valid transaction for the given ledger
+    /// state.
+    fn generate_tx_for_ledger<G: Gen>(
+        g: &mut G,
+        env: &mut ledger::Environment,
+        ledger: &Ledger,
+    ) -> SignedTransaction {
+        use blockcfg::mock;
+        use blockcfg::property::Transaction;
+        use std::cmp::min;
+        // Now we may extract all the information from the state
+        // to build possible transaction.
+        let inputs_outputs: Vec<_> = ledger
+            .unspent_outputs
+            .iter()
+            .filter(|_| Arbitrary::arbitrary(g))
+            .map(|(&i, &o)| (i, o))
+            .collect();
+        let mut output_sum: u64 = inputs_outputs
+            .iter()
+            .map(|(_, Output(_, Value(v)))| v)
+            .sum();
+        let mut outputs = Vec::new();
+        loop {
+            let address = env.address(Arbitrary::arbitrary(g));
+            let value = min(Arbitrary::arbitrary(g), output_sum);
+            outputs.push(Output(address, Value(value)));
+            output_sum = output_sum - value;
+            if output_sum == 0 {
+                break;
+            };
+        }
+        let tx = mock::Transaction {
+            inputs: inputs_outputs.iter().cloned().map(|(i, _)| i).collect(),
+            outputs: outputs,
+        };
+        let tx_id = tx.id();
+        SignedTransaction {
+            tx: tx,
+            witnesses: inputs_outputs
+                .iter()
+                .map(|(_, Output(public, _))| Witness::new(tx_id, &env.private(public)))
+                .collect(),
+        }
+    }
+
+    impl Arbitrary for testing::LedgerWithValidTransaction<Ledger, SignedTransaction> {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            use blockcfg::mock;
+            // We need environment to keep track of the keys.
+            let mut env = ledger::Environment::new();
+            // We can generate arbitrary ledger
+            // then the only problem is in making
+            // a valid transaction.
+            let ledger: Ledger = Arbitrary::arbitrary(g);
+            let ledger: Ledger = mock::Ledger::new(
+                ledger
+                    .unspent_outputs
+                    .iter()
+                    .enumerate()
+                    .map(|(n, (&i, Output(_, value)))| (i, Output(env.address(n), *value)))
+                    .collect(),
+            );
+            let signed_tx = generate_tx_for_ledger(g, &mut env, &ledger);
+            testing::LedgerWithValidTransaction(ledger, signed_tx)
+        }
+    }
+
 }
