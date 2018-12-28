@@ -11,6 +11,9 @@ use bincode;
 use cardano::hash;
 use cardano::hdwallet as crypto;
 
+use quickcheck::{Arbitrary, StdGen};
+use rand::prelude::*;
+
 /// Non unique identifier of the transaction position in the
 /// blockchain. There may be many transactions related to the same
 /// `SlotId`.
@@ -413,82 +416,81 @@ impl property::Ledger for Ledger {
     }
 }
 
+/// Helper structure that keeps information about
+/// the users it can be used for a simple generation of
+/// new keys.
+pub struct Environment {
+    gen: StdGen<rand::ThreadRng>,
+    users: HashMap<usize, PrivateKey>,
+    keys: HashMap<Address, PrivateKey>,
+}
+
+impl Environment {
+
+    pub fn new() -> Self {
+        let g = StdGen::new(thread_rng(), 10);
+        Environment {
+            gen: g,
+            users: HashMap::new(),
+            keys: HashMap::new(),
+        }
+    }
+
+    pub fn genesis(&mut self, users: HashMap<usize, u64>) -> (Transaction, Ledger) {
+        use blockcfg::mock;
+        use blockcfg::property::Transaction;
+
+        let genesis = mock::Transaction {
+            inputs: Vec::new(),
+            outputs: users
+                .iter()
+                .map(|(key, &u)| Output(Address::new(&self.user(*key).public()), Value(u)))
+                .collect(),
+        };
+
+        let initial_state: HashMap<UtxoPointer, Output> = users
+            .iter()
+            .enumerate()
+            .map(|(idx, (i, &u))| {
+                (
+                    UtxoPointer {
+                        transaction_id: genesis.id(),
+                        output_index: idx as u32,
+                    },
+                    Output(Address::new(&self.user(*i).public()), Value(u)),
+                )
+            })
+            .collect();
+
+        (genesis, Ledger::new(initial_state))
+    }
+
+    pub fn user(&mut self, id: usize) -> PrivateKey {
+        let gen = &mut self.gen;
+        let pk = self
+            .users
+            .entry(id)
+            .or_insert_with(|| Arbitrary::arbitrary(gen));
+        self.keys.insert(Address::new(&pk.public()), pk.clone());
+        pk.clone()
+    }
+
+    pub fn address(&mut self, id: usize) -> Address {
+        Address::new(&self.user(id).public()).clone()
+    }
+
+    pub fn private(&mut self, public: &Address) -> PrivateKey {
+        self.keys
+            .get(public)
+            .expect("Public key should be registered in env")
+            .clone()
+    }
+}
+
 #[cfg(test)]
 mod ledger {
 
     use super::*;
-    use quickcheck::{Arbitrary, StdGen};
-    use rand::prelude::*;
-
-    /// Helper structure that keeps information about
-    /// the users it can be used for a simple generation of
-    /// new keys.
-    pub struct Environment {
-        gen: StdGen<rand::ThreadRng>,
-        users: HashMap<usize, PrivateKey>,
-        keys: HashMap<Address, PrivateKey>,
-    }
-
-    impl Environment {
-        pub fn new() -> Self {
-            let g = StdGen::new(thread_rng(), 10);
-            Environment {
-                gen: g,
-                users: HashMap::new(),
-                keys: HashMap::new(),
-            }
-        }
-
-        pub fn genesis(&mut self, users: HashMap<usize, u64>) -> (Transaction, Ledger) {
-            use blockcfg::mock;
-            use blockcfg::property::Transaction;
-
-            let genesis = mock::Transaction {
-                inputs: Vec::new(),
-                outputs: users
-                    .iter()
-                    .map(|(key, &u)| Output(Address::new(&self.user(*key).public()), Value(u)))
-                    .collect(),
-            };
-
-            let initial_state: HashMap<UtxoPointer, Output> = users
-                .iter()
-                .enumerate()
-                .map(|(idx, (i, &u))| {
-                    (
-                        UtxoPointer {
-                            transaction_id: genesis.id(),
-                            output_index: idx as u32,
-                        },
-                        Output(Address::new(&self.user(*i).public()), Value(u)),
-                    )
-                })
-                .collect();
-
-            (genesis, Ledger::new(initial_state))
-        }
-
-        pub fn user(&mut self, id: usize) -> PrivateKey {
-            let gen = &mut self.gen;
-            let pk = self
-                .users
-                .entry(id)
-                .or_insert_with(|| Arbitrary::arbitrary(gen));
-            self.keys.insert(Address::new(&pk.public()), pk.clone());
-            pk.clone()
-        }
-
-        pub fn address(&mut self, id: usize) -> Address {
-            Address::new(&self.user(id).public()).clone()
-        }
-
-        pub fn private(&mut self, public: &Address) -> PrivateKey {
-            self.keys
-                .get(public)
-                .expect("Public key should be registered in env")
-                .clone()
-        }
-    }
 
     /// Helper for building transactions in testing environment.
     struct TxBuilder {
@@ -693,8 +695,8 @@ mod ledger {
             Err(e) => panic!("Unexpected error {:#?}", e),
         };
     }
-
 }
+
 
 #[cfg(test)]
 mod quickcheck {
@@ -730,8 +732,9 @@ mod quickcheck {
             testing::prop_bad_transactions_fails(l, tx)
         }
 
-        fn prop_good_tx_succeeds(v: testing::LedgerWithValidTransaction<Ledger, SignedTransaction>) -> () {
-            testing::prop_good_transactions_succeed(v)
+        fn prop_good_tx_succeeds(v: testing::LedgerWithValidTransaction<Ledger, SignedTransaction>) -> bool {
+            let mut v = v.clone();
+            testing::prop_good_transactions_succeed(&mut v)
         }
 
     }
@@ -866,7 +869,7 @@ mod quickcheck {
     /// state.
     fn generate_tx_for_ledger<G: Gen>(
         g: &mut G,
-        env: &mut ledger::Environment,
+        env: &mut Environment,
         ledger: &Ledger,
     ) -> SignedTransaction {
         use blockcfg::mock;
@@ -912,7 +915,7 @@ mod quickcheck {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             use blockcfg::mock;
             // We need environment to keep track of the keys.
-            let mut env = ledger::Environment::new();
+            let mut env = Environment::new();
             // We can generate arbitrary ledger
             // then the only problem is in making
             // a valid transaction.
