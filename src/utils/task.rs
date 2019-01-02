@@ -30,6 +30,7 @@ impl Tasks {
         F: FnOnce() -> (),
         F: Send + 'static,
     {
+        info!("staring tasks: {}", name);
         let handler = thread::spawn(move || {
             update_thread_logger(|logger| logger.new(o!("task"=> name.to_string())));
             f()
