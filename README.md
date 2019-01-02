@@ -52,8 +52,7 @@ grpc_listen:
        - "127.0.0.1:8081"
 legacy_peers:
        - "127.0.0.1:9000"
-storage:
-       - "/tmp/storage"
+storage: "/tmp/storage"
 logger:
   verbosity: 1
   format: json
