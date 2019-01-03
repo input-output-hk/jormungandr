@@ -109,7 +109,10 @@ fn main() {
     //
     // parse the command line arguments, the config files supplied
     // and setup the initial values
-    let settings = Settings::load();
+    let settings = Settings::load().unwrap_or_else(|e| {
+        eprintln!("{}", e);
+        std::process::exit(1);
+    });
 
     settings.log_settings.apply();
 
