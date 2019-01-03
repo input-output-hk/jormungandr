@@ -1,75 +1,19 @@
-#![cfg_attr(feature = "with-bench", feature(test))]
-extern crate clap;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_yaml;
-extern crate log;
-extern crate rand;
-extern crate env_logger;
-extern crate structopt;
-
-extern crate cardano;
-extern crate cardano_storage;
-#[macro_use]
-extern crate cbor_event;
-extern crate exe_common;
-extern crate protocol_tokio as protocol;
-
-#[macro_use]
+extern crate jormungandr;
 extern crate futures;
-extern crate tokio;
+extern crate cardano_storage;
 
-extern crate cryptoxide;
-extern crate sha2;
-extern crate curve25519_dalek;
-extern crate generic_array;
-
-extern crate prost;
-#[macro_use]
-extern crate prost_derive;
-extern crate tokio_connect;
-extern crate tower_h2;
-extern crate tower_grpc;
-extern crate tower_util;
-
-#[cfg(test)]
-#[cfg(feature = "with-bench")]
-extern crate test;
-#[cfg(test)]
-extern crate quickcheck;
-
-#[macro_use]
-mod log_wrapper;
-
-#[cfg(sqlite)]
-extern crate sqlite;
-
-pub mod clock;
-pub mod blockchain;
-pub mod consensus;
-pub mod transaction;
-pub mod state;
-pub mod leadership;
-pub mod network;
-pub mod utils;
-pub mod intercom;
-pub mod settings;
-pub mod blockcfg;
-pub mod client;
-pub mod secure;
-pub mod storage;
-
-use settings::Settings;
+use jormungandr::settings::{self, Settings};
 //use state::State;
-use transaction::{TPool, transaction_task};
-use blockchain::{Blockchain, BlockchainR};
-use utils::task::{Tasks};
-use intercom::{BlockMsg};
-use leadership::{leadership_task, Selection};
+use jormungandr::transaction::{TPool, transaction_task};
+use jormungandr::blockchain::{self, Blockchain, BlockchainR};
+use jormungandr::utils::task::{Tasks};
+use jormungandr::intercom::{BlockMsg};
+use jormungandr::leadership::{self, leadership_task, Selection};
 use futures::sync::mpsc::UnboundedSender;
-use intercom::NetworkBroadcastMsg;
+use jormungandr::intercom::NetworkBroadcastMsg;
+use jormungandr::{clock, secure, network, client};
 
-use blockcfg::{chain::cardano::{Transaction, TransactionId, GenesisData}, Cardano};
+use jormungandr::blockcfg::{chain::cardano::{Transaction, TransactionId, GenesisData}, Cardano};
 
 use std::sync::{Arc, RwLock, mpsc::Receiver};
 
