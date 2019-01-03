@@ -2,7 +2,8 @@ use std::sync::Arc;
 use super::selection::{self, IsLeading, Selection};
 
 use super::super::{
-    clock, BlockchainR, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret,
+    clock, utils::task::{TaskMessageBox}, intercom::{BlockMsg}, secure::NodeSecret,
+    blockchain::{BlockchainR}
 };
 use crate::blockcfg::{BlockConfig, chain, update::Update};
 use crate::transaction::{TPoolR};
