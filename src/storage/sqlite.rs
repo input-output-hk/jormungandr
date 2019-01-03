@@ -17,20 +17,25 @@ impl<B> SQLiteBlockStore<B> where B: Block {
         let connection = sqlite::open(path).unwrap();
 
         connection.execute(r#"
-          create table if not exists Blocks (
+          create table if not exists BlockInfo (
             hash blob primary key,
             date integer not null,
             depth integer not null,
             parent blob not null,
             fast_distance blob,
             fast_hash blob,
+            foreign key(hash) references Blocks(hash)
+          );
+
+          create table if not exists Blocks (
+            hash blob primary key,
             block blob not null
           );
 
           create table if not exists Tags (
             name text primary key,
             hash blob not null,
-            foreign key(hash) references Blocks(hash)
+            foreign key(hash) references BlockInfo(hash)
           );
         "#).unwrap();
 
@@ -63,15 +68,70 @@ impl<B> SQLiteBlockStore<B> where B: Block {
             self.pending_changes = 1;
         }
     }
+}
 
-    fn get_block_internal(&self, block_hash: &Hash, get_block: bool) -> Result<(BlockInfo<B>, Option<B>), Error>
+impl<B> Drop for SQLiteBlockStore<B> where B: Block {
+    fn drop(&mut self) {
+        self.flush();
+    }
+}
+
+impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
+
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B>) -> Result<(), Error>
     {
+        self.do_change();
+
+        // FIXME: wrap the next two statements in a transaction
+
         let mut statement = self.connection.prepare(
-            if get_block {
-                "select depth, parent, fast_distance, fast_hash, date, block from Blocks where hash = ?"
-            } else {
-                "select depth, parent, fast_distance, fast_hash, date from Blocks where hash = ?"
-            }).unwrap();
+            "insert into Blocks (hash, block) values(?, ?)").unwrap();
+        statement.bind(1, &block_info.block_hash[..]).unwrap();
+        statement.bind(2, &block.serialize()[..]).unwrap();
+        statement.next().unwrap();
+
+        let mut statement = self.connection.prepare(
+            "insert into BlockInfo (hash, date, depth, parent, fast_distance, fast_hash) values(?, ?, ?, ?, ?, ?)").unwrap();
+        statement.bind(1, &block_info.block_hash[..]).unwrap();
+        statement.bind(2, block_info.block_date.serialize() as i64).unwrap();
+        statement.bind(3, block_info.depth as i64).unwrap();
+        let parent = block_info.back_links.iter().find(|x| x.distance == 1).unwrap();
+        statement.bind(4, &parent.block_hash[..]).unwrap();
+        match block_info.back_links.iter().find(|x| x.distance != 1) {
+            Some(fast_link) => {
+                statement.bind(5, fast_link.distance as i64).unwrap();
+                statement.bind(6, &fast_link.block_hash[..]).unwrap();
+            },
+            None => {
+                statement.bind(5, ()).unwrap();
+                statement.bind(6, ()).unwrap();
+            }
+        };
+        statement.next().unwrap();
+
+        Ok(())
+    }
+
+    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error> {
+        let mut statement = self.connection.prepare(
+            "select block from Blocks where hash = ?"
+        ).unwrap();
+        statement.bind(1, &block_hash[..]).unwrap();
+
+        match statement.next().unwrap() {
+            sqlite::State::Done =>
+                Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
+            sqlite::State::Row =>
+                Ok((B::deserialize(&statement.read::<Vec<u8>>(0).unwrap()),
+                    self.get_block_info(block_hash)?))
+        }
+    }
+
+    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error> {
+
+        let mut statement = self.connection.prepare(
+            "select depth, parent, fast_distance, fast_hash, date from BlockInfo where hash = ?"
+        ).unwrap();
         statement.bind(1, &block_hash[..]).unwrap();
 
         match statement.next().unwrap() {
@@ -94,58 +154,14 @@ impl<B> SQLiteBlockStore<B> where B: Block {
                     });
                 }
 
-                Ok((BlockInfo {
+                Ok(BlockInfo {
                     block_hash: block_hash.clone(),
                     block_date: B::Date::deserialize(statement.read::<i64>(0).unwrap() as u64),
                     depth: statement.read::<i64>(0).unwrap() as u64,
                     back_links
-                }, if get_block { Some(B::deserialize(&statement.read::<Vec<u8>>(5).unwrap())) } else { None }))
+                })
             }
         }
-    }
-}
-
-impl<B> Drop for SQLiteBlockStore<B> where B: Block {
-    fn drop(&mut self) {
-        self.flush();
-    }
-}
-
-impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
-
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B>) -> Result<(), Error>
-    {
-        self.do_change();
-        let mut statement = self.connection.prepare(
-            "insert into Blocks (hash, date, depth, parent, fast_distance, fast_hash, block) values(?, ?, ?, ?, ?, ?, ?)").unwrap();
-        statement.bind(1, &block_info.block_hash[..]).unwrap();
-        statement.bind(2, block_info.block_date.serialize() as i64).unwrap();
-        statement.bind(3, block_info.depth as i64).unwrap();
-        let parent = block_info.back_links.iter().find(|x| x.distance == 1).unwrap();
-        statement.bind(4, &parent.block_hash[..]).unwrap();
-        match block_info.back_links.iter().find(|x| x.distance != 1) {
-            Some(fast_link) => {
-                statement.bind(5, fast_link.distance as i64).unwrap();
-                statement.bind(6, &fast_link.block_hash[..]).unwrap();
-            },
-            None => {
-                statement.bind(5, ()).unwrap();
-                statement.bind(6, ()).unwrap();
-            }
-        };
-        statement.bind(7, &block.serialize()[..]).unwrap();
-        statement.next().unwrap();
-        Ok(())
-    }
-
-    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error> {
-        let (info, block) = self.get_block_internal(block_hash, true)?;
-        Ok((block.unwrap(), info))
-    }
-
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error> {
-        let (info, _) = self.get_block_internal(block_hash, false)?;
-        Ok(info)
     }
 
     fn put_tag(&mut self, tag_name: &str, block_hash: &Hash) -> Result<(), Error>
