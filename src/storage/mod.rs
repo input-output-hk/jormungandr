@@ -1,6 +1,6 @@
 pub mod memory;
 
-#[cfg(sqlite)]
+#[cfg(feature = "sqlite")]
 pub mod sqlite;
 
 use cardano_storage;

@@ -41,7 +41,7 @@ extern crate quickcheck;
 #[macro_use]
 mod log_wrapper;
 
-#[cfg(sqlite)]
+#[cfg(feature = "sqlite")]
 extern crate sqlite;
 
 pub mod clock;
