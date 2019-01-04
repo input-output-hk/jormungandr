@@ -206,8 +206,8 @@ pub trait Serializable: Sized {
     fn deserialize<R: std::io::Read>(reader: R) -> Result<Self, Self::Error>;
 }
 
-#[cfg(test)]
-pub mod test {
+#[cfg(feature = "property-test-api")]
+pub mod testing {
     use super::*;
     use quickcheck::Arbitrary;
     use std::io::Cursor;

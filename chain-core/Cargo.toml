@@ -17,4 +17,4 @@ quickcheck = { version = "0.7", optional = true }
 quickcheck = "0.7"
 
 [features]
-property-test-apis = ["quickcheck"]
+property-test-api = ["quickcheck"]
