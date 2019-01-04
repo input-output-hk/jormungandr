@@ -1,0 +1,20 @@
+[package]
+name = "chain-core"
+version = "0.1.0"
+authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
+          , "Vincent Hanquez <vincent.hanquez@iohk.io>"
+          , "Eelco Dolstra <edolstra@gmail.com>"
+          , "Mikhail Zabaluev <mikhail.zabaluev@gmail.com>"
+          , "Alexander Vershilov <alexander.vershilov@gmail.com>"
+          ]
+edition = "2018"
+
+[dependencies]
+cfg-if = "0.1"
+quickcheck = { version = "0.7", optional = true }
+
+[dev-dependencies]
+quickcheck = "0.7"
+
+[features]
+property-test-api = ["quickcheck"]
