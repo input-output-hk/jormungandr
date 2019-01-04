@@ -106,13 +106,13 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         // FIXME: wrap the next two statements in a transaction
 
         let mut stmt_insert_block = self.stmt_insert_block.borrow_mut();
-        stmt_insert_block.reset();
+        stmt_insert_block.reset().unwrap();
         stmt_insert_block.bind(1, &block_info.block_hash[..]).unwrap();
         stmt_insert_block.bind(2, &block.serialize()[..]).unwrap();
         stmt_insert_block.next().unwrap();
 
         let mut stmt_insert_block_info = self.stmt_insert_block_info.borrow_mut();
-        stmt_insert_block_info.reset();
+        stmt_insert_block_info.reset().unwrap();
         stmt_insert_block_info.bind(1, &block_info.block_hash[..]).unwrap();
         stmt_insert_block_info.bind(2, block_info.block_date.serialize() as i64).unwrap();
         stmt_insert_block_info.bind(3, block_info.depth as i64).unwrap();
@@ -135,7 +135,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
 
     fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error> {
         let mut stmt_get_block = self.stmt_get_block.borrow_mut();
-        stmt_get_block.reset();
+        stmt_get_block.reset().unwrap();
 
         stmt_get_block.bind(1, &block_hash[..]).unwrap();
 
@@ -150,7 +150,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
 
     fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error> {
         let mut stmt_get_block_info = self.stmt_get_block_info.borrow_mut();
-        stmt_get_block_info.reset();
+        stmt_get_block_info.reset().unwrap();
 
         stmt_get_block_info.bind(1, &block_hash[..]).unwrap();
 
@@ -187,7 +187,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
     fn put_tag(&mut self, tag_name: &str, block_hash: &Hash) -> Result<(), Error>
     {
         let mut stmt_put_tag = self.stmt_put_tag.borrow_mut();
-        stmt_put_tag.reset();
+        stmt_put_tag.reset().unwrap();
         stmt_put_tag.bind(1, tag_name).unwrap();
         stmt_put_tag.bind(2, &block_hash[..]).unwrap();
         stmt_put_tag.next().unwrap();
