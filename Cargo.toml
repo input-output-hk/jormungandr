@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "chain-core",
     "cardano",
     "protocol",
     "protocol-tokio",
