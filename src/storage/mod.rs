@@ -121,6 +121,15 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     /// Get the n'th ancestor of the specified block.
     fn get_nth_ancestor(&self, block_hash: &Hash, distance: u64) -> Result<BlockInfo<B>, Error>
     {
+        self.get_path_to_nth_ancestor(block_hash, distance, |_| {})
+    }
+
+    /// Like get_nth_ancestor(), but calls the closure 'callback' with
+    /// each intermediate block encountered while travelling from
+    /// 'block_hash' to its n'th ancestor.
+    fn get_path_to_nth_ancestor<F: FnMut(&BlockInfo<B>)>(
+        &self, block_hash: &Hash, distance: u64, mut callback: F) -> Result<BlockInfo<B>, Error>
+    {
         let mut cur_block_info = self.get_block_info(block_hash)?;
 
         if distance >= cur_block_info.depth {
@@ -142,6 +151,7 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
                 .max_by_key(|x| x.distance)
                 .unwrap()
                 .clone();
+            callback(&cur_block_info);
             cur_block_info = self.get_block_info(&best_link.block_hash)?;
         }
 
@@ -186,14 +196,16 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     /// the half-open range `(from, to]`. `from` must be an ancestor
     /// of `to` and may be the genesis hash.
     fn iterate_range(&self, from: &Hash, to: &Hash) -> Result<BlockIterator<B, Self>, Error> {
+        // FIXME: put blocks loaded by is_ancestor into pending_infos.
         match self.is_ancestor(from, to)? {
             None => panic!(), // FIXME: return error
             Some(distance) => {
+                let to_info = self.get_block_info(&to)?;
                 Ok(BlockIterator {
                     store: &self,
-                    to: to.clone(),
-                    distance,
-                    dummy: std::marker::PhantomData,
+                    to_depth: to_info.depth,
+                    cur_depth: to_info.depth - distance,
+                    pending_infos: vec![to_info]
                 })
             }
         }
@@ -202,22 +214,37 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
 
 pub struct BlockIterator<'store, B, S> where B: Block, S: BlockStore<B> + 'store {
     store: &'store S,
-    to: Hash,
-    distance: u64,
-    dummy: std::marker::PhantomData<B>,
+    to_depth: u64,
+    cur_depth: u64,
+    pending_infos: Vec<BlockInfo<B>>,
 }
 
 impl<'store, B, S> Iterator for BlockIterator<'store, B, S> where B: Block, S: BlockStore<B> + 'store {
     type Item = Result<BlockInfo<B>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.distance == 0 {
+        if self.cur_depth >= self.to_depth {
             None
         } else {
-            self.distance -= 1;
-            // FIXME: this can be optimized by seeking back from a
-            // closer ancestor than 'to'.
-            Some(self.store.get_nth_ancestor(&self.to, self.distance))
+            self.cur_depth += 1;
+
+            let block_info = self.pending_infos.pop().unwrap();
+
+            if block_info.depth == self.cur_depth {
+                // We've seen this block on a previous ancestor traversal.
+                Some(Ok(block_info))
+            } else {
+                // We don't have this block yet, so search back from
+                // the furthest block that we do have.
+                assert!(self.cur_depth < block_info.depth);
+                let depth = block_info.depth;
+                let parent = block_info.get_parent();
+                self.pending_infos.push(block_info);
+                Some(self.store.get_path_to_nth_ancestor(
+                    &parent, depth - self.cur_depth - 1, |new_info| {
+                        self.pending_infos.push(new_info.clone());
+                    }))
+            }
         }
     }
 }
