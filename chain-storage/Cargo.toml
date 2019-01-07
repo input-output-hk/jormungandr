@@ -1,0 +1,19 @@
+[package]
+name = "chain-storage"
+version = "0.1.0"
+authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
+          , "Vincent Hanquez <vincent.hanquez@iohk.io>"
+          , "Eelco Dolstra <edolstra@gmail.com>"
+          , "Mikhail Zabaluev <mikhail.zabaluev@gmail.com>"
+          , "Alexander Vershilov <alexander.vershilov@gmail.com>"
+          ]
+edition = "2018"
+
+[dependencies]
+chain-core = { path = "../chain-core" }
+cardano = { path = "../cardano" } # FIXME
+cardano-storage = { path = "../storage" } # FIXME
+
+[dev-dependencies]
+
+[features]
