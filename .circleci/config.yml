@@ -12,6 +12,7 @@ jobs:
             - cargo-v1-
       - run: cargo update
       - run: cargo fetch
+      - run: cargo install cargo-junit
       - persist_to_workspace:
           root: "."
           paths:
@@ -21,6 +22,7 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
+            - /usr/local/cargo/bin/cargo-junit
   test:
     docker:
       - image: rust:latest
@@ -37,7 +39,7 @@ jobs:
           command: rustc --version; cargo --version
       - run:
           name: Build and test
-          command: cargo test --verbose --frozen
+          command: /usr/local/cargo/bin/cargo-junit --verbose --frozen --name test_output_release.xml
           environment:
             # Need this for the coverage run
             RUSTFLAGS: "-C link-dead-code"
@@ -47,6 +49,8 @@ jobs:
             for file in target/debug/* target/debug/.??*; do
               [ -d $file -o ! -x $file ] && rm -r $file
             done
+      - store_test_results:
+          path: test_output_release.xml
       - persist_to_workspace:
           root: "."
           paths:
@@ -67,7 +71,9 @@ jobs:
           command: rustc --version; cargo --version
       - run:
           name: Build and test in release profile
-          command: cargo test --verbose --frozen --release
+          command: /usr/local/cargo/bin/cargo-junit --verbose --frozen --release --name test_output_release.xml
+      - store_test_results:
+          path: test_output_release.xml
   test_nightly:
     docker:
       - image: rustlang/rust:nightly
@@ -84,7 +90,9 @@ jobs:
           command: rustc --version; cargo --version
       - run:
           name: Build and test with nightly Rust
-          command: cargo test --verbose --frozen
+          command: /usr/local/cargo/bin/cargo-junit --verbose --frozen --name test_output_nightly.xml
+      - store_test_results:
+          path: test_output_nightly.xml    
   coverage:
     docker:
       - image: ragnaroek/kcov:v33
