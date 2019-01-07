@@ -104,12 +104,16 @@ fn startup_info(gd: &GenesisData, blockchain: &Blockchain<Cardano>, settings: &S
     println!("consensus: {:?}", settings.consensus);
 }
 
-fn main() {
+// Expand the type with more variants
+// when it becomes necessary to represent different error cases.
+type Error = settings::Error;
+
+fn run() -> Result<(), Error> {
     // # load parameters & config
     //
     // parse the command line arguments, the config files supplied
     // and setup the initial values
-    let settings = Settings::load();
+    let settings = Settings::load()?;
 
     settings.log_settings.apply();
 
@@ -170,6 +174,8 @@ fn main() {
     let tpool_data: TPool<TransactionId, Transaction> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
+    // Validation of consensus settings should make sure that we always have
+    // non-empty selection data.
     let selection_data =
         leadership::selection::prepare(&secret.to_public(), &settings.consensus).unwrap();
     let selection = Arc::new(selection_data);
@@ -248,4 +254,16 @@ fn main() {
 
     // FIXME some sort of join so that the main thread does something ...
     tasks.join();
+
+    Ok(())
+}
+
+fn main() {
+    match run() {
+        Ok(()) => {}
+        Err(e) => {
+            eprintln!("jormungandr error: {}", e);
+            std::process::exit(1);
+        }
+    }
 }

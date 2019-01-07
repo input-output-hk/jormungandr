@@ -3,21 +3,63 @@ mod config;
 pub mod network;
 
 use cardano::config::GenesisData;
+use exe_common::parse_genesis_data::parse_genesis_data;
+
 use slog::Drain;
 use slog_async;
-use std;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
 
-use exe_common::parse_genesis_data::parse_genesis_data;
+use std::{
+    collections::HashMap,
+    fmt::{self, Display},
+    fs::File,
+    io::Read,
+    path::PathBuf,
+};
 
 pub use self::command_arguments::CommandArguments;
 use self::config::ConfigLogSettings;
 pub use self::config::{Bft, BftConstants, BftLeader, Genesis, GenesisConstants, LogFormat};
 use self::network::{Connection, Listen, Peer, Protocol};
 use crate::log_wrapper;
+
+#[derive(Debug)]
+pub enum Error {
+    Config(serde_yaml::Error),
+    NoConsensusAlg,
+    NoStorage,
+    NoSecret,
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::Config(e) => write!(f, "config error: {}", e),
+            Error::NoConsensusAlg => write!(f, "no consensus algorithm defined"),
+            Error::NoStorage => write!(
+                f,
+                "storage is needed for persistently saving the blocks of the blockchain"
+            ),
+            Error::NoSecret => write!(f, "secret config unspecified"),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn cause(&self) -> Option<&dyn std::error::Error> {
+        match self {
+            Error::Config(e) => Some(e),
+            Error::NoConsensusAlg => None,
+            Error::NoStorage => None,
+            Error::NoSecret => None,
+        }
+    }
+}
+
+impl From<serde_yaml::Error> for Error {
+    fn from(e: serde_yaml::Error) -> Error {
+        Error::Config(e)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Leadership {
@@ -98,18 +140,12 @@ impl Settings {
     /// - from the config
     ///
     /// This function will print&exit if anything is not as it should be.
-    pub fn load() -> Self {
+    pub fn load() -> Result<Self, Error> {
         let command_arguments = CommandArguments::load();
 
         let config: config::Config = {
             let mut file = File::open(command_arguments.node_config.clone()).unwrap();
-            match serde_yaml::from_reader(&mut file) {
-                Err(e) => {
-                    error!("config error: {}", e);
-                    std::process::exit(1);
-                }
-                Ok(c) => c,
-            }
+            serde_yaml::from_reader(&mut file)?
         };
 
         let network = generate_network(&command_arguments, &config);
@@ -121,33 +157,32 @@ impl Settings {
             } else if let Some(_genesis) = config.genesis {
                 Consensus::Genesis
             } else {
-                error!("no consensus algorithm defined");
-                std::process::exit(1);
+                return Err(Error::NoConsensusAlg);
             }
         };
 
-        let storage = match command_arguments.storage.as_ref() {
-            Some(path) => path.clone(),
-            None => config
-                .storage
-                .expect("Storage is needed for persistently saving the blocks of the blockchain")
-                .clone(),
+        let storage = match (command_arguments.storage.as_ref(), config.storage) {
+            (Some(path), _) => path.clone(),
+            (None, Some(path)) => path.clone(),
+            (None, None) => return Err(Error::NoStorage),
         };
 
-        Settings {
+        let secret = match (command_arguments.secret.as_ref(), config.secret_file) {
+            (Some(path), _) => path.clone(),
+            (None, Some(path)) => path.clone(),
+            (None, None) => return Err(Error::NoSecret),
+        };
+
+        Ok(Settings {
             storage: storage,
             genesis_data_config: command_arguments.genesis_data_config.clone(),
-            secret_config: command_arguments
-                .secret
-                .clone()
-                .or(config.secret_file)
-                .expect("secret config unspecified"),
+            secret_config: secret,
             network: network,
             leadership: Leadership::from(!command_arguments.without_leadership.clone()),
             consensus: consensus,
             cmd_args: command_arguments,
             log_settings: log_settings,
-        }
+        })
     }
 
     /// read and parse the genesis data, from the file specified in the Settings
