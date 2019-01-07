@@ -1,13 +1,16 @@
-use super::{chain::*, store::*, error::Error};
+use chain_core::property::Block;
+use super::chain::{ChainState, ChainStateDelta};
+use super::store::{BlockInfo, BlockStore, ChainStateStore};
+use super::error::Error;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct MemoryBlockStore<C> where C: ChainState {
-    genesis_hash: Hash,
+    genesis_hash: <C::Block as Block>::Id,
     genesis_chain_state: C,
-    blocks: HashMap<Hash, (Vec<u8>, BlockInfo<C::Block>)>,
-    chain_state_deltas: HashMap<Hash, (Hash, Vec<u8>)>,
-    tags: HashMap<String, Hash>,
+    blocks: HashMap<<C::Block as Block>::Id, (Vec<u8>, BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>)>,
+    chain_state_deltas: HashMap<<C::Block as Block>::Id, (<C::Block as Block>::Id, Vec<u8>)>,
+    tags: HashMap<String, <C::Block as Block>::Id>,
 }
 
 impl<C> MemoryBlockStore<C> where C: ChainState {
@@ -33,38 +36,38 @@ impl<C> Drop for MemoryBlockStore<C> where C: ChainState {
 
 impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
 
-    fn put_block_internal(&mut self, block: C::Block, block_info: BlockInfo<C::Block>) -> Result<(), Error>
+    fn put_block_internal(&mut self, block: C::Block, block_info: BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>) -> Result<(), Error>
     {
         self.blocks.insert(block_info.block_hash.clone(), (block.serialize(), block_info));
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &Hash) -> Result<(C::Block, BlockInfo<C::Block>), Error>
+    fn get_block(&self, block_hash: &<C::Block as Block>::Id) -> Result<(C::Block, BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>), Error>
     {
         match self.blocks.get(block_hash) {
-            None => Err(Error::BlockNotFound(block_hash.clone().into())),
+            None => Err(Error::BlockNotFound),
             Some((block, block_info)) => Ok((C::Block::deserialize(block), block_info.clone()))
         }
     }
 
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<C::Block>, Error>
+    fn get_block_info(&self, block_hash: &<C::Block as Block>::Id) -> Result<BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>, Error>
     {
         COUNTER.fetch_add(1, Ordering::Relaxed);
 
         match self.blocks.get(block_hash) {
-            None => Err(Error::BlockNotFound(block_hash.clone().into())),
+            None => Err(Error::BlockNotFound),
             Some((_, block_info)) => Ok(block_info.clone())
         }
     }
 
-    fn put_tag(&mut self, tag_name: &str, block_hash: &Hash) -> Result<(), Error>
+    fn put_tag(&mut self, tag_name: &str, block_hash: &<C::Block as Block>::Id) -> Result<(), Error>
     {
         assert!(self.blocks.get(block_hash).is_some()); // FIXME: return error
         self.tags.insert(tag_name.to_string(), block_hash.clone());
         Ok(())
     }
 
-    fn get_tag(&self, tag_name: &str) -> Result<Option<Hash>, Error>
+    fn get_tag(&self, tag_name: &str) -> Result<Option<<C::Block as Block>::Id>, Error>
     {
         if let Some(hash) = self.tags.get(tag_name) {
             Ok(Some(hash.clone()))
@@ -73,14 +76,14 @@ impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
         }
     }
 
-    fn get_genesis_hash(&self) -> Hash {
+    fn get_genesis_hash(&self) -> <C::Block as Block>::Id {
         self.genesis_hash.clone()
     }
 }
 
 impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
 
-    fn get_chain_state_at(&self, block_hash: &Hash) -> Result<C, C::Error> {
+    fn get_chain_state_at(&self, block_hash: &<C::Block as Block>::Id) -> Result<C, Error> {
 
         // Iterate backwards to the first block for which we know the chain state.
         let mut blocks_to_apply = vec![];
@@ -94,8 +97,8 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
                     let mut bases = vec![];
                     let mut cur_base = cur_hash.clone();
                     while cur_base != self.genesis_hash {
-                        bases.push(cur_base);
-                        cur_base = self.chain_state_deltas.get(&cur_base).unwrap().0;
+                        bases.push(cur_base.clone());
+                        cur_base = self.chain_state_deltas.get(&cur_base).unwrap().0.clone();
                     };
 
                     // Apply them to the genesis state.
@@ -108,7 +111,7 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
                     break chain_state;
                 }
                 blocks_to_apply.push(cur_hash.clone());
-                cur_hash = self.get_block_info(&cur_hash).unwrap().get_parent();
+                cur_hash = self.get_block_info(&cur_hash).unwrap().parent_id();
             }
         };
 
@@ -126,7 +129,7 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
         Ok(chain_state)
     }
 
-    fn put_chain_state(&mut self, chain_state: &C) -> Result<(), C::Error> {
+    fn put_chain_state(&mut self, chain_state: &C) -> Result<(), Error> {
 
         let interval = 5000;
 

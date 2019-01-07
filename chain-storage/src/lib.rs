@@ -1,5 +1,4 @@
 extern crate chain_core;
-extern crate cardano;
 
 pub mod error;
 pub mod chain;

@@ -1,11 +1,11 @@
-use super::error::Error;
-use crate::chain::*;
+use chain_core::property::{Block, BlockId, BlockDate};
+use super::{error::Error, chain::ChainState};
 
 #[derive(Clone, Debug)]
-pub struct BlockInfo<B: Block> {
-    pub block_hash: Hash,
+pub struct BlockInfo<Id: BlockId, Date: BlockDate> {
+    pub block_hash: Id,
 
-    pub block_date: B::Date,
+    pub block_date: Date,
 
     /// Distance to the genesis hash (a.k.a chain length). I.e. a
     /// block whose parent is the genesis hash has depth 1, its
@@ -16,26 +16,26 @@ pub struct BlockInfo<B: Block> {
     /// One or more ancestors of this block. Must include at least the
     /// parent, but may include other ancestors to enable efficient
     /// random access in get_nth_ancestor().
-    pub back_links: Vec<BackLink>,
+    pub back_links: Vec<BackLink<Id>>,
 }
 
-impl<B> BlockInfo<B> where B: Block {
-    pub fn get_parent(&self) -> Hash {
-        self.back_links.iter().find(|x| x.distance == 1).unwrap().block_hash
+impl<Id: BlockId, Date: BlockDate> BlockInfo<Id, Date> {
+    pub fn parent_id(&self) -> Id {
+        self.back_links.iter().find(|x| x.distance == 1).unwrap().block_hash.clone()
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct BackLink {
+pub struct BackLink<Id: BlockId> {
     /// The distance to this ancestor.
     pub distance: u64,
     /// The hash of the ancestor.
-    pub block_hash: Hash,
+    pub block_hash: Id,
 }
 
 pub trait BlockStore<B>: std::marker::Sized where B: Block {
 
-    fn get_genesis_hash(&self) -> Hash;
+    fn get_genesis_hash(&self) -> B::Id;
 
     /// Write a block to the store. The parent of the block must exist
     /// (unless it's the genesis hash).
@@ -45,17 +45,17 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     /// get_nth_ancestor(), and calls put_block_internal() to do the
     /// actual write.
     fn put_block(&mut self, block: B) -> Result<(), Error> {
-        let block_hash = block.get_hash();
-        let block_date = block.get_date();
+        let block_hash = block.id();
+        let block_date = block.date();
 
         if self.block_exists(&block_hash)? { return Ok(()); }
 
-        let parent_hash = block.get_parent();
+        let parent_hash = block.parent_id();
 
         // Always include a link to the parent.
         let mut back_links = vec![BackLink {
             distance: 1,
-            block_hash: parent_hash,
+            block_hash: parent_hash.clone(),
         }];
 
         let depth =
@@ -88,31 +88,31 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     }
 
     /// Write a block and associated info to the store.
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B>) -> Result<(), Error>;
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id, B::Date>) -> Result<(), Error>;
 
     /// Fetch a block.
-    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error>;
+    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id, B::Date>), Error>;
 
     /// Fetch a block.
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error>;
+    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id, B::Date>, Error>;
 
     /// Check whether a block exists.
-    fn block_exists(&self, block_hash: &Hash) -> Result<bool, Error> {
+    fn block_exists(&self, block_hash: &B::Id) -> Result<bool, Error> {
         match self.get_block_info(block_hash) {
             Ok(_) => Ok(true),
-            Err(Error::BlockNotFound(_)) => Ok(false),
-            Err(err) => Err(err)
+            Err(Error::BlockNotFound) => Ok(false),
+            //Err(err) => Err(err)
         }
     }
 
     /// Upsert a tag.
-    fn put_tag(&mut self, tag_name: &str, block_hash: &Hash) -> Result<(), Error>;
+    fn put_tag(&mut self, tag_name: &str, block_hash: &B::Id) -> Result<(), Error>;
 
     /// Get a tag, if previously set.
-    fn get_tag(&self, tag_name: &str) -> Result<Option<Hash>, Error>;
+    fn get_tag(&self, tag_name: &str) -> Result<Option<B::Id>, Error>;
 
     /// Get the n'th ancestor of the specified block.
-    fn get_nth_ancestor(&self, block_hash: &Hash, distance: u64) -> Result<BlockInfo<B>, Error>
+    fn get_nth_ancestor(&self, block_hash: &B::Id, distance: u64) -> Result<BlockInfo<B::Id, B::Date>, Error>
     {
         self.get_path_to_nth_ancestor(block_hash, distance, |_| {})
     }
@@ -120,8 +120,8 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     /// Like get_nth_ancestor(), but calls the closure 'callback' with
     /// each intermediate block encountered while travelling from
     /// 'block_hash' to its n'th ancestor.
-    fn get_path_to_nth_ancestor<F: FnMut(&BlockInfo<B>)>(
-        &self, block_hash: &Hash, distance: u64, mut callback: F) -> Result<BlockInfo<B>, Error>
+    fn get_path_to_nth_ancestor<F: FnMut(&BlockInfo<B::Id, B::Date>)>(
+        &self, block_hash: &B::Id, distance: u64, mut callback: F) -> Result<BlockInfo<B::Id, B::Date>, Error>
     {
         let mut cur_block_info = self.get_block_info(block_hash)?;
 
@@ -155,7 +155,7 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
 
     /// Determine whether block 'ancestor' is an ancestor block
     /// 'descendent'. If so, return the chain distance between them.
-    fn is_ancestor(&self, ancestor: &Hash, descendent: &Hash) -> Result<Option<u64>, Error> {
+    fn is_ancestor(&self, ancestor: &B::Id, descendent: &B::Id) -> Result<Option<u64>, Error> {
 
         // Optimization.
         if ancestor == descendent { return Ok(Some(0)); }
@@ -188,7 +188,7 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     /// Return an iterator that yields block info for the blocks in
     /// the half-open range `(from, to]`. `from` must be an ancestor
     /// of `to` and may be the genesis hash.
-    fn iterate_range(&self, from: &Hash, to: &Hash) -> Result<BlockIterator<B, Self>, Error> {
+    fn iterate_range(&self, from: &B::Id, to: &B::Id) -> Result<BlockIterator<B, Self>, Error> {
         // FIXME: put blocks loaded by is_ancestor into pending_infos.
         match self.is_ancestor(from, to)? {
             None => panic!(), // FIXME: return error
@@ -209,11 +209,11 @@ pub struct BlockIterator<'store, B, S> where B: Block, S: BlockStore<B> + 'store
     store: &'store S,
     to_depth: u64,
     cur_depth: u64,
-    pending_infos: Vec<BlockInfo<B>>,
+    pending_infos: Vec<BlockInfo<B::Id, B::Date>>,
 }
 
 impl<'store, B, S> Iterator for BlockIterator<'store, B, S> where B: Block, S: BlockStore<B> + 'store {
-    type Item = Result<BlockInfo<B>, Error>;
+    type Item = Result<BlockInfo<B::Id, B::Date>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cur_depth >= self.to_depth {
@@ -231,7 +231,7 @@ impl<'store, B, S> Iterator for BlockIterator<'store, B, S> where B: Block, S: B
                 // the furthest block that we do have.
                 assert!(self.cur_depth < block_info.depth);
                 let depth = block_info.depth;
-                let parent = block_info.get_parent();
+                let parent = block_info.parent_id();
                 self.pending_infos.push(block_info);
                 Some(self.store.get_path_to_nth_ancestor(
                     &parent, depth - self.cur_depth - 1, |new_info| {
@@ -255,9 +255,9 @@ pub trait ChainStateStore<C> where C: ChainState {
 
     /// Retrieve the state of the chain up to and including the
     /// specified block.
-    fn get_chain_state_at(&self, block_hash: &Hash) -> Result<C, C::Error>;
+    fn get_chain_state_at(&self, block_hash: &<C::Block as Block>::Id) -> Result<C, Error>;
 
     /// Optionally store the specified chain state. (Implementations
     /// are free to store chain state only at certain checkpoints.)
-    fn put_chain_state(&mut self, chain_state: &C) -> Result<(), C::Error>;
+    fn put_chain_state(&mut self, chain_state: &C) -> Result<(), Error>;
 }

@@ -1,13 +1,13 @@
+extern crate chain_core;
 extern crate chain_storage;
 extern crate sqlite;
-extern crate cardano;
 
-use chain_storage::{chain::*, store::*, error::Error};
-use cardano::util::try_from_slice::TryFromSlice;
+use chain_core::property::{Block, BlockId, BlockDate};
+use chain_storage::{error::Error, store::{BlockStore, BlockInfo, BackLink}};
 use std::cell::RefCell;
 
 pub struct SQLiteBlockStore<B> where B: Block {
-    genesis_hash: Hash,
+    genesis_hash: B::Id,
     connection: Box<sqlite::Connection>,
 
     // Prepared statements. Note: we currently give these a fake
@@ -25,8 +25,9 @@ pub struct SQLiteBlockStore<B> where B: Block {
     pending_changes: usize,
 }
 
+
 impl<B> SQLiteBlockStore<B> where B: Block {
-    pub fn new(genesis_hash: Hash, path: &str) -> Self {
+    pub fn new(genesis_hash: B::Id, path: &str) -> Self {
 
         let connection = Box::new(sqlite::open(path).unwrap());
 
@@ -93,6 +94,10 @@ impl<B> SQLiteBlockStore<B> where B: Block {
     }
 }
 
+fn blob_to_hash<Id: BlockId>(blob: Vec<u8>) -> Id {
+    Id::try_from_slice(&blob[..]).unwrap()
+}
+
 impl<B> Drop for SQLiteBlockStore<B> where B: Block {
     fn drop(&mut self) {
         self.flush();
@@ -101,7 +106,7 @@ impl<B> Drop for SQLiteBlockStore<B> where B: Block {
 
 impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
 
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B>) -> Result<(), Error>
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id, B::Date>) -> Result<(), Error>
     {
         self.do_change();
 
@@ -110,7 +115,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         let mut stmt_insert_block = self.stmt_insert_block.borrow_mut();
         stmt_insert_block.reset().unwrap();
         stmt_insert_block.bind(1, &block_info.block_hash.as_ref()[..]).unwrap();
-        stmt_insert_block.bind(2, &block.serialize()[..]).unwrap();
+        stmt_insert_block.bind(2, &chain_core::property::Block::serialize(&block)[..]).unwrap();
         stmt_insert_block.next().unwrap();
 
         let mut stmt_insert_block_info = self.stmt_insert_block_info.borrow_mut();
@@ -135,30 +140,28 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &Hash) -> Result<(B, BlockInfo<B>), Error> {
+    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id, B::Date>), Error> {
         let mut stmt_get_block = self.stmt_get_block.borrow_mut();
         stmt_get_block.reset().unwrap();
 
         stmt_get_block.bind(1, &block_hash.as_ref()[..]).unwrap();
 
         match stmt_get_block.next().unwrap() {
-            sqlite::State::Done =>
-                Err(Error::BlockNotFound(block_hash.clone().into())),
+            sqlite::State::Done => Err(Error::BlockNotFound),
             sqlite::State::Row =>
-                Ok((B::deserialize(&stmt_get_block.read::<Vec<u8>>(0).unwrap()),
+                Ok((chain_core::property::Block::deserialize(&stmt_get_block.read::<Vec<u8>>(0).unwrap()),
                     self.get_block_info(block_hash)?))
         }
     }
 
-    fn get_block_info(&self, block_hash: &Hash) -> Result<BlockInfo<B>, Error> {
+    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id, B::Date>, Error> {
         let mut stmt_get_block_info = self.stmt_get_block_info.borrow_mut();
         stmt_get_block_info.reset().unwrap();
 
         stmt_get_block_info.bind(1, &block_hash.as_ref()[..]).unwrap();
 
         match stmt_get_block_info.next().unwrap() {
-            sqlite::State::Done =>
-                Err(Error::BlockNotFound(block_hash.clone().into())),
+            sqlite::State::Done => Err(Error::BlockNotFound),
             sqlite::State::Row => {
 
                 let mut back_links = vec![
@@ -186,7 +189,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         }
     }
 
-    fn put_tag(&mut self, tag_name: &str, block_hash: &Hash) -> Result<(), Error>
+    fn put_tag(&mut self, tag_name: &str, block_hash: &B::Id) -> Result<(), Error>
     {
         let mut stmt_put_tag = self.stmt_put_tag.borrow_mut();
         stmt_put_tag.reset().unwrap();
@@ -196,7 +199,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         Ok(())
     }
 
-    fn get_tag(&self, tag_name: &str) -> Result<Option<Hash>, Error>
+    fn get_tag(&self, tag_name: &str) -> Result<Option<B::Id>, Error>
     {
         let mut statement = self.connection.prepare(
             "select hash from Tags where name = ?").unwrap();
@@ -208,11 +211,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         }
     }
 
-    fn get_genesis_hash(&self) -> Hash {
+    fn get_genesis_hash(&self) -> B::Id {
         self.genesis_hash.clone()
     }
-}
-
-fn blob_to_hash(blob: Vec<u8>) -> Hash {
-    Hash::try_from_slice(&blob[..]).unwrap()
 }

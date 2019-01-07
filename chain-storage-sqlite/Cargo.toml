@@ -10,6 +10,6 @@ authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
 edition = "2018"
 
 [dependencies]
+chain-core = { path = "../chain-core" }
 chain-storage = { path = "../chain-storage" }
-cardano = { path = "../cardano" }
 sqlite = { version = "0.24" }

@@ -35,6 +35,9 @@
 //! is selected to write a block in the chain.
 //!
 
+use std::fmt::Debug;
+use std::hash::Hash;
+
 /// Block property
 ///
 /// a block is part of a chain of block called Blockchain.
@@ -51,23 +54,45 @@ pub trait Block: Serializable {
     ///
     /// In bitcoin this block is a SHA2 256bits. For Cardano's
     /// blockchain it is Blake2b 256bits.
-    type Id;
+    type Id: BlockId;
 
     /// the block date (also known as a block number) represents the
     /// absolute position of the block in the chain. This can be used
     /// for random access (if the storage algorithm allows it) or for
     /// identifying the position of a block in a given epoch or era.
-    type Date;
+    type Date: BlockDate;
 
     /// return the Block's identifier.
     fn id(&self) -> Self::Id;
 
     /// get the parent block identifier (the previous block in the
     /// blockchain).
-    fn parent_id(&self) -> &Self::Id;
+    fn parent_id(&self) -> Self::Id;
 
     /// get the block date of the block
-    fn date(&self) -> &Self::Date;
+    fn date(&self) -> Self::Date;
+
+    // FIXME
+    fn serialize(&self) -> Vec<u8>;
+    fn deserialize(bytes: &[u8]) -> Self;
+}
+
+pub trait BlockId: Eq + Ord + Clone + Debug + Hash {
+
+    // FIXME: constant representing id length?
+
+    /// Return the ID as a slice.
+    fn as_ref(&self) -> &[u8];
+
+    /// Construct a BlockId from a slice.
+    fn try_from_slice(slice: &[u8]) -> Option<Self>;
+}
+
+/// A trait representing block dates. Dates can be compared, ordered
+/// and serialized as integers.
+pub trait BlockDate: Eq + Ord + Clone {
+    fn serialize(&self) -> u64;
+    fn deserialize(n: u64) -> Self;
 }
 
 /// define a transaction within the blockchain. This transaction can be used
