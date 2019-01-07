@@ -1,6 +1,5 @@
+use super::error::Error;
 use crate::chain::*;
-
-pub type Error = cardano_storage::Error; // FIXME
 
 #[derive(Clone, Debug)]
 pub struct BlockInfo<B: Block> {
@@ -101,7 +100,7 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     fn block_exists(&self, block_hash: &Hash) -> Result<bool, Error> {
         match self.get_block_info(block_hash) {
             Ok(_) => Ok(true),
-            Err(cardano_storage::Error::BlockNotFound(_)) => Ok(false),
+            Err(Error::BlockNotFound(_)) => Ok(false),
             Err(err) => Err(err)
         }
     }

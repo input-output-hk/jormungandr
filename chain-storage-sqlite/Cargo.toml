@@ -12,5 +12,4 @@ edition = "2018"
 [dependencies]
 chain-storage = { path = "../chain-storage" }
 cardano = { path = "../cardano" }
-cardano-storage = { path = "../storage" }
 sqlite = { version = "0.24" }

@@ -1,5 +1,4 @@
-use crate::chain::*;
-use crate::store::*;
+use super::{chain::*, store::*, error::Error};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -43,7 +42,7 @@ impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
     fn get_block(&self, block_hash: &Hash) -> Result<(C::Block, BlockInfo<C::Block>), Error>
     {
         match self.blocks.get(block_hash) {
-            None => Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
+            None => Err(Error::BlockNotFound(block_hash.clone().into())),
             Some((block, block_info)) => Ok((C::Block::deserialize(block), block_info.clone()))
         }
     }
@@ -53,7 +52,7 @@ impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
         COUNTER.fetch_add(1, Ordering::Relaxed);
 
         match self.blocks.get(block_hash) {
-            None => Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
+            None => Err(Error::BlockNotFound(block_hash.clone().into())),
             Some((_, block_info)) => Ok(block_info.clone())
         }
     }

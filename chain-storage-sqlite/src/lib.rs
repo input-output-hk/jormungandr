@@ -1,10 +1,8 @@
 extern crate chain_storage;
 extern crate sqlite;
 extern crate cardano;
-extern crate cardano_storage;
 
-use chain_storage::chain::*;
-use chain_storage::store::*;
+use chain_storage::{chain::*, store::*, error::Error};
 use cardano::util::try_from_slice::TryFromSlice;
 use std::cell::RefCell;
 
@@ -145,7 +143,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
 
         match stmt_get_block.next().unwrap() {
             sqlite::State::Done =>
-                Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
+                Err(Error::BlockNotFound(block_hash.clone().into())),
             sqlite::State::Row =>
                 Ok((B::deserialize(&stmt_get_block.read::<Vec<u8>>(0).unwrap()),
                     self.get_block_info(block_hash)?))
@@ -160,7 +158,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
 
         match stmt_get_block_info.next().unwrap() {
             sqlite::State::Done =>
-                Err(cardano_storage::Error::BlockNotFound(block_hash.clone().into())),
+                Err(Error::BlockNotFound(block_hash.clone().into())),
             sqlite::State::Row => {
 
                 let mut back_links = vec![

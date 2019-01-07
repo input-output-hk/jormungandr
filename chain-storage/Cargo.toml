@@ -12,7 +12,6 @@ edition = "2018"
 [dependencies]
 chain-core = { path = "../chain-core" }
 cardano = { path = "../cardano" } # FIXME
-cardano-storage = { path = "../storage" } # FIXME
 
 [dev-dependencies]
 
