@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "chain-core",
+    "chain-impl-mockchain",
     "cardano",
     "protocol",
     "protocol-tokio",
