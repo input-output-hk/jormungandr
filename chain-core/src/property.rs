@@ -241,4 +241,23 @@ pub mod testing {
         ledger.diff_transaction(&transaction).is_err()
     }
 
+    /// Pair with a ledger and transaction that is valid in such state.
+    /// This structure is used for tests generation, when the framework
+    /// require user to pass valid transaction.
+    pub struct LedgerWithValidTransaction<L, T>(pub L, pub T);
+
+    /// Test that checks if arbitrary valid transaction succeed and can
+    /// be added to the ledger.
+    pub fn prop_good_transactions_succeed<L>(
+        input: &mut LedgerWithValidTransaction<L, L::Transaction>,
+    ) -> bool
+    where
+        L: Ledger + Arbitrary,
+    {
+        match input.0.diff_transaction(&input.1) {
+            Err(e) => panic!("error {:#?}", e),
+            Ok(diff) => input.0.add(diff).is_ok(),
+        }
+    }
+
 }
