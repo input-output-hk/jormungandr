@@ -225,4 +225,39 @@ pub mod testing {
         let decoded_t = <T as Serializable>::deserialize(cursor).unwrap();
         decoded_t == t
     }
+
+    /// test that arbitrary generated transaction fails, this test requires
+    /// that all the objects inside the transaction are arbitrary generated.
+    /// There is a very small propability of the event that all the objects
+    /// will match, i.e. the contents of the transaction list of the subscribers
+    /// and signatures will compose into a valid transaction, but if such
+    /// event would happen it can be treated as error due to lack of the
+    /// randomness.
+    pub fn prop_bad_transaction_fails<L>(ledger: L, transaction: L::Transaction) -> bool
+    where
+        L: Ledger + Arbitrary,
+        L::Transaction: Transaction + Arbitrary,
+    {
+        ledger.diff_transaction(&transaction).is_err()
+    }
+
+    /// Pair with a ledger and transaction that is valid in such state.
+    /// This structure is used for tests generation, when the framework
+    /// require user to pass valid transaction.
+    pub struct LedgerWithValidTransaction<L, T>(pub L, pub T);
+
+    /// Test that checks if arbitrary valid transaction succeed and can
+    /// be added to the ledger.
+    pub fn prop_good_transactions_succeed<L>(
+        input: &mut LedgerWithValidTransaction<L, L::Transaction>,
+    ) -> bool
+    where
+        L: Ledger + Arbitrary,
+    {
+        match input.0.diff_transaction(&input.1) {
+            Err(e) => panic!("error {:#?}", e),
+            Ok(diff) => input.0.add(diff).is_ok(),
+        }
+    }
+
 }
