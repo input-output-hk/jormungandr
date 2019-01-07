@@ -18,11 +18,11 @@ jobs:
           paths:
             - Cargo.lock
       - save_cache:
-          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
-            - /usr/local/cargo/bin/cargo-junit
+            - /usr/local/cargo/bin
   test:
     docker:
       - image: rust:latest
@@ -33,13 +33,13 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build and test
-          command: /usr/local/cargo/bin/cargo-junit --verbose --frozen --name test_output_release.xml
+          command: cargo junit --name test_output.xml
           environment:
             # Need this for the coverage run
             RUSTFLAGS: "-C link-dead-code"
@@ -50,7 +50,7 @@ jobs:
               [ -d $file -o ! -x $file ] && rm -r $file
             done
       - store_test_results:
-          path: test_output_release.xml
+          path: test_output.xml
       - persist_to_workspace:
           root: "."
           paths:
@@ -65,15 +65,15 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build and test in release profile
-          command: /usr/local/cargo/bin/cargo-junit --verbose --frozen --release --name test_output_release.xml
+          command: cargo junit --name test_release_output.xml
       - store_test_results:
-          path: test_output_release.xml
+          path: test_release_output.xml
   test_nightly:
     docker:
       - image: rustlang/rust:nightly
@@ -84,15 +84,15 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build and test with nightly Rust
-          command: /usr/local/cargo/bin/cargo-junit --verbose --frozen --name test_output_nightly.xml
+          command: cargo junit --name test_nightly_output.xml
       - store_test_results:
-          path: test_output_nightly.xml    
+          path: test_nightly_output.xml
   coverage:
     docker:
       - image: ragnaroek/kcov:v33
