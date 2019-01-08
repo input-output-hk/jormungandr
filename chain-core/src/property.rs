@@ -67,7 +67,7 @@ pub trait Block: Serializable {
     fn parent_id(&self) -> &Self::Id;
 
     /// get the block date of the block
-    fn date(&self) -> &Self::Date;
+    fn date(&self) -> Self::Date;
 }
 
 /// define a transaction within the blockchain. This transaction can be used
