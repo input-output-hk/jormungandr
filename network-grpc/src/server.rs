@@ -1,4 +1,4 @@
-use chain_core::property::{Block, Deserialize, Serialize};
+use chain_core::property::{Block, BlockDate, BlockId, Deserialize, Header, Serialize};
 
 use futures::prelude::*;
 use tower_grpc::Error::Grpc as GrpcError;
@@ -168,8 +168,8 @@ where
 impl<F, I, D> ConvertResponse<gen::TipResponse> for F
 where
     F: Future<Item = (I, D), Error = network_core::Error>,
-    I: Serialize,
-    D: Serialize,
+    I: BlockId + Serialize,
+    D: BlockDate + Serialize,
 {
     fn convert_item(item: (I, D)) -> Result<gen::TipResponse, tower_grpc::Error> {
         let id = serialize_to_bytes(item.0)?;
@@ -196,7 +196,7 @@ where
 impl<S, H> ConvertStream<cardano_proto::Header> for S
 where
     S: Stream<Item = H, Error = network_core::Error>,
-    H: Serialize, // FIXME: this needs more bounds to only work for headers
+    H: Header + Serialize,
 {
     fn convert_item(item: Self::Item) -> Result<cardano_proto::Header, tower_grpc::Error> {
         let content = serialize_to_bytes(item)?;
@@ -207,7 +207,7 @@ where
 impl<F, I> ConvertResponse<gen::ProposeTransactionsResponse> for F
 where
     F: Future<Item = network_core::ProposeTransactionsResponse<I>, Error = network_core::Error>,
-    I: Serialize,
+    I: BlockId + Serialize,
 {
     fn convert_item(
         _item: Self::Item,
@@ -219,7 +219,7 @@ where
 impl<F, I> ConvertResponse<gen::RecordTransactionResponse> for F
 where
     F: Future<Item = network_core::RecordTransactionResponse<I>, Error = network_core::Error>,
-    I: Serialize,
+    I: BlockId + Serialize,
 {
     fn convert_item(
         _item: Self::Item,

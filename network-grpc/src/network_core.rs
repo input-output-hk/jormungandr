@@ -31,10 +31,10 @@ pub struct RecordTransactionResponse<Id> {
 }
 
 pub trait Node {
-    type BlockId;
-    type BlockDate;
+    type BlockId: property::BlockId;
+    type BlockDate: property::BlockDate;
     type Block: property::Block<Id = Self::BlockId, Date = Self::BlockDate>;
-    type Header;
+    type Header: property::Header;
 
     type TipFuture: Future<Item = (Self::BlockId, Self::BlockDate), Error = Error>;
     type GetBlocksStream: Stream<Item = Self::Block, Error = Error>;
