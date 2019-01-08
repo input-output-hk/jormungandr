@@ -12,15 +12,17 @@ jobs:
             - cargo-v1-
       - run: cargo update
       - run: cargo fetch
+      - run: cargo install cargo-junit
       - persist_to_workspace:
           root: "."
           paths:
             - Cargo.lock
       - save_cache:
-          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
+            - /usr/local/cargo/bin
   test:
     docker:
       - image: rust:latest
@@ -31,13 +33,16 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: create test-results directory
+          command: mkdir -p ~/test-results/${CIRCLE_JOB}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build and test
-          command: cargo test --verbose --frozen
+          command: cargo junit --name ~/test-results/${CIRCLE_JOB}/results.xml
           environment:
             # Need this for the coverage run
             RUSTFLAGS: "-C link-dead-code"
@@ -47,6 +52,8 @@ jobs:
             for file in target/debug/* target/debug/.??*; do
               [ -d $file -o ! -x $file ] && rm -r $file
             done
+      - store_test_results:
+          path: ~/test-results
       - persist_to_workspace:
           root: "."
           paths:
@@ -61,13 +68,18 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: create test-results directory
+          command: mkdir -p ~/test-results/${CIRCLE_JOB}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build and test in release profile
-          command: cargo test --verbose --frozen --release
+          command: cargo junit --name ~/test-results/${CIRCLE_JOB}/results.xml
+      - store_test_results:
+          path: ~/test-results
   test_nightly:
     docker:
       - image: rustlang/rust:nightly
@@ -78,13 +90,18 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: create test-results directory
+          command: mkdir -p ~/test-results/${CIRCLE_JOB}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build and test with nightly Rust
-          command: cargo test --verbose --frozen
+          command: cargo junit --name ~/test-results/${CIRCLE_JOB}/results.xml
+      - store_test_results:
+          path: ~/test-results
   coverage:
     docker:
       - image: ragnaroek/kcov:v33
