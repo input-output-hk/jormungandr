@@ -3,6 +3,7 @@
 //!
 use cardano::hash;
 use cardano::hdwallet as crypto;
+use chain_core::property;
 
 // TODO: this public key contains the chain code in it too
 // during serialisation this might not be needed
@@ -52,6 +53,8 @@ impl AsRef<[u8]> for Hash {
         self.0.as_ref()
     }
 }
+
+impl property::BlockId for Hash {}
 
 /// Cryptographic signature.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

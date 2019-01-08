@@ -73,6 +73,8 @@ impl AsRef<[u8]> for TransactionId {
     }
 }
 
+impl property::TransactionId for TransactionId {}
+
 /// Transaction, transaction maps old unspent tokens into the
 /// set of the new addresses.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

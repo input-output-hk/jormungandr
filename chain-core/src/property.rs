@@ -35,6 +35,21 @@
 //! is selected to write a block in the chain.
 //!
 
+use std::hash::Hash;
+
+/// Trait identifying the block identifier type.
+pub trait BlockId: Eq + Hash {}
+
+/// Trait identifying the block date type.
+pub trait BlockDate: Eq + Ord {}
+
+/// Trait identifying the transaction identifier type.
+pub trait TransactionId: Eq + Hash {}
+
+/// Trait identifying the block header type.
+/// TODO: provide header in the data model.
+pub trait Header {}
+
 /// Block property
 ///
 /// a block is part of a chain of block called Blockchain.
@@ -51,13 +66,13 @@ pub trait Block: Serializable {
     ///
     /// In bitcoin this block is a SHA2 256bits. For Cardano's
     /// blockchain it is Blake2b 256bits.
-    type Id;
+    type Id: BlockId;
 
     /// the block date (also known as a block number) represents the
     /// absolute position of the block in the chain. This can be used
     /// for random access (if the storage algorithm allows it) or for
     /// identifying the position of a block in a given epoch or era.
-    type Date;
+    type Date: BlockDate;
 
     /// return the Block's identifier.
     fn id(&self) -> Self::Id;
@@ -81,7 +96,7 @@ pub trait Transaction: Serializable {
     type Output;
     /// a unique identifier of the transaction. For 2 different transactions
     /// we must have 2 different `Id` values.
-    type Id;
+    type Id: TransactionId;
 
     fn inputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Input>;
     fn outputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Output>;

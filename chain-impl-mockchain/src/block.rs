@@ -1,6 +1,6 @@
 //! Representation of the block in the mockchain.
-use crate::key::*;
-use crate::transaction::*;
+use crate::key::Hash;
+use crate::transaction::SignedTransaction;
 use chain_core::property;
 
 /// Non unique identifier of the transaction position in the
@@ -8,6 +8,8 @@ use chain_core::property;
 /// `SlotId`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct SlotId(u32, u32);
+
+impl property::BlockDate for SlotId {}
 
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
