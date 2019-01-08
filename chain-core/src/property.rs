@@ -233,10 +233,10 @@ pub mod testing {
     /// and signatures will compose into a valid transaction, but if such
     /// event would happen it can be treated as error due to lack of the
     /// randomness.
-    pub fn prop_bad_transaction_fails<L>(ledger: L, transaction: L::Transaction) -> bool
+    pub fn prop_bad_transaction_fails<L, T>(ledger: L, transaction: T) -> bool
     where
-        L: Ledger + Arbitrary,
-        L::Transaction: Transaction + Arbitrary,
+        L: Ledger<T> + Arbitrary,
+        T: Transaction + Arbitrary,
     {
         ledger.diff_transaction(&transaction).is_err()
     }
@@ -248,15 +248,16 @@ pub mod testing {
 
     /// Test that checks if arbitrary valid transaction succeed and can
     /// be added to the ledger.
-    pub fn prop_good_transactions_succeed<L>(
-        input: &mut LedgerWithValidTransaction<L, L::Transaction>,
+    pub fn prop_good_transactions_succeed<L, T>(
+        input: &mut LedgerWithValidTransaction<L, T>,
     ) -> bool
     where
-        L: Ledger + Arbitrary,
+        L: Ledger<T> + Arbitrary,
+        T: Transaction + Arbitrary,
     {
         match input.0.diff_transaction(&input.1) {
             Err(e) => panic!("error {:#?}", e),
-            Ok(diff) => input.0.add(diff).is_ok(),
+            Ok(diff) => input.0.apply(diff).is_ok(),
         }
     }
 
