@@ -228,6 +228,54 @@ pub trait Serializable: Sized {
     fn deserialize<R: std::io::Read>(reader: R) -> Result<Self, Self::Error>;
 }
 
+/// A trait representing the state of a chain at a particular point in
+/// time. The chain state is initialized from GenesisData and is
+/// updated by applying blocks.
+///
+/// The main purpose of this trait is to enable generic, efficient
+/// storage of chain states for various types of chains. To support
+/// efficient storage, ChainState requires implementations to support
+/// a "diff" method that produces a ChainStateDelta between arbitrary
+/// states. These ChainStateDeltas can be serialized and
+/// deserialized. (See also ChainStateStore in the chain-storage
+/// crate, which uses this trait.)
+pub trait ChainState: std::marker::Sized + Clone + Eq {
+    type Block: Block;
+    type GenesisData;
+    type Delta: ChainStateDelta;
+    type Error: std::error::Error;
+
+    /// Create a new chain state object from genesis data. The chain
+    /// length will be 0.
+    fn new(genesis_data: &Self::GenesisData) -> Result<Self, Self::Error>;
+
+    /// Update the chain state by applying a new 'block'. If an error
+    /// occurs, the chain state must be unchanged. If it succeeds,
+    /// then the chain length will be increased by 1 and
+    /// self.get_last_block_id() == block.id().
+    fn apply_block(&mut self, block: &Self::Block) -> Result<(), Self::Error>;
+
+    fn get_last_block_id(&self) -> <Self::Block as Block>::Id;
+
+    fn get_chain_length(&self) -> u64;
+
+    /// Compute a delta that transforms chain state 'from' into
+    /// 'to'. That is, it must be the case that 'to == from.apply_delta(diff(from, to))'.
+    fn diff(from: &Self, to: &Self) -> Result<Self::Delta, Self::Error>;
+
+    /// Apply a delta computed by 'diff'.
+    fn apply_delta(&mut self, delta: Self::Delta) -> Result<(), Self::Error>;
+}
+
+/// A trait representing a delta between ChainState objects. See
+/// 'ChainState::diff()'.
+pub trait ChainStateDelta {
+    //fn merge(a: &Self, b: &Self) -> Self;
+
+    fn serialize(&self) -> Vec<u8>;
+    fn deserialize(bytes: &[u8]) -> Self;
+}
+
 #[cfg(feature = "property-test-api")]
 pub mod testing {
     use super::*;

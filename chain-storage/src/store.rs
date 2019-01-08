@@ -1,5 +1,5 @@
-use chain_core::property::{Block, BlockId, BlockDate};
-use super::{error::Error, chain::ChainState};
+use chain_core::property::{Block, BlockId, BlockDate, ChainState};
+use super::error::Error;
 
 #[derive(Clone, Debug)]
 pub struct BlockInfo<Id: BlockId, Date: BlockDate> {
@@ -255,9 +255,9 @@ pub trait ChainStateStore<C> where C: ChainState {
 
     /// Retrieve the state of the chain up to and including the
     /// specified block.
-    fn get_chain_state_at(&self, block_hash: &<C::Block as Block>::Id) -> Result<C, Error>;
+    fn get_chain_state_at(&self, block_hash: &<C::Block as Block>::Id) -> Result<C, C::Error>;
 
     /// Optionally store the specified chain state. (Implementations
     /// are free to store chain state only at certain checkpoints.)
-    fn put_chain_state(&mut self, chain_state: &C) -> Result<(), Error>;
+    fn put_chain_state(&mut self, chain_state: &C) -> Result<(), C::Error>;
 }
