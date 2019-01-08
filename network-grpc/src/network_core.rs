@@ -19,8 +19,8 @@ pub struct RecordTransactionResponse<Id> {
 }
 
 pub trait Node {
-    type Error;
-    type BlockId: property::Serializable;
+    type Error: std::error::Error;
+    type BlockId: property::Deserialize;
     type BlockDate;
     type Block: property::Block<Id = Self::BlockId, Date = Self::BlockDate>;
     type Header;

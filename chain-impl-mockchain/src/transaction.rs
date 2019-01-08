@@ -99,15 +99,19 @@ impl property::Transaction for Transaction {
     }
 }
 
-impl property::Serializable for Transaction {
+impl property::Serialize for Transaction {
+    type Error = bincode::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), bincode::Error> {
+        bincode::serialize_into(writer, self)
+    }
+}
+
+impl property::Deserialize for Transaction {
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::Read>(reader: R) -> Result<Transaction, bincode::Error> {
         bincode::deserialize_from(reader)
-    }
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), bincode::Error> {
-        bincode::serialize_into(writer, self)
     }
 }
 
@@ -119,15 +123,19 @@ pub struct SignedTransaction {
     pub witnesses: Vec<Witness>,
 }
 
-impl property::Serializable for SignedTransaction {
+impl property::Serialize for SignedTransaction {
+    type Error = bincode::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        bincode::serialize_into(writer, self)
+    }
+}
+
+impl property::Deserialize for SignedTransaction {
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::Read>(reader: R) -> Result<SignedTransaction, bincode::Error> {
         bincode::deserialize_from(reader)
-    }
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        bincode::serialize_into(writer, self)
     }
 }
 

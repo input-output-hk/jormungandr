@@ -1,4 +1,4 @@
-use chain_core::property::Serializable;
+use chain_core::property::{Block, Deserialize, Serialize};
 
 use futures::prelude::*;
 use futures::try_ready;
@@ -114,12 +114,12 @@ pub struct GrpcServer<T> {
     node: T,
 }
 
-fn deserialize_hashes<H: Serializable>(
+fn deserialize_hashes<H: Deserialize>(
     pb: &cardano_proto::HeaderHashes,
-) -> Result<Vec<H>, <H as Serializable>::Error> {
+) -> Result<Vec<H>, H::Error> {
     pb.hashes
         .iter()
-        .map(|v| Serializable::deserialize(&v[..]))
+        .map(|v| H::deserialize(&mut &v[..]))
         .collect()
 }
 

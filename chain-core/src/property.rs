@@ -61,7 +61,7 @@ impl Header for () {}
 /// recent block to the furthest/oldest block.
 ///
 /// The Oldest block is called the Genesis Block.
-pub trait Block: Serializable {
+pub trait Block: Serialize + Deserialize {
     /// the Block identifier. It must be unique. This mean that
     /// 2 different blocks have 2 different identifiers.
     ///
@@ -100,7 +100,7 @@ pub trait Block: Serializable {
 /// for the UTxO model. However it can also be used for any other elements that
 /// the blockchain has (a transaction type to add Stacking Pools and so on...).
 ///
-pub trait Transaction: Serializable {
+pub trait Transaction: Serialize + Deserialize {
     /// the input type of the transaction (if none use `()`).
     type Input;
     /// the output type of the transaction (if none use `()`).
@@ -222,33 +222,43 @@ pub trait LeaderSelection {
     fn is_leader_at(&self, date: <Self::Block as Block>::Date) -> Result<bool, Self::Error>;
 }
 
-/// Define that an object can be written in a `Write` object or read from the
-/// `Read` object.
-pub trait Serializable: Sized {
+/// Define that an object can be written to a `Write` object.
+pub trait Serialize {
     type Error: std::error::Error + From<std::io::Error>;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error>;
+}
+
+/// Define that an object can be read from a `Read` object.
+pub trait Deserialize: Sized {
+    type Error: std::error::Error + From<std::io::Error>;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error>;
+}
+
+impl<T: Serialize> Serialize for &T {
+    type Error = T::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), T::Error> {
+        (**self).serialize(writer)
+    }
 }
 
 #[cfg(feature = "property-test-api")]
 pub mod testing {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
-    use std::io::Cursor;
 
     /// test that any arbitrary given object can serialize and deserialize
     /// back into itself (i.e. it is a bijection,  or a one to one match
     /// between the serialized bytes and the object)
     pub fn serialization_bijection<T>(t: T) -> bool
     where
-        T: Arbitrary + Serializable + Eq,
+        T: Arbitrary + Serialize + Deserialize + Eq,
     {
         let mut vec = Vec::new();
         t.serialize(&mut vec).unwrap();
-        let cursor = Cursor::new(vec);
-        let decoded_t = <T as Serializable>::deserialize(cursor).unwrap();
+        let decoded_t = T::deserialize(&mut &vec[..]).unwrap();
         decoded_t == t
     }
 
