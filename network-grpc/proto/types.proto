@@ -2,17 +2,16 @@ syntax = "proto3";
 
 package cardano;
 
+message BlockId {
+    bytes id = 1;
+}
+
+message BlockIds {
+    repeated bytes ids = 1;
+}
+
 message BlockDate {
-    uint64 epoch = 1;
-    uint32 slot = 2;
-}
-
-message HeaderHash {
-    bytes hash = 1;
-}
-
-message HeaderHashes {
-    repeated bytes hashes = 1;
+    bytes content = 1;
 }
 
 message Block {

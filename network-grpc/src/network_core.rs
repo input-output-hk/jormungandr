@@ -2,10 +2,22 @@ use chain_core::property;
 
 use futures::prelude::*;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 // NOTE: protobuf-derived definitions used in would-be abstract core API
 use super::iohk::jormungandr as gen;
+
+/// Represents errors that can be returned by the node implementation.
+#[derive(Debug)]
+pub struct Error(); // TODO: define specific error variants and details
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "unknown network node error")
+    }
+}
 
 pub struct ProposeTransactionsResponse<Id> {
     // TODO: define fully
@@ -19,26 +31,27 @@ pub struct RecordTransactionResponse<Id> {
 }
 
 pub trait Node {
-    type Error: std::error::Error;
-    type BlockId: property::Deserialize;
+    type BlockId;
     type BlockDate;
     type Block: property::Block<Id = Self::BlockId, Date = Self::BlockDate>;
     type Header;
 
-    type TipFuture: Future<Item = Self::BlockId, Error = Self::Error>;
-    type BlocksStream: Stream<Item = Self::Block, Error = Self::Error>;
-    type BlocksFuture: Future<Item = Self::BlocksStream, Error = Self::Error>;
-    type HeadersStream: Stream<Item = Self::Header, Error = Self::Error>;
-    type HeadersFuture: Future<Item = Self::HeadersStream, Error = Self::Error>;
+    type TipFuture: Future<Item = (Self::BlockId, Self::BlockDate), Error = Error>;
+    type GetBlocksStream: Stream<Item = Self::Block, Error = Error>;
+    type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = Error>;
+    type GetHeadersStream: Stream<Item = Self::Header, Error = Error>;
+    type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error>;
+    type StreamBlocksToTipStream: Stream<Item = Self::Block, Error = Error>;
+    type StreamBlocksToTipFuture: Future<Item = Self::StreamBlocksToTipStream, Error = Error>;
     type ProposeTransactionsFuture: Future<
         Item = ProposeTransactionsResponse<Self::BlockId>,
-        Error = Self::Error,
+        Error = Error,
     >;
     type RecordTransactionFuture: Future<
         Item = RecordTransactionResponse<Self::BlockId>,
-        Error = Self::Error,
+        Error = Error,
     >;
 
     fn tip(&mut self) -> Self::TipFuture;
-    fn stream_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::BlocksFuture;
+    fn stream_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::StreamBlocksToTipFuture;
 }

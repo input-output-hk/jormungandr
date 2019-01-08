@@ -7,14 +7,14 @@ import "types.proto";
 message TipRequest {}
 
 message TipResponse {
-    cardano.BlockDate blockdate = 1;
-    cardano.HeaderHash hash = 2;
+    cardano.BlockId id = 1;
+    cardano.BlockDate blockdate = 2;
 }
 
 // Parameters for GetBlocks and GetHeaders
 message GetBlocksRequest {
     // The hash of the tip to trace the chain from.
-    cardano.HeaderHash tip = 1;
+    cardano.BlockId tip = 1;
     // The offset back in the chain to start block or header retrieval from,
     // going backwards in the chain.
     uint64 offset = 2;
@@ -74,7 +74,7 @@ service Node {
     rpc GetHeaders (GetBlocksRequest) returns (stream cardano.Header) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
-    rpc StreamBlocksToTip (cardano.HeaderHashes) returns (stream cardano.Block);
+    rpc StreamBlocksToTip (cardano.BlockIds) returns (stream cardano.Block);
     rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);
     rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
 }
