@@ -13,3 +13,8 @@ edition = "2018"
 chain-core = { path = "../chain-core" }
 chain-storage = { path = "../chain-storage" }
 sqlite = { version = "0.24" }
+
+[dev-dependencies]
+cardano = { path = "../cardano" }
+cardano-storage = { path = "../storage" }
+exe-common = { path = "../exe-common" }
