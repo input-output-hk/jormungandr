@@ -244,6 +244,7 @@ pub mod testing {
     /// Pair with a ledger and transaction that is valid in such state.
     /// This structure is used for tests generation, when the framework
     /// require user to pass valid transaction.
+    #[derive(Clone, Debug)]
     pub struct LedgerWithValidTransaction<L, T>(pub L, pub T);
 
     /// Test that checks if arbitrary valid transaction succeed and can
