@@ -203,7 +203,7 @@ pub trait Serializable: Sized {
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error>;
 
-    fn deserialize<R: std::io::Read>(reader: R) -> Result<Self, Self::Error>;
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error>;
 }
 
 #[cfg(feature = "property-test-api")]
