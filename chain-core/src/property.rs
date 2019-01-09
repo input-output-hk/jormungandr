@@ -48,7 +48,7 @@ use std::hash::Hash;
 /// recent block to the furthest/oldest block.
 ///
 /// The Oldest block is called the Genesis Block.
-pub trait Block {
+pub trait Block: Serializable {
     /// the Block identifier. It must be unique. This mean that
     /// 2 different blocks have 2 different identifiers.
     ///
@@ -71,10 +71,6 @@ pub trait Block {
 
     /// get the block date of the block
     fn date(&self) -> Self::Date;
-
-    // FIXME
-    fn serialize(&self) -> Vec<u8>;
-    fn deserialize(bytes: &[u8]) -> Self;
 }
 
 pub trait BlockId: Eq + Ord + Clone + Debug + Hash + AsRef<[u8]> {

@@ -1,4 +1,4 @@
-use chain_core::property::{Block, ChainState, ChainStateDelta};
+use chain_core::property::{Block, ChainState, ChainStateDelta, Serializable};
 use super::store::{BlockInfo, BlockStore, ChainStateStore};
 use super::error::Error;
 use std::collections::HashMap;
@@ -37,7 +37,9 @@ impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
 
     fn put_block_internal(&mut self, block: C::Block, block_info: BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>) -> Result<(), Error>
     {
-        self.blocks.insert(block_info.block_hash.clone(), (block.serialize(), block_info));
+        let mut data = vec![];
+        block.serialize(&mut data).unwrap();
+        self.blocks.insert(block_info.block_hash.clone(), (data, block_info));
         Ok(())
     }
 
@@ -45,7 +47,7 @@ impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
     {
         match self.blocks.get(block_hash) {
             None => Err(Error::BlockNotFound),
-            Some((block, block_info)) => Ok((C::Block::deserialize(block), block_info.clone()))
+            Some((block, block_info)) => Ok((C::Block::deserialize(&block[..]).unwrap(), block_info.clone()))
         }
     }
 

@@ -115,7 +115,9 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         let mut stmt_insert_block = self.stmt_insert_block.borrow_mut();
         stmt_insert_block.reset().unwrap();
         stmt_insert_block.bind(1, &block_info.block_hash.as_ref()[..]).unwrap();
-        stmt_insert_block.bind(2, &chain_core::property::Block::serialize(&block)[..]).unwrap();
+        let mut data = vec![];
+        block.serialize(&mut data).unwrap();
+        stmt_insert_block.bind(2, &data[..]).unwrap();
         stmt_insert_block.next().unwrap();
 
         let mut stmt_insert_block_info = self.stmt_insert_block_info.borrow_mut();
@@ -149,7 +151,8 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         match stmt_get_block.next().unwrap() {
             sqlite::State::Done => Err(Error::BlockNotFound),
             sqlite::State::Row =>
-                Ok((chain_core::property::Block::deserialize(&stmt_get_block.read::<Vec<u8>>(0).unwrap()),
+                Ok((B::deserialize(
+                    &stmt_get_block.read::<Vec<u8>>(0).unwrap()[..]).unwrap(),
                     self.get_block_info(block_hash)?))
         }
     }

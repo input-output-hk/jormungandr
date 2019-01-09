@@ -3,6 +3,8 @@
 //!
 use cardano::hash;
 use cardano::hdwallet as crypto;
+use cardano::util::try_from_slice::TryFromSlice;
+use chain_core::property;
 
 // TODO: this public key contains the chain code in it too
 // during serialisation this might not be needed
@@ -50,6 +52,15 @@ impl Hash {
 impl AsRef<[u8]> for Hash {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl property::BlockId for Hash {
+    fn try_from_slice(slice: &[u8]) -> Option<Self> {
+        match hash::Blake2b256::try_from_slice(slice) {
+            Ok(x) => Some(Hash(x)),
+            Err(_) => None
+        }
     }
 }
 
