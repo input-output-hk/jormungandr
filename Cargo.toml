@@ -3,6 +3,7 @@ members = [
     "chain-core",
     "chain-storage",
     "chain-storage-sqlite",
+    "chain-impl-mockchain",
     "cardano",
     "protocol",
     "protocol-tokio",

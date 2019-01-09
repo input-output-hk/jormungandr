@@ -225,7 +225,7 @@ pub trait Serializable: Sized {
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error>;
 
-    fn deserialize<R: std::io::Read>(reader: R) -> Result<Self, Self::Error>;
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error>;
 }
 
 /// A trait representing the state of a chain at a particular point in
@@ -279,7 +279,7 @@ pub trait ChainStateDelta {
 #[cfg(feature = "property-test-api")]
 pub mod testing {
     use super::*;
-    use quickcheck::Arbitrary;
+    use quickcheck::{Arbitrary, Gen};
     use std::io::Cursor;
 
     /// test that any arbitrary given object can serialize and deserialize
@@ -314,6 +314,7 @@ pub mod testing {
     /// Pair with a ledger and transaction that is valid in such state.
     /// This structure is used for tests generation, when the framework
     /// require user to pass valid transaction.
+    #[derive(Clone, Debug)]
     pub struct LedgerWithValidTransaction<L, T>(pub L, pub T);
 
     /// Test that checks if arbitrary valid transaction succeed and can
@@ -328,6 +329,29 @@ pub mod testing {
         match input.0.diff_transaction(&input.1) {
             Err(e) => panic!("error {:#?}", e),
             Ok(diff) => input.0.apply(diff).is_ok(),
+        }
+    }
+
+    /// Trait that provides a property of generation valid transactions
+    /// from the current state.
+    pub trait GenerateTransaction<T: Transaction> {
+        fn generate_transaction<G>(&mut self, g: &mut G) -> T
+        where
+            G: Gen;
+    }
+
+    /// Generate a number of transactions and run them, it's not
+    /// expected to have any errors during the run.
+    pub fn run_valid_transactions<'a, G, L, T>(g: &'a mut G, ledger: &'a mut L, n: usize) -> ()
+    where
+        G: Gen,
+        L: Ledger<T> + GenerateTransaction<T>,
+        T: Transaction,
+    {
+        for _ in 0..n {
+            let tx = ledger.generate_transaction(g);
+            let update = ledger.diff_transaction(&tx).unwrap();
+            ledger.apply(update).unwrap();
         }
     }
 
