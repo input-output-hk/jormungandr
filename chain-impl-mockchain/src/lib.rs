@@ -7,6 +7,8 @@ extern crate quickcheck;
 
 pub mod address;
 pub mod block;
+#[cfg(test)]
+pub mod environment;
 pub mod error;
 pub mod key;
 pub mod ledger;

@@ -11,12 +11,12 @@ use std::collections::HashMap;
 /// owner.
 #[derive(Debug, Clone)]
 pub struct Ledger {
-    unspent_outputs: HashMap<UtxoPointer, Output>,
+    pub unspent_outputs: HashMap<UtxoPointer, Output>,
 }
 impl Ledger {
-    pub fn new() -> Self {
+    pub fn new(input: HashMap<UtxoPointer, Output>) -> Self {
         Ledger {
-            unspent_outputs: HashMap::new(),
+            unspent_outputs: input,
         }
     }
 }
