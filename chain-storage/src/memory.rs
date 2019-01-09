@@ -1,4 +1,4 @@
-use chain_core::property::{Block, ChainState, ChainStateDelta, Serializable};
+use chain_core::property::{Block, ChainState, Serializable};
 use super::store::{BlockInfo, BlockStore, ChainStateStore};
 use super::error::Error;
 use std::collections::HashMap;
