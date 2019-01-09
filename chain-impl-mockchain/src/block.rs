@@ -37,8 +37,8 @@ impl property::Block for Block {
     }
 
     /// Date of the block.
-    fn date(&self) -> &Self::Date {
-        &self.slot_id
+    fn date(&self) -> Self::Date {
+        self.slot_id
     }
 }
 
