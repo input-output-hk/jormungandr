@@ -54,6 +54,9 @@ jobs:
             done
       - store_test_results:
           path: ~/test-results
+      - store_artifacts:
+          path: ~/test-results
+          destination: test_results
       - persist_to_workspace:
           root: "."
           paths:
