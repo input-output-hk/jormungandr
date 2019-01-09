@@ -9,6 +9,8 @@ use chain_core::property;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct SlotId(u32, u32);
 
+impl property::BlockDate for SlotId {}
+
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
 /// with the position of that block in the chain.
@@ -23,6 +25,7 @@ pub struct Block {
 impl property::Block for Block {
     type Id = Hash;
     type Date = SlotId;
+    type Header = ();
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
@@ -39,6 +42,10 @@ impl property::Block for Block {
     /// Date of the block.
     fn date(&self) -> Self::Date {
         self.slot_id
+    }
+
+    fn header(&self) -> Self::Header {
+        ()
     }
 }
 
