@@ -6,18 +6,13 @@ use tower_grpc::{self, Code, Request, Status};
 
 use std::marker::PhantomData;
 
-use super::cardano as cardano_proto;
-use super::iohk::jormungandr as gen;
+use super::gen;
 use super::network_core;
 
-enum ResponseState<F> {
-    Future(F),
+pub enum FutureResponse<T, F> {
+    Pending(F),
     Err(Status),
-}
-
-pub struct FutureResponse<T, F> {
-    state: ResponseState<F>,
-    _phantom: PhantomData<T>,
+    Complete(PhantomData<T>),
 }
 
 impl<T, F> FutureResponse<T, F>
@@ -25,19 +20,13 @@ where
     F: Future + ConvertResponse<T>,
 {
     fn new(future: F) -> Self {
-        FutureResponse {
-            state: ResponseState::Future(future),
-            _phantom: PhantomData,
-        }
+        FutureResponse::Pending(future)
     }
 }
 
 impl<T, F> FutureResponse<T, F> {
     fn error(status: Status) -> Self {
-        FutureResponse {
-            state: ResponseState::Err(status),
-            _phantom: PhantomData,
-        }
+        FutureResponse::Err(status)
     }
 }
 
@@ -94,9 +83,16 @@ where
     type Error = tower_grpc::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Error> {
-        match self.state {
-            ResponseState::Future(ref mut f) => poll_and_convert_response(f),
-            ResponseState::Err(ref status) => Err(GrpcError(status.clone())),
+        let res = match self {
+            FutureResponse::Pending(f) => poll_and_convert_response(f),
+            FutureResponse::Err(status) => Err(GrpcError(status.clone())),
+            FutureResponse::Complete(_) => panic!("polled a finished response"),
+        };
+        if let Ok(Async::NotReady) = res {
+            Ok(Async::NotReady)
+        } else {
+            *self = FutureResponse::Complete(PhantomData);
+            res
         }
     }
 }
@@ -135,8 +131,16 @@ pub struct GrpcServer<T> {
     node: T,
 }
 
-fn deserialize_block_ids<H: Deserialize>(pb: &cardano_proto::BlockIds) -> Result<Vec<H>, H::Error> {
-    pb.ids.iter().map(|v| H::deserialize(&mut &v[..])).collect()
+fn deserialize_vec<H: Deserialize>(pb: &[Vec<u8>]) -> Result<Vec<H>, tower_grpc::Error> {
+    match pb.iter().map(|v| H::deserialize(&mut &v[..])).collect() {
+        Ok(v) => Ok(v),
+        Err(e) => {
+            // FIXME: log the error
+            // (preferably with tower facilities outside of this implementation)
+            let status = Status::with_code_and_message(Code::InvalidArgument, format!("{}", e));
+            Err(GrpcError(status))
+        }
+    }
 }
 
 fn serialize_to_bytes<T>(obj: T) -> Result<Vec<u8>, tower_grpc::Error>
@@ -169,38 +173,35 @@ impl<F, I, D> ConvertResponse<gen::TipResponse> for F
 where
     F: Future<Item = (I, D), Error = network_core::Error>,
     I: BlockId + Serialize,
-    D: BlockDate + Serialize,
+    D: BlockDate + ToString,
 {
     fn convert_item(item: (I, D)) -> Result<gen::TipResponse, tower_grpc::Error> {
         let id = serialize_to_bytes(item.0)?;
-        let blockdate = serialize_to_bytes(item.1)?;
-        let response = gen::TipResponse {
-            id: Some(cardano_proto::BlockId { id }),
-            blockdate: Some(cardano_proto::BlockDate { content: blockdate }),
-        };
+        let blockdate = item.1.to_string();
+        let response = gen::TipResponse { id, blockdate };
         Ok(response)
     }
 }
 
-impl<S, B> ConvertStream<cardano_proto::Block> for S
+impl<S, B> ConvertStream<gen::Block> for S
 where
     S: Stream<Item = B, Error = network_core::Error>,
     B: Block + Serialize,
 {
-    fn convert_item(item: Self::Item) -> Result<cardano_proto::Block, tower_grpc::Error> {
+    fn convert_item(item: Self::Item) -> Result<gen::Block, tower_grpc::Error> {
         let content = serialize_to_bytes(item)?;
-        Ok(cardano_proto::Block { content })
+        Ok(gen::Block { content })
     }
 }
 
-impl<S, H> ConvertStream<cardano_proto::Header> for S
+impl<S, H> ConvertStream<gen::Header> for S
 where
     S: Stream<Item = H, Error = network_core::Error>,
     H: Header + Serialize,
 {
-    fn convert_item(item: Self::Item) -> Result<cardano_proto::Header, tower_grpc::Error> {
+    fn convert_item(item: Self::Item) -> Result<gen::Header, tower_grpc::Error> {
         let content = serialize_to_bytes(item)?;
-        Ok(cardano_proto::Header { content })
+        Ok(gen::Header { content })
     }
 }
 
@@ -232,20 +233,19 @@ impl<T> gen::server::Node for GrpcServer<T>
 where
     T: network_core::Node + Clone,
     <T as network_core::Node>::BlockId: Serialize + Deserialize,
-    <T as network_core::Node>::BlockDate: Serialize,
+    <T as network_core::Node>::BlockDate: ToString,
     <T as network_core::Node>::Header: Serialize,
 {
     type TipFuture = FutureResponse<gen::TipResponse, <T as network_core::Node>::TipFuture>;
-    type GetBlocksStream =
-        ResponseStream<cardano_proto::Block, <T as network_core::Node>::GetBlocksStream>;
+    type GetBlocksStream = ResponseStream<gen::Block, <T as network_core::Node>::GetBlocksStream>;
     type GetBlocksFuture =
         FutureResponse<Self::GetBlocksStream, <T as network_core::Node>::GetBlocksFuture>;
     type GetHeadersStream =
-        ResponseStream<cardano_proto::Header, <T as network_core::Node>::GetHeadersStream>;
+        ResponseStream<gen::Header, <T as network_core::Node>::GetHeadersStream>;
     type GetHeadersFuture =
         FutureResponse<Self::GetHeadersStream, <T as network_core::Node>::GetHeadersFuture>;
     type StreamBlocksToTipStream =
-        ResponseStream<cardano_proto::Block, <T as network_core::Node>::StreamBlocksToTipStream>;
+        ResponseStream<gen::Block, <T as network_core::Node>::StreamBlocksToTipStream>;
     type StreamBlocksToTipFuture = FutureResponse<
         Self::StreamBlocksToTipStream,
         <T as network_core::Node>::StreamBlocksToTipFuture,
@@ -273,16 +273,14 @@ where
 
     fn stream_blocks_to_tip(
         &mut self,
-        from: Request<cardano_proto::BlockIds>,
+        req: Request<gen::StreamBlocksToTipRequest>,
     ) -> Self::StreamBlocksToTipFuture {
-        let block_ids = match deserialize_block_ids(from.get_ref()) {
+        let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
-            Err(e) => {
-                // FIXME: log the error
-                // (preferably with tower facilities outside of this implementation)
-                let status = Status::with_code_and_message(Code::InvalidArgument, format!("{}", e));
+            Err(GrpcError(status)) => {
                 return FutureResponse::error(status);
             }
+            Err(e) => panic!("unexpected error {:?}", e),
         };
         FutureResponse::new(self.node.stream_blocks_to_tip(&block_ids))
     }

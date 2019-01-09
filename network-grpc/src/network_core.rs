@@ -5,7 +5,7 @@ use futures::prelude::*;
 use std::{collections::HashMap, fmt};
 
 // NOTE: protobuf-derived definitions used in would-be abstract core API
-use super::iohk::jormungandr as gen;
+use super::gen;
 
 /// Represents errors that can be returned by the node implementation.
 #[derive(Debug)]

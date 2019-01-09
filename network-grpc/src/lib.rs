@@ -8,17 +8,10 @@ extern crate tower_h2;
 extern crate tower_util;
 
 // Included generated protobuf/gRPC code,
-// namespaced into submodules corresponding to the .proto package names
-
-mod cardano {
-    include!(concat!(env!("OUT_DIR"), "/cardano.rs"));
-}
 
 #[allow(dead_code)]
-mod iohk {
-    pub mod jormungandr {
-        include!(concat!(env!("OUT_DIR"), "/iohk.jormungandr.rs"));
-    }
+mod gen {
+    include!(concat!(env!("OUT_DIR"), "/iohk.chain.node.rs"));
 }
 
 pub mod server;

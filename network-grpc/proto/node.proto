@@ -1,25 +1,40 @@
 syntax = "proto3";
 
-package iohk.jormungandr;
-
-import "types.proto";
+package iohk.chain.node;
 
 message TipRequest {}
 
 message TipResponse {
-    cardano.BlockId id = 1;
-    cardano.BlockDate blockdate = 2;
+    bytes id = 1;
+    string blockdate = 2;
 }
 
 // Parameters for GetBlocks and GetHeaders
 message GetBlocksRequest {
-    // The hash of the tip to trace the chain from.
-    cardano.BlockId tip = 1;
+    // The id of the tip to trace the chain from.
+    bytes tip = 1;
     // The offset back in the chain to start block or header retrieval from,
     // going backwards in the chain.
     uint64 offset = 2;
     // Maximum number of blocks or headers to retrieve.
     uint64 size = 3;
+}
+
+message StreamBlocksToTipRequest {
+    // The ids of alternative chain forks to start the blocks from.
+    repeated bytes from = 1;
+}
+
+// Representation of a block.
+message Block {
+    // The entire content of the block. 
+    bytes content = 1;
+}
+
+// Representation of a block header.
+message Header {
+    // The entire content of the block header. 
+    bytes content = 1;
 }
 
 message ProposeTransactionsRequest {
@@ -44,7 +59,7 @@ message ProposeTransactionsResponse {
 }
 
 message RecordTransactionRequest {
-    cardano.Transaction tx = 1;
+    bytes tx = 1;
 }
 
 message RecordTransactionResponse {
@@ -68,13 +83,13 @@ message RecordTransactionResponse {
 
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
-    rpc GetBlocks (GetBlocksRequest) returns (stream cardano.Block) {
+    rpc GetBlocks (GetBlocksRequest) returns (stream Block) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
-    rpc GetHeaders (GetBlocksRequest) returns (stream cardano.Header) {
+    rpc GetHeaders (GetBlocksRequest) returns (stream Header) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
-    rpc StreamBlocksToTip (cardano.BlockIds) returns (stream cardano.Block);
+    rpc StreamBlocksToTip (StreamBlocksToTipRequest) returns (stream Block);
     rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);
     rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
 }
