@@ -47,8 +47,9 @@ pub trait BlockDate: Eq + Ord {}
 pub trait TransactionId: Eq + Hash {}
 
 /// Trait identifying the block header type.
-/// TODO: provide header in the data model.
 pub trait Header {}
+
+impl Header for () {}
 
 /// Block property
 ///
@@ -74,6 +75,13 @@ pub trait Block: Serializable {
     /// identifying the position of a block in a given epoch or era.
     type Date: BlockDate;
 
+    /// The block header. If provided by the blockchain, the header
+    /// can be used to transmit block's metadata via a network protocol
+    /// or in other uses where the full content of the block is not desirable.
+    /// An implementation that does not feature headers can use the unit
+    /// type `()`.
+    type Header: Header;
+
     /// return the Block's identifier.
     fn id(&self) -> Self::Id;
 
@@ -83,6 +91,9 @@ pub trait Block: Serializable {
 
     /// get the block date of the block
     fn date(&self) -> Self::Date;
+
+    /// Gets the block's header.
+    fn header(&self) -> Self::Header;
 }
 
 /// define a transaction within the blockchain. This transaction can be used

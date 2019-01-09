@@ -1,6 +1,6 @@
 //! Representation of the block in the mockchain.
-use crate::key::Hash;
-use crate::transaction::SignedTransaction;
+use crate::key::*;
+use crate::transaction::*;
 use chain_core::property;
 
 /// Non unique identifier of the transaction position in the
@@ -25,6 +25,7 @@ pub struct Block {
 impl property::Block for Block {
     type Id = Hash;
     type Date = SlotId;
+    type Header = ();
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
@@ -41,6 +42,10 @@ impl property::Block for Block {
     /// Date of the block.
     fn date(&self) -> Self::Date {
         self.slot_id
+    }
+
+    fn header(&self) -> Self::Header {
+        ()
     }
 }
 
