@@ -64,7 +64,7 @@ pub trait Block: Serializable {
 
     /// get the parent block identifier (the previous block in the
     /// blockchain).
-    fn parent_id(&self) -> &Self::Id;
+    fn parent_id(&self) -> Self::Id;
 
     /// get the block date of the block
     fn date(&self) -> Self::Date;
