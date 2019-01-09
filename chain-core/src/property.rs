@@ -222,6 +222,13 @@ pub trait Serializable: Sized {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error>;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error>;
+
+    /// Convenience method to serialize into a byte vector.
+    fn serialize_as_vec(&self) -> Result<Vec<u8>, Self::Error> {
+        let mut data = vec![];
+        self.serialize(&mut data)?;
+        Ok(data)
+    }
 }
 
 /// A trait representing the state of a chain at a particular point in
@@ -265,11 +272,8 @@ pub trait ChainState: std::marker::Sized + Clone + Eq {
 
 /// A trait representing a delta between ChainState objects. See
 /// 'ChainState::diff()'.
-pub trait ChainStateDelta {
+pub trait ChainStateDelta: Serializable {
     //fn merge(a: &Self, b: &Self) -> Self;
-
-    fn serialize(&self) -> Vec<u8>;
-    fn deserialize(bytes: &[u8]) -> Self;
 }
 
 #[cfg(feature = "property-test-api")]

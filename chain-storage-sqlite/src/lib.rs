@@ -115,9 +115,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B> where B: Block {
         let mut stmt_insert_block = self.stmt_insert_block.borrow_mut();
         stmt_insert_block.reset().unwrap();
         stmt_insert_block.bind(1, &block_info.block_hash.as_ref()[..]).unwrap();
-        let mut data = vec![];
-        block.serialize(&mut data).unwrap();
-        stmt_insert_block.bind(2, &data[..]).unwrap();
+        stmt_insert_block.bind(2, &block.serialize_as_vec().unwrap()[..]).unwrap();
         stmt_insert_block.next().unwrap();
 
         let mut stmt_insert_block_info = self.stmt_insert_block_info.borrow_mut();

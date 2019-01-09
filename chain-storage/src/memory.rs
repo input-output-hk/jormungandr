@@ -37,9 +37,9 @@ impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
 
     fn put_block_internal(&mut self, block: C::Block, block_info: BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>) -> Result<(), Error>
     {
-        let mut data = vec![];
-        block.serialize(&mut data).unwrap();
-        self.blocks.insert(block_info.block_hash.clone(), (data, block_info));
+        self.blocks.insert(
+            block_info.block_hash.clone(),
+            (block.serialize_as_vec().unwrap(), block_info));
         Ok(())
     }
 
@@ -106,7 +106,7 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
                     let mut chain_state = self.genesis_chain_state.clone();
                     for base in bases.iter().rev() {
                         chain_state.apply_delta(C::Delta::deserialize(
-                            &self.chain_state_deltas.get(base).unwrap().1))?;
+                            &self.chain_state_deltas.get(base).unwrap().1[..]).unwrap())?;
                     }
                     assert_eq!(chain_state.get_last_block_id(), cur_hash);
                     break chain_state;
@@ -151,7 +151,7 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
 
         self.chain_state_deltas.insert(
             chain_state.get_last_block_id(),
-            (base.get_last_block_id(), delta.serialize()));
+            (base.get_last_block_id(), delta.serialize_as_vec().unwrap()));
 
         debug_assert!(chain_state == &self.get_chain_state_at(&chain_state.get_last_block_id()).unwrap());
 
