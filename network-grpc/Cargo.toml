@@ -23,8 +23,8 @@ tower-util = { git = "https://github.com/tower-rs/tower" }
 
 [dependencies.tower-grpc]
 git = "https://github.com/tower-rs/tower-grpc"
-rev = "7ffa9d3b610d1c84559a811d08a25bd1670babed"
+rev = "6f355226654ac5ad90209db3e308223c662248cb"
 
 [build-dependencies.tower-grpc-build]
 git = "https://github.com/tower-rs/tower-grpc"
-rev = "7ffa9d3b610d1c84559a811d08a25bd1670babed"
+rev = "6f355226654ac5ad90209db3e308223c662248cb"
