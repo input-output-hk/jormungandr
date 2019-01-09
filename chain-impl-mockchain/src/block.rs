@@ -32,8 +32,8 @@ impl property::Block for Block {
     }
 
     /// Id of the parent block.
-    fn parent_id(&self) -> &Self::Id {
-        &self.parent_hash
+    fn parent_id(&self) -> Self::Id {
+        self.parent_hash
     }
 
     /// Date of the block.
