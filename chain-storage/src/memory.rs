@@ -2,7 +2,6 @@ use chain_core::property::{Block, ChainState, Serializable};
 use super::store::{BlockInfo, BlockStore, ChainStateStore};
 use super::error::Error;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct MemoryBlockStore<C> where C: ChainState {
     genesis_hash: <C::Block as Block>::Id,
@@ -22,14 +21,6 @@ impl<C> MemoryBlockStore<C> where C: ChainState {
             chain_state_deltas: HashMap::new(),
             tags: HashMap::new(),
         }
-    }
-}
-
-static COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-impl<C> Drop for MemoryBlockStore<C> where C: ChainState {
-    fn drop(&mut self) {
-        println!("number of block info reads = {}", COUNTER.load(Ordering::SeqCst));
     }
 }
 
@@ -53,8 +44,6 @@ impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
 
     fn get_block_info(&self, block_hash: &<C::Block as Block>::Id) -> Result<BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>, Error>
     {
-        COUNTER.fetch_add(1, Ordering::Relaxed);
-
         match self.blocks.get(block_hash) {
             None => Err(Error::BlockNotFound),
             Some((_, block_info)) => Ok(block_info.clone())
