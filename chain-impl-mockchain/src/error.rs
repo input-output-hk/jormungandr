@@ -1,7 +1,7 @@
 //! Errors taht may happen in the ledger and mockchain.
 use crate::transaction::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Error {
     /// If the Ledger could not find the given input in the UTxO list it will
     /// report this error.
@@ -36,6 +36,11 @@ pub enum Error {
     /// Transaction sum is not equal to zero, this means that we
     /// either generate or lose some money during the transaction.
     TransactionSumIsNonZero(u64, u64),
+
+    /// Transaction does not have enough signatures.
+    /// First value represents number of inputs (required signatures)
+    /// Send value represents actual number of singatures.
+    NotEnoughSignatures(usize, usize),
 }
 
 impl std::fmt::Display for Error {
@@ -49,6 +54,11 @@ impl std::fmt::Display for Error {
             Error::InvalidSignature(_, _, _) => write!(f, "Input is not signed properly"),
             Error::InvalidTxSignature(_) => write!(f, "Transaction was not signed"),
             Error::TransactionSumIsNonZero(_, _) => write!(f, "Transaction sum is non zero"),
+            Error::NotEnoughSignatures(required, actual) => write!(
+                f,
+                "Transaction has not enough signatures: {} out of {}",
+                actual, required
+            ),
         }
     }
 }

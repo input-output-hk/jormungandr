@@ -66,7 +66,7 @@ pub struct Output(pub Address, pub Value);
 
 /// Id of the transaction.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
-pub struct TransactionId(Hash);
+pub struct TransactionId(pub Hash);
 impl AsRef<[u8]> for TransactionId {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
