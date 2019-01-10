@@ -49,17 +49,23 @@ impl property::Block for Block {
     }
 }
 
-impl chain_core::property::Serializable for Block {
+impl property::Serialize for Block {
+    // FIXME: decide on appropriate format for mock blockchain
+
+    type Error = bincode::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        bincode::serialize_into(writer, self)
+    }
+}
+
+impl property::Deserialize for Block {
     // FIXME: decide on appropriate format for mock blockchain
 
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::Read>(reader: R) -> Result<Block, bincode::Error> {
         bincode::deserialize_from(reader)
-    }
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        bincode::serialize_into(writer, self)
     }
 }
 

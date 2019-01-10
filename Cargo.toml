@@ -3,6 +3,7 @@ members = [
     "chain-core",
     "chain-impl-mockchain",
     "cardano",
+    "network-grpc",
     "protocol",
     "protocol-tokio",
     "storage-units",
