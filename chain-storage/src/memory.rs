@@ -1,17 +1,29 @@
-use chain_core::property::{Block, ChainState, Serializable};
-use super::store::{BlockInfo, BlockStore, ChainStateStore};
 use super::error::Error;
+use super::store::{BlockInfo, BlockStore, ChainStateStore};
+use chain_core::property::{Block, ChainState, Serializable};
 use std::collections::HashMap;
 
-pub struct MemoryBlockStore<C> where C: ChainState {
+pub struct MemoryBlockStore<C>
+where
+    C: ChainState,
+{
     genesis_hash: <C::Block as Block>::Id,
     genesis_chain_state: C,
-    blocks: HashMap<<C::Block as Block>::Id, (Vec<u8>, BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>)>,
+    blocks: HashMap<
+        <C::Block as Block>::Id,
+        (
+            Vec<u8>,
+            BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>,
+        ),
+    >,
     chain_state_deltas: HashMap<<C::Block as Block>::Id, (<C::Block as Block>::Id, Vec<u8>)>,
     tags: HashMap<String, <C::Block as Block>::Id>,
 }
 
-impl<C> MemoryBlockStore<C> where C: ChainState {
+impl<C> MemoryBlockStore<C>
+where
+    C: ChainState,
+{
     pub fn new(genesis_data: &C::GenesisData) -> Self {
         let genesis_chain_state = C::new(genesis_data).unwrap();
         MemoryBlockStore {
@@ -24,41 +36,62 @@ impl<C> MemoryBlockStore<C> where C: ChainState {
     }
 }
 
-impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
-
-    fn put_block_internal(&mut self, block: C::Block, block_info: BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>) -> Result<(), Error>
-    {
+impl<C> BlockStore<C::Block> for MemoryBlockStore<C>
+where
+    C: ChainState,
+{
+    fn put_block_internal(
+        &mut self,
+        block: C::Block,
+        block_info: BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>,
+    ) -> Result<(), Error> {
         self.blocks.insert(
             block_info.block_hash.clone(),
-            (block.serialize_as_vec().unwrap(), block_info));
+            (block.serialize_as_vec().unwrap(), block_info),
+        );
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &<C::Block as Block>::Id) -> Result<(C::Block, BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>), Error>
-    {
+    fn get_block(
+        &self,
+        block_hash: &<C::Block as Block>::Id,
+    ) -> Result<
+        (
+            C::Block,
+            BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>,
+        ),
+        Error,
+    > {
         match self.blocks.get(block_hash) {
             None => Err(Error::BlockNotFound),
-            Some((block, block_info)) => Ok((C::Block::deserialize(&block[..]).unwrap(), block_info.clone()))
+            Some((block, block_info)) => Ok((
+                C::Block::deserialize(&block[..]).unwrap(),
+                block_info.clone(),
+            )),
         }
     }
 
-    fn get_block_info(&self, block_hash: &<C::Block as Block>::Id) -> Result<BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>, Error>
-    {
+    fn get_block_info(
+        &self,
+        block_hash: &<C::Block as Block>::Id,
+    ) -> Result<BlockInfo<<C::Block as Block>::Id, <C::Block as Block>::Date>, Error> {
         match self.blocks.get(block_hash) {
             None => Err(Error::BlockNotFound),
-            Some((_, block_info)) => Ok(block_info.clone())
+            Some((_, block_info)) => Ok(block_info.clone()),
         }
     }
 
-    fn put_tag(&mut self, tag_name: &str, block_hash: &<C::Block as Block>::Id) -> Result<(), Error>
-    {
+    fn put_tag(
+        &mut self,
+        tag_name: &str,
+        block_hash: &<C::Block as Block>::Id,
+    ) -> Result<(), Error> {
         assert!(self.blocks.get(block_hash).is_some()); // FIXME: return error
         self.tags.insert(tag_name.to_string(), block_hash.clone());
         Ok(())
     }
 
-    fn get_tag(&self, tag_name: &str) -> Result<Option<<C::Block as Block>::Id>, Error>
-    {
+    fn get_tag(&self, tag_name: &str) -> Result<Option<<C::Block as Block>::Id>, Error> {
         if let Some(hash) = self.tags.get(tag_name) {
             Ok(Some(hash.clone()))
         } else {
@@ -71,10 +104,11 @@ impl<C> BlockStore<C::Block> for MemoryBlockStore<C> where C: ChainState {
     }
 }
 
-impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
-
+impl<C> ChainStateStore<C> for MemoryBlockStore<C>
+where
+    C: ChainState,
+{
     fn get_chain_state_at(&self, block_hash: &<C::Block as Block>::Id) -> Result<C, C::Error> {
-
         // Iterate backwards to the first block for which we know the chain state.
         let mut blocks_to_apply = vec![];
         let mut cur_hash = block_hash.clone();
@@ -89,13 +123,17 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
                     while cur_base != self.genesis_hash {
                         bases.push(cur_base.clone());
                         cur_base = self.chain_state_deltas.get(&cur_base).unwrap().0.clone();
-                    };
+                    }
 
                     // Apply them to the genesis state.
                     let mut chain_state = self.genesis_chain_state.clone();
                     for base in bases.iter().rev() {
-                        chain_state.apply_delta(C::Delta::deserialize(
-                            &self.chain_state_deltas.get(base).unwrap().1[..]).unwrap())?;
+                        chain_state.apply_delta(
+                            C::Delta::deserialize(
+                                &self.chain_state_deltas.get(base).unwrap().1[..],
+                            )
+                            .unwrap(),
+                        )?;
                     }
                     assert_eq!(chain_state.get_last_block_id(), cur_hash);
                     break chain_state;
@@ -120,19 +158,22 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
     }
 
     fn put_chain_state(&mut self, chain_state: &C) -> Result<(), C::Error> {
-
         let interval = 5000;
 
         let depth = chain_state.get_chain_length();
 
-        if depth % interval != 0 { return Ok(()); }
+        if depth % interval != 0 {
+            return Ok(());
+        }
 
         let base_depth = clear_lsb(depth / interval) * interval;
 
         let base = if base_depth == 0 {
             self.genesis_chain_state.clone()
         } else {
-            let base_block = self.get_nth_ancestor(&chain_state.get_last_block_id(), depth - base_depth).unwrap();
+            let base_block = self
+                .get_nth_ancestor(&chain_state.get_last_block_id(), depth - base_depth)
+                .unwrap();
             self.get_chain_state_at(&base_block.block_hash)?
         };
 
@@ -140,13 +181,18 @@ impl<C> ChainStateStore<C> for MemoryBlockStore<C> where C: ChainState {
 
         self.chain_state_deltas.insert(
             chain_state.get_last_block_id(),
-            (base.get_last_block_id(), delta.serialize_as_vec().unwrap()));
+            (base.get_last_block_id(), delta.serialize_as_vec().unwrap()),
+        );
 
-        debug_assert!(chain_state == &self.get_chain_state_at(&chain_state.get_last_block_id()).unwrap());
+        debug_assert!(
+            chain_state
+                == &self
+                    .get_chain_state_at(&chain_state.get_last_block_id())
+                    .unwrap()
+        );
 
         Ok(())
     }
-
 }
 
 // Clear the least-significant bit in `x`.

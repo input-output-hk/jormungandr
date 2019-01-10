@@ -74,7 +74,6 @@ pub trait Block: Serializable {
 }
 
 pub trait BlockId: Eq + Ord + Clone + Debug + Hash + AsRef<[u8]> {
-
     // FIXME: constant representing id length?
 
     /// Construct a BlockId from a slice. FIXME: use TryFromSlice trait.

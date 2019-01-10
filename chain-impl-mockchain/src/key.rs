@@ -59,7 +59,7 @@ impl property::BlockId for Hash {
     fn try_from_slice(slice: &[u8]) -> Option<Self> {
         match hash::Blake2b256::try_from_slice(slice) {
             Ok(x) => Some(Hash(x)),
-            Err(_) => None
+            Err(_) => None,
         }
     }
 }

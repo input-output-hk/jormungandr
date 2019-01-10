@@ -1,5 +1,5 @@
-use chain_core::property::{Block, BlockId, BlockDate, ChainState};
 use super::error::Error;
+use chain_core::property::{Block, BlockDate, BlockId, ChainState};
 
 #[derive(Clone, Debug)]
 pub struct BlockInfo<Id: BlockId, Date: BlockDate> {
@@ -21,7 +21,12 @@ pub struct BlockInfo<Id: BlockId, Date: BlockDate> {
 
 impl<Id: BlockId, Date: BlockDate> BlockInfo<Id, Date> {
     pub fn parent_id(&self) -> Id {
-        self.back_links.iter().find(|x| x.distance == 1).unwrap().block_hash.clone()
+        self.back_links
+            .iter()
+            .find(|x| x.distance == 1)
+            .unwrap()
+            .block_hash
+            .clone()
     }
 }
 
@@ -33,8 +38,10 @@ pub struct BackLink<Id: BlockId> {
     pub block_hash: Id,
 }
 
-pub trait BlockStore<B>: std::marker::Sized where B: Block {
-
+pub trait BlockStore<B>: std::marker::Sized
+where
+    B: Block,
+{
     fn get_genesis_hash(&self) -> B::Id;
 
     /// Write a block to the store. The parent of the block must exist
@@ -48,7 +55,9 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
         let block_hash = block.id();
         let block_date = block.date();
 
-        if self.block_exists(&block_hash)? { return Ok(()); }
+        if self.block_exists(&block_hash)? {
+            return Ok(());
+        }
 
         let parent_hash = block.parent_id();
 
@@ -58,37 +67,43 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
             block_hash: parent_hash.clone(),
         }];
 
-        let depth =
-            if parent_hash == self.get_genesis_hash() {
-                1
-            } else {
-                let parent_info = self.get_block_info(&parent_hash)?;
-                assert!(parent_info.depth > 0);
-                let depth = 1 + parent_info.depth;
-                let fast_link = compute_fast_link(depth);
-                //println!("from {} -> {}", depth, fast_link);
-                let distance = depth - fast_link;
-                if distance != 1 && fast_link > 0 {
-                    let far_block_info = self.get_nth_ancestor(&parent_hash, depth - 1 - fast_link)?;
-                    back_links.push(BackLink {
-                        distance,
-                        block_hash: far_block_info.block_hash
-                    })
-                }
+        let depth = if parent_hash == self.get_genesis_hash() {
+            1
+        } else {
+            let parent_info = self.get_block_info(&parent_hash)?;
+            assert!(parent_info.depth > 0);
+            let depth = 1 + parent_info.depth;
+            let fast_link = compute_fast_link(depth);
+            //println!("from {} -> {}", depth, fast_link);
+            let distance = depth - fast_link;
+            if distance != 1 && fast_link > 0 {
+                let far_block_info = self.get_nth_ancestor(&parent_hash, depth - 1 - fast_link)?;
+                back_links.push(BackLink {
+                    distance,
+                    block_hash: far_block_info.block_hash,
+                })
+            }
 
-                depth
-            };
+            depth
+        };
 
-        self.put_block_internal(block, BlockInfo {
-            block_hash: block_hash.clone(),
-            block_date,
-            depth,
-            back_links
-        })
+        self.put_block_internal(
+            block,
+            BlockInfo {
+                block_hash: block_hash.clone(),
+                block_date,
+                depth,
+                back_links,
+            },
+        )
     }
 
     /// Write a block and associated info to the store.
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id, B::Date>) -> Result<(), Error>;
+    fn put_block_internal(
+        &mut self,
+        block: B,
+        block_info: BlockInfo<B::Id, B::Date>,
+    ) -> Result<(), Error>;
 
     /// Fetch a block.
     fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id, B::Date>), Error>;
@@ -112,8 +127,11 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     fn get_tag(&self, tag_name: &str) -> Result<Option<B::Id>, Error>;
 
     /// Get the n'th ancestor of the specified block.
-    fn get_nth_ancestor(&self, block_hash: &B::Id, distance: u64) -> Result<BlockInfo<B::Id, B::Date>, Error>
-    {
+    fn get_nth_ancestor(
+        &self,
+        block_hash: &B::Id,
+        distance: u64,
+    ) -> Result<BlockInfo<B::Id, B::Date>, Error> {
         self.get_path_to_nth_ancestor(block_hash, distance, |_| {})
     }
 
@@ -121,13 +139,19 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     /// each intermediate block encountered while travelling from
     /// 'block_hash' to its n'th ancestor.
     fn get_path_to_nth_ancestor<F: FnMut(&BlockInfo<B::Id, B::Date>)>(
-        &self, block_hash: &B::Id, distance: u64, mut callback: F) -> Result<BlockInfo<B::Id, B::Date>, Error>
-    {
+        &self,
+        block_hash: &B::Id,
+        distance: u64,
+        mut callback: F,
+    ) -> Result<BlockInfo<B::Id, B::Date>, Error> {
         let mut cur_block_info = self.get_block_info(block_hash)?;
 
         if distance >= cur_block_info.depth {
             // FIXME: return error
-            panic!("distance {} > chain length {}", distance, cur_block_info.depth);
+            panic!(
+                "distance {} > chain length {}",
+                distance, cur_block_info.depth
+            );
         }
 
         let target = cur_block_info.depth - distance;
@@ -138,8 +162,9 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
             // We're not there yet. Use the back link that takes us
             // furthest back in the chain, without going beyond the
             // block we're looking for.
-            let best_link =
-                cur_block_info.back_links.iter()
+            let best_link = cur_block_info
+                .back_links
+                .iter()
                 .filter(|x| cur_block_info.depth - target >= x.distance)
                 .max_by_key(|x| x.distance)
                 .unwrap()
@@ -156,9 +181,10 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
     /// Determine whether block 'ancestor' is an ancestor block
     /// 'descendent'. If so, return the chain distance between them.
     fn is_ancestor(&self, ancestor: &B::Id, descendent: &B::Id) -> Result<Option<u64>, Error> {
-
         // Optimization.
-        if ancestor == descendent { return Ok(Some(0)); }
+        if ancestor == descendent {
+            return Ok(Some(0));
+        }
 
         let descendent = self.get_block_info(&descendent)?;
 
@@ -171,12 +197,13 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
         // Bail out right away if the "descendent" does not have a
         // later date or higher depth.
         if descendent.depth <= ancestor.depth || descendent.block_date <= ancestor.block_date {
-            return Ok(None)
+            return Ok(None);
         }
 
         // Seek back from the descendent to check whether it has the
         // ancestor at the expected place.
-        let info = self.get_nth_ancestor(&descendent.block_hash, descendent.depth - ancestor.depth)?;
+        let info =
+            self.get_nth_ancestor(&descendent.block_hash, descendent.depth - ancestor.depth)?;
 
         if info.block_hash == ancestor.block_hash {
             Ok(Some(descendent.depth - ancestor.depth))
@@ -198,21 +225,29 @@ pub trait BlockStore<B>: std::marker::Sized where B: Block {
                     store: &self,
                     to_depth: to_info.depth,
                     cur_depth: to_info.depth - distance,
-                    pending_infos: vec![to_info]
+                    pending_infos: vec![to_info],
                 })
             }
         }
     }
 }
 
-pub struct BlockIterator<'store, B, S> where B: Block, S: BlockStore<B> + 'store {
+pub struct BlockIterator<'store, B, S>
+where
+    B: Block,
+    S: BlockStore<B> + 'store,
+{
     store: &'store S,
     to_depth: u64,
     cur_depth: u64,
     pending_infos: Vec<BlockInfo<B::Id, B::Date>>,
 }
 
-impl<'store, B, S> Iterator for BlockIterator<'store, B, S> where B: Block, S: BlockStore<B> + 'store {
+impl<'store, B, S> Iterator for BlockIterator<'store, B, S>
+where
+    B: Block,
+    S: BlockStore<B> + 'store,
+{
     type Item = Result<BlockInfo<B::Id, B::Date>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -234,9 +269,12 @@ impl<'store, B, S> Iterator for BlockIterator<'store, B, S> where B: Block, S: B
                 let parent = block_info.parent_id();
                 self.pending_infos.push(block_info);
                 Some(self.store.get_path_to_nth_ancestor(
-                    &parent, depth - self.cur_depth - 1, |new_info| {
+                    &parent,
+                    depth - self.cur_depth - 1,
+                    |new_info| {
                         self.pending_infos.push(new_info.clone());
-                    }))
+                    },
+                ))
             }
         }
     }
@@ -248,11 +286,17 @@ impl<'store, B, S> Iterator for BlockIterator<'store, B, S> where B: Block, S: B
 fn compute_fast_link(depth: u64) -> u64 {
     let order = depth % 32;
     let distance = if order == 0 { 1 } else { (1 << order) - 1 };
-    if distance < depth { depth - distance } else { 0 }
+    if distance < depth {
+        depth - distance
+    } else {
+        0
+    }
 }
 
-pub trait ChainStateStore<C> where C: ChainState {
-
+pub trait ChainStateStore<C>
+where
+    C: ChainState,
+{
     /// Retrieve the state of the chain up to and including the
     /// specified block.
     fn get_chain_state_at(&self, block_hash: &<C::Block as Block>::Id) -> Result<C, C::Error>;
