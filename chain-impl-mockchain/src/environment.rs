@@ -26,7 +26,7 @@ pub struct Environment {
 impl Environment {
     /// Create new environment.
     pub fn new() -> Self {
-        let g = StdGen::new(thread_rng(), 10);
+        let g = StdGen::new(rand::thread_rng(), 10);
         Environment {
             ledger: Ledger::new(HashMap::new()),
             gen: g,
