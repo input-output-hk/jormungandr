@@ -22,7 +22,7 @@ impl Ledger {
 }
 
 /// Diff of the ledger state.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Diff {
     /// List of the outputs that were spent in the transaction.
     spent_outputs: HashMap<UtxoPointer, Output>,
@@ -64,6 +64,14 @@ impl property::Ledger<SignedTransaction> for Ledger {
 
         let mut diff = Diff::new();
         let id = transaction.id();
+        // 0. verify that number of signatures matches number of
+        // transactions
+        if transaction.tx.inputs.len() > transaction.witnesses.len() {
+            return Err(Error::NotEnoughSignatures(
+                transaction.tx.inputs.len(),
+                transaction.witnesses.len(),
+            ));
+        }
         // 1. validate transaction without looking into the context
         // and that each input is validated by the matching key.
         for (input, witness) in transaction
@@ -140,6 +148,9 @@ impl property::Ledger<SignedTransaction> for Ledger {
 mod test {
 
     use super::*;
+    use crate::address::Address;
+    use crate::key::{Hash, PrivateKey};
+    use cardano::hdwallet as crypto;
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Ledger {
@@ -148,6 +159,70 @@ mod test {
                 unspent_outputs: Arbitrary::arbitrary(g),
             }
         }
+    }
+
+    #[test]
+    pub fn tx_no_witness() -> () {
+        use chain_core::property::Ledger;
+        let pk1 = PrivateKey::normalize_bytes([0; crypto::XPRV_SIZE]);
+        let user1_address = Address::new(&pk1.public());
+        let tx0_id = TransactionId(Hash::hash_bytes(&[0]));
+        let utxo0 = UtxoPointer {
+            transaction_id: tx0_id,
+            output_index: 0,
+        };
+        let ledger = crate::ledger::Ledger::new(
+            vec![(utxo0, Output(user1_address, Value(1)))]
+                .iter()
+                .cloned()
+                .collect(),
+        );
+        let tx = Transaction {
+            inputs: vec![utxo0],
+            outputs: vec![Output(user1_address, Value(1))],
+        };
+        let signed_tx = SignedTransaction {
+            tx: tx,
+            witnesses: vec![],
+        };
+        assert_eq!(
+            Err(Error::NotEnoughSignatures(1, 0)),
+            ledger.diff_transaction(&signed_tx)
+        )
+    }
+
+    #[test]
+    pub fn tx_wrong_witness() -> () {
+        use chain_core::property::Ledger;
+        use chain_core::property::Transaction;
+        let pk1 = PrivateKey::normalize_bytes([0; crypto::XPRV_SIZE]);
+        let user1_address = Address::new(&pk1.public());
+        let tx0_id = TransactionId(Hash::hash_bytes(&[0]));
+        let utxo0 = UtxoPointer {
+            transaction_id: tx0_id,
+            output_index: 0,
+        };
+        let ledger = crate::ledger::Ledger::new(
+            vec![(utxo0, Output(user1_address, Value(1)))]
+                .iter()
+                .cloned()
+                .collect(),
+        );
+        let output0 = Output(user1_address, Value(1));
+        let tx = crate::transaction::Transaction {
+            inputs: vec![utxo0],
+            outputs: vec![output0],
+        };
+        let pk2 = PrivateKey::normalize_bytes([1; crypto::XPRV_SIZE]);
+        let witness = Witness::new(tx.id(), &pk2);
+        let signed_tx = SignedTransaction {
+            tx: tx,
+            witnesses: vec![witness.clone()],
+        };
+        assert_eq!(
+            Err(Error::InvalidSignature(utxo0, output0, witness)),
+            ledger.diff_transaction(&signed_tx)
+        )
     }
 
 }

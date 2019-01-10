@@ -38,6 +38,9 @@ impl PrivateKey {
     pub fn sign(&self, data: &[u8]) -> Signature {
         Signature(self.0.sign(data))
     }
+    pub fn normalize_bytes(xprv: [u8; crypto::XPRV_SIZE]) -> Self {
+        PrivateKey(crypto::XPrv::normalize_bytes(xprv))
+    }
 }
 
 /// Hash that is used as an address of the various components.
