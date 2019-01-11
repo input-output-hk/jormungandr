@@ -74,7 +74,7 @@ impl property::Deserialize for Hash {
     }
 }
 
-impl property::BlockId for Hash { }
+impl property::BlockId for Hash {}
 
 /// Cryptographic signature.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

@@ -183,7 +183,9 @@ where
         let mut stmt_get_block = self.stmt_get_block.borrow_mut();
         stmt_get_block.reset().unwrap();
 
-        stmt_get_block.bind(1, &block_hash.serialize_as_vec().unwrap()[..]).unwrap();
+        stmt_get_block
+            .bind(1, &block_hash.serialize_as_vec().unwrap()[..])
+            .unwrap();
 
         match stmt_get_block.next().unwrap() {
             sqlite::State::Done => Err(Error::BlockNotFound),
@@ -234,7 +236,9 @@ where
         let mut stmt_put_tag = self.stmt_put_tag.borrow_mut();
         stmt_put_tag.reset().unwrap();
         stmt_put_tag.bind(1, tag_name).unwrap();
-        stmt_put_tag.bind(2, &block_hash.serialize_as_vec().unwrap()[..]).unwrap();
+        stmt_put_tag
+            .bind(2, &block_hash.serialize_as_vec().unwrap()[..])
+            .unwrap();
         stmt_put_tag.next().unwrap();
         Ok(())
     }
