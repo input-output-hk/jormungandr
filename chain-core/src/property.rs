@@ -247,7 +247,7 @@ impl<T: Serialize> Serialize for &T {
 #[cfg(feature = "property-test-api")]
 pub mod testing {
     use super::*;
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, TestResult};
 
     /// test that any arbitrary given object can serialize and deserialize
     /// back into itself (i.e. it is a bijection,  or a one to one match
@@ -269,12 +269,15 @@ pub mod testing {
     /// and signatures will compose into a valid transaction, but if such
     /// event would happen it can be treated as error due to lack of the
     /// randomness.
-    pub fn prop_bad_transaction_fails<L, T>(ledger: L, transaction: T) -> bool
+    pub fn prop_bad_transaction_fails<L, T>(ledger: L, transaction: T) -> TestResult
     where
         L: Ledger<T> + Arbitrary,
         T: Transaction + Arbitrary,
     {
-        ledger.diff_transaction(&transaction).is_err()
+        if transaction.inputs().len() == 0 && transaction.outputs().len() == 0 {
+            return TestResult::discard();
+        }
+        TestResult::from_bool(ledger.diff_transaction(&transaction).is_err())
     }
 
     /// Pair with a ledger and transaction that is valid in such state.
@@ -319,6 +322,22 @@ pub mod testing {
             let update = ledger.diff_transaction(&tx).unwrap();
             ledger.apply(update).unwrap();
         }
+    }
+
+    /// Checks that transaction id uniquely identifies the transaction,
+    /// i.e.
+    ///
+    /// ```text
+    /// forall tx1, tx2:Transaction: tx1.id() == tx2.id() <=> tx1 == tx2
+    /// ```
+    pub fn transaction_id_is_unique<T>(tx1: T, tx2: T) -> bool
+    where
+        T: Transaction + Arbitrary + PartialEq,
+        T::Id: PartialEq,
+    {
+        let id1 = tx1.id();
+        let id2 = tx2.id();
+        (id1 == id2 && tx1 == tx2) || (id1 != id2 && tx1 != tx2)
     }
 
 }

@@ -161,11 +161,16 @@ mod test {
         }
     }
 
+    fn make_key(u: u8) -> (PrivateKey, Address) {
+        let pk1 = PrivateKey::normalize_bytes([u; crypto::XPRV_SIZE]);
+        let user_address = Address::new(&pk1.public());
+        (pk1, user_address)
+    }
+
     #[test]
     pub fn tx_no_witness() -> () {
         use chain_core::property::Ledger;
-        let pk1 = PrivateKey::normalize_bytes([0; crypto::XPRV_SIZE]);
-        let user1_address = Address::new(&pk1.public());
+        let (_pk1, user1_address) = make_key(0);
         let tx0_id = TransactionId(Hash::hash_bytes(&[0]));
         let utxo0 = UtxoPointer {
             transaction_id: tx0_id,
@@ -195,32 +200,63 @@ mod test {
     pub fn tx_wrong_witness() -> () {
         use chain_core::property::Ledger;
         use chain_core::property::Transaction;
-        let pk1 = PrivateKey::normalize_bytes([0; crypto::XPRV_SIZE]);
-        let user1_address = Address::new(&pk1.public());
+        let (_, user0_address) = make_key(0);
         let tx0_id = TransactionId(Hash::hash_bytes(&[0]));
         let utxo0 = UtxoPointer {
             transaction_id: tx0_id,
             output_index: 0,
         };
         let ledger = crate::ledger::Ledger::new(
-            vec![(utxo0, Output(user1_address, Value(1)))]
+            vec![(utxo0, Output(user0_address, Value(1)))]
                 .iter()
                 .cloned()
                 .collect(),
         );
-        let output0 = Output(user1_address, Value(1));
+        let output0 = Output(user0_address, Value(1));
         let tx = crate::transaction::Transaction {
             inputs: vec![utxo0],
             outputs: vec![output0],
         };
-        let pk2 = PrivateKey::normalize_bytes([1; crypto::XPRV_SIZE]);
-        let witness = Witness::new(tx.id(), &pk2);
+        let (pk1, _) = make_key(1);
+        let witness = Witness::new(tx.id(), &pk1);
         let signed_tx = SignedTransaction {
             tx: tx,
             witnesses: vec![witness.clone()],
         };
         assert_eq!(
             Err(Error::InvalidSignature(utxo0, output0, witness)),
+            ledger.diff_transaction(&signed_tx)
+        )
+    }
+
+    #[test]
+    fn cant_loose_money() {
+        use chain_core::property::Ledger;
+        use chain_core::property::Transaction;
+        let (pk1, user1_address) = make_key(0);
+        let tx0_id = TransactionId(Hash::hash_bytes(&[0]));
+        let utxo0 = UtxoPointer {
+            transaction_id: tx0_id,
+            output_index: 0,
+        };
+        let ledger = crate::ledger::Ledger::new(
+            vec![(utxo0, Output(user1_address, Value(10)))]
+                .iter()
+                .cloned()
+                .collect(),
+        );
+        let output0 = Output(user1_address, Value(9));
+        let tx = crate::transaction::Transaction {
+            inputs: vec![utxo0],
+            outputs: vec![output0],
+        };
+        let witness = Witness::new(tx.id(), &pk1);
+        let signed_tx = SignedTransaction {
+            tx: tx,
+            witnesses: vec![witness],
+        };
+        assert_eq!(
+            Err(Error::TransactionSumIsNonZero(10, 9)),
             ledger.diff_transaction(&signed_tx)
         )
     }
