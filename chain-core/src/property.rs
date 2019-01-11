@@ -129,6 +129,24 @@ pub trait HasTransaction<T: Transaction> {
     fn transactions<'a>(&'a self) -> std::slice::Iter<'a, T>;
 }
 
+/// Updates type needs to implement this feature so we can easily
+/// compose the Updates objects.
+///
+pub trait Update {
+    /// allowing to build unions of updates will allow us to compress
+    /// atomic modifications.
+    ///
+    /// For example, in the cardano model we can consider compressing
+    /// the Update diff of all the EPOCHs below `EPOCH - 2`
+    ///
+    fn union(self, other: Self) -> Self;
+
+    /// inverse an update. This will be useful for Rollback in case the
+    /// node has decided to rollback to a previous fork and un apply the
+    /// given update.
+    fn inverse(self) -> Self;
+}
+
 /// Define the Ledger side of the blockchain. This is not really on the blockchain
 /// but should be able to maintain a valid state of the overall blockchain at a given
 /// `Block`.
@@ -220,6 +238,23 @@ pub trait LeaderSelection {
     /// blockchain at the given date.
     ///
     fn is_leader_at(&self, date: <Self::Block as Block>::Date) -> Result<bool, Self::Error>;
+}
+
+/// the settings of the blockchain this is something that can be used to maintain
+/// the blockchain protocol update details:
+///
+pub trait Settings {
+    type Update;
+    type Block: Block;
+    type Error: std::error::Error;
+
+    /// read the block update settings and see if we need to store
+    /// updates. Protocols may propose vote mechanism, this Update
+    /// and the settings need to keep track of these here.
+    fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error>;
+
+    /// apply the Update to the LeaderSelection
+    fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error>;
 }
 
 /// Define that an object can be written to a `Write` object.
@@ -340,4 +375,12 @@ pub mod testing {
         (id1 == id2 && tx1 == tx2) || (id1 != id2 && tx1 != tx2)
     }
 
+    pub fn update_inverse_of_inverse_is_id<U>(update: U) -> bool
+    where
+        U: Update + Arbitrary + PartialEq + Clone,
+    {
+        let inversed = update.clone().inverse();
+        let reversed = inversed.inverse();
+        reversed == update
+    }
 }
