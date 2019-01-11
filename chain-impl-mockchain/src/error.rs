@@ -53,7 +53,11 @@ impl std::fmt::Display for Error {
             }
             Error::InvalidSignature(_, _, _) => write!(f, "Input is not signed properly"),
             Error::InvalidTxSignature(_) => write!(f, "Transaction was not signed"),
-            Error::TransactionSumIsNonZero(_, _) => write!(f, "Transaction sum is non zero"),
+            Error::TransactionSumIsNonZero(inp, out) => write!(
+                f,
+                "Transaction values do not match input is {}, output is {}",
+                inp, out
+            ),
             Error::NotEnoughSignatures(required, actual) => write!(
                 f,
                 "Transaction has not enough signatures: {} out of {}",

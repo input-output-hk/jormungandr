@@ -161,6 +161,32 @@ mod test {
 
     use quickcheck::{Arbitrary, Gen};
 
+    quickcheck! {
+
+        /// ```
+        /// \forall w=Witness(tx) => w.verifies(tx)
+        /// ```
+        fn prop_witness_verifies_own_tx(pk: PrivateKey, tx:TransactionId) -> bool {
+            let witness = Witness::new(tx, &pk);
+            witness.verifies(tx)
+        }
+
+        /// ```
+        /// \forall w1,w2:Witness, w1.verifies(t1), w2.verifies(t2):
+        ///   w1.verifies(v2) <=> w1 == w2
+        /// ```
+        fn witness_verifies_only_own_tx(pk: PrivateKey, tx1: TransactionId, tx2: TransactionId) -> bool {
+            let witness1 = Witness::new(tx1, &pk);
+            let witness2 = Witness::new(tx2, &pk);
+            (witness1.verifies(tx2) && witness1 == witness2)
+                || (!witness1.verifies(tx2))
+        }
+
+        fn transaction_id_is_unique(tx1: Transaction, tx2: Transaction) -> bool {
+            chain_core::property::testing::transaction_id_is_unique(tx1, tx2)
+        }
+    }
+
     impl Arbitrary for Value {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Value(Arbitrary::arbitrary(g))

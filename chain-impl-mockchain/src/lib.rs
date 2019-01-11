@@ -19,10 +19,11 @@ mod tests {
     use crate::ledger::Ledger;
     use crate::transaction::SignedTransaction;
     use chain_core::property::testing;
+    use quickcheck::TestResult;
 
     quickcheck! {
         /// Randomly generated transaction should fail.
-        fn prop_bad_tx_fails(l: Ledger, tx: SignedTransaction) -> bool {
+        fn prop_bad_tx_fails(l: Ledger, tx: SignedTransaction) -> TestResult {
             testing::prop_bad_transaction_fails(l, tx)
         }
     }
