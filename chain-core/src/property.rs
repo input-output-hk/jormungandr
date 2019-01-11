@@ -39,12 +39,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 /// Trait identifying the block identifier type.
-pub trait BlockId: Eq + Ord + Clone + Debug + Hash + AsRef<[u8]> {
-    // FIXME: constant representing id length?
-
-    /// Construct a BlockId from a slice. FIXME: use TryFromSlice trait.
-    fn try_from_slice(slice: &[u8]) -> Option<Self>;
-}
+pub trait BlockId: Eq + Ord + Clone + Debug + Hash + Serialize + Deserialize {}
 
 /// A trait representing block dates. Dates can be compared, ordered
 /// and serialized as integers.

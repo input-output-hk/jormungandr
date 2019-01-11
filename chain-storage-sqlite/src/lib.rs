@@ -2,7 +2,7 @@ extern crate chain_core;
 extern crate chain_storage;
 extern crate sqlite;
 
-use chain_core::property::{Block, BlockDate, BlockId};
+use chain_core::property::{Block, BlockDate, BlockId, Serialize};
 use chain_storage::{
     error::Error,
     store::{BackLink, BlockInfo, BlockStore},
@@ -106,7 +106,7 @@ where
 }
 
 fn blob_to_hash<Id: BlockId>(blob: Vec<u8>) -> Id {
-    Id::try_from_slice(&blob[..]).unwrap()
+    Id::deserialize(&blob[..]).unwrap()
 }
 
 impl<B> Drop for SQLiteBlockStore<B>
@@ -134,7 +134,7 @@ where
         let mut stmt_insert_block = self.stmt_insert_block.borrow_mut();
         stmt_insert_block.reset().unwrap();
         stmt_insert_block
-            .bind(1, &block_info.block_hash.as_ref()[..])
+            .bind(1, &block_info.block_hash.serialize_as_vec().unwrap()[..])
             .unwrap();
         stmt_insert_block
             .bind(2, &block.serialize_as_vec().unwrap()[..])
@@ -144,7 +144,7 @@ where
         let mut stmt_insert_block_info = self.stmt_insert_block_info.borrow_mut();
         stmt_insert_block_info.reset().unwrap();
         stmt_insert_block_info
-            .bind(1, &block_info.block_hash.as_ref()[..])
+            .bind(1, &block_info.block_hash.serialize_as_vec().unwrap()[..])
             .unwrap();
         stmt_insert_block_info
             .bind(2, block_info.block_date.serialize() as i64)
@@ -158,7 +158,7 @@ where
             .find(|x| x.distance == 1)
             .unwrap();
         stmt_insert_block_info
-            .bind(4, &parent.block_hash.as_ref()[..])
+            .bind(4, &parent.block_hash.serialize_as_vec().unwrap()[..])
             .unwrap();
         match block_info.back_links.iter().find(|x| x.distance != 1) {
             Some(fast_link) => {
@@ -166,7 +166,7 @@ where
                     .bind(5, fast_link.distance as i64)
                     .unwrap();
                 stmt_insert_block_info
-                    .bind(6, &fast_link.block_hash.as_ref()[..])
+                    .bind(6, &fast_link.block_hash.serialize_as_vec().unwrap()[..])
                     .unwrap();
             }
             None => {
@@ -183,7 +183,7 @@ where
         let mut stmt_get_block = self.stmt_get_block.borrow_mut();
         stmt_get_block.reset().unwrap();
 
-        stmt_get_block.bind(1, &block_hash.as_ref()[..]).unwrap();
+        stmt_get_block.bind(1, &block_hash.serialize_as_vec().unwrap()[..]).unwrap();
 
         match stmt_get_block.next().unwrap() {
             sqlite::State::Done => Err(Error::BlockNotFound),
@@ -199,7 +199,7 @@ where
         stmt_get_block_info.reset().unwrap();
 
         stmt_get_block_info
-            .bind(1, &block_hash.as_ref()[..])
+            .bind(1, &block_hash.serialize_as_vec().unwrap()[..])
             .unwrap();
 
         match stmt_get_block_info.next().unwrap() {
@@ -234,7 +234,7 @@ where
         let mut stmt_put_tag = self.stmt_put_tag.borrow_mut();
         stmt_put_tag.reset().unwrap();
         stmt_put_tag.bind(1, tag_name).unwrap();
-        stmt_put_tag.bind(2, &block_hash.as_ref()[..]).unwrap();
+        stmt_put_tag.bind(2, &block_hash.serialize_as_vec().unwrap()[..]).unwrap();
         stmt_put_tag.next().unwrap();
         Ok(())
     }

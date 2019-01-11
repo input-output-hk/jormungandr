@@ -3,7 +3,6 @@
 //!
 use cardano::hash;
 use cardano::hdwallet as crypto;
-use cardano::util::try_from_slice::TryFromSlice;
 use chain_core::property;
 
 // TODO: this public key contains the chain code in it too
@@ -58,14 +57,24 @@ impl AsRef<[u8]> for Hash {
     }
 }
 
-impl property::BlockId for Hash {
-    fn try_from_slice(slice: &[u8]) -> Option<Self> {
-        match hash::Blake2b256::try_from_slice(slice) {
-            Ok(x) => Some(Hash(x)),
-            Err(_) => None,
-        }
+impl property::Serialize for Hash {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        writer.write(self.0.as_hash_bytes())?;
+        Ok(())
     }
 }
+
+impl property::Deserialize for Hash {
+    type Error = std::io::Error;
+    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
+        let mut buffer = [0; hash::Blake2b256::HASH_SIZE];
+        reader.read_exact(&mut buffer)?;
+        Ok(Hash(hash::Blake2b256::from(buffer)))
+    }
+}
+
+impl property::BlockId for Hash { }
 
 /// Cryptographic signature.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
