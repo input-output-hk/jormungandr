@@ -66,12 +66,14 @@ pub struct Output(pub Address, pub Value);
 
 /// Id of the transaction.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
-pub struct TransactionId(Hash);
+pub struct TransactionId(pub Hash);
 impl AsRef<[u8]> for TransactionId {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
+
+impl property::TransactionId for TransactionId {}
 
 /// Transaction, transaction maps old unspent tokens into the
 /// set of the new addresses.
@@ -97,15 +99,19 @@ impl property::Transaction for Transaction {
     }
 }
 
-impl property::Serializable for Transaction {
+impl property::Serialize for Transaction {
+    type Error = bincode::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), bincode::Error> {
+        bincode::serialize_into(writer, self)
+    }
+}
+
+impl property::Deserialize for Transaction {
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::Read>(reader: R) -> Result<Transaction, bincode::Error> {
         bincode::deserialize_from(reader)
-    }
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), bincode::Error> {
-        bincode::serialize_into(writer, self)
     }
 }
 
@@ -117,15 +123,19 @@ pub struct SignedTransaction {
     pub witnesses: Vec<Witness>,
 }
 
-impl property::Serializable for SignedTransaction {
+impl property::Serialize for SignedTransaction {
+    type Error = bincode::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        bincode::serialize_into(writer, self)
+    }
+}
+
+impl property::Deserialize for SignedTransaction {
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::Read>(reader: R) -> Result<SignedTransaction, bincode::Error> {
         bincode::deserialize_from(reader)
-    }
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        bincode::serialize_into(writer, self)
     }
 }
 

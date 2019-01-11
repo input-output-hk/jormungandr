@@ -54,6 +54,9 @@ jobs:
             done
       - store_test_results:
           path: ~/test-results
+      - store_artifacts:
+          path: ~/test-results
+          destination: test_results
       - persist_to_workspace:
           root: "."
           paths:
@@ -80,6 +83,9 @@ jobs:
           command: cargo junit --name ~/test-results/${CIRCLE_JOB}/results.xml
       - store_test_results:
           path: ~/test-results
+      - store_artifacts:
+          path: ~/test-results
+          destination: test_results
   test_nightly:
     docker:
       - image: rustlang/rust:nightly
@@ -102,6 +108,9 @@ jobs:
           command: cargo junit --name ~/test-results/${CIRCLE_JOB}/results.xml
       - store_test_results:
           path: ~/test-results
+      - store_artifacts:
+          path: ~/test-results
+          destination: test_results
   coverage:
     docker:
       - image: ragnaroek/kcov:v33

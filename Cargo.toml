@@ -5,6 +5,7 @@ members = [
     "chain-storage-sqlite",
     "chain-impl-mockchain",
     "cardano",
+    "network-grpc",
     "protocol",
     "protocol-tokio",
     "storage-units",

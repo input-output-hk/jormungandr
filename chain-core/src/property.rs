@@ -38,41 +38,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 
-/// Block property
-///
-/// a block is part of a chain of block called Blockchain.
-/// the chaining is done via one block pointing to another block,
-/// the parent block (the previous block).
-///
-/// This means that a blockchain is a link-list, ordered from the most
-/// recent block to the furthest/oldest block.
-///
-/// The Oldest block is called the Genesis Block.
-pub trait Block: Serializable {
-    /// the Block identifier. It must be unique. This mean that
-    /// 2 different blocks have 2 different identifiers.
-    ///
-    /// In bitcoin this block is a SHA2 256bits. For Cardano's
-    /// blockchain it is Blake2b 256bits.
-    type Id: BlockId;
-
-    /// the block date (also known as a block number) represents the
-    /// absolute position of the block in the chain. This can be used
-    /// for random access (if the storage algorithm allows it) or for
-    /// identifying the position of a block in a given epoch or era.
-    type Date: BlockDate;
-
-    /// return the Block's identifier.
-    fn id(&self) -> Self::Id;
-
-    /// get the parent block identifier (the previous block in the
-    /// blockchain).
-    fn parent_id(&self) -> Self::Id;
-
-    /// get the block date of the block
-    fn date(&self) -> Self::Date;
-}
-
+/// Trait identifying the block identifier type.
 pub trait BlockId: Eq + Ord + Clone + Debug + Hash + AsRef<[u8]> {
     // FIXME: constant representing id length?
 
@@ -87,18 +53,71 @@ pub trait BlockDate: Eq + Ord + Clone {
     fn deserialize(n: u64) -> Self;
 }
 
+/// Trait identifying the transaction identifier type.
+pub trait TransactionId: Eq + Hash {}
+
+/// Trait identifying the block header type.
+pub trait Header {}
+
+impl Header for () {}
+
+/// Block property
+///
+/// a block is part of a chain of block called Blockchain.
+/// the chaining is done via one block pointing to another block,
+/// the parent block (the previous block).
+///
+/// This means that a blockchain is a link-list, ordered from the most
+/// recent block to the furthest/oldest block.
+///
+/// The Oldest block is called the Genesis Block.
+pub trait Block: Serialize + Deserialize {
+    /// the Block identifier. It must be unique. This mean that
+    /// 2 different blocks have 2 different identifiers.
+    ///
+    /// In bitcoin this block is a SHA2 256bits. For Cardano's
+    /// blockchain it is Blake2b 256bits.
+    type Id: BlockId;
+
+    /// the block date (also known as a block number) represents the
+    /// absolute position of the block in the chain. This can be used
+    /// for random access (if the storage algorithm allows it) or for
+    /// identifying the position of a block in a given epoch or era.
+    type Date: BlockDate;
+
+    /// The block header. If provided by the blockchain, the header
+    /// can be used to transmit block's metadata via a network protocol
+    /// or in other uses where the full content of the block is not desirable.
+    /// An implementation that does not feature headers can use the unit
+    /// type `()`.
+    type Header: Header;
+
+    /// return the Block's identifier.
+    fn id(&self) -> Self::Id;
+
+    /// get the parent block identifier (the previous block in the
+    /// blockchain).
+    fn parent_id(&self) -> Self::Id;
+
+    /// get the block date of the block
+    fn date(&self) -> Self::Date;
+
+    /// Gets the block's header.
+    fn header(&self) -> Self::Header;
+}
+
 /// define a transaction within the blockchain. This transaction can be used
 /// for the UTxO model. However it can also be used for any other elements that
 /// the blockchain has (a transaction type to add Stacking Pools and so on...).
 ///
-pub trait Transaction: Serializable {
+pub trait Transaction: Serialize + Deserialize {
     /// the input type of the transaction (if none use `()`).
     type Input;
     /// the output type of the transaction (if none use `()`).
     type Output;
     /// a unique identifier of the transaction. For 2 different transactions
     /// we must have 2 different `Id` values.
-    type Id;
+    type Id: TransactionId;
 
     fn inputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Input>;
     fn outputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Output>;
@@ -213,14 +232,11 @@ pub trait LeaderSelection {
     fn is_leader_at(&self, date: <Self::Block as Block>::Date) -> Result<bool, Self::Error>;
 }
 
-/// Define that an object can be written in a `Write` object or read from the
-/// `Read` object.
-pub trait Serializable: Sized {
+/// Define that an object can be written to a `Write` object.
+pub trait Serialize {
     type Error: std::error::Error + From<std::io::Error>;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error>;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error>;
 
     /// Convenience method to serialize into a byte vector.
     fn serialize_as_vec(&self) -> Result<Vec<u8>, Self::Error> {
@@ -230,23 +246,36 @@ pub trait Serializable: Sized {
     }
 }
 
+/// Define that an object can be read from a `Read` object.
+pub trait Deserialize: Sized {
+    type Error: std::error::Error + From<std::io::Error>;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error>;
+}
+
+impl<T: Serialize> Serialize for &T {
+    type Error = T::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), T::Error> {
+        (**self).serialize(writer)
+    }
+}
+
 #[cfg(feature = "property-test-api")]
 pub mod testing {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
-    use std::io::Cursor;
 
     /// test that any arbitrary given object can serialize and deserialize
     /// back into itself (i.e. it is a bijection,  or a one to one match
     /// between the serialized bytes and the object)
     pub fn serialization_bijection<T>(t: T) -> bool
     where
-        T: Arbitrary + Serializable + Eq,
+        T: Arbitrary + Serialize + Deserialize + Eq,
     {
         let mut vec = Vec::new();
         t.serialize(&mut vec).unwrap();
-        let cursor = Cursor::new(vec);
-        let decoded_t = <T as Serializable>::deserialize(cursor).unwrap();
+        let decoded_t = T::deserialize(&mut &vec[..]).unwrap();
         decoded_t == t
     }
 
