@@ -7,14 +7,14 @@ extern crate tower_grpc;
 extern crate tower_h2;
 extern crate tower_util;
 
-// Included generated protobuf/gRPC code,
-
+// Generated protobuf/gRPC code.
 #[allow(dead_code)]
 mod gen {
-    include!(concat!(env!("OUT_DIR"), "/iohk.chain.node.rs"));
+    use network_core::codes;
+
+    pub mod node {
+        include!(concat!(env!("OUT_DIR"), "/iohk.chain.node.rs"));
+    }
 }
 
 pub mod server;
-
-// TODO: replace with network_core crate
-mod network_core;

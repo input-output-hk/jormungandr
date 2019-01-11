@@ -12,6 +12,7 @@ edition = "2018"
 
 [dependencies]
 chain-core = { path = "../chain-core" }
+network-core = { path = "../network-core" }
 bytes = "0.4"
 futures = "0.1"
 prost = "0.4"

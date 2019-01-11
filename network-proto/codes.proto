@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+// Enumerated codes used in messages of the gRPC protocol as well as
+// the network abstraction API. These definitions are set apart in
+// their own package to split code generation of the corresponding
+// enumeration types in Rust and possibly other target languages.
+package iohk.chain.codes;
+
+// Status of a proposed transaction.
+enum TransactionStatus {
+    // The transaction ID is unknown to the recipient node.
+    UNKNOWN = 0;
+    // The transaction ID is already known by the recipient node.
+    KNOWN = 1;
+}
+
+// The result of processing a transaction.
+enum TransactionAcceptance {
+
+    // Successful results
+
+    // The transaction has been accepted.
+    ACCEPTED = 0;
+    // The proposed transaction has already been recorded by the node.
+    ALREADY_EXISTS = 1;
+
+    // Error results
+
+    // An unknown or internal error has occurred.
+    TRANSACTION_ERROR = 100;
+    // The signature is invalid.
+    INVALID_SIGNATURE = 101;
+    // The proposed transaction would result in a double spend.
+    DOUBLE_SPEND = 102;
+}

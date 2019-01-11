@@ -1,11 +1,12 @@
+//! Abstractions for the network server-side interface of a blockchain node.
+
 use chain_core::property;
 
 use futures::prelude::*;
 
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
-// NOTE: protobuf-derived definitions used in would-be abstract core API
-use super::gen;
+use super::codes;
 
 /// Represents errors that can be returned by the node implementation.
 #[derive(Debug)]
@@ -21,13 +22,13 @@ impl fmt::Display for Error {
 
 pub struct ProposeTransactionsResponse<Id> {
     // TODO: define fully
-    _items: HashMap<Id, gen::propose_transactions_response::Status>,
+    _items: Vec<(Id, codes::TransactionStatus)>,
 }
 
 pub struct RecordTransactionResponse<Id> {
     // TODO: define
     _id: Id,
-    _result: gen::record_transaction_response::Result,
+    _result: codes::TransactionAcceptance,
 }
 
 pub trait Node {

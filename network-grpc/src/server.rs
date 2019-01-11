@@ -1,4 +1,5 @@
 use chain_core::property::{Block, BlockDate, BlockId, Deserialize, Header, Serialize};
+use network_core::server;
 
 use futures::prelude::*;
 use tower_grpc::Error::Grpc as GrpcError;
@@ -7,7 +8,6 @@ use tower_grpc::{self, Code, Request, Status};
 use std::marker::PhantomData;
 
 use super::gen;
-use super::network_core;
 
 pub enum FutureResponse<T, F> {
     Pending(F),
@@ -30,16 +30,16 @@ impl<T, F> FutureResponse<T, F> {
     }
 }
 
-fn convert_error(e: network_core::Error) -> tower_grpc::Error {
+fn convert_error(e: server::Error) -> tower_grpc::Error {
     let status = Status::with_code_and_message(Code::Unknown, format!("{}", e));
     GrpcError(status)
 }
 
-pub trait ConvertResponse<T>: Future<Error = network_core::Error> {
+pub trait ConvertResponse<T>: Future<Error = server::Error> {
     fn convert_item(item: Self::Item) -> Result<T, tower_grpc::Error>;
 }
 
-pub trait ConvertStream<T>: Stream<Error = network_core::Error> {
+pub trait ConvertStream<T>: Stream<Error = server::Error> {
     fn convert_item(item: Self::Item) -> Result<T, tower_grpc::Error>;
 }
 
@@ -160,7 +160,7 @@ where
 
 impl<F, S, T> ConvertResponse<ResponseStream<T, S>> for F
 where
-    F: Future<Item = S, Error = network_core::Error>,
+    F: Future<Item = S, Error = server::Error>,
     S: Stream + ConvertStream<T>,
 {
     fn convert_item(item: S) -> Result<ResponseStream<T, S>, tower_grpc::Error> {
@@ -169,111 +169,115 @@ where
     }
 }
 
-impl<F, I, D> ConvertResponse<gen::TipResponse> for F
+impl<F, I, D> ConvertResponse<gen::node::TipResponse> for F
 where
-    F: Future<Item = (I, D), Error = network_core::Error>,
+    F: Future<Item = (I, D), Error = server::Error>,
     I: BlockId + Serialize,
     D: BlockDate + ToString,
 {
-    fn convert_item(item: (I, D)) -> Result<gen::TipResponse, tower_grpc::Error> {
+    fn convert_item(item: (I, D)) -> Result<gen::node::TipResponse, tower_grpc::Error> {
         let id = serialize_to_bytes(item.0)?;
         let blockdate = item.1.to_string();
-        let response = gen::TipResponse { id, blockdate };
+        let response = gen::node::TipResponse { id, blockdate };
         Ok(response)
     }
 }
 
-impl<S, B> ConvertStream<gen::Block> for S
+impl<S, B> ConvertStream<gen::node::Block> for S
 where
-    S: Stream<Item = B, Error = network_core::Error>,
+    S: Stream<Item = B, Error = server::Error>,
     B: Block + Serialize,
 {
-    fn convert_item(item: Self::Item) -> Result<gen::Block, tower_grpc::Error> {
+    fn convert_item(item: Self::Item) -> Result<gen::node::Block, tower_grpc::Error> {
         let content = serialize_to_bytes(item)?;
-        Ok(gen::Block { content })
+        Ok(gen::node::Block { content })
     }
 }
 
-impl<S, H> ConvertStream<gen::Header> for S
+impl<S, H> ConvertStream<gen::node::Header> for S
 where
-    S: Stream<Item = H, Error = network_core::Error>,
+    S: Stream<Item = H, Error = server::Error>,
     H: Header + Serialize,
 {
-    fn convert_item(item: Self::Item) -> Result<gen::Header, tower_grpc::Error> {
+    fn convert_item(item: Self::Item) -> Result<gen::node::Header, tower_grpc::Error> {
         let content = serialize_to_bytes(item)?;
-        Ok(gen::Header { content })
+        Ok(gen::node::Header { content })
     }
 }
 
-impl<F, I> ConvertResponse<gen::ProposeTransactionsResponse> for F
+impl<F, I> ConvertResponse<gen::node::ProposeTransactionsResponse> for F
 where
-    F: Future<Item = network_core::ProposeTransactionsResponse<I>, Error = network_core::Error>,
+    F: Future<Item = server::ProposeTransactionsResponse<I>, Error = server::Error>,
     I: BlockId + Serialize,
 {
     fn convert_item(
         _item: Self::Item,
-    ) -> Result<gen::ProposeTransactionsResponse, tower_grpc::Error> {
+    ) -> Result<gen::node::ProposeTransactionsResponse, tower_grpc::Error> {
         unimplemented!();
     }
 }
 
-impl<F, I> ConvertResponse<gen::RecordTransactionResponse> for F
+impl<F, I> ConvertResponse<gen::node::RecordTransactionResponse> for F
 where
-    F: Future<Item = network_core::RecordTransactionResponse<I>, Error = network_core::Error>,
+    F: Future<Item = server::RecordTransactionResponse<I>, Error = server::Error>,
     I: BlockId + Serialize,
 {
     fn convert_item(
         _item: Self::Item,
-    ) -> Result<gen::RecordTransactionResponse, tower_grpc::Error> {
+    ) -> Result<gen::node::RecordTransactionResponse, tower_grpc::Error> {
         unimplemented!();
     }
 }
 
-impl<T> gen::server::Node for GrpcServer<T>
+impl<T> gen::node::server::Node for GrpcServer<T>
 where
-    T: network_core::Node + Clone,
-    <T as network_core::Node>::BlockId: Serialize + Deserialize,
-    <T as network_core::Node>::BlockDate: ToString,
-    <T as network_core::Node>::Header: Serialize,
+    T: server::Node + Clone,
+    <T as server::Node>::BlockId: Serialize + Deserialize,
+    <T as server::Node>::BlockDate: ToString,
+    <T as server::Node>::Header: Serialize,
 {
-    type TipFuture = FutureResponse<gen::TipResponse, <T as network_core::Node>::TipFuture>;
-    type GetBlocksStream = ResponseStream<gen::Block, <T as network_core::Node>::GetBlocksStream>;
+    type TipFuture = FutureResponse<gen::node::TipResponse, <T as server::Node>::TipFuture>;
+    type GetBlocksStream = ResponseStream<gen::node::Block, <T as server::Node>::GetBlocksStream>;
     type GetBlocksFuture =
-        FutureResponse<Self::GetBlocksStream, <T as network_core::Node>::GetBlocksFuture>;
+        FutureResponse<Self::GetBlocksStream, <T as server::Node>::GetBlocksFuture>;
     type GetHeadersStream =
-        ResponseStream<gen::Header, <T as network_core::Node>::GetHeadersStream>;
+        ResponseStream<gen::node::Header, <T as server::Node>::GetHeadersStream>;
     type GetHeadersFuture =
-        FutureResponse<Self::GetHeadersStream, <T as network_core::Node>::GetHeadersFuture>;
+        FutureResponse<Self::GetHeadersStream, <T as server::Node>::GetHeadersFuture>;
     type StreamBlocksToTipStream =
-        ResponseStream<gen::Block, <T as network_core::Node>::StreamBlocksToTipStream>;
-    type StreamBlocksToTipFuture = FutureResponse<
-        Self::StreamBlocksToTipStream,
-        <T as network_core::Node>::StreamBlocksToTipFuture,
-    >;
+        ResponseStream<gen::node::Block, <T as server::Node>::StreamBlocksToTipStream>;
+    type StreamBlocksToTipFuture =
+        FutureResponse<Self::StreamBlocksToTipStream, <T as server::Node>::StreamBlocksToTipFuture>;
     type ProposeTransactionsFuture = FutureResponse<
-        gen::ProposeTransactionsResponse,
-        <T as network_core::Node>::ProposeTransactionsFuture,
+        gen::node::ProposeTransactionsResponse,
+        <T as server::Node>::ProposeTransactionsFuture,
     >;
     type RecordTransactionFuture = FutureResponse<
-        gen::RecordTransactionResponse,
-        <T as network_core::Node>::RecordTransactionFuture,
+        gen::node::RecordTransactionResponse,
+        <T as server::Node>::RecordTransactionFuture,
     >;
 
-    fn tip(&mut self, _request: Request<gen::TipRequest>) -> Self::TipFuture {
+    fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
         FutureResponse::new(self.node.tip())
     }
 
-    fn get_blocks(&mut self, _request: Request<gen::GetBlocksRequest>) -> Self::GetBlocksFuture {
+    fn get_blocks(
+        &mut self,
+        _request: Request<gen::node::GetBlocksRequest>,
+    ) -> Self::GetBlocksFuture {
         unimplemented!()
     }
 
-    fn get_headers(&mut self, _request: Request<gen::GetBlocksRequest>) -> Self::GetHeadersFuture {
+    fn get_headers(
+        &mut self,
+        _request: Request<gen::node::GetBlocksRequest>,
+    ) -> Self::GetHeadersFuture {
         unimplemented!()
     }
 
     fn stream_blocks_to_tip(
         &mut self,
-        req: Request<gen::StreamBlocksToTipRequest>,
+        req: Request<gen::node::StreamBlocksToTipRequest>,
     ) -> Self::StreamBlocksToTipFuture {
         let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
@@ -287,14 +291,14 @@ where
 
     fn propose_transactions(
         &mut self,
-        _request: Request<gen::ProposeTransactionsRequest>,
+        _request: Request<gen::node::ProposeTransactionsRequest>,
     ) -> Self::ProposeTransactionsFuture {
         unimplemented!()
     }
 
     fn record_transaction(
         &mut self,
-        _request: Request<gen::RecordTransactionRequest>,
+        _request: Request<gen::node::RecordTransactionRequest>,
     ) -> Self::RecordTransactionFuture {
         unimplemented!()
     }
