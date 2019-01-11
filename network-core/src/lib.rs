@@ -1,5 +1,7 @@
 //! Abstractions for the network subsystem of a blockchain node.
 
+#![warn(clippy::all)]
+
 #[macro_use]
 extern crate prost_derive;
 
