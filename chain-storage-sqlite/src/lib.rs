@@ -117,10 +117,12 @@ where
     }
 }
 
-impl<B> BlockStore<B> for SQLiteBlockStore<B>
+impl<B> BlockStore for SQLiteBlockStore<B>
 where
     B: Block,
 {
+    type Block = B;
+
     fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
         self.do_change();
 

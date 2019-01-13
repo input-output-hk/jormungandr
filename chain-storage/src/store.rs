@@ -36,11 +36,10 @@ pub struct BackLink<Id: BlockId> {
     pub block_hash: Id,
 }
 
-pub trait BlockStore<B>: std::marker::Sized
-where
-    B: Block,
-{
-    fn get_genesis_hash(&self) -> B::Id;
+pub trait BlockStore: std::marker::Sized {
+    type Block: Block;
+
+    fn get_genesis_hash(&self) -> <Self::Block as Block>::Id;
 
     /// Write a block to the store. The parent of the block must exist
     /// (unless it's the genesis hash).
@@ -49,7 +48,7 @@ where
     /// back_links set to ensure O(lg n) seek time in
     /// get_nth_ancestor(), and calls put_block_internal() to do the
     /// actual write.
-    fn put_block(&mut self, block: B) -> Result<(), Error> {
+    fn put_block(&mut self, block: Self::Block) -> Result<(), Error> {
         let block_hash = block.id();
 
         if self.block_exists(&block_hash)? {
@@ -95,16 +94,26 @@ where
     }
 
     /// Write a block and associated info to the store.
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id>) -> Result<(), Error>;
+    fn put_block_internal(
+        &mut self,
+        block: Self::Block,
+        block_info: BlockInfo<<Self::Block as Block>::Id>,
+    ) -> Result<(), Error>;
 
     /// Fetch a block.
-    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id>), Error>;
+    fn get_block(
+        &self,
+        block_hash: &<Self::Block as Block>::Id,
+    ) -> Result<(Self::Block, BlockInfo<<Self::Block as Block>::Id>), Error>;
 
     /// Fetch a block.
-    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id>, Error>;
+    fn get_block_info(
+        &self,
+        block_hash: &<Self::Block as Block>::Id,
+    ) -> Result<BlockInfo<<Self::Block as Block>::Id>, Error>;
 
     /// Check whether a block exists.
-    fn block_exists(&self, block_hash: &B::Id) -> Result<bool, Error> {
+    fn block_exists(&self, block_hash: &<Self::Block as Block>::Id) -> Result<bool, Error> {
         match self.get_block_info(block_hash) {
             Ok(_) => Ok(true),
             Err(Error::BlockNotFound) => Ok(false),
@@ -113,29 +122,33 @@ where
     }
 
     /// Upsert a tag.
-    fn put_tag(&mut self, tag_name: &str, block_hash: &B::Id) -> Result<(), Error>;
+    fn put_tag(
+        &mut self,
+        tag_name: &str,
+        block_hash: &<Self::Block as Block>::Id,
+    ) -> Result<(), Error>;
 
     /// Get a tag, if previously set.
-    fn get_tag(&self, tag_name: &str) -> Result<Option<B::Id>, Error>;
+    fn get_tag(&self, tag_name: &str) -> Result<Option<<Self::Block as Block>::Id>, Error>;
 
     /// Get the n'th ancestor of the specified block.
     fn get_nth_ancestor(
         &self,
-        block_hash: &B::Id,
+        block_hash: &<Self::Block as Block>::Id,
         distance: u64,
-    ) -> Result<BlockInfo<B::Id>, Error> {
+    ) -> Result<BlockInfo<<Self::Block as Block>::Id>, Error> {
         self.get_path_to_nth_ancestor(block_hash, distance, |_| {})
     }
 
     /// Like get_nth_ancestor(), but calls the closure 'callback' with
     /// each intermediate block encountered while travelling from
     /// 'block_hash' to its n'th ancestor.
-    fn get_path_to_nth_ancestor<F: FnMut(&BlockInfo<B::Id>)>(
+    fn get_path_to_nth_ancestor<F: FnMut(&BlockInfo<<Self::Block as Block>::Id>)>(
         &self,
-        block_hash: &B::Id,
+        block_hash: &<Self::Block as Block>::Id,
         distance: u64,
         mut callback: F,
-    ) -> Result<BlockInfo<B::Id>, Error> {
+    ) -> Result<BlockInfo<<Self::Block as Block>::Id>, Error> {
         let mut cur_block_info = self.get_block_info(block_hash)?;
 
         if distance >= cur_block_info.depth {
@@ -172,7 +185,11 @@ where
 
     /// Determine whether block 'ancestor' is an ancestor block
     /// 'descendent'. If so, return the chain distance between them.
-    fn is_ancestor(&self, ancestor: &B::Id, descendent: &B::Id) -> Result<Option<u64>, Error> {
+    fn is_ancestor(
+        &self,
+        ancestor: &<Self::Block as Block>::Id,
+        descendent: &<Self::Block as Block>::Id,
+    ) -> Result<Option<u64>, Error> {
         // Optimization.
         if ancestor == descendent {
             return Ok(Some(0));
@@ -207,7 +224,11 @@ where
     /// Return an iterator that yields block info for the blocks in
     /// the half-open range `(from, to]`. `from` must be an ancestor
     /// of `to` and may be the genesis hash.
-    fn iterate_range(&self, from: &B::Id, to: &B::Id) -> Result<BlockIterator<B, Self>, Error> {
+    fn iterate_range(
+        &self,
+        from: &<Self::Block as Block>::Id,
+        to: &<Self::Block as Block>::Id,
+    ) -> Result<BlockIterator<Self>, Error> {
         // FIXME: put blocks loaded by is_ancestor into pending_infos.
         match self.is_ancestor(from, to)? {
             None => panic!(), // FIXME: return error
@@ -224,23 +245,21 @@ where
     }
 }
 
-pub struct BlockIterator<'store, B, S>
+pub struct BlockIterator<'store, S>
 where
-    B: Block,
-    S: BlockStore<B> + 'store,
+    S: BlockStore + 'store,
 {
     store: &'store S,
     to_depth: u64,
     cur_depth: u64,
-    pending_infos: Vec<BlockInfo<B::Id>>,
+    pending_infos: Vec<BlockInfo<<S::Block as Block>::Id>>,
 }
 
-impl<'store, B, S> Iterator for BlockIterator<'store, B, S>
+impl<'store, S> Iterator for BlockIterator<'store, S>
 where
-    B: Block,
-    S: BlockStore<B> + 'store,
+    S: BlockStore + 'store,
 {
-    type Item = Result<BlockInfo<B::Id>, Error>;
+    type Item = Result<BlockInfo<<S::Block as Block>::Id>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cur_depth >= self.to_depth {

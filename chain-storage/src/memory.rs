@@ -25,10 +25,12 @@ where
     }
 }
 
-impl<B> BlockStore<B> for MemoryBlockStore<B>
+impl<B> BlockStore for MemoryBlockStore<B>
 where
     B: Block,
 {
+    type Block = B;
+
     fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
         self.blocks.insert(
             block_info.block_hash.clone(),
