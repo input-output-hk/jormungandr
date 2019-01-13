@@ -8,7 +8,7 @@ where
     B: Block,
 {
     genesis_hash: B::Id,
-    blocks: HashMap<B::Id, (Vec<u8>, BlockInfo<B::Id, B::Date>)>,
+    blocks: HashMap<B::Id, (Vec<u8>, BlockInfo<B::Id>)>,
     tags: HashMap<String, B::Id>,
 }
 
@@ -29,11 +29,7 @@ impl<B> BlockStore<B> for MemoryBlockStore<B>
 where
     B: Block,
 {
-    fn put_block_internal(
-        &mut self,
-        block: B,
-        block_info: BlockInfo<B::Id, B::Date>,
-    ) -> Result<(), Error> {
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
         self.blocks.insert(
             block_info.block_hash.clone(),
             (block.serialize_as_vec().unwrap(), block_info),
@@ -41,7 +37,7 @@ where
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id, B::Date>), Error> {
+    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id>), Error> {
         match self.blocks.get(block_hash) {
             None => Err(Error::BlockNotFound),
             Some((block, block_info)) => {
@@ -50,7 +46,7 @@ where
         }
     }
 
-    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id, B::Date>, Error> {
+    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id>, Error> {
         match self.blocks.get(block_hash) {
             None => Err(Error::BlockNotFound),
             Some((_, block_info)) => Ok(block_info.clone()),

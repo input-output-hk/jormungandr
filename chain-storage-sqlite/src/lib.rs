@@ -2,7 +2,7 @@ extern crate chain_core;
 extern crate chain_storage;
 extern crate sqlite;
 
-use chain_core::property::{Block, BlockDate, BlockId, Serialize};
+use chain_core::property::{Block, BlockId, Serialize};
 use chain_storage::{
     error::Error,
     store::{BackLink, BlockInfo, BlockStore},
@@ -43,7 +43,6 @@ where
                 r#"
           create table if not exists BlockInfo (
             hash blob primary key,
-            date integer not null,
             depth integer not null,
             parent blob not null,
             fast_distance blob,
@@ -72,9 +71,9 @@ where
         SQLiteBlockStore {
             genesis_hash,
             stmt_insert_block: make_statement(&connection, "insert into Blocks (hash, block) values(?, ?)"),
-            stmt_insert_block_info: make_statement(&connection, "insert into BlockInfo (hash, date, depth, parent, fast_distance, fast_hash) values(?, ?, ?, ?, ?, ?)"),
+            stmt_insert_block_info: make_statement(&connection, "insert into BlockInfo (hash, depth, parent, fast_distance, fast_hash) values(?, ?, ?, ?, ?)"),
             stmt_get_block: make_statement(&connection, "select block from Blocks where hash = ?"),
-            stmt_get_block_info: make_statement(&connection, "select depth, parent, fast_distance, fast_hash, date from BlockInfo where hash = ?"),
+            stmt_get_block_info: make_statement(&connection, "select depth, parent, fast_distance, fast_hash from BlockInfo where hash = ?"),
             stmt_put_tag: make_statement(&connection, "insert or replace into Tags (name, hash) values(?, ?)"),
             connection,
             dummy: std::marker::PhantomData,
@@ -122,11 +121,7 @@ impl<B> BlockStore<B> for SQLiteBlockStore<B>
 where
     B: Block,
 {
-    fn put_block_internal(
-        &mut self,
-        block: B,
-        block_info: BlockInfo<B::Id, B::Date>,
-    ) -> Result<(), Error> {
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
         self.do_change();
 
         // FIXME: wrap the next two statements in a transaction
@@ -147,10 +142,7 @@ where
             .bind(1, &block_info.block_hash.serialize_as_vec().unwrap()[..])
             .unwrap();
         stmt_insert_block_info
-            .bind(2, block_info.block_date.serialize() as i64)
-            .unwrap();
-        stmt_insert_block_info
-            .bind(3, block_info.depth as i64)
+            .bind(2, block_info.depth as i64)
             .unwrap();
         let parent = block_info
             .back_links
@@ -158,20 +150,20 @@ where
             .find(|x| x.distance == 1)
             .unwrap();
         stmt_insert_block_info
-            .bind(4, &parent.block_hash.serialize_as_vec().unwrap()[..])
+            .bind(3, &parent.block_hash.serialize_as_vec().unwrap()[..])
             .unwrap();
         match block_info.back_links.iter().find(|x| x.distance != 1) {
             Some(fast_link) => {
                 stmt_insert_block_info
-                    .bind(5, fast_link.distance as i64)
+                    .bind(4, fast_link.distance as i64)
                     .unwrap();
                 stmt_insert_block_info
-                    .bind(6, &fast_link.block_hash.serialize_as_vec().unwrap()[..])
+                    .bind(5, &fast_link.block_hash.serialize_as_vec().unwrap()[..])
                     .unwrap();
             }
             None => {
+                stmt_insert_block_info.bind(4, ()).unwrap();
                 stmt_insert_block_info.bind(5, ()).unwrap();
-                stmt_insert_block_info.bind(6, ()).unwrap();
             }
         };
         stmt_insert_block_info.next().unwrap();
@@ -179,7 +171,7 @@ where
         Ok(())
     }
 
-    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id, B::Date>), Error> {
+    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id>), Error> {
         let mut stmt_get_block = self.stmt_get_block.borrow_mut();
         stmt_get_block.reset().unwrap();
 
@@ -196,7 +188,7 @@ where
         }
     }
 
-    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id, B::Date>, Error> {
+    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id>, Error> {
         let mut stmt_get_block_info = self.stmt_get_block_info.borrow_mut();
         stmt_get_block_info.reset().unwrap();
 
@@ -222,9 +214,6 @@ where
 
                 Ok(BlockInfo {
                     block_hash: block_hash.clone(),
-                    block_date: B::Date::deserialize(
-                        stmt_get_block_info.read::<i64>(0).unwrap() as u64
-                    ),
                     depth: stmt_get_block_info.read::<i64>(0).unwrap() as u64,
                     back_links,
                 })

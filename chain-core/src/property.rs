@@ -41,12 +41,8 @@ use std::hash::Hash;
 /// Trait identifying the block identifier type.
 pub trait BlockId: Eq + Ord + Clone + Debug + Hash + Serialize + Deserialize {}
 
-/// A trait representing block dates. Dates can be compared, ordered
-/// and serialized as integers.
-pub trait BlockDate: Eq + Ord + Clone {
-    fn serialize(&self) -> u64;
-    fn deserialize(n: u64) -> Self;
-}
+/// A trait representing block dates.
+pub trait BlockDate: Eq + Ord + Clone {}
 
 /// Trait identifying the transaction identifier type.
 pub trait TransactionId: Eq + Hash {}

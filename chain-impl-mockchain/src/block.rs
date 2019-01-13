@@ -10,14 +10,7 @@ use chain_core::property;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct SlotId(u32, u32);
 
-impl property::BlockDate for SlotId {
-    fn serialize(&self) -> u64 {
-        (self.0 as u64) << 32 | (self.1 as u64)
-    }
-    fn deserialize(n: u64) -> Self {
-        SlotId((n >> 32) as u32, (n & (1 << 32 - 1)) as u32)
-    }
-}
+impl property::BlockDate for SlotId {}
 
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside

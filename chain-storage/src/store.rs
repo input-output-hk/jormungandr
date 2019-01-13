@@ -1,11 +1,9 @@
 use super::error::Error;
-use chain_core::property::{Block, BlockDate, BlockId};
+use chain_core::property::{Block, BlockId};
 
 #[derive(Clone, Debug)]
-pub struct BlockInfo<Id: BlockId, Date: BlockDate> {
+pub struct BlockInfo<Id: BlockId> {
     pub block_hash: Id,
-
-    pub block_date: Date,
 
     /// Distance to the genesis hash (a.k.a chain length). I.e. a
     /// block whose parent is the genesis hash has depth 1, its
@@ -19,7 +17,7 @@ pub struct BlockInfo<Id: BlockId, Date: BlockDate> {
     pub back_links: Vec<BackLink<Id>>,
 }
 
-impl<Id: BlockId, Date: BlockDate> BlockInfo<Id, Date> {
+impl<Id: BlockId> BlockInfo<Id> {
     pub fn parent_id(&self) -> Id {
         self.back_links
             .iter()
@@ -53,7 +51,6 @@ where
     /// actual write.
     fn put_block(&mut self, block: B) -> Result<(), Error> {
         let block_hash = block.id();
-        let block_date = block.date();
 
         if self.block_exists(&block_hash)? {
             return Ok(());
@@ -91,7 +88,6 @@ where
             block,
             BlockInfo {
                 block_hash: block_hash.clone(),
-                block_date,
                 depth,
                 back_links,
             },
@@ -99,17 +95,13 @@ where
     }
 
     /// Write a block and associated info to the store.
-    fn put_block_internal(
-        &mut self,
-        block: B,
-        block_info: BlockInfo<B::Id, B::Date>,
-    ) -> Result<(), Error>;
+    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id>) -> Result<(), Error>;
 
     /// Fetch a block.
-    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id, B::Date>), Error>;
+    fn get_block(&self, block_hash: &B::Id) -> Result<(B, BlockInfo<B::Id>), Error>;
 
     /// Fetch a block.
-    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id, B::Date>, Error>;
+    fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id>, Error>;
 
     /// Check whether a block exists.
     fn block_exists(&self, block_hash: &B::Id) -> Result<bool, Error> {
@@ -131,19 +123,19 @@ where
         &self,
         block_hash: &B::Id,
         distance: u64,
-    ) -> Result<BlockInfo<B::Id, B::Date>, Error> {
+    ) -> Result<BlockInfo<B::Id>, Error> {
         self.get_path_to_nth_ancestor(block_hash, distance, |_| {})
     }
 
     /// Like get_nth_ancestor(), but calls the closure 'callback' with
     /// each intermediate block encountered while travelling from
     /// 'block_hash' to its n'th ancestor.
-    fn get_path_to_nth_ancestor<F: FnMut(&BlockInfo<B::Id, B::Date>)>(
+    fn get_path_to_nth_ancestor<F: FnMut(&BlockInfo<B::Id>)>(
         &self,
         block_hash: &B::Id,
         distance: u64,
         mut callback: F,
-    ) -> Result<BlockInfo<B::Id, B::Date>, Error> {
+    ) -> Result<BlockInfo<B::Id>, Error> {
         let mut cur_block_info = self.get_block_info(block_hash)?;
 
         if distance >= cur_block_info.depth {
@@ -195,8 +187,8 @@ where
         let ancestor = self.get_block_info(&ancestor)?;
 
         // Bail out right away if the "descendent" does not have a
-        // later date or higher depth.
-        if descendent.depth <= ancestor.depth || descendent.block_date <= ancestor.block_date {
+        // higher depth.
+        if descendent.depth <= ancestor.depth {
             return Ok(None);
         }
 
@@ -240,7 +232,7 @@ where
     store: &'store S,
     to_depth: u64,
     cur_depth: u64,
-    pending_infos: Vec<BlockInfo<B::Id, B::Date>>,
+    pending_infos: Vec<BlockInfo<B::Id>>,
 }
 
 impl<'store, B, S> Iterator for BlockIterator<'store, B, S>
@@ -248,7 +240,7 @@ where
     B: Block,
     S: BlockStore<B> + 'store,
 {
-    type Item = Result<BlockInfo<B::Id, B::Date>, Error>;
+    type Item = Result<BlockInfo<B::Id>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cur_depth >= self.to_depth {
