@@ -300,7 +300,7 @@ pub mod testing {
 
     /// test that arbitrary generated transaction fails, this test requires
     /// that all the objects inside the transaction are arbitrary generated.
-    /// There is a very small propability of the event that all the objects
+    /// There is a very small probability of the event that all the objects
     /// will match, i.e. the contents of the transaction list of the subscribers
     /// and signatures will compose into a valid transaction, but if such
     /// event would happen it can be treated as error due to lack of the
