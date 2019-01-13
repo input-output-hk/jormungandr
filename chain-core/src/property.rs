@@ -145,6 +145,8 @@ pub trait Update {
     /// node has decided to rollback to a previous fork and un apply the
     /// given update.
     fn inverse(self) -> Self;
+
+    fn empty() -> Self;
 }
 
 /// Define the Ledger side of the blockchain. This is not really on the blockchain
