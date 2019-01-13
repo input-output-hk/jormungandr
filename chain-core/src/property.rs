@@ -212,7 +212,7 @@ pub trait LeaderSelection {
     /// * generic testing;
     /// * diff based storage;
     ///
-    type Update;
+    type Update: Update;
 
     /// the block that we will get the information from
     type Block: Block;
@@ -245,7 +245,7 @@ pub trait LeaderSelection {
 /// the blockchain protocol update details:
 ///
 pub trait Settings {
-    type Update;
+    type Update: Update;
     type Block: Block;
     type Error: std::error::Error;
 
