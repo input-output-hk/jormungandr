@@ -377,12 +377,61 @@ pub mod testing {
         (id1 == id2 && tx1 == tx2) || (id1 != id2 && tx1 != tx2)
     }
 
-    pub fn update_inverse_of_inverse_is_id<U>(update: U) -> bool
+    /// Checks the associativity
+    /// i.e.
+    ///
+    /// ```text
+    /// forall u : Update, v: Update, w:Update . u.union(v.union(w))== (u.union(v)).union(w)
+    /// ```
+    pub fn update_associativity<U>(u: U, v: U, w: U) -> bool
+    where
+        U: Update + Arbitrary + PartialEq + Clone,
+    {
+        let result1 = u.clone().union(v.clone().union(w.clone()));
+        let result2 = (u.clone().union(v.clone())).union(w.clone());
+        result1 == result2
+    }
+
+    /// Checks the identify element
+    /// i.e.
+    ///
+    /// ```text
+    /// forall u : Update . u.union(empty)== u
+    /// ```
+    pub fn update_identity_element<U>(update: U) -> bool
+    where
+        U: Update + Arbitrary + PartialEq + Clone,
+    {
+        let result = update.clone().union(U::empty());
+        result == update
+    }
+
+    /// Checks for the inverse element
+    /// i.e.
+    ///
+    /// ```text
+    /// forall u : Update . u.inverse().union(u) == empty
+    /// ```
+    pub fn update_inverse_element<U>(update: U) -> bool
     where
         U: Update + Arbitrary + PartialEq + Clone,
     {
         let inversed = update.clone().inverse();
-        let reversed = inversed.inverse();
-        reversed == update
+        inversed.union(update) == U::empty()
+    }
+
+    /// Checks the commutativity of the Union
+    /// i.e.
+    ///
+    /// ```text
+    /// forall u : Update, v: Update . u.union(v)== v.union(u)
+    /// ```
+    pub fn update_union_commutative<U>(u1: U, u2: U) -> bool
+    where
+        U: Update + Arbitrary + PartialEq + Clone,
+    {
+        let r1 = u1.clone().union(u2.clone());
+        let r2 = u2.clone().union(u1.clone());
+        r1 == r2
     }
 }
