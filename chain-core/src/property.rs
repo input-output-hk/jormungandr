@@ -158,7 +158,7 @@ pub trait Ledger<T: Transaction> {
     ///
     /// This can be seen like a git Diff where we can see what is going
     /// to be removed from the Ledger state and what is going to be added.
-    type Update;
+    type Update: Update;
 
     /// Ledger's errors
     type Error: std::error::Error;
@@ -175,24 +175,23 @@ pub trait Ledger<T: Transaction> {
     fn diff_transaction(&self, transaction: &T) -> Result<Self::Update, Self::Error>;
 
     /// create a combined Update from the given transactions
+    ///
     fn diff<'a, I>(&self, transactions: I) -> Result<Self::Update, Self::Error>
-    where
-        I: IntoIterator<Item = &'a T> + Sized,
-        T: 'a;
-
-    /// apply an update to the leger.
-    fn apply(&mut self, update: Self::Update) -> Result<&mut Self, Self::Error>;
-
-    /// this function is a helper that calls `diff` and `apply` methods to modify
-    /// the state of the Ledger.
-    fn update<'a, I>(&mut self, transactions: I) -> Result<&mut Self, Self::Error>
     where
         I: IntoIterator<Item = &'a T> + Sized,
         T: 'a,
     {
-        let update = self.diff(transactions)?;
-        self.apply(update)
+        let mut update = Self::Update::empty();
+
+        for transaction in transactions {
+            update = self.diff_transaction(transaction)?;
+        }
+
+        Ok(update)
     }
+
+    /// apply an update to the leger.
+    fn apply(&mut self, update: Self::Update) -> Result<&mut Self, Self::Error>;
 }
 
 /// interface for the leader selection algorithm
