@@ -139,7 +139,7 @@ pub trait Update {
     /// For example, in the cardano model we can consider compressing
     /// the Update diff of all the EPOCHs below `EPOCH - 2`
     ///
-    fn union(self, other: Self) -> Self;
+    fn union(&mut self, other: Self) -> &mut Self;
 
     /// inverse an update. This will be useful for Rollback in case the
     /// node has decided to rollback to a previous fork and un apply the
@@ -184,7 +184,7 @@ pub trait Ledger<T: Transaction> {
         let mut update = Self::Update::empty();
 
         for transaction in transactions {
-            update = self.diff_transaction(transaction)?;
+            update.union(self.diff_transaction(transaction)?);
         }
 
         Ok(update)
@@ -254,7 +254,7 @@ pub trait Settings {
     /// and the settings need to keep track of these here.
     fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error>;
 
-    /// apply the Update to the LeaderSelection
+    /// apply the Update to the Settings
     fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error>;
 }
 
@@ -386,8 +386,18 @@ pub mod testing {
     where
         U: Update + Arbitrary + PartialEq + Clone,
     {
-        let result1 = u.clone().union(v.clone().union(w.clone()));
-        let result2 = (u.clone().union(v.clone())).union(w.clone());
+        let result1 = {
+            let mut u = u.clone();
+            let mut v = v.clone();
+            v.union(w.clone());
+            u.union(v);
+            u
+        };
+        let result2 = {
+            let mut u = u;
+            u.union(v).union(w);
+            u
+        };
         result1 == result2
     }
 
@@ -401,7 +411,7 @@ pub mod testing {
     where
         U: Update + Arbitrary + PartialEq + Clone,
     {
-        let result = update.clone().union(U::empty());
+        let result = update.clone().union(U::empty()).clone();
         result == update
     }
 
@@ -415,8 +425,9 @@ pub mod testing {
     where
         U: Update + Arbitrary + PartialEq + Clone,
     {
-        let inversed = update.clone().inverse();
-        inversed.union(update) == U::empty()
+        let mut inversed = update.clone().inverse();
+        inversed.union(update);
+        inversed == U::empty()
     }
 
     /// Checks the commutativity of the Union
@@ -429,8 +440,16 @@ pub mod testing {
     where
         U: Update + Arbitrary + PartialEq + Clone,
     {
-        let r1 = u1.clone().union(u2.clone());
-        let r2 = u2.clone().union(u1.clone());
+        let r1 = {
+            let mut u1 = u1.clone();
+            u1.union(u2.clone());
+            u1
+        };
+        let r2 = {
+            let mut u2 = u2;
+            u2.union(u1);
+            u2
+        };
         r1 == r2
     }
 }

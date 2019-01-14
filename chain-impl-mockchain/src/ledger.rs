@@ -44,7 +44,7 @@ impl property::Update for Diff {
         }
     }
 
-    fn union(mut self, other: Self) -> Self {
+    fn union(&mut self, other: Self) -> &mut Self {
         // 1. other might be spending outputs that were _new_ in self
         //    we need to remove them first.
         for other_spending in other.spent_outputs.into_iter() {
