@@ -35,13 +35,14 @@
 //! is selected to write a block in the chain.
 //!
 
+use std::fmt::Debug;
 use std::hash::Hash;
 
 /// Trait identifying the block identifier type.
-pub trait BlockId: Eq + Hash {}
+pub trait BlockId: Eq + Ord + Clone + Debug + Hash + Serialize + Deserialize {}
 
-/// Trait identifying the block date type.
-pub trait BlockDate: Eq + Ord {}
+/// A trait representing block dates.
+pub trait BlockDate: Eq + Ord + Clone {}
 
 /// Trait identifying the transaction identifier type.
 pub trait TransactionId: Eq + Hash {}
@@ -227,6 +228,13 @@ pub trait Serialize {
     type Error: std::error::Error + From<std::io::Error>;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error>;
+
+    /// Convenience method to serialize into a byte vector.
+    fn serialize_as_vec(&self) -> Result<Vec<u8>, Self::Error> {
+        let mut data = vec![];
+        self.serialize(&mut data)?;
+        Ok(data)
+    }
 }
 
 /// Define that an object can be read from a `Read` object.

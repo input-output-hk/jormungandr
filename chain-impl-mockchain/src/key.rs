@@ -57,6 +57,23 @@ impl AsRef<[u8]> for Hash {
     }
 }
 
+impl property::Serialize for Hash {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        writer.write(self.0.as_hash_bytes())?;
+        Ok(())
+    }
+}
+
+impl property::Deserialize for Hash {
+    type Error = std::io::Error;
+    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
+        let mut buffer = [0; hash::Blake2b256::HASH_SIZE];
+        reader.read_exact(&mut buffer)?;
+        Ok(Hash(hash::Blake2b256::from(buffer)))
+    }
+}
+
 impl property::BlockId for Hash {}
 
 /// Cryptographic signature.

@@ -1,0 +1,20 @@
+[package]
+name = "chain-storage-sqlite"
+version = "0.1.0"
+authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
+          , "Vincent Hanquez <vincent.hanquez@iohk.io>"
+          , "Eelco Dolstra <edolstra@gmail.com>"
+          , "Mikhail Zabaluev <mikhail.zabaluev@gmail.com>"
+          , "Alexander Vershilov <alexander.vershilov@gmail.com>"
+          ]
+edition = "2018"
+
+[dependencies]
+chain-core = { path = "../chain-core" }
+chain-storage = { path = "../chain-storage" }
+sqlite = { version = "0.24" }
+
+[dev-dependencies]
+cardano = { path = "../cardano" }
+cardano-storage = { path = "../storage" }
+exe-common = { path = "../exe-common" }
