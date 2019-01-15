@@ -1,11 +1,13 @@
-use chain_core::property::{Block, BlockDate, BlockId, Deserialize, Header, Serialize};
-use network_core::server;
+use chain_core::property::{
+    Block, BlockDate, BlockId, Deserialize, Header, Serialize, TransactionId,
+};
+use network_core::server::{self, block::BlockService, transaction::TransactionService, Node};
 
 use futures::prelude::*;
 use tower_grpc::Error::Grpc as GrpcError;
 use tower_grpc::{self, Code, Request, Status};
 
-use std::marker::PhantomData;
+use std::{error::Error, marker::PhantomData};
 
 use super::gen;
 
@@ -28,18 +30,22 @@ impl<T, F> FutureResponse<T, F> {
     fn error(status: Status) -> Self {
         FutureResponse::Err(status)
     }
+
+    fn unimplemented() -> Self {
+        FutureResponse::Err(Status::with_code(Code::Unimplemented))
+    }
 }
 
-fn convert_error(e: server::Error) -> tower_grpc::Error {
+fn convert_error<E: Error>(e: E) -> tower_grpc::Error {
     let status = Status::with_code_and_message(Code::Unknown, format!("{}", e));
     GrpcError(status)
 }
 
-pub trait ConvertResponse<T>: Future<Error = server::Error> {
+pub trait ConvertResponse<T>: Future {
     fn convert_item(item: Self::Item) -> Result<T, tower_grpc::Error>;
 }
 
-pub trait ConvertStream<T>: Stream<Error = server::Error> {
+pub trait ConvertStream<T>: Stream {
     fn convert_item(item: Self::Item) -> Result<T, tower_grpc::Error>;
 }
 
@@ -48,6 +54,7 @@ fn poll_and_convert_response<T, F>(
 ) -> Poll<tower_grpc::Response<T>, tower_grpc::Error>
 where
     F: Future + ConvertResponse<T>,
+    F::Error: Error,
 {
     match future.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -63,6 +70,7 @@ where
 fn poll_and_convert_stream<T, S>(stream: &mut S) -> Poll<Option<T>, tower_grpc::Error>
 where
     S: Stream + ConvertStream<T>,
+    S::Error: Error,
 {
     match stream.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -78,6 +86,7 @@ where
 impl<T, F> Future for FutureResponse<T, F>
 where
     F: Future + ConvertResponse<T>,
+    F::Error: Error,
 {
     type Item = tower_grpc::Response<T>;
     type Error = tower_grpc::Error;
@@ -117,6 +126,7 @@ where
 impl<T, S> Stream for ResponseStream<T, S>
 where
     S: Stream + ConvertStream<T>,
+    S::Error: Error,
 {
     type Item = T;
     type Error = tower_grpc::Error;
@@ -126,9 +136,23 @@ where
     }
 }
 
-#[derive(Clone)]
-pub struct GrpcServer<T> {
-    node: T,
+pub struct GrpcServer<T: Node> {
+    block_service: Option<T::BlockService>,
+    tx_service: Option<T::TransactionService>,
+}
+
+impl<T> Clone for GrpcServer<T>
+where
+    T: Node,
+    T::BlockService: Clone,
+    T::TransactionService: Clone,
+{
+    fn clone(&self) -> Self {
+        GrpcServer {
+            block_service: self.block_service.clone(),
+            tx_service: self.tx_service.clone(),
+        }
+    }
 }
 
 fn deserialize_vec<H: Deserialize>(pb: &[Vec<u8>]) -> Result<Vec<H>, tower_grpc::Error> {
@@ -160,7 +184,7 @@ where
 
 impl<F, S, T> ConvertResponse<ResponseStream<T, S>> for F
 where
-    F: Future<Item = S, Error = server::Error>,
+    F: Future<Item = S>,
     S: Stream + ConvertStream<T>,
 {
     fn convert_item(item: S) -> Result<ResponseStream<T, S>, tower_grpc::Error> {
@@ -171,7 +195,7 @@ where
 
 impl<F, I, D> ConvertResponse<gen::node::TipResponse> for F
 where
-    F: Future<Item = (I, D), Error = server::Error>,
+    F: Future<Item = (I, D)>,
     I: BlockId + Serialize,
     D: BlockDate + ToString,
 {
@@ -185,7 +209,7 @@ where
 
 impl<S, B> ConvertStream<gen::node::Block> for S
 where
-    S: Stream<Item = B, Error = server::Error>,
+    S: Stream<Item = B>,
     B: Block + Serialize,
 {
     fn convert_item(item: Self::Item) -> Result<gen::node::Block, tower_grpc::Error> {
@@ -196,7 +220,7 @@ where
 
 impl<S, H> ConvertStream<gen::node::Header> for S
 where
-    S: Stream<Item = H, Error = server::Error>,
+    S: Stream<Item = H>,
     H: Header + Serialize,
 {
     fn convert_item(item: Self::Item) -> Result<gen::node::Header, tower_grpc::Error> {
@@ -207,8 +231,8 @@ where
 
 impl<F, I> ConvertResponse<gen::node::ProposeTransactionsResponse> for F
 where
-    F: Future<Item = server::ProposeTransactionsResponse<I>, Error = server::Error>,
-    I: BlockId + Serialize,
+    F: Future<Item = server::transaction::ProposeTransactionsResponse<I>>,
+    I: TransactionId + Serialize,
 {
     fn convert_item(
         _item: Self::Item,
@@ -219,8 +243,8 @@ where
 
 impl<F, I> ConvertResponse<gen::node::RecordTransactionResponse> for F
 where
-    F: Future<Item = server::RecordTransactionResponse<I>, Error = server::Error>,
-    I: BlockId + Serialize,
+    F: Future<Item = server::transaction::RecordTransactionResponse<I>>,
+    I: TransactionId + Serialize,
 {
     fn convert_item(
         _item: Self::Item,
@@ -231,34 +255,57 @@ where
 
 impl<T> gen::node::server::Node for GrpcServer<T>
 where
-    T: server::Node + Clone,
-    <T as server::Node>::BlockId: Serialize + Deserialize,
-    <T as server::Node>::BlockDate: ToString,
-    <T as server::Node>::Header: Serialize,
+    T: Node + Clone,
+    <T as Node>::BlockService: Clone,
+    <T as Node>::TransactionService: Clone,
+    <<T as Node>::BlockService as BlockService>::BlockId: Serialize + Deserialize,
+    <<T as Node>::BlockService as BlockService>::BlockDate: ToString,
+    <<T as Node>::BlockService as BlockService>::Header: Serialize,
+    <<T as Node>::TransactionService as TransactionService>::TransactionId: Serialize,
 {
-    type TipFuture = FutureResponse<gen::node::TipResponse, <T as server::Node>::TipFuture>;
-    type GetBlocksStream = ResponseStream<gen::node::Block, <T as server::Node>::GetBlocksStream>;
-    type GetBlocksFuture =
-        FutureResponse<Self::GetBlocksStream, <T as server::Node>::GetBlocksFuture>;
-    type GetHeadersStream =
-        ResponseStream<gen::node::Header, <T as server::Node>::GetHeadersStream>;
-    type GetHeadersFuture =
-        FutureResponse<Self::GetHeadersStream, <T as server::Node>::GetHeadersFuture>;
-    type StreamBlocksToTipStream =
-        ResponseStream<gen::node::Block, <T as server::Node>::StreamBlocksToTipStream>;
-    type StreamBlocksToTipFuture =
-        FutureResponse<Self::StreamBlocksToTipStream, <T as server::Node>::StreamBlocksToTipFuture>;
+    type TipFuture = FutureResponse<
+        gen::node::TipResponse,
+        <<T as Node>::BlockService as BlockService>::TipFuture,
+    >;
+    type GetBlocksStream = ResponseStream<
+        gen::node::Block,
+        <<T as Node>::BlockService as BlockService>::GetBlocksStream,
+    >;
+    type GetBlocksFuture = FutureResponse<
+        Self::GetBlocksStream,
+        <<T as Node>::BlockService as BlockService>::GetBlocksFuture,
+    >;
+    type GetHeadersStream = ResponseStream<
+        gen::node::Header,
+        <<T as Node>::BlockService as BlockService>::GetHeadersStream,
+    >;
+    type GetHeadersFuture = FutureResponse<
+        Self::GetHeadersStream,
+        <<T as Node>::BlockService as BlockService>::GetHeadersFuture,
+    >;
+    type StreamBlocksToTipStream = ResponseStream<
+        gen::node::Block,
+        <<T as Node>::BlockService as BlockService>::StreamBlocksToTipStream,
+    >;
+    type StreamBlocksToTipFuture = FutureResponse<
+        Self::StreamBlocksToTipStream,
+        <<T as Node>::BlockService as BlockService>::StreamBlocksToTipFuture,
+    >;
     type ProposeTransactionsFuture = FutureResponse<
         gen::node::ProposeTransactionsResponse,
-        <T as server::Node>::ProposeTransactionsFuture,
+        <<T as Node>::TransactionService as TransactionService>::ProposeTransactionsFuture,
     >;
     type RecordTransactionFuture = FutureResponse<
         gen::node::RecordTransactionResponse,
-        <T as server::Node>::RecordTransactionFuture,
+        <<T as Node>::TransactionService as TransactionService>::RecordTransactionFuture,
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
-        FutureResponse::new(self.node.tip())
+        let service = match self.block_service {
+            None => return FutureResponse::unimplemented(),
+            Some(ref mut service) => service,
+        };
+        FutureResponse::new(service.tip())
     }
 
     fn get_blocks(
@@ -279,6 +326,10 @@ where
         &mut self,
         req: Request<gen::node::StreamBlocksToTipRequest>,
     ) -> Self::StreamBlocksToTipFuture {
+        let service = match self.block_service {
+            None => return FutureResponse::unimplemented(),
+            Some(ref mut service) => service,
+        };
         let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
             Err(GrpcError(status)) => {
@@ -286,13 +337,17 @@ where
             }
             Err(e) => panic!("unexpected error {:?}", e),
         };
-        FutureResponse::new(self.node.stream_blocks_to_tip(&block_ids))
+        FutureResponse::new(service.stream_blocks_to_tip(&block_ids))
     }
 
     fn propose_transactions(
         &mut self,
         _request: Request<gen::node::ProposeTransactionsRequest>,
     ) -> Self::ProposeTransactionsFuture {
+        let _service = match self.tx_service {
+            None => return FutureResponse::unimplemented(),
+            Some(ref mut service) => service,
+        };
         unimplemented!()
     }
 
@@ -300,6 +355,10 @@ where
         &mut self,
         _request: Request<gen::node::RecordTransactionRequest>,
     ) -> Self::RecordTransactionFuture {
+        let _service = match self.tx_service {
+            None => return FutureResponse::unimplemented(),
+            Some(ref mut service) => service,
+        };
         unimplemented!()
     }
 }
