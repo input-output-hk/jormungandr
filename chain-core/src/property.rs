@@ -130,6 +130,26 @@ pub trait HasTransaction<T: Transaction> {
     fn transactions<'a>(&'a self) -> std::slice::Iter<'a, T>;
 }
 
+/// Updates type needs to implement this feature so we can easily
+/// compose the Updates objects.
+///
+pub trait Update {
+    /// allowing to build unions of updates will allow us to compress
+    /// atomic modifications.
+    ///
+    /// For example, in the cardano model we can consider compressing
+    /// the Update diff of all the EPOCHs below `EPOCH - 2`
+    ///
+    fn union(&mut self, other: Self) -> &mut Self;
+
+    /// inverse an update. This will be useful for Rollback in case the
+    /// node has decided to rollback to a previous fork and un apply the
+    /// given update.
+    fn inverse(self) -> Self;
+
+    fn empty() -> Self;
+}
+
 /// Define the Ledger side of the blockchain. This is not really on the blockchain
 /// but should be able to maintain a valid state of the overall blockchain at a given
 /// `Block`.
@@ -139,7 +159,7 @@ pub trait Ledger<T: Transaction> {
     ///
     /// This can be seen like a git Diff where we can see what is going
     /// to be removed from the Ledger state and what is going to be added.
-    type Update;
+    type Update: Update;
 
     /// Ledger's errors
     type Error: std::error::Error;
@@ -156,24 +176,23 @@ pub trait Ledger<T: Transaction> {
     fn diff_transaction(&self, transaction: &T) -> Result<Self::Update, Self::Error>;
 
     /// create a combined Update from the given transactions
+    ///
     fn diff<'a, I>(&self, transactions: I) -> Result<Self::Update, Self::Error>
-    where
-        I: IntoIterator<Item = &'a T> + Sized,
-        T: 'a;
-
-    /// apply an update to the leger.
-    fn apply(&mut self, update: Self::Update) -> Result<&mut Self, Self::Error>;
-
-    /// this function is a helper that calls `diff` and `apply` methods to modify
-    /// the state of the Ledger.
-    fn update<'a, I>(&mut self, transactions: I) -> Result<&mut Self, Self::Error>
     where
         I: IntoIterator<Item = &'a T> + Sized,
         T: 'a,
     {
-        let update = self.diff(transactions)?;
-        self.apply(update)
+        let mut update = Self::Update::empty();
+
+        for transaction in transactions {
+            update.union(self.diff_transaction(transaction)?);
+        }
+
+        Ok(update)
     }
+
+    /// apply an update to the leger.
+    fn apply(&mut self, update: Self::Update) -> Result<&mut Self, Self::Error>;
 }
 
 /// interface for the leader selection algorithm
@@ -194,7 +213,7 @@ pub trait LeaderSelection {
     /// * generic testing;
     /// * diff based storage;
     ///
-    type Update;
+    type Update: Update;
 
     /// the block that we will get the information from
     type Block: Block;
@@ -221,6 +240,23 @@ pub trait LeaderSelection {
     /// blockchain at the given date.
     ///
     fn is_leader_at(&self, date: <Self::Block as Block>::Date) -> Result<bool, Self::Error>;
+}
+
+/// the settings of the blockchain this is something that can be used to maintain
+/// the blockchain protocol update details:
+///
+pub trait Settings {
+    type Update: Update;
+    type Block: Block;
+    type Error: std::error::Error;
+
+    /// read the block update settings and see if we need to store
+    /// updates. Protocols may propose vote mechanism, this Update
+    /// and the settings need to keep track of these here.
+    fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error>;
+
+    /// apply the Update to the Settings
+    fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error>;
 }
 
 /// Define that an object can be written to a `Write` object.
@@ -272,7 +308,7 @@ pub mod testing {
 
     /// test that arbitrary generated transaction fails, this test requires
     /// that all the objects inside the transaction are arbitrary generated.
-    /// There is a very small propability of the event that all the objects
+    /// There is a very small probability of the event that all the objects
     /// will match, i.e. the contents of the transaction list of the subscribers
     /// and signatures will compose into a valid transaction, but if such
     /// event would happen it can be treated as error due to lack of the
@@ -348,4 +384,80 @@ pub mod testing {
         (id1 == id2 && tx1 == tx2) || (id1 != id2 && tx1 != tx2)
     }
 
+    /// Checks the associativity
+    /// i.e.
+    ///
+    /// ```text
+    /// forall u : Update, v: Update, w:Update . u.union(v.union(w))== (u.union(v)).union(w)
+    /// ```
+    pub fn update_associativity<U>(u: U, v: U, w: U) -> bool
+    where
+        U: Update + Arbitrary + PartialEq + Clone,
+    {
+        let result1 = {
+            let mut u = u.clone();
+            let mut v = v.clone();
+            v.union(w.clone());
+            u.union(v);
+            u
+        };
+        let result2 = {
+            let mut u = u;
+            u.union(v).union(w);
+            u
+        };
+        result1 == result2
+    }
+
+    /// Checks the identify element
+    /// i.e.
+    ///
+    /// ```text
+    /// forall u : Update . u.union(empty)== u
+    /// ```
+    pub fn update_identity_element<U>(update: U) -> bool
+    where
+        U: Update + Arbitrary + PartialEq + Clone,
+    {
+        let result = update.clone().union(U::empty()).clone();
+        result == update
+    }
+
+    /// Checks for the inverse element
+    /// i.e.
+    ///
+    /// ```text
+    /// forall u : Update . u.inverse().union(u) == empty
+    /// ```
+    pub fn update_inverse_element<U>(update: U) -> bool
+    where
+        U: Update + Arbitrary + PartialEq + Clone,
+    {
+        let mut inversed = update.clone().inverse();
+        inversed.union(update);
+        inversed == U::empty()
+    }
+
+    /// Checks the commutativity of the Union
+    /// i.e.
+    ///
+    /// ```text
+    /// forall u : Update, v: Update . u.union(v)== v.union(u)
+    /// ```
+    pub fn update_union_commutative<U>(u1: U, u2: U) -> bool
+    where
+        U: Update + Arbitrary + PartialEq + Clone,
+    {
+        let r1 = {
+            let mut u1 = u1.clone();
+            u1.union(u2.clone());
+            u1
+        };
+        let r2 = {
+            let mut u2 = u2;
+            u2.union(u1);
+            u2
+        };
+        r1 == r2
+    }
 }

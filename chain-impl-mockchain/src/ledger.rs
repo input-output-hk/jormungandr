@@ -29,19 +29,46 @@ pub struct Diff {
     /// List of the new outputs that were produced by the transaction.
     new_unspent_outputs: HashMap<UtxoPointer, Output>,
 }
-impl Diff {
-    fn new() -> Self {
+impl property::Update for Diff {
+    fn empty() -> Self {
         Diff {
             spent_outputs: HashMap::new(),
             new_unspent_outputs: HashMap::new(),
         }
     }
 
-    fn extend(&mut self, other: Self) {
-        self.new_unspent_outputs.extend(other.new_unspent_outputs);
-        self.spent_outputs.extend(other.spent_outputs);
+    fn inverse(self) -> Self {
+        Diff {
+            spent_outputs: self.new_unspent_outputs,
+            new_unspent_outputs: self.spent_outputs,
+        }
+    }
+
+    fn union(&mut self, other: Self) -> &mut Self {
+        // 1. other might be spending outputs that were _new_ in self
+        //    we need to remove them first.
+        for other_spending in other.spent_outputs.into_iter() {
+            if let Some(_) = self.new_unspent_outputs.remove(&other_spending.0) {
+                // just ignore the deleted output
+            } else {
+                self.spent_outputs
+                    .insert(other_spending.0, other_spending.1);
+            }
+        }
+
+        // 2. other might be spending outputs that were _new_ in self
+        for other_output in other.new_unspent_outputs.into_iter() {
+            if let Some(_) = self.spent_outputs.remove(&other_output.0) {
+                // just ignore and drop the value
+            } else {
+                self.new_unspent_outputs
+                    .insert(other_output.0, other_output.1);
+            }
+        }
+        self
     }
 }
+
 impl property::Ledger<SignedTransaction> for Ledger {
     type Update = Diff;
     type Error = Error;
@@ -62,7 +89,7 @@ impl property::Ledger<SignedTransaction> for Ledger {
     ) -> Result<Self::Update, Self::Error> {
         use chain_core::property::Transaction;
 
-        let mut diff = Diff::new();
+        let mut diff = <Diff as property::Update>::empty();
         let id = transaction.id();
         // 0. verify that number of signatures matches number of
         // transactions
@@ -114,19 +141,6 @@ impl property::Ledger<SignedTransaction> for Ledger {
         Ok(diff)
     }
 
-    fn diff<'a, I>(&self, transactions: I) -> Result<Self::Update, Self::Error>
-    where
-        I: IntoIterator<Item = &'a SignedTransaction> + Sized,
-    {
-        let mut diff = Diff::new();
-
-        for transaction in transactions {
-            diff.extend(self.diff_transaction(transaction)?);
-        }
-
-        Ok(diff)
-    }
-
     fn apply(&mut self, diff: Self::Update) -> Result<&mut Self, Self::Error> {
         for spent_output in diff.spent_outputs.keys() {
             if let None = self.unspent_outputs.remove(spent_output) {
@@ -152,6 +166,15 @@ mod test {
     use crate::key::{Hash, PrivateKey};
     use cardano::hdwallet as crypto;
     use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Diff {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Diff {
+                spent_outputs: Arbitrary::arbitrary(g),
+                new_unspent_outputs: Arbitrary::arbitrary(g),
+            }
+        }
+    }
 
     impl Arbitrary for Ledger {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -259,6 +282,21 @@ mod test {
             Err(Error::TransactionSumIsNonZero(10, 9)),
             ledger.diff_transaction(&signed_tx)
         )
+    }
+
+    quickcheck! {
+        fn diff_union_is_associative(types: (Diff, Diff, Diff)) -> bool {
+            property::testing::update_associativity(types.0, types.1, types.2)
+        }
+        fn diff_union_has_identity_element(diff: Diff) -> bool {
+            property::testing::update_identity_element(diff)
+        }
+        fn diff_union_has_inverse_element(diff: Diff) -> bool {
+            property::testing::update_inverse_element(diff)
+        }
+        fn diff_union_is_commutative(types: (Diff, Diff)) -> bool {
+            property::testing::update_union_commutative(types.0, types.1)
+        }
     }
 
 }
