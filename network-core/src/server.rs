@@ -8,7 +8,7 @@ pub mod transaction;
 /// An implementation of a blockchain node implements this trait to
 /// serve the network protocols using node's subsystems such as
 /// block storage and transaction engine.
-pub trait Node: Sized {
+pub trait Node {
     /// The implementation of the block service.
     type BlockService: block::BlockService;
 
