@@ -155,6 +155,15 @@ where
     }
 }
 
+impl<T: Node> GrpcServer<T> {
+    pub fn new(node: T) -> Self {
+        GrpcServer {
+            block_service: node.block_service(),
+            tx_service: node.transaction_service(),
+        }
+    }
+}
+
 fn deserialize_vec<H: Deserialize>(pb: &[Vec<u8>]) -> Result<Vec<H>, tower_grpc::Error> {
     match pb.iter().map(|v| H::deserialize(&mut &v[..])).collect() {
         Ok(v) => Ok(v),
