@@ -1,6 +1,6 @@
 //! Block service abstraction.
 
-use chain_core::property;
+use chain_core::property::{Block, BlockDate, BlockId, Deserialize, Header, Serialize};
 
 use futures::prelude::*;
 
@@ -10,18 +10,18 @@ use std::fmt;
 /// providing access to blocks.
 pub trait BlockService {
     /// The block identifier type for the blockchain.
-    type BlockId: property::BlockId;
+    type BlockId: BlockId + Serialize + Deserialize;
 
     /// The block date type for the blockchain.
-    type BlockDate: property::BlockDate;
+    type BlockDate: BlockDate + ToString;
 
     /// The type representing a block on the blockchain.
-    type Block: property::Block<Id = Self::BlockId, Date = Self::BlockDate>;
+    type Block: Block<Id = Self::BlockId, Date = Self::BlockDate>;
 
     /// The type representing metadata header of a block.
     /// If the blockchain does not feature headers, this can be the unit type
     /// `()`.
-    type Header: property::Header;
+    type Header: Header + Serialize;
 
     /// The type of asynchronous futures returned by method `tip`.
     ///

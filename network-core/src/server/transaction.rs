@@ -2,7 +2,7 @@
 
 use crate::codes;
 
-use chain_core::property;
+use chain_core::property::{Serialize, TransactionId};
 
 use futures::prelude::*;
 
@@ -12,7 +12,7 @@ use std::fmt;
 /// validating and accepting transactions.
 pub trait TransactionService {
     /// The transaction identifier type for the blockchain.
-    type TransactionId: property::TransactionId;
+    type TransactionId: TransactionId + Serialize;
 
     /// The type of asynchronous futures returned by method `propose_transactions`.
     type ProposeTransactionsFuture: Future<
