@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "chain-core",
+    "chain-addr",
     "chain-storage",
     "chain-storage-sqlite",
     "chain-impl-mockchain",
