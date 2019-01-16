@@ -11,5 +11,6 @@ members = [
     "storage-units",
     "storage",
     "cardano-c",
+    "ouroboros-praos",
     "exe-common",
 ]
