@@ -9,7 +9,7 @@ use futures::prelude::*;
 use tower_grpc::Error::Grpc as GrpcError;
 use tower_grpc::{self, Code, Request, Status};
 
-use std::{error::Error as ErrorTrait, marker::PhantomData};
+use std::{error::Error as ErrorTrait, marker::PhantomData, mem};
 
 pub struct NodeService<T: Node> {
     block_service: Option<T::BlockService>,
@@ -42,7 +42,7 @@ where
 pub enum FutureResponse<T, F> {
     Pending(F),
     Err(Status),
-    Complete(PhantomData<T>),
+    Finished(PhantomData<T>),
 }
 
 impl<T, F> FutureResponse<T, F>
@@ -120,16 +120,19 @@ where
     type Error = tower_grpc::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Error> {
-        let res = match self {
-            FutureResponse::Pending(f) => poll_and_convert_response(f),
-            FutureResponse::Err(status) => Err(GrpcError(status.clone())),
-            FutureResponse::Complete(_) => panic!("polled a finished response"),
-        };
-        if let Ok(Async::NotReady) = res {
-            Ok(Async::NotReady)
-        } else {
-            *self = FutureResponse::Complete(PhantomData);
+        if let FutureResponse::Pending(f) = self {
+            let res = poll_and_convert_response(f);
+            if let Ok(Async::NotReady) = res {
+                return Ok(Async::NotReady);
+            }
+            *self = FutureResponse::Finished(PhantomData);
             res
+        } else {
+            match mem::replace(self, FutureResponse::Finished(PhantomData)) {
+                FutureResponse::Pending(_) => unreachable!(),
+                FutureResponse::Err(status) => Err(GrpcError(status)),
+                FutureResponse::Finished(_) => panic!("polled a finished response"),
+            }
         }
     }
 }
