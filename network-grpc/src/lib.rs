@@ -18,3 +18,4 @@ mod gen {
 }
 
 pub mod server;
+mod service;
