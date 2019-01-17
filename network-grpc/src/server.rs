@@ -2,7 +2,7 @@ use crate::{gen, service::NodeService};
 
 use network_core::server::Node;
 
-use futures::prelude::*;
+use tokio::prelude::*;
 use tokio::{
     net::{TcpListener, TcpStream},
     runtime::current_thread::TaskExecutor,
@@ -30,22 +30,25 @@ where
 }
 
 /// Connection of a client peer to the gRPC server.
-pub struct Connection<T>(
-    tower_h2::server::Connection<
-        TcpStream,
+pub struct Connection<S, T>
+where
+    S: AsyncRead + AsyncWrite,
+    T: Node,
+    <T as Node>::BlockService: Clone,
+    <T as Node>::TransactionService: Clone,
+{
+    h2: tower_h2::server::Connection<
+        S,
         gen::node::server::NodeServer<NodeService<T>>,
         TaskExecutor,
         gen::node::server::node::ResponseBody<NodeService<T>>,
         (),
     >,
-)
-where
-    T: Node,
-    <T as Node>::BlockService: Clone,
-    <T as Node>::TransactionService: Clone;
+}
 
-impl<T> Future for Connection<T>
+impl<S, T> Future for Connection<S, T>
 where
+    S: AsyncRead + AsyncWrite,
     T: Node + 'static,
     <T as Node>::BlockService: Clone,
     <T as Node>::TransactionService: Clone,
@@ -53,7 +56,7 @@ where
     type Item = ();
     type Error = Error;
     fn poll(&mut self) -> Poll<(), Error> {
-        self.0.poll().map_err(|e| e.into())
+        self.h2.poll().map_err(|e| e.into())
     }
 }
 
@@ -70,11 +73,15 @@ where
         Server { h2 }
     }
 
-    /// Initializes a client peer connection based on an accepted TCP
-    /// connection socket.
-    /// The socket can be obtained from a stream returned by `listen`.
-    pub fn serve(&mut self, sock: TcpStream) -> Connection<T> {
-        Connection(self.h2.serve(sock))
+    /// Initializes a client peer connection based on an accepted connection
+    /// socket. The socket can be obtained from a stream returned by `listen`.
+    pub fn serve<S>(&mut self, sock: S) -> Connection<S, T>
+    where
+        S: AsyncRead + AsyncWrite,
+    {
+        Connection {
+            h2: self.h2.serve(sock),
+        }
     }
 }
 
