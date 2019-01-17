@@ -1,4 +1,4 @@
-use crate::{gen, service::NodeService};
+use crate::{gen::node::server as gen_server, service::NodeService};
 
 use network_core::server::Node;
 
@@ -9,7 +9,7 @@ use tokio::prelude::*;
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 
-use std::{error::Error as ErrorTrait, fmt, net::SocketAddr};
+use std::{error, fmt, net::SocketAddr};
 
 #[cfg(unix)]
 use std::path::Path;
@@ -27,9 +27,9 @@ where
     <T as Node>::TransactionService: Clone,
 {
     h2: tower_h2::Server<
-        gen::node::server::NodeServer<NodeService<T>>,
+        gen_server::NodeServer<NodeService<T>>,
         E,
-        gen::node::server::node::ResponseBody<NodeService<T>>,
+        gen_server::node::ResponseBody<NodeService<T>>,
     >,
 }
 
@@ -43,9 +43,9 @@ where
 {
     h2: tower_h2::server::Connection<
         S,
-        gen::node::server::NodeServer<NodeService<T>>,
+        gen_server::NodeServer<NodeService<T>>,
         E,
-        gen::node::server::node::ResponseBody<NodeService<T>>,
+        gen_server::node::ResponseBody<NodeService<T>>,
         (),
     >,
 }
@@ -58,8 +58,8 @@ where
     <T as Node>::TransactionService: Clone,
     E: Executor<
         tower_h2::server::Background<
-            gen::node::server::node::ResponseFuture<NodeService<T>>,
-            gen::node::server::node::ResponseBody<NodeService<T>>,
+            gen_server::node::ResponseFuture<NodeService<T>>,
+            gen_server::node::ResponseBody<NodeService<T>>,
         >,
     >,
 {
@@ -77,14 +77,14 @@ where
     <T as Node>::TransactionService: Clone,
     E: Executor<
             tower_h2::server::Background<
-                gen::node::server::node::ResponseFuture<NodeService<T>>,
-                gen::node::server::node::ResponseBody<NodeService<T>>,
+                gen_server::node::ResponseFuture<NodeService<T>>,
+                gen_server::node::ResponseBody<NodeService<T>>,
             >,
         > + Clone,
 {
     /// Creates a server instance around the node service implementation.
     pub fn new(node: T, executor: E) -> Self {
-        let grpc_service = gen::node::server::NodeServer::new(NodeService::new(node));
+        let grpc_service = gen_server::NodeServer::new(NodeService::new(node));
         let h2 = tower_h2::Server::new(grpc_service, Default::default(), executor);
         Server { h2 }
     }
@@ -138,7 +138,7 @@ pub enum Error {
     Execute,
 }
 
-type H2Error<T> = tower_h2::server::Error<gen::node::server::NodeServer<NodeService<T>>>;
+type H2Error<T> = tower_h2::server::Error<gen_server::NodeServer<NodeService<T>>>;
 
 // Incorporating tower_h2::server::Error would be too cumbersome due to the
 // type parameter baggage, see https://github.com/tower-rs/tower-h2/issues/50
@@ -173,8 +173,8 @@ impl fmt::Display for Error {
     }
 }
 
-impl ErrorTrait for Error {
-    fn source(&self) -> Option<&(dyn ErrorTrait + 'static)> {
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
             Error::Http2Handshake(e) => Some(e),
             Error::Http2Protocol(e) => Some(e),
