@@ -2,11 +2,9 @@ use crate::{gen, service::NodeService};
 
 use network_core::server::Node;
 
+use futures::future::Executor;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
-use tokio::{
-    net::{TcpListener, TcpStream},
-    runtime::current_thread::TaskExecutor,
-};
 
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
@@ -22,7 +20,7 @@ use std::path::Path;
 /// Node service. The application instantiates a `Server` wrapping a
 /// blockchain service implementation satisfying the abstract network
 /// service trait `Node`.
-pub struct Server<T>
+pub struct Server<T, E>
 where
     T: Node,
     <T as Node>::BlockService: Clone,
@@ -30,13 +28,13 @@ where
 {
     h2: tower_h2::Server<
         gen::node::server::NodeServer<NodeService<T>>,
-        TaskExecutor,
+        E,
         gen::node::server::node::ResponseBody<NodeService<T>>,
     >,
 }
 
 /// Connection of a client peer to the gRPC server.
-pub struct Connection<S, T>
+pub struct Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
     T: Node,
@@ -46,18 +44,24 @@ where
     h2: tower_h2::server::Connection<
         S,
         gen::node::server::NodeServer<NodeService<T>>,
-        TaskExecutor,
+        E,
         gen::node::server::node::ResponseBody<NodeService<T>>,
         (),
     >,
 }
 
-impl<S, T> Future for Connection<S, T>
+impl<S, T, E> Future for Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
     T: Node + 'static,
     <T as Node>::BlockService: Clone,
     <T as Node>::TransactionService: Clone,
+    E: Executor<
+        tower_h2::server::Background<
+            gen::node::server::node::ResponseFuture<NodeService<T>>,
+            gen::node::server::node::ResponseBody<NodeService<T>>,
+        >,
+    >,
 {
     type Item = ();
     type Error = Error;
@@ -66,22 +70,28 @@ where
     }
 }
 
-impl<T> Server<T>
+impl<T, E> Server<T, E>
 where
     T: Node + 'static,
     <T as Node>::BlockService: Clone,
     <T as Node>::TransactionService: Clone,
+    E: Executor<
+            tower_h2::server::Background<
+                gen::node::server::node::ResponseFuture<NodeService<T>>,
+                gen::node::server::node::ResponseBody<NodeService<T>>,
+            >,
+        > + Clone,
 {
     /// Creates a server instance around the node service implementation.
-    pub fn new(node: T) -> Self {
+    pub fn new(node: T, executor: E) -> Self {
         let grpc_service = gen::node::server::NodeServer::new(NodeService::new(node));
-        let h2 = tower_h2::Server::new(grpc_service, Default::default(), TaskExecutor::current());
+        let h2 = tower_h2::Server::new(grpc_service, Default::default(), executor);
         Server { h2 }
     }
 
     /// Initializes a client peer connection based on an accepted connection
     /// socket. The socket can be obtained from a stream returned by `listen`.
-    pub fn serve<S>(&mut self, sock: S) -> Connection<S, T>
+    pub fn serve<S>(&mut self, sock: S) -> Connection<S, T, E>
     where
         S: AsyncRead + AsyncWrite,
     {
