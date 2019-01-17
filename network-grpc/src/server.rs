@@ -97,18 +97,11 @@ pub fn listen(
 /// The error type for gRPC server operations.
 #[derive(Debug)]
 pub enum Error {
-    Io(tokio::io::Error),
     Http2Handshake(h2::Error),
     Http2Protocol(h2::Error),
     NewService(h2::Error),
     Service(h2::Error),
     Execute,
-}
-
-impl From<tokio::io::Error> for Error {
-    fn from(err: tokio::io::Error) -> Self {
-        Error::Io(err)
-    }
 }
 
 type H2Error<T> = tower_h2::server::Error<gen::node::server::NodeServer<NodeService<T>>>;
@@ -137,7 +130,6 @@ where
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Io(e) => write!(f, "I/O error: {}", e),
             Error::Http2Handshake(e) => write!(f, "HTTP/2 handshake error: {}", e),
             Error::Http2Protocol(e) => write!(f, "HTTP/2 protocol error: {}", e),
             Error::NewService(e) => write!(f, "service creation error: {}", e),
@@ -150,7 +142,6 @@ impl fmt::Display for Error {
 impl ErrorTrait for Error {
     fn source(&self) -> Option<&(dyn ErrorTrait + 'static)> {
         match self {
-            Error::Io(e) => Some(e),
             Error::Http2Handshake(e) => Some(e),
             Error::Http2Protocol(e) => Some(e),
             Error::NewService(e) => Some(e),
