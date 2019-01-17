@@ -7,7 +7,7 @@ fn main() {
     tower_grpc_build::Config::new()
         .enable_client(true)
         .enable_server(true)
-        .build(&["proto/node.proto"], &["proto/"])
+        .build(&["../network-proto/node.proto"], &["../network-proto/"])
         .unwrap_or_else(|e| {
             writeln!(stderr(), "{}", e).unwrap();
             process::exit(1)

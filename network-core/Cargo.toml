@@ -1,0 +1,22 @@
+[package]
+name = "network-core"
+version = "0.1.0-dev"
+description = "Network subsystem API for blockchain node"
+authors = [
+    "Nicolas Di Prima <nicolas.diprima@iohk.io>",
+    "Vincent Hanquez <vincent.hanquez@iohk.io>",
+    "Mikhail Zabaluev <mikhail.zabaluev@iohk.io>",
+    "Eelco Dolstra <edolstra@gmail.com>",
+    "Alexander Vershilov <alexander.vershilov@gmail.com>",
+]
+edition = "2018"
+
+[dependencies]
+chain-core = { path = "../chain-core" }
+bytes = "0.4"
+futures = "0.1"
+prost = "0.4"
+prost-derive = "0.4"
+
+[build-dependencies]
+prost-build = "0.4"

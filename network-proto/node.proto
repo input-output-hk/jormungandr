@@ -1,15 +1,22 @@
 syntax = "proto3";
 
+import "codes.proto";
+
+// gRPC protocol for a blockchain node
 package iohk.chain.node;
 
+// Request message for method Tip.
 message TipRequest {}
 
+// Response message for method Tip.
 message TipResponse {
+    // Block identifier of the chain tip.
     bytes id = 1;
+    // Block date of the chain tip.
     string blockdate = 2;
 }
 
-// Parameters for GetBlocks and GetHeaders
+// Request message for methods GetBlocks and GetHeaders.
 message GetBlocksRequest {
     // The id of the tip to trace the chain from.
     bytes tip = 1;
@@ -20,64 +27,57 @@ message GetBlocksRequest {
     uint64 size = 3;
 }
 
+// Request message for method StreamBlocksToTip.
 message StreamBlocksToTipRequest {
-    // The ids of alternative chain forks to start the blocks from.
+    // The identifiers of blocks to consider as the
+    // starting point, in order of appearance.
     repeated bytes from = 1;
 }
 
 // Representation of a block.
 message Block {
-    // The entire content of the block. 
+    // The serialized content of the block. 
     bytes content = 1;
 }
 
 // Representation of a block header.
 message Header {
-    // The entire content of the block header. 
+    // The serialized content of the block header. 
     bytes content = 1;
 }
 
+// Request message for method ProposeTransactions.
 message ProposeTransactionsRequest {
+    // Identifiers of transactions to check.
     repeated bytes ids = 1;
 }
 
+// Response message for method ProposeTransactions.
 message ProposeTransactionsResponse {
-    // Status of each proposed transaction.
-    enum Status {
-        // The transaction ID is new to the recipient node.
-        NEW = 0;
-        // The proposed transaction has already been recorded by the node.
-        ALREADY_EXISTS = 1;
-    }
-
     message Item {
+        // Identifier of the transaction.
         bytes id = 1;
-        Status status = 2;
+        // Status showing whether the transaction is known to the node.
+        codes.TransactionStatus status = 2;
     }
 
+    // Information on the transactions identified in the request.
+    // The items shall be in the same order as the `ids` fields in the
+    // ProposeTransactionsRequest message.
     repeated Item items = 1;
 }
 
+// Request message for method RecordTransaction.
 message RecordTransactionRequest {
-    bytes tx = 1;
+    // The serialized transaction content.
+    bytes transaction = 1;
 }
 
+// Response message for the RecordTransaction method.
 message RecordTransactionResponse {
-    // The result of processing a transaction.
-    enum Result {
-        // The transaction has been accepted.
-        ACCEPTED = 0;
-        // Unknown/internal error.
-        UNKNOWN_ERROR = 1;
-        // The signature is invalid.
-        INVALID_SIGNATURE = 2;
-        // The proposed transaction would result in a double spend.
-        DOUBLE_SPEND = 3;
-        // The proposed transaction has already been recorded by the node.
-        ALREADY_EXISTS = 4;
-    }
-
-    Result result = 1;
+    // The result of processing the transaction by the node.
+    codes.TransactionAcceptance result = 1;
+    // The ID of the transaction, when successful (result < 100)
     bytes id = 2;
 }
 
