@@ -8,7 +8,13 @@ use tokio::{
     runtime::current_thread::TaskExecutor,
 };
 
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
+
 use std::{error::Error as ErrorTrait, fmt, net::SocketAddr};
+
+#[cfg(unix)]
+use std::path::Path;
 
 /// The gRPC server for the blockchain node.
 ///
@@ -99,6 +105,17 @@ pub fn listen(
         Ok(sock)
     });
     Ok(stream)
+}
+
+/// Sets up a listening Unix socket bound to the specified path.
+/// If successful, returns an asynchronous stream of `UnixStream` socket
+/// objects representing accepted connections from clients.
+#[cfg(unix)]
+pub fn listen_unix<P: AsRef<Path>>(
+    path: P,
+) -> Result<impl Stream<Item = UnixStream, Error = tokio::io::Error>, tokio::io::Error> {
+    let listener = UnixListener::bind(path)?;
+    Ok(listener.incoming())
 }
 
 /// The error type for gRPC server operations.
