@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use cardano_storage::chain_state::restore_chain_state;
 use cardano_storage::StorageConfig;
-use cardano_storage::{blob, block_read, tag, Storage};
+use cardano_storage::{blob, tag, Storage};
 
 use crate::blockcfg::{
     cardano::{Block, BlockHash, Cardano, GenesisData},
@@ -88,7 +88,7 @@ impl Blockchain<Cardano> {
         // incoming block is on the tip chain, but there is no quick
         // way to check that.
         if block_hash != self.chain_state.last_block {
-            blob::write(&self.storage, &block_hash, cbor!(block).unwrap().as_ref())
+            blob::write(&self.storage, block_hash.as_hash_bytes(), cbor!(block).unwrap().as_ref())
                 .expect("unable to write block to disk");
 
             // Compute the new chain state. In the common case, the
@@ -153,7 +153,7 @@ impl Blockchain<Cardano> {
         // sure that this invariant is preserved everywhere
         // (e.g. loose block GC should delete blocks in reverse
         // order).
-        block_read(&self.storage, block_hash).is_ok()
+        self.storage.block_exists(block_hash.as_hash_bytes()).unwrap_or(false)
     }
 
     /// Request a missing block from the network.

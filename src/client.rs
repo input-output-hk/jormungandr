@@ -1,6 +1,6 @@
 use blockcfg::{cardano, cardano::Cardano};
 use blockchain::BlockchainR;
-use cardano_storage::{block_read, iter};
+use cardano_storage::{iter};
 use intercom::*;
 use std::sync::mpsc::Receiver;
 
@@ -43,7 +43,7 @@ where
 fn handle_get_block_tip(blockchain: &BlockchainR<Cardano>) -> Result<cardano::Header, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
-    match block_read(blockchain.get_storage(), &tip) {
+    match blockchain.get_storage().read_block(tip.as_hash_bytes()) {
         Err(err) => Err(format!("Cannot read block '{}': {}", tip, err).into()),
         Ok(rblk) => {
             let blk = rblk.decode().unwrap();
@@ -66,7 +66,7 @@ fn handle_get_block_headers(
     let mut checkpoints = checkpoints
         .iter()
         .filter_map(
-            |checkpoint| match block_read(blockchain.get_storage(), &checkpoint) {
+            |checkpoint| match blockchain.get_storage().read_block(&checkpoint.as_hash_bytes()) {
                 Err(_) => None,
                 Ok(rblk) => Some((
                     rblk.decode().unwrap().get_header().get_blockdate(),

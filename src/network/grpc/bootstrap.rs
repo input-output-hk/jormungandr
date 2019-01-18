@@ -15,7 +15,10 @@ use super::cardano as cardano_proto;
 use super::iohk::jormungandr as gen;
 
 fn deserialize_block(block: cardano_proto::Block) -> Result<Block, cbor_event::Error> {
-    cbor_event::de::RawCbor::from(&block.content).deserialize_complete()
+    let mut de = cbor_event::de::Deserializer::from(
+        std::io::Cursor::new(&block.content)
+    );
+    de.deserialize_complete()
 }
 
 pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR<Cardano>) {
@@ -42,7 +45,7 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR<Cardano>) {
         .and_then(|mut client| {
             let tip = blockchain.read().unwrap().get_tip();
             let req = cardano_proto::HeaderHashes {
-                hashes: vec![tip.to_vec()],
+                hashes: vec![Vec::from(&tip.as_hash_bytes()[..])],
             };
             client
                 .stream_blocks_to_tip(Request::new(req))

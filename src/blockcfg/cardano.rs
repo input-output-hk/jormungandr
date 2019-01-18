@@ -5,7 +5,7 @@ use crate::secure;
 
 use cardano;
 use cardano::{
-    block::{verify::Error, verify_chain::ChainState},
+    block::{verify::Error, chain_state::ChainState},
     tx::{TxOut, TxoPointer},
     util::try_from_slice::TryFromSlice,
 };
@@ -28,7 +28,7 @@ impl BlockConfig for Cardano {
     type Transaction = Transaction;
     type TransactionId = TransactionId;
     type GenesisData = GenesisData;
-    type Ledger = cardano::block::verify_chain::ChainState;
+    type Ledger = cardano::block::chain_state::ChainState;
 
     fn make_block(
         secret_key: &secure::NodeSecret,
@@ -129,7 +129,8 @@ impl Deserialize for Block {
     type Error = cbor_event::Error;
 
     fn deserialize(data: &[u8]) -> Result<Block, cbor_event::Error> {
-        cbor_event::de::RawCbor::from(data).deserialize_complete()
+        let mut de = cbor_event::de::Deserializer::from(data);
+        de.deserialize_complete()
     }
 }
 

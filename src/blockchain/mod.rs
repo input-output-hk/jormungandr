@@ -16,11 +16,13 @@ pub trait Block: Clone {
 
 impl Block for cardano::block::Block {
     fn get_hash(&self) -> Hash {
-        (*self.get_header().compute_hash()).into()
+        unimplemented!()
+        // self.header().compute_hash()
     }
 
     fn get_parent(&self) -> Hash {
-        (*self.get_header().get_previous_header()).into()
+        unimplemented!()
+        // self.header().get_previous_header()
     }
 
     fn as_bytes(&self) -> Vec<u8> {
