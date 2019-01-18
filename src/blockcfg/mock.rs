@@ -388,7 +388,7 @@ impl property::Ledger for Ledger {
 #[cfg(test)]
 mod quickcheck {
     use super::*;
-    use quickcheck::{Arbitrary, Gen};
+    use ::quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for SlotId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {

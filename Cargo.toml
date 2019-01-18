@@ -3,6 +3,9 @@ name = "jormungandr"
 version = "0.0.1"
 authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
           , "Vincent Hanquez <vincent.hanquez@iohk.io>"
+          , "Eelco Dolstra <edolstra@gmail.com>"
+          , "Mikhail Zabaluev <mikhail.zabaluev@gmail.com>"
+          , "Alexander Vershilov <alexander.vershilov@gmail.com>"
           ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/input-output-hk/jormungandr"
@@ -11,25 +14,25 @@ documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
 description = """
 Midgard Serpent
 """
-
+edition = "2018"
 
 [dependencies]
 dirs = "1.0"
-rand = "0.5"
+rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.8"
-slog = "2.4.1"
+slog = "^2.4"
 slog-async = "2.3.0"
 slog-term = "2.4.0"
 slog-json = "2.3.0"
-humantime = "1.1"
+humantime = "1.2"
 bincode = "1.0.1"
 cbor_event = "2.1.2"
 cryptoxide = "0.1"
 futures    = "0.1"
 tokio      = "0.1"
-structopt = "^0.2.12"
+structopt = "^0.2"
 curve25519-dalek = "0.21"
 sha2 = "^0.7"
 digest = "^0.7"
@@ -61,7 +64,7 @@ git = "https://github.com/tower-rs/tower-grpc"
 rev = "7ffa9d3b610d1c84559a811d08a25bd1670babed"
 
 [dev-dependencies]
-quickcheck = "0.7"
+quickcheck = "0.8"
 
 [features]
 with-bench = []

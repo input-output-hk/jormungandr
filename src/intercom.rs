@@ -1,4 +1,4 @@
-use blockcfg::BlockConfig;
+use crate::blockcfg::BlockConfig;
 
 use std::fmt::{self, Debug, Display};
 
