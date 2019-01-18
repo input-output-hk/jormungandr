@@ -1,14 +1,18 @@
-use crate::{gen, service::NodeService};
+use crate::{gen::node::server as gen_server, service::NodeService};
 
 use network_core::server::Node;
 
-use futures::prelude::*;
-use tokio::{
-    net::{TcpListener, TcpStream},
-    runtime::current_thread::TaskExecutor,
-};
+use futures::future::Executor;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::prelude::*;
 
-use std::{error::Error as ErrorTrait, fmt, net::SocketAddr};
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
+
+use std::{error, fmt, net::SocketAddr};
+
+#[cfg(unix)]
+use std::path::Path;
 
 /// The gRPC server for the blockchain node.
 ///
@@ -16,65 +20,84 @@ use std::{error::Error as ErrorTrait, fmt, net::SocketAddr};
 /// Node service. The application instantiates a `Server` wrapping a
 /// blockchain service implementation satisfying the abstract network
 /// service trait `Node`.
-pub struct Server<T>
+pub struct Server<T, E>
 where
     T: Node,
     <T as Node>::BlockService: Clone,
     <T as Node>::TransactionService: Clone,
 {
     h2: tower_h2::Server<
-        gen::node::server::NodeServer<NodeService<T>>,
-        TaskExecutor,
-        gen::node::server::node::ResponseBody<NodeService<T>>,
+        gen_server::NodeServer<NodeService<T>>,
+        E,
+        gen_server::node::ResponseBody<NodeService<T>>,
     >,
 }
 
 /// Connection of a client peer to the gRPC server.
-pub struct Connection<T>(
-    tower_h2::server::Connection<
-        TcpStream,
-        gen::node::server::NodeServer<NodeService<T>>,
-        TaskExecutor,
-        gen::node::server::node::ResponseBody<NodeService<T>>,
-        (),
-    >,
-)
+pub struct Connection<S, T, E>
 where
+    S: AsyncRead + AsyncWrite,
     T: Node,
     <T as Node>::BlockService: Clone,
-    <T as Node>::TransactionService: Clone;
+    <T as Node>::TransactionService: Clone,
+{
+    h2: tower_h2::server::Connection<
+        S,
+        gen_server::NodeServer<NodeService<T>>,
+        E,
+        gen_server::node::ResponseBody<NodeService<T>>,
+        (),
+    >,
+}
 
-impl<T> Future for Connection<T>
+impl<S, T, E> Future for Connection<S, T, E>
 where
+    S: AsyncRead + AsyncWrite,
     T: Node + 'static,
     <T as Node>::BlockService: Clone,
     <T as Node>::TransactionService: Clone,
+    E: Executor<
+        tower_h2::server::Background<
+            gen_server::node::ResponseFuture<NodeService<T>>,
+            gen_server::node::ResponseBody<NodeService<T>>,
+        >,
+    >,
 {
     type Item = ();
     type Error = Error;
     fn poll(&mut self) -> Poll<(), Error> {
-        self.0.poll().map_err(|e| e.into())
+        self.h2.poll().map_err(|e| e.into())
     }
 }
 
-impl<T> Server<T>
+impl<T, E> Server<T, E>
 where
     T: Node + 'static,
     <T as Node>::BlockService: Clone,
     <T as Node>::TransactionService: Clone,
+    E: Executor<
+            tower_h2::server::Background<
+                gen_server::node::ResponseFuture<NodeService<T>>,
+                gen_server::node::ResponseBody<NodeService<T>>,
+            >,
+        > + Clone,
 {
     /// Creates a server instance around the node service implementation.
-    pub fn new(node: T) -> Self {
-        let grpc_service = gen::node::server::NodeServer::new(NodeService::new(node));
-        let h2 = tower_h2::Server::new(grpc_service, Default::default(), TaskExecutor::current());
+    pub fn new(node: T, executor: E) -> Self {
+        let grpc_service = gen_server::NodeServer::new(NodeService::new(node));
+        let h2 = tower_h2::Server::new(grpc_service, Default::default(), executor);
         Server { h2 }
     }
 
-    /// Initializes a client peer connection based on an accepted TCP
-    /// connection socket.
-    /// The socket can be obtained from a stream returned by `listen`.
-    pub fn serve(&mut self, sock: TcpStream) -> Connection<T> {
-        Connection(self.h2.serve(sock))
+    /// Initializes a client peer connection based on an accepted connection
+    /// socket. The socket can be obtained from a stream returned by `listen`.
+    pub fn serve<S>(&mut self, sock: S) -> Connection<S, T, E>
+    where
+        S: AsyncRead + AsyncWrite,
+    {
+        Connection {
+            h2: self.h2.serve(sock),
+        }
     }
 }
 
@@ -94,6 +117,17 @@ pub fn listen(
     Ok(stream)
 }
 
+/// Sets up a listening Unix socket bound to the specified path.
+/// If successful, returns an asynchronous stream of `UnixStream` socket
+/// objects representing accepted connections from clients.
+#[cfg(unix)]
+pub fn listen_unix<P: AsRef<Path>>(
+    path: P,
+) -> Result<impl Stream<Item = UnixStream, Error = tokio::io::Error>, tokio::io::Error> {
+    let listener = UnixListener::bind(path)?;
+    Ok(listener.incoming())
+}
+
 /// The error type for gRPC server operations.
 #[derive(Debug)]
 pub enum Error {
@@ -104,7 +138,7 @@ pub enum Error {
     Execute,
 }
 
-type H2Error<T> = tower_h2::server::Error<gen::node::server::NodeServer<NodeService<T>>>;
+type H2Error<T> = tower_h2::server::Error<gen_server::NodeServer<NodeService<T>>>;
 
 // Incorporating tower_h2::server::Error would be too cumbersome due to the
 // type parameter baggage, see https://github.com/tower-rs/tower-h2/issues/50
@@ -139,8 +173,8 @@ impl fmt::Display for Error {
     }
 }
 
-impl ErrorTrait for Error {
-    fn source(&self) -> Option<&(dyn ErrorTrait + 'static)> {
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
             Error::Http2Handshake(e) => Some(e),
             Error::Http2Protocol(e) => Some(e),
