@@ -5,7 +5,7 @@ use crate::secure;
 
 use cardano;
 use cardano::{
-    block::{verify::Error, chain_state::ChainState},
+    block::{chain_state::ChainState, verify::Error},
     tx::{TxOut, TxoPointer},
     util::try_from_slice::TryFromSlice,
 };

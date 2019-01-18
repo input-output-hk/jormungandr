@@ -1,10 +1,10 @@
 use super::{ConnectionState, GlobalState, SubscriptionId};
 use crate::blockcfg::cardano::{self, Cardano};
 use crate::intercom::{ClientMsg, Error, Reply, StreamReply, TransactionMsg};
+use crate::settings::network::{self, Listen, Peer};
 use ::protocol::{
     network_transport::LightWeightConnectionId, protocol, Connection, Inbound, Message,
 };
-use crate::settings::network::{self, Listen, Peer};
 
 use futures::prelude::*;
 use futures::{

@@ -1,7 +1,7 @@
 use crate::blockcfg::{cardano, cardano::Cardano};
 use crate::blockchain::BlockchainR;
-use cardano_storage::{iter};
 use crate::intercom::*;
+use cardano_storage::iter;
 use std::sync::mpsc::Receiver;
 
 pub fn client_task(blockchain: BlockchainR<Cardano>, r: Receiver<ClientMsg<Cardano>>) {
@@ -65,15 +65,18 @@ fn handle_get_block_headers(
      * block date. */
     let mut checkpoints = checkpoints
         .iter()
-        .filter_map(
-            |checkpoint| match blockchain.get_storage().read_block(&checkpoint.as_hash_bytes()) {
+        .filter_map(|checkpoint| {
+            match blockchain
+                .get_storage()
+                .read_block(&checkpoint.as_hash_bytes())
+            {
                 Err(_) => None,
                 Ok(rblk) => Some((
                     rblk.decode().unwrap().get_header().get_blockdate(),
                     checkpoint,
                 )),
-            },
-        )
+            }
+        })
         .collect::<Vec<_>>();
 
     if !checkpoints.is_empty() {

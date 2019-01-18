@@ -17,9 +17,9 @@ use std::{
 use crate::blockcfg::{cardano::Cardano, BlockConfig};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkBroadcastMsg, TransactionMsg};
-use protocol::{network_transport::LightWeightConnectionId, Message, MessageType, Response};
 use crate::settings::network::{Configuration, Connection, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
+use protocol::{network_transport::LightWeightConnectionId, Message, MessageType, Response};
 
 use futures::prelude::*;
 use futures::{

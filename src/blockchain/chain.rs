@@ -88,8 +88,12 @@ impl Blockchain<Cardano> {
         // incoming block is on the tip chain, but there is no quick
         // way to check that.
         if block_hash != self.chain_state.last_block {
-            blob::write(&self.storage, block_hash.as_hash_bytes(), cbor!(block).unwrap().as_ref())
-                .expect("unable to write block to disk");
+            blob::write(
+                &self.storage,
+                block_hash.as_hash_bytes(),
+                cbor!(block).unwrap().as_ref(),
+            )
+            .expect("unable to write block to disk");
 
             // Compute the new chain state. In the common case, the
             // incoming block is a direct successor of the tip, so we
@@ -153,7 +157,9 @@ impl Blockchain<Cardano> {
         // sure that this invariant is preserved everywhere
         // (e.g. loose block GC should delete blocks in reverse
         // order).
-        self.storage.block_exists(block_hash.as_hash_bytes()).unwrap_or(false)
+        self.storage
+            .block_exists(block_hash.as_hash_bytes())
+            .unwrap_or(false)
     }
 
     /// Request a missing block from the network.

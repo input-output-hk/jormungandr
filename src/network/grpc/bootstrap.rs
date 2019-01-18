@@ -15,9 +15,7 @@ use super::cardano as cardano_proto;
 use super::iohk::jormungandr as gen;
 
 fn deserialize_block(block: cardano_proto::Block) -> Result<Block, cbor_event::Error> {
-    let mut de = cbor_event::de::Deserializer::from(
-        std::io::Cursor::new(&block.content)
-    );
+    let mut de = cbor_event::de::Deserializer::from(std::io::Cursor::new(&block.content));
     de.deserialize_complete()
 }
 
