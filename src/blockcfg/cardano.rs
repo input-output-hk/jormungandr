@@ -1,22 +1,21 @@
 use std::collections::BTreeMap;
 
-use crate::blockcfg::{property, serialization::Deserialize, BlockConfig};
+use crate::blockcfg::{self as property, BlockConfig};
 use crate::secure;
 
-use cardano;
-use cardano::{
+use ::cardano::{
     block::{chain_state::ChainState, verify::Error},
     tx::{TxOut, TxoPointer},
     util::try_from_slice::TryFromSlice,
 };
 
-pub type GenesisData = cardano::config::GenesisData;
-pub type TransactionId = cardano::tx::TxId;
-pub type Transaction = cardano::tx::TxAux;
-pub type BlockDate = cardano::block::BlockDate;
-pub type BlockHash = cardano::block::HeaderHash;
-pub type Block = cardano::block::Block;
-pub type Header = cardano::block::BlockHeader;
+pub type GenesisData = ::cardano::config::GenesisData;
+pub type TransactionId = ::cardano::tx::TxId;
+pub type Transaction = ::cardano::tx::TxAux;
+pub type BlockDate = ::cardano::block::BlockDate;
+pub type BlockHash = ::cardano::block::HeaderHash;
+pub type Block = ::cardano::block::Block;
+pub type Header = ::cardano::block::BlockHeader;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Cardano;
@@ -28,7 +27,7 @@ impl BlockConfig for Cardano {
     type Transaction = Transaction;
     type TransactionId = TransactionId;
     type GenesisData = GenesisData;
-    type Ledger = cardano::block::chain_state::ChainState;
+    type Ledger = ::cardano::block::chain_state::ChainState;
 
     fn make_block(
         secret_key: &secure::NodeSecret,
@@ -37,7 +36,6 @@ impl BlockConfig for Cardano {
         block_date: <Self::Block as property::Block>::Date,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block {
-        use crate::blockcfg::property::Update;
         use cardano::block::*;
         use cardano::hash::Blake2b256;
         use cbor_event::Value;
@@ -96,83 +94,6 @@ impl BlockConfig for Cardano {
     }
 }
 
-impl property::Block for Block {
-    type Id = BlockHash;
-    type Date = cardano::block::BlockDate;
-
-    fn id(&self) -> Self::Id {
-        self.get_header().compute_hash()
-    }
-
-    fn parent_id(&self) -> &Self::Id {
-        match self {
-            cardano::block::Block::BoundaryBlock(ref bb) => &bb.header.previous_header,
-            cardano::block::Block::MainBlock(ref mb) => &mb.header.previous_header,
-        }
-    }
-    fn date(&self) -> Self::Date {
-        self.get_header().get_slotid()
-    }
-}
-impl property::HasTransaction for Block {
-    type Transaction = Transaction;
-
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
-        match self {
-            cardano::block::Block::BoundaryBlock(ref _bb) => [].iter(),
-            cardano::block::Block::MainBlock(ref mb) => mb.body.tx.iter(),
-        }
-    }
-}
-
-impl Deserialize for Block {
-    type Error = cbor_event::Error;
-
-    fn deserialize(data: &[u8]) -> Result<Block, cbor_event::Error> {
-        let mut de = cbor_event::de::Deserializer::from(data);
-        de.deserialize_complete()
-    }
-}
-
-impl Deserialize for BlockHash {
-    type Error = cardano::hash::Error;
-
-    fn deserialize(data: &[u8]) -> Result<BlockHash, Self::Error> {
-        BlockHash::try_from_slice(data)
-    }
-}
-
-impl property::Block for Header {
-    type Id = BlockHash;
-    type Date = cardano::block::BlockDate;
-
-    fn id(&self) -> Self::Id {
-        self.compute_hash()
-    }
-
-    fn parent_id(&self) -> &Self::Id {
-        use cardano::block::BlockHeader::*;
-
-        match self {
-            BoundaryBlockHeader(ref h) => &h.previous_header,
-            MainBlockHeader(ref h) => &h.previous_header,
-        }
-    }
-
-    fn date(&self) -> Self::Date {
-        self.get_slotid()
-    }
-}
-
-impl property::Transaction for Transaction {
-    type Input = cardano::tx::TxoPointer;
-    type Output = cardano::tx::TxOut;
-    type Id = TransactionId;
-    fn id(&self) -> Self::Id {
-        self.tx.id()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Diff {
     spent_outputs: BTreeMap<TxoPointer, TxOut>,
@@ -192,12 +113,14 @@ impl Diff {
     }
 }
 
-impl property::Ledger for ChainState {
-    type Transaction = Transaction;
-    type Diff = Diff;
+impl property::Ledger<Transaction> for ChainState {
+    type Update = Diff;
     type Error = Error;
 
-    fn diff_transaction(&self, transaction: &Self::Transaction) -> Result<Self::Diff, Self::Error> {
+    fn diff_transaction(
+        &self,
+        transaction: &Self::Transaction,
+    ) -> Result<Self::Update, Self::Error> {
         use cardano::block::verify::Verify;
 
         let id = transaction.tx.id();
@@ -227,7 +150,7 @@ impl property::Ledger for ChainState {
 
         Ok(diff)
     }
-    fn diff<'a, I>(&self, transactions: I) -> Result<Self::Diff, Self::Error>
+    fn diff<'a, I>(&self, transactions: I) -> Result<Self::Update, Self::Error>
     where
         I: Iterator<Item = &'a Self::Transaction> + Sized,
         Self::Transaction: 'a,
@@ -240,7 +163,7 @@ impl property::Ledger for ChainState {
 
         Ok(diff)
     }
-    fn add(&mut self, diff: Self::Diff) -> Result<&mut Self, Self::Error> {
+    fn apply(&mut self, diff: Self::Update) -> Result<&mut Self, Self::Error> {
         for spent_output in diff.spent_outputs.keys() {
             if let None = self.utxos.remove(spent_output) {
                 return Err(Error::MissingUtxo);
@@ -254,17 +177,5 @@ impl property::Ledger for ChainState {
         }
 
         Ok(self)
-    }
-}
-
-impl property::Update for ChainState {
-    type Block = Block;
-
-    fn transactions_per_block(&self) -> usize {
-        self.nr_transactions as usize
-    }
-
-    fn tip(&self) -> <Self::Block as property::Block>::Id {
-        self.last_block.clone()
     }
 }

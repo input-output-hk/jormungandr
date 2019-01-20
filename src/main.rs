@@ -14,6 +14,8 @@ extern crate structopt;
 
 extern crate cardano;
 extern crate cardano_storage;
+extern crate chain_core;
+extern crate chain_storage;
 #[macro_use]
 extern crate cbor_event;
 extern crate exe_common;

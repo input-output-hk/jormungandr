@@ -8,33 +8,32 @@
 //! 3. consensus: the consensus model of the blockchain.
 //!
 
-use crate::secure;
-
-pub mod property;
-pub mod serialization;
+pub use ::chain_core::property::{
+    Block, BlockDate, BlockId, Deserialize, HasTransaction, Header, LeaderSelection, Ledger,
+    Serialize, Settings, Transaction, TransactionId, Update,
+};
 
 pub mod cardano;
-#[cfg(test)]
-pub mod mock;
+
+use crate::secure;
 
 pub trait BlockConfig {
-    type Block: property::Block<Id = Self::BlockHash, Date = Self::BlockDate>
-        + property::HasTransaction<Transaction = Self::Transaction>;
-    type BlockDate;
-    type BlockHash;
-    type BlockHeader: property::Block<Id = Self::BlockHash, Date = Self::BlockDate>;
-    type Transaction: property::Transaction<Id = Self::TransactionId>;
-    type TransactionId;
+    type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
+        + HasTransaction<Transaction = Self::Transaction>;
+    type BlockDate: BlockDate;
+    type BlockHash: BlockId;
+    type BlockHeader: Block<Id = Self::BlockHash, Date = Self::BlockDate>;
+    type Transaction: Transaction<Id = Self::TransactionId>;
+    type TransactionId: TransactionId;
     type GenesisData;
 
-    type Ledger: property::Ledger<Transaction = Self::Transaction>
-        + property::Update<Block = Self::Block>;
+    type Ledger: Ledger<Transaction = Self::Transaction> + Update<Block = Self::Block>;
 
     fn make_block(
         secret_key: &secure::NodeSecret,
         public_key: &secure::NodePublic,
         ledger: &Self::Ledger,
-        block_date: <Self::Block as property::Block>::Date,
+        block_date: <Self::Block as Block>::Date,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block;
 }
