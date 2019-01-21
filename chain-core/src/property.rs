@@ -257,6 +257,8 @@ pub trait Settings {
 
     /// apply the Update to the Settings
     fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error>;
+
+    fn tip(&self) -> &<Self::Block as Block>::Id;
 }
 
 /// Define that an object can be written to a `Write` object.
