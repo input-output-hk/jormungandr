@@ -1,14 +1,13 @@
 use crate::blockcfg::{
     cardano::{Block, BlockHash},
-    property,
-    serialization::Deserialize,
-    BlockConfig,
+    BlockConfig, Deserialize,
 };
 use crate::intercom::{self, ClientMsg};
 use crate::network::{ConnectionState, GlobalState};
 use crate::settings::network::Listen;
 
-use cardano::block::{BlockDate, EpochSlotId};
+use cardano::{block::{BlockDate, EpochSlotId}};
+use chain_core::property;
 
 use futures::prelude::*;
 use futures::{

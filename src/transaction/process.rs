@@ -1,9 +1,6 @@
 use std::sync::{mpsc::Receiver, Arc, RwLock};
 
-use crate::blockcfg::{
-    property::{Ledger, Transaction},
-    BlockConfig,
-};
+use crate::blockcfg::{BlockConfig, Ledger, Transaction};
 use crate::blockchain::BlockchainR;
 use crate::intercom::TransactionMsg;
 use crate::transaction::TPool;

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::blockcfg::{self as property, BlockConfig};
 use crate::secure;
 
-use ::cardano::{
+use cardano::{
     block::{chain_state::ChainState, verify::Error},
     tx::{TxOut, TxoPointer},
     util::try_from_slice::TryFromSlice,
@@ -40,7 +40,7 @@ impl BlockConfig for Cardano {
         use cardano::hash::Blake2b256;
         use cbor_event::Value;
 
-        let previous_hash = ledger.tip();
+        let previous_hash = &ledger.last_block;
 
         match block_date {
             BlockDate::Boundary(_) => unimplemented!(),
@@ -117,10 +117,7 @@ impl property::Ledger<Transaction> for ChainState {
     type Update = Diff;
     type Error = Error;
 
-    fn diff_transaction(
-        &self,
-        transaction: &Self::Transaction,
-    ) -> Result<Self::Update, Self::Error> {
+    fn diff_transaction(&self, transaction: &Transaction) -> Result<Self::Update, Self::Error> {
         use cardano::block::verify::Verify;
 
         let id = transaction.tx.id();
@@ -146,19 +143,6 @@ impl property::Ledger<Transaction> for ChainState {
         for (index, output) in transaction.tx.outputs.iter().enumerate() {
             diff.new_unspent_outputs
                 .insert(TxoPointer::new(id, index as u32), output.clone());
-        }
-
-        Ok(diff)
-    }
-    fn diff<'a, I>(&self, transactions: I) -> Result<Self::Update, Self::Error>
-    where
-        I: Iterator<Item = &'a Self::Transaction> + Sized,
-        Self::Transaction: 'a,
-    {
-        let mut diff = Diff::new();
-
-        for transaction in transactions {
-            diff.extend(self.diff_transaction(transaction)?);
         }
 
         Ok(diff)

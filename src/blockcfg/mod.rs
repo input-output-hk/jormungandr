@@ -8,7 +8,7 @@
 //! 3. consensus: the consensus model of the blockchain.
 //!
 
-pub use ::chain_core::property::{
+pub use chain_core::property::{
     Block, BlockDate, BlockId, Deserialize, HasTransaction, Header, LeaderSelection, Ledger,
     Serialize, Settings, Transaction, TransactionId, Update,
 };
@@ -19,7 +19,7 @@ use crate::secure;
 
 pub trait BlockConfig {
     type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
-        + HasTransaction<Transaction = Self::Transaction>;
+        + HasTransaction<Self::Transaction>;
     type BlockDate: BlockDate;
     type BlockHash: BlockId;
     type BlockHeader: Block<Id = Self::BlockHash, Date = Self::BlockDate>;
@@ -27,7 +27,7 @@ pub trait BlockConfig {
     type TransactionId: TransactionId;
     type GenesisData;
 
-    type Ledger: Ledger<Transaction = Self::Transaction> + Update<Block = Self::Block>;
+    type Ledger: Ledger<Self::Transaction> + Settings<Block = Self::Block>;
 
     fn make_block(
         secret_key: &secure::NodeSecret,

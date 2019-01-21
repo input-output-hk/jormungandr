@@ -4,7 +4,7 @@ use std::sync::Arc;
 use super::super::{
     clock, intercom::BlockMsg, secure::NodeSecret, utils::task::TaskMessageBox, BlockchainR,
 };
-use crate::blockcfg::{property::Update, BlockConfig};
+use crate::blockcfg::{BlockConfig, Settings};
 use crate::transaction::TPoolR;
 
 use cardano::block::{BlockDate, EpochSlotId};
@@ -19,7 +19,7 @@ pub fn leadership_task<B>(
 ) where
     B: BlockConfig,
     <B as BlockConfig>::TransactionId: Eq + std::hash::Hash,
-    <B as BlockConfig>::Ledger: Update,
+    <B as BlockConfig>::Ledger: Settings,
     <B as BlockConfig>::BlockDate: From<BlockDate>,
 {
     let my_pub = secret.public.clone();
