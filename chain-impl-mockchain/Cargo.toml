@@ -13,7 +13,7 @@ edition = "2018"
 serde = "^1.0"
 serde_derive = "^1.0"
 bincode = "^1.0.1"
-quickcheck = { version = "0.7" }
+quickcheck = { version = "0.8" }
 chain-core = { path = "../chain-core" }
 rand = "*"
 
