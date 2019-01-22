@@ -11,10 +11,10 @@ edition = "2018"
 
 [dependencies]
 cfg-if = "0.1"
-quickcheck = { version = "0.7", optional = true }
+quickcheck = { version = "0.8", optional = true }
 
 [dev-dependencies]
-quickcheck = "0.7"
+quickcheck = "0.8"
 
 [features]
 property-test-api = ["quickcheck"]
