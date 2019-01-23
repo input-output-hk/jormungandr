@@ -1,4 +1,4 @@
-//! Abstractions for the network server-side interface of a blockchain node.
+//! Abstractions for the server-side network interface of a blockchain node.
 
 pub mod block;
 pub mod transaction;

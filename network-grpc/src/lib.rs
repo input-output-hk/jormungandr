@@ -17,5 +17,7 @@ mod gen {
     }
 }
 
+pub mod client;
+pub mod peer;
 pub mod server;
 mod service;
