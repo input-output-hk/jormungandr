@@ -226,7 +226,8 @@ impl AddressReadable {
 
     /// Validate from a String to create a valid AddressReadable
     pub fn from_string(s: &str) -> Result<Self> {
-        let r = Bech32::from_str_lenient(s)?;
+        use std::str::FromStr;
+        let r = Bech32::from_str(s)?;
         let expected_discrimination = if r.hrp() == Self::PRODUCTION_PREFIX {
             Discrimination::Production
         } else if r.hrp() == Self::TEST_PREFIX {
@@ -255,8 +256,9 @@ impl AddressReadable {
 
     /// Convert a valid AddressReadable to an decoded address
     pub fn to_address(&self) -> Address {
+        use std::str::FromStr;
         // the data has been verified ahead of time, so all unwrap are safe
-        let r = Bech32::from_str_lenient(&self.0).unwrap();
+        let r = Bech32::from_str(&self.0).unwrap();
         let dat = Vec::from_base32(r.data()).unwrap();
         Address::from_bytes(&dat[..]).unwrap()
     }

@@ -9,5 +9,4 @@ keywords = [ "Cardano", "Wallet", "Crypto", "Address" ]
 [dependencies]
 cryptoxide = "0.1"
 cardano = { path = "../cardano" }
-bech32 = "*"
-
+bech32 = "0.6"
