@@ -1,6 +1,6 @@
 use crate::gen::{self, node::client as gen_client};
 
-use chain_core::property::{Block, BlockDate, BlockId, Deserialize, Serialize};
+use chain_core::property::{Block, BlockDate, BlockId, Deserialize, Header, Serialize};
 use network_core::client::{self as core_client, block::BlockService};
 
 use futures::future::Executor;
@@ -255,17 +255,34 @@ where
     }
 }
 
+impl<T> ConvertResponse<T> for gen::node::Header
+where
+    T: Header + Deserialize,
+{
+    fn convert_item(self) -> Result<T, core_client::Error> {
+        let block = deserialize_bytes(&self.content)?;
+        Ok(block)
+    }
+}
+
 impl<T, S, E> BlockService<T> for Client<S, E>
 where
     T: Block,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
     <T as Block>::Date: FromStr,
+    <T as Block>::Header: Deserialize,
 {
     type TipFuture = ResponseFuture<(T::Id, T::Date), gen::node::TipResponse>;
 
     type StreamBlocksToTipStream = ResponseStream<T, gen::node::Block>;
     type StreamBlocksToTipFuture = ResponseStreamFuture<T, gen::node::Block>;
+
+    type GetBlocksStream = ResponseStream<T, gen::node::Block>;
+    type GetBlocksFuture = ResponseStreamFuture<T, gen::node::Block>;
+
+    type GetHeadersStream = ResponseStream<T::Header, gen::node::Header>;
+    type GetHeadersFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
