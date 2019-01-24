@@ -1,7 +1,10 @@
 use crate::gen::{self, node::client as gen_client};
 
-use chain_core::property::{Block, BlockDate, BlockId, Deserialize, Header, Serialize};
-use network_core::client::{self as core_client, block::BlockService};
+use chain_core::property::{Block, BlockDate, BlockId, Deserialize, HasHeader, Header, Serialize};
+use network_core::client::{
+    self as core_client,
+    block::{BlockService, HeaderService},
+};
 
 use futures::future::Executor;
 use tokio::io;
@@ -271,7 +274,6 @@ where
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
     <T as Block>::Date: FromStr,
-    <T as Block>::Header: Deserialize,
 {
     type TipFuture = ResponseFuture<(T::Id, T::Date), gen::node::TipResponse>;
 
@@ -280,9 +282,6 @@ where
 
     type GetBlocksStream = ResponseStream<T, gen::node::Block>;
     type GetBlocksFuture = ResponseStreamFuture<T, gen::node::Block>;
-
-    type GetHeadersStream = ResponseStream<T::Header, gen::node::Header>;
-    type GetHeadersFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
@@ -296,6 +295,16 @@ where
         let future = self.node.stream_blocks_to_tip(Request::new(req));
         ResponseStreamFuture::new(future)
     }
+}
+
+impl<T, S, E> HeaderService<T> for Client<S, E>
+where
+    T: HasHeader,
+    S: AsyncRead + AsyncWrite,
+    E: Executor<Background<S, BoxBody>> + Clone,
+{
+    type GetHeadersStream = ResponseStream<T::Header, gen::node::Header>;
+    type GetHeadersFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
 }
 
 /// The error type for gRPC client operations.

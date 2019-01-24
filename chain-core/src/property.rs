@@ -48,9 +48,7 @@ pub trait BlockDate: Eq + Ord + Clone {}
 pub trait TransactionId: Eq + Hash {}
 
 /// Trait identifying the block header type.
-pub trait Header {}
-
-impl Header for () {}
+pub trait Header: Serialize + Deserialize {}
 
 /// Block property
 ///
@@ -76,13 +74,6 @@ pub trait Block: Serialize + Deserialize {
     /// identifying the position of a block in a given epoch or era.
     type Date: BlockDate;
 
-    /// The block header. If provided by the blockchain, the header
-    /// can be used to transmit block's metadata via a network protocol
-    /// or in other uses where the full content of the block is not desirable.
-    /// An implementation that does not feature headers can use the unit
-    /// type `()`.
-    type Header: Header;
-
     /// return the Block's identifier.
     fn id(&self) -> Self::Id;
 
@@ -92,8 +83,18 @@ pub trait Block: Serialize + Deserialize {
 
     /// get the block date of the block
     fn date(&self) -> Self::Date;
+}
 
-    /// Gets the block's header.
+/// Access to the block header.
+///
+/// If featured by the blockchain, the header can be used to transmit
+/// block's metadata via a network protocol or in other uses where the
+/// full content of the block is too bulky and not necessary.
+pub trait HasHeader {
+    /// The block header type.
+    type Header: Header;
+
+    /// Retrieves the block's header.
     fn header(&self) -> Self::Header;
 }
 
