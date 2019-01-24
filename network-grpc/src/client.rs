@@ -92,7 +92,7 @@ fn convert_stream_error(_e: GrpcStreamError) -> core_client::Error {
 }
 
 pub trait ConvertResponse<T> {
-    fn convert_item(self) -> Result<T, core_client::Error>;
+    fn convert_response(self) -> Result<T, core_client::Error>;
 }
 
 fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_client::Error>
@@ -103,7 +103,7 @@ where
     match future.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
         Ok(Async::Ready(res)) => {
-            let item = res.into_inner().convert_item()?;
+            let item = res.into_inner().convert_response()?;
             Ok(Async::Ready(item))
         }
         Err(e) => Err(convert_error(e)),
@@ -138,7 +138,7 @@ where
         Ok(Async::NotReady) => Ok(Async::NotReady),
         Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
         Ok(Async::Ready(Some(item))) => {
-            let item = item.convert_item()?;
+            let item = item.convert_response()?;
             Ok(Async::Ready(Some(item)))
         }
         Err(e) => Err(convert_stream_error(e)),
@@ -238,7 +238,7 @@ where
     I: BlockId + Deserialize,
     D: BlockDate + FromStr,
 {
-    fn convert_item(self) -> Result<(I, D), core_client::Error> {
+    fn convert_response(self) -> Result<(I, D), core_client::Error> {
         let id = deserialize_bytes(&self.id)?;
         let blockdate = parse_str(&self.blockdate)?;
         Ok((id, blockdate))
@@ -249,7 +249,7 @@ impl<T> ConvertResponse<T> for gen::node::Block
 where
     T: Block,
 {
-    fn convert_item(self) -> Result<T, core_client::Error> {
+    fn convert_response(self) -> Result<T, core_client::Error> {
         let block = deserialize_bytes(&self.content)?;
         Ok(block)
     }
@@ -259,7 +259,7 @@ impl<T> ConvertResponse<T> for gen::node::Header
 where
     T: Header + Deserialize,
 {
-    fn convert_item(self) -> Result<T, core_client::Error> {
+    fn convert_response(self) -> Result<T, core_client::Error> {
         let block = deserialize_bytes(&self.content)?;
         Ok(block)
     }
