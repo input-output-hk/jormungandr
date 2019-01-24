@@ -47,20 +47,12 @@ pub trait BlockService {
     fn tip(&mut self) -> Self::TipFuture;
     fn stream_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::StreamBlocksFuture;
 
-    // TODO: return a stream instead of the vector.
-    /// Get block headers between two dates.
-    fn block_headers(
-        &mut self,
-        from: &[Self::BlockId],
-        to: &Self::BlockId,
-    ) -> Self::GetHeadersFuture;
-    // Stream blocks to the provided tip.
     fn stream_blocks_to(
         &mut self,
         from: &[Self::BlockId],
         to: &Self::BlockId,
     ) -> Self::StreamBlocksFuture;
-    fn block_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::GetHeadersFuture;
+
 }
 
 /// Interface for the blockchain node service implementation responsible for
@@ -68,6 +60,8 @@ pub trait BlockService {
 pub trait HeaderService {
     /// The type representing metadata header of a block.
     type Header: Header + Serialize;
+
+    type HeaderId: BlockId;
 
     /// The type of an asynchronous stream that provides block headers in
     /// response to method `get_headers`.
@@ -78,6 +72,18 @@ pub trait HeaderService {
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
     type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = BlockError>;
+
+    // TODO: return a stream instead of the vector.
+    /// Get block headers between two dates.
+    fn block_headers(
+        &mut self,
+        from: &[Self::HeaderId],
+        to: &Self::HeaderId,
+    ) -> Self::GetHeadersFuture;
+
+    // Stream blocks to the provided tip.
+    fn block_headers_to_tip(&mut self, from: &[Self::HeaderId]) -> Self::GetHeadersFuture;
+
 }
 
 /// Represents errors that can be returned by the node service implementation.

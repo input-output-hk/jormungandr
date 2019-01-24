@@ -2,6 +2,7 @@
 
 pub mod block;
 pub mod transaction;
+use chain_core::property;
 
 /// Interface to application logic of the blockchain node server.
 ///
@@ -13,7 +14,7 @@ pub trait Node {
     type BlockService: block::BlockService;
 
     /// The implementation of the header service.
-    type HeaderService: block::HeaderService;
+    type HeaderService: block::HeaderService<HeaderId=<<Self::BlockService as block::BlockService>::Block as property::Block>::Id>;
 
     /// The implementation of the transaction service.
     type TransactionService: transaction::TransactionService;
