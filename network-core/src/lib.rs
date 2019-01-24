@@ -5,6 +5,7 @@
 #[macro_use]
 extern crate prost_derive;
 
+pub mod client;
 pub mod server;
 
 /// Common type definitions generated from protobuf.
