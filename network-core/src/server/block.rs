@@ -42,10 +42,10 @@ pub trait BlockService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type StreamBlocksToTipFuture: Future<Item = Self::StreamBlocksToTipStream, Error = BlockError>;
+    type StreamBlocksFuture: Future<Item = Self::StreamBlocksToTipStream, Error = BlockError>;
 
     fn tip(&mut self) -> Self::TipFuture;
-    fn stream_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::StreamBlocksToTipFuture;
+    fn stream_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::StreamBlocksFuture;
 
     // TODO: return a stream instead of the vector.
     /// Get block headers between two dates.
@@ -59,7 +59,7 @@ pub trait BlockService {
         &mut self,
         from: &[Self::BlockId],
         to: &Self::BlockId,
-    ) -> Self::StreamBlocksToTipFuture;
+    ) -> Self::StreamBlocksFuture;
     fn block_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::GetHeadersFuture;
 }
 
