@@ -18,11 +18,6 @@ pub trait BlockService {
     /// The type representing a block on the blockchain.
     type Block: Block<Id = Self::BlockId, Date = Self::BlockDate>;
 
-    /// The type representing metadata header of a block.
-    /// If the blockchain does not feature headers, this can be the unit type
-    /// `()`.
-    type Header: Header + Serialize;
-
     /// The type of asynchronous futures returned by method `tip`.
     ///
     /// The future resolves to the block identifier and the block date
@@ -39,16 +34,6 @@ pub trait BlockService {
     /// implementation to produce a server-streamed response.
     type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = BlockError>;
 
-    /// The type of an asynchronous stream that provides block headers in
-    /// response to method `get_headers`.
-    type GetHeadersStream: Stream<Item = Self::Header, Error = BlockError>;
-
-    /// The type of asynchronous futures returned by method `get_headers`.
-    ///
-    /// The future resolves to a stream that will be used by the protocol
-    /// implementation to produce a server-streamed response.
-    type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = BlockError>;
-
     /// The type of an asynchronous stream that provides blocks in
     /// response to method `stream_blocks_to_tip`.
     type StreamBlocksToTipStream: Stream<Item = Self::Block, Error = BlockError>;
@@ -61,6 +46,23 @@ pub trait BlockService {
 
     fn tip(&mut self) -> Self::TipFuture;
     fn stream_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::StreamBlocksToTipFuture;
+}
+
+/// Interface for the blockchain node service implementation responsible for
+/// providing access to block headers.
+pub trait HeaderService {
+    /// The type representing metadata header of a block.
+    type Header: Header + Serialize;
+
+    /// The type of an asynchronous stream that provides block headers in
+    /// response to method `get_headers`.
+    type GetHeadersStream: Stream<Item = Self::Header, Error = BlockError>;
+
+    /// The type of asynchronous futures returned by method `get_headers`.
+    ///
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a server-streamed response.
+    type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = BlockError>;
 }
 
 /// Represents errors that can be returned by the node service implementation.

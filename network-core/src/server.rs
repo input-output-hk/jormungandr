@@ -12,14 +12,21 @@ pub trait Node {
     /// The implementation of the block service.
     type BlockService: block::BlockService;
 
+    /// The implementation of the header service.
+    type HeaderService: block::HeaderService;
+
     /// The implementation of the transaction service.
     type TransactionService: transaction::TransactionService;
 
-    /// Instantiates the block service implementation,
+    /// Instantiates the block service,
     /// if supported by this node.
     fn block_service(&self) -> Option<Self::BlockService>;
 
-    /// Instantiates the transaction service implementation,
+    /// Instantiates the header service,
+    /// if supported by this node.
+    fn header_service(&self) -> Option<Self::HeaderService>;
+
+    /// Instantiates the transaction service,
     /// if supported by this node.
     fn transaction_service(&self) -> Option<Self::TransactionService>;
 }

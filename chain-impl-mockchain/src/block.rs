@@ -26,7 +26,6 @@ pub struct Block {
 impl property::Block for Block {
     type Id = Hash;
     type Date = SlotId;
-    type Header = ();
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
@@ -43,10 +42,6 @@ impl property::Block for Block {
     /// Date of the block.
     fn date(&self) -> Self::Date {
         self.slot_id
-    }
-
-    fn header(&self) -> Self::Header {
-        ()
     }
 }
 
@@ -130,16 +125,11 @@ impl property::Deserialize for SignedBlock {
 impl property::Block for SignedBlock {
     type Id = <Block as property::Block>::Id;
     type Date = <Block as property::Block>::Date;
-    type Header = <Block as property::Block>::Header;
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
     fn id(&self) -> Self::Id {
         self.block.id()
-    }
-
-    fn header(&self) -> Self::Header {
-        self.block.header()
     }
 
     /// Id of the parent block.

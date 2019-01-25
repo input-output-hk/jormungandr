@@ -1,10 +1,10 @@
 use super::Error;
 
-use chain_core::property::Block;
+use chain_core::property::{Block, HasHeader};
 
 use futures::prelude::*;
 
-/// Interface for the blockchain node service implementation responsible for
+/// Interface for the blockchain node service responsible for
 /// providing access to blocks.
 pub trait BlockService<T: Block> {
     /// The type of asynchronous futures returned by method `tip`.
@@ -36,7 +36,11 @@ pub trait BlockService<T: Block> {
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
     type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = Error>;
+}
 
+/// Interface for the blockchain node service responsible for
+/// providing access to block headers.
+pub trait HeaderService<T: HasHeader> {
     /// The type of an asynchronous stream that provides block headers in
     /// response to method `get_headers`.
     type GetHeadersStream: Stream<Item = T::Header, Error = Error>;

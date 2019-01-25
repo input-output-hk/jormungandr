@@ -23,8 +23,9 @@ use std::path::Path;
 pub struct Server<T, E>
 where
     T: Node,
-    <T as Node>::BlockService: Clone,
-    <T as Node>::TransactionService: Clone,
+    T::BlockService: Clone,
+    T::HeaderService: Clone,
+    T::TransactionService: Clone,
 {
     h2: tower_h2::Server<
         gen_server::NodeServer<NodeService<T>>,
@@ -38,8 +39,9 @@ pub struct Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
     T: Node,
-    <T as Node>::BlockService: Clone,
-    <T as Node>::TransactionService: Clone,
+    T::BlockService: Clone,
+    T::HeaderService: Clone,
+    T::TransactionService: Clone,
 {
     h2: tower_h2::server::Connection<
         S,
@@ -54,8 +56,9 @@ impl<S, T, E> Future for Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
     T: Node + 'static,
-    <T as Node>::BlockService: Clone,
-    <T as Node>::TransactionService: Clone,
+    T::BlockService: Clone,
+    T::HeaderService: Clone,
+    T::TransactionService: Clone,
     E: Executor<
         tower_h2::server::Background<
             gen_server::node::ResponseFuture<NodeService<T>>,
@@ -73,8 +76,9 @@ where
 impl<T, E> Server<T, E>
 where
     T: Node + 'static,
-    <T as Node>::BlockService: Clone,
-    <T as Node>::TransactionService: Clone,
+    T::BlockService: Clone,
+    T::HeaderService: Clone,
+    T::TransactionService: Clone,
     E: Executor<
             tower_h2::server::Background<
                 gen_server::node::ResponseFuture<NodeService<T>>,
@@ -146,8 +150,9 @@ type H2Error<T> = tower_h2::server::Error<gen_server::NodeServer<NodeService<T>>
 impl<T> From<H2Error<T>> for Error
 where
     T: Node,
-    <T as Node>::BlockService: Clone,
-    <T as Node>::TransactionService: Clone,
+    T::BlockService: Clone,
+    T::HeaderService: Clone,
+    T::TransactionService: Clone,
 {
     fn from(err: H2Error<T>) -> Self {
         use tower_h2::server::Error::*;
