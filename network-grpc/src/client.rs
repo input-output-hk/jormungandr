@@ -86,12 +86,12 @@ pub struct ResponseStream<T, R> {
     _phantom: PhantomData<T>,
 }
 
-fn convert_error(_e: GrpcError) -> core_client::Error {
-    core_client::Error::Rpc
+fn convert_error(e: GrpcError) -> core_client::Error {
+    core_client::Error::new(core_client::ErrorKind::Rpc, e)
 }
 
-fn convert_stream_error(_e: GrpcStreamError) -> core_client::Error {
-    core_client::Error::Rpc
+fn convert_stream_error(e: GrpcStreamError) -> core_client::Error {
+    core_client::Error::new(core_client::ErrorKind::Rpc, e)
 }
 
 pub trait ConvertResponse<T> {
@@ -211,15 +211,17 @@ where
 fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_client::Error>
 where
     T: Deserialize,
+    T::Error: Send + Sync + 'static,
 {
-    T::deserialize(&mut buf).map_err(|_e| core_client::Error::Format)
+    T::deserialize(&mut buf).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
 }
 
 fn parse_str<T>(s: &str) -> Result<T, core_client::Error>
 where
     T: FromStr,
+    T::Err: error::Error + Send + Sync + 'static,
 {
-    T::from_str(s).map_err(|_e| core_client::Error::Format)
+    T::from_str(s).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
 }
 
 fn serialize_to_vec<T>(values: &[T]) -> Vec<Vec<u8>>
@@ -240,6 +242,8 @@ impl<I, D> ConvertResponse<(I, D)> for gen::node::TipResponse
 where
     I: BlockId + Deserialize,
     D: BlockDate + FromStr,
+    <I as Deserialize>::Error: Send + Sync + 'static,
+    <D as FromStr>::Err: error::Error + Send + Sync + 'static,
 {
     fn convert_response(self) -> Result<(I, D), core_client::Error> {
         let id = deserialize_bytes(&self.id)?;
@@ -251,6 +255,7 @@ where
 impl<T> ConvertResponse<T> for gen::node::Block
 where
     T: Block,
+    <T as Deserialize>::Error: Send + Sync + 'static,
 {
     fn convert_response(self) -> Result<T, core_client::Error> {
         let block = deserialize_bytes(&self.content)?;
@@ -260,7 +265,8 @@ where
 
 impl<T> ConvertResponse<T> for gen::node::Header
 where
-    T: Header + Deserialize,
+    T: Header,
+    <T as Deserialize>::Error: Send + Sync + 'static,
 {
     fn convert_response(self) -> Result<T, core_client::Error> {
         let block = deserialize_bytes(&self.content)?;
@@ -273,7 +279,10 @@ where
     T: Block,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
-    <T as Block>::Date: FromStr,
+    T::Date: FromStr,
+    <T as Deserialize>::Error: Send + Sync + 'static,
+    <T::Id as Deserialize>::Error: Send + Sync + 'static,
+    <T::Date as FromStr>::Err: error::Error + Send + Sync + 'static,
 {
     type TipFuture = ResponseFuture<(T::Id, T::Date), gen::node::TipResponse>;
 
@@ -302,6 +311,7 @@ where
     T: HasHeader,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
+    <T::Header as Deserialize>::Error: Send + Sync + 'static,
 {
     type GetHeadersStream = ResponseStream<T::Header, gen::node::Header>;
     type GetHeadersFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
