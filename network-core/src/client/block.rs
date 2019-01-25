@@ -26,9 +26,7 @@ pub trait BlockService<T: Block> {
     type StreamBlocksToTipFuture: Future<Item = Self::StreamBlocksToTipStream, Error = Error>;
 
     fn stream_blocks_to_tip(&mut self, from: &[T::Id]) -> Self::StreamBlocksToTipFuture;
-}
 
-pub trait BlockServiceTodo<T: Block> {
     /// The type of an asynchronous stream that provides blocks in
     /// response to method `get_blocks`.
     type GetBlocksStream: Stream<Item = T, Error = Error>;
@@ -48,16 +46,4 @@ pub trait BlockServiceTodo<T: Block> {
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
     type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error>;
-
-    /// The type of an asynchronous stream that provides blocks in
-    /// response to method `stream_blocks_to_tip`.
-    type StreamBlocksToTipStream: Stream<Item = T, Error = Error>;
-
-    /// The type of asynchronous futures returned by method `stream_blocks_to_tip`.
-    ///
-    /// The future resolves to a stream that will be used by the protocol
-    /// implementation to produce a server-streamed response.
-    type StreamBlocksToTipFuture: Future<Item = Self::StreamBlocksToTipStream, Error = Error>;
-
-    fn stream_blocks_to_tip(&mut self, from: &[T::Id]) -> Self::StreamBlocksToTipFuture;
 }

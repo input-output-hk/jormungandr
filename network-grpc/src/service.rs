@@ -9,7 +9,7 @@ use futures::prelude::*;
 use tower_grpc::Error::Grpc as GrpcError;
 use tower_grpc::{self, Code, Request, Status};
 
-use std::{error::Error as ErrorTrait, marker::PhantomData, mem};
+use std::{error, marker::PhantomData, mem};
 
 pub struct NodeService<T: Node> {
     block_service: Option<T::BlockService>,
@@ -39,55 +39,53 @@ where
     }
 }
 
-pub enum FutureResponse<T, F> {
+pub enum ResponseFuture<T, F> {
     Pending(F),
-    Err(Status),
+    Failed(Status),
     Finished(PhantomData<T>),
 }
 
-impl<T, F> FutureResponse<T, F>
+impl<T, F> ResponseFuture<T, F>
 where
-    F: Future + ConvertResponse<T>,
+    F: Future,
+    F::Item: ConvertResponse<T>,
 {
     fn new(future: F) -> Self {
-        FutureResponse::Pending(future)
+        ResponseFuture::Pending(future)
     }
 }
 
-impl<T, F> FutureResponse<T, F> {
+impl<T, F> ResponseFuture<T, F> {
     fn error(status: Status) -> Self {
-        FutureResponse::Err(status)
+        ResponseFuture::Failed(status)
     }
 
     fn unimplemented() -> Self {
-        FutureResponse::Err(Status::with_code(Code::Unimplemented))
+        ResponseFuture::Failed(Status::with_code(Code::Unimplemented))
     }
 }
 
-fn convert_error<E: ErrorTrait>(e: E) -> tower_grpc::Error {
+fn convert_error<E: error::Error>(e: E) -> tower_grpc::Error {
     let status = Status::with_code_and_message(Code::Unknown, format!("{}", e));
     GrpcError(status)
 }
 
-pub trait ConvertResponse<T>: Future {
-    fn convert_item(item: Self::Item) -> Result<T, tower_grpc::Error>;
-}
-
-pub trait ConvertStream<T>: Stream {
-    fn convert_item(item: Self::Item) -> Result<T, tower_grpc::Error>;
+pub trait ConvertResponse<T> {
+    fn convert_response(self) -> Result<T, tower_grpc::Error>;
 }
 
 fn poll_and_convert_response<T, F>(
     future: &mut F,
 ) -> Poll<tower_grpc::Response<T>, tower_grpc::Error>
 where
-    F: Future + ConvertResponse<T>,
-    F::Error: ErrorTrait,
+    F: Future,
+    F::Item: ConvertResponse<T>,
+    F::Error: error::Error,
 {
     match future.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
-        Ok(Async::Ready(item)) => {
-            let item = F::convert_item(item)?;
+        Ok(Async::Ready(res)) => {
+            let item = res.convert_response()?;
             let response = tower_grpc::Response::new(item);
             Ok(Async::Ready(response))
         }
@@ -97,41 +95,43 @@ where
 
 fn poll_and_convert_stream<T, S>(stream: &mut S) -> Poll<Option<T>, tower_grpc::Error>
 where
-    S: Stream + ConvertStream<T>,
-    S::Error: ErrorTrait,
+    S: Stream,
+    S::Item: ConvertResponse<T>,
+    S::Error: error::Error,
 {
     match stream.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
         Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
         Ok(Async::Ready(Some(item))) => {
-            let item = S::convert_item(item)?;
+            let item = item.convert_response()?;
             Ok(Async::Ready(Some(item)))
         }
         Err(e) => Err(convert_error(e)),
     }
 }
 
-impl<T, F> Future for FutureResponse<T, F>
+impl<T, F> Future for ResponseFuture<T, F>
 where
-    F: Future + ConvertResponse<T>,
-    F::Error: ErrorTrait,
+    F: Future,
+    F::Item: ConvertResponse<T>,
+    F::Error: error::Error,
 {
     type Item = tower_grpc::Response<T>;
     type Error = tower_grpc::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Error> {
-        if let FutureResponse::Pending(f) = self {
+        if let ResponseFuture::Pending(f) = self {
             let res = poll_and_convert_response(f);
             if let Ok(Async::NotReady) = res {
                 return Ok(Async::NotReady);
             }
-            *self = FutureResponse::Finished(PhantomData);
+            *self = ResponseFuture::Finished(PhantomData);
             res
         } else {
-            match mem::replace(self, FutureResponse::Finished(PhantomData)) {
-                FutureResponse::Pending(_) => unreachable!(),
-                FutureResponse::Err(status) => Err(GrpcError(status)),
-                FutureResponse::Finished(_) => panic!("polled a finished response"),
+            match mem::replace(self, ResponseFuture::Finished(PhantomData)) {
+                ResponseFuture::Pending(_) => unreachable!(),
+                ResponseFuture::Failed(status) => Err(GrpcError(status)),
+                ResponseFuture::Finished(_) => panic!("polled a finished response"),
             }
         }
     }
@@ -144,7 +144,8 @@ pub struct ResponseStream<T, S> {
 
 impl<T, S> ResponseStream<T, S>
 where
-    S: Stream + ConvertStream<T>,
+    S: Stream,
+    S::Item: ConvertResponse<T>,
 {
     pub fn new(stream: S) -> Self {
         ResponseStream {
@@ -156,8 +157,9 @@ where
 
 impl<T, S> Stream for ResponseStream<T, S>
 where
-    S: Stream + ConvertStream<T>,
-    S::Error: ErrorTrait,
+    S: Stream,
+    S::Item: ConvertResponse<T>,
+    S::Error: error::Error,
 {
     type Item = T;
     type Error = tower_grpc::Error;
@@ -194,73 +196,66 @@ where
     }
 }
 
-impl<F, S, T> ConvertResponse<ResponseStream<T, S>> for F
+impl<S, T> ConvertResponse<ResponseStream<T, S>> for S
 where
-    F: Future<Item = S>,
-    S: Stream + ConvertStream<T>,
+    S: Stream,
+    S::Item: ConvertResponse<T>,
 {
-    fn convert_item(item: S) -> Result<ResponseStream<T, S>, tower_grpc::Error> {
-        let stream = ResponseStream::new(item);
+    fn convert_response(self) -> Result<ResponseStream<T, S>, tower_grpc::Error> {
+        let stream = ResponseStream::new(self);
         Ok(stream)
     }
 }
 
-impl<F, I, D> ConvertResponse<gen::node::TipResponse> for F
+impl<I, D> ConvertResponse<gen::node::TipResponse> for (I, D)
 where
-    F: Future<Item = (I, D)>,
     I: BlockId + Serialize,
     D: BlockDate + ToString,
 {
-    fn convert_item(item: (I, D)) -> Result<gen::node::TipResponse, tower_grpc::Error> {
-        let id = serialize_to_bytes(item.0)?;
-        let blockdate = item.1.to_string();
+    fn convert_response(self) -> Result<gen::node::TipResponse, tower_grpc::Error> {
+        let id = serialize_to_bytes(self.0)?;
+        let blockdate = self.1.to_string();
         let response = gen::node::TipResponse { id, blockdate };
         Ok(response)
     }
 }
 
-impl<S, B> ConvertStream<gen::node::Block> for S
+impl<B> ConvertResponse<gen::node::Block> for B
 where
-    S: Stream<Item = B>,
     B: Block + Serialize,
 {
-    fn convert_item(item: Self::Item) -> Result<gen::node::Block, tower_grpc::Error> {
-        let content = serialize_to_bytes(item)?;
+    fn convert_response(self) -> Result<gen::node::Block, tower_grpc::Error> {
+        let content = serialize_to_bytes(self)?;
         Ok(gen::node::Block { content })
     }
 }
 
-impl<S, H> ConvertStream<gen::node::Header> for S
+impl<H> ConvertResponse<gen::node::Header> for H
 where
-    S: Stream<Item = H>,
     H: Header + Serialize,
 {
-    fn convert_item(item: Self::Item) -> Result<gen::node::Header, tower_grpc::Error> {
-        let content = serialize_to_bytes(item)?;
+    fn convert_response(self) -> Result<gen::node::Header, tower_grpc::Error> {
+        let content = serialize_to_bytes(self)?;
         Ok(gen::node::Header { content })
     }
 }
 
-impl<F, I> ConvertResponse<gen::node::ProposeTransactionsResponse> for F
+impl<I> ConvertResponse<gen::node::ProposeTransactionsResponse>
+    for server::transaction::ProposeTransactionsResponse<I>
 where
-    F: Future<Item = server::transaction::ProposeTransactionsResponse<I>>,
     I: TransactionId + Serialize,
 {
-    fn convert_item(
-        _item: Self::Item,
-    ) -> Result<gen::node::ProposeTransactionsResponse, tower_grpc::Error> {
+    fn convert_response(self) -> Result<gen::node::ProposeTransactionsResponse, tower_grpc::Error> {
         unimplemented!();
     }
 }
 
-impl<F, I> ConvertResponse<gen::node::RecordTransactionResponse> for F
+impl<I> ConvertResponse<gen::node::RecordTransactionResponse>
+    for server::transaction::RecordTransactionResponse<I>
 where
-    F: Future<Item = server::transaction::RecordTransactionResponse<I>>,
     I: TransactionId + Serialize,
 {
-    fn convert_item(
-        _item: Self::Item,
-    ) -> Result<gen::node::RecordTransactionResponse, tower_grpc::Error> {
+    fn convert_response(self) -> Result<gen::node::RecordTransactionResponse, tower_grpc::Error> {
         unimplemented!();
     }
 }
@@ -271,7 +266,7 @@ where
     <T as Node>::BlockService: Clone,
     <T as Node>::TransactionService: Clone,
 {
-    type TipFuture = FutureResponse<
+    type TipFuture = ResponseFuture<
         gen::node::TipResponse,
         <<T as Node>::BlockService as BlockService>::TipFuture,
     >;
@@ -279,7 +274,7 @@ where
         gen::node::Block,
         <<T as Node>::BlockService as BlockService>::GetBlocksStream,
     >;
-    type GetBlocksFuture = FutureResponse<
+    type GetBlocksFuture = ResponseFuture<
         Self::GetBlocksStream,
         <<T as Node>::BlockService as BlockService>::GetBlocksFuture,
     >;
@@ -287,7 +282,7 @@ where
         gen::node::Header,
         <<T as Node>::BlockService as BlockService>::GetHeadersStream,
     >;
-    type GetHeadersFuture = FutureResponse<
+    type GetHeadersFuture = ResponseFuture<
         Self::GetHeadersStream,
         <<T as Node>::BlockService as BlockService>::GetHeadersFuture,
     >;
@@ -295,25 +290,25 @@ where
         gen::node::Block,
         <<T as Node>::BlockService as BlockService>::StreamBlocksToTipStream,
     >;
-    type StreamBlocksToTipFuture = FutureResponse<
+    type StreamBlocksToTipFuture = ResponseFuture<
         Self::StreamBlocksToTipStream,
         <<T as Node>::BlockService as BlockService>::StreamBlocksToTipFuture,
     >;
-    type ProposeTransactionsFuture = FutureResponse<
+    type ProposeTransactionsFuture = ResponseFuture<
         gen::node::ProposeTransactionsResponse,
         <<T as Node>::TransactionService as TransactionService>::ProposeTransactionsFuture,
     >;
-    type RecordTransactionFuture = FutureResponse<
+    type RecordTransactionFuture = ResponseFuture<
         gen::node::RecordTransactionResponse,
         <<T as Node>::TransactionService as TransactionService>::RecordTransactionFuture,
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
         let service = match self.block_service {
-            None => return FutureResponse::unimplemented(),
+            None => return ResponseFuture::unimplemented(),
             Some(ref mut service) => service,
         };
-        FutureResponse::new(service.tip())
+        ResponseFuture::new(service.tip())
     }
 
     fn get_blocks(
@@ -335,17 +330,17 @@ where
         req: Request<gen::node::StreamBlocksToTipRequest>,
     ) -> Self::StreamBlocksToTipFuture {
         let service = match self.block_service {
-            None => return FutureResponse::unimplemented(),
+            None => return ResponseFuture::unimplemented(),
             Some(ref mut service) => service,
         };
         let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
             Err(GrpcError(status)) => {
-                return FutureResponse::error(status);
+                return ResponseFuture::error(status);
             }
             Err(e) => panic!("unexpected error {:?}", e),
         };
-        FutureResponse::new(service.stream_blocks_to_tip(&block_ids))
+        ResponseFuture::new(service.stream_blocks_to_tip(&block_ids))
     }
 
     fn propose_transactions(
@@ -353,7 +348,7 @@ where
         _request: Request<gen::node::ProposeTransactionsRequest>,
     ) -> Self::ProposeTransactionsFuture {
         let _service = match self.tx_service {
-            None => return FutureResponse::unimplemented(),
+            None => return ResponseFuture::unimplemented(),
             Some(ref mut service) => service,
         };
         unimplemented!()
@@ -364,7 +359,7 @@ where
         _request: Request<gen::node::RecordTransactionRequest>,
     ) -> Self::RecordTransactionFuture {
         let _service = match self.tx_service {
-            None => return FutureResponse::unimplemented(),
+            None => return ResponseFuture::unimplemented(),
             Some(ref mut service) => service,
         };
         unimplemented!()
