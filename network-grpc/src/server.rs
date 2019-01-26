@@ -169,10 +169,10 @@ where
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Http2Handshake(e) => write!(f, "HTTP/2 handshake error: {}", e),
-            Error::Http2Protocol(e) => write!(f, "HTTP/2 protocol error: {}", e),
-            Error::NewService(e) => write!(f, "service creation error: {}", e),
-            Error::Service(e) => write!(f, "error returned by service: {}", e),
+            Error::Http2Handshake(_) => write!(f, "HTTP/2 handshake error"),
+            Error::Http2Protocol(_) => write!(f, "HTTP/2 protocol error"),
+            Error::NewService(_) => write!(f, "service creation error"),
+            Error::Service(_) => write!(f, "error returned by service"),
             Error::Execute => write!(f, "task execution error"),
         }
     }
