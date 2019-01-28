@@ -9,4 +9,12 @@ keywords = [ "Cardano", "Wallet", "Crypto", "Address" ]
 [dependencies]
 cryptoxide = "0.1"
 cardano = { path = "../cardano" }
+chain-core = { path = "../chain-core" }
 bech32 = "0.6"
+quickcheck = { version = "0.8", optional = true }
+
+[dev-dependencies]
+quickcheck = "0.8"
+
+[features]
+property-test-api = ["quickcheck"]

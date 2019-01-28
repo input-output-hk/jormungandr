@@ -24,10 +24,12 @@ use std::string::ToString;
 // temporary re-use just to define
 use cardano::redeem::{self, PublicKey};
 
+use chain_core::property;
+
 // Allow to differentiate between address in
 // production and testing setting, so that
 // one type of address is not used in another setting.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Discrimination {
     Production,
     Test,
@@ -37,14 +39,14 @@ pub enum Discrimination {
 ///
 /// * Single address : just a single ed25519 spending public key
 /// * Group address : an ed25519 spending public key followed by a group public key used for staking
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
     Single(PublicKey),
     Group(PublicKey, PublicKey),
 }
 
 /// Kind Type of an address
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KindType {
     Single,
     Group,
@@ -72,7 +74,7 @@ impl KindType {
 
 /// An unstructured address including the
 /// discrimination and the kind of address
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Address(Discrimination, Kind);
 
 #[derive(Debug)]
@@ -143,20 +145,8 @@ impl Address {
 
     /// Serialize an address into bytes
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut v = Vec::with_capacity(self.to_size());
-        let first_byte = match self.0 {
-            Discrimination::Production => self.to_kind_value(),
-            Discrimination::Test => self.to_kind_value() | 0b1000_0000,
-        };
-        v.push(first_byte);
-        match self.1 {
-            Kind::Single(spend) => v.extend_from_slice(spend.as_ref()),
-            Kind::Group(spend, group) => {
-                v.extend_from_slice(spend.as_ref());
-                v.extend_from_slice(group.as_ref());
-            }
-        };
-        v
+        property::Serialize::serialize_as_vec(self)
+            .expect("expect in memory allocation to always work")
     }
 
     /// create a base32 encoding of the byte serialization
@@ -270,6 +260,109 @@ impl ToString for AddressReadable {
     }
 }
 
+impl property::Serialize for Address {
+    type Error = std::io::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> std::result::Result<(), Self::Error> {
+        use chain_core::packer::*;
+        use std::io::Write;
+        let mut codec = Codec::from(writer);
+
+        let first_byte = match self.0 {
+            Discrimination::Production => self.to_kind_value(),
+            Discrimination::Test => self.to_kind_value() | 0b1000_0000,
+        };
+        codec.put_u8(first_byte)?;
+        match self.1 {
+            Kind::Single(spend) => codec.write_all(spend.as_ref())?,
+            Kind::Group(spend, group) => {
+                codec.write_all(spend.as_ref())?;
+                codec.write_all(group.as_ref())?;
+            }
+        };
+
+        Ok(())
+    }
+
+    fn serialize_as_vec(&self) -> std::result::Result<Vec<u8>, Self::Error> {
+        let mut data = Vec::with_capacity(self.to_size());
+        self.serialize(&mut data)?;
+        Ok(data)
+    }
+}
+impl property::Deserialize for Address {
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> std::result::Result<Self, Self::Error> {
+        use chain_core::packer::*;
+        use std::io::Read;
+        let mut codec = Codec::from(reader);
+        // is_valid_data(bytes)?;
+
+        let byte = codec.get_u8()?;
+
+        let discr = get_discrimination_value(byte);
+        let kind = match get_kind_value(byte) {
+            ADDR_KIND_SINGLE => {
+                let mut bytes = [0u8; 32];
+                codec.read_exact(&mut bytes)?;
+                let spending = PublicKey::from_bytes(bytes);
+                Kind::Single(spending)
+            }
+            ADDR_KIND_GROUP => {
+                let mut bytes = [0u8; 32];
+                codec.read_exact(&mut bytes)?;
+                let spending = PublicKey::from_bytes(bytes);
+                let mut bytes = [0u8; 32];
+                codec.read_exact(&mut bytes)?;
+                let group = PublicKey::from_bytes(bytes);
+                Kind::Group(spending, group)
+            }
+            _ => unreachable!(),
+        };
+        Ok(Address(discr, kind))
+    }
+}
+
+#[cfg(feature = "property-test-api")]
+pub mod testing {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey {
+        let mut bytes = [0; cardano::redeem::PUBLICKEY_SIZE];
+        for byte in bytes.iter_mut() {
+            *byte = u8::arbitrary(g);
+        }
+        PublicKey::from_bytes(bytes)
+    }
+
+    impl Arbitrary for KindType {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            match u8::arbitrary(g) % 2 {
+                0 => KindType::Single,
+                1 => KindType::Group,
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    impl Arbitrary for Address {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let discrimination = if bool::arbitrary(g) {
+                Discrimination::Test
+            } else {
+                Discrimination::Production
+            };
+            let kind = match KindType::arbitrary(g) {
+                KindType::Single => Kind::Single(arbitrary_public_key(g)),
+                KindType::Group => Kind::Group(arbitrary_public_key(g), arbitrary_public_key(g)),
+            };
+            Address(discrimination, kind)
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -301,7 +394,7 @@ mod test {
     }
 
     #[test]
-    fn it_works() {
+    fn unit_tests() {
         let fake_spendingkey = PublicKey::from_slice(&[
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
