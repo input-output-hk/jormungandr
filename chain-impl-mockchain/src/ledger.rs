@@ -164,7 +164,7 @@ mod test {
     use super::*;
     use crate::address::Address;
     use crate::key::{Hash, PrivateKey};
-    use cardano::hdwallet as crypto;
+    use cardano::redeem as crypto;
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Diff {
@@ -185,7 +185,7 @@ mod test {
     }
 
     fn make_key(u: u8) -> (PrivateKey, Address) {
-        let pk1 = PrivateKey::normalize_bytes([u; crypto::XPRV_SIZE]);
+        let pk1 = PrivateKey::normalize_bytes([u; crypto::PUBLICKEY_SIZE]);
         let user_address = Address::new(&pk1.public());
         (pk1, user_address)
     }

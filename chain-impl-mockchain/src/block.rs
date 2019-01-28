@@ -1,13 +1,12 @@
 //! Representation of the block in the mockchain.
 use crate::key::*;
 use crate::transaction::*;
-use bincode;
 use chain_core::property;
 
 /// Non unique identifier of the transaction position in the
 /// blockchain. There may be many transactions related to the same
 /// `SlotId`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SlotId(u32, u32);
 
 impl property::BlockDate for SlotId {}
@@ -15,7 +14,7 @@ impl property::BlockDate for SlotId {}
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
 /// with the position of that block in the chain.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     pub slot_id: SlotId,
     pub parent_hash: Hash,
@@ -30,8 +29,8 @@ impl property::Block for Block {
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
     fn id(&self) -> Self::Id {
-        let bytes = bincode::serialize(self).expect("unable to serialize block");
         Hash::hash_bytes(&bytes)
+        unimplemented!()
     }
 
     /// Id of the parent block.
@@ -51,7 +50,7 @@ impl property::Serialize for Block {
     type Error = bincode::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        bincode::serialize_into(writer, self)
+        unimplemented!()
     }
 }
 
@@ -61,7 +60,7 @@ impl property::Deserialize for Block {
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::Read>(reader: R) -> Result<Block, bincode::Error> {
-        bincode::deserialize_from(reader)
+        unimplemented!()
     }
 }
 
@@ -74,7 +73,7 @@ impl property::HasTransaction<SignedTransaction> for Block {
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
 /// with the position of that block in the chain.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedBlock {
     /// Internal block.
     block: Block,
@@ -110,7 +109,7 @@ impl property::Serialize for SignedBlock {
     type Error = bincode::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        bincode::serialize_into(writer, self)
+        unimplemented!()
     }
 }
 
@@ -118,7 +117,7 @@ impl property::Deserialize for SignedBlock {
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::Read>(reader: R) -> Result<Self, bincode::Error> {
-        bincode::deserialize_from(reader)
+        unimplemented!()
     }
 }
 

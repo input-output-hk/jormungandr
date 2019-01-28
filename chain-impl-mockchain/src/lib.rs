@@ -1,11 +1,8 @@
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
+extern crate chain_addr;
 
-pub mod address;
 pub mod block;
 #[cfg(test)]
 pub mod environment;

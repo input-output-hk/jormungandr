@@ -15,12 +15,13 @@ serde_derive = "^1.0"
 bincode = "^1.0.1"
 quickcheck = { version = "0.8" }
 chain-core = { path = "../chain-core" }
+chain-addr = { path = "../chain-addr" }
 rand = "*"
-
-[dev-dependencies]
-chain-core = { path = "../chain-core", features=["property-test-api"]}
 
 [dependencies.cardano]
 path = "../cardano"
 features = [ "generic-serialization" ]
 
+[dev-dependencies]
+chain-core = { path = "../chain-core", features=["property-test-api"]}
+chain-addr = { path = "../chain-addr", features=["property-test-api"]}
