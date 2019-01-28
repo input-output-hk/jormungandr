@@ -214,12 +214,15 @@ impl property::Deserialize for SignedTransaction {
 impl property::Transaction for Transaction {
     type Input = UtxoPointer;
     type Output = Output;
+    type Inputs = Vec<UtxoPointer>;
+    type Outputs = Vec<Output>;
     type Id = TransactionId;
-    fn inputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Input> {
-        self.inputs.iter()
+
+    fn inputs(&self) -> &Self::Inputs {
+        &self.inputs
     }
-    fn outputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Output> {
-        self.outputs.iter()
+    fn outputs(&self) -> &Self::Outputs {
+        &self.outputs
     }
     fn id(&self) -> Self::Id {
         use chain_core::property::Serialize;
@@ -232,15 +235,18 @@ impl property::Transaction for Transaction {
         Hash::hash_bytes(&bytes)
     }
 }
-impl property::Transaction for SignedTransaction {
-    type Input = <Transaction as property::Transaction>::Input;
-    type Output = <Transaction as property::Transaction>::Output;
-    type Id = <Transaction as property::Transaction>::Id;
 
-    fn inputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Input> {
+impl property::Transaction for SignedTransaction {
+    type Input = UtxoPointer;
+    type Output = Output;
+    type Inputs = Vec<UtxoPointer>;
+    type Outputs = Vec<Output>;
+    type Id = TransactionId;
+
+    fn inputs(&self) -> &Self::Inputs {
         self.transaction.inputs()
     }
-    fn outputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Output> {
+    fn outputs(&self) -> &Self::Outputs {
         self.transaction.outputs()
     }
     fn id(&self) -> Self::Id {

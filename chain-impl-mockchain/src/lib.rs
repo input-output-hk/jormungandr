@@ -25,7 +25,7 @@ mod tests {
     quickcheck! {
         /// Randomly generated transaction should fail.
         fn prop_bad_tx_fails(l: Ledger, tx: SignedTransaction) -> TestResult {
-            testing::prop_bad_transaction_fails(l, tx)
+            testing::prop_bad_transaction_fails(l, &tx)
         }
     }
 

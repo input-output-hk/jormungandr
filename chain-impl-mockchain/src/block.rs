@@ -277,14 +277,15 @@ impl property::Deserialize for SignedBlockSummary {
 }
 
 impl property::HasTransaction for Block {
-    type Transaction = SignedTransaction;
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
-        self.transactions.iter()
+    type Transactions = Vec<SignedTransaction>;
+    fn transactions(&self) -> Option<&Self::Transactions> {
+        Some(&self.transactions)
     }
 }
+
 impl property::HasTransaction for SignedBlock {
-    type Transaction = SignedTransaction;
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
+    type Transactions = Vec<SignedTransaction>;
+    fn transactions(&self) -> Option<&Self::Transactions> {
         self.block.transactions()
     }
 }
