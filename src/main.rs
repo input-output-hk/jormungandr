@@ -36,6 +36,10 @@ extern crate tower_grpc;
 extern crate tower_h2;
 extern crate tower_util;
 
+extern crate actix_net;
+extern crate actix_web;
+extern crate native_tls;
+
 #[cfg(test)]
 extern crate quickcheck;
 #[cfg(test)]
@@ -56,6 +60,7 @@ pub mod consensus;
 pub mod intercom;
 pub mod leadership;
 pub mod network;
+pub mod rest;
 pub mod secure;
 pub mod settings;
 pub mod state;

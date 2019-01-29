@@ -38,6 +38,8 @@ bytes = "0.4"
 prost = "0.4"
 lazy_static = "1.2.0"
 prost-derive = "0.4"
+actix-net = "0.2.6"
+native-tls = "0.2.2"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
 tower-util = { git = "https://github.com/tower-rs/tower" }
@@ -46,6 +48,10 @@ protocol-tokio  = { path = "cardano-deps/protocol-tokio" }
 exe-common      = { path = "cardano-deps/exe-common" }
 cardano-storage = { path = "cardano-deps/storage" }
 storage-units   = { path = "cardano-deps/storage-units" }
+
+[dependencies.actix-web]
+version = "0.7.18"
+features = [ "tls" ]
 
 [dependencies.clap]
 version = "2.32"
