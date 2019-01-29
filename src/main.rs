@@ -33,6 +33,10 @@ extern crate curve25519_dalek;
 extern crate generic_array;
 extern crate sha2;
 
+extern crate actix_net;
+extern crate actix_web;
+extern crate native_tls;
+
 #[cfg(test)]
 extern crate quickcheck;
 #[cfg(test)]
@@ -53,6 +57,7 @@ pub mod consensus;
 pub mod intercom;
 pub mod leadership;
 pub mod network;
+pub mod rest;
 pub mod secure;
 pub mod settings;
 pub mod state;
