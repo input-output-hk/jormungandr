@@ -86,8 +86,7 @@ impl property::Serialize for Witness {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use std::io::Write;
-        writer.write_all(self.0.as_ref())
+        self.0.serialize(writer)
     }
 }
 impl property::Serialize for Transaction {
@@ -125,7 +124,7 @@ impl property::Serialize for SignedTransaction {
         codec.put_u8(0x01)?;
 
         // encode the transaction body
-        self.transaction.serialize(&mut codec);
+        self.transaction.serialize(&mut codec)?;
 
         // encode the signatures
         for witness in self.witnesses.iter() {
@@ -148,9 +147,7 @@ impl property::Deserialize for Witness {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let mut bytes = [0; 64];
-        reader.read_exact(&mut bytes)?;
-        Ok(Witness(Signature::from_bytes(bytes)))
+        Signature::deserialize(reader).map(Witness)
     }
 }
 impl property::Deserialize for Transaction {
@@ -189,22 +186,23 @@ impl property::Deserialize for Transaction {
     }
 }
 impl property::Deserialize for SignedTransaction {
-    type Error = bincode::Error;
+    type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
 
         let mut codec = Codec::from(reader);
 
-        let transaction_type = codec.get_u8()?;
+        let _transaction_type = codec.get_u8()?;
         let transaction = Transaction::deserialize(&mut codec)?;
+        let num_witnesses = transaction.inputs.len();
 
         let mut signed_transaction = SignedTransaction {
             transaction: transaction,
-            witnesses: Vec::with_capacity(transaction.inputs.len()),
+            witnesses: Vec::with_capacity(num_witnesses),
         };
 
-        for _ in 0..transaction.inputs.len() {
+        for _ in 0..num_witnesses {
             let witness = Witness::deserialize(&mut codec)?;
             signed_transaction.witnesses.push(witness);
         }
@@ -342,18 +340,28 @@ mod test {
 
     impl Arbitrary for Transaction {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let num_inputs = u8::arbitrary(g) as usize;
+            let num_outputs = u8::arbitrary(g) as usize;
             Transaction {
-                inputs: Arbitrary::arbitrary(g),
-                outputs: Arbitrary::arbitrary(g),
+                inputs: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(num_inputs)
+                    .collect(),
+                outputs: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(num_outputs)
+                    .collect(),
             }
         }
     }
 
     impl Arbitrary for SignedTransaction {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let transaction = Transaction::arbitrary(g);
+            let num_witnesses = transaction.inputs.len();
             SignedTransaction {
-                transaction: Arbitrary::arbitrary(g),
-                witnesses: Arbitrary::arbitrary(g),
+                transaction: transaction,
+                witnesses: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(num_witnesses)
+                    .collect(),
             }
         }
     }

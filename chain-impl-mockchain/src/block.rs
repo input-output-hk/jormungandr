@@ -22,65 +22,17 @@ pub struct Block {
     pub transactions: Vec<SignedTransaction>,
 }
 
-impl property::Block for Block {
-    type Id = Hash;
-    type Date = SlotId;
-
-    /// Identifier of the block, currently the hash of the
-    /// serialized transaction.
-    fn id(&self) -> Self::Id {
-        Hash::hash_bytes(&bytes)
-        unimplemented!()
-    }
-
-    /// Id of the parent block.
-    fn parent_id(&self) -> Self::Id {
-        self.parent_hash
-    }
-
-    /// Date of the block.
-    fn date(&self) -> Self::Date {
-        self.slot_id
-    }
-}
-
-impl property::Serialize for Block {
-    // FIXME: decide on appropriate format for mock blockchain
-
-    type Error = bincode::Error;
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        unimplemented!()
-    }
-}
-
-impl property::Deserialize for Block {
-    // FIXME: decide on appropriate format for mock blockchain
-
-    type Error = bincode::Error;
-
-    fn deserialize<R: std::io::Read>(reader: R) -> Result<Block, bincode::Error> {
-        unimplemented!()
-    }
-}
-
-impl property::HasTransaction<SignedTransaction> for Block {
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, SignedTransaction> {
-        self.transactions.iter()
-    }
-}
-
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
 /// with the position of that block in the chain.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedBlock {
-    /// Internal block.
-    block: Block,
     /// Public key used to sign the block.
     public_key: PublicKey,
     /// List of cryptographic signatures that verifies the block.
     signature: Signature,
+    /// Internal block.
+    block: Block,
 }
 
 impl SignedBlock {
@@ -89,9 +41,9 @@ impl SignedBlock {
         use chain_core::property::Block;
         let block_id = block.id();
         SignedBlock {
-            block: block,
             public_key: pkey.public(),
             signature: pkey.sign(block_id.as_ref()),
+            block: block,
         }
     }
 
@@ -105,22 +57,31 @@ impl SignedBlock {
     }
 }
 
-impl property::Serialize for SignedBlock {
-    type Error = bincode::Error;
+impl property::Block for Block {
+    type Id = Hash;
+    type Date = SlotId;
 
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        unimplemented!()
+    /// Identifier of the block, currently the hash of the
+    /// serialized transaction.
+    fn id(&self) -> Self::Id {
+        use chain_core::property::Serialize;
+        // TODO: hash creation can be much faster
+        let bytes = self
+            .serialize_as_vec()
+            .expect("expect serialisation in memory to never fail");
+        Hash::hash_bytes(&bytes)
+    }
+
+    /// Id of the parent block.
+    fn parent_id(&self) -> Self::Id {
+        self.parent_hash
+    }
+
+    /// Date of the block.
+    fn date(&self) -> Self::Date {
+        self.slot_id
     }
 }
-
-impl property::Deserialize for SignedBlock {
-    type Error = bincode::Error;
-
-    fn deserialize<R: std::io::Read>(reader: R) -> Result<Self, bincode::Error> {
-        unimplemented!()
-    }
-}
-
 impl property::Block for SignedBlock {
     type Id = <Block as property::Block>::Id;
     type Date = <Block as property::Block>::Date;
@@ -139,6 +100,96 @@ impl property::Block for SignedBlock {
     /// Date of the block.
     fn date(&self) -> Self::Date {
         self.block.date()
+    }
+}
+
+impl property::Serialize for Block {
+    type Error = std::io::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::Codec;
+        use std::io::Write;
+
+        let mut codec = Codec::from(writer);
+
+        codec.put_u32(self.slot_id.0)?;
+        codec.put_u32(self.slot_id.1)?;
+        codec.write_all(self.parent_hash.as_ref())?;
+        codec.put_u16(self.transactions.len() as u16)?;
+        for t in self.transactions.iter() {
+            t.serialize(&mut codec)?;
+        }
+
+        Ok(())
+    }
+}
+impl property::Serialize for SignedBlock {
+    type Error = std::io::Error;
+
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        self.public_key.serialize(&mut writer)?;
+        self.signature.serialize(&mut writer)?;
+        self.block.serialize(&mut writer)
+    }
+}
+
+impl property::Deserialize for Block {
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        use chain_core::packer::Codec;
+        use std::io::Read;
+
+        let mut codec = Codec::from(reader);
+
+        let epoch = codec.get_u32()?;
+        let slot = codec.get_u32()?;
+        let date = SlotId(epoch, slot);
+
+        let mut hash = [0; 32];
+        codec.read_exact(&mut hash)?;
+        let hash = Hash::from(cardano::hash::Blake2b256::from(hash));
+
+        let num_transactions = codec.get_u16()? as usize;
+
+        let mut block = Block {
+            slot_id: date,
+            parent_hash: hash,
+            transactions: Vec::with_capacity(num_transactions),
+        };
+        for _ in 0..num_transactions {
+            block
+                .transactions
+                .push(SignedTransaction::deserialize(&mut codec)?);
+        }
+
+        Ok(block)
+    }
+}
+impl property::Deserialize for SignedBlock {
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
+        let public_key = PublicKey::deserialize(&mut reader)?;
+        let signature = Signature::deserialize(&mut reader)?;
+        let block = Block::deserialize(&mut reader)?;
+
+        Ok(SignedBlock {
+            public_key,
+            signature,
+            block,
+        })
+    }
+}
+
+impl property::HasTransaction<SignedTransaction> for Block {
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, SignedTransaction> {
+        self.transactions.iter()
+    }
+}
+impl property::HasTransaction<SignedTransaction> for SignedBlock {
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, SignedTransaction> {
+        self.block.transactions()
     }
 }
 

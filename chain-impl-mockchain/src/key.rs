@@ -7,7 +7,7 @@ use chain_core::property;
 
 /// Public key of the entity.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PublicKey(crypto::PublicKey);
+pub struct PublicKey(pub crypto::PublicKey);
 impl PublicKey {
     pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
         self.0.verify(&signature.0, message)
