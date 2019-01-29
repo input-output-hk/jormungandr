@@ -13,7 +13,9 @@ pub trait Node {
     type BlockService: block::BlockService;
 
     /// The implementation of the header service.
-    type HeaderService: block::HeaderService;
+    type HeaderService: block::HeaderService<
+        HeaderId = <Self::BlockService as block::BlockService>::BlockId,
+    >;
 
     /// The implementation of the transaction service.
     type TransactionService: transaction::TransactionService;

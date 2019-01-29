@@ -1,7 +1,6 @@
 //! Representation of the block in the mockchain.
 use crate::key::*;
 use crate::transaction::*;
-use bincode;
 use chain_core::property;
 
 /// Non unique identifier of the transaction position in the

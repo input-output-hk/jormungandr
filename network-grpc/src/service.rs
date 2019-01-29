@@ -302,7 +302,7 @@ where
     >;
     type StreamBlocksToTipFuture = ResponseFuture<
         Self::StreamBlocksToTipStream,
-        <<T as Node>::BlockService as BlockService>::StreamBlocksToTipFuture,
+        <<T as Node>::BlockService as BlockService>::StreamBlocksFuture,
     >;
     type ProposeTransactionsFuture = ResponseFuture<
         gen::node::ProposeTransactionsResponse,

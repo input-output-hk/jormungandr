@@ -8,6 +8,7 @@ members = [
     "cardano",
     "network-core",
     "network-grpc",
+    "network-ntt",
     "protocol",
     "protocol-tokio",
     "storage-units",
