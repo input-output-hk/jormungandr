@@ -16,7 +16,7 @@ bincode = "^1.0.1"
 quickcheck = { version = "0.8" }
 chain-core = { path = "../chain-core" }
 chain-addr = { path = "../chain-addr" }
-rand = "*"
+rand = "0.6"
 
 [dependencies.cardano]
 path = "../cardano"
