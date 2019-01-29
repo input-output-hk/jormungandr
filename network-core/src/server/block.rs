@@ -73,7 +73,6 @@ pub trait HeaderService {
     /// implementation to produce a server-streamed response.
     type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = BlockError>;
 
-    // TODO: return a stream instead of the vector.
     /// Get block headers between two dates.
     fn block_headers(
         &mut self,
