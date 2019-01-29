@@ -162,7 +162,7 @@ impl From<hash::Blake2b256> for Hash {
 mod test {
     use super::*;
 
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, TestResult};
 
     impl Arbitrary for PublicKey {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -222,13 +222,13 @@ mod test {
             ! pk.verify(&data, &signature)
         }
 
-        fn public_key_encode_decode(public_key: PublicKey) -> bool {
+        fn public_key_encode_decode(public_key: PublicKey) -> TestResult {
             property::testing::serialization_bijection(public_key)
         }
-        fn signature_encode_decode(signature: Signature) -> bool {
+        fn signature_encode_decode(signature: Signature) -> TestResult {
             property::testing::serialization_bijection(signature)
         }
-        fn hash_encode_decode(hash: Hash) -> bool {
+        fn hash_encode_decode(hash: Hash) -> TestResult {
             property::testing::serialization_bijection(hash)
         }
     }

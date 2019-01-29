@@ -146,14 +146,14 @@ impl property::Block for SignedBlock {
 mod test {
 
     use super::*;
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
-        fn block_serialization_bijection(b: Block) -> bool {
+        fn block_serialization_bijection(b: Block) -> TestResult {
             property::testing::serialization_bijection(b)
         }
 
-        fn signed_block_serialization_bijection(b: SignedBlock) -> bool {
+        fn signed_block_serialization_bijection(b: SignedBlock) -> TestResult {
             property::testing::serialization_bijection(b)
         }
     }

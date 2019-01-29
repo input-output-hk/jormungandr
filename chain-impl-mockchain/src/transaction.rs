@@ -267,7 +267,7 @@ mod test {
     use super::*;
     use cardano::redeem as crypto;
 
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
 
@@ -292,6 +292,13 @@ mod test {
 
         fn transaction_id_is_unique(tx1: Transaction, tx2: Transaction) -> bool {
             chain_core::property::testing::transaction_id_is_unique(tx1, tx2)
+        }
+
+        fn transaction_encode_decode(transaction: Transaction) -> TestResult {
+            chain_core::property::testing::serialization_bijection(transaction)
+        }
+        fn signed_transaction_encode_decode(transaction: SignedTransaction) -> TestResult {
+            chain_core::property::testing::serialization_bijection(transaction)
         }
     }
 
