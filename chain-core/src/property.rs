@@ -301,14 +301,19 @@ pub mod testing {
     /// test that any arbitrary given object can serialize and deserialize
     /// back into itself (i.e. it is a bijection,  or a one to one match
     /// between the serialized bytes and the object)
-    pub fn serialization_bijection<T>(t: T) -> bool
+    pub fn serialization_bijection<T>(t: T) -> TestResult
     where
         T: Arbitrary + Serialize + Deserialize + Eq,
     {
-        let mut vec = Vec::new();
-        t.serialize(&mut vec).unwrap();
-        let decoded_t = T::deserialize(&mut &vec[..]).unwrap();
-        decoded_t == t
+        let vec = match t.serialize_as_vec() {
+            Err(error) => return TestResult::error(format!("serialization: {}", error)),
+            Ok(v) => v,
+        };
+        let decoded_t = match T::deserialize(&mut &vec[..]) {
+            Err(error) => return TestResult::error(format!("deserialization: {}", error)),
+            Ok(v) => v,
+        };
+        TestResult::from_bool(decoded_t == t)
     }
 
     /// test that arbitrary generated transaction fails, this test requires

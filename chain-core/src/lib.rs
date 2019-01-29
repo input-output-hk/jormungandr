@@ -9,4 +9,5 @@ cfg_if! {
     }
 }
 
+pub mod packer;
 pub mod property;

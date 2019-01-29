@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
+use chain_addr::Address;
 use chain_core::property;
 use chain_core::property::testing;
 use quickcheck::{Arbitrary, Gen, StdGen};
 use rand::prelude::*;
 
-use crate::address::*;
 use crate::error::*;
 use crate::key::*;
 use crate::ledger::*;
@@ -56,19 +56,26 @@ impl Environment {
     /// if there is no such a user yet - the user will be
     /// generated.
     pub fn user(&mut self, id: usize) -> PrivateKey {
+        use chain_addr::{Discrimination, Kind};
         let gen = &mut self.gen;
         let pk = self
             .users
             .entry(id)
             .or_insert_with(|| Arbitrary::arbitrary(gen));
-        self.keys.insert(Address::new(&pk.public()), pk.clone());
+        let address = Address(Discrimination::Production, Kind::Single(pk.public().0));
+        self.keys.insert(address, pk.clone());
         pk.clone()
     }
 
     /// Get user's address based it's index. If user does
     /// not exist, it will be generated.
     pub fn address(&mut self, id: usize) -> Address {
-        Address::new(&self.user(id).public()).clone()
+        use chain_addr::{Discrimination, Kind};
+        let address = Address(
+            Discrimination::Production,
+            Kind::Single(self.user(id).public().0),
+        );
+        address
     }
 
     /// Get user's private key based on user's address.
@@ -123,12 +130,12 @@ impl testing::GenerateTransaction<SignedTransaction> for Environment {
         use chain_core::property::Transaction;
         use std::cmp::{max, min};
         // select some unspent inputs for transaction.
-        let inputs_outputs: Vec<_> = self
+        let inputs_outputs: Vec<(mock::UtxoPointer, mock::Output)> = self
             .ledger
             .unspent_outputs
             .iter()
             .filter(|_| Arbitrary::arbitrary(g))
-            .map(|(&i, &o)| (i, o))
+            .map(|(i, o)| (i.clone(), o.clone()))
             .collect();
         // find out how much money should we split.
         let mut output_sum: u64 = inputs_outputs
@@ -147,16 +154,21 @@ impl testing::GenerateTransaction<SignedTransaction> for Environment {
             output_sum = output_sum - value;
         }
         let tx = mock::Transaction {
-            inputs: inputs_outputs.iter().cloned().map(|(i, _)| i).collect(),
+            inputs: inputs_outputs
+                .iter()
+                .cloned()
+                .map(|(i, _)| i.clone())
+                .collect(),
             outputs: outputs,
         };
         let tx_id = tx.id();
+        let mut witnesses = Vec::with_capacity(tx.inputs.len());
+        for (_, Output(public, _)) in inputs_outputs.iter() {
+            witnesses.push(Witness::new(&tx_id, &self.private(public)));
+        }
         SignedTransaction {
-            tx: tx,
-            witnesses: inputs_outputs
-                .iter()
-                .map(|(_, Output(public, _))| Witness::new(tx_id, &self.private(public)))
-                .collect(),
+            transaction: tx,
+            witnesses: witnesses,
         }
     }
 }
