@@ -52,7 +52,6 @@ pub trait BlockService {
         from: &[Self::BlockId],
         to: &Self::BlockId,
     ) -> Self::StreamBlocksFuture;
-
 }
 
 /// Interface for the blockchain node service implementation responsible for
@@ -82,7 +81,6 @@ pub trait HeaderService {
 
     // Stream blocks to the provided tip.
     fn block_headers_to_tip(&mut self, from: &[Self::HeaderId]) -> Self::GetHeadersFuture;
-
 }
 
 /// Represents errors that can be returned by the node service implementation.
