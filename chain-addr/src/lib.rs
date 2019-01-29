@@ -75,7 +75,7 @@ impl KindType {
 /// An unstructured address including the
 /// discrimination and the kind of address
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Address(Discrimination, Kind);
+pub struct Address(pub Discrimination, pub Kind);
 
 #[derive(Debug)]
 pub enum Error {
@@ -161,6 +161,13 @@ impl Address {
             out.push(alphabet[i.to_u8() as usize])
         }
         unsafe { String::from_utf8_unchecked(out) }
+    }
+
+    pub fn public_key<'a>(&'a self) -> &'a PublicKey {
+        match self.1 {
+            Kind::Single(ref pk) => pk,
+            Kind::Group(ref pk, _) => pk,
+        }
     }
 }
 
