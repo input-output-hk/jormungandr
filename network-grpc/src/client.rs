@@ -326,8 +326,8 @@ where
 {
     type TipFuture = ResponseFuture<(T::Id, T::Date), gen::node::TipResponse>;
 
-    type StreamBlocksToTipStream = ResponseStream<T, gen::node::Block>;
-    type StreamBlocksToTipFuture = ResponseStreamFuture<T, gen::node::Block>;
+    type PullBlocksToTipStream = ResponseStream<T, gen::node::Block>;
+    type PullBlocksToTipFuture = ResponseStreamFuture<T, gen::node::Block>;
 
     type GetBlocksStream = ResponseStream<T, gen::node::Block>;
     type GetBlocksFuture = ResponseStreamFuture<T, gen::node::Block>;
@@ -338,10 +338,10 @@ where
         ResponseFuture::new(future)
     }
 
-    fn stream_blocks_to_tip(&mut self, from: &[T::Id]) -> Self::StreamBlocksToTipFuture {
+    fn pull_blocks_to_tip(&mut self, from: &[T::Id]) -> Self::PullBlocksToTipFuture {
         let from = serialize_to_vec(from);
-        let req = gen::node::StreamBlocksToTipRequest { from };
-        let future = self.node.stream_blocks_to_tip(Request::new(req));
+        let req = gen::node::PullBlocksToTipRequest { from };
+        let future = self.node.pull_blocks_to_tip(Request::new(req));
         ResponseStreamFuture::new(future)
     }
 }
