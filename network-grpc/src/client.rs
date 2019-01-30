@@ -9,11 +9,16 @@ use network_core::client::{
 use futures::future::Executor;
 use tokio::io;
 use tokio::prelude::*;
-use tower_grpc::{BoxBody, Request, Response, Streaming};
+use tower_grpc::{BoxBody, Request, Streaming};
 use tower_h2::client::{Background, Connect, ConnectError, Connection};
 use tower_util::MakeService;
 
-use std::{error, fmt, marker::PhantomData, mem, str::FromStr};
+use std::{
+    error,
+    fmt::{self, Debug},
+    marker::PhantomData,
+    str::FromStr,
+};
 
 /// gRPC client for blockchain node.
 ///
@@ -59,25 +64,27 @@ type GrpcError = tower_grpc::Error<tower_h2::client::Error>;
 
 type GrpcStreamError = tower_grpc::Error<()>;
 
-pub enum ResponseFuture<T, R> {
-    Pending(GrpcFuture<R>),
-    Finished(PhantomData<T>),
+pub struct ResponseFuture<T, R> {
+    state: unary_future::State<T, R>,
 }
 
 impl<T, R> ResponseFuture<T, R> {
     fn new(future: GrpcFuture<R>) -> Self {
-        ResponseFuture::Pending(future)
+        ResponseFuture {
+            state: unary_future::State::Pending(future),
+        }
     }
 }
 
-pub enum ResponseStreamFuture<T, R> {
-    Pending(GrpcStreamFuture<R>),
-    Finished(PhantomData<T>),
+pub struct ResponseStreamFuture<T, R> {
+    state: stream_future::State<T, R>,
 }
 
 impl<T, R> ResponseStreamFuture<T, R> {
     fn new(future: GrpcStreamFuture<R>) -> Self {
-        ResponseStreamFuture::Pending(future)
+        ResponseStreamFuture {
+            state: stream_future::State::Pending(future),
+        }
     }
 }
 
@@ -86,11 +93,10 @@ pub struct ResponseStream<T, R> {
     _phantom: PhantomData<T>,
 }
 
-fn convert_error(e: GrpcError) -> core_client::Error {
-    core_client::Error::new(core_client::ErrorKind::Rpc, e)
-}
-
-fn convert_stream_error(e: GrpcStreamError) -> core_client::Error {
+fn convert_error<T>(e: tower_grpc::Error<T>) -> core_client::Error
+where
+    T: Debug + Send + Sync + 'static,
+{
     core_client::Error::new(core_client::ErrorKind::Rpc, e)
 }
 
@@ -98,113 +104,147 @@ pub trait ConvertResponse<T> {
     fn convert_response(self) -> Result<T, core_client::Error>;
 }
 
-fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_client::Error>
-where
-    F: Future<Item = Response<R>, Error = GrpcError>,
-    R: ConvertResponse<T>,
-{
-    match future.poll() {
-        Ok(Async::NotReady) => Ok(Async::NotReady),
-        Ok(Async::Ready(res)) => {
-            let item = res.into_inner().convert_response()?;
-            Ok(Async::Ready(item))
-        }
-        Err(e) => Err(convert_error(e)),
-    }
-}
+mod unary_future {
+    use super::{
+        convert_error, core_client, ConvertResponse, GrpcError, GrpcFuture, ResponseFuture,
+    };
+    use futures::prelude::*;
+    use std::marker::PhantomData;
+    use tower_grpc::Response;
 
-fn poll_and_convert_stream_future<T, R, F>(
-    future: &mut F,
-) -> Poll<ResponseStream<T, R>, core_client::Error>
-where
-    F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = GrpcError>,
-{
-    match future.poll() {
-        Ok(Async::NotReady) => Ok(Async::NotReady),
-        Ok(Async::Ready(res)) => {
-            let stream = ResponseStream {
-                inner: res.into_inner(),
-                _phantom: PhantomData,
-            };
-            Ok(Async::Ready(stream))
-        }
-        Err(e) => Err(convert_error(e)),
-    }
-}
-
-fn poll_and_convert_stream<T, S, R>(stream: &mut S) -> Poll<Option<T>, core_client::Error>
-where
-    S: Stream<Item = R, Error = GrpcStreamError>,
-    R: ConvertResponse<T>,
-{
-    match stream.poll() {
-        Ok(Async::NotReady) => Ok(Async::NotReady),
-        Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
-        Ok(Async::Ready(Some(item))) => {
-            let item = item.convert_response()?;
-            Ok(Async::Ready(Some(item)))
-        }
-        Err(e) => Err(convert_stream_error(e)),
-    }
-}
-
-impl<T, R> Future for ResponseFuture<T, R>
-where
-    R: prost::Message + Default + ConvertResponse<T>,
-{
-    type Item = T;
-    type Error = core_client::Error;
-
-    fn poll(&mut self) -> Poll<T, core_client::Error> {
-        if let ResponseFuture::Pending(f) = self {
-            let res = poll_and_convert_response(f);
-            if let Ok(Async::NotReady) = res {
-                return Ok(Async::NotReady);
+    fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_client::Error>
+    where
+        F: Future<Item = Response<R>, Error = GrpcError>,
+        R: ConvertResponse<T>,
+    {
+        match future.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(res)) => {
+                let item = res.into_inner().convert_response()?;
+                Ok(Async::Ready(item))
             }
-            *self = ResponseFuture::Finished(PhantomData);
-            res
-        } else {
-            match mem::replace(self, ResponseFuture::Finished(PhantomData)) {
-                ResponseFuture::Pending(_) => unreachable!(),
-                ResponseFuture::Finished(_) => panic!("polled a finished response"),
+            Err(e) => Err(convert_error(e)),
+        }
+    }
+
+    pub enum State<T, R> {
+        Pending(GrpcFuture<R>),
+        Finished(PhantomData<T>),
+    }
+
+    impl<T, R> Future for ResponseFuture<T, R>
+    where
+        R: prost::Message + Default + ConvertResponse<T>,
+    {
+        type Item = T;
+        type Error = core_client::Error;
+
+        fn poll(&mut self) -> Poll<T, core_client::Error> {
+            if let State::Pending(ref mut f) = self.state {
+                let res = poll_and_convert_response(f);
+                if let Ok(Async::NotReady) = res {
+                    return Ok(Async::NotReady);
+                }
+                self.state = State::Finished(PhantomData);
+                res
+            } else {
+                match self.state {
+                    State::Pending(_) => unreachable!(),
+                    State::Finished(_) => panic!("polled a finished response"),
+                }
             }
         }
     }
 }
 
-impl<T, R> Future for ResponseStreamFuture<T, R>
-where
-    R: prost::Message + Default,
-{
-    type Item = ResponseStream<T, R>;
-    type Error = core_client::Error;
+mod stream_future {
+    use super::{
+        convert_error, core_client, GrpcError, GrpcStreamFuture, ResponseStream,
+        ResponseStreamFuture,
+    };
+    use futures::prelude::*;
+    use std::marker::PhantomData;
+    use tower_grpc::{Response, Streaming};
 
-    fn poll(&mut self) -> Poll<ResponseStream<T, R>, core_client::Error> {
-        if let ResponseStreamFuture::Pending(f) = self {
-            let res = poll_and_convert_stream_future(f);
-            if let Ok(Async::NotReady) = res {
-                return Ok(Async::NotReady);
+    fn poll_and_convert_response<T, R, F>(
+        future: &mut F,
+    ) -> Poll<ResponseStream<T, R>, core_client::Error>
+    where
+        F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = GrpcError>,
+    {
+        match future.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(res)) => {
+                let stream = ResponseStream {
+                    inner: res.into_inner(),
+                    _phantom: PhantomData,
+                };
+                Ok(Async::Ready(stream))
             }
-            *self = ResponseStreamFuture::Finished(PhantomData);
-            res
-        } else {
-            match mem::replace(self, ResponseStreamFuture::Finished(PhantomData)) {
-                ResponseStreamFuture::Pending(_) => unreachable!(),
-                ResponseStreamFuture::Finished(_) => panic!("polled a finished response"),
+            Err(e) => Err(convert_error(e)),
+        }
+    }
+
+    pub enum State<T, R> {
+        Pending(GrpcStreamFuture<R>),
+        Finished(PhantomData<T>),
+    }
+
+    impl<T, R> Future for ResponseStreamFuture<T, R>
+    where
+        R: prost::Message + Default,
+    {
+        type Item = ResponseStream<T, R>;
+        type Error = core_client::Error;
+
+        fn poll(&mut self) -> Poll<ResponseStream<T, R>, core_client::Error> {
+            if let State::Pending(ref mut f) = self.state {
+                let res = poll_and_convert_response(f);
+                if let Ok(Async::NotReady) = res {
+                    return Ok(Async::NotReady);
+                }
+                self.state = State::Finished(PhantomData);
+                res
+            } else {
+                match self.state {
+                    State::Pending(_) => unreachable!(),
+                    State::Finished(_) => panic!("polled a finished response"),
+                }
             }
         }
     }
 }
 
-impl<T, R> Stream for ResponseStream<T, R>
-where
-    R: prost::Message + Default + ConvertResponse<T>,
-{
-    type Item = T;
-    type Error = core_client::Error;
+mod stream {
+    use super::{convert_error, core_client, ConvertResponse, GrpcStreamError, ResponseStream};
+    use futures::prelude::*;
 
-    fn poll(&mut self) -> Poll<Option<T>, core_client::Error> {
-        poll_and_convert_stream(&mut self.inner)
+    fn poll_and_convert_item<T, S, R>(stream: &mut S) -> Poll<Option<T>, core_client::Error>
+    where
+        S: Stream<Item = R, Error = GrpcStreamError>,
+        R: ConvertResponse<T>,
+    {
+        match stream.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
+            Ok(Async::Ready(Some(item))) => {
+                let item = item.convert_response()?;
+                Ok(Async::Ready(Some(item)))
+            }
+            Err(e) => Err(convert_error(e)),
+        }
+    }
+
+    impl<T, R> Stream for ResponseStream<T, R>
+    where
+        R: prost::Message + Default + ConvertResponse<T>,
+    {
+        type Item = T;
+        type Error = core_client::Error;
+
+        fn poll(&mut self) -> Poll<Option<T>, core_client::Error> {
+            poll_and_convert_item(&mut self.inner)
+        }
     }
 }
 
