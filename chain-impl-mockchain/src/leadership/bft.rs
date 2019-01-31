@@ -56,14 +56,14 @@ impl<LeaderId: Eq + Clone> BftLeaderSelection<LeaderId> {
 
     /// get the party leader id elected for a given slot
     #[inline]
-    pub fn get_leader_at(&self, slotid: u64) -> &LeaderId {
+    fn get_leader_at(&self, slotid: u64) -> &LeaderId {
         let BftRoundRobinIndex(ofs) = self.offset(slotid);
         &self.leaders[ofs]
     }
 
     /// check if this party is elected for a given slot
     #[inline]
-    pub fn am_leader_at(&self, slotid: u64) -> IsLeading {
+    fn is_leader_at(&self, slotid: u64) -> IsLeading {
         match self.my {
             None => IsLeading::No,
             Some(my_index) => {
@@ -123,7 +123,7 @@ impl LeaderSelection for BftLeaderSelection<PublicKey> {
         &self,
         date: <Self::Block as property::Block>::Date,
     ) -> Result<bool, Self::Error> {
-        Ok(self.am_leader_at(date.block_number()) == IsLeading::Yes)
+        Ok(self.is_leader_at(date.block_number()) == IsLeading::Yes)
     }
 }
 
