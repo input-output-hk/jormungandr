@@ -68,6 +68,7 @@ use settings::Command;
 //use state::State;
 use blockchain::{Blockchain, BlockchainR};
 use futures::sync::mpsc::UnboundedSender;
+use futures::Future;
 use intercom::BlockMsg;
 use intercom::NetworkBroadcastMsg;
 use leadership::leadership_task;
@@ -252,12 +253,21 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         });
     };
 
+    let rest_server = match settings.rest {
+        Some(ref rest) => Some(rest::start_rest_server(rest)?),
+        None => None,
+    };
+
     // periodically cleanup (custom):
     //   storage cleanup/packing
     //   tpool.gc()
 
     // FIXME some sort of join so that the main thread does something ...
     tasks.join();
+
+    if let Some(server) = rest_server {
+        server.stop().wait().unwrap()
+    }
 
     Ok(())
 }
