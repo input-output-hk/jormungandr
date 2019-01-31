@@ -10,6 +10,7 @@ use crate::error::*;
 use crate::key::*;
 use crate::ledger::*;
 use crate::transaction::*;
+use crate::update::TransactionsDiff;
 
 /// Helper structure that keeps the ledger together with key-pairs
 /// that participate in communication. By having such type it's
@@ -89,7 +90,7 @@ impl Environment {
 }
 
 impl property::Ledger<SignedTransaction> for Environment {
-    type Update = Diff;
+    type Update = TransactionsDiff;
     type Error = Error;
 
     fn input<'a>(

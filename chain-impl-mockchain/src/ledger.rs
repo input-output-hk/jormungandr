@@ -3,6 +3,7 @@
 
 use crate::error::*;
 use crate::transaction::*;
+use crate::update::TransactionsDiff;
 use chain_core::property;
 use std::collections::HashMap;
 
@@ -21,56 +22,8 @@ impl Ledger {
     }
 }
 
-/// Diff of the ledger state.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Diff {
-    /// List of the outputs that were spent in the transaction.
-    spent_outputs: HashMap<UtxoPointer, Output>,
-    /// List of the new outputs that were produced by the transaction.
-    new_unspent_outputs: HashMap<UtxoPointer, Output>,
-}
-impl property::Update for Diff {
-    fn empty() -> Self {
-        Diff {
-            spent_outputs: HashMap::new(),
-            new_unspent_outputs: HashMap::new(),
-        }
-    }
-
-    fn inverse(self) -> Self {
-        Diff {
-            spent_outputs: self.new_unspent_outputs,
-            new_unspent_outputs: self.spent_outputs,
-        }
-    }
-
-    fn union(&mut self, other: Self) -> &mut Self {
-        // 1. other might be spending outputs that were _new_ in self
-        //    we need to remove them first.
-        for other_spending in other.spent_outputs.into_iter() {
-            if let Some(_) = self.new_unspent_outputs.remove(&other_spending.0) {
-                // just ignore the deleted output
-            } else {
-                self.spent_outputs
-                    .insert(other_spending.0, other_spending.1);
-            }
-        }
-
-        // 2. other might be spending outputs that were _new_ in self
-        for other_output in other.new_unspent_outputs.into_iter() {
-            if let Some(_) = self.spent_outputs.remove(&other_output.0) {
-                // just ignore and drop the value
-            } else {
-                self.new_unspent_outputs
-                    .insert(other_output.0, other_output.1);
-            }
-        }
-        self
-    }
-}
-
 impl property::Ledger<SignedTransaction> for Ledger {
-    type Update = Diff;
+    type Update = TransactionsDiff;
     type Error = Error;
 
     fn input<'a>(
@@ -89,7 +42,7 @@ impl property::Ledger<SignedTransaction> for Ledger {
     ) -> Result<Self::Update, Self::Error> {
         use chain_core::property::Transaction;
 
-        let mut diff = <Diff as property::Update>::empty();
+        let mut diff = <Self::Update as property::Update>::empty();
         let id = transaction.id();
         // 0. verify that number of signatures matches number of
         // transactions
@@ -170,15 +123,6 @@ mod test {
     use cardano::redeem as crypto;
     use chain_addr::{Address, Discrimination, Kind};
     use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for Diff {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Diff {
-                spent_outputs: Arbitrary::arbitrary(g),
-                new_unspent_outputs: Arbitrary::arbitrary(g),
-            }
-        }
-    }
 
     impl Arbitrary for Ledger {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -294,20 +238,4 @@ mod test {
             ledger.diff_transaction(&signed_tx)
         )
     }
-
-    quickcheck! {
-        fn diff_union_is_associative(types: (Diff, Diff, Diff)) -> bool {
-            property::testing::update_associativity(types.0, types.1, types.2)
-        }
-        fn diff_union_has_identity_element(diff: Diff) -> bool {
-            property::testing::update_identity_element(diff)
-        }
-        fn diff_union_has_inverse_element(diff: Diff) -> bool {
-            property::testing::update_inverse_element(diff)
-        }
-        fn diff_union_is_commutative(types: (Diff, Diff)) -> bool {
-            property::testing::update_union_commutative(types.0, types.1)
-        }
-    }
-
 }
