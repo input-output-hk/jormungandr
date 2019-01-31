@@ -27,8 +27,8 @@ message GetBlocksRequest {
     uint64 size = 3;
 }
 
-// Request message for method StreamBlocksToTip.
-message StreamBlocksToTipRequest {
+// Request message for method PullBlocksToTip.
+message PullBlocksToTipRequest {
     // The identifiers of blocks to consider as the
     // starting point, in order of appearance.
     repeated bytes from = 1;
@@ -89,7 +89,7 @@ service Node {
     rpc GetHeaders (GetBlocksRequest) returns (stream Header) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
-    rpc StreamBlocksToTip (StreamBlocksToTipRequest) returns (stream Block);
+    rpc PullBlocksToTip (PullBlocksToTipRequest) returns (stream Block);
     rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);
     rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
 }

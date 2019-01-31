@@ -16,16 +16,16 @@ pub trait BlockService<T: Block> {
     fn tip(&mut self) -> Self::TipFuture;
 
     /// The type of an asynchronous stream that provides blocks in
-    /// response to method `stream_blocks_to_tip`.
-    type StreamBlocksToTipStream: Stream<Item = T, Error = Error>;
+    /// response to method `pull_blocks_to_tip`.
+    type PullBlocksToTipStream: Stream<Item = T, Error = Error>;
 
-    /// The type of asynchronous futures returned by method `stream_blocks_to_tip`.
+    /// The type of asynchronous futures returned by method `pull_blocks_to_tip`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type StreamBlocksToTipFuture: Future<Item = Self::StreamBlocksToTipStream, Error = Error>;
+    type PullBlocksToTipFuture: Future<Item = Self::PullBlocksToTipStream, Error = Error>;
 
-    fn stream_blocks_to_tip(&mut self, from: &[T::Id]) -> Self::StreamBlocksToTipFuture;
+    fn pull_blocks_to_tip(&mut self, from: &[T::Id]) -> Self::PullBlocksToTipFuture;
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to method `get_blocks`.

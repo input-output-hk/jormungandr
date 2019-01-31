@@ -296,13 +296,13 @@ where
         Self::GetHeadersStream,
         <<T as Node>::HeaderService as HeaderService>::GetHeadersFuture,
     >;
-    type StreamBlocksToTipStream = ResponseStream<
+    type PullBlocksToTipStream = ResponseStream<
         gen::node::Block,
-        <<T as Node>::BlockService as BlockService>::StreamBlocksToTipStream,
+        <<T as Node>::BlockService as BlockService>::PullBlocksToTipStream,
     >;
-    type StreamBlocksToTipFuture = ResponseFuture<
-        Self::StreamBlocksToTipStream,
-        <<T as Node>::BlockService as BlockService>::StreamBlocksFuture,
+    type PullBlocksToTipFuture = ResponseFuture<
+        Self::PullBlocksToTipStream,
+        <<T as Node>::BlockService as BlockService>::PullBlocksFuture,
     >;
     type ProposeTransactionsFuture = ResponseFuture<
         gen::node::ProposeTransactionsResponse,
@@ -335,10 +335,10 @@ where
         unimplemented!()
     }
 
-    fn stream_blocks_to_tip(
+    fn pull_blocks_to_tip(
         &mut self,
-        req: Request<gen::node::StreamBlocksToTipRequest>,
-    ) -> Self::StreamBlocksToTipFuture {
+        req: Request<gen::node::PullBlocksToTipRequest>,
+    ) -> Self::PullBlocksToTipFuture {
         let service = match self.block_service {
             None => return ResponseFuture::unimplemented(),
             Some(ref mut service) => service,
@@ -350,7 +350,7 @@ where
             }
             Err(e) => panic!("unexpected error {:?}", e),
         };
-        ResponseFuture::new(service.stream_blocks_to_tip(&block_ids))
+        ResponseFuture::new(service.pull_blocks_to_tip(&block_ids))
     }
 
     fn propose_transactions(

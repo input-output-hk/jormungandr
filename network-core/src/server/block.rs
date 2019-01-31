@@ -35,23 +35,23 @@ pub trait BlockService {
     type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = BlockError>;
 
     /// The type of an asynchronous stream that provides blocks in
-    /// response to method `stream_blocks_to_tip`.
-    type StreamBlocksToTipStream: Stream<Item = Self::Block, Error = BlockError>;
+    /// response to method `pull_blocks_to_tip`.
+    type PullBlocksToTipStream: Stream<Item = Self::Block, Error = BlockError>;
 
-    /// The type of asynchronous futures returned by method `stream_blocks_to_tip`.
+    /// The type of asynchronous futures returned by method `pull_blocks_to_tip`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type StreamBlocksFuture: Future<Item = Self::StreamBlocksToTipStream, Error = BlockError>;
+    type PullBlocksFuture: Future<Item = Self::PullBlocksToTipStream, Error = BlockError>;
 
     fn tip(&mut self) -> Self::TipFuture;
-    fn stream_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::StreamBlocksFuture;
+    fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture;
 
-    fn stream_blocks_to(
+    fn pull_blocks_to(
         &mut self,
         from: &[Self::BlockId],
         to: &Self::BlockId,
-    ) -> Self::StreamBlocksFuture;
+    ) -> Self::PullBlocksFuture;
 }
 
 /// Interface for the blockchain node service implementation responsible for
