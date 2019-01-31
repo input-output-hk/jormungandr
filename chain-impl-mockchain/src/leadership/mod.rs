@@ -39,7 +39,7 @@ impl property::LeaderSelection for LeaderSelection {
             LeaderSelection::BFT(ref bft) => {
                 update.bft = property::LeaderSelection::diff(bft, input).map_err(Error::Bft)?;
             }
-            LeaderSelection::Genesis => {}
+            LeaderSelection::Genesis => unimplemented!(),
         }
 
         Ok(update)
@@ -49,7 +49,7 @@ impl property::LeaderSelection for LeaderSelection {
             LeaderSelection::BFT(ref mut bft) => {
                 property::LeaderSelection::apply(bft, update.bft).map_err(Error::Bft)?;
             }
-            LeaderSelection::Genesis => {}
+            LeaderSelection::Genesis => unimplemented!(),
         }
         Ok(())
     }
