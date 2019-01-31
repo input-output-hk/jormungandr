@@ -1,9 +1,12 @@
+use native_tls::Error as TlsError;
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::io::Error as IoError;
 
 #[derive(Debug)]
 pub enum Error {
+    Pkcs12LoadFailed(IoError),
+    Pkcs12Invalid(TlsError),
     BindFailed(IoError),
     ServerAlreadyStopped,
     ServerStopTimeout,
@@ -13,6 +16,8 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let error_name = match *self {
+            Error::Pkcs12LoadFailed(_) => "Pkcs12LoadFailed",
+            Error::Pkcs12Invalid(_) => "Pkcs12Invalid",
             Error::BindFailed(_) => "BindFailed",
             Error::ServerAlreadyStopped => "ServerAlreadyStopped",
             Error::ServerStopTimeout => "ServerStopTimeout ",
@@ -29,6 +34,8 @@ impl Display for Error {
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self {
+            Error::Pkcs12LoadFailed(ref cause) => Some(cause),
+            Error::Pkcs12Invalid(ref cause) => Some(cause),
             Error::BindFailed(ref cause) => Some(cause),
             _ => None,
         }
