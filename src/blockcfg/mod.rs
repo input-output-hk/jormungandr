@@ -14,6 +14,7 @@ pub use chain_core::property::{
 };
 
 pub mod cardano;
+pub mod genesis_data;
 
 use crate::secure;
 

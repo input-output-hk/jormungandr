@@ -2,8 +2,7 @@ mod command_arguments;
 mod config;
 pub mod network;
 
-use cardano::config::GenesisData;
-use exe_common::parse_genesis_data::parse_genesis_data;
+use crate::blockcfg::genesis_data::*;
 
 use slog::Drain;
 use slog_async;
@@ -186,13 +185,12 @@ impl Settings {
     }
 
     /// read and parse the genesis data, from the file specified in the Settings
-    pub fn read_genesis_data(&self) -> GenesisData {
+    pub fn read_genesis_data(&self) -> Result<GenesisData, impl std::error::Error> {
         let filepath = &self.cmd_args.genesis_data_config;
         let mut f = File::open(filepath).unwrap();
-        let mut buffer = Vec::new();
-        f.read_to_end(&mut buffer).unwrap();
+        let mut reader = std::io::BufReader::new(f);
 
-        parse_genesis_data(&buffer[..])
+        GenesisData::parse(&mut reader)
     }
 }
 
