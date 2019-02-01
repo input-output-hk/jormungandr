@@ -7,7 +7,7 @@ use chain_core::property;
 /// blockchain. There may be many transactions related to the same
 /// `SlotId`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SlotId(u32, u32);
+pub struct SlotId(u64);
 
 impl property::BlockDate for SlotId {}
 
@@ -28,11 +28,18 @@ pub struct Block {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedBlock {
     /// Public key used to sign the block.
-    public_key: PublicKey,
+    pub public_key: PublicKey,
     /// List of cryptographic signatures that verifies the block.
-    signature: Signature,
+    pub signature: Signature,
     /// Internal block.
-    block: Block,
+    pub block: Block,
+}
+
+impl SlotId {
+    /// access the block number since the beginning of the blockchain
+    pub fn block_number(&self) -> u64 {
+        self.0
+    }
 }
 
 impl SignedBlock {
@@ -112,8 +119,7 @@ impl property::Serialize for Block {
 
         let mut codec = Codec::from(writer);
 
-        codec.put_u32(self.slot_id.0)?;
-        codec.put_u32(self.slot_id.1)?;
+        codec.put_u64(self.slot_id.0)?;
         codec.write_all(self.parent_hash.as_ref())?;
         codec.put_u16(self.transactions.len() as u16)?;
         for t in self.transactions.iter() {
@@ -142,9 +148,7 @@ impl property::Deserialize for Block {
 
         let mut codec = Codec::from(reader);
 
-        let epoch = codec.get_u32()?;
-        let slot = codec.get_u32()?;
-        let date = SlotId(epoch, slot);
+        let date = codec.get_u64().map(SlotId)?;
 
         let mut hash = [0; 32];
         codec.read_exact(&mut hash)?;
@@ -231,7 +235,7 @@ mod test {
 
     impl Arbitrary for SlotId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            SlotId(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g))
+            SlotId(Arbitrary::arbitrary(g))
         }
     }
 }
