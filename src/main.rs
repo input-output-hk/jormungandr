@@ -3,6 +3,8 @@ extern crate bincode;
 extern crate clap;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use(o)]
 extern crate slog;
@@ -64,6 +66,7 @@ pub mod rest;
 pub mod secure;
 pub mod settings;
 pub mod state;
+pub mod stats;
 pub mod transaction;
 pub mod utils;
 
@@ -75,6 +78,8 @@ use futures::Future;
 use intercom::BlockMsg;
 use intercom::NetworkBroadcastMsg;
 use leadership::{leadership_task, Selection};
+use rest::ServerState;
+use stats::SharedStats;
 use transaction::{transaction_task, TPool};
 use utils::task::Tasks;
 
@@ -189,11 +194,14 @@ fn run() -> Result<(), Error> {
     // initialize the transaction broadcast channel
     let (broadcast_sender, broadcast_receiver) = futures::sync::mpsc::unbounded();
 
+    let shared_stats = SharedStats::default();
+
     let transaction_task = {
         let tpool = tpool.clone();
         let blockchain = blockchain.clone();
+        let shared_stats = shared_stats.clone();
         tasks.task_create_with_inputs("transaction", move |r| {
-            transaction_task(blockchain, tpool, r)
+            transaction_task(blockchain, tpool, r, shared_stats)
         })
     };
 
@@ -255,7 +263,12 @@ fn run() -> Result<(), Error> {
     };
 
     let rest_server = match settings.rest {
-        Some(ref rest) => Some(rest::start_rest_server(rest)?),
+        Some(ref rest) => {
+            let state = ServerState {
+                stats: shared_stats,
+            };
+            Some(rest::start_rest_server(rest, state)?)
+        }
         None => None,
     };
 

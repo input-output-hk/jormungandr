@@ -7,6 +7,7 @@ use crate::blockcfg::{
 use crate::blockchain::BlockchainR;
 use crate::intercom::TransactionMsg;
 use crate::transaction::TPool;
+use stats::SharedStats;
 
 #[allow(type_alias_bounds)]
 pub type TPoolR<B: BlockConfig> = Arc<RwLock<TPool<B::TransactionId, B::Transaction>>>;
@@ -15,6 +16,7 @@ pub fn transaction_task<B>(
     blockchain: BlockchainR<B>,
     tpool: TPoolR<B>,
     r: Receiver<TransactionMsg<B>>,
+    shared_stats: SharedStats,
 ) -> !
 where
     B: BlockConfig,
@@ -44,6 +46,7 @@ where
                     warn!("Received transactions where some are invalid, {}", error);
                 // TODO
                 } else {
+                    shared_stats.add_tx_recv_cnt(txs.len());
                     for tx in txs {
                         tpool.add(tx.id(), tx);
                     }
