@@ -13,8 +13,8 @@ pub use chain_core::property::{
     Serialize, Settings, Transaction, TransactionId, Update,
 };
 
-pub mod cardano;
 pub mod genesis_data;
+pub mod mock;
 
 use crate::secure;
 
@@ -28,11 +28,15 @@ pub trait BlockConfig {
     type TransactionId: TransactionId;
     type GenesisData;
 
-    type Ledger: Ledger<Self::Transaction> + Settings<Block = Self::Block>;
+    type Ledger: Ledger<Self::Transaction>;
+    type Settings: Settings<Block = Self::Block>;
+    type Update: Update;
+
+    type NodeSigningKey;
 
     fn make_block(
         secret_key: &secure::NodeSecret,
-        public_key: &secure::NodePublic,
+        settings: &Self::Settings,
         ledger: &Self::Ledger,
         block_date: <Self::Block as Block>::Date,
         transactions: Vec<Self::Transaction>,

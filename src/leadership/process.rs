@@ -1,16 +1,14 @@
 use super::selection::{self, IsLeading, Selection};
 use std::sync::Arc;
 
-use super::super::{
-    clock, intercom::BlockMsg, secure::NodeSecret, utils::task::TaskMessageBox, BlockchainR,
-};
+use super::super::{clock, intercom::BlockMsg, utils::task::TaskMessageBox, BlockchainR};
 use crate::blockcfg::{BlockConfig, Settings};
 use crate::transaction::TPoolR;
 
 use cardano::block::{BlockDate, EpochSlotId};
 
 pub fn leadership_task<B>(
-    secret: NodeSecret,
+    secret: <B as BlockConfig>::NodeSigningKey,
     selection: Arc<Selection>,
     transaction_pool: TPoolR<B>,
     blockchain: BlockchainR<B>,
@@ -22,7 +20,6 @@ pub fn leadership_task<B>(
     <B as BlockConfig>::Ledger: Settings,
     <B as BlockConfig>::BlockDate: From<BlockDate>,
 {
-    let my_pub = secret.public.clone();
     loop {
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
@@ -59,7 +56,6 @@ pub fn leadership_task<B>(
 
             let block = B::make_block(
                 &secret,
-                &my_pub,
                 &b.chain_state,
                 BlockDate::Normal(epochslot).into(),
                 transactions,
