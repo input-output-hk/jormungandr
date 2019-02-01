@@ -44,7 +44,7 @@ impl SlotId {
 
 impl SignedBlock {
     /// Create a new signed block.
-    pub fn new(block: Block, pkey: PrivateKey) -> Self {
+    pub fn new(block: Block, pkey: &PrivateKey) -> Self {
         use chain_core::property::Block;
         let block_id = block.id();
         SignedBlock {
