@@ -50,7 +50,19 @@ pub trait BlockDate: Eq + Ord + Clone {
 pub trait TransactionId: Eq + Hash {}
 
 /// Trait identifying the block header type.
-pub trait Header: Serialize + Deserialize {}
+pub trait Header: Serialize + Deserialize {
+    /// The block header id.
+    type Id: BlockId;
+
+    /// The block date.
+    type Date: BlockDate;
+
+    /// Retrieves the block's header id.
+    fn id(&self) -> Self::Id;
+
+    /// Retrieves the block's date.
+    fn date(&self) -> Self::Date;
+}
 
 /// Block property
 ///
