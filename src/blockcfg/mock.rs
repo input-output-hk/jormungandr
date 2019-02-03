@@ -17,6 +17,7 @@ impl BlockConfig for Mockchain {
     type GenesisData = GenesisData;
     type Ledger = ledger::Ledger;
     type Settings = setting::Settings;
+    type Leader = leadership::LeaderSelection;
     type Update = update::Diff;
 
     type NodeSigningKey = key::PrivateKey;

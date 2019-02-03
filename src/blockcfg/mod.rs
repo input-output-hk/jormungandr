@@ -30,6 +30,7 @@ pub trait BlockConfig {
 
     type Ledger: Ledger<Self::Transaction>;
     type Settings: Settings<Block = Self::Block>;
+    type Leader: LeaderSelection<Block = Self::Block>;
     type Update: Update;
 
     type NodeSigningKey;
