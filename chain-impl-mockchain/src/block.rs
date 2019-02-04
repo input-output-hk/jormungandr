@@ -6,17 +6,18 @@ use chain_core::property;
 /// Non unique identifier of the transaction position in the
 /// blockchain. There may be many transactions related to the same
 /// `SlotId`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SlotId(u64);
-
-impl property::BlockDate for SlotId {}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BlockDate {
+    pub epoch: u64,
+    pub slot_id: u64,
+}
 
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
 /// with the position of that block in the chain.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub slot_id: SlotId,
+    pub slot_id: BlockDate,
     pub parent_hash: Hash,
 
     pub transactions: Vec<SignedTransaction>,
@@ -33,13 +34,6 @@ pub struct SignedBlock {
     pub signature: Signature,
     /// Internal block.
     pub block: Block,
-}
-
-impl SlotId {
-    /// access the block number since the beginning of the blockchain
-    pub fn block_number(&self) -> u64 {
-        self.0
-    }
 }
 
 impl SignedBlock {
@@ -64,9 +58,18 @@ impl SignedBlock {
     }
 }
 
+impl property::BlockDate for BlockDate {
+    fn from_epoch_slot_id(epoch: u64, slot_id: u64) -> Self {
+        BlockDate {
+            epoch: epoch,
+            slot_id: slot_id,
+        }
+    }
+}
+
 impl property::Block for Block {
     type Id = Hash;
-    type Date = SlotId;
+    type Date = BlockDate;
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
@@ -119,7 +122,8 @@ impl property::Serialize for Block {
 
         let mut codec = Codec::from(writer);
 
-        codec.put_u64(self.slot_id.0)?;
+        codec.put_u64(self.slot_id.epoch)?;
+        codec.put_u64(self.slot_id.slot_id)?;
         codec.write_all(self.parent_hash.as_ref())?;
         codec.put_u16(self.transactions.len() as u16)?;
         for t in self.transactions.iter() {
@@ -148,7 +152,9 @@ impl property::Deserialize for Block {
 
         let mut codec = Codec::from(reader);
 
-        let date = codec.get_u64().map(SlotId)?;
+        let epoch = codec.get_u64()?;
+        let slot_id = codec.get_u64()?;
+        let date = BlockDate { epoch, slot_id };
 
         let mut hash = [0; 32];
         codec.read_exact(&mut hash)?;
@@ -232,10 +238,12 @@ mod test {
             }
         }
     }
-
-    impl Arbitrary for SlotId {
+    impl Arbitrary for BlockDate {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            SlotId(Arbitrary::arbitrary(g))
+            BlockDate {
+                epoch: Arbitrary::arbitrary(g),
+                slot_id: Arbitrary::arbitrary(g),
+            }
         }
     }
 }
