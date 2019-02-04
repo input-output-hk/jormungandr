@@ -15,8 +15,7 @@ pub fn leadership_task<B>(
 ) where
     B: BlockConfig,
     <B as BlockConfig>::TransactionId: Eq + std::hash::Hash,
-    <B as BlockConfig>::Ledger: Settings,
-    <B as BlockConfig>::BlockDate: std::fmt::Display,
+    <B as BlockConfig>::Settings: Settings,
 {
     loop {
         let d = clock.wait_next_slot();
@@ -45,9 +44,10 @@ pub fn leadership_task<B>(
                 .collect(b.settings.max_number_of_transactions_per_block());
 
             info!(
-                "leadership create tpool={} transactions ({})",
+                "leadership create tpool={} transactions ({}.{})",
                 transactions.len(),
-                date
+                epoch.0,
+                idx
             );
 
             let block = B::make_block(&secret, &b.settings, &b.ledger, date, transactions);

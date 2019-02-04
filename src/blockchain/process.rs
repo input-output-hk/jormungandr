@@ -1,14 +1,11 @@
-use super::super::intercom::{BlockMsg, NetworkBroadcastMsg};
-use super::super::leadership::selection;
-use crate::blockcfg::{mock::Mockchain, BlockConfig};
-use futures::sync::mpsc::UnboundedSender;
-use std::sync::Arc;
+use crate::blockcfg::BlockConfig;
+use crate::blockchain::chain;
+use crate::intercom::{BlockMsg, NetworkBroadcastMsg};
 
-use super::chain;
+use futures::sync::mpsc::UnboundedSender;
 
 pub fn process<Chain>(
     blockchain: &chain::BlockchainR<Chain>,
-    _selection: &Arc<selection::Selection>,
     bquery: BlockMsg<Chain>,
     network_broadcast: &UnboundedSender<NetworkBroadcastMsg<Chain>>,
 ) where

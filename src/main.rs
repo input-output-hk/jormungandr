@@ -71,39 +71,47 @@ use blockchain::{Blockchain, BlockchainR};
 use futures::sync::mpsc::UnboundedSender;
 use intercom::BlockMsg;
 use intercom::NetworkBroadcastMsg;
-use leadership::{leadership_task, Selection};
+use leadership::leadership_task;
 use transaction::{transaction_task, TPool};
 use utils::task::Tasks;
 
-use blockcfg::cardano::{Cardano, GenesisData, Transaction, TransactionId};
-
 use std::sync::{mpsc::Receiver, Arc, RwLock};
 
-use cardano_storage::StorageConfig;
+use blockcfg::{genesis_data::GenesisData, mock::Mockchain as Cardano};
+use chain_impl_mockchain::{
+    key::PrivateKey,
+    transaction::{SignedTransaction, TransactionId},
+};
 
 pub type TODO = u32;
 
+fn node_private_key(ns: secure::NodeSecret) -> PrivateKey {
+    let mut bytes = [0; 32];
+    bytes.copy_from_slice(&ns.block_privatekey.as_ref()[0..32]);
+    PrivateKey::normalize_bytes(bytes)
+}
+
 fn block_task(
     blockchain: BlockchainR<Cardano>,
-    selection: Arc<Selection>,
     _clock: clock::Clock, // FIXME: use it or lose it
     r: Receiver<BlockMsg<Cardano>>,
     network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>,
 ) {
     loop {
         let bquery = r.recv().unwrap();
-        blockchain::process(&blockchain, &selection, bquery, &network_broadcast);
+        blockchain::process(&blockchain, bquery, &network_broadcast);
     }
 }
 
 fn startup_info(gd: &GenesisData, blockchain: &Blockchain<Cardano>, settings: &Settings) {
+    /*
     println!(
         "protocol magic={} prev={} k={} tip={}",
         gd.protocol_magic,
         gd.genesis_prev,
         gd.epoch_stability_depth,
         blockchain.get_tip()
-    );
+    );*/
     println!("consensus: {:?}", settings.consensus);
 }
 
@@ -120,7 +128,7 @@ fn run() -> Result<(), Error> {
 
     settings.log_settings.apply();
 
-    let genesis_data = settings.read_genesis_data();
+    let genesis_data = settings.read_genesis_data().unwrap();
 
     let clock = {
         let initial_epoch = clock::ClockEpochConfiguration {
@@ -134,8 +142,7 @@ fn run() -> Result<(), Error> {
 
     //let mut state = State::new();
 
-    let storage_config = StorageConfig::new(&settings.storage);
-    let blockchain_data = Blockchain::from_storage(genesis_data.clone(), &storage_config);
+    let blockchain_data = Blockchain::new(genesis_data, secret.public, &settings.consensus);
 
     startup_info(&genesis_data, &blockchain_data, &settings);
 
@@ -174,14 +181,11 @@ fn run() -> Result<(), Error> {
     // * new nodes subscribing to updates (blocks, transactions)
     // * client GetBlocks/Headers ...
 
-    let tpool_data: TPool<TransactionId, Transaction> = TPool::new();
+    let tpool_data: TPool<TransactionId, SignedTransaction> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
     // Validation of consensus settings should make sure that we always have
     // non-empty selection data.
-    let selection_data =
-        leadership::selection::prepare(&secret.to_public(), &settings.consensus).unwrap();
-    let selection = Arc::new(selection_data);
 
     // initialize the transaction broadcast channel
     let (broadcast_sender, broadcast_receiver) = futures::sync::mpsc::unbounded();
@@ -197,9 +201,8 @@ fn run() -> Result<(), Error> {
     let block_task = {
         let blockchain = blockchain.clone();
         let clock = clock.clone();
-        let selection = Arc::clone(&selection);
         tasks.task_create_with_inputs("block", move |r| {
-            block_task(blockchain, selection, clock, r, broadcast_sender)
+            block_task(blockchain, clock, r, broadcast_sender)
         })
     };
 
@@ -239,15 +242,15 @@ fn run() -> Result<(), Error> {
     };
 
     if settings.leadership == settings::Leadership::Yes
-        && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes
+    //    && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes
     {
         let tpool = tpool.clone();
         let clock = clock.clone();
-        let selection = Arc::clone(&selection);
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
+        let pk = node_private_key(secret);
         tasks.task_create("leadership", move || {
-            leadership_task(secret, selection, tpool, blockchain, clock, block_task)
+            leadership_task(pk, tpool, blockchain, clock, block_task)
         });
     };
 
