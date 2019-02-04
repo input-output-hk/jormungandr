@@ -97,10 +97,17 @@ fn block_task(
     _clock: clock::Clock, // FIXME: use it or lose it
     r: Receiver<BlockMsg<Cardano>>,
     network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>,
+    shared_stats: SharedStats,
 ) {
     loop {
         let bquery = r.recv().unwrap();
-        blockchain::process(&blockchain, &selection, bquery, &network_broadcast);
+        blockchain::process(
+            &blockchain,
+            &selection,
+            bquery,
+            &network_broadcast,
+            &shared_stats,
+        );
     }
 }
 
@@ -209,8 +216,16 @@ fn run() -> Result<(), Error> {
         let blockchain = blockchain.clone();
         let clock = clock.clone();
         let selection = Arc::clone(&selection);
+        let shared_stats = shared_stats.clone();
         tasks.task_create_with_inputs("block", move |r| {
-            block_task(blockchain, selection, clock, r, broadcast_sender)
+            block_task(
+                blockchain,
+                selection,
+                clock,
+                r,
+                broadcast_sender,
+                shared_stats,
+            )
         })
     };
 

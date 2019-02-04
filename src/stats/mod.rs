@@ -27,4 +27,12 @@ impl Stats {
     pub fn get_tx_recv_cnt(&self) -> usize {
         self.tx_recv_cnt.load(Ordering::Relaxed)
     }
+
+    pub fn incr_block_recv_cnt(&self) {
+        self.block_recv_cnt.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn get_block_recv_cnt(&self) -> usize {
+        self.block_recv_cnt.load(Ordering::Relaxed)
+    }
 }

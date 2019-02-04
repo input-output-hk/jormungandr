@@ -25,7 +25,7 @@ fn node_info_v1(state: State<ServerState>) -> impl Responder {
     Json(json!({
       "data": {
         "txRecvCnt": state.stats.get_tx_recv_cnt(),
-        "blockCnt": state.stats.get_block_recv_cnt(),
+        "blockRecvCnt": state.stats.get_block_recv_cnt(),
       },
       "status": "success"
     }))
