@@ -85,7 +85,7 @@ impl LeaderSelection for BftLeaderSelection<PublicKey> {
         let mut update = <Self::Update as property::Update>::empty();
 
         let date = input.date();
-        let new_leader = self.get_leader_at(date.block_number()).clone();
+        let new_leader = self.get_leader_at(date.slot_id).clone();
 
         if new_leader != input.public_key {
             return Err(Error::BlockHasInvalidLeader(
@@ -123,7 +123,7 @@ impl LeaderSelection for BftLeaderSelection<PublicKey> {
         &self,
         date: <Self::Block as property::Block>::Date,
     ) -> Result<bool, Self::Error> {
-        Ok(self.is_leader_at(date.block_number()) == IsLeading::Yes)
+        Ok(self.is_leader_at(date.slot_id) == IsLeading::Yes)
     }
 }
 

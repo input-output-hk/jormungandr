@@ -42,7 +42,9 @@ use std::hash::Hash;
 pub trait BlockId: Eq + Ord + Clone + Debug + Hash + Serialize + Deserialize {}
 
 /// A trait representing block dates.
-pub trait BlockDate: Eq + Ord + Clone {}
+pub trait BlockDate: Eq + Ord + Clone {
+    fn from_epoch_slot_id(epoch: u64, slot_id: u64) -> Self;
+}
 
 /// Trait identifying the transaction identifier type.
 pub trait TransactionId: Eq + Hash {}
@@ -262,6 +264,9 @@ pub trait Settings {
     /// return the tip of the current branch
     ///
     fn tip(&self) -> <Self::Block as Block>::Id;
+
+    /// the number of transactions in a block
+    fn max_number_of_transactions_per_block(&self) -> usize;
 }
 
 /// Define that an object can be written to a `Write` object.
