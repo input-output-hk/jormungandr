@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 
 pub use self::configuration::ClockEpochConfiguration;
 
-pub struct FlatSlotId(u64);
+pub struct FlatSlotId(pub u64);
 
 #[derive(Clone)]
 pub struct Clock {

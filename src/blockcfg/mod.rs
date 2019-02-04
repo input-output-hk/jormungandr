@@ -36,7 +36,7 @@ pub trait BlockConfig {
     type NodeSigningKey;
 
     fn make_block(
-        secret_key: &secure::NodeSecret,
+        secret_key: &Self::NodeSigningKey,
         settings: &Self::Settings,
         ledger: &Self::Ledger,
         block_date: <Self::Block as Block>::Date,

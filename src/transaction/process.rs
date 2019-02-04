@@ -29,7 +29,7 @@ where
             TransactionMsg::SendTransaction(txs) => {
                 let mut tpool = tpool.write().unwrap();
                 let blockchain = blockchain.read().unwrap();
-                let chain_state = &blockchain.chain_state;
+                let chain_state = &blockchain.ledger;
 
                 // this will test the transaction is valid within the current
                 // state of the local state of the global ledger.

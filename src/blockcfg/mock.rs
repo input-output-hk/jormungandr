@@ -9,7 +9,7 @@ use chain_impl_mockchain::*;
 pub struct Mockchain;
 impl BlockConfig for Mockchain {
     type Block = block::SignedBlock;
-    type BlockDate = block::SlotId;
+    type BlockDate = block::BlockDate;
     type BlockHash = key::Hash;
     type BlockHeader = ();
     type Transaction = transaction::SignedTransaction;
