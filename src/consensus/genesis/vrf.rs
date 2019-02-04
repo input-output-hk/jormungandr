@@ -21,7 +21,7 @@
 use super::super::super::secure::crypto::vrf;
 use super::params::{phi, Threshold, F};
 use super::stake::PercentStake;
-use rand::OsRng;
+use rand::rngs::OsRng;
 use sha2::Sha256;
 
 pub type SecretKey = vrf::SecretKey;

@@ -11,7 +11,6 @@ use std::{
     collections::HashMap,
     fmt::{self, Display},
     fs::File,
-    io::Read,
     path::PathBuf,
 };
 

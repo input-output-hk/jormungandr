@@ -16,8 +16,6 @@ pub use chain_core::property::{
 pub mod genesis_data;
 pub mod mock;
 
-use crate::secure;
-
 pub trait BlockConfig {
     type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
         + HasTransaction<Self::Transaction>;

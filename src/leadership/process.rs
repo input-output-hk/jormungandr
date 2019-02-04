@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::blockcfg::{BlockConfig, Settings};
 use crate::transaction::TPoolR;
 use crate::{clock, intercom::BlockMsg, utils::task::TaskMessageBox, BlockchainR};

@@ -1,3 +1,6 @@
+//! Generic Genesis data
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GenesisData {
     pub start_time: std::time::SystemTime,
     pub slot_duration: std::time::Duration,

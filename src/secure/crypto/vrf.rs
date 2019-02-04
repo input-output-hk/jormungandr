@@ -232,7 +232,7 @@ fn make_message_hash_point(data: &[u8]) -> Point {
 #[cfg(test)]
 mod tests {
     use super::SecretKey;
-    use rand::OsRng;
+    use rand::rngs::OsRng;
 
     #[test]
     fn it_works() {
