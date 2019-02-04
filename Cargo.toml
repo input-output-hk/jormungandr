@@ -37,12 +37,8 @@ sha2 = "^0.7"
 digest = "^0.7"
 generic-array = "^0.9"
 bytes = "0.4"
-prost = "0.4"
 lazy_static = "1.2.0"
-prost-derive = "0.4"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
-tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
-tower-util = { git = "https://github.com/tower-rs/tower" }
 chain-core      = { path = "cardano-deps/chain-core" }
 chain-impl-mockchain = { path = "cardano-deps/chain-impl-mockchain" }
 chain-storage   = { path = "cardano-deps/chain-storage" }
@@ -58,14 +54,6 @@ storage-units   = { path = "cardano-deps/storage-units" }
 version = "2.32"
 default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
-
-[dependencies.tower-grpc]
-git = "https://github.com/tower-rs/tower-grpc"
-rev = "7ffa9d3b610d1c84559a811d08a25bd1670babed"
-
-[build-dependencies.tower-grpc-build]
-git = "https://github.com/tower-rs/tower-grpc"
-rev = "7ffa9d3b610d1c84559a811d08a25bd1670babed"
 
 [dev-dependencies]
 quickcheck = "0.8"

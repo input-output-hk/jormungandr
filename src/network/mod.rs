@@ -233,7 +233,9 @@ pub fn bootstrap(config: &Configuration, blockchain: BlockchainR<Cardano>) {
         .filter(|peer| peer.protocol == Protocol::Grpc)
         .next();
     match grpc_peer {
-        Some(peer) => grpc::bootstrap_from_peer(peer.clone(), blockchain),
+        Some(peer) => {
+            grpc::bootstrap_from_peer(peer.clone(), blockchain)
+        }
         None => {
             warn!("no gRPC peers specified, skipping bootstrap");
         }

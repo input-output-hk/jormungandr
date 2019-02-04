@@ -20,6 +20,8 @@ extern crate chain_storage;
 #[macro_use]
 extern crate cbor_event;
 extern crate exe_common;
+extern crate network_core;
+extern crate network_grpc;
 extern crate protocol_tokio as protocol;
 
 #[macro_use]
@@ -30,14 +32,6 @@ extern crate cryptoxide;
 extern crate curve25519_dalek;
 extern crate generic_array;
 extern crate sha2;
-
-extern crate prost;
-#[macro_use]
-extern crate prost_derive;
-extern crate tokio_connect;
-extern crate tower_grpc;
-extern crate tower_h2;
-extern crate tower_util;
 
 #[cfg(test)]
 extern crate quickcheck;

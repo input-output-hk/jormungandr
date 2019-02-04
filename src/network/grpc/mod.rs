@@ -1,19 +1,31 @@
-// Included generated protobuf/gRPC code,
-// namespaced into submodules corresponding to the .proto package names
-
-mod cardano {
-    include!(concat!(env!("OUT_DIR"), "/cardano.rs"));
-}
-
-#[allow(dead_code)]
-mod iohk {
-    pub mod jormungandr {
-        include!(concat!(env!("OUT_DIR"), "/iohk.jormungandr.rs"));
-    }
-}
-
 mod bootstrap;
 mod service;
 
-pub use self::bootstrap::bootstrap_from_peer;
+use crate::{
+    blockcfg::BlockConfig,
+    blockchain::BlockchainR,
+    settings::network::{Connection, Peer},
+};
+
 pub use self::service::run_listen_socket;
+
+use network_grpc::peer::TcpPeer;
+
+#[cfg(unix)]
+use network_grpc::peer::UnixPeer;
+
+pub fn bootstrap_from_peer<B: BlockConfig>(peer: Peer, blockchain: BlockchainR<B>)
+{
+    info!("connecting to bootstrap peer {}", peer.connection);
+    match peer.connection {
+        Connection::Tcp(addr) => {
+            let peer = TcpPeer::new(addr);
+            bootstrap::bootstrap_from_target(peer, blockchain)
+        }
+        #[cfg(unix)]
+        Connection::Unix(path) => {
+            let peer = UnixPeer::new(path);
+            bootstrap::bootstrap_from_target(peer, blockchain)
+        }
+    }
+}
