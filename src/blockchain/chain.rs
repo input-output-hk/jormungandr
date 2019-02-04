@@ -140,6 +140,7 @@ impl<B: BlockConfig> Blockchain<B> {
                     .unwrap();
             } else {
                 // TODO chain state restoration ?
+                unimplemented!()
             }
         }
     }
