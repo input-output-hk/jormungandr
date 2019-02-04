@@ -157,6 +157,12 @@ impl<B: BlockConfig> Blockchain<B> {
     fn sollicit_block(&mut self, block_hash: &B::BlockHash) {
         //unimplemented!();
     }
+
+    /// return the current tip hash and date
+    pub fn get_tip(&self) -> B::BlockHash {
+        use chain_core::property::Settings;
+        self.settings.tip()
+    }
 }
 
 /*

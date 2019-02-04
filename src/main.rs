@@ -104,14 +104,11 @@ fn block_task(
 }
 
 fn startup_info(gd: &GenesisData, blockchain: &Blockchain<Cardano>, settings: &Settings) {
-    /*
     println!(
-        "protocol magic={} prev={} k={} tip={}",
-        gd.protocol_magic,
-        gd.genesis_prev,
+        "k={} tip={}",
         gd.epoch_stability_depth,
         blockchain.get_tip()
-    );*/
+    );
     println!("consensus: {:?}", settings.consensus);
 }
 
