@@ -122,7 +122,6 @@ impl<B: BlockConfig> Blockchain<B> {
         // way to check that.
         if block_hash != current_tip {
             let block_previous_header_id = block.parent_id();
-            let chain_state_current_id = self.settings.tip();
 
             if current_tip == block.parent_id() {
                 let leadership_diff = self.leadership.diff(&block).unwrap();
@@ -194,26 +193,6 @@ impl Blockchain<Cardano> {
 
     pub fn get_genesis_hash(&self) -> &BlockHash {
         &self.genesis_data.genesis_prev
-    }
-
-    /// Handle an incoming block (either from the network or from our
-    /// own leadership task). If the block is not connected, then
-    /// sollicit its parent. If it is connected and is a longer valid
-    /// chain than the current tip, then switch the tip. If it is
-    /// connected but is not a longer valid chain, then discard it.
-    pub fn handle_incoming_block(&mut self, block: Block) {
-        let block_hash = block.get_header().compute_hash();
-        let parent_hash = block.get_header().get_previous_header();
-
-        if self.block_exists(&parent_hash) {
-            self.handle_connected_block(block_hash, block);
-        } else {
-            self.sollicit_block(&parent_hash);
-            self.unconnected_blocks
-                .entry(parent_hash)
-                .or_insert(BTreeMap::new())
-                .insert(block_hash, block);
-        }
     }
 
     /// Handle a block whose ancestors are on disk.
