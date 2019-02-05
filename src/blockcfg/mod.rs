@@ -18,7 +18,7 @@ pub mod mock;
 
 pub trait BlockConfig {
     type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
-        + HasTransaction<Self::Transaction>;
+        + HasTransaction<Transaction = Self::Transaction>;
     type BlockDate: BlockDate;
     type BlockHash: BlockId;
     type BlockHeader: Block<Id = Self::BlockHash, Date = Self::BlockDate>;
@@ -26,7 +26,7 @@ pub trait BlockConfig {
     type TransactionId: TransactionId;
     type GenesisData;
 
-    type Ledger: Ledger<Self::Transaction>;
+    type Ledger: Ledger<Transaction = Self::Transaction>;
     type Settings: Settings<Block = Self::Block>;
     type Leader: LeaderSelection<Block = Self::Block>;
     type Update: Update;

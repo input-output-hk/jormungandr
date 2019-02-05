@@ -31,7 +31,7 @@ pub struct Blockchain<B: BlockConfig> {
 
     pub change_log: Vec<(
         <B::Leader as property::LeaderSelection>::Update,
-        <B::Ledger as property::Ledger<B::Transaction>>::Update,
+        <B::Ledger as property::Ledger>::Update,
         <B::Settings as property::Settings>::Update,
     )>,
 
