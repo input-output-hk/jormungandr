@@ -380,7 +380,7 @@ pub mod testing {
 
     /// Generate a number of transactions and run them, it's not
     /// expected to have any errors during the run.
-    pub fn run_valid_transactions<'a, G, L>(g: &'a mut G, ledger: &'a mut L, n: usize) -> ()
+    pub fn run_valid_transactions<G, L>(g: &mut G, ledger: &mut L, n: usize) -> ()
     where
         G: Gen,
         L: Ledger + GenerateTransaction<<L as Ledger>::Transaction>,
