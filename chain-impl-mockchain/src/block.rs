@@ -192,13 +192,15 @@ impl property::Deserialize for SignedBlock {
     }
 }
 
-impl property::HasTransaction<SignedTransaction> for Block {
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, SignedTransaction> {
+impl property::HasTransaction for Block {
+    type Transaction = SignedTransaction;
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
         self.transactions.iter()
     }
 }
-impl property::HasTransaction<SignedTransaction> for SignedBlock {
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, SignedTransaction> {
+impl property::HasTransaction for SignedBlock {
+    type Transaction = SignedTransaction;
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction> {
         self.block.transactions()
     }
 }

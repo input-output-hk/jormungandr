@@ -128,9 +128,11 @@ pub trait Transaction: Serialize + Deserialize {
 /// * UTxO
 /// * certificate registrations
 /// * ...
-pub trait HasTransaction<T: Transaction> {
+pub trait HasTransaction {
+    type Transaction: Transaction;
+
     /// returns an iterator over the Transactions
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, T>;
+    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>;
 }
 
 /// Updates type needs to implement this feature so we can easily
