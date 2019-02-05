@@ -22,9 +22,10 @@ impl Ledger {
     }
 }
 
-impl property::Ledger<SignedTransaction> for Ledger {
+impl property::Ledger for Ledger {
     type Update = TransactionsDiff;
     type Error = Error;
+    type Transaction = SignedTransaction;
 
     fn input<'a>(
         &'a self,

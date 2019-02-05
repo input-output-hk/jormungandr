@@ -156,7 +156,7 @@ pub trait Update {
 /// Define the Ledger side of the blockchain. This is not really on the blockchain
 /// but should be able to maintain a valid state of the overall blockchain at a given
 /// `Block`.
-pub trait Ledger<T: Transaction> {
+pub trait Ledger: Sized {
     /// a Ledger Update. An atomic representation of a set of changes
     /// into the ledger's state.
     ///
@@ -167,23 +167,31 @@ pub trait Ledger<T: Transaction> {
     /// Ledger's errors
     type Error: std::error::Error;
 
+    type Transaction: Transaction;
+
     /// check the input exists in the given ledger state
     ///
     /// i.e. in the UTxO model the Input will be something like the Transaction's Id
     /// and the index of the output within the output array.
     /// If the Output is not present it is possible that it does not exist or has
     /// already been spent in another transaction.
-    fn input<'a>(&'a self, input: &T::Input) -> Result<&'a T::Output, Self::Error>;
+    fn input<'a>(
+        &'a self,
+        input: &<Self::Transaction as Transaction>::Input,
+    ) -> Result<&'a <Self::Transaction as Transaction>::Output, Self::Error>;
 
     /// create a new Update from the given transaction.
-    fn diff_transaction(&self, transaction: &T) -> Result<Self::Update, Self::Error>;
+    fn diff_transaction(
+        &self,
+        transaction: &Self::Transaction,
+    ) -> Result<Self::Update, Self::Error>;
 
     /// create a combined Update from the given transactions
     ///
     fn diff<'a, I>(&self, transactions: I) -> Result<Self::Update, Self::Error>
     where
-        I: IntoIterator<Item = &'a T> + Sized,
-        T: 'a,
+        I: IntoIterator<Item = &'a Self::Transaction> + Sized,
+        Self::Transaction: 'a,
     {
         let mut update = Self::Update::empty();
 
@@ -328,10 +336,10 @@ pub mod testing {
     /// and signatures will compose into a valid transaction, but if such
     /// event would happen it can be treated as error due to lack of the
     /// randomness.
-    pub fn prop_bad_transaction_fails<L, T>(ledger: L, transaction: T) -> TestResult
+    pub fn prop_bad_transaction_fails<L>(ledger: L, transaction: L::Transaction) -> TestResult
     where
-        L: Ledger<T> + Arbitrary,
-        T: Transaction + Arbitrary,
+        L: Ledger + Arbitrary,
+        <L as Ledger>::Transaction: Transaction + Arbitrary,
     {
         if transaction.inputs().len() == 0 && transaction.outputs().len() == 0 {
             return TestResult::discard();
@@ -347,12 +355,12 @@ pub mod testing {
 
     /// Test that checks if arbitrary valid transaction succeed and can
     /// be added to the ledger.
-    pub fn prop_good_transactions_succeed<L, T>(
-        input: &mut LedgerWithValidTransaction<L, T>,
+    pub fn prop_good_transactions_succeed<L>(
+        input: &mut LedgerWithValidTransaction<L, L::Transaction>,
     ) -> bool
     where
-        L: Ledger<T> + Arbitrary,
-        T: Transaction + Arbitrary,
+        L: Ledger + Arbitrary,
+        L::Transaction: Transaction + Arbitrary,
     {
         match input.0.diff_transaction(&input.1) {
             Err(e) => panic!("error {:#?}", e),
@@ -370,11 +378,10 @@ pub mod testing {
 
     /// Generate a number of transactions and run them, it's not
     /// expected to have any errors during the run.
-    pub fn run_valid_transactions<'a, G, L, T>(g: &'a mut G, ledger: &'a mut L, n: usize) -> ()
+    pub fn run_valid_transactions<'a, G, L>(g: &'a mut G, ledger: &'a mut L, n: usize) -> ()
     where
         G: Gen,
-        L: Ledger<T> + GenerateTransaction<T>,
-        T: Transaction,
+        L: Ledger + GenerateTransaction<<L as Ledger>::Transaction>,
     {
         for _ in 0..n {
             let tx = ledger.generate_transaction(g);
