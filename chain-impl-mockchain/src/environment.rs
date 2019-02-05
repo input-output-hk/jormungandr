@@ -89,9 +89,10 @@ impl Environment {
     }
 }
 
-impl property::Ledger<SignedTransaction> for Environment {
+impl property::Ledger for Environment {
     type Update = TransactionsDiff;
     type Error = Error;
+    type Transaction = SignedTransaction;
 
     fn input<'a>(
         &'a self,
