@@ -6,7 +6,7 @@ use crate::intercom::{self, ClientMsg};
 use crate::network::{ConnectionState, GlobalState};
 use crate::settings::network::Listen;
 
-use cardano::{block::{BlockDate, EpochSlotId}};
+use cardano::block::{BlockDate, EpochSlotId};
 use chain_core::property;
 
 use futures::prelude::*;
@@ -15,166 +15,8 @@ use futures::{
     sync::{mpsc, oneshot},
 };
 use tokio::{executor::DefaultExecutor, net::TcpListener};
-use tower_grpc::{self, Code, Request, Response, Status};
-use tower_h2::Server;
 
 use std::net::SocketAddr;
-
-use super::cardano as cardano_proto;
-use super::iohk::jormungandr as gen;
-
-impl From<BlockHash> for cardano_proto::HeaderHash {
-    fn from(hash: BlockHash) -> Self {
-        cardano_proto::HeaderHash {
-            hash: hash.as_ref().into(),
-        }
-    }
-}
-
-impl From<Block> for cardano_proto::Block {
-    fn from(block: Block) -> Self {
-        let content = cbor!(&block).unwrap();
-        cardano_proto::Block { content }
-    }
-}
-
-impl From<BlockDate> for cardano_proto::BlockDate {
-    fn from(date: BlockDate) -> Self {
-        use self::BlockDate::*;
-        let (epoch, slot) = match date {
-            Boundary(epoch) => (epoch, 0),
-            Normal(EpochSlotId { epoch, slotid }) => (epoch, slotid as u32),
-        };
-        cardano_proto::BlockDate { epoch, slot }
-    }
-}
-
-struct GrpcFuture<T> {
-    receiver: oneshot::Receiver<Result<T, intercom::Error>>,
-}
-
-impl<T> Future for GrpcFuture<T> {
-    type Item = Response<T>;
-    type Error = tower_grpc::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Error> {
-        let item = match self.receiver.poll() {
-            Err(oneshot::Canceled) => {
-                warn!("gRPC response canceled by the client request task");
-                let status = Status::with_code(Code::Aborted);
-                return Err(tower_grpc::Error::Grpc(status));
-            }
-            Ok(Async::NotReady) => {
-                return Ok(Async::NotReady);
-            }
-            Ok(Async::Ready(Err(e))) => {
-                warn!("error processing gRPC request: {:?}", e);
-                // Not forwarding error message to the client
-                // because it may expose arbitrary internal information.
-                let status = Status::with_code(Code::Unknown);
-                return Err(tower_grpc::Error::Grpc(status));
-            }
-            Ok(Async::Ready(Ok(item))) => item,
-        };
-
-        Ok(Async::Ready(Response::new(item)))
-    }
-}
-
-type ReplySender<T> = oneshot::Sender<Result<T, intercom::Error>>;
-
-#[derive(Debug)]
-struct ReplyHandle<T> {
-    sender: Option<ReplySender<T>>,
-}
-
-impl<T> ReplyHandle<T> {
-    fn take_sender(&mut self) -> ReplySender<T> {
-        self.sender.take().unwrap()
-    }
-}
-
-impl<H> intercom::Reply<H> for ReplyHandle<gen::TipResponse>
-where
-    H: property::Block,
-    H::Date: Into<cardano_proto::BlockDate>,
-    H::Id: Into<cardano_proto::HeaderHash>,
-{
-    fn reply_ok(&mut self, header: H) {
-        let response = gen::TipResponse {
-            blockdate: Some(header.date().into()),
-            hash: Some(header.id().into()),
-        };
-        self.take_sender().send(Ok(response)).unwrap();
-    }
-
-    fn reply_error(&mut self, error: intercom::Error) {
-        self.take_sender().send(Err(error)).unwrap();
-    }
-}
-
-struct GrpcResponseStream<T> {
-    receiver: mpsc::UnboundedReceiver<Result<T, intercom::Error>>,
-}
-
-impl<T> Stream for GrpcResponseStream<T> {
-    type Item = T;
-    type Error = tower_grpc::Error;
-
-    fn poll(&mut self) -> Poll<Option<T>, tower_grpc::Error> {
-        match try_ready!(self.receiver.poll()) {
-            None => Ok(Async::Ready(None)),
-            Some(Ok(item)) => Ok(Async::Ready(Some(item))),
-            Some(Err(e)) => {
-                warn!("error while streaming response: {:?}", e);
-                // Not forwarding error message to the client
-                // because it may expose arbitrary internal information.
-                let status = Status::with_code(Code::Unknown);
-                Err(tower_grpc::Error::Grpc(status))
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-struct StreamReplyHandle<T> {
-    sender: mpsc::UnboundedSender<Result<T, intercom::Error>>,
-}
-
-impl<B> intercom::StreamReply<B> for StreamReplyHandle<cardano_proto::Block>
-where
-    B: Into<cardano_proto::Block>,
-{
-    fn send(&mut self, item: B) {
-        self.sender.unbounded_send(Ok(item.into())).unwrap()
-    }
-
-    fn send_error(&mut self, error: intercom::Error) {
-        self.sender.unbounded_send(Err(error)).unwrap()
-    }
-
-    fn close(&mut self) {
-        self.sender.close().unwrap();
-    }
-}
-
-fn unary_response_channel<T>() -> (ReplyHandle<T>, GrpcFuture<T>) {
-    let (sender, receiver) = oneshot::channel();
-    (
-        ReplyHandle {
-            sender: Some(sender),
-        },
-        GrpcFuture { receiver },
-    )
-}
-
-fn server_streaming_response_channel<T>() -> (StreamReplyHandle<T>, GrpcResponseStream<T>) {
-    let (sender, receiver) = mpsc::unbounded();
-    (
-        StreamReplyHandle { sender },
-        GrpcResponseStream { receiver },
-    )
-}
 
 struct GrpcServer<B: BlockConfig> {
     state: ConnectionState<B>,
@@ -186,15 +28,6 @@ impl<B: BlockConfig> Clone for GrpcServer<B> {
             state: self.state.clone(),
         }
     }
-}
-
-fn deserialize_hashes<H: Deserialize>(
-    pb: &cardano_proto::HeaderHashes,
-) -> Result<Vec<H>, <H as Deserialize>::Error> {
-    pb.hashes
-        .iter()
-        .map(|v| Deserialize::deserialize(&v[..]))
-        .collect()
 }
 
 impl<B> gen::server::Node for GrpcServer<B>

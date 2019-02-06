@@ -1,5 +1,8 @@
 use crate::blockcfg::BlockConfig;
 
+use futures::prelude::*;
+use futures::sync::{mpsc, oneshot};
+
 use std::fmt::{self, Debug, Display};
 
 /// The error values passed via intercom messages.
@@ -39,31 +42,105 @@ impl std::error::Error for Error {
     }
 }
 
-pub trait Reply<T>: Debug {
-    fn reply_ok(&mut self, item: T);
-    fn reply_error(&mut self, error: Error);
+type ReplySender<T> = oneshot::Sender<Result<T, Error>>;
 
-    fn reply(&mut self, result: Result<T, Error>) {
-        match result {
-            Ok(item) => self.reply_ok(item),
-            Err(error) => self.reply_error(error),
+#[derive(Debug)]
+pub struct ReplyHandle<T> {
+    sender: ReplySender<T>,
+}
+
+impl<T> ReplyHandle<T> {
+    pub fn reply_ok(self, response: T) {
+        self.sender.send(Ok(response)).unwrap();
+    }
+
+    pub fn reply_error(self, error: Error) {
+        self.sender.send(Err(error)).unwrap();
+    }
+}
+
+pub struct ReplyFuture<T> {
+    receiver: oneshot::Receiver<Result<T, Error>>,
+}
+
+impl<T> Future for ReplyFuture<T> {
+    type Item = T;
+    type Error = Error;
+
+    fn poll(&mut self) -> Poll<T, Error> {
+        let item = match self.receiver.poll() {
+            Err(oneshot::Canceled) => {
+                warn!("response canceled by the client request task");
+                // FIXME: a non-stringized error code needed here
+                return Err(Error::from("canceled"));
+            }
+            Ok(Async::NotReady) => {
+                return Ok(Async::NotReady);
+            }
+            Ok(Async::Ready(Err(e))) => {
+                warn!("error processing request: {:?}", e);
+                return Err(Error::from_error(e));
+            }
+            Ok(Async::Ready(Ok(item))) => item,
+        };
+
+        Ok(Async::Ready(item))
+    }
+}
+
+pub fn unary_reply<T>() -> (ReplyHandle<T>, ReplyFuture<T>) {
+    let (sender, receiver) = oneshot::channel();
+    (ReplyHandle { sender }, ReplyFuture { receiver })
+}
+
+#[derive(Debug)]
+pub struct ReplyStreamHandle<T> {
+    sender: mpsc::UnboundedSender<Result<T, Error>>,
+}
+
+impl<T> ReplyStreamHandle<T> {
+    fn send(&mut self, item: T) {
+        self.sender.unbounded_send(Ok(item)).unwrap()
+    }
+
+    fn send_error(&mut self, error: Error) {
+        self.sender.unbounded_send(Err(error)).unwrap()
+    }
+
+    fn close(&mut self) {
+        self.sender.close().unwrap();
+    }
+}
+
+pub struct ReplyStream<T> {
+    receiver: mpsc::UnboundedReceiver<Result<T, Error>>,
+}
+
+impl<T> Stream for ReplyStream<T> {
+    type Item = T;
+    type Error = Error;
+
+    fn poll(&mut self) -> Poll<Option<T>, Error> {
+        match try_ready!(self.receiver.poll()) {
+            None => Ok(Async::Ready(None)),
+            Some(Ok(item)) => Ok(Async::Ready(Some(item))),
+            Some(Err(e)) => {
+                warn!("error while streaming response: {:?}", e);
+                return Err(Error::from_error(e));
+            }
         }
     }
 }
 
-pub trait StreamReply<T>: Debug {
-    fn send(&mut self, item: T);
-    fn send_error(&mut self, error: Error);
-    fn close(&mut self);
+pub fn stream_reply<T>() -> (ReplyStreamHandle<T>, ReplyStream<T>) {
+    let (sender, receiver) = mpsc::unbounded();
+    (ReplyStreamHandle { sender }, ReplyStream { receiver })
 }
-
-pub type BoxReply<T> = Box<dyn Reply<T> + Send>;
-pub type BoxStreamReply<T> = Box<dyn StreamReply<T> + Send>;
 
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg<B: BlockConfig> {
-    ProposeTransaction(Vec<B::TransactionId>, BoxReply<Vec<bool>>),
+    ProposeTransaction(Vec<B::TransactionId>, ReplyHandle<Vec<bool>>),
     SendTransaction(Vec<B::Transaction>),
 }
 
@@ -71,14 +148,14 @@ pub enum TransactionMsg<B: BlockConfig> {
 /// Fetching the block headers, the block, the tip
 #[derive(Debug)]
 pub enum ClientMsg<B: BlockConfig> {
-    GetBlockTip(BoxReply<B::BlockHeader>),
+    GetBlockTip(ReplyHandle<B::BlockHeader>),
     GetBlockHeaders(
         Vec<B::BlockHash>,
         B::BlockHash,
-        BoxReply<Vec<B::BlockHeader>>,
+        ReplyHandle<Vec<B::BlockHeader>>,
     ),
-    GetBlocks(B::BlockHash, B::BlockHash, BoxStreamReply<B::Block>),
-    StreamBlocksToTip(Vec<B::BlockHash>, BoxStreamReply<B::Block>),
+    GetBlocks(B::BlockHash, B::BlockHash, ReplyStreamHandle<B::Block>),
+    PullBlocksToTip(Vec<B::BlockHash>, ReplyStreamHandle<B::Block>),
 }
 
 /// General Block Message for the block task
