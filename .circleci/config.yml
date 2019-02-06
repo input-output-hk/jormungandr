@@ -1,0 +1,102 @@
+version: 2
+jobs:
+  cargo_fetch:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - cargo-v1-{{ checksum "Cargo.toml" }}-
+            - cargo-v1-
+      - run: cargo update
+      - run: cargo fetch
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - Cargo.lock
+      - save_cache:
+          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          paths:
+            - /usr/local/cargo/registry
+            - /usr/local/cargo/git
+  test:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - restore_cache:
+          keys:
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Build and test
+          command: cargo test --frozen --verbose
+          environment:
+            # Need this for the coverage run
+            RUSTFLAGS: "-C link-dead-code"
+      - run:
+          name: Prune the output files
+          command: |
+            for file in target/debug/* target/debug/.??*; do
+              [ -d $file -o ! -x $file ] && rm -r $file
+            done
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - target/debug/*
+  test_release:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - restore_cache:
+          keys:
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Build and test in release profile
+          command: cargo test --release --frozen --verbose
+  test_nightly:
+    docker:
+      - image: rustlang/rust:nightly
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - restore_cache:
+          keys:
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Build and test with nightly Rust
+          command: cargo test --frozen --verbose
+
+workflows:
+  version: 2
+  test_all:
+    jobs:
+      - cargo_fetch
+      - test:
+          requires:
+            - cargo_fetch
+      - test_release:
+          requires:
+            - cargo_fetch
+      - test_nightly:
+          requires:
+            - cargo_fetch
