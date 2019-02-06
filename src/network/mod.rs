@@ -7,6 +7,7 @@
 
 mod grpc;
 mod ntt;
+mod service;
 
 use std::{
     collections::HashMap,
