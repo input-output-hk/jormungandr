@@ -158,8 +158,39 @@ pub enum ClientMsg<B: BlockConfig> {
     PullBlocksToTip(Vec<B::BlockHash>, ReplyStreamHandle<B::Block>),
 }
 
+impl<B> Debug for ClientMsg<B>
+where
+    B: BlockConfig,
+    B::BlockHash: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ClientMsg::GetBlockTip(_) => f
+                .debug_tuple("GetBlockTip")
+                .field(&format_args!("_"))
+                .finish(),
+            ClientMsg::GetBlockHeaders(from, to, _) => f
+                .debug_tuple("GetBlockHeaders")
+                .field(from)
+                .field(to)
+                .field(&format_args!("_"))
+                .finish(),
+            ClientMsg::GetBlocks(from, to, _) => f
+                .debug_tuple("GetBlocks")
+                .field(from)
+                .field(to)
+                .field(&format_args!("_"))
+                .finish(),
+            ClientMsg::PullBlocksToTip(from, _) => f
+                .debug_tuple("PullBlocksToTip")
+                .field(from)
+                .field(&format_args!("_"))
+                .finish(),
+        }
+    }
+}
+
 /// General Block Message for the block task
-#[derive(Debug, Clone)]
 pub enum BlockMsg<B: BlockConfig> {
     /// A untrusted Block has been received from the network task
     NetworkBlock(B::Block),
@@ -167,12 +198,42 @@ pub enum BlockMsg<B: BlockConfig> {
     LeadershipBlock(B::Block),
 }
 
+impl<B> Debug for BlockMsg<B>
+where
+    B: BlockConfig,
+    B::Block: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use BlockMsg::*;
+        match self {
+            NetworkBlock(block) => f.debug_tuple("NetworkBlock").field(block).finish(),
+            LeadershipBlock(block) => f.debug_tuple("LeadershipBlock").field(block).finish(),
+        }
+    }
+}
+
 /// Message to broadcast to all the connected peers (that requested to subscribe
 /// to our blockchain).
 ///
-#[derive(Debug, Clone)]
 pub enum NetworkBroadcastMsg<B: BlockConfig> {
     Block(B::Block),
     Header(B::BlockHeader),
     Transaction(B::Transaction),
+}
+
+impl<B> Debug for NetworkBroadcastMsg<B>
+where
+    B: BlockConfig,
+    B::Block: Debug,
+    B::BlockHeader: Debug,
+    B::Transaction: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use NetworkBroadcastMsg::*;
+        match self {
+            Block(block) => f.debug_tuple("Block").field(block).finish(),
+            Header(header) => f.debug_tuple("Header").field(header).finish(),
+            Transaction(tx) => f.debug_tuple("Transaction").field(tx).finish(),
+        }
+    }
 }
