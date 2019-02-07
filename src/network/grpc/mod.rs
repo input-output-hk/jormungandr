@@ -1,5 +1,5 @@
 mod bootstrap;
-mod service;
+mod server;
 
 use crate::{
     blockcfg::BlockConfig,
@@ -7,15 +7,14 @@ use crate::{
     settings::network::{Connection, Peer},
 };
 
-pub use self::service::run_listen_socket;
+pub use self::server::run_listen_socket;
 
 use network_grpc::peer::TcpPeer;
 
 #[cfg(unix)]
 use network_grpc::peer::UnixPeer;
 
-pub fn bootstrap_from_peer<B: BlockConfig>(peer: Peer, blockchain: BlockchainR<B>)
-{
+pub fn bootstrap_from_peer<B: BlockConfig>(peer: Peer, blockchain: BlockchainR<B>) {
     info!("connecting to bootstrap peer {}", peer.connection);
     match peer.connection {
         Connection::Tcp(addr) => {
