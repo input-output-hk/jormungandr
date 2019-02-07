@@ -15,7 +15,7 @@ use std::{
     time::Duration,
 };
 
-use crate::blockcfg::{cardano::Cardano, BlockConfig};
+use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkBroadcastMsg, TransactionMsg};
 use crate::settings::network::{Configuration, Connection, Listen, Peer, Protocol};
@@ -130,10 +130,10 @@ impl<B: BlockConfig> ConnectionState<B> {
     }
 }
 
-pub fn run(
+pub fn run<B: BlockConfig>(
     config: Configuration,
-    subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<Cardano>>, // TODO: abstract away Cardano
-    channels: Channels<Cardano>,
+    subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<B>>, // TODO: abstract away Cardano
+    channels: Channels<B>,
 ) {
     let arc_config = Arc::new(config.clone());
     let subscriptions = Arc::new(RwLock::new(Subscriptions::default()));
@@ -227,16 +227,14 @@ pub fn run(
     tokio::run(subscriptions.join3(connections, listener).map(|_| ()));
 }
 
-pub fn bootstrap(config: &Configuration, blockchain: BlockchainR<Cardano>) {
+pub fn bootstrap<B: BlockConfig>(config: &Configuration, blockchain: BlockchainR<B>) {
     let grpc_peer = config
         .peer_nodes
         .iter()
         .filter(|peer| peer.protocol == Protocol::Grpc)
         .next();
     match grpc_peer {
-        Some(peer) => {
-            grpc::bootstrap_from_peer(peer.clone(), blockchain)
-        }
+        Some(peer) => grpc::bootstrap_from_peer(peer.clone(), blockchain),
         None => {
             warn!("no gRPC peers specified, skipping bootstrap");
         }
