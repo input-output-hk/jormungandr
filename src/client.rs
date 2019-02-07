@@ -1,10 +1,10 @@
-use crate::blockcfg::{cardano, cardano::Cardano};
+use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
-use crate::intercom::*;
+use crate::intercom::{ClientMsg, Error, ReplyHandle, ReplyStreamHandle};
 use cardano_storage::iter;
 use std::sync::mpsc::Receiver;
 
-pub fn client_task(blockchain: BlockchainR<Cardano>, r: Receiver<ClientMsg<Cardano>>) {
+pub fn client_task<B: BlockConfig>(blockchain: BlockchainR<B>, r: Receiver<ClientMsg<B>>) {
     loop {
         let query = r.recv().unwrap();
         debug!("client query received: {:?}", query);
@@ -24,11 +24,11 @@ pub fn client_task(blockchain: BlockchainR<Cardano>, r: Receiver<ClientMsg<Carda
     }
 }
 
-struct StreamReplyError<T>(Error, BoxStreamReply<T>);
+struct StreamReplyError<T>(Error, ReplyStreamHandle<T>);
 
 fn do_stream_reply<T, F>(f: F)
 where
-    F: FnOnce() -> Result<BoxStreamReply<T>, StreamReplyError<T>>,
+    F: FnOnce() -> Result<ReplyStreamHandle<T>, StreamReplyError<T>>,
 {
     let mut handler = match f() {
         Ok(handler) => handler,
@@ -40,7 +40,9 @@ where
     handler.close();
 }
 
-fn handle_get_block_tip(blockchain: &BlockchainR<Cardano>) -> Result<cardano::Header, Error> {
+fn handle_get_block_tip<B: BlockConfig>(
+    blockchain: &BlockchainR<B>,
+) -> Result<B::BlockHeader, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
     match blockchain.get_storage().read_block(tip.as_hash_bytes()) {
@@ -54,11 +56,11 @@ fn handle_get_block_tip(blockchain: &BlockchainR<Cardano>) -> Result<cardano::He
 
 const MAX_HEADERS: usize = 2000;
 
-fn handle_get_block_headers(
-    blockchain: &BlockchainR<Cardano>,
-    checkpoints: Vec<cardano::BlockHash>,
-    to: cardano::BlockHash,
-) -> Result<Vec<cardano::Header>, Error> {
+fn handle_get_block_headers<B: BlockConfig>(
+    blockchain: &BlockchainR<B>,
+    checkpoints: Vec<B::BlockHash>,
+    to: B::BlockHash,
+) -> Result<Vec<B::Header>, Error> {
     let blockchain = blockchain.read().unwrap();
 
     /* Filter out the checkpoints that don't exist and sort them by
@@ -118,12 +120,12 @@ fn handle_get_block_headers(
     }
 }
 
-fn handle_get_blocks(
-    blockchain: &BlockchainR<Cardano>,
-    from: cardano::BlockHash,
-    to: cardano::BlockHash,
-    mut reply: BoxStreamReply<cardano::Block>,
-) -> Result<BoxStreamReply<cardano::Block>, StreamReplyError<cardano::Block>> {
+fn handle_get_blocks<B: BlockConfig>(
+    blockchain: &BlockchainR<B>,
+    from: B::BlockHash,
+    to: B::BlockHash,
+    mut reply: ReplyStreamHandle<B::Block>,
+) -> Result<ReplyStreamHandle<B::Block>, StreamReplyError<B::Block>> {
     let blockchain = blockchain.read().unwrap();
 
     for x in iter::Iter::new(&blockchain.get_storage(), from, to).unwrap() {
@@ -136,11 +138,11 @@ fn handle_get_blocks(
     Ok(reply)
 }
 
-fn handle_stream_blocks_to_tip(
-    blockchain: &BlockchainR<Cardano>,
-    mut from: Vec<cardano::BlockHash>,
-    mut reply: BoxStreamReply<cardano::Block>,
-) -> Result<BoxStreamReply<cardano::Block>, StreamReplyError<cardano::Block>> {
+fn handle_stream_blocks_to_tip<B: BlockConfig>(
+    blockchain: &BlockchainR<B>,
+    mut from: Vec<B::BlockHash>,
+    mut reply: ReplyStreamHandle<B::Block>,
+) -> Result<ReplyStreamHandle<B::Block>, StreamReplyError<B::Block>> {
     let blockchain = blockchain.read().unwrap();
 
     // FIXME: handle multiple from addresses
