@@ -6,7 +6,8 @@
 //!
 
 mod grpc;
-mod ntt;
+// TODO: to be ported
+//mod ntt;
 mod service;
 
 use std::{
@@ -206,7 +207,7 @@ pub fn run<B: BlockConfig>(
     let listener =
         stream::iter_ok(config.listen_to).for_each(move |listen| match listen.connection {
             Connection::Tcp(sockaddr) => match listen.protocol {
-                Protocol::Ntt => ntt::run_listen_socket(sockaddr, listen, state_listener.clone()),
+                Protocol::Ntt => unimplemented!(), // ntt::run_listen_socket(sockaddr, listen, state_listener.clone()),
                 Protocol::Grpc => grpc::run_listen_socket(sockaddr, listen, state_listener.clone()),
             },
             #[cfg(unix)]
@@ -217,7 +218,7 @@ pub fn run<B: BlockConfig>(
     let connections =
         stream::iter_ok(config.peer_nodes).for_each(move |peer| match peer.connection {
             Connection::Tcp(sockaddr) => match peer.protocol {
-                Protocol::Ntt => ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                Protocol::Ntt => unimplemented!(), // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
                 Protocol::Grpc => unimplemented!(),
             },
             #[cfg(unix)]
