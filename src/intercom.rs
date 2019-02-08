@@ -3,30 +3,21 @@ use crate::blockcfg::BlockConfig;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
 
-use std::fmt::{self, Debug, Display};
+use std::{
+    error,
+    fmt::{self, Debug, Display},
+};
 
 /// The error values passed via intercom messages.
 #[derive(Debug)]
-pub struct Error(Box<dyn std::error::Error + Send + Sync>);
+pub struct Error(Box<dyn error::Error + Send + Sync>);
 
-impl Error {
-    pub fn from_error<E>(error: E) -> Self
-    where
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        Error(error.into())
-    }
-}
-
-impl From<String> for Error {
-    fn from(s: String) -> Error {
-        Error(s.into())
-    }
-}
-
-impl<'a> From<&'a str> for Error {
-    fn from(s: &'a str) -> Error {
-        Error(s.into())
+impl<T> From<T> for Error
+where
+    T: Into<Box<dyn error::Error + Send + Sync>>,
+{
+    fn from(src: T) -> Self {
+        Error(src.into())
     }
 }
 
@@ -36,8 +27,8 @@ impl Display for Error {
     }
 }
 
-impl std::error::Error for Error {
-    fn cause(&self) -> Option<&std::error::Error> {
+impl error::Error for Error {
+    fn cause(&self) -> Option<&error::Error> {
         self.0.cause()
     }
 }
@@ -50,12 +41,19 @@ pub struct ReplyHandle<T> {
 }
 
 impl<T> ReplyHandle<T> {
+    pub fn reply(self, result: Result<T, Error>) {
+        match self.sender.send(result) {
+            Ok(()) => {}
+            Err(_) => panic!("failed to send result"),
+        }
+    }
+
     pub fn reply_ok(self, response: T) {
-        self.sender.send(Ok(response)).unwrap();
+        self.reply(Ok(response));
     }
 
     pub fn reply_error(self, error: Error) {
-        self.sender.send(Err(error)).unwrap();
+        self.reply(Err(error));
     }
 }
 
@@ -79,7 +77,7 @@ impl<T> Future for ReplyFuture<T> {
             }
             Ok(Async::Ready(Err(e))) => {
                 warn!("error processing request: {:?}", e);
-                return Err(Error::from_error(e));
+                return Err(Error::from(e));
             }
             Ok(Async::Ready(Ok(item))) => item,
         };
@@ -99,16 +97,16 @@ pub struct ReplyStreamHandle<T> {
 }
 
 impl<T> ReplyStreamHandle<T> {
-    fn send(&mut self, item: T) {
+    pub fn send(&mut self, item: T) {
         self.sender.unbounded_send(Ok(item)).unwrap()
     }
 
-    fn send_error(&mut self, error: Error) {
+    pub fn send_error(&mut self, error: Error) {
         self.sender.unbounded_send(Err(error)).unwrap()
     }
 
-    fn close(&mut self) {
-        self.sender.close().unwrap();
+    pub fn close(self) {
+        self.sender.wait().close().unwrap();
     }
 }
 
@@ -121,12 +119,14 @@ impl<T> Stream for ReplyStream<T> {
     type Error = Error;
 
     fn poll(&mut self) -> Poll<Option<T>, Error> {
-        match try_ready!(self.receiver.poll()) {
-            None => Ok(Async::Ready(None)),
-            Some(Ok(item)) => Ok(Async::Ready(Some(item))),
-            Some(Err(e)) => {
+        match self.receiver.poll() {
+            Err(()) => panic!("receiver returned an error"),
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
+            Ok(Async::Ready(Some(Ok(item)))) => Ok(Async::Ready(Some(item))),
+            Ok(Async::Ready(Some(Err(e)))) => {
                 warn!("error while streaming response: {:?}", e);
-                return Err(Error::from_error(e));
+                return Err(Error::from(e));
             }
         }
     }

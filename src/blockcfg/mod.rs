@@ -9,19 +9,22 @@
 //!
 
 pub use chain_core::property::{
-    Block, BlockDate, BlockId, Deserialize, HasTransaction, Header, LeaderSelection, Ledger,
-    Serialize, Settings, Transaction, TransactionId, Update,
+    Block, BlockDate, BlockId, Deserialize, HasHeader, HasTransaction, Header, LeaderSelection,
+    Ledger, Serialize, Settings, Transaction, TransactionId, Update,
 };
 
 pub mod genesis_data;
 pub mod mock;
 
+use std::fmt::Display;
+
 pub trait BlockConfig {
     type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
-        + HasTransaction<Transaction = Self::Transaction>;
+        + HasTransaction<Transaction = Self::Transaction>
+        + Send;
     type BlockDate: BlockDate;
-    type BlockHash: BlockId;
-    type BlockHeader: Block<Id = Self::BlockHash, Date = Self::BlockDate>;
+    type BlockHash: BlockId + Display;
+    type BlockHeader: Header;
     type Transaction: Transaction<Id = Self::TransactionId>;
     type TransactionId: TransactionId;
     type GenesisData;
