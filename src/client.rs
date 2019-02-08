@@ -17,30 +17,27 @@ where
 
         match query {
             ClientMsg::GetBlockTip(handler) => handler.reply(handle_get_block_tip(&blockchain)),
-            ClientMsg::GetBlockHeaders(checkpoints, to, mut handler) => {
+            ClientMsg::GetBlockHeaders(checkpoints, to, handler) => {
                 handler.reply(handle_get_block_headers(&blockchain, checkpoints, to))
             }
-            ClientMsg::GetBlocks(from, to, handler) => {
-                do_stream_reply(|| handle_get_blocks(&blockchain, from, to, handler))
-            }
-            ClientMsg::PullBlocksToTip(from, handler) => {
-                do_stream_reply(|| handle_pull_blocks_to_tip(&blockchain, from, handler))
-            }
+            ClientMsg::GetBlocks(from, to, handler) => do_stream_reply(handler, |handler| {
+                handle_get_blocks(&blockchain, from, to, handler)
+            }),
+            ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
+                handle_pull_blocks_to_tip(&blockchain, from, handler)
+            }),
         }
     }
 }
 
-struct ReplyStreamError<T>(Error, ReplyStreamHandle<T>);
-
-fn do_stream_reply<T, F>(f: F)
+fn do_stream_reply<T, F>(handler: ReplyStreamHandle<T>, f: F)
 where
-    F: FnOnce() -> Result<ReplyStreamHandle<T>, ReplyStreamError<T>>,
+    F: FnOnce(&mut ReplyStreamHandle<T>) -> Result<(), Error>,
 {
-    let mut handler = match f() {
-        Ok(handler) => handler,
-        Err(ReplyStreamError(e, mut handler)) => {
-            handler.send_error(e.into());
-            handler
+    match f(&mut handler) {
+        Ok(()) => {}
+        Err(e) => {
+            handler.send_error(e);
         }
     };
     handler.close();
@@ -116,56 +113,42 @@ fn handle_get_blocks<B: BlockConfig>(
     blockchain: &BlockchainR<B>,
     from: B::BlockHash,
     to: B::BlockHash,
-    mut reply: ReplyStreamHandle<B::Block>,
-) -> Result<ReplyStreamHandle<B::Block>, ReplyStreamError<B::Block>> {
+    reply: &mut ReplyStreamHandle<B::Block>,
+) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 
     // FIXME: include the from block
-    let iter = match blockchain.storage.iterate_range(&from, &to) {
-        Ok(iter) => iter,
-        Err(err) => return Err(ReplyStreamError(Error::from(err), reply)),
-    };
-
-    for x in iter {
-        match x {
-            Err(err) => return Err(ReplyStreamError(Error::from(err), reply)),
-            Ok(info) => {
-                let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
-                reply.send(blk);
-            }
-        }
+    for x in blockchain.storage.iterate_range(&from, &to)? {
+        let info = x?;
+        let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
+        reply.send(blk);
     }
 
-    Ok(reply)
+    Ok(())
 }
 
 fn handle_pull_blocks_to_tip<B: BlockConfig>(
     blockchain: &BlockchainR<B>,
     mut from: Vec<B::BlockHash>,
-    mut reply: ReplyStreamHandle<B::Block>,
-) -> Result<ReplyStreamHandle<B::Block>, ReplyStreamError<B::Block>> {
+    reply: &mut ReplyStreamHandle<B::Block>,
+) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 
     // FIXME: handle multiple from addresses
     if from.len() != 1 {
-        return Err(ReplyStreamError(
-            Error::from("only one checkpoint address is currently supported"),
-            reply,
+        return Err(Error::from(
+            "only one checkpoint address is currently supported",
         ));
     }
-    let from = from.remove(0);
+    let from = from[0];
 
     let tip = blockchain.get_tip();
 
     for x in blockchain.storage.iterate_range(&from, &tip)? {
-        match x {
-            Err(err) => return Err(ReplyStreamError(Error::from(err), reply)),
-            Ok(info) => {
-                let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
-                reply.send(blk);
-            }
-        }
+        let info = x?;
+        let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
+        reply.send(blk);
     }
 
-    Ok(reply)
+    Ok(())
 }
