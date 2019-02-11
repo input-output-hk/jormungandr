@@ -13,13 +13,14 @@ use network_core::server::{
 };
 
 use futures::future::{self, FutureResult};
+use futures::prelude::*;
 
 pub struct ConnectionServices<B: BlockConfig> {
-    state: ConnectionState,
+    state: ConnectionState<B>,
 }
 
 impl<B: BlockConfig> ConnectionServices<B> {
-    pub fn new(state: ConnectionState) -> Self {
+    pub fn new(state: ConnectionState<B>) -> Self {
         ConnectionServices { state }
     }
 }
@@ -48,7 +49,7 @@ struct ConnectionBlockService<B: BlockConfig> {
 }
 
 impl<B: BlockConfig> ConnectionBlockService<B> {
-    pub fn new(conn: &ConnectionState) -> Self {
+    pub fn new(conn: &ConnectionState<B>) -> Self {
         ConnectionBlockService {
             client_box: conn.channels.client_box.clone(),
         }
@@ -59,7 +60,10 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     type BlockId = B::BlockHash;
     type BlockDate = B::BlockDate;
     type Block = B::Block;
-    type TipFuture = ReplyFuture<(Self::BlockId, Self::BlockDate), BlockError>;
+    type TipFuture = futures::Map<
+        ReplyFuture<B::BlockHeader, BlockError>,
+        fn(B::BlockHeader) -> (B::BlockHash, B::BlockDate),
+    >;
     type GetBlocksStream = ReplyStream<B::Block, BlockError>;
     type GetBlocksFuture = FutureResult<Self::GetBlocksStream, BlockError>;
     type PullBlocksToTipStream = ReplyStream<B::Block, BlockError>;
@@ -68,7 +72,7 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
         self.client_box.send_to(ClientMsg::GetBlockTip(handle));
-        future
+        future.map(|header| (header.id(), header.date()))
     }
 
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture {
@@ -108,7 +112,7 @@ impl<B: BlockConfig> HeaderService for ConnectionBlockService<B> {
 
 struct ConnectionTransactionService<B: BlockConfig>;
 
-impl<B: BlockConfig> TransactionService for ConnectionTransactionService {
+impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
     type TransactionId = B::TransactionId;
     type ProposeTransactionsFuture =
         ReplyFuture<ProposeTransactionsResponse<B::TransactionId>, TransactionError>;
