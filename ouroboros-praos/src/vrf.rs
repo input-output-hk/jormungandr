@@ -269,7 +269,7 @@ mod tests {
 mod bench {
     use super::{PublicKey, SecretKey};
     use rand::OsRng;
-    use test;
+    use test::Bencher;
 
     fn common() -> (OsRng, SecretKey, PublicKey, [u8; 10], [u8; 10]) {
         let mut csprng: OsRng = OsRng::new().unwrap();
