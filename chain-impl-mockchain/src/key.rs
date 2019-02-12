@@ -158,6 +158,12 @@ impl From<hash::Blake2b256> for Hash {
     }
 }
 
+impl std::fmt::Display for Hash {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
