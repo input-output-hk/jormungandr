@@ -3,6 +3,7 @@ use crate::blockcfg::BlockConfig;
 use crate::intercom::{stream_reply, unary_reply, ClientMsg, ReplyFuture, ReplyStream};
 use crate::utils::task::TaskMessageBox;
 
+use chain_core::property::Header;
 use network_core::server::{
     block::{BlockError, BlockService, HeaderService},
     transaction::{

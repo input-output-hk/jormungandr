@@ -10,26 +10,54 @@ use std::{
 
 /// The error values passed via intercom messages.
 #[derive(Debug)]
-pub struct Error(Box<dyn error::Error + Send + Sync>);
+pub struct Error {
+    kind: ErrorKind,
+    cause: Box<dyn error::Error + Send + Sync>,
+}
+
+/// General classification of intercom errors.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ErrorKind {
+    Canceled,
+    Failed,
+}
+
+impl Error {
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
+    }
+}
 
 impl<T> From<T> for Error
 where
     T: Into<Box<dyn error::Error + Send + Sync>>,
 {
     fn from(src: T) -> Self {
-        Error(src.into())
+        Error {
+            kind: ErrorKind::Failed,
+            cause: src.into(),
+        }
+    }
+}
+
+impl From<oneshot::Canceled> for Error {
+    fn from(src: oneshot::Canceled) -> Self {
+        Error {
+            kind: ErrorKind::Canceled,
+            cause: src.into(),
+        }
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.0, f)
+        Display::fmt(&self.cause, f)
     }
 }
 
 impl error::Error for Error {
-    fn cause(&self) -> Option<&error::Error> {
-        self.0.cause()
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        Some(&*self.cause)
     }
 }
 
@@ -57,27 +85,29 @@ impl<T> ReplyHandle<T> {
     }
 }
 
-pub struct ReplyFuture<T> {
+pub struct ReplyFuture<T, E> {
     receiver: oneshot::Receiver<Result<T, Error>>,
 }
 
-impl<T> Future for ReplyFuture<T> {
+impl<T, E> Future for ReplyFuture<T, E>
+where
+    E: From<Error>,
+{
     type Item = T;
-    type Error = Error;
+    type Error = E;
 
-    fn poll(&mut self) -> Poll<T, Error> {
+    fn poll(&mut self) -> Poll<T, E> {
         let item = match self.receiver.poll() {
             Err(oneshot::Canceled) => {
                 warn!("response canceled by the client request task");
-                // FIXME: a non-stringized error code needed here
-                return Err(Error::from("canceled"));
+                return Err(Error::from(oneshot::Canceled).into());
             }
             Ok(Async::NotReady) => {
                 return Ok(Async::NotReady);
             }
             Ok(Async::Ready(Err(e))) => {
                 warn!("error processing request: {:?}", e);
-                return Err(Error::from(e));
+                return Err(Error::from(e).into());
             }
             Ok(Async::Ready(Ok(item))) => item,
         };
@@ -86,7 +116,7 @@ impl<T> Future for ReplyFuture<T> {
     }
 }
 
-pub fn unary_reply<T>() -> (ReplyHandle<T>, ReplyFuture<T>) {
+pub fn unary_reply<T, E>() -> (ReplyHandle<T>, ReplyFuture<T, E>) {
     let (sender, receiver) = oneshot::channel();
     (ReplyHandle { sender }, ReplyFuture { receiver })
 }
@@ -110,15 +140,18 @@ impl<T> ReplyStreamHandle<T> {
     }
 }
 
-pub struct ReplyStream<T> {
+pub struct ReplyStream<T, E> {
     receiver: mpsc::UnboundedReceiver<Result<T, Error>>,
 }
 
-impl<T> Stream for ReplyStream<T> {
+impl<T, E> Stream for ReplyStream<T, E>
+where
+    E: From<Error>,
+{
     type Item = T;
-    type Error = Error;
+    type Error = E;
 
-    fn poll(&mut self) -> Poll<Option<T>, Error> {
+    fn poll(&mut self) -> Poll<Option<T>, E> {
         match self.receiver.poll() {
             Err(()) => panic!("receiver returned an error"),
             Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -126,13 +159,13 @@ impl<T> Stream for ReplyStream<T> {
             Ok(Async::Ready(Some(Ok(item)))) => Ok(Async::Ready(Some(item))),
             Ok(Async::Ready(Some(Err(e)))) => {
                 warn!("error while streaming response: {:?}", e);
-                return Err(Error::from(e));
+                return Err(Error::from(e).into());
             }
         }
     }
 }
 
-pub fn stream_reply<T>() -> (ReplyStreamHandle<T>, ReplyStream<T>) {
+pub fn stream_reply<T, E>() -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
     let (sender, receiver) = mpsc::unbounded();
     (ReplyStreamHandle { sender }, ReplyStream { receiver })
 }
