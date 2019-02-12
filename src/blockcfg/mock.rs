@@ -11,7 +11,7 @@ impl BlockConfig for Mockchain {
     type Block = block::SignedBlock;
     type BlockDate = block::BlockDate;
     type BlockHash = key::Hash;
-    type BlockHeader = ();
+    type BlockHeader = block::SignedBlockSummary;
     type Transaction = transaction::SignedTransaction;
     type TransactionId = transaction::TransactionId;
     type GenesisData = GenesisData;
