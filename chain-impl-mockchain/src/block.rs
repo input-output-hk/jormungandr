@@ -36,6 +36,26 @@ pub struct SignedBlock {
     pub block: Block,
 }
 
+/// The mockchain does not have a block header like in the cardano chain.
+///
+/// Instead we allow a block summary including all the metadata associated
+/// to the block that can be useful for a node to know before downloading
+/// a block from another node (for example).
+///
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SignedBlockSummary {
+    /// the relative position of the block within the blockchain
+    pub slot_id: BlockDate,
+    /// the exact position of the block within the blockchain
+    pub parent_hash: Hash,
+    /// the hash that identify this block (this is the Hash of the `Block`).
+    pub hash: Hash,
+    /// Public key used to sign the block.
+    pub public_key: PublicKey,
+    /// the cryptographic signature that verifies the block.
+    pub signature: Signature,
+}
+
 impl SignedBlock {
     /// Create a new signed block.
     pub fn new(block: Block, pkey: &PrivateKey) -> Self {
@@ -55,6 +75,18 @@ impl SignedBlock {
         use chain_core::property::Block;
         let block_id = self.block.id();
         self.public_key.verify(block_id.as_ref(), &self.signature)
+    }
+
+    /// retrieve the summary of the signed block.
+    pub fn summary(&self) -> SignedBlockSummary {
+        use chain_core::property::Block;
+        SignedBlockSummary {
+            slot_id: self.block.slot_id,
+            parent_hash: self.block.parent_hash,
+            hash: self.id(),
+            public_key: self.public_key.clone(),
+            signature: self.signature.clone(),
+        }
     }
 }
 
@@ -113,6 +145,13 @@ impl property::Block for SignedBlock {
     }
 }
 
+impl property::HasHeader for SignedBlock {
+    type Header = SignedBlockSummary;
+    fn header(&self) -> Self::Header {
+        self.summary()
+    }
+}
+
 impl property::Serialize for Block {
     type Error = std::io::Error;
 
@@ -133,6 +172,18 @@ impl property::Serialize for Block {
         Ok(())
     }
 }
+impl property::Header for SignedBlockSummary {
+    type Id = <Block as property::Block>::Id;
+    type Date = <Block as property::Block>::Date;
+
+    fn id(&self) -> Self::Id {
+        self.hash.clone()
+    }
+    fn date(&self) -> Self::Date {
+        self.slot_id
+    }
+}
+
 impl property::Serialize for SignedBlock {
     type Error = std::io::Error;
 
@@ -140,6 +191,23 @@ impl property::Serialize for SignedBlock {
         self.public_key.serialize(&mut writer)?;
         self.signature.serialize(&mut writer)?;
         self.block.serialize(&mut writer)
+    }
+}
+impl property::Serialize for SignedBlockSummary {
+    type Error = std::io::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::Codec;
+        use std::io::Write;
+
+        let mut codec = Codec::from(writer);
+
+        codec.put_u64(self.slot_id.epoch)?;
+        codec.put_u64(self.slot_id.slot_id)?;
+        codec.write_all(self.parent_hash.as_ref())?;
+        codec.write_all(self.hash.as_ref())?;
+        self.public_key.serialize(&mut codec)?;
+        self.signature.serialize(&mut codec)
     }
 }
 
@@ -191,6 +259,38 @@ impl property::Deserialize for SignedBlock {
         })
     }
 }
+impl property::Deserialize for SignedBlockSummary {
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        use chain_core::packer::Codec;
+        use std::io::Read;
+
+        let mut codec = Codec::from(reader);
+
+        let epoch = codec.get_u64()?;
+        let slot_id = codec.get_u64()?;
+        let slot_id = BlockDate { epoch, slot_id };
+
+        let mut parent_hash = [0; 32];
+        codec.read_exact(&mut parent_hash)?;
+        let parent_hash = Hash::from(cardano::hash::Blake2b256::from(parent_hash));
+        let mut hash = [0; 32];
+        codec.read_exact(&mut hash)?;
+        let hash = Hash::from(cardano::hash::Blake2b256::from(hash));
+
+        let public_key = PublicKey::deserialize(&mut codec)?;
+        let signature = Signature::deserialize(&mut codec)?;
+
+        Ok(SignedBlockSummary {
+            slot_id,
+            parent_hash,
+            hash,
+            public_key,
+            signature,
+        })
+    }
+}
 
 impl property::HasTransaction for Block {
     type Transaction = SignedTransaction;
@@ -219,6 +319,21 @@ mod test {
         fn signed_block_serialization_bijection(b: SignedBlock) -> TestResult {
             property::testing::serialization_bijection(b)
         }
+
+        fn signed_block_summary_serialization_bijection(b: SignedBlockSummary) -> TestResult {
+            property::testing::serialization_bijection(b)
+        }
+
+        fn summary_is_summary_of_signed_block(block: SignedBlock) -> TestResult {
+            use chain_core::property::{Header, HasHeader, Block};
+
+            let summary = block.header();
+
+            TestResult::from_bool(
+                summary.id() == block.id() &&
+                summary.date() == block.date()
+            )
+        }
     }
 
     impl Arbitrary for Block {
@@ -235,6 +350,17 @@ mod test {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             SignedBlock {
                 block: Arbitrary::arbitrary(g),
+                public_key: Arbitrary::arbitrary(g),
+                signature: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+    impl Arbitrary for SignedBlockSummary {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            SignedBlockSummary {
+                slot_id: Arbitrary::arbitrary(g),
+                parent_hash: Arbitrary::arbitrary(g),
+                hash: Arbitrary::arbitrary(g),
                 public_key: Arbitrary::arbitrary(g),
                 signature: Arbitrary::arbitrary(g),
             }
