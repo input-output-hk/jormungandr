@@ -57,6 +57,14 @@ impl<B: BlockConfig> ConnectionBlockService<B> {
     }
 }
 
+impl<B: BlockConfig> Clone for ConnectionBlockService<B> {
+    fn clone(&self) -> Self {
+        ConnectionBlockService {
+            client_box: self.client_box.clone(),
+        }
+    }
+}
+
 impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     type BlockId = B::BlockHash;
     type BlockDate = B::BlockDate;
@@ -112,6 +120,12 @@ impl<B: BlockConfig> HeaderService for ConnectionBlockService<B> {
 }
 
 struct ConnectionTransactionService<B: BlockConfig>;
+
+impl<B: BlockConfig> Clone for ConnectionTransactionService<B> {
+    fn clone(&self) -> Self {
+        ConnectionTransactionService
+    }
+}
 
 impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
     type TransactionId = B::TransactionId;

@@ -46,7 +46,7 @@ where
         sockaddr
     );
 
-    let node_services = ConnectionServices::new(&state);
+    let node_services = ConnectionServices::new(state);
     let server = Server::new(node_services, DefaultExecutor::current());
 
     let listener = listen(&sockaddr)
@@ -68,9 +68,9 @@ where
                 stream.local_addr().unwrap(),
             );
 
-            let serve = server.serve(stream);
+            let conn = server.serve(stream);
 
-            tokio::spawn(serve.map_err(|e| error!("server error: {:?}", e)));
+            tokio::spawn(conn.map_err(|e| error!("server error: {:?}", e)));
         });
 
     tokio::spawn(listener)
