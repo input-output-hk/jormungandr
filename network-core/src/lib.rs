@@ -5,6 +5,8 @@
 #[macro_use]
 extern crate prost_derive;
 
+pub mod error;
+
 pub mod client;
 pub mod server;
 
