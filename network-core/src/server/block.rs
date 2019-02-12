@@ -1,10 +1,12 @@
 //! Block service abstraction.
 
+use crate::error::Code as ErrorCode;
+
 use chain_core::property::{Block, BlockDate, BlockId, Deserialize, Header, Serialize};
 
 use futures::prelude::*;
 
-use std::fmt;
+use std::{error, fmt};
 
 /// Interface for the blockchain node service implementation responsible for
 /// providing access to blocks.
@@ -83,14 +85,14 @@ pub trait HeaderService {
     fn block_headers_to_tip(&mut self, from: &[Self::HeaderId]) -> Self::GetHeadersFuture;
 }
 
-/// Represents errors that can be returned by the node service implementation.
+/// Represents errors that can be returned by the block service.
 #[derive(Debug)]
-pub struct BlockError(); // TODO: define specific error variants and details
+pub struct BlockError(pub ErrorCode);
 
-impl std::error::Error for BlockError {}
+impl error::Error for BlockError {}
 
 impl fmt::Display for BlockError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "unknown block service error")
+        write!(f, "block service error: {}", self.0)
     }
 }

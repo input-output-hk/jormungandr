@@ -1,12 +1,13 @@
 //! Transaction service abstraction.
 
 use crate::codes;
+use crate::error::Code as ErrorCode;
 
 use chain_core::property::{Serialize, TransactionId};
 
 use futures::prelude::*;
 
-use std::fmt;
+use std::{error, fmt};
 
 /// Interface for the blockchain node service implementation responsible for
 /// validating and accepting transactions.
@@ -34,15 +35,15 @@ pub trait TransactionService {
     ) -> Self::ProposeTransactionsFuture;
 }
 
-/// Represents errors that can be returned by the node service implementation.
+/// Represents errors that can be returned by the transaction service.
 #[derive(Debug)]
-pub struct TransactionError(); // TODO: define specific error variants and details
+pub struct TransactionError(pub ErrorCode);
 
-impl std::error::Error for TransactionError {}
+impl error::Error for TransactionError {}
 
 impl fmt::Display for TransactionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "unknown transaction service error")
+        write!(f, "transaction service error: {}", self.0)
     }
 }
 
