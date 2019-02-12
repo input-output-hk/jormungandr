@@ -51,7 +51,10 @@ where
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
     match blockchain.storage.get_block(&tip) {
-        Err(err) => Err(format!("Cannot read block '{}': {}", tip, err).into()),
+        Err(err) => Err(Error::failed(format!(
+            "Cannot read block '{}': {}",
+            tip, err
+        ))),
         Ok((blk, _)) => Ok(blk.header()),
     }
 }
@@ -136,7 +139,7 @@ fn handle_pull_blocks_to_tip<B: BlockConfig>(
 
     // FIXME: handle multiple from addresses
     if from.len() != 1 {
-        return Err(Error::from(
+        return Err(Error::unimplemented(
             "only one checkpoint address is currently supported",
         ));
     }

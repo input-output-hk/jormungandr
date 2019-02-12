@@ -6,6 +6,7 @@ use futures::sync::{mpsc, oneshot};
 use std::{
     error,
     fmt::{self, Debug, Display},
+    marker::PhantomData,
 };
 
 /// The error values passed via intercom messages.
@@ -20,23 +21,37 @@ pub struct Error {
 pub enum ErrorKind {
     Canceled,
     Failed,
+    NotFound,
+    Unimplemented,
 }
 
 impl Error {
-    pub fn kind(&self) -> ErrorKind {
-        self.kind
-    }
-}
-
-impl<T> From<T> for Error
-where
-    T: Into<Box<dyn error::Error + Send + Sync>>,
-{
-    fn from(src: T) -> Self {
+    pub fn failed<T>(cause: T) -> Self
+    where
+        T: Into<Box<dyn error::Error + Send + Sync>>,
+    {
         Error {
             kind: ErrorKind::Failed,
-            cause: src.into(),
+            cause: cause.into(),
         }
+    }
+
+    pub fn canceled() -> Self {
+        Error {
+            kind: ErrorKind::Canceled,
+            cause: "processing canceled".into(),
+        }
+    }
+
+    pub fn unimplemented<S: Into<String>>(message: S) -> Self {
+        Error {
+            kind: ErrorKind::Unimplemented,
+            cause: message.into().into(),
+        }
+    }
+
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
     }
 }
 
@@ -45,6 +60,20 @@ impl From<oneshot::Canceled> for Error {
         Error {
             kind: ErrorKind::Canceled,
             cause: src.into(),
+        }
+    }
+}
+
+impl From<chain_storage::error::Error> for Error {
+    fn from(err: chain_storage::error::Error) -> Self {
+        use chain_storage::error::Error::*;
+
+        let kind = match err {
+            BlockNotFound => ErrorKind::NotFound,
+        };
+        Error {
+            kind,
+            cause: err.into(),
         }
     }
 }
@@ -87,6 +116,7 @@ impl<T> ReplyHandle<T> {
 
 pub struct ReplyFuture<T, E> {
     receiver: oneshot::Receiver<Result<T, Error>>,
+    _phantom_error: PhantomData<E>,
 }
 
 impl<T, E> Future for ReplyFuture<T, E>
@@ -118,7 +148,11 @@ where
 
 pub fn unary_reply<T, E>() -> (ReplyHandle<T>, ReplyFuture<T, E>) {
     let (sender, receiver) = oneshot::channel();
-    (ReplyHandle { sender }, ReplyFuture { receiver })
+    let future = ReplyFuture {
+        receiver,
+        _phantom_error: PhantomData,
+    };
+    (ReplyHandle { sender }, future)
 }
 
 #[derive(Debug)]
@@ -142,6 +176,7 @@ impl<T> ReplyStreamHandle<T> {
 
 pub struct ReplyStream<T, E> {
     receiver: mpsc::UnboundedReceiver<Result<T, Error>>,
+    _phantom_error: PhantomData<E>,
 }
 
 impl<T, E> Stream for ReplyStream<T, E>
@@ -167,7 +202,11 @@ where
 
 pub fn stream_reply<T, E>() -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
     let (sender, receiver) = mpsc::unbounded();
-    (ReplyStreamHandle { sender }, ReplyStream { receiver })
+    let stream = ReplyStream {
+        receiver,
+        _phantom_error: PhantomData,
+    };
+    (ReplyStreamHandle { sender }, stream)
 }
 
 /// ...
@@ -179,7 +218,6 @@ pub enum TransactionMsg<B: BlockConfig> {
 
 /// Client messages, mainly requests from connected peers to our node.
 /// Fetching the block headers, the block, the tip
-#[derive(Debug)]
 pub enum ClientMsg<B: BlockConfig> {
     GetBlockTip(ReplyHandle<B::BlockHeader>),
     GetBlockHeaders(
