@@ -22,11 +22,11 @@ pub trait BlockConfig {
     type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
         + HasTransaction<Transaction = Self::Transaction>
         + Send;
-    type BlockDate: BlockDate;
-    type BlockHash: BlockId + Display;
-    type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate>;
-    type Transaction: Transaction<Id = Self::TransactionId>;
-    type TransactionId: TransactionId;
+    type BlockDate: BlockDate + Display;
+    type BlockHash: BlockId + Display + Send;
+    type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate> + Send;
+    type Transaction: Transaction<Id = Self::TransactionId> + Serialize + Send;
+    type TransactionId: TransactionId + Serialize + Send;
     type GenesisData;
 
     type Ledger: Ledger<Transaction = Self::Transaction>;

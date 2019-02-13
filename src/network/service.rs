@@ -1,6 +1,8 @@
 use super::ConnectionState;
 use crate::blockcfg::BlockConfig;
-use crate::intercom::{self, stream_reply, unary_reply, ClientMsg, ReplyFuture, ReplyStream};
+use crate::intercom::{
+    self, stream_reply, unary_reply, ClientMsg, ReplyFuture, ReplyStream, TransactionMsg,
+};
 use crate::utils::task::TaskMessageBox;
 
 use chain_core::property::Header;
@@ -15,8 +17,6 @@ use network_core::server::{
 
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
-
-use std::marker::PhantomData;
 
 pub struct ConnectionServices<B: BlockConfig> {
     state: ConnectionState<B>,
@@ -134,13 +134,13 @@ impl From<intercom::Error> for TransactionError {
 }
 
 struct ConnectionTransactionService<B: BlockConfig> {
-    _config: PhantomData<B>,
+    transaction_box: TaskMessageBox<TransactionMsg<B>>,
 }
 
 impl<B: BlockConfig> Clone for ConnectionTransactionService<B> {
     fn clone(&self) -> Self {
         ConnectionTransactionService {
-            _config: PhantomData,
+            transaction_box: self.transaction_box.clone(),
         }
     }
 }

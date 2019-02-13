@@ -1,17 +1,12 @@
-use crate::blockcfg::{BlockConfig, Deserialize};
-use crate::intercom::{self, ClientMsg};
+use crate::blockcfg::BlockConfig;
 use crate::network::{service::ConnectionServices, ConnectionState, GlobalState};
 use crate::settings::network::Listen;
 
-use chain_core::property;
 use network_grpc::server::{listen, Server};
 
 use futures::prelude::*;
-use futures::{
-    future::{self, FutureResult},
-    sync::{mpsc, oneshot},
-};
-use tokio::{executor::DefaultExecutor, net::TcpListener};
+use futures::future;
+use tokio::executor::DefaultExecutor;
 
 use std::net::SocketAddr;
 
@@ -29,17 +24,13 @@ impl<B: BlockConfig> Clone for GrpcServer<B> {
 
 pub fn run_listen_socket<B>(
     sockaddr: SocketAddr,
-    listen: Listen,
+    listen_to: Listen,
     state: GlobalState<B>,
 ) -> tokio::executor::Spawn
 where
-    B: 'static + BlockConfig,
-    <B as BlockConfig>::Block: Send,
-    <B as BlockConfig>::BlockHash: Send,
-    <B as BlockConfig>::Transaction: Send,
-    <B as BlockConfig>::TransactionId: Send,
+    B: BlockConfig + 'static,
 {
-    let state = ConnectionState::new_listen(&state, listen);
+    let state = ConnectionState::new_listen(&state, listen_to);
 
     info!(
         "start listening and accepting gRPC connections on {}",
@@ -60,7 +51,7 @@ where
                 sockaddr, err
             );
         })
-        .and_then(|stream| {
+        .for_each(move |stream| {
             // received incoming connection
             info!(
                 "{} connected to {}",
@@ -71,6 +62,8 @@ where
             let conn = server.serve(stream);
 
             tokio::spawn(conn.map_err(|e| error!("server error: {:?}", e)));
+
+            future::ok(())
         });
 
     tokio::spawn(listener)
