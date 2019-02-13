@@ -311,6 +311,11 @@ pub trait Deserialize: Sized {
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error>;
 }
 
+/// Defines the way to parse the object from a UTF-8 string.
+///
+/// This is like the standard `FromStr` trait, except that it imposes
+/// additional bounds on the error type to make it more usable for
+/// aggregation to higher level errors and passing between threads.
 pub trait FromStr: Sized {
     type Error: std::error::Error + Send + Sync + 'static;
 
