@@ -4,6 +4,7 @@ extern crate quickcheck;
 extern crate chain_addr;
 
 pub mod block;
+mod date;
 #[cfg(test)]
 pub mod environment;
 pub mod error;

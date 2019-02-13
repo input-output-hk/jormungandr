@@ -1,6 +1,6 @@
 use crate::gen::{self, node::client as gen_client};
 
-use chain_core::property::{Block, BlockDate, BlockId, Deserialize, HasHeader, Header, Serialize};
+use chain_core::property::{self, Deserialize, FromStr, HasHeader, Serialize};
 use network_core::client::{
     self as core_client,
     block::{BlockService, HeaderService},
@@ -17,8 +17,54 @@ use std::{
     error,
     fmt::{self, Debug},
     marker::PhantomData,
-    str::FromStr,
 };
+
+/// Traits setting additional bounds for blockchain entities
+/// that need to be satisfied for the protocol implementation.
+///
+/// The traits are auto-implemented for the types that satisfy the necessary
+/// bounds. These traits then can be used in lieu of the lengthy bound clauses,
+/// so that, should the implementation requrements change, only these trait
+/// definitions and blanket implementations need to be modified.
+pub mod chain_bounds {
+    use chain_core::property;
+
+    pub trait BlockId: property::BlockId
+    // Alas, bounds on associated types of the supertrait do not have
+    // the desired effect:
+    // https://github.com/rust-lang/rust/issues/32722
+    //
+    // where
+    //    <Self as property::Deserialize>::Error: Send + Sync,
+    {
+    }
+
+    impl<T> BlockId for T where T: property::BlockId + property::Deserialize {}
+
+    pub trait BlockDate: property::BlockDate + property::FromStr {}
+
+    impl<T> BlockDate for T where T: property::BlockDate + property::FromStr {}
+
+    pub trait Header: property::Header + property::Deserialize {}
+
+    impl<T> Header for T
+    where
+        T: property::Header + property::Deserialize,
+        <T as property::Header>::Id: BlockId,
+        <T as property::Header>::Date: BlockDate,
+    {
+    }
+
+    pub trait Block: property::Block + property::Deserialize {}
+
+    impl<T> Block for T
+    where
+        T: property::Block + property::Deserialize,
+        <T as property::Block>::Id: BlockId,
+        <T as property::Block>::Date: BlockDate,
+    {
+    }
+}
 
 /// gRPC client for blockchain node.
 ///
@@ -100,14 +146,12 @@ where
     core_client::Error::new(core_client::ErrorKind::Rpc, e)
 }
 
-pub trait ConvertResponse<T> {
-    fn convert_response(self) -> Result<T, core_client::Error>;
+pub trait FromResponse<T>: Sized {
+    fn from_response(response: T) -> Result<Self, core_client::Error>;
 }
 
 mod unary_future {
-    use super::{
-        convert_error, core_client, ConvertResponse, GrpcError, GrpcFuture, ResponseFuture,
-    };
+    use super::{convert_error, core_client, FromResponse, GrpcError, GrpcFuture, ResponseFuture};
     use futures::prelude::*;
     use std::marker::PhantomData;
     use tower_grpc::Response;
@@ -115,12 +159,12 @@ mod unary_future {
     fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_client::Error>
     where
         F: Future<Item = Response<R>, Error = GrpcError>,
-        R: ConvertResponse<T>,
+        T: FromResponse<R>,
     {
         match future.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(res)) => {
-                let item = res.into_inner().convert_response()?;
+                let item = T::from_response(res.into_inner())?;
                 Ok(Async::Ready(item))
             }
             Err(e) => Err(convert_error(e)),
@@ -134,7 +178,8 @@ mod unary_future {
 
     impl<T, R> Future for ResponseFuture<T, R>
     where
-        R: prost::Message + Default + ConvertResponse<T>,
+        R: prost::Message + Default,
+        T: FromResponse<R>,
     {
         type Item = T;
         type Error = core_client::Error;
@@ -216,19 +261,19 @@ mod stream_future {
 }
 
 mod stream {
-    use super::{convert_error, core_client, ConvertResponse, GrpcStreamError, ResponseStream};
+    use super::{convert_error, core_client, FromResponse, GrpcStreamError, ResponseStream};
     use futures::prelude::*;
 
     fn poll_and_convert_item<T, S, R>(stream: &mut S) -> Poll<Option<T>, core_client::Error>
     where
         S: Stream<Item = R, Error = GrpcStreamError>,
-        R: ConvertResponse<T>,
+        T: FromResponse<R>,
     {
         match stream.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
             Ok(Async::Ready(Some(item))) => {
-                let item = item.convert_response()?;
+                let item = T::from_response(item)?;
                 Ok(Async::Ready(Some(item)))
             }
             Err(e) => Err(convert_error(e)),
@@ -237,7 +282,8 @@ mod stream {
 
     impl<T, R> Stream for ResponseStream<T, R>
     where
-        R: prost::Message + Default + ConvertResponse<T>,
+        R: prost::Message + Default,
+        T: FromResponse<R>,
     {
         type Item = T;
         type Error = core_client::Error;
@@ -251,7 +297,6 @@ mod stream {
 fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_client::Error>
 where
     T: Deserialize,
-    T::Error: Send + Sync + 'static,
 {
     T::deserialize(&mut buf).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
 }
@@ -259,7 +304,6 @@ where
 fn parse_str<T>(s: &str) -> Result<T, core_client::Error>
 where
     T: FromStr,
-    T::Err: error::Error + Send + Sync + 'static,
 {
     T::from_str(s).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
 }
@@ -278,51 +322,44 @@ where
         .collect()
 }
 
-impl<I, D> ConvertResponse<(I, D)> for gen::node::TipResponse
+impl<I, D> FromResponse<gen::node::TipResponse> for (I, D)
 where
-    I: BlockId + Deserialize,
-    D: BlockDate + FromStr,
-    <I as Deserialize>::Error: Send + Sync + 'static,
-    <D as FromStr>::Err: error::Error + Send + Sync + 'static,
+    I: chain_bounds::BlockId,
+    D: chain_bounds::BlockDate,
 {
-    fn convert_response(self) -> Result<(I, D), core_client::Error> {
-        let id = deserialize_bytes(&self.id)?;
-        let blockdate = parse_str(&self.blockdate)?;
+    fn from_response(res: gen::node::TipResponse) -> Result<(I, D), core_client::Error> {
+        let id = deserialize_bytes(&res.id)?;
+        let blockdate = parse_str(&res.blockdate)?;
         Ok((id, blockdate))
     }
 }
 
-impl<T> ConvertResponse<T> for gen::node::Block
+impl<T> FromResponse<gen::node::Block> for T
 where
-    T: Block,
-    <T as Deserialize>::Error: Send + Sync + 'static,
+    T: chain_bounds::Block,
 {
-    fn convert_response(self) -> Result<T, core_client::Error> {
-        let block = deserialize_bytes(&self.content)?;
+    fn from_response(res: gen::node::Block) -> Result<T, core_client::Error> {
+        let block = deserialize_bytes(&res.content)?;
         Ok(block)
     }
 }
 
-impl<T> ConvertResponse<T> for gen::node::Header
+impl<T> FromResponse<gen::node::Header> for T
 where
-    T: Header,
-    <T as Deserialize>::Error: Send + Sync + 'static,
+    T: chain_bounds::Header,
 {
-    fn convert_response(self) -> Result<T, core_client::Error> {
-        let block = deserialize_bytes(&self.content)?;
+    fn from_response(res: gen::node::Header) -> Result<T, core_client::Error> {
+        let block = deserialize_bytes(&res.content)?;
         Ok(block)
     }
 }
 
 impl<T, S, E> BlockService<T> for Client<S, E>
 where
-    T: Block,
+    T: chain_bounds::Block,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
-    T::Date: FromStr,
-    <T as Deserialize>::Error: Send + Sync + 'static,
-    <T::Id as Deserialize>::Error: Send + Sync + 'static,
-    <T::Date as FromStr>::Err: error::Error + Send + Sync + 'static,
+    <T as property::Block>::Date: FromStr,
 {
     type TipFuture = ResponseFuture<(T::Id, T::Date), gen::node::TipResponse>;
 
@@ -351,7 +388,7 @@ where
     T: HasHeader,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
-    <T::Header as Deserialize>::Error: Send + Sync + 'static,
+    <T::Header as property::Header>::Date: FromStr,
 {
     type GetHeadersStream = ResponseStream<T::Header, gen::node::Header>;
     type GetHeadersFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
