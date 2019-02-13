@@ -35,8 +35,7 @@
 //! is selected to write a block in the chain.
 //!
 
-use std::fmt::Debug;
-use std::hash::Hash;
+use std::{fmt::Debug, hash::Hash};
 
 /// Trait identifying the block identifier type.
 pub trait BlockId: Eq + Ord + Clone + Debug + Hash + Serialize + Deserialize {}
@@ -307,9 +306,27 @@ pub trait Serialize {
 
 /// Define that an object can be read from a `Read` object.
 pub trait Deserialize: Sized {
-    type Error: std::error::Error + From<std::io::Error>;
+    type Error: std::error::Error + From<std::io::Error> + Send + Sync + 'static;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error>;
+}
+
+pub trait FromStr: Sized {
+    type Error: std::error::Error + Send + Sync + 'static;
+
+    fn from_str(s: &str) -> Result<Self, Self::Error>;
+}
+
+impl<T> FromStr for T
+where
+    T: std::str::FromStr,
+    <T as std::str::FromStr>::Err: std::error::Error + Send + Sync + 'static,
+{
+    type Error = <T as std::str::FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Error> {
+        std::str::FromStr::from_str(s)
+    }
 }
 
 impl<T: Serialize> Serialize for &T {
