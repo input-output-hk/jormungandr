@@ -1,5 +1,7 @@
 use crate::blockcfg::BlockConfig;
 
+use network_core::error::Code;
+
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
 
@@ -12,17 +14,8 @@ use std::{
 /// The error values passed via intercom messages.
 #[derive(Debug)]
 pub struct Error {
-    kind: ErrorKind,
+    code: Code,
     cause: Box<dyn error::Error + Send + Sync>,
-}
-
-/// General classification of intercom errors.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum ErrorKind {
-    Canceled,
-    Failed,
-    NotFound,
-    Unimplemented,
 }
 
 impl Error {
@@ -31,34 +24,27 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            kind: ErrorKind::Failed,
+            code: Code::Failed,
             cause: cause.into(),
-        }
-    }
-
-    pub fn canceled() -> Self {
-        Error {
-            kind: ErrorKind::Canceled,
-            cause: "processing canceled".into(),
         }
     }
 
     pub fn unimplemented<S: Into<String>>(message: S) -> Self {
         Error {
-            kind: ErrorKind::Unimplemented,
+            code: Code::Unimplemented,
             cause: message.into().into(),
         }
     }
 
-    pub fn kind(&self) -> ErrorKind {
-        self.kind
+    pub fn code(&self) -> Code {
+        self.code
     }
 }
 
 impl From<oneshot::Canceled> for Error {
     fn from(src: oneshot::Canceled) -> Self {
         Error {
-            kind: ErrorKind::Canceled,
+            code: Code::Canceled,
             cause: src.into(),
         }
     }
@@ -68,11 +54,11 @@ impl From<chain_storage::error::Error> for Error {
     fn from(err: chain_storage::error::Error) -> Self {
         use chain_storage::error::Error::*;
 
-        let kind = match err {
-            BlockNotFound => ErrorKind::NotFound,
+        let code = match err {
+            BlockNotFound => Code::NotFound,
         };
         Error {
-            kind,
+            code,
             cause: err.into(),
         }
     }
