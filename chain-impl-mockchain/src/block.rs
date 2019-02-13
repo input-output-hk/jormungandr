@@ -1,7 +1,9 @@
 //! Representation of the block in the mockchain.
-use crate::key::*;
+use crate::key::{Hash, PrivateKey, PublicKey, Signature};
 use crate::transaction::*;
 use chain_core::property;
+
+use std::fmt;
 
 /// Non unique identifier of the transaction position in the
 /// blockchain. There may be many transactions related to the same
@@ -96,6 +98,12 @@ impl property::BlockDate for BlockDate {
             epoch: epoch,
             slot_id: slot_id,
         }
+    }
+}
+
+impl fmt::Display for BlockDate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}.{}", self.epoch, self.slot_id)
     }
 }
 
