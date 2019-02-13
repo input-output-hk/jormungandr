@@ -146,8 +146,8 @@ impl str::FromStr for BlockDate {
             None => return Err(BlockDateParseError::DotMissing),
             Some(pos) => s.split_at(pos),
         };
-        let epoch = str::parse::<u64>(ep).map_err(|e| BlockDateParseError::BadEpochId(e))?;
-        let slot_id = str::parse::<u64>(sp).map_err(|e| BlockDateParseError::BadSlotId(e))?;
+        let epoch = str::parse::<u64>(ep).map_err(BlockDateParseError::BadEpochId)?;
+        let slot_id = str::parse::<u64>(sp).map_err(BlockDateParseError::BadSlotId)?;
         Ok(BlockDate { epoch, slot_id })
     }
 }
