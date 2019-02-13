@@ -26,7 +26,7 @@ impl fmt::Display for BlockDate {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockDateParseError {
     DotMissing,
     BadEpochId(ParseIntError),
@@ -68,5 +68,49 @@ impl str::FromStr for BlockDate {
         let epoch = str::parse::<u64>(ep).map_err(BlockDateParseError::BadEpochId)?;
         let slot_id = str::parse::<u64>(sp).map_err(BlockDateParseError::BadSlotId)?;
         Ok(BlockDate { epoch, slot_id })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
+
+    #[test]
+    fn parse_no_dot() {
+        let err = "42".parse::<BlockDate>().unwrap_err();
+        assert_eq!(err, BlockDateParseError::DotMissing);
+    }
+
+    #[test]
+    fn parse_epoch_slot_id() {
+        let date = "42.12".parse::<BlockDate>().unwrap();
+        assert_eq!(
+            date,
+            BlockDate {
+                epoch: 42,
+                slot_id: 12
+            }
+        );
+    }
+
+    #[test]
+    fn parse_bad_epoch() {
+        let err = "BAD.12".parse::<BlockDate>().unwrap_err();
+        if let BlockDateParseError::BadEpochId(_) = err {
+            println!("{}: {}", err, err.source().unwrap());
+        } else {
+            panic!("unexpected error {:?}", err);
+        }
+    }
+
+    #[test]
+    fn parse_bad_slotid() {
+        let err = "42.BAD".parse::<BlockDate>().unwrap_err();
+        if let BlockDateParseError::BadSlotId(_) = err {
+            println!("{}: {}", err, err.source().unwrap());
+        } else {
+            panic!("unexpected error {:?}", err);
+        }
     }
 }
