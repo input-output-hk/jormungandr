@@ -30,7 +30,7 @@ where
     }
 }
 
-fn do_stream_reply<T, F>(handler: ReplyStreamHandle<T>, f: F)
+fn do_stream_reply<T, F>(mut handler: ReplyStreamHandle<T>, f: F)
 where
     F: FnOnce(&mut ReplyStreamHandle<T>) -> Result<(), Error>,
 {
@@ -143,7 +143,7 @@ fn handle_pull_blocks_to_tip<B: BlockConfig>(
             "only one checkpoint address is currently supported",
         ));
     }
-    let from = from[0];
+    let from = from.remove(0);
 
     let tip = blockchain.get_tip();
 

@@ -31,7 +31,7 @@ pub fn leadership_task<B>(
         // the block.
         let b = blockchain.read().unwrap();
 
-        let is_leader = b.leadership.is_leader_at(date).unwrap();
+        let is_leader = b.leadership.is_leader_at(date.clone()).unwrap();
 
         if is_leader {
             // collect up to `nr_transactions` from the transaction pool.

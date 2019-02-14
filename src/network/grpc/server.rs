@@ -51,7 +51,7 @@ where
                 sockaddr, err
             );
         })
-        .for_each(move |stream| {
+        .fold(server, |mut server, stream| {
             // received incoming connection
             info!(
                 "{} connected to {}",
@@ -63,8 +63,9 @@ where
 
             tokio::spawn(conn.map_err(|e| error!("server error: {:?}", e)));
 
-            future::ok(())
-        });
+            future::ok(server)
+        })
+        .map(|_| ());
 
     tokio::spawn(listener)
 }
