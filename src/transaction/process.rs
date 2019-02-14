@@ -21,7 +21,7 @@ where
         let tquery = r.recv().unwrap();
 
         match tquery {
-            TransactionMsg::ProposeTransaction(txids, mut reply) => {
+            TransactionMsg::ProposeTransaction(txids, reply) => {
                 let tpool = tpool.read().unwrap();
                 let rep: Vec<_> = txids.into_iter().map(|txid| tpool.exist(&txid)).collect();
                 reply.reply_ok(rep);

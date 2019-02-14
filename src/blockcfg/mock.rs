@@ -25,7 +25,7 @@ impl BlockConfig for Mockchain {
     fn make_block(
         secret_key: &Self::NodeSigningKey,
         settings: &Self::Settings,
-        ledger: &Self::Ledger,
+        _ledger: &Self::Ledger,
         block_date: Self::BlockDate,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block {

@@ -186,7 +186,7 @@ impl Settings {
     /// read and parse the genesis data, from the file specified in the Settings
     pub fn read_genesis_data(&self) -> Result<GenesisData, impl std::error::Error> {
         let filepath = &self.cmd_args.genesis_data_config;
-        let mut f = File::open(filepath).unwrap();
+        let f = File::open(filepath).unwrap();
         let mut reader = std::io::BufReader::new(f);
 
         GenesisData::parse(&mut reader)
