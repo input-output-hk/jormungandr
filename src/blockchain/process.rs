@@ -17,20 +17,24 @@ pub fn process<Chain>(
     <Chain::Settings as property::Settings>::Update: Clone,
     <Chain::Leader as property::LeaderSelection>::Update: Clone,
 {
-    match bquery {
+    let res = match bquery {
         BlockMsg::NetworkBlock(block) => {
             debug!("received block from the network: {:#?}", block);
-            blockchain.write().unwrap().handle_incoming_block(block);
+            blockchain.write().unwrap().handle_incoming_block(block)
         }
         BlockMsg::LeadershipBlock(block) => {
             debug!("received block from the leadership: {:#?}", block);
-            blockchain
+            let res = blockchain
                 .write()
                 .unwrap()
                 .handle_incoming_block(block.clone());
             network_broadcast
                 .unbounded_send(NetworkBroadcastMsg::Block(block))
                 .unwrap();
+            res
         }
+    };
+    if let Err(e) = res {
+        error!("error processing an incoming block: {:?}", e);
     }
 }
