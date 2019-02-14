@@ -9,8 +9,8 @@
 //!
 
 pub use chain_core::property::{
-    Block, BlockDate, BlockId, Deserialize, FromStr, HasHeader, HasTransaction, Header, LeaderSelection,
-    Ledger, Serialize, Settings, Transaction, TransactionId, Update,
+    Block, BlockDate, BlockId, Deserialize, FromStr, HasHeader, HasTransaction, Header,
+    LeaderSelection, Ledger, Serialize, Settings, Transaction, TransactionId, Update,
 };
 
 pub mod genesis_data;

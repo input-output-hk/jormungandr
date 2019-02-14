@@ -4,8 +4,8 @@ use crate::settings::network::Listen;
 
 use network_grpc::server::{listen, Server};
 
-use futures::prelude::*;
 use futures::future;
+use futures::prelude::*;
 use tokio::executor::DefaultExecutor;
 
 use std::net::SocketAddr;
