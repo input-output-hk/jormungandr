@@ -126,8 +126,6 @@ where
         // incoming block is on the tip chain, but there is no quick
         // way to check that.
         if block_hash != current_tip {
-            let block_previous_header_id = block.parent_id();
-
             if current_tip == block.parent_id() {
                 let leadership_diff = self.leadership.diff(&block).unwrap();
                 let ledger_diff = self.ledger.diff(block.transactions()).unwrap();
