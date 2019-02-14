@@ -9,12 +9,19 @@ use crate::{
 
 pub use self::server::run_listen_socket;
 
+use chain_core::property;
 use network_grpc::peer::TcpPeer;
 
 #[cfg(unix)]
 use network_grpc::peer::UnixPeer;
 
-pub fn bootstrap_from_peer<B: BlockConfig>(peer: Peer, blockchain: BlockchainR<B>) {
+pub fn bootstrap_from_peer<B>(peer: Peer, blockchain: BlockchainR<B>)
+where
+    B: BlockConfig,
+    <B::Ledger as property::Ledger>::Update: Clone,
+    <B::Settings as property::Settings>::Update: Clone,
+    <B::Leader as property::LeaderSelection>::Update: Clone,
+{
     info!("connecting to bootstrap peer {}", peer.connection);
     match peer.connection {
         Connection::Tcp(addr) => {

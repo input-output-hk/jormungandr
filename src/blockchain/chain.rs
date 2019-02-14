@@ -149,6 +149,8 @@ where
             }
         }
     }
+}
+impl<B: BlockConfig> Blockchain<B> {
     fn block_exists(&self, block_hash: &B::BlockHash) -> Result<bool, storage::Error> {
         // TODO: we assume as an invariant that if a block exists on
         // disk, its ancestors exist on disk as well. Need to make

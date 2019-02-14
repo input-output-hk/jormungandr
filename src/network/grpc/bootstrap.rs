@@ -1,7 +1,7 @@
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
 
-use chain_core::property::Deserialize;
+use chain_core::property::{self, Deserialize};
 use network_core::client::block::BlockService;
 use network_grpc::client::Client;
 
@@ -17,6 +17,9 @@ where
     P::Connected: Send,
     <B::Block as Deserialize>::Error: Send + Sync,
     <B::BlockHash as Deserialize>::Error: Send + Sync,
+    <B::Ledger as property::Ledger>::Update: Clone,
+    <B::Settings as property::Settings>::Update: Clone,
+    <B::Leader as property::LeaderSelection>::Update: Clone,
 {
     let bootstrap = Client::connect(peer, DefaultExecutor::current())
         .map_err(|e| {
@@ -49,6 +52,9 @@ where
     B: BlockConfig,
     S: Stream<Item = <B as BlockConfig>::Block>,
     S::Error: Debug,
+    <B::Ledger as property::Ledger>::Update: Clone,
+    <B::Settings as property::Settings>::Update: Clone,
+    <B::Leader as property::LeaderSelection>::Update: Clone,
 {
     stream
         .fold(blockchain, |blockchain, block| {

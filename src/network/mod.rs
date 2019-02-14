@@ -10,10 +10,7 @@ mod grpc;
 //mod ntt;
 mod service;
 
-use std::{
-    sync::Arc,
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
@@ -21,6 +18,7 @@ use crate::intercom::{BlockMsg, ClientMsg, NetworkBroadcastMsg, TransactionMsg};
 use crate::settings::network::{Configuration, Connection, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
+use chain_core::property;
 use futures::prelude::*;
 use futures::{
     future,
@@ -118,8 +116,7 @@ pub fn run<B>(
     config: Configuration,
     subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<B>>, // TODO: abstract away Cardano
     channels: Channels<B>,
-)
-where
+) where
     B: BlockConfig + 'static,
 {
     let arc_config = Arc::new(config.clone());
@@ -145,7 +142,7 @@ where
         stream::iter_ok(config.peer_nodes).for_each(move |peer| match peer.connection {
             Connection::Tcp(sockaddr) => match peer.protocol {
                 Protocol::Ntt => {
-                    unimplemented!();   // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                    unimplemented!(); // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
                     future::ok(())
                 }
                 Protocol::Grpc => unimplemented!(),
@@ -157,7 +154,13 @@ where
     tokio::run(connections.join(listener).map(|_| ()));
 }
 
-pub fn bootstrap<B: BlockConfig>(config: &Configuration, blockchain: BlockchainR<B>) {
+pub fn bootstrap<B>(config: &Configuration, blockchain: BlockchainR<B>)
+where
+    B: BlockConfig,
+    <B::Ledger as property::Ledger>::Update: Clone,
+    <B::Settings as property::Settings>::Update: Clone,
+    <B::Leader as property::LeaderSelection>::Update: Clone,
+{
     let grpc_peer = config
         .peer_nodes
         .iter()
