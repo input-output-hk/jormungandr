@@ -11,8 +11,7 @@ mod grpc;
 mod service;
 
 use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
+    sync::Arc,
     time::Duration,
 };
 
@@ -24,6 +23,7 @@ use crate::utils::task::TaskMessageBox;
 
 use futures::prelude::*;
 use futures::{
+    future,
     stream::{self, Stream},
     sync::mpsc,
 };
@@ -114,11 +114,14 @@ impl<B: BlockConfig> ConnectionState<B> {
     }
 }
 
-pub fn run<B: BlockConfig>(
+pub fn run<B>(
     config: Configuration,
     subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<B>>, // TODO: abstract away Cardano
     channels: Channels<B>,
-) {
+)
+where
+    B: BlockConfig + 'static,
+{
     let arc_config = Arc::new(config.clone());
     let state = GlobalState {
         config: arc_config,
@@ -130,8 +133,8 @@ pub fn run<B: BlockConfig>(
     let listener =
         stream::iter_ok(config.listen_to).for_each(move |listen| match listen.connection {
             Connection::Tcp(sockaddr) => match listen.protocol {
-                Protocol::Ntt => unimplemented!(), // ntt::run_listen_socket(sockaddr, listen, state_listener.clone()),
                 Protocol::Grpc => grpc::run_listen_socket(sockaddr, listen, state_listener.clone()),
+                Protocol::Ntt => unimplemented!(), // ntt::run_listen_socket(sockaddr, listen, state_listener.clone()),
             },
             #[cfg(unix)]
             Connection::Unix(_path) => unimplemented!(),
@@ -141,7 +144,10 @@ pub fn run<B: BlockConfig>(
     let connections =
         stream::iter_ok(config.peer_nodes).for_each(move |peer| match peer.connection {
             Connection::Tcp(sockaddr) => match peer.protocol {
-                Protocol::Ntt => unimplemented!(), // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                Protocol::Ntt => {
+                    unimplemented!();   // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                    future::ok(())
+                }
                 Protocol::Grpc => unimplemented!(),
             },
             #[cfg(unix)]

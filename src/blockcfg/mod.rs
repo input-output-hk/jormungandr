@@ -9,7 +9,7 @@
 //!
 
 pub use chain_core::property::{
-    Block, BlockDate, BlockId, Deserialize, HasHeader, HasTransaction, Header, LeaderSelection,
+    Block, BlockDate, BlockId, Deserialize, FromStr, HasHeader, HasTransaction, Header, LeaderSelection,
     Ledger, Serialize, Settings, Transaction, TransactionId, Update,
 };
 
@@ -22,7 +22,7 @@ pub trait BlockConfig {
     type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
         + HasTransaction<Transaction = Self::Transaction>
         + Send;
-    type BlockDate: BlockDate + Display;
+    type BlockDate: BlockDate + Display + FromStr;
     type BlockHash: BlockId + Display + Send;
     type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate> + Send;
     type Transaction: Transaction<Id = Self::TransactionId> + Serialize + Send;

@@ -1,24 +1,29 @@
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
-use crate::settings::network::{Connection, Peer};
 
+use chain_core::property::Deserialize;
 use network_core::client::block::BlockService;
 use network_grpc::client::Client;
 
 use tokio::prelude::*;
-use tokio::{io, runtime::current_thread};
+use tokio::{executor::DefaultExecutor, io, runtime::current_thread};
+
+use std::fmt::Debug;
 
 pub fn bootstrap_from_target<P, B>(peer: P, blockchain: BlockchainR<B>)
 where
     B: BlockConfig,
     P: tokio_connect::Connect<Error = io::Error> + 'static,
+    P::Connected: Send,
+    <B::Block as Deserialize>::Error: Send + Sync,
+    <B::BlockHash as Deserialize>::Error: Send + Sync,
 {
-    let bootstrap = Client::connect(peer)
+    let bootstrap = Client::connect(peer, DefaultExecutor::current())
         .map_err(|e| {
             error!("failed to connect to bootstrap peer: {:?}", e);
         })
         .and_then(|mut client| {
-            let tip = blockchain.read().unwrap().tip();
+            let tip = blockchain.read().unwrap().get_tip();
             client
                 .pull_blocks_to_tip(&[tip])
                 .map_err(|e| {
@@ -43,10 +48,11 @@ fn bootstrap_from_stream<B, S>(
 where
     B: BlockConfig,
     S: Stream<Item = <B as BlockConfig>::Block>,
+    S::Error: Debug,
 {
     stream
         .fold(blockchain, |blockchain, block| {
-            debug!("received block from the bootstrap node: {:#?}", &block);
+            // debug!("received block from the bootstrap node: {:#?}", &block);
             blockchain.write().unwrap().handle_incoming_block(block);
             future::ok(blockchain)
         })
