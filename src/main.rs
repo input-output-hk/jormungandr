@@ -133,7 +133,7 @@ fn run() -> Result<(), Error> {
 
     //let mut state = State::new();
 
-    let blockchain_data = Blockchain::new(genesis_data, secret.public, &settings.consensus);
+    let blockchain_data = Blockchain::new(genesis_data.clone(), secret.public, &settings.consensus);
 
     startup_info(&genesis_data, &blockchain_data, &settings);
 
