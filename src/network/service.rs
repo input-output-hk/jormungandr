@@ -53,7 +53,7 @@ impl From<intercom::Error> for BlockError {
     }
 }
 
-struct ConnectionBlockService<B: BlockConfig> {
+pub struct ConnectionBlockService<B: BlockConfig> {
     pub client_box: TaskMessageBox<ClientMsg<B>>,
 }
 
@@ -133,7 +133,7 @@ impl From<intercom::Error> for TransactionError {
     }
 }
 
-struct ConnectionTransactionService<B: BlockConfig> {
+pub struct ConnectionTransactionService<B: BlockConfig> {
     transaction_box: TaskMessageBox<TransactionMsg<B>>,
 }
 

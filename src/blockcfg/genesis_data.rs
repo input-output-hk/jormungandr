@@ -11,7 +11,7 @@ pub struct GenesisData {
 
 // TODO: details
 #[derive(Debug)]
-struct ParseError();
+pub struct ParseError();
 
 impl error::Error for ParseError {}
 
