@@ -1,3 +1,5 @@
+use chain_core::property;
+
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::chain;
 use crate::intercom::{BlockMsg, NetworkBroadcastMsg};
@@ -11,6 +13,9 @@ pub fn process<Chain>(
 ) where
     Chain: BlockConfig,
     <Chain as BlockConfig>::Block: std::fmt::Debug + Clone,
+    <Chain::Ledger as property::Ledger>::Update: Clone,
+    <Chain::Settings as property::Settings>::Update: Clone,
+    <Chain::Leader as property::LeaderSelection>::Update: Clone,
 {
     match bquery {
         BlockMsg::NetworkBlock(block) => {
