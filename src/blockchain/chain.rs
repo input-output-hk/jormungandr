@@ -92,7 +92,12 @@ impl Blockchain<Mockchain> {
     }
 }
 
-impl<B: BlockConfig> Blockchain<B> {
+impl<B: BlockConfig> Blockchain<B>
+where
+    <B::Ledger as property::Ledger>::Update: Clone,
+    <B::Settings as property::Settings>::Update: Clone,
+    <B::Leader as property::LeaderSelection>::Update: Clone,
+{
     pub fn handle_incoming_block(&mut self, block: B::Block) -> Result<(), storage::Error> {
         use chain_core::property::Block;
         let block_hash = block.id();
@@ -128,9 +133,9 @@ impl<B: BlockConfig> Blockchain<B> {
                 let ledger_diff = self.ledger.diff(block.transactions()).unwrap();
                 let setting_diff = self.settings.diff(&block).unwrap();
 
-                self.leadership.apply(leadership_diff).unwrap();
-                self.ledger.apply(ledger_diff).unwrap();
-                self.settings.apply(setting_diff).unwrap();
+                self.leadership.apply(leadership_diff.clone()).unwrap();
+                self.ledger.apply(ledger_diff.clone()).unwrap();
+                self.settings.apply(setting_diff.clone()).unwrap();
 
                 self.change_log
                     .push((leadership_diff, ledger_diff, setting_diff));
