@@ -116,22 +116,29 @@ pub trait HasHeader {
 /// the blockchain has (a transaction type to add Stacking Pools and so on...).
 ///
 pub trait Transaction: Serialize + Deserialize {
-    /// the input type of the transaction (if none use `()`).
+    /// The input type of the transaction (if none use `()`).
     type Input;
-    /// the output type of the transaction (if none use `()`).
+    /// The output type of the transaction (if none use `()`).
     type Output;
+    /// The iterable type of transaction inputs (if none use `Option<()>` and return `None`).
+    type Inputs;
+    /// The iterable type of transaction outputs (if none use `Option<()>` and return `None`).
+    type Outputs;
     /// a unique identifier of the transaction. For 2 different transactions
     /// we must have 2 different `Id` values.
     type Id: TransactionId;
 
-    fn inputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Input>;
-    fn outputs<'a>(&'a self) -> std::slice::Iter<'a, Self::Output>;
+    /// Returns a reference that can be used to iterate over transaction's inputs.
+    fn inputs(&self) -> &Self::Inputs;
+
+    /// Returns a reference that can be used to iterate over transaction's outputs.
+    fn outputs(&self) -> &Self::Outputs;
 
     /// return the Transaction's identifier.
     fn id(&self) -> Self::Id;
 }
 
-/// accessor to transactions within a block
+/// Accessor to transactions within a block
 ///
 /// This trait is generic enough to show there is multiple types
 /// of transaction possibles:
@@ -140,10 +147,15 @@ pub trait Transaction: Serialize + Deserialize {
 /// * certificate registrations
 /// * ...
 pub trait HasTransaction {
-    type Transaction: Transaction;
+    /// An iterable collection of transactions provided by the block.
+    /// A reference to the `Transactions` type must be convertible to an
+    /// iterator returning references to transaction objects.
+    type Transactions;
 
-    /// returns an iterator over the Transactions
-    fn transactions<'a>(&'a self) -> std::slice::Iter<'a, Self::Transaction>;
+    /// Returns a reference that can be used to iterate over transactions in the block.
+    /// If the block does not feature transactions of the given type,
+    /// this method returns `None`.
+    fn transactions(&self) -> Option<&Self::Transactions>;
 }
 
 /// Updates type needs to implement this feature so we can easily
@@ -372,15 +384,23 @@ pub mod testing {
     /// and signatures will compose into a valid transaction, but if such
     /// event would happen it can be treated as error due to lack of the
     /// randomness.
-    pub fn prop_bad_transaction_fails<L>(ledger: L, transaction: L::Transaction) -> TestResult
+    pub fn prop_bad_transaction_fails<'a, L>(
+        ledger: L,
+        transaction: &'a L::Transaction,
+    ) -> TestResult
     where
         L: Ledger + Arbitrary,
-        <L as Ledger>::Transaction: Transaction + Arbitrary,
+        &'a <L::Transaction as Transaction>::Inputs: IntoIterator,
+        <&'a <L::Transaction as Transaction>::Inputs as IntoIterator>::IntoIter: ExactSizeIterator,
+        &'a <L::Transaction as Transaction>::Outputs: IntoIterator,
+        <&'a <L::Transaction as Transaction>::Outputs as IntoIterator>::IntoIter: ExactSizeIterator,
     {
-        if transaction.inputs().len() == 0 && transaction.outputs().len() == 0 {
+        if transaction.inputs().into_iter().len() == 0
+            && transaction.outputs().into_iter().len() == 0
+        {
             return TestResult::discard();
         }
-        TestResult::from_bool(ledger.diff_transaction(&transaction).is_err())
+        TestResult::from_bool(ledger.diff_transaction(transaction).is_err())
     }
 
     /// Pair with a ledger and transaction that is valid in such state.
