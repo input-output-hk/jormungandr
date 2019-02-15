@@ -33,7 +33,7 @@ fn main() {
     .unwrap();
 
     let mut chain_state = cardano::block::ChainState::new(&exe_common::genesisdata::parse::parse(
-        exe_common::genesis_data::get_genesis_data(&genesis_hash).unwrap().as_bytes()));
+        exe_common::genesisdata::data::get_genesis_data(&genesis_hash).unwrap().as_bytes()));
 
     let mut store = chain_storage_sqlite::SQLiteBlockStore::new(genesis_hash, db_path);
 
