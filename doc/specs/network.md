@@ -102,7 +102,7 @@ is stateless for
     ```
 * `GetBlocks: (Hash, Offset, Count) -> [Block]`:
   * Like GetHeaders, but returns full blocks.
-* `StreamBlocksToTip: ([Hash]) -> Stream<Block>`:
+* `PullBlocksToTip: ([Hash]) -> Stream<Block>`:
   * Retrieve a stream of blocks descending from one of the given hashes, up to
     the remote's current tip.
   * This is an easy way to pull blockchain state from a single peer, without
