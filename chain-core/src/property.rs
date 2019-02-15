@@ -120,9 +120,9 @@ pub trait Transaction: Serialize + Deserialize {
     type Input;
     /// The output type of the transaction (if none use `()`).
     type Output;
-    /// The iterable type of transaction inputs (if none use ??).
+    /// The iterable type of transaction inputs (if none use `Option<()>` and return `None`).
     type Inputs;
-    /// The iterable type of transaction outputs (if none use ??).
+    /// The iterable type of transaction outputs (if none use `Option<()>` and return `None`).
     type Outputs;
     /// a unique identifier of the transaction. For 2 different transactions
     /// we must have 2 different `Id` values.
