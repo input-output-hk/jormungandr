@@ -113,25 +113,18 @@ is stateless for
     for clients that don't have a need to fiddle with batched
     `GetChainHashes`/`GetBlocks` requests and traffic distribution among
     multiple peers.
-* `ProposeTransactions: [Hash(Transaction)] -> [Bool]`
-  * Propose a transaction to the peer by their hashes as unique key
-  * Used as submission of new transaction, but also relay of known transaction
-    on the network.
-  * No network state is kept for expecting the transaction.
-* `SendTransactions: [Transaction] -> ()`
-  * Send one to multiple transactions content to the peer.
-  * **<font color="red">TODO</font>**: we still need to be able to reject
-    `Transaction` and to return an appropriate error message
-* `ProposeHeader: Header -> Bool`:
-  * Propose a block header to the peer.
-  * Peer reply whether it want to receive the block or not.
-  * The header is kept in memory, but no network state is kept for expecting the expected block.
-* `SendBlock: Block -> ()`
-  * Propagate a block to the peer
-  * RecvEvent : () -> Stream Hash:
-  * Actively wait for new event from the node, for example a new tip hash
-  * **<font color="red">TODO</font>**: we still need to be able to reject
-    `Block` and to return an appropriate error message
+* `AnnounceBlock: Hash`
+  * Announce a new block to the peer by the block's hash.
+  * Used for submission of a new locally minted block,
+    and relay of block gossip on the network.
+  * **TBD:** the payload could be a whole `Header` carrying more useful
+    information about the block.
+* `AnnounceTransactions: [Hash]`
+  * Announce new transactions to the peer by their hashes as unique keys.
+  * Used for submission of a new locally accepted transaction,
+    and relay of transactions gossip on the network.
+* `GetTransactions: [Hash] -> [Transaction]`
+  * Fetch one or multiple transactions identified by the hashes.
 * P2P Messages: see P2P messages section.
 
 The protobuf files describing these commands are available in the [proto]
