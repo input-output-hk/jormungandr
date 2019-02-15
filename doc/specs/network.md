@@ -164,14 +164,14 @@ sync(state, server, dest_tip, dest_tip_length) {
   // FIXME: do binary search to find exact most recent ancestor
   n = 0;
   loop {
-	headers = server.get_headers(dest_tip, 2^n, 1);
-     if headers == [] {
-       ancestor = genesis;
-       break;
-     }
-     ancestor = headers[0];
-	if state.chain_state.has_ancestor(ancestor): { break }
-	n++;
+    hashes = server.get_chain_hashes(dest_tip, 2^n, 1);
+    if hashes == [] {
+      ancestor = genesis;
+      break;
+    }
+    ancestor = hashes[0];
+    if state.chain_state.has_ancestor(ancestor): { break }
+    n++;
   }
 
   // fetch blocks from ancestor to dest_tip, in batches of 1000
@@ -182,20 +182,21 @@ sync(state, server, dest_tip, dest_tip_length) {
   batches = nr_blocks_to_fetch / batch_size;
   new_chain_state = reconstruct_chain_state_at(ancestor);
   for (i = batches; i > 0; i--) {
-     // validate the headers ahead of downloading blocks to validate
-     // cryptographically invalid blocks. It is interesting to do that
-     // ahead of time because of the small size of a BlockHeader
-     new_headers = server.get_headers(dest_tip,(i-1) * batch_size, batch_size);
-	if new_headers are invalid { stop; }
-	new_blocks = server.get_blocks(dest_tip, (i-1) * batch_size, batch_size).reverse();
-	for block in new_blocks {
-  	  new_chain_state.validate_block(block)?;
-    	  write block to disk;
-	}
+    // validate the headers ahead of downloading blocks to validate
+    // cryptographically invalid blocks. It is interesting to do that
+    // ahead of time because of the small size of a BlockHeader
+    new_hashes = server.get_chain_hashes(dest_tip, (i - 1) * batch_size, batch_size);
+    new_headers = server.get_headers(new_hashes);
+    if new_headers are invalid { stop; }
+    new_blocks = server.get_blocks(new_hashes).reverse();
+    for block in new_blocks {
+      new_chain_state.validate_block(block)?;
+      write_block_to_storage(block);
+    }
   }
 
   if new_chain_state.chain_quality() > state.chain_state.chain_quality() {
-	state.new_chain_state = state.chain_state
+    state.chain_state = new_chain_state
   }
 }
 ```
