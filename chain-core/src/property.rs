@@ -121,9 +121,9 @@ pub trait Transaction: Serialize + Deserialize {
     /// The output type of the transaction (if none use `()`).
     type Output;
     /// The iterable type of transaction inputs (if none use `Option<()>` and return `None`).
-    type Inputs;
+    type Inputs: ?Sized;
     /// The iterable type of transaction outputs (if none use `Option<()>` and return `None`).
-    type Outputs;
+    type Outputs: ?Sized;
     /// a unique identifier of the transaction. For 2 different transactions
     /// we must have 2 different `Id` values.
     type Id: TransactionId;
@@ -150,12 +150,10 @@ pub trait HasTransaction {
     /// An iterable collection of transactions provided by the block.
     /// A reference to the `Transactions` type must be convertible to an
     /// iterator returning references to transaction objects.
-    type Transactions;
+    type Transactions: ?Sized;
 
     /// Returns a reference that can be used to iterate over transactions in the block.
-    /// If the block does not feature transactions of the given type,
-    /// this method returns `None`.
-    fn transactions(&self) -> Option<&Self::Transactions>;
+    fn transactions(&self) -> &Self::Transactions;
 }
 
 /// Updates type needs to implement this feature so we can easily

@@ -214,8 +214,8 @@ impl property::Deserialize for SignedTransaction {
 impl property::Transaction for Transaction {
     type Input = UtxoPointer;
     type Output = Output;
-    type Inputs = Vec<UtxoPointer>;
-    type Outputs = Vec<Output>;
+    type Inputs = [UtxoPointer];
+    type Outputs = [Output];
     type Id = TransactionId;
 
     fn inputs(&self) -> &Self::Inputs {
@@ -239,8 +239,8 @@ impl property::Transaction for Transaction {
 impl property::Transaction for SignedTransaction {
     type Input = UtxoPointer;
     type Output = Output;
-    type Inputs = Vec<UtxoPointer>;
-    type Outputs = Vec<Output>;
+    type Inputs = [UtxoPointer];
+    type Outputs = [Output];
     type Id = TransactionId;
 
     fn inputs(&self) -> &Self::Inputs {
