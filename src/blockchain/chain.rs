@@ -97,6 +97,7 @@ where
     <B::Ledger as property::Ledger>::Update: Clone,
     <B::Settings as property::Settings>::Update: Clone,
     <B::Leader as property::LeaderSelection>::Update: Clone,
+    for<'a> &'a <B::Block as property::HasTransaction>::Transactions: IntoIterator<Item = &'a B::Transaction>,
 {
     pub fn handle_incoming_block(&mut self, block: B::Block) -> Result<(), storage::Error> {
         use chain_core::property::Block;
@@ -128,7 +129,9 @@ where
         if block_hash != current_tip {
             if current_tip == block.parent_id() {
                 let leadership_diff = self.leadership.diff(&block).unwrap();
-                let ledger_diff = self.ledger.diff(block.transactions()).unwrap();
+                let ledger_diff = {
+                    self.ledger.diff(block.transactions()).unwrap()
+                };
                 let setting_diff = self.settings.diff(&block).unwrap();
 
                 self.leadership.apply(leadership_diff.clone()).unwrap();

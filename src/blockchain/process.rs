@@ -16,6 +16,7 @@ pub fn process<Chain>(
     <Chain::Ledger as property::Ledger>::Update: Clone,
     <Chain::Settings as property::Settings>::Update: Clone,
     <Chain::Leader as property::LeaderSelection>::Update: Clone,
+    for<'a> &'a <Chain::Block as property::HasTransaction>::Transactions: IntoIterator<Item = &'a Chain::Transaction>,
 {
     let res = match bquery {
         BlockMsg::NetworkBlock(block) => {

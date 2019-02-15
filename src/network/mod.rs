@@ -160,6 +160,7 @@ where
     <B::Ledger as property::Ledger>::Update: Clone,
     <B::Settings as property::Settings>::Update: Clone,
     <B::Leader as property::LeaderSelection>::Update: Clone,
+    for<'a> &'a <B::Block as property::HasTransaction>::Transactions: IntoIterator<Item = &'a B::Transaction>,
 {
     let grpc_peer = config
         .peer_nodes

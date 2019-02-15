@@ -20,7 +20,7 @@ use std::fmt::Display;
 
 pub trait BlockConfig {
     type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
-        + HasTransaction<Transaction = Self::Transaction>
+        + HasTransaction
         + Send;
     type BlockDate: BlockDate + Display + FromStr;
     type BlockHash: BlockId + Display + Send;
