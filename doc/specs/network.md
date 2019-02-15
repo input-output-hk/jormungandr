@@ -82,34 +82,37 @@ is stateless for
     blockchain).
   * **DD?** : Block vs hash: block is large but contain extra useful metadata
     (slotid, prevhash), whereas hash is small.
-* `GetHeaders: (Hash, Offset, Count) -> [Header]`:
-  * Fetch the Count headers starting at the Offset’ ancestor of Hash. Note
-    that this function is pure since it does backward rather than forward
+* `GetChainHashes: (Hash, Offset, Count) -> [Hash]`:
+  * Fetch Count block hashes going backwards in the chain, starting at the
+    Offset’ ancestor of Hash.
+    Note that this function is pure since it does backward rather than forward
     iteration. Due to the offset, it allows random access into the chain.
   * Pseudo-code implementation:
-    ```rust
-    GetHeader(hash, offset, count):
+    ```
+    GetChainHashes(hash, offset, count):
       h = hash;
-      // Note: the actual implementation won’t do a linear search, but will hop backwards O(lg n) times.
+      // Note: the actual implementation won’t do a linear search, but will
+      // use a storage index to seek to the specified offset
       for (i = 0; i < offset; i++)
         h = load_block(h).parent_hash
         if h == genesis: return
       for (i = 0; i < count; i++)
         blk = load_block(h)
-        send_header(blk.header)
+        send_hash(h)
         h = blk.parent_hash
         if h == genesis: return
     ```
-* `GetBlocks: (Hash, Offset, Count) -> [Block]`:
+* `GetHeaders: ([Hash]) -> [Header]`:
+  * Fetch the headers (metadata summaries) of the blocks identified by hashes.
+* `GetBlocks: ([Hash]) -> [Block]`:
   * Like GetHeaders, but returns full blocks.
 * `PullBlocksToTip: ([Hash]) -> Stream<Block>`:
   * Retrieve a stream of blocks descending from one of the given hashes, up to
     the remote's current tip.
-  * This is an easy way to pull blockchain state from a single peer, without
-    fiddling with batching of GetBlocks requests and traffic distribution among
+  * This is an easy way to pull blockchain state from a single peer,
+    for clients that don't have a need to fiddle with batched
+    `GetChainHashes`/`GetBlocks` requests and traffic distribution among
     multiple peers.
-* `GetHashes: (Hash, Offset, Count) -> [Hash]`:
-  * Like GetHeaders, but returns block hashes.
 * `ProposeTransactions: [Hash(Transaction)] -> [Bool]`
   * Propose a transaction to the peer by their hashes as unique key
   * Used as submission of new transaction, but also relay of known transaction
