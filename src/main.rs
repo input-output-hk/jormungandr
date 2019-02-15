@@ -17,14 +17,12 @@ extern crate cardano_storage;
 extern crate chain_core;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
-#[macro_use]
 extern crate cbor_event;
 extern crate exe_common;
 extern crate network_core;
 extern crate network_grpc;
 extern crate protocol_tokio as protocol;
 
-#[macro_use]
 extern crate futures;
 extern crate tokio;
 
