@@ -390,8 +390,14 @@ where
     E: Executor<Background<S, BoxBody>> + Clone,
     <T::Header as property::Header>::Date: FromStr,
 {
-    type GetHeadersStream = ResponseStream<T::Header, gen::node::Header>;
-    type GetHeadersFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
+    //type GetHeadersStream = ResponseStream<T::Header, gen::node::Header>;
+    //type GetHeadersFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
+
+    type GetTipFuture = ResponseFuture<T::Header, gen::node::Header>;
+
+    fn tip_header(&mut self) -> Self::GetTipFuture {
+        unimplemented!()
+    }
 }
 
 /// The error type for gRPC client operations.
