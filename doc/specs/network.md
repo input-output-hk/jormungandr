@@ -127,8 +127,11 @@ is stateless for
   * Fetch one or multiple transactions identified by the hashes.
 * P2P Messages: see P2P messages section.
 
-The protobuf files describing these commands are available in the [proto]
-directory.
+The protobuf files describing these commands are available in the
+`network-proto` directory of the [rust-cardano][rust-cardano-gh]
+project repository. **TODO:** to be updated.
+
+[rust-cardano-gh]: https://github.com/input-output-hk/rust-cardano/
 
 ### Pseudocode chain sync algorithm
 
