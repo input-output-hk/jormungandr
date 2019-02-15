@@ -149,7 +149,7 @@ struct ChainState {
   ...
 }
 
-Impl ChainState {
+impl ChainState {
   Fn is_ancestor(hash) -> bool {
     self.ancestors.exists(hash)
   }
