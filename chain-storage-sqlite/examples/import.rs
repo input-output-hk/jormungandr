@@ -32,6 +32,9 @@ fn main() {
     )
     .unwrap();
 
+    let mut chain_state = cardano::block::ChainState::new(&exe_common::genesisdata::parse::parse(
+        exe_common::genesis_data::get_genesis_data(&genesis_hash).unwrap().as_bytes()));
+
     let mut store = chain_storage_sqlite::SQLiteBlockStore::new(genesis_hash, db_path);
 
     /* Convert a chain using old-school storage to a SQLiteBlockStore. */
@@ -43,6 +46,7 @@ fn main() {
     {
         let (_raw_blk, blk) = res.unwrap();
         let hash = blk.id();
+        chain_state.verify_block(&hash, &blk).unwrap();
         store.put_block(blk).unwrap();
         //if n > 49900 { break; }
         if n % 10000 == 0 {
