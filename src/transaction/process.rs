@@ -1,9 +1,6 @@
 use std::sync::{mpsc::Receiver, Arc, RwLock};
 
-use crate::blockcfg::{
-    property::{Ledger, Transaction},
-    BlockConfig,
-};
+use crate::blockcfg::{BlockConfig, Ledger, Transaction};
 use crate::blockchain::BlockchainR;
 use crate::intercom::TransactionMsg;
 use crate::transaction::TPool;
@@ -24,7 +21,7 @@ where
         let tquery = r.recv().unwrap();
 
         match tquery {
-            TransactionMsg::ProposeTransaction(txids, mut reply) => {
+            TransactionMsg::ProposeTransaction(txids, reply) => {
                 let tpool = tpool.read().unwrap();
                 let rep: Vec<_> = txids.into_iter().map(|txid| tpool.exist(&txid)).collect();
                 reply.reply_ok(rep);
@@ -32,7 +29,7 @@ where
             TransactionMsg::SendTransaction(txs) => {
                 let mut tpool = tpool.write().unwrap();
                 let blockchain = blockchain.read().unwrap();
-                let chain_state = &blockchain.chain_state;
+                let chain_state = &blockchain.ledger;
 
                 // this will test the transaction is valid within the current
                 // state of the local state of the global ledger.

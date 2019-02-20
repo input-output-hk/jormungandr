@@ -6,23 +6,22 @@
 //!
 
 mod grpc;
-mod ntt;
+// TODO: to be ported
+//mod ntt;
+mod service;
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
-use blockcfg::{cardano::Cardano, BlockConfig};
-use blockchain::BlockchainR;
-use intercom::{BlockMsg, ClientMsg, NetworkBroadcastMsg, TransactionMsg};
-use protocol::{network_transport::LightWeightConnectionId, Message, MessageType, Response};
-use settings::network::{Configuration, Connection, Listen, Peer, Protocol};
-use utils::task::TaskMessageBox;
+use crate::blockcfg::BlockConfig;
+use crate::blockchain::BlockchainR;
+use crate::intercom::{BlockMsg, ClientMsg, NetworkBroadcastMsg, TransactionMsg};
+use crate::settings::network::{Configuration, Connection, Listen, Peer, Protocol};
+use crate::utils::task::TaskMessageBox;
 
+use chain_core::property;
 use futures::prelude::*;
 use futures::{
+    future,
     stream::{self, Stream},
     sync::mpsc,
 };
@@ -44,19 +43,9 @@ impl<B: BlockConfig> Clone for Channels<B> {
     }
 }
 
-/// Identifier to manage subscriptions
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SubscriptionId(Connection, LightWeightConnectionId);
-
-/// all the subscriptions
-pub type Subscriptions = HashMap<SubscriptionId, mpsc::UnboundedSender<Message>>;
-
-pub type SubscriptionsR = Arc<RwLock<Subscriptions>>;
-
 pub struct GlobalState<B: BlockConfig> {
     pub config: Arc<Configuration>,
     pub channels: Channels<B>,
-    pub subscriptions: SubscriptionsR,
 }
 
 impl<B: BlockConfig> Clone for GlobalState<B> {
@@ -64,7 +53,6 @@ impl<B: BlockConfig> Clone for GlobalState<B> {
         GlobalState {
             config: self.config.clone(),
             channels: self.channels.clone(),
-            subscriptions: self.subscriptions.clone(),
         }
     }
 }
@@ -80,8 +68,6 @@ pub struct ConnectionState<B: BlockConfig> {
     /// the timeout to wait for unbefore the connection replies
     pub timeout: Duration,
 
-    pub subscriptions: SubscriptionsR,
-
     /// the local (to the task) connection details
     pub connection: Connection,
 
@@ -94,7 +80,6 @@ impl<B: BlockConfig> Clone for ConnectionState<B> {
             global_network_configuration: self.global_network_configuration.clone(),
             channels: self.channels.clone(),
             timeout: self.timeout,
-            subscriptions: self.subscriptions.clone(),
             connection: self.connection.clone(),
             connected: self.connected.clone(),
         }
@@ -107,7 +92,6 @@ impl<B: BlockConfig> ConnectionState<B> {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
             timeout: listen.timeout,
-            subscriptions: global.subscriptions.clone(),
             connection: listen.connection,
             connected: None,
         }
@@ -118,7 +102,6 @@ impl<B: BlockConfig> ConnectionState<B> {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
             timeout: peer.timeout,
-            subscriptions: global.subscriptions.clone(),
             connection: peer.connection,
             connected: None,
         }
@@ -129,84 +112,26 @@ impl<B: BlockConfig> ConnectionState<B> {
     }
 }
 
-pub fn run(
+pub fn run<B>(
     config: Configuration,
-    subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<Cardano>>, // TODO: abstract away Cardano
-    channels: Channels<Cardano>,
-) {
+    subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<B>>, // TODO: abstract away Cardano
+    channels: Channels<B>,
+) where
+    B: BlockConfig + 'static,
+{
     let arc_config = Arc::new(config.clone());
-    let subscriptions = Arc::new(RwLock::new(Subscriptions::default()));
     let state = GlobalState {
         config: arc_config,
         channels: channels,
-        subscriptions: subscriptions.clone(),
     };
-
-    let subscriptions = subscription_msg_box.fold(subscriptions, |subscriptions, msg| {
-        info!("Sending a subscription message");
-        debug!("subscription message is : {:#?}", msg);
-
-        let subscriptions_clone = Arc::clone(&subscriptions);
-        let subscriptions_err = Arc::clone(&subscriptions);
-
-        // clone the subscribed ends into a temporary array, the RwLock will
-        // lock the variable only the time to build this collection, so we should
-        // be able to free it for the error handling part
-        let subscriptions_col: Vec<_> = subscriptions_clone
-            .read()
-            .unwrap()
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
-
-        // create a stream of all the subscriptions, for every broadcast
-        // messages we will send the message to broadcast
-        //
-        futures::stream::iter_ok::<_, ()>(subscriptions_col)
-            .for_each(move |(identifier, sink)| {
-                let msg = match msg.clone() {
-                    NetworkBroadcastMsg::Block(block) => Message::Bytes(
-                        identifier.1,
-                        MessageType::MsgBlock.encode_with(&Response::Ok::<_, String>(block)),
-                    ),
-                    NetworkBroadcastMsg::Header(header) => Message::Bytes(
-                        identifier.1,
-                        MessageType::MsgHeaders.encode_with(&Response::Ok::<_, String>(
-                            cardano::block::BlockHeaders(vec![header]),
-                        )),
-                    ),
-                    NetworkBroadcastMsg::Transaction(transaction) => {
-                        Message::Bytes(identifier.1, cbor!(transaction).unwrap().into())
-                    }
-                };
-                sink.unbounded_send(msg).map(|_| ()).map_err(|_| {
-                    // in case of an error we can remove the element from the subscription
-                    //
-                    // This is because the only reason the subscription would fail to be sent
-                    // is if the other end of the unbound channel is disconnected/dropped.
-                    // So we can assume the other end *is* disconnected.
-                    //
-                    // TODO: we might want to double check that and actually tell the
-                    //       other end that an error occurred or at least force-drop the
-                    //       connection so the client need to reconnect.
-                    warn!(
-                        "Subscription for {:?} failed, removing subscription...",
-                        identifier
-                    );
-                    let mut subscriptions_write = subscriptions_err.write().unwrap();
-                    subscriptions_write.remove(&identifier);
-                })
-            })
-            .map(|_| subscriptions)
-    });
 
     let state_listener = state.clone();
     // open the port for listening/accepting other peers to connect too
     let listener =
         stream::iter_ok(config.listen_to).for_each(move |listen| match listen.connection {
             Connection::Tcp(sockaddr) => match listen.protocol {
-                Protocol::Ntt => ntt::run_listen_socket(sockaddr, listen, state_listener.clone()),
                 Protocol::Grpc => grpc::run_listen_socket(sockaddr, listen, state_listener.clone()),
+                Protocol::Ntt => unimplemented!(), // ntt::run_listen_socket(sockaddr, listen, state_listener.clone()),
             },
             #[cfg(unix)]
             Connection::Unix(_path) => unimplemented!(),
@@ -216,17 +141,28 @@ pub fn run(
     let connections =
         stream::iter_ok(config.peer_nodes).for_each(move |peer| match peer.connection {
             Connection::Tcp(sockaddr) => match peer.protocol {
-                Protocol::Ntt => ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                Protocol::Ntt => {
+                    unimplemented!(); // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                    future::ok(())
+                }
                 Protocol::Grpc => unimplemented!(),
             },
             #[cfg(unix)]
             Connection::Unix(_path) => unimplemented!(),
         });
 
-    tokio::run(subscriptions.join3(connections, listener).map(|_| ()));
+    tokio::run(connections.join(listener).map(|_| ()));
 }
 
-pub fn bootstrap(config: &Configuration, blockchain: BlockchainR<Cardano>) {
+pub fn bootstrap<B>(config: &Configuration, blockchain: BlockchainR<B>)
+where
+    B: BlockConfig,
+    <B::Ledger as property::Ledger>::Update: Clone,
+    <B::Settings as property::Settings>::Update: Clone,
+    <B::Leader as property::LeaderSelection>::Update: Clone,
+    for<'a> &'a <B::Block as property::HasTransaction>::Transactions:
+        IntoIterator<Item = &'a B::Transaction>,
+{
     let grpc_peer = config
         .peer_nodes
         .iter()

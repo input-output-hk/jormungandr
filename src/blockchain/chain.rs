@@ -1,24 +1,39 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
-use cardano_storage::chain_state::restore_chain_state;
-use cardano_storage::StorageConfig;
-use cardano_storage::{blob, block_read, tag, Storage};
+use chain_core::property::{self, HasTransaction};
+use chain_impl_mockchain::{key, leadership, ledger, setting};
+use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStore};
 
-use crate::blockcfg::{
-    cardano::{Block, BlockHash, Cardano, GenesisData},
-    BlockConfig,
-};
+use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
+use crate::secure::NodePublic;
+use crate::settings;
+
+pub struct State<B: BlockConfig> {
+    ledger_state: B::Ledger,
+    setting_state: B::Settings,
+}
 
 #[allow(dead_code)]
 pub struct Blockchain<B: BlockConfig> {
     pub genesis_data: B::GenesisData,
 
     /// the storage for the overall blockchains (blocks)
-    pub storage: Storage,
+    pub storage: MemoryBlockStore<B::Block>,
 
     /// The current chain state corresponding to our tip.
-    pub chain_state: B::Ledger,
+    pub ledger: B::Ledger,
+
+    /// the setting of the blockchain corresponding to out tip
+    pub settings: B::Settings,
+
+    pub leadership: B::Leader,
+
+    pub change_log: Vec<(
+        <B::Leader as property::LeaderSelection>::Update,
+        <B::Ledger as property::Ledger>::Update,
+        <B::Settings as property::Settings>::Update,
+    )>,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
@@ -32,6 +47,133 @@ pub type BlockchainR<B> = Arc<RwLock<Blockchain<B>>>;
 
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
+
+pub fn xpub_to_public(xpub: &cardano::hdwallet::XPub) -> key::PublicKey {
+    let mut bytes = [0; 32];
+    bytes.copy_from_slice(xpub.as_ref());
+    key::PublicKey::from_bytes(bytes)
+}
+
+impl Blockchain<Mockchain> {
+    pub fn new(
+        genesis_data: GenesisData,
+        node_public: NodePublic,
+        consensus: &settings::Consensus,
+    ) -> Self {
+        let last_block_hash = key::Hash::hash_bytes(&[]);
+
+        let leadership = match consensus {
+            settings::Consensus::Bft(bft_config) => leadership::LeaderSelection::BFT(
+                leadership::bft::BftLeaderSelection::new(
+                    xpub_to_public(&node_public.block_publickey),
+                    bft_config
+                        .leaders
+                        .iter()
+                        .map(|xpub| xpub_to_public(&xpub.0))
+                        .collect(),
+                )
+                .unwrap(),
+            ),
+            settings::Consensus::Genesis => unimplemented!(),
+        };
+
+        Blockchain {
+            genesis_data: genesis_data,
+            storage: MemoryBlockStore::new(last_block_hash.clone()),
+            ledger: ledger::Ledger::new(Default::default()),
+            settings: setting::Settings {
+                last_block_id: last_block_hash,
+                max_number_of_transactions_per_block: 100, // TODO: add this in the genesis data ?
+            },
+            leadership: leadership,
+            change_log: Vec::default(),
+            unconnected_blocks: BTreeMap::default(),
+        }
+    }
+}
+
+impl<B: BlockConfig> Blockchain<B>
+where
+    <B::Ledger as property::Ledger>::Update: Clone,
+    <B::Settings as property::Settings>::Update: Clone,
+    <B::Leader as property::LeaderSelection>::Update: Clone,
+    for<'a> &'a <B::Block as property::HasTransaction>::Transactions:
+        IntoIterator<Item = &'a B::Transaction>,
+{
+    pub fn handle_incoming_block(&mut self, block: B::Block) -> Result<(), storage::Error> {
+        use chain_core::property::Block;
+        let block_hash = block.id();
+        let parent_hash = block.parent_id();
+
+        if self.block_exists(&parent_hash)? {
+            self.handle_connected_block(block_hash, block);
+        } else {
+            self.sollicit_block(&parent_hash);
+            self.unconnected_blocks
+                .entry(parent_hash)
+                .or_insert(BTreeMap::new())
+                .insert(block_hash, block);
+        }
+        Ok(())
+    }
+
+    /// Handle a block whose ancestors are on disk.
+    fn handle_connected_block(&mut self, block_hash: B::BlockHash, block: B::Block) {
+        use chain_core::property::{Block, LeaderSelection, Ledger, Settings};
+
+        let current_tip = self.settings.tip();
+
+        // Quick optimization: don't do anything if the incoming block
+        // is already the tip. Ideally we would bail out if the
+        // incoming block is on the tip chain, but there is no quick
+        // way to check that.
+        if block_hash != current_tip {
+            if current_tip == block.parent_id() {
+                let leadership_diff = self.leadership.diff(&block).unwrap();
+                let ledger_diff = { self.ledger.diff(block.transactions()).unwrap() };
+                let setting_diff = self.settings.diff(&block).unwrap();
+
+                self.leadership.apply(leadership_diff.clone()).unwrap();
+                self.ledger.apply(ledger_diff.clone()).unwrap();
+                self.settings.apply(setting_diff.clone()).unwrap();
+
+                self.change_log
+                    .push((leadership_diff, ledger_diff, setting_diff));
+                self.storage.put_block(block).unwrap();
+                self.storage
+                    .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
+                    .unwrap();
+            } else {
+                // TODO chain state restoration ?
+                unimplemented!()
+            }
+        }
+    }
+}
+impl<B: BlockConfig> Blockchain<B> {
+    fn block_exists(&self, block_hash: &B::BlockHash) -> Result<bool, storage::Error> {
+        // TODO: we assume as an invariant that if a block exists on
+        // disk, its ancestors exist on disk as well. Need to make
+        // sure that this invariant is preserved everywhere
+        // (e.g. loose block GC should delete blocks in reverse
+        // order).
+        self.storage.block_exists(block_hash)
+    }
+
+    /// Request a missing block from the network.
+    fn sollicit_block(&mut self, block_hash: &B::BlockHash) {
+        //unimplemented!();
+    }
+
+    /// return the current tip hash and date
+    pub fn get_tip(&self) -> B::BlockHash {
+        use chain_core::property::Settings;
+        self.settings.tip()
+    }
+}
+
+/*
+FIXME: we need to restore this when possible
 
 impl Blockchain<Cardano> {
     pub fn from_storage(genesis_data: GenesisData, storage_config: &StorageConfig) -> Self {
@@ -61,26 +203,6 @@ impl Blockchain<Cardano> {
         &self.genesis_data.genesis_prev
     }
 
-    /// Handle an incoming block (either from the network or from our
-    /// own leadership task). If the block is not connected, then
-    /// sollicit its parent. If it is connected and is a longer valid
-    /// chain than the current tip, then switch the tip. If it is
-    /// connected but is not a longer valid chain, then discard it.
-    pub fn handle_incoming_block(&mut self, block: Block) {
-        let block_hash = block.get_header().compute_hash();
-        let parent_hash = block.get_header().get_previous_header();
-
-        if self.block_exists(&parent_hash) {
-            self.handle_connected_block(block_hash, block);
-        } else {
-            self.sollicit_block(&parent_hash);
-            self.unconnected_blocks
-                .entry(parent_hash)
-                .or_insert(BTreeMap::new())
-                .insert(block_hash, block);
-        }
-    }
-
     /// Handle a block whose ancestors are on disk.
     fn handle_connected_block(&mut self, block_hash: BlockHash, block: Block) {
         // Quick optimization: don't do anything if the incoming block
@@ -88,8 +210,12 @@ impl Blockchain<Cardano> {
         // incoming block is on the tip chain, but there is no quick
         // way to check that.
         if block_hash != self.chain_state.last_block {
-            blob::write(&self.storage, &block_hash, cbor!(block).unwrap().as_ref())
-                .expect("unable to write block to disk");
+            blob::write(
+                &self.storage,
+                block_hash.as_hash_bytes(),
+                cbor!(block).unwrap().as_ref(),
+            )
+            .expect("unable to write block to disk");
 
             // Compute the new chain state. In the common case, the
             // incoming block is a direct successor of the tip, so we
@@ -153,7 +279,9 @@ impl Blockchain<Cardano> {
         // sure that this invariant is preserved everywhere
         // (e.g. loose block GC should delete blocks in reverse
         // order).
-        block_read(&self.storage, block_hash).is_ok()
+        self.storage
+            .block_exists(block_hash.as_hash_bytes())
+            .unwrap_or(false)
     }
 
     /// Request a missing block from the network.
@@ -162,3 +290,4 @@ impl Blockchain<Cardano> {
         //unimplemented!();
     }
 }
+*/

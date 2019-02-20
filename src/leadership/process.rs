@@ -1,17 +1,11 @@
-use super::selection::{self, IsLeading, Selection};
-use std::sync::Arc;
-
-use super::super::{
-    clock, intercom::BlockMsg, secure::NodeSecret, utils::task::TaskMessageBox, BlockchainR,
-};
-use crate::blockcfg::{property::Update, BlockConfig};
+use crate::blockcfg::{BlockConfig, Settings};
 use crate::transaction::TPoolR;
+use crate::{clock, intercom::BlockMsg, utils::task::TaskMessageBox, BlockchainR};
 
-use cardano::block::{BlockDate, EpochSlotId};
+use chain_core::property::{BlockDate, LeaderSelection};
 
 pub fn leadership_task<B>(
-    secret: NodeSecret,
-    selection: Arc<Selection>,
+    secret: <B as BlockConfig>::NodeSigningKey,
     transaction_pool: TPoolR<B>,
     blockchain: BlockchainR<B>,
     clock: clock::Clock,
@@ -19,51 +13,42 @@ pub fn leadership_task<B>(
 ) where
     B: BlockConfig,
     <B as BlockConfig>::TransactionId: Eq + std::hash::Hash,
-    <B as BlockConfig>::Ledger: Update,
-    <B as BlockConfig>::BlockDate: From<BlockDate>,
+    <B as BlockConfig>::Settings: Settings,
 {
-    let my_pub = secret.public.clone();
     loop {
         let d = clock.wait_next_slot();
         let (epoch, idx, next_time) = clock.current_slot().unwrap();
+
         debug!(
             "slept for {:?} epoch {} slot {} next_slot {:?}",
             d, epoch.0, idx, next_time
         );
 
-        // TODO in the future "current stake" will be one of the parameter
-        let leader = selection::test(&selection, idx as u64);
+        let date = <B::BlockDate as BlockDate>::from_epoch_slot_id(epoch.0 as u64, idx as u64);
 
-        if leader == IsLeading::Yes {
-            // if we have the leadership to create a new block we can require the lock
-            // on the blockchain as we are not expecting to be _blocked_ while creating
-            // the block.
-            let b = blockchain.read().unwrap();
+        // if we have the leadership to create a new block we can require the lock
+        // on the blockchain as we are not expecting to be _blocked_ while creating
+        // the block.
+        let b = blockchain.read().unwrap();
 
+        let is_leader = b.leadership.is_leader_at(date.clone()).unwrap();
+
+        if is_leader {
             // collect up to `nr_transactions` from the transaction pool.
             //
             let transactions = transaction_pool
                 .write()
                 .unwrap()
-                .collect(b.chain_state.transactions_per_block());
+                .collect(b.settings.max_number_of_transactions_per_block());
 
-            let epochslot = EpochSlotId {
-                epoch: epoch.0 as u64,
-                slotid: idx as u16,
-            };
             info!(
-                "leadership create tpool={} transactions ({})",
+                "leadership create tpool={} transactions ({}.{})",
                 transactions.len(),
-                epochslot
+                epoch.0,
+                idx
             );
 
-            let block = B::make_block(
-                &secret,
-                &my_pub,
-                &b.chain_state,
-                BlockDate::Normal(epochslot).into(),
-                transactions,
-            );
+            let block = B::make_block(&secret, &b.settings, &b.ledger, date, transactions);
 
             block_task.send_to(BlockMsg::LeadershipBlock(block));
         }

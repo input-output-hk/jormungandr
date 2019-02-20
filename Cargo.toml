@@ -3,6 +3,9 @@ name = "jormungandr"
 version = "0.0.1"
 authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
           , "Vincent Hanquez <vincent.hanquez@iohk.io>"
+          , "Eelco Dolstra <edolstra@gmail.com>"
+          , "Mikhail Zabaluev <mikhail.zabaluev@gmail.com>"
+          , "Alexander Vershilov <alexander.vershilov@gmail.com>"
           ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/input-output-hk/jormungandr"
@@ -12,35 +15,35 @@ description = """
 Midgard Serpent
 """
 
-
 [dependencies]
 dirs = "1.0"
-rand = "0.5"
+rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.8"
-slog = "2.4.1"
+slog = "^2.4"
 slog-async = "2.3.0"
 slog-term = "2.4.0"
 slog-json = "2.3.0"
-humantime = "1.1"
+humantime = "1.2"
 bincode = "1.0.1"
-cbor_event = "1.0"
+cbor_event = "2.1.2"
 cryptoxide = "0.1"
 futures    = "0.1"
 tokio      = "0.1"
-structopt = "^0.2.12"
+structopt = "^0.2"
 curve25519-dalek = "0.21"
 sha2 = "^0.7"
 digest = "^0.7"
 generic-array = "^0.9"
 bytes = "0.4"
-prost = "0.4"
 lazy_static = "1.2.0"
-prost-derive = "0.4"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
-tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
-tower-util = { git = "https://github.com/tower-rs/tower" }
+chain-core      = { path = "cardano-deps/chain-core" }
+chain-impl-mockchain = { path = "cardano-deps/chain-impl-mockchain" }
+chain-storage   = { path = "cardano-deps/chain-storage" }
+network-core    = { path = "cardano-deps/network-core" }
+network-grpc    = { path = "cardano-deps/network-grpc" }
 cardano         = { path = "cardano-deps/cardano" }
 protocol-tokio  = { path = "cardano-deps/protocol-tokio" }
 exe-common      = { path = "cardano-deps/exe-common" }
@@ -52,16 +55,8 @@ version = "2.32"
 default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
 
-[dependencies.tower-grpc]
-git = "https://github.com/tower-rs/tower-grpc"
-rev = "7ffa9d3b610d1c84559a811d08a25bd1670babed"
-
-[build-dependencies.tower-grpc-build]
-git = "https://github.com/tower-rs/tower-grpc"
-rev = "7ffa9d3b610d1c84559a811d08a25bd1670babed"
-
 [dev-dependencies]
-quickcheck = "0.7"
+quickcheck = "0.8"
 
 [features]
 with-bench = []

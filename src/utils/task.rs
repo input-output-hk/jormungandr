@@ -1,4 +1,4 @@
-use log_wrapper::logger::update_thread_logger;
+use crate::log_wrapper::logger::update_thread_logger;
 use std::clone::Clone;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;

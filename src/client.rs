@@ -1,64 +1,75 @@
-use blockcfg::{cardano, cardano::Cardano};
-use blockchain::BlockchainR;
-use cardano_storage::{block_read, iter};
-use intercom::*;
+use crate::blockcfg::{Block, BlockConfig, HasHeader};
+use crate::blockchain::BlockchainR;
+use crate::intercom::{ClientMsg, Error, ReplyStreamHandle};
+
+use chain_storage::store::BlockStore;
+
 use std::sync::mpsc::Receiver;
 
-pub fn client_task(blockchain: BlockchainR<Cardano>, r: Receiver<ClientMsg<Cardano>>) {
+pub fn client_task<B>(blockchain: BlockchainR<B>, r: Receiver<ClientMsg<B>>)
+where
+    B: BlockConfig,
+    B::Block: HasHeader<Header = B::BlockHeader>,
+{
     loop {
         let query = r.recv().unwrap();
         debug!("client query received: {:?}", query);
 
         match query {
-            ClientMsg::GetBlockTip(mut handler) => handler.reply(handle_get_block_tip(&blockchain)),
-            ClientMsg::GetBlockHeaders(checkpoints, to, mut handler) => {
+            ClientMsg::GetBlockTip(handler) => handler.reply(handle_get_block_tip(&blockchain)),
+            ClientMsg::GetBlockHeaders(checkpoints, to, handler) => {
                 handler.reply(handle_get_block_headers(&blockchain, checkpoints, to))
             }
-            ClientMsg::GetBlocks(from, to, handler) => {
-                do_stream_reply(|| handle_get_blocks(&blockchain, from, to, handler))
-            }
-            ClientMsg::StreamBlocksToTip(from, handler) => {
-                do_stream_reply(|| handle_stream_blocks_to_tip(&blockchain, from, handler))
-            }
+            ClientMsg::GetBlocks(from, to, handler) => do_stream_reply(handler, |handler| {
+                handle_get_blocks(&blockchain, from, to, handler)
+            }),
+            ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
+                handle_pull_blocks_to_tip(&blockchain, from, handler)
+            }),
         }
     }
 }
 
-struct StreamReplyError<T>(Error, BoxStreamReply<T>);
-
-fn do_stream_reply<T, F>(f: F)
+fn do_stream_reply<T, F>(mut handler: ReplyStreamHandle<T>, f: F)
 where
-    F: FnOnce() -> Result<BoxStreamReply<T>, StreamReplyError<T>>,
+    F: FnOnce(&mut ReplyStreamHandle<T>) -> Result<(), Error>,
 {
-    let mut handler = match f() {
-        Ok(handler) => handler,
-        Err(StreamReplyError(e, mut handler)) => {
-            handler.send_error(e.into());
-            handler
+    match f(&mut handler) {
+        Ok(()) => {}
+        Err(e) => {
+            handler.send_error(e);
         }
     };
     handler.close();
 }
 
-fn handle_get_block_tip(blockchain: &BlockchainR<Cardano>) -> Result<cardano::Header, Error> {
+fn handle_get_block_tip<B>(blockchain: &BlockchainR<B>) -> Result<B::BlockHeader, Error>
+where
+    B: BlockConfig,
+    B::Block: HasHeader<Header = B::BlockHeader>,
+{
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
-    match block_read(blockchain.get_storage(), &tip) {
-        Err(err) => Err(format!("Cannot read block '{}': {}", tip, err).into()),
-        Ok(rblk) => {
-            let blk = rblk.decode().unwrap();
-            Ok(blk.get_header())
-        }
+    match blockchain.storage.get_block(&tip) {
+        Err(err) => Err(Error::failed(format!(
+            "Cannot read block '{}': {}",
+            tip, err
+        ))),
+        Ok((blk, _)) => Ok(blk.header()),
     }
 }
 
 const MAX_HEADERS: usize = 2000;
 
-fn handle_get_block_headers(
-    blockchain: &BlockchainR<Cardano>,
-    checkpoints: Vec<cardano::BlockHash>,
-    to: cardano::BlockHash,
-) -> Result<Vec<cardano::Header>, Error> {
+fn handle_get_block_headers<B>(
+    blockchain: &BlockchainR<B>,
+    checkpoints: Vec<B::BlockHash>,
+    to: B::BlockHash,
+) -> Result<Vec<B::BlockHeader>, Error>
+where
+    B: BlockConfig,
+    B::Block: HasHeader<Header = B::BlockHeader>,
+{
     let blockchain = blockchain.read().unwrap();
 
     /* Filter out the checkpoints that don't exist and sort them by
@@ -66,12 +77,9 @@ fn handle_get_block_headers(
     let mut checkpoints = checkpoints
         .iter()
         .filter_map(
-            |checkpoint| match block_read(blockchain.get_storage(), &checkpoint) {
+            |checkpoint| match blockchain.storage.get_block(&checkpoint) {
                 Err(_) => None,
-                Ok(rblk) => Some((
-                    rblk.decode().unwrap().get_header().get_blockdate(),
-                    checkpoint,
-                )),
+                Ok((blk, _)) => Some((blk.date(), checkpoint)),
             },
         )
         .collect::<Vec<_>>();
@@ -83,80 +91,67 @@ fn handle_get_block_headers(
 
         // FIXME: handle checkpoint == genesis
 
-        /* Send headers up to the maximum. Skip the first block since
-         * the range is exclusive of 'from'. */
-        let mut skip = true;
+        /* Send headers up to the maximum. */
         let mut headers = vec![];
-        let mut err = None;
-        for x in iter::Iter::new(&blockchain.get_storage(), from.clone(), to).unwrap() {
+        for x in blockchain.storage.iterate_range(&from, &to)? {
             match x {
-                Err(err2) => {
-                    err = Some(err2);
-                }
-                Ok((_, blk)) => {
-                    if skip {
-                        skip = false;
-                    } else {
-                        headers.push(blk.get_header());
-                        if headers.len() >= MAX_HEADERS {
-                            break;
-                        }
+                Err(err) => return Err(Error::from(err)),
+                Ok(info) => {
+                    let (block, _) = blockchain.storage.get_block(&info.block_hash)?;
+                    headers.push(block.header());
+                    if headers.len() >= MAX_HEADERS {
+                        break;
                     }
                 }
             };
         }
 
-        match err {
-            Some(err) => Err(Error::from_error(err)),
-            None => Ok(headers),
-        }
+        Ok(headers)
     } else {
         Ok(vec![])
     }
 }
 
-fn handle_get_blocks(
-    blockchain: &BlockchainR<Cardano>,
-    from: cardano::BlockHash,
-    to: cardano::BlockHash,
-    mut reply: BoxStreamReply<cardano::Block>,
-) -> Result<BoxStreamReply<cardano::Block>, StreamReplyError<cardano::Block>> {
+fn handle_get_blocks<B: BlockConfig>(
+    blockchain: &BlockchainR<B>,
+    from: B::BlockHash,
+    to: B::BlockHash,
+    reply: &mut ReplyStreamHandle<B::Block>,
+) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 
-    for x in iter::Iter::new(&blockchain.get_storage(), from, to).unwrap() {
-        match x {
-            Err(err) => return Err(StreamReplyError(Error::from_error(err), reply)),
-            Ok((_rblk, blk)) => reply.send(blk), // FIXME: use rblk
-        }
+    // FIXME: include the from block
+    for x in blockchain.storage.iterate_range(&from, &to)? {
+        let info = x?;
+        let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
+        reply.send(blk);
     }
 
-    Ok(reply)
+    Ok(())
 }
 
-fn handle_stream_blocks_to_tip(
-    blockchain: &BlockchainR<Cardano>,
-    mut from: Vec<cardano::BlockHash>,
-    mut reply: BoxStreamReply<cardano::Block>,
-) -> Result<BoxStreamReply<cardano::Block>, StreamReplyError<cardano::Block>> {
+fn handle_pull_blocks_to_tip<B: BlockConfig>(
+    blockchain: &BlockchainR<B>,
+    mut from: Vec<B::BlockHash>,
+    reply: &mut ReplyStreamHandle<B::Block>,
+) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 
     // FIXME: handle multiple from addresses
     if from.len() != 1 {
-        return Err(StreamReplyError(
-            Error::from("only one checkpoint address is currently supported"),
-            reply,
+        return Err(Error::unimplemented(
+            "only one checkpoint address is currently supported",
         ));
     }
     let from = from.remove(0);
 
     let tip = blockchain.get_tip();
 
-    for x in iter::Iter::new(&blockchain.get_storage(), from, tip).unwrap() {
-        match x {
-            Err(err) => return Err(StreamReplyError(Error::from_error(err), reply)),
-            Ok((_rblk, blk)) => reply.send(blk), // FIXME: use rblk
-        }
+    for x in blockchain.storage.iterate_range(&from, &tip)? {
+        let info = x?;
+        let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
+        reply.send(blk);
     }
 
-    Ok(reply)
+    Ok(())
 }

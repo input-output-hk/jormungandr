@@ -82,57 +82,56 @@ is stateless for
     blockchain).
   * **DD?** : Block vs hash: block is large but contain extra useful metadata
     (slotid, prevhash), whereas hash is small.
-* `GetHeaders: (Hash, Offset, Count) -> [Header]`:
-  * Fetch the Count headers starting at the Offset’ ancestor of Hash. Note
-    that this function is pure since it does backward rather than forward
+* `GetChainHashes: (Hash, Offset, Count) -> [Hash]`:
+  * Fetch Count block hashes going backwards in the chain, starting at the
+    Offset’ ancestor of Hash.
+    Note that this function is pure since it does backward rather than forward
     iteration. Due to the offset, it allows random access into the chain.
   * Pseudo-code implementation:
-    ```rust
-    GetHeader(hash, offset, count):
+    ```
+    GetChainHashes(hash, offset, count):
       h = hash;
-      // Note: the actual implementation won’t do a linear search, but will hop backwards O(lg n) times.
+      // Note: the actual implementation won’t do a linear search, but will
+      // use a storage index to seek to the specified offset
       for (i = 0; i < offset; i++)
         h = load_block(h).parent_hash
         if h == genesis: return
       for (i = 0; i < count; i++)
         blk = load_block(h)
-        send_header(blk.header)
+        send_hash(h)
         h = blk.parent_hash
         if h == genesis: return
     ```
-* `GetBlocks: (Hash, Offset, Count) -> [Block]`:
+* `GetHeaders: ([Hash]) -> [Header]`:
+  * Fetch the headers (metadata summaries) of the blocks identified by hashes.
+* `GetBlocks: ([Hash]) -> [Block]`:
   * Like GetHeaders, but returns full blocks.
-* `StreamBlocksToTip: ([Hash]) -> Stream<Block>`:
+* `PullBlocksToTip: ([Hash]) -> Stream<Block>`:
   * Retrieve a stream of blocks descending from one of the given hashes, up to
     the remote's current tip.
-  * This is an easy way to pull blockchain state from a single peer, without
-    fiddling with batching of GetBlocks requests and traffic distribution among
+  * This is an easy way to pull blockchain state from a single peer,
+    for clients that don't have a need to fiddle with batched
+    `GetChainHashes`/`GetBlocks` requests and traffic distribution among
     multiple peers.
-* `GetHashes: (Hash, Offset, Count) -> [Hash]`:
-  * Like GetHeaders, but returns block hashes.
-* `ProposeTransactions: [Hash(Transaction)] -> [Bool]`
-  * Propose a transaction to the peer by their hashes as unique key
-  * Used as submission of new transaction, but also relay of known transaction
-    on the network.
-  * No network state is kept for expecting the transaction.
-* `SendTransactions: [Transaction] -> ()`
-  * Send one to multiple transactions content to the peer.
-  * **<font color="red">TODO</font>**: we still need to be able to reject
-    `Transaction` and to return an appropriate error message
-* `ProposeHeader: Header -> Bool`:
-  * Propose a block header to the peer.
-  * Peer reply whether it want to receive the block or not.
-  * The header is kept in memory, but no network state is kept for expecting the expected block.
-* `SendBlock: Block -> ()`
-  * Propagate a block to the peer
-  * RecvEvent : () -> Stream Hash:
-  * Actively wait for new event from the node, for example a new tip hash
-  * **<font color="red">TODO</font>**: we still need to be able to reject
-    `Block` and to return an appropriate error message
+* `AnnounceBlock: Hash`
+  * Announce a new block to the peer by the block's hash.
+  * Used for submission of a new locally minted block,
+    and relay of block gossip on the network.
+  * **TBD:** the payload could be a whole `Header` carrying more useful
+    information about the block.
+* `AnnounceTransactions: [Hash]`
+  * Announce new transactions to the peer by their hashes as unique keys.
+  * Used for submission of a new locally accepted transaction,
+    and relay of transactions gossip on the network.
+* `GetTransactions: [Hash] -> [Transaction]`
+  * Fetch one or multiple transactions identified by the hashes.
 * P2P Messages: see P2P messages section.
 
-The protobuf files describing these commands are available in the [proto]
-directory.
+The protobuf files describing these commands are available in the
+`network-proto` directory of the [rust-cardano][rust-cardano-gh]
+project repository. **TODO:** to be updated.
+
+[rust-cardano-gh]: https://github.com/input-output-hk/rust-cardano/
 
 ### Pseudocode chain sync algorithm
 
@@ -149,7 +148,7 @@ struct ChainState {
   ...
 }
 
-Impl ChainState {
+impl ChainState {
   Fn is_ancestor(hash) -> bool {
     self.ancestors.exists(hash)
   }
@@ -165,14 +164,14 @@ sync(state, server, dest_tip, dest_tip_length) {
   // FIXME: do binary search to find exact most recent ancestor
   n = 0;
   loop {
-	headers = server.get_headers(dest_tip, 2^n, 1);
-     if headers == [] {
-       ancestor = genesis;
-       break;
-     }
-     ancestor = headers[0];
-	if state.chain_state.has_ancestor(ancestor): { break }
-	n++;
+    hashes = server.get_chain_hashes(dest_tip, 2^n, 1);
+    if hashes == [] {
+      ancestor = genesis;
+      break;
+    }
+    ancestor = hashes[0];
+    if state.chain_state.has_ancestor(ancestor): { break }
+    n++;
   }
 
   // fetch blocks from ancestor to dest_tip, in batches of 1000
@@ -183,20 +182,21 @@ sync(state, server, dest_tip, dest_tip_length) {
   batches = nr_blocks_to_fetch / batch_size;
   new_chain_state = reconstruct_chain_state_at(ancestor);
   for (i = batches; i > 0; i--) {
-     // validate the headers ahead of downloading blocks to validate
-     // cryptographically invalid blocks. It is interesting to do that
-     // ahead of time because of the small size of a BlockHeader
-     new_headers = server.get_headers(dest_tip,(i-1) * batch_size, batch_size);
-	if new_headers are invalid { stop; }
-	new_blocks = server.get_blocks(dest_tip, (i-1) * batch_size, batch_size).reverse();
-	for block in new_blocks {
-  	  new_chain_state.validate_block(block)?;
-    	  write block to disk;
-	}
+    // validate the headers ahead of downloading blocks to validate
+    // cryptographically invalid blocks. It is interesting to do that
+    // ahead of time because of the small size of a BlockHeader
+    new_hashes = server.get_chain_hashes(dest_tip, (i - 1) * batch_size, batch_size);
+    new_headers = server.get_headers(new_hashes);
+    if new_headers are invalid { stop; }
+    new_blocks = server.get_blocks(new_hashes).reverse();
+    for block in new_blocks {
+      new_chain_state.validate_block(block)?;
+      write_block_to_storage(block);
+    }
   }
 
   if new_chain_state.chain_quality() > state.chain_state.chain_quality() {
-	state.new_chain_state = state.chain_state
+    state.chain_state = new_chain_state
   }
 }
 ```
