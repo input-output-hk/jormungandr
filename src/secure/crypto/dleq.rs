@@ -87,7 +87,7 @@ pub fn verify(dleq: &DLEQ, proof: &Proof) -> bool {
 mod tests {
     use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-    use rand::OsRng;
+    use rand::rngs::OsRng;
     use sha2::Sha512;
 
     use super::{generate, verify, DLEQ};

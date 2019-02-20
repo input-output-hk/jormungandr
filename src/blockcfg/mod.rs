@@ -8,33 +8,37 @@
 //! 3. consensus: the consensus model of the blockchain.
 //!
 
-use crate::secure;
+pub use chain_core::property::{
+    Block, BlockDate, BlockId, Deserialize, FromStr, HasHeader, HasTransaction, Header,
+    LeaderSelection, Ledger, Serialize, Settings, Transaction, TransactionId, Update,
+};
 
-pub mod property;
-pub mod serialization;
-
-pub mod cardano;
-#[cfg(test)]
+pub mod genesis_data;
 pub mod mock;
 
+use std::fmt::Display;
+
 pub trait BlockConfig {
-    type Block: property::Block<Id = Self::BlockHash, Date = Self::BlockDate>
-        + property::HasTransaction<Transaction = Self::Transaction>;
-    type BlockDate;
-    type BlockHash;
-    type BlockHeader: property::Block<Id = Self::BlockHash, Date = Self::BlockDate>;
-    type Transaction: property::Transaction<Id = Self::TransactionId>;
-    type TransactionId;
+    type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate> + HasTransaction + Send;
+    type BlockDate: BlockDate + Display + FromStr;
+    type BlockHash: BlockId + Display + Send;
+    type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate> + Send;
+    type Transaction: Transaction<Id = Self::TransactionId> + Serialize + Send;
+    type TransactionId: TransactionId + Serialize + Send;
     type GenesisData;
 
-    type Ledger: property::Ledger<Transaction = Self::Transaction>
-        + property::Update<Block = Self::Block>;
+    type Ledger: Ledger<Transaction = Self::Transaction>;
+    type Settings: Settings<Block = Self::Block>;
+    type Leader: LeaderSelection<Block = Self::Block>;
+    type Update: Update;
+
+    type NodeSigningKey;
 
     fn make_block(
-        secret_key: &secure::NodeSecret,
-        public_key: &secure::NodePublic,
+        secret_key: &Self::NodeSigningKey,
+        settings: &Self::Settings,
         ledger: &Self::Ledger,
-        block_date: <Self::Block as property::Block>::Date,
+        block_date: <Self::Block as Block>::Date,
         transactions: Vec<Self::Transaction>,
     ) -> Self::Block;
 }

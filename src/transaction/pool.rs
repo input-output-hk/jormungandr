@@ -1,4 +1,4 @@
-use clock::global::GlobalTime;
+use crate::clock::global::GlobalTime;
 use std::collections::HashMap;
 use std::time::Duration;
 
