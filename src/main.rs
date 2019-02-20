@@ -14,10 +14,10 @@ extern crate structopt;
 
 extern crate cardano;
 extern crate cardano_storage;
+extern crate cbor_event;
 extern crate chain_core;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
-extern crate cbor_event;
 extern crate exe_common;
 extern crate network_core;
 extern crate network_grpc;
