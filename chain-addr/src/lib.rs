@@ -87,6 +87,20 @@ pub enum Error {
     MismatchPrefix,
 }
 
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::EmptyAddress => write!(f, "empty address"),
+            Error::InvalidKind => write!(f, "invalid kind"),
+            Error::InvalidAddress => write!(f, "invalid address"),
+            Error::InvalidInternalEncoding => write!(f, "invalid internal encoding"),
+            Error::InvalidPrefix => write!(f, "invalid prefix"),
+            Error::MismatchPrefix => write!(f, "mismatch prefix"),
+        }
+    }
+}
+impl std::error::Error for Error {}
+
 impl From<redeem::Error> for Error {
     fn from(_: redeem::Error) -> Error {
         Error::InvalidAddress
