@@ -35,7 +35,7 @@ impl Display for Error {
 
 impl std::error::Error for Error {
     fn cause(&self) -> Option<&std::error::Error> {
-        self.0.cause()
+        self.0.source()
     }
 }
 
