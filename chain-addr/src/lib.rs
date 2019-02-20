@@ -267,6 +267,13 @@ impl ToString for AddressReadable {
     }
 }
 
+impl std::str::FromStr for AddressReadable {
+    type Err = Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        AddressReadable::from_string(s)
+    }
+}
+
 impl property::Serialize for Address {
     type Error = std::io::Error;
 
