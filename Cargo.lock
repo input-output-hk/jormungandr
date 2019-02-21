@@ -408,6 +408,8 @@ dependencies = [
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.11.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "network-core 0.1.0-dev",
+ "network-ntt 0.1.0",
  "protocol 0.1.0",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.88 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -415,6 +417,7 @@ dependencies = [
  "serde_json 1.0.38 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "storage-units 0.1.0",
+ "tokio 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -615,6 +618,7 @@ dependencies = [
  "cardano 0.1.1",
  "cardano-storage 0.1.0",
  "cbor_event 2.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chain-addr 0.1.0",
  "chain-core 0.1.0",
  "chain-impl-mockchain 0.1.0",
  "chain-storage 0.1.0",
@@ -807,6 +811,19 @@ dependencies = [
  "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=01defa830fc72cc38aba3b2035558e03eed8da4b)",
  "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
  "tower-util 0.1.0 (git+https://github.com/tower-rs/tower)",
+]
+
+[[package]]
+name = "network-ntt"
+version = "0.1.0"
+dependencies = [
+ "cbor_event 2.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chain-core 0.1.0",
+ "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "network-core 0.1.0-dev",
+ "protocol-tokio 0.1.0",
+ "slog 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
