@@ -1,7 +1,7 @@
+use crate::settings::logging::LogFormat;
 use cardano::hdwallet;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -41,31 +41,6 @@ pub struct GenesisConstants {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BftLeader(pub hdwallet::XPub);
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-/// Format of the logger.
-pub enum LogFormat {
-    Plain,
-    Json,
-}
-
-impl FromStr for LogFormat {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let cleared = s.trim().to_lowercase();
-        if cleared == "plain" {
-            Ok(LogFormat::Plain)
-        } else if cleared == "json" {
-            Ok(LogFormat::Json)
-        } else {
-            let mut msg = "unknown format ".to_string();
-            msg.push_str(&cleared);
-            Err(msg)
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConfigLogSettings {

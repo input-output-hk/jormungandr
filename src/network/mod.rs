@@ -15,7 +15,7 @@ use std::{sync::Arc, time::Duration};
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkBroadcastMsg, TransactionMsg};
-use crate::settings::network::{Configuration, Connection, Listen, Peer, Protocol};
+use crate::settings::start::network::{Configuration, Connection, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
 use chain_core::property;

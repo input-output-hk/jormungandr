@@ -15,6 +15,7 @@ extern crate structopt;
 extern crate cardano;
 extern crate cardano_storage;
 extern crate cbor_event;
+extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
@@ -57,7 +58,7 @@ pub mod state;
 pub mod transaction;
 pub mod utils;
 
-use settings::Settings;
+use settings::Command;
 //use state::State;
 use blockchain::{Blockchain, BlockchainR};
 use futures::sync::mpsc::UnboundedSender;
@@ -95,7 +96,11 @@ fn block_task(
     }
 }
 
-fn startup_info(gd: &GenesisData, blockchain: &Blockchain<Cardano>, settings: &Settings) {
+fn startup_info(
+    gd: &GenesisData,
+    blockchain: &Blockchain<Cardano>,
+    settings: &settings::start::Settings,
+) {
     println!(
         "k={} tip={}",
         gd.epoch_stability_depth,
@@ -108,13 +113,7 @@ fn startup_info(gd: &GenesisData, blockchain: &Blockchain<Cardano>, settings: &S
 // when it becomes necessary to represent different error cases.
 type Error = settings::Error;
 
-fn run() -> Result<(), Error> {
-    // # load parameters & config
-    //
-    // parse the command line arguments, the config files supplied
-    // and setup the initial values
-    let settings = Settings::load()?;
-
+fn start(settings: settings::start::Settings) -> Result<(), Error> {
     settings.log_settings.apply();
 
     let genesis_data = settings.read_genesis_data().unwrap();
@@ -234,7 +233,7 @@ fn run() -> Result<(), Error> {
         });
     };
 
-    if settings.leadership == settings::Leadership::Yes
+    if settings.leadership == settings::start::Leadership::Yes
     //    && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes
     {
         let tpool = tpool.clone();
@@ -258,11 +257,20 @@ fn run() -> Result<(), Error> {
 }
 
 fn main() {
-    match run() {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("jormungandr error: {}", e);
+    let command = match Command::load() {
+        Err(err) => {
+            eprintln!("{}", err);
             std::process::exit(1);
+        }
+        Ok(v) => v,
+    };
+
+    match command {
+        Command::Start(start_settings) => {
+            if let Err(error) = start(start_settings) {
+                eprintln!("jormungandr error: {}", error);
+                std::process::exit(1);
+            }
         }
     }
 }
