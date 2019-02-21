@@ -1,7 +1,7 @@
 //! Generic Genesis data
 
-use std::{error, fmt, io, time};
 use serde_yaml;
+use std::{error, fmt, io, time};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GenesisData {
