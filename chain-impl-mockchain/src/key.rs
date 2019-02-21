@@ -83,6 +83,43 @@ impl Signature {
     }
 }
 
+/// A serializable type T with a signature.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Signed<T> {
+    pub data: T,
+    pub sig: Signature,
+}
+
+impl<T: property::Serialize> property::Serialize for Signed<T>
+where
+    std::io::Error: From<T::Error>,
+{
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        self.data.serialize(&mut codec)?;
+        self.sig.serialize(&mut codec)?;
+        Ok(())
+    }
+}
+
+impl<T: property::Deserialize> property::Deserialize for Signed<T>
+where
+    std::io::Error: From<T::Error>,
+{
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(reader);
+        Ok(Signed {
+            data: T::deserialize(&mut codec)?,
+            sig: Signature::deserialize(&mut codec)?,
+        })
+    }
+}
+
 /// Hash that is used as an address of the various components.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash(hash::Blake2b256);
