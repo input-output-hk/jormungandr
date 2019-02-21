@@ -36,12 +36,14 @@ pub enum ValueDiff<T> {
     Replace(T, T),
 }
 
-impl<T> ValueDiff<T> where T: Eq {
-
+impl<T> ValueDiff<T>
+where
+    T: Eq,
+{
     pub fn check(&self, dest: &T) -> bool {
         match &self {
             ValueDiff::None => true,
-            ValueDiff::Replace(old, _) => dest == old
+            ValueDiff::Replace(old, _) => dest == old,
         }
     }
 

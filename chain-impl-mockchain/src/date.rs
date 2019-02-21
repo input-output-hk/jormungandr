@@ -15,7 +15,10 @@ pub const EPOCH_DURATION: u64 = 100; // FIXME: support dynamic epoch durations?
 
 impl BlockDate {
     pub fn first() -> BlockDate {
-        BlockDate { epoch: 0, slot_id: 0 }
+        BlockDate {
+            epoch: 0,
+            slot_id: 0,
+        }
     }
 
     /// Get the slot following this one.

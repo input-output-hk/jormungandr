@@ -53,22 +53,22 @@ impl property::Deserialize for Certificate {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         match codec.get_u8()? {
-            TAG_STAKE_KEY_REGISTRATION => {
-                Ok(Certificate::StakeKeyRegistration(Signed::deserialize(&mut codec)?))
-            }
-            TAG_STAKE_KEY_DEREGISTRATION => {
-                Ok(Certificate::StakeKeyDeregistration(Signed::deserialize(&mut codec)?))
-            }
-            TAG_STAKE_DELEGATION => {
-                Ok(Certificate::StakeDelegation(Signed::deserialize(&mut codec)?))
-            }
-            TAG_STAKE_POOL_REGISTRATION => {
-                Ok(Certificate::StakePoolRegistration(Signed::deserialize(&mut codec)?))
-            }
-            TAG_STAKE_POOL_RETIREMENT => {
-                Ok(Certificate::StakePoolRetirement(Signed::deserialize(&mut codec)?))
-            }
-            n => panic!("Unrecognized certificate tag {}.", n) // FIXME: return Error
+            TAG_STAKE_KEY_REGISTRATION => Ok(Certificate::StakeKeyRegistration(
+                Signed::deserialize(&mut codec)?,
+            )),
+            TAG_STAKE_KEY_DEREGISTRATION => Ok(Certificate::StakeKeyDeregistration(
+                Signed::deserialize(&mut codec)?,
+            )),
+            TAG_STAKE_DELEGATION => Ok(Certificate::StakeDelegation(Signed::deserialize(
+                &mut codec,
+            )?)),
+            TAG_STAKE_POOL_REGISTRATION => Ok(Certificate::StakePoolRegistration(
+                Signed::deserialize(&mut codec)?,
+            )),
+            TAG_STAKE_POOL_RETIREMENT => Ok(Certificate::StakePoolRetirement(Signed::deserialize(
+                &mut codec,
+            )?)),
+            n => panic!("Unrecognized certificate tag {}.", n), // FIXME: return Error
         }
     }
 }
@@ -79,7 +79,10 @@ pub struct Signed<T> {
     pub sig: Signature,
 }
 
-impl<T: property::Serialize> property::Serialize for Signed<T> where std::io::Error: From<T::Error> {
+impl<T: property::Serialize> property::Serialize for Signed<T>
+where
+    std::io::Error: From<T::Error>,
+{
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
@@ -90,7 +93,10 @@ impl<T: property::Serialize> property::Serialize for Signed<T> where std::io::Er
     }
 }
 
-impl<T: property::Deserialize> property::Deserialize for Signed<T> where std::io::Error: From<T::Error> {
+impl<T: property::Deserialize> property::Deserialize for Signed<T>
+where
+    std::io::Error: From<T::Error>,
+{
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
@@ -112,7 +118,7 @@ impl StakeKeyRegistration {
     pub fn make_certificate(self, stake_private_key: &PrivateKey) -> Certificate {
         Certificate::StakeKeyRegistration(Signed {
             sig: stake_private_key.serialize_and_sign(&self),
-            data: self
+            data: self,
         })
     }
 }
@@ -148,7 +154,7 @@ impl StakeKeyDeregistration {
     pub fn make_certificate(self, stake_private_key: &PrivateKey) -> Certificate {
         Certificate::StakeKeyDeregistration(Signed {
             sig: stake_private_key.serialize_and_sign(&self),
-            data: self
+            data: self,
         })
     }
 }
@@ -187,7 +193,7 @@ impl StakeDelegation {
         // be included in the witness." - why?
         Certificate::StakeDelegation(Signed {
             sig: stake_private_key.serialize_and_sign(&self),
-            data: self
+            data: self,
         })
     }
 }
@@ -230,7 +236,7 @@ impl StakePoolRegistration {
     pub fn make_certificate(self, pool_private_key: &PrivateKey) -> Certificate {
         Certificate::StakePoolRegistration(Signed {
             sig: pool_private_key.serialize_and_sign(&self),
-            data: self
+            data: self,
         })
     }
 }
@@ -271,7 +277,7 @@ impl StakePoolRetirement {
     pub fn make_certificate(self, pool_private_key: &PrivateKey) -> Certificate {
         Certificate::StakePoolRetirement(Signed {
             sig: pool_private_key.serialize_and_sign(&self),
-            data: self
+            data: self,
         })
     }
 }

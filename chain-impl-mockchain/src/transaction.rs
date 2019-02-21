@@ -1,7 +1,7 @@
+use super::certificate::Certificate;
 use crate::key::*;
 use chain_addr::Address;
 use chain_core::property;
-use super::certificate::{Certificate};
 
 /// Unspent transaction value.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

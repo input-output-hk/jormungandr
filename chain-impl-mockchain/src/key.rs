@@ -22,7 +22,11 @@ impl PublicKey {
     }
 
     /// Convenience function to verify a serialize object.
-    pub fn serialize_and_verify<T: property::Serialize>(&self, t: &T, signature: &Signature) -> bool {
+    pub fn serialize_and_verify<T: property::Serialize>(
+        &self,
+        t: &T,
+        signature: &Signature,
+    ) -> bool {
         let mut codec = chain_core::packer::Codec::from(vec![]);
         t.serialize(&mut codec).unwrap();
         self.verify(&codec.into_inner(), signature)
