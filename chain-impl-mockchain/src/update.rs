@@ -79,27 +79,28 @@ pub struct LeaderSelectionDiff {
 }
 
 impl<T: PartialEq> ValueDiff<T> {
-    fn inverse(self) -> Self {
+    pub fn inverse(self) -> Self {
         match self {
             ValueDiff::None => ValueDiff::None,
             ValueDiff::Replace(a, b) => ValueDiff::Replace(b, a),
         }
     }
 
-    fn union(&mut self, other: Self) -> &mut Self {
+    pub fn union(&mut self, other: Self) -> &mut Self {
         match (std::mem::replace(self, ValueDiff::None), other) {
             (ValueDiff::None, ValueDiff::None) => {}
             (ValueDiff::None, ValueDiff::Replace(c, d)) => {
-                std::mem::replace(self, ValueDiff::Replace(c, d));
+                *self = ValueDiff::Replace(c, d);
             }
             (ValueDiff::Replace(a, b), ValueDiff::None) => {
-                std::mem::replace(self, ValueDiff::Replace(a, b));
+                *self = ValueDiff::Replace(a, b);
             }
             (ValueDiff::Replace(a, _b), ValueDiff::Replace(_c, d)) => {
+                //assert!(b == c); // FIXME
                 if a == d {
-                    std::mem::replace(self, ValueDiff::None);
+                    *self = ValueDiff::None;
                 } else {
-                    std::mem::replace(self, ValueDiff::Replace(a, d));
+                    *self = ValueDiff::Replace(a, d);
                 }
             }
         }
