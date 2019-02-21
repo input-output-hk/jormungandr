@@ -1,6 +1,7 @@
 use crate::key::*;
 use chain_addr::Address;
 use chain_core::property;
+use super::certificate::{Certificate};
 
 /// Unspent transaction value.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -64,6 +65,7 @@ pub type TransactionId = Hash;
 pub struct Transaction {
     pub inputs: Vec<UtxoPointer>,
     pub outputs: Vec<Output>,
+    pub certificates: Vec<Certificate>,
 }
 
 /// Each transaction must be signed in order to be executed
@@ -82,6 +84,7 @@ impl property::Serialize for Value {
         codec.put_u64(self.0)
     }
 }
+
 impl property::Serialize for Witness {
     type Error = std::io::Error;
 
@@ -89,6 +92,7 @@ impl property::Serialize for Witness {
         self.0.serialize(writer)
     }
 }
+
 impl property::Serialize for Transaction {
     type Error = std::io::Error;
 
@@ -100,6 +104,7 @@ impl property::Serialize for Transaction {
         // store the number of inputs and outputs
         codec.put_u8(self.inputs.len() as u8)?;
         codec.put_u8(self.outputs.len() as u8)?;
+        codec.put_u8(self.certificates.len() as u8)?;
 
         for input in self.inputs.iter() {
             input.transaction_id.serialize(&mut codec)?;
@@ -109,6 +114,9 @@ impl property::Serialize for Transaction {
         for output in self.outputs.iter() {
             output.0.serialize(&mut codec)?;
             output.1.serialize(&mut codec)?;
+        }
+        for action in self.certificates.iter() {
+            action.serialize(&mut codec)?;
         }
         Ok(())
     }
@@ -143,6 +151,7 @@ impl property::Deserialize for Value {
         codec.get_u64().map(Value)
     }
 }
+
 impl property::Deserialize for Witness {
     type Error = std::io::Error;
 
@@ -150,6 +159,7 @@ impl property::Deserialize for Witness {
         Signature::deserialize(reader).map(Witness)
     }
 }
+
 impl property::Deserialize for Transaction {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
@@ -159,10 +169,12 @@ impl property::Deserialize for Transaction {
 
         let num_inputs = codec.get_u8()? as usize;
         let num_outputs = codec.get_u8()? as usize;
+        let num_certificates = codec.get_u8()? as usize;
 
         let mut transaction = Transaction {
             inputs: Vec::with_capacity(num_inputs),
             outputs: Vec::with_capacity(num_outputs),
+            certificates: Vec::with_capacity(num_certificates),
         };
 
         for _ in 0..num_inputs {
@@ -180,6 +192,11 @@ impl property::Deserialize for Transaction {
             let address = Address::deserialize(&mut codec)?;
             let value = Value::deserialize(&mut codec)?;
             transaction.outputs.push(Output(address, value));
+        }
+
+        for _ in 0..num_certificates {
+            let action = Certificate::deserialize(&mut codec)?;
+            transaction.certificates.push(action);
         }
 
         Ok(transaction)
@@ -348,12 +365,16 @@ mod test {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let num_inputs = u8::arbitrary(g) as usize;
             let num_outputs = u8::arbitrary(g) as usize;
+            let num_certificates = u8::arbitrary(g) as usize;
             Transaction {
                 inputs: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(num_inputs)
                     .collect(),
                 outputs: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(num_outputs)
+                    .collect(),
+                certificates: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(num_certificates)
                     .collect(),
             }
         }

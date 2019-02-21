@@ -12,6 +12,7 @@ pub mod key;
 pub mod leadership;
 pub mod ledger;
 pub mod setting;
+pub mod certificate;
 pub mod transaction;
 pub mod update;
 

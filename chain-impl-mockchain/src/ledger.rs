@@ -45,6 +45,9 @@ impl property::Ledger for Ledger {
 
         let mut diff = <Self::Update as property::Update>::empty();
         let id = transaction.id();
+
+        // FIXME: check that inputs is non-empty?
+
         // 0. verify that number of signatures matches number of
         // transactions
         if transaction.transaction.inputs.len() > transaction.witnesses.len() {
@@ -117,7 +120,7 @@ impl property::Ledger for Ledger {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
 
     use super::*;
     use crate::key::PrivateKey;
@@ -133,7 +136,7 @@ mod test {
         }
     }
 
-    fn make_key(u: u8) -> (PrivateKey, Address) {
+    pub fn make_key(u: u8) -> (PrivateKey, Address) {
         let sk1 = PrivateKey::normalize_bytes([u; crypto::PRIVATEKEY_SIZE]);
         let pk1 = sk1.public();
         let user_address = Address(Discrimination::Production, Kind::Single(pk1.0));
@@ -160,6 +163,7 @@ mod test {
         let tx = Transaction {
             inputs: vec![utxo0],
             outputs: vec![Output(user1_address, Value(1))],
+            certificates: vec![],
         };
         let signed_tx = SignedTransaction {
             transaction: tx,
@@ -193,6 +197,7 @@ mod test {
         let tx = crate::transaction::Transaction {
             inputs: vec![utxo0],
             outputs: vec![output0.clone()],
+            certificates: vec![],
         };
         let (pk1, _) = make_key(1);
         let witness = Witness::new(&tx.id(), &pk1);
@@ -228,6 +233,7 @@ mod test {
         let tx = crate::transaction::Transaction {
             inputs: vec![utxo0],
             outputs: vec![output0],
+            certificates: vec![],
         };
         let witness = Witness::new(&tx.id(), &pk1);
         let signed_tx = SignedTransaction {
@@ -239,4 +245,6 @@ mod test {
             ledger.diff_transaction(&signed_tx)
         )
     }
+
+    // FIXME: add certificate tests
 }
