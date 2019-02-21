@@ -5,13 +5,15 @@ use chain_core::property;
 pub enum Certificate {
     StakeKeyRegistration(Signed<StakeKeyRegistration>),
     StakeKeyDeregistration(Signed<StakeKeyDeregistration>),
+    StakeDelegation(Signed<StakeDelegation>),
     StakePoolRegistration(Signed<StakePoolRegistration>),
     StakePoolRetirement(Signed<StakePoolRetirement>),
 }
 
 pub const TAG_STAKE_KEY_REGISTRATION: u8 = 1;
 pub const TAG_STAKE_KEY_DEREGISTRATION: u8 = 2;
-pub const TAG_STAKE_POOL_REGISTRATION: u8 = 3;
+pub const TAG_STAKE_DELEGATION: u8 = 3;
+pub const TAG_STAKE_POOL_REGISTRATION: u8 = 4;
 pub const TAG_STAKE_POOL_RETIREMENT: u8 = 5;
 
 impl property::Serialize for Certificate {
@@ -26,6 +28,10 @@ impl property::Serialize for Certificate {
             }
             Certificate::StakeKeyDeregistration(signed) => {
                 codec.put_u8(TAG_STAKE_KEY_DEREGISTRATION)?;
+                signed.serialize(&mut codec)
+            }
+            Certificate::StakeDelegation(signed) => {
+                codec.put_u8(TAG_STAKE_DELEGATION)?;
                 signed.serialize(&mut codec)
             }
             Certificate::StakePoolRegistration(signed) => {
@@ -52,6 +58,9 @@ impl property::Deserialize for Certificate {
             }
             TAG_STAKE_KEY_DEREGISTRATION => {
                 Ok(Certificate::StakeKeyDeregistration(Signed::deserialize(&mut codec)?))
+            }
+            TAG_STAKE_DELEGATION => {
+                Ok(Certificate::StakeDelegation(Signed::deserialize(&mut codec)?))
             }
             TAG_STAKE_POOL_REGISTRATION => {
                 Ok(Certificate::StakePoolRegistration(Signed::deserialize(&mut codec)?))
@@ -87,11 +96,9 @@ impl<T: property::Deserialize> property::Deserialize for Signed<T> where std::io
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
-        let data = T::deserialize(&mut codec)?;
-        let sig = Signature::deserialize(&mut codec)?;
         Ok(Signed {
-            data,
-            sig,
+            data: T::deserialize(&mut codec)?,
+            sig: Signature::deserialize(&mut codec)?,
         })
     }
 }
@@ -102,9 +109,9 @@ pub struct StakeKeyRegistration {
 }
 
 impl StakeKeyRegistration {
-    pub fn make_certificate(self, private_stake_key: &PrivateKey) -> Certificate {
+    pub fn make_certificate(self, stake_private_key: &PrivateKey) -> Certificate {
         Certificate::StakeKeyRegistration(Signed {
-            sig: private_stake_key.serialize_and_sign(&self),
+            sig: stake_private_key.serialize_and_sign(&self),
             data: self
         })
     }
@@ -126,9 +133,8 @@ impl property::Deserialize for StakeKeyRegistration {
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
-        let stake_public_key = PublicKey::deserialize(&mut codec)?;
         Ok(StakeKeyRegistration {
-            stake_public_key,
+            stake_public_key: PublicKey::deserialize(&mut codec)?,
         })
     }
 }
@@ -139,9 +145,9 @@ pub struct StakeKeyDeregistration {
 }
 
 impl StakeKeyDeregistration {
-    pub fn make_certificate(self, private_stake_key: &PrivateKey) -> Certificate {
+    pub fn make_certificate(self, stake_private_key: &PrivateKey) -> Certificate {
         Certificate::StakeKeyDeregistration(Signed {
-            sig: private_stake_key.serialize_and_sign(&self),
+            sig: stake_private_key.serialize_and_sign(&self),
             data: self
         })
     }
@@ -163,9 +169,49 @@ impl property::Deserialize for StakeKeyDeregistration {
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
-        let stake_public_key = PublicKey::deserialize(&mut codec)?;
         Ok(StakeKeyDeregistration {
-            stake_public_key,
+            stake_public_key: PublicKey::deserialize(&mut codec)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StakeDelegation {
+    pub stake_public_key: PublicKey,
+    pub pool_public_key: PublicKey,
+}
+
+impl StakeDelegation {
+    pub fn make_certificate(self, stake_private_key: &PrivateKey) -> Certificate {
+        // FIXME: "It must be signed by sks_source, and that key must
+        // be included in the witness." - why?
+        Certificate::StakeDelegation(Signed {
+            sig: stake_private_key.serialize_and_sign(&self),
+            data: self
+        })
+    }
+}
+
+impl property::Serialize for StakeDelegation {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        self.stake_public_key.serialize(&mut codec)?;
+        self.pool_public_key.serialize(&mut codec)?;
+        Ok(())
+    }
+}
+
+impl property::Deserialize for StakeDelegation {
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(reader);
+        Ok(StakeDelegation {
+            stake_public_key: PublicKey::deserialize(&mut codec)?,
+            pool_public_key: PublicKey::deserialize(&mut codec)?,
         })
     }
 }
@@ -206,11 +252,9 @@ impl property::Deserialize for StakePoolRegistration {
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
-        let pool_public_key = PublicKey::deserialize(&mut codec)?;
-        //let owner = PublicKey::deserialize(&mut codec)?;
         Ok(StakePoolRegistration {
-            pool_public_key,
-            //owner,
+            pool_public_key: PublicKey::deserialize(&mut codec)?,
+            // owner: PublicKey::deserialize(&mut codec)?,
         })
     }
 }
@@ -248,9 +292,8 @@ impl property::Deserialize for StakePoolRetirement {
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
-        let pool_public_key = PublicKey::deserialize(&mut codec)?;
         Ok(StakePoolRetirement {
-            pool_public_key,
+            pool_public_key: PublicKey::deserialize(&mut codec)?,
         })
     }
 }
