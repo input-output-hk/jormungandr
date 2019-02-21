@@ -16,8 +16,16 @@ impl PublicKey {
     pub fn from_bytes(bytes: [u8; crypto::PUBLICKEY_SIZE]) -> Self {
         PublicKey(crypto::PublicKey::from_bytes(bytes))
     }
+
     pub fn from_hex(string: &str) -> Result<Self, cardano::redeem::Error> {
         Ok(PublicKey(crypto::PublicKey::from_hex(string)?))
+    }
+
+    /// Convenience function to verify a serialize object.
+    pub fn serialize_and_verify<T: property::Serialize>(&self, t: &T, signature: &Signature) -> bool {
+        let mut codec = chain_core::packer::Codec::from(vec![]);
+        t.serialize(&mut codec).unwrap();
+        self.verify(&codec.into_inner(), signature)
     }
 }
 
@@ -34,8 +42,16 @@ impl PrivateKey {
     pub fn normalize_bytes(xprv: [u8; crypto::PRIVATEKEY_SIZE]) -> Self {
         PrivateKey(crypto::PrivateKey::normalize_bytes(xprv))
     }
+
     pub fn from_hex(input: &str) -> Result<Self, cardano::redeem::Error> {
         Ok(PrivateKey(crypto::PrivateKey::from_hex(&input)?))
+    }
+
+    /// Convenience function to sign a serialize object.
+    pub fn serialize_and_sign<T: property::Serialize>(&self, t: &T) -> Signature {
+        let mut codec = chain_core::packer::Codec::from(vec![]);
+        t.serialize(&mut codec).unwrap();
+        self.sign(&codec.into_inner())
     }
 }
 
