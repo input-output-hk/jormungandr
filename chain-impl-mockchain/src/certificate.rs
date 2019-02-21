@@ -3,13 +3,14 @@ use chain_core::property;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Certificate {
-    StakeKeyRegistration(SignedStakeKeyRegistration),
-    //StakeKeyDeregistration(...),
-    StakePoolRegistration(SignedStakePoolRegistration),
-    StakePoolRetirement(SignedStakePoolRetirement),
+    StakeKeyRegistration(Signed<StakeKeyRegistration>),
+    StakeKeyDeregistration(Signed<StakeKeyDeregistration>),
+    StakePoolRegistration(Signed<StakePoolRegistration>),
+    StakePoolRetirement(Signed<StakePoolRetirement>),
 }
 
 pub const TAG_STAKE_KEY_REGISTRATION: u8 = 1;
+pub const TAG_STAKE_KEY_DEREGISTRATION: u8 = 2;
 pub const TAG_STAKE_POOL_REGISTRATION: u8 = 3;
 pub const TAG_STAKE_POOL_RETIREMENT: u8 = 5;
 
@@ -19,17 +20,21 @@ impl property::Serialize for Certificate {
         use chain_core::packer::*;
         let mut codec = Codec::from(writer);
         match self {
-            Certificate::StakeKeyRegistration(signed_reg) => {
+            Certificate::StakeKeyRegistration(signed) => {
                 codec.put_u8(TAG_STAKE_KEY_REGISTRATION)?;
-                signed_reg.serialize(&mut codec)
+                signed.serialize(&mut codec)
             }
-            Certificate::StakePoolRegistration(signed_reg) => {
+            Certificate::StakeKeyDeregistration(signed) => {
+                codec.put_u8(TAG_STAKE_KEY_DEREGISTRATION)?;
+                signed.serialize(&mut codec)
+            }
+            Certificate::StakePoolRegistration(signed) => {
                 codec.put_u8(TAG_STAKE_POOL_REGISTRATION)?;
-                signed_reg.serialize(&mut codec)
+                signed.serialize(&mut codec)
             }
-            Certificate::StakePoolRetirement(signed_ret) => {
+            Certificate::StakePoolRetirement(signed) => {
                 codec.put_u8(TAG_STAKE_POOL_RETIREMENT)?;
-                signed_ret.serialize(&mut codec)
+                signed.serialize(&mut codec)
             }
         }
     }
@@ -42,8 +47,17 @@ impl property::Deserialize for Certificate {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         match codec.get_u8()? {
+            TAG_STAKE_KEY_REGISTRATION => {
+                Ok(Certificate::StakeKeyRegistration(Signed::deserialize(&mut codec)?))
+            }
+            TAG_STAKE_KEY_DEREGISTRATION => {
+                Ok(Certificate::StakeKeyDeregistration(Signed::deserialize(&mut codec)?))
+            }
             TAG_STAKE_POOL_REGISTRATION => {
-                Ok(Certificate::StakePoolRegistration(SignedStakePoolRegistration::deserialize(&mut codec)?))
+                Ok(Certificate::StakePoolRegistration(Signed::deserialize(&mut codec)?))
+            }
+            TAG_STAKE_POOL_RETIREMENT => {
+                Ok(Certificate::StakePoolRetirement(Signed::deserialize(&mut codec)?))
             }
             n => panic!("Unrecognized certificate tag {}.", n) // FIXME: return Error
         }
@@ -51,12 +65,12 @@ impl property::Deserialize for Certificate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SignedStakeKeyRegistration {
-    pub data: StakeKeyRegistration,
+pub struct Signed<T> {
+    pub data: T,
     pub sig: Signature,
 }
 
-impl property::Serialize for SignedStakeKeyRegistration {
+impl<T: property::Serialize> property::Serialize for Signed<T> where std::io::Error: From<T::Error> {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
@@ -67,15 +81,15 @@ impl property::Serialize for SignedStakeKeyRegistration {
     }
 }
 
-impl property::Deserialize for SignedStakeKeyRegistration {
+impl<T: property::Deserialize> property::Deserialize for Signed<T> where std::io::Error: From<T::Error> {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
-        let data = StakeKeyRegistration::deserialize(&mut codec)?;
+        let data = T::deserialize(&mut codec)?;
         let sig = Signature::deserialize(&mut codec)?;
-        Ok(SignedStakeKeyRegistration {
+        Ok(Signed {
             data,
             sig,
         })
@@ -89,7 +103,7 @@ pub struct StakeKeyRegistration {
 
 impl StakeKeyRegistration {
     pub fn make_certificate(self, private_stake_key: &PrivateKey) -> Certificate {
-        Certificate::StakeKeyRegistration(SignedStakeKeyRegistration {
+        Certificate::StakeKeyRegistration(Signed {
             sig: private_stake_key.serialize_and_sign(&self),
             data: self
         })
@@ -120,37 +134,38 @@ impl property::Deserialize for StakeKeyRegistration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SignedStakePoolRegistration {
-    pub data: StakePoolRegistration,
-    //pub owner_sig: Signature,
-    pub pool_sig: Signature,
+pub struct StakeKeyDeregistration {
+    pub stake_public_key: PublicKey,
 }
 
-impl property::Serialize for SignedStakePoolRegistration {
+impl StakeKeyDeregistration {
+    pub fn make_certificate(self, private_stake_key: &PrivateKey) -> Certificate {
+        Certificate::StakeKeyDeregistration(Signed {
+            sig: private_stake_key.serialize_and_sign(&self),
+            data: self
+        })
+    }
+}
+
+impl property::Serialize for StakeKeyDeregistration {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(writer);
-        self.data.serialize(&mut codec)?;
-        //self.owner_sig.serialize(&mut codec)?;
-        self.pool_sig.serialize(&mut codec)?;
+        self.stake_public_key.serialize(&mut codec)?;
         Ok(())
     }
 }
 
-impl property::Deserialize for SignedStakePoolRegistration {
+impl property::Deserialize for StakeKeyDeregistration {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
-        let data = StakePoolRegistration::deserialize(&mut codec)?;
-        //let owner_sig = Signature::deserialize(&mut codec)?;
-        let pool_sig = Signature::deserialize(&mut codec)?;
-        Ok(SignedStakePoolRegistration {
-            data,
-            //owner_sig,
-            pool_sig,
+        let stake_public_key = PublicKey::deserialize(&mut codec)?;
+        Ok(StakeKeyDeregistration {
+            stake_public_key,
         })
     }
 }
@@ -167,8 +182,8 @@ impl StakePoolRegistration {
     /// Create a certificate for this stake pool registration, signed
     /// by the pool's staking key and the owners.
     pub fn make_certificate(self, pool_private_key: &PrivateKey) -> Certificate {
-        Certificate::StakePoolRegistration(SignedStakePoolRegistration {
-            pool_sig: pool_private_key.serialize_and_sign(&self),
+        Certificate::StakePoolRegistration(Signed {
+            sig: pool_private_key.serialize_and_sign(&self),
             data: self
         })
     }
@@ -201,38 +216,6 @@ impl property::Deserialize for StakePoolRegistration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SignedStakePoolRetirement {
-    pub data: StakePoolRetirement,
-    pub pool_sig: Signature,
-}
-
-impl property::Serialize for SignedStakePoolRetirement {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
-        self.data.serialize(&mut codec)?;
-        self.pool_sig.serialize(&mut codec)?;
-        Ok(())
-    }
-}
-
-impl property::Deserialize for SignedStakePoolRetirement {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
-        let data = StakePoolRetirement::deserialize(&mut codec)?;
-        let pool_sig = Signature::deserialize(&mut codec)?;
-        Ok(SignedStakePoolRetirement {
-            data,
-            pool_sig,
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolRetirement {
     pub pool_public_key: PublicKey,
     // TODO: add epoch when the retirement will take effect
@@ -242,8 +225,8 @@ impl StakePoolRetirement {
     /// Create a certificate for this stake pool retirement, signed
     /// by the pool's staking key.
     pub fn make_certificate(self, pool_private_key: &PrivateKey) -> Certificate {
-        Certificate::StakePoolRetirement(SignedStakePoolRetirement {
-            pool_sig: pool_private_key.serialize_and_sign(&self),
+        Certificate::StakePoolRetirement(Signed {
+            sig: pool_private_key.serialize_and_sign(&self),
             data: self
         })
     }
@@ -283,6 +266,31 @@ mod test {
         }
     }
 
+    impl<T: Arbitrary> Arbitrary for Signed<T> {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Signed {
+                data: Arbitrary::arbitrary(g),
+                sig: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for StakeKeyRegistration {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            StakeKeyRegistration {
+                stake_public_key: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for StakeKeyDeregistration {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            StakeKeyDeregistration {
+                stake_public_key: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
     impl Arbitrary for StakePoolRegistration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             StakePoolRegistration {
@@ -292,29 +300,10 @@ mod test {
         }
     }
 
-    impl Arbitrary for SignedStakePoolRegistration {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            SignedStakePoolRegistration {
-                data: Arbitrary::arbitrary(g),
-                //owner_sig: Arbitrary::arbitrary(g),
-                pool_sig: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-
     impl Arbitrary for StakePoolRetirement {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             StakePoolRetirement {
                 pool_public_key: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-
-    impl Arbitrary for SignedStakePoolRetirement {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            SignedStakePoolRetirement {
-                data: Arbitrary::arbitrary(g),
-                pool_sig: Arbitrary::arbitrary(g),
             }
         }
     }

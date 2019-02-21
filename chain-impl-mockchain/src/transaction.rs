@@ -131,6 +131,8 @@ impl property::Serialize for SignedTransaction {
         let mut codec = Codec::from(writer);
         codec.put_u8(0x01)?;
 
+        assert_eq!(self.transaction.inputs.len(), self.witnesses.len());
+
         // encode the transaction body
         self.transaction.serialize(&mut codec)?;
 
