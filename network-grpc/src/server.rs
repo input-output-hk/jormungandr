@@ -24,7 +24,6 @@ pub struct Server<T, E>
 where
     T: Node,
     T::BlockService: Clone,
-    T::HeaderService: Clone,
     T::TransactionService: Clone,
 {
     h2: tower_h2::Server<
@@ -40,7 +39,6 @@ where
     S: AsyncRead + AsyncWrite,
     T: Node,
     T::BlockService: Clone,
-    T::HeaderService: Clone,
     T::TransactionService: Clone,
 {
     h2: tower_h2::server::Connection<
@@ -57,7 +55,6 @@ where
     S: AsyncRead + AsyncWrite,
     T: Node + 'static,
     T::BlockService: Clone,
-    T::HeaderService: Clone,
     T::TransactionService: Clone,
     E: Executor<
         tower_h2::server::Background<
@@ -77,7 +74,6 @@ impl<T, E> Server<T, E>
 where
     T: Node + 'static,
     T::BlockService: Clone,
-    T::HeaderService: Clone,
     T::TransactionService: Clone,
     E: Executor<
             tower_h2::server::Background<
@@ -151,7 +147,6 @@ impl<T> From<H2Error<T>> for Error
 where
     T: Node,
     T::BlockService: Clone,
-    T::HeaderService: Clone,
     T::TransactionService: Clone,
 {
     fn from(err: H2Error<T>) -> Self {
