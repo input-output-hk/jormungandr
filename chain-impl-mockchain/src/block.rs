@@ -14,7 +14,7 @@ pub struct Block {
     pub slot_id: BlockDate,
     pub parent_hash: Hash,
 
-    pub messages: Vec<Message>,
+    pub contents: Vec<Message>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -159,8 +159,8 @@ impl property::Serialize for Block {
         codec.put_u64(self.slot_id.epoch)?;
         codec.put_u64(self.slot_id.slot_id)?;
         codec.write_all(self.parent_hash.as_ref())?;
-        codec.put_u16(self.messages.len() as u16)?;
-        for t in self.messages.iter() {
+        codec.put_u16(self.contents.len() as u16)?;
+        for t in self.contents.iter() {
             t.serialize(&mut codec)?;
         }
 
@@ -228,11 +228,11 @@ impl property::Deserialize for Block {
         let mut block = Block {
             slot_id: date,
             parent_hash: hash,
-            messages: Vec::with_capacity(num_messages),
+            contents: Vec::with_capacity(num_messages),
         };
         for _ in 0..num_messages {
             block
-                .messages
+                .contents
                 .push(Message::deserialize(&mut codec)?);
         }
 
@@ -290,7 +290,7 @@ impl property::Deserialize for SignedBlockSummary {
 impl property::HasTransaction for Block {
     type Transaction = SignedTransaction;
     fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
-        Box::new(self.messages.iter().filter_map(|msg| match msg {
+        Box::new(self.contents.iter().filter_map(|msg| match msg {
             Message::Transaction(tx) => Some(tx),
             _ => None
         }))
@@ -424,7 +424,7 @@ mod test {
             Block {
                 slot_id: Arbitrary::arbitrary(g),
                 parent_hash: Arbitrary::arbitrary(g),
-                messages: Arbitrary::arbitrary(g),
+                contents: Arbitrary::arbitrary(g),
             }
         }
     }
