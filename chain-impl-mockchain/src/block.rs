@@ -1,7 +1,7 @@
 //! Representation of the block in the mockchain.
+use crate::certificate;
 use crate::key::{Hash, PrivateKey, PublicKey, Signature, Signed};
 use crate::transaction::*;
-use crate::certificate;
 use chain_core::property;
 
 pub use crate::date::{BlockDate, BlockDateParseError};
@@ -231,9 +231,7 @@ impl property::Deserialize for Block {
             contents: Vec::with_capacity(num_messages),
         };
         for _ in 0..num_messages {
-            block
-                .contents
-                .push(Message::deserialize(&mut codec)?);
+            block.contents.push(Message::deserialize(&mut codec)?);
         }
 
         Ok(block)
@@ -292,7 +290,7 @@ impl property::HasTransaction for Block {
     fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
         Box::new(self.contents.iter().filter_map(|msg| match msg {
             Message::Transaction(tx) => Some(tx),
-            _ => None
+            _ => None,
         }))
     }
 }
@@ -352,21 +350,19 @@ impl property::Deserialize for Message {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         match codec.get_u8()? {
-            TAG_TRANSACTION => Ok(Message::Transaction(
-                SignedTransaction::deserialize(&mut codec)?,
-            )),
-            TAG_STAKE_KEY_REGISTRATION => Ok(Message::StakeKeyRegistration(
-                Signed::deserialize(&mut codec)?,
-            )),
+            TAG_TRANSACTION => Ok(Message::Transaction(SignedTransaction::deserialize(
+                &mut codec,
+            )?)),
+            TAG_STAKE_KEY_REGISTRATION => Ok(Message::StakeKeyRegistration(Signed::deserialize(
+                &mut codec,
+            )?)),
             TAG_STAKE_KEY_DEREGISTRATION => Ok(Message::StakeKeyDeregistration(
                 Signed::deserialize(&mut codec)?,
             )),
-            TAG_STAKE_DELEGATION => Ok(Message::StakeDelegation(Signed::deserialize(
+            TAG_STAKE_DELEGATION => Ok(Message::StakeDelegation(Signed::deserialize(&mut codec)?)),
+            TAG_STAKE_POOL_REGISTRATION => Ok(Message::StakePoolRegistration(Signed::deserialize(
                 &mut codec,
             )?)),
-            TAG_STAKE_POOL_REGISTRATION => Ok(Message::StakePoolRegistration(
-                Signed::deserialize(&mut codec)?,
-            )),
             TAG_STAKE_POOL_RETIREMENT => Ok(Message::StakePoolRetirement(Signed::deserialize(
                 &mut codec,
             )?)),

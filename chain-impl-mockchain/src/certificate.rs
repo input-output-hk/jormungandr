@@ -1,5 +1,5 @@
-use crate::key::*;
 use crate::block::Message;
+use crate::key::*;
 use chain_core::property;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
