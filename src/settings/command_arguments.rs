@@ -65,6 +65,13 @@ pub struct InitArguments {
     /// set the address that will have all the initial funds associated to it.
     /// This is the wallet that will serve as faucet on testnets and as initial
     /// coin wallet for mainnets
+    ///
+    /// You will need to create an address (s) (make sure to save the
+    /// spending key securely) and then you can add initial-utxos:
+    ///
+    /// ```text
+    /// jormundandr --initial-utxos=ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s@999999999
+    /// ```
     #[structopt(long = "initial-utxos", parse(try_from_str = "parse_initial_utxo"))]
     pub initial_utxos: Vec<InitialUTxO>,
 
@@ -107,7 +114,7 @@ pub enum Command {
     #[structopt(name = "start")]
     Start(StartArguments),
 
-    /// initialize a configuration
+    /// initialize a new genesis configuration file
     #[structopt(name = "init")]
     Init(InitArguments),
 }
