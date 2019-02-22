@@ -1,7 +1,10 @@
 use chain_addr::AddressReadable;
+use chain_impl_mockchain::transaction::Value;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
+
+use crate::blockcfg::genesis_data::InitialUTxO;
 
 use crate::settings::logging::LogFormat;
 
@@ -62,8 +65,8 @@ pub struct InitArguments {
     /// set the address that will have all the initial funds associated to it.
     /// This is the wallet that will serve as faucet on testnets and as initial
     /// coin wallet for mainnets
-    #[structopt(long = "initial-address", parse(try_from_str))]
-    pub initial_address: AddressReadable,
+    #[structopt(long = "initial-utxos", parse(try_from_str = "parse_initial_utxo"))]
+    pub initial_utxos: Vec<InitialUTxO>,
 
     /// set the time between the creation of 2 blocks. Value is a positive integer to
     /// be in seconds.
@@ -109,11 +112,6 @@ pub enum Command {
     Init(InitArguments),
 }
 
-fn parse_duration(s: &str) -> Result<std::time::Duration, std::num::ParseIntError> {
-    let time_seconds = s.parse::<u64>()?;
-    Ok(std::time::Duration::new(time_seconds, 0))
-}
-
 impl CommandLine {
     /// load the command arguments from the command line args
     ///
@@ -124,4 +122,33 @@ impl CommandLine {
     pub fn load() -> Self {
         Self::from_args()
     }
+}
+
+fn parse_duration(s: &str) -> Result<std::time::Duration, std::num::ParseIntError> {
+    let time_seconds = s.parse::<u64>()?;
+    Ok(std::time::Duration::new(time_seconds, 0))
+}
+
+fn parse_initial_utxo(s: &str) -> Result<InitialUTxO, String> {
+    use std::str::FromStr;
+
+    let value: Vec<_> = s.split("@").collect();
+    if value.len() != 2 {
+        return Err(format!("Expecting initial UTxO format: <address>@<value>"));
+    }
+
+    let address = match AddressReadable::from_str(&value[0]) {
+        Err(error) => return Err(format!("Invalid initial UTxO's address: {}", error)),
+        Ok(address) => address,
+    };
+
+    let value = match value[1].parse::<u64>() {
+        Err(error) => return Err(format!("Invalid initial UTxO's value: {}", error)),
+        Ok(v) => Value(v),
+    };
+
+    Ok(InitialUTxO {
+        address: address,
+        value: value,
+    })
 }
