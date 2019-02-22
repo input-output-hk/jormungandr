@@ -11,6 +11,7 @@ use tokio::io;
 use tokio::prelude::*;
 use tower_grpc::{BoxBody, Request, Streaming};
 use tower_h2::client::{Background, Connect, ConnectError, Connection};
+use tower_service::Service;
 use tower_util::MakeService;
 
 use std::{
@@ -81,7 +82,7 @@ where
 {
     pub fn connect<P>(peer: P, executor: E) -> impl Future<Item = Self, Error = Error>
     where
-        P: tokio_connect::Connect<Connected = S, Error = io::Error> + 'static,
+        P: Service<(), Response = S, Error = io::Error> + 'static,
     {
         let mut make_client = Connect::new(peer, Default::default(), executor);
         make_client

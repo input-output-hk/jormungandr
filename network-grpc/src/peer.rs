@@ -1,6 +1,8 @@
+use futures::Poll;
 use tokio::net::tcp::{self, TcpStream};
 #[cfg(unix)]
 use tokio::net::unix::{self, UnixStream};
+use tower_service::Service;
 
 use std::{io, net::SocketAddr};
 
@@ -43,23 +45,31 @@ impl UnixPeer {
     }
 }
 
-impl tokio_connect::Connect for TcpPeer {
-    type Connected = TcpStream;
+impl Service<()> for TcpPeer {
+    type Response = TcpStream;
     type Error = io::Error;
     type Future = tcp::ConnectFuture;
 
-    fn connect(&self) -> tcp::ConnectFuture {
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        Ok(().into())
+    }
+
+    fn call(&mut self, _: ()) -> Self::Future {
         TcpStream::connect(self.addr())
     }
 }
 
 #[cfg(unix)]
-impl tokio_connect::Connect for UnixPeer {
-    type Connected = UnixStream;
+impl Service<()> for UnixPeer {
+    type Response = UnixStream;
     type Error = io::Error;
     type Future = unix::ConnectFuture;
 
-    fn connect(&self) -> unix::ConnectFuture {
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        Ok(().into())
+    }
+
+    fn call(&mut self, _: ()) -> Self::Future {
         UnixStream::connect(self.path())
     }
 }
