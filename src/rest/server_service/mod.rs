@@ -3,8 +3,10 @@
 
 mod error;
 mod server_service;
+mod server_service_builder;
 
 pub use self::error::Error;
 pub use self::server_service::ServerService;
+pub use self::server_service_builder::ServerServiceBuilder;
 
 pub type ServerResult<T> = Result<T, Error>;

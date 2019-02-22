@@ -18,7 +18,9 @@ pub fn start_rest_server(config: &Rest, state: ServerState) -> Result<ServerServ
                 scope.resource("/node-info", |r| r.get().with(node_info_v1))
             })
     };
-    ServerService::start(&config.pkcs12, config.listen.clone(), handler)
+    ServerService::builder(&config.pkcs12, config.listen.clone())
+        .add_handler(handler)
+        .build()
         .map_err(|e| SettingsError::Start(ConfigError::InvalidRest(e)))
 }
 

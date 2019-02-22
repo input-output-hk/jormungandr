@@ -4,7 +4,7 @@ use actix_web::server;
 use actix_web::server::{IntoHttpHandler, StopServer};
 use futures::Future;
 use native_tls::{Identity, TlsAcceptor};
-use rest::server_service::{Error, ServerResult};
+use rest::server_service::{Error, ServerResult, ServerServiceBuilder};
 use std::fs;
 use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
@@ -18,6 +18,10 @@ pub struct ServerService {
 }
 
 impl ServerService {
+    pub fn builder(pkcs12: impl AsRef<Path>, address: SocketAddr) -> ServerServiceBuilder {
+        ServerServiceBuilder::new(pkcs12, address)
+    }
+
     pub fn start<P, F, H>(pkcs12: P, address: SocketAddr, handler: F) -> ServerResult<Self>
     where
         P: AsRef<Path>,
