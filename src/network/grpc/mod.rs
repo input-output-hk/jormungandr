@@ -4,7 +4,7 @@ mod server;
 use crate::{
     blockcfg::BlockConfig,
     blockchain::BlockchainR,
-    settings::network::{Connection, Peer},
+    settings::start::network::{Connection, Peer},
 };
 
 pub use self::server::run_listen_socket;

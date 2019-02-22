@@ -42,6 +42,7 @@ tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
 chain-core      = { path = "cardano-deps/chain-core" }
 chain-impl-mockchain = { path = "cardano-deps/chain-impl-mockchain" }
 chain-storage   = { path = "cardano-deps/chain-storage" }
+chain-addr      = { path = "cardano-deps/chain-addr" }
 network-core    = { path = "cardano-deps/network-core" }
 network-grpc    = { path = "cardano-deps/network-grpc" }
 cardano         = { path = "cardano-deps/cardano" }

@@ -1,20 +1,12 @@
+use chain_addr::AddressReadable;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-
-use super::config::LogFormat;
 use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(
-    name = "jormungandr",
-    raw(setting = "structopt::clap::AppSettings::ColoredHelp")
-)]
-pub struct CommandArguments {
-    /// activate the verbosity, the more occurrences the more verbose.
-    /// (-v, -vv, -vvv)
-    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
-    pub verbose: u8,
+use crate::settings::logging::LogFormat;
 
+#[derive(StructOpt, Debug)]
+pub struct StartArguments {
     /// The address to listen for inbound legacy protocol connections at.
     /// The program will open a listening socket on the given address.
     /// You might need to have special privileges to open the TCP socket
@@ -63,13 +55,66 @@ pub struct CommandArguments {
     /// for the node's blockchain
     #[structopt(long = "genesis-config", parse(from_os_str))]
     pub genesis_data_config: PathBuf,
-
-    /// Set format of the log emitted. Can be "json" or "plain"
-    #[structopt(long = "log-format", parse(try_from_str))]
-    pub log_format: Option<LogFormat>,
 }
 
-impl CommandArguments {
+#[derive(StructOpt, Debug)]
+pub struct InitArguments {
+    /// set the address that will have all the initial funds associated to it.
+    /// This is the wallet that will serve as faucet on testnets and as initial
+    /// coin wallet for mainnets
+    #[structopt(long = "initial-address", parse(try_from_str))]
+    pub initial_address: AddressReadable,
+
+    /// set the time between the creation of 2 blocks. Value is a positive integer to
+    /// be in seconds.
+    #[structopt(
+        short = "slot-duration",
+        parse(try_from_str = "parse_duration"),
+        default_value = "15"
+    )]
+    pub slot_duration: std::time::Duration,
+
+    /// set the number of blocks that can be used to pack in the storage
+    #[structopt(long = "epoch-stability-depth", default_value = "2600")]
+    pub epoch_stability_depth: usize,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(
+    name = "jormungandr",
+    raw(setting = "structopt::clap::AppSettings::ColoredHelp")
+)]
+pub struct CommandLine {
+    /// activate the verbosity, the more occurrences the more verbose.
+    /// (-v, -vv, -vvv)
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    pub verbose: u8,
+
+    /// Set format of the log emitted. Can be "json" or "plain"
+    #[structopt(long = "log-format", parse(try_from_str), default_value = "plain")]
+    pub log_format: LogFormat,
+
+    #[structopt(subcommand)]
+    pub command: Command,
+}
+
+#[derive(StructOpt, Debug)]
+pub enum Command {
+    /// start jormungandr service and start participating to the network
+    #[structopt(name = "start")]
+    Start(StartArguments),
+
+    /// initialize a configuration
+    #[structopt(name = "init")]
+    Init(InitArguments),
+}
+
+fn parse_duration(s: &str) -> Result<std::time::Duration, std::num::ParseIntError> {
+    let time_seconds = s.parse::<u64>()?;
+    Ok(std::time::Duration::new(time_seconds, 0))
+}
+
+impl CommandLine {
     /// load the command arguments from the command line args
     ///
     /// on error during reading the command line arguments, the

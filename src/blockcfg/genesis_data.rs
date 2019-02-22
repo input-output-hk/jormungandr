@@ -1,5 +1,6 @@
 //! Generic Genesis data
 
+use serde_yaml;
 use std::{error, fmt, io, time};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,7 +23,7 @@ impl fmt::Display for ParseError {
 }
 
 impl GenesisData {
-    pub fn parse<R: io::BufRead>(reader: R) -> Result<Self, ParseError> {
-        unimplemented!()
+    pub fn parse<R: io::BufRead>(reader: R) -> Result<Self, serde_yaml::Error> {
+        serde_yaml::from_reader(reader)
     }
 }

@@ -1,6 +1,6 @@
 use crate::blockcfg::BlockConfig;
 use crate::network::{service::ConnectionServices, ConnectionState, GlobalState};
-use crate::settings::network::Listen;
+use crate::settings::start::network::Listen;
 
 use network_grpc::server::{listen, Server};
 

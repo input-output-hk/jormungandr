@@ -7,7 +7,7 @@ use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStor
 
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
 use crate::secure::NodePublic;
-use crate::settings;
+use crate::settings::start as settings;
 
 pub struct State<B: BlockConfig> {
     ledger_state: B::Ledger,
