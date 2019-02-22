@@ -5,12 +5,8 @@ use self::config::ConfigLogSettings;
 pub use self::config::{Bft, BftConstants, BftLeader, Genesis, GenesisConstants};
 use self::network::{Connection, Listen, Peer, Protocol};
 use crate::blockcfg::genesis_data::*;
-use crate::log_wrapper;
 use crate::settings::command_arguments::*;
-use crate::settings::logging::LogFormat;
-
-use slog::Drain;
-use slog_async;
+use crate::settings::logging::LogSettings;
 
 use std::{
     collections::HashMap,
@@ -97,36 +93,6 @@ pub enum Consensus {
     Bft(config::Bft),
     /// Genesis consensus
     Genesis,
-}
-
-#[derive(Debug)]
-pub struct LogSettings {
-    pub verbosity: slog::Level,
-    pub format: LogFormat,
-}
-
-impl LogSettings {
-    /// Configure logger subsystem based on the options that were passed.
-    pub fn apply(&self) {
-        let log = match self.format {
-            // XXX: Some code duplication here as rust compiler dislike
-            // that branches return Drain's of different type.
-            LogFormat::Plain => {
-                let decorator = slog_term::TermDecorator::new().build();
-                let drain = slog_term::FullFormat::new(decorator).build().fuse();
-                let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
-                let drain = slog_async::Async::new(drain).build().fuse();
-                slog::Logger::root(drain, o!())
-            }
-            LogFormat::Json => {
-                let drain = slog_json::Json::default(std::io::stderr()).fuse();
-                let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
-                let drain = slog_async::Async::new(drain).build().fuse();
-                slog::Logger::root(drain, o!())
-            }
-        };
-        log_wrapper::logger::set_global_logger(log);
-    }
 }
 
 impl Settings {

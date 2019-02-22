@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "with-bench", feature(test))]
 extern crate bincode;
 extern crate clap;
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
@@ -271,6 +272,16 @@ fn main() {
                 eprintln!("jormungandr error: {}", error);
                 std::process::exit(1);
             }
+        }
+        Command::Init(init_settings) => {
+            let genesis = GenesisData {
+                start_time: init_settings.blockchain_start,
+                slot_duration: init_settings.slot_duration,
+                epoch_stability_depth: init_settings.epoch_stability_depth,
+                initial_utxos: init_settings.initial_utxos,
+            };
+
+            serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();
         }
     }
 }
