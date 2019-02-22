@@ -162,7 +162,6 @@ impl testing::GenerateTransaction<SignedTransaction> for Environment {
                 .map(|(i, _)| i.clone())
                 .collect(),
             outputs: outputs,
-            certificates: vec![],
         };
         let tx_id = tx.id();
         let mut witnesses = Vec::with_capacity(tx.inputs.len());

@@ -163,7 +163,6 @@ pub mod test {
         let tx = Transaction {
             inputs: vec![utxo0],
             outputs: vec![Output(user1_address, Value(1))],
-            certificates: vec![],
         };
         let signed_tx = SignedTransaction {
             transaction: tx,
@@ -197,7 +196,6 @@ pub mod test {
         let tx = crate::transaction::Transaction {
             inputs: vec![utxo0],
             outputs: vec![output0.clone()],
-            certificates: vec![],
         };
         let (pk1, _) = make_key(1);
         let witness = Witness::new(&tx.id(), &pk1);
@@ -233,7 +231,6 @@ pub mod test {
         let tx = crate::transaction::Transaction {
             inputs: vec![utxo0],
             outputs: vec![output0],
-            certificates: vec![],
         };
         let witness = Witness::new(&tx.id(), &pk1);
         let signed_tx = SignedTransaction {
@@ -246,5 +243,4 @@ pub mod test {
         )
     }
 
-    // FIXME: add certificate tests
 }
