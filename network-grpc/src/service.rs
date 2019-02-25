@@ -294,6 +294,14 @@ where
         Self::PullBlocksToTipStream,
         <<T as Node>::BlockService as BlockService>::PullBlocksFuture,
     >;
+    type SubscribeToBlocksStream = ResponseStream<
+        gen::node::Header,
+        <<T as Node>::BlockService as BlockService>::BlockSubscription,
+    >;
+    type SubscribeToBlocksFuture = ResponseFuture<
+        Self::SubscribeToBlocksStream,
+        <<T as Node>::BlockService as BlockService>::BlockSubscriptionFuture,
+    >;
     type ProposeTransactionsFuture = ResponseFuture<
         gen::node::ProposeTransactionsResponse,
         <<T as Node>::TransactionService as TransactionService>::ProposeTransactionsFuture,
@@ -322,6 +330,13 @@ where
         &mut self,
         _request: Request<gen::node::GetBlocksRequest>,
     ) -> Self::GetHeadersFuture {
+        unimplemented!()
+    }
+
+    fn subscribe_to_blocks(
+        &mut self,
+        _req: Request<gen::node::BlockSubscriptionRequest>,
+    ) -> Self::SubscribeToBlocksFuture {
         unimplemented!()
     }
 

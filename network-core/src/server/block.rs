@@ -49,6 +49,16 @@ pub trait BlockService {
     /// implementation to produce a server-streamed response.
     type PullHeadersFuture: Future<Item = Self::PullHeadersStream, Error = BlockError>;
 
+    /// The type of an asynchronous stream that retrieves headers of new
+    /// blocks as they are created.
+    type BlockSubscription: Stream<Item = Self::Header, Error = BlockError>;
+
+    /// The type of asynchronous futures returned by method `subscribe`.
+    ///
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a server-streamed response.
+    type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = BlockError>;
+
     /// Request the current blockchain tip.
     /// The returned future resolves to the tip of the blockchain
     /// accepted by this node.
@@ -77,6 +87,10 @@ pub trait BlockService {
     // Stream block headers from either of the given starting points
     // to the server's tip.
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
+
+    // Returns a future that resolves to an asynchronous subscription stream
+    // that can be used to notify of newly created blocks.
+    fn subscribe(&mut self) -> Self::BlockSubscriptionFuture;
 }
 
 /// Represents errors that can be returned by the block service.
