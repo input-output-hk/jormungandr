@@ -40,9 +40,3 @@ impl BlockConfig for Mockchain {
         block::SignedBlock::new(block, secret_key)
     }
 }
-
-pub fn xpub_to_public(xpub: &cardano::hdwallet::XPub) -> key::PublicKey {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(xpub.as_ref());
-    key::PublicKey::from_bytes(bytes)
-}

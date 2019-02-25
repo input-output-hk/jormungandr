@@ -46,12 +46,6 @@ pub type BlockchainR<B> = Arc<RwLock<Blockchain<B>>>;
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
-pub fn xpub_to_public(xpub: &cardano::hdwallet::XPub) -> key::PublicKey {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(&xpub.as_ref()[..32]);
-    key::PublicKey::from_bytes(bytes)
-}
-
 impl State<Mockchain> {
     pub fn new(genesis: &GenesisData, node_public: Option<NodePublic>) -> Self {
         let last_block_hash = key::Hash::hash_bytes(&[]);
