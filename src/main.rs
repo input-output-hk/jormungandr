@@ -63,7 +63,6 @@ pub mod rest;
 pub mod secure;
 pub mod settings;
 pub mod state;
-pub mod stats;
 pub mod transaction;
 pub mod utils;
 
@@ -75,8 +74,7 @@ use futures::Future;
 use intercom::BlockMsg;
 use intercom::NetworkBroadcastMsg;
 use leadership::leadership_task;
-use rest::ServerState;
-use stats::SharedStats;
+use rest::v0_node_stats::StatsCounter;
 use transaction::{transaction_task, TPool};
 use utils::task::Tasks;
 
@@ -101,11 +99,11 @@ fn block_task(
     _clock: clock::Clock, // FIXME: use it or lose it
     r: Receiver<BlockMsg<Cardano>>,
     network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>,
-    shared_stats: SharedStats,
+    stats_counter: StatsCounter,
 ) {
     loop {
         let bquery = r.recv().unwrap();
-        blockchain::process(&blockchain, bquery, &network_broadcast, &shared_stats);
+        blockchain::process(&blockchain, bquery, &network_broadcast, &stats_counter);
     }
 }
 
@@ -195,23 +193,23 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     // initialize the transaction broadcast channel
     let (broadcast_sender, broadcast_receiver) = futures::sync::mpsc::unbounded();
 
-    let shared_stats = SharedStats::default();
+    let stats_counter = StatsCounter::default();
 
     let transaction_task = {
         let tpool = tpool.clone();
         let blockchain = blockchain.clone();
-        let shared_stats = shared_stats.clone();
+        let stats_counter = stats_counter.clone();
         tasks.task_create_with_inputs("transaction", move |r| {
-            transaction_task(blockchain, tpool, r, shared_stats)
+            transaction_task(blockchain, tpool, r, stats_counter)
         })
     };
 
     let block_task = {
         let blockchain = blockchain.clone();
         let clock = clock.clone();
-        let shared_stats = shared_stats.clone();
+        let stats_counter = stats_counter.clone();
         tasks.task_create_with_inputs("block", move |r| {
-            block_task(blockchain, clock, r, broadcast_sender, shared_stats)
+            block_task(blockchain, clock, r, broadcast_sender, stats_counter)
         })
     };
 
@@ -265,10 +263,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
 
     let rest_server = match settings.rest {
         Some(ref rest) => {
-            let state = ServerState {
-                stats: shared_stats,
-            };
-            Some(rest::start_rest_server(rest, state)?)
+            Some(rest::start_rest_server(rest, stats_counter)?)
         }
         None => None,
     };

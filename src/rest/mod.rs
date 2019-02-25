@@ -1,35 +1,18 @@
 //! REST API of the node
 
+pub mod v0_node_stats;
+
 mod server_service;
-mod server_state;
 
 pub use self::server_service::{Error, ServerService};
-pub use self::server_state::ServerState;
 
-use actix_web::{App, Json, Responder, State};
+use self::v0_node_stats::StatsCounter;
 use settings::Error as SettingsError;
 use settings::start::{Error as ConfigError, Rest};
 
-pub fn start_rest_server(config: &Rest, state: ServerState) -> Result<ServerService, SettingsError> {
-    let handler = move || {
-        App::with_state(state.clone())
-            .prefix("api")
-            .scope("v1", |scope| {
-                scope.resource("/node-info", |r| r.get().with(node_info_v1))
-            })
-    };
+pub fn start_rest_server(config: &Rest, stats_counter: StatsCounter) -> Result<ServerService, SettingsError> {
     ServerService::builder(&config.pkcs12, config.listen.clone())
-        .add_handler(handler)
+        .add_handler(v0_node_stats::crate_handler(stats_counter))
         .build()
         .map_err(|e| SettingsError::Start(ConfigError::InvalidRest(e)))
-}
-
-fn node_info_v1(state: State<ServerState>) -> impl Responder {
-    Json(json!({
-      "data": {
-        "txRecvCnt": state.stats.get_tx_recv_cnt(),
-        "blockRecvCnt": state.stats.get_block_recv_cnt(),
-      },
-      "status": "success"
-    }))
 }
