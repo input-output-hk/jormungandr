@@ -2,7 +2,7 @@ mod config;
 pub mod network;
 
 use self::config::ConfigLogSettings;
-pub use self::config::{Bft, BftConstants, BftLeader, Genesis, GenesisConstants, Rest};
+pub use self::config::{Genesis, GenesisConstants, Rest};
 use self::network::{Connection, Listen, Peer, Protocol};
 use crate::blockcfg::genesis_data::*;
 use crate::rest::Error as RestError;
@@ -82,23 +82,11 @@ pub struct Settings {
 
     pub genesis_data_config: PathBuf,
 
-    pub secret_config: PathBuf,
-
-    pub consensus: Consensus,
-
-    pub leadership: Leadership,
+    pub leadership: Option<PathBuf>,
 
     pub log_settings: LogSettings,
 
     pub rest: Option<Rest>,
-}
-
-#[derive(Debug)]
-pub enum Consensus {
-    /// BFT consensus
-    Bft(config::Bft),
-    /// Genesis consensus
-    Genesis,
 }
 
 impl Settings {
@@ -119,35 +107,27 @@ impl Settings {
         let network = generate_network(&command_arguments, &config);
         let log_settings = generate_log_settings(&command_line, &config);
 
-        let consensus = {
-            if let Some(bft) = config.bft {
-                Consensus::Bft(bft)
-            } else if let Some(_genesis) = config.genesis {
-                Consensus::Genesis
-            } else {
-                return Err(Error::NoConsensusAlg);
-            }
-        };
-
         let storage = match (command_arguments.storage.as_ref(), config.storage) {
             (Some(path), _) => path.clone(),
             (None, Some(path)) => path.clone(),
             (None, None) => return Err(Error::NoStorage),
         };
 
-        let secret = match (command_arguments.secret.as_ref(), config.secret_file) {
-            (Some(path), _) => path.clone(),
-            (None, Some(path)) => path.clone(),
-            (None, None) => return Err(Error::NoSecret),
+        let secret = if command_arguments.without_leadership {
+            None
+        } else {
+            match (command_arguments.secret.as_ref(), config.secret_file) {
+                (Some(path), _) => Some(path.clone()),
+                (None, Some(path)) => Some(path.clone()),
+                (None, None) => return Err(Error::NoSecret),
+            }
         };
 
         Ok(Settings {
             storage: storage,
             genesis_data_config: command_arguments.genesis_data_config.clone(),
-            secret_config: secret,
             network: network,
-            leadership: Leadership::from(!command_arguments.without_leadership.clone()),
-            consensus: consensus,
+            leadership: secret,
             log_settings: log_settings,
             rest: config.rest,
         })

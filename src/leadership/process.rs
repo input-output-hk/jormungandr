@@ -31,7 +31,7 @@ pub fn leadership_task<B>(
         // the block.
         let b = blockchain.read().unwrap();
 
-        let is_leader = b.leadership.is_leader_at(date.clone()).unwrap();
+        let is_leader = b.state.leaders.is_leader_at(date.clone()).unwrap();
 
         if is_leader {
             // collect up to `nr_transactions` from the transaction pool.
@@ -39,7 +39,7 @@ pub fn leadership_task<B>(
             let transactions = transaction_pool
                 .write()
                 .unwrap()
-                .collect(b.settings.max_number_of_transactions_per_block());
+                .collect(b.state.settings.max_number_of_transactions_per_block());
 
             info!(
                 "leadership create tpool={} transactions ({}.{})",
@@ -48,7 +48,13 @@ pub fn leadership_task<B>(
                 idx
             );
 
-            let block = B::make_block(&secret, &b.settings, &b.ledger, date, transactions);
+            let block = B::make_block(
+                &secret,
+                &b.state.settings,
+                &b.state.ledger,
+                date,
+                transactions,
+            );
 
             block_task.send_to(BlockMsg::LeadershipBlock(block));
         }

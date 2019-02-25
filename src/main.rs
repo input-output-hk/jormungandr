@@ -15,12 +15,17 @@ extern crate curve25519_dalek;
 extern crate exe_common;
 extern crate futures;
 extern crate generic_array;
+extern crate sha2;
 #[macro_use]
 extern crate lazy_static;
 extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
 extern crate protocol_tokio as protocol;
+extern crate tower_service;
+
+extern crate tokio;
+
 #[cfg(test)]
 extern crate quickcheck;
 extern crate rand;
@@ -30,7 +35,6 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_yaml;
-extern crate sha2;
 #[macro_use(o)]
 extern crate slog;
 extern crate slog_async;
@@ -40,7 +44,6 @@ extern crate structopt;
 #[cfg(test)]
 #[cfg(feature = "with-bench")]
 extern crate test;
-extern crate tokio;
 
 use std::sync::{mpsc::Receiver, Arc, RwLock};
 
@@ -111,7 +114,6 @@ fn startup_info(
         gd.epoch_stability_depth,
         blockchain.get_tip()
     );
-    println!("consensus: {:?}", settings.consensus);
 }
 
 // Expand the type with more variants
@@ -131,15 +133,20 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         clock::Clock::new(genesis_data.start_time, initial_epoch)
     };
 
-    let secret = secure::NodeSecret::load_from_file(settings.secret_config.as_path()).unwrap();
+    let leader_secret = if let Some(secret_path) = &settings.leadership {
+        Some(secure::NodeSecret::load_from_file(secret_path.as_path()).unwrap())
+    } else {
+        None
+    };
+    let leader_public = if let Some(ref secret) = &leader_secret {
+        Some(secret.public())
+    } else {
+        None
+    };
 
     //let mut state = State::new();
 
-    let blockchain_data = Blockchain::new(
-        genesis_data.clone(),
-        secret.public.clone(),
-        &settings.consensus,
-    );
+    let blockchain_data = Blockchain::new(genesis_data.clone(), leader_public);
 
     startup_info(&genesis_data, &blockchain_data, &settings);
 
@@ -242,7 +249,8 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         });
     };
 
-    if settings.leadership == settings::start::Leadership::Yes
+    if let Some(secret) = leader_secret
+    // == settings::start::Leadership::Yes
     //    && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes
     {
         let tpool = tpool.clone();
@@ -290,12 +298,23 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        Command::GenerateKeys => {
+            use cardano::util::hex;
+            let seed: Vec<u8> = std::iter::repeat_with(|| rand::random())
+                .take(cardano::redeem::PRIVATEKEY_SIZE)
+                .collect();
+            let signing_key = cardano::redeem::PrivateKey::generate(&seed).unwrap();
+            let public_key = signing_key.public();
+            println!("signing_key: {}", hex::encode(signing_key.as_ref()));
+            println!("public_key: {}", hex::encode(public_key.as_ref()));
+        }
         Command::Init(init_settings) => {
             let genesis = GenesisData {
                 start_time: init_settings.blockchain_start,
                 slot_duration: init_settings.slot_duration,
                 epoch_stability_depth: init_settings.epoch_stability_depth,
                 initial_utxos: init_settings.initial_utxos,
+                obft_leaders: init_settings.obft_leaders,
             };
 
             serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();

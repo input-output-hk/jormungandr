@@ -7,27 +7,25 @@ use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStor
 
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
 use crate::secure::NodePublic;
-use crate::settings::start as settings;
 
+/// this structure holds all the state of the blockchains
+///
+/// It is meant to always be valid.
 pub struct State<B: BlockConfig> {
-    ledger_state: B::Ledger,
-    setting_state: B::Settings,
+    /// The current chain state corresponding to our tip.
+    pub ledger: B::Ledger,
+    /// the setting of the blockchain corresponding to out tip
+    pub settings: B::Settings,
+    pub leaders: B::Leader,
 }
 
-#[allow(dead_code)]
 pub struct Blockchain<B: BlockConfig> {
     pub genesis_data: B::GenesisData,
 
     /// the storage for the overall blockchains (blocks)
     pub storage: MemoryBlockStore<B::Block>,
 
-    /// The current chain state corresponding to our tip.
-    pub ledger: B::Ledger,
-
-    /// the setting of the blockchain corresponding to out tip
-    pub settings: B::Settings,
-
-    pub leadership: B::Leader,
+    pub state: State<B>,
 
     pub change_log: Vec<(
         <B::Leader as property::LeaderSelection>::Update,
@@ -48,44 +46,47 @@ pub type BlockchainR<B> = Arc<RwLock<Blockchain<B>>>;
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
-pub fn xpub_to_public(xpub: &cardano::hdwallet::XPub) -> key::PublicKey {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(&xpub.as_ref()[..32]);
-    key::PublicKey::from_bytes(bytes)
-}
-
-impl Blockchain<Mockchain> {
-    pub fn new(
-        genesis_data: GenesisData,
-        node_public: NodePublic,
-        consensus: &settings::Consensus,
-    ) -> Self {
+impl State<Mockchain> {
+    pub fn new(genesis: &GenesisData, node_public: Option<NodePublic>) -> Self {
         let last_block_hash = key::Hash::hash_bytes(&[]);
 
-        let leadership = match consensus {
-            settings::Consensus::Bft(bft_config) => leadership::LeaderSelection::BFT(
+        let leaders = if let Some(public) = node_public {
+            leadership::LeaderSelection::BFT(
                 leadership::bft::BftLeaderSelection::new(
-                    xpub_to_public(&node_public.block_publickey),
-                    bft_config
-                        .leaders
-                        .iter()
-                        .map(|xpub| xpub_to_public(&xpub.0))
-                        .collect(),
+                    key::PublicKey(public.block_publickey.clone()),
+                    genesis.leaders().cloned().collect(),
                 )
                 .unwrap(),
-            ),
-            settings::Consensus::Genesis => unimplemented!(),
+            )
+        } else {
+            leadership::LeaderSelection::BFT(
+                leadership::bft::BftLeaderSelection::new_passive(
+                    genesis.leaders().cloned().collect(),
+                )
+                .unwrap(),
+            )
         };
 
-        Blockchain {
-            genesis_data: genesis_data,
-            storage: MemoryBlockStore::new(last_block_hash.clone()),
+        State {
             ledger: ledger::Ledger::new(Default::default()),
             settings: setting::Settings {
                 last_block_id: last_block_hash,
                 max_number_of_transactions_per_block: 100, // TODO: add this in the genesis data ?
             },
-            leadership: leadership,
+            leaders: leaders,
+        }
+    }
+}
+
+impl Blockchain<Mockchain> {
+    pub fn new(genesis_data: GenesisData, node_public: Option<NodePublic>) -> Self {
+        let last_block_hash = key::Hash::hash_bytes(&[]);
+
+        let state = State::new(&genesis_data, node_public);
+        Blockchain {
+            genesis_data: genesis_data,
+            storage: MemoryBlockStore::new(last_block_hash.clone()),
+            state: state,
             change_log: Vec::default(),
             unconnected_blocks: BTreeMap::default(),
         }
@@ -121,7 +122,7 @@ where
     fn handle_connected_block(&mut self, block_hash: B::BlockHash, block: B::Block) {
         use chain_core::property::{Block, LeaderSelection, Ledger, Settings};
 
-        let current_tip = self.settings.tip();
+        let current_tip = self.state.settings.tip();
 
         // Quick optimization: don't do anything if the incoming block
         // is already the tip. Ideally we would bail out if the
@@ -129,13 +130,13 @@ where
         // way to check that.
         if block_hash != current_tip {
             if current_tip == block.parent_id() {
-                let leadership_diff = self.leadership.diff(&block).unwrap();
-                let ledger_diff = { self.ledger.diff(block.transactions()).unwrap() };
-                let setting_diff = self.settings.diff(&block).unwrap();
+                let leadership_diff = self.state.leaders.diff(&block).unwrap();
+                let ledger_diff = { self.state.ledger.diff(block.transactions()).unwrap() };
+                let setting_diff = self.state.settings.diff(&block).unwrap();
 
-                self.leadership.apply(leadership_diff.clone()).unwrap();
-                self.ledger.apply(ledger_diff.clone()).unwrap();
-                self.settings.apply(setting_diff.clone()).unwrap();
+                self.state.leaders.apply(leadership_diff.clone()).unwrap();
+                self.state.ledger.apply(ledger_diff.clone()).unwrap();
+                self.state.settings.apply(setting_diff.clone()).unwrap();
 
                 self.change_log
                     .push((leadership_diff, ledger_diff, setting_diff));
@@ -168,7 +169,7 @@ impl<B: BlockConfig> Blockchain<B> {
     /// return the current tip hash and date
     pub fn get_tip(&self) -> B::BlockHash {
         use chain_core::property::Settings;
-        self.settings.tip()
+        self.state.settings.tip()
     }
 }
 

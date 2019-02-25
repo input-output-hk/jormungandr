@@ -73,7 +73,9 @@ Run following command to generate your `genesis.yaml` file:
 
 ```
 jormungandr init \
-    --initial-utxos=ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s@999999999
+    --initial-utxos=ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s@999999999 \
+    --obft-leader=5b66c12d1aa6986d9c37b7bf905826a95db4b1c28e7c24fbaeb6ec277f75bd59 \
+    --obft-leader f976bd9025d8c26928479ebdd39c12ac2cf5ce73f6534648a78ddc0da2f57794
 ```
 
 Running the command above will generate (WARNING: this is temporary, the genesis data format will be updated):
@@ -90,6 +92,10 @@ epoch_stability_depth: 2600
 initial_utxos:
   - address: ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s
     value: 999999999
+obft_leaders:
+  - 5b66c12d1aa6986d9c37b7bf905826a95db4b1c28e7c24fbaeb6ec277f75bd59
+  - f976bd9025d8c26928479ebdd39c12ac2cf5ce73f6534648a78ddc0da2f57794
+
 ```
 
 You store this in a genesis.yaml file, you can the modify/tune your genesis data.
@@ -105,12 +111,6 @@ Configuration fields meaning:
 Example of node config:
 
 ```
-bft:
-  constants:
-    t: 10
-  leaders:
-    - 482ec7835412bcc18ca5c1f15baef53e0d62092fe1bbf40ea30fac895fd0f98c3b009cfd62715a5b871aabf5d603bec5aa5c8b3eae537fb254dd83ef88950d7d
-    - b77f6ed6edbb0a63e09764ccaf2bb6bb5cdc8e54ce1bab6aeccacb98848dfe01b77a9be9254a0f2d103953264df9b7957d8e61608b196723c109c28c89c1bb1e
 grpc_listen:
        - "127.0.0.1:8081"
 storage: "/tmp/storage"

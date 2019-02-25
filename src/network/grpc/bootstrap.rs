@@ -13,8 +13,9 @@ use std::fmt::Debug;
 pub fn bootstrap_from_target<P, B>(peer: P, blockchain: BlockchainR<B>)
 where
     B: BlockConfig,
-    P: tokio_connect::Connect<Error = io::Error> + 'static,
-    P::Connected: Send,
+    P: tower_service::Service<(), Error = std::io::Error> + 'static,
+    <P as tower_service::Service<()>>::Response:
+        tokio::io::AsyncWrite + tokio::io::AsyncRead + 'static + Send,
     <B::Block as Deserialize>::Error: Send + Sync,
     <B::BlockHash as Deserialize>::Error: Send + Sync,
     <B::Ledger as property::Ledger>::Update: Clone,
