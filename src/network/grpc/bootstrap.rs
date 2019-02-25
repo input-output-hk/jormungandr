@@ -16,7 +16,6 @@ where
     P: tower_service::Service<(), Error = std::io::Error> + 'static,
     <P as tower_service::Service<()>>::Response:
         tokio::io::AsyncWrite + tokio::io::AsyncRead + 'static + Send,
-    // P::Connected: Send,
     <B::Block as Deserialize>::Error: Send + Sync,
     <B::BlockHash as Deserialize>::Error: Send + Sync,
     <B::Ledger as property::Ledger>::Update: Clone,
