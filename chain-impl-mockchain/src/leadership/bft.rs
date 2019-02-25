@@ -25,22 +25,34 @@ pub enum Error {
 }
 
 impl<LeaderId: Eq + Clone> BftLeaderSelection<LeaderId> {
-    /// Create a new BFT leadership
-    pub fn new(me: LeaderId, leaders: Vec<LeaderId>) -> Option<Self> {
+    /// create a BFT leadership as a passive observer of the leadership
+    ///
+    /// This mean we are not expecting to be leader of any given slot
+    pub fn new_passive(leaders: Vec<LeaderId>) -> Option<Self> {
         if leaders.len() == 0 {
             return None;
         }
 
-        let pos = leaders
-            .iter()
-            .position(|x| x == &me)
-            .map(BftRoundRobinIndex);
         let current_leader = leaders[0].clone();
         Some(BftLeaderSelection {
-            my: pos,
+            my: None,
             leaders: leaders,
             current_leader: current_leader,
         })
+    }
+
+    /// Create a new BFT leadership
+    pub fn new(me: LeaderId, leaders: Vec<LeaderId>) -> Option<Self> {
+        let mut bft = Self::new_passive(leaders)?;
+
+        let pos = bft
+            .leaders
+            .iter()
+            .position(|x| x == &me)
+            .map(BftRoundRobinIndex);
+        bft.my = pos;
+
+        Some(bft)
     }
 
     #[inline]
