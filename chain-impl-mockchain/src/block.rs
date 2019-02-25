@@ -3,6 +3,8 @@ use crate::certificate;
 use crate::key::{Hash, PrivateKey, PublicKey, Signature, Signed};
 use crate::transaction::*;
 use chain_core::property;
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
 pub use crate::date::{BlockDate, BlockDateParseError};
 
@@ -302,12 +304,15 @@ impl property::HasTransaction for SignedBlock {
     }
 }
 
-pub const TAG_TRANSACTION: u8 = 1;
-pub const TAG_STAKE_KEY_REGISTRATION: u8 = 2;
-pub const TAG_STAKE_KEY_DEREGISTRATION: u8 = 3;
-pub const TAG_STAKE_DELEGATION: u8 = 4;
-pub const TAG_STAKE_POOL_REGISTRATION: u8 = 5;
-pub const TAG_STAKE_POOL_RETIREMENT: u8 = 6;
+#[derive(FromPrimitive)]
+enum MessageTag {
+    Transaction = 1,
+    StakeKeyRegistration = 2,
+    StakeKeyDeregistration = 3,
+    StakeDelegation = 4,
+    StakePoolRegistration = 5,
+    StakePoolRetirement = 6,
+}
 
 impl property::Serialize for Message {
     type Error = std::io::Error;
@@ -316,27 +321,27 @@ impl property::Serialize for Message {
         let mut codec = Codec::from(writer);
         match self {
             Message::Transaction(signed) => {
-                codec.put_u8(TAG_TRANSACTION)?;
+                codec.put_u8(MessageTag::Transaction as u8)?;
                 signed.serialize(&mut codec)
             }
             Message::StakeKeyRegistration(signed) => {
-                codec.put_u8(TAG_STAKE_KEY_REGISTRATION)?;
+                codec.put_u8(MessageTag::StakeKeyRegistration as u8)?;
                 signed.serialize(&mut codec)
             }
             Message::StakeKeyDeregistration(signed) => {
-                codec.put_u8(TAG_STAKE_KEY_DEREGISTRATION)?;
+                codec.put_u8(MessageTag::StakeKeyDeregistration as u8)?;
                 signed.serialize(&mut codec)
             }
             Message::StakeDelegation(signed) => {
-                codec.put_u8(TAG_STAKE_DELEGATION)?;
+                codec.put_u8(MessageTag::StakeDelegation as u8)?;
                 signed.serialize(&mut codec)
             }
             Message::StakePoolRegistration(signed) => {
-                codec.put_u8(TAG_STAKE_POOL_REGISTRATION)?;
+                codec.put_u8(MessageTag::StakePoolRegistration as u8)?;
                 signed.serialize(&mut codec)
             }
             Message::StakePoolRetirement(signed) => {
-                codec.put_u8(TAG_STAKE_POOL_RETIREMENT)?;
+                codec.put_u8(MessageTag::StakePoolRetirement as u8)?;
                 signed.serialize(&mut codec)
             }
         }
@@ -349,24 +354,25 @@ impl property::Deserialize for Message {
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
-        match codec.get_u8()? {
-            TAG_TRANSACTION => Ok(Message::Transaction(SignedTransaction::deserialize(
+        let tag = codec.get_u8()?;
+        match MessageTag::from_u8(tag) {
+            Some(MessageTag::Transaction) => Ok(Message::Transaction(SignedTransaction::deserialize(
                 &mut codec,
             )?)),
-            TAG_STAKE_KEY_REGISTRATION => Ok(Message::StakeKeyRegistration(Signed::deserialize(
+            Some(MessageTag::StakeKeyRegistration) => Ok(Message::StakeKeyRegistration(Signed::deserialize(
                 &mut codec,
             )?)),
-            TAG_STAKE_KEY_DEREGISTRATION => Ok(Message::StakeKeyDeregistration(
+            Some(MessageTag::StakeKeyDeregistration) => Ok(Message::StakeKeyDeregistration(
                 Signed::deserialize(&mut codec)?,
             )),
-            TAG_STAKE_DELEGATION => Ok(Message::StakeDelegation(Signed::deserialize(&mut codec)?)),
-            TAG_STAKE_POOL_REGISTRATION => Ok(Message::StakePoolRegistration(Signed::deserialize(
+            Some(MessageTag::StakeDelegation) => Ok(Message::StakeDelegation(Signed::deserialize(&mut codec)?)),
+            Some(MessageTag::StakePoolRegistration) => Ok(Message::StakePoolRegistration(Signed::deserialize(
                 &mut codec,
             )?)),
-            TAG_STAKE_POOL_RETIREMENT => Ok(Message::StakePoolRetirement(Signed::deserialize(
+            Some(MessageTag::StakePoolRetirement) => Ok(Message::StakePoolRetirement(Signed::deserialize(
                 &mut codec,
             )?)),
-            n => panic!("Unrecognized certificate message {}.", n), // FIXME: return Error
+            None => panic!("Unrecognized certificate message tag {}.", tag),
         }
     }
 }
