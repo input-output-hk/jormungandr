@@ -6,12 +6,14 @@ pub mod start;
 pub enum Command {
     Start(start::Settings),
     Init(init::Settings),
+    GenerateKeys,
 }
 
 #[derive(Debug)]
 pub enum Error {
     Start(start::Error),
     Init(init::Error),
+    GenerateKeys,
 }
 
 impl Command {
@@ -29,6 +31,7 @@ impl Command {
                     .map(Command::Start)
                     .map_err(Error::Start)
             }
+            command_arguments::Command::GenerateKeys => Ok(Command::GenerateKeys),
         }
     }
 }
@@ -38,6 +41,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::Start(error) => std::fmt::Display::fmt(error, f),
             Error::Init(error) => std::fmt::Display::fmt(error, f),
+            Error::GenerateKeys => write!(f, "error in the generate-keys command"),
         }
     }
 }

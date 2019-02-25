@@ -7,8 +7,10 @@ use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStor
 
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
 use crate::secure::NodePublic;
-use crate::settings::start as settings;
 
+/// this structure holds all the state of the blockchains
+///
+/// It is meant to always be valid.
 pub struct State<B: BlockConfig> {
     /// The current chain state corresponding to our tip.
     pub ledger: B::Ledger,
@@ -50,40 +52,47 @@ pub fn xpub_to_public(xpub: &cardano::hdwallet::XPub) -> key::PublicKey {
     key::PublicKey::from_bytes(bytes)
 }
 
-impl Blockchain<Mockchain> {
-    pub fn new(
-        genesis_data: GenesisData,
-        node_public: NodePublic,
-        consensus: &settings::Consensus,
-    ) -> Self {
+impl State<Mockchain> {
+    pub fn new(genesis: &GenesisData, node_public: Option<NodePublic>) -> Self {
         let last_block_hash = key::Hash::hash_bytes(&[]);
 
-        let leadership = match consensus {
-            settings::Consensus::Bft(bft_config) => leadership::LeaderSelection::BFT(
+        let leaders = if let Some(public) = node_public {
+            leadership::LeaderSelection::BFT(
                 leadership::bft::BftLeaderSelection::new(
-                    xpub_to_public(&node_public.block_publickey),
-                    bft_config
-                        .leaders
-                        .iter()
-                        .map(|xpub| xpub_to_public(&xpub.0))
-                        .collect(),
+                    key::PublicKey(public.block_publickey.clone()),
+                    genesis.leaders().cloned().collect(),
                 )
                 .unwrap(),
-            ),
-            settings::Consensus::Genesis => unimplemented!(),
+            )
+        } else {
+            leadership::LeaderSelection::BFT(
+                leadership::bft::BftLeaderSelection::new_passive(
+                    genesis.leaders().cloned().collect(),
+                )
+                .unwrap(),
+            )
         };
 
+        State {
+            ledger: ledger::Ledger::new(Default::default()),
+            settings: setting::Settings {
+                last_block_id: last_block_hash,
+                max_number_of_transactions_per_block: 100, // TODO: add this in the genesis data ?
+            },
+            leaders: leaders,
+        }
+    }
+}
+
+impl Blockchain<Mockchain> {
+    pub fn new(genesis_data: GenesisData, node_public: Option<NodePublic>) -> Self {
+        let last_block_hash = key::Hash::hash_bytes(&[]);
+
+        let state = State::new(&genesis_data, node_public);
         Blockchain {
             genesis_data: genesis_data,
             storage: MemoryBlockStore::new(last_block_hash.clone()),
-            state: State {
-                ledger: ledger::Ledger::new(Default::default()),
-                settings: setting::Settings {
-                    last_block_id: last_block_hash,
-                    max_number_of_transactions_per_block: 100, // TODO: add this in the genesis data ?
-                },
-                leaders: leadership,
-            },
+            state: state,
             change_log: Vec::default(),
             unconnected_blocks: BTreeMap::default(),
         }

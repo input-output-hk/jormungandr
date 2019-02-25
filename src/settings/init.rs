@@ -1,4 +1,4 @@
-use crate::blockcfg::genesis_data::InitialUTxO;
+use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey};
 use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
 
@@ -32,6 +32,8 @@ pub struct Settings {
 
     pub initial_utxos: Vec<InitialUTxO>,
 
+    pub obft_leaders: Vec<PublicKey>,
+
     pub slot_duration: std::time::Duration,
 
     pub epoch_stability_depth: usize,
@@ -57,6 +59,7 @@ impl Settings {
             slot_duration: command_arguments.slot_duration.clone(),
             epoch_stability_depth: command_arguments.epoch_stability_depth,
             blockchain_start: std::time::SystemTime::now(),
+            obft_leaders: command_arguments.obft_leaders.clone(),
         })
     }
 }

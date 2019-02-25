@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::blockcfg::genesis_data::InitialUTxO;
+use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey};
 
 use crate::settings::logging::LogFormat;
 
@@ -87,6 +87,11 @@ pub struct InitArguments {
     /// set the number of blocks that can be used to pack in the storage
     #[structopt(long = "epoch-stability-depth", default_value = "2600")]
     pub epoch_stability_depth: usize,
+
+    /// one starting up the protocol will be in OBFT mode, you need to provide a list of
+    /// authoritative public keys that will control the blockchain
+    #[structopt(long = "obft-leader", parse(try_from_str))]
+    pub obft_leaders: Vec<PublicKey>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -117,6 +122,11 @@ pub enum Command {
     /// initialize a new genesis configuration file
     #[structopt(name = "init")]
     Init(InitArguments),
+
+    /// command to generate a new set of random key pair for the node to propose
+    /// itself as a participating node or not
+    #[structopt(name = "generate-keys")]
+    GenerateKeys,
 }
 
 impl CommandLine {

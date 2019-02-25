@@ -1,7 +1,7 @@
 pub mod crypto;
 
 use cardano::block;
-use cardano::hdwallet;
+use cardano::redeem;
 use cardano::util::hex;
 use std::fs;
 use std::io;
@@ -10,18 +10,18 @@ use std::path::Path;
 
 /// Node Secret(s)
 pub struct NodeSecret {
-    pub block_privatekey: hdwallet::XPrv,
+    pub block_privatekey: redeem::PrivateKey,
     pub public: NodePublic,
 }
 
 /// Node Secret's Public parts
 #[derive(Clone)]
 pub struct NodePublic {
-    pub block_publickey: hdwallet::XPub,
+    pub block_publickey: redeem::PublicKey,
 }
 
 impl NodeSecret {
-    pub fn to_public(&self) -> NodePublic {
+    pub fn public(&self) -> NodePublic {
         self.public.clone()
     }
 
@@ -31,13 +31,13 @@ impl NodeSecret {
         fs.read_to_end(&mut vec)?;
         let v = hex::decode(String::from_utf8(vec).unwrap().as_ref()).unwrap();
         // TODO propagate error properly
-        if v.len() != hdwallet::XPRV_SIZE {
+        if v.len() != redeem::PRIVATEKEY_SIZE {
             panic!("wrong size for secret")
         }
 
-        let mut b = [0u8; hdwallet::XPRV_SIZE];
+        let mut b = [0u8; redeem::PRIVATEKEY_SIZE];
         b.copy_from_slice(&v);
-        let prv = hdwallet::XPrv::from_bytes_verified(b).expect("secret key is invalid");
+        let prv = redeem::PrivateKey::normalize_bytes(b);
         let np = NodePublic {
             block_publickey: prv.public(),
         };
@@ -45,13 +45,5 @@ impl NodeSecret {
             public: np,
             block_privatekey: prv,
         })
-    }
-
-    pub fn sign_block(&self) -> block::sign::BlockSignature {
-        let _k = &self.block_privatekey;
-        let fake_sig = block::sign::BlockSignature::Signature(hdwallet::Signature::from_bytes(
-            [0u8; hdwallet::SIGNATURE_SIZE],
-        ));
-        fake_sig
     }
 }
