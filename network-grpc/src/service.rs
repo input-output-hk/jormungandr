@@ -3,12 +3,7 @@ use crate::gen;
 use chain_core::property::{
     Block, BlockDate, BlockId, Deserialize, Header, Serialize, TransactionId,
 };
-use network_core::server::{
-    self,
-    block::{BlockService, HeaderService},
-    transaction::TransactionService,
-    Node,
-};
+use network_core::server::{self, block::BlockService, transaction::TransactionService, Node};
 
 use futures::prelude::*;
 use tower_grpc::Error::Grpc as GrpcError;
@@ -18,7 +13,6 @@ use std::{error, marker::PhantomData, mem};
 
 pub struct NodeService<T: Node> {
     block_service: Option<T::BlockService>,
-    header_service: Option<T::HeaderService>,
     tx_service: Option<T::TransactionService>,
 }
 
@@ -26,7 +20,6 @@ impl<T: Node> NodeService<T> {
     pub fn new(node: T) -> Self {
         NodeService {
             block_service: node.block_service(),
-            header_service: node.header_service(),
             tx_service: node.transaction_service(),
         }
     }
@@ -36,13 +29,11 @@ impl<T> Clone for NodeService<T>
 where
     T: Node,
     T::BlockService: Clone,
-    T::HeaderService: Clone,
     T::TransactionService: Clone,
 {
     fn clone(&self) -> Self {
         NodeService {
             block_service: self.block_service.clone(),
-            header_service: self.header_service.clone(),
             tx_service: self.tx_service.clone(),
         }
     }
@@ -273,7 +264,6 @@ impl<T> gen::node::server::Node for NodeService<T>
 where
     T: Node,
     <T as Node>::BlockService: Clone,
-    <T as Node>::HeaderService: Clone,
     <T as Node>::TransactionService: Clone,
 {
     type TipFuture = ResponseFuture<
@@ -282,23 +272,23 @@ where
     >;
     type GetBlocksStream = ResponseStream<
         gen::node::Block,
-        <<T as Node>::BlockService as BlockService>::GetBlocksStream,
+        <<T as Node>::BlockService as BlockService>::PullBlocksStream,
     >;
     type GetBlocksFuture = ResponseFuture<
         Self::GetBlocksStream,
-        <<T as Node>::BlockService as BlockService>::GetBlocksFuture,
+        <<T as Node>::BlockService as BlockService>::PullBlocksFuture,
     >;
     type GetHeadersStream = ResponseStream<
         gen::node::Header,
-        <<T as Node>::HeaderService as HeaderService>::GetHeadersStream,
+        <<T as Node>::BlockService as BlockService>::PullHeadersStream,
     >;
     type GetHeadersFuture = ResponseFuture<
         Self::GetHeadersStream,
-        <<T as Node>::HeaderService as HeaderService>::GetHeadersFuture,
+        <<T as Node>::BlockService as BlockService>::PullHeadersFuture,
     >;
     type PullBlocksToTipStream = ResponseStream<
         gen::node::Block,
-        <<T as Node>::BlockService as BlockService>::PullBlocksToTipStream,
+        <<T as Node>::BlockService as BlockService>::PullBlocksStream,
     >;
     type PullBlocksToTipFuture = ResponseFuture<
         Self::PullBlocksToTipStream,
