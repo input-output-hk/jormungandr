@@ -1,10 +1,10 @@
-use crate::blockcfg::{Block, BlockConfig, HasHeader};
-use crate::blockchain::BlockchainR;
-use crate::intercom::{ClientMsg, Error, ReplyStreamHandle};
+use std::sync::mpsc::Receiver;
 
 use chain_storage::store::BlockStore;
 
-use std::sync::mpsc::Receiver;
+use crate::blockcfg::{Block, BlockConfig, HasHeader};
+use crate::blockchain::BlockchainR;
+use crate::intercom::{ClientMsg, Error, ReplyStreamHandle};
 
 pub fn client_task<B>(blockchain: BlockchainR<B>, r: Receiver<ClientMsg<B>>)
 where

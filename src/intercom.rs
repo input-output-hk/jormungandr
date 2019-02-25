@@ -1,15 +1,14 @@
-use crate::blockcfg::BlockConfig;
-
-use network_core::error::Code;
-
-use futures::prelude::*;
-use futures::sync::{mpsc, oneshot};
-
 use std::{
     error,
     fmt::{self, Debug, Display},
     marker::PhantomData,
 };
+
+use futures::prelude::*;
+use futures::sync::{mpsc, oneshot};
+use network_core::error::Code;
+
+use crate::blockcfg::BlockConfig;
 
 /// The error values passed via intercom messages.
 #[derive(Debug)]

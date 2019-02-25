@@ -2,9 +2,10 @@ mod config;
 pub mod network;
 
 use self::config::ConfigLogSettings;
-pub use self::config::{Bft, BftConstants, BftLeader, Genesis, GenesisConstants};
+pub use self::config::{Bft, BftConstants, BftLeader, Genesis, GenesisConstants, Rest};
 use self::network::{Connection, Listen, Peer, Protocol};
 use crate::blockcfg::genesis_data::*;
+use crate::rest::Error as RestError;
 use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
 
@@ -21,6 +22,7 @@ pub enum Error {
     NoConsensusAlg,
     NoStorage,
     NoSecret,
+    InvalidRest(RestError),
 }
 
 impl Display for Error {
@@ -33,6 +35,7 @@ impl Display for Error {
                 "storage is needed for persistently saving the blocks of the blockchain"
             ),
             Error::NoSecret => write!(f, "secret config unspecified"),
+            Error::InvalidRest(e) => write!(f, "invalid REST config: {}", e),
         }
     }
 }
@@ -44,6 +47,7 @@ impl std::error::Error for Error {
             Error::NoConsensusAlg => None,
             Error::NoStorage => None,
             Error::NoSecret => None,
+            Error::InvalidRest(e) => Some(e),
         }
     }
 }
@@ -85,6 +89,8 @@ pub struct Settings {
     pub leadership: Leadership,
 
     pub log_settings: LogSettings,
+
+    pub rest: Option<Rest>,
 }
 
 #[derive(Debug)]
@@ -143,6 +149,7 @@ impl Settings {
             leadership: Leadership::from(!command_arguments.without_leadership.clone()),
             consensus: consensus,
             log_settings: log_settings,
+            rest: config.rest,
         })
     }
 

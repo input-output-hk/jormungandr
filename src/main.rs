@@ -1,18 +1,7 @@
 #![cfg_attr(feature = "with-bench", feature(test))]
+extern crate actix_net;
+extern crate actix_web;
 extern crate bincode;
-extern crate clap;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_yaml;
-#[macro_use(o)]
-extern crate slog;
-extern crate rand;
-extern crate slog_async;
-extern crate slog_json;
-extern crate slog_term;
-extern crate structopt;
-
 extern crate cardano;
 extern crate cardano_storage;
 extern crate cbor_event;
@@ -20,27 +9,58 @@ extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
+extern crate clap;
+extern crate cryptoxide;
+extern crate curve25519_dalek;
 extern crate exe_common;
+extern crate futures;
+extern crate generic_array;
+#[macro_use]
+extern crate lazy_static;
+extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
 extern crate protocol_tokio as protocol;
-
-extern crate futures;
-extern crate tokio;
-
-extern crate cryptoxide;
-extern crate curve25519_dalek;
-extern crate generic_array;
-extern crate sha2;
-
 #[cfg(test)]
 extern crate quickcheck;
+extern crate rand;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate serde_json;
+extern crate serde_yaml;
+extern crate sha2;
+#[macro_use(o)]
+extern crate slog;
+extern crate slog_async;
+extern crate slog_json;
+extern crate slog_term;
+extern crate structopt;
 #[cfg(test)]
 #[cfg(feature = "with-bench")]
 extern crate test;
+extern crate tokio;
 
-#[macro_use]
-extern crate lazy_static;
+use std::sync::{mpsc::Receiver, Arc, RwLock};
+
+use chain_impl_mockchain::{
+    key::PrivateKey,
+    transaction::{SignedTransaction, TransactionId},
+};
+use futures::sync::mpsc::UnboundedSender;
+use futures::Future;
+
+use blockcfg::{genesis_data::GenesisData, mock::Mockchain as Cardano};
+//use state::State;
+use blockchain::{Blockchain, BlockchainR};
+use intercom::BlockMsg;
+use intercom::NetworkBroadcastMsg;
+use leadership::leadership_task;
+use rest::v0_node_stats::StatsCounter;
+use settings::Command;
+use transaction::{transaction_task, TPool};
+use utils::task::Tasks;
 
 #[macro_use]
 pub mod log_wrapper;
@@ -53,29 +73,12 @@ pub mod consensus;
 pub mod intercom;
 pub mod leadership;
 pub mod network;
+pub mod rest;
 pub mod secure;
 pub mod settings;
 pub mod state;
 pub mod transaction;
 pub mod utils;
-
-use settings::Command;
-//use state::State;
-use blockchain::{Blockchain, BlockchainR};
-use futures::sync::mpsc::UnboundedSender;
-use intercom::BlockMsg;
-use intercom::NetworkBroadcastMsg;
-use leadership::leadership_task;
-use transaction::{transaction_task, TPool};
-use utils::task::Tasks;
-
-use std::sync::{mpsc::Receiver, Arc, RwLock};
-
-use blockcfg::{genesis_data::GenesisData, mock::Mockchain as Cardano};
-use chain_impl_mockchain::{
-    key::PrivateKey,
-    transaction::{SignedTransaction, TransactionId},
-};
 
 pub type TODO = u32;
 
@@ -90,10 +93,11 @@ fn block_task(
     _clock: clock::Clock, // FIXME: use it or lose it
     r: Receiver<BlockMsg<Cardano>>,
     network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>,
+    stats_counter: StatsCounter,
 ) {
     loop {
         let bquery = r.recv().unwrap();
-        blockchain::process(&blockchain, bquery, &network_broadcast);
+        blockchain::process(&blockchain, bquery, &network_broadcast, &stats_counter);
     }
 }
 
@@ -183,19 +187,23 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     // initialize the transaction broadcast channel
     let (broadcast_sender, broadcast_receiver) = futures::sync::mpsc::unbounded();
 
+    let stats_counter = StatsCounter::default();
+
     let transaction_task = {
         let tpool = tpool.clone();
         let blockchain = blockchain.clone();
+        let stats_counter = stats_counter.clone();
         tasks.task_create_with_inputs("transaction", move |r| {
-            transaction_task(blockchain, tpool, r)
+            transaction_task(blockchain, tpool, r, stats_counter)
         })
     };
 
     let block_task = {
         let blockchain = blockchain.clone();
         let clock = clock.clone();
+        let stats_counter = stats_counter.clone();
         tasks.task_create_with_inputs("block", move |r| {
-            block_task(blockchain, clock, r, broadcast_sender)
+            block_task(blockchain, clock, r, broadcast_sender, stats_counter)
         })
     };
 
@@ -247,12 +255,21 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         });
     };
 
+    let rest_server = match settings.rest {
+        Some(ref rest) => Some(rest::start_rest_server(rest, stats_counter)?),
+        None => None,
+    };
+
     // periodically cleanup (custom):
     //   storage cleanup/packing
     //   tpool.gc()
 
     // FIXME some sort of join so that the main thread does something ...
     tasks.join();
+
+    if let Some(server) = rest_server {
+        server.stop().wait().unwrap()
+    }
 
     Ok(())
 }
