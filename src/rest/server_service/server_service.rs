@@ -18,7 +18,11 @@ pub struct ServerService {
 }
 
 impl ServerService {
-    pub fn builder(pkcs12: impl AsRef<Path>, address: SocketAddr, prefix: impl Into<String>) -> ServerServiceBuilder {
+    pub fn builder(
+        pkcs12: impl AsRef<Path>,
+        address: SocketAddr,
+        prefix: impl Into<String>,
+    ) -> ServerServiceBuilder {
         ServerServiceBuilder::new(pkcs12, address, prefix)
     }
 

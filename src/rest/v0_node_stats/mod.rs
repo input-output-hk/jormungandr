@@ -4,7 +4,9 @@ pub use self::stats_counter::StatsCounter;
 
 use actix_web::{App, Json, Responder, State};
 
-pub fn crate_handler(stats_counter: StatsCounter) -> impl Fn() -> App<StatsCounter> + Send + Sync + Clone + 'static {
+pub fn crate_handler(
+    stats_counter: StatsCounter,
+) -> impl Fn() -> App<StatsCounter> + Send + Sync + Clone + 'static {
     move || {
         App::with_state(stats_counter.clone())
             .resource("v0/node/stats", |r| r.get().with(handle_request))

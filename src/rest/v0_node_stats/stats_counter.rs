@@ -34,7 +34,9 @@ impl StatsCounter {
     }
 
     pub fn add_block_recv_cnt(&self, count: usize) {
-        self.stats.block_recv_cnt.fetch_add(count, Ordering::Relaxed);
+        self.stats
+            .block_recv_cnt
+            .fetch_add(count, Ordering::Relaxed);
     }
 
     pub fn get_block_recv_cnt(&self) -> u64 {

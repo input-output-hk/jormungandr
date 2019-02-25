@@ -1,5 +1,5 @@
-use actix_web::App;
 use actix_web::server::{HttpHandler, HttpHandlerTask};
+use actix_web::App;
 use rest::server_service::{ServerResult, ServerService};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -23,8 +23,8 @@ impl ServerServiceBuilder {
     }
 
     pub fn add_handler<F, S: 'static>(mut self, handler: F) -> Self
-        where
-            F: Fn() -> App<S> + Send + Sync + Clone + 'static,
+    where
+        F: Fn() -> App<S> + Send + Sync + Clone + 'static,
     {
         let prefix = self.prefix.clone();
         let prefixed_handler = move || handler().prefix(&**prefix).boxed();
@@ -34,9 +34,7 @@ impl ServerServiceBuilder {
 
     pub fn build(self) -> ServerResult<ServerService> {
         let handlers = Arc::new(self.handlers);
-        let multi_handler = move || handlers.iter()
-            .map(|handler| handler())
-            .collect::<Vec<_>>();
+        let multi_handler = move || handlers.iter().map(|handler| handler()).collect::<Vec<_>>();
         ServerService::start(self.pkcs12, self.address, multi_handler)
     }
 }

@@ -1,7 +1,7 @@
-use chain_core::property;
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::chain;
 use crate::intercom::{BlockMsg, NetworkBroadcastMsg};
+use chain_core::property;
 use futures::sync::mpsc::UnboundedSender;
 use rest::v0_node_stats::StatsCounter;
 
