@@ -8,14 +8,16 @@ use std::sync::Arc;
 pub struct ServerServiceBuilder {
     pkcs12: PathBuf,
     address: SocketAddr,
+    prefix: Arc<String>,
     handlers: Vec<Box<Fn() -> Box<HttpHandler<Task = Box<HttpHandlerTask>>> + Send + Sync>>,
 }
 
 impl ServerServiceBuilder {
-    pub fn new(pkcs12: impl AsRef<Path>, address: SocketAddr) -> Self {
+    pub fn new(pkcs12: impl AsRef<Path>, address: SocketAddr, prefix: impl Into<String>) -> Self {
         Self {
             pkcs12: pkcs12.as_ref().to_path_buf(),
             address,
+            prefix: Arc::new(prefix.into()),
             handlers: vec![],
         }
     }
@@ -24,8 +26,9 @@ impl ServerServiceBuilder {
         where
             F: Fn() -> App<S> + Send + Sync + Clone + 'static,
     {
-        let boxing_handler = move || handler().boxed();
-        self.handlers.push(Box::new(boxing_handler));
+        let prefix = self.prefix.clone();
+        let prefixed_handler = move || handler().prefix(&**prefix).boxed();
+        self.handlers.push(Box::new(prefixed_handler));
         self
     }
 

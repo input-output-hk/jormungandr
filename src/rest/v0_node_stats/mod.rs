@@ -7,10 +7,7 @@ use actix_web::{App, Json, Responder, State};
 pub fn crate_handler(stats_counter: StatsCounter) -> impl Fn() -> App<StatsCounter> + Send + Sync + Clone + 'static {
     move || {
         App::with_state(stats_counter.clone())
-            .prefix("api")
-            .scope("v0", |scope| {
-                scope.resource("v0/node/stats", |r| r.get().with(handle_request))
-            })
+            .resource("v0/node/stats", |r| r.get().with(handle_request))
     }
 }
 

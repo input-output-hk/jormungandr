@@ -52,5 +52,6 @@ pub struct ConfigLogSettings {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Rest {
     pub listen: SocketAddr,
+    pub prefix: Option<String>,
     pub pkcs12: PathBuf,
 }

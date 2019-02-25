@@ -11,7 +11,10 @@ use settings::Error as SettingsError;
 use settings::start::{Error as ConfigError, Rest};
 
 pub fn start_rest_server(config: &Rest, stats_counter: StatsCounter) -> Result<ServerService, SettingsError> {
-    ServerService::builder(&config.pkcs12, config.listen.clone())
+    let prefix = config.prefix.as_ref()
+        .map(|prefix| prefix.as_str())
+        .unwrap_or("/");
+    ServerService::builder(&config.pkcs12, config.listen.clone(), prefix)
         .add_handler(v0_node_stats::crate_handler(stats_counter))
         .build()
         .map_err(|e| SettingsError::Start(ConfigError::InvalidRest(e)))
