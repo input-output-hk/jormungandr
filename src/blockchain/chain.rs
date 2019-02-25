@@ -10,24 +10,20 @@ use crate::secure::NodePublic;
 use crate::settings::start as settings;
 
 pub struct State<B: BlockConfig> {
-    ledger_state: B::Ledger,
-    setting_state: B::Settings,
+    /// The current chain state corresponding to our tip.
+    pub ledger: B::Ledger,
+    /// the setting of the blockchain corresponding to out tip
+    pub settings: B::Settings,
+    pub leaders: B::Leader,
 }
 
-#[allow(dead_code)]
 pub struct Blockchain<B: BlockConfig> {
     pub genesis_data: B::GenesisData,
 
     /// the storage for the overall blockchains (blocks)
     pub storage: MemoryBlockStore<B::Block>,
 
-    /// The current chain state corresponding to our tip.
-    pub ledger: B::Ledger,
-
-    /// the setting of the blockchain corresponding to out tip
-    pub settings: B::Settings,
-
-    pub leadership: B::Leader,
+    pub state: State<B>,
 
     pub change_log: Vec<(
         <B::Leader as property::LeaderSelection>::Update,
@@ -80,12 +76,14 @@ impl Blockchain<Mockchain> {
         Blockchain {
             genesis_data: genesis_data,
             storage: MemoryBlockStore::new(last_block_hash.clone()),
-            ledger: ledger::Ledger::new(Default::default()),
-            settings: setting::Settings {
-                last_block_id: last_block_hash,
-                max_number_of_transactions_per_block: 100, // TODO: add this in the genesis data ?
+            state: State {
+                ledger: ledger::Ledger::new(Default::default()),
+                settings: setting::Settings {
+                    last_block_id: last_block_hash,
+                    max_number_of_transactions_per_block: 100, // TODO: add this in the genesis data ?
+                },
+                leaders: leadership,
             },
-            leadership: leadership,
             change_log: Vec::default(),
             unconnected_blocks: BTreeMap::default(),
         }
@@ -121,7 +119,7 @@ where
     fn handle_connected_block(&mut self, block_hash: B::BlockHash, block: B::Block) {
         use chain_core::property::{Block, LeaderSelection, Ledger, Settings};
 
-        let current_tip = self.settings.tip();
+        let current_tip = self.state.settings.tip();
 
         // Quick optimization: don't do anything if the incoming block
         // is already the tip. Ideally we would bail out if the
@@ -129,13 +127,13 @@ where
         // way to check that.
         if block_hash != current_tip {
             if current_tip == block.parent_id() {
-                let leadership_diff = self.leadership.diff(&block).unwrap();
-                let ledger_diff = { self.ledger.diff(block.transactions()).unwrap() };
-                let setting_diff = self.settings.diff(&block).unwrap();
+                let leadership_diff = self.state.leaders.diff(&block).unwrap();
+                let ledger_diff = { self.state.ledger.diff(block.transactions()).unwrap() };
+                let setting_diff = self.state.settings.diff(&block).unwrap();
 
-                self.leadership.apply(leadership_diff.clone()).unwrap();
-                self.ledger.apply(ledger_diff.clone()).unwrap();
-                self.settings.apply(setting_diff.clone()).unwrap();
+                self.state.leaders.apply(leadership_diff.clone()).unwrap();
+                self.state.ledger.apply(ledger_diff.clone()).unwrap();
+                self.state.settings.apply(setting_diff.clone()).unwrap();
 
                 self.change_log
                     .push((leadership_diff, ledger_diff, setting_diff));
@@ -168,7 +166,7 @@ impl<B: BlockConfig> Blockchain<B> {
     /// return the current tip hash and date
     pub fn get_tip(&self) -> B::BlockHash {
         use chain_core::property::Settings;
-        self.settings.tip()
+        self.state.settings.tip()
     }
 }
 
