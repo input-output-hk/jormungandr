@@ -117,6 +117,10 @@ storage: "/tmp/storage"
 logger:
   verbosity: 1
   format: json
+rest:
+  listen: "127.0.0.1:8443"
+  pkcs12: "example.p12"
+  prefix: "api"
 ```
 
 Fields description:
@@ -129,6 +133,10 @@ Fields description:
   - *logger*: (optional) logger configuration,
      - *verbosity*: 0 - warning, 1 - info, 2 -debug, 3 and above - trace
      - *format*: log output format - plain or json.
+  - *rest*: (optional) configuration of the rest endpoint.
+     - *listen*: listen address
+     - *pkcs12*: certificate file
+     - *prefix*: (optional) api prefix
 
 ### Starting the node
 
@@ -141,12 +149,17 @@ jormungandr start --genesis-config genesis.yaml \
 ```
 
 In order to start a leader node you need to generate key pairs using
-`cardano-cli`:
+`jormungandr`:
 
 ```
-cardano-cli debug generate-xprv key.xprv
-cardano-cli debug xprv-to-xpub key.xprv key.xpub
+jormungandr generate-keys
+signing_key: 90167eccc5db6ab75c643e33901ec727be847aa51f16890df06ec6fa401e9958
+public_key: 77d0edad4553bbb66115ce1ed78ca0e752534a0d2faa707d4356ea567a586475
 ```
+
+`singing_key` is your private key you can put it in key.xprv file,
+note that there should be no EOL in that file. If you expect your
+node to be a leader, put your public_key in the `genesis.yaml` leader.
 
 Then you should start node using:
 
@@ -155,3 +168,4 @@ jormungandr start --genesis-config genesis.yaml \
   --config example.config \
   --secret key.xprv
 ```
+
