@@ -43,7 +43,7 @@ lazy_static = "1.2.0"
 actix-net = "0.2.6"
 native-tls = "0.2.2"
 chain-core      = { path = "cardano-deps/chain-core" }
-chain-impl-mockchain = { path = "cardano-deps/chain-impl-mockchain" }
+chain-impl-mockchain = { path = "cardano-deps/chain-impl-mockchain", features = [ "generic-serialization" ] }
 chain-storage   = { path = "cardano-deps/chain-storage" }
 chain-addr      = { path = "cardano-deps/chain-addr" }
 network-core    = { path = "cardano-deps/network-core" }

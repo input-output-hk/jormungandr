@@ -15,19 +15,14 @@ pub enum Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let error_name = match *self {
-            Error::Pkcs12LoadFailed(_) => "Pkcs12LoadFailed",
-            Error::Pkcs12Invalid(_) => "Pkcs12Invalid",
-            Error::BindFailed(_) => "BindFailed",
-            Error::ServerAlreadyStopped => "ServerAlreadyStopped",
-            Error::ServerStopTimeout => "ServerStopTimeout ",
-            Error::ServerStopFailed => "ServerStopFailed ",
-        };
-        write!(f, "Server service error: {}", error_name)?;
-        if let Some(cause) = self.source() {
-            write!(f, "caused by {}", cause)?
+        match *self {
+            Error::Pkcs12LoadFailed(_) => write!(f, "Failed to load PKCS12 identity file"),
+            Error::Pkcs12Invalid(_) => write!(f, "Invalid PKCS12 identity file"),
+            Error::BindFailed(_) => write!(f, "Failed to bind the port"),
+            Error::ServerAlreadyStopped => write!(f, "Couldn't stop server, it's already stopped"),
+            Error::ServerStopTimeout => write!(f, "Timeout during server stopping"),
+            Error::ServerStopFailed => write!(f, "Failed to stop server"),
         }
-        Ok(())
     }
 }
 

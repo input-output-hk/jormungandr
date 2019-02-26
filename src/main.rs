@@ -261,7 +261,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     };
 
     let rest_server = match settings.rest {
-        Some(ref rest) => Some(rest::start_rest_server(rest, stats_counter)?),
+        Some(ref rest) => Some(rest::start_rest_server(rest, stats_counter, blockchain)?),
         None => None,
     };
 
