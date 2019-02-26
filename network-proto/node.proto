@@ -46,6 +46,9 @@ message Header {
     bytes content = 1;
 }
 
+// Request message for method SubscribeToBlocks.
+message BlockSubscriptionRequest {}
+
 // Request message for method ProposeTransactions.
 message ProposeTransactionsRequest {
     // Identifiers of transactions to check.
@@ -89,6 +92,11 @@ service Node {
     rpc GetHeaders (GetBlocksRequest) returns (stream Header) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
+
+    // Establishes a subscription stream to receive information on new
+    // blocks created or accepted by the peer.
+    rpc SubscribeToBlocks (BlockSubscriptionRequest) returns (stream Header);
+
     rpc PullBlocksToTip (PullBlocksToTipRequest) returns (stream Block);
     rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);
     rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
