@@ -25,7 +25,7 @@ pub trait BlockConfig {
         + Send;
     type BlockDate: BlockDate + Display + FromStr;
     type BlockHash: BlockId + Display + Send;
-    type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate> + Send;
+    type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate> + Clone + Send + Sync;
     type Transaction: Transaction<Id = Self::TransactionId> + Serialize + Send;
     type TransactionId: TransactionId + Serialize + Send;
     type GenesisData;

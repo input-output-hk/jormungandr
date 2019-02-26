@@ -1,11 +1,12 @@
 use super::ConnectionState;
 use crate::blockcfg::BlockConfig;
 use crate::intercom::{
-    self, stream_reply, unary_reply, ClientMsg, ReplyFuture, ReplyStream, TransactionMsg,
+    self, stream_reply, subscription_reply, unary_reply, ClientMsg, ReplyFuture, ReplyStream,
+    SubscriptionFuture, SubscriptionStream, TransactionMsg,
 };
 use crate::utils::task::TaskMessageBox;
 
-use chain_core::property::{HasHeader, Header};
+use chain_core::property::Header;
 use network_core::server::{
     block::{BlockError, BlockService},
     transaction::{
@@ -44,7 +45,7 @@ impl<B: BlockConfig> Node for ConnectionServices<B> {
 
 impl From<intercom::Error> for BlockError {
     fn from(err: intercom::Error) -> Self {
-        BlockError(err.code())
+        BlockError::with_code_and_cause(err.code(), err)
     }
 }
 
@@ -81,8 +82,8 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     type PullBlocksFuture = FutureResult<Self::PullBlocksStream, BlockError>;
     type PullHeadersStream = ReplyStream<B::BlockHeader, BlockError>;
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, BlockError>;
-    type BlockSubscription = ReplyStream<B::BlockHeader, BlockError>;
-    type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, BlockError>;
+    type BlockSubscription = SubscriptionStream<B::BlockHeader, BlockError>;
+    type BlockSubscriptionFuture = SubscriptionFuture<B::BlockHeader, BlockError>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
@@ -118,13 +119,15 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     }
 
     fn subscribe(&mut self) -> Self::BlockSubscriptionFuture {
-        unimplemented!()
+        let (handle, future) = subscription_reply();
+        unimplemented!();
+        future
     }
 }
 
 impl From<intercom::Error> for TransactionError {
     fn from(err: intercom::Error) -> Self {
-        TransactionError(err.code())
+        TransactionError::with_code_and_cause(err.code(), err)
     }
 }
 
