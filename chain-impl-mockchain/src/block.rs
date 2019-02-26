@@ -356,22 +356,24 @@ impl property::Deserialize for Message {
         let mut codec = Codec::from(reader);
         let tag = codec.get_u8()?;
         match MessageTag::from_u8(tag) {
-            Some(MessageTag::Transaction) => Ok(Message::Transaction(SignedTransaction::deserialize(
-                &mut codec,
-            )?)),
-            Some(MessageTag::StakeKeyRegistration) => Ok(Message::StakeKeyRegistration(Signed::deserialize(
-                &mut codec,
-            )?)),
+            Some(MessageTag::Transaction) => Ok(Message::Transaction(
+                SignedTransaction::deserialize(&mut codec)?,
+            )),
+            Some(MessageTag::StakeKeyRegistration) => Ok(Message::StakeKeyRegistration(
+                Signed::deserialize(&mut codec)?,
+            )),
             Some(MessageTag::StakeKeyDeregistration) => Ok(Message::StakeKeyDeregistration(
                 Signed::deserialize(&mut codec)?,
             )),
-            Some(MessageTag::StakeDelegation) => Ok(Message::StakeDelegation(Signed::deserialize(&mut codec)?)),
-            Some(MessageTag::StakePoolRegistration) => Ok(Message::StakePoolRegistration(Signed::deserialize(
-                &mut codec,
-            )?)),
-            Some(MessageTag::StakePoolRetirement) => Ok(Message::StakePoolRetirement(Signed::deserialize(
-                &mut codec,
-            )?)),
+            Some(MessageTag::StakeDelegation) => {
+                Ok(Message::StakeDelegation(Signed::deserialize(&mut codec)?))
+            }
+            Some(MessageTag::StakePoolRegistration) => Ok(Message::StakePoolRegistration(
+                Signed::deserialize(&mut codec)?,
+            )),
+            Some(MessageTag::StakePoolRetirement) => Ok(Message::StakePoolRetirement(
+                Signed::deserialize(&mut codec)?,
+            )),
             None => panic!("Unrecognized certificate message tag {}.", tag),
         }
     }

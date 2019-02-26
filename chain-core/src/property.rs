@@ -273,7 +273,10 @@ pub trait LeaderSelection {
 
     /// return the ID of the leader of the blockchain at the given
     /// date.
-    fn get_leader_at(&self, date: <Self::Block as Block>::Date) -> Result<Self::LeaderId, Self::Error>;
+    fn get_leader_at(
+        &self,
+        date: <Self::Block as Block>::Date,
+    ) -> Result<Self::LeaderId, Self::Error>;
 }
 
 /// the settings of the blockchain this is something that can be used to maintain
