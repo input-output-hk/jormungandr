@@ -14,7 +14,7 @@ pub struct Version {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Settings {
     pub last_block_id: Hash,
-    pub max_number_of_transactions_per_block: usize,
+    pub max_number_of_transactions_per_block: u32,
 }
 
 #[derive(Debug)]
@@ -67,7 +67,7 @@ impl property::Settings for Settings {
         self.last_block_id.clone()
     }
 
-    fn max_number_of_transactions_per_block(&self) -> usize {
+    fn max_number_of_transactions_per_block(&self) -> u32 {
         self.max_number_of_transactions_per_block
     }
 }

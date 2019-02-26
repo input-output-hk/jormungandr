@@ -11,26 +11,11 @@ pub enum LeaderSelection {
     Genesis,
 }
 
-#[derive(PartialEq, Eq)]
-pub enum IsLeading {
-    Yes,
-    No,
-}
-
-impl From<bool> for IsLeading {
-    fn from(b: bool) -> Self {
-        if b {
-            IsLeading::Yes
-        } else {
-            IsLeading::No
-        }
-    }
-}
-
 impl property::LeaderSelection for LeaderSelection {
     type Update = LeaderSelectionDiff;
     type Block = SignedBlock;
     type Error = Error;
+    type LeaderId = PublicKey;
 
     fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
         let mut update = <Self::Update as property::Update>::empty();
@@ -55,13 +40,13 @@ impl property::LeaderSelection for LeaderSelection {
     }
 
     #[inline]
-    fn is_leader_at(
+    fn get_leader_at(
         &self,
         date: <Self::Block as property::Block>::Date,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<Self::LeaderId, Self::Error> {
         match self {
             LeaderSelection::BFT(ref bft) => {
-                property::LeaderSelection::is_leader_at(bft, date).map_err(Error::Bft)
+                property::LeaderSelection::get_leader_at(bft, date).map_err(Error::Bft)
             }
             LeaderSelection::Genesis => unimplemented!(),
         }

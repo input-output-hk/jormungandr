@@ -1,6 +1,5 @@
 use crate::block::SignedBlock;
 use crate::key::PublicKey;
-use crate::leadership::IsLeading;
 use crate::update::{BftSelectionDiff, ValueDiff};
 
 use chain_core::property::{self, LeaderSelection};
@@ -11,13 +10,12 @@ pub struct BftRoundRobinIndex(usize);
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
 pub struct BftLeaderSelection<LeaderId> {
-    my: Option<BftRoundRobinIndex>,
     leaders: Vec<LeaderId>,
 
     current_leader: LeaderId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     BlockHasInvalidLeader(PublicKey, PublicKey),
     BlockSignatureIsInvalid,
@@ -25,34 +23,17 @@ pub enum Error {
 }
 
 impl<LeaderId: Eq + Clone> BftLeaderSelection<LeaderId> {
-    /// create a BFT leadership as a passive observer of the leadership
-    ///
-    /// This mean we are not expecting to be leader of any given slot
-    pub fn new_passive(leaders: Vec<LeaderId>) -> Option<Self> {
+    /// Create a new BFT leadership
+    pub fn new(leaders: Vec<LeaderId>) -> Option<Self> {
         if leaders.len() == 0 {
             return None;
         }
 
         let current_leader = leaders[0].clone();
         Some(BftLeaderSelection {
-            my: None,
             leaders: leaders,
             current_leader: current_leader,
         })
-    }
-
-    /// Create a new BFT leadership
-    pub fn new(me: LeaderId, leaders: Vec<LeaderId>) -> Option<Self> {
-        let mut bft = Self::new_passive(leaders)?;
-
-        let pos = bft
-            .leaders
-            .iter()
-            .position(|x| x == &me)
-            .map(BftRoundRobinIndex);
-        bft.my = pos;
-
-        Some(bft)
     }
 
     #[inline]
@@ -65,31 +46,13 @@ impl<LeaderId: Eq + Clone> BftLeaderSelection<LeaderId> {
         let max = self.number_of_leaders() as u64;
         BftRoundRobinIndex((block_number % max) as usize)
     }
-
-    /// get the party leader id elected for a given slot
-    #[inline]
-    fn get_leader_at(&self, slotid: u64) -> &LeaderId {
-        let BftRoundRobinIndex(ofs) = self.offset(slotid);
-        &self.leaders[ofs]
-    }
-
-    /// check if this party is elected for a given slot
-    #[inline]
-    fn is_leader_at(&self, slotid: u64) -> IsLeading {
-        match self.my {
-            None => IsLeading::No,
-            Some(my_index) => {
-                let slot_offset = self.offset(slotid);
-                (slot_offset == my_index).into()
-            }
-        }
-    }
 }
 
 impl LeaderSelection for BftLeaderSelection<PublicKey> {
     type Update = BftSelectionDiff;
     type Block = SignedBlock;
     type Error = Error;
+    type LeaderId = PublicKey;
 
     fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
         use chain_core::property::Block;
@@ -97,7 +60,7 @@ impl LeaderSelection for BftLeaderSelection<PublicKey> {
         let mut update = <Self::Update as property::Update>::empty();
 
         let date = input.date();
-        let new_leader = self.get_leader_at(date.slot_id).clone();
+        let new_leader = self.get_leader_at(date)?;
 
         if new_leader != input.public_key {
             return Err(Error::BlockHasInvalidLeader(
@@ -131,11 +94,12 @@ impl LeaderSelection for BftLeaderSelection<PublicKey> {
     }
 
     #[inline]
-    fn is_leader_at(
+    fn get_leader_at(
         &self,
         date: <Self::Block as property::Block>::Date,
-    ) -> Result<bool, Self::Error> {
-        Ok(self.is_leader_at(date.slot_id) == IsLeading::Yes)
+    ) -> Result<Self::LeaderId, Self::Error> {
+        let BftRoundRobinIndex(ofs) = self.offset(date.slot_id);
+        Ok(self.leaders[ofs].clone())
     }
 }
 
