@@ -253,6 +253,9 @@ pub trait LeaderSelection {
     /// Leader Selection error type
     type Error: std::error::Error;
 
+    /// Identifier of the leader (e.g. a public key).
+    type LeaderId;
+
     /// given a Block, create an Update diff to see what are the changes
     /// that will come with this new block.
     ///
@@ -268,10 +271,9 @@ pub trait LeaderSelection {
     /// apply the Update to the LeaderSelection
     fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error>;
 
-    /// return if this instance of the LeaderSelection is leader of the
-    /// blockchain at the given date.
-    ///
-    fn is_leader_at(&self, date: <Self::Block as Block>::Date) -> Result<bool, Self::Error>;
+    /// return the ID of the leader of the blockchain at the given
+    /// date.
+    fn get_leader_at(&self, date: <Self::Block as Block>::Date) -> Result<Self::LeaderId, Self::Error>;
 }
 
 /// the settings of the blockchain this is something that can be used to maintain
@@ -295,7 +297,7 @@ pub trait Settings {
     fn tip(&self) -> <Self::Block as Block>::Id;
 
     /// the number of transactions in a block
-    fn max_number_of_transactions_per_block(&self) -> usize;
+    fn max_number_of_transactions_per_block(&self) -> u32;
 }
 
 /// Define that an object can be written to a `Write` object.
