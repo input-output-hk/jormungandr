@@ -75,7 +75,7 @@ Run following command to generate your `genesis.yaml` file:
 jormungandr init \
     --initial-utxos=ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s@999999999 \
     --bft-leader=5b66c12d1aa6986d9c37b7bf905826a95db4b1c28e7c24fbaeb6ec277f75bd59 \
-    --bft-leader=f976bd9025d8c26928479ebdd39c12ac2cf5ce73f6534648a78ddc0da2f57794
+    --bft-leader=f976bd9025d8c26928479ebdd39c12ac2cf5ce73f6534648a78ddc0da2f57794 > genesis.yaml
 ```
 
 Running the command above will generate (WARNING: this is temporary, the genesis data format will be updated):
