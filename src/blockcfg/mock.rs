@@ -34,7 +34,10 @@ impl BlockConfig for Mockchain {
         let block = block::Block {
             slot_id: block_date,
             parent_hash: settings.tip(),
-            transactions: transactions,
+            contents: transactions
+                .into_iter()
+                .map(|tx| block::Message::Transaction(tx))
+                .collect(),
         };
 
         block::SignedBlock::new(block, secret_key)

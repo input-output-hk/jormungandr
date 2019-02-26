@@ -5,6 +5,7 @@ use crate::{clock, intercom::BlockMsg, utils::task::TaskMessageBox, BlockchainR}
 use chain_core::property::{BlockDate, LeaderSelection};
 
 pub fn leadership_task<B>(
+    leader_id: <<B as BlockConfig>::Leader as LeaderSelection>::LeaderId,
     secret: <B as BlockConfig>::NodeSigningKey,
     transaction_pool: TPoolR<B>,
     blockchain: BlockchainR<B>,
@@ -14,6 +15,8 @@ pub fn leadership_task<B>(
     B: BlockConfig,
     <B as BlockConfig>::TransactionId: Eq + std::hash::Hash,
     <B as BlockConfig>::Settings: Settings,
+    // FIXME: LeaderId should always require PartialEq.
+    <<B as BlockConfig>::Leader as LeaderSelection>::LeaderId: PartialEq,
 {
     loop {
         let d = clock.wait_next_slot();
@@ -31,15 +34,15 @@ pub fn leadership_task<B>(
         // the block.
         let b = blockchain.read().unwrap();
 
-        let is_leader = b.state.leaders.is_leader_at(date.clone()).unwrap();
+        let am_leader = b.state.leaders.get_leader_at(date.clone()).unwrap() == leader_id;
 
-        if is_leader {
+        if am_leader {
             // collect up to `nr_transactions` from the transaction pool.
             //
             let transactions = transaction_pool
                 .write()
                 .unwrap()
-                .collect(b.state.settings.max_number_of_transactions_per_block());
+                .collect(b.state.settings.max_number_of_transactions_per_block() as usize);
 
             info!(
                 "leadership create tpool={} transactions ({}.{})",

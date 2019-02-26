@@ -138,15 +138,10 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     } else {
         None
     };
-    let leader_public = if let Some(ref secret) = &leader_secret {
-        Some(secret.public())
-    } else {
-        None
-    };
 
     //let mut state = State::new();
 
-    let blockchain_data = Blockchain::new(genesis_data.clone(), leader_public);
+    let blockchain_data = Blockchain::new(genesis_data.clone());
 
     startup_info(&genesis_data, &blockchain_data, &settings);
 
@@ -257,9 +252,10 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         let clock = clock.clone();
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
+        let leader_id = chain_impl_mockchain::key::PublicKey(secret.public().block_publickey);
         let pk = node_private_key(secret);
         tasks.task_create("leadership", move || {
-            leadership_task(pk, tpool, blockchain, clock, block_task)
+            leadership_task(leader_id, pk, tpool, blockchain, clock, block_task)
         });
     };
 
