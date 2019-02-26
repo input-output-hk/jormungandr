@@ -314,7 +314,7 @@ fn main() {
                 slot_duration: init_settings.slot_duration,
                 epoch_stability_depth: init_settings.epoch_stability_depth,
                 initial_utxos: init_settings.initial_utxos,
-                obft_leaders: init_settings.obft_leaders,
+                bft_leaders: init_settings.bft_leaders,
             };
 
             serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();

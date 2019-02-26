@@ -85,13 +85,15 @@ pub struct InitArguments {
     pub slot_duration: std::time::Duration,
 
     /// set the number of blocks that can be used to pack in the storage
-    #[structopt(long = "epoch-stability-depth", default_value = "2600")]
+    ///
+    /// In the BFT paper it corresponds to the `t` parameter.
+    #[structopt(long = "epoch-stability-depth", default_value = "10")]
     pub epoch_stability_depth: usize,
 
     /// one starting up the protocol will be in OBFT mode, you need to provide a list of
     /// authoritative public keys that will control the blockchain
-    #[structopt(long = "obft-leader", parse(try_from_str))]
-    pub obft_leaders: Vec<PublicKey>,
+    #[structopt(long = "bft-leader", parse(try_from_str))]
+    pub bft_leaders: Vec<PublicKey>,
 }
 
 #[derive(StructOpt, Debug)]
