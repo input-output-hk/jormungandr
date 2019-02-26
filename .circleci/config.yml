@@ -6,6 +6,7 @@ jobs:
     working_directory: /mnt/crate
     steps:
       - checkout
+      - run: git submodule update --init --remote
       - restore_cache:
           keys:
             - cargo-v2-{{ checksum "Cargo.toml" }}-
@@ -35,6 +36,7 @@ jobs:
       - run:
           name: Print version information
           command: rustc --version; cargo --version
+      - run: git submodule update --init --remote
       - run:
           name: Build and test
           command: cargo test --frozen --verbose
@@ -62,6 +64,7 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run: git submodule update --init --remote
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -79,6 +82,7 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run: git submodule update --init --remote
       - run:
           name: Print version information
           command: rustc --version; cargo --version
