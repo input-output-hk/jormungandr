@@ -6,7 +6,6 @@ use chain_impl_mockchain::{key, leadership, ledger, setting};
 use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStore};
 
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
-use crate::secure::NodePublic;
 
 /// this structure holds all the state of the blockchains
 ///
@@ -47,25 +46,12 @@ pub type BlockchainR<B> = Arc<RwLock<Blockchain<B>>>;
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
 impl State<Mockchain> {
-    pub fn new(genesis: &GenesisData, node_public: Option<NodePublic>) -> Self {
+    pub fn new(genesis: &GenesisData) -> Self {
         let last_block_hash = key::Hash::hash_bytes(&[]);
 
-        let leaders = if let Some(public) = node_public {
-            leadership::LeaderSelection::BFT(
-                leadership::bft::BftLeaderSelection::new(
-                    key::PublicKey(public.block_publickey.clone()),
-                    genesis.leaders().cloned().collect(),
-                )
-                .unwrap(),
-            )
-        } else {
-            leadership::LeaderSelection::BFT(
-                leadership::bft::BftLeaderSelection::new_passive(
-                    genesis.leaders().cloned().collect(),
-                )
-                .unwrap(),
-            )
-        };
+        let leaders = leadership::LeaderSelection::BFT(
+            leadership::bft::BftLeaderSelection::new(genesis.leaders().cloned().collect()).unwrap(),
+        );
 
         State {
             ledger: ledger::Ledger::new(Default::default()),
@@ -79,10 +65,10 @@ impl State<Mockchain> {
 }
 
 impl Blockchain<Mockchain> {
-    pub fn new(genesis_data: GenesisData, node_public: Option<NodePublic>) -> Self {
+    pub fn new(genesis_data: GenesisData) -> Self {
         let last_block_hash = key::Hash::hash_bytes(&[]);
 
-        let state = State::new(&genesis_data, node_public);
+        let state = State::new(&genesis_data);
         Blockchain {
             genesis_data: genesis_data,
             storage: MemoryBlockStore::new(last_block_hash.clone()),
@@ -98,8 +84,6 @@ where
     <B::Ledger as property::Ledger>::Update: Clone,
     <B::Settings as property::Settings>::Update: Clone,
     <B::Leader as property::LeaderSelection>::Update: Clone,
-    for<'a> &'a <B::Block as property::HasTransaction>::Transactions:
-        IntoIterator<Item = &'a B::Transaction>,
 {
     pub fn handle_incoming_block(&mut self, block: B::Block) -> Result<(), storage::Error> {
         use chain_core::property::Block;
