@@ -48,7 +48,7 @@ impl<LeaderId: Eq + Clone> BftLeaderSelection<LeaderId> {
     }
 }
 
-impl chain_core::property::LeaderId for PublicKey { }
+impl chain_core::property::LeaderId for PublicKey {}
 
 impl LeaderSelection for BftLeaderSelection<PublicKey> {
     type Update = BftSelectionDiff;
