@@ -19,7 +19,10 @@ pub mod mock;
 use std::fmt::Display;
 
 pub trait BlockConfig {
-    type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate> + HasTransaction + Send;
+    type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
+        + HasTransaction
+        + HasHeader<Header = Self::BlockHeader>
+        + Send;
     type BlockDate: BlockDate + Display + FromStr;
     type BlockHash: BlockId + Display + Send;
     type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate> + Send;

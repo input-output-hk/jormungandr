@@ -5,9 +5,9 @@ use crate::intercom::{
 };
 use crate::utils::task::TaskMessageBox;
 
-use chain_core::property::Header;
+use chain_core::property::{HasHeader, Header};
 use network_core::server::{
-    block::{BlockError, BlockService, HeaderService},
+    block::{BlockError, BlockService},
     transaction::{
         ProposeTransactionsResponse, RecordTransactionResponse, TransactionError,
         TransactionService,
@@ -30,14 +30,9 @@ impl<B: BlockConfig> ConnectionServices<B> {
 
 impl<B: BlockConfig> Node for ConnectionServices<B> {
     type BlockService = ConnectionBlockService<B>;
-    type HeaderService = ConnectionBlockService<B>;
     type TransactionService = ConnectionTransactionService<B>;
 
     fn block_service(&self) -> Option<Self::BlockService> {
-        Some(ConnectionBlockService::new(&self.state))
-    }
-
-    fn header_service(&self) -> Option<Self::HeaderService> {
         Some(ConnectionBlockService::new(&self.state))
     }
 
@@ -81,10 +76,13 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
         ReplyFuture<B::BlockHeader, BlockError>,
         fn(B::BlockHeader) -> (B::BlockHash, B::BlockDate),
     >;
-    type GetBlocksStream = ReplyStream<B::Block, BlockError>;
-    type GetBlocksFuture = FutureResult<Self::GetBlocksStream, BlockError>;
-    type PullBlocksToTipStream = ReplyStream<B::Block, BlockError>;
-    type PullBlocksFuture = FutureResult<Self::PullBlocksToTipStream, BlockError>;
+    type Header = B::BlockHeader;
+    type PullBlocksStream = ReplyStream<B::Block, BlockError>;
+    type PullBlocksFuture = FutureResult<Self::PullBlocksStream, BlockError>;
+    type PullHeadersStream = ReplyStream<B::BlockHeader, BlockError>;
+    type PullHeadersFuture = FutureResult<Self::PullHeadersStream, BlockError>;
+    type BlockSubscription = ReplyStream<B::BlockHeader, BlockError>;
+    type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, BlockError>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
@@ -101,28 +99,25 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
 
     fn pull_blocks_to(
         &mut self,
-        from: &[Self::BlockId],
-        to: &Self::BlockId,
+        _from: &[Self::BlockId],
+        _to: &Self::BlockId,
     ) -> Self::PullBlocksFuture {
         unimplemented!()
     }
-}
 
-impl<B: BlockConfig> HeaderService for ConnectionBlockService<B> {
-    type Header = B::BlockHeader;
-    type HeaderId = B::BlockHash;
-    type GetHeadersStream = ReplyStream<B::BlockHeader, BlockError>;
-    type GetHeadersFuture = FutureResult<Self::GetHeadersStream, BlockError>;
-
-    fn block_headers(
+    fn pull_headers_to(
         &mut self,
-        from: &[Self::HeaderId],
-        to: &Self::HeaderId,
-    ) -> Self::GetHeadersFuture {
+        _from: &[Self::BlockId],
+        _to: &Self::BlockId,
+    ) -> Self::PullHeadersFuture {
         unimplemented!()
     }
 
-    fn block_headers_to_tip(&mut self, from: &[Self::HeaderId]) -> Self::GetHeadersFuture {
+    fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture {
+        unimplemented!()
+    }
+
+    fn subscribe(&mut self) -> Self::BlockSubscriptionFuture {
         unimplemented!()
     }
 }
@@ -154,7 +149,7 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
 
     fn propose_transactions(
         &mut self,
-        ids: &[Self::TransactionId],
+        _ids: &[Self::TransactionId],
     ) -> Self::ProposeTransactionsFuture {
         unimplemented!()
     }
