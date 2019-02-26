@@ -20,9 +20,10 @@ pub struct PublicKey(key::PublicKey);
 pub struct GenesisData {
     pub start_time: time::SystemTime,
     pub slot_duration: time::Duration,
+    /// also known as `t` in the BFT paper
     pub epoch_stability_depth: usize,
     pub initial_utxos: Vec<InitialUTxO>,
-    pub obft_leaders: Vec<PublicKey>,
+    pub bft_leaders: Vec<PublicKey>,
 }
 
 // TODO: details
@@ -52,7 +53,7 @@ impl GenesisData {
     }
 
     pub fn leaders<'a>(&'a self) -> impl Iterator<Item = &'a key::PublicKey> {
-        self.obft_leaders.iter().map(|pk| &pk.0)
+        self.bft_leaders.iter().map(|pk| &pk.0)
     }
 }
 

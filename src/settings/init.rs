@@ -32,7 +32,7 @@ pub struct Settings {
 
     pub initial_utxos: Vec<InitialUTxO>,
 
-    pub obft_leaders: Vec<PublicKey>,
+    pub bft_leaders: Vec<PublicKey>,
 
     pub slot_duration: std::time::Duration,
 
@@ -59,7 +59,7 @@ impl Settings {
             slot_duration: command_arguments.slot_duration.clone(),
             epoch_stability_depth: command_arguments.epoch_stability_depth,
             blockchain_start: std::time::SystemTime::now(),
-            obft_leaders: command_arguments.obft_leaders.clone(),
+            bft_leaders: command_arguments.bft_leaders.clone(),
         })
     }
 }
