@@ -120,6 +120,10 @@ impl BlockError {
             cause: Some(cause.into()),
         }
     }
+
+    pub fn code(&self) -> ErrorCode {
+        self.code
+    }
 }
 
 impl error::Error for BlockError {
