@@ -151,7 +151,16 @@ pub trait HasTransaction {
     type Transaction;
 
     /// Returns an iterator over the transactions in the block.
+    ///
+    /// Note that the iterator is dynamically allocated, and the iterator's
+    /// `next` method is invoked via dynamic dispatch. The method
+    /// `for_each_transaction` provides a statically monomorphised
+    /// alternative.
     fn transactions<'a>(&'a self) -> Box<Iterator<Item = &Self::Transaction> + 'a>;
+
+    fn for_each_transaction<F>(&self, f: F)
+    where
+        F: FnMut(&Self::Transaction);
 }
 
 /// Updates type needs to implement this feature so we can easily

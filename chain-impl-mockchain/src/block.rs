@@ -295,12 +295,29 @@ impl property::HasTransaction for Block {
             _ => None,
         }))
     }
+
+    fn for_each_transaction<F>(&self, mut f: F)
+    where
+        F: FnMut(&Self::Transaction),
+    {
+        self.contents.iter().for_each(|msg| match msg {
+            Message::Transaction(tx) => f(tx),
+            _ => {}
+        })
+    }
 }
 
 impl property::HasTransaction for SignedBlock {
     type Transaction = SignedTransaction;
     fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
         self.block.transactions()
+    }
+
+    fn for_each_transaction<F>(&self, f: F)
+    where
+        F: FnMut(&Self::Transaction),
+    {
+        self.block.for_each_transaction(f)
     }
 }
 
