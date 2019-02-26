@@ -145,7 +145,7 @@ If you are not a leader node, then you can start the jormundandr with:
 ```
 jormungandr start --genesis-config genesis.yaml \
   --config example.config \
-  --without-leadersip
+  --without-leadership
 ```
 
 In order to start a leader node you need to generate key pairs using
