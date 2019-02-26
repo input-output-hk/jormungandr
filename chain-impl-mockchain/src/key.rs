@@ -16,6 +16,9 @@ impl PublicKey {
     pub fn from_bytes(bytes: [u8; crypto::PUBLICKEY_SIZE]) -> Self {
         PublicKey(crypto::PublicKey::from_bytes(bytes))
     }
+    pub fn from_hex(string: &str) -> Result<Self, cardano::redeem::Error> {
+        Ok(PublicKey(crypto::PublicKey::from_hex(string)?))
+    }
 }
 
 /// Private key of the entity.
@@ -30,6 +33,9 @@ impl PrivateKey {
     }
     pub fn normalize_bytes(xprv: [u8; crypto::PRIVATEKEY_SIZE]) -> Self {
         PrivateKey(crypto::PrivateKey::normalize_bytes(xprv))
+    }
+    pub fn from_hex(input: &str) -> Result<Self, cardano::redeem::Error> {
+        Ok(PrivateKey(crypto::PrivateKey::from_hex(&input)?))
     }
 }
 
