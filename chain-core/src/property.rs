@@ -46,7 +46,7 @@ pub trait BlockDate: Eq + Ord + Clone {
 }
 
 /// Trait identifying the transaction identifier type.
-pub trait TransactionId: Eq + Hash {}
+pub trait TransactionId: Eq + Hash + Debug {}
 
 /// Trait identifying the block header type.
 pub trait Header: Serialize + Deserialize {
@@ -227,6 +227,9 @@ pub trait Ledger: Sized {
     fn apply(&mut self, update: Self::Update) -> Result<&mut Self, Self::Error>;
 }
 
+/// Trait identifying the leader identifier type.
+pub trait LeaderId: Eq + Clone + Hash + Debug {}
+
 /// interface for the leader selection algorithm
 ///
 /// this is the interface that is responsible to verify the Block are
@@ -254,7 +257,7 @@ pub trait LeaderSelection {
     type Error: std::error::Error;
 
     /// Identifier of the leader (e.g. a public key).
-    type LeaderId;
+    type LeaderId: LeaderId;
 
     /// given a Block, create an Update diff to see what are the changes
     /// that will come with this new block.
