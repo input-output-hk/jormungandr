@@ -147,13 +147,11 @@ pub trait Transaction: Serialize + Deserialize {
 /// * certificate registrations
 /// * ...
 pub trait HasTransaction {
-    /// An iterable collection of transactions provided by the block.
-    /// A reference to the `Transactions` type must be convertible to an
-    /// iterator returning references to transaction objects.
-    type Transactions: ?Sized;
+    /// The type of transactions in this block.
+    type Transaction;
 
-    /// Returns a reference that can be used to iterate over transactions in the block.
-    fn transactions(&self) -> &Self::Transactions;
+    /// Returns an iterator over the transactions in the block.
+    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &Self::Transaction> + 'a>;
 }
 
 /// Updates type needs to implement this feature so we can easily

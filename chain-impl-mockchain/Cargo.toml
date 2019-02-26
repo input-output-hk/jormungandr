@@ -17,6 +17,8 @@ quickcheck = { version = "0.8" }
 chain-core = { path = "../chain-core" }
 chain-addr = { path = "../chain-addr" }
 rand = "0.6"
+num-traits = "0.2"
+num-derive = "0.2"
 
 [dependencies.cardano]
 path = "../cardano"

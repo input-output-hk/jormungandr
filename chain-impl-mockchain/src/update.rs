@@ -36,6 +36,34 @@ pub enum ValueDiff<T> {
     Replace(T, T),
 }
 
+impl<T> ValueDiff<T>
+where
+    T: Eq,
+{
+    pub fn check(&self, dest: &T) -> bool {
+        match &self {
+            ValueDiff::None => true,
+            ValueDiff::Replace(old, _) => dest == old,
+        }
+    }
+
+    /// Apply this diff to a destination, overwriting it with the new
+    /// value if it is equal to the expected old value. Panic if the
+    /// old value is unexpected. (The caller is expected to use
+    /// `check` first to validate the expected state of all values in
+    /// an update first. We panic to ensure that we don't end up in a
+    /// half-update state.)
+    pub fn apply_to(self, dest: &mut T) {
+        match self {
+            ValueDiff::None => {}
+            ValueDiff::Replace(old, new) => {
+                assert!(dest == &old);
+                *dest = new;
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SettingsDiff {
     pub block_id: ValueDiff<Hash>,
@@ -53,27 +81,28 @@ pub struct LeaderSelectionDiff {
 }
 
 impl<T: PartialEq> ValueDiff<T> {
-    fn inverse(self) -> Self {
+    pub fn inverse(self) -> Self {
         match self {
             ValueDiff::None => ValueDiff::None,
             ValueDiff::Replace(a, b) => ValueDiff::Replace(b, a),
         }
     }
 
-    fn union(&mut self, other: Self) -> &mut Self {
+    pub fn union(&mut self, other: Self) -> &mut Self {
         match (std::mem::replace(self, ValueDiff::None), other) {
             (ValueDiff::None, ValueDiff::None) => {}
             (ValueDiff::None, ValueDiff::Replace(c, d)) => {
-                std::mem::replace(self, ValueDiff::Replace(c, d));
+                *self = ValueDiff::Replace(c, d);
             }
             (ValueDiff::Replace(a, b), ValueDiff::None) => {
-                std::mem::replace(self, ValueDiff::Replace(a, b));
+                *self = ValueDiff::Replace(a, b);
             }
             (ValueDiff::Replace(a, _b), ValueDiff::Replace(_c, d)) => {
+                //assert!(b == c); // FIXME
                 if a == d {
-                    std::mem::replace(self, ValueDiff::None);
+                    *self = ValueDiff::None;
                 } else {
-                    std::mem::replace(self, ValueDiff::Replace(a, d));
+                    *self = ValueDiff::Replace(a, d);
                 }
             }
         }

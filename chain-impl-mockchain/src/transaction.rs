@@ -82,6 +82,7 @@ impl property::Serialize for Value {
         codec.put_u64(self.0)
     }
 }
+
 impl property::Serialize for Witness {
     type Error = std::io::Error;
 
@@ -89,6 +90,7 @@ impl property::Serialize for Witness {
         self.0.serialize(writer)
     }
 }
+
 impl property::Serialize for Transaction {
     type Error = std::io::Error;
 
@@ -123,6 +125,8 @@ impl property::Serialize for SignedTransaction {
         let mut codec = Codec::from(writer);
         codec.put_u8(0x01)?;
 
+        assert_eq!(self.transaction.inputs.len(), self.witnesses.len());
+
         // encode the transaction body
         self.transaction.serialize(&mut codec)?;
 
@@ -143,6 +147,7 @@ impl property::Deserialize for Value {
         codec.get_u64().map(Value)
     }
 }
+
 impl property::Deserialize for Witness {
     type Error = std::io::Error;
 
@@ -150,6 +155,7 @@ impl property::Deserialize for Witness {
         Signature::deserialize(reader).map(Witness)
     }
 }
+
 impl property::Deserialize for Transaction {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {

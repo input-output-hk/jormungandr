@@ -16,8 +16,20 @@ impl PublicKey {
     pub fn from_bytes(bytes: [u8; crypto::PUBLICKEY_SIZE]) -> Self {
         PublicKey(crypto::PublicKey::from_bytes(bytes))
     }
+
     pub fn from_hex(string: &str) -> Result<Self, cardano::redeem::Error> {
         Ok(PublicKey(crypto::PublicKey::from_hex(string)?))
+    }
+
+    /// Convenience function to verify a serialize object.
+    pub fn serialize_and_verify<T: property::Serialize>(
+        &self,
+        t: &T,
+        signature: &Signature,
+    ) -> bool {
+        let mut codec = chain_core::packer::Codec::from(vec![]);
+        t.serialize(&mut codec).unwrap();
+        self.verify(&codec.into_inner(), signature)
     }
 }
 
@@ -34,8 +46,16 @@ impl PrivateKey {
     pub fn normalize_bytes(xprv: [u8; crypto::PRIVATEKEY_SIZE]) -> Self {
         PrivateKey(crypto::PrivateKey::normalize_bytes(xprv))
     }
+
     pub fn from_hex(input: &str) -> Result<Self, cardano::redeem::Error> {
         Ok(PrivateKey(crypto::PrivateKey::from_hex(&input)?))
+    }
+
+    /// Convenience function to sign a serialize object.
+    pub fn serialize_and_sign<T: property::Serialize>(&self, t: &T) -> Signature {
+        let mut codec = chain_core::packer::Codec::from(vec![]);
+        t.serialize(&mut codec).unwrap();
+        self.sign(&codec.into_inner())
     }
 }
 
@@ -60,6 +80,43 @@ pub struct Signature(crypto::Signature);
 impl Signature {
     pub fn from_bytes(bytes: [u8; crypto::SIGNATURE_SIZE]) -> Self {
         Signature(crypto::Signature::from_bytes(bytes))
+    }
+}
+
+/// A serializable type T with a signature.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Signed<T> {
+    pub data: T,
+    pub sig: Signature,
+}
+
+impl<T: property::Serialize> property::Serialize for Signed<T>
+where
+    std::io::Error: From<T::Error>,
+{
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        self.data.serialize(&mut codec)?;
+        self.sig.serialize(&mut codec)?;
+        Ok(())
+    }
+}
+
+impl<T: property::Deserialize> property::Deserialize for Signed<T>
+where
+    std::io::Error: From<T::Error>,
+{
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(reader);
+        Ok(Signed {
+            data: T::deserialize(&mut codec)?,
+            sig: Signature::deserialize(&mut codec)?,
+        })
     }
 }
 

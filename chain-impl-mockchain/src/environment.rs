@@ -14,9 +14,9 @@ use crate::update::TransactionsDiff;
 
 /// Helper structure that keeps the ledger together with key-pairs
 /// that participate in communication. By having such type it's
-/// possible to perform and genarate new cryptographically signed
-/// operations and verify them, without requiring user to mess with
-/// keys on it's own.
+/// possible to perform and generate new cryptographically signed
+/// operations and verify them, without requiring users to mess with
+/// keys on their own.
 pub struct Environment {
     ledger: Ledger,
     gen: StdGen<rand::rngs::ThreadRng>,

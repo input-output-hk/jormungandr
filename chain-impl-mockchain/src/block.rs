@@ -1,7 +1,10 @@
 //! Representation of the block in the mockchain.
-use crate::key::{Hash, PrivateKey, PublicKey, Signature};
+use crate::certificate;
+use crate::key::{Hash, PrivateKey, PublicKey, Signature, Signed};
 use crate::transaction::*;
 use chain_core::property;
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
 pub use crate::date::{BlockDate, BlockDateParseError};
 
@@ -13,7 +16,17 @@ pub struct Block {
     pub slot_id: BlockDate,
     pub parent_hash: Hash,
 
-    pub transactions: Vec<SignedTransaction>,
+    pub contents: Vec<Message>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Message {
+    Transaction(SignedTransaction),
+    StakeKeyRegistration(Signed<certificate::StakeKeyRegistration>),
+    StakeKeyDeregistration(Signed<certificate::StakeKeyDeregistration>),
+    StakeDelegation(Signed<certificate::StakeDelegation>),
+    StakePoolRegistration(Signed<certificate::StakePoolRegistration>),
+    StakePoolRetirement(Signed<certificate::StakePoolRetirement>),
 }
 
 /// `Block` is an element of the blockchain it contains multiple
@@ -148,8 +161,8 @@ impl property::Serialize for Block {
         codec.put_u64(self.slot_id.epoch)?;
         codec.put_u64(self.slot_id.slot_id)?;
         codec.write_all(self.parent_hash.as_ref())?;
-        codec.put_u16(self.transactions.len() as u16)?;
-        for t in self.transactions.iter() {
+        codec.put_u16(self.contents.len() as u16)?;
+        for t in self.contents.iter() {
             t.serialize(&mut codec)?;
         }
 
@@ -212,17 +225,15 @@ impl property::Deserialize for Block {
         codec.read_exact(&mut hash)?;
         let hash = Hash::from(cardano::hash::Blake2b256::from(hash));
 
-        let num_transactions = codec.get_u16()? as usize;
+        let num_messages = codec.get_u16()? as usize;
 
         let mut block = Block {
             slot_id: date,
             parent_hash: hash,
-            transactions: Vec::with_capacity(num_transactions),
+            contents: Vec::with_capacity(num_messages),
         };
-        for _ in 0..num_transactions {
-            block
-                .transactions
-                .push(SignedTransaction::deserialize(&mut codec)?);
+        for _ in 0..num_messages {
+            block.contents.push(Message::deserialize(&mut codec)?);
         }
 
         Ok(block)
@@ -277,16 +288,92 @@ impl property::Deserialize for SignedBlockSummary {
 }
 
 impl property::HasTransaction for Block {
-    type Transactions = [SignedTransaction];
-    fn transactions(&self) -> &Self::Transactions {
-        &self.transactions
+    type Transaction = SignedTransaction;
+    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
+        Box::new(self.contents.iter().filter_map(|msg| match msg {
+            Message::Transaction(tx) => Some(tx),
+            _ => None,
+        }))
     }
 }
 
 impl property::HasTransaction for SignedBlock {
-    type Transactions = [SignedTransaction];
-    fn transactions(&self) -> &Self::Transactions {
+    type Transaction = SignedTransaction;
+    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
         self.block.transactions()
+    }
+}
+
+#[derive(FromPrimitive)]
+enum MessageTag {
+    Transaction = 1,
+    StakeKeyRegistration = 2,
+    StakeKeyDeregistration = 3,
+    StakeDelegation = 4,
+    StakePoolRegistration = 5,
+    StakePoolRetirement = 6,
+}
+
+impl property::Serialize for Message {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        match self {
+            Message::Transaction(signed) => {
+                codec.put_u8(MessageTag::Transaction as u8)?;
+                signed.serialize(&mut codec)
+            }
+            Message::StakeKeyRegistration(signed) => {
+                codec.put_u8(MessageTag::StakeKeyRegistration as u8)?;
+                signed.serialize(&mut codec)
+            }
+            Message::StakeKeyDeregistration(signed) => {
+                codec.put_u8(MessageTag::StakeKeyDeregistration as u8)?;
+                signed.serialize(&mut codec)
+            }
+            Message::StakeDelegation(signed) => {
+                codec.put_u8(MessageTag::StakeDelegation as u8)?;
+                signed.serialize(&mut codec)
+            }
+            Message::StakePoolRegistration(signed) => {
+                codec.put_u8(MessageTag::StakePoolRegistration as u8)?;
+                signed.serialize(&mut codec)
+            }
+            Message::StakePoolRetirement(signed) => {
+                codec.put_u8(MessageTag::StakePoolRetirement as u8)?;
+                signed.serialize(&mut codec)
+            }
+        }
+    }
+}
+
+impl property::Deserialize for Message {
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(reader);
+        let tag = codec.get_u8()?;
+        match MessageTag::from_u8(tag) {
+            Some(MessageTag::Transaction) => Ok(Message::Transaction(SignedTransaction::deserialize(
+                &mut codec,
+            )?)),
+            Some(MessageTag::StakeKeyRegistration) => Ok(Message::StakeKeyRegistration(Signed::deserialize(
+                &mut codec,
+            )?)),
+            Some(MessageTag::StakeKeyDeregistration) => Ok(Message::StakeKeyDeregistration(
+                Signed::deserialize(&mut codec)?,
+            )),
+            Some(MessageTag::StakeDelegation) => Ok(Message::StakeDelegation(Signed::deserialize(&mut codec)?)),
+            Some(MessageTag::StakePoolRegistration) => Ok(Message::StakePoolRegistration(Signed::deserialize(
+                &mut codec,
+            )?)),
+            Some(MessageTag::StakePoolRetirement) => Ok(Message::StakePoolRetirement(Signed::deserialize(
+                &mut codec,
+            )?)),
+            None => panic!("Unrecognized certificate message tag {}.", tag),
+        }
     }
 }
 
@@ -321,12 +408,25 @@ mod test {
         }
     }
 
+    impl Arbitrary for Message {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            match g.next_u32() % 100 {
+                0 => Message::StakeKeyRegistration(Arbitrary::arbitrary(g)),
+                1 => Message::StakeKeyDeregistration(Arbitrary::arbitrary(g)),
+                2 => Message::StakeDelegation(Arbitrary::arbitrary(g)),
+                3 => Message::StakePoolRegistration(Arbitrary::arbitrary(g)),
+                4 => Message::StakePoolRetirement(Arbitrary::arbitrary(g)),
+                _ => Message::Transaction(Arbitrary::arbitrary(g)),
+            }
+        }
+    }
+
     impl Arbitrary for Block {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Block {
                 slot_id: Arbitrary::arbitrary(g),
                 parent_hash: Arbitrary::arbitrary(g),
-                transactions: Arbitrary::arbitrary(g),
+                contents: Arbitrary::arbitrary(g),
             }
         }
     }

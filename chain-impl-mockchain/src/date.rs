@@ -11,6 +11,33 @@ pub struct BlockDate {
     pub slot_id: u64,
 }
 
+pub const EPOCH_DURATION: u64 = 100; // FIXME: support dynamic epoch durations?
+
+impl BlockDate {
+    pub fn first() -> BlockDate {
+        BlockDate {
+            epoch: 0,
+            slot_id: 0,
+        }
+    }
+
+    /// Get the slot following this one.
+    pub fn next(&self) -> BlockDate {
+        assert!(self.slot_id < EPOCH_DURATION);
+        if self.slot_id + 1 == EPOCH_DURATION {
+            BlockDate {
+                epoch: self.epoch + 1,
+                slot_id: 0,
+            }
+        } else {
+            BlockDate {
+                epoch: self.epoch,
+                slot_id: self.slot_id + 1,
+            }
+        }
+    }
+}
+
 impl property::BlockDate for BlockDate {
     fn from_epoch_slot_id(epoch: u64, slot_id: u64) -> Self {
         BlockDate {
