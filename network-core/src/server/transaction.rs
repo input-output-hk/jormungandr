@@ -37,13 +37,50 @@ pub trait TransactionService {
 
 /// Represents errors that can be returned by the transaction service.
 #[derive(Debug)]
-pub struct TransactionError(pub ErrorCode);
+pub struct TransactionError {
+    code: ErrorCode,
+    cause: Option<Box<dyn error::Error + Send + Sync>>,
+}
 
-impl error::Error for TransactionError {}
+impl TransactionError {
+    pub fn failed<E>(cause: E) -> Self
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        TransactionError {
+            code: ErrorCode::Failed,
+            cause: Some(cause.into()),
+        }
+    }
+
+    pub fn with_code_and_cause<E>(code: ErrorCode, cause: E) -> Self
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        TransactionError {
+            code,
+            cause: Some(cause.into()),
+        }
+    }
+
+    pub fn code(&self) -> ErrorCode {
+        self.code
+    }
+}
+
+impl error::Error for TransactionError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        if let Some(err) = &self.cause {
+            Some(&**err)
+        } else {
+            None
+        }
+    }
+}
 
 impl fmt::Display for TransactionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "transaction service error: {}", self.0)
+        write!(f, "transaction service error: {}", self.code)
     }
 }
 
