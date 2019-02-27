@@ -5,7 +5,7 @@ use crate::update::{BftSelectionDiff, ValueDiff};
 use chain_core::property::{self, LeaderSelection};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BftRoundRobinIndex(usize);
+pub struct BftRoundRobinIndex(pub usize);
 
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
