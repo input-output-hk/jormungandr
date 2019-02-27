@@ -343,7 +343,8 @@ where
         &mut self,
         _req: Request<gen::node::BlockSubscriptionRequest>,
     ) -> Self::SubscribeToBlocksFuture {
-        unimplemented!()
+        let service = try_get_service!(self.block_service);
+        ResponseFuture::new(service.subscribe())
     }
 
     fn pull_blocks_to_tip(
