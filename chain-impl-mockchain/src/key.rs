@@ -28,9 +28,7 @@ impl PublicKey {
         t: &T,
         signature: &Signature,
     ) -> bool {
-        let mut codec = chain_core::packer::Codec::from(vec![]);
-        t.serialize(&mut codec).unwrap();
-        self.verify(&codec.into_inner(), signature)
+        self.verify(&t.serialize_as_vec().unwrap(), signature)
     }
 }
 
@@ -54,9 +52,7 @@ impl PrivateKey {
 
     /// Convenience function to sign a serialize object.
     pub fn serialize_and_sign<T: property::Serialize>(&self, t: &T) -> Signature {
-        let mut codec = chain_core::packer::Codec::from(vec![]);
-        t.serialize(&mut codec).unwrap();
-        self.sign(&codec.into_inner())
+        self.sign(&t.serialize_as_vec().unwrap())
     }
 }
 
