@@ -74,12 +74,6 @@ pub struct BftSelectionDiff {
     pub leader: ValueDiff<PublicKey>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct LeaderSelectionDiff {
-    pub bft: BftSelectionDiff,
-    // pub genesis: VRF+Stake SelectionDiff...
-}
-
 impl<T: PartialEq> ValueDiff<T> {
     pub fn inverse(self) -> Self {
         match self {
@@ -204,23 +198,6 @@ impl Update for BftSelectionDiff {
     }
 }
 
-impl Update for LeaderSelectionDiff {
-    fn empty() -> Self {
-        LeaderSelectionDiff {
-            bft: BftSelectionDiff::empty(),
-        }
-    }
-    fn inverse(self) -> Self {
-        LeaderSelectionDiff {
-            bft: self.bft.inverse(),
-        }
-    }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.bft.union(other.bft);
-        self
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -254,13 +231,6 @@ mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> BftSelectionDiff {
             BftSelectionDiff {
                 leader: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-            }
-        }
-    }
-    impl Arbitrary for LeaderSelectionDiff {
-        fn arbitrary<G: Gen>(g: &mut G) -> LeaderSelectionDiff {
-            LeaderSelectionDiff {
-                bft: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -307,16 +277,6 @@ mod tests {
         }
         fn bft_selection_diff_union_has_inverse_element(bft_selection_diff: BftSelectionDiff) -> bool {
             testing::update_inverse_element(bft_selection_diff)
-        }
-
-        fn leader_selection_diff_union_is_associative(types: (LeaderSelectionDiff, LeaderSelectionDiff, LeaderSelectionDiff)) -> bool {
-            testing::update_associativity(types.0, types.1, types.2)
-        }
-        fn leader_selection_diff_union_has_identity_element(leader_selection_diff: LeaderSelectionDiff) -> bool {
-            testing::update_identity_element(leader_selection_diff)
-        }
-        fn leader_selection_diff_union_has_inverse_element(leader_selection_diff: LeaderSelectionDiff) -> bool {
-            testing::update_inverse_element(leader_selection_diff)
         }
     }
 }
