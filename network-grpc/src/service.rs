@@ -260,6 +260,15 @@ where
     }
 }
 
+macro_rules! try_get_service {
+    ($opt_member:expr) => {
+        match $opt_member {
+            None => return ResponseFuture::unimplemented(),
+            Some(ref mut service) => service,
+        }
+    };
+}
+
 impl<T> gen::node::server::Node for NodeService<T>
 where
     T: Node,
@@ -312,10 +321,7 @@ where
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
-        let service = match self.block_service {
-            None => return ResponseFuture::unimplemented(),
-            Some(ref mut service) => service,
-        };
+        let service = try_get_service!(self.block_service);
         ResponseFuture::new(service.tip())
     }
 
@@ -344,10 +350,7 @@ where
         &mut self,
         req: Request<gen::node::PullBlocksToTipRequest>,
     ) -> Self::PullBlocksToTipFuture {
-        let service = match self.block_service {
-            None => return ResponseFuture::unimplemented(),
-            Some(ref mut service) => service,
-        };
+        let service = try_get_service!(self.block_service);
         let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
             Err(GrpcError(status)) => {
@@ -362,10 +365,7 @@ where
         &mut self,
         _request: Request<gen::node::ProposeTransactionsRequest>,
     ) -> Self::ProposeTransactionsFuture {
-        let _service = match self.tx_service {
-            None => return ResponseFuture::unimplemented(),
-            Some(ref mut service) => service,
-        };
+        let _service = try_get_service!(self.tx_service);
         unimplemented!()
     }
 
@@ -373,10 +373,7 @@ where
         &mut self,
         _request: Request<gen::node::RecordTransactionRequest>,
     ) -> Self::RecordTransactionFuture {
-        let _service = match self.tx_service {
-            None => return ResponseFuture::unimplemented(),
-            Some(ref mut service) => service,
-        };
+        let _service = try_get_service!(self.tx_service);
         unimplemented!()
     }
 }
