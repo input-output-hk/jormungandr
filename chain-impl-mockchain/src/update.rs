@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use chain_core::property::Update;
 
-use crate::key::{Hash, PublicKey};
+use crate::key::PublicKey;
+use crate::setting::SettingsDiff;
 use crate::transaction::{Output, UtxoPointer};
 
 /// Diff between the 2 state of the blockchain.
@@ -62,11 +63,6 @@ where
             }
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct SettingsDiff {
-    pub block_id: ValueDiff<Hash>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -164,23 +160,6 @@ impl Update for TransactionsDiff {
     }
 }
 
-impl Update for SettingsDiff {
-    fn empty() -> Self {
-        SettingsDiff {
-            block_id: ValueDiff::None,
-        }
-    }
-    fn inverse(self) -> Self {
-        SettingsDiff {
-            block_id: self.block_id.inverse(),
-        }
-    }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.block_id.union(other.block_id);
-        self
-    }
-}
-
 impl Update for BftSelectionDiff {
     fn empty() -> Self {
         BftSelectionDiff {
@@ -220,13 +199,6 @@ mod tests {
             }
         }
     }
-    impl Arbitrary for SettingsDiff {
-        fn arbitrary<G: Gen>(g: &mut G) -> SettingsDiff {
-            SettingsDiff {
-                block_id: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-            }
-        }
-    }
     impl Arbitrary for BftSelectionDiff {
         fn arbitrary<G: Gen>(g: &mut G) -> BftSelectionDiff {
             BftSelectionDiff {
@@ -257,16 +229,6 @@ mod tests {
         }
         fn transactions_diff_union_is_commutative(types: (TransactionsDiff, TransactionsDiff)) -> bool {
             testing::update_union_commutative(types.0, types.1)
-        }
-
-        fn settings_diff_union_is_associative(types: (SettingsDiff, SettingsDiff, SettingsDiff)) -> bool {
-            testing::update_associativity(types.0, types.1, types.2)
-        }
-        fn settings_diff_union_has_identity_element(settings_diff: SettingsDiff) -> bool {
-            testing::update_identity_element(settings_diff)
-        }
-        fn settings_diff_union_has_inverse_element(settings_diff: SettingsDiff) -> bool {
-            testing::update_inverse_element(settings_diff)
         }
 
         fn bft_selection_diff_union_is_associative(types: (BftSelectionDiff, BftSelectionDiff, BftSelectionDiff)) -> bool {
