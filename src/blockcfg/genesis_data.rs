@@ -1,11 +1,14 @@
 //! Generic Genesis data
 use cardano::util::hex;
 use chain_addr::AddressReadable;
-use chain_impl_mockchain::{key, transaction::Value};
+use chain_impl_mockchain::{
+    key,
+    transaction::{self, Output, UtxoPointer, Value},
+};
 
 use serde;
 use serde_yaml;
-use std::{error, fmt, io, time};
+use std::{collections::HashMap, error, fmt, io, time};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitialUTxO {
@@ -54,6 +57,36 @@ impl GenesisData {
 
     pub fn leaders<'a>(&'a self) -> impl Iterator<Item = &'a key::PublicKey> {
         self.bft_leaders.iter().map(|pk| &pk.0)
+    }
+
+    pub fn initial_utxos(&self) -> HashMap<UtxoPointer, Output> {
+        use chain_core::property::Transaction;
+
+        let mut utxos = HashMap::new();
+        let mut initial_utxo = self.initial_utxos.iter();
+        while initial_utxo.len() != 0 {
+            let mut transaction = transaction::Transaction {
+                inputs: vec![],
+                outputs: vec![],
+            };
+            while let Some(iu) = initial_utxo.next() {
+                let output = Output(iu.address.to_address(), iu.value.clone());
+                transaction.outputs.push(output);
+                if transaction.outputs.len() == 255 {
+                    break;
+                }
+            }
+            let txid = transaction.id();
+            for (index, output) in transaction.outputs.into_iter().enumerate() {
+                let ptr = UtxoPointer {
+                    transaction_id: txid,
+                    output_index: index as u32,
+                    value: output.1.clone(),
+                };
+                utxos.insert(ptr, output);
+            }
+        }
+        utxos
     }
 }
 
