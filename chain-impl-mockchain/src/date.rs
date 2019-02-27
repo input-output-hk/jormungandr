@@ -36,10 +36,18 @@ impl BlockDate {
             }
         }
     }
+
+    pub fn next_epoch(&self) -> BlockDate {
+        BlockDate {
+            epoch: self.epoch + 1,
+            slot_id: 0,
+        }
+    }
 }
 
 impl property::BlockDate for BlockDate {
     fn from_epoch_slot_id(epoch: u64, slot_id: u64) -> Self {
+        assert!(slot_id < EPOCH_DURATION);
         BlockDate {
             epoch: epoch,
             slot_id: slot_id,
@@ -50,6 +58,23 @@ impl property::BlockDate for BlockDate {
 impl fmt::Display for BlockDate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.epoch, self.slot_id)
+    }
+}
+
+impl From<&BlockDate> for u64 {
+    fn from(date: &BlockDate) -> u64 {
+        date.epoch
+            .checked_mul(EPOCH_DURATION)
+            .unwrap()
+            .checked_add(date.slot_id)
+            .unwrap()
+    }
+}
+
+impl std::ops::Sub for BlockDate {
+    type Output = u64;
+    fn sub(self, other: BlockDate) -> u64 {
+        u64::from(&self).checked_sub(u64::from(&other)).unwrap()
     }
 }
 
