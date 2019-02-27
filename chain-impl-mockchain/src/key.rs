@@ -5,8 +5,9 @@ use cardano::hash;
 use cardano::redeem as crypto;
 use chain_core::property;
 
-/// Public key of the entity.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Public key of the entity. FIXME: do we need this wrapper around
+/// cardano::redeem::PublicKey?
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PublicKey(pub crypto::PublicKey);
 impl PublicKey {
     pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
@@ -34,7 +35,7 @@ impl PublicKey {
 }
 
 /// Private key of the entity.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PrivateKey(crypto::PrivateKey);
 impl PrivateKey {
     pub fn public(&self) -> PublicKey {
