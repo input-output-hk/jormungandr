@@ -68,7 +68,7 @@ impl State<Mockchain> {
         };
 
         State {
-            ledger: ledger::Ledger::new(Default::default()),
+            ledger: ledger::Ledger::new(genesis.initial_utxos()),
             settings: setting::Settings {
                 last_block_id: last_block_hash,
                 max_number_of_transactions_per_block: 100, // TODO: add this in the genesis data ?
