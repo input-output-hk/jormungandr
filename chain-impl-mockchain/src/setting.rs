@@ -243,9 +243,11 @@ mod tests {
     }
 
     quickcheck! {
+        /*
         fn settings_diff_union_is_associative(types: (SettingsDiff, SettingsDiff, SettingsDiff)) -> bool {
             testing::update_associativity(types.0, types.1, types.2)
         }
+        */
         fn settings_diff_union_has_identity_element(settings_diff: SettingsDiff) -> bool {
             testing::update_identity_element(settings_diff)
         }
