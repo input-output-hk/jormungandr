@@ -475,7 +475,6 @@ pub mod testing {
         (id1 == id2 && tx1 == tx2) || (id1 != id2 && tx1 != tx2)
     }
 
-    /*
     /// Checks the associativity
     /// i.e.
     ///
@@ -500,7 +499,6 @@ pub mod testing {
         };
         result1 == result2
     }
-    */
 
     /// Checks the identify element
     /// i.e.
