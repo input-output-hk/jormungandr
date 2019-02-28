@@ -124,7 +124,7 @@ where
 
                 self.change_log
                     .push((leadership_diff, ledger_diff, setting_diff));
-                self.storage.put_block(block).unwrap();
+                self.storage.put_block(&block).unwrap();
                 self.storage
                     .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
                     .unwrap();
