@@ -11,7 +11,7 @@ pub struct BlockDate {
     pub slot_id: u64,
 }
 
-pub const EPOCH_DURATION: u64 = 100; // FIXME: support dynamic epoch durations?
+pub const EPOCH_DURATION: u64 = 100; // FIXME: remove, make configurable
 
 impl BlockDate {
     pub fn first() -> BlockDate {
@@ -61,6 +61,8 @@ impl fmt::Display for BlockDate {
     }
 }
 
+// FIXME: Remove this since we decided epoch durations are not in fact
+// constant.
 impl From<&BlockDate> for u64 {
     fn from(date: &BlockDate) -> u64 {
         date.epoch
