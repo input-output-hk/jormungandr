@@ -368,6 +368,8 @@ dependencies = [
  "cardano 0.1.1",
  "chain-core 0.1.0",
  "cryptoxide 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.88 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.88 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -381,14 +383,11 @@ dependencies = [
 name = "chain-impl-mockchain"
 version = "0.1.0"
 dependencies = [
- "bincode 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cardano 0.1.1",
  "chain-addr 0.1.0",
  "chain-core 0.1.0",
  "num-derive 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "quickcheck 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.88 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.88 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

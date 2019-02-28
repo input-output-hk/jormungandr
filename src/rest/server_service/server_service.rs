@@ -8,7 +8,7 @@ use rest::server_service::{Error, ServerResult, ServerServiceBuilder};
 use std::fs;
 use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::mpsc::sync_channel;
 use std::thread;
 
@@ -19,16 +19,19 @@ pub struct ServerService {
 
 impl ServerService {
     pub fn builder(
-        pkcs12: impl AsRef<Path>,
+        pkcs12: Option<PathBuf>,
         address: SocketAddr,
         prefix: impl Into<String>,
     ) -> ServerServiceBuilder {
         ServerServiceBuilder::new(pkcs12, address, prefix)
     }
 
-    pub fn start<P, F, H>(pkcs12: P, address: SocketAddr, handler: F) -> ServerResult<Self>
+    pub fn start<F, H>(
+        pkcs12: Option<PathBuf>,
+        address: SocketAddr,
+        handler: F,
+    ) -> ServerResult<Self>
     where
-        P: AsRef<Path>,
         F: Fn() -> H + Send + Clone + 'static,
         H: IntoHttpHandler + 'static,
     {
@@ -58,26 +61,33 @@ impl ServerService {
     }
 }
 
-fn load_tls_acceptor(pkcs12_path: impl AsRef<Path>) -> ServerResult<TlsAcceptor> {
-    let pkcs_12_data = fs::read(pkcs12_path).map_err(|e| Error::Pkcs12LoadFailed(e))?;
-    let identity = Identity::from_pkcs12(&pkcs_12_data, "").map_err(|e| Error::Pkcs12Invalid(e))?;
-    TlsAcceptor::new(identity).map_err(|e| Error::Pkcs12Invalid(e))
+fn load_tls_acceptor(pkcs12_opt: Option<PathBuf>) -> ServerResult<Option<TlsAcceptor>> {
+    let pkcs12_path = match pkcs12_opt {
+        Some(pkcs12) => pkcs12,
+        None => return Ok(None),
+    };
+    let pkcs12_data = fs::read(pkcs12_path).map_err(|e| Error::Pkcs12LoadFailed(e))?;
+    let identity = Identity::from_pkcs12(&pkcs12_data, "").map_err(|e| Error::Pkcs12Invalid(e))?;
+    let tls = TlsAcceptor::new(identity).map_err(|e| Error::Pkcs12Invalid(e))?;
+    Ok(Some(tls))
 }
 
 fn start_server_curr_actix_system<F, H>(
     address: impl ToSocketAddrs,
-    tls: TlsAcceptor,
+    tls_opt: Option<TlsAcceptor>,
     handler: F,
 ) -> ServerResult<ServerService>
 where
     F: Fn() -> H + Send + Clone + 'static,
     H: IntoHttpHandler + 'static,
 {
-    let addr = server::new(handler)
-        .system_exit()
-        .disable_signals()
-        .bind_tls(address, tls)
-        .map_err(|err| Error::BindFailed(err))?
-        .start();
-    Ok(ServerService { addr })
+    let server = server::new(handler).system_exit().disable_signals();
+    let binded_server = match tls_opt {
+        Some(tls) => server.bind_tls(address, tls),
+        None => server.bind(address),
+    }
+    .map_err(|err| Error::BindFailed(err))?;
+    Ok(ServerService {
+        addr: binded_server.start(),
+    })
 }

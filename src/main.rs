@@ -61,7 +61,7 @@ use blockchain::{Blockchain, BlockchainR};
 use intercom::BlockMsg;
 use intercom::NetworkBroadcastMsg;
 use leadership::leadership_task;
-use rest::v0_node_stats::StatsCounter;
+use rest::v0::node::stats::StatsCounter;
 use settings::Command;
 use transaction::{transaction_task, TPool};
 use utils::task::Tasks;
@@ -261,7 +261,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     };
 
     let rest_server = match settings.rest {
-        Some(ref rest) => Some(rest::start_rest_server(rest, stats_counter)?),
+        Some(ref rest) => Some(rest::start_rest_server(rest, stats_counter, blockchain)?),
         None => None,
     };
 
