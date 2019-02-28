@@ -8,7 +8,6 @@ use crate::stake::*;
 use crate::transaction::Value;
 use crate::update::ValueDiff;
 
-use chain_addr::Kind;
 use chain_core::property::{self, Block, LeaderSelection, Update};
 
 use rand::{Rng, SeedableRng};
@@ -22,9 +21,7 @@ pub struct GenesisLeaderSelection {
 
     bft_leaders: Vec<LeaderId>,
 
-    stake_keys: HashMap<StakeKeyId, StakeKeyInfo>,
-
-    stake_pools: HashMap<StakePoolId, StakePoolInfo>,
+    delegation_state: DelegationState,
 
     /// The stake distribution at the end of the previous epoch.
     stake_snapshot_n_minus_1: StakeDistribution,
@@ -138,30 +135,6 @@ impl GenesisLeaderSelection {
             return None;
         }
 
-        let mut stake_pools: HashMap<StakePoolId, StakePoolInfo> = initial_stake_pools
-            .into_iter()
-            .map(|pool_id| {
-                (
-                    pool_id,
-                    StakePoolInfo {
-                        members: HashSet::new(),
-                    },
-                )
-            })
-            .collect();
-
-        let mut stake_keys = HashMap::new();
-        for (stake_key_id, pool_id) in initial_stake_keys {
-            if let Some(pool_id) = &pool_id {
-                if let Some(pool) = stake_pools.get_mut(&pool_id) {
-                    pool.members.insert(stake_key_id.clone());
-                } else {
-                    panic!("Pool '{:?}' does not exist.", pool_id)
-                }
-            }
-            stake_keys.insert(stake_key_id, StakeKeyInfo { pool: pool_id });
-        }
-
         let mut result = GenesisLeaderSelection {
             ledger,
             settings,
@@ -172,8 +145,7 @@ impl GenesisLeaderSelection {
                 bft_blocks: 0,
                 genesis_blocks: 0,
             },
-            stake_keys,
-            stake_pools,
+            delegation_state: DelegationState::new(initial_stake_pools, initial_stake_keys),
             stake_snapshot_n_minus_1: StakeDistribution::empty(),
             stake_snapshot_n_minus_2: StakeDistribution::empty(),
         };
@@ -245,38 +217,8 @@ impl GenesisLeaderSelection {
     }
 
     pub fn get_stake_distribution(&self) -> StakeDistribution {
-        let mut dist = HashMap::new();
-
-        for (ptr, output) in self.ledger.read().unwrap().unspent_outputs.iter() {
-            assert_eq!(ptr.value, output.1);
-
-            // We're only interested in "group" addresses
-            // (i.e. containing a spending key and a stake key).
-            if let Kind::Group(_spending_key, stake_key) = output.0.kind() {
-                // Grmbl.
-                let stake_key = crate::key::PublicKey(stake_key.clone()).into();
-
-                // Do we have a stake key for this spending key?
-                if let Some(stake_key_info) = self.stake_keys.get(&stake_key) {
-                    // Is this stake key a member of a stake pool?
-                    if let Some(pool_id) = &stake_key_info.pool {
-                        let pool = &self.stake_pools[pool_id];
-                        debug_assert!(pool.members.contains(&stake_key));
-                        let stake_pool_dist = dist
-                            .entry(pool_id.clone())
-                            .or_insert((Value(0), HashMap::new()));
-                        stake_pool_dist.0 += ptr.value;
-                        let member_dist = stake_pool_dist
-                            .1
-                            .entry(stake_key.clone())
-                            .or_insert(Value(0));
-                        *member_dist += ptr.value;
-                    }
-                }
-            }
-        }
-
-        StakeDistribution(dist)
+        self.delegation_state
+            .get_stake_distribution(&self.ledger.read().unwrap())
     }
 }
 
@@ -404,7 +346,10 @@ impl LeaderSelection for GenesisLeaderSelection {
 
                     // FIXME: should it be an error to register an
                     // already registered stake key?
-                    if !self.stake_keys.contains_key(&reg.data.stake_key_id) {
+                    if !self
+                        .delegation_state
+                        .stake_key_exists(&reg.data.stake_key_id)
+                    {
                         // FIXME: need to handle a block that both
                         // deregisters *and* re-registers a stake
                         // key. Probably that should void the reward
@@ -429,7 +374,10 @@ impl LeaderSelection for GenesisLeaderSelection {
                         return Err(Error::StakeKeyDeregistrationSigIsInvalid);
                     }
 
-                    if self.stake_keys.contains_key(&reg.data.stake_key_id) {
+                    if self
+                        .delegation_state
+                        .stake_key_exists(&reg.data.stake_key_id)
+                    {
                         // FIXME: for now, ban registrations and
                         // deregistrations of a key in the same
                         // block.
@@ -455,7 +403,10 @@ impl LeaderSelection for GenesisLeaderSelection {
                     // FIXME: should it be allowed to register a stake
                     // key and delegate from it in the same
                     // transaction? Probably yes.
-                    if !self.stake_keys.contains_key(&reg.data.stake_key_id) {
+                    if !self
+                        .delegation_state
+                        .stake_key_exists(&reg.data.stake_key_id)
+                    {
                         return Err(Error::StakeDelegationStakeKeyIsInvalid(
                             reg.data.stake_key_id.clone(),
                         ));
@@ -464,7 +415,7 @@ impl LeaderSelection for GenesisLeaderSelection {
                     // FIXME: should it be allowed to create a stake
                     // pool and delegate to it in the same
                     // transaction?
-                    if !self.stake_pools.contains_key(&reg.data.pool_id) {
+                    if !self.delegation_state.stake_pool_exists(&reg.data.pool_id) {
                         return Err(Error::StakeDelegationPoolKeyIsInvalid(
                             reg.data.pool_id.clone(),
                         ));
@@ -480,7 +431,7 @@ impl LeaderSelection for GenesisLeaderSelection {
                         return Err(Error::StakePoolRegistrationPoolSigIsInvalid);
                     }
 
-                    if self.stake_pools.contains_key(&reg.data.pool_id)
+                    if self.delegation_state.stake_pool_exists(&reg.data.pool_id)
                         || update.new_stake_pools.contains_key(&reg.data.pool_id)
                     {
                         // FIXME: support re-registration to change pool parameters.
@@ -497,16 +448,13 @@ impl LeaderSelection for GenesisLeaderSelection {
                 }
 
                 Message::StakePoolRetirement(ret) => {
-                    match self.stake_pools.get(&ret.data.pool_id) {
-                        None => {
-                            return Err(Error::StakePoolDoesNotExist(ret.data.pool_id.clone()));
+                    if self.delegation_state.stake_pool_exists(&ret.data.pool_id) {
+                        if !ret.data.pool_id.0.serialize_and_verify(&ret.data, &ret.sig) {
+                            return Err(Error::StakePoolRetirementSigIsInvalid);
                         }
-                        Some(_stake_pool) => {
-                            if !ret.data.pool_id.0.serialize_and_verify(&ret.data, &ret.sig) {
-                                return Err(Error::StakePoolRetirementSigIsInvalid);
-                            }
-                            update.retired_stake_pools.insert(ret.data.pool_id.clone());
-                        }
+                        update.retired_stake_pools.insert(ret.data.pool_id.clone());
+                    } else {
+                        return Err(Error::StakePoolDoesNotExist(ret.data.pool_id.clone()));
                     }
                 }
 
@@ -537,66 +485,24 @@ impl LeaderSelection for GenesisLeaderSelection {
         }
 
         for stake_key_id in update.stake_key_registrations {
-            let inserted = !self
-                .stake_keys
-                .insert(stake_key_id, StakeKeyInfo { pool: None })
-                .is_some();
-            assert!(inserted);
+            self.delegation_state.register_stake_key(stake_key_id);
         }
 
         for stake_key_id in update.stake_key_deregistrations {
-            let stake_key_info = self.stake_keys.remove(&stake_key_id).unwrap();
-
-            // Remove this stake key from its pool, if any.
-            if let Some(pool_id) = stake_key_info.pool {
-                self.stake_pools
-                    .get_mut(&pool_id)
-                    .unwrap()
-                    .members
-                    .remove(&stake_key_id);
-            }
+            self.delegation_state.deregister_stake_key(&stake_key_id);
         }
 
         for (pool_id, _new_stake_pool) in update.new_stake_pools {
-            assert!(!self.stake_pools.contains_key(&pool_id));
-            self.stake_pools.insert(
-                pool_id,
-                StakePoolInfo {
-                    //owners: new_stake_pool.owners
-                    members: HashSet::new(),
-                },
-            );
+            self.delegation_state.register_stake_pool(pool_id);
         }
 
         for (stake_key_id, pool_id) in update.delegations {
-            let stake_key = self.stake_keys.get_mut(&stake_key_id).unwrap();
-
-            // If this is a redelegation, remove the stake key from its previous pool.
-            if let Some(prev_stake_pool) = &stake_key.pool {
-                let removed = self
-                    .stake_pools
-                    .get_mut(&prev_stake_pool)
-                    .unwrap()
-                    .members
-                    .remove(&stake_key_id);
-                assert!(removed);
-            }
-
-            let stake_pool = self.stake_pools.get_mut(&pool_id).unwrap();
-            stake_key.pool = Some(pool_id);
-            stake_pool.members.insert(stake_key_id);
+            self.delegation_state.delegate_stake(stake_key_id, pool_id);
         }
 
         // FIXME: the pool should be retired at the end of a specified epoch.
         for pool_id in update.retired_stake_pools {
-            let pool_info = self.stake_pools.remove(&pool_id).unwrap();
-
-            // Remove all pool members.
-            for member in pool_info.members {
-                let stake_key_info = self.stake_keys.get_mut(&member).unwrap();
-                assert_eq!(stake_key_info.pool.as_ref().unwrap(), &pool_id);
-                stake_key_info.pool = None;
-            }
+            self.delegation_state.deregister_stake_pool(&pool_id);
         }
 
         update.next_date.apply_to(&mut self.pos.next_date);
@@ -634,7 +540,7 @@ mod test {
     use crate::key::{Hash, PrivateKey};
     use crate::ledger::test::make_key;
     use crate::transaction::*;
-    use chain_addr::{Address, Discrimination};
+    use chain_addr::{Address, Discrimination, Kind};
     use chain_core::property::Block as B;
     use chain_core::property::Ledger as L;
     use chain_core::property::Settings as S;
@@ -890,7 +796,7 @@ mod test {
 
         // Register a stake key.
         {
-            assert_eq!(state.leader_selection.stake_keys.len(), 0);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_keys(), 0);
             apply_block1(
                 &mut state,
                 (certificate::StakeKeyRegistration {
@@ -899,7 +805,7 @@ mod test {
                 .make_certificate(&sks0),
             )
             .unwrap();
-            assert_eq!(state.leader_selection.stake_keys.len(), 1);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_keys(), 1);
         }
 
         // Transfer some money to an address that delegates to the stake key.
@@ -955,7 +861,7 @@ mod test {
 
         // Register a new pool.
         {
-            assert_eq!(state.leader_selection.stake_pools.len(), 0);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_pools(), 0);
             apply_block1(
                 &mut state,
                 (certificate::StakePoolRegistration {
@@ -965,7 +871,7 @@ mod test {
                 .make_certificate(&pool0_private_key),
             )
             .unwrap();
-            assert_eq!(state.leader_selection.stake_pools.len(), 1);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_pools(), 1);
             assert_eq!(
                 state
                     .leader_selection
@@ -1002,9 +908,10 @@ mod test {
             )
             .unwrap();
             assert_eq!(
-                state.leader_selection.stake_pools[&(&pool0_private_key).into()]
-                    .members
-                    .len(),
+                state
+                    .leader_selection
+                    .delegation_state
+                    .nr_pool_members((&pool0_private_key).into()),
                 1
             );
             let dist = state.leader_selection.get_stake_distribution();
@@ -1077,7 +984,7 @@ mod test {
         // Register another stake key.
         let sks1 = PrivateKey::arbitrary(&mut state.g);
         {
-            assert_eq!(state.leader_selection.stake_keys.len(), 1);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_keys(), 1);
             apply_block1(
                 &mut state,
                 (certificate::StakeKeyRegistration {
@@ -1086,13 +993,13 @@ mod test {
                 .make_certificate(&sks1),
             )
             .unwrap();
-            assert_eq!(state.leader_selection.stake_keys.len(), 2);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_keys(), 2);
         }
 
         // Register another pool.
         let pool1_private_key = PrivateKey::arbitrary(&mut state.g);
         {
-            assert_eq!(state.leader_selection.stake_pools.len(), 1);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_pools(), 1);
             apply_block1(
                 &mut state,
                 (certificate::StakePoolRegistration {
@@ -1101,7 +1008,7 @@ mod test {
                 .make_certificate(&pool1_private_key),
             )
             .unwrap();
-            assert_eq!(state.leader_selection.stake_pools.len(), 2);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_pools(), 2);
         }
 
         // Delegate some stake to the pool.
@@ -1300,7 +1207,7 @@ mod test {
                 .make_certificate(&pool0_private_key),
             )
             .unwrap();
-            assert_eq!(state.leader_selection.stake_pools.len(), 1);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_pools(), 1);
         }
 
         // Deregister a stake key.
@@ -1313,7 +1220,7 @@ mod test {
                 .make_certificate(&sks0),
             )
             .unwrap();
-            assert_eq!(state.leader_selection.stake_keys.len(), 1);
+            assert_eq!(state.leader_selection.delegation_state.nr_stake_keys(), 1);
         }
 
         // Change the 'd' parameter.
