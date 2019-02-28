@@ -111,10 +111,8 @@ impl<B: BlockConfig> ConnectionState<B> {
     }
 }
 
-pub fn run<B>(
-    config: Configuration,
-    channels: Channels<B>,
-) where
+pub fn run<B>(config: Configuration, channels: Channels<B>)
+where
     B: BlockConfig + 'static,
 {
     let arc_config = Arc::new(config.clone());

@@ -32,10 +32,7 @@ pub fn process<Chain>(
         BlockMsg::LeadershipBlock(block) => {
             let header = block.header();
             debug!("received block from the leadership: {:#?}", header);
-            let res = blockchain
-                .write()
-                .unwrap()
-                .handle_incoming_block(block);
+            let res = blockchain.write().unwrap().handle_incoming_block(block);
             network_broadcast.send_broadcast(header);
             res
         }

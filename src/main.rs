@@ -62,7 +62,7 @@ use leadership::leadership_task;
 use rest::v0::node::stats::StatsCounter;
 use settings::Command;
 use transaction::{transaction_task, TPool};
-use utils::task::{Tasks, TaskBroadcastBox};
+use utils::task::{TaskBroadcastBox, Tasks};
 
 #[macro_use]
 pub mod log_wrapper;

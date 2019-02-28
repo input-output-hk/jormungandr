@@ -95,8 +95,8 @@ impl<T: Clone + Sync> TaskBroadcastBox<T> {
 
     pub fn send_broadcast(&mut self, val: T) {
         match self.0.try_broadcast(val) {
-            Ok(()) => {},
-            Err(_) => panic!("broadcast failed, some network tasks may be blocked")
+            Ok(()) => {}
+            Err(_) => panic!("broadcast failed, some network tasks may be blocked"),
         }
     }
 }
