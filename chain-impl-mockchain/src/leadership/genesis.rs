@@ -271,7 +271,6 @@ impl GenesisLeaderSelection {
 
                     for (pool_public_key, pool_stake) in pools_sorted {
                         if point < pool_stake.0 {
-                            //panic!("SELECT {} {} {:?}", total_stake.0, point, pool_stake.0);
                             return (now, pool_public_key.clone());
                         }
                         point -= pool_stake.0
@@ -699,7 +698,7 @@ mod test {
     struct TestState {
         g: StdGen<ThreadRng>,
         bft_leaders: Vec<PrivateKey>,
-        pool_private_keys: HashSet<PrivateKey>,
+        pool_private_keys: Vec<PrivateKey>,
         ledger: Arc<RwLock<Ledger>>,
         settings: Arc<RwLock<Settings>>,
         cur_date: BlockDate,
@@ -719,7 +718,7 @@ mod test {
     fn create_chain(
         initial_bootstrap_key_slots_percentage: u8,
         mut initial_utxos: HashMap<UtxoPointer, Output>,
-        initial_stake_pools: HashSet<PrivateKey>,
+        initial_stake_pools: Vec<PrivateKey>,
         initial_stake_keys: HashMap<PublicKey, Option<PublicKey>>,
     ) -> TestState {
         let mut g = StdGen::new(rand::thread_rng(), 10);
@@ -855,7 +854,7 @@ mod test {
         let mut state = create_chain(
             crate::setting::SLOTS_PERCENTAGE_RANGE,
             HashMap::new(),
-            HashSet::new(),
+            vec![],
             HashMap::new(),
         );
 
@@ -921,7 +920,7 @@ mod test {
         let mut state = create_chain(
             crate::setting::SLOTS_PERCENTAGE_RANGE,
             HashMap::new(),
-            HashSet::new(),
+            vec![],
             HashMap::new(),
         );
 
@@ -1371,9 +1370,7 @@ mod test {
         let pool0 = PrivateKey::arbitrary(&mut g);
         let pool1 = PrivateKey::arbitrary(&mut g);
 
-        let mut initial_stake_pools = HashSet::new();
-        initial_stake_pools.insert(pool0.clone());
-        initial_stake_pools.insert(pool1.clone());
+        let initial_stake_pools = vec![pool0.clone(), pool1.clone()];
 
         let sks0 = PrivateKey::arbitrary(&mut g);
         let sks1 = PrivateKey::arbitrary(&mut g);

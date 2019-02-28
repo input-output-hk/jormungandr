@@ -6,7 +6,7 @@ use cardano::redeem as crypto;
 use chain_core::property;
 
 /// Public key of the entity.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PublicKey(pub crypto::PublicKey);
 impl PublicKey {
     pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
