@@ -1,11 +1,11 @@
 use crate::block::Message;
 use crate::key::*;
-use crate::stake::StakePoolId;
+use crate::stake::{StakeKeyId, StakePoolId};
 use chain_core::property;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeKeyRegistration {
-    pub stake_public_key: PublicKey,
+    pub stake_key_id: StakeKeyId,
 }
 
 impl StakeKeyRegistration {
@@ -22,7 +22,7 @@ impl property::Serialize for StakeKeyRegistration {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(writer);
-        self.stake_public_key.serialize(&mut codec)?;
+        self.stake_key_id.serialize(&mut codec)?;
         Ok(())
     }
 }
@@ -34,14 +34,14 @@ impl property::Deserialize for StakeKeyRegistration {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         Ok(StakeKeyRegistration {
-            stake_public_key: PublicKey::deserialize(&mut codec)?,
+            stake_key_id: StakeKeyId::deserialize(&mut codec)?,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeKeyDeregistration {
-    pub stake_public_key: PublicKey,
+    pub stake_key_id: StakeKeyId,
 }
 
 impl StakeKeyDeregistration {
@@ -58,7 +58,7 @@ impl property::Serialize for StakeKeyDeregistration {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(writer);
-        self.stake_public_key.serialize(&mut codec)?;
+        self.stake_key_id.serialize(&mut codec)?;
         Ok(())
     }
 }
@@ -70,14 +70,14 @@ impl property::Deserialize for StakeKeyDeregistration {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         Ok(StakeKeyDeregistration {
-            stake_public_key: PublicKey::deserialize(&mut codec)?,
+            stake_key_id: StakeKeyId::deserialize(&mut codec)?,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeDelegation {
-    pub stake_public_key: PublicKey,
+    pub stake_key_id: StakeKeyId,
     pub pool_id: StakePoolId,
 }
 
@@ -97,7 +97,7 @@ impl property::Serialize for StakeDelegation {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(writer);
-        self.stake_public_key.serialize(&mut codec)?;
+        self.stake_key_id.serialize(&mut codec)?;
         self.pool_id.serialize(&mut codec)?;
         Ok(())
     }
@@ -110,7 +110,7 @@ impl property::Deserialize for StakeDelegation {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         Ok(StakeDelegation {
-            stake_public_key: PublicKey::deserialize(&mut codec)?,
+            stake_key_id: StakeKeyId::deserialize(&mut codec)?,
             pool_id: StakePoolId::deserialize(&mut codec)?,
         })
     }
@@ -119,7 +119,7 @@ impl property::Deserialize for StakeDelegation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolRegistration {
     pub pool_id: StakePoolId,
-    //pub owner: PublicKey, // FIXME: support list of owners
+    //pub owner: StakeKeyId, // FIXME: support list of owners
     // reward sharing params: cost, margin, pledged amount of stake
     // alternative stake key reward account
 }
@@ -154,7 +154,7 @@ impl property::Deserialize for StakePoolRegistration {
         let mut codec = Codec::from(reader);
         Ok(StakePoolRegistration {
             pool_id: StakePoolId::deserialize(&mut codec)?,
-            // owner: PublicKey::deserialize(&mut codec)?,
+            // owner: StakeKeyId::deserialize(&mut codec)?,
         })
     }
 }
@@ -215,7 +215,7 @@ mod test {
     impl Arbitrary for StakeKeyRegistration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             StakeKeyRegistration {
-                stake_public_key: Arbitrary::arbitrary(g),
+                stake_key_id: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -223,7 +223,7 @@ mod test {
     impl Arbitrary for StakeKeyDeregistration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             StakeKeyDeregistration {
-                stake_public_key: Arbitrary::arbitrary(g),
+                stake_key_id: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -231,7 +231,7 @@ mod test {
     impl Arbitrary for StakeDelegation {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             StakeDelegation {
-                stake_public_key: Arbitrary::arbitrary(g),
+                stake_key_id: Arbitrary::arbitrary(g),
                 pool_id: Arbitrary::arbitrary(g),
             }
         }

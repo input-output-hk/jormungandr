@@ -22,7 +22,7 @@ pub struct GenesisLeaderSelection {
 
     bft_leaders: Vec<PublicKey>,
 
-    stake_keys: HashMap<PublicKey, StakeKeyInfo>,
+    stake_keys: HashMap<StakeKeyId, StakeKeyInfo>,
 
     stake_pools: HashMap<StakePoolId, StakePoolInfo>,
 
@@ -53,7 +53,7 @@ pub enum Error {
     StakeKeyRegistrationSigIsInvalid,
     StakeKeyDeregistrationSigIsInvalid,
     StakeDelegationSigIsInvalid,
-    StakeDelegationStakeKeyIsInvalid(PublicKey),
+    StakeDelegationStakeKeyIsInvalid(StakeKeyId),
     StakeDelegationPoolKeyIsInvalid(StakePoolId),
     StakePoolRegistrationPoolSigIsInvalid,
     StakePoolAlreadyExists(StakePoolId),
@@ -91,10 +91,10 @@ impl std::fmt::Display for Error {
                 f,
                 "Block has a stake delegation certificate with an invalid signature"
             ),
-            Error::StakeDelegationStakeKeyIsInvalid(stake_public_key) => write!(
+            Error::StakeDelegationStakeKeyIsInvalid(stake_key_id) => write!(
                 f,
                 "Block has a stake delegation certificate that delegates from a stake key '{:?} that does not exist",
-                stake_public_key
+                stake_key_id
             ),
             Error::StakeDelegationPoolKeyIsInvalid(pool_id) => write!(
                 f,
@@ -132,7 +132,7 @@ impl GenesisLeaderSelection {
         ledger: Arc<RwLock<Ledger>>,
         settings: Arc<RwLock<Settings>>,
         initial_stake_pools: HashSet<StakePoolId>,
-        initial_stake_keys: HashMap<PublicKey, Option<StakePoolId>>,
+        initial_stake_keys: HashMap<StakeKeyId, Option<StakePoolId>>,
     ) -> Option<Self> {
         if bft_leaders.len() == 0 {
             return None;
@@ -151,15 +151,15 @@ impl GenesisLeaderSelection {
             .collect();
 
         let mut stake_keys = HashMap::new();
-        for (stake_public_key, pool_id) in initial_stake_keys {
+        for (stake_key_id, pool_id) in initial_stake_keys {
             if let Some(pool_id) = &pool_id {
                 if let Some(pool) = stake_pools.get_mut(&pool_id) {
-                    pool.members.insert(stake_public_key.clone());
+                    pool.members.insert(stake_key_id.clone());
                 } else {
                     panic!("Pool '{:?}' does not exist.", pool_id)
                 }
             }
-            stake_keys.insert(stake_public_key, StakeKeyInfo { pool: pool_id });
+            stake_keys.insert(stake_key_id, StakeKeyInfo { pool: pool_id });
         }
 
         let mut result = GenesisLeaderSelection {
@@ -270,7 +270,7 @@ impl GenesisLeaderSelection {
             // (i.e. containing a spending key and a stake key).
             if let Kind::Group(_spending_key, stake_key) = output.0.kind() {
                 // Grmbl.
-                let stake_key = PublicKey(stake_key.clone());
+                let stake_key = PublicKey(stake_key.clone()).into();
 
                 // Do we have a stake key for this spending key?
                 if let Some(stake_key_info) = self.stake_keys.get(&stake_key) {
@@ -302,11 +302,11 @@ pub struct GenesisSelectionDiff {
     next_bft_leader_index: ValueDiff<BftRoundRobinIndex>,
     bft_blocks: ValueDiff<usize>,
     genesis_blocks: ValueDiff<usize>,
-    stake_key_registrations: HashSet<PublicKey>,
-    stake_key_deregistrations: HashSet<PublicKey>,
+    stake_key_registrations: HashSet<StakeKeyId>,
+    stake_key_deregistrations: HashSet<StakeKeyId>,
     new_stake_pools: HashMap<StakePoolId, certificate::StakePoolRegistration>,
     retired_stake_pools: HashSet<StakePoolId>,
-    delegations: HashMap<PublicKey, StakePoolId>,
+    delegations: HashMap<StakeKeyId, StakePoolId>,
     stake_snapshot_n_minus_1: Option<StakeDistribution>,
     stake_snapshot_n_minus_2: Option<StakeDistribution>,
 }
@@ -411,7 +411,8 @@ impl LeaderSelection for GenesisLeaderSelection {
                 Message::StakeKeyRegistration(reg) => {
                     if !reg
                         .data
-                        .stake_public_key
+                        .stake_key_id
+                        .0
                         .serialize_and_verify(&reg.data, &reg.sig)
                     {
                         return Err(Error::StakeKeyRegistrationSigIsInvalid);
@@ -419,47 +420,49 @@ impl LeaderSelection for GenesisLeaderSelection {
 
                     // FIXME: should it be an error to register an
                     // already registered stake key?
-                    if !self.stake_keys.contains_key(&reg.data.stake_public_key) {
+                    if !self.stake_keys.contains_key(&reg.data.stake_key_id) {
                         // FIXME: need to handle a block that both
                         // deregisters *and* re-registers a stake
                         // key. Probably that should void the reward
                         // account (rather than be a no-op).
                         assert!(!update
                             .stake_key_deregistrations
-                            .contains(&reg.data.stake_public_key));
+                            .contains(&reg.data.stake_key_id));
 
                         update
                             .stake_key_registrations
-                            .insert(reg.data.stake_public_key.clone());
+                            .insert(reg.data.stake_key_id.clone());
                     }
                 }
 
                 Message::StakeKeyDeregistration(reg) => {
                     if !reg
                         .data
-                        .stake_public_key
+                        .stake_key_id
+                        .0
                         .serialize_and_verify(&reg.data, &reg.sig)
                     {
                         return Err(Error::StakeKeyDeregistrationSigIsInvalid);
                     }
 
-                    if self.stake_keys.contains_key(&reg.data.stake_public_key) {
+                    if self.stake_keys.contains_key(&reg.data.stake_key_id) {
                         // FIXME: for now, ban registrations and
                         // deregistrations of a key in the same
                         // block.
                         assert!(!update
                             .stake_key_registrations
-                            .contains(&reg.data.stake_public_key));
+                            .contains(&reg.data.stake_key_id));
                         update
                             .stake_key_deregistrations
-                            .insert(reg.data.stake_public_key.clone());
+                            .insert(reg.data.stake_key_id.clone());
                     }
                 }
 
                 Message::StakeDelegation(reg) => {
                     if !reg
                         .data
-                        .stake_public_key
+                        .stake_key_id
+                        .0
                         .serialize_and_verify(&reg.data, &reg.sig)
                     {
                         return Err(Error::StakeDelegationSigIsInvalid);
@@ -468,9 +471,9 @@ impl LeaderSelection for GenesisLeaderSelection {
                     // FIXME: should it be allowed to register a stake
                     // key and delegate from it in the same
                     // transaction? Probably yes.
-                    if !self.stake_keys.contains_key(&reg.data.stake_public_key) {
+                    if !self.stake_keys.contains_key(&reg.data.stake_key_id) {
                         return Err(Error::StakeDelegationStakeKeyIsInvalid(
-                            reg.data.stake_public_key.clone(),
+                            reg.data.stake_key_id.clone(),
                         ));
                     }
 
@@ -485,7 +488,7 @@ impl LeaderSelection for GenesisLeaderSelection {
 
                     update
                         .delegations
-                        .insert(reg.data.stake_public_key.clone(), reg.data.pool_id.clone());
+                        .insert(reg.data.stake_key_id.clone(), reg.data.pool_id.clone());
                 }
 
                 Message::StakePoolRegistration(reg) => {
@@ -549,16 +552,16 @@ impl LeaderSelection for GenesisLeaderSelection {
             return Err(Error::UpdateIsInvalid);
         }
 
-        for stake_public_key in update.stake_key_registrations {
+        for stake_key_id in update.stake_key_registrations {
             let inserted = !self
                 .stake_keys
-                .insert(stake_public_key, StakeKeyInfo { pool: None })
+                .insert(stake_key_id, StakeKeyInfo { pool: None })
                 .is_some();
             assert!(inserted);
         }
 
-        for stake_public_key in update.stake_key_deregistrations {
-            let stake_key_info = self.stake_keys.remove(&stake_public_key).unwrap();
+        for stake_key_id in update.stake_key_deregistrations {
+            let stake_key_info = self.stake_keys.remove(&stake_key_id).unwrap();
 
             // Remove this stake key from its pool, if any.
             if let Some(pool_id) = stake_key_info.pool {
@@ -566,7 +569,7 @@ impl LeaderSelection for GenesisLeaderSelection {
                     .get_mut(&pool_id)
                     .unwrap()
                     .members
-                    .remove(&stake_public_key);
+                    .remove(&stake_key_id);
             }
         }
 
@@ -581,8 +584,8 @@ impl LeaderSelection for GenesisLeaderSelection {
             );
         }
 
-        for (stake_public_key, pool_id) in update.delegations {
-            let stake_key = self.stake_keys.get_mut(&stake_public_key).unwrap();
+        for (stake_key_id, pool_id) in update.delegations {
+            let stake_key = self.stake_keys.get_mut(&stake_key_id).unwrap();
 
             // If this is a redelegation, remove the stake key from its previous pool.
             if let Some(prev_stake_pool) = &stake_key.pool {
@@ -591,13 +594,13 @@ impl LeaderSelection for GenesisLeaderSelection {
                     .get_mut(&prev_stake_pool)
                     .unwrap()
                     .members
-                    .remove(&stake_public_key);
+                    .remove(&stake_key_id);
                 assert!(removed);
             }
 
             let stake_pool = self.stake_pools.get_mut(&pool_id).unwrap();
             stake_key.pool = Some(pool_id);
-            stake_pool.members.insert(stake_public_key);
+            stake_pool.members.insert(stake_key_id);
         }
 
         // FIXME: the pool should be retired at the end of a specified epoch.
@@ -680,7 +683,7 @@ mod test {
         initial_bootstrap_key_slots_percentage: u8,
         mut initial_utxos: HashMap<UtxoPointer, Output>,
         initial_stake_pools: Vec<PrivateKey>,
-        initial_stake_keys: HashMap<PublicKey, Option<StakePoolId>>,
+        initial_stake_keys: HashMap<StakeKeyId, Option<StakePoolId>>,
     ) -> TestState {
         let mut g = StdGen::new(rand::thread_rng(), 10);
 
@@ -893,7 +896,7 @@ mod test {
                 apply_block1(
                     &mut state,
                     (certificate::StakeKeyRegistration {
-                        stake_public_key: sks0.public(),
+                        stake_key_id: (&sks0).into(),
                     })
                     .make_certificate(&signer)
                 ),
@@ -907,7 +910,7 @@ mod test {
             apply_block1(
                 &mut state,
                 (certificate::StakeKeyRegistration {
-                    stake_public_key: sks0.public(),
+                    stake_key_id: (&sks0).into(),
                 })
                 .make_certificate(&sks0),
             )
@@ -988,7 +991,7 @@ mod test {
                 apply_block1(
                     &mut state,
                     (certificate::StakeDelegation {
-                        stake_public_key: sks0.public(),
+                        stake_key_id: (&sks0).into(),
                         pool_id: (&pool0_private_key).into(),
                     })
                     .make_certificate(&pool0_private_key)
@@ -1002,7 +1005,7 @@ mod test {
             apply_block1(
                 &mut state,
                 (certificate::StakeDelegation {
-                    stake_public_key: sks0.public(),
+                    stake_key_id: (&sks0).into(),
                     pool_id: (&pool0_private_key).into(),
                 })
                 .make_certificate(&sks0),
@@ -1021,7 +1024,7 @@ mod test {
                     (&pool0_private_key).into(),
                     (
                         Value(10000),
-                        vec![(sks0.public(), Value(10000))]
+                        vec![((&sks0).into(), Value(10000))]
                             .iter()
                             .cloned()
                             .collect()
@@ -1069,7 +1072,7 @@ mod test {
                     (&pool0_private_key).into(),
                     (
                         Value(30000),
-                        vec![(sks0.public(), Value(30000))]
+                        vec![((&sks0).into(), Value(30000))]
                             .iter()
                             .cloned()
                             .collect()
@@ -1082,15 +1085,15 @@ mod test {
         }
 
         // Register another stake key.
-        let sk1 = PrivateKey::arbitrary(&mut state.g);
+        let sks1 = PrivateKey::arbitrary(&mut state.g);
         {
             assert_eq!(state.leader_selection.stake_keys.len(), 1);
             apply_block1(
                 &mut state,
                 (certificate::StakeKeyRegistration {
-                    stake_public_key: sk1.public(),
+                    stake_key_id: (&sks1).into(),
                 })
-                .make_certificate(&sk1),
+                .make_certificate(&sks1),
             )
             .unwrap();
             assert_eq!(state.leader_selection.stake_keys.len(), 2);
@@ -1116,10 +1119,10 @@ mod test {
             apply_block1(
                 &mut state,
                 (certificate::StakeDelegation {
-                    stake_public_key: sk1.public(),
+                    stake_key_id: (&sks1).into(),
                     pool_id: (&pool1_private_key).into(),
                 })
-                .make_certificate(&sk1),
+                .make_certificate(&sks1),
             )
             .unwrap();
             assert_eq!(
@@ -1128,7 +1131,7 @@ mod test {
                     (&pool0_private_key).into(),
                     (
                         Value(30000),
-                        vec![(sks0.public(), Value(30000))]
+                        vec![((&sks0).into(), Value(30000))]
                             .iter()
                             .cloned()
                             .collect()
@@ -1146,7 +1149,7 @@ mod test {
                 (&pool0_private_key).into(),
                 (
                     Value(30000),
-                    vec![(sks0.public(), Value(30000))]
+                    vec![((&sks0).into(), Value(30000))]
                         .iter()
                         .cloned()
                         .collect(),
@@ -1156,7 +1159,10 @@ mod test {
                 (&pool1_private_key).into(),
                 (
                     Value(42000),
-                    vec![(sk1.public(), Value(42000))].iter().cloned().collect(),
+                    vec![((&sks1).into(), Value(42000))]
+                        .iter()
+                        .cloned()
+                        .collect(),
                 ),
             ),
         ]
@@ -1180,7 +1186,7 @@ mod test {
                     Output(
                         Address(
                             Discrimination::Test,
-                            Kind::Group(user_private_key.public().0, sk1.public().0),
+                            Kind::Group(user_private_key.public().0, sks1.public().0),
                         ),
                         value,
                     ),
@@ -1235,7 +1241,7 @@ mod test {
             apply_block1(
                 &mut state,
                 (certificate::StakeDelegation {
-                    stake_public_key: sks0.public(),
+                    stake_key_id: (&sks0).into(),
                     pool_id: (&pool1_private_key).into(),
                 })
                 .make_certificate(&sks0),
@@ -1247,10 +1253,13 @@ mod test {
                     (&pool1_private_key).into(),
                     (
                         Value(72000),
-                        vec![(sks0.public(), Value(30000)), (sk1.public(), Value(42000))]
-                            .iter()
-                            .cloned()
-                            .collect()
+                        vec![
+                            ((&sks0).into(), Value(30000)),
+                            ((&sks1).into(), Value(42000))
+                        ]
+                        .iter()
+                        .cloned()
+                        .collect()
                     )
                 )]
                 .iter()
@@ -1309,7 +1318,7 @@ mod test {
             apply_block1(
                 &mut state,
                 (certificate::StakeKeyDeregistration {
-                    stake_public_key: sks0.public(),
+                    stake_key_id: (&sks0).into(),
                 })
                 .make_certificate(&sks0),
             )
@@ -1338,9 +1347,9 @@ mod test {
         let sks2 = PrivateKey::arbitrary(&mut g);
 
         let mut initial_stake_keys = HashMap::new();
-        initial_stake_keys.insert(sks0.public(), Some((&pool0).into()));
-        initial_stake_keys.insert(sks1.public(), Some((&pool0).into()));
-        initial_stake_keys.insert(sks2.public(), Some((&pool1).into()));
+        initial_stake_keys.insert((&sks0).into(), Some((&pool0).into()));
+        initial_stake_keys.insert((&sks1).into(), Some((&pool0).into()));
+        initial_stake_keys.insert((&sks2).into(), Some((&pool1).into()));
 
         let skp0 = PrivateKey::arbitrary(&mut g);
 

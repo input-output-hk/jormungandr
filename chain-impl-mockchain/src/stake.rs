@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 
 // For each stake pool, the total stake value, and the value for the
 // stake pool members.
-pub type StakeDistribution = HashMap<StakePoolId, (Value, HashMap<PublicKey, Value>)>;
+pub type StakeDistribution = HashMap<StakePoolId, (Value, HashMap<StakeKeyId, Value>)>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeKeyInfo {
@@ -18,7 +18,36 @@ pub struct StakeKeyInfo {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolInfo {
     //owners: HashSet<PublicKey>,
-    pub members: HashSet<PublicKey>,
+    pub members: HashSet<StakeKeyId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct StakeKeyId(pub PublicKey);
+
+impl From<PublicKey> for StakeKeyId {
+    fn from(key: PublicKey) -> Self {
+        StakeKeyId(key)
+    }
+}
+
+impl From<&PrivateKey> for StakeKeyId {
+    fn from(key: &PrivateKey) -> Self {
+        StakeKeyId(key.public())
+    }
+}
+
+impl property::Serialize for StakeKeyId {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        self.0.serialize(writer)
+    }
+}
+
+impl property::Deserialize for StakeKeyId {
+    type Error = std::io::Error;
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        Ok(StakeKeyId(PublicKey::deserialize(reader)?))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -48,6 +77,12 @@ impl property::Deserialize for StakePoolId {
 mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for StakeKeyId {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            StakeKeyId(Arbitrary::arbitrary(g))
+        }
+    }
 
     impl Arbitrary for StakePoolId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
