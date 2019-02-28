@@ -24,7 +24,7 @@ pub struct GenesisLeaderSelection {
 
     stake_keys: HashMap<PublicKey, StakeKeyInfo>,
 
-    stake_pools: HashMap<PublicKey, StakePoolInfo>,
+    stake_pools: HashMap<StakePoolId, StakePoolInfo>,
 
     /// The stake distribution at the end of the previous epoch.
     stake_snapshot_n_minus_1: StakeDistribution,
@@ -54,11 +54,11 @@ pub enum Error {
     StakeKeyDeregistrationSigIsInvalid,
     StakeDelegationSigIsInvalid,
     StakeDelegationStakeKeyIsInvalid(PublicKey),
-    StakeDelegationPoolKeyIsInvalid(PublicKey),
+    StakeDelegationPoolKeyIsInvalid(StakePoolId),
     StakePoolRegistrationPoolSigIsInvalid,
-    StakePoolAlreadyExists(PublicKey),
+    StakePoolAlreadyExists(StakePoolId),
     StakePoolRetirementSigIsInvalid,
-    StakePoolDoesNotExist(PublicKey),
+    StakePoolDoesNotExist(StakePoolId),
 }
 
 impl std::fmt::Display for Error {
@@ -96,28 +96,28 @@ impl std::fmt::Display for Error {
                 "Block has a stake delegation certificate that delegates from a stake key '{:?} that does not exist",
                 stake_public_key
             ),
-            Error::StakeDelegationPoolKeyIsInvalid(pool_public_key) => write!(
+            Error::StakeDelegationPoolKeyIsInvalid(pool_id) => write!(
                 f,
                 "Block has a stake delegation certificate that delegates to a pool '{:?} that does not exist",
-                pool_public_key
+                pool_id
             ),
             Error::StakePoolRegistrationPoolSigIsInvalid => write!(
                 f,
                 "Block has a pool registration certificate with an invalid pool signature"
             ),
-            Error::StakePoolAlreadyExists(pool_public_key) => write!(
+            Error::StakePoolAlreadyExists(pool_id) => write!(
                 f,
                 "Block attempts to register pool '{:?}' which already exists",
-                pool_public_key
+                pool_id
             ),
             Error::StakePoolRetirementSigIsInvalid => write!(
                 f,
                 "Block has a pool retirement certificate with an invalid pool signature"
             ),
-            Error::StakePoolDoesNotExist(pool_public_key) => write!(
+            Error::StakePoolDoesNotExist(pool_id) => write!(
                 f,
                 "Block references a pool '{:?}' which does not exist",
-                pool_public_key
+                pool_id
             ),
         }
     }
@@ -131,18 +131,18 @@ impl GenesisLeaderSelection {
         bft_leaders: Vec<PublicKey>,
         ledger: Arc<RwLock<Ledger>>,
         settings: Arc<RwLock<Settings>>,
-        initial_stake_pools: HashSet<PublicKey>,
-        initial_stake_keys: HashMap<PublicKey, Option<PublicKey>>,
+        initial_stake_pools: HashSet<StakePoolId>,
+        initial_stake_keys: HashMap<PublicKey, Option<StakePoolId>>,
     ) -> Option<Self> {
         if bft_leaders.len() == 0 {
             return None;
         }
 
-        let mut stake_pools: HashMap<PublicKey, StakePoolInfo> = initial_stake_pools
+        let mut stake_pools: HashMap<StakePoolId, StakePoolInfo> = initial_stake_pools
             .into_iter()
-            .map(|pool_public_key| {
+            .map(|pool_id| {
                 (
-                    pool_public_key,
+                    pool_id,
                     StakePoolInfo {
                         members: HashSet::new(),
                     },
@@ -151,20 +151,15 @@ impl GenesisLeaderSelection {
             .collect();
 
         let mut stake_keys = HashMap::new();
-        for (stake_public_key, pool_public_key) in initial_stake_keys {
-            if let Some(pool_public_key) = &pool_public_key {
-                if let Some(pool) = stake_pools.get_mut(&pool_public_key) {
+        for (stake_public_key, pool_id) in initial_stake_keys {
+            if let Some(pool_id) = &pool_id {
+                if let Some(pool) = stake_pools.get_mut(&pool_id) {
                     pool.members.insert(stake_public_key.clone());
                 } else {
-                    panic!("Pool '{:?}' does not exist.", pool_public_key)
+                    panic!("Pool '{:?}' does not exist.", pool_id)
                 }
             }
-            stake_keys.insert(
-                stake_public_key,
-                StakeKeyInfo {
-                    pool: pool_public_key,
-                },
-            );
+            stake_keys.insert(stake_public_key, StakeKeyInfo { pool: pool_id });
         }
 
         let mut result = GenesisLeaderSelection {
@@ -247,14 +242,14 @@ impl GenesisLeaderSelection {
                     // Sort the pools by public key.
                     let mut pools_sorted: Vec<_> = stake_snapshot
                         .iter()
-                        .map(|(pool_public_key, (pool_stake, _))| (pool_public_key, pool_stake))
+                        .map(|(pool_id, (pool_stake, _))| (pool_id, pool_stake))
                         .collect();
 
                     pools_sorted.sort();
 
-                    for (pool_public_key, pool_stake) in pools_sorted {
+                    for (pool_id, pool_stake) in pools_sorted {
                         if point < pool_stake.0 {
-                            return (now, pool_public_key.clone());
+                            return (now, pool_id.0.clone());
                         }
                         point -= pool_stake.0
                     }
@@ -280,11 +275,11 @@ impl GenesisLeaderSelection {
                 // Do we have a stake key for this spending key?
                 if let Some(stake_key_info) = self.stake_keys.get(&stake_key) {
                     // Is this stake key a member of a stake pool?
-                    if let Some(pool_public_key) = &stake_key_info.pool {
-                        let pool = &self.stake_pools[pool_public_key];
+                    if let Some(pool_id) = &stake_key_info.pool {
+                        let pool = &self.stake_pools[pool_id];
                         debug_assert!(pool.members.contains(&stake_key));
                         let stake_pool_dist = dist
-                            .entry(pool_public_key.clone())
+                            .entry(pool_id.clone())
                             .or_insert((Value(0), HashMap::new()));
                         stake_pool_dist.0 += ptr.value;
                         let member_dist = stake_pool_dist
@@ -309,9 +304,9 @@ pub struct GenesisSelectionDiff {
     genesis_blocks: ValueDiff<usize>,
     stake_key_registrations: HashSet<PublicKey>,
     stake_key_deregistrations: HashSet<PublicKey>,
-    new_stake_pools: HashMap<PublicKey, certificate::StakePoolRegistration>,
-    retired_stake_pools: HashSet<PublicKey>,
-    delegations: HashMap<PublicKey, PublicKey>,
+    new_stake_pools: HashMap<StakePoolId, certificate::StakePoolRegistration>,
+    retired_stake_pools: HashSet<StakePoolId>,
+    delegations: HashMap<PublicKey, StakePoolId>,
     stake_snapshot_n_minus_1: Option<StakeDistribution>,
     stake_snapshot_n_minus_2: Option<StakeDistribution>,
 }
@@ -482,65 +477,48 @@ impl LeaderSelection for GenesisLeaderSelection {
                     // FIXME: should it be allowed to create a stake
                     // pool and delegate to it in the same
                     // transaction?
-                    if !self.stake_pools.contains_key(&reg.data.pool_public_key) {
+                    if !self.stake_pools.contains_key(&reg.data.pool_id) {
                         return Err(Error::StakeDelegationPoolKeyIsInvalid(
-                            reg.data.pool_public_key.clone(),
+                            reg.data.pool_id.clone(),
                         ));
                     }
 
-                    update.delegations.insert(
-                        reg.data.stake_public_key.clone(),
-                        reg.data.pool_public_key.clone(),
-                    );
+                    update
+                        .delegations
+                        .insert(reg.data.stake_public_key.clone(), reg.data.pool_id.clone());
                 }
 
                 Message::StakePoolRegistration(reg) => {
-                    if !reg
-                        .data
-                        .pool_public_key
-                        .serialize_and_verify(&reg.data, &reg.sig)
-                    {
+                    if !reg.data.pool_id.0.serialize_and_verify(&reg.data, &reg.sig) {
                         return Err(Error::StakePoolRegistrationPoolSigIsInvalid);
                     }
 
-                    if self.stake_pools.contains_key(&reg.data.pool_public_key)
-                        || update
-                            .new_stake_pools
-                            .contains_key(&reg.data.pool_public_key)
+                    if self.stake_pools.contains_key(&reg.data.pool_id)
+                        || update.new_stake_pools.contains_key(&reg.data.pool_id)
                     {
                         // FIXME: support re-registration to change pool parameters.
-                        return Err(Error::StakePoolAlreadyExists(
-                            reg.data.pool_public_key.clone(),
-                        ));
+                        return Err(Error::StakePoolAlreadyExists(reg.data.pool_id.clone()));
                     }
 
                     // FIXME: check owner_sig
 
-                    // FIXME: should pool_public_key be a previously registered stake key?
+                    // FIXME: should pool_id be a previously registered stake key?
 
                     update
                         .new_stake_pools
-                        .insert(reg.data.pool_public_key.clone(), reg.data.clone());
+                        .insert(reg.data.pool_id.clone(), reg.data.clone());
                 }
 
                 Message::StakePoolRetirement(ret) => {
-                    match self.stake_pools.get(&ret.data.pool_public_key) {
+                    match self.stake_pools.get(&ret.data.pool_id) {
                         None => {
-                            return Err(Error::StakePoolDoesNotExist(
-                                ret.data.pool_public_key.clone(),
-                            ));
+                            return Err(Error::StakePoolDoesNotExist(ret.data.pool_id.clone()));
                         }
                         Some(_stake_pool) => {
-                            if !ret
-                                .data
-                                .pool_public_key
-                                .serialize_and_verify(&ret.data, &ret.sig)
-                            {
+                            if !ret.data.pool_id.0.serialize_and_verify(&ret.data, &ret.sig) {
                                 return Err(Error::StakePoolRetirementSigIsInvalid);
                             }
-                            update
-                                .retired_stake_pools
-                                .insert(ret.data.pool_public_key.clone());
+                            update.retired_stake_pools.insert(ret.data.pool_id.clone());
                         }
                     }
                 }
@@ -583,19 +561,19 @@ impl LeaderSelection for GenesisLeaderSelection {
             let stake_key_info = self.stake_keys.remove(&stake_public_key).unwrap();
 
             // Remove this stake key from its pool, if any.
-            if let Some(pool_public_key) = stake_key_info.pool {
+            if let Some(pool_id) = stake_key_info.pool {
                 self.stake_pools
-                    .get_mut(&pool_public_key)
+                    .get_mut(&pool_id)
                     .unwrap()
                     .members
                     .remove(&stake_public_key);
             }
         }
 
-        for (pool_public_key, _new_stake_pool) in update.new_stake_pools {
-            assert!(!self.stake_pools.contains_key(&pool_public_key));
+        for (pool_id, _new_stake_pool) in update.new_stake_pools {
+            assert!(!self.stake_pools.contains_key(&pool_id));
             self.stake_pools.insert(
-                pool_public_key,
+                pool_id,
                 StakePoolInfo {
                     //owners: new_stake_pool.owners
                     members: HashSet::new(),
@@ -603,7 +581,7 @@ impl LeaderSelection for GenesisLeaderSelection {
             );
         }
 
-        for (stake_public_key, pool_public_key) in update.delegations {
+        for (stake_public_key, pool_id) in update.delegations {
             let stake_key = self.stake_keys.get_mut(&stake_public_key).unwrap();
 
             // If this is a redelegation, remove the stake key from its previous pool.
@@ -617,19 +595,19 @@ impl LeaderSelection for GenesisLeaderSelection {
                 assert!(removed);
             }
 
-            let stake_pool = self.stake_pools.get_mut(&pool_public_key).unwrap();
-            stake_key.pool = Some(pool_public_key);
+            let stake_pool = self.stake_pools.get_mut(&pool_id).unwrap();
+            stake_key.pool = Some(pool_id);
             stake_pool.members.insert(stake_public_key);
         }
 
         // FIXME: the pool should be retired at the end of a specified epoch.
-        for pool_public_key in update.retired_stake_pools {
-            let pool_info = self.stake_pools.remove(&pool_public_key).unwrap();
+        for pool_id in update.retired_stake_pools {
+            let pool_info = self.stake_pools.remove(&pool_id).unwrap();
 
             // Remove all pool members.
             for member in pool_info.members {
                 let stake_key_info = self.stake_keys.get_mut(&member).unwrap();
-                assert_eq!(stake_key_info.pool.as_ref().unwrap(), &pool_public_key);
+                assert_eq!(stake_key_info.pool.as_ref().unwrap(), &pool_id);
                 stake_key_info.pool = None;
             }
         }
@@ -702,7 +680,7 @@ mod test {
         initial_bootstrap_key_slots_percentage: u8,
         mut initial_utxos: HashMap<UtxoPointer, Output>,
         initial_stake_pools: Vec<PrivateKey>,
-        initial_stake_keys: HashMap<PublicKey, Option<PublicKey>>,
+        initial_stake_keys: HashMap<PublicKey, Option<StakePoolId>>,
     ) -> TestState {
         let mut g = StdGen::new(rand::thread_rng(), 10);
 
@@ -730,7 +708,7 @@ mod test {
             bft_leaders.iter().map(|k| k.public()).collect(),
             ledger.clone(),
             settings.clone(),
-            initial_stake_pools.iter().map(|x| x.public()).collect(),
+            initial_stake_pools.iter().map(|x| x.into()).collect(),
             initial_stake_keys,
         )
         .unwrap();
@@ -979,7 +957,7 @@ mod test {
                 apply_block1(
                     &mut state,
                     (certificate::StakePoolRegistration {
-                        pool_public_key: pool0_private_key.public(),
+                        pool_id: (&pool0_private_key).into(),
                         //owner: owner0_private_key.public(),
                     })
                     .make_certificate(&signer)
@@ -994,7 +972,7 @@ mod test {
             apply_block1(
                 &mut state,
                 (certificate::StakePoolRegistration {
-                    pool_public_key: pool0_private_key.public(),
+                    pool_id: (&pool0_private_key).into(),
                     //owner: owner0_private_key().public(),
                 })
                 .make_certificate(&pool0_private_key),
@@ -1011,7 +989,7 @@ mod test {
                     &mut state,
                     (certificate::StakeDelegation {
                         stake_public_key: sks0.public(),
-                        pool_public_key: pool0_private_key.public(),
+                        pool_id: (&pool0_private_key).into(),
                     })
                     .make_certificate(&pool0_private_key)
                 ),
@@ -1025,13 +1003,13 @@ mod test {
                 &mut state,
                 (certificate::StakeDelegation {
                     stake_public_key: sks0.public(),
-                    pool_public_key: pool0_private_key.public(),
+                    pool_id: (&pool0_private_key).into(),
                 })
                 .make_certificate(&sks0),
             )
             .unwrap();
             assert_eq!(
-                state.leader_selection.stake_pools[&pool0_private_key.public()]
+                state.leader_selection.stake_pools[&(&pool0_private_key).into()]
                     .members
                     .len(),
                 1
@@ -1040,7 +1018,7 @@ mod test {
             assert_eq!(
                 dist,
                 vec![(
-                    pool0_private_key.public(),
+                    (&pool0_private_key).into(),
                     (
                         Value(10000),
                         vec![(sks0.public(), Value(10000))]
@@ -1088,7 +1066,7 @@ mod test {
             assert_eq!(
                 state.leader_selection.get_stake_distribution(),
                 vec![(
-                    pool0_private_key.public(),
+                    (&pool0_private_key).into(),
                     (
                         Value(30000),
                         vec![(sks0.public(), Value(30000))]
@@ -1125,7 +1103,7 @@ mod test {
             apply_block1(
                 &mut state,
                 (certificate::StakePoolRegistration {
-                    pool_public_key: pool1_private_key.public(),
+                    pool_id: (&pool1_private_key).into(),
                 })
                 .make_certificate(&pool1_private_key),
             )
@@ -1139,7 +1117,7 @@ mod test {
                 &mut state,
                 (certificate::StakeDelegation {
                     stake_public_key: sk1.public(),
-                    pool_public_key: pool1_private_key.public(),
+                    pool_id: (&pool1_private_key).into(),
                 })
                 .make_certificate(&sk1),
             )
@@ -1147,7 +1125,7 @@ mod test {
             assert_eq!(
                 state.leader_selection.get_stake_distribution(),
                 vec![(
-                    pool0_private_key.public(),
+                    (&pool0_private_key).into(),
                     (
                         Value(30000),
                         vec![(sks0.public(), Value(30000))]
@@ -1165,7 +1143,7 @@ mod test {
         // Transfer some money, delegating it to the new stake key.
         let expected_stake_dist = vec![
             (
-                pool0_private_key.public(),
+                (&pool0_private_key).into(),
                 (
                     Value(30000),
                     vec![(sks0.public(), Value(30000))]
@@ -1175,7 +1153,7 @@ mod test {
                 ),
             ),
             (
-                pool1_private_key.public(),
+                (&pool1_private_key).into(),
                 (
                     Value(42000),
                     vec![(sk1.public(), Value(42000))].iter().cloned().collect(),
@@ -1258,7 +1236,7 @@ mod test {
                 &mut state,
                 (certificate::StakeDelegation {
                     stake_public_key: sks0.public(),
-                    pool_public_key: pool1_private_key.public(),
+                    pool_id: (&pool1_private_key).into(),
                 })
                 .make_certificate(&sks0),
             )
@@ -1266,7 +1244,7 @@ mod test {
             assert_eq!(
                 state.leader_selection.get_stake_distribution(),
                 vec![(
-                    pool1_private_key.public(),
+                    (&pool1_private_key).into(),
                     (
                         Value(72000),
                         vec![(sks0.public(), Value(30000)), (sk1.public(), Value(42000))]
@@ -1290,11 +1268,11 @@ mod test {
                 apply_block1(
                     &mut state,
                     (certificate::StakePoolRetirement {
-                        pool_public_key: pool1_private_key.public(),
+                        pool_id: (&pool1_private_key).into(),
                     })
                     .make_certificate(&pool1_private_key)
                 ),
-                Err(Error::StakePoolDoesNotExist(pool1_private_key.public()))
+                Err(Error::StakePoolDoesNotExist((&pool1_private_key).into()))
             );
         }
 
@@ -1305,7 +1283,7 @@ mod test {
                 apply_block1(
                     &mut state,
                     (certificate::StakePoolRetirement {
-                        pool_public_key: pool0_private_key.public(),
+                        pool_id: (&pool0_private_key).into(),
                     })
                     .make_certificate(&signer)
                 ),
@@ -1318,7 +1296,7 @@ mod test {
             apply_block1(
                 &mut state,
                 (certificate::StakePoolRetirement {
-                    pool_public_key: pool0_private_key.public(),
+                    pool_id: (&pool0_private_key).into(),
                 })
                 .make_certificate(&pool0_private_key),
             )
@@ -1360,9 +1338,9 @@ mod test {
         let sks2 = PrivateKey::arbitrary(&mut g);
 
         let mut initial_stake_keys = HashMap::new();
-        initial_stake_keys.insert(sks0.public(), Some(pool0.public()));
-        initial_stake_keys.insert(sks1.public(), Some(pool0.public()));
-        initial_stake_keys.insert(sks2.public(), Some(pool1.public()));
+        initial_stake_keys.insert(sks0.public(), Some((&pool0).into()));
+        initial_stake_keys.insert(sks1.public(), Some((&pool0).into()));
+        initial_stake_keys.insert(sks2.public(), Some((&pool1).into()));
 
         let skp0 = PrivateKey::arbitrary(&mut g);
 
