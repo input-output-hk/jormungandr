@@ -1,22 +1,20 @@
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::chain;
-use crate::intercom::{BlockMsg, NetworkBroadcastMsg};
+use crate::intercom::BlockMsg;
 use crate::rest::v0::node::stats::StatsCounter;
+use crate::utils::task::TaskBroadcastBox;
 
 use chain_core::property::{self, HasHeader};
-
-use futures::sync::mpsc::UnboundedSender;
 
 use std::fmt::Debug;
 
 pub fn process<Chain>(
     blockchain: &chain::BlockchainR<Chain>,
     bquery: BlockMsg<Chain>,
-    network_broadcast: &UnboundedSender<NetworkBroadcastMsg<Chain>>,
+    network_broadcast: &mut TaskBroadcastBox<Chain::BlockHeader>,
     stats_counter: &StatsCounter,
 ) where
     Chain: BlockConfig,
-    Chain::Block: Clone,
     Chain::BlockHeader: Debug,
     <Chain::Ledger as property::Ledger>::Update: Clone,
     <Chain::Settings as property::Settings>::Update: Clone,
@@ -32,14 +30,13 @@ pub fn process<Chain>(
             res
         }
         BlockMsg::LeadershipBlock(block) => {
-            debug!("received block from the leadership: {:#?}", block.header());
+            let header = block.header();
+            debug!("received block from the leadership: {:#?}", header);
             let res = blockchain
                 .write()
                 .unwrap()
-                .handle_incoming_block(block.clone());
-            network_broadcast
-                .unbounded_send(NetworkBroadcastMsg::Block(block))
-                .unwrap();
+                .handle_incoming_block(block);
+            network_broadcast.send_broadcast(header);
             res
         }
         BlockMsg::Subscribe(_reply) => unimplemented!(),

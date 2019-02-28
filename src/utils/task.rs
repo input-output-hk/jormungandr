@@ -1,4 +1,7 @@
 use crate::log_wrapper::logger::update_thread_logger;
+
+use tokio_bus::Bus;
+
 use std::clone::Clone;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
@@ -80,5 +83,20 @@ impl<A> TaskMessageBox<A> {
 impl<A> TaskWithInputs<A> {
     pub fn get_message_box(&self) -> TaskMessageBox<A> {
         TaskMessageBox(self.channel_input.0.clone())
+    }
+}
+
+pub struct TaskBroadcastBox<T: Clone + Sync>(Bus<T>);
+
+impl<T: Clone + Sync> TaskBroadcastBox<T> {
+    pub fn new(len: usize) -> Self {
+        TaskBroadcastBox(Bus::new(len))
+    }
+
+    pub fn send_broadcast(&mut self, val: T) {
+        match self.0.try_broadcast(val) {
+            Ok(()) => {},
+            Err(_) => panic!("broadcast failed, some network tasks may be blocked")
+        }
     }
 }
