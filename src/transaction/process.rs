@@ -3,8 +3,8 @@ use std::sync::{mpsc::Receiver, Arc, RwLock};
 use crate::blockcfg::{BlockConfig, Ledger, Transaction};
 use crate::blockchain::BlockchainR;
 use crate::intercom::TransactionMsg;
+use crate::rest::v0::node::stats::StatsCounter;
 use crate::transaction::TPool;
-use rest::v0_node_stats::StatsCounter;
 
 #[allow(type_alias_bounds)]
 pub type TPoolR<B: BlockConfig> = Arc<RwLock<TPool<B::TransactionId, B::Transaction>>>;

@@ -1,13 +1,12 @@
 //! REST API of the node
 
-pub mod v0_node_stats;
-pub mod v0_utxo;
-
 mod server_service;
+
+pub mod v0;
 
 pub use self::server_service::{Error, ServerService};
 
-use self::v0_node_stats::StatsCounter;
+use self::v0::node::stats::StatsCounter;
 use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 use settings::start::{Error as ConfigError, Rest};
@@ -24,8 +23,8 @@ pub fn start_rest_server(
         .map(|prefix| prefix.as_str())
         .unwrap_or("/");
     ServerService::builder(&config.pkcs12, config.listen.clone(), prefix)
-        .add_handler(v0_node_stats::crate_handler(stats_counter))
-        .add_handler(v0_utxo::crate_handler(blockchain))
+        .add_handler(v0::node::stats::crate_handler(stats_counter))
+        .add_handler(v0::utxo::crate_handler(blockchain))
         .build()
         .map_err(|e| SettingsError::Start(ConfigError::InvalidRest(e)))
 }

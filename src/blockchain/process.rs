@@ -3,7 +3,7 @@ use crate::blockchain::chain;
 use crate::intercom::{BlockMsg, NetworkBroadcastMsg};
 use chain_core::property;
 use futures::sync::mpsc::UnboundedSender;
-use rest::v0_node_stats::StatsCounter;
+use rest::v0::node::stats::StatsCounter;
 
 pub fn process<Chain>(
     blockchain: &chain::BlockchainR<Chain>,
