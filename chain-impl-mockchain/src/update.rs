@@ -87,8 +87,8 @@ impl<T: PartialEq> ValueDiff<T> {
             (ValueDiff::Replace(a, b), ValueDiff::None) => {
                 *self = ValueDiff::Replace(a, b);
             }
-            (ValueDiff::Replace(a, _b), ValueDiff::Replace(_c, d)) => {
-                //assert!(b == c); // FIXME
+            (ValueDiff::Replace(a, b), ValueDiff::Replace(c, d)) => {
+                assert!(b == c);
                 if a == d {
                     *self = ValueDiff::None;
                 } else {
