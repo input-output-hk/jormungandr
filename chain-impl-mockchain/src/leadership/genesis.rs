@@ -174,8 +174,8 @@ impl GenesisLeaderSelection {
             },
             stake_keys,
             stake_pools,
-            stake_snapshot_n_minus_1: HashMap::new(),
-            stake_snapshot_n_minus_2: HashMap::new(),
+            stake_snapshot_n_minus_1: StakeDistribution::empty(),
+            stake_snapshot_n_minus_2: StakeDistribution::empty(),
         };
 
         result.stake_snapshot_n_minus_1 = result.get_stake_distribution();
@@ -205,7 +205,7 @@ impl GenesisLeaderSelection {
             // If we didn't have eligible stake pools in the epoch
             // used for sampling, then we have to use BFT rules.
             // FIXME: require a certain minimum number of stake pools?
-            let have_stakeholders = !stake_snapshot.is_empty();
+            let have_stakeholders = stake_snapshot.eligible_stake_pools() > 0;
 
             let is_bft_slot = d == setting::SLOTS_PERCENTAGE_RANGE
                 || !have_stakeholders
@@ -227,41 +227,25 @@ impl GenesisLeaderSelection {
                     // proper VRF-based leader selection.
 
                     // Calculate the total stake.
-                    let total_stake: Value = stake_snapshot
-                        .iter()
-                        .map(|(_, (pool_stake, _))| pool_stake)
-                        .fold(Value(0), |sum, &x| sum + x);
+                    let total_stake: Value = stake_snapshot.total_stake();
 
                     assert!(total_stake.0 > 0);
 
                     // Pick a random point in the range [0, total_stake).
                     let mut rng: rand::rngs::StdRng =
                         SeedableRng::seed_from_u64(u64::from(&to_date));
-                    let mut point = rng.gen_range(0, total_stake.0);
+                    let point = rng.gen_range(0, total_stake.0);
 
-                    // Sort the pools by public key.
-                    let mut pools_sorted: Vec<_> = stake_snapshot
-                        .iter()
-                        .map(|(pool_id, (pool_stake, _))| (pool_id, pool_stake))
-                        .collect();
-
-                    pools_sorted.sort();
-
-                    for (pool_id, pool_stake) in pools_sorted {
-                        if point < pool_stake.0 {
-                            return (now, pool_id.clone().into());
-                        }
-                        point -= pool_stake.0
-                    }
-
-                    unreachable!();
+                    // Select the stake pool containing the point we
+                    // picked.
+                    return (now, stake_snapshot.select_pool(point).unwrap().into());
                 }
             }
         }
     }
 
     pub fn get_stake_distribution(&self) -> StakeDistribution {
-        let mut dist = StakeDistribution::new();
+        let mut dist = HashMap::new();
 
         for (ptr, output) in self.ledger.read().unwrap().unspent_outputs.iter() {
             assert_eq!(ptr.value, output.1);
@@ -292,7 +276,7 @@ impl GenesisLeaderSelection {
             }
         }
 
-        dist
+        StakeDistribution(dist)
     }
 }
 
@@ -982,7 +966,13 @@ mod test {
             )
             .unwrap();
             assert_eq!(state.leader_selection.stake_pools.len(), 1);
-            assert!(state.leader_selection.get_stake_distribution().is_empty());
+            assert_eq!(
+                state
+                    .leader_selection
+                    .get_stake_distribution()
+                    .eligible_stake_pools(),
+                0,
+            );
         }
 
         // Try to delegate some stake with a wrong key.
@@ -1019,7 +1009,7 @@ mod test {
             );
             let dist = state.leader_selection.get_stake_distribution();
             assert_eq!(
-                dist,
+                dist.0,
                 vec![(
                     (&pool0_private_key).into(),
                     (
@@ -1067,7 +1057,7 @@ mod test {
             apply_block1(&mut state, Message::Transaction(signed_tx)).unwrap();
             state.faucet_utxo = UtxoPointer::new(txid, 0, change_value);
             assert_eq!(
-                state.leader_selection.get_stake_distribution(),
+                state.leader_selection.get_stake_distribution().0,
                 vec![(
                     (&pool0_private_key).into(),
                     (
@@ -1126,7 +1116,7 @@ mod test {
             )
             .unwrap();
             assert_eq!(
-                state.leader_selection.get_stake_distribution(),
+                state.leader_selection.get_stake_distribution().0,
                 vec![(
                     (&pool0_private_key).into(),
                     (
@@ -1200,7 +1190,7 @@ mod test {
             apply_block1(&mut state, Message::Transaction(signed_tx)).unwrap();
             state.faucet_utxo = UtxoPointer::new(txid, 0, change_value);
             assert_eq!(
-                state.leader_selection.get_stake_distribution(),
+                state.leader_selection.get_stake_distribution().0,
                 expected_stake_dist
             );
         }
@@ -1213,11 +1203,11 @@ mod test {
             apply_block(&mut state, vec![]).unwrap();
             assert_eq!(state.cur_date.epoch, 1);
             assert_eq!(
-                state.leader_selection.stake_snapshot_n_minus_1,
+                state.leader_selection.stake_snapshot_n_minus_1.0,
                 expected_stake_dist
             );
             assert_eq!(
-                state.leader_selection.stake_snapshot_n_minus_2,
+                state.leader_selection.stake_snapshot_n_minus_2.0,
                 HashMap::new()
             );
         }
@@ -1227,11 +1217,11 @@ mod test {
             apply_block(&mut state, vec![]).unwrap();
             assert_eq!(state.cur_date.epoch, 2);
             assert_eq!(
-                state.leader_selection.stake_snapshot_n_minus_1,
+                state.leader_selection.stake_snapshot_n_minus_1.0,
                 expected_stake_dist
             );
             assert_eq!(
-                state.leader_selection.stake_snapshot_n_minus_2,
+                state.leader_selection.stake_snapshot_n_minus_2.0,
                 expected_stake_dist
             );
         }
@@ -1248,7 +1238,7 @@ mod test {
             )
             .unwrap();
             assert_eq!(
-                state.leader_selection.get_stake_distribution(),
+                state.leader_selection.get_stake_distribution().0,
                 vec![(
                     (&pool1_private_key).into(),
                     (
