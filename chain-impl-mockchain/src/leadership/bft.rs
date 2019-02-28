@@ -1,15 +1,15 @@
+use super::LeaderId;
 use crate::block::SignedBlock;
-use crate::key::PublicKey;
-use crate::update::{BftSelectionDiff, ValueDiff};
+use crate::update::ValueDiff;
 
-use chain_core::property::{self, LeaderSelection};
+use chain_core::property::{self, LeaderSelection, Update};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BftRoundRobinIndex(pub usize);
 
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
-pub struct BftLeaderSelection<LeaderId> {
+pub struct BftLeaderSelection {
     leaders: Vec<LeaderId>,
 
     current_leader: LeaderId,
@@ -17,12 +17,12 @@ pub struct BftLeaderSelection<LeaderId> {
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    BlockHasInvalidLeader(PublicKey, PublicKey),
+    BlockHasInvalidLeader(LeaderId, LeaderId),
     BlockSignatureIsInvalid,
-    UpdateHasInvalidCurrentLeader(PublicKey, PublicKey),
+    UpdateHasInvalidCurrentLeader(LeaderId, LeaderId),
 }
 
-impl<LeaderId: Eq + Clone> BftLeaderSelection<LeaderId> {
+impl BftLeaderSelection {
     /// Create a new BFT leadership
     pub fn new(leaders: Vec<LeaderId>) -> Option<Self> {
         if leaders.len() == 0 {
@@ -48,13 +48,11 @@ impl<LeaderId: Eq + Clone> BftLeaderSelection<LeaderId> {
     }
 }
 
-impl chain_core::property::LeaderId for PublicKey {}
-
-impl LeaderSelection for BftLeaderSelection<PublicKey> {
+impl LeaderSelection for BftLeaderSelection {
     type Update = BftSelectionDiff;
     type Block = SignedBlock;
     type Error = Error;
-    type LeaderId = PublicKey;
+    type LeaderId = LeaderId;
 
     fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
         use chain_core::property::Block;
@@ -64,10 +62,10 @@ impl LeaderSelection for BftLeaderSelection<PublicKey> {
         let date = input.date();
         let new_leader = self.get_leader_at(date)?;
 
-        if new_leader != input.public_key {
+        if new_leader != input.leader_id {
             return Err(Error::BlockHasInvalidLeader(
                 new_leader,
-                input.public_key.clone(),
+                input.leader_id.clone(),
             ));
         }
         if !input.verify() {
@@ -105,6 +103,28 @@ impl LeaderSelection for BftLeaderSelection<PublicKey> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct BftSelectionDiff {
+    pub leader: ValueDiff<LeaderId>,
+}
+
+impl Update for BftSelectionDiff {
+    fn empty() -> Self {
+        BftSelectionDiff {
+            leader: ValueDiff::None,
+        }
+    }
+    fn inverse(self) -> Self {
+        BftSelectionDiff {
+            leader: self.leader.inverse(),
+        }
+    }
+    fn union(&mut self, other: Self) -> &mut Self {
+        self.leader.union(other.leader);
+        self
+    }
+}
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -123,3 +143,32 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chain_core::property::testing;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for BftSelectionDiff {
+        fn arbitrary<G: Gen>(g: &mut G) -> BftSelectionDiff {
+            BftSelectionDiff {
+                leader: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
+            }
+        }
+    }
+
+    quickcheck! {
+        /*
+        fn bft_selection_diff_union_is_associative(types: (BftSelectionDiff, BftSelectionDiff, BftSelectionDiff)) -> bool {
+            testing::update_associativity(types.0, types.1, types.2)
+        }
+        */
+        fn bft_selection_diff_union_has_identity_element(bft_selection_diff: BftSelectionDiff) -> bool {
+            testing::update_identity_element(bft_selection_diff)
+        }
+        fn bft_selection_diff_union_has_inverse_element(bft_selection_diff: BftSelectionDiff) -> bool {
+            testing::update_inverse_element(bft_selection_diff)
+        }
+    }
+}

@@ -1,6 +1,6 @@
+use super::LeaderId;
 use crate::block::{BlockDate, Message, SignedBlock};
 use crate::certificate;
-use crate::key::PublicKey;
 use crate::leadership::bft::BftRoundRobinIndex;
 use crate::ledger::Ledger;
 use crate::setting::{self, Settings};
@@ -20,7 +20,7 @@ pub struct GenesisLeaderSelection {
     ledger: Arc<RwLock<Ledger>>,
     settings: Arc<RwLock<Settings>>,
 
-    bft_leaders: Vec<PublicKey>,
+    bft_leaders: Vec<LeaderId>,
 
     stake_keys: HashMap<StakeKeyId, StakeKeyInfo>,
 
@@ -46,9 +46,9 @@ struct Pos {
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    BlockHasInvalidLeader(PublicKey, PublicKey),
+    BlockHasInvalidLeader(LeaderId, LeaderId),
     BlockSignatureIsInvalid,
-    UpdateHasInvalidCurrentLeader(PublicKey, PublicKey),
+    UpdateHasInvalidCurrentLeader(LeaderId, LeaderId),
     UpdateIsInvalid, // FIXME: add specific errors for all fields?
     StakeKeyRegistrationSigIsInvalid,
     StakeKeyDeregistrationSigIsInvalid,
@@ -128,7 +128,7 @@ impl std::error::Error for Error {}
 impl GenesisLeaderSelection {
     /// Create a new Genesis leadership
     pub fn new(
-        bft_leaders: Vec<PublicKey>,
+        bft_leaders: Vec<LeaderId>,
         ledger: Arc<RwLock<Ledger>>,
         settings: Arc<RwLock<Settings>>,
         initial_stake_pools: HashSet<StakePoolId>,
@@ -184,7 +184,7 @@ impl GenesisLeaderSelection {
         Some(result)
     }
 
-    fn advance_to(&self, to_date: BlockDate) -> (Pos, PublicKey) {
+    fn advance_to(&self, to_date: BlockDate) -> (Pos, LeaderId) {
         let mut now = self.pos.clone();
 
         let d = self.settings.read().unwrap().bootstrap_key_slots_percentage;
@@ -249,7 +249,7 @@ impl GenesisLeaderSelection {
 
                     for (pool_id, pool_stake) in pools_sorted {
                         if point < pool_stake.0 {
-                            return (now, pool_id.0.clone());
+                            return (now, pool_id.clone().into());
                         }
                         point -= pool_stake.0
                     }
@@ -270,7 +270,7 @@ impl GenesisLeaderSelection {
             // (i.e. containing a spending key and a stake key).
             if let Kind::Group(_spending_key, stake_key) = output.0.kind() {
                 // Grmbl.
-                let stake_key = PublicKey(stake_key.clone()).into();
+                let stake_key = crate::key::PublicKey(stake_key.clone()).into();
 
                 // Do we have a stake key for this spending key?
                 if let Some(stake_key_info) = self.stake_keys.get(&stake_key) {
@@ -369,7 +369,7 @@ impl LeaderSelection for GenesisLeaderSelection {
     type Update = GenesisSelectionDiff;
     type Block = SignedBlock;
     type Error = Error;
-    type LeaderId = PublicKey;
+    type LeaderId = LeaderId;
 
     fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
         let mut update = <Self::Update as property::Update>::empty();
@@ -380,10 +380,10 @@ impl LeaderSelection for GenesisLeaderSelection {
 
         assert_eq!(new_pos.next_date, date.next());
 
-        if leader != input.public_key {
+        if leader != input.leader_id {
             return Err(Error::BlockHasInvalidLeader(
                 leader,
-                input.public_key.clone(),
+                input.leader_id.clone(),
             ));
         }
 
@@ -670,7 +670,7 @@ mod test {
         leader_selection: GenesisLeaderSelection,
         faucet_utxo: UtxoPointer,
         faucet_private_key: PrivateKey,
-        selected_leaders: HashMap<PublicKey, usize>,
+        selected_leaders: HashMap<LeaderId, usize>,
     }
 
     impl TestState {
@@ -708,7 +708,7 @@ mod test {
             initial_bootstrap_key_slots_percentage;
 
         let leader_selection = GenesisLeaderSelection::new(
-            bft_leaders.iter().map(|k| k.public()).collect(),
+            bft_leaders.iter().map(|k| k.into()).collect(),
             ledger.clone(),
             settings.clone(),
             initial_stake_pools.iter().map(|x| x.into()).collect(),
@@ -766,14 +766,14 @@ mod test {
         state.cur_date = state.cur_date.next();
 
         // Keep track of how often leaders were selected.
-        *state.selected_leaders.entry(blk.public_key).or_insert(0) += 1;
+        *state.selected_leaders.entry(blk.leader_id).or_insert(0) += 1;
 
         Ok(())
     }
 
     /// Create and apply a block with the specified contents.
-    fn apply_block(state: &mut TestState, contents: Vec<Message>) -> Result<PublicKey, Error> {
-        let leader_public_key = state
+    fn apply_block(state: &mut TestState, contents: Vec<Message>) -> Result<LeaderId, Error> {
+        let leader_id = state
             .leader_selection
             .get_leader_at(state.cur_date)
             .unwrap();
@@ -781,13 +781,13 @@ mod test {
         let leader_private_key = if let Some(leader_private_key) = state
             .bft_leaders
             .iter()
-            .find(|k| k.public() == leader_public_key)
+            .find(|k| LeaderId::from(*k) == leader_id)
         {
             leader_private_key
         } else if let Some(pool_private_key) = state
             .pool_private_keys
             .iter()
-            .find(|k| k.public() == leader_public_key)
+            .find(|k| LeaderId::from(*k) == leader_id)
         {
             pool_private_key
         } else {
@@ -805,11 +805,11 @@ mod test {
 
         apply_signed_block(state, blk)?;
 
-        Ok(leader_public_key)
+        Ok(leader_id)
     }
 
     /// Create and apply a signed block with a single message.
-    fn apply_block1(state: &mut TestState, msg: Message) -> Result<PublicKey, Error> {
+    fn apply_block1(state: &mut TestState, msg: Message) -> Result<LeaderId, Error> {
         apply_block(state, vec![msg])
     }
 
@@ -830,16 +830,16 @@ mod test {
                     slot_id: 0
                 })
                 .unwrap(),
-            state.bft_leaders[0].public()
+            (&state.bft_leaders[0]).into()
         );
 
         // Generate a bunch of blocks and check that all leaders are
         // picked an equal number of times.
         for i in 0..10 * state.bft_leaders.len() {
-            let leader_public_key = apply_block(&mut state, vec![]).unwrap();
+            let leader_id = apply_block(&mut state, vec![]).unwrap();
             assert_eq!(
-                state.bft_leaders[i % state.bft_leaders.len()].public(),
-                leader_public_key
+                LeaderId::from(&state.bft_leaders[i % state.bft_leaders.len()]),
+                leader_id
             );
         }
 
@@ -857,8 +857,8 @@ mod test {
             assert_eq!(
                 state.leader_selection.diff(&signed_block).unwrap_err(),
                 Error::BlockHasInvalidLeader(
-                    state.bft_leaders[0].public(),
-                    state.bft_leaders[1].public()
+                    (&state.bft_leaders[0]).into(),
+                    (&state.bft_leaders[1]).into()
                 )
             );
         }
@@ -1408,22 +1408,22 @@ mod test {
         // or stable across releases...
 
         if initial_bootstrap_key_slots_percentage == 0 {
-            assert_eq!(state.selected_leaders[&pool0.public()], 335);
-            assert_eq!(state.selected_leaders[&pool1.public()], 665);
-            for leader in state.bft_leaders {
-                assert!(!state.selected_leaders.contains_key(&leader.public()));
+            assert_eq!(state.selected_leaders[&(&pool0).into()], 335);
+            assert_eq!(state.selected_leaders[&(&pool1).into()], 665);
+            for leader in &state.bft_leaders {
+                assert!(!state.selected_leaders.contains_key(&leader.into()));
             }
         } else if initial_bootstrap_key_slots_percentage == 20 {
-            assert_eq!(state.selected_leaders[&pool0.public()], 270);
-            assert_eq!(state.selected_leaders[&pool1.public()], 530);
-            for leader in state.bft_leaders {
-                assert_eq!(state.selected_leaders[&leader.public()], 20);
+            assert_eq!(state.selected_leaders[&(&pool0).into()], 270);
+            assert_eq!(state.selected_leaders[&(&pool1).into()], 530);
+            for leader in &state.bft_leaders {
+                assert_eq!(state.selected_leaders[&leader.into()], 20);
             }
         } else if initial_bootstrap_key_slots_percentage == 50 {
-            assert_eq!(state.selected_leaders[&pool0.public()], 152);
-            assert_eq!(state.selected_leaders[&pool1.public()], 348);
-            for leader in state.bft_leaders {
-                assert_eq!(state.selected_leaders[&leader.public()], 50);
+            assert_eq!(state.selected_leaders[&(&pool0).into()], 152);
+            assert_eq!(state.selected_leaders[&(&pool1).into()], 348);
+            for leader in &state.bft_leaders {
+                assert_eq!(state.selected_leaders[&leader.into()], 50);
             }
         } else {
             unimplemented!();

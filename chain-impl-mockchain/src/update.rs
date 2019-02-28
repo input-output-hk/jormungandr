@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use chain_core::property::Update;
 
-use crate::key::PublicKey;
 use crate::setting::SettingsDiff;
 use crate::transaction::{Output, UtxoPointer};
 
@@ -63,11 +62,6 @@ where
             }
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct BftSelectionDiff {
-    pub leader: ValueDiff<PublicKey>,
 }
 
 impl<T: PartialEq> ValueDiff<T> {
@@ -160,23 +154,6 @@ impl Update for TransactionsDiff {
     }
 }
 
-impl Update for BftSelectionDiff {
-    fn empty() -> Self {
-        BftSelectionDiff {
-            leader: ValueDiff::None,
-        }
-    }
-    fn inverse(self) -> Self {
-        BftSelectionDiff {
-            leader: self.leader.inverse(),
-        }
-    }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.leader.union(other.leader);
-        self
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,13 +173,6 @@ mod tests {
             TransactionsDiff {
                 spent_outputs: Arbitrary::arbitrary(g),
                 new_unspent_outputs: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-    impl Arbitrary for BftSelectionDiff {
-        fn arbitrary<G: Gen>(g: &mut G) -> BftSelectionDiff {
-            BftSelectionDiff {
-                leader: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
             }
         }
     }
@@ -233,18 +203,6 @@ mod tests {
         }
         fn transactions_diff_union_is_commutative(types: (TransactionsDiff, TransactionsDiff)) -> bool {
             testing::update_union_commutative(types.0, types.1)
-        }
-
-        /*
-        fn bft_selection_diff_union_is_associative(types: (BftSelectionDiff, BftSelectionDiff, BftSelectionDiff)) -> bool {
-            testing::update_associativity(types.0, types.1, types.2)
-        }
-        */
-        fn bft_selection_diff_union_has_identity_element(bft_selection_diff: BftSelectionDiff) -> bool {
-            testing::update_identity_element(bft_selection_diff)
-        }
-        fn bft_selection_diff_union_has_inverse_element(bft_selection_diff: BftSelectionDiff) -> bool {
-            testing::update_inverse_element(bft_selection_diff)
         }
     }
 }

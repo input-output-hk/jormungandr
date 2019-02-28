@@ -1,6 +1,7 @@
 //! Representation of the block in the mockchain.
 use crate::certificate;
-use crate::key::{Hash, PrivateKey, PublicKey, Signature, Signed};
+use crate::key::{Hash, PrivateKey, Signature, Signed};
+use crate::leadership::LeaderId;
 use crate::setting;
 use crate::transaction::*;
 use chain_core::property;
@@ -42,7 +43,7 @@ pub enum Message {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedBlock {
     /// Public key used to sign the block.
-    pub public_key: PublicKey,
+    pub leader_id: LeaderId,
     /// List of cryptographic signatures that verifies the block.
     pub signature: Signature,
     /// Internal block.
@@ -64,7 +65,7 @@ pub struct SignedBlockSummary {
     /// the hash that identify this block (this is the Hash of the `Block`).
     pub hash: Hash,
     /// Public key used to sign the block.
-    pub public_key: PublicKey,
+    pub leader_id: LeaderId,
     /// the cryptographic signature that verifies the block.
     pub signature: Signature,
 }
@@ -75,7 +76,7 @@ impl SignedBlock {
         use chain_core::property::Block;
         let block_id = block.id();
         SignedBlock {
-            public_key: pkey.public(),
+            leader_id: pkey.into(),
             signature: pkey.sign(block_id.as_ref()),
             block: block,
         }
@@ -87,7 +88,7 @@ impl SignedBlock {
     pub fn verify(&self) -> bool {
         use chain_core::property::Block;
         let block_id = self.block.id();
-        self.public_key.verify(block_id.as_ref(), &self.signature)
+        self.leader_id.0.verify(block_id.as_ref(), &self.signature)
     }
 
     /// retrieve the summary of the signed block.
@@ -97,7 +98,7 @@ impl SignedBlock {
             slot_id: self.block.slot_id,
             parent_hash: self.block.parent_hash,
             hash: self.id(),
-            public_key: self.public_key.clone(),
+            leader_id: self.leader_id.clone(),
             signature: self.signature.clone(),
         }
     }
@@ -192,7 +193,7 @@ impl property::Serialize for SignedBlock {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        self.public_key.serialize(&mut writer)?;
+        self.leader_id.serialize(&mut writer)?;
         self.signature.serialize(&mut writer)?;
         self.block.serialize(&mut writer)
     }
@@ -210,7 +211,7 @@ impl property::Serialize for SignedBlockSummary {
         codec.put_u64(self.slot_id.slot_id)?;
         codec.write_all(self.parent_hash.as_ref())?;
         codec.write_all(self.hash.as_ref())?;
-        self.public_key.serialize(&mut codec)?;
+        self.leader_id.serialize(&mut codec)?;
         self.signature.serialize(&mut codec)
     }
 }
@@ -250,12 +251,12 @@ impl property::Deserialize for SignedBlock {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let public_key = PublicKey::deserialize(&mut reader)?;
+        let leader_id = LeaderId::deserialize(&mut reader)?;
         let signature = Signature::deserialize(&mut reader)?;
         let block = Block::deserialize(&mut reader)?;
 
         Ok(SignedBlock {
-            public_key,
+            leader_id,
             signature,
             block,
         })
@@ -281,14 +282,14 @@ impl property::Deserialize for SignedBlockSummary {
         codec.read_exact(&mut hash)?;
         let hash = Hash::from(cardano::hash::Blake2b256::from(hash));
 
-        let public_key = PublicKey::deserialize(&mut codec)?;
+        let leader_id = LeaderId::deserialize(&mut codec)?;
         let signature = Signature::deserialize(&mut codec)?;
 
         Ok(SignedBlockSummary {
             slot_id,
             parent_hash,
             hash,
-            public_key,
+            leader_id,
             signature,
         })
     }
@@ -469,7 +470,7 @@ mod test {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             SignedBlock {
                 block: Arbitrary::arbitrary(g),
-                public_key: Arbitrary::arbitrary(g),
+                leader_id: Arbitrary::arbitrary(g),
                 signature: Arbitrary::arbitrary(g),
             }
         }
@@ -480,7 +481,7 @@ mod test {
                 slot_id: Arbitrary::arbitrary(g),
                 parent_hash: Arbitrary::arbitrary(g),
                 hash: Arbitrary::arbitrary(g),
-                public_key: Arbitrary::arbitrary(g),
+                leader_id: Arbitrary::arbitrary(g),
                 signature: Arbitrary::arbitrary(g),
             }
         }
