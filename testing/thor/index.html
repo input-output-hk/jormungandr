@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Hello wasm-pack!</title>
+    <style>
+    .blk {
+      display:inline-block;
+      vertical-align:top;
+    }
+    .clickable {
+      text-decoration: underline;
+    }
+    ul {
+      padding-left: 5px;
+      list-style: none;
+    }
+    .wide { width: 100% }
+    </style>
+  </head>
+  <body>
+
+    <h1> Mjolnir </h1>
+    <div>
+    <fieldset> <legend> Private Key </legend>
+       <input id="private_key_hex" type="text"/>
+       <button id="store_pk">use</button> 
+       <div style="float:right">
+       public key: <input id="public_key_hex" type="text" readonly/> 
+       address key: <input id="user_address" type="text" readonly/>
+       </div>
+    </fieldset>
+    </div>
+    <hr />
+
+    <div>
+    <fieldset class="blk" style="width:20%"> <legend> UTXO </legend>
+	    <a href="#" id="refresh_btn">refresh</a> <br /> <ul id="utxo_block"> </ul>
+    </fieldset>
+
+    <fieldset class="blk" style="width:70%"> <legend> Transaction </legend>
+       <a href="#" id="clear_tx_btn">clear</a>
+       <div>
+          <fieldset style="width:95%"> <legend> inputs </legend>
+            <ul id="tx_input_block"> </ul> <hr/>
+            Total: <span id="tx_input_total"> </span>
+          </fieldset>
+       </div>
+       <div>
+         <fieldset class="blk" style="width:95%"> <legend> outputs </legend>
+         <ul id="tx_output_block"> </ul> <hr />
+           Total: <span id="tx_output_total"> </span>
+           <fieldset> <legend> Add </legend>
+                  <div class="blk"> Address: <br/> Value: <br /> </div>
+                  <div class="blk">
+                  <input type="text" id="tx_out_address" /> <br /> <input type="text" id="tx_out_value"/> 
+                  </div>
+                  <button id="tx_add"> add </button>
+           </fieldset>
+          </fieldset>
+        </div>
+          <div>
+             <button id="sign_btn"> Sign </button> <br/>
+             <textarea id="signed_tx_result" style="width: 100%;height:150px;" readonly></textarea>
+          </div>
+    </fieldset>
+    </div>
+    <div class="blk">
+       <h3> useful constants (for debug purpose) </h3>
+       <p>Private key hex:</p>
+       <p><code>8012881282b611ad8ce4fbf833831eeafea85f474e0b4d5bcaccf84749555459</code></p>
+    </div>
+    <script src="./bootstrap.js"></script>
+  </body>
+</html>
