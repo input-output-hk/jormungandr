@@ -4,6 +4,7 @@ use crate::key::PublicKey;
 use crate::leadership::bft::BftRoundRobinIndex;
 use crate::ledger::Ledger;
 use crate::setting::{self, Settings};
+use crate::stake::*;
 use crate::transaction::Value;
 use crate::update::ValueDiff;
 
@@ -33,24 +34,6 @@ pub struct GenesisLeaderSelection {
     stake_snapshot_n_minus_2: StakeDistribution,
 
     pos: Pos,
-}
-
-// For each stake pool, the total stake value, and the value for the
-// stake pool members.
-type StakeDistribution = HashMap<PublicKey, (Value, HashMap<PublicKey, Value>)>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakeKeyInfo {
-    /// Current stake pool this key is a member of, if any.
-    pool: Option<PublicKey>,
-    // - reward account
-    // - registration deposit (if variable)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakePoolInfo {
-    //owners: HashSet<PublicKey>,
-    members: HashSet<PublicKey>,
 }
 
 #[derive(Debug, Clone)]
