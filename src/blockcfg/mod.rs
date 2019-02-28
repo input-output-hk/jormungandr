@@ -16,7 +16,7 @@ pub use chain_core::property::{
 pub mod genesis_data;
 pub mod mock;
 
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 pub trait BlockConfig {
     type Block: Block<Id = Self::BlockHash, Date = Self::BlockDate>
@@ -25,7 +25,11 @@ pub trait BlockConfig {
         + Send;
     type BlockDate: BlockDate + Display + FromStr;
     type BlockHash: BlockId + Display + Send;
-    type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate> + Clone + Send + Sync;
+    type BlockHeader: Header<Id = Self::BlockHash, Date = Self::BlockDate>
+        + Clone
+        + Send
+        + Sync
+        + Debug;
     type Transaction: Transaction<Id = Self::TransactionId> + Serialize + Send;
     type TransactionId: TransactionId + Serialize + Send;
     type GenesisData;

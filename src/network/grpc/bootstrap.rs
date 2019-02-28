@@ -59,7 +59,7 @@ where
 {
     stream
         .fold(blockchain, |blockchain, block| {
-            // debug!("received block from the bootstrap node: {:#?}", &block);
+            debug!("received block from the bootstrap node: {:#?}", block.header());
             let res = blockchain.write().unwrap().handle_incoming_block(block);
             if let Err(e) = res {
                 error!("error processing a bootstrap block: {:?}", e);
