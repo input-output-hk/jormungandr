@@ -32,6 +32,7 @@ cbor_event = "2.1.2"
 cryptoxide = "0.1"
 futures    = "0.1"
 tokio      = "0.1"
+tokio-bus = "0.1"
 structopt = "^0.2"
 curve25519-dalek = "0.21"
 sha2 = "^0.7"
@@ -41,7 +42,6 @@ bytes = "0.4"
 lazy_static = "1.2.0"
 actix-net = "0.2.6"
 native-tls = "0.2.2"
-tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
 chain-core      = { path = "cardano-deps/chain-core" }
 chain-impl-mockchain = { path = "cardano-deps/chain-impl-mockchain" }
 chain-storage   = { path = "cardano-deps/chain-storage" }

@@ -37,6 +37,7 @@ pub fn process<Chain>(
                 .unwrap();
             res
         }
+        BlockMsg::Subscribe(_reply) => unimplemented!(),
     };
     if let Err(e) = res {
         error!("error processing an incoming block: {:?}", e);

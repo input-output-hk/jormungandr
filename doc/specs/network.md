@@ -113,12 +113,10 @@ is stateless for
     for clients that don't have a need to fiddle with batched
     `GetChainHashes`/`GetBlocks` requests and traffic distribution among
     multiple peers.
-* `AnnounceBlock: Hash`
+* `AnnounceBlock: Header`
   * Announce a new block to the peer by the block's hash.
   * Used for submission of a new locally minted block,
     and relay of block gossip on the network.
-  * **TBD:** the payload could be a whole `Header` carrying more useful
-    information about the block.
 * `AnnounceTransactions: [Hash]`
   * Announce new transactions to the peer by their hashes as unique keys.
   * Used for submission of a new locally accepted transaction,

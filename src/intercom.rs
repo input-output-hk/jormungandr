@@ -1,14 +1,17 @@
+use crate::blockcfg::BlockConfig;
+
+use network_core::{error::Code, server::block::BlockError};
+
+use futures::prelude::*;
+use futures::sync::{mpsc, oneshot};
+use tokio_bus::BusReader;
+
 use std::{
     error,
     fmt::{self, Debug, Display},
     marker::PhantomData,
+    sync::mpsc::RecvError as BusError,
 };
-
-use futures::prelude::*;
-use futures::sync::{mpsc, oneshot};
-use network_core::error::Code;
-
-use crate::blockcfg::BlockConfig;
 
 /// The error values passed via intercom messages.
 #[derive(Debug)]
@@ -194,6 +197,97 @@ pub fn stream_reply<T, E>() -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
     (ReplyStreamHandle { sender }, stream)
 }
 
+pub struct SubscriptionHandle<T: Sync + Clone> {
+    sender: oneshot::Sender<BusReader<T>>,
+}
+
+impl<T: Sync + Clone> SubscriptionHandle<T> {
+    pub fn send(self, rx: BusReader<T>) {
+        match self.sender.send(rx) {
+            Ok(()) => {}
+            Err(_) => panic!("failed to send subscription reader"),
+        }
+    }
+}
+
+pub struct SubscriptionFuture<T, E>
+where
+    T: Clone + Sync,
+{
+    receiver: oneshot::Receiver<BusReader<T>>,
+    _phantom_error: PhantomData<E>,
+}
+
+impl<T, E> Future for SubscriptionFuture<T, E>
+where
+    T: Clone + Sync,
+    E: From<Error>,
+{
+    type Item = SubscriptionStream<T, E>;
+    type Error = E;
+    fn poll(&mut self) -> Poll<Self::Item, E> {
+        let inner = match self.receiver.poll() {
+            Err(oneshot::Canceled) => {
+                warn!("response canceled by the client request task");
+                return Err(Error::from(oneshot::Canceled).into());
+            }
+            Ok(Async::NotReady) => {
+                return Ok(Async::NotReady);
+            }
+            Ok(Async::Ready(item)) => item,
+        };
+
+        Ok(Async::Ready(SubscriptionStream {
+            inner,
+            _phantom_error: PhantomData,
+        }))
+    }
+}
+
+pub struct SubscriptionStream<T: Clone + Sync, E> {
+    inner: BusReader<T>,
+    _phantom_error: PhantomData<E>,
+}
+
+impl<T, E> Stream for SubscriptionStream<T, E>
+where
+    T: Clone + Sync,
+    E: FromSubscriptionError,
+{
+    type Item = T;
+    type Error = E;
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        match self.inner.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(item)) => Ok(Async::Ready(item)),
+            Err(e) => Err(E::from_subscription_error(e)),
+        }
+    }
+}
+
+pub trait FromSubscriptionError: Sized {
+    fn from_subscription_error(err: BusError) -> Self;
+}
+
+impl FromSubscriptionError for BlockError {
+    fn from_subscription_error(err: BusError) -> Self {
+        BlockError::failed(err)
+    }
+}
+
+pub fn subscription_reply<T, E>() -> (SubscriptionHandle<T>, SubscriptionFuture<T, E>)
+where
+    T: Clone + Sync,
+{
+    let (sender, receiver) = oneshot::channel();
+    let future = SubscriptionFuture {
+        receiver,
+        _phantom_error: PhantomData,
+    };
+    (SubscriptionHandle { sender }, future)
+}
+
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg<B: BlockConfig> {
@@ -252,6 +346,8 @@ pub enum BlockMsg<B: BlockConfig> {
     NetworkBlock(B::Block),
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(B::Block),
+    /// The network task has a subscription to add
+    Subscribe(SubscriptionHandle<B::BlockHeader>),
 }
 
 impl<B> Debug for BlockMsg<B>
@@ -264,6 +360,7 @@ where
         match self {
             NetworkBlock(block) => f.debug_tuple("NetworkBlock").field(block).finish(),
             LeadershipBlock(block) => f.debug_tuple("LeadershipBlock").field(block).finish(),
+            Subscribe(_) => f.debug_tuple("Subscribe").finish(),
         }
     }
 }
@@ -291,5 +388,21 @@ where
             Header(header) => f.debug_tuple("Header").field(header).finish(),
             Transaction(tx) => f.debug_tuple("Transaction").field(tx).finish(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blockcfg::mock::Mockchain;
+    use chain_impl_mockchain::block::SignedBlockSummary;
+    use network_core::server::block::BlockError;
+
+    #[test]
+    fn block_msg_subscribe_debug() {
+        let (handle, _) = subscription_reply::<SignedBlockSummary, BlockError>();
+        let msg = BlockMsg::Subscribe::<Mockchain>(handle);
+        let debug_repr = format!("{:?}", msg);
+        assert!(debug_repr.contains("Subscribe"));
     }
 }

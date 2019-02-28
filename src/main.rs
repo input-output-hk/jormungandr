@@ -25,6 +25,7 @@ extern crate protocol_tokio as protocol;
 extern crate tower_service;
 
 extern crate tokio;
+extern crate tokio_bus;
 
 #[cfg(test)]
 extern crate quickcheck;
