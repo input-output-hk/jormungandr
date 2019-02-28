@@ -36,5 +36,5 @@ pub struct ConfigLogSettings {
 pub struct Rest {
     pub listen: SocketAddr,
     pub prefix: Option<String>,
-    pub pkcs12: PathBuf,
+    pub pkcs12: Option<PathBuf>,
 }

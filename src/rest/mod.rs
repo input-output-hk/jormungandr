@@ -22,7 +22,7 @@ pub fn start_rest_server(
         .as_ref()
         .map(|prefix| prefix.as_str())
         .unwrap_or("/");
-    ServerService::builder(&config.pkcs12, config.listen.clone(), prefix)
+    ServerService::builder(config.pkcs12.clone(), config.listen.clone(), prefix)
         .add_handler(v0::node::stats::crate_handler(stats_counter))
         .add_handler(v0::utxo::crate_handler(blockchain))
         .build()
