@@ -46,4 +46,21 @@ pub trait BlockService<T: Block + HasHeader> {
     // The future resolves to a stream that will be used by the protocol
     // implementation to produce a server-streamed response.
     //type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error>;
+
+    /// The type of asynchronous futures returned by method `subscribe`.
+    ///
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a subscription stream.
+    type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = Error>;
+
+    /// The type of an asynchronous stream that provides notifications
+    /// of blocks created or accepted by the remote node.
+    type BlockSubscription: Stream<Item = T::Header, Error = Error>;
+
+    /// Establishes a stream of notifications for blocks created or accepted
+    /// by the remote node.
+    ///
+    /// The client can use the stream that the returned future resolves to
+    /// as a long-lived subscription handle.
+    fn subscribe_to_blocks(&mut self) -> Self::BlockSubscriptionFuture;
 }

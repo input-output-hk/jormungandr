@@ -371,6 +371,15 @@ where
         let future = self.node.pull_blocks_to_tip(Request::new(req));
         ResponseStreamFuture::new(future)
     }
+
+    type BlockSubscription = ResponseStream<T::Header, gen::node::Header>;
+    type BlockSubscriptionFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
+
+    fn subscribe_to_blocks(&mut self) -> Self::BlockSubscriptionFuture {
+        let req = gen::node::BlockSubscriptionRequest {};
+        let future = self.node.subscribe_to_blocks(Request::new(req));
+        ResponseStreamFuture::new(future)
+    }
 }
 
 /// The error type for gRPC client operations.
