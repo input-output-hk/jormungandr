@@ -17,11 +17,18 @@ where
 
         match query {
             ClientMsg::GetBlockTip(handler) => handler.reply(handle_get_block_tip(&blockchain)),
-            ClientMsg::GetBlockHeaders(checkpoints, to, handler) => {
-                handler.reply(handle_get_block_headers(&blockchain, checkpoints, to))
+            ClientMsg::GetHeaders(ids, handler) => do_stream_reply(handler, |handler| {
+                handle_get_headers(&blockchain, ids, handler)
+            }),
+            ClientMsg::GetHeadersRange(checkpoints, to, handler) => {
+                handler.reply(handle_get_headers_range(&blockchain, checkpoints, to))
             }
-            ClientMsg::GetBlocks(from, to, handler) => do_stream_reply(handler, |handler| {
-                handle_get_blocks(&blockchain, from, to, handler)
+            ClientMsg::GetBlocks(ids, handler) => do_stream_reply(handler, |handler| {
+                handle_get_blocks(&blockchain, ids, handler)
+            }),
+
+            ClientMsg::GetBlocksRange(from, to, handler) => do_stream_reply(handler, |handler| {
+                handle_get_blocks_range(&blockchain, from, to, handler)
             }),
             ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
                 handle_pull_blocks_to_tip(&blockchain, from, handler)
@@ -61,7 +68,7 @@ where
 
 const MAX_HEADERS: usize = 2000;
 
-fn handle_get_block_headers<B>(
+fn handle_get_headers_range<B>(
     blockchain: &BlockchainR<B>,
     checkpoints: Vec<B::BlockHash>,
     to: B::BlockHash,
@@ -112,7 +119,7 @@ where
     }
 }
 
-fn handle_get_blocks<B: BlockConfig>(
+fn handle_get_blocks_range<B: BlockConfig>(
     blockchain: &BlockchainR<B>,
     from: B::BlockHash,
     to: B::BlockHash,
@@ -125,6 +132,36 @@ fn handle_get_blocks<B: BlockConfig>(
         let info = x?;
         let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
         reply.send(blk);
+    }
+
+    Ok(())
+}
+
+fn handle_get_blocks<B: BlockConfig>(
+    blockchain: &BlockchainR<B>,
+    ids: Vec<B::BlockHash>,
+    reply: &mut ReplyStreamHandle<B::Block>,
+) -> Result<(), Error> {
+    let blockchain = blockchain.read().unwrap();
+
+    for id in ids.into_iter() {
+        let (blk, _) = blockchain.storage.get_block(&id)?;
+        reply.send(blk);
+    }
+
+    Ok(())
+}
+
+fn handle_get_headers<B: BlockConfig>(
+    blockchain: &BlockchainR<B>,
+    ids: Vec<B::BlockHash>,
+    reply: &mut ReplyStreamHandle<B::BlockHeader>,
+) -> Result<(), Error> {
+    let blockchain = blockchain.read().unwrap();
+
+    for id in ids.into_iter() {
+        let (blk, _) = blockchain.storage.get_block(&id)?;
+        reply.send(blk.header());
     }
 
     Ok(())

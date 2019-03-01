@@ -6,7 +6,6 @@ use crate::intercom::{
 };
 use crate::utils::task::TaskMessageBox;
 
-use chain_core::property::Header;
 use network_core::server::{
     block::{BlockError, BlockService},
     transaction::{
@@ -17,7 +16,6 @@ use network_core::server::{
 };
 
 use futures::future::{self, FutureResult};
-use futures::prelude::*;
 
 pub struct ConnectionServices<B: BlockConfig> {
     state: ConnectionState<B>,
@@ -76,28 +74,43 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     type BlockId = B::BlockHash;
     type BlockDate = B::BlockDate;
     type Block = B::Block;
-    type TipFuture = futures::Map<
-        ReplyFuture<B::BlockHeader, BlockError>,
-        fn(B::BlockHeader) -> (B::BlockHash, B::BlockDate),
-    >;
+    type TipFuture = ReplyFuture<B::BlockHeader, BlockError>;
     type Header = B::BlockHeader;
     type PullBlocksStream = ReplyStream<B::Block, BlockError>;
     type PullBlocksFuture = FutureResult<Self::PullBlocksStream, BlockError>;
+    type GetBlocksStream = ReplyStream<B::Block, BlockError>;
+    type GetBlocksFuture = FutureResult<Self::GetBlocksStream, BlockError>;
     type PullHeadersStream = ReplyStream<B::BlockHeader, BlockError>;
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, BlockError>;
+    type GetHeadersStream = ReplyStream<B::BlockHeader, BlockError>;
+    type GetHeadersFuture = FutureResult<Self::GetHeadersStream, BlockError>;
     type BlockSubscription = SubscriptionStream<B::BlockHeader, BlockError>;
     type BlockSubscriptionFuture = SubscriptionFuture<B::BlockHeader, BlockError>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
         self.client_box.send_to(ClientMsg::GetBlockTip(handle));
-        future.map(|header| (header.id(), header.date()))
+        future
     }
 
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture {
         let (handle, stream) = stream_reply();
         self.client_box
             .send_to(ClientMsg::PullBlocksToTip(from.into(), handle));
+        future::ok(stream)
+    }
+
+    fn get_blocks(&mut self, ids: &[Self::BlockId]) -> Self::GetBlocksFuture {
+        let (handle, stream) = stream_reply();
+        self.client_box
+            .send_to(ClientMsg::GetBlocks(ids.into(), handle));
+        future::ok(stream)
+    }
+
+    fn get_headers(&mut self, ids: &[Self::BlockId]) -> Self::GetHeadersFuture {
+        let (handle, stream) = stream_reply();
+        self.client_box
+            .send_to(ClientMsg::GetHeaders(ids.into(), handle));
         future::ok(stream)
     }
 
