@@ -29,6 +29,32 @@ pub struct GenesisData {
     pub bft_leaders: Vec<PublicKey>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConfigGenesisData {
+    pub start_time: u64,
+    pub slot_duration: u64,
+    /// also known as `t` in the BFT paper
+    pub epoch_stability_depth: usize,
+    pub initial_utxos: Vec<InitialUTxO>,
+    pub bft_leaders: Vec<PublicKey>,
+}
+
+impl ConfigGenesisData {
+    pub fn from_genesis(genesis: GenesisData) -> Self {
+        ConfigGenesisData {
+            start_time: genesis
+                .start_time
+                .duration_since(time::SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            slot_duration: genesis.slot_duration.as_secs(),
+            epoch_stability_depth: genesis.epoch_stability_depth,
+            initial_utxos: genesis.initial_utxos,
+            bft_leaders: genesis.bft_leaders,
+        }
+    }
+}
+
 // TODO: details
 #[derive(Debug)]
 pub struct ParseError();
@@ -52,7 +78,14 @@ impl std::str::FromStr for PublicKey {
 
 impl GenesisData {
     pub fn parse<R: io::BufRead>(reader: R) -> Result<Self, serde_yaml::Error> {
-        serde_yaml::from_reader(reader)
+        let config: ConfigGenesisData = serde_yaml::from_reader(reader)?;
+        Ok(GenesisData {
+            start_time: time::SystemTime::UNIX_EPOCH + time::Duration::from_secs(config.start_time),
+            slot_duration: time::Duration::from_secs(config.slot_duration),
+            epoch_stability_depth: config.epoch_stability_depth,
+            initial_utxos: config.initial_utxos,
+            bft_leaders: config.bft_leaders,
+        })
     }
 
     pub fn leaders<'a>(&'a self) -> impl Iterator<Item = &'a key::PublicKey> {
