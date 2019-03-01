@@ -16,7 +16,7 @@ use std::{sync::Arc, time::Duration};
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
-use crate::settings::start::network::{Configuration, Connection, Listen, Peer, Protocol};
+use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
 use self::p2p_topology::P2pTopology;
@@ -26,6 +26,9 @@ use futures::{
     future,
     stream::{self, Stream},
 };
+use std::net::SocketAddr;
+
+type Connection = SocketAddr;
 
 /// all the different channels the network may need to talk to
 pub struct Channels<B: BlockConfig> {
@@ -48,6 +51,33 @@ pub struct GlobalState<B: BlockConfig> {
     pub config: Arc<Configuration>,
     pub channels: Channels<B>,
     pub topology: P2pTopology,
+}
+
+impl<B: BlockConfig> GlobalState<B> {
+    /// the network global state
+    pub fn new(config: &Configuration, channels: Channels<B>) -> Self {
+        let node_id = p2p_topology::Id::generate(&mut rand::thread_rng());
+        let node_address = config
+            .public_address
+            .clone()
+            .expect("only support the full nodes for now")
+            .0
+            .into();
+        let mut node = p2p_topology::Node::new(node_id, node_address);
+
+        // TODO: load the subscriptions from the config
+        p2p_topology::add_transaction_subscription(&mut node, p2p_topology::InterestLevel::High);
+        p2p_topology::add_block_subscription(&mut node, p2p_topology::InterestLevel::High);
+
+        let mut p2p_topology = P2pTopology::new(node);
+
+        let arc_config = Arc::new(config.clone());
+        GlobalState {
+            config: arc_config,
+            channels: channels,
+            topology: p2p_topology,
+        }
+    }
 }
 
 impl<B: BlockConfig> Clone for GlobalState<B> {
@@ -119,44 +149,41 @@ pub fn run<B>(config: Configuration, channels: Channels<B>)
 where
     B: BlockConfig + 'static,
 {
-    let node_id = p2p_topology::Id::generate(&mut rand::thread_rng());
-    let node_address = p2p_topology::Address::new(config.listen_to[0].address()).unwrap();
-    let node = p2p_topology::Node::new(node_id, node_address);
-    let mut p2p_topology = P2pTopology::new(node);
-    // by default, set the poldercast modules
-    p2p_topology.set_poldercast_modules();
-    let arc_config = Arc::new(config.clone());
-    let state = GlobalState {
-        config: arc_config,
-        channels: channels,
-        topology: p2p_topology,
-    };
+    // TODO: the node needs to be saved/loaded
+    //
+    // * the ID needs to be consistent between restart;
+    let state = GlobalState::new(&config, channels);
+    let protocol = config.protocol;
 
     let state_listener = state.clone();
     // open the port for listening/accepting other peers to connect too
-    let listener =
-        stream::iter_ok(config.listen_to).for_each(move |listen| match listen.connection {
-            Connection::Tcp(sockaddr) => match listen.protocol {
-                Protocol::Grpc => grpc::run_listen_socket(sockaddr, listen, state_listener.clone()),
-                Protocol::Ntt => unimplemented!(), // ntt::run_listen_socket(sockaddr, listen, state_listener.clone()),
-            },
-            #[cfg(unix)]
-            Connection::Unix(_path) => unimplemented!(),
-        });
+    let listener = if let Some(public_address) = config
+        .public_address
+        .and_then(move |addr| addr.to_socketaddr())
+    {
+        let protocol = protocol.clone();
+        match protocol.clone() {
+            Protocol::Grpc => {
+                let listen = Listen::new(public_address, protocol);
+                grpc::run_listen_socket(public_address, listen, state_listener)
+            }
+            Protocol::Ntt => unimplemented!(),
+        }
+    } else {
+        unimplemented!()
+    };
 
     let state_connection = state.clone();
-    let connections =
-        stream::iter_ok(config.peer_nodes).for_each(move |peer| match peer.connection {
-            Connection::Tcp(sockaddr) => match peer.protocol {
-                Protocol::Ntt => {
-                    unimplemented!(); // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
-                    future::ok(())
-                }
-                Protocol::Grpc => unimplemented!(),
-            },
-            #[cfg(unix)]
-            Connection::Unix(_path) => unimplemented!(),
-        });
+    let connections = stream::iter_ok(config.trusted_addresses).for_each(move |address| {
+        let protocol = protocol.clone();
+        match protocol {
+            Protocol::Ntt => {
+                unimplemented!(); // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                future::ok(())
+            }
+            Protocol::Grpc => unimplemented!(),
+        }
+    });
 
     tokio::run(connections.join(listener).map(|_| ()));
 }
@@ -168,13 +195,15 @@ where
     <B::Settings as property::Settings>::Update: Clone,
     <B::Leader as property::LeaderSelection>::Update: Clone,
 {
-    let grpc_peer = config
-        .peer_nodes
-        .iter()
-        .filter(|peer| peer.protocol == Protocol::Grpc)
-        .next();
-    match grpc_peer {
-        Some(peer) => grpc::bootstrap_from_peer(peer.clone(), blockchain),
+    if config.protocol != Protocol::Grpc {
+        unimplemented!()
+    }
+    let peer = config.trusted_addresses.iter().next();
+    match peer.and_then(|a| a.to_socketaddr()) {
+        Some(address) => {
+            let peer = Peer::new(address, Protocol::Grpc);
+            grpc::bootstrap_from_peer(peer, blockchain)
+        }
         None => {
             warn!("no gRPC peers specified, skipping bootstrap");
         }

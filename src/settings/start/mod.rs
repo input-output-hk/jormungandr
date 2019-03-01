@@ -3,14 +3,14 @@ pub mod network;
 
 use self::config::ConfigLogSettings;
 pub use self::config::{Genesis, GenesisConstants, Rest};
-use self::network::{Connection, Listen, Peer, Protocol};
+use self::network::Protocol;
 use crate::blockcfg::genesis_data::*;
 use crate::rest::Error as RestError;
 use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
 
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     fmt::{self, Display},
     fs::File,
     path::PathBuf,
@@ -168,83 +168,16 @@ fn generate_network(
     command_arguments: &StartArguments,
     config: &config::Config,
 ) -> network::Configuration {
-    let mut peer_nodes_map: HashMap<_, _> =
-        config
-            .legacy_peers
-            .as_ref()
-            .map_or(HashMap::new(), |addresses| {
-                addresses
-                    .iter()
-                    .cloned()
-                    .map(|addr| (addr, Protocol::Ntt))
-                    .collect()
-            });
-    peer_nodes_map.extend(
-        config
-            .grpc_peers
-            .as_ref()
-            .map_or(HashMap::new(), |addresses| {
-                addresses
-                    .iter()
-                    .cloned()
-                    .map(|addr| (addr, Protocol::Grpc))
-                    .collect()
-            }),
-    );
-    peer_nodes_map.extend(
-        command_arguments
-            .ntt_connect
-            .iter()
-            .cloned()
-            .map(|addr| (addr, Protocol::Ntt)),
-    );
-    peer_nodes_map.extend(
-        command_arguments
-            .grpc_connect
-            .iter()
-            .cloned()
-            .map(|addr| (addr, Protocol::Grpc)),
-    );
-    let peer_nodes = peer_nodes_map
-        .iter()
-        .map(|(&addr, proto)| Peer::new(Connection::Tcp(addr), proto.clone()))
-        .collect();
-
-    let mut listen_map: HashMap<_, _> =
-        config
-            .legacy_listen
-            .as_ref()
-            .map_or(HashMap::new(), |addresses| {
-                addresses
-                    .iter()
-                    .cloned()
-                    .map(|addr| (addr, Protocol::Ntt))
-                    .collect()
-            });
-    if let Some(addresses) = config.grpc_listen.as_ref() {
-        listen_map.extend(addresses.iter().cloned().map(|addr| (addr, Protocol::Grpc)));
-    };
-    listen_map.extend(
-        command_arguments
-            .ntt_listen
-            .iter()
-            .cloned()
-            .map(|addr| (addr, Protocol::Ntt)),
-    );
-    listen_map.extend(
-        command_arguments
-            .grpc_listen
-            .iter()
-            .cloned()
-            .map(|addr| (addr, Protocol::Grpc)),
-    );
-    let listen_to: Vec<_> = listen_map
-        .iter()
-        .map(|(&addr, proto)| Listen::new(Connection::Tcp(addr), proto.clone()))
-        .collect();
-
+    let public_address = config.peer_2_peer.public_access.clone();
     network::Configuration {
-        peer_nodes,
-        listen_to,
+        public_address: public_address,
+        trusted_addresses: config.peer_2_peer.trusted_peers.clone().unwrap_or(vec![]),
+        protocol: Protocol::Grpc,
+        subscriptions: config
+            .peer_2_peer
+            .topics_of_interests
+            .clone()
+            .unwrap_or(BTreeMap::new()),
+        timeout: std::time::Duration::from_secs(15),
     }
 }
