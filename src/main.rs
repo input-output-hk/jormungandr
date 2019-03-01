@@ -54,7 +54,9 @@ use chain_impl_mockchain::{
 };
 use futures::Future;
 
-use blockcfg::{genesis_data::GenesisData, mock::Mockchain as Cardano};
+use blockcfg::{
+    genesis_data::ConfigGenesisData, genesis_data::GenesisData, mock::Mockchain as Cardano,
+};
 //use state::State;
 use blockchain::{Blockchain, BlockchainR};
 use intercom::BlockMsg;
@@ -307,13 +309,13 @@ fn main() {
             println!("public_key: {}", hex::encode(public_key.as_ref()));
         }
         Command::Init(init_settings) => {
-            let genesis = GenesisData {
+            let genesis = ConfigGenesisData::from_genesis(GenesisData {
                 start_time: init_settings.blockchain_start,
                 slot_duration: init_settings.slot_duration,
                 epoch_stability_depth: init_settings.epoch_stability_depth,
                 initial_utxos: init_settings.initial_utxos,
                 bft_leaders: init_settings.bft_leaders,
-            };
+            });
 
             serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();
         }
