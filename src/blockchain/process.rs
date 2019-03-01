@@ -36,7 +36,11 @@ pub fn process<Chain>(
             network_broadcast.send_broadcast(header);
             res
         }
-        BlockMsg::Subscribe(_reply) => unimplemented!(),
+        BlockMsg::Subscribe(reply) => {
+            let rx = network_broadcast.add_rx();
+            reply.send(rx);
+            Ok(())
+        }
     };
     if let Err(e) = res {
         error!("error processing an incoming block: {:?}", e);

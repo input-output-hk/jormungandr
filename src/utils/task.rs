@@ -1,6 +1,6 @@
 use crate::log_wrapper::logger::update_thread_logger;
 
-use tokio_bus::Bus;
+use tokio_bus::{Bus, BusReader};
 
 use std::clone::Clone;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -91,6 +91,10 @@ pub struct TaskBroadcastBox<T: Clone + Sync>(Bus<T>);
 impl<T: Clone + Sync> TaskBroadcastBox<T> {
     pub fn new(len: usize) -> Self {
         TaskBroadcastBox(Bus::new(len))
+    }
+
+    pub fn add_rx(&mut self) -> BusReader<T> {
+        self.0.add_rx()
     }
 
     pub fn send_broadcast(&mut self, val: T) {
