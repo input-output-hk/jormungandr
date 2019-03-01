@@ -1,6 +1,6 @@
 use crate::gen;
 
-use chain_core::property::{Block, Deserialize, Header, Serialize, TransactionId};
+use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction, TransactionId};
 use network_core::server::{self, block::BlockService, transaction::TransactionService, Node};
 
 use futures::prelude::*;
@@ -235,6 +235,16 @@ where
     }
 }
 
+impl<T> IntoResponse<gen::node::Transaction> for T
+where
+    T: Transaction + Serialize,
+{
+    fn into_response(self) -> Result<gen::node::Transaction, tower_grpc::Error> {
+        let content = serialize_to_bytes(self)?;
+        Ok(gen::node::Transaction { content })
+    }
+}
+
 impl<I> IntoResponse<gen::node::ProposeTransactionsResponse>
     for server::transaction::ProposeTransactionsResponse<I>
 where
@@ -314,6 +324,14 @@ where
         gen::node::RecordTransactionResponse,
         <<T as Node>::TransactionService as TransactionService>::RecordTransactionFuture,
     >;
+    type TransactionsStream = ResponseStream<
+        gen::node::Transaction,
+        <<T as Node>::TransactionService as TransactionService>::GetTransactionsStream,
+    >;
+    type TransactionsFuture = ResponseFuture<
+        Self::TransactionsStream,
+        <<T as Node>::TransactionService as TransactionService>::GetTransactionsFuture,
+    >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
         let service = try_get_service!(self.block_service);
@@ -381,5 +399,20 @@ where
     ) -> Self::RecordTransactionFuture {
         let _service = try_get_service!(self.tx_service);
         unimplemented!()
+    }
+
+    fn transactions(
+        &mut self,
+        req: Request<gen::node::TransactionIds>,
+    ) -> Self::TransactionsFuture {
+        let service = try_get_service!(self.tx_service);
+        let tx_ids = match deserialize_vec(&req.get_ref().id) {
+            Ok(tx_ids) => tx_ids,
+            Err(GrpcError(status)) => {
+                return ResponseFuture::error(status);
+            }
+            Err(e) => panic!("unexpected error {:?}", e),
+        };
+        ResponseFuture::new(service.get_transactions(&tx_ids))
     }
 }
