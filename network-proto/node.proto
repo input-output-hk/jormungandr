@@ -20,6 +20,12 @@ message BlockIds {
     repeated bytes id = 1;
 }
 
+// Request to fetch the methods for blocks and headers.
+message TransactionIds {
+    // The identifiers of blocks for loading.
+    repeated bytes id = 1;
+}
+
 // Request message for method PullBlocksToTip.
 message PullBlocksToTipRequest {
     // The identifiers of blocks to consider as the
@@ -29,13 +35,19 @@ message PullBlocksToTipRequest {
 
 // Representation of a block.
 message Block {
-    // The serialized content of the block. 
+    // The serialized content of the block.
     bytes content = 1;
 }
 
 // Representation of a block header.
 message Header {
-    // The serialized content of the block header. 
+    // The serialized content of the block header.
+    bytes content = 1;
+}
+
+// Representation of a transaction.
+message Transaction {
+    // The serialized content of the transaction.
     bytes content = 1;
 }
 
@@ -83,6 +95,9 @@ service Node {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
     rpc GetHeaders (BlockIds) returns (stream Header) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+    rpc Transactions (TransactionIds) returns (stream Transaction) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
 
