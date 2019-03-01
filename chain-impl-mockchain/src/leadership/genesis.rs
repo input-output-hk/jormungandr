@@ -1,6 +1,7 @@
 use super::LeaderId;
 use crate::block::{BlockDate, Message, SignedBlock};
 use crate::certificate;
+use crate::date::Epoch;
 use crate::leadership::bft::BftRoundRobinIndex;
 use crate::ledger::Ledger;
 use crate::setting::{self, Settings};
@@ -11,7 +12,7 @@ use crate::update::ValueDiff;
 use chain_core::property::{self, Block, LeaderSelection, Update};
 
 use rand::{Rng, SeedableRng};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
@@ -23,12 +24,11 @@ pub struct GenesisLeaderSelection {
 
     delegation_state: DelegationState,
 
-    /// The stake distribution at the end of the previous epoch.
-    stake_snapshot_n_minus_1: StakeDistribution,
-
-    /// The stake distribution at the end of the previous previous
-    /// epoch.
-    stake_snapshot_n_minus_2: StakeDistribution,
+    /// Stake snapshots for recent epochs. They contain the stake
+    /// distribution at the *start* of the corresponding epoch
+    /// (i.e. before applying any blocks in that epoch). Thus
+    /// `stake_snapshots[0]` denotes the initial stake distribution.
+    stake_snapshots: BTreeMap<Epoch, StakeDistribution>,
 
     pos: Pos,
 }
@@ -146,12 +146,12 @@ impl GenesisLeaderSelection {
                 genesis_blocks: 0,
             },
             delegation_state: DelegationState::new(initial_stake_pools, initial_stake_keys),
-            stake_snapshot_n_minus_1: StakeDistribution::empty(),
-            stake_snapshot_n_minus_2: StakeDistribution::empty(),
+            stake_snapshots: BTreeMap::new(),
         };
 
-        result.stake_snapshot_n_minus_1 = result.get_stake_distribution();
-        result.stake_snapshot_n_minus_2 = result.stake_snapshot_n_minus_1.clone();
+        result
+            .stake_snapshots
+            .insert(0, result.get_stake_distribution());
 
         Some(result)
     }
@@ -166,13 +166,17 @@ impl GenesisLeaderSelection {
 
             let done = now.next_date == to_date;
 
+            let cur_epoch = now.next_date.epoch;
+
             now.next_date = now.next_date.next();
 
-            // FIXME: handle the case were we're advancing so far
-            // (i.e. crossing an epoch) that we have to use
-            // stake_snapshot_n_minus_1, or even calculate a new
-            // snapshot.
-            let stake_snapshot = &self.stake_snapshot_n_minus_2;
+            // Base leadership selection on the stake distribution at
+            // the start of the previous epoch. FIXME: handle the case
+            // were we're advancing so far (i.e. crossing two or more
+            // epochs) that we have to compute a snapshot not in
+            // self.stake_snaphots.
+            let epoch_for_leadership = if cur_epoch < 1 { 0 } else { cur_epoch - 1 };
+            let stake_snapshot = &self.stake_snapshots[&epoch_for_leadership];
 
             // If we didn't have eligible stake pools in the epoch
             // used for sampling, then we have to use BFT rules.
@@ -222,7 +226,7 @@ impl GenesisLeaderSelection {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Clone)]
 pub struct GenesisSelectionDiff {
     next_date: ValueDiff<BlockDate>,
     next_bft_leader_index: ValueDiff<BftRoundRobinIndex>,
@@ -233,8 +237,7 @@ pub struct GenesisSelectionDiff {
     new_stake_pools: HashMap<StakePoolId, certificate::StakePoolRegistration>,
     retired_stake_pools: HashSet<StakePoolId>,
     delegations: HashMap<StakeKeyId, StakePoolId>,
-    stake_snapshot_n_minus_1: Option<StakeDistribution>,
-    stake_snapshot_n_minus_2: Option<StakeDistribution>,
+    stake_snapshots: Option<BTreeMap<Epoch, StakeDistribution>>,
 }
 
 impl Update for GenesisSelectionDiff {
@@ -249,8 +252,7 @@ impl Update for GenesisSelectionDiff {
             new_stake_pools: HashMap::new(),
             retired_stake_pools: HashSet::new(),
             delegations: HashMap::new(),
-            stake_snapshot_n_minus_1: None,
-            stake_snapshot_n_minus_2: None,
+            stake_snapshots: None,
         }
     }
     fn inverse(self) -> Self {
@@ -279,12 +281,8 @@ impl Update for GenesisSelectionDiff {
         // delegation takes precedence.
         self.delegations.extend(other.delegations);
 
-        if let Some(snapshot) = other.stake_snapshot_n_minus_1 {
-            self.stake_snapshot_n_minus_1 = Some(snapshot);
-        }
-
-        if let Some(snapshot) = other.stake_snapshot_n_minus_2 {
-            self.stake_snapshot_n_minus_2 = Some(snapshot);
+        if let Some(stake_snapshots) = other.stake_snapshots {
+            self.stake_snapshots = Some(stake_snapshots);
         }
 
         self
@@ -319,17 +317,17 @@ impl LeaderSelection for GenesisLeaderSelection {
 
         // If we crossed into a new epoch, then update the stake
         // distribution snapshots.
-        if date.epoch != self.pos.next_date.epoch || self.pos.next_date.slot_id == 0 {
-            update.stake_snapshot_n_minus_1 = Some(self.get_stake_distribution());
-            let n = date - self.pos.next_date;
-            // Shift the snapshot for the previous epoch, keeping in
-            // mind the case where we jumped more than an epoch.
-            if n < crate::date::EPOCH_DURATION {
-                update.stake_snapshot_n_minus_2 = Some(self.stake_snapshot_n_minus_1.clone());
-            } else {
-                // FIXME: add test case.
-                update.stake_snapshot_n_minus_2 = update.stake_snapshot_n_minus_1.clone();
+        if date.epoch != self.pos.next_date.epoch
+            || (self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0)
+        {
+            let mut snapshots = self.stake_snapshots.clone();
+            if date.epoch >= 2 {
+                // Expire snapshots that we don't need anymore.
+                snapshots.remove(&date.epoch.checked_sub(2).unwrap());
             }
+            snapshots.insert(date.epoch, self.get_stake_distribution());
+            assert!(snapshots.len() <= 2);
+            update.stake_snapshots = Some(snapshots);
         }
 
         for msg in input.block.contents.iter() {
@@ -512,12 +510,8 @@ impl LeaderSelection for GenesisLeaderSelection {
         update.bft_blocks.apply_to(&mut self.pos.bft_blocks);
         update.genesis_blocks.apply_to(&mut self.pos.genesis_blocks);
 
-        if let Some(dist) = update.stake_snapshot_n_minus_1 {
-            self.stake_snapshot_n_minus_1 = dist;
-        }
-
-        if let Some(dist) = update.stake_snapshot_n_minus_2 {
-            self.stake_snapshot_n_minus_2 = dist;
+        if let Some(stake_snapshots) = update.stake_snapshots {
+            self.stake_snapshots = stake_snapshots;
         }
 
         Ok(())
@@ -1109,13 +1103,10 @@ mod test {
             state.cur_date = state.cur_date.next_epoch();
             apply_block(&mut state, vec![]).unwrap();
             assert_eq!(state.cur_date.epoch, 1);
+            assert_eq!(state.leader_selection.stake_snapshots[&0].0, HashMap::new());
             assert_eq!(
-                state.leader_selection.stake_snapshot_n_minus_1.0,
+                state.leader_selection.stake_snapshots[&1].0,
                 expected_stake_dist
-            );
-            assert_eq!(
-                state.leader_selection.stake_snapshot_n_minus_2.0,
-                HashMap::new()
             );
         }
 
@@ -1124,11 +1115,11 @@ mod test {
             apply_block(&mut state, vec![]).unwrap();
             assert_eq!(state.cur_date.epoch, 2);
             assert_eq!(
-                state.leader_selection.stake_snapshot_n_minus_1.0,
+                state.leader_selection.stake_snapshots[&1].0,
                 expected_stake_dist
             );
             assert_eq!(
-                state.leader_selection.stake_snapshot_n_minus_2.0,
+                state.leader_selection.stake_snapshots[&2].0,
                 expected_stake_dist
             );
         }
