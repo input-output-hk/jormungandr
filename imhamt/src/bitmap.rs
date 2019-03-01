@@ -94,11 +94,17 @@ impl SmallBitmap {
         unsafe { self.get_index_sparse_fast(b) }
     }
 
+    #[inline]
+    #[target_feature(enable = "popcnt")]
+    unsafe fn get_sparse_pos_fast(&self, b: LevelIndex) -> ArrayIndex {
+        let mask = b.mask();
+        ArrayIndex::create((self.0 & (mask - 1)).count_ones() as usize)
+    }
+
     /// Get the position of a level index in the sparse array for insertion
     #[inline]
     pub fn get_sparse_pos(&self, b: LevelIndex) -> ArrayIndex {
-        let mask = b.mask();
-        ArrayIndex::create((self.0 & (mask - 1)).count_ones() as usize)
+        unsafe { self.get_sparse_pos_fast(b) }
     }
 
     /// Check if the element exist
