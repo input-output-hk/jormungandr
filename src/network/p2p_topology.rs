@@ -3,7 +3,7 @@
 
 use poldercast::topology::{Cyclon, Module, Rings, Topology, Vicinity};
 pub use poldercast::{Address, Id, InterestLevel, Node};
-use poldercast::{Proximity, Subscription, Subscriptions, Topic};
+use poldercast::{Subscription, Topic};
 use std::collections::BTreeMap;
 
 use std::sync::{Arc, RwLock};

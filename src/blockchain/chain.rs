@@ -147,7 +147,7 @@ impl<B: BlockConfig> Blockchain<B> {
     }
 
     /// Request a missing block from the network.
-    fn sollicit_block(&mut self, block_hash: &B::BlockHash) {
+    fn sollicit_block(&mut self, _block_hash: &B::BlockHash) {
         //unimplemented!();
     }
 

@@ -115,7 +115,7 @@ fn block_task(
 fn startup_info(
     gd: &GenesisData,
     blockchain: &Blockchain<Cardano>,
-    settings: &settings::start::Settings,
+    _settings: &settings::start::Settings,
 ) {
     println!(
         "k={} tip={}",
