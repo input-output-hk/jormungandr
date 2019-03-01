@@ -1003,7 +1003,7 @@ dependencies = [
  "native-tls 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "network-core 0.1.0-dev",
  "network-grpc 0.1.0-dev",
- "poldercast 0.1.1",
+ "poldercast 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "protocol-tokio 0.1.0",
  "quickcheck 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1458,7 +1458,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "poldercast"
-version = "0.1.1"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "multiaddr 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3008,6 +3009,7 @@ dependencies = [
 "checksum phf_generator 0.7.24 (registry+https://github.com/rust-lang/crates.io-index)" = "09364cc93c159b8b06b1f4dd8a4398984503483891b0c26b867cf431fb132662"
 "checksum phf_shared 0.7.24 (registry+https://github.com/rust-lang/crates.io-index)" = "234f71a15de2288bcb7e3b6515828d22af7ec8598ee6d24c3b526fa0a80b67a0"
 "checksum pkg-config 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "676e8eb2b1b4c9043511a9b7bea0915320d7e502b0a079fb03f9635a5252b18c"
+"checksum poldercast 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "47aedd84faf6e807f703a17fd0e0f048acbd2ca39e94dba1aafde90dc7a2dd42"
 "checksum proc-macro2 0.4.27 (registry+https://github.com/rust-lang/crates.io-index)" = "4d317f9caece796be1980837fd5cb3dfec5613ebdb04ad0956deea83ce168915"
 "checksum prost 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b9f36c478cd43382388dfc3a3679af175c03d19ed8039e79a3e4447e944cd3f3"
 "checksum prost-build 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b6325275b85605f58f576456a47af44417edf5956a6f670bb59fbe12aff69597"
