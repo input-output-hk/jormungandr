@@ -30,7 +30,7 @@ pub trait BlockConfig {
         + Send
         + Sync
         + Debug;
-    type Transaction: Transaction<Id = Self::TransactionId> + Serialize + Send;
+    type Transaction: Transaction<Id = Self::TransactionId> + Serialize + Send + Clone;
     type TransactionId: TransactionId + Serialize + Deserialize + Send;
     type GenesisData;
 

@@ -37,7 +37,7 @@ where
     }
 }
 
-fn do_stream_reply<T, F>(mut handler: ReplyStreamHandle<T>, f: F)
+pub fn do_stream_reply<T, F>(mut handler: ReplyStreamHandle<T>, f: F)
 where
     F: FnOnce(&mut ReplyStreamHandle<T>) -> Result<(), Error>,
 {

@@ -293,6 +293,7 @@ where
 pub enum TransactionMsg<B: BlockConfig> {
     ProposeTransaction(Vec<B::TransactionId>, ReplyHandle<Vec<bool>>),
     SendTransaction(Vec<B::Transaction>),
+    GetTransactions(Vec<B::TransactionId>, ReplyStreamHandle<B::Transaction>),
 }
 
 /// Client messages, mainly requests from connected peers to our node.
