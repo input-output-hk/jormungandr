@@ -114,6 +114,9 @@ pub trait BlockStore: std::marker::Sized {
 
     /// Check whether a block exists.
     fn block_exists(&self, block_hash: &<Self::Block as Block>::Id) -> Result<bool, Error> {
+        if block_hash == &self.get_genesis_hash() {
+            return Ok(true);
+        }
         match self.get_block_info(block_hash) {
             Ok(_) => Ok(true),
             Err(Error::BlockNotFound) => Ok(false),
