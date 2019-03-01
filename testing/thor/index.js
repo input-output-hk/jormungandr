@@ -68,8 +68,17 @@ window.document.getElementById("refresh_btn").onclick = function(self) {
    refresh();
 }
 
+window.document.getElementById("post_btn").onclick = function(self) {
+    var tx = document.getElementById("signed_tx_result").textContent;
+    var bin = new Buffer(tx, 'hex')
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost:8443/api/v0/transaction');
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.send(bin);
+}
+
 function refresh() {
-   axios.get("https://localhost:8443/api/v0/utxo",{})
+   axios.get("http://localhost:8443/api/v0/utxo",{})
          .then( result => {
             console.log("downloaded new data", result.data);
             filter_utxos(result.data)
@@ -143,6 +152,7 @@ function show_outputs() {
     })
     document.getElementById("tx_output_total").textContent=total;
 }
+
 
 
 function clear_el(block) {
