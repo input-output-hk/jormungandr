@@ -2,6 +2,7 @@
 extern crate actix_net;
 extern crate actix_web;
 extern crate bincode;
+extern crate bytes;
 extern crate cardano;
 extern crate cardano_storage;
 extern crate cbor_event;
@@ -47,7 +48,7 @@ extern crate structopt;
 #[cfg(feature = "with-bench")]
 extern crate test;
 
-use std::sync::{mpsc::Receiver, Arc, RwLock};
+use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 
 use chain_impl_mockchain::{
     key::PrivateKey,
@@ -265,7 +266,14 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     };
 
     let rest_server = match settings.rest {
-        Some(ref rest) => Some(rest::start_rest_server(rest, stats_counter, blockchain)?),
+        Some(ref rest) => {
+            let context = rest::Context {
+                stats_counter,
+                blockchain,
+                transaction_task: Arc::new(Mutex::new(transaction_task)),
+            };
+            Some(rest::start_rest_server(rest, context)?)
+        }
         None => None,
     };
 

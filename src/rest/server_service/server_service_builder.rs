@@ -1,9 +1,7 @@
+use actix_web::http::header;
 use actix_web::middleware::cors::Cors;
 use actix_web::server::{HttpHandler, HttpHandlerTask};
-use actix_web::{
-    http::{self, header},
-    pred, App, HttpResponse,
-};
+use actix_web::{pred, App};
 use rest::server_service::{ServerResult, ServerService};
 use std::net::SocketAddr;
 use std::path::PathBuf;

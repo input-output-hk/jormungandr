@@ -81,7 +81,10 @@ where
     F: Fn() -> H + Send + Clone + 'static,
     H: IntoHttpHandler + 'static,
 {
-    let server = server::new(handler).system_exit().disable_signals();
+    let server = server::new(handler)
+        .workers(1)
+        .system_exit()
+        .disable_signals();
     let binded_server = match tls_opt {
         Some(tls) => server.bind_tls(address, tls),
         None => server.bind(address),
