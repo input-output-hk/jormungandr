@@ -69,11 +69,12 @@ pub mod chain_bounds {
 ///
 /// This type encapsulates the gRPC protocol client that can
 /// make connections and perform requests towards other blockchain nodes.
-pub struct Client<S, E> {
+pub struct Client<B, S, E> {
     node: gen_client::Node<Connection<S, E, BoxBody>>,
+    _phantom: PhantomData<B>,
 }
 
-impl<S, E> Client<S, E>
+impl<B, S, E> Client<B, S, E>
 where
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
@@ -91,6 +92,7 @@ where
 
                 Client {
                     node: gen_client::Node::new(conn),
+                    _phantom: PhantomData,
                 }
             })
     }
@@ -344,7 +346,7 @@ where
     }
 }
 
-impl<T, S, E> BlockService<T> for Client<S, E>
+impl<T, S, E> BlockService for Client<T, S, E>
 where
     T: chain_bounds::Block,
     T::Header: property::Header<Id = T::Id, Date = T::Date>,
@@ -352,6 +354,7 @@ where
     E: Executor<Background<S, BoxBody>> + Clone,
     <T as property::Block>::Date: FromStr,
 {
+    type Block = T;
     type TipFuture = ResponseFuture<T::Header, gen::node::TipResponse>;
 
     type PullBlocksToTipStream = ResponseStream<T, gen::node::Block>;
