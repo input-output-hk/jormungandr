@@ -75,6 +75,14 @@ impl Listen {
             timeout: Duration::from_micros(DEFAULT_TIMEOUT_MICROSECONDS),
         }
     }
+
+    pub fn address(&self) -> SocketAddr {
+        match self.connection {
+            Connection::Tcp(addr) => addr.clone(),
+            #[cfg(unix)]
+            Connection::Unix(_) => unimplemented!(),
+        }
+    }
 }
 
 /// The network static configuration settings
