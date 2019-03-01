@@ -5,7 +5,7 @@ use crate::update::ValueDiff;
 use chain_core::property::{self, LeaderSelection, Update};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BftRoundRobinIndex(pub usize);
+pub struct BftRoundRobinIndex(pub u64);
 
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl BftLeaderSelection {
     #[inline]
     fn offset(&self, block_number: u64) -> BftRoundRobinIndex {
         let max = self.number_of_leaders() as u64;
-        BftRoundRobinIndex((block_number % max) as usize)
+        BftRoundRobinIndex((block_number % max) as u64)
     }
 }
 
@@ -98,8 +98,8 @@ impl LeaderSelection for BftLeaderSelection {
         &self,
         date: <Self::Block as property::Block>::Date,
     ) -> Result<Self::LeaderId, Self::Error> {
-        let BftRoundRobinIndex(ofs) = self.offset(date.slot_id);
-        Ok(self.leaders[ofs].clone())
+        let BftRoundRobinIndex(ofs) = self.offset(date.slot_id as u64);
+        Ok(self.leaders[ofs as usize].clone())
     }
 }
 

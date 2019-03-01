@@ -166,8 +166,8 @@ impl property::Serialize for Block {
 
         let mut codec = Codec::from(writer);
 
-        codec.put_u64(self.slot_id.epoch)?;
-        codec.put_u64(self.slot_id.slot_id)?;
+        codec.put_u32(self.slot_id.epoch)?;
+        codec.put_u32(self.slot_id.slot_id)?;
         codec.write_all(self.parent_hash.as_ref())?;
         codec.put_u16(self.contents.len() as u16)?;
         for t in self.contents.iter() {
@@ -207,8 +207,8 @@ impl property::Serialize for SignedBlockSummary {
 
         let mut codec = Codec::from(writer);
 
-        codec.put_u64(self.slot_id.epoch)?;
-        codec.put_u64(self.slot_id.slot_id)?;
+        codec.put_u32(self.slot_id.epoch)?;
+        codec.put_u32(self.slot_id.slot_id)?;
         codec.write_all(self.parent_hash.as_ref())?;
         codec.write_all(self.hash.as_ref())?;
         self.leader_id.serialize(&mut codec)?;
@@ -225,8 +225,8 @@ impl property::Deserialize for Block {
 
         let mut codec = Codec::from(reader);
 
-        let epoch = codec.get_u64()?;
-        let slot_id = codec.get_u64()?;
+        let epoch = codec.get_u32()?;
+        let slot_id = codec.get_u32()?;
         let date = BlockDate { epoch, slot_id };
 
         let mut hash = [0; 32];
@@ -271,8 +271,8 @@ impl property::Deserialize for SignedBlockSummary {
 
         let mut codec = Codec::from(reader);
 
-        let epoch = codec.get_u64()?;
-        let slot_id = codec.get_u64()?;
+        let epoch = codec.get_u32()?;
+        let slot_id = codec.get_u32()?;
         let slot_id = BlockDate { epoch, slot_id };
 
         let mut parent_hash = [0; 32];

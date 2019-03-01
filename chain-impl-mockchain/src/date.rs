@@ -7,11 +7,14 @@ use std::{error, fmt, num::ParseIntError, str};
 /// `SlotId`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BlockDate {
-    pub epoch: u64,
-    pub slot_id: u64,
+    pub epoch: Epoch,
+    pub slot_id: SlotId,
 }
 
-pub const EPOCH_DURATION: u64 = 100; // FIXME: remove, make configurable
+pub type Epoch = u32;
+pub type SlotId = u32;
+
+pub const EPOCH_DURATION: SlotId = 100; // FIXME: remove, make configurable
 
 impl BlockDate {
     pub fn first() -> BlockDate {
@@ -46,7 +49,7 @@ impl BlockDate {
 }
 
 impl property::BlockDate for BlockDate {
-    fn from_epoch_slot_id(epoch: u64, slot_id: u64) -> Self {
+    fn from_epoch_slot_id(epoch: Epoch, slot_id: SlotId) -> Self {
         assert!(slot_id < EPOCH_DURATION);
         BlockDate {
             epoch: epoch,
@@ -65,10 +68,10 @@ impl fmt::Display for BlockDate {
 // constant.
 impl From<&BlockDate> for u64 {
     fn from(date: &BlockDate) -> u64 {
-        date.epoch
-            .checked_mul(EPOCH_DURATION)
+        (date.epoch as u64)
+            .checked_mul(EPOCH_DURATION as u64)
             .unwrap()
-            .checked_add(date.slot_id)
+            .checked_add(date.slot_id as u64)
             .unwrap()
     }
 }
@@ -119,8 +122,8 @@ impl str::FromStr for BlockDate {
             None => return Err(BlockDateParseError::DotMissing),
             Some(pos) => (&s[..pos], &s[(pos + 1)..]),
         };
-        let epoch = str::parse::<u64>(ep).map_err(BlockDateParseError::BadEpochId)?;
-        let slot_id = str::parse::<u64>(sp).map_err(BlockDateParseError::BadSlotId)?;
+        let epoch = str::parse::<Epoch>(ep).map_err(BlockDateParseError::BadEpochId)?;
+        let slot_id = str::parse::<SlotId>(sp).map_err(BlockDateParseError::BadSlotId)?;
         Ok(BlockDate { epoch, slot_id })
     }
 }

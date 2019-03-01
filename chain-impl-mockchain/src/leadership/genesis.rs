@@ -188,9 +188,9 @@ impl GenesisLeaderSelection {
                 now.bft_blocks += 1;
                 let bft_leader_index = now.next_bft_leader_index.0;
                 now.next_bft_leader_index =
-                    BftRoundRobinIndex((bft_leader_index + 1) % self.bft_leaders.len());
+                    BftRoundRobinIndex((bft_leader_index + 1) % self.bft_leaders.len() as u64);
                 if done {
-                    return (now, self.bft_leaders[bft_leader_index].clone());
+                    return (now, self.bft_leaders[bft_leader_index as usize].clone());
                 }
             } else {
                 now.genesis_blocks += 1;
