@@ -8,6 +8,7 @@
 mod grpc;
 // TODO: to be ported
 //mod ntt;
+pub mod p2p_topology;
 mod service;
 
 use std::{sync::Arc, time::Duration};
@@ -18,6 +19,7 @@ use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Connection, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
+use self::p2p_topology::P2pTopology;
 use chain_core::property;
 use futures::prelude::*;
 use futures::{
@@ -45,6 +47,7 @@ impl<B: BlockConfig> Clone for Channels<B> {
 pub struct GlobalState<B: BlockConfig> {
     pub config: Arc<Configuration>,
     pub channels: Channels<B>,
+    pub topology: P2pTopology,
 }
 
 impl<B: BlockConfig> Clone for GlobalState<B> {
@@ -52,6 +55,7 @@ impl<B: BlockConfig> Clone for GlobalState<B> {
         GlobalState {
             config: self.config.clone(),
             channels: self.channels.clone(),
+            topology: self.topology.clone(),
         }
     }
 }
@@ -115,10 +119,17 @@ pub fn run<B>(config: Configuration, channels: Channels<B>)
 where
     B: BlockConfig + 'static,
 {
+    let node_id = p2p_topology::Id::generate(&mut rand::thread_rng());
+    let node_address = p2p_topology::Address::new(config.listen_to[0].address()).unwrap();
+    let node = p2p_topology::Node::new(node_id, node_address);
+    let mut p2p_topology = P2pTopology::new(node);
+    // by default, set the poldercast modules
+    p2p_topology.set_poldercast_modules();
     let arc_config = Arc::new(config.clone());
     let state = GlobalState {
         config: arc_config,
         channels: channels,
+        topology: p2p_topology,
     };
 
     let state_listener = state.clone();

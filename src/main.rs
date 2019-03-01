@@ -21,6 +21,7 @@ extern crate lazy_static;
 extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
+extern crate poldercast;
 extern crate protocol_tokio as protocol;
 extern crate tower_service;
 
