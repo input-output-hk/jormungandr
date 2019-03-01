@@ -65,14 +65,17 @@ impl DelegationState {
                     if let Some(pool_id) = &stake_key_info.pool {
                         let pool = &self.stake_pools[pool_id];
                         debug_assert!(pool.members.contains(&stake_key));
-                        let stake_pool_dist = dist
-                            .entry(pool_id.clone())
-                            .or_insert((Value(0), HashMap::new()));
-                        stake_pool_dist.0 += ptr.value;
+                        let stake_pool_dist =
+                            dist.entry(pool_id.clone())
+                                .or_insert_with(|| PoolStakeDistribution {
+                                    total_stake: Value(0),
+                                    member_stake: HashMap::new(),
+                                });
+                        stake_pool_dist.total_stake += ptr.value;
                         let member_dist = stake_pool_dist
-                            .1
+                            .member_stake
                             .entry(stake_key.clone())
-                            .or_insert(Value(0));
+                            .or_insert_with(|| Value(0));
                         *member_dist += ptr.value;
                     }
                 }
@@ -168,7 +171,14 @@ impl DelegationState {
 /// For each stake pool, the total stake value, and the value for the
 /// stake pool members.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakeDistribution(pub HashMap<StakePoolId, (Value, HashMap<StakeKeyId, Value>)>);
+pub struct StakeDistribution(pub HashMap<StakePoolId, PoolStakeDistribution>);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoolStakeDistribution {
+    pub total_stake: Value,
+    /// Stake per member. Non-zero stakes only.
+    pub member_stake: HashMap<StakeKeyId, Value>,
+}
 
 impl StakeDistribution {
     pub fn empty() -> Self {
@@ -184,8 +194,8 @@ impl StakeDistribution {
     pub fn total_stake(&self) -> Value {
         self.0
             .iter()
-            .map(|(_, (pool_stake, _))| pool_stake)
-            .fold(Value(0), |sum, &x| sum + x)
+            .map(|(_, pool)| pool.total_stake)
+            .fold(Value(0), |sum, x| sum + x)
     }
 
     /// Place the stake pools on the interval [0, total_stake) (sorted
@@ -196,7 +206,7 @@ impl StakeDistribution {
         let mut pools_sorted: Vec<_> = self
             .0
             .iter()
-            .map(|(pool_id, (pool_stake, _))| (pool_id, pool_stake))
+            .map(|(pool_id, pool)| (pool_id, pool.total_stake))
             .collect();
 
         pools_sorted.sort();

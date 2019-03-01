@@ -919,13 +919,13 @@ mod test {
                 dist.0,
                 vec![(
                     (&pool0_private_key).into(),
-                    (
-                        Value(10000),
-                        vec![((&sks0).into(), Value(10000))]
+                    PoolStakeDistribution {
+                        total_stake: Value(10000),
+                        member_stake: vec![((&sks0).into(), Value(10000))]
                             .iter()
                             .cloned()
                             .collect()
-                    )
+                    }
                 )]
                 .iter()
                 .cloned()
@@ -967,13 +967,13 @@ mod test {
                 state.leader_selection.get_stake_distribution().0,
                 vec![(
                     (&pool0_private_key).into(),
-                    (
-                        Value(30000),
-                        vec![((&sks0).into(), Value(30000))]
+                    PoolStakeDistribution {
+                        total_stake: Value(30000),
+                        member_stake: vec![((&sks0).into(), Value(30000))]
                             .iter()
                             .cloned()
                             .collect()
-                    )
+                    }
                 )]
                 .iter()
                 .cloned()
@@ -1026,13 +1026,13 @@ mod test {
                 state.leader_selection.get_stake_distribution().0,
                 vec![(
                     (&pool0_private_key).into(),
-                    (
-                        Value(30000),
-                        vec![((&sks0).into(), Value(30000))]
+                    PoolStakeDistribution {
+                        total_stake: Value(30000),
+                        member_stake: vec![((&sks0).into(), Value(30000))]
                             .iter()
                             .cloned()
                             .collect()
-                    )
+                    }
                 )]
                 .iter()
                 .cloned()
@@ -1044,23 +1044,23 @@ mod test {
         let expected_stake_dist = vec![
             (
                 (&pool0_private_key).into(),
-                (
-                    Value(30000),
-                    vec![((&sks0).into(), Value(30000))]
+                PoolStakeDistribution {
+                    total_stake: Value(30000),
+                    member_stake: vec![((&sks0).into(), Value(30000))]
                         .iter()
                         .cloned()
                         .collect(),
-                ),
+                },
             ),
             (
                 (&pool1_private_key).into(),
-                (
-                    Value(42000),
-                    vec![((&sks1).into(), Value(42000))]
+                PoolStakeDistribution {
+                    total_stake: Value(42000),
+                    member_stake: vec![((&sks1).into(), Value(42000))]
                         .iter()
                         .cloned()
                         .collect(),
-                ),
+                },
             ),
         ]
         .iter()
@@ -1148,16 +1148,16 @@ mod test {
                 state.leader_selection.get_stake_distribution().0,
                 vec![(
                     (&pool1_private_key).into(),
-                    (
-                        Value(72000),
-                        vec![
+                    PoolStakeDistribution {
+                        total_stake: Value(72000),
+                        member_stake: vec![
                             ((&sks0).into(), Value(30000)),
                             ((&sks1).into(), Value(42000))
                         ]
                         .iter()
                         .cloned()
                         .collect()
-                    )
+                    }
                 )]
                 .iter()
                 .cloned()
