@@ -299,12 +299,14 @@ pub enum TransactionMsg<B: BlockConfig> {
 /// Fetching the block headers, the block, the tip
 pub enum ClientMsg<B: BlockConfig> {
     GetBlockTip(ReplyHandle<B::BlockHeader>),
-    GetBlockHeaders(
+    GetHeaders(Vec<B::BlockHash>, ReplyStreamHandle<B::BlockHeader>),
+    GetHeadersRange(
         Vec<B::BlockHash>,
         B::BlockHash,
         ReplyHandle<Vec<B::BlockHeader>>,
     ),
-    GetBlocks(B::BlockHash, B::BlockHash, ReplyStreamHandle<B::Block>),
+    GetBlocks(Vec<B::BlockHash>, ReplyStreamHandle<B::Block>),
+    GetBlocksRange(B::BlockHash, B::BlockHash, ReplyStreamHandle<B::Block>),
     PullBlocksToTip(Vec<B::BlockHash>, ReplyStreamHandle<B::Block>),
 }
 
@@ -319,14 +321,24 @@ where
                 .debug_tuple("GetBlockTip")
                 .field(&format_args!("_"))
                 .finish(),
-            ClientMsg::GetBlockHeaders(from, to, _) => f
-                .debug_tuple("GetBlockHeaders")
+            ClientMsg::GetHeaders(ids, _) => f
+                .debug_tuple("GetHeaders")
+                .field(ids)
+                .field(&format_args!("_"))
+                .finish(),
+            ClientMsg::GetHeadersRange(from, to, _) => f
+                .debug_tuple("GetHeadersRange")
                 .field(from)
                 .field(to)
                 .field(&format_args!("_"))
                 .finish(),
-            ClientMsg::GetBlocks(from, to, _) => f
-                .debug_tuple("GetBlocks")
+            ClientMsg::GetBlocks(ids, _) => f
+                .debug_tuple("GetBlocksRange")
+                .field(ids)
+                .field(&format_args!("_"))
+                .finish(),
+            ClientMsg::GetBlocksRange(from, to, _) => f
+                .debug_tuple("GetBlocksRange")
                 .field(from)
                 .field(to)
                 .field(&format_args!("_"))
