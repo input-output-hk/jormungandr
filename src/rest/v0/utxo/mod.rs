@@ -5,7 +5,7 @@ use actix_web::{App, Json, Responder, State};
 use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 
-pub fn crate_handler(
+pub fn create_handler(
     blockchain: BlockchainR<Mockchain>,
 ) -> impl Fn(&str) -> App<BlockchainR<Mockchain>> + Send + Sync + Clone + 'static {
     move |prefix: &str| {
