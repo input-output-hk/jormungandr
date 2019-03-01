@@ -365,32 +365,6 @@ where
     }
 }
 
-/// Message to broadcast to all the connected peers (that requested to subscribe
-/// to our blockchain).
-///
-pub enum NetworkBroadcastMsg<B: BlockConfig> {
-    Block(B::Block),
-    Header(B::BlockHeader),
-    Transaction(B::Transaction),
-}
-
-impl<B> Debug for NetworkBroadcastMsg<B>
-where
-    B: BlockConfig,
-    B::Block: Debug,
-    B::BlockHeader: Debug,
-    B::Transaction: Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use NetworkBroadcastMsg::*;
-        match self {
-            Block(block) => f.debug_tuple("Block").field(block).finish(),
-            Header(header) => f.debug_tuple("Header").field(header).finish(),
-            Transaction(tx) => f.debug_tuple("Transaction").field(tx).finish(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -52,19 +52,17 @@ use chain_impl_mockchain::{
     key::PrivateKey,
     transaction::{SignedTransaction, TransactionId},
 };
-use futures::sync::mpsc::UnboundedSender;
 use futures::Future;
 
 use blockcfg::{genesis_data::GenesisData, mock::Mockchain as Cardano};
 //use state::State;
 use blockchain::{Blockchain, BlockchainR};
 use intercom::BlockMsg;
-use intercom::NetworkBroadcastMsg;
 use leadership::leadership_task;
 use rest::v0::node::stats::StatsCounter;
 use settings::Command;
 use transaction::{transaction_task, TPool};
-use utils::task::Tasks;
+use utils::task::{TaskBroadcastBox, Tasks};
 
 #[macro_use]
 pub mod log_wrapper;
@@ -84,6 +82,12 @@ pub mod state;
 pub mod transaction;
 pub mod utils;
 
+// TODO: consider an appropriate size for the broadcast buffer.
+// For the block task, there should hardly be a need to buffer more
+// than one block as the network task should be able to broadcast the
+// block notifications in time.
+const BLOCK_BUS_CAPACITY: usize = 2;
+
 pub type TODO = u32;
 
 fn node_private_key(ns: secure::NodeSecret) -> PrivateKey {
@@ -96,12 +100,12 @@ fn block_task(
     blockchain: BlockchainR<Cardano>,
     _clock: clock::Clock, // FIXME: use it or lose it
     r: Receiver<BlockMsg<Cardano>>,
-    network_broadcast: UnboundedSender<NetworkBroadcastMsg<Cardano>>,
     stats_counter: StatsCounter,
 ) {
+    let mut network_broadcast = TaskBroadcastBox::new(BLOCK_BUS_CAPACITY);
     loop {
         let bquery = r.recv().unwrap();
-        blockchain::process(&blockchain, bquery, &network_broadcast, &stats_counter);
+        blockchain::process(&blockchain, bquery, &mut network_broadcast, &stats_counter);
     }
 }
 
@@ -187,9 +191,6 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     // Validation of consensus settings should make sure that we always have
     // non-empty selection data.
 
-    // initialize the transaction broadcast channel
-    let (broadcast_sender, broadcast_receiver) = futures::sync::mpsc::unbounded();
-
     let stats_counter = StatsCounter::default();
 
     let transaction_task = {
@@ -206,7 +207,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         let clock = clock.clone();
         let stats_counter = stats_counter.clone();
         tasks.task_create_with_inputs("block", move |r| {
-            block_task(blockchain, clock, r, broadcast_sender, stats_counter)
+            block_task(blockchain, clock, r, stats_counter)
         })
     };
 
@@ -241,7 +242,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
             block_box: block_msgbox,
         };
         tasks.task_create("network", move || {
-            network::run(config, broadcast_receiver, channels);
+            network::run(config, channels);
         });
     };
 

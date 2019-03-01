@@ -1,12 +1,12 @@
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
 
-use chain_core::property::{self, Deserialize};
+use chain_core::property::{self, Deserialize, HasHeader};
 use network_core::client::block::BlockService;
 use network_grpc::client::Client;
 
 use tokio::prelude::*;
-use tokio::{executor::DefaultExecutor, io, runtime::current_thread};
+use tokio::{executor::DefaultExecutor, runtime::current_thread};
 
 use std::fmt::Debug;
 
@@ -59,7 +59,10 @@ where
 {
     stream
         .fold(blockchain, |blockchain, block| {
-            // debug!("received block from the bootstrap node: {:#?}", &block);
+            debug!(
+                "received block from the bootstrap node: {:#?}",
+                block.header()
+            );
             let res = blockchain.write().unwrap().handle_incoming_block(block);
             if let Err(e) = res {
                 error!("error processing a bootstrap block: {:?}", e);

@@ -14,7 +14,7 @@ use std::{sync::Arc, time::Duration};
 
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
-use crate::intercom::{BlockMsg, ClientMsg, NetworkBroadcastMsg, TransactionMsg};
+use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Connection, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
@@ -23,7 +23,6 @@ use futures::prelude::*;
 use futures::{
     future,
     stream::{self, Stream},
-    sync::mpsc,
 };
 
 /// all the different channels the network may need to talk to
@@ -112,11 +111,8 @@ impl<B: BlockConfig> ConnectionState<B> {
     }
 }
 
-pub fn run<B>(
-    config: Configuration,
-    subscription_msg_box: mpsc::UnboundedReceiver<NetworkBroadcastMsg<B>>, // TODO: abstract away Cardano
-    channels: Channels<B>,
-) where
+pub fn run<B>(config: Configuration, channels: Channels<B>)
+where
     B: BlockConfig + 'static,
 {
     let arc_config = Arc::new(config.clone());
