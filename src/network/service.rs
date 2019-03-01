@@ -160,16 +160,23 @@ impl<B: BlockConfig> Clone for ConnectionTransactionService<B> {
 }
 
 impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
+    type Transaction = B::Transaction;
     type TransactionId = B::TransactionId;
     type ProposeTransactionsFuture =
         ReplyFuture<ProposeTransactionsResponse<B::TransactionId>, TransactionError>;
     type RecordTransactionFuture =
         ReplyFuture<RecordTransactionResponse<B::TransactionId>, TransactionError>;
+    type GetTransactionsStream = ReplyStream<Self::Transaction, TransactionError>;
+    type GetTransactionsFuture = ReplyFuture<Self::GetTransactionsStream, TransactionError>;
 
     fn propose_transactions(
         &mut self,
         _ids: &[Self::TransactionId],
     ) -> Self::ProposeTransactionsFuture {
+        unimplemented!()
+    }
+
+    fn get_transactions(&mut self, _ids: &[Self::TransactionId]) -> Self::GetTransactionsFuture {
         unimplemented!()
     }
 }
