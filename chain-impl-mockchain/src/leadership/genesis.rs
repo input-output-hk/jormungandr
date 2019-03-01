@@ -2,7 +2,6 @@ use super::LeaderId;
 use crate::block::{BlockDate, Message, SignedBlock};
 use crate::certificate;
 use crate::date::Epoch;
-use crate::leadership::bft::BftRoundRobinIndex;
 use crate::ledger::Ledger;
 use crate::setting::{self, Settings};
 use crate::stake::*;
@@ -36,7 +35,6 @@ pub struct GenesisLeaderSelection {
 #[derive(Debug, Clone)]
 struct Pos {
     next_date: BlockDate,
-    next_bft_leader_index: BftRoundRobinIndex,
     bft_blocks: usize,
     genesis_blocks: usize, // FIXME: "genesis block" is rather ambiguous...
 }
@@ -141,7 +139,6 @@ impl GenesisLeaderSelection {
             bft_leaders: bft_leaders,
             pos: Pos {
                 next_date: BlockDate::first(),
-                next_bft_leader_index: BftRoundRobinIndex(0),
                 bft_blocks: 0,
                 genesis_blocks: 0,
             },
@@ -189,12 +186,13 @@ impl GenesisLeaderSelection {
                     < (d as usize) * (now.bft_blocks + now.genesis_blocks);
 
             if is_bft_slot {
+                let cur_bft_leader = now.bft_blocks;
                 now.bft_blocks += 1;
-                let bft_leader_index = now.next_bft_leader_index.0;
-                now.next_bft_leader_index =
-                    BftRoundRobinIndex((bft_leader_index + 1) % self.bft_leaders.len() as u64);
                 if done {
-                    return (now, self.bft_leaders[bft_leader_index as usize].clone());
+                    return (
+                        now,
+                        self.bft_leaders[cur_bft_leader % self.bft_leaders.len()].clone(),
+                    );
                 }
             } else {
                 now.genesis_blocks += 1;
@@ -230,7 +228,6 @@ impl GenesisLeaderSelection {
 #[derive(Debug, Clone)]
 pub struct GenesisSelectionDiff {
     next_date: ValueDiff<BlockDate>,
-    next_bft_leader_index: ValueDiff<BftRoundRobinIndex>,
     bft_blocks: ValueDiff<usize>,
     genesis_blocks: ValueDiff<usize>,
     stake_key_registrations: HashSet<StakeKeyId>,
@@ -245,7 +242,6 @@ impl Update for GenesisSelectionDiff {
     fn empty() -> Self {
         GenesisSelectionDiff {
             next_date: ValueDiff::None,
-            next_bft_leader_index: ValueDiff::None,
             bft_blocks: ValueDiff::None,
             genesis_blocks: ValueDiff::None,
             stake_key_registrations: HashSet::new(),
@@ -261,8 +257,6 @@ impl Update for GenesisSelectionDiff {
     }
     fn union(&mut self, other: Self) -> &mut Self {
         self.next_date.union(other.next_date);
-        self.next_bft_leader_index
-            .union(other.next_bft_leader_index);
         self.bft_blocks.union(other.bft_blocks);
         self.genesis_blocks.union(other.genesis_blocks);
         self.stake_key_registrations
@@ -462,10 +456,6 @@ impl LeaderSelection for GenesisLeaderSelection {
         }
 
         update.next_date = ValueDiff::Replace(self.pos.next_date, new_pos.next_date);
-        update.next_bft_leader_index = ValueDiff::Replace(
-            self.pos.next_bft_leader_index,
-            new_pos.next_bft_leader_index,
-        );
         update.bft_blocks = ValueDiff::Replace(self.pos.bft_blocks, new_pos.bft_blocks);
         update.genesis_blocks = ValueDiff::Replace(self.pos.genesis_blocks, new_pos.genesis_blocks);
 
@@ -474,9 +464,6 @@ impl LeaderSelection for GenesisLeaderSelection {
 
     fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error> {
         if !update.next_date.check(&self.pos.next_date)
-            || !update
-                .next_bft_leader_index
-                .check(&self.pos.next_bft_leader_index)
             || !update.bft_blocks.check(&self.pos.bft_blocks)
             || !update.genesis_blocks.check(&self.pos.genesis_blocks)
         {
@@ -505,9 +492,6 @@ impl LeaderSelection for GenesisLeaderSelection {
         }
 
         update.next_date.apply_to(&mut self.pos.next_date);
-        update
-            .next_bft_leader_index
-            .apply_to(&mut self.pos.next_bft_leader_index);
         update.bft_blocks.apply_to(&mut self.pos.bft_blocks);
         update.genesis_blocks.apply_to(&mut self.pos.genesis_blocks);
 
