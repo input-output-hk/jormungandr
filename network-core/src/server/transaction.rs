@@ -3,7 +3,7 @@
 use crate::codes;
 use crate::error::Code as ErrorCode;
 
-use chain_core::property::{Serialize, TransactionId};
+use chain_core::property::{Serialize, Transaction, TransactionId};
 
 use futures::prelude::*;
 
@@ -12,6 +12,9 @@ use std::{error, fmt};
 /// Interface for the blockchain node service implementation responsible for
 /// validating and accepting transactions.
 pub trait TransactionService {
+    /// Transaction in the blockchain.
+    type Transaction: Transaction;
+
     /// The transaction identifier type for the blockchain.
     type TransactionId: TransactionId + Serialize;
 
@@ -26,6 +29,19 @@ pub trait TransactionService {
         Item = RecordTransactionResponse<Self::TransactionId>,
         Error = TransactionError,
     >;
+
+    /// The type of an asynchronous stream that provides block headers in
+    /// response to `get_transactions`.
+    type GetTransactionsStream: Stream<Item = Self::Transaction, Error = TransactionError>;
+
+    /// The type of asynchronous futures returned by `get_transactions`.
+    ///
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a server-streamed response.
+    type GetTransactionsFuture: Future<Item = Self::GetTransactionsStream, Error = TransactionError>;
+
+    /// Get all transactions by their id.
+    fn get_transactions(&mut self, ids: &[Self::TransactionId]) -> Self::GetTransactionsFuture;
 
     /// Given a list of transaction IDs, return status of the transactions
     /// as known by this node.
