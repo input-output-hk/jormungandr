@@ -179,6 +179,9 @@ mod tests {
 
     quickcheck! {
         /*
+        FIXME: add tests for checking associativity of diffs on
+        randomly generated values of the type we're diffing.
+
         fn diff_union_is_associative(types: (Diff, Diff, Diff)) -> bool {
             testing::update_associativity(types.0, types.1, types.2)
         }
@@ -191,6 +194,9 @@ mod tests {
         }
 
         /*
+        FIXME: add tests for checking associativity of diffs on
+        randomly generated values of the type we're diffing.
+
         fn transactions_diff_union_is_associative(types: (TransactionsDiff, TransactionsDiff, TransactionsDiff)) -> bool {
             testing::update_associativity(types.0, types.1, types.2)
         }
