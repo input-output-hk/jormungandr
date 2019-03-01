@@ -107,8 +107,6 @@ Configuration fields meaning:
 Example of node config:
 
 ```
-grpc_listen:
-       - "127.0.0.1:8081"
 storage: "/tmp/storage"
 logger:
   verbosity: 1
@@ -117,14 +115,18 @@ rest:
   listen: "127.0.0.1:8443"
   pkcs12: "example.p12"
   prefix: "api"
+peer_2_peer:
+  trusted_peers: []
+  public_access: "/ip4/127.0.0.1/tcp/8080"
+  topics_of_interests:
+    transactions: low
+    blocks: normal
 ```
 
 Fields description:
 
   - *bft.constants.t*: (to be removed)
   - *bft.leaders*: public keys of the nodes.
-  - *grpc_listen*: (optional) addresses of the other
-      nodes that are connected using grpc protocol.
   - *storage*: (optional) path to the storage
   - *logger*: (optional) logger configuration,
      - *verbosity*: 0 - warning, 1 - info, 2 -debug, 3 and above - trace
@@ -133,6 +135,18 @@ Fields description:
      - *listen*: listen address
      - *pkcs12*: certificate file
      - *prefix*: (optional) api prefix
+  - *peer_2_peer*: the P2P network settings
+     - *trusted_peers*: (optional) the list of nodes to connect to in order to
+       bootstrap the p2p topology (and bootstrap our local blockchain);
+     - *public_address*: (optional) the address to listen from and accept connection
+       from. This is the public address that will be distributed to other peers
+       of the network that may find interest into participating to the blockchain
+       dissemination with the node;
+     - *topics_of_interests*: the different topics we are interested to hear about:
+       - *transactions*: notify other peers this node is interested about Transactions
+         typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
+       - *blocks*: notify other peers this node is interested about new Blocs.
+         typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`;
 
 ### Starting the node
 

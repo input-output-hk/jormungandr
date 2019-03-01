@@ -2,11 +2,14 @@
 //!
 
 use poldercast::topology::{Cyclon, Module, Rings, Topology, Vicinity};
-pub use poldercast::{Address, Id, Node};
-use poldercast::{InterestLevel, Proximity, Subscription, Subscriptions, Topic};
+pub use poldercast::{Address, Id, InterestLevel, Node};
+use poldercast::{Proximity, Subscription, Subscriptions, Topic};
 use std::collections::BTreeMap;
 
 use std::sync::{Arc, RwLock};
+
+pub const NEW_TRANSACTIONS_TOPIC: Topic = Topic::new([0; 16]);
+pub const NEW_BLOCKS_TOPIC: Topic = Topic::new([1; 16]);
 
 /// object holding the P2pTopology of the Node
 #[derive(Clone)]
@@ -58,4 +61,12 @@ impl P2pTopology {
             .unwrap()
             .select_gossips(gossip_recipient)
     }
+}
+
+pub fn add_transaction_subscription(node: &mut Node, interest_level: InterestLevel) {
+    node.add_subscription(Subscription::new(NEW_TRANSACTIONS_TOPIC, interest_level));
+}
+
+pub fn add_block_subscription(node: &mut Node, interest_level: InterestLevel) {
+    node.add_subscription(Subscription::new(NEW_BLOCKS_TOPIC, interest_level));
 }

@@ -1,19 +1,12 @@
 mod bootstrap;
 mod server;
 
-use crate::{
-    blockcfg::BlockConfig,
-    blockchain::BlockchainR,
-    settings::start::network::{Connection, Peer},
-};
+use crate::{blockcfg::BlockConfig, blockchain::BlockchainR, settings::start::network::Peer};
 
 pub use self::server::run_listen_socket;
 
 use chain_core::property;
 use network_grpc::peer::TcpPeer;
-
-#[cfg(unix)]
-use network_grpc::peer::UnixPeer;
 
 pub fn bootstrap_from_peer<B>(peer: Peer, blockchain: BlockchainR<B>)
 where
@@ -23,15 +16,6 @@ where
     <B::Leader as property::LeaderSelection>::Update: Clone,
 {
     info!("connecting to bootstrap peer {}", peer.connection);
-    match peer.connection {
-        Connection::Tcp(addr) => {
-            let peer = TcpPeer::new(addr);
-            bootstrap::bootstrap_from_target(peer, blockchain)
-        }
-        #[cfg(unix)]
-        Connection::Unix(path) => {
-            let peer = UnixPeer::new(path);
-            bootstrap::bootstrap_from_target(peer, blockchain)
-        }
-    }
+    let peer = TcpPeer::new(*peer.address());
+    bootstrap::bootstrap_from_target(peer, blockchain)
 }
