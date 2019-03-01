@@ -11,18 +11,13 @@ message TipRequest {}
 // Response message for method Tip.
 message TipResponse {
     // Serialized content of the tip block header.
-    bytes blockheader = 1;
+    bytes block_header = 1;
 }
 
-// Request message for methods GetBlocks and GetHeaders.
-message GetBlocksRequest {
-    // The id of the tip to trace the chain from.
-    bytes tip = 1;
-    // The offset back in the chain to start block or header retrieval from,
-    // going backwards in the chain.
-    uint64 offset = 2;
-    // Maximum number of blocks or headers to retrieve.
-    uint64 size = 3;
+// Request to fetch the methods for blocks and headers.
+message BlockIds {
+    // The identifiers of blocks for loading.
+    repeated bytes id = 1;
 }
 
 // Request message for method PullBlocksToTip.
@@ -84,10 +79,10 @@ message RecordTransactionResponse {
 
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
-    rpc GetBlocks (GetBlocksRequest) returns (stream Block) {
+    rpc GetBlocks (BlockIds) returns (stream Block) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
-    rpc GetHeaders (GetBlocksRequest) returns (stream Header) {
+    rpc GetHeaders (BlockIds) returns (stream Header) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
 

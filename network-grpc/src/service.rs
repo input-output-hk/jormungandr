@@ -210,8 +210,8 @@ where
     H: Header + Serialize,
 {
     fn into_response(self) -> Result<gen::node::TipResponse, tower_grpc::Error> {
-        let blockheader = serialize_to_bytes(self)?;
-        Ok(gen::node::TipResponse { blockheader })
+        let block_header = serialize_to_bytes(self)?;
+        Ok(gen::node::TipResponse { block_header })
     }
 }
 
@@ -276,19 +276,19 @@ where
     >;
     type GetBlocksStream = ResponseStream<
         gen::node::Block,
-        <<T as Node>::BlockService as BlockService>::PullBlocksStream,
+        <<T as Node>::BlockService as BlockService>::GetBlocksStream,
     >;
     type GetBlocksFuture = ResponseFuture<
         Self::GetBlocksStream,
-        <<T as Node>::BlockService as BlockService>::PullBlocksFuture,
+        <<T as Node>::BlockService as BlockService>::GetBlocksFuture,
     >;
     type GetHeadersStream = ResponseStream<
         gen::node::Header,
-        <<T as Node>::BlockService as BlockService>::PullHeadersStream,
+        <<T as Node>::BlockService as BlockService>::GetHeadersStream,
     >;
     type GetHeadersFuture = ResponseFuture<
         Self::GetHeadersStream,
-        <<T as Node>::BlockService as BlockService>::PullHeadersFuture,
+        <<T as Node>::BlockService as BlockService>::GetHeadersFuture,
     >;
     type PullBlocksToTipStream = ResponseStream<
         gen::node::Block,
@@ -320,18 +320,28 @@ where
         ResponseFuture::new(service.tip())
     }
 
-    fn get_blocks(
-        &mut self,
-        _request: Request<gen::node::GetBlocksRequest>,
-    ) -> Self::GetBlocksFuture {
-        unimplemented!()
+    fn get_blocks(&mut self, req: Request<gen::node::BlockIds>) -> Self::GetBlocksFuture {
+        let service = try_get_service!(self.block_service);
+        let block_ids = match deserialize_vec(&req.get_ref().id) {
+            Ok(block_ids) => block_ids,
+            Err(GrpcError(status)) => {
+                return ResponseFuture::error(status);
+            }
+            Err(e) => panic!("unexpected error {:?}", e),
+        };
+        ResponseFuture::new(service.get_blocks(&block_ids))
     }
 
-    fn get_headers(
-        &mut self,
-        _request: Request<gen::node::GetBlocksRequest>,
-    ) -> Self::GetHeadersFuture {
-        unimplemented!()
+    fn get_headers(&mut self, req: Request<gen::node::BlockIds>) -> Self::GetHeadersFuture {
+        let service = try_get_service!(self.block_service);
+        let block_ids = match deserialize_vec(&req.get_ref().id) {
+            Ok(block_ids) => block_ids,
+            Err(GrpcError(status)) => {
+                return ResponseFuture::error(status);
+            }
+            Err(e) => panic!("unexpected error {:?}", e),
+        };
+        ResponseFuture::new(service.get_headers(&block_ids))
     }
 
     fn subscribe_to_blocks(
