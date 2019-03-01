@@ -21,11 +21,9 @@ use crate::utils::task::TaskMessageBox;
 
 use self::p2p_topology::P2pTopology;
 use chain_core::property;
+use futures::future;
 use futures::prelude::*;
-use futures::{
-    future,
-    stream::{self, Stream},
-};
+use futures::stream::{self, Stream};
 use std::net::SocketAddr;
 
 type Connection = SocketAddr;
@@ -69,7 +67,7 @@ impl<B: BlockConfig> GlobalState<B> {
         p2p_topology::add_transaction_subscription(&mut node, p2p_topology::InterestLevel::High);
         p2p_topology::add_block_subscription(&mut node, p2p_topology::InterestLevel::High);
 
-        let mut p2p_topology = P2pTopology::new(node);
+        let p2p_topology = P2pTopology::new(node);
 
         let arc_config = Arc::new(config.clone());
         GlobalState {
@@ -173,12 +171,13 @@ where
         unimplemented!()
     };
 
-    let state_connection = state.clone();
-    let connections = stream::iter_ok(config.trusted_addresses).for_each(move |address| {
+    let connections = stream::iter_ok(config.trusted_addresses).for_each(move |_| {
         let protocol = protocol.clone();
         match protocol {
             Protocol::Ntt => {
-                unimplemented!(); // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                unimplemented!();
+                // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
+                #[allow(unreachable_code)]
                 future::ok(())
             }
             Protocol::Grpc => unimplemented!(),

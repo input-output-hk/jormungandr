@@ -2,7 +2,6 @@ mod stats_counter;
 
 pub use self::stats_counter::StatsCounter;
 
-use actix_web::middleware::cors::Cors;
 use actix_web::{App, Json, Responder, State};
 
 pub fn crate_handler(

@@ -130,7 +130,7 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
         unimplemented!()
     }
 
-    fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture {
+    fn pull_headers_to_tip(&mut self, _from: &[Self::BlockId]) -> Self::PullHeadersFuture {
         unimplemented!()
     }
 

@@ -1,6 +1,5 @@
 pub mod crypto;
 
-use cardano::block;
 use cardano::redeem;
 use cardano::util::hex;
 use std::fs;

@@ -165,7 +165,7 @@ fn generate_log_settings(command_arguments: &CommandLine, config: &config::Confi
 }
 
 fn generate_network(
-    command_arguments: &StartArguments,
+    _command_arguments: &StartArguments,
     config: &config::Config,
 ) -> network::Configuration {
     let public_address = config.peer_2_peer.public_access.clone();
