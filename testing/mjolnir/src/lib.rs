@@ -5,10 +5,13 @@ mod utils;
 
 use cfg_if::cfg_if;
 use chain_addr as addr;
+use chain_core::property::Serialize;
 use chain_impl_mockchain::key;
 use chain_impl_mockchain::transaction as tx;
 use rand::Rng;
 use wasm_bindgen::prelude::*;
+use cardano::util::hex;
+use std::str::FromStr;
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -86,6 +89,35 @@ impl PublicKey {
 pub struct Address(addr::Address);
 
 #[wasm_bindgen]
+impl Address {
+    pub fn base32(&self) -> String {
+        self.0.base32()
+    }
+
+    pub fn from_hex(input: &str) -> Result<Address, JsValue> {
+        let bytes = hex::decode(input)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let address = addr::Address::from_bytes(&bytes)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        Ok(Address(address))
+    }
+
+    pub fn to_hex(&self) -> String {
+        hex::encode(&self.0.to_bytes())
+    }
+
+    pub fn to_betch32(&self) -> String {
+        addr::AddressReadable::from_address(&self.0).as_string().to_string()
+    }
+
+    pub fn from_betch32(input: String) -> Result<Address,JsValue> {
+        let addr = addr::AddressReadable::from_string(&input)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        Ok(Address(addr.to_address()))
+    }
+}
+
+#[wasm_bindgen]
 #[derive(Debug)]
 pub struct UtxoPointer(tx::UtxoPointer);
 
@@ -108,6 +140,12 @@ pub struct TransactionId(tx::TransactionId);
 impl TransactionId {
     pub fn from_bytes(bytes: &[u8]) -> TransactionId {
         TransactionId(tx::TransactionId::hash_bytes(bytes))
+    }
+
+    pub fn from_hex(input: &str) -> Result<TransactionId,JsValue> {
+        tx::TransactionId::from_str(input)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .map(TransactionId)
     }
 }
 
@@ -164,6 +202,15 @@ impl TransactionFinalizer {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct SignedTransaction(tx::SignedTransaction);
+
+#[wasm_bindgen]
+impl SignedTransaction {
+   pub fn to_hex(self) -> Result<String, JsValue> {
+       let v = self.0.serialize_as_vec()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+       Ok(hex::encode(&v))
+   }
+}
 
 #[wasm_bindgen]
 pub struct Output(tx::Output);
