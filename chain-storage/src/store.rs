@@ -48,7 +48,7 @@ pub trait BlockStore: std::marker::Sized {
     /// back_links set to ensure O(lg n) seek time in
     /// get_nth_ancestor(), and calls put_block_internal() to do the
     /// actual write.
-    fn put_block(&mut self, block: Self::Block) -> Result<(), Error> {
+    fn put_block(&mut self, block: &Self::Block) -> Result<(), Error> {
         let block_hash = block.id();
 
         if self.block_exists(&block_hash)? {
@@ -96,7 +96,7 @@ pub trait BlockStore: std::marker::Sized {
     /// Write a block and associated info to the store.
     fn put_block_internal(
         &mut self,
-        block: Self::Block,
+        block: &Self::Block,
         block_info: BlockInfo<<Self::Block as Block>::Id>,
     ) -> Result<(), Error>;
 

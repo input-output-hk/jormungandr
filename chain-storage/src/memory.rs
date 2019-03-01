@@ -31,7 +31,7 @@ where
 {
     type Block = B;
 
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
+    fn put_block_internal(&mut self, block: &B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
         self.blocks.insert(
             block_info.block_hash.clone(),
             (block.serialize_as_vec().unwrap(), block_info),

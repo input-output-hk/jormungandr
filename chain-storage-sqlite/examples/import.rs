@@ -50,7 +50,7 @@ fn main() {
         let (_raw_blk, blk) = res.unwrap();
         let hash = blk.id();
         chain_state.verify_block(&hash, &blk).unwrap();
-        store.put_block(blk).unwrap();
+        store.put_block(&blk).unwrap();
         //if n > 49900 { break; }
         if n % 10000 == 0 {
             println!(".");

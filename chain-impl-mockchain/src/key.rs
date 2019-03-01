@@ -4,6 +4,7 @@
 use cardano::hash;
 use cardano::redeem as crypto;
 use chain_core::property;
+use std::str::FromStr;
 
 /// Public key of the entity.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -117,11 +118,19 @@ where
 }
 
 /// Hash that is used as an address of the various components.
+#[cfg_attr(feature = "generic-serialization", derive(serde_derive::Serialize))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash(hash::Blake2b256);
 impl Hash {
     pub fn hash_bytes(bytes: &[u8]) -> Self {
         Hash(hash::Blake2b256::new(bytes))
+    }
+}
+
+impl FromStr for Hash {
+    type Err = hash::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Hash(hash::Blake2b256::from_str(s)?))
     }
 }
 
@@ -285,6 +294,10 @@ mod test {
 
             let signature = sk.sign(&data);
             ! pk.verify(&data, &signature)
+        }
+
+        fn hash_from_str_display_is_id(input: Hash) -> bool {
+            Hash::from_str(&format!("{}", input)) == Ok(input)
         }
 
         fn public_key_encode_decode(public_key: PublicKey) -> TestResult {

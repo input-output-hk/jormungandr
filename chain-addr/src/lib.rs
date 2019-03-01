@@ -24,7 +24,12 @@ use std::string::ToString;
 // temporary re-use just to define
 use cardano::redeem::{self, PublicKey};
 
-use chain_core::property;
+use chain_core::property::{self, Serialize as PropertySerialize};
+
+#[cfg(feature = "generic-serialization")]
+use serde::Serializer as SerdeSerializer;
+#[cfg(feature = "generic-serialization")]
+use serde_derive::Serialize;
 
 // Allow to differentiate between address in
 // production and testing setting, so that
@@ -168,7 +173,7 @@ impl Address {
 
     /// Serialize an address into bytes
     pub fn to_bytes(&self) -> Vec<u8> {
-        property::Serialize::serialize_as_vec(self)
+        self.serialize_as_vec()
             .expect("expect in memory allocation to always work")
     }
 
@@ -230,6 +235,14 @@ fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType)> {
         _ => return Err(Error::InvalidKind),
     };
     Ok((get_discrimination_value(bytes[0]), kty))
+}
+
+#[cfg(feature = "generic-serialization")]
+impl serde::Serialize for Address {
+    fn serialize<S: SerdeSerializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+        let address = AddressReadable::from_address(self);
+        serializer.serialize_str(address.as_string())
+    }
 }
 
 /// A valid address in a human readable format
@@ -297,7 +310,7 @@ impl std::str::FromStr for AddressReadable {
     }
 }
 
-impl property::Serialize for Address {
+impl PropertySerialize for Address {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> std::result::Result<(), Self::Error> {

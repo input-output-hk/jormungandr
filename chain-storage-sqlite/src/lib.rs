@@ -123,7 +123,7 @@ where
 {
     type Block = B;
 
-    fn put_block_internal(&mut self, block: B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
+    fn put_block_internal(&mut self, block: &B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
         self.do_change();
 
         // FIXME: wrap the next two statements in a transaction
