@@ -318,8 +318,8 @@ where
     H: chain_bounds::Header,
 {
     fn from_response(res: gen::node::TipResponse) -> Result<Self, core_client::Error> {
-        let blockheader = deserialize_bytes(&res.blockheader)?;
-        Ok(blockheader)
+        let block_header = deserialize_bytes(&res.block_header)?;
+        Ok(block_header)
     }
 }
 

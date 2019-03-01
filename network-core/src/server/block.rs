@@ -39,6 +39,16 @@ pub trait BlockService {
     /// implementation to produce a server-streamed response.
     type PullBlocksFuture: Future<Item = Self::PullBlocksStream, Error = BlockError>;
 
+    /// The type of an asynchronous stream that provides blocks in
+    /// response to `get_blocks` method.
+    type GetBlocksStream: Stream<Item = Self::Block, Error = BlockError>;
+
+    /// The type of asynchronous futures returned by `get_blocks` methods.
+    ///
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a server-streamed response.
+    type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = BlockError>;
+
     /// The type of an asynchronous stream that provides block headers in
     /// response to `pull_headers_to_*` methods.
     type PullHeadersStream: Stream<Item = Self::Header, Error = BlockError>;
@@ -48,6 +58,16 @@ pub trait BlockService {
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
     type PullHeadersFuture: Future<Item = Self::PullHeadersStream, Error = BlockError>;
+
+    /// The type of an asynchronous stream that provides block headers in
+    /// response to `get_headers` methods.
+    type GetHeadersStream: Stream<Item = Self::Header, Error = BlockError>;
+
+    /// The type of asynchronous futures returned by `get_headeres` methods.
+    ///
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a server-streamed response.
+    type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = BlockError>;
 
     /// The type of an asynchronous stream that retrieves headers of new
     /// blocks as they are created.
@@ -63,6 +83,12 @@ pub trait BlockService {
     /// The returned future resolves to the tip of the blockchain
     /// accepted by this node.
     fn tip(&mut self) -> Self::TipFuture;
+
+    /// Request to load list of blocks.
+    fn get_blocks(&mut self, ids: &[Self::BlockId]) -> Self::GetBlocksFuture;
+
+    /// Request to load list of blocks.
+    fn get_headers(&mut self, ids: &[Self::BlockId]) -> Self::GetHeadersFuture;
 
     /// Get blocks, walking forward in a range between either of the given
     /// starting points, and the ending point.
