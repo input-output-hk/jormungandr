@@ -64,25 +64,6 @@ impl fmt::Display for BlockDate {
     }
 }
 
-// FIXME: Remove this since we decided epoch durations are not in fact
-// constant.
-impl From<&BlockDate> for u64 {
-    fn from(date: &BlockDate) -> u64 {
-        (date.epoch as u64)
-            .checked_mul(EPOCH_DURATION as u64)
-            .unwrap()
-            .checked_add(date.slot_id as u64)
-            .unwrap()
-    }
-}
-
-impl std::ops::Sub for BlockDate {
-    type Output = u64;
-    fn sub(self, other: BlockDate) -> u64 {
-        u64::from(&self).checked_sub(u64::from(&other)).unwrap()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockDateParseError {
     DotMissing,

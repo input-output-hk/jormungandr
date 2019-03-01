@@ -208,8 +208,9 @@ impl GenesisLeaderSelection {
                     assert!(total_stake.0 > 0);
 
                     // Pick a random point in the range [0, total_stake).
-                    let mut rng: rand::rngs::StdRng =
-                        SeedableRng::seed_from_u64(u64::from(&to_date));
+                    let mut rng: rand::rngs::StdRng = SeedableRng::seed_from_u64(
+                        (to_date.epoch as u64) << 32 | to_date.slot_id as u64,
+                    );
                     let point = rng.gen_range(0, total_stake.0);
 
                     // Select the stake pool containing the point we
@@ -1296,20 +1297,20 @@ mod test {
         // or stable across releases...
 
         if initial_bootstrap_key_slots_percentage == 0 {
-            assert_eq!(state.selected_leaders[&(&pool0).into()], 335);
-            assert_eq!(state.selected_leaders[&(&pool1).into()], 665);
+            assert_eq!(state.selected_leaders[&(&pool0).into()], 329);
+            assert_eq!(state.selected_leaders[&(&pool1).into()], 671);
             for leader in &state.bft_leaders {
                 assert!(!state.selected_leaders.contains_key(&leader.into()));
             }
         } else if initial_bootstrap_key_slots_percentage == 20 {
-            assert_eq!(state.selected_leaders[&(&pool0).into()], 270);
-            assert_eq!(state.selected_leaders[&(&pool1).into()], 530);
+            assert_eq!(state.selected_leaders[&(&pool0).into()], 254);
+            assert_eq!(state.selected_leaders[&(&pool1).into()], 546);
             for leader in &state.bft_leaders {
                 assert_eq!(state.selected_leaders[&leader.into()], 20);
             }
         } else if initial_bootstrap_key_slots_percentage == 50 {
-            assert_eq!(state.selected_leaders[&(&pool0).into()], 152);
-            assert_eq!(state.selected_leaders[&(&pool1).into()], 348);
+            assert_eq!(state.selected_leaders[&(&pool0).into()], 169);
+            assert_eq!(state.selected_leaders[&(&pool1).into()], 331);
             for leader in &state.bft_leaders {
                 assert_eq!(state.selected_leaders[&leader.into()], 50);
             }
