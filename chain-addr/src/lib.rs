@@ -4,16 +4,20 @@
 //! * First byte contains the discrimination information (1 bit) and the kind of address (7 bits)
 //! * Remaining bytes contains a kind specific encoding describe after.
 //!
-//! 2 kind of address are currently supported:
+//! 3 kinds of address are currently supported:
 //! * Single: Just a (spending) public key using the ED25519 algorithm
 //! * Group: Same as single, but with a added (staking/group) public key
 //!   using the ED25519 algorithm.
+//! * Account: A stake public key using the ED25519 algorithm
 //!
 //! Single key:
 //!     DISCRIMINATION_BIT || SINGLE_KIND_TYPE (7 bits) || SPENDING_KEY
 //!
 //! Group key:
 //!     DISCRIMINATION_BIT || GROUP_KIND_TYPE (7 bits)|| SPENDING_KEY || STAKING_KEY
+//!
+//! Account key:
+//!     DISCRIMINATION_BIT || ACCOUNT_KIND_TYPE (7 bits) || STAKE_KEY
 //!
 //! Address human format is bech32 encoded
 //!
@@ -44,10 +48,12 @@ pub enum Discrimination {
 ///
 /// * Single address : just a single ed25519 spending public key
 /// * Group address : an ed25519 spending public key followed by a group public key used for staking
+/// * Account address : an ed25519 stake public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
     Single(PublicKey),
     Group(PublicKey, PublicKey),
+    Account(PublicKey),
 }
 
 /// Kind Type of an address
@@ -55,6 +61,7 @@ pub enum Kind {
 pub enum KindType {
     Single,
     Group,
+    Account,
 }
 
 /// Size of a Single address
@@ -63,16 +70,21 @@ pub const ADDR_SIZE_SINGLE: usize = 33;
 /// Size of a Group address
 pub const ADDR_SIZE_GROUP: usize = 65;
 
+/// Size of an Account address
+pub const ADDR_SIZE_ACCOUNT: usize = 33;
+
 const ADDR_KIND_LOW_SENTINEL: u8 = 0x2; /* anything under or equal to this is invalid */
 pub const ADDR_KIND_SINGLE: u8 = 0x3;
 pub const ADDR_KIND_GROUP: u8 = 0x4;
-const ADDR_KIND_SENTINEL: u8 = 0x5; /* anything above or equal to this is invalid */
+pub const ADDR_KIND_ACCOUNT: u8 = 0x5;
+const ADDR_KIND_SENTINEL: u8 = 0x6; /* anything above or equal to this is invalid */
 
 impl KindType {
     pub fn to_value(&self) -> u8 {
         match self {
             KindType::Single => ADDR_KIND_SINGLE,
             KindType::Group => ADDR_KIND_GROUP,
+            KindType::Account => ADDR_KIND_ACCOUNT,
         }
     }
 }
@@ -137,6 +149,10 @@ impl Address {
 
                 Kind::Group(spending, group)
             }
+            ADDR_KIND_ACCOUNT => {
+                let stake_key = PublicKey::from_slice(&bytes[1..])?;
+                Kind::Account(stake_key)
+            }
             _ => unreachable!(),
         };
         Ok(Address(discr, kind))
@@ -147,6 +163,7 @@ impl Address {
         match self.1 {
             Kind::Single(_) => ADDR_SIZE_SINGLE,
             Kind::Group(_, _) => ADDR_SIZE_GROUP,
+            Kind::Account(_) => ADDR_SIZE_ACCOUNT,
         }
     }
 
@@ -155,6 +172,7 @@ impl Address {
         match self.1 {
             Kind::Single(_) => KindType::Single,
             Kind::Group(_, _) => KindType::Group,
+            Kind::Account(_) => KindType::Account,
         }
     }
 
@@ -186,6 +204,7 @@ impl Address {
         match self.1 {
             Kind::Single(ref pk) => pk,
             Kind::Group(ref pk, _) => pk,
+            Kind::Account(ref pk) => pk,
         }
     }
 }
@@ -222,6 +241,12 @@ fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType)> {
                 return Err(Error::InvalidAddress);
             }
             KindType::Group
+        }
+        ADDR_KIND_ACCOUNT => {
+            if bytes.len() != ADDR_SIZE_ACCOUNT {
+                return Err(Error::InvalidAddress);
+            }
+            KindType::Account
         }
         _ => return Err(Error::InvalidKind),
     };
@@ -320,6 +345,7 @@ impl PropertySerialize for Address {
                 codec.write_all(spend.as_ref())?;
                 codec.write_all(group.as_ref())?;
             }
+            Kind::Account(stake_key) => codec.write_all(stake_key.as_ref())?,
         };
 
         Ok(())
@@ -359,6 +385,12 @@ impl property::Deserialize for Address {
                 let group = PublicKey::from_bytes(bytes);
                 Kind::Group(spending, group)
             }
+            ADDR_KIND_ACCOUNT => {
+                let mut bytes = [0u8; 32];
+                codec.read_exact(&mut bytes)?;
+                let stake_key = PublicKey::from_bytes(bytes);
+                Kind::Account(stake_key)
+            }
             _ => unreachable!(),
         };
         Ok(Address(discr, kind))
@@ -380,9 +412,10 @@ pub mod testing {
 
     impl Arbitrary for KindType {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match u8::arbitrary(g) % 2 {
+            match u8::arbitrary(g) % 3 {
                 0 => KindType::Single,
                 1 => KindType::Group,
+                2 => KindType::Account,
                 _ => unreachable!(),
             }
         }
@@ -398,6 +431,7 @@ pub mod testing {
             let kind = match KindType::arbitrary(g) {
                 KindType::Single => Kind::Single(arbitrary_public_key(g)),
                 KindType::Group => Kind::Group(arbitrary_public_key(g), arbitrary_public_key(g)),
+                KindType::Account => Kind::Account(arbitrary_public_key(g)),
             };
             Address(discrimination, kind)
         }
@@ -481,6 +515,20 @@ mod test {
             property_readable(&addr);
             expected_bech32(&addr, "ta1ss5j52ev95hz7vp3xgengdfkxuurjw3m8s7nu06qg9pyx3z9ger5sqgzqvzq2ps8pqys5zcvp58q7yq3zgf3g9gkzuvpjxsmrsw3u8eqx5x7xh");
             expected_base32(&addr, "qqusukzmfuxc6mbrgiztinjwg44dsor3hq6t4p2aifbegrcfizduqaicamcakbqhbaequcymbuha6earcijrifiwc4mbsgq3dqor4hza");
+        }
+
+        {
+            let addr = Address(Discrimination::Test, Kind::Account(fake_spendingkey));
+            property_serialize_deserialize(&addr);
+            property_readable(&addr);
+            expected_base32(
+                &addr,
+                "quaqeayeaudaocajbifqydiob4ibceqtcqkrmfyydenbwha5dypsa",
+            );
+            expected_bech32(
+                &addr,
+                "ta1s5qsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqrycrjr",
+            );
         }
     }
 }
