@@ -27,7 +27,7 @@ pub trait BlockService {
     ///
     /// The future resolves to the block identifier and the block date
     /// of the current chain tip as known by the serving node.
-    type TipFuture: Future<Item = (Self::BlockId, Self::BlockDate), Error = BlockError>;
+    type TipFuture: Future<Item = Self::Header, Error = BlockError>;
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to `pull_blocks_to_*` methods.

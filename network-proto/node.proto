@@ -10,10 +10,8 @@ message TipRequest {}
 
 // Response message for method Tip.
 message TipResponse {
-    // Block identifier of the chain tip.
-    bytes id = 1;
-    // Block date of the chain tip.
-    string blockdate = 2;
+    // Serialized content of the tip block header.
+    bytes blockheader = 1;
 }
 
 // Request message for methods GetBlocks and GetHeaders.
