@@ -1,0 +1,16 @@
+[package]
+name = "imhamt"
+version = "0.1.0"
+authors = ["Vincent Hanquez <vincent.hanquez@iohk.io>"]
+edition = "2018"
+
+[dependencies]
+
+[dev-dependencies]
+quickcheck = "0.8"
+quickcheck_macros = "0.8"
+
+[features]
+default = []
+with-bench = []
+optimized-node = []

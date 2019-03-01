@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "imhamt",
     "chain-core",
     "chain-addr",
     "chain-storage",
