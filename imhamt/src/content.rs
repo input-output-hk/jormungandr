@@ -139,9 +139,9 @@ impl<'a, K, V> Iterator for LeafIterator<'a, K, V> {
 }
 
 impl<K: PartialEq + Clone, V> LeafContent<K, V> {
-    pub fn update<F>(&self, h: &HashedKey, k: &K, f: F) -> Result<Option<Self>, UpdateError>
+    pub fn update<F, U>(&self, h: &HashedKey, k: &K, f: F) -> Result<Option<Self>, UpdateError<U>>
     where
-        F: FnOnce(&V) -> Result<Option<V>, UpdateError>,
+        F: FnOnce(&V) -> Result<Option<V>, U>,
     {
         if self.hashed != *h {
             return Err(UpdateError::KeyNotFound);
@@ -151,7 +151,7 @@ impl<K: PartialEq + Clone, V> LeafContent<K, V> {
                 if k != fkv.get_key() {
                     return Err(UpdateError::KeyNotFound);
                 }
-                match f(fkv.get_value())? {
+                match f(fkv.get_value()).map_err(UpdateError::ValueCallbackError)? {
                     None => Ok(None),
                     Some(newv) => {
                         let newkv = KV::new(k.clone(), newv);
@@ -177,7 +177,9 @@ impl<K: PartialEq + Clone, V> LeafContent<K, V> {
                     None => Err(UpdateError::KeyNotFound),
                     Some(pos) => {
                         // content == 1 is handled by SmallVec::One
-                        match f(content[pos].get_value())? {
+                        match f(content[pos].get_value())
+                            .map_err(UpdateError::ValueCallbackError)?
+                        {
                             None => {
                                 // trigger deletion
                                 if content.len() == 2 {

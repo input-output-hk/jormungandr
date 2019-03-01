@@ -75,9 +75,9 @@ impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
 }
 
 impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
-    pub fn update<F>(&self, k: &K, f: F) -> Result<Self, UpdateError>
+    pub fn update<F, U>(&self, k: &K, f: F) -> Result<Self, UpdateError<U>>
     where
-        F: FnOnce(&V) -> Result<Option<V>, UpdateError>,
+        F: FnOnce(&V) -> Result<Option<V>, U>,
     {
         let h = HashedKey::compute(self.hasher, &k);
         let newroot = update_rec(&self.root, &h, 0, k, f)?;

@@ -10,6 +10,7 @@ pub enum RemoveError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UpdateError {
+pub enum UpdateError<T> {
     KeyNotFound,
+    ValueCallbackError(T),
 }

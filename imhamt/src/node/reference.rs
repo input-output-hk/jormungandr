@@ -268,15 +268,15 @@ pub fn remove_rec<K: PartialEq, V>(
 // recursively try to update a key.
 //
 // note, an update cannot create a new value, it can only delete or update an existing value.
-pub fn update_rec<K: PartialEq + Clone, V, F>(
+pub fn update_rec<K: PartialEq + Clone, V, F, U>(
     node: &Node<K, V>,
     h: &HashedKey,
     lvl: usize,
     k: &K,
     f: F,
-) -> Result<Option<Node<K, V>>, UpdateError>
+) -> Result<Option<Node<K, V>>, UpdateError<U>>
 where
-    F: FnOnce(&V) -> Result<Option<V>, UpdateError>,
+    F: FnOnce(&V) -> Result<Option<V>, U>,
 {
     let level_hash = h.level_index(lvl);
     let idx = node.bitmap.get_index_sparse(level_hash);

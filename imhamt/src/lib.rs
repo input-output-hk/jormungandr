@@ -135,6 +135,10 @@ mod tests {
         )
     }
 
+    fn next_u32(x: &u32) -> Result<Option<u32>, ()> {
+        Ok(Some(x + 1))
+    }
+
     #[test]
     fn delete() {
         let mut h: Hamt<DefaultHasher, String, u32> = Hamt::new();
@@ -196,8 +200,18 @@ mod tests {
             h.remove_match(&k1, &v2).and(Ok(())),
             Err(RemoveError::ValueNotMatching),
         );
+        assert_eq!(
+            h2.insert(k2.clone(), v3).and(Ok(())),
+            Err(InsertError::EntryExists)
+        );
+
+        assert_eq!(
+            h2.update(&"ZZZ".to_string(), next_u32).and(Ok(())),
+            Err(UpdateError::KeyNotFound)
+        );
 
         assert_eq!(h.size(), 16 + 1);
+        assert_eq!(h2.size(), 16 + 2);
     }
 
     fn property_btreemap_eq<A: Eq + Ord + Hash, B: PartialEq>(
@@ -279,7 +293,7 @@ mod tests {
                         let v = reference.get_mut(&k).unwrap();
                         *v = *v + 1;
 
-                        h = h.update(&k, |x| Ok(Some(x + 1))).unwrap();
+                        h = h.update(&k, next_u32).unwrap();
                     }
                 },
                 PlanOperation::UpdateRemoval(r) => match get_key_nth(&reference, *r) {
@@ -287,7 +301,7 @@ mod tests {
                     Some(k) => {
                         //let oldv = v.clone();
                         reference.remove(&k);
-                        h = h.update(&k, |_| Ok(None)).unwrap();
+                        h = h.update::<_, ()>(&k, |_| Ok(None)).unwrap();
                     }
                 },
             }
