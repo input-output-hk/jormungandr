@@ -1,10 +1,7 @@
 use crate::gen::{self, node::client as gen_client};
 
 use chain_core::property::{self, Deserialize, FromStr, HasHeader, Serialize};
-use network_core::client::{
-    self as core_client,
-    block::{BlockService, HeaderService},
-};
+use network_core::client::{self as core_client, block::BlockService};
 
 use futures::future::Executor;
 use tokio::io;
@@ -302,13 +299,6 @@ where
     T::deserialize(&mut buf).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
 }
 
-fn parse_str<T>(s: &str) -> Result<T, core_client::Error>
-where
-    T: FromStr,
-{
-    T::from_str(s).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
-}
-
 fn serialize_to_vec<T>(values: &[T]) -> Vec<Vec<u8>>
 where
     T: Serialize,
@@ -323,15 +313,13 @@ where
         .collect()
 }
 
-impl<I, D> FromResponse<gen::node::TipResponse> for (I, D)
+impl<H> FromResponse<gen::node::TipResponse> for H
 where
-    I: chain_bounds::BlockId,
-    D: chain_bounds::BlockDate,
+    H: chain_bounds::Header,
 {
-    fn from_response(res: gen::node::TipResponse) -> Result<(I, D), core_client::Error> {
-        let id = deserialize_bytes(&res.id)?;
-        let blockdate = parse_str(&res.blockdate)?;
-        Ok((id, blockdate))
+    fn from_response(res: gen::node::TipResponse) -> Result<Self, core_client::Error> {
+        let blockheader = deserialize_bytes(&res.blockheader)?;
+        Ok(blockheader)
     }
 }
 
@@ -357,12 +345,13 @@ where
 
 impl<T, S, E> BlockService<T> for Client<S, E>
 where
-    T: chain_bounds::Block,
+    T: chain_bounds::Block + HasHeader,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
     <T as property::Block>::Date: FromStr,
+    <T::Header as property::Header>::Date: FromStr,
 {
-    type TipFuture = ResponseFuture<(T::Id, T::Date), gen::node::TipResponse>;
+    type TipFuture = ResponseFuture<T::Header, gen::node::TipResponse>;
 
     type PullBlocksToTipStream = ResponseStream<T, gen::node::Block>;
     type PullBlocksToTipFuture = ResponseStreamFuture<T, gen::node::Block>;
@@ -381,23 +370,6 @@ where
         let req = gen::node::PullBlocksToTipRequest { from };
         let future = self.node.pull_blocks_to_tip(Request::new(req));
         ResponseStreamFuture::new(future)
-    }
-}
-
-impl<T, S, E> HeaderService<T> for Client<S, E>
-where
-    T: HasHeader,
-    S: AsyncRead + AsyncWrite,
-    E: Executor<Background<S, BoxBody>> + Clone,
-    <T::Header as property::Header>::Date: FromStr,
-{
-    //type GetHeadersStream = ResponseStream<T::Header, gen::node::Header>;
-    //type GetHeadersFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
-
-    type GetTipFuture = ResponseFuture<T::Header, gen::node::Header>;
-
-    fn tip_header(&mut self) -> Self::GetTipFuture {
-        unimplemented!()
     }
 }
 

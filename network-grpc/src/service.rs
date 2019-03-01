@@ -1,8 +1,6 @@
 use crate::gen;
 
-use chain_core::property::{
-    Block, BlockDate, BlockId, Deserialize, Header, Serialize, TransactionId,
-};
+use chain_core::property::{Block, Deserialize, Header, Serialize, TransactionId};
 use network_core::server::{self, block::BlockService, transaction::TransactionService, Node};
 
 use futures::prelude::*;
@@ -207,16 +205,13 @@ where
     }
 }
 
-impl<I, D> IntoResponse<gen::node::TipResponse> for (I, D)
+impl<H> IntoResponse<gen::node::TipResponse> for H
 where
-    I: BlockId + Serialize,
-    D: BlockDate + ToString,
+    H: Header + Serialize,
 {
     fn into_response(self) -> Result<gen::node::TipResponse, tower_grpc::Error> {
-        let id = serialize_to_bytes(self.0)?;
-        let blockdate = self.1.to_string();
-        let response = gen::node::TipResponse { id, blockdate };
-        Ok(response)
+        let blockheader = serialize_to_bytes(self)?;
+        Ok(gen::node::TipResponse { blockheader })
     }
 }
 
