@@ -27,7 +27,7 @@ pub fn leadership_task<B>(
             d, epoch.0, idx, next_time
         );
 
-        let date = <B::BlockDate as BlockDate>::from_epoch_slot_id(epoch.0 as u64, idx as u64);
+        let date = <B::BlockDate as BlockDate>::from_epoch_slot_id(epoch.0, idx);
 
         // if we have the leadership to create a new block we can require the lock
         // on the blockchain as we are not expecting to be _blocked_ while creating
@@ -39,10 +39,13 @@ pub fn leadership_task<B>(
         if am_leader {
             // collect up to `nr_transactions` from the transaction pool.
             //
-            let transactions = transaction_pool
-                .write()
-                .unwrap()
-                .collect(b.state.settings.max_number_of_transactions_per_block() as usize);
+            let transactions = transaction_pool.write().unwrap().collect(
+                b.state
+                    .settings
+                    .read()
+                    .unwrap()
+                    .max_number_of_transactions_per_block() as usize,
+            );
 
             info!(
                 "leadership create tpool={} transactions ({}.{})",
@@ -53,8 +56,8 @@ pub fn leadership_task<B>(
 
             let block = B::make_block(
                 &secret,
-                &b.state.settings,
-                &b.state.ledger,
+                &b.state.settings.read().unwrap(),
+                &b.state.ledger.read().unwrap(),
                 date,
                 transactions,
             );
