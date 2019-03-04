@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 const SIZE: usize = 32;
 
 /// Hash of a key
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HashedKey(pub u64);
 
 impl HashedKey {
@@ -39,5 +39,18 @@ impl LevelIndex {
     #[inline]
     pub fn mask(&self) -> u32 {
         1u32.wrapping_shl(self.0 as u32)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::hash_map::DefaultHasher;
+
+    #[test]
+    fn hash_is_deterministic() {
+        let h1 = HashedKey::compute(PhantomData::<DefaultHasher>, &100u32);
+        let h2 = HashedKey::compute(PhantomData::<DefaultHasher>, &100u32);
+        assert_eq!(h1, h2)
     }
 }

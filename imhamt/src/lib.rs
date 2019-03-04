@@ -214,6 +214,46 @@ mod tests {
         assert_eq!(h2.size(), 16 + 2);
     }
 
+    use hash::HashedKey;
+    use std::fmt;
+    use std::marker::PhantomData;
+
+    #[test]
+    fn collision() {
+        let k0 = "keyx".to_string();
+        let h1 = HashedKey::compute(PhantomData::<DefaultHasher>, &k0);
+        let l = h1.level_index(0);
+        let mut found = None;
+        for i in 0..10000 {
+            let x = format!("key{}", i);
+            let h2 = HashedKey::compute(PhantomData::<DefaultHasher>, &"keyx".to_string());
+            if h2.level_index(0) == l {
+                found = Some(x.clone());
+                break;
+            }
+        }
+
+        match found {
+            None => assert!(false),
+            Some(x) => {
+                let mut h: Hamt<DefaultHasher, String, u32> = Hamt::new();
+                h = h.insert(k0.clone(), 1u32).unwrap();
+                h = h.insert(x.clone(), 2u32).unwrap();
+                assert_eq!(h.size(), 2);
+                assert_eq!(h.lookup(&k0), Some(&1u32));
+                assert_eq!(h.lookup(&x), Some(&2u32));
+
+                let h2 = h.remove_match(&x, &2u32).unwrap();
+                assert_eq!(h2.lookup(&k0), Some(&1u32));
+                assert_eq!(h2.size(), 1);
+
+                let h3 = h.remove_match(&k0, &1u32).unwrap();
+                assert_eq!(h3.lookup(&x), Some(&2u32));
+                assert_eq!(h3.size(), 1);
+            }
+        }
+    }
+
     fn property_btreemap_eq<A: Eq + Ord + Hash, B: PartialEq>(
         reference: &BTreeMap<A, B>,
         h: &Hamt<DefaultHasher, A, B>,
