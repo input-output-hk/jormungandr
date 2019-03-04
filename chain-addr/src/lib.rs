@@ -94,6 +94,15 @@ impl KindType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Address(pub Discrimination, pub Kind);
 
+impl Address {
+    pub fn discrimination(&self) -> Discrimination {
+        self.0
+    }
+    pub fn kind(&self) -> &Kind {
+        &self.1
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     EmptyAddress,

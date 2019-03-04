@@ -20,10 +20,9 @@ serde_derive = { version = "^1.0", optional = true }
 cardano = { path = "../cardano" }
 chain-core = { path = "../chain-core" }
 chain-addr = { path = "../chain-addr" }
-
+rand = "0.6"
 
 [dev-dependencies]
 quickcheck = "0.8"
-rand = "0.6"
 chain-core = { path = "../chain-core", features=["property-test-api"]}
 chain-addr = { path = "../chain-addr", features=["property-test-api"]}

@@ -273,6 +273,26 @@ impl AsRef<u64> for Value {
     }
 }
 
+impl std::ops::Add for Value {
+    type Output = Value;
+    fn add(self, other: Value) -> Value {
+        Value(self.0.checked_add(other.0).unwrap())
+    }
+}
+
+impl std::ops::Sub for Value {
+    type Output = Value;
+    fn sub(self, other: Value) -> Value {
+        Value(self.0.checked_sub(other.0).unwrap())
+    }
+}
+
+impl std::ops::AddAssign for Value {
+    fn add_assign(&mut self, other: Value) {
+        self.0 = self.0.checked_add(other.0).unwrap();
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

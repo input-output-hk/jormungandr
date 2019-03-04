@@ -42,7 +42,7 @@ pub trait BlockId: Eq + Ord + Clone + Debug + Hash + Serialize + Deserialize {}
 
 /// A trait representing block dates.
 pub trait BlockDate: Eq + Ord + Clone {
-    fn from_epoch_slot_id(epoch: u64, slot_id: u64) -> Self;
+    fn from_epoch_slot_id(epoch: u32, slot_id: u32) -> Self;
 }
 
 /// Trait identifying the transaction identifier type.
