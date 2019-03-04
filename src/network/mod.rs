@@ -11,8 +11,6 @@ mod grpc;
 pub mod p2p_topology;
 mod service;
 
-use std::{sync::Arc, time::Duration};
-
 use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
@@ -21,10 +19,10 @@ use crate::utils::task::TaskMessageBox;
 
 use self::p2p_topology::P2pTopology;
 use chain_core::property;
-use futures::future;
 use futures::prelude::*;
 use futures::stream::{self, Stream};
-use std::net::SocketAddr;
+
+use std::{net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 
 type Connection = SocketAddr;
 
@@ -146,6 +144,7 @@ impl<B: BlockConfig> ConnectionState<B> {
 pub fn run<B>(config: Configuration, channels: Channels<B>)
 where
     B: BlockConfig + 'static,
+    B::BlockDate: FromStr,
 {
     // TODO: the node needs to be saved/loaded
     //
@@ -171,17 +170,15 @@ where
         unimplemented!()
     };
 
-    let connections = stream::iter_ok(config.trusted_addresses).for_each(move |_| {
-        let protocol = protocol.clone();
-        match protocol {
-            Protocol::Ntt => {
-                unimplemented!();
-                // ntt::run_connect_socket(sockaddr, peer, state_connection.clone()),
-                #[allow(unreachable_code)]
-                future::ok(())
-            }
-            Protocol::Grpc => unimplemented!(),
-        }
+    let state_connection = state.clone();
+    let addrs = config
+        .trusted_addresses
+        .iter()
+        .filter_map(|paddr| paddr.to_socketaddr())
+        .collect::<Vec<_>>();
+    let connections = stream::iter_ok(addrs).for_each(move |addr| {
+        let peer = Peer::new(addr, Protocol::Grpc);
+        grpc::run_connect_socket(peer, state_connection.clone())
     });
 
     tokio::run(connections.join(listener).map(|_| ()));

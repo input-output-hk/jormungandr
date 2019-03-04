@@ -14,7 +14,10 @@ use tokio::{executor::DefaultExecutor, net::TcpStream};
 
 use std::str::FromStr;
 
-pub fn run_connect_socket<B>(peer: Peer, _state: GlobalState<B>) -> impl Future<Item = (), Error = ()>
+pub fn run_connect_socket<B>(
+    peer: Peer,
+    _state: GlobalState<B>,
+) -> impl Future<Item = (), Error = ()>
 where
     B: BlockConfig,
     B::Block: chain_bounds::Block,
