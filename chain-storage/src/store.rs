@@ -5,10 +5,10 @@ use chain_core::property::{Block, BlockId};
 pub struct BlockInfo<Id: BlockId> {
     pub block_hash: Id,
 
-    /// Distance to the genesis hash (a.k.a chain length). I.e. a
-    /// block whose parent is the genesis hash has depth 1, its
-    /// children have depth 2, and so on. Note that there is no block
-    /// with depth 0 because there is no block with the genesis hash.
+    /// Length of the chain. I.e. a block whose parent is the zero
+    /// hash has depth 1, its children have depth 2, and so on. Note
+    /// that there is no block with depth 0 because there is no block
+    /// with the zero hash.
     pub depth: u64,
 
     /// One or more ancestors of this block. Must include at least the
@@ -39,10 +39,8 @@ pub struct BackLink<Id: BlockId> {
 pub trait BlockStore: std::marker::Sized {
     type Block: Block;
 
-    fn get_genesis_hash(&self) -> <Self::Block as Block>::Id;
-
     /// Write a block to the store. The parent of the block must exist
-    /// (unless it's the genesis hash).
+    /// (unless it's the zero hash).
     ///
     /// The default implementation computes a BlockInfo structure with
     /// back_links set to ensure O(lg n) seek time in
@@ -63,7 +61,7 @@ pub trait BlockStore: std::marker::Sized {
             block_hash: parent_hash.clone(),
         }];
 
-        let depth = if parent_hash == self.get_genesis_hash() {
+        let depth = if parent_hash == <Self::Block as Block>::Id::zero() {
             1
         } else {
             let parent_info = self.get_block_info(&parent_hash)?;
@@ -114,9 +112,6 @@ pub trait BlockStore: std::marker::Sized {
 
     /// Check whether a block exists.
     fn block_exists(&self, block_hash: &<Self::Block as Block>::Id) -> Result<bool, Error> {
-        if block_hash == &self.get_genesis_hash() {
-            return Ok(true);
-        }
         match self.get_block_info(block_hash) {
             Ok(_) => Ok(true),
             Err(Error::BlockNotFound) => Ok(false),
@@ -200,7 +195,7 @@ pub trait BlockStore: std::marker::Sized {
 
         let descendent = self.get_block_info(&descendent)?;
 
-        if ancestor == &self.get_genesis_hash() {
+        if ancestor == &<Self::Block as Block>::Id::zero() {
             return Ok(Some(descendent.depth));
         }
 
@@ -226,7 +221,7 @@ pub trait BlockStore: std::marker::Sized {
 
     /// Return an iterator that yields block info for the blocks in
     /// the half-open range `(from, to]`. `from` must be an ancestor
-    /// of `to` and may be the genesis hash.
+    /// of `to` and may be the zero hash.
     fn iterate_range(
         &self,
         from: &<Self::Block as Block>::Id,

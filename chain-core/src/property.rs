@@ -38,7 +38,11 @@
 use std::{fmt::Debug, hash::Hash};
 
 /// Trait identifying the block identifier type.
-pub trait BlockId: Eq + Ord + Clone + Debug + Hash + Serialize + Deserialize {}
+pub trait BlockId: Eq + Ord + Clone + Debug + Hash + Serialize + Deserialize {
+    /// A special ID used to denote a non-existent block (e.g. the
+    /// parent of the first block).
+    fn zero() -> Self;
+}
 
 /// A trait representing block dates.
 pub trait BlockDate: Eq + Ord + Clone {

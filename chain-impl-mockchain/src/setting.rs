@@ -4,7 +4,7 @@
 use crate::block::Message;
 use crate::key::Hash;
 use crate::update::ValueDiff;
-use chain_core::property;
+use chain_core::property::{self, BlockId};
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -95,9 +95,9 @@ pub struct Settings {
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
 
 impl Settings {
-    pub fn new(genesis_hash: Hash) -> Self {
+    pub fn new() -> Self {
         Self {
-            last_block_id: genesis_hash,
+            last_block_id: Hash::zero(),
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
         }
