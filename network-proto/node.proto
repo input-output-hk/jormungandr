@@ -26,6 +26,11 @@ message TransactionIds {
     repeated bytes id = 1;
 }
 
+// Identifier of the single transaction.
+message TransactionId {
+    bytes id = 1;
+}
+
 // Request message for method PullBlocksToTip.
 message PullBlocksToTipRequest {
     // The identifiers of blocks to consider as the
@@ -100,6 +105,8 @@ message GossipMessage {
     bytes content = 2;
 }
 
+message Confirmation {}
+
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
     rpc GetBlocks (BlockIds) returns (stream Block) {
@@ -121,4 +128,5 @@ service Node {
     rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
 
     rpc Gossip (GossipMessage) returns (GossipMessage);
+    rpc AnnounceBlock (Header) returns (Confirmation);
 }

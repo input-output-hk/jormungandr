@@ -256,6 +256,12 @@ where
     }
 }
 
+impl IntoResponse<gen::node::Confirmation> for () {
+    fn into_response(self) -> Result<gen::node::Confirmation, tower_grpc::Status> {
+        Ok(gen::node::Confirmation {})
+    }
+}
+
 impl<H> IntoResponse<gen::node::Header> for H
 where
     H: Header + Serialize,
@@ -368,6 +374,10 @@ where
         gen::node::GossipMessage,
         <<T as Node>::GossipService as GossipService>::MessageFuture,
     >;
+    type AnnounceBlockFuture = ResponseFuture<
+        gen::node::Confirmation,
+        <<T as Node>::BlockService as BlockService>::AnnounceBlockFuture,
+    >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
         let service = try_get_service!(self.block_service);
@@ -446,6 +456,17 @@ where
             }
         };
         ResponseFuture::new(service.get_transactions(&tx_ids))
+    }
+
+    fn announce_block(&mut self, req: Request<gen::node::Header>) -> Self::AnnounceBlockFuture {
+        let service = try_get_service!(self.block_service);
+        let header = match deserialize_bytes(&req.get_ref().content) {
+            Ok(header) => header,
+            Err(status) => {
+                return ResponseFuture::error(status);
+            }
+        };
+        ResponseFuture::new(service.announce_block(&header))
     }
 
     /// Work with gossip message.

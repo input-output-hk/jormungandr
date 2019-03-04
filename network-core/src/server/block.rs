@@ -79,6 +79,8 @@ pub trait BlockService {
     /// implementation to produce a server-streamed response.
     type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = BlockError>;
 
+    type AnnounceBlockFuture: Future<Item = (), Error = BlockError>;
+
     /// Request the current blockchain tip.
     /// The returned future resolves to the tip of the blockchain
     /// accepted by this node.
@@ -117,6 +119,8 @@ pub trait BlockService {
     // Returns a future that resolves to an asynchronous subscription stream
     // that can be used to notify of newly created blocks.
     fn subscribe(&mut self) -> Self::BlockSubscriptionFuture;
+
+    fn announce_block(&mut self, header: &Self::Header) -> Self::AnnounceBlockFuture;
 }
 
 /// Represents errors that can be returned by the block service.
