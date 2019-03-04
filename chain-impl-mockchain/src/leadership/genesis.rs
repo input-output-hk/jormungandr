@@ -155,7 +155,7 @@ impl GenesisLeaderSelection {
     }
 
     fn state_epoch(&self) -> Epoch {
-        if self.pos.next_date.slot_id == 0 {
+        if self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0 {
             self.pos.next_date.epoch - 1
         } else {
             self.pos.next_date.epoch
