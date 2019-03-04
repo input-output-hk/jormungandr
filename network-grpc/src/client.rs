@@ -1,6 +1,6 @@
 use crate::gen::{self, node::client as gen_client};
 
-use chain_core::property::{self, Deserialize, FromStr, HasHeader, Serialize};
+use chain_core::property::{self, Deserialize, FromStr, Serialize};
 use network_core::client::{self as core_client, block::BlockService};
 
 use futures::future::Executor;
@@ -53,13 +53,14 @@ pub mod chain_bounds {
     {
     }
 
-    pub trait Block: property::Block + property::Deserialize {}
+    pub trait Block: property::Block + property::HasHeader + property::Deserialize {}
 
     impl<T> Block for T
     where
-        T: property::Block + property::Deserialize,
+        T: property::Block + property::HasHeader + property::Deserialize,
         <T as property::Block>::Id: BlockId,
         <T as property::Block>::Date: BlockDate,
+        <T as property::HasHeader>::Header: Header,
     {
     }
 }
@@ -68,11 +69,12 @@ pub mod chain_bounds {
 ///
 /// This type encapsulates the gRPC protocol client that can
 /// make connections and perform requests towards other blockchain nodes.
-pub struct Client<S, E> {
+pub struct Client<B, S, E> {
     node: gen_client::Node<Connection<S, E, BoxBody>>,
+    _phantom: PhantomData<B>,
 }
 
-impl<S, E> Client<S, E>
+impl<B, S, E> Client<B, S, E>
 where
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
@@ -90,6 +92,7 @@ where
 
                 Client {
                     node: gen_client::Node::new(conn),
+                    _phantom: PhantomData,
                 }
             })
     }
@@ -343,14 +346,15 @@ where
     }
 }
 
-impl<T, S, E> BlockService<T> for Client<S, E>
+impl<T, S, E> BlockService for Client<T, S, E>
 where
-    T: chain_bounds::Block + HasHeader,
+    T: chain_bounds::Block,
+    T::Header: property::Header<Id = T::Id, Date = T::Date>,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
     <T as property::Block>::Date: FromStr,
-    <T::Header as property::Header>::Date: FromStr,
 {
+    type Block = T;
     type TipFuture = ResponseFuture<T::Header, gen::node::TipResponse>;
 
     type PullBlocksToTipStream = ResponseStream<T, gen::node::Block>;
@@ -358,6 +362,9 @@ where
 
     type GetBlocksStream = ResponseStream<T, gen::node::Block>;
     type GetBlocksFuture = ResponseStreamFuture<T, gen::node::Block>;
+
+    type BlockSubscription = ResponseStream<T::Header, gen::node::Header>;
+    type BlockSubscriptionFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
@@ -371,9 +378,6 @@ where
         let future = self.node.pull_blocks_to_tip(Request::new(req));
         ResponseStreamFuture::new(future)
     }
-
-    type BlockSubscription = ResponseStream<T::Header, gen::node::Header>;
-    type BlockSubscriptionFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
 
     fn subscribe_to_blocks(&mut self) -> Self::BlockSubscriptionFuture {
         let req = gen::node::BlockSubscriptionRequest {};
