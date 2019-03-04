@@ -524,7 +524,7 @@ mod test {
     use chain_core::property::Ledger as L;
     use chain_core::property::Settings as S;
     use chain_core::property::Transaction as T;
-    use chain_core::property::{Deserialize, HasTransaction, Serialize};
+    use chain_core::property::{BlockId, Deserialize, HasTransaction, Serialize};
     use quickcheck::{Arbitrary, StdGen};
     use rand::rngs::{StdRng, ThreadRng};
 
@@ -556,8 +556,6 @@ mod test {
     ) -> TestState {
         let mut g = StdGen::new(rand::thread_rng(), 10);
 
-        let genesis_hash = Hash::hash_bytes("abc".as_bytes());
-
         let bft_leaders: Vec<PrivateKey> =
             (0..10_i32).map(|_| PrivateKey::arbitrary(&mut g)).collect();
 
@@ -572,7 +570,7 @@ mod test {
 
         let ledger = Arc::new(RwLock::new(Ledger::new(initial_utxos)));
 
-        let settings = Arc::new(RwLock::new(Settings::new(genesis_hash)));
+        let settings = Arc::new(RwLock::new(Settings::new()));
         settings.write().unwrap().bootstrap_key_slots_percentage =
             initial_bootstrap_key_slots_percentage;
 
@@ -593,7 +591,7 @@ mod test {
             ledger,
             settings,
             cur_date: BlockDate::first(),
-            prev_hash: genesis_hash.clone(),
+            prev_hash: Hash::zero(),
             faucet_utxo,
             faucet_private_key,
             selected_leaders: HashMap::new(),
