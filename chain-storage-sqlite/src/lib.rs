@@ -13,7 +13,6 @@ pub struct SQLiteBlockStore<B>
 where
     B: Block,
 {
-    genesis_hash: B::Id,
     connection: Box<sqlite::Connection>,
 
     // Prepared statements. Note: we currently give these a fake
@@ -35,7 +34,7 @@ impl<B> SQLiteBlockStore<B>
 where
     B: Block,
 {
-    pub fn new(genesis_hash: B::Id, path: &str) -> Self {
+    pub fn new(path: &str) -> Self {
         let connection = Box::new(sqlite::open(path).unwrap());
 
         connection
@@ -69,7 +68,6 @@ where
         };
 
         SQLiteBlockStore {
-            genesis_hash,
             stmt_insert_block: make_statement(&connection, "insert into Blocks (hash, block) values(?, ?)"),
             stmt_insert_block_info: make_statement(&connection, "insert into BlockInfo (hash, depth, parent, fast_distance, fast_hash) values(?, ?, ?, ?, ?)"),
             stmt_get_block: make_statement(&connection, "select block from Blocks where hash = ?"),
@@ -244,9 +242,5 @@ where
             sqlite::State::Done => Ok(None),
             sqlite::State::Row => Ok(Some(blob_to_hash(statement.read::<Vec<u8>>(0).unwrap()))),
         }
-    }
-
-    fn get_genesis_hash(&self) -> B::Id {
-        self.genesis_hash.clone()
     }
 }

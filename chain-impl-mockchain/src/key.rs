@@ -181,7 +181,12 @@ impl property::Deserialize for Hash {
     }
 }
 
-impl property::BlockId for Hash {}
+impl property::BlockId for Hash {
+    fn zero() -> Hash {
+        Hash(hash::Blake2b256::from([0; hash::Blake2b256::HASH_SIZE]))
+    }
+}
+
 impl property::TransactionId for Hash {}
 
 impl AsRef<[u8]> for PrivateKey {

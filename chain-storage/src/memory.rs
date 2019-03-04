@@ -7,7 +7,6 @@ pub struct MemoryBlockStore<B>
 where
     B: Block,
 {
-    genesis_hash: B::Id,
     blocks: HashMap<B::Id, (Vec<u8>, BlockInfo<B::Id>)>,
     tags: HashMap<String, B::Id>,
 }
@@ -16,9 +15,8 @@ impl<B> MemoryBlockStore<B>
 where
     B: Block,
 {
-    pub fn new(genesis_hash: B::Id) -> Self {
+    pub fn new() -> Self {
         MemoryBlockStore {
-            genesis_hash,
             blocks: HashMap::new(),
             tags: HashMap::new(),
         }
@@ -67,9 +65,5 @@ where
         } else {
             Ok(None)
         }
-    }
-
-    fn get_genesis_hash(&self) -> B::Id {
-        self.genesis_hash.clone()
     }
 }
