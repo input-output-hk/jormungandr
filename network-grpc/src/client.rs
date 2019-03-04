@@ -1,12 +1,15 @@
 use crate::gen::{self, node::client as gen_client};
 
 use chain_core::property::{self, Deserialize, FromStr, Serialize};
-use network_core::client::{self as core_client, block::BlockService};
+use network_core::{
+    client::{self as core_client, block::BlockService, gossip::GossipService},
+    gossip::{Gossip, NodeId},
+};
 
 use futures::future::Executor;
 use tokio::io;
 use tokio::prelude::*;
-use tower_grpc::{BoxBody, Request, Streaming};
+use tower_grpc::{BoxBody, Code, Request, Status, Streaming};
 use tower_h2::client::{Background, Connect, ConnectError, Connection};
 use tower_service::Service;
 use tower_util::MakeService;
@@ -65,12 +68,12 @@ pub mod chain_bounds {
 ///
 /// This type encapsulates the gRPC protocol client that can
 /// make connections and perform requests towards other blockchain nodes.
-pub struct Client<B, S, E> {
+pub struct Client<T, G, S, E> {
     node: gen_client::Node<Connection<S, E, BoxBody>>,
-    _phantom: PhantomData<B>,
+    _phantom: PhantomData<(T, G)>,
 }
 
-impl<B, S, E> Client<B, S, E>
+impl<T, G, S, E> Client<T, G, S, E>
 where
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
@@ -291,6 +294,15 @@ where
     T::deserialize(&mut buf).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
 }
 
+fn serialize_to_bytes<T>(x: &T) -> Vec<u8>
+where
+    T: Serialize,
+{
+    let mut v = Vec::new();
+    x.serialize(&mut v).unwrap();
+    v
+}
+
 fn serialize_to_vec<T>(values: &[T]) -> Vec<Vec<u8>>
 where
     T: Serialize,
@@ -335,7 +347,32 @@ where
     }
 }
 
-impl<T, S, E> BlockService for Client<T, S, E>
+impl<T> FromResponse<gen::node::GossipMessage> for (NodeId, T)
+where
+    T: Gossip,
+{
+    fn from_response(res: gen::node::GossipMessage) -> Result<(NodeId, T), core_client::Error> {
+        let node_id = match res.node_id {
+            None => Err(convert_error(Status::new(
+                Code::InvalidArgument,
+                "incorrect node encoding",
+            ))),
+            Some(gen::node::gossip_message::NodeId { content }) => {
+                match NodeId::from_slice(&content) {
+                    Ok(node_id) => Ok(node_id),
+                    Err(_v) => Err(convert_error(Status::new(
+                        Code::InvalidArgument,
+                        "incorrect node encoding",
+                    ))),
+                }
+            }
+        }?;
+        let gossip = deserialize_bytes(&res.content)?;
+        Ok((node_id, gossip))
+    }
+}
+
+impl<T, G, S, E> BlockService for Client<T, G, S, E>
 where
     T: chain_bounds::Block,
     T::Header: property::Header<Id = T::Id, Date = T::Date>,
@@ -372,6 +409,25 @@ where
         let req = gen::node::BlockSubscriptionRequest {};
         let future = self.node.subscribe_to_blocks(Request::new(req));
         ResponseStreamFuture::new(future)
+    }
+}
+
+impl<T, G, S, E> GossipService for Client<T, G, S, E>
+where
+    G: Gossip,
+    S: AsyncRead + AsyncWrite,
+    E: Executor<Background<S, BoxBody>> + Clone,
+{
+    type Gossip = G;
+    type GossipFuture = ResponseFuture<(NodeId, G), gen::node::GossipMessage>;
+
+    fn gossip(&mut self, node_id: &NodeId, gossip: &G) -> Self::GossipFuture {
+        let content = node_id.to_bytes();
+        let node_id = Some(gen::node::gossip_message::NodeId { content });
+        let content = serialize_to_bytes(&gossip);
+        let req = gen::node::GossipMessage { node_id, content };
+        let future = self.node.gossip(Request::new(req));
+        ResponseFuture::new(future)
     }
 }
 

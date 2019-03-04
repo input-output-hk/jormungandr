@@ -89,6 +89,17 @@ message RecordTransactionResponse {
     bytes id = 2;
 }
 
+
+// Gossip message.
+message GossipMessage {
+    message NodeId {
+      bytes content = 1;
+    }
+
+    NodeId node_id = 1;
+    bytes content = 2;
+}
+
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
     rpc GetBlocks (BlockIds) returns (stream Block) {
@@ -108,4 +119,6 @@ service Node {
     rpc PullBlocksToTip (PullBlocksToTipRequest) returns (stream Block);
     rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);
     rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
+
+    rpc Gossip (GossipMessage) returns (GossipMessage);
 }

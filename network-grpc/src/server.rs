@@ -25,6 +25,7 @@ where
     T: Node,
     T::BlockService: Clone,
     T::TransactionService: Clone,
+    T::GossipService: Clone,
 {
     h2: tower_h2::Server<
         gen_server::NodeServer<NodeService<T>>,
@@ -40,6 +41,7 @@ where
     T: Node,
     T::BlockService: Clone,
     T::TransactionService: Clone,
+    T::GossipService: Clone,
 {
     h2: tower_h2::server::Connection<
         S,
@@ -56,6 +58,7 @@ where
     T: Node + 'static,
     T::BlockService: Clone,
     T::TransactionService: Clone,
+    T::GossipService: Clone,
     E: Executor<
         tower_h2::server::Background<
             gen_server::node::ResponseFuture<NodeService<T>>,
@@ -75,6 +78,7 @@ where
     T: Node + 'static,
     T::BlockService: Clone,
     T::TransactionService: Clone,
+    T::GossipService: Clone,
     E: Executor<
             tower_h2::server::Background<
                 gen_server::node::ResponseFuture<NodeService<T>>,
@@ -148,6 +152,7 @@ where
     T: Node,
     T::BlockService: Clone,
     T::TransactionService: Clone,
+    T::GossipService: Clone,
 {
     fn from(err: H2Error<T>) -> Self {
         use tower_h2::server::Error::*;

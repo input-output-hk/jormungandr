@@ -1,7 +1,12 @@
 use crate::gen;
 
 use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction, TransactionId};
-use network_core::server::{self, block::BlockService, transaction::TransactionService, Node};
+use network_core::{
+    gossip::{Gossip, NodeId},
+    server::{
+        self, block::BlockService, gossip::GossipService, transaction::TransactionService, Node,
+    },
+};
 
 use futures::prelude::*;
 use tower_grpc::{self, Code, Request, Status};
@@ -11,6 +16,7 @@ use std::{error, marker::PhantomData, mem};
 pub struct NodeService<T: Node> {
     block_service: Option<T::BlockService>,
     tx_service: Option<T::TransactionService>,
+    gossip_service: Option<T::GossipService>,
 }
 
 impl<T: Node> NodeService<T> {
@@ -18,6 +24,7 @@ impl<T: Node> NodeService<T> {
         NodeService {
             block_service: node.block_service(),
             tx_service: node.transaction_service(),
+            gossip_service: node.gossip_service(),
         }
     }
 }
@@ -27,11 +34,13 @@ where
     T: Node,
     T::BlockService: Clone,
     T::TransactionService: Clone,
+    T::GossipService: Clone,
 {
     fn clone(&self) -> Self {
         NodeService {
             block_service: self.block_service.clone(),
             tx_service: self.tx_service.clone(),
+            gossip_service: self.gossip_service.clone(),
         }
     }
 }
@@ -165,6 +174,18 @@ where
     }
 }
 
+fn deserialize_bytes<H: Deserialize>(v: &Vec<u8>) -> Result<H, tower_grpc::Status> {
+    match H::deserialize(&mut &v[..]) {
+        Ok(v) => Ok(v),
+        Err(e) => {
+            // FIXME: log the error
+            // (preferably with tower facilities outside of this implementation)
+            let status = Status::new(Code::InvalidArgument, format!("{}", e));
+            Err(status)
+        }
+    }
+}
+
 fn deserialize_vec<H: Deserialize>(pb: &[Vec<u8>]) -> Result<Vec<H>, tower_grpc::Status> {
     match pb.iter().map(|v| H::deserialize(&mut &v[..])).collect() {
         Ok(v) => Ok(v),
@@ -186,7 +207,7 @@ where
         Ok(()) => Ok(bytes),
         Err(_e) => {
             // FIXME: log the error
-            let status = Status::new(Code::Unknown, "response serialization failed");
+            let status = Status::new(Code::InvalidArgument, "response serialization failed");
             Err(status)
         }
     }
@@ -220,6 +241,18 @@ where
     fn into_response(self) -> Result<gen::node::Block, tower_grpc::Status> {
         let content = serialize_to_bytes(self)?;
         Ok(gen::node::Block { content })
+    }
+}
+
+impl<G> IntoResponse<gen::node::GossipMessage> for (NodeId, G)
+where
+    G: Gossip + Serialize,
+{
+    fn into_response(self) -> Result<gen::node::GossipMessage, tower_grpc::Status> {
+        let content = self.0.to_bytes();
+        let node_id = Some(gen::node::gossip_message::NodeId { content });
+        let content = serialize_to_bytes(self.1)?;
+        Ok(gen::node::GossipMessage { node_id, content })
     }
 }
 
@@ -277,6 +310,7 @@ where
     T: Node,
     <T as Node>::BlockService: Clone,
     <T as Node>::TransactionService: Clone,
+    <T as Node>::GossipService: Clone,
 {
     type TipFuture = ResponseFuture<
         gen::node::TipResponse,
@@ -329,6 +363,10 @@ where
     type TransactionsFuture = ResponseFuture<
         Self::TransactionsStream,
         <<T as Node>::TransactionService as TransactionService>::GetTransactionsFuture,
+    >;
+    type GossipFuture = ResponseFuture<
+        gen::node::GossipMessage,
+        <<T as Node>::GossipService as GossipService>::MessageFuture,
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
@@ -408,5 +446,32 @@ where
             }
         };
         ResponseFuture::new(service.get_transactions(&tx_ids))
+    }
+
+    /// Work with gossip message.
+    fn gossip(&mut self, req: Request<gen::node::GossipMessage>) -> Self::GossipFuture {
+        let service = try_get_service!(self.gossip_service);
+        let node_id = match &req.get_ref().node_id {
+            Some(gen::node::gossip_message::NodeId { content }) => {
+                match NodeId::from_slice(&content) {
+                    Ok(node_id) => node_id,
+                    Err(_v) => {
+                        let status = Status::new(Code::InvalidArgument, "node decoding failed.");
+                        return ResponseFuture::error(status);
+                    }
+                }
+            }
+            None => {
+                let status = Status::new(Code::InvalidArgument, "node field is missing");
+                return ResponseFuture::error(status);
+            }
+        };
+        let gossip = match deserialize_bytes(&req.get_ref().content) {
+            Ok(message) => message,
+            Err(status) => {
+                return ResponseFuture::error(status);
+            }
+        };
+        ResponseFuture::new(service.record_gossip(node_id, &gossip))
     }
 }
