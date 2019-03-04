@@ -87,9 +87,9 @@ impl Serialize for Topic {
     {
         use crate::network::p2p_topology::{NEW_BLOCKS_TOPIC, NEW_TRANSACTIONS_TOPIC};
         use serde::ser::Error;
-        if self.0 == NEW_TRANSACTIONS_TOPIC {
+        if self.0 == NEW_TRANSACTIONS_TOPIC.into() {
             serializer.serialize_str("transactions")
-        } else if self.0 == NEW_BLOCKS_TOPIC {
+        } else if self.0 == NEW_BLOCKS_TOPIC.into() {
             serializer.serialize_str("blocks")
         } else {
             Err(S::Error::custom("invalid state... should not happen"))
@@ -158,8 +158,8 @@ impl<'de> Deserialize<'de> for Topic {
                 use serde::de::Unexpected;
 
                 match v {
-                    "transactions" => Ok(Topic(NEW_TRANSACTIONS_TOPIC)),
-                    "blocks" => Ok(Topic(NEW_BLOCKS_TOPIC)),
+                    "transactions" => Ok(Topic(NEW_TRANSACTIONS_TOPIC.into())),
+                    "blocks" => Ok(Topic(NEW_BLOCKS_TOPIC.into())),
                     err => Err(E::invalid_value(Unexpected::Str(err), &self)),
                 }
             }
