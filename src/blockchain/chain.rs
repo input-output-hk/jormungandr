@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
 use chain_core::property::{self, HasTransaction};
-use chain_impl_mockchain::{key, leadership, ledger, setting};
+use chain_impl_mockchain::{leadership, ledger, setting};
 use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStore};
 
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
@@ -12,9 +12,9 @@ use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
 /// It is meant to always be valid.
 pub struct State<B: BlockConfig> {
     /// The current chain state corresponding to our tip.
-    pub ledger: B::Ledger,
+    pub ledger: Arc<RwLock<B::Ledger>>,
     /// the setting of the blockchain corresponding to out tip
-    pub settings: B::Settings,
+    pub settings: Arc<RwLock<B::Settings>>,
     pub leaders: B::Leader,
 }
 
@@ -47,18 +47,25 @@ pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
 impl State<Mockchain> {
     pub fn new(genesis: &GenesisData) -> Self {
-        let last_block_hash = key::Hash::hash_bytes(&[]);
+        let ledger = Arc::new(RwLock::new(ledger::Ledger::new(genesis.initial_utxos())));
 
-        let leaders = leadership::LeaderSelection::BFT(
-            leadership::bft::BftLeaderSelection::new(genesis.leaders().cloned().collect()).unwrap(),
-        );
+        let settings = Arc::new(RwLock::new(setting::Settings::new()));
+
+        let leaders = leadership::genesis::GenesisLeaderSelection::new(
+            genesis
+                .leaders()
+                .map(|key| leadership::LeaderId(key.clone()))
+                .collect(),
+            ledger.clone(),
+            settings.clone(),
+            HashSet::new(), // initial_stake_pools
+            HashMap::new(), // initial_stake_keys
+        )
+        .unwrap();
 
         State {
-            ledger: ledger::Ledger::new(genesis.initial_utxos()),
-            settings: setting::Settings {
-                last_block_id: last_block_hash,
-                max_number_of_transactions_per_block: 100, // TODO: add this in the genesis data ?
-            },
+            ledger,
+            settings,
             leaders: leaders,
         }
     }
@@ -66,12 +73,10 @@ impl State<Mockchain> {
 
 impl Blockchain<Mockchain> {
     pub fn new(genesis_data: GenesisData) -> Self {
-        let last_block_hash = key::Hash::hash_bytes(&[]);
-
         let state = State::new(&genesis_data);
         Blockchain {
             genesis_data: genesis_data,
-            storage: MemoryBlockStore::new(last_block_hash.clone()),
+            storage: MemoryBlockStore::new(),
             state: state,
             change_log: Vec::default(),
             unconnected_blocks: BTreeMap::default(),
@@ -107,7 +112,7 @@ where
     fn handle_connected_block(&mut self, block_hash: B::BlockHash, block: B::Block) {
         use chain_core::property::{Block, LeaderSelection, Ledger, Settings};
 
-        let current_tip = self.state.settings.tip();
+        let current_tip = self.state.settings.read().unwrap().tip();
 
         // Quick optimization: don't do anything if the incoming block
         // is already the tip. Ideally we would bail out if the
@@ -115,13 +120,18 @@ where
         // way to check that.
         if block_hash != current_tip {
             if current_tip == block.parent_id() {
+                // FIXME: deadlock risk. But this issue will go away
+                // when we merge the states.
+                let mut ledger = self.state.ledger.write().unwrap();
+                let mut settings = self.state.settings.write().unwrap();
+
                 let leadership_diff = self.state.leaders.diff(&block).unwrap();
-                let ledger_diff = { self.state.ledger.diff(block.transactions()).unwrap() };
-                let setting_diff = self.state.settings.diff(&block).unwrap();
+                let ledger_diff = { ledger.diff(block.transactions()).unwrap() };
+                let setting_diff = settings.diff(&block).unwrap();
 
                 self.state.leaders.apply(leadership_diff.clone()).unwrap();
-                self.state.ledger.apply(ledger_diff.clone()).unwrap();
-                self.state.settings.apply(setting_diff.clone()).unwrap();
+                ledger.apply(ledger_diff.clone()).unwrap();
+                settings.apply(setting_diff.clone()).unwrap();
 
                 self.change_log
                     .push((leadership_diff, ledger_diff, setting_diff));
@@ -154,7 +164,7 @@ impl<B: BlockConfig> Blockchain<B> {
     /// return the current tip hash and date
     pub fn get_tip(&self) -> B::BlockHash {
         use chain_core::property::Settings;
-        self.state.settings.tip()
+        self.state.settings.read().unwrap().tip()
     }
 }
 
