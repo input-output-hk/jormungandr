@@ -9,7 +9,7 @@ pub struct TPool<TransId, Trans> {
     pub content: HashMap<TransId, (GlobalTime, Trans)>,
 }
 
-impl<TransId: std::hash::Hash + std::cmp::Eq, Trans> TPool<TransId, Trans> {
+impl<TransId: std::hash::Hash + std::cmp::Eq, Trans: Clone> TPool<TransId, Trans> {
     /// Create a new pool
     pub fn new() -> Self {
         TPool {
@@ -28,6 +28,10 @@ impl<TransId: std::hash::Hash + std::cmp::Eq, Trans> TPool<TransId, Trans> {
         // ignore the result
         let _ = self.content.insert(id, (t, trans));
         ()
+    }
+
+    pub fn get(&self, id: &TransId) -> Option<Trans> {
+        self.content.get(id).map(|kv| kv.1.clone())
     }
 
     /// remove the `count` transaction from the pool
