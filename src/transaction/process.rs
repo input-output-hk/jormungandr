@@ -2,8 +2,7 @@ use std::sync::{mpsc::Receiver, Arc, RwLock};
 
 use crate::blockcfg::{BlockConfig, Ledger, Transaction};
 use crate::blockchain::BlockchainR;
-use crate::client::do_stream_reply;
-use crate::intercom::TransactionMsg;
+use crate::intercom::{do_stream_reply, TransactionMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::transaction::TPool;
 

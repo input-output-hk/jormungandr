@@ -197,6 +197,19 @@ pub fn stream_reply<T, E>() -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
     (ReplyStreamHandle { sender }, stream)
 }
 
+pub fn do_stream_reply<T, F>(mut handler: ReplyStreamHandle<T>, f: F)
+where
+    F: FnOnce(&mut ReplyStreamHandle<T>) -> Result<(), Error>,
+{
+    match f(&mut handler) {
+        Ok(()) => {}
+        Err(e) => {
+            handler.send_error(e);
+        }
+    };
+    handler.close();
+}
+
 pub struct SubscriptionHandle<T: Sync + Clone> {
     sender: oneshot::Sender<BusReader<T>>,
 }

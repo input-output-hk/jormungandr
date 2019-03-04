@@ -4,7 +4,7 @@ use chain_storage::store::BlockStore;
 
 use crate::blockcfg::{Block, BlockConfig, HasHeader};
 use crate::blockchain::BlockchainR;
-use crate::intercom::{ClientMsg, Error, ReplyStreamHandle};
+use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
 
 pub fn client_task<B>(blockchain: BlockchainR<B>, r: Receiver<ClientMsg<B>>)
 where
@@ -35,19 +35,6 @@ where
             }),
         }
     }
-}
-
-pub fn do_stream_reply<T, F>(mut handler: ReplyStreamHandle<T>, f: F)
-where
-    F: FnOnce(&mut ReplyStreamHandle<T>) -> Result<(), Error>,
-{
-    match f(&mut handler) {
-        Ok(()) => {}
-        Err(e) => {
-            handler.send_error(e);
-        }
-    };
-    handler.close();
 }
 
 fn handle_get_block_tip<B>(blockchain: &BlockchainR<B>) -> Result<B::BlockHeader, Error>
