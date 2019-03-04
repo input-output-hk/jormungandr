@@ -154,15 +154,13 @@ impl GenesisLeaderSelection {
         Some(result)
     }
 
-    fn state_epoch(&self) -> Epoch {
-        if self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0 {
+    fn advance_to(&self, to_date: BlockDate) -> (Pos, LeaderId) {
+        let state_epoch = if self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0 {
             self.pos.next_date.epoch - 1
         } else {
             self.pos.next_date.epoch
-        }
-    }
+        };
 
-    fn advance_to(&self, to_date: BlockDate) -> (Pos, LeaderId) {
         let mut now = self.pos.clone();
 
         let d = self.settings.read().unwrap().bootstrap_key_slots_percentage;
@@ -181,7 +179,7 @@ impl GenesisLeaderSelection {
             let stake_snapshot = if cur_epoch == 0 {
                 // We're still in the first epoch, so use the initial stake distribution.
                 Cow::Borrowed(&self.stake_snapshots[&0])
-            } else if cur_epoch == self.state_epoch() || cur_epoch == self.state_epoch() + 1 {
+            } else if cur_epoch == state_epoch || cur_epoch == state_epoch + 1 {
                 if let Some(snapshot) = self.stake_snapshots.get(&(cur_epoch - 1)) {
                     // Use the stake distribution at the start of the previous epoch.
                     Cow::Borrowed(snapshot)
@@ -196,7 +194,7 @@ impl GenesisLeaderSelection {
                     assert_eq!(self.stake_snapshots.len(), 1);
                     Cow::Borrowed(&self.stake_snapshots[&(cur_epoch)])
                 }
-            } else if cur_epoch > self.state_epoch() + 1 {
+            } else if cur_epoch > state_epoch + 1 {
                 // We've advanced so far that we to use the current
                 // snapshot. FIXME: cache this across the loop.
                 Cow::Owned(self.get_stake_distribution())
