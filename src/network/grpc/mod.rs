@@ -1,4 +1,5 @@
 mod bootstrap;
+mod client;
 mod server;
 
 use crate::{blockcfg::BlockConfig, blockchain::BlockchainR, settings::start::network::Peer};
