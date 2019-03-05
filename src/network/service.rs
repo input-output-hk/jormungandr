@@ -97,6 +97,7 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, BlockError>;
     type BlockSubscription = SubscriptionStream<B::BlockHeader, BlockError>;
     type BlockSubscriptionFuture = SubscriptionFuture<B::BlockHeader, BlockError>;
+    type AnnounceBlockFuture = ReplyFuture<(), BlockError>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
@@ -150,6 +151,10 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
         self.block_box.send_to(BlockMsg::Subscribe(handle));
         future
     }
+
+    fn announce_block(&mut self, _header: &Self::Header) -> Self::AnnounceBlockFuture {
+        unimplemented!()
+    }
 }
 
 impl From<intercom::Error> for TransactionError {
@@ -179,6 +184,7 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
         ReplyFuture<RecordTransactionResponse<B::TransactionId>, TransactionError>;
     type GetTransactionsStream = ReplyStream<Self::Transaction, TransactionError>;
     type GetTransactionsFuture = ReplyFuture<Self::GetTransactionsStream, TransactionError>;
+    type AnnounceTransactionFuture = ReplyFuture<(), TransactionError>;
 
     fn propose_transactions(
         &mut self,
@@ -188,6 +194,13 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
     }
 
     fn get_transactions(&mut self, _ids: &[Self::TransactionId]) -> Self::GetTransactionsFuture {
+        unimplemented!()
+    }
+
+    fn announce_transaction(
+        &mut self,
+        _tx: &[Self::TransactionId],
+    ) -> Self::AnnounceTransactionFuture {
         unimplemented!()
     }
 }
