@@ -26,15 +26,22 @@ where
         .map_err(|e| {
             error!("failed to connect to bootstrap peer: {:?}", e);
         })
-        .and_then(|mut client| {
-            let tip = blockchain.read().unwrap().get_tip();
-            client
-                .pull_blocks_to_tip(&[tip])
-                .map_err(|e| {
-                    error!("PullBlocksToTip request failed: {:?}", e);
-                })
-                .and_then(|stream| bootstrap_from_stream(blockchain, stream))
-        });
+        .and_then(
+            |mut client: Client<
+                B::Block,
+                B::Gossip,
+                <P as tower_service::Service<()>>::Response,
+                DefaultExecutor,
+            >| {
+                let tip = blockchain.read().unwrap().get_tip();
+                client
+                    .pull_blocks_to_tip(&[tip])
+                    .map_err(|e| {
+                        error!("PullBlocksToTip request failed: {:?}", e);
+                    })
+                    .and_then(|stream| bootstrap_from_stream(blockchain, stream))
+            },
+        );
 
     match current_thread::block_on_all(bootstrap) {
         Ok(()) => debug!("bootstrap complete"),

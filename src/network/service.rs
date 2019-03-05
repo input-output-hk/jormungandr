@@ -5,14 +5,19 @@ use crate::intercom::{
     ReplyStream, SubscriptionFuture, SubscriptionStream, TransactionMsg,
 };
 use crate::utils::task::TaskMessageBox;
+use std::marker::PhantomData;
 
-use network_core::server::{
-    block::{BlockError, BlockService},
-    transaction::{
-        ProposeTransactionsResponse, RecordTransactionResponse, TransactionError,
-        TransactionService,
+use network_core::{
+    gossip::NodeId,
+    server::{
+        block::{BlockError, BlockService},
+        gossip::{GossipError, GossipService},
+        transaction::{
+            ProposeTransactionsResponse, RecordTransactionResponse, TransactionError,
+            TransactionService,
+        },
+        Node,
     },
-    Node,
 };
 
 use futures::future::{self, FutureResult};
@@ -30,12 +35,18 @@ impl<B: BlockConfig> ConnectionServices<B> {
 impl<B: BlockConfig> Node for ConnectionServices<B> {
     type BlockService = ConnectionBlockService<B>;
     type TransactionService = ConnectionTransactionService<B>;
+    type GossipService = ConnectionGossipService<B>;
 
     fn block_service(&self) -> Option<Self::BlockService> {
         Some(ConnectionBlockService::new(&self.state))
     }
 
     fn transaction_service(&self) -> Option<Self::TransactionService> {
+        // Not implemented yet
+        None
+    }
+
+    fn gossip_service(&self) -> Option<Self::GossipService> {
         // Not implemented yet
         None
     }
@@ -178,5 +189,33 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
 
     fn get_transactions(&mut self, _ids: &[Self::TransactionId]) -> Self::GetTransactionsFuture {
         unimplemented!()
+    }
+}
+
+pub struct ConnectionGossipService<B: BlockConfig> {
+    _phantom: PhantomData<B::Gossip>,
+}
+
+impl<B: BlockConfig> GossipService for ConnectionGossipService<B> {
+    type Message = B::Gossip;
+    type MessageFuture = ReplyFuture<(NodeId, Self::Message), GossipError>;
+
+    /// Record and process gossip event.
+    fn record_gossip(&mut self, _node_id: NodeId, _gossip: &Self::Message) -> Self::MessageFuture {
+        unimplemented!()
+    }
+}
+
+impl From<intercom::Error> for GossipError {
+    fn from(err: intercom::Error) -> Self {
+        GossipError::with_code_and_cause(err.code(), err)
+    }
+}
+
+impl<B: BlockConfig> Clone for ConnectionGossipService<B> {
+    fn clone(&self) -> Self {
+        ConnectionGossipService {
+            _phantom: PhantomData,
+        }
     }
 }
