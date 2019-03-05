@@ -33,6 +33,7 @@ extern crate tokio_bus;
 #[cfg(test)]
 extern crate quickcheck;
 extern crate rand;
+extern crate regex;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
