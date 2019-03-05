@@ -5,13 +5,14 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
 use generic_array::GenericArray;
 use rand::{CryptoRng, Rng};
 use sha2::Digest;
 use sha2::Sha512;
 
 use super::dleq;
+
+pub use curve25519_dalek::scalar::Scalar;
 
 type Point = RistrettoPoint;
 
@@ -23,25 +24,25 @@ pub struct SecretKey {
 }
 
 /// VRF Public Key
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey(Point);
 
 /// VRF Output (Point)
 ///
 /// This is used to create an output generator tweaked by the VRF.
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputSeed(Point);
 
 /// VRF Proof of generation
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenOutputSeed {
     u: OutputSeed,
     dleq_proof: dleq::Proof,
 }
 
-const PROOF_SIZE: usize = 96;
+pub const PROOF_SIZE: usize = 96;
 const SECRET_SIZE: usize = 32;
-const PUBLIC_SIZE: usize = 32;
+pub const PUBLIC_SIZE: usize = 32;
 
 impl SecretKey {
     /// Create a new random secret key

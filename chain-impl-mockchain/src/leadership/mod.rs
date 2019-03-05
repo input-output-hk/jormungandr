@@ -1,12 +1,18 @@
 use crate::key::{PrivateKey, PublicKey};
 use crate::stake::StakePoolId;
 use chain_core::property;
+use ouroboros_praos::vrf::{ProvenOutputSeed, SecretKey};
 
 pub mod bft;
 pub mod genesis;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeaderId(pub PublicKey);
+
+pub enum Leader {
+    BftLeader(PrivateKey),
+    GenesisPraos(SecretKey, PrivateKey, ProvenOutputSeed),
+}
 
 impl chain_core::property::LeaderId for LeaderId {}
 
@@ -19,6 +25,11 @@ impl From<StakePoolId> for LeaderId {
 impl From<&PrivateKey> for LeaderId {
     fn from(key: &PrivateKey) -> Self {
         LeaderId(key.public())
+    }
+}
+impl From<PublicKey> for LeaderId {
+    fn from(key: PublicKey) -> Self {
+        LeaderId(key)
     }
 }
 

@@ -1,5 +1,5 @@
 use super::LeaderId;
-use crate::block::{BlockDate, Message, SignedBlock};
+use crate::block::{Block, BlockDate, Message, Proof};
 use crate::certificate;
 use crate::date::Epoch;
 use crate::ledger::Ledger;
@@ -8,7 +8,8 @@ use crate::stake::*;
 use crate::update::ValueDiff;
 use crate::value::Value;
 
-use chain_core::property::{self, Block, LeaderSelection, Update};
+use chain_core::property::Block as _;
+use chain_core::property::{self, LeaderSelection, Update};
 
 use rand::{Rng, SeedableRng};
 use std::borrow::Cow;
@@ -313,7 +314,7 @@ impl Update for GenesisSelectionDiff {
 
 impl LeaderSelection for GenesisLeaderSelection {
     type Update = GenesisSelectionDiff;
-    type Block = SignedBlock;
+    type Block = Block;
     type Error = Error;
     type LeaderId = LeaderId;
 
@@ -326,11 +327,19 @@ impl LeaderSelection for GenesisLeaderSelection {
 
         assert_eq!(new_pos.next_date, date.next());
 
-        if leader != input.leader_id {
-            return Err(Error::BlockHasInvalidLeader(
-                leader,
-                input.leader_id.clone(),
-            ));
+        match &input.header.proof() {
+            Proof::None => unimplemented!(),
+            Proof::GenesisPraos(genesis_praos_proof) => {
+                // TODO: check the proof is valid
+            }
+            Proof::Bft(bft_proof) => {
+                if bft_proof.leader_id != leader {
+                    return Err(Error::BlockHasInvalidLeader(
+                        leader,
+                        bft_proof.leader_id.clone(),
+                    ));
+                }
+            }
         }
 
         if !input.verify() {
@@ -357,7 +366,7 @@ impl LeaderSelection for GenesisLeaderSelection {
             update.stake_snapshots = Some(snapshots);
         }
 
-        for msg in input.block.contents.iter() {
+        for msg in input.contents.iter() {
             match msg {
                 Message::StakeKeyRegistration(reg) => {
                     if !reg
@@ -547,16 +556,19 @@ impl LeaderSelection for GenesisLeaderSelection {
 mod test {
 
     use super::*;
-    use crate::block::{Block, SignedBlock};
+    use crate::block::{
+        Block, BlockContents, Common, BLOCK_VERSION_CONSENSUS_BFT,
+        BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
+    };
     use crate::key::{Hash, PrivateKey};
+    use crate::leadership::Leader;
     use crate::ledger::test::make_key;
     use crate::transaction::*;
     use chain_addr::{Address, Discrimination, Kind};
-    use chain_core::property::Block as B;
     use chain_core::property::Ledger as L;
     use chain_core::property::Settings as S;
     use chain_core::property::Transaction as T;
-    use chain_core::property::{BlockId, Deserialize, HasTransaction, Serialize};
+    use chain_core::property::{BlockId, HasTransaction};
     use quickcheck::{Arbitrary, StdGen};
     use rand::rngs::{StdRng, ThreadRng};
 
@@ -631,15 +643,7 @@ mod test {
     }
 
     /// Create and apply a signed block with a single certificate.
-    fn apply_signed_block(state: &mut TestState, blk: SignedBlock) -> Result<(), Error> {
-        // Test whether we can round-trip this block.
-        let mut codec = chain_core::packer::Codec::from(vec![]);
-        blk.serialize(&mut codec).unwrap();
-        assert_eq!(
-            blk,
-            SignedBlock::deserialize(&codec.into_inner()[..]).unwrap()
-        );
-
+    fn apply_signed_block(state: &mut TestState, blk: Block) -> Result<(), Error> {
         let settings_diff = state.settings.read().unwrap().diff(&blk).unwrap();
         let ledger_diff = state
             .ledger
@@ -665,7 +669,10 @@ mod test {
         state.cur_date = state.cur_date.next();
 
         // Keep track of how often leaders were selected.
-        *state.selected_leaders.entry(blk.leader_id).or_insert(0) += 1;
+        *state
+            .selected_leaders
+            .entry(blk.header.proof.leader_id().unwrap())
+            .or_insert(0) += 1;
 
         Ok(())
     }
@@ -677,30 +684,44 @@ mod test {
             .get_leader_at(state.cur_date)
             .unwrap();
 
-        let leader_private_key = if let Some(leader_private_key) = state
+        let (leader_private_key, block_version) = if let Some(leader_private_key) = state
             .bft_leaders
             .iter()
             .find(|k| LeaderId::from(*k) == leader_id)
         {
-            leader_private_key
+            (
+                Leader::BftLeader(leader_private_key.clone()),
+                BLOCK_VERSION_CONSENSUS_BFT,
+            )
         } else if let Some(pool_private_key) = state
             .pool_private_keys
             .iter()
             .find(|k| LeaderId::from(*k) == leader_id)
         {
-            pool_private_key
+            let mut csprng: rand::OsRng = rand::OsRng::new().unwrap();
+            let key = ouroboros_praos::vrf::SecretKey::random(&mut csprng);
+            let (point, seed) = key.verifiable_output(&[][..]);
+            let scalar = ouroboros_praos::vrf::Scalar::random(&mut csprng);
+            let proof = key.proove(&scalar, point, seed);
+            (
+                Leader::GenesisPraos(key, pool_private_key.clone(), proof),
+                BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
+            )
         } else {
             panic!();
         };
 
-        let blk = SignedBlock::new(
-            Block {
-                slot_id: state.cur_date.clone(),
-                parent_hash: state.prev_hash.clone(),
-                contents,
-            },
-            leader_private_key,
-        );
+        let contents = BlockContents::new(contents);
+        let (hash, size) = contents.compute_hash_size();
+        let common = Common {
+            block_version: block_version,
+            block_date: state.cur_date.clone(),
+            block_content_size: size as u32,
+            block_content_hash: hash,
+            block_parent_hash: state.prev_hash.clone(),
+        };
+
+        let blk = Block::new(contents, common, &leader_private_key);
 
         apply_signed_block(state, blk)?;
 
@@ -744,13 +765,20 @@ mod test {
 
         // Applying a block with a wrong leader should fail.
         {
-            let signed_block = SignedBlock::new(
-                Block {
-                    slot_id: state.cur_date,
-                    parent_hash: state.prev_hash,
-                    contents: vec![],
-                },
-                &state.bft_leaders[1],
+            let contents = BlockContents::new(Vec::new());
+            let (hash, size) = contents.compute_hash_size();
+            let common = Common {
+                block_version: BLOCK_VERSION_CONSENSUS_BFT,
+                block_date: state.cur_date.clone(),
+                block_content_size: size as u32,
+                block_content_hash: hash,
+                block_parent_hash: state.prev_hash.clone(),
+            };
+
+            let signed_block = Block::new(
+                contents,
+                common,
+                &(Leader::BftLeader(state.bft_leaders[1].clone())),
             );
 
             assert_eq!(
@@ -765,13 +793,21 @@ mod test {
         // Let's skip a few slots.
         {
             state.cur_date = state.cur_date.next().next().next();
-            let signed_block = SignedBlock::new(
-                Block {
-                    slot_id: state.cur_date,
-                    parent_hash: state.prev_hash,
-                    contents: vec![],
-                },
-                &state.bft_leaders[3],
+
+            let contents = BlockContents::new(Vec::new());
+            let (hash, size) = contents.compute_hash_size();
+            let common = Common {
+                block_version: BLOCK_VERSION_CONSENSUS_BFT,
+                block_date: state.cur_date.clone(),
+                block_content_size: size as u32,
+                block_content_hash: hash,
+                block_parent_hash: state.prev_hash.clone(),
+            };
+
+            let signed_block = Block::new(
+                contents,
+                common,
+                &(Leader::BftLeader(state.bft_leaders[3].clone())),
             );
 
             apply_signed_block(&mut state, signed_block).unwrap();

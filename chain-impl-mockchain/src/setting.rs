@@ -127,7 +127,7 @@ impl std::error::Error for Error {}
 impl property::Settings for Settings {
     type Update = SettingsDiff;
     type Error = Error;
-    type Block = crate::block::SignedBlock;
+    type Block = crate::block::Block;
 
     fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
         use chain_core::property::Block;
@@ -136,7 +136,7 @@ impl property::Settings for Settings {
 
         update.block_id = ValueDiff::Replace(self.last_block_id.clone(), input.id());
 
-        for msg in input.block.contents.iter() {
+        for msg in input.contents.iter() {
             if let Message::Update(proposal) = msg {
                 if let Some(_max_number_of_transactions_per_block) =
                     proposal.max_number_of_transactions_per_block

@@ -112,6 +112,7 @@ impl str::FromStr for BlockDate {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck::{Arbitrary, Gen};
     use std::error::Error;
 
     #[test]
@@ -149,6 +150,15 @@ mod tests {
             println!("{}: {}", err, err.source().unwrap());
         } else {
             panic!("unexpected error {:?}", err);
+        }
+    }
+
+    impl Arbitrary for BlockDate {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            BlockDate {
+                epoch: Arbitrary::arbitrary(g),
+                slot_id: Arbitrary::arbitrary(g),
+            }
         }
     }
 }
