@@ -40,6 +40,9 @@ pub trait TransactionService {
     /// implementation to produce a server-streamed response.
     type GetTransactionsFuture: Future<Item = Self::GetTransactionsStream, Error = TransactionError>;
 
+    /// The type of asynchronous futures returned by `announce_transaction`.
+    type AnnounceTransactionFuture: Future<Item = (), Error = TransactionError>;
+
     /// Get all transactions by their id.
     fn get_transactions(&mut self, ids: &[Self::TransactionId]) -> Self::GetTransactionsFuture;
 
@@ -49,6 +52,11 @@ pub trait TransactionService {
         &mut self,
         ids: &[Self::TransactionId],
     ) -> Self::ProposeTransactionsFuture;
+
+    fn announce_transaction(
+        &mut self,
+        id: &[Self::TransactionId],
+    ) -> Self::AnnounceTransactionFuture;
 }
 
 /// Represents errors that can be returned by the transaction service.

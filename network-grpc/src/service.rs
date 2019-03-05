@@ -256,9 +256,15 @@ where
     }
 }
 
-impl IntoResponse<gen::node::Confirmation> for () {
-    fn into_response(self) -> Result<gen::node::Confirmation, tower_grpc::Status> {
-        Ok(gen::node::Confirmation {})
+impl IntoResponse<gen::node::AnnounceBlockResponse> for () {
+    fn into_response(self) -> Result<gen::node::AnnounceBlockResponse, tower_grpc::Status> {
+        Ok(gen::node::AnnounceBlockResponse {})
+    }
+}
+
+impl IntoResponse<gen::node::AnnounceTransactionResponse> for () {
+    fn into_response(self) -> Result<gen::node::AnnounceTransactionResponse, tower_grpc::Status> {
+        Ok(gen::node::AnnounceTransactionResponse {})
     }
 }
 
@@ -375,8 +381,12 @@ where
         <<T as Node>::GossipService as GossipService>::MessageFuture,
     >;
     type AnnounceBlockFuture = ResponseFuture<
-        gen::node::Confirmation,
+        gen::node::AnnounceBlockResponse,
         <<T as Node>::BlockService as BlockService>::AnnounceBlockFuture,
+    >;
+    type AnnounceTransactionFuture = ResponseFuture<
+        gen::node::AnnounceTransactionResponse,
+        <<T as Node>::TransactionService as TransactionService>::AnnounceTransactionFuture,
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
@@ -467,6 +477,20 @@ where
             }
         };
         ResponseFuture::new(service.announce_block(&header))
+    }
+
+    fn announce_transaction(
+        &mut self,
+        req: Request<gen::node::TransactionIds>,
+    ) -> Self::AnnounceTransactionFuture {
+        let service = try_get_service!(self.tx_service);
+        let tx_ids = match deserialize_vec(&req.get_ref().id) {
+            Ok(tx_ids) => tx_ids,
+            Err(status) => {
+                return ResponseFuture::error(status);
+            }
+        };
+        ResponseFuture::new(service.announce_transaction(&tx_ids))
     }
 
     /// Work with gossip message.

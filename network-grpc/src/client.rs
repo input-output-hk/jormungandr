@@ -372,8 +372,16 @@ where
     }
 }
 
-impl FromResponse<gen::node::Confirmation> for () {
-    fn from_response(_res: gen::node::Confirmation) -> Result<(), core_client::Error> {
+impl FromResponse<gen::node::AnnounceBlockResponse> for () {
+    fn from_response(_res: gen::node::AnnounceBlockResponse) -> Result<(), core_client::Error> {
+        Ok(())
+    }
+}
+
+impl FromResponse<gen::node::AnnounceTransactionResponse> for () {
+    fn from_response(
+        _res: gen::node::AnnounceTransactionResponse,
+    ) -> Result<(), core_client::Error> {
         Ok(())
     }
 }
@@ -397,7 +405,7 @@ where
 
     type BlockSubscription = ResponseStream<T::Header, gen::node::Header>;
     type BlockSubscriptionFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
-    type AnnounceBlockFuture = ResponseFuture<(), gen::node::Confirmation>;
+    type AnnounceBlockFuture = ResponseFuture<(), gen::node::AnnounceBlockResponse>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
