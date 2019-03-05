@@ -18,3 +18,6 @@ members = [
     "ouroboros-praos",
     "exe-common",
 ]
+
+[patch."https://github.com/tower-rs/tower"]
+tower-service = "0.2"

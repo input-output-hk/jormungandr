@@ -11,11 +11,7 @@ use tower_h2::client::{Background, Connect, ConnectError, Connection};
 use tower_service::Service;
 use tower_util::MakeService;
 
-use std::{
-    error,
-    fmt::{self, Debug},
-    marker::PhantomData,
-};
+use std::{error, fmt, marker::PhantomData};
 
 /// Traits setting additional bounds for blockchain entities
 /// that need to be satisfied for the protocol implementation.
@@ -107,10 +103,6 @@ type GrpcFuture<R> = tower_grpc::client::unary::ResponseFuture<
 type GrpcStreamFuture<R> =
     tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
 
-type GrpcError = tower_grpc::Error<tower_h2::client::Error>;
-
-type GrpcStreamError = tower_grpc::Error<()>;
-
 pub struct ResponseFuture<T, R> {
     state: unary_future::State<T, R>,
 }
@@ -140,10 +132,7 @@ pub struct ResponseStream<T, R> {
     _phantom: PhantomData<T>,
 }
 
-fn convert_error<T>(e: tower_grpc::Error<T>) -> core_client::Error
-where
-    T: Debug + Send + Sync + 'static,
-{
+fn convert_error(e: tower_grpc::Status) -> core_client::Error {
     core_client::Error::new(core_client::ErrorKind::Rpc, e)
 }
 
@@ -152,14 +141,14 @@ pub trait FromResponse<T>: Sized {
 }
 
 mod unary_future {
-    use super::{convert_error, core_client, FromResponse, GrpcError, GrpcFuture, ResponseFuture};
+    use super::{convert_error, core_client, FromResponse, GrpcFuture, ResponseFuture};
     use futures::prelude::*;
     use std::marker::PhantomData;
-    use tower_grpc::Response;
+    use tower_grpc::{Response, Status};
 
     fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_client::Error>
     where
-        F: Future<Item = Response<R>, Error = GrpcError>,
+        F: Future<Item = Response<R>, Error = Status>,
         T: FromResponse<R>,
     {
         match future.poll() {
@@ -205,18 +194,17 @@ mod unary_future {
 
 mod stream_future {
     use super::{
-        convert_error, core_client, GrpcError, GrpcStreamFuture, ResponseStream,
-        ResponseStreamFuture,
+        convert_error, core_client, GrpcStreamFuture, ResponseStream, ResponseStreamFuture,
     };
     use futures::prelude::*;
     use std::marker::PhantomData;
-    use tower_grpc::{Response, Streaming};
+    use tower_grpc::{Response, Status, Streaming};
 
     fn poll_and_convert_response<T, R, F>(
         future: &mut F,
     ) -> Poll<ResponseStream<T, R>, core_client::Error>
     where
-        F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = GrpcError>,
+        F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = Status>,
     {
         match future.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -262,12 +250,13 @@ mod stream_future {
 }
 
 mod stream {
-    use super::{convert_error, core_client, FromResponse, GrpcStreamError, ResponseStream};
+    use super::{convert_error, core_client, FromResponse, ResponseStream};
     use futures::prelude::*;
+    use tower_grpc::Status;
 
     fn poll_and_convert_item<T, S, R>(stream: &mut S) -> Poll<Option<T>, core_client::Error>
     where
-        S: Stream<Item = R, Error = GrpcStreamError>,
+        S: Stream<Item = R, Error = Status>,
         T: FromResponse<R>,
     {
         match stream.poll() {

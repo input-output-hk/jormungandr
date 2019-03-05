@@ -4,7 +4,6 @@ use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction, T
 use network_core::server::{self, block::BlockService, transaction::TransactionService, Node};
 
 use futures::prelude::*;
-use tower_grpc::Error::Grpc as GrpcError;
 use tower_grpc::{self, Code, Request, Status};
 
 use std::{error, marker::PhantomData, mem};
@@ -59,22 +58,21 @@ impl<T, F> ResponseFuture<T, F> {
     }
 
     fn unimplemented() -> Self {
-        ResponseFuture::Failed(Status::with_code(Code::Unimplemented))
+        ResponseFuture::Failed(Status::new(Code::Unimplemented, "not implemented"))
     }
 }
 
-fn convert_error<E: error::Error>(e: E) -> tower_grpc::Error {
-    let status = Status::with_code_and_message(Code::Unknown, format!("{}", e));
-    GrpcError(status)
+fn convert_error<E: error::Error>(e: E) -> tower_grpc::Status {
+    Status::new(Code::Unknown, format!("{}", e))
 }
 
 pub trait IntoResponse<T> {
-    fn into_response(self) -> Result<T, tower_grpc::Error>;
+    fn into_response(self) -> Result<T, tower_grpc::Status>;
 }
 
 fn poll_and_convert_response<T, F>(
     future: &mut F,
-) -> Poll<tower_grpc::Response<T>, tower_grpc::Error>
+) -> Poll<tower_grpc::Response<T>, tower_grpc::Status>
 where
     F: Future,
     F::Item: IntoResponse<T>,
@@ -91,7 +89,7 @@ where
     }
 }
 
-fn poll_and_convert_stream<T, S>(stream: &mut S) -> Poll<Option<T>, tower_grpc::Error>
+fn poll_and_convert_stream<T, S>(stream: &mut S) -> Poll<Option<T>, tower_grpc::Status>
 where
     S: Stream,
     S::Item: IntoResponse<T>,
@@ -115,9 +113,9 @@ where
     F::Error: error::Error,
 {
     type Item = tower_grpc::Response<T>;
-    type Error = tower_grpc::Error;
+    type Error = tower_grpc::Status;
 
-    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Error> {
+    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Status> {
         if let ResponseFuture::Pending(f) = self {
             let res = poll_and_convert_response(f);
             if let Ok(Async::NotReady) = res {
@@ -128,7 +126,7 @@ where
         } else {
             match mem::replace(self, ResponseFuture::Finished(PhantomData)) {
                 ResponseFuture::Pending(_) => unreachable!(),
-                ResponseFuture::Failed(status) => Err(GrpcError(status)),
+                ResponseFuture::Failed(status) => Err(status),
                 ResponseFuture::Finished(_) => panic!("polled a finished response"),
             }
         }
@@ -160,26 +158,26 @@ where
     S::Error: error::Error,
 {
     type Item = T;
-    type Error = tower_grpc::Error;
+    type Error = tower_grpc::Status;
 
-    fn poll(&mut self) -> Poll<Option<T>, tower_grpc::Error> {
+    fn poll(&mut self) -> Poll<Option<T>, tower_grpc::Status> {
         poll_and_convert_stream(&mut self.inner)
     }
 }
 
-fn deserialize_vec<H: Deserialize>(pb: &[Vec<u8>]) -> Result<Vec<H>, tower_grpc::Error> {
+fn deserialize_vec<H: Deserialize>(pb: &[Vec<u8>]) -> Result<Vec<H>, tower_grpc::Status> {
     match pb.iter().map(|v| H::deserialize(&mut &v[..])).collect() {
         Ok(v) => Ok(v),
         Err(e) => {
             // FIXME: log the error
             // (preferably with tower facilities outside of this implementation)
-            let status = Status::with_code_and_message(Code::InvalidArgument, format!("{}", e));
-            Err(GrpcError(status))
+            let status = Status::new(Code::InvalidArgument, format!("{}", e));
+            Err(status)
         }
     }
 }
 
-fn serialize_to_bytes<T>(obj: T) -> Result<Vec<u8>, tower_grpc::Error>
+fn serialize_to_bytes<T>(obj: T) -> Result<Vec<u8>, tower_grpc::Status>
 where
     T: Serialize,
 {
@@ -188,8 +186,8 @@ where
         Ok(()) => Ok(bytes),
         Err(_e) => {
             // FIXME: log the error
-            let status = Status::with_code(Code::Unknown);
-            Err(GrpcError(status))
+            let status = Status::new(Code::Unknown, "response serialization failed");
+            Err(status)
         }
     }
 }
@@ -199,7 +197,7 @@ where
     S: Stream,
     S::Item: IntoResponse<T>,
 {
-    fn into_response(self) -> Result<ResponseStream<T, S>, tower_grpc::Error> {
+    fn into_response(self) -> Result<ResponseStream<T, S>, tower_grpc::Status> {
         let stream = ResponseStream::new(self);
         Ok(stream)
     }
@@ -209,7 +207,7 @@ impl<H> IntoResponse<gen::node::TipResponse> for H
 where
     H: Header + Serialize,
 {
-    fn into_response(self) -> Result<gen::node::TipResponse, tower_grpc::Error> {
+    fn into_response(self) -> Result<gen::node::TipResponse, tower_grpc::Status> {
         let block_header = serialize_to_bytes(self)?;
         Ok(gen::node::TipResponse { block_header })
     }
@@ -219,7 +217,7 @@ impl<B> IntoResponse<gen::node::Block> for B
 where
     B: Block + Serialize,
 {
-    fn into_response(self) -> Result<gen::node::Block, tower_grpc::Error> {
+    fn into_response(self) -> Result<gen::node::Block, tower_grpc::Status> {
         let content = serialize_to_bytes(self)?;
         Ok(gen::node::Block { content })
     }
@@ -229,7 +227,7 @@ impl<H> IntoResponse<gen::node::Header> for H
 where
     H: Header + Serialize,
 {
-    fn into_response(self) -> Result<gen::node::Header, tower_grpc::Error> {
+    fn into_response(self) -> Result<gen::node::Header, tower_grpc::Status> {
         let content = serialize_to_bytes(self)?;
         Ok(gen::node::Header { content })
     }
@@ -239,7 +237,7 @@ impl<T> IntoResponse<gen::node::Transaction> for T
 where
     T: Transaction + Serialize,
 {
-    fn into_response(self) -> Result<gen::node::Transaction, tower_grpc::Error> {
+    fn into_response(self) -> Result<gen::node::Transaction, tower_grpc::Status> {
         let content = serialize_to_bytes(self)?;
         Ok(gen::node::Transaction { content })
     }
@@ -250,7 +248,7 @@ impl<I> IntoResponse<gen::node::ProposeTransactionsResponse>
 where
     I: TransactionId + Serialize,
 {
-    fn into_response(self) -> Result<gen::node::ProposeTransactionsResponse, tower_grpc::Error> {
+    fn into_response(self) -> Result<gen::node::ProposeTransactionsResponse, tower_grpc::Status> {
         unimplemented!();
     }
 }
@@ -260,7 +258,7 @@ impl<I> IntoResponse<gen::node::RecordTransactionResponse>
 where
     I: TransactionId + Serialize,
 {
-    fn into_response(self) -> Result<gen::node::RecordTransactionResponse, tower_grpc::Error> {
+    fn into_response(self) -> Result<gen::node::RecordTransactionResponse, tower_grpc::Status> {
         unimplemented!();
     }
 }
@@ -342,10 +340,9 @@ where
         let service = try_get_service!(self.block_service);
         let block_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(block_ids) => block_ids,
-            Err(GrpcError(status)) => {
+            Err(status) => {
                 return ResponseFuture::error(status);
             }
-            Err(e) => panic!("unexpected error {:?}", e),
         };
         ResponseFuture::new(service.get_blocks(&block_ids))
     }
@@ -354,10 +351,9 @@ where
         let service = try_get_service!(self.block_service);
         let block_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(block_ids) => block_ids,
-            Err(GrpcError(status)) => {
+            Err(status) => {
                 return ResponseFuture::error(status);
             }
-            Err(e) => panic!("unexpected error {:?}", e),
         };
         ResponseFuture::new(service.get_headers(&block_ids))
     }
@@ -377,10 +373,9 @@ where
         let service = try_get_service!(self.block_service);
         let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
-            Err(GrpcError(status)) => {
+            Err(status) => {
                 return ResponseFuture::error(status);
             }
-            Err(e) => panic!("unexpected error {:?}", e),
         };
         ResponseFuture::new(service.pull_blocks_to_tip(&block_ids))
     }
@@ -408,10 +403,9 @@ where
         let service = try_get_service!(self.tx_service);
         let tx_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(tx_ids) => tx_ids,
-            Err(GrpcError(status)) => {
+            Err(status) => {
                 return ResponseFuture::error(status);
             }
-            Err(e) => panic!("unexpected error {:?}", e),
         };
         ResponseFuture::new(service.get_transactions(&tx_ids))
     }
