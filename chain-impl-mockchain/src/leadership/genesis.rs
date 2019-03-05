@@ -11,6 +11,7 @@ use crate::value::Value;
 use chain_core::property::{self, Block, LeaderSelection, Update};
 
 use rand::{Rng, SeedableRng};
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
@@ -154,6 +155,12 @@ impl GenesisLeaderSelection {
     }
 
     fn advance_to(&self, to_date: BlockDate) -> (Pos, LeaderId) {
+        let state_epoch = if self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0 {
+            self.pos.next_date.epoch - 1
+        } else {
+            self.pos.next_date.epoch
+        };
+
         let mut now = self.pos.clone();
 
         let d = self.settings.read().unwrap().bootstrap_key_slots_percentage;
@@ -168,12 +175,32 @@ impl GenesisLeaderSelection {
             now.next_date = now.next_date.next();
 
             // Base leadership selection on the stake distribution at
-            // the start of the previous epoch. FIXME: handle the case
-            // were we're advancing so far (i.e. crossing two or more
-            // epochs) that we have to compute a snapshot not in
-            // self.stake_snaphots.
-            let epoch_for_leadership = if cur_epoch < 1 { 0 } else { cur_epoch - 1 };
-            let stake_snapshot = &self.stake_snapshots[&epoch_for_leadership];
+            // the start of the previous epoch.
+            let stake_snapshot = if cur_epoch == 0 {
+                // We're still in the first epoch, so use the initial stake distribution.
+                Cow::Borrowed(&self.stake_snapshots[&0])
+            } else if cur_epoch == state_epoch || cur_epoch == state_epoch + 1 {
+                if let Some(snapshot) = self.stake_snapshots.get(&(cur_epoch - 1)) {
+                    // Use the stake distribution at the start of the previous epoch.
+                    Cow::Borrowed(snapshot)
+                } else {
+                    // We don't have the stake distribution at the
+                    // start of the previous epoch, which can happen
+                    // if the last block skipped a whole epoch. So use
+                    // the distribution at the start of that block's
+                    // epoch. The distribution in the epoch before
+                    // must be the same, since there were no blocks
+                    // that could have changed it.
+                    assert_eq!(self.stake_snapshots.len(), 1);
+                    Cow::Borrowed(&self.stake_snapshots[&(cur_epoch)])
+                }
+            } else if cur_epoch > state_epoch + 1 {
+                // We've advanced so far that we to use the current
+                // snapshot. FIXME: cache this across the loop.
+                Cow::Owned(self.get_stake_distribution())
+            } else {
+                unreachable!()
+            };
 
             // If we didn't have eligible stake pools in the epoch
             // used for sampling, then we have to use BFT rules.
@@ -311,15 +338,20 @@ impl LeaderSelection for GenesisLeaderSelection {
         }
 
         // If we crossed into a new epoch, then update the stake
-        // distribution snapshots.
+        // distribution snapshots. NOTE: this is a snapshot of the
+        // stake *before* applying the ledger changes in this block
+        // (because this is the stake distribution at the very start
+        // of the epoch). TODO: When we merge leadership and ledger,
+        // we need to take care that we don't break this.
         if date.epoch != self.pos.next_date.epoch
             || (self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0)
         {
-            let mut snapshots = self.stake_snapshots.clone();
-            if date.epoch >= 2 {
-                // Expire snapshots that we don't need anymore.
-                snapshots.remove(&date.epoch.checked_sub(2).unwrap());
-            }
+            let mut snapshots: BTreeMap<Epoch, StakeDistribution> = self
+                .stake_snapshots
+                .iter()
+                .filter(|(epoch, _snapshot)| *epoch + 1 >= date.epoch)
+                .map(|(epoch, snapshot)| (*epoch, snapshot.clone()))
+                .collect();
             snapshots.insert(date.epoch, self.get_stake_distribution());
             assert!(snapshots.len() <= 2);
             update.stake_snapshots = Some(snapshots);
@@ -1298,6 +1330,35 @@ mod test {
             }
         } else {
             unimplemented!();
+        }
+
+        // Skip one or more epochs.
+        assert_eq!(state.cur_date.slot_id, 0);
+
+        {
+            state.cur_date = state.cur_date.next_epoch();
+            apply_block(&mut state, vec![]).unwrap();
+            apply_block(&mut state, vec![]).unwrap();
+        }
+
+        assert_ne!(state.cur_date.slot_id, 0);
+
+        {
+            state.cur_date = state.cur_date.next_epoch();
+            apply_block(&mut state, vec![]).unwrap();
+            apply_block(&mut state, vec![]).unwrap();
+        }
+
+        {
+            state.cur_date = state.cur_date.next_epoch().next_epoch();
+            apply_block(&mut state, vec![]).unwrap();
+            apply_block(&mut state, vec![]).unwrap();
+        }
+
+        {
+            state.cur_date = state.cur_date.next_epoch().next_epoch().next_epoch();
+            apply_block(&mut state, vec![]).unwrap();
+            apply_block(&mut state, vec![]).unwrap();
         }
     }
 
