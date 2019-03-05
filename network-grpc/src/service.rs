@@ -1,11 +1,9 @@
 use crate::gen;
 
-use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction, TransactionId};
+use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction};
 use network_core::{
     gossip::{Gossip, NodeId},
-    server::{
-        self, block::BlockService, gossip::GossipService, transaction::TransactionService, Node,
-    },
+    server::{block::BlockService, gossip::GossipService, transaction::TransactionService, Node},
 };
 
 use futures::prelude::*;
@@ -288,26 +286,6 @@ where
     }
 }
 
-impl<I> IntoResponse<gen::node::ProposeTransactionsResponse>
-    for server::transaction::ProposeTransactionsResponse<I>
-where
-    I: TransactionId + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::ProposeTransactionsResponse, tower_grpc::Status> {
-        unimplemented!();
-    }
-}
-
-impl<I> IntoResponse<gen::node::RecordTransactionResponse>
-    for server::transaction::RecordTransactionResponse<I>
-where
-    I: TransactionId + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::RecordTransactionResponse, tower_grpc::Status> {
-        unimplemented!();
-    }
-}
-
 macro_rules! try_get_service {
     ($opt_member:expr) => {
         match $opt_member {
@@ -359,14 +337,6 @@ where
     type SubscribeToBlocksFuture = ResponseFuture<
         Self::SubscribeToBlocksStream,
         <<T as Node>::BlockService as BlockService>::BlockSubscriptionFuture,
-    >;
-    type ProposeTransactionsFuture = ResponseFuture<
-        gen::node::ProposeTransactionsResponse,
-        <<T as Node>::TransactionService as TransactionService>::ProposeTransactionsFuture,
-    >;
-    type RecordTransactionFuture = ResponseFuture<
-        gen::node::RecordTransactionResponse,
-        <<T as Node>::TransactionService as TransactionService>::RecordTransactionFuture,
     >;
     type TransactionsStream = ResponseStream<
         gen::node::Transaction,
@@ -436,22 +406,6 @@ where
             }
         };
         ResponseFuture::new(service.pull_blocks_to_tip(&block_ids))
-    }
-
-    fn propose_transactions(
-        &mut self,
-        _request: Request<gen::node::ProposeTransactionsRequest>,
-    ) -> Self::ProposeTransactionsFuture {
-        let _service = try_get_service!(self.tx_service);
-        unimplemented!()
-    }
-
-    fn record_transaction(
-        &mut self,
-        _request: Request<gen::node::RecordTransactionRequest>,
-    ) -> Self::RecordTransactionFuture {
-        let _service = try_get_service!(self.tx_service);
-        unimplemented!()
     }
 
     fn transactions(

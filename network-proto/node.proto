@@ -54,42 +54,6 @@ message Transaction {
 // Request message for method SubscribeToBlocks.
 message BlockSubscriptionRequest {}
 
-// Request message for method ProposeTransactions.
-message ProposeTransactionsRequest {
-    // Identifiers of transactions to check.
-    repeated bytes ids = 1;
-}
-
-// Response message for method ProposeTransactions.
-message ProposeTransactionsResponse {
-    message Item {
-        // Identifier of the transaction.
-        bytes id = 1;
-        // Status showing whether the transaction is known to the node.
-        codes.TransactionStatus status = 2;
-    }
-
-    // Information on the transactions identified in the request.
-    // The items shall be in the same order as the `ids` fields in the
-    // ProposeTransactionsRequest message.
-    repeated Item items = 1;
-}
-
-// Request message for method RecordTransaction.
-message RecordTransactionRequest {
-    // The serialized transaction content.
-    bytes transaction = 1;
-}
-
-// Response message for the RecordTransaction method.
-message RecordTransactionResponse {
-    // The result of processing the transaction by the node.
-    codes.TransactionAcceptance result = 1;
-    // The ID of the transaction, when successful (result < 100)
-    bytes id = 2;
-}
-
-
 // Gossip message.
 message GossipMessage {
     message NodeId {
@@ -121,8 +85,6 @@ service Node {
     rpc SubscribeToBlocks (BlockSubscriptionRequest) returns (stream Header);
 
     rpc PullBlocksToTip (PullBlocksToTipRequest) returns (stream Block);
-    rpc ProposeTransactions (ProposeTransactionsRequest) returns (ProposeTransactionsResponse);
-    rpc RecordTransaction (RecordTransactionRequest) returns (RecordTransactionResponse);
 
     rpc Gossip (GossipMessage) returns (GossipMessage);
     rpc AnnounceBlock (Header) returns (AnnounceBlockResponse);
