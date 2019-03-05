@@ -10,6 +10,8 @@ pub mod error;
 pub mod client;
 pub mod server;
 
+pub mod gossip;
+
 /// Common type definitions generated from protobuf.
 pub mod codes {
     include!(concat!(env!("OUT_DIR"), "/iohk.chain.codes.rs"));
