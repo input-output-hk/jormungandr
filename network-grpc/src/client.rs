@@ -1,6 +1,6 @@
 use crate::gen::{self, node::client as gen_client};
 
-use chain_core::property::{self, Deserialize, FromStr, Serialize};
+use chain_core::property;
 use network_core::{
     client::{self as core_client, block::BlockService, gossip::GossipService},
     gossip::{Gossip, NodeId},
@@ -26,7 +26,7 @@ use std::{error, fmt, marker::PhantomData};
 pub mod chain_bounds {
     use chain_core::property;
 
-    pub trait BlockId: property::BlockId
+    pub trait BlockId: property::BlockId + property::Deserialize
     // Alas, bounds on associated types of the supertrait do not have
     // the desired effect:
     // https://github.com/rust-lang/rust/issues/32722
@@ -64,17 +64,33 @@ pub mod chain_bounds {
     }
 }
 
+/// A trait that fixes the types of protocol entities and the bounds
+/// these entities need to satisfy for the protocol implementation.
+pub trait ProtocolConfig {
+    type BlockId: chain_bounds::BlockId;
+    type BlockDate: chain_bounds::BlockDate;
+    type Header: chain_bounds::Header + property::Header<Id = Self::BlockId, Date = Self::BlockDate>;
+    type Block: chain_bounds::Block
+        + property::Block<Id = Self::BlockId, Date = Self::BlockDate>
+        + property::HasHeader<Header = Self::Header>;
+    type Gossip: Gossip;
+}
+
 /// gRPC client for blockchain node.
 ///
 /// This type encapsulates the gRPC protocol client that can
 /// make connections and perform requests towards other blockchain nodes.
-pub struct Client<T, G, S, E> {
+pub struct Client<C, S, E>
+where
+    C: ProtocolConfig,
+{
     node: gen_client::Node<Connection<S, E, BoxBody>>,
-    _phantom: PhantomData<(T, G)>,
+    _phantom: PhantomData<(C::Block, C::Gossip)>,
 }
 
-impl<T, G, S, E> Client<T, G, S, E>
+impl<C, S, E> Client<C, S, E>
 where
+    C: ProtocolConfig,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
 {
@@ -289,14 +305,14 @@ mod stream {
 
 fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_client::Error>
 where
-    T: Deserialize,
+    T: property::Deserialize,
 {
     T::deserialize(&mut buf).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
 }
 
 fn serialize_to_bytes<T>(x: &T) -> Vec<u8>
 where
-    T: Serialize,
+    T: property::Serialize,
 {
     let mut v = Vec::new();
     x.serialize(&mut v).unwrap();
@@ -305,7 +321,7 @@ where
 
 fn serialize_to_vec<T>(values: &[T]) -> Vec<Vec<u8>>
 where
-    T: Serialize,
+    T: property::Serialize,
 {
     values
         .iter()
@@ -386,25 +402,23 @@ impl FromResponse<gen::node::AnnounceTransactionResponse> for () {
     }
 }
 
-impl<T, G, S, E> BlockService for Client<T, G, S, E>
+impl<C, S, E> BlockService for Client<C, S, E>
 where
-    T: chain_bounds::Block,
-    T::Header: property::Header<Id = T::Id, Date = T::Date>,
+    C: ProtocolConfig,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
-    <T as property::Block>::Date: FromStr,
 {
-    type Block = T;
-    type TipFuture = ResponseFuture<T::Header, gen::node::TipResponse>;
+    type Block = C::Block;
+    type TipFuture = ResponseFuture<C::Header, gen::node::TipResponse>;
 
-    type PullBlocksToTipStream = ResponseStream<T, gen::node::Block>;
-    type PullBlocksToTipFuture = ResponseStreamFuture<T, gen::node::Block>;
+    type PullBlocksToTipStream = ResponseStream<C::Block, gen::node::Block>;
+    type PullBlocksToTipFuture = ResponseStreamFuture<C::Block, gen::node::Block>;
 
-    type GetBlocksStream = ResponseStream<T, gen::node::Block>;
-    type GetBlocksFuture = ResponseStreamFuture<T, gen::node::Block>;
+    type GetBlocksStream = ResponseStream<C::Block, gen::node::Block>;
+    type GetBlocksFuture = ResponseStreamFuture<C::Block, gen::node::Block>;
 
-    type BlockSubscription = ResponseStream<T::Header, gen::node::Header>;
-    type BlockSubscriptionFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
+    type BlockSubscription = ResponseStream<C::Header, gen::node::Header>;
+    type BlockSubscriptionFuture = ResponseStreamFuture<C::Header, gen::node::Header>;
     type AnnounceBlockFuture = ResponseFuture<(), gen::node::AnnounceBlockResponse>;
 
     fn tip(&mut self) -> Self::TipFuture {
@@ -413,7 +427,7 @@ where
         ResponseFuture::new(future)
     }
 
-    fn pull_blocks_to_tip(&mut self, from: &[T::Id]) -> Self::PullBlocksToTipFuture {
+    fn pull_blocks_to_tip(&mut self, from: &[C::BlockId]) -> Self::PullBlocksToTipFuture {
         let from = serialize_to_vec(from);
         let req = gen::node::PullBlocksToTipRequest { from };
         let future = self.node.pull_blocks_to_tip(Request::new(req));
@@ -426,7 +440,7 @@ where
         ResponseStreamFuture::new(future)
     }
 
-    fn announce_block(&mut self, header: T::Header) -> Self::AnnounceBlockFuture {
+    fn announce_block(&mut self, header: C::Header) -> Self::AnnounceBlockFuture {
         let content = serialize_to_bytes(&header);
         let req = gen::node::Header { content };
         let future = self.node.announce_block(Request::new(req));
@@ -434,16 +448,16 @@ where
     }
 }
 
-impl<T, G, S, E> GossipService for Client<T, G, S, E>
+impl<C, S, E> GossipService for Client<C, S, E>
 where
-    G: Gossip,
+    C: ProtocolConfig,
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
 {
-    type Gossip = G;
-    type GossipFuture = ResponseFuture<(NodeId, G), gen::node::GossipMessage>;
+    type Gossip = C::Gossip;
+    type GossipFuture = ResponseFuture<(NodeId, C::Gossip), gen::node::GossipMessage>;
 
-    fn gossip(&mut self, node_id: &NodeId, gossip: &G) -> Self::GossipFuture {
+    fn gossip(&mut self, node_id: &NodeId, gossip: &C::Gossip) -> Self::GossipFuture {
         let content = node_id.to_bytes();
         let node_id = Some(gen::node::gossip_message::NodeId { content });
         let content = serialize_to_bytes(&gossip);
