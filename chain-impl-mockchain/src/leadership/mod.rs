@@ -1,6 +1,7 @@
 use crate::key::{PrivateKey, PublicKey};
 use crate::stake::StakePoolId;
 use chain_core::property;
+use ouroboros_praos::vrf::{ProvenOutputSeed, SecretKey};
 
 pub mod bft;
 pub mod genesis;
@@ -10,7 +11,7 @@ pub struct LeaderId(pub PublicKey);
 
 pub enum Leader {
     BftLeader(PrivateKey),
-    GenesisPraos(PrivateKey),
+    GenesisPraos(SecretKey, PrivateKey, ProvenOutputSeed),
 }
 
 impl chain_core::property::LeaderId for LeaderId {}

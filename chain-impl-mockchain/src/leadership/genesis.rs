@@ -329,7 +329,9 @@ impl LeaderSelection for GenesisLeaderSelection {
 
         match &input.header.proof() {
             Proof::None => unimplemented!(),
-            Proof::GenesisPraos(_) => unimplemented!(),
+            Proof::GenesisPraos(genesis_praos_proof) => {
+                // TODO: check the proof is valid
+            }
             Proof::Bft(bft_proof) => {
                 if bft_proof.leader_id != leader {
                     return Err(Error::BlockHasInvalidLeader(
@@ -696,8 +698,13 @@ mod test {
             .iter()
             .find(|k| LeaderId::from(*k) == leader_id)
         {
+            let mut csprng: rand::OsRng = rand::OsRng::new().unwrap();
+            let key = ouroboros_praos::vrf::SecretKey::random(&mut csprng);
+            let (point, seed) = key.verifiable_output(&[][..]);
+            let scalar = ouroboros_praos::vrf::Scalar::random(&mut csprng);
+            let proof = key.proove(&scalar, point, seed);
             (
-                Leader::GenesisPraos(pool_private_key.clone()),
+                Leader::GenesisPraos(key, pool_private_key.clone(), proof),
                 BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
             )
         } else {

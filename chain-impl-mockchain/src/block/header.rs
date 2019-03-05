@@ -36,8 +36,8 @@ pub struct BftProof {
 pub struct GenesisPraosProof {
     pub(crate) vrf_public_key: vrf::PublicKey,
     pub(crate) vrf_proof: vrf::ProvenOutputSeed,
-    pub(crate) kes_public_key: PublicKey, // TODO: utilise KES' public key
-    pub(crate) kes_proof: Vec<u8>,        // TODO: utilise KES' signature (MMM)
+    pub(crate) kes_public_key: LeaderId, // TODO: utilise KES' public key
+    pub(crate) kes_proof: Signature,     // TODO: utilise KES' signature (MMM)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +70,9 @@ impl Proof {
         match self {
             Proof::None => None,
             Proof::Bft(bft_proof) => Some(bft_proof.leader_id.clone()),
-            Proof::GenesisPraos(_genesis_praos_proof) => unimplemented!(),
+            Proof::GenesisPraos(genesis_praos_proof) => {
+                Some(genesis_praos_proof.kes_public_key.clone().into())
+            }
         }
     }
 }
@@ -119,7 +121,14 @@ impl Header {
                 .leader_id
                 .0
                 .serialize_and_verify(&self.common, &bft_proof.signature),
-            Proof::GenesisPraos(_genesis_praos_proof) => unimplemented!(),
+            Proof::GenesisPraos(genesis_praos_proof) => {
+                let kes = genesis_praos_proof
+                    .kes_public_key
+                    .0
+                    .serialize_and_verify(&self.common, &genesis_praos_proof.kes_proof);
+                // TODO: add VRF verify
+                kes
+            }
         }
     }
 }
@@ -175,7 +184,23 @@ impl property::Serialize for Header {
                 bft_proof.leader_id.serialize(&mut buffered)?;
                 bft_proof.signature.serialize(&mut buffered)?;
             }
-            Proof::GenesisPraos(_genesis_praos_proof) => unimplemented!(),
+            Proof::GenesisPraos(genesis_praos_proof) => {
+                use std::io::Write;
+                {
+                    let mut buf = [0; vrf::PUBLIC_SIZE];
+                    genesis_praos_proof.vrf_public_key.to_buffer(&mut buf);
+                    buffered.write_all(&buf)?;
+                }
+                {
+                    let mut buf = [0; vrf::PROOF_SIZE];
+                    genesis_praos_proof.vrf_proof.to_bytes(&mut buf);
+                    buffered.write_all(&buf)?;
+                }
+                genesis_praos_proof
+                    .kes_public_key
+                    .serialize(&mut buffered)?;
+                genesis_praos_proof.kes_proof.serialize(&mut buffered)?;
+            }
         }
 
         buffered.fill_hole_u16(header_size_hole, buffered.buffered_len() as u16 - 2);

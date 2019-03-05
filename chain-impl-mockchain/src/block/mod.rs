@@ -62,12 +62,14 @@ impl Block {
                     signature: signature,
                 })
             }
-            Leader::GenesisPraos(private_key) => {
+            Leader::GenesisPraos(vrf_key, private_key, proven_output_seed) => {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
                 let signature = private_key.serialize_and_sign(&common);
-                Proof::Bft(BftProof {
-                    leader_id: private_key.public().into(),
-                    signature: signature,
+                Proof::GenesisPraos(GenesisPraosProof {
+                    vrf_public_key: vrf_key.public(),
+                    vrf_proof: proven_output_seed.clone(),
+                    kes_public_key: private_key.public().into(),
+                    kes_proof: signature,
                 })
             }
         };
