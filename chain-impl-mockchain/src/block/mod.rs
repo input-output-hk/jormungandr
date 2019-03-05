@@ -1,11 +1,17 @@
 //! Representation of the block in the mockchain.
-use crate::key::{Hash, PrivateKey, Signature};
-use crate::leadership::LeaderId;
-use crate::transaction::*;
+use crate::key::Hash;
+use crate::leadership::Leader;
+use crate::transaction::SignedTransaction;
 use chain_core::property;
 
+mod header;
 mod message;
 
+pub use self::header::{
+    BftProof, BlockContentHash, BlockContentSize, BlockId, BlockVersion, Common, GenesisPraosProof,
+    Header, Proof, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
+    BLOCK_VERSION_CONSENSUS_NONE,
+};
 pub use self::message::Message;
 
 pub use crate::date::{BlockDate, BlockDateParseError};
@@ -15,54 +21,62 @@ pub use crate::date::{BlockDate, BlockDateParseError};
 /// with the position of that block in the chain.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub slot_id: BlockDate, // FIXME: rename to 'date'
-    pub parent_hash: Hash,
+    pub header: Header,
 
-    pub contents: Vec<Message>,
+    pub contents: BlockContents,
 }
 
-/// `Block` is an element of the blockchain it contains multiple
-/// transaction and a reference to the parent block. Alongside
-/// with the position of that block in the chain.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SignedBlock {
-    /// Public key used to sign the block.
-    pub leader_id: LeaderId,
-    /// List of cryptographic signatures that verifies the block.
-    pub signature: Signature,
-    /// Internal block.
-    pub block: Block,
+pub struct BlockContents(Vec<Message>);
+
+impl BlockContents {
+    #[inline]
+    pub fn new(messages: Vec<Message>) -> Self {
+        BlockContents(messages)
+    }
+    #[inline]
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a Message> {
+        self.0.iter()
+    }
+    pub fn compute_hash_size(&self) -> (BlockContentHash, usize) {
+        let mut bytes = Vec::with_capacity(4096);
+
+        for message in self.iter() {
+            message.serialize(&mut bytes).unwrap();
+        }
+
+        let hash = Hash::hash_bytes(&bytes);
+        (hash, bytes.len())
+    }
 }
 
-/// The mockchain does not have a block header like in the cardano chain.
-///
-/// Instead we allow a block summary including all the metadata associated
-/// to the block that can be useful for a node to know before downloading
-/// a block from another node (for example).
-///
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SignedBlockSummary {
-    /// the relative position of the block within the blockchain
-    pub slot_id: BlockDate,
-    /// the exact position of the block within the blockchain
-    pub parent_hash: Hash,
-    /// the hash that identify this block (this is the Hash of the `Block`).
-    pub hash: Hash,
-    /// Public key used to sign the block.
-    pub leader_id: LeaderId,
-    /// the cryptographic signature that verifies the block.
-    pub signature: Signature,
-}
-
-impl SignedBlock {
+impl Block {
     /// Create a new signed block.
-    pub fn new(block: Block, pkey: &PrivateKey) -> Self {
-        use chain_core::property::Block;
-        let block_id = block.id();
-        SignedBlock {
-            leader_id: pkey.into(),
-            signature: pkey.sign(block_id.as_ref()),
-            block: block,
+    pub fn new(contents: BlockContents, common: Common, leader: &Leader) -> Self {
+        let proof = match leader {
+            Leader::BftLeader(private_key) => {
+                assert!(common.block_version == BLOCK_VERSION_CONSENSUS_BFT);
+                let signature = private_key.serialize_and_sign(&common);
+                Proof::Bft(BftProof {
+                    leader_id: private_key.public().into(),
+                    signature: signature,
+                })
+            }
+            Leader::GenesisPraos(private_key) => {
+                assert!(common.block_version == BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
+                let signature = private_key.serialize_and_sign(&common);
+                Proof::Bft(BftProof {
+                    leader_id: private_key.public().into(),
+                    signature: signature,
+                })
+            }
+        };
+        Block {
+            header: Header {
+                common: common,
+                proof: proof,
+            },
+            contents: contents,
         }
     }
 
@@ -70,211 +84,78 @@ impl SignedBlock {
     /// Return `false` if there is no such signature or
     /// if it can't be verified.
     pub fn verify(&self) -> bool {
-        use chain_core::property::Block;
-        let block_id = self.block.id();
-        self.leader_id.0.verify(block_id.as_ref(), &self.signature)
-    }
+        let header_proof = self.header.verify_proof();
 
-    /// retrieve the summary of the signed block.
-    pub fn summary(&self) -> SignedBlockSummary {
-        use chain_core::property::Block;
-        SignedBlockSummary {
-            slot_id: self.block.slot_id,
-            parent_hash: self.block.parent_hash,
-            hash: self.id(),
-            leader_id: self.leader_id.clone(),
-            signature: self.signature.clone(),
-        }
+        let (content_hash, content_size) = self.contents.compute_hash_size();
+
+        header_proof
+            && &content_hash == self.header.block_content_hash()
+            && content_size == self.header.common.block_content_size as usize
     }
 }
 
 impl property::Block for Block {
-    type Id = Hash;
+    type Id = BlockId;
     type Date = BlockDate;
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
     fn id(&self) -> Self::Id {
-        use chain_core::property::Serialize;
-        // TODO: hash creation can be much faster
-        let bytes = self
-            .serialize_as_vec()
-            .expect("expect serialisation in memory to never fail");
-        Hash::hash_bytes(&bytes)
+        use chain_core::property::Header;
+        self.header.id()
     }
 
     /// Id of the parent block.
     fn parent_id(&self) -> Self::Id {
-        self.parent_hash
+        *self.header.block_parent_hash()
     }
 
     /// Date of the block.
     fn date(&self) -> Self::Date {
-        self.slot_id
-    }
-}
-impl property::Block for SignedBlock {
-    type Id = <Block as property::Block>::Id;
-    type Date = <Block as property::Block>::Date;
-
-    /// Identifier of the block, currently the hash of the
-    /// serialized transaction.
-    fn id(&self) -> Self::Id {
-        self.block.id()
-    }
-
-    /// Id of the parent block.
-    fn parent_id(&self) -> Self::Id {
-        self.block.parent_id()
-    }
-
-    /// Date of the block.
-    fn date(&self) -> Self::Date {
-        self.block.date()
+        *self.header.block_date()
     }
 }
 
-impl property::HasHeader for SignedBlock {
-    type Header = SignedBlockSummary;
+impl property::HasHeader for Block {
+    type Header = Header;
     fn header(&self) -> Self::Header {
-        self.summary()
+        self.header.clone()
     }
 }
 
 impl property::Serialize for Block {
     type Error = std::io::Error;
 
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::Codec;
-        use std::io::Write;
-
-        let mut codec = Codec::from(writer);
-
-        codec.put_u32(self.slot_id.epoch)?;
-        codec.put_u32(self.slot_id.slot_id)?;
-        codec.write_all(self.parent_hash.as_ref())?;
-        codec.put_u16(self.contents.len() as u16)?;
-        for t in self.contents.iter() {
-            t.serialize(&mut codec)?;
-        }
-
-        Ok(())
-    }
-}
-impl property::Header for SignedBlockSummary {
-    type Id = <Block as property::Block>::Id;
-    type Date = <Block as property::Block>::Date;
-
-    fn id(&self) -> Self::Id {
-        self.hash.clone()
-    }
-    fn date(&self) -> Self::Date {
-        self.slot_id
-    }
-}
-
-impl property::Serialize for SignedBlock {
-    type Error = std::io::Error;
-
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        self.leader_id.serialize(&mut writer)?;
-        self.signature.serialize(&mut writer)?;
-        self.block.serialize(&mut writer)
-    }
-}
-impl property::Serialize for SignedBlockSummary {
-    type Error = std::io::Error;
+        self.header.serialize(&mut writer)?;
 
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::Codec;
-        use std::io::Write;
-
-        let mut codec = Codec::from(writer);
-
-        codec.put_u32(self.slot_id.epoch)?;
-        codec.put_u32(self.slot_id.slot_id)?;
-        codec.write_all(self.parent_hash.as_ref())?;
-        codec.write_all(self.hash.as_ref())?;
-        self.leader_id.serialize(&mut codec)?;
-        self.signature.serialize(&mut codec)
+        for message in self.contents.iter() {
+            message.serialize(&mut writer)?;
+        }
+        Ok(())
     }
 }
 
 impl property::Deserialize for Block {
     type Error = std::io::Error;
 
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::Codec;
-        use std::io::Read;
+    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
+        let header = Header::deserialize(&mut reader)?;
 
-        let mut codec = Codec::from(reader);
+        let mut serialized_content_size = header.common.block_content_size;
+        let mut contents = BlockContents(Vec::with_capacity(15_000));
+        while serialized_content_size > 0 {
+            let (message, message_size) = Message::deserialize(&mut reader)?;
+            contents.0.push(message);
+            dbg!(contents.0.len());
 
-        let epoch = codec.get_u32()?;
-        let slot_id = codec.get_u32()?;
-        let date = BlockDate { epoch, slot_id };
-
-        let mut hash = [0; 32];
-        codec.read_exact(&mut hash)?;
-        let hash = Hash::from(cardano::hash::Blake2b256::from(hash));
-
-        let num_messages = codec.get_u16()? as usize;
-
-        let mut block = Block {
-            slot_id: date,
-            parent_hash: hash,
-            contents: Vec::with_capacity(num_messages),
-        };
-        for _ in 0..num_messages {
-            block.contents.push(Message::deserialize(&mut codec)?);
+            serialized_content_size -= message_size as u32;
+            dbg!(serialized_content_size);
         }
 
-        Ok(block)
-    }
-}
-impl property::Deserialize for SignedBlock {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let leader_id = LeaderId::deserialize(&mut reader)?;
-        let signature = Signature::deserialize(&mut reader)?;
-        let block = Block::deserialize(&mut reader)?;
-
-        Ok(SignedBlock {
-            leader_id,
-            signature,
-            block,
-        })
-    }
-}
-impl property::Deserialize for SignedBlockSummary {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::Codec;
-        use std::io::Read;
-
-        let mut codec = Codec::from(reader);
-
-        let epoch = codec.get_u32()?;
-        let slot_id = codec.get_u32()?;
-        let slot_id = BlockDate { epoch, slot_id };
-
-        let mut parent_hash = [0; 32];
-        codec.read_exact(&mut parent_hash)?;
-        let parent_hash = Hash::from(cardano::hash::Blake2b256::from(parent_hash));
-        let mut hash = [0; 32];
-        codec.read_exact(&mut hash)?;
-        let hash = Hash::from(cardano::hash::Blake2b256::from(hash));
-
-        let leader_id = LeaderId::deserialize(&mut codec)?;
-        let signature = Signature::deserialize(&mut codec)?;
-
-        Ok(SignedBlockSummary {
-            slot_id,
-            parent_hash,
-            hash,
-            leader_id,
-            signature,
+        Ok(Block {
+            header: header,
+            contents: contents,
         })
     }
 }
@@ -282,7 +163,7 @@ impl property::Deserialize for SignedBlockSummary {
 impl property::HasTransaction for Block {
     type Transaction = SignedTransaction;
     fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
-        Box::new(self.contents.iter().filter_map(|msg| match msg {
+        Box::new(self.contents.0.iter().filter_map(|msg| match msg {
             Message::Transaction(tx) => Some(tx),
             _ => None,
         }))
@@ -292,24 +173,10 @@ impl property::HasTransaction for Block {
     where
         F: FnMut(&Self::Transaction),
     {
-        self.contents.iter().for_each(|msg| match msg {
+        self.contents.0.iter().for_each(|msg| match msg {
             Message::Transaction(tx) => f(tx),
             _ => {}
         })
-    }
-}
-
-impl property::HasTransaction for SignedBlock {
-    type Transaction = SignedTransaction;
-    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
-        self.block.transactions()
-    }
-
-    fn for_each_transaction<F>(&self, f: F)
-    where
-        F: FnMut(&Self::Transaction),
-    {
-        self.block.for_each_transaction(f)
     }
 }
 
@@ -321,64 +188,31 @@ mod test {
 
     quickcheck! {
         fn block_serialization_bijection(b: Block) -> TestResult {
+            dbg!(b.contents.0.len());
             property::testing::serialization_bijection(b)
         }
+    }
 
-        fn signed_block_serialization_bijection(b: SignedBlock) -> TestResult {
-            property::testing::serialization_bijection(b)
-        }
-
-        fn signed_block_summary_serialization_bijection(b: SignedBlockSummary) -> TestResult {
-            property::testing::serialization_bijection(b)
-        }
-
-        fn summary_is_summary_of_signed_block(block: SignedBlock) -> TestResult {
-            use chain_core::property::{Header, HasHeader, Block};
-
-            let summary = block.header();
-
-            TestResult::from_bool(
-                summary.id() == block.id() &&
-                summary.date() == block.date()
+    impl Arbitrary for BlockContents {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let len = usize::arbitrary(g) % 64;
+            BlockContents(
+                std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(len)
+                    .collect(),
             )
         }
     }
-
     impl Arbitrary for Block {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let content = BlockContents::arbitrary(g);
+            let (hash, size) = content.compute_hash_size();
+            let mut header = Header::arbitrary(g);
+            header.common.block_content_size = size as u32;
+            header.common.block_content_hash = hash;
             Block {
-                slot_id: Arbitrary::arbitrary(g),
-                parent_hash: Arbitrary::arbitrary(g),
-                contents: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-
-    impl Arbitrary for SignedBlock {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            SignedBlock {
-                block: Arbitrary::arbitrary(g),
-                leader_id: Arbitrary::arbitrary(g),
-                signature: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-    impl Arbitrary for SignedBlockSummary {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            SignedBlockSummary {
-                slot_id: Arbitrary::arbitrary(g),
-                parent_hash: Arbitrary::arbitrary(g),
-                hash: Arbitrary::arbitrary(g),
-                leader_id: Arbitrary::arbitrary(g),
-                signature: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-    impl Arbitrary for BlockDate {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            BlockDate {
-                epoch: Arbitrary::arbitrary(g),
-                slot_id: Arbitrary::arbitrary(g),
+                header: header,
+                contents: content,
             }
         }
     }

@@ -1,4 +1,4 @@
-use chain_core::property;
+use chain_core::{packer, property};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
@@ -31,73 +31,76 @@ enum MessageTag {
     Update = 7,
 }
 
-impl property::Serialize for Message {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
-        match self {
-            Message::Transaction(signed) => {
-                codec.put_u8(MessageTag::Transaction as u8)?;
-                signed.serialize(&mut codec)
-            }
-            Message::StakeKeyRegistration(signed) => {
-                codec.put_u8(MessageTag::StakeKeyRegistration as u8)?;
-                signed.serialize(&mut codec)
-            }
-            Message::StakeKeyDeregistration(signed) => {
-                codec.put_u8(MessageTag::StakeKeyDeregistration as u8)?;
-                signed.serialize(&mut codec)
-            }
-            Message::StakeDelegation(signed) => {
-                codec.put_u8(MessageTag::StakeDelegation as u8)?;
-                signed.serialize(&mut codec)
-            }
-            Message::StakePoolRegistration(signed) => {
-                codec.put_u8(MessageTag::StakePoolRegistration as u8)?;
-                signed.serialize(&mut codec)
-            }
-            Message::StakePoolRetirement(signed) => {
-                codec.put_u8(MessageTag::StakePoolRetirement as u8)?;
-                signed.serialize(&mut codec)
-            }
-            Message::Update(proposal) => {
-                codec.put_u8(MessageTag::Update as u8)?;
-                proposal.serialize(&mut codec)
-            }
-        }
-    }
+fn serialize_buffered<T, W>(
+    codec: packer::Codec<W>,
+    tag: MessageTag,
+    t: &T,
+) -> std::io::Result<packer::Codec<W>>
+where
+    T: property::Serialize<Error = std::io::Error>,
+    W: std::io::Write,
+{
+    let mut buffered = codec.buffered();
+    let hole = buffered.hole(2)?;
+    buffered.put_u8(tag as u8)?;
+    t.serialize(&mut buffered)?;
+    buffered.fill_hole_u16(hole, buffered.buffered_len() as u16 - 2);
+    buffered.into_inner()
 }
 
-impl property::Deserialize for Message {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+impl Message {
+    pub(crate) fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), std::io::Error> {
         use chain_core::packer::*;
+        let codec = Codec::from(writer);
+        let _codec = match self {
+            Message::Transaction(signed) => {
+                serialize_buffered(codec, MessageTag::Transaction, signed)?
+            }
+            Message::StakeKeyRegistration(signed) => {
+                serialize_buffered(codec, MessageTag::StakeKeyRegistration, signed)?
+            }
+            Message::StakeKeyDeregistration(signed) => {
+                serialize_buffered(codec, MessageTag::StakeKeyDeregistration, signed)?
+            }
+            Message::StakeDelegation(signed) => {
+                serialize_buffered(codec, MessageTag::StakeDelegation, signed)?
+            }
+            Message::StakePoolRegistration(signed) => {
+                serialize_buffered(codec, MessageTag::StakePoolRegistration, signed)?
+            }
+            Message::StakePoolRetirement(signed) => {
+                serialize_buffered(codec, MessageTag::StakePoolRetirement, signed)?
+            }
+            Message::Update(proposal) => serialize_buffered(codec, MessageTag::Update, proposal)?,
+        };
+        Ok(())
+    }
+
+    pub(crate) fn deserialize<R: std::io::BufRead>(
+        reader: R,
+    ) -> Result<(Self, u16), std::io::Error> {
+        use chain_core::packer::*;
+        use chain_core::property::Deserialize;
         let mut codec = Codec::from(reader);
+        let size = codec.get_u16()? + 2;
         let tag = codec.get_u8()?;
         match MessageTag::from_u8(tag) {
-            Some(MessageTag::Transaction) => Ok(Message::Transaction(
-                SignedTransaction::deserialize(&mut codec)?,
-            )),
-            Some(MessageTag::StakeKeyRegistration) => Ok(Message::StakeKeyRegistration(
-                Signed::deserialize(&mut codec)?,
-            )),
-            Some(MessageTag::StakeKeyDeregistration) => Ok(Message::StakeKeyDeregistration(
-                Signed::deserialize(&mut codec)?,
-            )),
+            Some(MessageTag::Transaction) => SignedTransaction::deserialize(&mut codec)
+                .map(|msg| (Message::Transaction(msg), size)),
+            Some(MessageTag::StakeKeyRegistration) => Signed::deserialize(&mut codec)
+                .map(|msg| (Message::StakeKeyRegistration(msg), size)),
+            Some(MessageTag::StakeKeyDeregistration) => Signed::deserialize(&mut codec)
+                .map(|msg| (Message::StakeKeyDeregistration(msg), size)),
             Some(MessageTag::StakeDelegation) => {
-                Ok(Message::StakeDelegation(Signed::deserialize(&mut codec)?))
+                Signed::deserialize(&mut codec).map(|msg| (Message::StakeDelegation(msg), size))
             }
-            Some(MessageTag::StakePoolRegistration) => Ok(Message::StakePoolRegistration(
-                Signed::deserialize(&mut codec)?,
-            )),
-            Some(MessageTag::StakePoolRetirement) => Ok(Message::StakePoolRetirement(
-                Signed::deserialize(&mut codec)?,
-            )),
-            Some(MessageTag::Update) => Ok(Message::Update(setting::UpdateProposal::deserialize(
-                &mut codec,
-            )?)),
+            Some(MessageTag::StakePoolRegistration) => Signed::deserialize(&mut codec)
+                .map(|msg| (Message::StakePoolRegistration(msg), size)),
+            Some(MessageTag::StakePoolRetirement) => {
+                Signed::deserialize(&mut codec).map(|msg| (Message::StakePoolRetirement(msg), size))
+            }
+            Some(MessageTag::Update) => setting::UpdateProposal::deserialize(&mut codec)
+                .map(|msg| (Message::Update(msg), size)),
             None => panic!("Unrecognized certificate message tag {}.", tag),
         }
     }

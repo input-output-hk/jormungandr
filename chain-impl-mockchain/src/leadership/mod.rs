@@ -8,6 +8,11 @@ pub mod genesis;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeaderId(pub PublicKey);
 
+pub enum Leader {
+    BftLeader(PrivateKey),
+    GenesisPraos(PrivateKey),
+}
+
 impl chain_core::property::LeaderId for LeaderId {}
 
 impl From<StakePoolId> for LeaderId {
@@ -19,6 +24,11 @@ impl From<StakePoolId> for LeaderId {
 impl From<&PrivateKey> for LeaderId {
     fn from(key: &PrivateKey) -> Self {
         LeaderId(key.public())
+    }
+}
+impl From<PublicKey> for LeaderId {
+    fn from(key: PublicKey) -> Self {
+        LeaderId(key)
     }
 }
 

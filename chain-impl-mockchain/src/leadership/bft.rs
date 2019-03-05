@@ -1,5 +1,5 @@
 use super::LeaderId;
-use crate::block::SignedBlock;
+use crate::block::{Block, Proof};
 use crate::update::ValueDiff;
 
 use chain_core::property::{self, LeaderSelection, Update};
@@ -50,7 +50,7 @@ impl BftLeaderSelection {
 
 impl LeaderSelection for BftLeaderSelection {
     type Update = BftSelectionDiff;
-    type Block = SignedBlock;
+    type Block = Block;
     type Error = Error;
     type LeaderId = LeaderId;
 
@@ -60,14 +60,22 @@ impl LeaderSelection for BftLeaderSelection {
         let mut update = <Self::Update as property::Update>::empty();
 
         let date = input.date();
+        let block_version = input.header.block_version();
         let new_leader = self.get_leader_at(date)?;
 
-        if new_leader != input.leader_id {
-            return Err(Error::BlockHasInvalidLeader(
-                new_leader,
-                input.leader_id.clone(),
-            ));
+        match &input.header.proof() {
+            Proof::None => unimplemented!(),
+            Proof::GenesisPraos(_) => unimplemented!(),
+            Proof::Bft(bft_proof) => {
+                if bft_proof.leader_id != new_leader {
+                    return Err(Error::BlockHasInvalidLeader(
+                        new_leader,
+                        bft_proof.leader_id.clone(),
+                    ));
+                }
+            }
         }
+
         if !input.verify() {
             return Err(Error::BlockSignatureIsInvalid);
         }
