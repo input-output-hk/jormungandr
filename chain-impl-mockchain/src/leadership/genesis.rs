@@ -5,8 +5,8 @@ use crate::date::Epoch;
 use crate::ledger::Ledger;
 use crate::setting::{self, Settings};
 use crate::stake::*;
-use crate::transaction::Value;
 use crate::update::ValueDiff;
+use crate::value::Value;
 
 use chain_core::property::{self, Block, LeaderSelection, Update};
 

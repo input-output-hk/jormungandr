@@ -1,6 +1,6 @@
 use crate::key::{PrivateKey, PublicKey};
 use crate::ledger::Ledger;
-use crate::transaction::Value;
+use crate::value::Value;
 use chain_addr::Kind;
 use chain_core::property;
 use std::collections::{HashMap, HashSet};

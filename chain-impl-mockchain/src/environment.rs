@@ -11,6 +11,7 @@ use crate::key::*;
 use crate::ledger::*;
 use crate::transaction::*;
 use crate::update::TransactionsDiff;
+use crate::value::*;
 
 /// Helper structure that keeps the ledger together with key-pairs
 /// that participate in communication. By having such type it's
