@@ -16,19 +16,6 @@ use tower_util::MakeService;
 
 use std::{error, fmt, marker::PhantomData};
 
-/// A trait that fixes the types of protocol entities and the bounds
-/// these entities need to satisfy for the protocol implementation.
-pub trait ProtocolConfig {
-    type BlockId: property::BlockId + property::Deserialize;
-    type BlockDate: property::BlockDate + property::FromStr;
-    type Header: property::Header<Id = Self::BlockId, Date = Self::BlockDate>
-        + property::Deserialize;
-    type Block: property::Block<Id = Self::BlockId, Date = Self::BlockDate>
-        + property::HasHeader<Header = Self::Header>
-        + property::Deserialize;
-    type Gossip: Gossip;
-}
-
 /// Traits setting additional bounds for blockchain entities
 /// that need to be satisfied for the protocol implementation.
 ///
@@ -39,7 +26,7 @@ pub trait ProtocolConfig {
 pub mod chain_bounds {
     use chain_core::property;
 
-    pub trait BlockId: property::BlockId
+    pub trait BlockId: property::BlockId + property::Deserialize
     // Alas, bounds on associated types of the supertrait do not have
     // the desired effect:
     // https://github.com/rust-lang/rust/issues/32722
@@ -75,6 +62,18 @@ pub mod chain_bounds {
         <T as property::HasHeader>::Header: Header,
     {
     }
+}
+
+/// A trait that fixes the types of protocol entities and the bounds
+/// these entities need to satisfy for the protocol implementation.
+pub trait ProtocolConfig {
+    type BlockId: chain_bounds::BlockId;
+    type BlockDate: chain_bounds::BlockDate;
+    type Header: chain_bounds::Header + property::Header<Id = Self::BlockId, Date = Self::BlockDate>;
+    type Block: chain_bounds::Block
+        + property::Block<Id = Self::BlockId, Date = Self::BlockDate>
+        + property::HasHeader<Header = Self::Header>;
+    type Gossip: Gossip;
 }
 
 /// gRPC client for blockchain node.
