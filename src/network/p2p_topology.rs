@@ -2,14 +2,14 @@
 //!
 
 use poldercast::topology::{Cyclon, Module, Rings, Topology, Vicinity};
+use poldercast::Subscription;
 pub use poldercast::{Address, Id, InterestLevel, Node};
-use poldercast::{Subscription, Topic};
 use std::collections::BTreeMap;
 
 use std::sync::{Arc, RwLock};
 
-pub const NEW_TRANSACTIONS_TOPIC: Topic = Topic::new([0; 16]);
-pub const NEW_BLOCKS_TOPIC: Topic = Topic::new([1; 16]);
+pub const NEW_TRANSACTIONS_TOPIC: u32 = 0u32;
+pub const NEW_BLOCKS_TOPIC: u32 = 1u32;
 
 /// object holding the P2pTopology of the Node
 #[derive(Clone)]
@@ -64,9 +64,12 @@ impl P2pTopology {
 }
 
 pub fn add_transaction_subscription(node: &mut Node, interest_level: InterestLevel) {
-    node.add_subscription(Subscription::new(NEW_TRANSACTIONS_TOPIC, interest_level));
+    node.add_subscription(Subscription::new(
+        NEW_TRANSACTIONS_TOPIC.into(),
+        interest_level,
+    ));
 }
 
 pub fn add_block_subscription(node: &mut Node, interest_level: InterestLevel) {
-    node.add_subscription(Subscription::new(NEW_BLOCKS_TOPIC, interest_level));
+    node.add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
 }
