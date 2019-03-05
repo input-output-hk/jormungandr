@@ -54,7 +54,10 @@ exe-common      = { path = "cardano-deps/exe-common" }
 cardano-storage = { path = "cardano-deps/storage" }
 poldercast = "0.2.0"
 storage-units   = { path = "cardano-deps/storage-units" }
-tower-service = { git = "https://github.com/tower-rs/tower" }
+tower-service = "0.2"
+
+[patch."https://github.com/tower-rs/tower"]
+tower-service = "0.2"
 
 [dependencies.actix-web]
 version = "0.7.18"
