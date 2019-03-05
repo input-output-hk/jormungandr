@@ -5,14 +5,15 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
 use generic_array::GenericArray;
 use rand::{CryptoRng, Rng};
 use sha2::Digest;
 use sha2::Sha512;
+use std::hash::{Hash, Hasher};
 
 use super::dleq;
-
-pub use curve25519_dalek::scalar::Scalar;
+use crate::key::PublicKeyError;
 
 type Point = RistrettoPoint;
 
@@ -23,36 +24,57 @@ pub struct SecretKey {
     public: Point,
 }
 
+impl AsRef<[u8]> for SecretKey {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
 /// VRF Public Key
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PublicKey(Point);
+#[derive(Clone, PartialEq, Eq)]
+pub struct PublicKey(Point, CompressedRistretto);
+
+impl Hash for PublicKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_bytes().hash(state)
+    }
+}
+impl AsRef<[u8]> for PublicKey {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
 
 /// VRF Output (Point)
 ///
 /// This is used to create an output generator tweaked by the VRF.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct OutputSeed(Point);
 
 /// VRF Proof of generation
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct ProvenOutputSeed {
     u: OutputSeed,
     dleq_proof: dleq::Proof,
 }
 
-pub const PROOF_SIZE: usize = 96;
-const SECRET_SIZE: usize = 32;
-pub const PUBLIC_SIZE: usize = 32;
+pub(super) const PROOF_SIZE: usize = 96;
+pub(super) const SECRET_SIZE: usize = 32;
+pub(super) const PUBLIC_SIZE: usize = 32;
 
 impl SecretKey {
     /// Create a new random secret key
-    pub fn random<T: Rng + CryptoRng>(rng: &mut T) -> Self {
-        let sk = Scalar::random(rng);
+    pub fn random<T: Rng + CryptoRng>(mut rng: T) -> Self {
+        let sk = Scalar::random(&mut rng);
         let pk = RISTRETTO_BASEPOINT_POINT * sk;
         SecretKey {
             secret: sk,
             public: pk,
         }
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        self.secret.as_bytes()
     }
 
     /// Serialize the secret key in binary form
@@ -133,14 +155,24 @@ impl SecretKey {
 
     /// Get the public key associated with a secret key
     pub fn public(&self) -> PublicKey {
-        PublicKey(self.public.clone())
+        PublicKey(self.public.clone(), self.public.compress())
     }
 }
 
 impl PublicKey {
-    pub fn from_bytes(input: &[u8]) -> Option<Self> {
-        let pk = CompressedRistretto::from_slice(&input).decompress()?;
-        Some(PublicKey(pk))
+    pub fn from_bytes(input: &[u8]) -> Result<Self, PublicKeyError> {
+        if input.len() != PUBLIC_SIZE {
+            return Err(PublicKeyError::SizeInvalid);
+        }
+        let ristretto = CompressedRistretto::from_slice(&input);
+        match ristretto.decompress() {
+            None => Err(PublicKeyError::StructureInvalid),
+            Some(pk) => Ok(PublicKey(pk, ristretto)),
+        }
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        self.1.as_bytes()
     }
 
     pub fn to_buffer(&self, output: &mut [u8]) {

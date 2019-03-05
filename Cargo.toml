@@ -3,6 +3,7 @@ members = [
     "imhamt",
     "chain-core",
     "chain-addr",
+    "chain-crypto",
     "chain-storage",
     "chain-storage-sqlite",
     "chain-impl-mockchain",
@@ -15,7 +16,6 @@ members = [
     "storage-units",
     "storage",
     "cardano-c",
-    "ouroboros-praos",
     "exe-common",
 ]
 
