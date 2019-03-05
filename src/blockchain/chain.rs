@@ -19,6 +19,42 @@ pub struct State<B: BlockConfig> {
     pub leaders: B::Leader,
 }
 
+impl<B> State<B>
+where
+    B: BlockConfig,
+    <B::Ledger as property::Ledger>::Update: Clone,
+    <B::Settings as property::Settings>::Update: Clone,
+    <B::Leader as property::LeaderSelection>::Update: Clone,
+{
+    fn apply_block(
+        &mut self,
+        block: &B::Block,
+    ) -> (
+        <B::Leader as property::LeaderSelection>::Update,
+        <B::Ledger as property::Ledger>::Update,
+        <B::Settings as property::Settings>::Update,
+    ) {
+        use chain_core::property::{LeaderSelection, Ledger, Settings};
+
+        // FIXME: deadlock risk. But this issue will go away
+        // when we merge the states.
+
+        let leadership_diff = self.leaders.diff(&block).unwrap();
+
+        let mut ledger = self.ledger.write().unwrap();
+        let ledger_diff = { ledger.diff(block.transactions()).unwrap() };
+
+        let mut settings = self.settings.write().unwrap();
+        let setting_diff = settings.diff(&block).unwrap();
+
+        self.leaders.apply(leadership_diff.clone()).unwrap();
+        ledger.apply(ledger_diff.clone()).unwrap();
+        settings.apply(setting_diff.clone()).unwrap();
+
+        (leadership_diff, ledger_diff, setting_diff)
+    }
+}
+
 pub struct Blockchain<B: BlockConfig> {
     pub genesis_data: B::GenesisData,
 
@@ -71,13 +107,30 @@ impl State<Mockchain> {
 
 impl Blockchain<Mockchain> {
     pub fn new(genesis_data: GenesisData, storage: &std::path::PathBuf) -> Self {
-        let state = State::new(&genesis_data);
+        let mut state = State::new(&genesis_data);
+
         std::fs::create_dir_all(storage).unwrap();
         let mut sqlite = storage.clone();
         sqlite.push("blocks.sqlite");
+
+        let storage = SQLiteBlockStore::new(sqlite.to_str().unwrap());
+
+        if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG).unwrap() {
+            debug!("restoring state at tip {}", tip_hash);
+
+            // FIXME: should restore from serialized chain state once we have it.
+            for info in storage
+                .iterate_range(&<Mockchain as BlockConfig>::BlockHash::zero(), &tip_hash)
+                .unwrap()
+            {
+                let info = info.unwrap();
+                state.apply_block(&storage.get_block(&info.block_hash).unwrap().0);
+            }
+        }
+
         Blockchain {
             genesis_data: genesis_data,
-            storage: Arc::new(RwLock::new(SQLiteBlockStore::new(sqlite.to_str().unwrap()))),
+            storage: Arc::new(RwLock::new(storage)),
             state: state,
             change_log: Vec::default(),
             unconnected_blocks: BTreeMap::default(),
@@ -111,7 +164,7 @@ where
 
     /// Handle a block whose ancestors are on disk.
     fn handle_connected_block(&mut self, block_hash: B::BlockHash, block: B::Block) {
-        use chain_core::property::{Block, LeaderSelection, Ledger, Settings};
+        use chain_core::property::{Block, Settings};
 
         let current_tip = self.state.settings.read().unwrap().tip();
 
@@ -121,23 +174,11 @@ where
         // way to check that.
         if block_hash != current_tip {
             if current_tip == block.parent_id() {
-                // FIXME: deadlock risk. But this issue will go away
-                // when we merge the states.
-
-                let leadership_diff = self.state.leaders.diff(&block).unwrap();
-
-                let mut ledger = self.state.ledger.write().unwrap();
-                let ledger_diff = { ledger.diff(block.transactions()).unwrap() };
-
-                let mut settings = self.state.settings.write().unwrap();
-                let setting_diff = settings.diff(&block).unwrap();
-
-                self.state.leaders.apply(leadership_diff.clone()).unwrap();
-                ledger.apply(ledger_diff.clone()).unwrap();
-                settings.apply(setting_diff.clone()).unwrap();
+                let (leadership_diff, ledger_diff, setting_diff) = self.state.apply_block(&block);
 
                 self.change_log
                     .push((leadership_diff, ledger_diff, setting_diff));
+
                 let mut storage = self.storage.write().unwrap();
                 storage.put_block(&block).unwrap();
                 storage
