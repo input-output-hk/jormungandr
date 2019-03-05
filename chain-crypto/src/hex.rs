@@ -1,5 +1,4 @@
 //! simple implementation of hexadecimal encoding and decoding
-use std::{fmt, result};
 
 const ALPHABET: &'static [u8] = b"0123456789abcdef";
 

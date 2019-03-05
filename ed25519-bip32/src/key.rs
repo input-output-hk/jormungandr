@@ -70,6 +70,16 @@ impl XPrv {
         Ok(XPrv(bytes))
     }
 
+    pub fn from_slice_verified(bytes: &[u8]) -> Result<Self, PrivateKeyError> {
+        if bytes.len() != XPRV_SIZE {
+            return Err(PrivateKeyError::LengthInvalid(bytes.len()));
+        }
+
+        let mut buf = [0u8; XPRV_SIZE];
+        buf[..].clone_from_slice(bytes);
+        XPrv::from_bytes_verified(buf)
+    }
+
     /// Create a `XPrv` from the given slice. This slice must be of size `XPRV_SIZE`
     /// otherwise it will return `Err`.
     ///

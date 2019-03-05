@@ -5,6 +5,7 @@
 extern crate test;
 
 extern crate cryptoxide;
+extern crate ed25519_bip32;
 extern crate rand_core;
 
 pub mod algorithms;

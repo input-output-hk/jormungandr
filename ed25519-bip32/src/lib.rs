@@ -15,5 +15,5 @@ mod signature;
 mod bench;
 
 pub use derivation::DerivationScheme;
-pub use key::{XPrv, XPub, XPRV_SIZE, XPUB_SIZE};
-pub use signature::Signature;
+pub use key::{PrivateKeyError, PublicKeyError, XPrv, XPub, XPRV_SIZE, XPUB_SIZE};
+pub use signature::{Signature, SignatureError, SIGNATURE_SIZE};

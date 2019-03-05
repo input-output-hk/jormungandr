@@ -60,6 +60,12 @@ impl fmt::Display for PublicKeyError {
 impl std::error::Error for SecretKeyError {}
 impl std::error::Error for PublicKeyError {}
 
+impl<A: AsymmetricKey> AsRef<[u8]> for PublicKey<A> {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl<A: AsymmetricKey> SecretKey<A> {
     pub fn to_public(&self) -> PublicKey<A> {
         PublicKey(<A as AsymmetricKey>::compute_public(&self.0))
@@ -67,11 +73,17 @@ impl<A: AsymmetricKey> SecretKey<A> {
     pub fn from_binary(data: &[u8]) -> Result<Self, SecretKeyError> {
         Ok(SecretKey(<A as AsymmetricKey>::secret_from_binary(data)?))
     }
+    pub fn from_bytes(data: &[u8]) -> Result<Self, SecretKeyError> {
+        Self::from_binary(data)
+    }
 }
 
 impl<A: AsymmetricKey> PublicKey<A> {
     pub fn from_binary(data: &[u8]) -> Result<Self, PublicKeyError> {
         Ok(PublicKey(<A as AsymmetricKey>::public_from_binary(data)?))
+    }
+    pub fn from_bytes(data: &[u8]) -> Result<Self, PublicKeyError> {
+        Self::from_binary(data)
     }
 }
 

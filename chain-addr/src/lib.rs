@@ -25,8 +25,7 @@
 use bech32::{Bech32, FromBase32, ToBase32};
 use std::string::ToString;
 
-// temporary re-use just to define
-use cardano::redeem::{self, PublicKey};
+use chain_crypto::{Ed25519, Ed25519Bip32, PublicKey, PublicKeyError};
 
 use chain_core::property::{self, Serialize as PropertySerialize};
 
@@ -51,9 +50,9 @@ pub enum Discrimination {
 /// * Account address : an ed25519 stake public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
-    Single(PublicKey),
-    Group(PublicKey, PublicKey),
-    Account(PublicKey),
+    Single(PublicKey<Ed25519Bip32>),
+    Group(PublicKey<Ed25519Bip32>, PublicKey<Ed25519>),
+    Account(PublicKey<Ed25519>),
 }
 
 /// Kind Type of an address
@@ -127,8 +126,8 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
-impl From<redeem::Error> for Error {
-    fn from(_: redeem::Error) -> Error {
+impl From<PublicKeyError> for Error {
+    fn from(_: PublicKeyError) -> Error {
         Error::InvalidAddress
     }
 }
@@ -149,17 +148,17 @@ impl Address {
         let discr = get_discrimination_value(bytes[0]);
         let kind = match get_kind_value(bytes[0]) {
             ADDR_KIND_SINGLE => {
-                let spending = PublicKey::from_slice(&bytes[1..])?;
+                let spending = PublicKey::from_binary(&bytes[1..])?;
                 Kind::Single(spending)
             }
             ADDR_KIND_GROUP => {
-                let spending = PublicKey::from_slice(&bytes[1..33])?;
-                let group = PublicKey::from_slice(&bytes[33..])?;
+                let spending = PublicKey::from_binary(&bytes[1..33])?;
+                let group = PublicKey::from_binary(&bytes[33..])?;
 
                 Kind::Group(spending, group)
             }
             ADDR_KIND_ACCOUNT => {
-                let stake_key = PublicKey::from_slice(&bytes[1..])?;
+                let stake_key = PublicKey::from_binary(&bytes[1..])?;
                 Kind::Account(stake_key)
             }
             _ => unreachable!(),
@@ -209,11 +208,11 @@ impl Address {
         unsafe { String::from_utf8_unchecked(out) }
     }
 
-    pub fn public_key<'a>(&'a self) -> &'a PublicKey {
+    pub fn public_key<'a>(&'a self) -> Option<&'a PublicKey<Ed25519Bip32>> {
         match self.1 {
-            Kind::Single(ref pk) => pk,
-            Kind::Group(ref pk, _) => pk,
-            Kind::Account(ref pk) => pk,
+            Kind::Single(ref pk) => Some(pk),
+            Kind::Group(ref pk, _) => Some(pk),
+            Kind::Account(ref pk) => None,
         }
     }
 }
@@ -382,22 +381,22 @@ impl property::Deserialize for Address {
             ADDR_KIND_SINGLE => {
                 let mut bytes = [0u8; 32];
                 codec.read_exact(&mut bytes)?;
-                let spending = PublicKey::from_bytes(bytes);
+                let spending = PublicKey::from_bytes(&bytes[..])?;
                 Kind::Single(spending)
             }
             ADDR_KIND_GROUP => {
                 let mut bytes = [0u8; 32];
                 codec.read_exact(&mut bytes)?;
-                let spending = PublicKey::from_bytes(bytes);
+                let spending = PublicKey::from_bytes(&bytes[..]);
                 let mut bytes = [0u8; 32];
                 codec.read_exact(&mut bytes)?;
-                let group = PublicKey::from_bytes(bytes);
+                let group = PublicKey::from_bytes(bytes)?;
                 Kind::Group(spending, group)
             }
             ADDR_KIND_ACCOUNT => {
                 let mut bytes = [0u8; 32];
                 codec.read_exact(&mut bytes)?;
-                let stake_key = PublicKey::from_bytes(bytes);
+                let stake_key = PublicKey::from_bytes(bytes)?;
                 Kind::Account(stake_key)
             }
             _ => unreachable!(),
@@ -479,12 +478,12 @@ mod test {
 
     #[test]
     fn unit_tests() {
-        let fake_spendingkey = PublicKey::from_slice(&[
+        let fake_spendingkey: PublicKey<Ed25519Bip32> = PublicKey::from_binary(&[
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         ])
         .unwrap();
-        let fake_groupkey = PublicKey::from_slice(&[
+        let fake_groupkey: PublicKey<Ed25519> = PublicKey::from_binary(&[
             41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
             63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
         ])
@@ -518,7 +517,7 @@ mod test {
         {
             let addr = Address(
                 Discrimination::Test,
-                Kind::Group(fake_groupkey, fake_spendingkey),
+                Kind::Group(fake_spendingkey, fake_groupkey),
             );
             property_serialize_deserialize(&addr);
             property_readable(&addr);
@@ -527,7 +526,7 @@ mod test {
         }
 
         {
-            let addr = Address(Discrimination::Test, Kind::Account(fake_spendingkey));
+            let addr = Address(Discrimination::Test, Kind::Account(fake_groupkey));
             property_serialize_deserialize(&addr);
             property_readable(&addr);
             expected_base32(
