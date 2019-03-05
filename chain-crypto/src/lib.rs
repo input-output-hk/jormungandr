@@ -14,6 +14,6 @@ mod key;
 mod sign;
 
 pub use key::{AsymmetricKey, PublicKey, PublicKeyError, SecretKey, SecretKeyError};
-pub use sign::Signature;
+pub use sign::{Signature, SignatureError, SigningAlgorithm, Verification};
 
 pub use algorithms::*;
