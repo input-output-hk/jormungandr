@@ -1,6 +1,6 @@
 use crate::gen::{self, node::client as gen_client};
 
-use chain_core::property::{self, Deserialize, Serialize};
+use chain_core::property;
 use network_core::{
     client::{self as core_client, block::BlockService, gossip::GossipService},
     gossip::{Gossip, NodeId},
@@ -306,14 +306,14 @@ mod stream {
 
 fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_client::Error>
 where
-    T: Deserialize,
+    T: property::Deserialize,
 {
     T::deserialize(&mut buf).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
 }
 
 fn serialize_to_bytes<T>(x: &T) -> Vec<u8>
 where
-    T: Serialize,
+    T: property::Serialize,
 {
     let mut v = Vec::new();
     x.serialize(&mut v).unwrap();
@@ -322,7 +322,7 @@ where
 
 fn serialize_to_vec<T>(values: &[T]) -> Vec<Vec<u8>>
 where
-    T: Serialize,
+    T: property::Serialize,
 {
     values
         .iter()
