@@ -5,7 +5,7 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
+pub use curve25519_dalek::scalar::Scalar;
 use generic_array::GenericArray;
 use rand::{CryptoRng, Rng};
 use sha2::Digest;

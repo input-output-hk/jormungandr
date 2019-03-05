@@ -11,6 +11,8 @@ use crate::value::Value;
 use chain_core::property::Block as _;
 use chain_core::property::{self, LeaderSelection, Update};
 
+use chain_crypto::algorithms::vrf::vrf;
+
 use rand::{Rng, SeedableRng};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -699,9 +701,9 @@ mod test {
             .find(|k| LeaderId::from(*k) == leader_id)
         {
             let mut csprng: rand::OsRng = rand::OsRng::new().unwrap();
-            let key = ouroboros_praos::vrf::SecretKey::random(&mut csprng);
+            let key = vrf::SecretKey::random(&mut csprng);
             let (point, seed) = key.verifiable_output(&[][..]);
-            let scalar = ouroboros_praos::vrf::Scalar::random(&mut csprng);
+            let scalar = vrf::Scalar::random(&mut csprng);
             let proof = key.proove(&scalar, point, seed);
             (
                 Leader::GenesisPraos(key, pool_private_key.clone(), proof),
