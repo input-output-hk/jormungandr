@@ -11,8 +11,6 @@ where
 {
     pool: r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>,
     dummy: std::marker::PhantomData<B>,
-    in_txn: bool,
-    pending_changes: usize,
 }
 
 impl<B> SQLiteBlockStore<B>
@@ -55,55 +53,25 @@ where
             )
             .unwrap();
 
+        /*
+        connection
+            .execute("pragma synchronous = off", rusqlite::NO_PARAMS)
+            .unwrap();
+        */
+
+        connection
+            .execute_batch("pragma journal_mode = WAL")
+            .unwrap();
+
         SQLiteBlockStore {
             pool,
             dummy: std::marker::PhantomData,
-            in_txn: false,
-            pending_changes: 0,
-        }
-    }
-
-    fn flush(&mut self) {
-        if self.in_txn {
-            //eprintln!("flushing sqlite...");
-            self.pool
-                .get()
-                .unwrap()
-                .execute("commit", rusqlite::NO_PARAMS)
-                .unwrap();
-            self.in_txn = false;
-        }
-    }
-
-    fn do_change(&mut self) {
-        if self.in_txn {
-            self.pending_changes += 1;
-            if self.pending_changes > 100000 {
-                self.flush();
-            }
-        } else {
-            self.pool
-                .get()
-                .unwrap()
-                .execute("begin transaction", rusqlite::NO_PARAMS)
-                .unwrap();
-            self.in_txn = true;
-            self.pending_changes = 1;
         }
     }
 }
 
 fn blob_to_hash<Id: BlockId>(blob: Vec<u8>) -> Id {
     Id::deserialize(&blob[..]).unwrap()
-}
-
-impl<B> Drop for SQLiteBlockStore<B>
-where
-    B: Block,
-{
-    fn drop(&mut self) {
-        self.flush();
-    }
 }
 
 impl<B> BlockStore for SQLiteBlockStore<B>
@@ -113,13 +81,11 @@ where
     type Block = B;
 
     fn put_block_internal(&mut self, block: &B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
-        self.do_change();
+        let mut conn = self.pool.get().unwrap();
 
-        // FIXME: wrap the next two statements in a transaction
+        let tx = conn.transaction().unwrap();
 
-        let conn = self.pool.get().unwrap();
-
-        conn.prepare_cached("insert into Blocks (hash, block) values(?, ?)")
+        tx.prepare_cached("insert into Blocks (hash, block) values(?, ?)")
             .unwrap()
             .execute(&[
                 &block_info.block_hash.serialize_as_vec().unwrap()[..],
@@ -142,7 +108,7 @@ where
                 None => (Value::Null, Value::Null),
             };
 
-        conn
+        tx
             .prepare_cached("insert into BlockInfo (hash, depth, parent, fast_distance, fast_hash) values(?, ?, ?, ?, ?)")
             .unwrap()
             .execute(&[
@@ -152,6 +118,8 @@ where
                 fast_distance,
                 fast_hash,
             ]).unwrap();
+
+        tx.commit().unwrap();
 
         Ok(())
     }
