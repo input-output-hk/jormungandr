@@ -84,14 +84,6 @@ impl XPrv {
 
     /// Get the associated `XPub`
     ///
-    /// ```
-    /// use ::hdwallet::{XPrv, XPub, Seed};
-    ///
-    /// let seed = Seed::from_bytes([0;32]) ;
-    /// let xprv = XPrv::generate_from_seed(&seed);
-    ///
-    /// let xpub = xprv.public();
-    /// ```
     pub fn public(&self) -> XPub {
         let pk = mk_public_key(&self.as_ref()[0..64]);
         let mut out = [0u8; XPUB_SIZE];
@@ -102,16 +94,6 @@ impl XPrv {
 
     /// sign the given message with the `XPrv`.
     ///
-    /// ```
-    /// use cardano::hdwallet::{XPrv, XPub, Signature, Seed};
-    ///
-    /// let seed = Seed::from_bytes([0;32]) ;
-    /// let xprv = XPrv::generate_from_seed(&seed);
-    /// let msg = b"Some message...";
-    ///
-    /// let signature : Signature<String> = xprv.sign(msg);
-    /// assert!(xprv.verify(msg, &signature));
-    /// ```
     pub fn sign<T>(&self, message: &[u8]) -> Signature<T> {
         Signature::from_bytes(signature_extended(message, &self.as_ref()[0..64]))
     }
@@ -182,17 +164,6 @@ impl XPub {
 
     /// verify a signature
     ///
-    /// ```
-    /// use ed25519_bip32::{XPrv, XPub, Seed, Signature};
-    ///
-    /// let seed = Seed::from_bytes([0;32]);
-    /// let xprv = XPrv::from_slice()(&seed);
-    /// let xpub = xprv.public();
-    /// let msg = b"Some message...";
-    ///
-    /// let signature : Signature<String> = xprv.sign(msg);
-    /// assert!(xpub.verify(msg, &signature));
-    /// ```
     pub fn verify<T>(&self, message: &[u8], signature: &Signature<T>) -> bool {
         ed25519::verify(message, &self.as_ref()[0..32], signature.as_ref())
     }
