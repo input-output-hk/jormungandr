@@ -12,6 +12,7 @@ pub use chain_core::property::{
     Block, BlockDate, BlockId, Deserialize, FromStr, HasHeader, HasTransaction, Header,
     LeaderSelection, Ledger, Serialize, Settings, Transaction, TransactionId, Update,
 };
+pub use network_core::gossip::Gossip;
 
 pub mod genesis_data;
 pub mod mock;
@@ -38,6 +39,7 @@ pub trait BlockConfig {
     type Settings: Settings<Block = Self::Block>;
     type Leader: LeaderSelection<Block = Self::Block>;
     type Update: Update;
+    type Gossip: Gossip + Clone + Send + Sync + Debug;
 
     type NodeSigningKey;
 

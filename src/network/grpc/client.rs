@@ -31,11 +31,13 @@ where
         .map_err(move |err| {
             error!("Error connecting to peer {}: {:?}", addr, err);
         })
-        .and_then(|mut client: Client<B::Block, TcpStream, DefaultExecutor>| {
-            client.subscribe_to_blocks().map_err(move |err| {
-                error!("SubscribeToBlocks request failed: {:?}", err);
-            })
-        })
+        .and_then(
+            |mut client: Client<B::Block, B::Gossip, TcpStream, DefaultExecutor>| {
+                client.subscribe_to_blocks().map_err(move |err| {
+                    error!("SubscribeToBlocks request failed: {:?}", err);
+                })
+            },
+        )
         .and_then(|_subscription| {
             // FIXME: do something to it
             future::ok(())
