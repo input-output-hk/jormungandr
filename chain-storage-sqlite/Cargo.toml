@@ -12,7 +12,9 @@ edition = "2018"
 [dependencies]
 chain-core = { path = "../chain-core" }
 chain-storage = { path = "../chain-storage" }
-sqlite = { version = "0.24" }
+rusqlite = { version = "0.16" }
+r2d2 = { version = "0.8" }
+r2d2_sqlite = { version = "0.8" }
 
 [dev-dependencies]
 cardano = { path = "../cardano" }
