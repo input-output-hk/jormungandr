@@ -13,7 +13,7 @@ mod kes;
 mod key;
 mod sign;
 
-pub use key::{PublicKey, SecretKey};
+pub use key::{AsymmetricKey, PublicKey, SecretKey};
 pub use sign::Signature;
 
 pub use algorithms::*;
