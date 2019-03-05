@@ -2,7 +2,7 @@ use crate::{hex, key};
 use std::fmt;
 use std::marker::PhantomData;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verification {
     Failed,
     Success,
@@ -18,7 +18,7 @@ impl From<bool> for Verification {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SignatureError {
     SizeInvalid,
     StructureInvalid,
@@ -52,6 +52,16 @@ impl<A: VerificationAlgorithm, T> fmt::Display for Signature<T, A> {
         write!(f, "{}", hex::encode(self.signdata.as_ref()))
     }
 }
+impl fmt::Display for SignatureError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SignatureError::SizeInvalid => write!(f, "Invalid Signature size"),
+            SignatureError::StructureInvalid => write!(f, "Invalid Signature structure"),
+        }
+    }
+}
+
+impl std::error::Error for SignatureError {}
 
 impl<A: VerificationAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
     pub fn verify(
