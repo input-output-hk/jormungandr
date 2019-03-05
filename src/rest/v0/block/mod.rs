@@ -29,10 +29,11 @@ fn handle_request(
     block_id_hex: Path<String>,
 ) -> Result<Bytes, ActixError> {
     let block_id = parse_block_hash(&block_id_hex)?;
+    let blockchain = blockchain.read().unwrap();
     let block = blockchain
+        .storage
         .read()
         .unwrap()
-        .storage
         .get_block(&block_id)
         .map_err(|e| ErrorBadRequest(e))?
         .0

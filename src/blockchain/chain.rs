@@ -1,9 +1,10 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
-use chain_core::property::{self, HasTransaction};
+use chain_core::property::{self, BlockId, HasTransaction};
 use chain_impl_mockchain::{leadership, ledger, setting};
-use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStore};
+use chain_storage::{error as storage, store::BlockStore};
+use chain_storage_sqlite::SQLiteBlockStore;
 
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
 
@@ -22,7 +23,7 @@ pub struct Blockchain<B: BlockConfig> {
     pub genesis_data: B::GenesisData,
 
     /// the storage for the overall blockchains (blocks)
-    pub storage: MemoryBlockStore<B::Block>,
+    pub storage: Arc<RwLock<SQLiteBlockStore<B::Block>>>,
 
     pub state: State<B>,
 
@@ -69,11 +70,14 @@ impl State<Mockchain> {
 }
 
 impl Blockchain<Mockchain> {
-    pub fn new(genesis_data: GenesisData) -> Self {
+    pub fn new(genesis_data: GenesisData, storage: &std::path::PathBuf) -> Self {
         let state = State::new(&genesis_data);
+        std::fs::create_dir_all(storage).unwrap();
+        let mut sqlite = storage.clone();
+        sqlite.push("blocks.sqlite");
         Blockchain {
             genesis_data: genesis_data,
-            storage: MemoryBlockStore::new(),
+            storage: Arc::new(RwLock::new(SQLiteBlockStore::new(sqlite.to_str().unwrap()))),
             state: state,
             change_log: Vec::default(),
             unconnected_blocks: BTreeMap::default(),
@@ -93,7 +97,7 @@ where
         let block_hash = block.id();
         let parent_hash = block.parent_id();
 
-        if self.block_exists(&parent_hash)? {
+        if parent_hash == B::BlockHash::zero() || self.block_exists(&parent_hash)? {
             self.handle_connected_block(block_hash, block);
         } else {
             self.sollicit_block(&parent_hash);
@@ -119,11 +123,13 @@ where
             if current_tip == block.parent_id() {
                 // FIXME: deadlock risk. But this issue will go away
                 // when we merge the states.
-                let mut ledger = self.state.ledger.write().unwrap();
-                let mut settings = self.state.settings.write().unwrap();
 
                 let leadership_diff = self.state.leaders.diff(&block).unwrap();
+
+                let mut ledger = self.state.ledger.write().unwrap();
                 let ledger_diff = { ledger.diff(block.transactions()).unwrap() };
+
+                let mut settings = self.state.settings.write().unwrap();
                 let setting_diff = settings.diff(&block).unwrap();
 
                 self.state.leaders.apply(leadership_diff.clone()).unwrap();
@@ -132,8 +138,9 @@ where
 
                 self.change_log
                     .push((leadership_diff, ledger_diff, setting_diff));
-                self.storage.put_block(&block).unwrap();
-                self.storage
+                let mut storage = self.storage.write().unwrap();
+                storage.put_block(&block).unwrap();
+                storage
                     .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
                     .unwrap();
             } else {
@@ -150,7 +157,7 @@ impl<B: BlockConfig> Blockchain<B> {
         // sure that this invariant is preserved everywhere
         // (e.g. loose block GC should delete blocks in reverse
         // order).
-        self.storage.block_exists(block_hash)
+        self.storage.read().unwrap().block_exists(block_hash)
     }
 
     /// Request a missing block from the network.

@@ -44,7 +44,8 @@ where
 {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
-    match blockchain.storage.get_block(&tip) {
+    let storage = blockchain.storage.read().unwrap();
+    match storage.get_block(&tip) {
         Err(err) => Err(Error::failed(format!(
             "Cannot read block '{}': {}",
             tip, err
@@ -71,7 +72,7 @@ where
     let mut checkpoints = checkpoints
         .iter()
         .filter_map(
-            |checkpoint| match blockchain.storage.get_block(&checkpoint) {
+            |checkpoint| match blockchain.storage.read().unwrap().get_block(&checkpoint) {
                 Err(_) => None,
                 Ok((blk, _)) => Some((blk.date(), checkpoint)),
             },
@@ -87,11 +88,20 @@ where
 
         /* Send headers up to the maximum. */
         let mut headers = vec![];
-        for x in blockchain.storage.iterate_range(&from, &to)? {
+        for x in blockchain
+            .storage
+            .read()
+            .unwrap()
+            .iterate_range(&from, &to)?
+        {
             match x {
                 Err(err) => return Err(Error::from(err)),
                 Ok(info) => {
-                    let (block, _) = blockchain.storage.get_block(&info.block_hash)?;
+                    let (block, _) = blockchain
+                        .storage
+                        .read()
+                        .unwrap()
+                        .get_block(&info.block_hash)?;
                     headers.push(block.header());
                     if headers.len() >= MAX_HEADERS {
                         break;
@@ -115,9 +125,18 @@ fn handle_get_blocks_range<B: BlockConfig>(
     let blockchain = blockchain.read().unwrap();
 
     // FIXME: include the from block
-    for x in blockchain.storage.iterate_range(&from, &to)? {
+    for x in blockchain
+        .storage
+        .read()
+        .unwrap()
+        .iterate_range(&from, &to)?
+    {
         let info = x?;
-        let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
+        let (blk, _) = blockchain
+            .storage
+            .read()
+            .unwrap()
+            .get_block(&info.block_hash)?;
         reply.send(blk);
     }
 
@@ -132,7 +151,7 @@ fn handle_get_blocks<B: BlockConfig>(
     let blockchain = blockchain.read().unwrap();
 
     for id in ids.into_iter() {
-        let (blk, _) = blockchain.storage.get_block(&id)?;
+        let (blk, _) = blockchain.storage.read().unwrap().get_block(&id)?;
         reply.send(blk);
     }
 
@@ -147,7 +166,7 @@ fn handle_get_headers<B: BlockConfig>(
     let blockchain = blockchain.read().unwrap();
 
     for id in ids.into_iter() {
-        let (blk, _) = blockchain.storage.get_block(&id)?;
+        let (blk, _) = blockchain.storage.read().unwrap().get_block(&id)?;
         reply.send(blk.header());
     }
 
@@ -171,9 +190,18 @@ fn handle_pull_blocks_to_tip<B: BlockConfig>(
 
     let tip = blockchain.get_tip();
 
-    for x in blockchain.storage.iterate_range(&from, &tip)? {
+    for x in blockchain
+        .storage
+        .read()
+        .unwrap()
+        .iterate_range(&from, &tip)?
+    {
         let info = x?;
-        let (blk, _) = blockchain.storage.get_block(&info.block_hash)?;
+        let (blk, _) = blockchain
+            .storage
+            .read()
+            .unwrap()
+            .get_block(&info.block_hash)?;
         reply.send(blk);
     }
 
