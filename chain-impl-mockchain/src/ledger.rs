@@ -4,6 +4,7 @@
 use crate::error::*;
 use crate::transaction::*;
 use crate::update::TransactionsDiff;
+use crate::value::*;
 use chain_core::property;
 use std::collections::HashMap;
 

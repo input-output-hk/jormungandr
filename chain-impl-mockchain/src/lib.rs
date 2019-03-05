@@ -16,6 +16,7 @@ pub mod setting;
 pub mod stake;
 pub mod transaction;
 pub mod update;
+pub mod value;
 
 #[cfg(test)]
 mod tests {

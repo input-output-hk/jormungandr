@@ -1,11 +1,7 @@
 use crate::key::*;
+use crate::value::*;
 use chain_addr::Address;
 use chain_core::property;
-
-/// Unspent transaction value.
-#[cfg_attr(feature = "generic-serialization", derive(serde_derive::Serialize))]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Value(pub u64);
 
 /// Unspent transaction pointer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
