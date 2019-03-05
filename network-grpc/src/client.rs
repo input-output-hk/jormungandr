@@ -372,6 +372,20 @@ where
     }
 }
 
+impl FromResponse<gen::node::AnnounceBlockResponse> for () {
+    fn from_response(_res: gen::node::AnnounceBlockResponse) -> Result<(), core_client::Error> {
+        Ok(())
+    }
+}
+
+impl FromResponse<gen::node::AnnounceTransactionResponse> for () {
+    fn from_response(
+        _res: gen::node::AnnounceTransactionResponse,
+    ) -> Result<(), core_client::Error> {
+        Ok(())
+    }
+}
+
 impl<T, G, S, E> BlockService for Client<T, G, S, E>
 where
     T: chain_bounds::Block,
@@ -391,6 +405,7 @@ where
 
     type BlockSubscription = ResponseStream<T::Header, gen::node::Header>;
     type BlockSubscriptionFuture = ResponseStreamFuture<T::Header, gen::node::Header>;
+    type AnnounceBlockFuture = ResponseFuture<(), gen::node::AnnounceBlockResponse>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
@@ -409,6 +424,13 @@ where
         let req = gen::node::BlockSubscriptionRequest {};
         let future = self.node.subscribe_to_blocks(Request::new(req));
         ResponseStreamFuture::new(future)
+    }
+
+    fn announce_block(&mut self, header: T::Header) -> Self::AnnounceBlockFuture {
+        let content = serialize_to_bytes(&header);
+        let req = gen::node::Header { content };
+        let future = self.node.announce_block(Request::new(req));
+        ResponseFuture::new(future)
     }
 }
 

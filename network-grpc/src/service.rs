@@ -1,11 +1,9 @@
 use crate::gen;
 
-use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction, TransactionId};
+use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction};
 use network_core::{
     gossip::{Gossip, NodeId},
-    server::{
-        self, block::BlockService, gossip::GossipService, transaction::TransactionService, Node,
-    },
+    server::{block::BlockService, gossip::GossipService, transaction::TransactionService, Node},
 };
 
 use futures::prelude::*;
@@ -256,6 +254,18 @@ where
     }
 }
 
+impl IntoResponse<gen::node::AnnounceBlockResponse> for () {
+    fn into_response(self) -> Result<gen::node::AnnounceBlockResponse, tower_grpc::Status> {
+        Ok(gen::node::AnnounceBlockResponse {})
+    }
+}
+
+impl IntoResponse<gen::node::AnnounceTransactionResponse> for () {
+    fn into_response(self) -> Result<gen::node::AnnounceTransactionResponse, tower_grpc::Status> {
+        Ok(gen::node::AnnounceTransactionResponse {})
+    }
+}
+
 impl<H> IntoResponse<gen::node::Header> for H
 where
     H: Header + Serialize,
@@ -273,26 +283,6 @@ where
     fn into_response(self) -> Result<gen::node::Transaction, tower_grpc::Status> {
         let content = serialize_to_bytes(self)?;
         Ok(gen::node::Transaction { content })
-    }
-}
-
-impl<I> IntoResponse<gen::node::ProposeTransactionsResponse>
-    for server::transaction::ProposeTransactionsResponse<I>
-where
-    I: TransactionId + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::ProposeTransactionsResponse, tower_grpc::Status> {
-        unimplemented!();
-    }
-}
-
-impl<I> IntoResponse<gen::node::RecordTransactionResponse>
-    for server::transaction::RecordTransactionResponse<I>
-where
-    I: TransactionId + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::RecordTransactionResponse, tower_grpc::Status> {
-        unimplemented!();
     }
 }
 
@@ -348,14 +338,6 @@ where
         Self::SubscribeToBlocksStream,
         <<T as Node>::BlockService as BlockService>::BlockSubscriptionFuture,
     >;
-    type ProposeTransactionsFuture = ResponseFuture<
-        gen::node::ProposeTransactionsResponse,
-        <<T as Node>::TransactionService as TransactionService>::ProposeTransactionsFuture,
-    >;
-    type RecordTransactionFuture = ResponseFuture<
-        gen::node::RecordTransactionResponse,
-        <<T as Node>::TransactionService as TransactionService>::RecordTransactionFuture,
-    >;
     type TransactionsStream = ResponseStream<
         gen::node::Transaction,
         <<T as Node>::TransactionService as TransactionService>::GetTransactionsStream,
@@ -367,6 +349,14 @@ where
     type GossipFuture = ResponseFuture<
         gen::node::GossipMessage,
         <<T as Node>::GossipService as GossipService>::MessageFuture,
+    >;
+    type AnnounceBlockFuture = ResponseFuture<
+        gen::node::AnnounceBlockResponse,
+        <<T as Node>::BlockService as BlockService>::AnnounceBlockFuture,
+    >;
+    type AnnounceTransactionFuture = ResponseFuture<
+        gen::node::AnnounceTransactionResponse,
+        <<T as Node>::TransactionService as TransactionService>::AnnounceTransactionFuture,
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
@@ -418,22 +408,6 @@ where
         ResponseFuture::new(service.pull_blocks_to_tip(&block_ids))
     }
 
-    fn propose_transactions(
-        &mut self,
-        _request: Request<gen::node::ProposeTransactionsRequest>,
-    ) -> Self::ProposeTransactionsFuture {
-        let _service = try_get_service!(self.tx_service);
-        unimplemented!()
-    }
-
-    fn record_transaction(
-        &mut self,
-        _request: Request<gen::node::RecordTransactionRequest>,
-    ) -> Self::RecordTransactionFuture {
-        let _service = try_get_service!(self.tx_service);
-        unimplemented!()
-    }
-
     fn transactions(
         &mut self,
         req: Request<gen::node::TransactionIds>,
@@ -446,6 +420,31 @@ where
             }
         };
         ResponseFuture::new(service.get_transactions(&tx_ids))
+    }
+
+    fn announce_block(&mut self, req: Request<gen::node::Header>) -> Self::AnnounceBlockFuture {
+        let service = try_get_service!(self.block_service);
+        let header = match deserialize_bytes(&req.get_ref().content) {
+            Ok(header) => header,
+            Err(status) => {
+                return ResponseFuture::error(status);
+            }
+        };
+        ResponseFuture::new(service.announce_block(&header))
+    }
+
+    fn announce_transaction(
+        &mut self,
+        req: Request<gen::node::TransactionIds>,
+    ) -> Self::AnnounceTransactionFuture {
+        let service = try_get_service!(self.tx_service);
+        let tx_ids = match deserialize_vec(&req.get_ref().id) {
+            Ok(tx_ids) => tx_ids,
+            Err(status) => {
+                return ResponseFuture::error(status);
+            }
+        };
+        ResponseFuture::new(service.announce_transaction(&tx_ids))
     }
 
     /// Work with gossip message.

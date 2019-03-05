@@ -69,4 +69,13 @@ pub trait BlockService {
     /// The client can use the stream that the returned future resolves to
     /// as a long-lived subscription handle.
     fn subscribe_to_blocks(&mut self) -> Self::BlockSubscriptionFuture;
+
+    /// Type of an asynchronous futures returned by method `announce_block`
+    type AnnounceBlockFuture: Future<Item = (), Error = Error>;
+
+    /// Announce block to the remote peer.
+    fn announce_block(
+        &mut self,
+        header: <Self::Block as HasHeader>::Header,
+    ) -> Self::AnnounceBlockFuture;
 }
