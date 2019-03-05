@@ -1,7 +1,7 @@
 mod ed25519;
 mod ed25519_bip32;
 mod fakemmm;
-mod vrf;
+pub mod vrf;
 
 pub use ed25519::Ed25519;
 pub use ed25519_bip32::Ed25519Bip32;

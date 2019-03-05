@@ -1,7 +1,7 @@
 use crate::key::{PrivateKey, PublicKey};
 use crate::stake::StakePoolId;
 use chain_core::property;
-use ouroboros_praos::vrf::{ProvenOutputSeed, SecretKey};
+use chain_crypto::algorithms::vrf::vrf::{ProvenOutputSeed, SecretKey};
 
 pub mod bft;
 pub mod genesis;

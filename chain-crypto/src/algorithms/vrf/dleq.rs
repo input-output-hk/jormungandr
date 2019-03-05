@@ -5,7 +5,7 @@ use sha2::{Digest, Sha512};
 type Point = RistrettoPoint;
 
 /// Proof of discrete logarithm equivalence
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Proof {
     c: Challenge,
     z: Scalar,
@@ -48,7 +48,7 @@ pub struct DLEQ<'a> {
     pub h2: &'a RistrettoPoint,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Challenge(Scalar);
 
 fn challenge(h1: &Point, h2: &Point, a1: &Point, a2: &Point) -> Challenge {

@@ -7,7 +7,7 @@ extern crate test;
 extern crate cryptoxide;
 extern crate rand_core;
 
-mod algorithms;
+pub mod algorithms;
 mod hex;
 mod kes;
 mod key;

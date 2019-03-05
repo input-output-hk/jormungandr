@@ -3,7 +3,7 @@ use chain_core::property;
 use crate::date::BlockDate;
 use crate::key::{Hash, PublicKey, Signature};
 use crate::leadership::LeaderId;
-use ouroboros_praos::vrf;
+use chain_crypto::algorithms::vrf::vrf;
 
 pub type HeaderHash = Hash;
 pub type BlockContentHash = Hash;

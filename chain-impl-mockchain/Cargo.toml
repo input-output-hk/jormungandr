@@ -20,7 +20,7 @@ serde_derive = { version = "^1.0", optional = true }
 cardano = { path = "../cardano" }
 chain-core = { path = "../chain-core" }
 chain-addr = { path = "../chain-addr" }
-ouroboros-praos = { path = "../ouroboros-praos" }
+chain-crypto = { path = "../chain-crypto" }
 rand = "0.6"
 
 [dev-dependencies]

@@ -31,7 +31,7 @@ impl AsRef<[u8]> for SecretKey {
 }
 
 /// VRF Public Key
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey(Point, CompressedRistretto);
 
 impl Hash for PublicKey {
@@ -48,19 +48,19 @@ impl AsRef<[u8]> for PublicKey {
 /// VRF Output (Point)
 ///
 /// This is used to create an output generator tweaked by the VRF.
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputSeed(Point);
 
 /// VRF Proof of generation
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenOutputSeed {
     u: OutputSeed,
     dleq_proof: dleq::Proof,
 }
 
-pub(super) const PROOF_SIZE: usize = 96;
-pub(super) const SECRET_SIZE: usize = 32;
-pub(super) const PUBLIC_SIZE: usize = 32;
+pub const PROOF_SIZE: usize = 96;
+pub const SECRET_SIZE: usize = 32;
+pub const PUBLIC_SIZE: usize = 32;
 
 impl SecretKey {
     /// Create a new random secret key

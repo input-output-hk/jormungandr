@@ -1,5 +1,5 @@
 mod dleq;
-mod vrf;
+pub mod vrf;
 
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
 use rand_core::{CryptoRng, RngCore};
