@@ -1,5 +1,5 @@
 use chain_addr::AddressReadable;
-use chain_impl_mockchain::transaction::Value;
+use chain_impl_mockchain::value::Value;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;

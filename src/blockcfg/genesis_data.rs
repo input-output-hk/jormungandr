@@ -3,7 +3,8 @@ use cardano::util::hex;
 use chain_addr::AddressReadable;
 use chain_impl_mockchain::{
     key,
-    transaction::{self, Output, UtxoPointer, Value},
+    transaction::{self, Output, UtxoPointer},
+    value::Value,
 };
 
 use serde;

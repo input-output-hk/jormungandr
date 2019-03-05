@@ -1,6 +1,9 @@
 use chain_addr::Address;
-use chain_impl_mockchain::key::Hash;
-use chain_impl_mockchain::transaction::{Output, UtxoPointer, Value};
+use chain_impl_mockchain::{
+    key::Hash,
+    transaction::{Output, UtxoPointer},
+    value::Value,
+};
 
 #[derive(Serialize)]
 pub struct Utxo {
