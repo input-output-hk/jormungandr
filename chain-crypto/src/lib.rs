@@ -13,8 +13,10 @@ mod hex;
 mod kes;
 mod key;
 mod sign;
+mod hash;
 
 pub use key::{AsymmetricKey, PublicKey, PublicKeyError, SecretKey, SecretKeyError};
 pub use sign::{Signature, SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 
 pub use algorithms::*;
+pub use hash::Blake2b256;
