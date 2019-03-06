@@ -245,7 +245,10 @@ pub mod test {
         }
     }
 
-    impl<A: SigningAlgorithm, T: property::Serialize + Arbitrary> Arbitrary for Signed<T, A> {
+    impl<A: SigningAlgorithm + 'static, T: property::Serialize + Arbitrary> Arbitrary for Signed<T, A>
+    where
+        A::Signature: Send,
+    {
         fn arbitrary<G>(g: &mut G) -> Self
         where
             G: Gen,

@@ -205,15 +205,6 @@ mod test {
     use chain_crypto::SigningAlgorithm;
     use quickcheck::{Arbitrary, Gen};
 
-    impl<T: Arbitrary, A: SigningAlgorithm> Arbitrary for Signed<T, A> {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Signed {
-                data: Arbitrary::arbitrary(g),
-                sig: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-
     impl Arbitrary for StakeKeyRegistration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             StakeKeyRegistration {
