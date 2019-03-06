@@ -11,12 +11,10 @@ pub fn create_handler(
     blockchain: BlockchainR<Mockchain>,
 ) -> impl Fn(&str) -> App<BlockchainR<Mockchain>> + Send + Sync + Clone + 'static {
     move |prefix: &str| {
-        let full_prefix = format!("{}/v0/block", prefix);
+        let path = format!("{}/v0/block/{{block_id}}/next_id", prefix);
         App::with_state(blockchain.clone())
-            .filter(PathPredicate::new(&full_prefix, "[^/]+/next_id"))
-            .resource(&format!("{}/{{block_id}}/next_id", full_prefix), |r| {
-                r.get().with(handle_request)
-            })
+            .filter(PathPredicate::for_pattern(&path))
+            .resource(&path, |r| r.get().with(handle_request))
     }
 }
 
