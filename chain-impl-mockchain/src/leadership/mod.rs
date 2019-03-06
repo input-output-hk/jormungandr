@@ -8,7 +8,7 @@ pub mod bft;
 pub mod genesis;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LeaderId(pub PublicKey<Ed25519>);
+pub struct LeaderId(pub(crate) PublicKey<Ed25519>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PublicLeader {
