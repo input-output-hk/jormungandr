@@ -418,12 +418,19 @@ pub mod testing {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
-    fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey {
+    fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey<Ed25519> {
         let mut bytes = [0; 32];
         for byte in bytes.iter_mut() {
             *byte = u8::arbitrary(g);
         }
-        PublicKey::from_bytes(bytes)
+        PublicKey::from_binary(&bytes).unwrap()
+    }
+    fn arbitrary_extended_public_key<G: Gen>(g: &mut G) -> PublicKey<Ed25519Extended> {
+        let mut bytes = [0; 32];
+        for byte in bytes.iter_mut() {
+            *byte = u8::arbitrary(g);
+        }
+        PublicKey::from_binary(&bytes).unwrap()
     }
 
     impl Arbitrary for KindType {
@@ -445,8 +452,10 @@ pub mod testing {
                 Discrimination::Production
             };
             let kind = match KindType::arbitrary(g) {
-                KindType::Single => Kind::Single(arbitrary_public_key(g)),
-                KindType::Group => Kind::Group(arbitrary_public_key(g), arbitrary_public_key(g)),
+                KindType::Single => Kind::Single(arbitrary_extended_public_key(g)),
+                KindType::Group => {
+                    Kind::Group(arbitrary_extended_public_key(g), arbitrary_public_key(g))
+                }
                 KindType::Account => Kind::Account(arbitrary_public_key(g)),
             };
             Address(discrimination, kind)
