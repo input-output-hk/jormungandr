@@ -19,6 +19,7 @@ mod kes;
 mod key;
 mod sign;
 
+pub use kes::KeyEvolvingSignatureAlgorithm;
 pub use key::{AsymmetricKey, KeyPair, PublicKey, PublicKeyError, SecretKey, SecretKeyError};
 pub use sign::{Signature, SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 
