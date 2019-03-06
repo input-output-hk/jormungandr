@@ -3,7 +3,7 @@ use crate::ledger::Ledger;
 use crate::value::Value;
 use chain_addr::Kind;
 use chain_core::property;
-use chain_crypto::{Ed25519, PublicKey, SecretKey};
+use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
 use std::collections::{HashMap, HashSet};
 
 /// A structure that keeps track of stake keys and stake pools.
@@ -238,16 +238,16 @@ pub struct StakePoolInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StakeKeyId(PublicKey<Ed25519>);
+pub struct StakeKeyId(pub(crate) PublicKey<Ed25519Extended>);
 
-impl From<PublicKey<Ed25519>> for StakeKeyId {
-    fn from(key: PublicKey<Ed25519>) -> Self {
+impl From<PublicKey<Ed25519Extended>> for StakeKeyId {
+    fn from(key: PublicKey<Ed25519Extended>) -> Self {
         StakeKeyId(key)
     }
 }
 
-impl From<&SecretKey<Ed25519>> for StakeKeyId {
-    fn from(key: &SecretKey<Ed25519>) -> Self {
+impl From<&SecretKey<Ed25519Extended>> for StakeKeyId {
+    fn from(key: &SecretKey<Ed25519Extended>) -> Self {
         StakeKeyId(key.to_public())
     }
 }
@@ -267,10 +267,10 @@ impl property::Deserialize for StakeKeyId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StakePoolId(pub PublicKey<Ed25519>);
+pub struct StakePoolId(pub(crate) PublicKey<Ed25519Extended>);
 
-impl From<&SecretKey<Ed25519>> for StakePoolId {
-    fn from(key: &SecretKey<Ed25519>) -> Self {
+impl From<&SecretKey<Ed25519Extended>> for StakePoolId {
+    fn from(key: &SecretKey<Ed25519Extended>) -> Self {
         StakePoolId(key.to_public())
     }
 }

@@ -454,7 +454,9 @@ impl LeaderSelection for GenesisLeaderSelection {
                 }
 
                 Message::StakePoolRegistration(reg) => {
-                    if !reg.data.pool_id.0.serialize_and_verify(&reg.data, &reg.sig) {
+                    if crate::key::verify_signature(&reg.sig, &reg.data.pool_id.0, &reg.data)
+                        == chain_crypto::Verification::Failed
+                    {
                         return Err(Error::StakePoolRegistrationPoolSigIsInvalid);
                     }
 
@@ -476,7 +478,7 @@ impl LeaderSelection for GenesisLeaderSelection {
 
                 Message::StakePoolRetirement(ret) => {
                     if self.delegation_state.stake_pool_exists(&ret.data.pool_id) {
-                        if crate::key::verify_signature(&ret.sig, &ret.data.0, &reg.data)
+                        if crate::key::verify_signature(&ret.sig, &ret.data.pool_id.0, &ret.data)
                             == chain_crypto::Verification::Failed
                         {
                             return Err(Error::StakePoolRetirementSigIsInvalid);

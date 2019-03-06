@@ -51,7 +51,7 @@ pub enum Discrimination {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
     Single(PublicKey<Ed25519Extended>),
-    Group(PublicKey<Ed25519Extended>, PublicKey<Ed25519>),
+    Group(PublicKey<Ed25519Extended>, PublicKey<Ed25519Extended>),
     Account(PublicKey<Ed25519>),
 }
 
@@ -453,9 +453,10 @@ pub mod testing {
             };
             let kind = match KindType::arbitrary(g) {
                 KindType::Single => Kind::Single(arbitrary_extended_public_key(g)),
-                KindType::Group => {
-                    Kind::Group(arbitrary_extended_public_key(g), arbitrary_public_key(g))
-                }
+                KindType::Group => Kind::Group(
+                    arbitrary_extended_public_key(g),
+                    arbitrary_extended_public_key(g),
+                ),
                 KindType::Account => Kind::Account(arbitrary_public_key(g)),
             };
             Address(discrimination, kind)
@@ -500,7 +501,12 @@ mod test {
             25, 26, 27, 28, 29, 30, 31, 32,
         ])
         .unwrap();
-        let fake_groupkey: PublicKey<Ed25519> = PublicKey::from_binary(&[
+        let fake_groupkey: PublicKey<Ed25519Extended> = PublicKey::from_binary(&[
+            41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
+            63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
+        ])
+        .unwrap();
+        let fake_accountkey: PublicKey<Ed25519> = PublicKey::from_binary(&[
             41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
             63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
         ])
@@ -546,7 +552,7 @@ mod test {
         }
 
         {
-            let addr = Address(Discrimination::Test, Kind::Account(fake_groupkey));
+            let addr = Address(Discrimination::Test, Kind::Account(fake_accountkey));
             property_serialize_deserialize(&addr);
             property_readable(&addr);
             expected_base32(
