@@ -9,9 +9,8 @@ use network_core::{
 use futures::future::Executor;
 use tokio::io;
 use tokio::prelude::*;
-use tower_grpc::{BoxBody, Code, Request, Status, Streaming};
+use tower_grpc::{codegen::server::tower::Service, BoxBody, Code, Request, Status, Streaming};
 use tower_h2::client::{Background, Connect, ConnectError, Connection};
-use tower_service::Service;
 use tower_util::MakeService;
 
 use std::{error, fmt, marker::PhantomData};

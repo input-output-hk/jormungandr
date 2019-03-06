@@ -2,7 +2,7 @@ use futures::Poll;
 use tokio::net::tcp::{self, TcpStream};
 #[cfg(unix)]
 use tokio::net::unix::{self, UnixStream};
-use tower_service::Service;
+use tower_grpc::codegen::server::tower::Service;
 
 use std::{io, net::SocketAddr};
 
