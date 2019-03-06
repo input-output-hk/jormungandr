@@ -98,6 +98,9 @@ impl<A: AsymmetricKey> From<SecretKey<A>> for KeyPair<A> {
 }
 
 impl<A: AsymmetricKey> SecretKey<A> {
+    pub fn generate<T: RngCore + CryptoRng>(rng: T) -> Self {
+        SecretKey(A::generate(rng))
+    }
     pub fn to_public(&self) -> PublicKey<A> {
         PublicKey(<A as AsymmetricKey>::compute_public(&self.0))
     }
