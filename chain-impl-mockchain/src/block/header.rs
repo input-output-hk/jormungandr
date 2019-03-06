@@ -40,7 +40,7 @@ pub struct BftProof {
 }
 
 #[derive(Debug, Clone)]
-pub struct BftSignature(Signature<HeaderToSign, Ed25519>);
+pub struct BftSignature(pub(crate) Signature<HeaderToSign, Ed25519>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisPraosProof {
@@ -51,7 +51,7 @@ pub struct GenesisPraosProof {
 }
 
 #[derive(Debug, Clone)]
-pub struct KESSignature(Signature<HeaderToSign, FakeMMM>);
+pub struct KESSignature(pub(crate) Signature<HeaderToSign, FakeMMM>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Proof {

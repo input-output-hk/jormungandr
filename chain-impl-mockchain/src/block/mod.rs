@@ -1,16 +1,17 @@
 //! Representation of the block in the mockchain.
-use crate::key::Hash;
+use crate::key::{make_signature, make_signature_update, Hash};
 use crate::leadership::Leader;
 use crate::transaction::SignedTransaction;
 use chain_core::property;
+use chain_crypto::Verification;
 
 mod header;
 mod message;
 
 pub use self::header::{
-    BftProof, BlockContentHash, BlockContentSize, BlockId, BlockVersion, Common, GenesisPraosProof,
-    Header, Proof, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
-    BLOCK_VERSION_CONSENSUS_NONE,
+    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, Common,
+    GenesisPraosProof, Header, KESSignature, Proof, BLOCK_VERSION_CONSENSUS_BFT,
+    BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
 };
 pub use self::message::Message;
 
@@ -52,24 +53,24 @@ impl BlockContents {
 
 impl Block {
     /// Create a new signed block.
-    pub fn new(contents: BlockContents, common: Common, leader: &Leader) -> Self {
+    pub fn new(contents: BlockContents, common: Common, leader: &mut Leader) -> Self {
         let proof = match leader {
             Leader::BftLeader(private_key) => {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_BFT);
-                let signature = private_key.serialize_and_sign(&common);
+                let signature = make_signature(&private_key, &common);
                 Proof::Bft(BftProof {
-                    leader_id: private_key.public().into(),
-                    signature: signature,
+                    leader_id: private_key.to_public().into(),
+                    signature: BftSignature(signature),
                 })
             }
-            Leader::GenesisPraos(vrf_key, private_key, proven_output_seed) => {
+            Leader::GenesisPraos(kes_secret, vrf_secret, proven_output_seed) => {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
-                let signature = private_key.serialize_and_sign(&common);
+                let signature = make_signature_update(&mut kes_secret, &common);
                 Proof::GenesisPraos(GenesisPraosProof {
-                    vrf_public_key: vrf_key.public(),
+                    vrf_public_key: vrf_secret.public(),
                     vrf_proof: proven_output_seed.clone(),
-                    kes_public_key: private_key.public().into(),
-                    kes_proof: signature,
+                    kes_public_key: kes_secret.to_public().into(),
+                    kes_proof: KESSignature(signature),
                 })
             }
         };
@@ -90,7 +91,7 @@ impl Block {
 
         let (content_hash, content_size) = self.contents.compute_hash_size();
 
-        header_proof
+        header_proof == Verification::Success
             && &content_hash == self.header.block_content_hash()
             && content_size == self.header.common.block_content_size as usize
     }

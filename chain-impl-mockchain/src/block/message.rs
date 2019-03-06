@@ -1,4 +1,5 @@
 use chain_core::{packer, property};
+use chain_crypto::Ed25519Extended;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
@@ -8,11 +9,11 @@ use crate::{certificate, key::Signed, setting, transaction::SignedTransaction};
 pub enum Message {
     Transaction(SignedTransaction),
 
-    StakeKeyRegistration(Signed<certificate::StakeKeyRegistration>),
-    StakeKeyDeregistration(Signed<certificate::StakeKeyDeregistration>),
-    StakeDelegation(Signed<certificate::StakeDelegation>),
-    StakePoolRegistration(Signed<certificate::StakePoolRegistration>),
-    StakePoolRetirement(Signed<certificate::StakePoolRetirement>),
+    StakeKeyRegistration(Signed<certificate::StakeKeyRegistration, Ed25519Extended>),
+    StakeKeyDeregistration(Signed<certificate::StakeKeyDeregistration, Ed25519Extended>),
+    StakeDelegation(Signed<certificate::StakeDelegation, Ed25519Extended>),
+    StakePoolRegistration(Signed<certificate::StakePoolRegistration, Ed25519Extended>),
+    StakePoolRetirement(Signed<certificate::StakePoolRetirement, Ed25519Extended>),
 
     // FIXME: Placeholder for the eventual update mechanism. Currently
     // update proposals take effect immediately and there is no
