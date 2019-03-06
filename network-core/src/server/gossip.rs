@@ -1,7 +1,7 @@
 ///! Gossip service abstraction.
 use crate::error::Code as ErrorCode;
 
-use super::super::gossip::{Gossip, NodeId};
+use super::super::gossip::{self, Gossip};
 
 use futures::prelude::*;
 
@@ -13,10 +13,14 @@ pub trait GossipService {
     /// Gossip message content.
     type Message: Gossip;
 
-    type MessageFuture: Future<Item = (NodeId, Self::Message), Error = GossipError>;
+    type MessageFuture: Future<Item = (gossip::NodeId, Self::Message), Error = GossipError>;
 
     /// Record and process gossip event.
-    fn record_gossip(&mut self, node_id: NodeId, gossip: &Self::Message) -> Self::MessageFuture;
+    fn record_gossip(
+        &mut self,
+        node_id: gossip::NodeId,
+        gossip: &Self::Message,
+    ) -> Self::MessageFuture;
 }
 
 #[derive(Debug)]
