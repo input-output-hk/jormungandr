@@ -1,71 +1,68 @@
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 
-use ed25519_bip32 as i;
-use ed25519_bip32::{XPrv, XPub, XPRV_SIZE};
+use super::ed25519 as ei;
+
+use cryptoxide::ed25519;
 use rand_core::{CryptoRng, RngCore};
 
-/// Ed25519 BIP32 Signature algorithm
-pub struct Ed25519Bip32;
+/// ED25519 Signing Algorithm with extended secret key
+pub struct Ed25519Extended;
 
-impl From<i::PrivateKeyError> for SecretKeyError {
-    fn from(v: i::PrivateKeyError) -> Self {
-        match v {
-            i::PrivateKeyError::HighestBitsInvalid => SecretKeyError::StructureInvalid,
-            i::PrivateKeyError::LowestBitsInvalid => SecretKeyError::StructureInvalid,
-            i::PrivateKeyError::LengthInvalid(_) => SecretKeyError::SizeInvalid,
-        }
+#[derive(Clone)]
+pub struct ExtendedPriv([u8; 64]);
+
+impl AsRef<[u8]> for ExtendedPriv {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
     }
 }
 
-impl From<i::PublicKeyError> for PublicKeyError {
-    fn from(v: i::PublicKeyError) -> Self {
-        match v {
-            i::PublicKeyError::LengthInvalid(_) => PublicKeyError::SizeInvalid,
-        }
-    }
-}
-
-impl AsymmetricKey for Ed25519Bip32 {
-    type Secret = XPrv;
-    type Public = XPub;
+impl AsymmetricKey for Ed25519Extended {
+    type Secret = ExtendedPriv;
+    type Public = ei::Pub;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
-        let mut priv_bytes = [0u8; XPRV_SIZE];
+        let mut priv_bytes = [0u8; ed25519::PRIVATE_KEY_LENGTH];
         rng.fill_bytes(&mut priv_bytes);
-        XPrv::normalize_bytes(priv_bytes)
+        let (sk, _) = ed25519::keypair(&priv_bytes);
+        ExtendedPriv(sk)
     }
 
     fn compute_public(key: &Self::Secret) -> Self::Public {
-        key.public()
+        let pk = ed25519::to_public(&key.0);
+        ei::Pub(pk)
     }
 
     fn secret_from_binary(data: &[u8]) -> Result<Self::Secret, SecretKeyError> {
-        let xprv = XPrv::from_slice_verified(data)?;
-        Ok(xprv)
+        if data.len() != ed25519::PRIVATE_KEY_LENGTH {
+            return Err(SecretKeyError::SizeInvalid);
+        }
+        let mut buf = [0; 64];
+        buf[0..64].clone_from_slice(data);
+        /// TODO structure check
+        Ok(ExtendedPriv(buf))
     }
     fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
-        let xpub = XPub::from_slice(data)?;
-        Ok(xpub)
-    }
-}
-
-impl From<i::SignatureError> for SignatureError {
-    fn from(v: i::SignatureError) -> Self {
-        match v {
-            i::SignatureError::InvalidLength(_) => SignatureError::SizeInvalid,
+        if data.len() != ed25519::PUBLIC_KEY_LENGTH {
+            return Err(PublicKeyError::SizeInvalid);
         }
+        let mut buf = [0; ed25519::PUBLIC_KEY_LENGTH];
+        buf[0..ed25519::PUBLIC_KEY_LENGTH].clone_from_slice(data);
+        Ok(ei::Pub(buf))
     }
 }
 
-type XSig = ed25519_bip32::Signature<()>;
-
-impl VerificationAlgorithm for Ed25519Bip32 {
-    type Signature = XSig;
+impl VerificationAlgorithm for Ed25519Extended {
+    type Signature = ei::Sig;
 
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
-        let xsig = XSig::from_slice(data)?;
-        Ok(xsig)
+        if data.len() == ed25519::SIGNATURE_LENGTH {
+            return Err(SignatureError::SizeInvalid);
+        }
+        let mut buf = [0; ed25519::SIGNATURE_LENGTH];
+        buf[0..ed25519::SIGNATURE_LENGTH].clone_from_slice(data);
+        Ok(ei::Sig(buf))
     }
 
     fn verify_bytes(
@@ -73,12 +70,12 @@ impl VerificationAlgorithm for Ed25519Bip32 {
         signature: &Self::Signature,
         msg: &[u8],
     ) -> Verification {
-        pubkey.verify(msg, signature).into()
+        ed25519::verify(msg, &pubkey.0, signature.as_ref()).into()
     }
 }
 
-impl SigningAlgorithm for Ed25519Bip32 {
-    fn sign(key: &Self::Secret, msg: &[u8]) -> Self::Signature {
-        key.sign(msg)
+impl SigningAlgorithm for Ed25519Extended {
+    fn sign(key: &Self::Secret, msg: &[u8]) -> ei::Sig {
+        ei::Sig(ed25519::signature_extended(msg, &key.0))
     }
 }

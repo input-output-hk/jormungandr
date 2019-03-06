@@ -6,14 +6,17 @@ use rand_core::{CryptoRng, RngCore};
 /// ED25519 Signing Algorithm
 pub struct Ed25519;
 
+/// ED25519 Signing Algorithm with extended secret key
+pub struct Ed25519Extended;
+
 #[derive(Clone)]
 pub struct Priv([u8; ed25519::PRIVATE_KEY_LENGTH]);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Pub([u8; ed25519::PUBLIC_KEY_LENGTH]);
+pub struct Pub(pub(crate) [u8; ed25519::PUBLIC_KEY_LENGTH]);
 
 #[derive(Clone)]
-pub struct Sig([u8; ed25519::SIGNATURE_LENGTH]);
+pub struct Sig(pub(crate) [u8; ed25519::SIGNATURE_LENGTH]);
 
 impl AsRef<[u8]> for Priv {
     fn as_ref(&self) -> &[u8] {
@@ -37,18 +40,18 @@ impl AsymmetricKey for Ed25519 {
     type Secret = Priv;
     type Public = Pub;
 
-    fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Priv {
+    fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; ed25519::PRIVATE_KEY_LENGTH];
         rng.fill_bytes(&mut priv_bytes);
         Priv(priv_bytes)
     }
 
-    fn compute_public(key: &Priv) -> Pub {
+    fn compute_public(key: &Self::Secret) -> Self::Public {
         let (_, pk) = ed25519::keypair(&key.0);
         Pub(pk)
     }
 
-    fn secret_from_binary(data: &[u8]) -> Result<Priv, SecretKeyError> {
+    fn secret_from_binary(data: &[u8]) -> Result<Self::Secret, SecretKeyError> {
         if data.len() != ed25519::PRIVATE_KEY_LENGTH {
             return Err(SecretKeyError::SizeInvalid);
         }
@@ -56,7 +59,7 @@ impl AsymmetricKey for Ed25519 {
         buf[0..ed25519::PRIVATE_KEY_LENGTH].clone_from_slice(data);
         Ok(Priv(buf))
     }
-    fn public_from_binary(data: &[u8]) -> Result<Pub, PublicKeyError> {
+    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
         if data.len() != ed25519::PUBLIC_KEY_LENGTH {
             return Err(PublicKeyError::SizeInvalid);
         }
