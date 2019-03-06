@@ -3,6 +3,8 @@ use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAl
 use cryptoxide::ed25519;
 use rand_core::{CryptoRng, RngCore};
 
+use ed25519_bip32::XPub;
+
 /// ED25519 Signing Algorithm
 pub struct Ed25519;
 
@@ -14,6 +16,14 @@ pub struct Pub(pub(crate) [u8; ed25519::PUBLIC_KEY_LENGTH]);
 
 #[derive(Clone)]
 pub struct Sig(pub(crate) [u8; ed25519::SIGNATURE_LENGTH]);
+
+impl Pub {
+    pub fn from_xpub(xpub: &XPub) -> Self {
+        let mut buf = [0; 32];
+        xpub.get_without_chaincode(&mut buf);
+        Pub(buf)
+    }
+}
 
 impl AsRef<[u8]> for Priv {
     fn as_ref(&self) -> &[u8] {

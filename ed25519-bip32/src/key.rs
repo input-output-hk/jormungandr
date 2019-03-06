@@ -118,6 +118,10 @@ impl XPrv {
     pub fn derive(&self, scheme: DerivationScheme, index: DerivationIndex) -> Self {
         derivation::private(self, index, scheme)
     }
+
+    pub fn get_extended(&self, out: &mut [u8; 64]) {
+        out.clone_from_slice(&self.as_ref()[0..64])
+    }
 }
 impl PartialEq for XPrv {
     fn eq(&self, rhs: &XPrv) -> bool {
@@ -184,6 +188,10 @@ impl XPub {
         index: DerivationIndex,
     ) -> Result<Self, DerivationError> {
         derivation::public(self, index, scheme)
+    }
+
+    pub fn get_without_chaincode(&self, out: &mut [u8; 32]) {
+        out.clone_from_slice(&self.0[0..32])
     }
 }
 impl PartialEq for XPub {

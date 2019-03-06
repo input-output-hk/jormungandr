@@ -6,6 +6,8 @@ use super::ed25519 as ei;
 use cryptoxide::ed25519;
 use rand_core::{CryptoRng, RngCore};
 
+use ed25519_bip32::XPrv;
+
 /// ED25519 Signing Algorithm with extended secret key
 pub struct Ed25519Extended;
 
@@ -15,6 +17,14 @@ pub struct ExtendedPriv([u8; 64]);
 impl AsRef<[u8]> for ExtendedPriv {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
+    }
+}
+
+impl ExtendedPriv {
+    pub fn from_xprv(xprv: &XPrv) -> Self {
+        let mut buf = [0; 64];
+        xprv.get_extended(&mut buf);
+        ExtendedPriv(buf)
     }
 }
 
