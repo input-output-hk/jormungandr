@@ -161,7 +161,7 @@ impl<B: BlockConfig> ConnectionState<B> {
         }
     }
 
-    fn new_peer(global: &GlobalState<B>, peer: Peer) -> Self {
+    fn new_peer(global: &GlobalState<B>, peer: &Peer) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
