@@ -82,3 +82,20 @@ impl SigningAlgorithm for Ed25519Bip32 {
         key.sign(msg)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::key::{KeyPair, PublicKey};
+    use crate::sign::test::{keypair_signing_ko, keypair_signing_ok};
+
+    quickcheck! {
+        fn sign_ok(input: (KeyPair<Ed25519Bip32>, Vec<u8>)) -> bool {
+            keypair_signing_ok(input)
+        }
+        fn sign_ko(input: (KeyPair<Ed25519Bip32>, PublicKey<Ed25519Bip32>, Vec<u8>)) -> bool {
+            keypair_signing_ko(input)
+        }
+    }
+}

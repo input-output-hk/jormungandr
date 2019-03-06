@@ -107,3 +107,30 @@ impl<T, A: VerificationAlgorithm> AsRef<[u8]> for Signature<T, A> {
         self.signdata.as_ref()
     }
 }
+
+#[cfg(test)]
+pub(crate) mod test {
+    use super::*;
+    use crate::key::{AsymmetricKey, KeyPair, PublicKey};
+
+    pub(crate) fn keypair_signing_ok<A: AsymmetricKey + SigningAlgorithm>(
+        input: (KeyPair<A>, Vec<u8>),
+    ) -> bool {
+        let (sk, pk) = input.0.into_keys();
+        let data = input.1;
+
+        let signature = Signature::generate(&sk, &data);
+        signature.verify(&pk, &data) == Verification::Success
+    }
+
+    pub(crate) fn keypair_signing_ko<A: AsymmetricKey + SigningAlgorithm>(
+        input: (KeyPair<A>, PublicKey<A>, Vec<u8>),
+    ) -> bool {
+        let (sk, _) = input.0.into_keys();
+        let pk = input.1;
+        let data = input.2;
+
+        let signature = Signature::generate(&sk, &data);
+        signature.verify(&pk, &data) == Verification::Failed
+    }
+}

@@ -16,5 +16,8 @@ generic-array = "^0.12"
 rand = "0.6"
 ed25519-bip32 = { path = "../ed25519-bip32" }
 
+[dev-dependencies]
+quickcheck = "0.8"
+
 [features]
 with-bench = []

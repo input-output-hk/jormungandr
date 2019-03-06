@@ -89,3 +89,20 @@ impl SigningAlgorithm for Ed25519Extended {
         ei::Sig(ed25519::signature_extended(msg, &key.0))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::key::{KeyPair, PublicKey};
+    use crate::sign::test::{keypair_signing_ko, keypair_signing_ok};
+
+    quickcheck! {
+        fn sign_ok(input: (KeyPair<Ed25519Extended>, Vec<u8>)) -> bool {
+            keypair_signing_ok(input)
+        }
+        fn sign_ko(input: (KeyPair<Ed25519Extended>, PublicKey<Ed25519Extended>, Vec<u8>)) -> bool {
+            keypair_signing_ko(input)
+        }
+    }
+}

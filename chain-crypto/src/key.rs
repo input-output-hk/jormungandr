@@ -31,6 +31,30 @@ pub struct SecretKey<A: AsymmetricKey>(pub(crate) A::Secret);
 
 pub struct PublicKey<A: AsymmetricKey>(pub(crate) A::Public);
 
+pub struct KeyPair<A: AsymmetricKey>(SecretKey<A>, PublicKey<A>);
+
+impl<A: AsymmetricKey> KeyPair<A> {
+    pub fn private_key(&self) -> &SecretKey<A> {
+        &self.0
+    }
+    pub fn public_key(&self) -> &PublicKey<A> {
+        &self.1
+    }
+    pub fn into_keys(self) -> (SecretKey<A>, PublicKey<A>) {
+        (self.0, self.1)
+    }
+}
+impl<A: AsymmetricKey> std::fmt::Debug for KeyPair<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "KeyPair(<secret key>, {:?})", self.public_key())
+    }
+}
+impl<A: AsymmetricKey> std::fmt::Display for KeyPair<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "KeyPair(<secret key>, {})", self.public_key())
+    }
+}
+
 impl<A: AsymmetricKey> fmt::Debug for PublicKey<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0.as_ref()))
@@ -66,6 +90,13 @@ impl<A: AsymmetricKey> AsRef<[u8]> for PublicKey<A> {
     }
 }
 
+impl<A: AsymmetricKey> From<SecretKey<A>> for KeyPair<A> {
+    fn from(secret_key: SecretKey<A>) -> Self {
+        let public_key = secret_key.to_public();
+        KeyPair(secret_key, public_key)
+    }
+}
+
 impl<A: AsymmetricKey> SecretKey<A> {
     pub fn to_public(&self) -> PublicKey<A> {
         PublicKey(<A as AsymmetricKey>::compute_public(&self.0))
@@ -97,6 +128,11 @@ impl<A: AsymmetricKey> Clone for PublicKey<A> {
         PublicKey(self.0.clone())
     }
 }
+impl<A: AsymmetricKey> Clone for KeyPair<A> {
+    fn clone(&self) -> Self {
+        KeyPair(self.0.clone(), self.1.clone())
+    }
+}
 
 impl<A: AsymmetricKey> std::cmp::PartialEq<Self> for PublicKey<A> {
     fn eq(&self, other: &Self) -> bool {
@@ -124,5 +160,66 @@ impl<A: AsymmetricKey> Hash for PublicKey<A> {
         H: std::hash::Hasher,
     {
         self.0.as_ref().hash(state)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use quickcheck::{Arbitrary, Gen};
+
+    pub fn arbitrary_public_key<A, G>(g: &mut G) -> PublicKey<A>
+    where
+        A: AsymmetricKey,
+        G: Gen,
+    {
+        let size = std::mem::size_of::<PublicKey<A>>();
+        let bytes: Vec<u8> = std::iter::repeat_with(move || Arbitrary::arbitrary(g))
+            .take(size)
+            .collect();
+        PublicKey::from_bytes(&bytes).unwrap()
+    }
+
+    pub fn arbitrary_secret_key<A, G>(g: &mut G) -> SecretKey<A>
+    where
+        A: AsymmetricKey,
+        G: Gen,
+    {
+        let size = std::mem::size_of::<SecretKey<A>>();
+        let bytes: Vec<u8> = std::iter::repeat_with(move || Arbitrary::arbitrary(g))
+            .take(size)
+            .collect();
+        SecretKey::from_bytes(&bytes).unwrap()
+    }
+
+    impl<A> Arbitrary for PublicKey<A>
+    where
+        A: AsymmetricKey + 'static,
+        A::Public: Send,
+    {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            arbitrary_public_key(g)
+        }
+    }
+    impl<A> Arbitrary for SecretKey<A>
+    where
+        A: AsymmetricKey + 'static,
+        A::Secret: Send,
+    {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            arbitrary_secret_key(g)
+        }
+    }
+    impl<A> Arbitrary for KeyPair<A>
+    where
+        A: AsymmetricKey + 'static,
+        A::Secret: Send,
+        A::Public: Send,
+    {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let secret_key = SecretKey::arbitrary(g);
+            KeyPair::from(secret_key)
+        }
     }
 }
