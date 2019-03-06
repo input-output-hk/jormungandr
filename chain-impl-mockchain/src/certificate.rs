@@ -2,6 +2,7 @@ use crate::block::Message;
 use crate::key::*;
 use crate::stake::{StakeKeyId, StakePoolId};
 use chain_core::property;
+use chain_crypto::{Ed25519Extended, SecretKey};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeKeyRegistration {
@@ -9,9 +10,9 @@ pub struct StakeKeyRegistration {
 }
 
 impl StakeKeyRegistration {
-    pub fn make_certificate(self, stake_private_key: &PrivateKey) -> Message {
+    pub fn make_certificate(self, stake_private_key: &SecretKey<Ed25519Extended>) -> Message {
         Message::StakeKeyRegistration(Signed {
-            sig: stake_private_key.serialize_and_sign(&self),
+            sig: make_signature(stake_private_key, &self),
             data: self,
         })
     }
@@ -45,9 +46,9 @@ pub struct StakeKeyDeregistration {
 }
 
 impl StakeKeyDeregistration {
-    pub fn make_certificate(self, stake_private_key: &PrivateKey) -> Message {
+    pub fn make_certificate(self, stake_private_key: &SecretKey<Ed25519Extended>) -> Message {
         Message::StakeKeyDeregistration(Signed {
-            sig: stake_private_key.serialize_and_sign(&self),
+            sig: make_signature(stake_private_key, &self),
             data: self,
         })
     }
@@ -82,11 +83,11 @@ pub struct StakeDelegation {
 }
 
 impl StakeDelegation {
-    pub fn make_certificate(self, stake_private_key: &PrivateKey) -> Message {
+    pub fn make_certificate(self, stake_private_key: &SecretKey<Ed25519Extended>) -> Message {
         // FIXME: "It must be signed by sks_source, and that key must
         // be included in the witness." - why?
         Message::StakeDelegation(Signed {
-            sig: stake_private_key.serialize_and_sign(&self),
+            sig: make_signature(stake_private_key, &self),
             data: self,
         })
     }
@@ -127,9 +128,9 @@ pub struct StakePoolRegistration {
 impl StakePoolRegistration {
     /// Create a certificate for this stake pool registration, signed
     /// by the pool's staking key and the owners.
-    pub fn make_certificate(self, pool_private_key: &PrivateKey) -> Message {
+    pub fn make_certificate(self, pool_private_key: &SecretKey<Ed25519Extended>) -> Message {
         Message::StakePoolRegistration(Signed {
-            sig: pool_private_key.serialize_and_sign(&self),
+            sig: make_signature(pool_private_key, &self),
             data: self,
         })
     }
@@ -168,9 +169,9 @@ pub struct StakePoolRetirement {
 impl StakePoolRetirement {
     /// Create a certificate for this stake pool retirement, signed
     /// by the pool's staking key.
-    pub fn make_certificate(self, pool_private_key: &PrivateKey) -> Message {
+    pub fn make_certificate(self, pool_private_key: &SecretKey<Ed25519Extended>) -> Message {
         Message::StakePoolRetirement(Signed {
-            sig: pool_private_key.serialize_and_sign(&self),
+            sig: make_signature(pool_private_key, &self),
             data: self,
         })
     }
@@ -203,7 +204,7 @@ mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
-    impl<T: Arbitrary> Arbitrary for Signed<T> {
+    impl<T: Arbitrary, A: SigningAlgorithm> Arbitrary for Signed<T, A> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Signed {
                 data: Arbitrary::arbitrary(g),
