@@ -1,8 +1,9 @@
-use crate::key::{PrivateKey, PublicKey};
+use crate::key::{deserialize_public_key, serialize_public_key};
 use crate::ledger::Ledger;
 use crate::value::Value;
 use chain_addr::Kind;
 use chain_core::property;
+use chain_crypto::{Ed25519, PublicKey, SecretKey};
 use std::collections::{HashMap, HashSet};
 
 /// A structure that keeps track of stake keys and stake pools.
@@ -57,7 +58,7 @@ impl DelegationState {
             // (i.e. containing a spending key and a stake key).
             if let Kind::Group(_spending_key, stake_key) = output.0.kind() {
                 // Grmbl.
-                let stake_key = crate::key::PublicKey(stake_key.clone()).into();
+                let stake_key = stake_key.clone().into();
 
                 // Do we have a stake key for this spending key?
                 if let Some(stake_key_info) = self.stake_keys.get(&stake_key) {
@@ -237,54 +238,54 @@ pub struct StakePoolInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StakeKeyId(pub PublicKey);
+pub struct StakeKeyId(PublicKey<Ed25519>);
 
-impl From<PublicKey> for StakeKeyId {
-    fn from(key: PublicKey) -> Self {
+impl From<PublicKey<Ed25519>> for StakeKeyId {
+    fn from(key: PublicKey<Ed25519>) -> Self {
         StakeKeyId(key)
     }
 }
 
-impl From<&PrivateKey> for StakeKeyId {
-    fn from(key: &PrivateKey) -> Self {
-        StakeKeyId(key.public())
+impl From<&SecretKey<Ed25519>> for StakeKeyId {
+    fn from(key: &SecretKey<Ed25519>) -> Self {
+        StakeKeyId(key.to_public())
     }
 }
 
 impl property::Serialize for StakeKeyId {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        self.0.serialize(writer)
+        serialize_public_key(&self.0, writer)
     }
 }
 
 impl property::Deserialize for StakeKeyId {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        Ok(StakeKeyId(PublicKey::deserialize(reader)?))
+        deserialize_public_key(reader).map(StakeKeyId)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StakePoolId(pub PublicKey);
+pub struct StakePoolId(pub PublicKey<Ed25519>);
 
-impl From<&PrivateKey> for StakePoolId {
-    fn from(key: &PrivateKey) -> Self {
-        StakePoolId(key.public())
+impl From<&SecretKey<Ed25519>> for StakePoolId {
+    fn from(key: &SecretKey<Ed25519>) -> Self {
+        StakePoolId(key.to_public())
     }
 }
 
 impl property::Serialize for StakePoolId {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        self.0.serialize(writer)
+        serialize_public_key(&self.0, writer)
     }
 }
 
 impl property::Deserialize for StakePoolId {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        Ok(StakePoolId(PublicKey::deserialize(reader)?))
+        deserialize_public_key(reader).map(StakePoolId)
     }
 }
 
@@ -295,13 +296,13 @@ mod test {
 
     impl Arbitrary for StakeKeyId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            StakeKeyId(Arbitrary::arbitrary(g))
+            StakeKeyId::from(&crate::key::test::arbitrary_secret_key(g))
         }
     }
 
     impl Arbitrary for StakePoolId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            StakePoolId(Arbitrary::arbitrary(g))
+            StakePoolId::from(&crate::key::test::arbitrary_secret_key(g))
         }
     }
 }
