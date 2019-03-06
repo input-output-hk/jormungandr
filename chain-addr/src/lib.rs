@@ -347,7 +347,7 @@ impl PropertySerialize for Address {
             Discrimination::Test => self.to_kind_value() | 0b1000_0000,
         };
         codec.put_u8(first_byte)?;
-        match self.1 {
+        match &self.1 {
             Kind::Single(spend) => codec.write_all(spend.as_ref())?,
             Kind::Group(spend, group) => {
                 codec.write_all(spend.as_ref())?;
