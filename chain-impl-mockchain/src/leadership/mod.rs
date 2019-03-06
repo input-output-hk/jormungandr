@@ -2,13 +2,13 @@ use crate::key::{deserialize_public_key, serialize_public_key};
 use crate::stake::StakePoolId;
 use chain_core::property;
 use chain_crypto::algorithms::vrf::vrf::{self, ProvenOutputSeed};
-use chain_crypto::{Ed25519, FakeMMM, PublicKey, SecretKey};
+use chain_crypto::{Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
 pub mod bft;
 pub mod genesis;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LeaderId(pub(crate) PublicKey<Ed25519>);
+pub struct LeaderId(pub(crate) PublicKey<Ed25519Extended>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PublicLeader {
@@ -17,7 +17,7 @@ pub enum PublicLeader {
 }
 
 pub enum Leader {
-    BftLeader(SecretKey<Ed25519>),
+    BftLeader(SecretKey<Ed25519Extended>),
     GenesisPraos(SecretKey<FakeMMM>, vrf::SecretKey, ProvenOutputSeed),
 }
 
@@ -29,8 +29,8 @@ impl From<StakePoolId> for LeaderId {
     }
 }
 
-impl From<PublicKey<Ed25519>> for LeaderId {
-    fn from(key: PublicKey<Ed25519>) -> Self {
+impl From<PublicKey<Ed25519Extended>> for LeaderId {
+    fn from(key: PublicKey<Ed25519Extended>) -> Self {
         LeaderId(key)
     }
 }
