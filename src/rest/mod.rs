@@ -23,13 +23,7 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<ServerServic
         .as_ref()
         .map(|prefix| prefix.as_str())
         .unwrap_or("/");
-    let settings = context
-        .blockchain
-        .read()
-        .unwrap_or_else(|e| e.into_inner())
-        .state
-        .settings
-        .clone();
+    let settings = context.blockchain.read().unwrap().state.settings.clone();
     ServerService::builder(config.pkcs12.clone(), config.listen.clone(), prefix)
         .add_handler(v0::block::create_handler(context.blockchain.clone()))
         .add_handler(v0::block::next_id::create_handler(

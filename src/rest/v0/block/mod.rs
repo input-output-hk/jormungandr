@@ -30,7 +30,7 @@ fn handle_request(
     let block_id = block_id_hex.parse().map_err(|e| ErrorBadRequest(e))?;
     let block = blockchain
         .read()
-        .unwrap_or_else(|e| e.into_inner())
+        .unwrap()
         .storage
         .get_block(&block_id)
         .map_err(|e| ErrorBadRequest(e))?

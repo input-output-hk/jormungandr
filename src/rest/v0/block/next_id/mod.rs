@@ -29,13 +29,8 @@ fn handle_request(
     // FIXME
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
-    let blockchain = blockchain.read().unwrap_or_else(|e| e.into_inner());
-    let tip = blockchain
-        .state
-        .settings
-        .read()
-        .unwrap_or_else(|e| e.into_inner())
-        .tip();
+    let blockchain = blockchain.read().unwrap();
+    let tip = blockchain.state.settings.read().unwrap().tip();
     blockchain
         .storage
         .iterate_range(&block_id, &tip)

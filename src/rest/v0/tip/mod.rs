@@ -16,9 +16,5 @@ pub fn create_handler(
 }
 
 fn handle_request(settings: State<SettingsR>) -> impl Responder {
-    settings
-        .read()
-        .unwrap_or_else(|e| e.into_inner())
-        .tip()
-        .to_string()
+    settings.read().unwrap().tip().to_string()
 }
