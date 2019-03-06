@@ -10,14 +10,13 @@ authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
 edition = "2018"
 
 [features]
-generic-serialization = [ "cardano/generic-serialization", "chain-addr/generic-serialization", "serde", "serde_derive" ]
+generic-serialization = [ "chain-addr/generic-serialization", "serde", "serde_derive" ]
 
 [dependencies]
 num-traits = "0.2"
 num-derive = "0.2"
 serde = { version = "^1.0", optional = true }
 serde_derive = { version = "^1.0", optional = true }
-cardano = { path = "../cardano" }
 chain-core = { path = "../chain-core" }
 chain-addr = { path = "../chain-addr" }
 chain-crypto = { path = "../chain-crypto" }
@@ -27,3 +26,5 @@ rand = "0.6"
 quickcheck = "0.8"
 chain-core = { path = "../chain-core", features=["property-test-api"]}
 chain-addr = { path = "../chain-addr", features=["property-test-api"]}
+rand_chacha = "0.1"
+rand_core = "0.4"

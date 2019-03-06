@@ -1,7 +1,11 @@
-use crate::key::*;
+use crate::key::{
+    deserialize_signature, serialize_signature, Hash, SpendingPublicKey, SpendingSecretKey,
+    SpendingSignature,
+};
 use crate::value::*;
 use chain_addr::Address;
 use chain_core::property;
+use chain_crypto::Verification;
 
 /// Unspent transaction pointer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -32,19 +36,22 @@ impl UtxoPointer {
 ///
 /// It's important that witness works with opaque structures
 /// and may not know the contents of the internal transaction.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Witness(Signature);
+#[derive(Debug, Clone)]
+pub struct Witness(SpendingSignature<TransactionId>);
 
 impl Witness {
     /// Creates new `Witness` value.
-    pub fn new(transaction_id: &TransactionId, private_key: &PrivateKey) -> Self {
-        let sig = private_key.sign(transaction_id.as_ref());
-        Witness(sig)
+    pub fn new(transaction_id: &TransactionId, secret_key: &SpendingSecretKey) -> Self {
+        Witness(SpendingSignature::generate(secret_key, transaction_id))
     }
 
     /// Verify the given `TransactionId` using the witness.
-    pub fn verifies(&self, public_key: &PublicKey, transaction_id: &TransactionId) -> bool {
-        public_key.verify(transaction_id.as_ref(), &self.0)
+    pub fn verifies(
+        &self,
+        public_key: &SpendingPublicKey,
+        transaction_id: &TransactionId,
+    ) -> Verification {
+        self.0.verify(public_key, transaction_id)
     }
 }
 
@@ -71,6 +78,13 @@ pub struct SignedTransaction {
     pub witnesses: Vec<Witness>,
 }
 
+impl PartialEq<Self> for Witness {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_ref() == other.0.as_ref()
+    }
+}
+impl Eq for Witness {}
+
 impl property::Serialize for Value {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -84,7 +98,7 @@ impl property::Serialize for Witness {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        self.0.serialize(writer)
+        serialize_signature(&self.0, writer)
     }
 }
 
@@ -149,7 +163,7 @@ impl property::Deserialize for Witness {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        Signature::deserialize(reader).map(Witness)
+        deserialize_signature(reader).map(Witness)
     }
 }
 
@@ -292,8 +306,6 @@ impl std::ops::AddAssign for Value {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cardano::redeem as crypto;
-
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
@@ -301,20 +313,10 @@ mod test {
         /// ```
         /// \forall w=Witness(tx) => w.verifies(tx)
         /// ```
-        fn prop_witness_verifies_own_tx(pk: PrivateKey, tx:TransactionId) -> bool {
-            let witness = Witness::new(&tx, &pk);
-            witness.verifies(&pk.public(), &tx)
-        }
-
-        /// ```
-        /// \forall w1,w2:Witness, w1.verifies(t1), w2.verifies(t2):
-        ///   w1.verifies(v2) <=> w1 == w2
-        /// ```
-        fn witness_verifies_only_own_tx(pk: PrivateKey, tx1: TransactionId, tx2: TransactionId) -> bool {
-            let witness1 = Witness::new(&tx1, &pk);
-            let witness2 = Witness::new(&tx2, &pk);
-            (witness1.verifies(&pk.public(), &tx2) && witness1 == witness2)
-                || (!witness1.verifies(&pk.public(), &tx2))
+        fn prop_witness_verifies_own_tx(sk: TransactionSigningKey, tx:TransactionId) -> bool {
+            let pk = sk.0.to_public();
+            let witness = Witness::new(&tx, &sk.0);
+            witness.verifies(&pk, &tx) == Verification::Success
         }
 
         fn transaction_id_is_unique(tx1: Transaction, tx2: Transaction) -> bool {
@@ -329,19 +331,31 @@ mod test {
         }
     }
 
-    impl Arbitrary for Value {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Value(Arbitrary::arbitrary(g))
+    #[derive(Clone)]
+    struct TransactionSigningKey(SpendingSecretKey);
+
+    impl std::fmt::Debug for TransactionSigningKey {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "TransactionSigningKey(<secret-key>)")
         }
     }
 
-    impl Arbitrary for Signature {
+    impl Arbitrary for TransactionSigningKey {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut signature = [0; crypto::SIGNATURE_SIZE];
-            for byte in signature.iter_mut() {
+            use rand_chacha::ChaChaRng;
+            use rand_core::SeedableRng;
+            let mut seed = [0; 32];
+            for byte in seed.iter_mut() {
                 *byte = Arbitrary::arbitrary(g);
             }
-            crypto::Signature::from_bytes(signature).into()
+            let mut rng = ChaChaRng::from_seed(seed);
+            TransactionSigningKey(SpendingSecretKey::generate(&mut rng))
+        }
+    }
+
+    impl Arbitrary for Value {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Value(Arbitrary::arbitrary(g))
         }
     }
 
@@ -357,7 +371,9 @@ mod test {
 
     impl Arbitrary for Witness {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Witness(Arbitrary::arbitrary(g))
+            let sk = TransactionSigningKey::arbitrary(g);
+            let txid = TransactionId::arbitrary(g);
+            Witness(SpendingSignature::generate(&sk.0, &txid))
         }
     }
 

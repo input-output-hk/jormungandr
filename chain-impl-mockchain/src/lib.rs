@@ -1,7 +1,6 @@
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
-extern crate chain_addr;
 
 pub mod block;
 pub mod certificate;
