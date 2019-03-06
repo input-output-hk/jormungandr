@@ -81,7 +81,7 @@ where
     T: property::Serialize,
 {
     let bytes = data.serialize_as_vec().unwrap();
-    crypto::Signature::generate_update(spending_key, &bytes).coerce()
+    crypto::Signature::generate_update(spending_key, &bytes)
 }
 
 pub fn verify_signature<T, A>(

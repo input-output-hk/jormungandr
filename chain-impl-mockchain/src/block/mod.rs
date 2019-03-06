@@ -63,9 +63,9 @@ impl Block {
                     signature: BftSignature(signature),
                 })
             }
-            Leader::GenesisPraos(kes_secret, vrf_secret, proven_output_seed) => {
+            Leader::GenesisPraos(ref mut kes_secret, vrf_secret, proven_output_seed) => {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
-                let signature = make_signature_update(&mut kes_secret, &common);
+                let signature = make_signature_update(kes_secret, &common);
                 Proof::GenesisPraos(GenesisPraosProof {
                     vrf_public_key: vrf_secret.public(),
                     vrf_proof: proven_output_seed.clone(),
