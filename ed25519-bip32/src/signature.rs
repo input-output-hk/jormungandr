@@ -6,6 +6,7 @@ use cryptoxide::util::fixed_time_eq;
 
 pub const SIGNATURE_SIZE: usize = 64;
 
+#[derive(Debug)]
 pub enum SignatureError {
     InvalidLength(usize),
 }
@@ -13,7 +14,7 @@ pub enum SignatureError {
 /// a signature with an associated type tag
 ///
 #[derive(Clone)]
-pub struct Signature<T> {
+pub struct Signature<T: ?Sized> {
     bytes: [u8; SIGNATURE_SIZE],
     _phantom: PhantomData<T>,
 }

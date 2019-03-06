@@ -70,6 +70,16 @@ impl XPrv {
         Ok(XPrv(bytes))
     }
 
+    pub fn from_slice_verified(bytes: &[u8]) -> Result<Self, PrivateKeyError> {
+        if bytes.len() != XPRV_SIZE {
+            return Err(PrivateKeyError::LengthInvalid(bytes.len()));
+        }
+
+        let mut buf = [0u8; XPRV_SIZE];
+        buf[..].clone_from_slice(bytes);
+        XPrv::from_bytes_verified(buf)
+    }
+
     /// Create a `XPrv` from the given slice. This slice must be of size `XPRV_SIZE`
     /// otherwise it will return `Err`.
     ///
@@ -84,14 +94,6 @@ impl XPrv {
 
     /// Get the associated `XPub`
     ///
-    /// ```
-    /// use ::hdwallet::{XPrv, XPub, Seed};
-    ///
-    /// let seed = Seed::from_bytes([0;32]) ;
-    /// let xprv = XPrv::generate_from_seed(&seed);
-    ///
-    /// let xpub = xprv.public();
-    /// ```
     pub fn public(&self) -> XPub {
         let pk = mk_public_key(&self.as_ref()[0..64]);
         let mut out = [0u8; XPUB_SIZE];
@@ -102,16 +104,6 @@ impl XPrv {
 
     /// sign the given message with the `XPrv`.
     ///
-    /// ```
-    /// use cardano::hdwallet::{XPrv, XPub, Signature, Seed};
-    ///
-    /// let seed = Seed::from_bytes([0;32]) ;
-    /// let xprv = XPrv::generate_from_seed(&seed);
-    /// let msg = b"Some message...";
-    ///
-    /// let signature : Signature<String> = xprv.sign(msg);
-    /// assert!(xprv.verify(msg, &signature));
-    /// ```
     pub fn sign<T>(&self, message: &[u8]) -> Signature<T> {
         Signature::from_bytes(signature_extended(message, &self.as_ref()[0..64]))
     }
@@ -125,6 +117,10 @@ impl XPrv {
 
     pub fn derive(&self, scheme: DerivationScheme, index: DerivationIndex) -> Self {
         derivation::private(self, index, scheme)
+    }
+
+    pub fn get_extended(&self, out: &mut [u8; 64]) {
+        out.clone_from_slice(&self.as_ref()[0..64])
     }
 }
 impl PartialEq for XPrv {
@@ -182,17 +178,6 @@ impl XPub {
 
     /// verify a signature
     ///
-    /// ```
-    /// use ed25519_bip32::{XPrv, XPub, Seed, Signature};
-    ///
-    /// let seed = Seed::from_bytes([0;32]);
-    /// let xprv = XPrv::from_slice()(&seed);
-    /// let xpub = xprv.public();
-    /// let msg = b"Some message...";
-    ///
-    /// let signature : Signature<String> = xprv.sign(msg);
-    /// assert!(xpub.verify(msg, &signature));
-    /// ```
     pub fn verify<T>(&self, message: &[u8], signature: &Signature<T>) -> bool {
         ed25519::verify(message, &self.as_ref()[0..32], signature.as_ref())
     }
@@ -203,6 +188,10 @@ impl XPub {
         index: DerivationIndex,
     ) -> Result<Self, DerivationError> {
         derivation::public(self, index, scheme)
+    }
+
+    pub fn get_without_chaincode(&self, out: &mut [u8; 32]) {
+        out.clone_from_slice(&self.0[0..32])
     }
 }
 impl PartialEq for XPub {

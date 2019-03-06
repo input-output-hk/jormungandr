@@ -1,4 +1,4 @@
-use crate::{hex, key};
+use crate::{hex, kes, key};
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -93,11 +93,57 @@ impl<A: SigningAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
     }
 }
 
+impl<A: kes::KeyEvolvingSignatureAlgorithm, T> Signature<T, A> {
+    pub fn generate_update(key: &mut key::SecretKey<A>, msg: &[u8]) -> Self {
+        Signature {
+            signdata: A::sign_update(&mut key.0, msg),
+            phantom: std::marker::PhantomData,
+        }
+    }
+}
+
 impl<T, A: VerificationAlgorithm> Clone for Signature<T, A> {
     fn clone(&self) -> Self {
         Signature {
             signdata: self.signdata.clone(),
             phantom: std::marker::PhantomData,
         }
+    }
+}
+
+impl<T, A: VerificationAlgorithm> AsRef<[u8]> for Signature<T, A> {
+    fn as_ref(&self) -> &[u8] {
+        self.signdata.as_ref()
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test {
+    use super::*;
+    use crate::key::{AsymmetricKey, KeyPair, PublicKey};
+
+    pub(crate) fn keypair_signing_ok<A: AsymmetricKey + SigningAlgorithm>(
+        input: (KeyPair<A>, Vec<u8>),
+    ) -> bool {
+        let (sk, pk) = input.0.into_keys();
+        let data = input.1;
+
+        let signature = Signature::generate(&sk, &data);
+        signature.verify(&pk, &data) == Verification::Success
+    }
+
+    pub(crate) fn keypair_signing_ko<A: AsymmetricKey + SigningAlgorithm>(
+        input: (KeyPair<A>, PublicKey<A>, Vec<u8>),
+    ) -> bool {
+        let (sk, pk) = input.0.into_keys();
+        let pk_random = input.1;
+        let data = input.2;
+
+        if pk == pk_random {
+            return true;
+        }
+
+        let signature = Signature::generate(&sk, &data);
+        signature.verify(&pk_random, &data) == Verification::Failed
     }
 }

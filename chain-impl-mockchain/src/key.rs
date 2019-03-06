@@ -1,153 +1,180 @@
 //! Module provides cryptographic utilities and types related to
 //! the user keys.
 //!
-use cardano::hash;
-use cardano::redeem as crypto;
 use chain_core::property;
-use std::str::FromStr;
+use chain_crypto as crypto;
+use chain_crypto::{
+    AsymmetricKey, KeyEvolvingSignatureAlgorithm, SigningAlgorithm, VerificationAlgorithm,
+};
 
-/// Public key of the entity.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct PublicKey(pub crypto::PublicKey);
-impl PublicKey {
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
-        self.0.verify(&signature.0, message)
-    }
+pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519Extended>;
+pub type SpendingSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
+pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519Extended>;
 
-    pub fn from_bytes(bytes: [u8; crypto::PUBLICKEY_SIZE]) -> Self {
-        PublicKey(crypto::PublicKey::from_bytes(bytes))
-    }
-
-    pub fn from_hex(string: &str) -> Result<Self, cardano::redeem::Error> {
-        Ok(PublicKey(crypto::PublicKey::from_hex(string)?))
-    }
-
-    /// Convenience function to verify a serialize object.
-    pub fn serialize_and_verify<T: property::Serialize>(
-        &self,
-        t: &T,
-        signature: &Signature,
-    ) -> bool {
-        self.verify(&t.serialize_as_vec().unwrap(), signature)
-    }
+#[inline]
+pub fn serialize_public_key<A: AsymmetricKey, W: std::io::Write>(
+    key: &crypto::PublicKey<A>,
+    mut writer: W,
+) -> Result<(), std::io::Error> {
+    let size: usize = std::mem::size_of_val(key);
+    assert!(size == 32);
+    writer.write_all(key.as_ref())?;
+    Ok(())
+}
+#[inline]
+pub fn serialize_signature<A: VerificationAlgorithm, T, W: std::io::Write>(
+    signature: &crypto::Signature<T, A>,
+    mut writer: W,
+) -> Result<(), std::io::Error> {
+    let size: usize = std::mem::size_of_val(signature);
+    assert!(size == 64);
+    writer.write_all(signature.as_ref())?;
+    Ok(())
+}
+#[inline]
+pub fn deserialize_public_key<A, R>(mut reader: R) -> Result<crypto::PublicKey<A>, std::io::Error>
+where
+    A: AsymmetricKey,
+    R: std::io::BufRead,
+{
+    let size: usize = std::mem::size_of::<crypto::PublicKey<A>>();
+    assert!(size == 32);
+    let mut buffer = vec![0; size];
+    reader.read_exact(&mut buffer)?;
+    crypto::PublicKey::from_bytes(&buffer)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err)))
+}
+#[inline]
+pub fn deserialize_signature<A, T, R>(
+    mut reader: R,
+) -> Result<crypto::Signature<T, A>, std::io::Error>
+where
+    A: VerificationAlgorithm,
+    R: std::io::BufRead,
+{
+    let size: usize = std::mem::size_of::<crypto::Signature<T, A>>();
+    assert!(size == 64);
+    let mut buffer = vec![0; 64];
+    reader.read_exact(&mut buffer)?;
+    crypto::Signature::from_bytes(&buffer)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err)))
 }
 
-/// Private key of the entity.
-#[derive(Debug, Clone)]
-pub struct PrivateKey(crypto::PrivateKey);
-impl PrivateKey {
-    pub fn public(&self) -> PublicKey {
-        PublicKey(self.0.public())
-    }
-    pub fn sign(&self, data: &[u8]) -> Signature {
-        Signature(self.0.sign(data))
-    }
-    pub fn normalize_bytes(xprv: [u8; crypto::PRIVATEKEY_SIZE]) -> Self {
-        PrivateKey(crypto::PrivateKey::normalize_bytes(xprv))
-    }
-
-    pub fn from_hex(input: &str) -> Result<Self, cardano::redeem::Error> {
-        Ok(PrivateKey(crypto::PrivateKey::from_hex(&input)?))
-    }
-
-    /// Convenience function to sign a serialize object.
-    pub fn serialize_and_sign<T: property::Serialize>(&self, t: &T) -> Signature {
-        self.sign(&t.serialize_as_vec().unwrap())
-    }
+pub fn make_signature<T, A>(
+    spending_key: &crypto::SecretKey<A>,
+    data: &T,
+) -> crypto::Signature<T, A>
+where
+    A: SigningAlgorithm,
+    T: property::Serialize,
+{
+    let bytes = data.serialize_as_vec().unwrap();
+    crypto::Signature::generate(spending_key, &bytes).coerce()
 }
 
-///
-#[derive(Debug, Clone)]
-pub struct KeyPair(PrivateKey, PublicKey);
-impl KeyPair {
-    pub fn private_key(&self) -> &PrivateKey {
-        &self.0
-    }
-    pub fn public_key(&self) -> &PublicKey {
-        &self.1
-    }
-    pub fn into_keys(self) -> (PrivateKey, PublicKey) {
-        (self.0, self.1)
-    }
+pub fn make_signature_update<T, A>(
+    spending_key: &mut crypto::SecretKey<A>,
+    data: &T,
+) -> crypto::Signature<T, A>
+where
+    A: KeyEvolvingSignatureAlgorithm,
+    T: property::Serialize,
+{
+    let bytes = data.serialize_as_vec().unwrap();
+    crypto::Signature::generate_update(spending_key, &bytes)
 }
 
-/// Cryptographic signature.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Signature(crypto::Signature);
-impl Signature {
-    pub fn from_bytes(bytes: [u8; crypto::SIGNATURE_SIZE]) -> Self {
-        Signature(crypto::Signature::from_bytes(bytes))
-    }
+pub fn verify_signature<T, A>(
+    signature: &crypto::Signature<T, A>,
+    public_key: &crypto::PublicKey<A>,
+    data: &T,
+) -> crypto::Verification
+where
+    A: VerificationAlgorithm,
+    T: property::Serialize,
+{
+    let bytes = data.serialize_as_vec().unwrap();
+    signature.clone().coerce().verify(public_key, &bytes)
 }
 
 /// A serializable type T with a signature.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Signed<T> {
+pub struct Signed<T, A: SigningAlgorithm> {
     pub data: T,
-    pub sig: Signature,
+    pub sig: crypto::Signature<T, A>,
 }
 
-impl<T: property::Serialize> property::Serialize for Signed<T>
+impl<T: property::Serialize, A: SigningAlgorithm> Signed<T, A> {
+    pub fn new(secret_key: &crypto::SecretKey<A>, data: T) -> Self {
+        let bytes = data.serialize_as_vec().unwrap();
+        let signature = crypto::Signature::generate(secret_key, &bytes).coerce();
+        Signed {
+            data: data,
+            sig: signature,
+        }
+    }
+}
+
+impl<T: property::Serialize, A: SigningAlgorithm> property::Serialize for Signed<T, A>
 where
     std::io::Error: From<T::Error>,
 {
     type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
-        self.data.serialize(&mut codec)?;
-        self.sig.serialize(&mut codec)?;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        self.data.serialize(&mut writer)?;
+        serialize_signature(&self.sig, &mut writer)?;
         Ok(())
     }
 }
 
-impl<T: property::Deserialize> property::Deserialize for Signed<T>
+impl<T: property::Deserialize, A: SigningAlgorithm> property::Deserialize for Signed<T, A>
 where
     std::io::Error: From<T::Error>,
 {
     type Error = std::io::Error;
 
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
         Ok(Signed {
-            data: T::deserialize(&mut codec)?,
-            sig: Signature::deserialize(&mut codec)?,
+            data: T::deserialize(&mut reader)?,
+            sig: deserialize_signature(&mut reader)?,
         })
+    }
+}
+
+impl<T: PartialEq, A: SigningAlgorithm> PartialEq<Self> for Signed<T, A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.data.eq(&other.data) && self.sig.as_ref() == other.sig.as_ref()
+    }
+}
+impl<T: PartialEq, A: SigningAlgorithm> Eq for Signed<T, A> {}
+impl<T: std::fmt::Debug, A: SigningAlgorithm> std::fmt::Debug for Signed<T, A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Signed ( data: {:?}, signature: {:?} )",
+            self.data,
+            self.sig.as_ref()
+        )
+    }
+}
+impl<T: Clone, A: SigningAlgorithm> Clone for Signed<T, A> {
+    fn clone(&self) -> Self {
+        Signed {
+            data: self.data.clone(),
+            sig: self.sig.clone(),
+        }
     }
 }
 
 /// Hash that is used as an address of the various components.
 #[cfg_attr(feature = "generic-serialization", derive(serde_derive::Serialize))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Hash(hash::Blake2b256);
+pub struct Hash(crypto::Blake2b256);
 impl Hash {
     pub fn hash_bytes(bytes: &[u8]) -> Self {
-        Hash(hash::Blake2b256::new(bytes))
+        Hash(crypto::Blake2b256::new(bytes))
     }
 }
 
-impl FromStr for Hash {
-    type Err = hash::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Hash(hash::Blake2b256::from_str(s)?))
-    }
-}
-
-impl property::Serialize for PublicKey {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        writer.write_all(self.0.as_ref())?;
-        Ok(())
-    }
-}
-impl property::Serialize for Signature {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        writer.write_all(self.0.as_ref())?;
-        Ok(())
-    }
-}
 impl property::Serialize for Hash {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
@@ -156,77 +183,31 @@ impl property::Serialize for Hash {
     }
 }
 
-impl property::Deserialize for PublicKey {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let mut buffer = [0; crypto::PUBLICKEY_SIZE];
-        reader.read_exact(&mut buffer)?;
-        Ok(crypto::PublicKey::from_bytes(buffer).into())
-    }
-}
-impl property::Deserialize for Signature {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let mut buffer = [0; crypto::SIGNATURE_SIZE];
-        reader.read_exact(&mut buffer)?;
-        Ok(crypto::Signature::from_bytes(buffer).into())
-    }
-}
 impl property::Deserialize for Hash {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let mut buffer = [0; hash::Blake2b256::HASH_SIZE];
+        let mut buffer = [0; crypto::Blake2b256::HASH_SIZE];
         reader.read_exact(&mut buffer)?;
-        Ok(Hash(hash::Blake2b256::from(buffer)))
+        Ok(Hash(crypto::Blake2b256::from(buffer)))
     }
 }
 
 impl property::BlockId for Hash {
     fn zero() -> Hash {
-        Hash(hash::Blake2b256::from([0; hash::Blake2b256::HASH_SIZE]))
+        Hash(crypto::Blake2b256::from([0; crypto::Blake2b256::HASH_SIZE]))
     }
 }
 
 impl property::TransactionId for Hash {}
 
-impl AsRef<[u8]> for PrivateKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsRef<[u8]> for Signature {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
 impl AsRef<[u8]> for Hash {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-impl From<crypto::PublicKey> for PublicKey {
-    fn from(signature: crypto::PublicKey) -> Self {
-        PublicKey(signature)
-    }
-}
-impl From<crypto::PrivateKey> for PrivateKey {
-    fn from(signature: crypto::PrivateKey) -> Self {
-        PrivateKey(signature)
-    }
-}
-impl From<crypto::Signature> for Signature {
-    fn from(signature: crypto::Signature) -> Self {
-        Signature(signature)
-    }
-}
-impl From<hash::Blake2b256> for Hash {
-    fn from(hash: hash::Blake2b256) -> Self {
+impl From<crypto::Blake2b256> for Hash {
+    fn from(hash: crypto::Blake2b256) -> Self {
         Hash(hash)
     }
 }
@@ -238,81 +219,43 @@ impl std::fmt::Display for Hash {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
+    use quickcheck::{Arbitrary, Gen};
 
-    use quickcheck::{Arbitrary, Gen, TestResult};
-
-    impl Arbitrary for PublicKey {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut xpub = [0; crypto::PUBLICKEY_SIZE];
-            for byte in xpub.iter_mut() {
-                *byte = Arbitrary::arbitrary(g);
-            }
-            PublicKey(crypto::PublicKey::from_bytes(xpub))
+    pub fn arbitrary_secret_key<A, G>(g: &mut G) -> crypto::SecretKey<A>
+    where
+        A: AsymmetricKey,
+        G: Gen,
+    {
+        use rand_chacha::ChaChaRng;
+        use rand_core::SeedableRng;
+        let mut seed = [0; 32];
+        for byte in seed.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
         }
-    }
-
-    impl Arbitrary for PrivateKey {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut xprv = [0; crypto::PRIVATEKEY_SIZE];
-            for byte in xprv.iter_mut() {
-                *byte = Arbitrary::arbitrary(g);
-            }
-            PrivateKey(crypto::PrivateKey::normalize_bytes(xprv))
-        }
-    }
-
-    impl Arbitrary for KeyPair {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut prv = [0; crypto::PRIVATEKEY_SIZE];
-            for byte in prv.iter_mut() {
-                *byte = Arbitrary::arbitrary(g);
-            }
-            let sk = PrivateKey(crypto::PrivateKey::normalize_bytes(prv));
-            let pk = sk.public();
-            KeyPair(sk, pk)
-        }
+        let mut rng = ChaChaRng::from_seed(seed);
+        crypto::SecretKey::generate(&mut rng)
     }
 
     impl Arbitrary for Hash {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut bytes = [0u8; 16];
-            for byte in bytes.iter_mut() {
-                *byte = Arbitrary::arbitrary(g);
-            }
-            Hash(hash::Blake2b256::new(&bytes))
+            let bytes: Vec<u8> = Arbitrary::arbitrary(g);
+            Hash::hash_bytes(&bytes)
         }
     }
 
-    quickcheck! {
-        fn keypair_signing_ok(input: (KeyPair, Vec<u8>)) -> bool {
-            let (sk, pk) = input.0.into_keys();
-            let data = input.1;
-
-            let signature = sk.sign(&data);
-            pk.verify(&data, &signature)
-        }
-        fn keypair_signing_ko(input: (PrivateKey, PublicKey, Vec<u8>)) -> bool {
-            let (sk, pk) = (input.0, input.1);
-            let data = input.2;
-
-            let signature = sk.sign(&data);
-            ! pk.verify(&data, &signature)
-        }
-
-        fn hash_from_str_display_is_id(input: Hash) -> bool {
-            Hash::from_str(&format!("{}", input)) == Ok(input)
-        }
-
-        fn public_key_encode_decode(public_key: PublicKey) -> TestResult {
-            property::testing::serialization_bijection(public_key)
-        }
-        fn signature_encode_decode(signature: Signature) -> TestResult {
-            property::testing::serialization_bijection(signature)
-        }
-        fn hash_encode_decode(hash: Hash) -> TestResult {
-            property::testing::serialization_bijection(hash)
+    impl<A: SigningAlgorithm + 'static, T: property::Serialize + Arbitrary> Arbitrary for Signed<T, A>
+    where
+        A::Signature: Send,
+    {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            let sk = arbitrary_secret_key(g);
+            let data = T::arbitrary(g);
+            Signed::new(&sk, data)
         }
     }
 }

@@ -371,11 +371,8 @@ impl LeaderSelection for GenesisLeaderSelection {
         for msg in input.contents.iter() {
             match msg {
                 Message::StakeKeyRegistration(reg) => {
-                    if !reg
-                        .data
-                        .stake_key_id
-                        .0
-                        .serialize_and_verify(&reg.data, &reg.sig)
+                    if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
+                        == chain_crypto::Verification::Failed
                     {
                         return Err(Error::StakeKeyRegistrationSigIsInvalid);
                     }
@@ -401,11 +398,8 @@ impl LeaderSelection for GenesisLeaderSelection {
                 }
 
                 Message::StakeKeyDeregistration(reg) => {
-                    if !reg
-                        .data
-                        .stake_key_id
-                        .0
-                        .serialize_and_verify(&reg.data, &reg.sig)
+                    if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
+                        == chain_crypto::Verification::Failed
                     {
                         return Err(Error::StakeKeyDeregistrationSigIsInvalid);
                     }
@@ -427,11 +421,8 @@ impl LeaderSelection for GenesisLeaderSelection {
                 }
 
                 Message::StakeDelegation(reg) => {
-                    if !reg
-                        .data
-                        .stake_key_id
-                        .0
-                        .serialize_and_verify(&reg.data, &reg.sig)
+                    if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
+                        == chain_crypto::Verification::Failed
                     {
                         return Err(Error::StakeDelegationSigIsInvalid);
                     }
@@ -463,7 +454,9 @@ impl LeaderSelection for GenesisLeaderSelection {
                 }
 
                 Message::StakePoolRegistration(reg) => {
-                    if !reg.data.pool_id.0.serialize_and_verify(&reg.data, &reg.sig) {
+                    if crate::key::verify_signature(&reg.sig, &reg.data.pool_id.0, &reg.data)
+                        == chain_crypto::Verification::Failed
+                    {
                         return Err(Error::StakePoolRegistrationPoolSigIsInvalid);
                     }
 
@@ -485,7 +478,9 @@ impl LeaderSelection for GenesisLeaderSelection {
 
                 Message::StakePoolRetirement(ret) => {
                     if self.delegation_state.stake_pool_exists(&ret.data.pool_id) {
-                        if !ret.data.pool_id.0.serialize_and_verify(&ret.data, &ret.sig) {
+                        if crate::key::verify_signature(&ret.sig, &ret.data.pool_id.0, &ret.data)
+                            == chain_crypto::Verification::Failed
+                        {
                             return Err(Error::StakePoolRetirementSigIsInvalid);
                         }
                         update.retired_stake_pools.insert(ret.data.pool_id.clone());
@@ -554,6 +549,7 @@ impl LeaderSelection for GenesisLeaderSelection {
     }
 }
 
+/*
 #[cfg(test)]
 mod test {
 
@@ -562,7 +558,7 @@ mod test {
         Block, BlockContents, Common, BLOCK_VERSION_CONSENSUS_BFT,
         BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
     };
-    use crate::key::{Hash, PrivateKey};
+    use crate::key::Hash;
     use crate::leadership::Leader;
     use crate::ledger::test::make_key;
     use crate::transaction::*;
@@ -571,20 +567,24 @@ mod test {
     use chain_core::property::Settings as S;
     use chain_core::property::Transaction as T;
     use chain_core::property::{BlockId, HasTransaction};
+    use chain_crypto::{
+        algorithms::{Ed25519, Ed25519Extended, FakeMMM},
+        SecretKey,
+    };
     use quickcheck::{Arbitrary, StdGen};
     use rand::rngs::{StdRng, ThreadRng};
 
     struct TestState {
         g: StdGen<ThreadRng>,
-        bft_leaders: Vec<PrivateKey>,
-        pool_private_keys: Vec<PrivateKey>,
+        bft_leaders: Vec<SecretKey<Ed25519>>,
+        pool_private_keys: Vec<SecretKey<Ed25519>>,
         ledger: Arc<RwLock<Ledger>>,
         settings: Arc<RwLock<Settings>>,
         cur_date: BlockDate,
         prev_hash: Hash,
         leader_selection: GenesisLeaderSelection,
         faucet_utxo: UtxoPointer,
-        faucet_private_key: PrivateKey,
+        faucet_private_key: SecretKey<Ed25519Extended>,
         selected_leaders: HashMap<LeaderId, usize>,
     }
 
@@ -597,13 +597,14 @@ mod test {
     fn create_chain(
         initial_bootstrap_key_slots_percentage: u8,
         mut initial_utxos: HashMap<UtxoPointer, Output>,
-        initial_stake_pools: Vec<PrivateKey>,
+        initial_stake_pools: Vec<SecretKey<Ed25519>>,
         initial_stake_keys: HashMap<StakeKeyId, Option<StakePoolId>>,
     ) -> TestState {
         let mut g = StdGen::new(rand::thread_rng(), 10);
 
-        let bft_leaders: Vec<PrivateKey> =
-            (0..10_i32).map(|_| PrivateKey::arbitrary(&mut g)).collect();
+        let bft_leaders: Vec<_> = (0..10_i32)
+            .map(|_| crate::key::test::arbitrary_secret_key(&mut g))
+            .collect();
 
         let faucet_utxo = UtxoPointer::new(
             TransactionId::hash_bytes("faucet".as_bytes()),
@@ -621,7 +622,10 @@ mod test {
             initial_bootstrap_key_slots_percentage;
 
         let leader_selection = GenesisLeaderSelection::new(
-            bft_leaders.iter().map(|k| k.into()).collect(),
+            bft_leaders
+                .iter()
+                .map(|k| LeaderId(k.to_public()))
+                .collect(),
             ledger.clone(),
             settings.clone(),
             initial_stake_pools.iter().map(|x| x.into()).collect(),
@@ -1416,3 +1420,4 @@ mod test {
     }
 
 }
+*/
