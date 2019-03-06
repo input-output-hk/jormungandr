@@ -6,9 +6,6 @@ use rand_core::{CryptoRng, RngCore};
 /// ED25519 Signing Algorithm
 pub struct Ed25519;
 
-/// ED25519 Signing Algorithm with extended secret key
-pub struct Ed25519Extended;
-
 #[derive(Clone)]
 pub struct Priv([u8; ed25519::PRIVATE_KEY_LENGTH]);
 

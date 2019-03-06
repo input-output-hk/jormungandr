@@ -35,7 +35,7 @@ impl AsymmetricKey for Ed25519Extended {
     }
 
     fn secret_from_binary(data: &[u8]) -> Result<Self::Secret, SecretKeyError> {
-        if data.len() != ed25519::PRIVATE_KEY_LENGTH {
+        if data.len() != 64 {
             return Err(SecretKeyError::SizeInvalid);
         }
         let mut buf = [0; 64];
