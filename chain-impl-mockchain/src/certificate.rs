@@ -202,6 +202,7 @@ impl property::Deserialize for StakePoolRetirement {
 #[cfg(test)]
 mod test {
     use super::*;
+    use chain_crypto::SigningAlgorithm;
     use quickcheck::{Arbitrary, Gen};
 
     impl<T: Arbitrary, A: SigningAlgorithm> Arbitrary for Signed<T, A> {
