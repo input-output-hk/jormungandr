@@ -9,7 +9,7 @@ use ed25519_bip32::XPub;
 pub struct Ed25519;
 
 #[derive(Clone)]
-pub struct Priv([u8; ed25519::PRIVATE_KEY_LENGTH]);
+pub struct Priv([u8; ed25519::SEED_LENGTH]);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Pub(pub(crate) [u8; ed25519::PUBLIC_KEY_LENGTH]);
@@ -48,7 +48,7 @@ impl AsymmetricKey for Ed25519 {
     type Public = Pub;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
-        let mut priv_bytes = [0u8; ed25519::PRIVATE_KEY_LENGTH];
+        let mut priv_bytes = [0u8; ed25519::SEED_LENGTH];
         rng.fill_bytes(&mut priv_bytes);
         Priv(priv_bytes)
     }
@@ -59,11 +59,11 @@ impl AsymmetricKey for Ed25519 {
     }
 
     fn secret_from_binary(data: &[u8]) -> Result<Self::Secret, SecretKeyError> {
-        if data.len() != ed25519::PRIVATE_KEY_LENGTH {
+        if data.len() != ed25519::SEED_LENGTH {
             return Err(SecretKeyError::SizeInvalid);
         }
-        let mut buf = [0; ed25519::PRIVATE_KEY_LENGTH];
-        buf[0..ed25519::PRIVATE_KEY_LENGTH].clone_from_slice(data);
+        let mut buf = [0; ed25519::SEED_LENGTH];
+        buf[0..ed25519::SEED_LENGTH].clone_from_slice(data);
         Ok(Priv(buf))
     }
     fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {

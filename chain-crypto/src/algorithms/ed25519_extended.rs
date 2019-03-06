@@ -12,7 +12,7 @@ use ed25519_bip32::XPrv;
 pub struct Ed25519Extended;
 
 #[derive(Clone)]
-pub struct ExtendedPriv([u8; 64]);
+pub struct ExtendedPriv([u8; ed25519::PRIVATE_KEY_LENGTH]);
 
 impl AsRef<[u8]> for ExtendedPriv {
     fn as_ref(&self) -> &[u8] {
@@ -22,7 +22,7 @@ impl AsRef<[u8]> for ExtendedPriv {
 
 impl ExtendedPriv {
     pub fn from_xprv(xprv: &XPrv) -> Self {
-        let mut buf = [0; 64];
+        let mut buf = [0; ed25519::PRIVATE_KEY_LENGTH];
         xprv.get_extended(&mut buf);
         ExtendedPriv(buf)
     }
@@ -33,7 +33,7 @@ impl AsymmetricKey for Ed25519Extended {
     type Public = ei::Pub;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
-        let mut priv_bytes = [0u8; ed25519::PRIVATE_KEY_LENGTH];
+        let mut priv_bytes = [0u8; ed25519::SEED_LENGTH];
         rng.fill_bytes(&mut priv_bytes);
         let (sk, _) = ed25519::keypair(&priv_bytes);
         ExtendedPriv(sk)
@@ -45,11 +45,11 @@ impl AsymmetricKey for Ed25519Extended {
     }
 
     fn secret_from_binary(data: &[u8]) -> Result<Self::Secret, SecretKeyError> {
-        if data.len() != 64 {
+        if data.len() != ed25519::PRIVATE_KEY_LENGTH {
             return Err(SecretKeyError::SizeInvalid);
         }
-        let mut buf = [0; 64];
-        buf[0..64].clone_from_slice(data);
+        let mut buf = [0; ed25519::PRIVATE_KEY_LENGTH];
+        buf[0..ed25519::PRIVATE_KEY_LENGTH].clone_from_slice(data);
         /// TODO structure check
         Ok(ExtendedPriv(buf))
     }
