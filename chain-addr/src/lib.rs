@@ -498,7 +498,10 @@ mod test {
         .unwrap();
 
         {
-            let addr = Address(Discrimination::Production, Kind::Single(fake_spendingkey));
+            let addr = Address(
+                Discrimination::Production,
+                Kind::Single(fake_spendingkey.clone()),
+            );
             property_serialize_deserialize(&addr);
             property_readable(&addr);
             expected_base32(
@@ -514,7 +517,7 @@ mod test {
         {
             let addr = Address(
                 Discrimination::Production,
-                Kind::Group(fake_spendingkey, fake_groupkey),
+                Kind::Group(fake_spendingkey.clone(), fake_groupkey.clone()),
             );
             property_serialize_deserialize(&addr);
             property_readable(&addr);
@@ -525,7 +528,7 @@ mod test {
         {
             let addr = Address(
                 Discrimination::Test,
-                Kind::Group(fake_spendingkey, fake_groupkey),
+                Kind::Group(fake_spendingkey.clone(), fake_groupkey.clone()),
             );
             property_serialize_deserialize(&addr);
             property_readable(&addr);
