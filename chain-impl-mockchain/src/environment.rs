@@ -63,7 +63,7 @@ impl Environment {
         let pk = self
             .users
             .entry(id)
-            .or_insert_with(|| Arbitrary::arbitrary(gen));
+            .or_insert_with(|| crate::key::test::arbitrary_secret_key(gen));
         let address = Address(Discrimination::Production, Kind::Single(pk.to_public()));
         self.keys.insert(address, pk.clone());
         pk.clone()
