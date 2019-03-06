@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use chain_addr::Address;
 use chain_core::property;
 use chain_core::property::testing;
+use chain_crypto::{Ed25519Extended, SecretKey};
 use quickcheck::{Arbitrary, Gen, StdGen};
 use rand::prelude::*;
 
 use crate::error::*;
-use crate::key::*;
 use crate::ledger::*;
 use crate::transaction::*;
 use crate::update::TransactionsDiff;
@@ -21,8 +21,8 @@ use crate::value::*;
 pub struct Environment {
     ledger: Ledger,
     gen: StdGen<rand::rngs::ThreadRng>,
-    users: HashMap<usize, PrivateKey>,
-    keys: HashMap<Address, PrivateKey>,
+    users: HashMap<usize, SecretKey<Ed25519Extended>>,
+    keys: HashMap<Address, SecretKey<Ed25519Extended>>,
 }
 
 impl Environment {
@@ -57,14 +57,14 @@ impl Environment {
     /// Get users private key based on the user's index,
     /// if there is no such a user yet - the user will be
     /// generated.
-    pub fn user(&mut self, id: usize) -> PrivateKey {
+    pub fn user(&mut self, id: usize) -> SecretKey<Ed25519Extended> {
         use chain_addr::{Discrimination, Kind};
         let gen = &mut self.gen;
         let pk = self
             .users
             .entry(id)
             .or_insert_with(|| Arbitrary::arbitrary(gen));
-        let address = Address(Discrimination::Production, Kind::Single(pk.public().0));
+        let address = Address(Discrimination::Production, Kind::Single(pk.to_public()));
         self.keys.insert(address, pk.clone());
         pk.clone()
     }
@@ -75,14 +75,14 @@ impl Environment {
         use chain_addr::{Discrimination, Kind};
         let address = Address(
             Discrimination::Production,
-            Kind::Single(self.user(id).public().0),
+            Kind::Single(self.user(id).to_public()),
         );
         address
     }
 
     /// Get user's private key based on user's address.
     /// panics if user is not in the environment yet.
-    pub fn private(&mut self, public: &Address) -> PrivateKey {
+    pub fn private(&mut self, public: &Address) -> SecretKey<Ed25519Extended> {
         self.keys
             .get(public)
             .expect("Public key should be registered in env first.")
