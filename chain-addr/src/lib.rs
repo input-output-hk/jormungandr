@@ -419,7 +419,7 @@ pub mod testing {
     use quickcheck::{Arbitrary, Gen};
 
     fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey {
-        let mut bytes = [0; cardano::redeem::PUBLICKEY_SIZE];
+        let mut bytes = [0; 32];
         for byte in bytes.iter_mut() {
             *byte = u8::arbitrary(g);
         }
