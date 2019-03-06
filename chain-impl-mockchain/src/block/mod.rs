@@ -191,17 +191,16 @@ mod test {
 
     quickcheck! {
         fn block_serialization_bijection(b: Block) -> TestResult {
-            dbg!(b.contents.0.len());
             property::testing::serialization_bijection(b)
         }
     }
 
     impl Arbitrary for BlockContents {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let len = usize::arbitrary(g) % 64;
+            let len = u8::arbitrary(g) % 12;
             BlockContents(
                 std::iter::repeat_with(|| Arbitrary::arbitrary(g))
-                    .take(len)
+                    .take(len as usize)
                     .collect(),
             )
         }

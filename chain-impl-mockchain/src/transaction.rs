@@ -389,10 +389,10 @@ mod test {
             let num_outputs = u8::arbitrary(g) as usize;
             Transaction {
                 inputs: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
-                    .take(num_inputs)
+                    .take(num_inputs % 8)
                     .collect(),
                 outputs: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
-                    .take(num_outputs)
+                    .take(num_outputs % 8)
                     .collect(),
             }
         }
