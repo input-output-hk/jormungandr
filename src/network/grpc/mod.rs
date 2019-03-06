@@ -2,7 +2,8 @@ mod bootstrap;
 mod client;
 mod server;
 
-use crate::{blockcfg::BlockConfig, blockchain::BlockchainR, settings::start::network::Peer};
+use super::NetworkBlockConfig;
+use crate::{blockchain::BlockchainR, settings::start::network::Peer};
 
 pub use self::client::run_connect_socket;
 pub use self::server::run_listen_socket;
@@ -12,7 +13,7 @@ use network_grpc::peer::TcpPeer;
 
 pub fn bootstrap_from_peer<B>(peer: Peer, blockchain: BlockchainR<B>)
 where
-    B: BlockConfig,
+    B: NetworkBlockConfig,
     <B::Ledger as property::Ledger>::Update: Clone,
     <B::Settings as property::Settings>::Update: Clone,
     <B::Leader as property::LeaderSelection>::Update: Clone,

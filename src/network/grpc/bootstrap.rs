@@ -1,9 +1,9 @@
-use crate::blockcfg::BlockConfig;
+use super::super::NetworkBlockConfig;
 use crate::blockchain::BlockchainR;
 
 use chain_core::property::{self, Deserialize, HasHeader};
 use network_core::client::block::BlockService;
-use network_grpc::client::Client;
+use network_grpc::client::{Client, ProtocolConfig};
 
 use tokio::prelude::*;
 use tokio::{executor::DefaultExecutor, runtime::current_thread};
@@ -12,11 +12,11 @@ use std::fmt::Debug;
 
 pub fn bootstrap_from_target<P, B>(peer: P, blockchain: BlockchainR<B>)
 where
-    B: BlockConfig,
+    B: NetworkBlockConfig,
     P: tower_service::Service<(), Error = std::io::Error> + 'static,
     <P as tower_service::Service<()>>::Response:
         tokio::io::AsyncWrite + tokio::io::AsyncRead + 'static + Send,
-    <B::Block as Deserialize>::Error: Send + Sync,
+    <<B as ProtocolConfig>::Block as Deserialize>::Error: Send + Sync,
     <B::BlockHash as Deserialize>::Error: Send + Sync,
     <B::Ledger as property::Ledger>::Update: Clone,
     <B::Settings as property::Settings>::Update: Clone,
@@ -28,8 +28,7 @@ where
         })
         .and_then(
             |mut client: Client<
-                B::Block,
-                B::Gossip,
+                B,
                 <P as tower_service::Service<()>>::Response,
                 DefaultExecutor,
             >| {
@@ -57,8 +56,8 @@ fn bootstrap_from_stream<B, S>(
     stream: S,
 ) -> impl Future<Item = (), Error = ()>
 where
-    B: BlockConfig,
-    S: Stream<Item = <B as BlockConfig>::Block>,
+    B: NetworkBlockConfig,
+    S: Stream<Item = <B as ProtocolConfig>::Block>,
     S::Error: Debug,
     <B::Ledger as property::Ledger>::Update: Clone,
     <B::Settings as property::Settings>::Update: Clone,

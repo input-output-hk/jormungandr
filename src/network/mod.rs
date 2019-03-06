@@ -22,9 +22,31 @@ use chain_core::property;
 use futures::prelude::*;
 use futures::stream::{self, Stream};
 
-use std::{net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 type Connection = SocketAddr;
+
+pub trait NetworkBlockConfig:
+    BlockConfig
+    + network_grpc::client::ProtocolConfig<
+        Block = <Self as BlockConfig>::Block,
+        Header = <Self as BlockConfig>::BlockHeader,
+        BlockId = <Self as BlockConfig>::BlockHash,
+        BlockDate = <Self as BlockConfig>::BlockDate,
+    >
+{
+}
+
+impl<B> NetworkBlockConfig for B where
+    B: BlockConfig
+        + network_grpc::client::ProtocolConfig<
+            Block = <Self as BlockConfig>::Block,
+            Header = <Self as BlockConfig>::BlockHeader,
+            BlockId = <Self as BlockConfig>::BlockHash,
+            BlockDate = <Self as BlockConfig>::BlockDate,
+        >
+{
+}
 
 /// all the different channels the network may need to talk to
 pub struct Channels<B: BlockConfig> {
@@ -143,8 +165,7 @@ impl<B: BlockConfig> ConnectionState<B> {
 
 pub fn run<B>(config: Configuration, channels: Channels<B>)
 where
-    B: BlockConfig + 'static,
-    B::BlockDate: FromStr,
+    B: NetworkBlockConfig + 'static,
 {
     // TODO: the node needs to be saved/loaded
     //
@@ -186,7 +207,7 @@ where
 
 pub fn bootstrap<B>(config: &Configuration, blockchain: BlockchainR<B>)
 where
-    B: BlockConfig,
+    B: NetworkBlockConfig,
     <B::Ledger as property::Ledger>::Update: Clone,
     <B::Settings as property::Settings>::Update: Clone,
     <B::Leader as property::LeaderSelection>::Update: Clone,

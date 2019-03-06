@@ -68,3 +68,11 @@ impl BlockConfig for Mockchain {
         block::SignedBlock::new(block, secret_key)
     }
 }
+
+impl network_grpc::client::ProtocolConfig for Mockchain {
+    type Block = block::SignedBlock;
+    type BlockDate = block::BlockDate;
+    type BlockId = key::Hash;
+    type Header = block::SignedBlockSummary;
+    type Gossip = EmptyGossip;
+}
