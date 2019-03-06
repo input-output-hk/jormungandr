@@ -171,17 +171,11 @@ mod test {
     use super::*;
 
     use quickcheck::{Arbitrary, Gen};
+    use rand_chacha::ChaChaRng;
+    use rand_core::SeedableRng;
 
-    pub fn arbitrary_public_key<A, G>(g: &mut G) -> PublicKey<A>
-    where
-        A: AsymmetricKey,
-        G: Gen,
-    {
-        let size = std::mem::size_of::<PublicKey<A>>();
-        let bytes: Vec<u8> = std::iter::repeat_with(move || Arbitrary::arbitrary(g))
-            .take(size)
-            .collect();
-        PublicKey::from_bytes(&bytes).unwrap()
+    pub fn arbitrary_public_key<A: AsymmetricKey, G: Gen>(g: &mut G) -> PublicKey<A> {
+        arbitrary_secret_key(g).to_public()
     }
 
     pub fn arbitrary_secret_key<A, G>(g: &mut G) -> SecretKey<A>
@@ -189,11 +183,8 @@ mod test {
         A: AsymmetricKey,
         G: Gen,
     {
-        let size = std::mem::size_of::<SecretKey<A>>();
-        let bytes: Vec<u8> = std::iter::repeat_with(move || Arbitrary::arbitrary(g))
-            .take(size)
-            .collect();
-        SecretKey::from_bytes(&bytes).unwrap()
+        let rng = ChaChaRng::seed_from_u64(Arbitrary::arbitrary(g));
+        SecretKey::generate(rng)
     }
 
     impl<A> Arbitrary for PublicKey<A>

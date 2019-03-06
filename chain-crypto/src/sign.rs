@@ -126,11 +126,15 @@ pub(crate) mod test {
     pub(crate) fn keypair_signing_ko<A: AsymmetricKey + SigningAlgorithm>(
         input: (KeyPair<A>, PublicKey<A>, Vec<u8>),
     ) -> bool {
-        let (sk, _) = input.0.into_keys();
-        let pk = input.1;
+        let (sk, pk) = input.0.into_keys();
+        let pk_random = input.1;
         let data = input.2;
 
+        if pk == pk_random {
+            return true;
+        }
+
         let signature = Signature::generate(&sk, &data);
-        signature.verify(&pk, &data) == Verification::Failed
+        signature.verify(&pk_random, &data) == Verification::Failed
     }
 }
