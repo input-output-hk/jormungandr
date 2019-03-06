@@ -11,9 +11,12 @@ mod securemem;
 mod signature;
 
 #[cfg(test)]
+mod tests;
+
+#[cfg(test)]
 #[cfg(feature = "with-bench")]
 mod bench;
 
-pub use derivation::DerivationScheme;
+pub use derivation::{DerivationIndex, DerivationScheme};
 pub use key::{PrivateKeyError, PublicKeyError, XPrv, XPub, XPRV_SIZE, XPUB_SIZE};
 pub use signature::{Signature, SignatureError, SIGNATURE_SIZE};
