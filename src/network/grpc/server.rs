@@ -30,7 +30,7 @@ pub fn run_listen_socket<B>(
 where
     B: BlockConfig + 'static,
 {
-    let state = ConnectionState::new_listen(&state, listen_to);
+    let state = ConnectionState::new_listen(&state, &listen_to);
 
     info!(
         "start listening and accepting gRPC connections on {}",
