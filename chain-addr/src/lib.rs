@@ -25,7 +25,7 @@
 use bech32::{Bech32, FromBase32, ToBase32};
 use std::string::ToString;
 
-use chain_crypto::{Ed25519, Ed25519Bip32, PublicKey, PublicKeyError};
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, PublicKeyError};
 
 use chain_core::property::{self, Serialize as PropertySerialize};
 
@@ -50,8 +50,8 @@ pub enum Discrimination {
 /// * Account address : an ed25519 stake public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
-    Single(PublicKey<Ed25519Bip32>),
-    Group(PublicKey<Ed25519Bip32>, PublicKey<Ed25519>),
+    Single(PublicKey<Ed25519Extended>),
+    Group(PublicKey<Ed25519Extended>, PublicKey<Ed25519>),
     Account(PublicKey<Ed25519>),
 }
 
@@ -208,7 +208,7 @@ impl Address {
         unsafe { String::from_utf8_unchecked(out) }
     }
 
-    pub fn public_key<'a>(&'a self) -> Option<&'a PublicKey<Ed25519Bip32>> {
+    pub fn public_key<'a>(&'a self) -> Option<&'a PublicKey<Ed25519Extended>> {
         match self.1 {
             Kind::Single(ref pk) => Some(pk),
             Kind::Group(ref pk, _) => Some(pk),
@@ -486,7 +486,7 @@ mod test {
 
     #[test]
     fn unit_tests() {
-        let fake_spendingkey: PublicKey<Ed25519Bip32> = PublicKey::from_binary(&[
+        let fake_spendingkey: PublicKey<Ed25519Extended> = PublicKey::from_binary(&[
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         ])
@@ -532,8 +532,8 @@ mod test {
             );
             property_serialize_deserialize(&addr);
             property_readable(&addr);
-            expected_bech32(&addr, "ta1ss5j52ev95hz7vp3xgengdfkxuurjw3m8s7nu06qg9pyx3z9ger5sqgzqvzq2ps8pqys5zcvp58q7yq3zgf3g9gkzuvpjxsmrsw3u8eqx5x7xh");
-            expected_base32(&addr, "qqusukzmfuxc6mbrgiztinjwg44dsor3hq6t4p2aifbegrcfizduqaicamcakbqhbaequcymbuha6earcijrifiwc4mbsgq3dqor4hza");
+            expected_bech32(&addr, "ta1ssqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jq2f29vkz6t30xqcnyve5x5mrwwpe8ganc0f78aqyzsjrg3z5v36ge5qsky");
+            expected_base32(&addr, "qqaqeayeaudaocajbifqydiob4ibceqtcqkrmfyydenbwha5dypsakjkfmwc2lrpgaytemzugu3doobzhi5typj6h5aecqsdircumr2i");
         }
 
         {
@@ -542,11 +542,11 @@ mod test {
             property_readable(&addr);
             expected_base32(
                 &addr,
-                "quaqeayeaudaocajbifqydiob4ibceqtcqkrmfyydenbwha5dypsa",
+                "quusukzmfuxc6mbrgiztinjwg44dsor3hq6t4p2aifbegrcfizduq",
             );
             expected_bech32(
                 &addr,
-                "ta1s5qsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqrycrjr",
+                "ta1s55j52ev95hz7vp3xgengdfkxuurjw3m8s7nu06qg9pyx3z9ger5s28ezm6",
             );
         }
     }
