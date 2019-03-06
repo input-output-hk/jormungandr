@@ -10,6 +10,12 @@ pub mod genesis;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeaderId(pub PublicKey<Ed25519>);
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PublicLeader {
+    Bft(LeaderId),
+    GenesisPraos(PublicKey<FakeMMM>),
+}
+
 pub enum Leader {
     BftLeader(SecretKey<Ed25519>),
     GenesisPraos(SecretKey<FakeMMM>, vrf::SecretKey, ProvenOutputSeed),
@@ -44,7 +50,7 @@ impl property::Deserialize for LeaderId {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 

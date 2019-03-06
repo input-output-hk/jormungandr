@@ -3,14 +3,14 @@
 //!
 use chain_core::property;
 use chain_crypto as crypto;
-use chain_crypto::{AsymmetricKey as _, VerificationAlgorithm};
+use chain_crypto::{AsymmetricKey, SigningAlgorithm, VerificationAlgorithm};
 
 pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519Extended>;
 pub type SpendingSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
 pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519Extended>;
 
 #[inline]
-pub fn serialize_public_key<A: VerificationAlgorithm, W: std::io::Write>(
+pub fn serialize_public_key<A: AsymmetricKey, W: std::io::Write>(
     key: &crypto::PublicKey<A>,
     mut writer: W,
 ) -> Result<(), std::io::Error> {
@@ -32,7 +32,7 @@ pub fn serialize_signature<A: VerificationAlgorithm, T, W: std::io::Write>(
 #[inline]
 pub fn deserialize_public_key<A, R>(mut reader: R) -> Result<crypto::PublicKey<A>, std::io::Error>
 where
-    A: VerificationAlgorithm,
+    A: AsymmetricKey,
     R: std::io::BufRead,
 {
     let size: usize = std::mem::size_of::<crypto::PublicKey<A>>();
@@ -58,22 +58,39 @@ where
         .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err)))
 }
 
-pub fn make_spending_signature<T: property::Serialize>(
-    spending_key: &SpendingSecretKey,
+pub fn make_spending_signature<T, A>(
+    spending_key: &crypto::SecretKey<A>,
     data: T,
-) -> SpendingSignature<T> {
+) -> crypto::Signature<T, A>
+where
+    A: SigningAlgorithm,
+    T: property::Serialize,
+{
     let bytes = data.serialize_as_vec().unwrap();
     crypto::Signature::generate(spending_key, &bytes).coerce()
 }
 
+pub fn verify_signature<T, A>(
+    signature: &crypto::Signature<T, A>,
+    public_key: &crypto::PublicKey<A>,
+    data: &T,
+) -> crypto::Verification
+where
+    A: VerificationAlgorithm,
+    T: property::Serialize,
+{
+    let bytes = data.serialize_as_vec().unwrap();
+    signature.clone().coerce().verify(public_key, &bytes)
+}
+
 /// A serializable type T with a signature.
 #[derive(Debug, Clone)]
-pub struct Signed<T, A: VerificationAlgorithm> {
+pub struct Signed<T, A: SigningAlgorithm> {
     pub data: T,
     pub sig: crypto::Signature<T, A>,
 }
 
-impl<T: property::Serialize, A: VerificationAlgorithm> property::Serialize for Signed<T, A>
+impl<T: property::Serialize, A: SigningAlgorithm> property::Serialize for Signed<T, A>
 where
     std::io::Error: From<T::Error>,
 {
@@ -85,7 +102,7 @@ where
     }
 }
 
-impl<T: property::Deserialize, A: VerificationAlgorithm> property::Deserialize for Signed<T, A>
+impl<T: property::Deserialize, A: SigningAlgorithm> property::Deserialize for Signed<T, A>
 where
     std::io::Error: From<T::Error>,
 {
@@ -153,9 +170,24 @@ impl std::fmt::Display for Hash {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
+
+    pub fn arbitrary_secret_key<A, G>(g: &mut G) -> crypto::SecretKey<A>
+    where
+        A: AsymmetricKey,
+        G: Gen,
+    {
+        use rand_chacha::ChaChaRng;
+        use rand_core::SeedableRng;
+        let mut seed = [0; 32];
+        for byte in seed.iter_mut() {
+            *byte = Arbitrary::arbitrary(g);
+        }
+        let mut rng = ChaChaRng::from_seed(seed);
+        crypto::SecretKey::generate(&mut rng)
+    }
 
     impl Arbitrary for Hash {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {

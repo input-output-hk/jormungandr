@@ -1,9 +1,14 @@
 use chain_core::property;
 
 use crate::date::BlockDate;
-use crate::key::{Hash, PublicKey, Signature};
-use crate::leadership::LeaderId;
+use crate::key::{
+    deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
+    verify_signature, Hash,
+};
+use crate::leadership::{LeaderId, PublicLeader};
 use chain_crypto::algorithms::vrf::vrf;
+use chain_crypto::algorithms::FakeMMM;
+use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
 
 pub type HeaderHash = Hash;
 pub type BlockContentHash = Hash;
@@ -26,19 +31,27 @@ pub struct Common {
     pub(crate) block_parent_hash: BlockId,
 }
 
+pub type HeaderToSign = Common;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BftProof {
     pub(crate) leader_id: LeaderId,
-    pub(crate) signature: Signature,
+    pub(crate) signature: BftSignature,
 }
+
+#[derive(Debug, Clone)]
+pub struct BftSignature(Signature<HeaderToSign, Ed25519>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisPraosProof {
     pub(crate) vrf_public_key: vrf::PublicKey,
     pub(crate) vrf_proof: vrf::ProvenOutputSeed,
-    pub(crate) kes_public_key: LeaderId, // TODO: utilise KES' public key
-    pub(crate) kes_proof: Signature,     // TODO: utilise KES' signature (MMM)
+    pub(crate) kes_public_key: PublicKey<FakeMMM>,
+    pub(crate) kes_proof: KESSignature,
 }
+
+#[derive(Debug, Clone)]
+pub struct KESSignature(Signature<HeaderToSign, FakeMMM>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Proof {
@@ -65,14 +78,28 @@ impl BlockVersion {
     }
 }
 
+impl PartialEq<Self> for BftSignature {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_ref() == other.0.as_ref()
+    }
+}
+impl Eq for BftSignature {}
+
+impl PartialEq<Self> for KESSignature {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_ref() == other.0.as_ref()
+    }
+}
+impl Eq for KESSignature {}
+
 impl Proof {
-    pub fn leader_id(&self) -> Option<LeaderId> {
+    pub fn leader_id(&self) -> Option<PublicLeader> {
         match self {
             Proof::None => None,
-            Proof::Bft(bft_proof) => Some(bft_proof.leader_id.clone()),
-            Proof::GenesisPraos(genesis_praos_proof) => {
-                Some(genesis_praos_proof.kes_public_key.clone().into())
-            }
+            Proof::Bft(bft_proof) => Some(PublicLeader::Bft(bft_proof.leader_id.clone())),
+            Proof::GenesisPraos(genesis_praos_proof) => Some(PublicLeader::GenesisPraos(
+                genesis_praos_proof.kes_public_key.clone(),
+            )),
         }
     }
 }
@@ -114,20 +141,19 @@ impl Header {
 
     /// this function verify the proof and the consistency of the block
     /// within itself.
-    pub fn verify_proof(&self) -> bool {
+    pub fn verify_proof(&self) -> Verification {
         match &self.proof {
-            Proof::None => true,
-            Proof::Bft(bft_proof) => bft_proof
-                .leader_id
-                .0
-                .serialize_and_verify(&self.common, &bft_proof.signature),
+            Proof::None => Verification::Success,
+            Proof::Bft(bft_proof) => {
+                verify_signature(&bft_proof.signature.0, &bft_proof.leader_id.0, &self.common)
+            }
             Proof::GenesisPraos(genesis_praos_proof) => {
-                let kes = genesis_praos_proof
-                    .kes_public_key
-                    .0
-                    .serialize_and_verify(&self.common, &genesis_praos_proof.kes_proof);
-                // TODO: add VRF verify
-                kes
+                verify_signature(
+                    &genesis_praos_proof.kes_proof.0,
+                    &genesis_praos_proof.kes_public_key,
+                    &self.common,
+                )
+                // TODO: verify the VRF too
             }
         }
     }
@@ -181,8 +207,8 @@ impl property::Serialize for Header {
         match &self.proof {
             Proof::None => {}
             Proof::Bft(bft_proof) => {
-                bft_proof.leader_id.serialize(&mut buffered)?;
-                bft_proof.signature.serialize(&mut buffered)?;
+                serialize_public_key(&bft_proof.leader_id.0, &mut buffered)?;
+                serialize_signature(&bft_proof.signature.0, &mut buffered)?;
             }
             Proof::GenesisPraos(genesis_praos_proof) => {
                 use std::io::Write;
@@ -196,10 +222,8 @@ impl property::Serialize for Header {
                     genesis_praos_proof.vrf_proof.to_bytes(&mut buf);
                     buffered.write_all(&buf)?;
                 }
-                genesis_praos_proof
-                    .kes_public_key
-                    .serialize(&mut buffered)?;
-                genesis_praos_proof.kes_proof.serialize(&mut buffered)?;
+                serialize_public_key(&genesis_praos_proof.kes_public_key, &mut buffered)?;
+                serialize_signature(&genesis_praos_proof.kes_proof.0, &mut buffered)?;
             }
         }
 
@@ -228,17 +252,17 @@ impl property::Deserialize for Header {
 
         let mut hash = [0; 32];
         codec.read_exact(&mut hash)?;
-        let block_content_hash = Hash::from(cardano::hash::Blake2b256::from(hash));
+        let block_content_hash = Hash::from(chain_crypto::Blake2b256::from(hash));
         let mut hash = [0; 32];
         codec.read_exact(&mut hash)?;
-        let block_parent_hash = Hash::from(cardano::hash::Blake2b256::from(hash));
+        let block_parent_hash = Hash::from(chain_crypto::Blake2b256::from(hash));
 
         let proof = match block_version {
             BLOCK_VERSION_CONSENSUS_NONE => Proof::None,
             BLOCK_VERSION_CONSENSUS_BFT => {
                 // BFT
-                let leader_id = LeaderId::deserialize(&mut codec)?;
-                let signature = Signature::deserialize(&mut codec)?;
+                let leader_id = deserialize_public_key(&mut codec).map(LeaderId)?;
+                let signature = deserialize_signature(&mut codec).map(BftSignature)?;
                 Proof::Bft(BftProof {
                     leader_id,
                     signature,
@@ -293,9 +317,12 @@ mod test {
 
     impl Arbitrary for BftProof {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let sk = crate::key::test::arbitrary_secret_key(g);
+            let pk = sk.to_public();
+            let signature = chain_crypto::Signature::generate(&sk, &[0u8, 1, 2, 3]);
             BftProof {
-                leader_id: Arbitrary::arbitrary(g),
-                signature: Arbitrary::arbitrary(g),
+                leader_id: LeaderId(pk),
+                signature: BftSignature(signature.coerce()),
             }
         }
     }
