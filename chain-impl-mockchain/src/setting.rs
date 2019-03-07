@@ -257,6 +257,7 @@ mod tests {
     impl Arbitrary for SettingsDiff {
         fn arbitrary<G: Gen>(g: &mut G) -> SettingsDiff {
             SettingsDiff {
+                block_version: ValueDiff::None,
                 block_id: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
                 bootstrap_key_slots_percentage: ValueDiff::Replace(
                     Arbitrary::arbitrary(g),
