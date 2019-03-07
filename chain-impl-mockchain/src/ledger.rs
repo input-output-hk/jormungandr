@@ -214,7 +214,7 @@ pub mod test {
     }
 
     #[test]
-    fn cant_loose_money() {
+    fn cant_lose_money() {
         use chain_core::property::Ledger;
         use chain_core::property::Transaction;
         let mut rng = rand::thread_rng();
