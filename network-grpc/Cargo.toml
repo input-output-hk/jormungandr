@@ -20,7 +20,6 @@ prost = "0.4"
 prost-derive = "0.4"
 tokio = "0.1"
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
-tower-service = "0.2"
 tower-util = { git = "https://github.com/tower-rs/tower" }
 
 [dependencies.tower-grpc]
