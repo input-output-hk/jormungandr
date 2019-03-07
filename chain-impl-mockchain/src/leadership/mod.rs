@@ -12,11 +12,13 @@ pub struct LeaderId(pub(crate) PublicKey<Ed25519Extended>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PublicLeader {
+    None,
     Bft(LeaderId),
     GenesisPraos(PublicKey<FakeMMM>),
 }
 
 pub enum Leader {
+    None,
     BftLeader(SecretKey<Ed25519Extended>),
     GenesisPraos(SecretKey<FakeMMM>, vrf::SecretKey, ProvenOutputSeed),
 }
@@ -46,6 +48,12 @@ impl property::Deserialize for LeaderId {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         deserialize_public_key(reader).map(LeaderId)
+    }
+}
+
+impl AsRef<PublicKey<Ed25519Extended>> for LeaderId {
+    fn as_ref(&self) -> &PublicKey<Ed25519Extended> {
+        &self.0
     }
 }
 

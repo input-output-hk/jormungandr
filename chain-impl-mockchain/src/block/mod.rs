@@ -55,6 +55,7 @@ impl Block {
     /// Create a new signed block.
     pub fn new(contents: BlockContents, common: Common, leader: &mut Leader) -> Self {
         let proof = match leader {
+            Leader::None => Proof::None,
             Leader::BftLeader(private_key) => {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_BFT);
                 let signature = make_signature(&private_key, &common);
@@ -100,6 +101,7 @@ impl Block {
 impl property::Block for Block {
     type Id = BlockId;
     type Date = BlockDate;
+    type Version = BlockVersion;
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
@@ -116,6 +118,10 @@ impl property::Block for Block {
     /// Date of the block.
     fn date(&self) -> Self::Date {
         *self.header.block_date()
+    }
+
+    fn version(&self) -> Self::Version {
+        *self.header.block_version()
     }
 }
 

@@ -1,7 +1,7 @@
 //! define the Blockchain settings
 //!
 
-use crate::block::Message;
+use crate::block::{BlockVersion, Message, BLOCK_VERSION_CONSENSUS_NONE};
 use crate::key::Hash;
 use crate::update::ValueDiff;
 use chain_core::property::{self, BlockId};
@@ -16,6 +16,7 @@ use num_traits::FromPrimitive;
 pub struct UpdateProposal {
     pub max_number_of_transactions_per_block: Option<u32>,
     pub bootstrap_key_slots_percentage: Option<u8>,
+    pub block_version: Option<BlockVersion>,
 }
 
 impl UpdateProposal {
@@ -23,6 +24,7 @@ impl UpdateProposal {
         UpdateProposal {
             max_number_of_transactions_per_block: None,
             bootstrap_key_slots_percentage: None,
+            block_version: None,
         }
     }
 }
@@ -32,6 +34,7 @@ enum UpdateTag {
     End = 0,
     MaxNumberOfTransactionsPerBlock = 1,
     BootstrapKeySlotsPercentage = 2,
+    BlockVersion = 3,
 }
 
 impl property::Serialize for UpdateProposal {
@@ -48,6 +51,10 @@ impl property::Serialize for UpdateProposal {
         if let Some(bootstrap_key_slots_percentage) = self.bootstrap_key_slots_percentage {
             codec.put_u16(UpdateTag::BootstrapKeySlotsPercentage as u16)?;
             codec.put_u8(bootstrap_key_slots_percentage)?;
+        }
+        if let Some(block_version) = self.block_version {
+            codec.put_u16(UpdateTag::BlockVersion as u16)?;
+            codec.put_u16(block_version.0)?;
         }
         codec.put_u16(UpdateTag::End as u16)?;
         Ok(())
@@ -73,6 +80,9 @@ impl property::Deserialize for UpdateProposal {
                 Some(UpdateTag::BootstrapKeySlotsPercentage) => {
                     update.bootstrap_key_slots_percentage = Some(codec.get_u8()?);
                 }
+                Some(UpdateTag::BlockVersion) => {
+                    update.block_version = Some(codec.get_u16().map(BlockVersion)?);
+                }
                 None => panic!("Unrecognized update tag {}.", tag),
             }
         }
@@ -90,6 +100,7 @@ pub struct Settings {
     pub last_block_id: Hash,
     pub max_number_of_transactions_per_block: u32,
     pub bootstrap_key_slots_percentage: u8, // == d * 100
+    pub block_version: BlockVersion,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -100,6 +111,7 @@ impl Settings {
             last_block_id: Hash::zero(),
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
+            block_version: BLOCK_VERSION_CONSENSUS_NONE,
         }
     }
 }
@@ -158,6 +170,10 @@ impl property::Settings for Settings {
                         bootstrap_key_slots_percentage,
                     );
                 }
+
+                if let Some(block_version) = proposal.block_version {
+                    update.block_version = ValueDiff::Replace(self.block_version, block_version);
+                }
             }
         }
 
@@ -195,12 +211,17 @@ impl property::Settings for Settings {
     fn max_number_of_transactions_per_block(&self) -> u32 {
         self.max_number_of_transactions_per_block
     }
+
+    fn block_version(&self) -> <Self::Block as property::Block>::Version {
+        self.block_version
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SettingsDiff {
     pub block_id: ValueDiff<Hash>,
     pub bootstrap_key_slots_percentage: ValueDiff<u8>,
+    pub block_version: ValueDiff<BlockVersion>,
 }
 
 impl property::Update for SettingsDiff {
@@ -208,18 +229,21 @@ impl property::Update for SettingsDiff {
         SettingsDiff {
             block_id: ValueDiff::None,
             bootstrap_key_slots_percentage: ValueDiff::None,
+            block_version: ValueDiff::None,
         }
     }
     fn inverse(self) -> Self {
         SettingsDiff {
             block_id: self.block_id.inverse(),
             bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage.inverse(),
+            block_version: self.block_version.inverse(),
         }
     }
     fn union(&mut self, other: Self) -> &mut Self {
         self.block_id.union(other.block_id);
         self.bootstrap_key_slots_percentage
             .union(other.bootstrap_key_slots_percentage);
+        self.block_version.union(other.block_version);
         self
     }
 }
@@ -233,6 +257,7 @@ mod tests {
     impl Arbitrary for SettingsDiff {
         fn arbitrary<G: Gen>(g: &mut G) -> SettingsDiff {
             SettingsDiff {
+                block_version: ValueDiff::None,
                 block_id: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
                 bootstrap_key_slots_percentage: ValueDiff::Replace(
                     Arbitrary::arbitrary(g),

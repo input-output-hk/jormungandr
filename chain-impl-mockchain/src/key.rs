@@ -166,7 +166,6 @@ impl<T: Clone, A: SigningAlgorithm> Clone for Signed<T, A> {
 }
 
 /// Hash that is used as an address of the various components.
-#[cfg_attr(feature = "generic-serialization", derive(serde_derive::Serialize))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash(crypto::Blake2b256);
 impl Hash {
