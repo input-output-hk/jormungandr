@@ -5,8 +5,11 @@ use crate::transaction::SignedTransaction;
 use chain_core::property;
 use chain_crypto::Verification;
 
+mod builder;
 mod header;
 mod message;
+
+pub use self::builder::BlockBuilder;
 
 pub use self::header::{
     BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, Common,
@@ -53,6 +56,7 @@ impl BlockContents {
 
 impl Block {
     /// Create a new signed block.
+    #[deprecated(note = "utilise BlockBuilder instead")]
     pub fn new(contents: BlockContents, common: Common, leader: &mut Leader) -> Self {
         let proof = match leader {
             Leader::None => Proof::None,
