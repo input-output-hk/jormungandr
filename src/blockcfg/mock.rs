@@ -48,7 +48,7 @@ impl BlockConfig for Mockchain {
     type Gossip = EmptyGossip;
 
     fn make_block(
-        secret_key: &Self::NodeSigningKey,
+        _secret_key: &Self::NodeSigningKey,
         settings: &Self::Settings,
         _ledger: &Self::Ledger,
         block_date: Self::BlockDate,

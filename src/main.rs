@@ -42,6 +42,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use(o)]
 extern crate slog;
+extern crate hex;
 extern crate slog_async;
 extern crate slog_json;
 extern crate slog_term;

@@ -1,3 +1,4 @@
+use super::parse_block_hash;
 use crate::rest::server_service::PathPredicate;
 use actix_web::error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError};
 use actix_web::{App, Path, Query, State};
@@ -23,7 +24,7 @@ fn handle_request(
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> Result<Bytes, ActixError> {
-    let block_id = block_id_hex.parse().map_err(|e| ErrorBadRequest(e))?;
+    let block_id = parse_block_hash(&block_id_hex)?;
     // FIXME
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked

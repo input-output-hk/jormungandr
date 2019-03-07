@@ -7,7 +7,10 @@ use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 use bytes::Bytes;
 use chain_core::property::Serialize;
+use chain_crypto::Blake2b256;
+use chain_impl_mockchain::key::Hash;
 use chain_storage::store::BlockStore;
+use hex::FromHex;
 
 pub fn create_handler(
     blockchain: BlockchainR<Mockchain>,
@@ -24,7 +27,7 @@ fn handle_request(
     blockchain: State<BlockchainR<Mockchain>>,
     block_id_hex: Path<String>,
 ) -> Result<Bytes, ActixError> {
-    let block_id = block_id_hex.parse().map_err(|e| ErrorBadRequest(e))?;
+    let block_id = parse_block_hash(&block_id_hex)?;
     let block = blockchain
         .read()
         .unwrap()
@@ -35,4 +38,11 @@ fn handle_request(
         .serialize_as_vec()
         .map_err(|e| ErrorInternalServerError(e))?;
     Ok(Bytes::from(block))
+}
+
+fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
+    let bytes = <[u8; Blake2b256::HASH_SIZE]>::from_hex(hex).map_err(|e| ErrorBadRequest(e))?;
+    let hash = Blake2b256::from(bytes);
+    let block_hash = Hash::from(hash);
+    Ok(block_hash)
 }
