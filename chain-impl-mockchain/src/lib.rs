@@ -2,6 +2,7 @@
 #[macro_use]
 extern crate quickcheck;
 
+pub mod account;
 pub mod block;
 pub mod certificate;
 mod date;
