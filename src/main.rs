@@ -33,6 +33,7 @@ extern crate tokio_bus;
 #[cfg(test)]
 extern crate quickcheck;
 extern crate rand;
+extern crate regex;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -41,6 +42,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use(o)]
 extern crate slog;
+extern crate hex;
 extern crate slog_async;
 extern crate slog_json;
 extern crate slog_term;

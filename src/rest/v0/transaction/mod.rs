@@ -31,10 +31,7 @@ fn handle_request(
         let tx: SignedTransaction =
             SignedTransaction::deserialize(message.into_buf()).map_err(|e| ErrorBadRequest(e))?;
         let msg = TransactionMsg::SendTransaction(vec![tx]);
-        sender
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .send_to(msg);
+        sender.lock().unwrap().send_to(msg);
         Ok("")
     })
 }

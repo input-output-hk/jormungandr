@@ -72,7 +72,7 @@ impl fmt::Display for ParseError {
 impl std::str::FromStr for PublicKey {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut decoded = cardano::util::hex::decode(s).map_err(|err| format!("{}", err))?;
+        let decoded = cardano::util::hex::decode(s).map_err(|err| format!("{}", err))?;
         let key = key::deserialize_public_key(std::io::Cursor::new(decoded))
             .map_err(|err| format!("{}", err))?;
         let leader_id = LeaderId::from(key);

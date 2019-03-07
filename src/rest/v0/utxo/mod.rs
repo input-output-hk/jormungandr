@@ -17,7 +17,7 @@ pub fn create_handler(
 }
 
 fn handle_request(blockchain: State<BlockchainR<Mockchain>>) -> impl Responder {
-    let blockchain = blockchain.read().unwrap_or_else(|e| e.into_inner());
+    let blockchain = blockchain.read().unwrap();
     let ledger = blockchain.state.ledger.read().unwrap();
     let utxos = ledger
         .unspent_outputs
