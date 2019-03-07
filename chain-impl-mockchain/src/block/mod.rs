@@ -2,7 +2,7 @@
 use crate::key::{make_signature, make_signature_update, Hash};
 use crate::leadership::Leader;
 use crate::transaction::SignedTransaction;
-use chain_core::property;
+use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
 
 mod header;
@@ -154,7 +154,7 @@ impl property::Deserialize for Block {
         let mut serialized_content_size = header.common.block_content_size;
         let mut contents = BlockContents(Vec::with_capacity(15_000));
         while serialized_content_size > 0 {
-            let (message, message_size) = Message::deserialize(&mut reader)?;
+            let (message, message_size) = Message::deserialize_with_size(&mut reader)?;
             contents.0.push(message);
             dbg!(contents.0.len());
 
@@ -186,6 +186,20 @@ impl property::HasTransaction for Block {
             Message::Transaction(tx) => f(tx),
             _ => {}
         })
+    }
+}
+
+impl property::HasMessages for Block {
+    type Message = Message;
+    fn messages<'a>(&'a self) -> Box<Iterator<Item = &Message> + 'a> {
+        Box::new(self.contents.iter())
+    }
+
+    fn for_each_message<F>(&self, mut f: F)
+    where
+        F: FnMut(&Self::Message),
+    {
+        self.contents.iter().for_each(|msg| f(msg))
     }
 }
 

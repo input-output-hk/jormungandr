@@ -197,6 +197,7 @@ impl property::BlockId for Hash {
     }
 }
 
+impl property::MessageId for Hash {}
 impl property::TransactionId for Hash {}
 
 impl AsRef<[u8]> for Hash {

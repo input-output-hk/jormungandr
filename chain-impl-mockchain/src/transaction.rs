@@ -60,6 +60,7 @@ impl Witness {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Output(pub Address, pub Value);
 
+// FIXME: should this be a wrapper type?
 pub type TransactionId = Hash;
 
 /// Transaction, transaction maps old unspent tokens into the
