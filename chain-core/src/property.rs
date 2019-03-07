@@ -60,11 +60,17 @@ pub trait Header: Serialize + Deserialize {
     /// The block date.
     type Date: BlockDate;
 
+    /// the type associated to the version of a block
+    type Version;
+
     /// Retrieves the block's header id.
     fn id(&self) -> Self::Id;
 
     /// Retrieves the block's date.
     fn date(&self) -> Self::Date;
+
+    /// access the version of a given block
+    fn version(&self) -> Self::Version;
 }
 
 /// Block property
@@ -91,6 +97,9 @@ pub trait Block: Serialize + Deserialize {
     /// identifying the position of a block in a given epoch or era.
     type Date: BlockDate;
 
+    /// the type associated to the version of a block
+    type Version;
+
     /// return the Block's identifier.
     fn id(&self) -> Self::Id;
 
@@ -100,6 +109,9 @@ pub trait Block: Serialize + Deserialize {
 
     /// get the block date of the block
     fn date(&self) -> Self::Date;
+
+    /// access the version of a given block
+    fn version(&self) -> Self::Version;
 }
 
 /// Access to the block header.
@@ -317,6 +329,9 @@ pub trait Settings {
 
     /// the number of transactions in a block
     fn max_number_of_transactions_per_block(&self) -> u32;
+
+    /// the block version format
+    fn block_version(&self) -> <Self::Block as Block>::Version;
 }
 
 /// Define that an object can be written to a `Write` object.

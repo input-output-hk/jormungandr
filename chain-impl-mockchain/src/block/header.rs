@@ -16,7 +16,7 @@ pub type BlockId = Hash;
 pub type BlockContentSize = u32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BlockVersion(u16);
+pub struct BlockVersion(pub(crate) u16);
 
 pub const BLOCK_VERSION_CONSENSUS_NONE: BlockVersion = BlockVersion::new(0x0000_0000);
 pub const BLOCK_VERSION_CONSENSUS_BFT: BlockVersion = BlockVersion::new(0x0000_0001);
@@ -24,11 +24,11 @@ pub const BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS: BlockVersion = BlockVersion::ne
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Common {
-    pub(crate) block_version: BlockVersion,
-    pub(crate) block_date: BlockDate,
-    pub(crate) block_content_size: BlockContentSize,
-    pub(crate) block_content_hash: BlockContentHash,
-    pub(crate) block_parent_hash: BlockId,
+    pub block_version: BlockVersion,
+    pub block_date: BlockDate,
+    pub block_content_size: BlockContentSize,
+    pub block_content_hash: BlockContentHash,
+    pub block_parent_hash: BlockId,
 }
 
 pub type HeaderToSign = Common;
@@ -162,6 +162,7 @@ impl Header {
 impl property::Header for Header {
     type Id = HeaderHash;
     type Date = BlockDate;
+    type Version = BlockVersion;
 
     fn id(&self) -> Self::Id {
         self.hash()
@@ -169,6 +170,10 @@ impl property::Header for Header {
 
     fn date(&self) -> Self::Date {
         *self.block_date()
+    }
+
+    fn version(&self) -> Self::Version {
+        *self.block_version()
     }
 }
 
