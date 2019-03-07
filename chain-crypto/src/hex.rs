@@ -38,17 +38,6 @@ impl fmt::Display for DecodeError {
 
 impl error::Error for DecodeError {}
 
-/// decode the given hexadecimal string
-///
-///  # Example
-///
-/// ```
-/// use cardano::util::hex::{Error, decode};
-///
-/// let example = r"736f6d65206279746573";
-///
-/// assert!(decode(example).is_ok());
-/// ```
 pub fn decode<S: AsRef<[u8]>>(input: S) -> Result<Vec<u8>, DecodeError> {
     decode_bytes(input.as_ref())
 }
@@ -84,3 +73,38 @@ fn decode_bytes(input: &[u8]) -> Result<Vec<u8>, DecodeError> {
     Ok(b)
 }
 
+#[cfg(test)]
+mod tests {
+    fn encode<D: AsRef<[u8]>>(input: D, expected: &str) {
+        let encoded = super::encode(input);
+        assert_eq!(encoded, expected);
+    }
+    fn decode<S: AsRef<[u8]>>(expected: &[u8], input: S) {
+        let decoded = super::decode(input).unwrap();
+        assert_eq!(decoded.as_slice(), expected);
+    }
+
+    #[test]
+    fn test_vector_1() {
+        encode(&[1, 2, 3, 4], "01020304");
+        decode(&[1, 2, 3, 4], "01020304");
+    }
+
+    #[test]
+    fn test_vector_2() {
+        encode(&[0xff, 0x0f, 0xff, 0xff], "ff0fffff");
+        decode(&[0xff, 0x0f, 0xff, 0xff], "ff0fffff");
+    }
+
+    #[test]
+    fn test_bytes() {
+        encode(&[1, 2, 3, 4], "01020304");
+        decode(&[1, 2, 3, 4], b"01020304");
+    }
+
+    #[test]
+    fn test_string() {
+        encode("1234", "31323334");
+        decode(&[1, 2, 3, 4], "01020304");
+    }
+}
