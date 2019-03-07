@@ -8,7 +8,7 @@ use crate::key::{
 use crate::leadership::{LeaderId, PublicLeader};
 use chain_crypto::algorithms::vrf::vrf;
 use chain_crypto::algorithms::FakeMMM;
-use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, Signature, Verification};
+use chain_crypto::{Ed25519Extended, PublicKey, Signature, Verification};
 
 pub type HeaderHash = Hash;
 pub type BlockContentHash = Hash;

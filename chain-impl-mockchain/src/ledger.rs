@@ -126,7 +126,7 @@ pub mod test {
     use super::*;
     // use crate::key::PrivateKey;
     // use cardano::redeem as crypto;
-    use chain_addr::{Address, Discrimination, Kind};
+    // use chain_addr::{Address, Discrimination, Kind};
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Ledger {

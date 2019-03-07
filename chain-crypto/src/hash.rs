@@ -4,9 +4,7 @@
 use std::{
     fmt,
     hash::{Hash, Hasher},
-    io::{BufRead, Write},
     result,
-    str::FromStr,
 };
 
 use cryptoxide::blake2b::Blake2b;
