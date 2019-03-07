@@ -6,7 +6,7 @@ use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
 
 mod header;
-mod message;
+pub mod message;
 
 pub use self::header::{
     BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, Common,
