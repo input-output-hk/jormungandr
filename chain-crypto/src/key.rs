@@ -19,6 +19,9 @@ pub trait AsymmetricKey {
     type Secret: AsRef<[u8]> + Clone;
     type Public: AsRef<[u8]> + Clone + PartialEq + Eq + Hash;
 
+    const SECRET_BECH32_HRP: &'static str;
+    const PUBLIC_BECH32_HRP: &'static str;
+
     fn generate<T: RngCore + CryptoRng>(rng: T) -> Self::Secret;
 
     fn compute_public(secret: &Self::Secret) -> Self::Public;
