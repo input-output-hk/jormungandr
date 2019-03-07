@@ -57,6 +57,7 @@ impl property::Ledger for Ledger {
                 transaction.witnesses.len(),
             ));
         }
+
         // 1. validate transaction without looking into the context
         // and that each input is validated by the matching key.
         for (input, witness) in transaction
@@ -84,11 +85,17 @@ impl property::Ledger for Ledger {
                 return Err(Error::DoubleSpend(*input, output));
             }
         }
+
         // 2. prepare to add the new outputs
         for (index, output) in transaction.transaction.outputs.iter().enumerate() {
+            // Reject zero-valued outputs.
+            if output.1 == Value(0) {
+                return Err(Error::ZeroOutput(output.clone()));
+            }
             diff.new_unspent_outputs
                 .insert(UtxoPointer::new(id, index as u32, output.1), output.clone());
         }
+
         // 3. verify that transaction sum is zero.
         let spent = diff
             .spent_outputs
