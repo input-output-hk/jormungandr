@@ -13,7 +13,7 @@ extern crate ed25519_bip32;
 extern crate rand_core;
 
 pub mod algorithms;
-mod hash;
+pub mod hash;
 mod hex;
 mod kes;
 mod key;

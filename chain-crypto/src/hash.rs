@@ -2,9 +2,10 @@
 //! the common interfaces for the project to work with.
 
 use std::{
-    fmt,
+    error, fmt,
     hash::{Hash, Hasher},
     result,
+    str::FromStr,
 };
 
 use cryptoxide::blake2b::Blake2b;
@@ -13,22 +14,37 @@ use cryptoxide::sha3::Sha3;
 
 use crate::hex;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Error {
     InvalidHashSize(usize, usize),
+    InvalidHexEncoding(hex::DecodeError),
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::InvalidHashSize(sz, expected) => write!(
+            Error::InvalidHashSize(sz, expected) => write!(
                 f,
                 "invalid hash size, expected {} but received {} bytes.",
                 expected, sz
             ),
+            Error::InvalidHexEncoding(_) => write!(f, "invalid hex encoding for hash value"),
         }
     }
 }
-impl ::std::error::Error for Error {}
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Error::InvalidHashSize(..) => None,
+            Error::InvalidHexEncoding(err) => Some(err),
+        }
+    }
+}
+
+impl From<hex::DecodeError> for Error {
+    fn from(err: hex::DecodeError) -> Self {
+        Error::InvalidHexEncoding(err)
+    }
+}
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -83,6 +99,13 @@ macro_rules! define_hash_object {
         impl Hash for $hash_ty {
             fn hash<H: Hasher>(&self, state: &mut H) {
                 self.0.hash(state)
+            }
+        }
+        impl FromStr for $hash_ty {
+            type Err = Error;
+            fn from_str(s: &str) -> result::Result<Self, Self::Err> {
+                let bytes = hex::decode(s)?;
+                Self::try_from_slice(&bytes)
             }
         }
         impl fmt::Display for $hash_ty {
