@@ -149,16 +149,6 @@ impl property::Serialize for SignedTransaction {
     }
 }
 
-impl property::Deserialize for Value {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
-        codec.get_u64().map(Value)
-    }
-}
-
 impl property::Deserialize for Witness {
     type Error = std::io::Error;
 
@@ -268,38 +258,6 @@ impl property::Transaction for SignedTransaction {
     }
     fn id(&self) -> Self::Id {
         self.transaction.id()
-    }
-}
-
-impl From<u32> for Value {
-    fn from(v: u32) -> Self {
-        Value(v as u64)
-    }
-}
-
-impl AsRef<u64> for Value {
-    fn as_ref(&self) -> &u64 {
-        &self.0
-    }
-}
-
-impl std::ops::Add for Value {
-    type Output = Value;
-    fn add(self, other: Value) -> Value {
-        Value(self.0.checked_add(other.0).unwrap())
-    }
-}
-
-impl std::ops::Sub for Value {
-    type Output = Value;
-    fn sub(self, other: Value) -> Value {
-        Value(self.0.checked_sub(other.0).unwrap())
-    }
-}
-
-impl std::ops::AddAssign for Value {
-    fn add_assign(&mut self, other: Value) {
-        self.0 = self.0.checked_add(other.0).unwrap();
     }
 }
 
