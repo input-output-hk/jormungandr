@@ -52,10 +52,7 @@ impl State<Mockchain> {
         let settings = Arc::new(RwLock::new(setting::Settings::new()));
 
         let leaders = leadership::genesis::GenesisLeaderSelection::new(
-            genesis
-                .leaders()
-                .map(|key| leadership::LeaderId(key.clone()))
-                .collect(),
+            genesis.leaders().cloned().collect(),
             ledger.clone(),
             settings.clone(),
             HashSet::new(), // initial_stake_pools
