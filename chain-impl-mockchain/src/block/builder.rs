@@ -15,7 +15,9 @@ pub struct BlockBuilder {
     pub contents: BlockContents,
 }
 
+/// block builder to build and finalize the construction of a block
 impl BlockBuilder {
+    /// default setting, equivalent to writing a genesis block (the empty block)
     pub fn new() -> BlockBuilder {
         use chain_core::property::BlockId;
         BlockBuilder {
@@ -30,25 +32,37 @@ impl BlockBuilder {
         }
     }
 
+    /// set the block date
     pub fn date(&mut self, block_date: BlockDate) -> &mut Self {
         self.common.block_date = block_date;
         self
     }
 
+    /// set the parent hash
     pub fn parent(&mut self, block_parent_hash: BlockId) -> &mut Self {
         self.common.block_parent_hash = block_parent_hash;
         self
     }
 
-    pub fn transactions(&mut self, signed_transaction: SignedTransaction) -> &mut Self {
-        self.contents
-            .0
-            .push(Message::Transaction(signed_transaction));
+    /// set a transaction in the block to build
+    ///
+    /// Equivalent to call `block_builder.message(Message::Transaction(transaction))`
+    pub fn transaction(&mut self, signed_transaction: SignedTransaction) -> &mut Self {
+        self.message(Message::Transaction(signed_transaction))
+    }
+
+    /// add a message in the block to build
+    pub fn message(&mut self, message: Message) -> &mut Self {
+        self.contents.0.push(message);
         self
     }
 
-    pub fn message(&mut self, message: Message) -> &mut Self {
-        self.contents.0.push(message);
+    /// set multiple messages in the block to build
+    pub fn messages<I>(&mut self, messages: I) -> &mut Self
+    where
+        I: IntoIterator<Item = Message>,
+    {
+        self.contents.0.extend(messages);
         self
     }
 
@@ -70,11 +84,19 @@ impl BlockBuilder {
         self
     }
 
+    /// create a genesis block (i.e. no signature)
+    ///
+    /// This is the first ever block of the blockchain and it is expected
+    /// the data to be `0.0` and the hash to be `00000000000000...`.
     pub fn make_genesis_block(mut self) -> Block {
+        use chain_core::property::BlockId as _;
+        assert!(self.common.block_parent_hash == BlockId::zero());
+        assert!(self.common.block_date == BlockDate::first());
         self.finalize_common(BLOCK_VERSION_CONSENSUS_NONE);
         self.make_block(Proof::None)
     }
 
+    /// create a BFT Block. this block will be signed with the given private key
     pub fn make_bft_block(mut self, bft_signing_key: &SecretKey<Ed25519Extended>) -> Block {
         self.finalize_common(BLOCK_VERSION_CONSENSUS_BFT);
         let bft_proof = BftProof {
@@ -84,6 +106,8 @@ impl BlockBuilder {
         self.make_block(Proof::Bft(bft_proof))
     }
 
+    /// create a Praos/Genesis block, this block will be signed with the
+    /// given KES key.
     pub fn make_genesis_praos_block(
         mut self,
         kes_signing_key: &mut SecretKey<FakeMMM>,

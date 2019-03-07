@@ -56,6 +56,7 @@ impl BlockContents {
 
 impl Block {
     /// Create a new signed block.
+    #[deprecated(note = "utilise BlockBuilder instead")]
     pub fn new(contents: BlockContents, common: Common, leader: &mut Leader) -> Self {
         let proof = match leader {
             Leader::None => Proof::None,
