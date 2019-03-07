@@ -41,6 +41,9 @@ pub enum Error {
     /// First value represents number of inputs (required signatures)
     /// Send value represents actual number of singatures.
     NotEnoughSignatures(usize, usize),
+
+    /// Transaction output has a value of zero.
+    ZeroOutput(Output),
 }
 
 impl std::fmt::Display for Error {
@@ -63,6 +66,7 @@ impl std::fmt::Display for Error {
                 "Transaction has not enough signatures: {} out of {}",
                 actual, required
             ),
+            Error::ZeroOutput(_) => write!(f, "Transaction output has a value of zero"),
         }
     }
 }
