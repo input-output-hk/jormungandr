@@ -3,7 +3,7 @@ use crate::gen::{self, node::client as gen_client};
 use chain_core::property;
 use network_core::{
     client::{self as core_client, block::BlockService, gossip::GossipService},
-    gossip::{Gossip, NodeId},
+    gossip::{self, Gossip},
 };
 
 use futures::future::Executor;
@@ -362,18 +362,20 @@ where
     }
 }
 
-impl<T> FromResponse<gen::node::GossipMessage> for (NodeId, T)
+impl<T> FromResponse<gen::node::GossipMessage> for (gossip::NodeId, T)
 where
     T: Gossip,
 {
-    fn from_response(res: gen::node::GossipMessage) -> Result<(NodeId, T), core_client::Error> {
+    fn from_response(
+        res: gen::node::GossipMessage,
+    ) -> Result<(gossip::NodeId, T), core_client::Error> {
         let node_id = match res.node_id {
             None => Err(convert_error(Status::new(
                 Code::InvalidArgument,
                 "incorrect node encoding",
             ))),
             Some(gen::node::gossip_message::NodeId { content }) => {
-                match NodeId::from_slice(&content) {
+                match gossip::NodeId::from_slice(&content) {
                     Ok(node_id) => Ok(node_id),
                     Err(_v) => Err(convert_error(Status::new(
                         Code::InvalidArgument,
@@ -454,9 +456,9 @@ where
     E: Executor<Background<S, BoxBody>> + Clone,
 {
     type Gossip = C::Gossip;
-    type GossipFuture = ResponseFuture<(NodeId, C::Gossip), gen::node::GossipMessage>;
+    type GossipFuture = ResponseFuture<(gossip::NodeId, C::Gossip), gen::node::GossipMessage>;
 
-    fn gossip(&mut self, node_id: &NodeId, gossip: &C::Gossip) -> Self::GossipFuture {
+    fn gossip(&mut self, node_id: &gossip::NodeId, gossip: &C::Gossip) -> Self::GossipFuture {
         let content = node_id.to_bytes();
         let node_id = Some(gen::node::gossip_message::NodeId { content });
         let content = serialize_to_bytes(&gossip);

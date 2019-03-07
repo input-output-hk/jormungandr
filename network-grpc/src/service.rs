@@ -2,7 +2,7 @@ use crate::gen;
 
 use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction};
 use network_core::{
-    gossip::{Gossip, NodeId},
+    gossip::{self, Gossip},
     server::{block::BlockService, gossip::GossipService, transaction::TransactionService, Node},
 };
 
@@ -242,7 +242,7 @@ where
     }
 }
 
-impl<G> IntoResponse<gen::node::GossipMessage> for (NodeId, G)
+impl<G> IntoResponse<gen::node::GossipMessage> for (gossip::NodeId, G)
 where
     G: Gossip + Serialize,
 {
@@ -452,7 +452,7 @@ where
         let service = try_get_service!(self.gossip_service);
         let node_id = match &req.get_ref().node_id {
             Some(gen::node::gossip_message::NodeId { content }) => {
-                match NodeId::from_slice(&content) {
+                match gossip::NodeId::from_slice(&content) {
                     Ok(node_id) => node_id,
                     Err(_v) => {
                         let status = Status::new(Code::InvalidArgument, "node decoding failed.");
