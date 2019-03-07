@@ -31,10 +31,10 @@ impl property::Deserialize for EmptyGossip {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Mockchain;
 impl BlockConfig for Mockchain {
-    type Block = block::SignedBlock;
+    type Block = block::Block;
     type BlockDate = block::BlockDate;
     type BlockHash = key::Hash;
-    type BlockHeader = block::SignedBlockSummary;
+    type BlockHeader = block::Header;
     type Transaction = transaction::SignedTransaction;
     type TransactionId = transaction::TransactionId;
     type GenesisData = GenesisData;
@@ -43,7 +43,7 @@ impl BlockConfig for Mockchain {
     type Leader = leadership::genesis::GenesisLeaderSelection;
     type Update = update::Diff;
 
-    type NodeSigningKey = key::PrivateKey;
+    type NodeSigningKey = leadership::Leader;
 
     type Gossip = EmptyGossip;
 
@@ -56,23 +56,31 @@ impl BlockConfig for Mockchain {
     ) -> Self::Block {
         use chain_core::property::Settings;
 
-        let block = block::Block {
-            slot_id: block_date,
-            parent_hash: settings.tip(),
-            contents: transactions
+        let content = block::BlockContents::new(
+            transactions
                 .into_iter()
-                .map(|tx| block::Message::Transaction(tx))
+                .map(block::Message::Transaction)
                 .collect(),
+        );
+
+        let (content_hash, content_size) = content.compute_hash_size();
+
+        let common = block::Common {
+            block_version: block::BLOCK_VERSION_CONSENSUS_NONE,
+            block_date: block_date,
+            block_content_size: content_size as u32,
+            block_content_hash: content_hash,
+            block_parent_hash: settings.tip(),
         };
 
-        block::SignedBlock::new(block, secret_key)
+        block::Block::new(content, common, &mut leadership::Leader::None)
     }
 }
 
 impl network_grpc::client::ProtocolConfig for Mockchain {
-    type Block = block::SignedBlock;
+    type Block = block::Block;
     type BlockDate = block::BlockDate;
     type BlockId = key::Hash;
-    type Header = block::SignedBlockSummary;
+    type Header = block::Header;
     type Gossip = EmptyGossip;
 }

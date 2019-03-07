@@ -8,6 +8,7 @@ extern crate cardano_storage;
 extern crate cbor_event;
 extern crate chain_addr;
 extern crate chain_core;
+extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate clap;
@@ -50,10 +51,7 @@ extern crate test;
 
 use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 
-use chain_impl_mockchain::{
-    key::PrivateKey,
-    transaction::{SignedTransaction, TransactionId},
-};
+use chain_impl_mockchain::transaction::{SignedTransaction, TransactionId};
 use futures::Future;
 
 use blockcfg::{
@@ -93,12 +91,6 @@ pub mod utils;
 const BLOCK_BUS_CAPACITY: usize = 2;
 
 pub type TODO = u32;
-
-fn node_private_key(ns: secure::NodeSecret) -> PrivateKey {
-    let mut bytes = [0; 32];
-    bytes.copy_from_slice(&ns.block_privatekey.as_ref()[0..32]);
-    PrivateKey::normalize_bytes(bytes)
-}
 
 fn block_task(
     blockchain: BlockchainR<Cardano>,
@@ -258,10 +250,9 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         let clock = clock.clone();
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
-        let leader_id = chain_impl_mockchain::leadership::LeaderId(
-            chain_impl_mockchain::key::PublicKey(secret.public().block_publickey),
-        );
-        let pk = node_private_key(secret);
+        let leader_id =
+            chain_impl_mockchain::leadership::LeaderId::from(secret.public().block_publickey);
+        let pk = chain_impl_mockchain::leadership::Leader::BftLeader(secret.block_privatekey);
         tasks.task_create("leadership", move || {
             leadership_task(leader_id, pk, tpool, blockchain, clock, block_task)
         });

@@ -395,12 +395,12 @@ where
 mod tests {
     use super::*;
     use crate::blockcfg::mock::Mockchain;
-    use chain_impl_mockchain::block::SignedBlockSummary;
+    use chain_impl_mockchain::block::Header;
     use network_core::server::block::BlockError;
 
     #[test]
     fn block_msg_subscribe_debug() {
-        let (handle, _) = subscription_reply::<SignedBlockSummary, BlockError>();
+        let (handle, _) = subscription_reply::<Header, BlockError>();
         let msg = BlockMsg::Subscribe::<Mockchain>(handle);
         let debug_repr = format!("{:?}", msg);
         assert!(debug_repr.contains("Subscribe"));

@@ -1,6 +1,7 @@
 //! Generic Genesis data
 use cardano::util::hex;
 use chain_addr::AddressReadable;
+use chain_impl_mockchain::leadership::LeaderId;
 use chain_impl_mockchain::{
     key,
     transaction::{self, Output, UtxoPointer},
@@ -18,7 +19,7 @@ pub struct InitialUTxO {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PublicKey(key::PublicKey);
+pub struct PublicKey(LeaderId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GenesisData {
@@ -71,9 +72,11 @@ impl fmt::Display for ParseError {
 impl std::str::FromStr for PublicKey {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        cardano::redeem::PublicKey::from_hex(s)
-            .map(|pk| PublicKey(pk.into()))
-            .map_err(|err| format!("{}", err))
+        let mut decoded = cardano::util::hex::decode(s).map_err(|err| format!("{}", err))?;
+        let key = key::deserialize_public_key(std::io::Cursor::new(decoded))
+            .map_err(|err| format!("{}", err))?;
+        let leader_id = LeaderId::from(key);
+        Ok(PublicKey(leader_id))
     }
 }
 
@@ -89,7 +92,7 @@ impl GenesisData {
         })
     }
 
-    pub fn leaders<'a>(&'a self) -> impl Iterator<Item = &'a key::PublicKey> {
+    pub fn leaders<'a>(&'a self) -> impl Iterator<Item = &'a LeaderId> {
         self.bft_leaders.iter().map(|pk| &pk.0)
     }
 
@@ -130,10 +133,10 @@ impl serde::ser::Serialize for PublicKey {
         S: serde::ser::Serializer,
     {
         if serializer.is_human_readable() {
-            let hex = hex::encode(self.0.as_ref());
+            let hex = hex::encode(self.0.as_ref().as_ref());
             serializer.serialize_str(&hex)
         } else {
-            serializer.serialize_bytes(self.0.as_ref())
+            serializer.serialize_bytes(self.0.as_ref().as_ref())
         }
     }
 }
@@ -175,7 +178,7 @@ impl<'de> serde::de::Deserialize<'de> for PublicKey {
                 };
 
                 let reader = std::io::Cursor::new(bytes);
-                match key::PublicKey::deserialize(reader) {
+                match LeaderId::deserialize(reader) {
                     Err(err) => Err(E::custom(format!("{}", err))),
                     Ok(key) => Ok(PublicKey(key)),
                 }
@@ -187,7 +190,7 @@ impl<'de> serde::de::Deserialize<'de> for PublicKey {
             {
                 use chain_core::property::Deserialize;
                 let reader = std::io::Cursor::new(v);
-                match key::PublicKey::deserialize(reader) {
+                match LeaderId::deserialize(reader) {
                     Err(err) => Err(E::custom(format!("{}", err))),
                     Ok(key) => Ok(PublicKey(key)),
                 }
