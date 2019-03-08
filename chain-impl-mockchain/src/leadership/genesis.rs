@@ -253,6 +253,10 @@ impl GenesisLeaderSelection {
         self.delegation_state
             .get_stake_distribution(&self.ledger.read().unwrap())
     }
+
+    pub fn get_delegation_state(&self) -> &DelegationState {
+        &self.delegation_state
+    }
 }
 
 #[derive(Debug, Clone)]

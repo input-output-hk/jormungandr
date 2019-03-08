@@ -118,8 +118,8 @@ impl DelegationState {
         }
     }
 
-    pub fn nr_stake_pools(&self) -> usize {
-        self.stake_pools.len()
+    pub fn get_stake_pools(&self) -> &HashMap<StakePoolId, StakePoolInfo> {
+        &self.stake_pools
     }
 
     pub fn stake_pool_exists(&self, pool_id: &StakePoolId) -> bool {

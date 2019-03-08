@@ -127,6 +127,39 @@ pub trait HasHeader {
     fn header(&self) -> Self::Header;
 }
 
+/// Trait identifying the message identifier type.
+pub trait MessageId: Eq + Hash + Clone + Debug {}
+
+/// A message is some item contained in a block, such as a
+/// transaction, a delegation-related certificate, an update proposal,
+/// and so on. Messages can be serialized (so that they can be
+/// concatenated to form a binary block( and have a unique ID
+/// (typically the hash of their serialization).
+pub trait Message: Serialize + Deserialize {
+    type Id: MessageId;
+
+    /// Return the message's identifier.
+    fn id(&self) -> Self::Id;
+}
+
+/// Accessor to messages within a block
+pub trait HasMessages {
+    /// The type of messages in this block.
+    type Message;
+
+    /// Returns an iterator over the messages in the block.
+    ///
+    /// Note that the iterator is dynamically allocated, and the iterator's
+    /// `next` method is invoked via dynamic dispatch. The method
+    /// `for_each_transaction` provides a statically monomorphised
+    /// alternative.
+    fn messages<'a>(&'a self) -> Box<Iterator<Item = &Self::Message> + 'a>;
+
+    fn for_each_message<F>(&self, f: F)
+    where
+        F: FnMut(&Self::Message);
+}
+
 /// define a transaction within the blockchain. This transaction can be used
 /// for the UTxO model. However it can also be used for any other elements that
 /// the blockchain has (a transaction type to add Stacking Pools and so on...).
