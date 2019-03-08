@@ -72,12 +72,15 @@ impl DelegationState {
                                     total_stake: Value(0),
                                     member_stake: HashMap::new(),
                                 });
-                        stake_pool_dist.total_stake += ptr.value;
+                        // note: unwrap should be safe, the system should have a total less than overflow
+                        stake_pool_dist.total_stake =
+                            (stake_pool_dist.total_stake + ptr.value).unwrap();
+
                         let member_dist = stake_pool_dist
                             .member_stake
                             .entry(stake_key.clone())
-                            .or_insert_with(|| Value(0));
-                        *member_dist += ptr.value;
+                            .or_insert_with(|| Value::zero());
+                        *member_dist = (*member_dist + ptr.value).unwrap();
                     }
                 }
             }
@@ -196,7 +199,7 @@ impl StakeDistribution {
         self.0
             .iter()
             .map(|(_, pool)| pool.total_stake)
-            .fold(Value(0), |sum, x| sum + x)
+            .fold(Value::zero(), |sum, x| (sum + x).unwrap())
     }
 
     /// Place the stake pools on the interval [0, total_stake) (sorted

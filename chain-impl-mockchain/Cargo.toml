@@ -21,6 +21,7 @@ chain-core = { path = "../chain-core" }
 chain-addr = { path = "../chain-addr" }
 chain-crypto = { path = "../chain-crypto" }
 rand = "0.6"
+imhamt = { path = "../imhamt" }
 
 [dev-dependencies]
 quickcheck = "0.8"
