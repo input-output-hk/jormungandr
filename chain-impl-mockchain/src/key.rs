@@ -7,6 +7,8 @@ use chain_crypto::{
     AsymmetricKey, KeyEvolvingSignatureAlgorithm, SigningAlgorithm, VerificationAlgorithm,
 };
 
+use std::str::FromStr;
+
 pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519Extended>;
 pub type SpendingSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
 pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519Extended>;
@@ -214,6 +216,13 @@ impl From<crypto::Blake2b256> for Hash {
 impl std::fmt::Display for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for Hash {
+    type Err = crypto::hash::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Hash(crypto::Blake2b256::from_str(s)?))
     }
 }
 
