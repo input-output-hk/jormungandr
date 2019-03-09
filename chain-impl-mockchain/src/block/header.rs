@@ -5,7 +5,7 @@ use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     verify_signature, Hash,
 };
-use crate::leadership::{LeaderId, PublicLeader};
+use crate::leadership::{BftLeader, GenesisPraosLeader, PublicLeader};
 use chain_crypto::algorithms::vrf::vrf;
 use chain_crypto::algorithms::FakeMMM;
 use chain_crypto::{Ed25519Extended, PublicKey, Signature, Verification};
@@ -35,7 +35,7 @@ pub type HeaderToSign = Common;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BftProof {
-    pub(crate) leader_id: LeaderId,
+    pub(crate) leader_id: BftLeader,
     pub(crate) signature: BftSignature,
 }
 
@@ -97,9 +97,12 @@ impl Proof {
         match self {
             Proof::None => None,
             Proof::Bft(bft_proof) => Some(PublicLeader::Bft(bft_proof.leader_id.clone())),
-            Proof::GenesisPraos(genesis_praos_proof) => Some(PublicLeader::GenesisPraos(
-                genesis_praos_proof.kes_public_key.clone(),
-            )),
+            Proof::GenesisPraos(genesis_praos_proof) => {
+                Some(PublicLeader::GenesisPraos(GenesisPraosLeader {
+                    kes_public_key: genesis_praos_proof.kes_public_key.clone(),
+                    vrf_public_key: genesis_praos_proof.vrf_public_key.clone(),
+                }))
+            }
         }
     }
 }
@@ -266,7 +269,7 @@ impl property::Deserialize for Header {
             BLOCK_VERSION_CONSENSUS_NONE => Proof::None,
             BLOCK_VERSION_CONSENSUS_BFT => {
                 // BFT
-                let leader_id = deserialize_public_key(&mut codec).map(LeaderId)?;
+                let leader_id = deserialize_public_key(&mut codec).map(BftLeader)?;
                 let signature = deserialize_signature(&mut codec).map(BftSignature)?;
                 Proof::Bft(BftProof {
                     leader_id,
@@ -326,7 +329,7 @@ mod test {
             let pk = sk.to_public();
             let signature = chain_crypto::Signature::generate(&sk, &[0u8, 1, 2, 3]);
             BftProof {
-                leader_id: LeaderId(pk),
+                leader_id: BftLeader(pk),
                 signature: BftSignature(signature.coerce()),
             }
         }

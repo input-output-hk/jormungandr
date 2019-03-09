@@ -3,7 +3,7 @@ use crate::ledger::Ledger;
 use crate::value::Value;
 use chain_addr::Kind;
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
+use chain_crypto::{algorithms::vrf::vrf, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 use std::collections::{HashMap, HashSet};
 
 /// A structure that keeps track of stake keys and stake pools.
@@ -15,19 +15,12 @@ pub struct DelegationState {
 
 impl DelegationState {
     pub fn new(
-        initial_stake_pools: HashSet<StakePoolId>,
+        initial_stake_pools: Vec<StakePoolInfo>,
         initial_stake_keys: HashMap<StakeKeyId, Option<StakePoolId>>,
     ) -> Self {
         let mut stake_pools: HashMap<StakePoolId, StakePoolInfo> = initial_stake_pools
             .into_iter()
-            .map(|pool_id| {
-                (
-                    pool_id,
-                    StakePoolInfo {
-                        members: HashSet::new(),
-                    },
-                )
-            })
+            .map(|pool_info| (pool_info.pool_id.clone(), pool_info))
             .collect();
 
         let mut stake_keys = HashMap::new();
@@ -126,13 +119,21 @@ impl DelegationState {
         self.stake_pools.contains_key(pool_id)
     }
 
-    pub fn register_stake_pool(&mut self, pool_id: StakePoolId) {
+    pub fn register_stake_pool(
+        &mut self,
+        pool_id: StakePoolId,
+        kes_public_key: PublicKey<FakeMMM>,
+        vrf_public_key: vrf::PublicKey,
+    ) {
         assert!(!self.stake_pools.contains_key(&pool_id));
         self.stake_pools.insert(
-            pool_id,
+            pool_id.clone(),
             StakePoolInfo {
+                pool_id: pool_id,
                 //owners: new_stake_pool.owners
                 members: HashSet::new(),
+                kes_public_key: kes_public_key,
+                vrf_public_key: vrf_public_key,
             },
         );
     }
@@ -236,8 +237,11 @@ pub struct StakeKeyInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolInfo {
+    pub pool_id: StakePoolId,
     //owners: HashSet<PublicKey>,
     pub members: HashSet<StakeKeyId>,
+    pub vrf_public_key: vrf::PublicKey,
+    pub kes_public_key: PublicKey<FakeMMM>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

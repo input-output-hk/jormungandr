@@ -1,8 +1,7 @@
-use super::LeaderId;
-use crate::block::{Block, Proof};
-use crate::update::ValueDiff;
+use crate::block::{Block, Proof, BLOCK_VERSION_CONSENSUS_BFT};
+use crate::leadership::{BftLeader, Error, ErrorKind, PublicLeader, Update};
 
-use chain_core::property::{self, LeaderSelection, Update};
+use chain_core::property::{self, Block as _, LeaderSelection};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BftRoundRobinIndex(u64);
@@ -10,21 +9,22 @@ pub struct BftRoundRobinIndex(u64);
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
 pub struct BftLeaderSelection {
-    leaders: Vec<LeaderId>,
+    leaders: Vec<BftLeader>,
 
-    current_leader: LeaderId,
+    current_leader: BftLeader,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Error {
-    BlockHasInvalidLeader(LeaderId, LeaderId),
+pub enum BftError {
+    BlockHasInvalidLeader(PublicLeader, PublicLeader),
     BlockSignatureIsInvalid,
-    UpdateHasInvalidCurrentLeader(LeaderId, LeaderId),
+    BlockProofIsDifferent,
+    UpdateHasInvalidCurrentLeader(PublicLeader, PublicLeader),
 }
 
 impl BftLeaderSelection {
     /// Create a new BFT leadership
-    pub fn new(leaders: Vec<LeaderId>) -> Option<Self> {
+    pub fn new(leaders: Vec<BftLeader>) -> Option<Self> {
         if leaders.len() == 0 {
             return None;
         }
@@ -49,54 +49,64 @@ impl BftLeaderSelection {
 }
 
 impl LeaderSelection for BftLeaderSelection {
-    type Update = BftSelectionDiff;
+    type Update = Update;
     type Block = Block;
     type Error = Error;
-    type LeaderId = LeaderId;
+    type LeaderId = PublicLeader;
 
     fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
-        use chain_core::property::Block;
-
+        if input.version() != BLOCK_VERSION_CONSENSUS_BFT {
+            return Err(Error {
+                kind: ErrorKind::IncompatibleBlockVersion,
+                cause: None,
+            });
+        }
         let mut update = <Self::Update as property::Update>::empty();
 
-        let date = input.date();
-        let block_version = input.header.block_version();
-        let new_leader = self.get_leader_at(date)?;
+        let new_leader = self.get_leader_at(input.date())?;
 
         match &input.header.proof() {
-            Proof::None => unimplemented!(),
-            Proof::GenesisPraos(_) => unimplemented!(),
             Proof::Bft(bft_proof) => {
-                if bft_proof.leader_id != new_leader {
-                    return Err(Error::BlockHasInvalidLeader(
-                        new_leader,
-                        bft_proof.leader_id.clone(),
-                    ));
+                let input_leader = PublicLeader::Bft(bft_proof.leader_id.clone());
+                if input_leader != new_leader {
+                    return Err(Error {
+                        kind: ErrorKind::InvalidLeader,
+                        cause: Some(Box::new(BftError::BlockHasInvalidLeader(
+                            new_leader,
+                            input_leader,
+                        ))),
+                    });
                 }
+                update.previous_leader = PublicLeader::Bft(self.current_leader.clone());
+                update.next_leader = input_leader;
+            }
+            _ => {
+                return Err(Error {
+                    kind: ErrorKind::IncompatibleLeadershipMode,
+                    cause: Some(Box::new(BftError::BlockProofIsDifferent)),
+                });
             }
         }
 
         if !input.verify() {
-            return Err(Error::BlockSignatureIsInvalid);
+            return Err(Error {
+                kind: ErrorKind::InvalidLeader,
+                cause: Some(Box::new(BftError::BlockSignatureIsInvalid)),
+            });
         }
-
-        update.leader = ValueDiff::Replace(self.current_leader.clone(), new_leader);
 
         Ok(update)
     }
     fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error> {
-        match update.leader {
-            ValueDiff::None => {}
-            ValueDiff::Replace(current_leader, new_leader) => {
-                if current_leader != self.current_leader {
-                    return Err(Error::UpdateHasInvalidCurrentLeader(
-                        self.current_leader.clone(),
-                        current_leader,
-                    ));
-                } else {
-                    self.current_leader = new_leader;
-                }
-            }
+        let current_leader = PublicLeader::Bft(self.current_leader.clone());
+        if update.previous_leader != current_leader {
+            return Err(Error {
+                kind: ErrorKind::InvalidLeader,
+                cause: Some(Box::new(BftError::UpdateHasInvalidCurrentLeader(
+                    current_leader,
+                    update.previous_leader.clone(),
+                ))),
+            });
         }
         Ok(())
     }
@@ -107,76 +117,26 @@ impl LeaderSelection for BftLeaderSelection {
         date: <Self::Block as property::Block>::Date,
     ) -> Result<Self::LeaderId, Self::Error> {
         let BftRoundRobinIndex(ofs) = self.offset(date.slot_id as u64);
-        Ok(self.leaders[ofs as usize].clone())
+        Ok(PublicLeader::Bft(self.leaders[ofs as usize].clone()))
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct BftSelectionDiff {
-    pub leader: ValueDiff<LeaderId>,
-}
-
-impl Update for BftSelectionDiff {
-    fn empty() -> Self {
-        BftSelectionDiff {
-            leader: ValueDiff::None,
-        }
-    }
-    fn inverse(self) -> Self {
-        BftSelectionDiff {
-            leader: self.leader.inverse(),
-        }
-    }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.leader.union(other.leader);
-        self
-    }
-}
-
-impl std::fmt::Display for Error {
+impl std::fmt::Display for BftError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Error::BlockHasInvalidLeader(expected, found) => write!(
+            BftError::BlockHasInvalidLeader(expected, found) => write!(
                 f,
                 "Invalid block leader, expected {:?} but the given block was signed by {:?}",
                 expected, found
             ),
-            Error::BlockSignatureIsInvalid => write!(f, "The block signature is not valid"),
-            Error::UpdateHasInvalidCurrentLeader(current, found) => write!(
+            BftError::BlockSignatureIsInvalid => write!(f, "The block signature is not valid"),
+            BftError::UpdateHasInvalidCurrentLeader(current, found) => write!(
                 f,
                 "Update has an incompatible leader, we expect to update from {:?} but we are at {:?}",
                 found, current
             ),
+            BftError::BlockProofIsDifferent => write!(f, "The block proof is different and unexpected")
         }
     }
 }
-impl std::error::Error for Error {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chain_core::property::testing;
-    use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for BftSelectionDiff {
-        fn arbitrary<G: Gen>(g: &mut G) -> BftSelectionDiff {
-            BftSelectionDiff {
-                leader: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-            }
-        }
-    }
-
-    quickcheck! {
-        /*
-        fn bft_selection_diff_union_is_associative(types: (BftSelectionDiff, BftSelectionDiff, BftSelectionDiff)) -> bool {
-            testing::update_associativity(types.0, types.1, types.2)
-        }
-        */
-        fn bft_selection_diff_union_has_identity_element(bft_selection_diff: BftSelectionDiff) -> bool {
-            testing::update_identity_element(bft_selection_diff)
-        }
-        fn bft_selection_diff_union_has_inverse_element(bft_selection_diff: BftSelectionDiff) -> bool {
-            testing::update_inverse_element(bft_selection_diff)
-        }
-    }
-}
+impl std::error::Error for BftError {}
