@@ -2,7 +2,7 @@ use crate::kes::KeyEvolvingSignatureAlgorithm;
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
 use crate::sign::{SignatureError, Verification, VerificationAlgorithm};
 use cryptoxide::ed25519;
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 
 /// Fake MMM Signing Algorithm
 pub struct FakeMMM;

@@ -2,7 +2,7 @@ mod dleq;
 pub mod vrf;
 
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 
 /// VRF
 pub struct Curve25519_2HashDH;

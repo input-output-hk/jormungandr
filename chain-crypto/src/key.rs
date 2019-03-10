@@ -1,5 +1,5 @@
 use crate::hex;
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 use std::fmt;
 use std::hash::Hash;
 
@@ -174,8 +174,8 @@ mod test {
     use super::*;
 
     use quickcheck::{Arbitrary, Gen};
+    use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
-    use rand_core::SeedableRng;
 
     pub fn arbitrary_public_key<A: AsymmetricKey, G: Gen>(g: &mut G) -> PublicKey<A> {
         arbitrary_secret_key(g).to_public()
