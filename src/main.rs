@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "with-bench", feature(test))]
 extern crate actix_net;
 extern crate actix_web;
+extern crate bech32;
 extern crate bincode;
 extern crate bytes;
 extern crate cardano;
@@ -26,6 +27,7 @@ extern crate network_core;
 extern crate network_grpc;
 extern crate poldercast;
 extern crate protocol_tokio as protocol;
+extern crate rand_chacha;
 extern crate tower_service;
 
 extern crate tokio;
@@ -57,15 +59,21 @@ use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 use chain_impl_mockchain::transaction::{SignedTransaction, TransactionId};
 use futures::Future;
 
+use bech32::{Bech32, ToBase32};
 use blockcfg::{
     genesis_data::ConfigGenesisData, genesis_data::GenesisData, mock::Mockchain as Cardano,
 };
-//use state::State;
 use blockchain::{Blockchain, BlockchainR};
+use chain_crypto::{
+    vrf::Curve25519_2HashDH, AsymmetricKey, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
+};
 use intercom::BlockMsg;
 use leadership::leadership_task;
+use rand::rngs::EntropyRng;
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 use rest::v0::node::stats::StatsCounter;
-use settings::Command;
+use settings::{Command, GenPrivKeyType};
 use transaction::{transaction_task, TPool};
 use utils::task::{TaskBroadcastBox, Tasks};
 
@@ -313,6 +321,16 @@ fn main() {
             println!("signing_key: {}", hex::encode(signing_key.as_ref()));
             println!("public_key: {}", hex::encode(public_key.as_ref()));
         }
+        Command::GeneratePrivKey(args) => {
+            let priv_key_bech32 = match args.key_type {
+                GenPrivKeyType::Ed25519 => gen_priv_key_bech32::<Ed25519>(),
+                GenPrivKeyType::Ed25519Bip32 => gen_priv_key_bech32::<Ed25519Bip32>(),
+                GenPrivKeyType::Ed25519Extended => gen_priv_key_bech32::<Ed25519Extended>(),
+                GenPrivKeyType::FakeMMM => gen_priv_key_bech32::<FakeMMM>(),
+                GenPrivKeyType::Curve25519_2HashDH => gen_priv_key_bech32::<Curve25519_2HashDH>(),
+            };
+            println!("{}", priv_key_bech32);
+        }
         Command::Init(init_settings) => {
             let genesis = ConfigGenesisData::from_genesis(GenesisData {
                 start_time: init_settings.blockchain_start,
@@ -325,4 +343,11 @@ fn main() {
             serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();
         }
     }
+}
+
+fn gen_priv_key_bech32<K: AsymmetricKey>() -> Bech32 {
+    let rng = ChaChaRng::from_rng(EntropyRng::new()).unwrap();
+    let secret = K::generate(rng);
+    let hrp = K::SECRET_BECH32_HRP.to_string();
+    Bech32::new(hrp, secret.to_base32()).unwrap()
 }
