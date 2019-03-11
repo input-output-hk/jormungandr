@@ -7,13 +7,15 @@ use chain_addr::Address;
 use chain_core::property;
 use chain_crypto::Verification;
 
+pub type TransactionIndex = u8;
+
 /// Unspent transaction pointer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UtxoPointer {
     /// the transaction identifier where the unspent output is
     pub transaction_id: TransactionId,
     /// the output index within the pointed transaction's outputs
-    pub output_index: u32,
+    pub output_index: TransactionIndex,
     /// the value we expect to read from this output
     ///
     /// This setting is added in order to protect undesired withdrawal
@@ -21,7 +23,11 @@ pub struct UtxoPointer {
     pub value: Value,
 }
 impl UtxoPointer {
-    pub fn new(transaction_id: TransactionId, output_index: u32, value: Value) -> Self {
+    pub fn new(
+        transaction_id: TransactionId,
+        output_index: TransactionIndex,
+        value: Value,
+    ) -> Self {
         UtxoPointer {
             transaction_id,
             output_index,
@@ -116,8 +122,8 @@ impl property::Serialize for Transaction {
         codec.put_u8(self.outputs.len() as u8)?;
 
         for input in self.inputs.iter() {
+            codec.put_u8(input.output_index)?;
             input.transaction_id.serialize(&mut codec)?;
-            codec.put_u32(input.output_index)?;
             input.value.serialize(&mut codec)?;
         }
         for output in self.outputs.iter() {
@@ -174,8 +180,8 @@ impl property::Deserialize for Transaction {
         };
 
         for _ in 0..num_inputs {
+            let output_index = codec.get_u8()?;
             let transaction_id = TransactionId::deserialize(&mut codec)?;
-            let output_index = codec.get_u32()?;
             let value = Value::deserialize(&mut codec)?;
             transaction.inputs.push(UtxoPointer {
                 transaction_id,

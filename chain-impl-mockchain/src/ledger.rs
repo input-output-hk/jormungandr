@@ -92,8 +92,10 @@ impl property::Ledger for Ledger {
             if output.1 == Value(0) {
                 return Err(Error::ZeroOutput(output.clone()));
             }
-            diff.new_unspent_outputs
-                .insert(UtxoPointer::new(id, index as u32, output.1), output.clone());
+            diff.new_unspent_outputs.insert(
+                UtxoPointer::new(id, index as TransactionIndex, output.1),
+                output.clone(),
+            );
         }
 
         // 3. verify that transaction sum is zero.
