@@ -3,30 +3,8 @@
 //!
 
 use crate::blockcfg::{genesis_data::GenesisData, BlockConfig};
-use chain_core::property;
 use chain_impl_mockchain::*;
-use network_core::gossip::Gossip;
-
-// Temporary solution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct EmptyGossip(());
-impl Gossip for EmptyGossip where {}
-
-impl property::Serialize for EmptyGossip {
-    type Error = std::io::Error;
-
-    fn serialize<W: std::io::Write>(&self, _writer: W) -> Result<(), Self::Error> {
-        Ok(())
-    }
-}
-
-impl property::Deserialize for EmptyGossip {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(_reader: R) -> Result<Self, Self::Error> {
-        Ok(EmptyGossip(()))
-    }
-}
+use network::p2p_topology as p2p;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Mockchain;
@@ -45,7 +23,7 @@ impl BlockConfig for Mockchain {
 
     type NodeSigningKey = leadership::Leader;
 
-    type Gossip = EmptyGossip;
+    type Gossip = p2p::Gossip;
 
     fn make_block(
         _secret_key: &Self::NodeSigningKey,
@@ -82,5 +60,5 @@ impl network_grpc::client::ProtocolConfig for Mockchain {
     type BlockDate = block::BlockDate;
     type BlockId = key::Hash;
     type Header = block::Header;
-    type Gossip = EmptyGossip;
+    type Gossip = p2p::Gossip;
 }

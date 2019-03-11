@@ -17,7 +17,7 @@ use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
-use self::p2p_topology::P2pTopology;
+use self::p2p_topology::{self as p2p, P2pTopology};
 use chain_core::property;
 use futures::prelude::*;
 use futures::stream::{self, Stream};
@@ -69,6 +69,7 @@ pub struct GlobalState<B: BlockConfig> {
     pub config: Arc<Configuration>,
     pub channels: Channels<B>,
     pub topology: P2pTopology,
+    pub node: p2p::Node,
 }
 
 impl<B: BlockConfig> GlobalState<B> {
@@ -87,13 +88,14 @@ impl<B: BlockConfig> GlobalState<B> {
         p2p_topology::add_transaction_subscription(&mut node, p2p_topology::InterestLevel::High);
         p2p_topology::add_block_subscription(&mut node, p2p_topology::InterestLevel::High);
 
-        let p2p_topology = P2pTopology::new(node);
+        let p2p_topology = P2pTopology::new(node.clone());
 
         let arc_config = Arc::new(config.clone());
         GlobalState {
             config: arc_config,
             channels: channels,
             topology: p2p_topology,
+            node,
         }
     }
 }
@@ -104,6 +106,7 @@ impl<B: BlockConfig> Clone for GlobalState<B> {
             config: self.config.clone(),
             channels: self.channels.clone(),
             topology: self.topology.clone(),
+            node: self.node.clone(),
         }
     }
 }
@@ -123,6 +126,12 @@ pub struct ConnectionState<B: BlockConfig> {
     pub connection: Connection,
 
     pub connected: Option<Connection>,
+
+    /// Network topology reference.
+    pub topology: P2pTopology,
+
+    /// Node inside network topology.
+    pub node: p2p::Node,
 }
 
 impl<B: BlockConfig> Clone for ConnectionState<B> {
@@ -133,6 +142,8 @@ impl<B: BlockConfig> Clone for ConnectionState<B> {
             timeout: self.timeout,
             connection: self.connection.clone(),
             connected: self.connected.clone(),
+            node: self.node.clone(),
+            topology: self.topology.clone(),
         }
     }
 }
@@ -145,6 +156,8 @@ impl<B: BlockConfig> ConnectionState<B> {
             timeout: listen.timeout,
             connection: listen.connection,
             connected: None,
+            node: global.node.clone(),
+            topology: global.topology.clone(),
         }
     }
 
@@ -155,6 +168,8 @@ impl<B: BlockConfig> ConnectionState<B> {
             timeout: peer.timeout,
             connection: peer.connection,
             connected: None,
+            node: global.node.clone(),
+            topology: global.topology.clone(),
         }
     }
     fn connected(mut self, connection: Connection) -> Self {

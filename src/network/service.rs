@@ -5,10 +5,12 @@ use crate::intercom::{
     ReplyStream, SubscriptionFuture, SubscriptionStream, TransactionMsg,
 };
 use crate::utils::task::TaskMessageBox;
+use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
+use network::p2p_topology::{self as p2p, Gossip, Id, P2pTopology};
 use network_core::{
-    gossip::NodeId,
+    gossip,
     server::{
         block::{BlockError, BlockService},
         gossip::{GossipError, GossipService},
@@ -47,8 +49,7 @@ impl<B: BlockConfig> Node for ConnectionServices<B> {
     }
 
     fn gossip_service(&self) -> Option<Self::GossipService> {
-        // Not implemented yet
-        None
+        Some(ConnectionGossipService::new(&self.state))
     }
 }
 
@@ -206,16 +207,45 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
 }
 
 pub struct ConnectionGossipService<B: BlockConfig> {
+    p2p: P2pTopology,
+    node: poldercast::Node,
     _phantom: PhantomData<B::Gossip>,
 }
 
 impl<B: BlockConfig> GossipService for ConnectionGossipService<B> {
-    type Message = B::Gossip;
-    type MessageFuture = ReplyFuture<(NodeId, Self::Message), GossipError>;
+    type Message = Gossip;
+    type MessageFuture = future::FutureResult<(gossip::NodeId, Self::Message), GossipError>;
 
     /// Record and process gossip event.
-    fn record_gossip(&mut self, _node_id: NodeId, _gossip: &Self::Message) -> Self::MessageFuture {
-        unimplemented!()
+    fn record_gossip(
+        &mut self,
+        node_id: gossip::NodeId,
+        gossip: &Self::Message,
+    ) -> Self::MessageFuture {
+        let nodes: BTreeMap<_, _> = (&gossip.0)
+            .into_iter()
+            .map(|node| (*node.id(), node.clone()))
+            .collect();
+        let node_id: Id = p2p::from_node_id(&node_id);
+        if let Some(them) = nodes.get(&node_id).cloned() {
+            self.p2p.update(nodes);
+            let reply_nodes = self.p2p.select_gossips(&them);
+            let reply = gossip::Gossip::from_nodes(reply_nodes.into_iter().map(|(_, node)| node));
+            let node_id = p2p::to_node_id(self.node.id());
+            future::ok((node_id, reply))
+        } else {
+            future::err(GossipError::failed("No message"))
+        }
+    }
+}
+
+impl<B: BlockConfig> ConnectionGossipService<B> {
+    fn new(state: &ConnectionState<B>) -> Self {
+        ConnectionGossipService {
+            p2p: state.topology.clone(),
+            node: state.node.clone(),
+            _phantom: PhantomData,
+        }
     }
 }
 
@@ -229,6 +259,8 @@ impl<B: BlockConfig> Clone for ConnectionGossipService<B> {
     fn clone(&self) -> Self {
         ConnectionGossipService {
             _phantom: PhantomData,
+            node: self.node.clone(),
+            p2p: self.p2p.clone(),
         }
     }
 }

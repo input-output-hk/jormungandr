@@ -55,7 +55,7 @@ cardano         = { path = "cardano-deps/cardano" }
 protocol-tokio  = { path = "cardano-deps/protocol-tokio" }
 exe-common      = { path = "cardano-deps/exe-common" }
 cardano-storage = { path = "cardano-deps/storage" }
-poldercast = "0.2.0"
+poldercast = "0.2.1"
 storage-units   = { path = "cardano-deps/storage-units" }
 tower-service = "0.2"
 
