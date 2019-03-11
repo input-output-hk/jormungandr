@@ -26,19 +26,6 @@ pub enum Error {
     Io(io::Error),
 }
 
-/*
-impl Error {
-    pub fn new<E>(source: E) -> Self
-    where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
-    {
-        Error {
-            source: source.into(),
-        }
-    }
-}
-*/
-
 impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
