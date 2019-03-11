@@ -6,11 +6,9 @@ use actix_web::{App, Path, State};
 use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 use bytes::Bytes;
-use chain_core::property::Serialize;
-use chain_crypto::Blake2b256;
+use chain_core::property::{FromStr, Serialize};
 use chain_impl_mockchain::key::Hash;
 use chain_storage::store::BlockStore;
-use hex::FromHex;
 
 pub fn create_handler(
     blockchain: BlockchainR<Mockchain>,
@@ -41,8 +39,6 @@ fn handle_request(
 }
 
 fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
-    let bytes = <[u8; Blake2b256::HASH_SIZE]>::from_hex(hex).map_err(|e| ErrorBadRequest(e))?;
-    let hash = Blake2b256::from(bytes);
-    let block_hash = Hash::from(hash);
+    let block_hash = Hash::from_str(hex).map_err(|e| ErrorBadRequest(e))?;
     Ok(block_hash)
 }
