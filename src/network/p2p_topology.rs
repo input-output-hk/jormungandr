@@ -23,7 +23,7 @@ pub struct Gossip(pub Vec<Node>);
 #[derive(Debug)]
 pub enum Error {
     Encoding(Box<bincode::ErrorKind>),
-    IO(io::Error),
+    Io(io::Error),
 }
 
 /*
@@ -43,7 +43,7 @@ impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
             Error::Encoding(source) => Some(source),
-            Error::IO(source) => Some(source),
+            Error::Io(source) => Some(source),
         }
     }
 }
@@ -52,14 +52,14 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::Encoding(_) => write!(f, "serialization error"),
-            Error::IO(_) => write!(f, "io error"),
+            Error::Io(_) => write!(f, "io error"),
         }
     }
 }
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        Error::IO(e)
+        Error::Io(e)
     }
 }
 
