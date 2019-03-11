@@ -48,10 +48,10 @@ impl From<RemoveError> for Error {
 
 /// Hold all the individual outputs that remain unspent
 #[derive(Clone)]
-struct TransactionUnspents(BTreeMap<TransactionIndex, Output>);
+struct TransactionUnspents<OutAddress>(BTreeMap<TransactionIndex, Output<OutAddress>>);
 
-impl TransactionUnspents {
-    pub fn from_outputs(outs: &[(TransactionIndex, Output)]) -> Self {
+impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
+    pub fn from_outputs(outs: &[(TransactionIndex, Output<OutAddress>)]) -> Self {
         assert!(outs.len() < 255);
         let mut b = BTreeMap::new();
         for (index, output) in outs.iter() {
@@ -62,7 +62,10 @@ impl TransactionUnspents {
         TransactionUnspents(b)
     }
 
-    pub fn remove_input(&self, index: TransactionIndex) -> Result<(Self, Output), Error> {
+    pub fn remove_input(
+        &self,
+        index: TransactionIndex,
+    ) -> Result<(Self, Output<OutAddress>), Error> {
         assert!(index < 255);
         let mut t = self.0.clone();
         match t.remove(&index) {
@@ -74,9 +77,9 @@ impl TransactionUnspents {
 
 /// Ledger of UTXO
 #[derive(Clone)]
-pub struct Ledger(Hamt<DefaultHasher, TransactionId, TransactionUnspents>);
+pub struct Ledger<OutAddress>(Hamt<DefaultHasher, TransactionId, TransactionUnspents<OutAddress>>);
 
-impl Ledger {
+impl<OutAddress: Clone> Ledger<OutAddress> {
     /// Create a new empty UTXO Ledger
     pub fn new() -> Self {
         Ledger(Hamt::new())
@@ -88,7 +91,7 @@ impl Ledger {
     pub fn add(
         &self,
         tid: &TransactionId,
-        outs: &[(TransactionIndex, Output)],
+        outs: &[(TransactionIndex, Output<OutAddress>)],
     ) -> Result<Self, Error> {
         assert!(outs.len() < 255);
         let b = TransactionUnspents::from_outputs(outs);
@@ -102,7 +105,7 @@ impl Ledger {
         &self,
         tid: &TransactionId,
         index: TransactionIndex,
-    ) -> Result<(Self, Output), Error> {
+    ) -> Result<(Self, Output<OutAddress>), Error> {
         let (treemap, output) = match self.0.lookup(tid) {
             None => Err(Error::TransactionNotFound),
             Some(out) => out.remove_input(index),
@@ -119,7 +122,7 @@ impl Ledger {
         &self,
         tid: &TransactionId,
         indices: &[TransactionIndex],
-    ) -> Result<(Self, Vec<Output>), Error> {
+    ) -> Result<(Self, Vec<Output<OutAddress>>), Error> {
         let (treemap, outputs) = match self.0.lookup(tid) {
             None => Err(Error::TransactionNotFound),
             Some(out) => {

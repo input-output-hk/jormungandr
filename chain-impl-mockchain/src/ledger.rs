@@ -5,6 +5,7 @@ use crate::error::*;
 use crate::transaction::*;
 use crate::update::TransactionsDiff;
 use crate::value::*;
+use chain_addr::Address;
 use chain_core::property;
 use std::collections::HashMap;
 
@@ -13,10 +14,10 @@ use std::collections::HashMap;
 /// owner.
 #[derive(Debug, Clone)]
 pub struct Ledger {
-    pub unspent_outputs: HashMap<UtxoPointer, Output>,
+    pub unspent_outputs: HashMap<UtxoPointer, Output<Address>>,
 }
 impl Ledger {
-    pub fn new(input: HashMap<UtxoPointer, Output>) -> Self {
+    pub fn new(input: HashMap<UtxoPointer, Output<Address>>) -> Self {
         Ledger {
             unspent_outputs: input,
         }
@@ -26,12 +27,13 @@ impl Ledger {
 impl property::Ledger for Ledger {
     type Update = TransactionsDiff;
     type Error = Error;
-    type Transaction = SignedTransaction;
+    type Transaction = SignedTransaction<Address>;
 
     fn input<'a>(
         &'a self,
-        input: &<self::SignedTransaction as property::Transaction>::Input,
-    ) -> Result<&'a <self::SignedTransaction as property::Transaction>::Output, Self::Error> {
+        input: &<self::SignedTransaction<Address> as property::Transaction>::Input,
+    ) -> Result<&'a <self::SignedTransaction<Address> as property::Transaction>::Output, Self::Error>
+    {
         match self.unspent_outputs.get(&input) {
             Some(output) => Ok(output),
             None => Err(Error::InputDoesNotResolve(*input)),
@@ -40,7 +42,7 @@ impl property::Ledger for Ledger {
 
     fn diff_transaction(
         &self,
-        transaction: &SignedTransaction,
+        transaction: &SignedTransaction<Address>,
     ) -> Result<Self::Update, Self::Error> {
         use chain_core::property::Transaction;
 

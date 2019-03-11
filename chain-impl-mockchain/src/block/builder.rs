@@ -8,6 +8,7 @@ use crate::block::{
 };
 use crate::key::{make_signature, make_signature_update};
 use crate::transaction::SignedTransaction;
+use chain_addr::Address;
 use chain_crypto::{vrf::vrf, Ed25519Extended, FakeMMM, SecretKey};
 
 pub struct BlockBuilder {
@@ -47,7 +48,7 @@ impl BlockBuilder {
     /// set a transaction in the block to build
     ///
     /// Equivalent to call `block_builder.message(Message::Transaction(transaction))`
-    pub fn transaction(&mut self, signed_transaction: SignedTransaction) -> &mut Self {
+    pub fn transaction(&mut self, signed_transaction: SignedTransaction<Address>) -> &mut Self {
         self.message(Message::Transaction(signed_transaction))
     }
 

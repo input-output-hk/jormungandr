@@ -93,25 +93,26 @@ impl Environment {
 impl property::Ledger for Environment {
     type Update = TransactionsDiff;
     type Error = Error;
-    type Transaction = SignedTransaction;
+    type Transaction = SignedTransaction<Address>;
 
     fn input<'a>(
         &'a self,
-        input: &<self::SignedTransaction as property::Transaction>::Input,
-    ) -> Result<&'a <self::SignedTransaction as property::Transaction>::Output, Self::Error> {
+        input: &<self::SignedTransaction<Address> as property::Transaction>::Input,
+    ) -> Result<&'a <self::SignedTransaction<Address> as property::Transaction>::Output, Self::Error>
+    {
         self.ledger.input(input)
     }
 
     fn diff_transaction(
         &self,
-        transaction: &SignedTransaction,
+        transaction: &SignedTransaction<Address>,
     ) -> Result<Self::Update, Self::Error> {
         self.ledger.diff_transaction(transaction)
     }
 
     fn diff<'a, I>(&self, transactions: I) -> Result<Self::Update, Self::Error>
     where
-        I: IntoIterator<Item = &'a SignedTransaction> + Sized,
+        I: IntoIterator<Item = &'a SignedTransaction<Address>> + Sized,
     {
         self.ledger.diff(transactions)
     }
@@ -124,8 +125,8 @@ impl property::Ledger for Environment {
     }
 }
 
-impl testing::GenerateTransaction<SignedTransaction> for Environment {
-    fn generate_transaction<G>(&mut self, g: &mut G) -> SignedTransaction
+impl testing::GenerateTransaction<SignedTransaction<Address>> for Environment {
+    fn generate_transaction<G>(&mut self, g: &mut G) -> SignedTransaction<Address>
     where
         G: Gen,
     {
@@ -133,7 +134,7 @@ impl testing::GenerateTransaction<SignedTransaction> for Environment {
         use chain_core::property::Transaction;
         use std::cmp::{max, min};
         // select some unspent inputs for transaction.
-        let inputs_outputs: Vec<(mock::UtxoPointer, mock::Output)> = self
+        let inputs_outputs: Vec<(mock::UtxoPointer, mock::Output<Address>)> = self
             .ledger
             .unspent_outputs
             .iter()
@@ -178,7 +179,7 @@ impl testing::GenerateTransaction<SignedTransaction> for Environment {
 
 #[derive(Clone, Debug)]
 struct LedgerWithValidTransaction(
-    pub testing::LedgerWithValidTransaction<Ledger, SignedTransaction>,
+    pub testing::LedgerWithValidTransaction<Ledger, SignedTransaction<Address>>,
 );
 
 impl Arbitrary for LedgerWithValidTransaction {

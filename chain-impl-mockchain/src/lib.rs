@@ -24,12 +24,13 @@ pub mod value;
 mod tests {
     use crate::ledger::Ledger;
     use crate::transaction::SignedTransaction;
+    use chain_addr::Address;
     use chain_core::property::testing;
     use quickcheck::TestResult;
 
     quickcheck! {
         /// Randomly generated transaction should fail.
-        fn prop_bad_tx_fails(l: Ledger, tx: SignedTransaction) -> TestResult {
+        fn prop_bad_tx_fails(l: Ledger, tx: SignedTransaction<Address>) -> TestResult {
             testing::prop_bad_transaction_fails(l, &tx)
         }
     }

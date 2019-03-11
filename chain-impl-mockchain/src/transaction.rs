@@ -64,7 +64,7 @@ impl Witness {
 /// Information how tokens are spent.
 /// A value of tokens is sent to the address.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Output(pub Address, pub Value);
+pub struct Output<Address>(pub Address, pub Value);
 
 // FIXME: should this be a wrapper type?
 pub type TransactionId = Hash;
@@ -72,16 +72,16 @@ pub type TransactionId = Hash;
 /// Transaction, transaction maps old unspent tokens into the
 /// set of the new addresses.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Transaction {
+pub struct Transaction<OutAddress> {
     pub inputs: Vec<UtxoPointer>,
-    pub outputs: Vec<Output>,
+    pub outputs: Vec<Output<OutAddress>>,
 }
 
 /// Each transaction must be signed in order to be executed
 /// by the ledger. `SignedTransaction` represents such a transaction.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SignedTransaction {
-    pub transaction: Transaction,
+pub struct SignedTransaction<OutAddress> {
+    pub transaction: Transaction<OutAddress>,
     pub witnesses: Vec<Witness>,
 }
 
@@ -109,7 +109,7 @@ impl property::Serialize for Witness {
     }
 }
 
-impl property::Serialize for Transaction {
+impl property::Serialize for Transaction<Address> {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -134,7 +134,7 @@ impl property::Serialize for Transaction {
     }
 }
 
-impl property::Serialize for SignedTransaction {
+impl property::Serialize for SignedTransaction<Address> {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -164,7 +164,7 @@ impl property::Deserialize for Witness {
     }
 }
 
-impl property::Deserialize for Transaction {
+impl property::Deserialize for Transaction<Address> {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
@@ -199,7 +199,7 @@ impl property::Deserialize for Transaction {
         Ok(transaction)
     }
 }
-impl property::Deserialize for SignedTransaction {
+impl property::Deserialize for SignedTransaction<Address> {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
@@ -225,11 +225,14 @@ impl property::Deserialize for SignedTransaction {
     }
 }
 
-impl property::Transaction for Transaction {
+impl<OutAddress> property::Transaction for Transaction<OutAddress>
+where
+    Transaction<OutAddress>: property::Serialize,
+{
     type Input = UtxoPointer;
-    type Output = Output;
-    type Inputs = [UtxoPointer];
-    type Outputs = [Output];
+    type Output = Output<OutAddress>;
+    type Inputs = [Self::Input];
+    type Outputs = [Self::Output];
     type Id = TransactionId;
 
     fn inputs(&self) -> &Self::Inputs {
@@ -250,12 +253,15 @@ impl property::Transaction for Transaction {
     }
 }
 
-impl property::Transaction for SignedTransaction {
-    type Input = UtxoPointer;
-    type Output = Output;
-    type Inputs = [UtxoPointer];
-    type Outputs = [Output];
-    type Id = TransactionId;
+impl<OutAddress> property::Transaction for SignedTransaction<OutAddress>
+where
+    Transaction<OutAddress>: property::Transaction,
+{
+    type Input = <Transaction<OutAddress> as property::Transaction>::Input;
+    type Output = <Transaction<OutAddress> as property::Transaction>::Output;
+    type Inputs = <Transaction<OutAddress> as property::Transaction>::Inputs;
+    type Outputs = <Transaction<OutAddress> as property::Transaction>::Outputs;
+    type Id = <Transaction<OutAddress> as property::Transaction>::Id;
 
     fn inputs(&self) -> &Self::Inputs {
         self.transaction.inputs()
@@ -284,14 +290,14 @@ mod test {
             witness.verifies(&pk, &tx) == Verification::Success
         }
 
-        fn transaction_id_is_unique(tx1: Transaction, tx2: Transaction) -> bool {
+        fn transaction_id_is_unique(tx1: Transaction<Address>, tx2: Transaction<Address>) -> bool {
             chain_core::property::testing::transaction_id_is_unique(tx1, tx2)
         }
 
-        fn transaction_encode_decode(transaction: Transaction) -> TestResult {
+        fn transaction_encode_decode(transaction: Transaction<Address>) -> TestResult {
             chain_core::property::testing::serialization_bijection(transaction)
         }
-        fn signed_transaction_encode_decode(transaction: SignedTransaction) -> TestResult {
+        fn signed_transaction_encode_decode(transaction: SignedTransaction<Address>) -> TestResult {
             chain_core::property::testing::serialization_bijection(transaction)
         }
     }
@@ -342,13 +348,13 @@ mod test {
         }
     }
 
-    impl Arbitrary for Output {
+    impl Arbitrary for Output<Address> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Output(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g))
         }
     }
 
-    impl Arbitrary for Transaction {
+    impl Arbitrary for Transaction<Address> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let num_inputs = u8::arbitrary(g) as usize;
             let num_outputs = u8::arbitrary(g) as usize;
@@ -363,7 +369,7 @@ mod test {
         }
     }
 
-    impl Arbitrary for SignedTransaction {
+    impl Arbitrary for SignedTransaction<Address> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let transaction = Transaction::arbitrary(g);
             let num_witnesses = transaction.inputs.len();

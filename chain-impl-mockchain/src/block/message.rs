@@ -1,5 +1,6 @@
 use chain_core::{packer, property};
 use chain_crypto::Ed25519Extended;
+use chain_addr::Address;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::mem::size_of;
@@ -13,7 +14,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
-    Transaction(SignedTransaction),
+    Transaction(SignedTransaction<Address>),
 
     StakeKeyRegistration(Signed<certificate::StakeKeyRegistration, Ed25519Extended>),
     StakeKeyDeregistration(Signed<certificate::StakeKeyDeregistration, Ed25519Extended>),
