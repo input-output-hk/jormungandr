@@ -2,7 +2,7 @@ use crate::block::Message;
 use crate::key::*;
 use crate::stake::{StakeKeyId, StakePoolId};
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, SecretKey};
+use chain_crypto::{vrf::vrf, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeKeyRegistration {
@@ -123,6 +123,8 @@ pub struct StakePoolRegistration {
     //pub owner: StakeKeyId, // FIXME: support list of owners
     // reward sharing params: cost, margin, pledged amount of stake
     // alternative stake key reward account
+    pub kes_public_key: PublicKey<FakeMMM>,
+    pub vrf_public_key: vrf::PublicKey,
 }
 
 impl StakePoolRegistration {
@@ -138,10 +140,10 @@ impl StakePoolRegistration {
 
 impl property::Serialize for StakePoolRegistration {
     type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
-        self.pool_id.serialize(&mut codec)?;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        self.pool_id.serialize(&mut writer)?;
+        writer.write_all(self.vrf_public_key.as_bytes())?;
+        serialize_public_key(&self.kes_public_key, &mut writer)?;
         //self.owner.serialize(&mut codec)?;
         Ok(())
     }
@@ -150,11 +152,20 @@ impl property::Serialize for StakePoolRegistration {
 impl property::Deserialize for StakePoolRegistration {
     type Error = std::io::Error;
 
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
+        let pool_id = StakePoolId::deserialize(&mut reader)?;
+        let vrf_public_key = {
+            //
+            let mut bytes = [0; vrf::PUBLIC_SIZE];
+            reader.read_exact(&mut bytes)?;
+            vrf::PublicKey::from_bytes(&bytes)
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?
+        };
+        let kes_public_key = deserialize_public_key(&mut reader)?;
         Ok(StakePoolRegistration {
-            pool_id: StakePoolId::deserialize(&mut codec)?,
+            pool_id: pool_id,
+            vrf_public_key: vrf_public_key,
+            kes_public_key: kes_public_key,
             // owner: StakeKeyId::deserialize(&mut codec)?,
         })
     }
@@ -231,8 +242,16 @@ mod test {
 
     impl Arbitrary for StakePoolRegistration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            use rand_core::SeedableRng;
+            let mut seed = [0; 32];
+            for byte in seed.iter_mut() {
+                *byte = Arbitrary::arbitrary(g);
+            }
+            let mut rng = rand_chacha::ChaChaRng::from_seed(seed);
             StakePoolRegistration {
                 pool_id: Arbitrary::arbitrary(g),
+                vrf_public_key: vrf::SecretKey::random(&mut rng).public(),
+                kes_public_key: SecretKey::generate(&mut rng).to_public()
                 //owner: Arbitrary::arbitrary(g),
             }
         }

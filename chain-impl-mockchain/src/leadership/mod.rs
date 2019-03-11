@@ -5,6 +5,7 @@ use chain_crypto::algorithms::vrf::vrf::{self, ProvenOutputSeed};
 use chain_crypto::{Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
 pub mod bft;
+pub mod genesis;
 pub mod none;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -22,6 +23,8 @@ pub enum ErrorKind {
     IncompatibleLeadershipMode,
     InvalidLeader,
     InvalidLeaderSignature,
+    InvalidBlockMessage,
+    InvalidStateUpdate,
 }
 
 #[derive(Debug)]
@@ -103,7 +106,9 @@ impl std::fmt::Display for ErrorKind {
             }
             ErrorKind::IncompatibleLeadershipMode => write!(f, "Incompatible leadership mode"),
             ErrorKind::InvalidLeader => write!(f, "Block has unexpected block leader"),
-            ErrorKind::InvalidLeaderSignature => write!(f, "Block "),
+            ErrorKind::InvalidLeaderSignature => write!(f, "Block signature is invalid"),
+            ErrorKind::InvalidBlockMessage => write!(f, "Invalid block message"),
+            ErrorKind::InvalidStateUpdate => write!(f, "Invalid State Update"),
         }
     }
 }
