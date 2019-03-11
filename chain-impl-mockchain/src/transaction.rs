@@ -227,7 +227,7 @@ impl property::Deserialize for SignedTransaction<Address> {
 
 impl<OutAddress> property::Transaction for Transaction<OutAddress>
 where
-    Transaction<OutAddress>: property::Serialize,
+    Transaction<OutAddress>: property::Serialize + property::Deserialize,
 {
     type Input = UtxoPointer;
     type Output = Output<OutAddress>;
@@ -256,6 +256,7 @@ where
 impl<OutAddress> property::Transaction for SignedTransaction<OutAddress>
 where
     Transaction<OutAddress>: property::Transaction,
+    SignedTransaction<OutAddress>: property::Serialize + property::Deserialize,
 {
     type Input = <Transaction<OutAddress> as property::Transaction>::Input;
     type Output = <Transaction<OutAddress> as property::Transaction>::Output;

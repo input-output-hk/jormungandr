@@ -2,6 +2,7 @@
 use crate::key::{make_signature, make_signature_update, Hash};
 use crate::leadership::Leader;
 use crate::transaction::SignedTransaction;
+use chain_addr::Address;
 use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
 
@@ -174,8 +175,8 @@ impl property::Deserialize for Block {
 }
 
 impl property::HasTransaction for Block {
-    type Transaction = SignedTransaction;
-    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
+    type Transaction = SignedTransaction<Address>;
+    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction<Address>> + 'a> {
         Box::new(self.contents.0.iter().filter_map(|msg| match msg {
             Message::Transaction(tx) => Some(tx),
             _ => None,
