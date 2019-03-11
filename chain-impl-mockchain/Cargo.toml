@@ -20,6 +20,7 @@ serde_derive = { version = "^1.0", optional = true }
 chain-core = { path = "../chain-core" }
 chain-addr = { path = "../chain-addr" }
 chain-crypto = { path = "../chain-crypto" }
+cardano = { path= "../cardano" }
 rand = "0.6"
 imhamt = { path = "../imhamt" }
 
