@@ -1,10 +1,10 @@
 //! REST API of the node
 
-mod server_service;
+mod server;
 
 pub mod v0;
 
-pub use self::server_service::{Error, ServerService};
+pub use self::server::{Error, Server};
 
 use crate::blockcfg::mock::Mockchain;
 use crate::blockchain::BlockchainR;
@@ -17,14 +17,14 @@ pub struct Context {
     pub transaction_task: v0::transaction::Task,
 }
 
-pub fn start_rest_server(config: &Rest, context: Context) -> Result<ServerService, SettingsError> {
+pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, SettingsError> {
     let prefix = config
         .prefix
         .as_ref()
         .map(|prefix| prefix.as_str())
         .unwrap_or("");
     let settings = context.blockchain.read().unwrap().state.settings.clone();
-    ServerService::builder(config.pkcs12.clone(), config.listen.clone(), prefix)
+    Server::builder(config.pkcs12.clone(), config.listen.clone(), prefix)
         .add_handler(v0::block::create_handler(context.blockchain.clone()))
         .add_handler(v0::node::stats::create_handler(context.stats_counter))
         .add_handler(v0::tip::create_handler(settings))
