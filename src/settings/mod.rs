@@ -13,6 +13,7 @@ pub enum Command {
     Init(init::Settings),
     GenerateKeys,
     GeneratePrivKey(GeneratePrivKeyArguments),
+    GeneratePubKey,
 }
 
 #[derive(Debug)]
@@ -34,6 +35,7 @@ impl Command {
                 .map_err(Error::Start),
             ArgCommand::GenerateKeys => Ok(Command::GenerateKeys),
             ArgCommand::GeneratePrivKey(args) => Ok(Command::GeneratePrivKey(args)),
+            ArgCommand::GeneratePubKey => Ok(Command::GeneratePubKey),
         }
     }
 }

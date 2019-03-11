@@ -152,6 +152,11 @@ pub enum Command {
     /// generate a random private key and print it to stdout encoded in bech32
     #[structopt(name = "generate-priv-key")]
     GeneratePrivKey(GeneratePrivKeyArguments),
+
+    /// generates a public key corresponding to a private key,
+    /// reads private from stdin and prints its public to stdout, both encoded in bech32
+    #[structopt(name = "generate-pub-key")]
+    GeneratePubKey,
 }
 
 impl CommandLine {

@@ -53,12 +53,13 @@ extern crate structopt;
 #[cfg(feature = "with-bench")]
 extern crate test;
 
+use std::io::{self, BufRead};
 use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 
 use chain_impl_mockchain::transaction::{SignedTransaction, TransactionId};
 use futures::Future;
 
-use bech32::{Bech32, ToBase32};
+use bech32::{u5, Bech32, FromBase32, ToBase32};
 use blockcfg::{
     genesis_data::ConfigGenesisData, genesis_data::GenesisData, mock::Mockchain as Cardano,
 };
@@ -330,6 +331,32 @@ fn main() {
             };
             println!("{}", priv_key_bech32);
         }
+        Command::GeneratePubKey => {
+            let stdin = io::stdin();
+            let bech32: Bech32 = stdin
+                .lock()
+                .lines()
+                .next()
+                .unwrap()
+                .unwrap()
+                .parse()
+                .unwrap();
+            let pub_key_bech32 = match bech32.hrp() {
+                Ed25519::SECRET_BECH32_HRP => gen_pub_key_bech32::<Ed25519>(bech32.data()),
+                Ed25519Bip32::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Ed25519Bip32>(bech32.data())
+                }
+                Ed25519Extended::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Ed25519Extended>(bech32.data())
+                }
+                FakeMMM::SECRET_BECH32_HRP => gen_pub_key_bech32::<FakeMMM>(bech32.data()),
+                Curve25519_2HashDH::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Curve25519_2HashDH>(bech32.data())
+                }
+                other => panic!("Unrecognized private key bech32 HRP: {}", other),
+            };
+            println!("{}", pub_key_bech32);
+        }
         Command::Init(init_settings) => {
             let genesis = ConfigGenesisData::from_genesis(GenesisData {
                 start_time: init_settings.blockchain_start,
@@ -349,4 +376,12 @@ fn gen_priv_key_bech32<K: AsymmetricKey>() -> Bech32 {
     let secret = K::generate(rng);
     let hrp = K::SECRET_BECH32_HRP.to_string();
     Bech32::new(hrp, secret.to_base32()).unwrap()
+}
+
+fn gen_pub_key_bech32<K: AsymmetricKey>(priv_key_bech32: &[u5]) -> Bech32 {
+    let priv_key_bytes = Vec::<u8>::from_base32(priv_key_bech32).unwrap();
+    let priv_key = K::secret_from_binary(&priv_key_bytes).unwrap();
+    let pub_key = K::compute_public(&priv_key);
+    let hrp = K::PUBLIC_BECH32_HRP.to_string();
+    Bech32::new(hrp, pub_key.to_base32()).unwrap()
 }
