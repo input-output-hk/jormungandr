@@ -1,10 +1,26 @@
 use chain_core::property::{Deserialize, Serialize};
+use std::{error, fmt};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct NodeId([u8; 16]);
 
+#[derive(Clone, Debug)]
 pub enum NodeIdError {
     InvalidSize(usize),
+}
+
+impl error::Error for NodeIdError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
+    }
+}
+
+impl fmt::Display for NodeIdError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            NodeIdError::InvalidSize(size) => write!(f, "invalid node id size: {}", size),
+        }
+    }
 }
 
 impl NodeId {
