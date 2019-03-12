@@ -1,3 +1,4 @@
+
 use crate::key::{
     deserialize_signature, serialize_signature, Hash, SpendingPublicKey, SpendingSecretKey,
     SpendingSignature,
@@ -22,6 +23,7 @@ pub struct UtxoPointer {
     /// and to set the actual fee in the transaction.
     pub value: Value,
 }
+
 impl UtxoPointer {
     pub fn new(
         transaction_id: TransactionId,
