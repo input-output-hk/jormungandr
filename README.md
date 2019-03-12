@@ -56,6 +56,11 @@ to utilise the most recent stable version of the rust compiler.
 2. make sure you have cloned the submodule too: `git submodule update`
 3. install: `cargo install`
 
+Note:
+
+* on windows, you'll need to add the `/userProfile/.cargo/bin` into the Path;
+* on linux and OSX: add `${HOME}/.cargo/bin` to your `${PATH}`
+
 ## How To Use
 
 In order to use jormungandr you need to configure your blockchain and
