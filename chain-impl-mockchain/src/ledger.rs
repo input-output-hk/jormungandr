@@ -24,113 +24,7 @@ impl Ledger {
     }
 }
 
-impl property::Ledger for Ledger {
-    type Update = TransactionsDiff;
-    type Error = Error;
-    type Transaction = SignedTransaction<Address>;
-
-    fn input<'a>(
-        &'a self,
-        input: &<self::SignedTransaction<Address> as property::Transaction>::Input,
-    ) -> Result<&'a <self::SignedTransaction<Address> as property::Transaction>::Output, Self::Error>
-    {
-        match self.unspent_outputs.get(&input) {
-            Some(output) => Ok(output),
-            None => Err(Error::InputDoesNotResolve(*input)),
-        }
-    }
-
-    fn diff_transaction(
-        &self,
-        transaction: &SignedTransaction<Address>,
-    ) -> Result<Self::Update, Self::Error> {
-        use chain_core::property::Transaction;
-
-        let mut diff = <Self::Update as property::Update>::empty();
-        let id = transaction.id();
-
-        // FIXME: check that inputs is non-empty?
-
-        // 0. verify that number of signatures matches number of
-        // transactions
-        if transaction.transaction.inputs.len() > transaction.witnesses.len() {
-            return Err(Error::NotEnoughSignatures(
-                transaction.transaction.inputs.len(),
-                transaction.witnesses.len(),
-            ));
-        }
-
-        // 1. validate transaction without looking into the context
-        // and that each input is validated by the matching key.
-        for (input, witness) in transaction
-            .transaction
-            .inputs
-            .iter()
-            .zip(transaction.witnesses.iter())
-        {
-            let associated_output = self.input(input)?;
-
-            if witness.verifies(
-                // TODO: when we have the crypto unified we should not need
-                // the clone here anymore
-                &associated_output.0.public_key().unwrap().clone(),
-                &transaction.transaction.id(),
-            ) == chain_crypto::Verification::Failed
-            {
-                return Err(Error::InvalidSignature(
-                    input.clone(),
-                    associated_output.clone(),
-                    witness.clone(),
-                ));
-            }
-            if let Some(output) = diff.spent_outputs.insert(*input, associated_output.clone()) {
-                return Err(Error::DoubleSpend(*input, output));
-            }
-        }
-
-        // 2. prepare to add the new outputs
-        for (index, output) in transaction.transaction.outputs.iter().enumerate() {
-            // Reject zero-valued outputs.
-            if output.1 == Value(0) {
-                return Err(Error::ZeroOutput(output.clone()));
-            }
-            diff.new_unspent_outputs.insert(
-                UtxoPointer::new(id, index as TransactionIndex, output.1),
-                output.clone(),
-            );
-        }
-
-        // 3. verify that transaction sum is zero.
-        let spent = diff
-            .spent_outputs
-            .iter()
-            .fold(0, |acc, (_, Output(_, Value(x)))| acc + x);
-        let new_unspent = diff
-            .new_unspent_outputs
-            .iter()
-            .fold(0, |acc, (_, Output(_, Value(x)))| acc + x);
-        if spent != new_unspent {
-            return Err(Error::TransactionSumIsNonZero(spent, new_unspent));
-        }
-        Ok(diff)
-    }
-
-    fn apply(&mut self, diff: Self::Update) -> Result<&mut Self, Self::Error> {
-        for spent_output in diff.spent_outputs.keys() {
-            if let None = self.unspent_outputs.remove(spent_output) {
-                return Err(Error::InputDoesNotResolve(*spent_output));
-            }
-        }
-
-        for (input, output) in diff.new_unspent_outputs {
-            if let Some(original_output) = self.unspent_outputs.insert(input, output.clone()) {
-                return Err(Error::InputWasAlreadySet(input, original_output, output));
-            }
-        }
-
-        Ok(self)
-    }
-}
+/*
 #[cfg(test)]
 pub mod test {
 
@@ -259,3 +153,4 @@ pub mod test {
         )
     }
 }
+*.

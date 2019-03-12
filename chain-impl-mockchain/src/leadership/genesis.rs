@@ -332,325 +332,325 @@ impl LeaderSelection for GenesisLeaderSelection {
     type Block = Block;
     type Error = Error;
     type LeaderId = PublicLeader;
-/*
-    fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
-        let mut update = <Self::Update as property::Update>::empty();
+    /*
+        fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
+            let mut update = <Self::Update as property::Update>::empty();
 
-        let date = input.date();
+            let date = input.date();
 
-        let (new_pos, leader) = self.advance_to(date);
+            let (new_pos, leader) = self.advance_to(date);
 
-        assert_eq!(new_pos.next_date, date.next());
+            assert_eq!(new_pos.next_date, date.next());
 
-        match &input.header.proof() {
-            Proof::None => unimplemented!(),
-            Proof::GenesisPraos(genesis_praos_proof) => {
-                if let PublicLeader::GenesisPraos(genesis_praos_leader) = &leader {
-                    if &genesis_praos_proof.vrf_public_key != &genesis_praos_leader.vrf_public_key
-                        || &genesis_praos_proof.kes_public_key
-                            != &genesis_praos_leader.kes_public_key
-                    {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidLeader,
-                            cause: Some(Box::new(GenesisPraosError::BlockHasInvalidLeader(
-                                leader.clone(),
-                                PublicLeader::GenesisPraos(GenesisPraosLeader {
-                                    kes_public_key: genesis_praos_proof.kes_public_key.clone(),
-                                    vrf_public_key: genesis_praos_proof.vrf_public_key.clone(),
-                                }),
-                            ))),
-                        });
+            match &input.header.proof() {
+                Proof::None => unimplemented!(),
+                Proof::GenesisPraos(genesis_praos_proof) => {
+                    if let PublicLeader::GenesisPraos(genesis_praos_leader) = &leader {
+                        if &genesis_praos_proof.vrf_public_key != &genesis_praos_leader.vrf_public_key
+                            || &genesis_praos_proof.kes_public_key
+                                != &genesis_praos_leader.kes_public_key
+                        {
+                            return Err(Error {
+                                kind: ErrorKind::InvalidLeader,
+                                cause: Some(Box::new(GenesisPraosError::BlockHasInvalidLeader(
+                                    leader.clone(),
+                                    PublicLeader::GenesisPraos(GenesisPraosLeader {
+                                        kes_public_key: genesis_praos_proof.kes_public_key.clone(),
+                                        vrf_public_key: genesis_praos_proof.vrf_public_key.clone(),
+                                    }),
+                                ))),
+                            });
+                        }
+                    } else {
+                        // TODO: error, we would expect a GENESIS leader in the case of a GenesisPraos proof
                     }
-                } else {
-                    // TODO: error, we would expect a GENESIS leader in the case of a GenesisPraos proof
+                }
+                Proof::Bft(bft_proof) => {
+                    if let PublicLeader::Bft(bft_leader) = &leader {
+                        if &bft_proof.leader_id != bft_leader {
+                            return Err(Error {
+                                kind: ErrorKind::InvalidLeader,
+                                cause: Some(Box::new(GenesisPraosError::BlockHasInvalidLeader(
+                                    leader.clone(),
+                                    PublicLeader::Bft(bft_proof.leader_id.clone()),
+                                ))),
+                            });
+                        }
+                    } else {
+                        // TODO: this is an error, we need to only accept BFT leader in the
+                        // case of a BFT proof
+                    }
                 }
             }
-            Proof::Bft(bft_proof) => {
-                if let PublicLeader::Bft(bft_leader) = &leader {
-                    if &bft_proof.leader_id != bft_leader {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidLeader,
-                            cause: Some(Box::new(GenesisPraosError::BlockHasInvalidLeader(
-                                leader.clone(),
-                                PublicLeader::Bft(bft_proof.leader_id.clone()),
-                            ))),
-                        });
-                    }
-                } else {
-                    // TODO: this is an error, we need to only accept BFT leader in the
-                    // case of a BFT proof
-                }
+
+            if !input.verify() {
+                return Err(Error {
+                    kind: ErrorKind::InvalidLeaderSignature,
+                    cause: Some(Box::new(GenesisPraosError::BlockSignatureIsInvalid)),
+                });
             }
-        }
 
-        if !input.verify() {
-            return Err(Error {
-                kind: ErrorKind::InvalidLeaderSignature,
-                cause: Some(Box::new(GenesisPraosError::BlockSignatureIsInvalid)),
-            });
-        }
+            // If we crossed into a new epoch, then update the stake
+            // distribution snapshots. NOTE: this is a snapshot of the
+            // stake *before* applying the ledger changes in this block
+            // (because this is the stake distribution at the very start
+            // of the epoch). TODO: When we merge leadership and ledger,
+            // we need to take care that we don't break this.
+            if date.epoch != self.pos.next_date.epoch
+                || (self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0)
+            {
+                let mut snapshots: BTreeMap<Epoch, StakeDistribution> = self
+                    .stake_snapshots
+                    .iter()
+                    .filter(|(epoch, _snapshot)| *epoch + 1 >= date.epoch)
+                    .map(|(epoch, snapshot)| (*epoch, snapshot.clone()))
+                    .collect();
+                snapshots.insert(date.epoch, self.get_stake_distribution());
+                assert!(snapshots.len() <= 2);
+                update.genesis.stake_snapshots = Some(snapshots);
+            }
 
-        // If we crossed into a new epoch, then update the stake
-        // distribution snapshots. NOTE: this is a snapshot of the
-        // stake *before* applying the ledger changes in this block
-        // (because this is the stake distribution at the very start
-        // of the epoch). TODO: When we merge leadership and ledger,
-        // we need to take care that we don't break this.
-        if date.epoch != self.pos.next_date.epoch
-            || (self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0)
-        {
-            let mut snapshots: BTreeMap<Epoch, StakeDistribution> = self
-                .stake_snapshots
-                .iter()
-                .filter(|(epoch, _snapshot)| *epoch + 1 >= date.epoch)
-                .map(|(epoch, snapshot)| (*epoch, snapshot.clone()))
-                .collect();
-            snapshots.insert(date.epoch, self.get_stake_distribution());
-            assert!(snapshots.len() <= 2);
-            update.genesis.stake_snapshots = Some(snapshots);
-        }
-
-        for msg in input.contents.iter() {
-            match msg {
-                Message::StakeKeyRegistration(reg) => {
-                    if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
-                        == chain_crypto::Verification::Failed
-                    {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidBlockMessage,
-                            cause: Some(Box::new(
-                                GenesisPraosError::StakeKeyRegistrationSigIsInvalid,
-                            )),
-                        });
-                    }
-
-                    // FIXME: should it be an error to register an
-                    // already registered stake key?
-                    if !self
-                        .delegation_state
-                        .stake_key_exists(&reg.data.stake_key_id)
-                    {
-                        // FIXME: need to handle a block that both
-                        // deregisters *and* re-registers a stake
-                        // key. Probably that should void the reward
-                        // account (rather than be a no-op).
-                        assert!(!update
-                            .genesis
-                            .stake_key_deregistrations
-                            .contains(&reg.data.stake_key_id));
-
-                        update
-                            .genesis
-                            .stake_key_registrations
-                            .insert(reg.data.stake_key_id.clone());
-                    }
-                }
-
-                Message::StakeKeyDeregistration(reg) => {
-                    if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
-                        == chain_crypto::Verification::Failed
-                    {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidBlockMessage,
-                            cause: Some(Box::new(
-                                GenesisPraosError::StakeKeyDeregistrationSigIsInvalid,
-                            )),
-                        });
-                    }
-
-                    if self
-                        .delegation_state
-                        .stake_key_exists(&reg.data.stake_key_id)
-                    {
-                        // FIXME: for now, ban registrations and
-                        // deregistrations of a key in the same
-                        // block.
-                        assert!(!update
-                            .genesis
-                            .stake_key_registrations
-                            .contains(&reg.data.stake_key_id));
-                        update
-                            .genesis
-                            .stake_key_deregistrations
-                            .insert(reg.data.stake_key_id.clone());
-                    }
-                }
-
-                Message::StakeDelegation(reg) => {
-                    if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
-                        == chain_crypto::Verification::Failed
-                    {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidBlockMessage,
-                            cause: Some(Box::new(GenesisPraosError::StakeDelegationSigIsInvalid)),
-                        });
-                    }
-
-                    // FIXME: should it be allowed to register a stake
-                    // key and delegate from it in the same
-                    // transaction? Probably yes.
-                    if !self
-                        .delegation_state
-                        .stake_key_exists(&reg.data.stake_key_id)
-                    {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidBlockMessage,
-                            cause: Some(Box::new(
-                                GenesisPraosError::StakeDelegationStakeKeyIsInvalid(
-                                    reg.data.stake_key_id.clone(),
-                                ),
-                            )),
-                        });
-                    }
-
-                    // FIXME: should it be allowed to create a stake
-                    // pool and delegate to it in the same
-                    // transaction?
-                    if !self.delegation_state.stake_pool_exists(&reg.data.pool_id) {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidBlockMessage,
-                            cause: Some(Box::new(
-                                GenesisPraosError::StakeDelegationPoolKeyIsInvalid(
-                                    reg.data.pool_id.clone(),
-                                ),
-                            )),
-                        });
-                    }
-
-                    update
-                        .genesis
-                        .delegations
-                        .insert(reg.data.stake_key_id.clone(), reg.data.pool_id.clone());
-                }
-
-                Message::StakePoolRegistration(reg) => {
-                    if crate::key::verify_signature(&reg.sig, &reg.data.pool_id.0, &reg.data)
-                        == chain_crypto::Verification::Failed
-                    {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidBlockMessage,
-                            cause: Some(Box::new(
-                                GenesisPraosError::StakePoolRegistrationPoolSigIsInvalid,
-                            )),
-                        });
-                    }
-
-                    if self.delegation_state.stake_pool_exists(&reg.data.pool_id)
-                        || update
-                            .genesis
-                            .new_stake_pools
-                            .contains_key(&reg.data.pool_id)
-                    {
-                        // FIXME: support re-registration to change pool parameters.
-                        return Err(Error {
-                            kind: ErrorKind::InvalidBlockMessage,
-                            cause: Some(Box::new(GenesisPraosError::StakePoolAlreadyExists(
-                                reg.data.pool_id.clone(),
-                            ))),
-                        });
-                    }
-
-                    // FIXME: check owner_sig
-
-                    // FIXME: should pool_id be a previously registered stake key?
-
-                    update
-                        .genesis
-                        .new_stake_pools
-                        .insert(reg.data.pool_id.clone(), reg.data.clone());
-                }
-
-                Message::StakePoolRetirement(ret) => {
-                    if self.delegation_state.stake_pool_exists(&ret.data.pool_id) {
-                        if crate::key::verify_signature(&ret.sig, &ret.data.pool_id.0, &ret.data)
+            for msg in input.contents.iter() {
+                match msg {
+                    Message::StakeKeyRegistration(reg) => {
+                        if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
                             == chain_crypto::Verification::Failed
                         {
                             return Err(Error {
                                 kind: ErrorKind::InvalidBlockMessage,
                                 cause: Some(Box::new(
-                                    GenesisPraosError::StakePoolRetirementSigIsInvalid,
+                                    GenesisPraosError::StakeKeyRegistrationSigIsInvalid,
                                 )),
                             });
                         }
+
+                        // FIXME: should it be an error to register an
+                        // already registered stake key?
+                        if !self
+                            .delegation_state
+                            .stake_key_exists(&reg.data.stake_key_id)
+                        {
+                            // FIXME: need to handle a block that both
+                            // deregisters *and* re-registers a stake
+                            // key. Probably that should void the reward
+                            // account (rather than be a no-op).
+                            assert!(!update
+                                .genesis
+                                .stake_key_deregistrations
+                                .contains(&reg.data.stake_key_id));
+
+                            update
+                                .genesis
+                                .stake_key_registrations
+                                .insert(reg.data.stake_key_id.clone());
+                        }
+                    }
+
+                    Message::StakeKeyDeregistration(reg) => {
+                        if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
+                            == chain_crypto::Verification::Failed
+                        {
+                            return Err(Error {
+                                kind: ErrorKind::InvalidBlockMessage,
+                                cause: Some(Box::new(
+                                    GenesisPraosError::StakeKeyDeregistrationSigIsInvalid,
+                                )),
+                            });
+                        }
+
+                        if self
+                            .delegation_state
+                            .stake_key_exists(&reg.data.stake_key_id)
+                        {
+                            // FIXME: for now, ban registrations and
+                            // deregistrations of a key in the same
+                            // block.
+                            assert!(!update
+                                .genesis
+                                .stake_key_registrations
+                                .contains(&reg.data.stake_key_id));
+                            update
+                                .genesis
+                                .stake_key_deregistrations
+                                .insert(reg.data.stake_key_id.clone());
+                        }
+                    }
+
+                    Message::StakeDelegation(reg) => {
+                        if crate::key::verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
+                            == chain_crypto::Verification::Failed
+                        {
+                            return Err(Error {
+                                kind: ErrorKind::InvalidBlockMessage,
+                                cause: Some(Box::new(GenesisPraosError::StakeDelegationSigIsInvalid)),
+                            });
+                        }
+
+                        // FIXME: should it be allowed to register a stake
+                        // key and delegate from it in the same
+                        // transaction? Probably yes.
+                        if !self
+                            .delegation_state
+                            .stake_key_exists(&reg.data.stake_key_id)
+                        {
+                            return Err(Error {
+                                kind: ErrorKind::InvalidBlockMessage,
+                                cause: Some(Box::new(
+                                    GenesisPraosError::StakeDelegationStakeKeyIsInvalid(
+                                        reg.data.stake_key_id.clone(),
+                                    ),
+                                )),
+                            });
+                        }
+
+                        // FIXME: should it be allowed to create a stake
+                        // pool and delegate to it in the same
+                        // transaction?
+                        if !self.delegation_state.stake_pool_exists(&reg.data.pool_id) {
+                            return Err(Error {
+                                kind: ErrorKind::InvalidBlockMessage,
+                                cause: Some(Box::new(
+                                    GenesisPraosError::StakeDelegationPoolKeyIsInvalid(
+                                        reg.data.pool_id.clone(),
+                                    ),
+                                )),
+                            });
+                        }
+
                         update
                             .genesis
-                            .retired_stake_pools
-                            .insert(ret.data.pool_id.clone());
-                    } else {
-                        return Err(Error {
-                            kind: ErrorKind::InvalidBlockMessage,
-                            cause: Some(Box::new(GenesisPraosError::StakePoolDoesNotExist(
-                                ret.data.pool_id.clone(),
-                            ))),
-                        });
+                            .delegations
+                            .insert(reg.data.stake_key_id.clone(), reg.data.pool_id.clone());
                     }
-                }
 
-                _ => {}
+                    Message::StakePoolRegistration(reg) => {
+                        if crate::key::verify_signature(&reg.sig, &reg.data.pool_id.0, &reg.data)
+                            == chain_crypto::Verification::Failed
+                        {
+                            return Err(Error {
+                                kind: ErrorKind::InvalidBlockMessage,
+                                cause: Some(Box::new(
+                                    GenesisPraosError::StakePoolRegistrationPoolSigIsInvalid,
+                                )),
+                            });
+                        }
+
+                        if self.delegation_state.stake_pool_exists(&reg.data.pool_id)
+                            || update
+                                .genesis
+                                .new_stake_pools
+                                .contains_key(&reg.data.pool_id)
+                        {
+                            // FIXME: support re-registration to change pool parameters.
+                            return Err(Error {
+                                kind: ErrorKind::InvalidBlockMessage,
+                                cause: Some(Box::new(GenesisPraosError::StakePoolAlreadyExists(
+                                    reg.data.pool_id.clone(),
+                                ))),
+                            });
+                        }
+
+                        // FIXME: check owner_sig
+
+                        // FIXME: should pool_id be a previously registered stake key?
+
+                        update
+                            .genesis
+                            .new_stake_pools
+                            .insert(reg.data.pool_id.clone(), reg.data.clone());
+                    }
+
+                    Message::StakePoolRetirement(ret) => {
+                        if self.delegation_state.stake_pool_exists(&ret.data.pool_id) {
+                            if crate::key::verify_signature(&ret.sig, &ret.data.pool_id.0, &ret.data)
+                                == chain_crypto::Verification::Failed
+                            {
+                                return Err(Error {
+                                    kind: ErrorKind::InvalidBlockMessage,
+                                    cause: Some(Box::new(
+                                        GenesisPraosError::StakePoolRetirementSigIsInvalid,
+                                    )),
+                                });
+                            }
+                            update
+                                .genesis
+                                .retired_stake_pools
+                                .insert(ret.data.pool_id.clone());
+                        } else {
+                            return Err(Error {
+                                kind: ErrorKind::InvalidBlockMessage,
+                                cause: Some(Box::new(GenesisPraosError::StakePoolDoesNotExist(
+                                    ret.data.pool_id.clone(),
+                                ))),
+                            });
+                        }
+                    }
+
+                    _ => {}
+                }
             }
+
+            update.genesis.next_date = ValueDiff::Replace(self.pos.next_date, new_pos.next_date);
+            update.genesis.bft_blocks = ValueDiff::Replace(self.pos.bft_blocks, new_pos.bft_blocks);
+            update.genesis.genesis_blocks =
+                ValueDiff::Replace(self.pos.genesis_blocks, new_pos.genesis_blocks);
+
+            Ok(update)
         }
 
-        update.genesis.next_date = ValueDiff::Replace(self.pos.next_date, new_pos.next_date);
-        update.genesis.bft_blocks = ValueDiff::Replace(self.pos.bft_blocks, new_pos.bft_blocks);
-        update.genesis.genesis_blocks =
-            ValueDiff::Replace(self.pos.genesis_blocks, new_pos.genesis_blocks);
+        fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error> {
+            if !update.genesis.next_date.check(&self.pos.next_date)
+                || !update.genesis.bft_blocks.check(&self.pos.bft_blocks)
+                || !update
+                    .genesis
+                    .genesis_blocks
+                    .check(&self.pos.genesis_blocks)
+            {
+                return Err(Error {
+                    kind: ErrorKind::InvalidStateUpdate,
+                    cause: Some(Box::new(GenesisPraosError::UpdateIsInvalid)),
+                });
+            }
 
-        Ok(update)
-    }
+            for stake_key_id in update.genesis.stake_key_registrations {
+                self.delegation_state.register_stake_key(stake_key_id);
+            }
 
-    fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error> {
-        if !update.genesis.next_date.check(&self.pos.next_date)
-            || !update.genesis.bft_blocks.check(&self.pos.bft_blocks)
-            || !update
+            for stake_key_id in update.genesis.stake_key_deregistrations {
+                self.delegation_state.deregister_stake_key(&stake_key_id);
+            }
+
+            for (pool_id, new_stake_pool) in update.genesis.new_stake_pools {
+                self.delegation_state.register_stake_pool(
+                    pool_id,
+                    new_stake_pool.kes_public_key,
+                    new_stake_pool.vrf_public_key,
+                );
+            }
+
+            for (stake_key_id, pool_id) in update.genesis.delegations {
+                self.delegation_state.delegate_stake(stake_key_id, pool_id);
+            }
+
+            // FIXME: the pool should be retired at the end of a specified epoch.
+            for pool_id in update.genesis.retired_stake_pools {
+                self.delegation_state.deregister_stake_pool(&pool_id);
+            }
+
+            update.genesis.next_date.apply_to(&mut self.pos.next_date);
+            update.genesis.bft_blocks.apply_to(&mut self.pos.bft_blocks);
+            update
                 .genesis
                 .genesis_blocks
-                .check(&self.pos.genesis_blocks)
-        {
-            return Err(Error {
-                kind: ErrorKind::InvalidStateUpdate,
-                cause: Some(Box::new(GenesisPraosError::UpdateIsInvalid)),
-            });
+                .apply_to(&mut self.pos.genesis_blocks);
+
+            if let Some(stake_snapshots) = update.genesis.stake_snapshots {
+                self.stake_snapshots = stake_snapshots;
+            }
+
+            Ok(())
         }
-
-        for stake_key_id in update.genesis.stake_key_registrations {
-            self.delegation_state.register_stake_key(stake_key_id);
-        }
-
-        for stake_key_id in update.genesis.stake_key_deregistrations {
-            self.delegation_state.deregister_stake_key(&stake_key_id);
-        }
-
-        for (pool_id, new_stake_pool) in update.genesis.new_stake_pools {
-            self.delegation_state.register_stake_pool(
-                pool_id,
-                new_stake_pool.kes_public_key,
-                new_stake_pool.vrf_public_key,
-            );
-        }
-
-        for (stake_key_id, pool_id) in update.genesis.delegations {
-            self.delegation_state.delegate_stake(stake_key_id, pool_id);
-        }
-
-        // FIXME: the pool should be retired at the end of a specified epoch.
-        for pool_id in update.genesis.retired_stake_pools {
-            self.delegation_state.deregister_stake_pool(&pool_id);
-        }
-
-        update.genesis.next_date.apply_to(&mut self.pos.next_date);
-        update.genesis.bft_blocks.apply_to(&mut self.pos.bft_blocks);
-        update
-            .genesis
-            .genesis_blocks
-            .apply_to(&mut self.pos.genesis_blocks);
-
-        if let Some(stake_snapshots) = update.genesis.stake_snapshots {
-            self.stake_snapshots = stake_snapshots;
-        }
-
-        Ok(())
-    }
-*/
+    */
     fn get_leader_at(
         &self,
         date: <Self::Block as property::Block>::Date,

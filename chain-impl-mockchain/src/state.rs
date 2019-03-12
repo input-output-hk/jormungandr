@@ -9,7 +9,6 @@ use chain_core::property;
 
 pub(crate) type Leadership = Box<
     dyn property::LeaderSelection<
-        Update = leadership::Update,
         Block = block::Block,
         Error = leadership::Error,
         LeaderId = leadership::PublicLeader,

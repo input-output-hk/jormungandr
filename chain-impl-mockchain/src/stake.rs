@@ -1,5 +1,4 @@
 use crate::key::{deserialize_public_key, serialize_public_key};
-use crate::ledger::Ledger;
 use crate::value::Value;
 use chain_addr::Kind;
 use chain_core::property;
