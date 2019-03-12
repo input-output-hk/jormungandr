@@ -28,8 +28,11 @@ pub struct State {
     pub(crate) leadership: Leadership,
 }
 
+type Error = ();
+
 impl State {
-    pub fn apply(&self, content: BlockContents) -> State {
+    pub fn apply(&self, contents: BlockContents) -> Result<State, Error> {
+        for content in contents.iter() {}
         unimplemented!()
     }
 }
