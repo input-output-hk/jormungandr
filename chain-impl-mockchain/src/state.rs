@@ -1,6 +1,7 @@
 //! The global ledger/update/delegation states
 //!
 
+use crate::block::BlockContents;
 use crate::{account, leadership, setting, utxo};
 use cardano::address::Addr as OldAddress;
 use chain_addr::Address;
@@ -25,4 +26,10 @@ pub struct State {
     pub(crate) ledger: Ledger,
     pub(crate) settings: setting::Settings,
     pub(crate) leadership: Leadership,
+}
+
+impl State {
+    pub fn apply(&self, content: BlockContents) -> State {
+        unimplemented!()
+    }
 }
