@@ -346,7 +346,25 @@ impl LeaderSelection for GenesisLeaderSelection {
         match &input.header.proof() {
             Proof::None => unimplemented!(),
             Proof::GenesisPraos(genesis_praos_proof) => {
-                // TODO: check the proof is valid
+                if let PublicLeader::GenesisPraos(genesis_praos_leader) = &leader {
+                    if &genesis_praos_proof.vrf_public_key != &genesis_praos_leader.vrf_public_key
+                        || &genesis_praos_proof.kes_public_key
+                            != &genesis_praos_leader.kes_public_key
+                    {
+                        return Err(Error {
+                            kind: ErrorKind::InvalidLeader,
+                            cause: Some(Box::new(GenesisPraosError::BlockHasInvalidLeader(
+                                leader.clone(),
+                                PublicLeader::GenesisPraos(GenesisPraosLeader {
+                                    kes_public_key: genesis_praos_proof.kes_public_key.clone(),
+                                    vrf_public_key: genesis_praos_proof.vrf_public_key.clone(),
+                                }),
+                            ))),
+                        });
+                    }
+                } else {
+                    // TODO: error, we would expect a GENESIS leader in the case of a GenesisPraos proof
+                }
             }
             Proof::Bft(bft_proof) => {
                 if let PublicLeader::Bft(bft_leader) = &leader {
@@ -359,6 +377,9 @@ impl LeaderSelection for GenesisLeaderSelection {
                             ))),
                         });
                     }
+                } else {
+                    // TODO: this is an error, we need to only accept BFT leader in the
+                    // case of a BFT proof
                 }
             }
         }
