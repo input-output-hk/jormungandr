@@ -1,7 +1,7 @@
 //! The global ledger/update/delegation states
 //!
 
-use crate::block::BlockContents;
+use crate::block::{BlockContents, Message};
 use crate::{account, leadership, setting, utxo};
 use cardano::address::Addr as OldAddress;
 use chain_addr::Address;
@@ -16,6 +16,7 @@ pub(crate) type Leadership = Box<
     >,
 >;
 
+#[derive(Clone)]
 pub struct Ledger {
     pub(crate) utxos: utxo::Ledger<Address>,
     pub(crate) oldutxos: utxo::Ledger<OldAddress>,
@@ -32,7 +33,15 @@ type Error = ();
 
 impl State {
     pub fn apply(&self, contents: BlockContents) -> Result<State, Error> {
-        for content in contents.iter() {}
-        unimplemented!()
+        // for now we just clone ledger, since leadership is still inside the state.
+        let mut newst = self.ledger.clone();
+        for content in contents.iter() {
+            match content {
+                Message::Transaction(signed_transaction) => {}
+                Message::Update(update_proposal) => {}
+                _ => {}
+            }
+        }
+        unimplemented!();
     }
 }

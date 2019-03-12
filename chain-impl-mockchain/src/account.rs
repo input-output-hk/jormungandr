@@ -133,6 +133,7 @@ pub struct SpendingWitness {
 }
 
 /// The public ledger of all accounts associated with their current state
+#[derive(Clone)]
 pub struct Ledger(Hamt<DefaultHasher, Identifier, State>);
 
 impl Ledger {
