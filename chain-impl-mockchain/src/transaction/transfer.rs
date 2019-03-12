@@ -1,7 +1,10 @@
 use super::utxo::{TransactionId, UtxoPointer};
 use crate::account;
 use crate::value::*;
+use chain_core::property;
 use chain_crypto::PublicKey;
+
+const INPUT_PTR_SIZE: usize = 32;
 
 /// Generalized input which have a specific input value, and
 /// either contains an account reference or a TransactionId+index
@@ -11,7 +14,7 @@ use chain_crypto::PublicKey;
 pub struct Input {
     index_or_account: u8,
     value: Value,
-    input_ptr: [u8; 32],
+    input_ptr: [u8; INPUT_PTR_SIZE],
 }
 
 pub enum InputEnum {
@@ -38,7 +41,7 @@ impl Input {
         match ie {
             InputEnum::AccountInput(id, value) => {
                 let pk: PublicKey<account::AccountAlg> = id.into();
-                let mut input_ptr = [0u8; 32];
+                let mut input_ptr = [0u8; INPUT_PTR_SIZE];
                 input_ptr.clone_from_slice(pk.as_ref());
                 Input {
                     index_or_account: 0xff,
@@ -48,7 +51,7 @@ impl Input {
             }
 
             InputEnum::UtxoInput(utxo_pointer) => {
-                let mut input_ptr = [0u8; 32];
+                let mut input_ptr = [0u8; INPUT_PTR_SIZE];
                 input_ptr.clone_from_slice(utxo_pointer.transaction_id.as_ref());
                 Input {
                     index_or_account: utxo_pointer.output_index,
@@ -57,6 +60,39 @@ impl Input {
                 }
             }
         }
+    }
+}
+
+impl property::Serialize for Input {
+    type Error = std::io::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+
+        let mut codec = Codec::from(writer);
+        codec.put_u8(self.index_or_account)?;
+        self.value.serialize(&mut codec)?;
+        codec.into_inner().write_all(&self.input_ptr)?;
+        Ok(())
+    }
+}
+
+impl property::Deserialize for Input {
+    type Error = std::io::Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        use chain_core::packer::*;
+
+        let mut codec = Codec::from(reader);
+        let index_or_account = codec.get_u8()?;
+        let value = Value::deserialize(&mut codec)?;
+        let mut input_ptr = [0; INPUT_PTR_SIZE];
+        codec.into_inner().read_exact(&mut input_ptr)?;
+        Ok(Input {
+            index_or_account: index_or_account,
+            value: value,
+            input_ptr: input_ptr,
+        })
     }
 }
 
