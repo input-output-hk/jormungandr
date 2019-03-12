@@ -5,10 +5,11 @@
 //!
 
 use crate::transaction::{Output, TransactionId, TransactionIndex};
+use std::collections::btree_map;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 
-use imhamt::{Hamt, InsertError, RemoveError, ReplaceError, UpdateError};
+use imhamt::{Hamt, HamtIter, InsertError, RemoveError, ReplaceError, UpdateError};
 
 /// UTXO Ledger Error
 pub enum Error {
@@ -78,6 +79,43 @@ impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
 /// Ledger of UTXO
 #[derive(Clone)]
 pub struct Ledger<OutAddress>(Hamt<DefaultHasher, TransactionId, TransactionUnspents<OutAddress>>);
+
+pub struct Iter<'a, V> {
+    hamt_iter: HamtIter<'a, TransactionId, TransactionUnspents<V>>,
+    unspents_iter: Option<btree_map::Iter<'a, TransactionIndex, Output<V>>>,
+}
+
+impl<OutAddress> Ledger<OutAddress> {
+    pub fn iter<'a>(&'a self) -> Iter<'a, OutAddress> {
+        Iter {
+            hamt_iter: self.0.iter(),
+            unspents_iter: None,
+        }
+    }
+}
+
+impl<'a, V> Iterator for Iter<'a, V> {
+    type Item = &'a Output<V>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.unspents_iter {
+            None => match self.hamt_iter.next() {
+                None => None,
+                Some(unspent) => {
+                    self.unspents_iter = Some((unspent.1).0.iter());
+                    self.next()
+                }
+            },
+            Some(o) => match o.next() {
+                None => {
+                    self.unspents_iter = None;
+                    self.next()
+                }
+                Some(x) => Some(x.1),
+            },
+        }
+    }
+}
 
 impl<OutAddress: Clone> Ledger<OutAddress> {
     /// Create a new empty UTXO Ledger

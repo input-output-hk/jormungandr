@@ -2,9 +2,8 @@
 //!
 
 use crate::block::{BlockContents, Message};
+use crate::ledger::Ledger;
 use crate::{account, block, leadership, setting, utxo};
-use cardano::address::Addr as OldAddress;
-use chain_addr::Address;
 use chain_core::property;
 
 pub(crate) type Leadership = Box<
@@ -14,13 +13,6 @@ pub(crate) type Leadership = Box<
         LeaderId = leadership::PublicLeader,
     >,
 >;
-
-#[derive(Clone)]
-pub struct Ledger {
-    pub(crate) utxos: utxo::Ledger<Address>,
-    pub(crate) oldutxos: utxo::Ledger<OldAddress>,
-    pub(crate) accounts: account::Ledger,
-}
 
 pub struct State {
     pub(crate) ledger: Ledger,
@@ -42,16 +34,6 @@ impl State {
             }
         }
         unimplemented!();
-    }
-}
-
-impl Ledger {
-    fn new() -> Self {
-        Ledger {
-            utxos: utxo::Ledger::new(),
-            oldutxos: utxo::Ledger::new(),
-            accounts: account::Ledger::new(),
-        }
     }
 }
 

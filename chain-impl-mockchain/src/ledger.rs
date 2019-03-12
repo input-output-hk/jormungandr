@@ -3,23 +3,33 @@
 
 use crate::error::*;
 use crate::transaction::*;
-use crate::update::TransactionsDiff;
 use crate::value::*;
+use crate::{account, block, leadership, setting, utxo};
+use cardano::address::Addr as OldAddress;
 use chain_addr::Address;
 use chain_core::property;
 use std::collections::HashMap;
 
-/// Basic ledger structure. Ledger is represented as the
-/// state of unspent output values, associated with their
-/// owner.
-#[derive(Debug, Clone)]
+/// Overall ledger structure.
+///
+/// This represent a given state related to utxo/old utxo/accounts/... at a given
+/// point in time.
+///
+/// The ledger can be easily and cheaply cloned despite containing refering
+/// to a lot of data (millions of utxos, thousands of accounts, ..)
+#[derive(Clone)]
 pub struct Ledger {
-    pub unspent_outputs: HashMap<UtxoPointer, Output<Address>>,
+    pub(crate) utxos: utxo::Ledger<Address>,
+    pub(crate) oldutxos: utxo::Ledger<OldAddress>,
+    pub(crate) accounts: account::Ledger,
 }
+
 impl Ledger {
-    pub fn new(input: HashMap<UtxoPointer, Output<Address>>) -> Self {
+    pub fn new() -> Self {
         Ledger {
-            unspent_outputs: input,
+            utxos: utxo::Ledger::new(),
+            oldutxos: utxo::Ledger::new(),
+            accounts: account::Ledger::new(),
         }
     }
 }

@@ -18,7 +18,6 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
 pub struct GenesisLeaderSelection {
-    ledger: Arc<RwLock<Ledger>>,
     settings: Arc<RwLock<Settings>>,
 
     bft_leaders: Vec<BftLeader>,

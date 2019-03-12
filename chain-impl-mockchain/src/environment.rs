@@ -30,7 +30,7 @@ impl Environment {
     pub fn new() -> Self {
         let g = StdGen::new(rand::thread_rng(), 10);
         Environment {
-            ledger: Ledger::new(HashMap::new()),
+            ledger: Ledger::new(),
             gen: g,
             users: HashMap::new(),
             keys: HashMap::new(),

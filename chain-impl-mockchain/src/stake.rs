@@ -1,4 +1,5 @@
 use crate::key::{deserialize_public_key, serialize_public_key};
+use crate::ledger::Ledger;
 use crate::value::Value;
 use chain_addr::Kind;
 use chain_core::property;
@@ -43,8 +44,8 @@ impl DelegationState {
     pub fn get_stake_distribution(&self, ledger: &Ledger) -> StakeDistribution {
         let mut dist = HashMap::new();
 
-        for (ptr, output) in ledger.unspent_outputs.iter() {
-            assert_eq!(ptr.value, output.1);
+        for output in ledger.utxos.iter() {
+            //assert_eq!(ptr.value, output.1);
 
             // We're only interested in "group" addresses
             // (i.e. containing a spending key and a stake key).
@@ -66,13 +67,13 @@ impl DelegationState {
                                 });
                         // note: unwrap should be safe, the system should have a total less than overflow
                         stake_pool_dist.total_stake =
-                            (stake_pool_dist.total_stake + ptr.value).unwrap();
+                            (stake_pool_dist.total_stake + output.1).unwrap();
 
                         let member_dist = stake_pool_dist
                             .member_stake
                             .entry(stake_key.clone())
                             .or_insert_with(|| Value::zero());
-                        *member_dist = (*member_dist + ptr.value).unwrap();
+                        *member_dist = (*member_dist + output.1).unwrap();
                     }
                 }
             }
