@@ -1,5 +1,4 @@
 use crate::key::{deserialize_public_key, serialize_public_key};
-use crate::stake::StakePoolId;
 use chain_core::property;
 use chain_crypto::algorithms::vrf::vrf::{self, ProvenOutputSeed};
 use chain_crypto::{Ed25519Extended, FakeMMM, PublicKey, SecretKey};

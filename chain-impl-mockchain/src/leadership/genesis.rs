@@ -329,11 +329,10 @@ impl property::Update for GenesisSelectionDiff {
 }
 
 impl LeaderSelection for GenesisLeaderSelection {
-    type Update = Update;
     type Block = Block;
     type Error = Error;
     type LeaderId = PublicLeader;
-
+/*
     fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
         let mut update = <Self::Update as property::Update>::empty();
 
@@ -651,7 +650,7 @@ impl LeaderSelection for GenesisLeaderSelection {
 
         Ok(())
     }
-
+*/
     fn get_leader_at(
         &self,
         date: <Self::Block as property::Block>::Date,

@@ -1,8 +1,8 @@
 use crate::{
-    block::{Block, BlockVersion, Proof, BLOCK_VERSION_CONSENSUS_NONE},
-    leadership::{Error, ErrorKind, PublicLeader, Update},
+    block::Block,
+    leadership::{Error, PublicLeader},
 };
-use chain_core::property::{self, Block as _, LeaderSelection};
+use chain_core::property::{self, LeaderSelection};
 
 /// Object for when there is no leadership for the block creation
 ///
@@ -24,37 +24,7 @@ pub enum NoLeadershipError {
 impl LeaderSelection for NoLeadership {
     type LeaderId = PublicLeader;
     type Block = Block;
-    type Update = Update;
     type Error = Error;
-
-    fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
-        if input.version() != BLOCK_VERSION_CONSENSUS_NONE {
-            return Err(Error {
-                kind: ErrorKind::IncompatibleBlockVersion,
-                cause: Some(Box::new(NoLeadershipError::IncompatibleBlockVersion)),
-            });
-        }
-        match &input.header.proof {
-            Proof::None => {
-                let mut update = <Self::Update as property::Update>::empty();
-                update.previous_leader = PublicLeader::None;
-                update.next_leader = PublicLeader::None;
-                Ok(update)
-            }
-            Proof::Bft(_) => Err(Error {
-                kind: ErrorKind::IncompatibleLeadershipMode,
-                cause: Some(Box::new(NoLeadershipError::BlockProofIsDifferent)),
-            }),
-            Proof::GenesisPraos(_) => Err(Error {
-                kind: ErrorKind::IncompatibleLeadershipMode,
-                cause: Some(Box::new(NoLeadershipError::BlockProofIsDifferent)),
-            }),
-        }
-    }
-
-    fn apply(&mut self, _update: Self::Update) -> Result<(), Self::Error> {
-        Ok(())
-    }
 
     fn get_leader_at(
         &self,

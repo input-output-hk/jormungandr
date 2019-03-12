@@ -1,7 +1,6 @@
 mod transfer;
 mod utxo;
 
-use crate::key::Hash;
 use crate::value::*;
 use chain_addr::Address;
 use chain_core::property;

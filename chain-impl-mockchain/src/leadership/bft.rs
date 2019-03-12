@@ -1,7 +1,7 @@
-use crate::block::{Block, Proof, BLOCK_VERSION_CONSENSUS_BFT};
-use crate::leadership::{BftLeader, Error, ErrorKind, PublicLeader, Update};
+use crate::block::Block;
+use crate::leadership::{BftLeader, Error, PublicLeader};
 
-use chain_core::property::{self, Block as _, LeaderSelection};
+use chain_core::property::{self, LeaderSelection};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BftRoundRobinIndex(u64);
