@@ -1,29 +1,42 @@
-use actix_net::server::Server;
-use actix_web::actix::{Addr, MailboxError, System};
-use actix_web::server;
-use actix_web::server::{IntoHttpHandler, StopServer};
+//! Framework for REST API server. It's a wrapper around Actix-web allowing it
+//! to be run as a background service.
+
+mod error;
+mod server_builder;
+
+pub use self::error::Error;
+pub use self::server_builder::ServerBuilder;
+
+use actix_net::server::Server as ActixServer;
+use actix_web::{
+    actix::{Addr, MailboxError, System},
+    server::{self, IntoHttpHandler, StopServer},
+};
 use futures::Future;
 use native_tls::{Identity, TlsAcceptor};
-use rest::server_service::{Error, ServerResult, ServerServiceBuilder};
-use std::fs;
-use std::net::SocketAddr;
-use std::net::ToSocketAddrs;
-use std::path::PathBuf;
-use std::sync::mpsc::sync_channel;
-use std::thread;
+
+use std::{
+    fs,
+    net::{SocketAddr, ToSocketAddrs},
+    path::PathBuf,
+    sync::mpsc::sync_channel,
+    thread,
+};
+
+pub type ServerResult<T> = Result<T, Error>;
 
 #[derive(Clone)]
-pub struct ServerService {
-    addr: Addr<Server>,
+pub struct Server {
+    addr: Addr<ActixServer>,
 }
 
-impl ServerService {
+impl Server {
     pub fn builder(
         pkcs12: Option<PathBuf>,
         address: SocketAddr,
         prefix: impl Into<String>,
-    ) -> ServerServiceBuilder {
-        ServerServiceBuilder::new(pkcs12, address, prefix)
+    ) -> ServerBuilder {
+        ServerBuilder::new(pkcs12, address, prefix)
     }
 
     pub fn start<F, H>(
@@ -36,7 +49,7 @@ impl ServerService {
         H: IntoHttpHandler + 'static,
     {
         let tls = load_tls_acceptor(pkcs12)?;
-        let (sender, receiver) = sync_channel::<ServerResult<ServerService>>(0);
+        let (sender, receiver) = sync_channel::<ServerResult<Server>>(0);
         thread::spawn(move || {
             let actix_system = System::builder().build();
             let server_handler = start_server_curr_actix_system(address, tls, handler);
@@ -76,7 +89,7 @@ fn start_server_curr_actix_system<F, H>(
     address: impl ToSocketAddrs,
     tls_opt: Option<TlsAcceptor>,
     handler: F,
-) -> ServerResult<ServerService>
+) -> ServerResult<Server>
 where
     F: Fn() -> H + Send + Clone + 'static,
     H: IntoHttpHandler + 'static,
@@ -85,12 +98,12 @@ where
         .workers(1)
         .system_exit()
         .disable_signals();
-    let binded_server = match tls_opt {
+    let bound_server = match tls_opt {
         Some(tls) => server.bind_tls(address, tls),
         None => server.bind(address),
     }
     .map_err(|err| Error::BindFailed(err))?;
-    Ok(ServerService {
-        addr: binded_server.start(),
+    Ok(Server {
+        addr: bound_server.start(),
     })
 }

@@ -1,20 +1,23 @@
-use actix_web::http::header;
-use actix_web::middleware::cors::Cors;
-use actix_web::server::{HttpHandler, HttpHandlerTask};
-use actix_web::{pred, App};
-use rest::server_service::{ServerResult, ServerService};
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::sync::Arc;
+use super::{Server, ServerResult};
 
-pub struct ServerServiceBuilder {
+use actix_web::{
+    http::header,
+    middleware::cors::Cors,
+    pred,
+    server::{HttpHandler, HttpHandlerTask},
+    App,
+};
+
+use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+
+pub struct ServerBuilder {
     pkcs12: Option<PathBuf>,
     address: SocketAddr,
     prefix: Arc<String>,
     handlers: Vec<Box<Fn() -> Box<HttpHandler<Task = Box<HttpHandlerTask>>> + Send + Sync>>,
 }
 
-impl ServerServiceBuilder {
+impl ServerBuilder {
     pub fn new(pkcs12: Option<PathBuf>, address: SocketAddr, prefix: impl Into<String>) -> Self {
         Self {
             pkcs12,
@@ -43,10 +46,10 @@ impl ServerServiceBuilder {
         self
     }
 
-    pub fn build(self) -> ServerResult<ServerService> {
+    pub fn build(self) -> ServerResult<Server> {
         let handlers = Arc::new(self.handlers);
         let multi_handler = move || handlers.iter().map(|handler| handler()).collect::<Vec<_>>();
-        ServerService::start(self.pkcs12, self.address, multi_handler)
+        Server::start(self.pkcs12, self.address, multi_handler)
     }
 }
 

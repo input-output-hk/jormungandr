@@ -1,6 +1,5 @@
 pub mod next_id;
 
-use crate::rest::server_service::PathPredicate;
 use actix_web::error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError};
 use actix_web::{App, Path, State};
 use blockcfg::mock::Mockchain;
@@ -16,10 +15,12 @@ pub fn create_handler(
     blockchain: BlockchainR<Mockchain>,
 ) -> impl Fn(&str) -> App<BlockchainR<Mockchain>> + Send + Sync + Clone + 'static {
     move |prefix: &str| {
-        let path = format!("{}/v0/block/{{block_id}}", prefix);
         App::with_state(blockchain.clone())
-            .filter(PathPredicate::for_pattern(&path))
-            .resource(&path, |r| r.get().with(handle_request))
+            .prefix(format!("{}/v0/block", prefix))
+            .resource("/{block_id}", |r| r.get().with(handle_request))
+            .resource("/{block_id}/next_id", |r| {
+                r.get().with(next_id::handle_request)
+            })
     }
 }
 
