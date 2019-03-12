@@ -8,9 +8,10 @@ use network_grpc::client::{Client, ProtocolConfig};
 use tokio::prelude::*;
 use tokio::{executor::DefaultExecutor, runtime::current_thread};
 
+use http;
 use std::fmt::Debug;
 
-pub fn bootstrap_from_target<P, B>(peer: P, blockchain: BlockchainR<B>)
+pub fn bootstrap_from_target<P, B>(peer: P, blockchain: BlockchainR<B>, origin: http::Uri)
 where
     B: NetworkBlockConfig,
     P: tower_service::Service<(), Error = std::io::Error> + 'static,
@@ -22,7 +23,7 @@ where
     <B::Settings as property::Settings>::Update: Clone,
     <B::Leader as property::LeaderSelection>::Update: Clone,
 {
-    let bootstrap = Client::connect(peer, DefaultExecutor::current())
+    let bootstrap = Client::connect(peer, DefaultExecutor::current(), origin)
         .map_err(|e| {
             error!("failed to connect to bootstrap peer: {:?}", e);
         })
