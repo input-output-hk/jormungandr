@@ -174,26 +174,6 @@ impl property::Deserialize for Block {
     }
 }
 
-impl property::HasTransaction for Block {
-    type Transaction = SignedTransaction<Address>;
-    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction<Address>> + 'a> {
-        Box::new(self.contents.0.iter().filter_map(|msg| match msg {
-            Message::Transaction(tx) => Some(tx),
-            _ => None,
-        }))
-    }
-
-    fn for_each_transaction<F>(&self, mut f: F)
-    where
-        F: FnMut(&Self::Transaction),
-    {
-        self.contents.0.iter().for_each(|msg| match msg {
-            Message::Transaction(tx) => f(tx),
-            _ => {}
-        })
-    }
-}
-
 impl property::HasMessages for Block {
     type Message = Message;
     fn messages<'a>(&'a self) -> Box<Iterator<Item = &Message> + 'a> {
