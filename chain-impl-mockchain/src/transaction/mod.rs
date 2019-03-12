@@ -151,23 +151,12 @@ where
     type Output = Output<OutAddress>;
     type Inputs = [Self::Input];
     type Outputs = [Self::Output];
-    type Id = TransactionId;
 
     fn inputs(&self) -> &Self::Inputs {
         &self.inputs
     }
     fn outputs(&self) -> &Self::Outputs {
         &self.outputs
-    }
-    fn id(&self) -> Self::Id {
-        use chain_core::property::Serialize;
-
-        // TODO: we should be able to avoid to serialise the whole transaction
-        // in memory, using a hasher.
-        let bytes = self
-            .serialize_as_vec()
-            .expect("In memory serialization is expected to work");
-        Hash::hash_bytes(&bytes)
     }
 }
 
@@ -180,16 +169,12 @@ where
     type Output = <Transaction<OutAddress> as property::Transaction>::Output;
     type Inputs = <Transaction<OutAddress> as property::Transaction>::Inputs;
     type Outputs = <Transaction<OutAddress> as property::Transaction>::Outputs;
-    type Id = <Transaction<OutAddress> as property::Transaction>::Id;
 
     fn inputs(&self) -> &Self::Inputs {
         self.transaction.inputs()
     }
     fn outputs(&self) -> &Self::Outputs {
         self.transaction.outputs()
-    }
-    fn id(&self) -> Self::Id {
-        self.transaction.id()
     }
 }
 
@@ -199,10 +184,6 @@ mod test {
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
-        fn transaction_id_is_unique(tx1: Transaction<Address>, tx2: Transaction<Address>) -> bool {
-            chain_core::property::testing::transaction_id_is_unique(tx1, tx2)
-        }
-
         fn transaction_encode_decode(transaction: Transaction<Address>) -> TestResult {
             chain_core::property::testing::serialization_bijection(transaction)
         }
