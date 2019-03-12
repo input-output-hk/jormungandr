@@ -16,9 +16,9 @@ pub fn create_handler(
 ) -> impl Fn(&str) -> App<BlockchainR<Mockchain>> + Send + Sync + Clone + 'static {
     move |prefix: &str| {
         App::with_state(blockchain.clone())
-            .prefix(prefix.to_string())
-            .resource("/v0/block/{block_id}", |r| r.get().with(handle_request))
-            .resource("/v0/block/{block_id}/next_id", |r| {
+            .prefix(format!("{}/v0/block", prefix))
+            .resource("/{block_id}", |r| r.get().with(handle_request))
+            .resource("/{block_id}/next_id", |r| {
                 r.get().with(next_id::handle_request)
             })
     }
