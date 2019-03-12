@@ -1,14 +1,10 @@
 mod transfer;
 mod utxo;
 
-use crate::key::{
-    deserialize_signature, serialize_signature, Hash, SpendingPublicKey, SpendingSecretKey,
-    SpendingSignature,
-};
+use crate::key::Hash;
 use crate::value::*;
 use chain_addr::Address;
 use chain_core::property;
-use chain_crypto::Verification;
 
 // to remove..
 pub use transfer::*;
