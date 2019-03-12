@@ -15,12 +15,14 @@ chain-core = { path = "../chain-core" }
 network-core = { path = "../network-core" }
 bytes = "0.4"
 futures = "0.1"
+http = "0.1.16"
 h2 = "0.1.11"
 prost = "0.4"
 prost-derive = "0.4"
 tokio = "0.1"
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
 tower-util = { git = "https://github.com/tower-rs/tower" }
+tower-add-origin = { git = "https://github.com/tower-rs/tower-http" }
 
 [dependencies.tower-grpc]
 git = "https://github.com/tower-rs/tower-grpc"
