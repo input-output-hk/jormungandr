@@ -9,6 +9,7 @@ use network_core::{
 use futures::future::Executor;
 use tokio::io;
 use tokio::prelude::*;
+use tower_add_origin::{self, AddOrigin};
 use tower_grpc::{codegen::server::tower::Service, BoxBody, Code, Request, Status, Streaming};
 use tower_h2::client::{Background, Connect, ConnectError, Connection};
 use tower_util::MakeService;
@@ -83,7 +84,7 @@ pub struct Client<C, S, E>
 where
     C: ProtocolConfig,
 {
-    node: gen_client::Node<Connection<S, E, BoxBody>>,
+    node: gen_client::Node<AddOrigin<Connection<S, E, BoxBody>>>,
     _phantom: PhantomData<(C::Block, C::Gossip)>,
 }
 
@@ -93,7 +94,11 @@ where
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
 {
-    pub fn connect<P>(peer: P, executor: E) -> impl Future<Item = Self, Error = Error>
+    pub fn connect<P>(
+        peer: P,
+        executor: E,
+        uri: http::Uri,
+    ) -> impl Future<Item = Self, Error = Error>
     where
         P: Service<(), Response = S, Error = io::Error> + 'static,
     {
@@ -103,6 +108,10 @@ where
             .map_err(|e| Error::Connect(e))
             .map(|conn| {
                 // TODO: add origin URL with add_origin middleware from tower-http
+                let conn = tower_add_origin::Builder::new()
+                    .uri(uri)
+                    .build(conn)
+                    .unwrap();
 
                 Client {
                     node: gen_client::Node::new(conn),
