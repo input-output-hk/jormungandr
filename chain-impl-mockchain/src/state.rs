@@ -2,16 +2,16 @@
 //!
 
 use crate::block::{BlockContents, Message};
-use crate::{account, leadership, setting, utxo};
+use crate::{account, block, leadership, setting, utxo};
 use cardano::address::Addr as OldAddress;
 use chain_addr::Address;
 use chain_core::property;
 
 pub(crate) type Leadership = Box<
     dyn property::LeaderSelection<
-        Update = u8,
-        Block = u8,
-        Error = std::io::Error,
+        Update = leadership::Update,
+        Block = block::Block,
+        Error = leadership::Error,
         LeaderId = leadership::PublicLeader,
     >,
 >;
@@ -43,5 +43,25 @@ impl State {
             }
         }
         unimplemented!();
+    }
+}
+
+impl Ledger {
+    fn new() -> Self {
+        Ledger {
+            utxos: utxo::Ledger::new(),
+            oldutxos: utxo::Ledger::new(),
+            accounts: account::Ledger::new(),
+        }
+    }
+}
+
+impl State {
+    pub fn new() -> Self {
+        State {
+            ledger: Ledger::new(),
+            settings: setting::Settings::new(),
+            leadership: Box::new(leadership::none::NoLeadership),
+        }
     }
 }
