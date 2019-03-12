@@ -329,7 +329,7 @@ impl property::Update for GenesisSelectionDiff {
 }
 
 impl LeaderSelection for GenesisLeaderSelection {
-    type Update = GenesisSelectionDiff;
+    type Update = Update;
     type Block = Block;
     type Error = Error;
     type LeaderId = PublicLeader;
@@ -408,7 +408,7 @@ impl LeaderSelection for GenesisLeaderSelection {
                 .collect();
             snapshots.insert(date.epoch, self.get_stake_distribution());
             assert!(snapshots.len() <= 2);
-            update.stake_snapshots = Some(snapshots);
+            update.genesis.stake_snapshots = Some(snapshots);
         }
 
         for msg in input.contents.iter() {
@@ -436,10 +436,12 @@ impl LeaderSelection for GenesisLeaderSelection {
                         // key. Probably that should void the reward
                         // account (rather than be a no-op).
                         assert!(!update
+                            .genesis
                             .stake_key_deregistrations
                             .contains(&reg.data.stake_key_id));
 
                         update
+                            .genesis
                             .stake_key_registrations
                             .insert(reg.data.stake_key_id.clone());
                     }
@@ -465,9 +467,11 @@ impl LeaderSelection for GenesisLeaderSelection {
                         // deregistrations of a key in the same
                         // block.
                         assert!(!update
+                            .genesis
                             .stake_key_registrations
                             .contains(&reg.data.stake_key_id));
                         update
+                            .genesis
                             .stake_key_deregistrations
                             .insert(reg.data.stake_key_id.clone());
                     }
@@ -515,6 +519,7 @@ impl LeaderSelection for GenesisLeaderSelection {
                     }
 
                     update
+                        .genesis
                         .delegations
                         .insert(reg.data.stake_key_id.clone(), reg.data.pool_id.clone());
                 }
@@ -532,7 +537,10 @@ impl LeaderSelection for GenesisLeaderSelection {
                     }
 
                     if self.delegation_state.stake_pool_exists(&reg.data.pool_id)
-                        || update.new_stake_pools.contains_key(&reg.data.pool_id)
+                        || update
+                            .genesis
+                            .new_stake_pools
+                            .contains_key(&reg.data.pool_id)
                     {
                         // FIXME: support re-registration to change pool parameters.
                         return Err(Error {
@@ -548,6 +556,7 @@ impl LeaderSelection for GenesisLeaderSelection {
                     // FIXME: should pool_id be a previously registered stake key?
 
                     update
+                        .genesis
                         .new_stake_pools
                         .insert(reg.data.pool_id.clone(), reg.data.clone());
                 }
@@ -564,7 +573,10 @@ impl LeaderSelection for GenesisLeaderSelection {
                                 )),
                             });
                         }
-                        update.retired_stake_pools.insert(ret.data.pool_id.clone());
+                        update
+                            .genesis
+                            .retired_stake_pools
+                            .insert(ret.data.pool_id.clone());
                     } else {
                         return Err(Error {
                             kind: ErrorKind::InvalidBlockMessage,
@@ -579,17 +591,21 @@ impl LeaderSelection for GenesisLeaderSelection {
             }
         }
 
-        update.next_date = ValueDiff::Replace(self.pos.next_date, new_pos.next_date);
-        update.bft_blocks = ValueDiff::Replace(self.pos.bft_blocks, new_pos.bft_blocks);
-        update.genesis_blocks = ValueDiff::Replace(self.pos.genesis_blocks, new_pos.genesis_blocks);
+        update.genesis.next_date = ValueDiff::Replace(self.pos.next_date, new_pos.next_date);
+        update.genesis.bft_blocks = ValueDiff::Replace(self.pos.bft_blocks, new_pos.bft_blocks);
+        update.genesis.genesis_blocks =
+            ValueDiff::Replace(self.pos.genesis_blocks, new_pos.genesis_blocks);
 
         Ok(update)
     }
 
     fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error> {
-        if !update.next_date.check(&self.pos.next_date)
-            || !update.bft_blocks.check(&self.pos.bft_blocks)
-            || !update.genesis_blocks.check(&self.pos.genesis_blocks)
+        if !update.genesis.next_date.check(&self.pos.next_date)
+            || !update.genesis.bft_blocks.check(&self.pos.bft_blocks)
+            || !update
+                .genesis
+                .genesis_blocks
+                .check(&self.pos.genesis_blocks)
         {
             return Err(Error {
                 kind: ErrorKind::InvalidStateUpdate,
@@ -597,15 +613,15 @@ impl LeaderSelection for GenesisLeaderSelection {
             });
         }
 
-        for stake_key_id in update.stake_key_registrations {
+        for stake_key_id in update.genesis.stake_key_registrations {
             self.delegation_state.register_stake_key(stake_key_id);
         }
 
-        for stake_key_id in update.stake_key_deregistrations {
+        for stake_key_id in update.genesis.stake_key_deregistrations {
             self.delegation_state.deregister_stake_key(&stake_key_id);
         }
 
-        for (pool_id, new_stake_pool) in update.new_stake_pools {
+        for (pool_id, new_stake_pool) in update.genesis.new_stake_pools {
             self.delegation_state.register_stake_pool(
                 pool_id,
                 new_stake_pool.kes_public_key,
@@ -613,20 +629,23 @@ impl LeaderSelection for GenesisLeaderSelection {
             );
         }
 
-        for (stake_key_id, pool_id) in update.delegations {
+        for (stake_key_id, pool_id) in update.genesis.delegations {
             self.delegation_state.delegate_stake(stake_key_id, pool_id);
         }
 
         // FIXME: the pool should be retired at the end of a specified epoch.
-        for pool_id in update.retired_stake_pools {
+        for pool_id in update.genesis.retired_stake_pools {
             self.delegation_state.deregister_stake_pool(&pool_id);
         }
 
-        update.next_date.apply_to(&mut self.pos.next_date);
-        update.bft_blocks.apply_to(&mut self.pos.bft_blocks);
-        update.genesis_blocks.apply_to(&mut self.pos.genesis_blocks);
+        update.genesis.next_date.apply_to(&mut self.pos.next_date);
+        update.genesis.bft_blocks.apply_to(&mut self.pos.bft_blocks);
+        update
+            .genesis
+            .genesis_blocks
+            .apply_to(&mut self.pos.genesis_blocks);
 
-        if let Some(stake_snapshots) = update.stake_snapshots {
+        if let Some(stake_snapshots) = update.genesis.stake_snapshots {
             self.stake_snapshots = stake_snapshots;
         }
 

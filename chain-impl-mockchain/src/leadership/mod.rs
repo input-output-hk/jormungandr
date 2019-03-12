@@ -40,10 +40,11 @@ pub enum PublicLeader {
     GenesisPraos(GenesisPraosLeader),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Update {
     pub(crate) previous_leader: PublicLeader,
     pub(crate) next_leader: PublicLeader,
+    pub(crate) genesis: genesis::GenesisSelectionDiff,
 }
 
 pub enum Leader {
@@ -66,14 +67,17 @@ impl property::Update for Update {
         Update {
             previous_leader: PublicLeader::None,
             next_leader: PublicLeader::None,
+            genesis: genesis::GenesisSelectionDiff::empty(),
         }
     }
     fn union(&mut self, other: Self) -> &mut Self {
         self.next_leader = other.next_leader;
+        self.genesis.union(other.genesis);
         self
     }
     fn inverse(mut self) -> Self {
         std::mem::swap(&mut self.previous_leader, &mut self.next_leader);
+        self.genesis = self.genesis.inverse();
         self
     }
 }
