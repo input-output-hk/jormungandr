@@ -38,7 +38,9 @@ fn main() {
             .as_bytes(),
     ));
 
-    let mut store = chain_storage_sqlite::SQLiteBlockStore::new(db_path);
+    // Test whether using BlockStore as a trait object works.
+    let mut store: Box<dyn BlockStore<Block = cardano::block::Block>> =
+        Box::new(chain_storage_sqlite::SQLiteBlockStore::new(db_path));
 
     /* Convert a chain using old-school storage to a SQLiteBlockStore. */
     let now = Instant::now();

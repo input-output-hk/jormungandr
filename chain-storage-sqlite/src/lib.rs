@@ -209,4 +209,8 @@ where
             Err(err) => panic!(err),
         }
     }
+
+    fn as_trait(&self) -> &BlockStore<Block = Self::Block> {
+        self as &BlockStore<Block = Self::Block>
+    }
 }
