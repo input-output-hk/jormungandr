@@ -39,8 +39,14 @@ where
                 error!("SubscribeToBlocks request failed: {:?}", err);
             })
         })
-        .and_then(|_subscription| {
-            // FIXME: do something to it
+        .and_then(move |subscription| {
+            subscription
+                .map(|header| {
+                    // FIXME: do something to it
+                    debug!("received block fromm the subscription: {:#?}", header);
+                    () // future::ok(())
+                })
+                .map_err(move |err| error!("Error receiving headers {}: {:?}", addr, err));
             future::ok(())
         })
 }
