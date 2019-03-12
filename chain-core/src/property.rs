@@ -123,7 +123,7 @@ pub trait HasHeader {
 }
 
 /// Trait identifying the message identifier type.
-pub trait MessageId: Eq + Hash + Clone + Debug {}
+pub trait MessageId: Eq + Hash + Clone + Debug + Serialize + Deserialize {}
 
 /// A message is some item contained in a block, such as a
 /// transaction, a delegation-related certificate, an update proposal,
@@ -340,91 +340,92 @@ pub mod testing {
         TestResult::from_bool(decoded_t == t)
     }
 
-    /// test that arbitrary generated transaction fails, this test requires
-    /// that all the objects inside the transaction are arbitrary generated.
-    /// There is a very small probability of the event that all the objects
-    /// will match, i.e. the contents of the transaction list of the subscribers
-    /// and signatures will compose into a valid transaction, but if such
-    /// event would happen it can be treated as error due to lack of the
-    /// randomness.
-    pub fn prop_bad_transaction_fails<'a, L>(
-        ledger: L,
-        transaction: &'a L::Transaction,
-    ) -> TestResult
-    where
-        L: Ledger + Arbitrary,
-        &'a <L::Transaction as Transaction>::Inputs: IntoIterator,
-        <&'a <L::Transaction as Transaction>::Inputs as IntoIterator>::IntoIter: ExactSizeIterator,
-        &'a <L::Transaction as Transaction>::Outputs: IntoIterator,
-        <&'a <L::Transaction as Transaction>::Outputs as IntoIterator>::IntoIter: ExactSizeIterator,
-    {
-        if transaction.inputs().into_iter().len() == 0
-            && transaction.outputs().into_iter().len() == 0
-        {
-            return TestResult::discard();
-        }
-        TestResult::from_bool(ledger.diff_transaction(transaction).is_err())
-    }
-
-    /// Pair with a ledger and transaction that is valid in such state.
-    /// This structure is used for tests generation, when the framework
-    /// require user to pass valid transaction.
-    #[derive(Clone, Debug)]
-    pub struct LedgerWithValidTransaction<L, T>(pub L, pub T);
-
-    /// Test that checks if arbitrary valid transaction succeed and can
-    /// be added to the ledger.
-    pub fn prop_good_transactions_succeed<L>(
-        input: &mut LedgerWithValidTransaction<L, L::Transaction>,
-    ) -> bool
-    where
-        L: Ledger + Arbitrary,
-        L::Transaction: Transaction + Arbitrary,
-    {
-        match input.0.diff_transaction(&input.1) {
-            Err(e) => panic!("error {:#?}", e),
-            Ok(diff) => input.0.apply(diff).is_ok(),
-        }
-    }
-
-    /// Trait that provides a property of generation valid transactions
-    /// from the current state.
-    pub trait GenerateTransaction<T: Transaction> {
-        fn generate_transaction<G>(&mut self, g: &mut G) -> T
+    /*
+        /// test that arbitrary generated transaction fails, this test requires
+        /// that all the objects inside the transaction are arbitrary generated.
+        /// There is a very small probability of the event that all the objects
+        /// will match, i.e. the contents of the transaction list of the subscribers
+        /// and signatures will compose into a valid transaction, but if such
+        /// event would happen it can be treated as error due to lack of the
+        /// randomness.
+        pub fn prop_bad_transaction_fails<'a, L>(
+            ledger: L,
+            transaction: &'a L::Transaction,
+        ) -> TestResult
         where
-            G: Gen;
-    }
-
-    /// Generate a number of transactions and run them, it's not
-    /// expected to have any errors during the run.
-    pub fn run_valid_transactions<G, L>(g: &mut G, ledger: &mut L, n: usize) -> ()
-    where
-        G: Gen,
-        L: Ledger + GenerateTransaction<<L as Ledger>::Transaction>,
-    {
-        for _ in 0..n {
-            let tx = ledger.generate_transaction(g);
-            let update = ledger.diff_transaction(&tx).unwrap();
-            ledger.apply(update).unwrap();
+            L: Ledger + Arbitrary,
+            &'a <L::Transaction as Transaction>::Inputs: IntoIterator,
+            <&'a <L::Transaction as Transaction>::Inputs as IntoIterator>::IntoIter: ExactSizeIterator,
+            &'a <L::Transaction as Transaction>::Outputs: IntoIterator,
+            <&'a <L::Transaction as Transaction>::Outputs as IntoIterator>::IntoIter: ExactSizeIterator,
+        {
+            if transaction.inputs().into_iter().len() == 0
+                && transaction.outputs().into_iter().len() == 0
+            {
+                return TestResult::discard();
+            }
+            TestResult::from_bool(ledger.diff_transaction(transaction).is_err())
         }
-    }
 
-    /// Checks that transaction id uniquely identifies the transaction,
-    /// i.e.
-    ///
-    /// ```text
-    /// forall tx1, tx2:Transaction: tx1.id() == tx2.id() <=> tx1 == tx2
-    /// ```
-    pub fn transaction_id_is_unique<T>(tx1: T, tx2: T) -> bool
-    where
-        T: Transaction + Arbitrary + PartialEq,
-        T::Id: PartialEq,
-    {
-        let id1 = tx1.id();
-        let id2 = tx2.id();
-        (id1 == id2 && tx1 == tx2) || (id1 != id2 && tx1 != tx2)
-    }
+        /// Pair with a ledger and transaction that is valid in such state.
+        /// This structure is used for tests generation, when the framework
+        /// require user to pass valid transaction.
+        #[derive(Clone, Debug)]
+        pub struct LedgerWithValidTransaction<L, T>(pub L, pub T);
 
+        /// Test that checks if arbitrary valid transaction succeed and can
+        /// be added to the ledger.
+        pub fn prop_good_transactions_succeed<L>(
+            input: &mut LedgerWithValidTransaction<L, L::Transaction>,
+        ) -> bool
+        where
+            L: Ledger + Arbitrary,
+            L::Transaction: Transaction + Arbitrary,
+        {
+            match input.0.diff_transaction(&input.1) {
+                Err(e) => panic!("error {:#?}", e),
+                Ok(diff) => input.0.apply(diff).is_ok(),
+            }
+        }
+
+        /// Trait that provides a property of generation valid transactions
+        /// from the current state.
+        pub trait GenerateTransaction<T: Transaction> {
+            fn generate_transaction<G>(&mut self, g: &mut G) -> T
+            where
+                G: Gen;
+        }
+
+        /// Generate a number of transactions and run them, it's not
+        /// expected to have any errors during the run.
+        pub fn run_valid_transactions<G, L>(g: &mut G, ledger: &mut L, n: usize) -> ()
+        where
+            G: Gen,
+            L: Ledger + GenerateTransaction<<L as Ledger>::Transaction>,
+        {
+            for _ in 0..n {
+                let tx = ledger.generate_transaction(g);
+                let update = ledger.diff_transaction(&tx).unwrap();
+                ledger.apply(update).unwrap();
+            }
+        }
+
+        /// Checks that transaction id uniquely identifies the transaction,
+        /// i.e.
+        ///
+        /// ```text
+        /// forall tx1, tx2:Transaction: tx1.id() == tx2.id() <=> tx1 == tx2
+        /// ```
+        pub fn transaction_id_is_unique<T>(tx1: T, tx2: T) -> bool
+        where
+            T: Transaction + Arbitrary + PartialEq,
+            T::Id: PartialEq,
+        {
+            let id1 = tx1.id();
+            let id2 = tx2.id();
+            (id1 == id2 && tx1 == tx2) || (id1 != id2 && tx1 != tx2)
+        }
+    */
     /// Checks the associativity
     /// i.e.
     ///
