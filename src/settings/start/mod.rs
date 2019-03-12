@@ -78,7 +78,7 @@ impl From<bool> for Leadership {
 pub struct Settings {
     pub network: network::Configuration,
 
-    pub storage: PathBuf,
+    pub storage: Option<PathBuf>,
 
     pub genesis_data_config: PathBuf,
 
@@ -108,9 +108,9 @@ impl Settings {
         let log_settings = generate_log_settings(&command_line, &config);
 
         let storage = match (command_arguments.storage.as_ref(), config.storage) {
-            (Some(path), _) => path.clone(),
-            (None, Some(path)) => path.clone(),
-            (None, None) => return Err(Error::NoStorage),
+            (Some(path), _) => Some(path.clone()),
+            (None, Some(path)) => Some(path.clone()),
+            (None, None) => None,
         };
 
         let secret = if command_arguments.without_leadership {

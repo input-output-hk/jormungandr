@@ -8,7 +8,6 @@ use bytes::Bytes;
 use chain_core::property::Serialize;
 use chain_crypto::Blake2b256;
 use chain_impl_mockchain::key::Hash;
-use chain_storage::store::BlockStore;
 use hex::FromHex;
 
 pub fn create_handler(

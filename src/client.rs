@@ -1,7 +1,5 @@
 use std::sync::mpsc::Receiver;
 
-use chain_storage::store::BlockStore;
-
 use crate::blockcfg::{Block, BlockConfig, HasHeader};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};

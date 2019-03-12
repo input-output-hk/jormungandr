@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use chain_core::property::{self, BlockId, HasTransaction};
 use chain_impl_mockchain::{leadership, ledger, setting};
-use chain_storage::{error as storage, store::BlockStore};
+use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
@@ -59,7 +59,7 @@ pub struct Blockchain<B: BlockConfig> {
     pub genesis_data: B::GenesisData,
 
     /// the storage for the overall blockchains (blocks)
-    pub storage: Arc<RwLock<SQLiteBlockStore<B::Block>>>,
+    pub storage: Arc<RwLock<Box<BlockStore<Block = B::Block> + Send + Sync>>>,
 
     pub state: State<B>,
 
@@ -106,14 +106,24 @@ impl State<Mockchain> {
 }
 
 impl Blockchain<Mockchain> {
-    pub fn new(genesis_data: GenesisData, storage: &std::path::PathBuf) -> Self {
+    pub fn new(genesis_data: GenesisData, storage_dir: &Option<std::path::PathBuf>) -> Self {
         let mut state = State::new(&genesis_data);
 
-        std::fs::create_dir_all(storage).unwrap();
-        let mut sqlite = storage.clone();
-        sqlite.push("blocks.sqlite");
-
-        let storage = SQLiteBlockStore::new(sqlite.to_str().unwrap());
+        let storage: Box<BlockStore<Block = <Mockchain as BlockConfig>::Block> + Send + Sync>;
+        match storage_dir {
+            None => {
+                info!("storing blockchain in memory");
+                storage = Box::new(MemoryBlockStore::new());
+            }
+            Some(dir) => {
+                std::fs::create_dir_all(dir).unwrap();
+                let mut sqlite = dir.clone();
+                sqlite.push("blocks.sqlite");
+                let path = sqlite.to_str().unwrap();
+                info!("storing blockchain in '{}'", path);
+                storage = Box::new(SQLiteBlockStore::new(path));
+            }
+        };
 
         if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG).unwrap() {
             debug!("restoring state at tip {}", tip_hash);

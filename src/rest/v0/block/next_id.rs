@@ -5,7 +5,6 @@ use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 use bytes::Bytes;
 use chain_core::property::Settings;
-use chain_storage::store::BlockStore;
 
 pub fn handle_request(
     blockchain: State<BlockchainR<Mockchain>>,
