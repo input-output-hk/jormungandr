@@ -21,14 +21,6 @@ pub fn process<Chain>(
     <Chain::Leader as property::LeaderSelection>::Update: Clone,
 {
     let res = match bquery {
-        BlockMsg::NetworkBlock(block) => {
-            debug!("received block from the network: {:#?}", block.header());
-            let res = blockchain.write().unwrap().handle_incoming_block(block);
-            if res.is_ok() {
-                stats_counter.add_block_recv_cnt(1);
-            }
-            res
-        }
         BlockMsg::LeadershipBlock(block) => {
             let header = block.header();
             debug!("received block from the leadership: {:#?}", header);
@@ -40,6 +32,17 @@ pub fn process<Chain>(
             let rx = network_broadcast.add_rx();
             reply.send(rx);
             Ok(())
+        }
+        BlockMsg::AnnouncedBlock(header) => {
+            debug!("received block header from the network: {:#?}", header);
+            let res = blockchain
+                .write()
+                .unwrap()
+                .handle_block_announcement(header);
+            if res.is_ok() {
+                stats_counter.add_block_recv_cnt(1);
+            }
+            res
         }
     };
     if let Err(e) = res {

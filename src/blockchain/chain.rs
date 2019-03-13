@@ -163,6 +163,14 @@ impl<B: BlockConfig> Blockchain<B> {
         use chain_core::property::Settings;
         self.state.settings.read().unwrap().tip()
     }
+
+    pub fn handle_block_announcement(
+        &mut self,
+        _header: B::BlockHeader,
+    ) -> Result<(), storage::Error> {
+        info!("received block announcement, handling not implemented yet");
+        Ok(())
+    }
 }
 
 /*
