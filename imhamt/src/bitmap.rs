@@ -61,7 +61,7 @@ impl SmallBitmap {
         self.0 == 0
     }
 
-    #[target_feature(enable = "popcnt")]
+    #[cfg_attr(target_arch = "x86", target_feature(enable = "popcnt"))]
     unsafe fn present_fast(&self) -> usize {
         self.0.count_ones() as usize
     }
@@ -79,7 +79,7 @@ impl SmallBitmap {
 
     /// Get the sparse array index from a level index
     #[inline]
-    #[target_feature(enable = "popcnt")]
+    #[cfg_attr(target_arch = "x86", target_feature(enable = "popcnt"))]
     unsafe fn get_index_sparse_fast(&self, b: LevelIndex) -> ArrayIndex {
         let mask = b.mask();
         if self.0 & mask == 0 {
@@ -95,7 +95,7 @@ impl SmallBitmap {
     }
 
     #[inline]
-    #[target_feature(enable = "popcnt")]
+    #[cfg_attr(target_arch = "x86", target_feature(enable = "popcnt"))]
     unsafe fn get_sparse_pos_fast(&self, b: LevelIndex) -> ArrayIndex {
         let mask = b.mask();
         ArrayIndex::create((self.0 & (mask - 1)).count_ones() as usize)
