@@ -30,7 +30,7 @@ pub struct MultiVerse<ST>{
 
 impl MultiVerse<ST> {
     pub fn add(&mut self, prevhash: &HeaderHash, k: &HeaderHash, st: ST) {
-        if self.known_states.contains_key(k) {
+        if !self.known_states.contains_key(k) {
             self.known_states.insert(k, st);
             match self.tips.remove(prevhash) {
                 None => { self.tips.insert(k) },
