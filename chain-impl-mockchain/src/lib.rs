@@ -9,6 +9,7 @@ mod date;
 // #[cfg(test)]
 // pub mod environment;
 pub mod error;
+pub mod fee;
 pub mod key;
 pub mod leadership;
 pub mod ledger;
@@ -16,6 +17,7 @@ pub mod setting;
 pub mod stake;
 pub mod state;
 pub mod transaction;
+pub mod txbuilder;
 pub mod utxo;
 pub mod value;
 
