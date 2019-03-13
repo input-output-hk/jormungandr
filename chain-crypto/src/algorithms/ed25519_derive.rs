@@ -3,7 +3,7 @@ use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAl
 
 use ed25519_bip32 as i;
 use ed25519_bip32::{XPrv, XPub, XPRV_SIZE};
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 
 /// Ed25519 BIP32 Signature algorithm
 pub struct Ed25519Bip32;
@@ -29,6 +29,9 @@ impl From<i::PublicKeyError> for PublicKeyError {
 impl AsymmetricKey for Ed25519Bip32 {
     type Secret = XPrv;
     type Public = XPub;
+
+    const SECRET_BECH32_HRP: &'static str = "ed25519bip32_secret";
+    const PUBLIC_BECH32_HRP: &'static str = "ed25519bip32_public";
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; XPRV_SIZE];

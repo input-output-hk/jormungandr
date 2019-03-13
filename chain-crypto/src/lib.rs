@@ -8,10 +8,6 @@ extern crate test;
 #[macro_use]
 extern crate quickcheck;
 
-extern crate cryptoxide;
-extern crate ed25519_bip32;
-extern crate rand_core;
-
 pub mod algorithms;
 pub mod hash;
 mod hex;

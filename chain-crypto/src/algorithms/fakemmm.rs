@@ -2,7 +2,7 @@ use crate::kes::KeyEvolvingSignatureAlgorithm;
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
 use crate::sign::{SignatureError, Verification, VerificationAlgorithm};
 use cryptoxide::ed25519;
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 
 /// Fake MMM Signing Algorithm
 pub struct FakeMMM;
@@ -37,6 +37,9 @@ impl AsRef<[u8]> for Sig {
 impl AsymmetricKey for FakeMMM {
     type Secret = Priv;
     type Public = Pub;
+
+    const SECRET_BECH32_HRP: &'static str = "fakemmm_secret";
+    const PUBLIC_BECH32_HRP: &'static str = "fakemmm_public";
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Priv {
         let mut priv_bytes = [0u8; ed25519::PRIVATE_KEY_LENGTH];

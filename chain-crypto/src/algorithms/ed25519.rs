@@ -1,7 +1,7 @@
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 use cryptoxide::ed25519;
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 
 use ed25519_bip32::XPub;
 
@@ -46,6 +46,9 @@ impl AsRef<[u8]> for Sig {
 impl AsymmetricKey for Ed25519 {
     type Secret = Priv;
     type Public = Pub;
+
+    const SECRET_BECH32_HRP: &'static str = "ed25519_secret";
+    const PUBLIC_BECH32_HRP: &'static str = "ed25519_public";
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; ed25519::SEED_LENGTH];
