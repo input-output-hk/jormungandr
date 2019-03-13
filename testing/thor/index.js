@@ -19,8 +19,8 @@ window.document.getElementById("store_pk").onclick = function(self) {
     document.getElementById("public_key_hex").value = public_key.to_hex();
     console.log("extracting address key..")
     user_address = public_key.address();
-    user_address_hex = user_address.to_betch32();
-    document.getElementById("user_address").value = user_address.to_betch32();
+    user_address_hex = user_address.to_bech32();
+    document.getElementById("user_address").value = user_address.to_bech32();
 };
 
 window.document.getElementById("tx_add").onclick = function(self) {
@@ -44,7 +44,7 @@ window.document.getElementById("sign_btn").onclick = function(self) {
    console.log("Adding outputs:");
    outputs.forEach(function (output, i) {
       console.log("  output: ", output);
-      var address = mjolnir.Address.from_betch32(output.address);
+      var address = mjolnir.Address.from_bech32(output.address);
       txbuilder.add_output(address, output.value)
    });
    var finalizer = txbuilder.finalize();

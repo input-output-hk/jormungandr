@@ -17,6 +17,7 @@ rand = "*"
 cardano = { path = "../../cardano-deps/cardano" }
 chain-addr = { path = "../../cardano-deps/chain-addr" }
 chain-core = { path = "../../cardano-deps/chain-core" }
+chain-crypto = { path = "../../cardano-deps/chain-crypto" }
 chain-impl-mockchain = { path = "../../cardano-deps/chain-impl-mockchain" }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
@@ -31,6 +32,10 @@ console_error_panic_hook = { version = "0.1.1", optional = true }
 #
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "0.4.2", optional = true }
+
+[dependencies.clear_on_drop]
+version = "*"
+features = ["no_cc"]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.2"
