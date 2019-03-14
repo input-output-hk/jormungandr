@@ -131,7 +131,7 @@ impl Header {
     /// function to compute the Header Hash as per the spec. It is the hash
     /// of the serialized header (except the first 2bytes: the size)
     #[inline]
-    fn hash(&self) -> HeaderHash {
+    pub fn hash(&self) -> HeaderHash {
         // TODO: this is not the optimal way to compute the crypto graphic hash
         use chain_core::property::Serialize;
         let bytes = self.serialize_as_vec().unwrap();

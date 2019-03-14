@@ -22,15 +22,28 @@ pub use crate::date::{BlockDate, BlockDateParseError};
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
 /// with the position of that block in the chain.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub header: Header,
-
     pub contents: BlockContents,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl PartialEq for Block {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.header.hash() == rhs.header.hash()
+    }
+}
+impl Eq for Block {}
+
+#[derive(Debug, Clone)]
 pub struct BlockContents(Vec<Message>);
+
+impl PartialEq for BlockContents {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.compute_hash_size() == rhs.compute_hash_size()
+    }
+}
+impl Eq for BlockContents {}
 
 impl BlockContents {
     #[inline]

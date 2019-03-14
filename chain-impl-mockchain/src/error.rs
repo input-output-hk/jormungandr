@@ -2,7 +2,7 @@
 use crate::transaction::*;
 use chain_addr::Address;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Error {
     /// If the Ledger could not find the given input in the UTxO list it will
     /// report this error.
