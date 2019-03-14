@@ -49,7 +49,7 @@ impl DelegationState {
 
             // We're only interested in "group" addresses
             // (i.e. containing a spending key and a stake key).
-            if let Kind::Group(_spending_key, stake_key) = output.0.kind() {
+            if let Kind::Group(_spending_key, stake_key) = output.address.kind() {
                 // Grmbl.
                 let stake_key = stake_key.clone().into();
 
@@ -67,13 +67,13 @@ impl DelegationState {
                                 });
                         // note: unwrap should be safe, the system should have a total less than overflow
                         stake_pool_dist.total_stake =
-                            (stake_pool_dist.total_stake + output.1).unwrap();
+                            (stake_pool_dist.total_stake + output.value).unwrap();
 
                         let member_dist = stake_pool_dist
                             .member_stake
                             .entry(stake_key.clone())
                             .or_insert_with(|| Value::zero());
-                        *member_dist = (*member_dist + output.1).unwrap();
+                        *member_dist = (*member_dist + output.value).unwrap();
                     }
                 }
             }
