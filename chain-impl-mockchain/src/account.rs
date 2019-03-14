@@ -113,12 +113,16 @@ impl State {
 /// the counter is incremented. A matching counter
 /// needs to be used in the spending phase to make
 /// sure we have non-replayability of a transaction.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SpendingCounter(u32);
 
 impl SpendingCounter {
     fn increment(&self) -> Option<Self> {
         self.0.checked_add(1).map(SpendingCounter)
+    }
+
+    pub fn to_bytes(&self) -> [u8; 4] {
+        self.0.to_le_bytes()
     }
 }
 
@@ -185,10 +189,19 @@ impl Ledger {
     /// Subtract value to an existing account.
     ///
     /// If the account doesn't exist, or that the value would become negative, errors out.
-    pub fn remove_value(&self, account: &Identifier, value: Value) -> Result<Self, LedgerError> {
+    pub fn remove_value(
+        &self,
+        account: &Identifier,
+        value: Value,
+    ) -> Result<(Self, SpendingCounter), LedgerError> {
+        // ideally we don't need 2 calls to do this
+        let counter = self
+            .0
+            .lookup(account)
+            .map_or(Err(LedgerError::NonExistent), |st| Ok(st.counter))?;
         self.0
             .update(account, |st| st.sub(value))
-            .map(Ledger)
+            .map(|ledger| (Ledger(ledger), counter))
             .map_err(|e| e.into())
     }
 }
