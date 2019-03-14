@@ -1,5 +1,6 @@
 use chain_core::property;
 use std::ops;
+use std::slice::Iter;
 
 /// Unspent transaction value.
 #[cfg_attr(feature = "generic-serialization", derive(serde_derive::Serialize))]
@@ -9,6 +10,13 @@ pub struct Value(pub u64);
 impl Value {
     pub fn zero() -> Self {
         Value(0)
+    }
+
+    pub fn sum<I>(values: I) -> Result<Self, ValueError>
+    where
+        I: Iterator<Item = Self>,
+    {
+        values.fold(Ok(Value::zero()), |acc, v| acc? + v)
     }
 }
 
