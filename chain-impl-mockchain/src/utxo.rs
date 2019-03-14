@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 
 use imhamt::{Hamt, HamtIter, InsertError, RemoveError, ReplaceError, UpdateError};
 
+#[derive(Debug, Clone)]
 /// UTXO Ledger Error
 pub enum Error {
     /// The transaction ID already exists
