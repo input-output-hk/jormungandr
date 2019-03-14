@@ -42,7 +42,7 @@ impl State {
                     let ledger = new_ledger.apply_transaction(signed_transaction)?;
                     new_ledger = ledger;
                 }
-                Message::Update(update_proposal) => {}
+                Message::Update(_update_proposal) => {}
                 _ => {}
             }
         }

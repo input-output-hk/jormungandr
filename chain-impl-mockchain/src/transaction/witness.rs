@@ -1,10 +1,9 @@
 use super::transaction::*;
 use crate::account;
 use crate::key::{
-    deserialize_signature, serialize_signature, Hash, SpendingPublicKey, SpendingSecretKey,
+    deserialize_signature, serialize_signature, SpendingPublicKey, SpendingSecretKey,
     SpendingSignature,
 };
-use crate::value::*;
 use chain_core::property;
 use chain_crypto::Verification;
 

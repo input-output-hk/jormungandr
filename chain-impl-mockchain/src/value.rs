@@ -1,6 +1,5 @@
 use chain_core::property;
 use std::ops;
-use std::slice::Iter;
 
 /// Unspent transaction value.
 #[cfg_attr(feature = "generic-serialization", derive(serde_derive::Serialize))]

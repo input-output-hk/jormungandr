@@ -1,12 +1,5 @@
 use super::transaction::TransactionId;
-use crate::account;
-use crate::key::{
-    deserialize_signature, serialize_signature, Hash, SpendingPublicKey, SpendingSecretKey,
-    SpendingSignature,
-};
 use crate::value::*;
-use chain_core::property;
-use chain_crypto::Verification;
 
 pub type TransactionIndex = u8;
 
