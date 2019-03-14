@@ -201,7 +201,6 @@ mod tests {
         fn transactions_diff_union_is_associative(types: (TransactionsDiff, TransactionsDiff, TransactionsDiff)) -> bool {
             testing::update_associativity(types.0, types.1, types.2)
         }
-        */
         fn transactions_diff_union_has_identity_element(transactions_diff: TransactionsDiff) -> bool {
             testing::update_identity_element(transactions_diff)
         }
@@ -211,5 +210,6 @@ mod tests {
         fn transactions_diff_union_is_commutative(types: (TransactionsDiff, TransactionsDiff)) -> bool {
             testing::update_union_commutative(types.0, types.1)
         }
+        */
     }
 }
