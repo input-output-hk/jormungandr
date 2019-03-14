@@ -311,16 +311,6 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Command::GenerateKeys => {
-            use cardano::util::hex;
-            let seed: Vec<u8> = std::iter::repeat_with(|| rand::random())
-                .take(cardano::redeem::PRIVATEKEY_SIZE)
-                .collect();
-            let signing_key = cardano::redeem::PrivateKey::generate(&seed).unwrap();
-            let public_key = signing_key.public();
-            println!("signing_key: {}", hex::encode(signing_key.as_ref()));
-            println!("public_key: {}", hex::encode(public_key.as_ref()));
-        }
         Command::GeneratePrivKey(args) => {
             let priv_key_bech32 = match args.key_type {
                 GenPrivKeyType::Ed25519 => gen_priv_key_bech32::<Ed25519>(),

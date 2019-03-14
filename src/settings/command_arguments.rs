@@ -144,11 +144,6 @@ pub enum Command {
     #[structopt(name = "init")]
     Init(InitArguments),
 
-    /// command to generate a new set of random key pair for the node to propose
-    /// itself as a participating node or not
-    #[structopt(name = "generate-keys")]
-    GenerateKeys,
-
     /// generate a random private key and print it to stdout encoded in bech32
     #[structopt(name = "generate-priv-key")]
     GeneratePrivKey(GeneratePrivKeyArguments),
