@@ -1,7 +1,7 @@
 //! define the Blockchain settings
 //!
 
-use crate::block::{BlockVersion, Message, BLOCK_VERSION_CONSENSUS_NONE};
+use crate::block::{BlockVersion, BLOCK_VERSION_CONSENSUS_NONE};
 use crate::key::Hash;
 use crate::update::ValueDiff;
 use chain_core::property::{self, BlockId};
