@@ -3,24 +3,11 @@
 
 use crate::block::{BlockContents, Message};
 use crate::ledger::Ledger;
-use crate::{block, leadership, ledger, setting};
-use chain_core::property;
-use std::sync::Arc;
-
-pub(crate) type Leadership = Arc<
-    Box<
-        dyn property::LeaderSelection<
-            Block = block::Block,
-            Error = leadership::Error,
-            LeaderId = leadership::PublicLeader,
-        >,
-    >,
->;
+use crate::{ledger, setting};
 
 pub struct State {
     pub(crate) ledger: Ledger,
     pub(crate) settings: setting::Settings,
-    pub(crate) leadership: Leadership,
 }
 
 pub enum Error {
@@ -49,7 +36,6 @@ impl State {
         Ok(State {
             ledger: new_ledger,
             settings: self.settings.clone(),
-            leadership: self.leadership.clone(),
         })
     }
 }
@@ -59,7 +45,6 @@ impl State {
         State {
             ledger: Ledger::new(),
             settings: setting::Settings::new(),
-            leadership: Arc::new(Box::new(leadership::none::NoLeadership)),
         }
     }
 }
