@@ -1,5 +1,5 @@
-use super::utxo::UtxoPointer;
 use super::transaction::TransactionId;
+use super::utxo::UtxoPointer;
 use crate::account;
 use crate::value::*;
 use chain_core::property;
