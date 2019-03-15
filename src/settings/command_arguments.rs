@@ -2,6 +2,7 @@ use chain_addr::AddressReadable;
 use chain_impl_mockchain::value::Value;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use structopt::clap::{_clap_count_exprs, arg_enum};
 use structopt::StructOpt;
 
 use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey};
@@ -97,6 +98,24 @@ pub struct InitArguments {
 }
 
 #[derive(StructOpt, Debug)]
+pub struct GeneratePrivKeyArguments {
+    /// Type of a private key
+    #[structopt(long = "type")]
+    pub key_type: GenPrivKeyType,
+}
+
+arg_enum! {
+    #[derive(StructOpt, Debug)]
+    pub enum GenPrivKeyType {
+        Ed25519,
+        Ed25519Bip32,
+        Ed25519Extended,
+        FakeMMM,
+        Curve25519_2HashDH,
+    }
+}
+
+#[derive(StructOpt, Debug)]
 #[structopt(
     name = "jormungandr",
     raw(setting = "structopt::clap::AppSettings::ColoredHelp")
@@ -129,6 +148,15 @@ pub enum Command {
     /// itself as a participating node or not
     #[structopt(name = "generate-keys")]
     GenerateKeys,
+
+    /// generate a random private key and print it to stdout encoded in bech32
+    #[structopt(name = "generate-priv-key")]
+    GeneratePrivKey(GeneratePrivKeyArguments),
+
+    /// generates a public key corresponding to a private key,
+    /// reads private from stdin and prints its public to stdout, both encoded in bech32
+    #[structopt(name = "generate-pub-key")]
+    GeneratePubKey,
 }
 
 impl CommandLine {

@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "with-bench", feature(test))]
 extern crate actix_net;
 extern crate actix_web;
+extern crate bech32;
 extern crate bincode;
 extern crate bytes;
 extern crate cardano;
@@ -26,6 +27,7 @@ extern crate network_core;
 extern crate network_grpc;
 extern crate poldercast;
 extern crate protocol_tokio as protocol;
+extern crate rand_chacha;
 extern crate tower_service;
 
 extern crate tokio;
@@ -43,7 +45,6 @@ extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use(o)]
 extern crate slog;
-extern crate hex;
 extern crate slog_async;
 extern crate slog_json;
 extern crate slog_term;
@@ -52,20 +53,27 @@ extern crate structopt;
 #[cfg(feature = "with-bench")]
 extern crate test;
 
+use std::io::{self, BufRead};
 use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 
 use chain_impl_mockchain::transaction::{SignedTransaction, TransactionId};
 use futures::Future;
 
+use bech32::{u5, Bech32, FromBase32, ToBase32};
 use blockcfg::{
     genesis_data::ConfigGenesisData, genesis_data::GenesisData, mock::Mockchain as Cardano,
 };
-//use state::State;
 use blockchain::{Blockchain, BlockchainR};
+use chain_crypto::{
+    vrf::Curve25519_2HashDH, AsymmetricKey, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
+};
 use intercom::BlockMsg;
 use leadership::leadership_task;
+use rand::rngs::EntropyRng;
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 use rest::v0::node::stats::StatsCounter;
-use settings::Command;
+use settings::{Command, GenPrivKeyType};
 use transaction::{transaction_task, TPool};
 use utils::task::{TaskBroadcastBox, Tasks};
 
@@ -138,7 +146,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     };
 
     let leader_secret = if let Some(secret_path) = &settings.leadership {
-        Some(secure::NodeSecret::load_from_file(secret_path.as_path()).unwrap())
+        Some(secure::NodeSecret::load_from_file(secret_path.as_path()))
     } else {
         None
     };
@@ -313,6 +321,42 @@ fn main() {
             println!("signing_key: {}", hex::encode(signing_key.as_ref()));
             println!("public_key: {}", hex::encode(public_key.as_ref()));
         }
+        Command::GeneratePrivKey(args) => {
+            let priv_key_bech32 = match args.key_type {
+                GenPrivKeyType::Ed25519 => gen_priv_key_bech32::<Ed25519>(),
+                GenPrivKeyType::Ed25519Bip32 => gen_priv_key_bech32::<Ed25519Bip32>(),
+                GenPrivKeyType::Ed25519Extended => gen_priv_key_bech32::<Ed25519Extended>(),
+                GenPrivKeyType::FakeMMM => gen_priv_key_bech32::<FakeMMM>(),
+                GenPrivKeyType::Curve25519_2HashDH => gen_priv_key_bech32::<Curve25519_2HashDH>(),
+            };
+            println!("{}", priv_key_bech32);
+        }
+        Command::GeneratePubKey => {
+            let stdin = io::stdin();
+            let bech32: Bech32 = stdin
+                .lock()
+                .lines()
+                .next()
+                .unwrap()
+                .unwrap()
+                .parse()
+                .unwrap();
+            let pub_key_bech32 = match bech32.hrp() {
+                Ed25519::SECRET_BECH32_HRP => gen_pub_key_bech32::<Ed25519>(bech32.data()),
+                Ed25519Bip32::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Ed25519Bip32>(bech32.data())
+                }
+                Ed25519Extended::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Ed25519Extended>(bech32.data())
+                }
+                FakeMMM::SECRET_BECH32_HRP => gen_pub_key_bech32::<FakeMMM>(bech32.data()),
+                Curve25519_2HashDH::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Curve25519_2HashDH>(bech32.data())
+                }
+                other => panic!("Unrecognized private key bech32 HRP: {}", other),
+            };
+            println!("{}", pub_key_bech32);
+        }
         Command::Init(init_settings) => {
             let genesis = ConfigGenesisData::from_genesis(GenesisData {
                 start_time: init_settings.blockchain_start,
@@ -325,4 +369,19 @@ fn main() {
             serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();
         }
     }
+}
+
+fn gen_priv_key_bech32<K: AsymmetricKey>() -> Bech32 {
+    let rng = ChaChaRng::from_rng(EntropyRng::new()).unwrap();
+    let secret = K::generate(rng);
+    let hrp = K::SECRET_BECH32_HRP.to_string();
+    Bech32::new(hrp, secret.to_base32()).unwrap()
+}
+
+fn gen_pub_key_bech32<K: AsymmetricKey>(priv_key_bech32: &[u5]) -> Bech32 {
+    let priv_key_bytes = Vec::<u8>::from_base32(priv_key_bech32).unwrap();
+    let priv_key = K::secret_from_binary(&priv_key_bytes).unwrap();
+    let pub_key = K::compute_public(&priv_key);
+    let hrp = K::PUBLIC_BECH32_HRP.to_string();
+    Bech32::new(hrp, pub_key.to_base32()).unwrap()
 }
