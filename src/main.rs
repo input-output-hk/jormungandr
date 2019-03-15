@@ -146,7 +146,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     };
 
     let leader_secret = if let Some(secret_path) = &settings.leadership {
-        Some(secure::NodeSecret::load_from_file(secret_path.as_path()).unwrap())
+        Some(secure::NodeSecret::load_from_file(secret_path.as_path()))
     } else {
         None
     };

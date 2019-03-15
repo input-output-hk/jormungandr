@@ -1,11 +1,8 @@
 pub mod crypto;
 
-use cardano::util::hex;
-use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
-use cryptoxide::ed25519;
+use bech32::{Bech32, FromBase32};
+use chain_crypto::{AsymmetricKey, Ed25519Extended, PublicKey, SecretKey};
 use std::fs;
-use std::io;
-use std::io::Read;
 use std::path::Path;
 
 /// Node Secret(s)
@@ -25,22 +22,20 @@ impl NodeSecret {
         self.public.clone()
     }
 
-    pub fn load_from_file(path: &Path) -> io::Result<Self> {
-        let mut fs = fs::File::open(path)?;
-        let mut vec = Vec::new();
-        fs.read_to_end(&mut vec)?;
-        let v = hex::decode(String::from_utf8(vec).unwrap().as_ref()).unwrap();
-        // TODO propagate error properly
-        if v.len() != ed25519::PRIVATE_KEY_LENGTH {
-            panic!("wrong size for secret")
+    pub fn load_from_file(path: &Path) -> NodeSecret {
+        let file_string = fs::read_to_string(path).unwrap();
+        let bech32: Bech32 = file_string
+            .parse()
+            .expect("Private key file should be bech32 encoded");
+        if bech32.hrp() != Ed25519Extended::SECRET_BECH32_HRP {
+            panic!("Private key file should contain Ed25519 extended private key")
         }
-        let prv = SecretKey::from_bytes(&v).unwrap();
-        let np = NodePublic {
-            block_publickey: prv.to_public(),
-        };
-        Ok(NodeSecret {
-            public: np,
-            block_privatekey: prv,
-        })
+        let bytes = Vec::<u8>::from_base32(bech32.data()).unwrap();
+        let block_privatekey = SecretKey::from_bytes(&bytes).unwrap();
+        let block_publickey = block_privatekey.to_public();
+        NodeSecret {
+            public: NodePublic { block_publickey },
+            block_privatekey,
+        }
     }
 }
