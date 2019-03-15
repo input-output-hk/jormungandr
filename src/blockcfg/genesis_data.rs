@@ -1,9 +1,9 @@
 //! Generic Genesis data
-use cardano::util::hex;
+use bech32::{Bech32, FromBase32, ToBase32};
 use chain_addr::AddressReadable;
+use chain_crypto::{self, AsymmetricKey, Ed25519Extended};
 use chain_impl_mockchain::leadership::LeaderId;
 use chain_impl_mockchain::{
-    key,
     transaction::{self, Output, UtxoPointer},
     value::Value,
 };
@@ -69,14 +69,35 @@ impl fmt::Display for ParseError {
     }
 }
 
+impl PublicKey {
+    fn try_from_bech32_str(bech32_str: &str) -> Result<Self, String> {
+        let bech32: Bech32 = bech32_str
+            .parse()
+            .map_err(|e| format!("Public key should contain bech32 encoded public key: {}", e))?;
+        if bech32.hrp() != Ed25519Extended::PUBLIC_BECH32_HRP {
+            Err("Public key should contain Ed25519 extended private key")?
+        }
+        let bytes = Vec::<u8>::from_base32(bech32.data()).map_err(|e| e.to_string())?;
+        Self::try_from_bytes(&bytes)
+    }
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self, String> {
+        let key = chain_crypto::PublicKey::from_bytes(bytes).map_err(|e| e.to_string())?;
+        Ok(PublicKey(LeaderId::from(key)))
+    }
+
+    fn to_string_bech32(&self) -> String {
+        let data = self.0.as_ref().to_base32();
+        Bech32::new(Ed25519Extended::PUBLIC_BECH32_HRP.to_string(), data)
+            .unwrap()
+            .to_string()
+    }
+}
+
 impl std::str::FromStr for PublicKey {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let decoded = cardano::util::hex::decode(s).map_err(|err| format!("{}", err))?;
-        let key = key::deserialize_public_key(std::io::Cursor::new(decoded))
-            .map_err(|err| format!("{}", err))?;
-        let leader_id = LeaderId::from(key);
-        Ok(PublicKey(leader_id))
+        Self::try_from_bech32_str(s)
     }
 }
 
@@ -128,20 +149,20 @@ impl GenesisData {
 }
 
 impl serde::ser::Serialize for PublicKey {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::ser::Serializer,
     {
         if serializer.is_human_readable() {
-            let hex = hex::encode(self.0.as_ref().as_ref());
-            serializer.serialize_str(&hex)
+            let s = self.to_string_bech32();
+            serializer.serialize_str(&s)
         } else {
             serializer.serialize_bytes(self.0.as_ref().as_ref())
         }
     }
 }
 impl serde::ser::Serialize for InitialUTxO {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::ser::Serializer,
     {
@@ -167,33 +188,12 @@ impl<'de> serde::de::Deserialize<'de> for PublicKey {
                 write!(fmt, "PublicKey of {} bytes", 32)
             }
 
-            fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use chain_core::property::Deserialize;
-                let bytes = match hex::decode(v) {
-                    Err(err) => return Err(E::custom(format!("{}", err))),
-                    Ok(bytes) => bytes,
-                };
-
-                let reader = std::io::Cursor::new(bytes);
-                match LeaderId::deserialize(reader) {
-                    Err(err) => Err(E::custom(format!("{}", err))),
-                    Ok(key) => Ok(PublicKey(key)),
-                }
+            fn visit_str<'a, E: serde::de::Error>(self, v: &'a str) -> Result<Self::Value, E> {
+                PublicKey::try_from_bech32_str(v).map_err(E::custom)
             }
 
-            fn visit_bytes<'a, E>(self, v: &'a [u8]) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use chain_core::property::Deserialize;
-                let reader = std::io::Cursor::new(v);
-                match LeaderId::deserialize(reader) {
-                    Err(err) => Err(E::custom(format!("{}", err))),
-                    Ok(key) => Ok(PublicKey(key)),
-                }
+            fn visit_bytes<'a, E: serde::de::Error>(self, v: &'a [u8]) -> Result<Self::Value, E> {
+                PublicKey::try_from_bytes(v).map_err(E::custom)
             }
         }
         if deserializer.is_human_readable() {
