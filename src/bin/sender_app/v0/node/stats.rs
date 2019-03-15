@@ -1,7 +1,7 @@
 use reqwest::Client;
-use sender_app::utils::HostAddr;
 use serde_json::Value;
 use structopt::StructOpt;
+use utils::HostAddr;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]

@@ -20,8 +20,13 @@ Many CLI commands have common arguments:
 Fetches node stats
 
 ```
-sender v0 node stats get -h <node_addr>
+sender v0 node stats get <options>
 ```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+
 
 JSON printed on success
 

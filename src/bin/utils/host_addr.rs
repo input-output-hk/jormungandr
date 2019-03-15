@@ -3,7 +3,8 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 pub struct HostAddr {
-    /// Host node address
+    /// node API address. Must always have `http://` or `https://` prefix.
+    /// E.g. `-h http://127.0.0.1`, `--host https://node.com:8443/cardano/api`
     #[structopt(short, long)]
     host: Url,
 }

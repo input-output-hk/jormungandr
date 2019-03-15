@@ -417,6 +417,7 @@ dependencies = [
 name = "chain-crypto"
 version = "0.1.0"
 dependencies = [
+ "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cryptoxide 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 1.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
