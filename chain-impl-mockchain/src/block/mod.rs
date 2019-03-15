@@ -1,7 +1,6 @@
 //! Representation of the block in the mockchain.
 use crate::key::{make_signature, make_signature_update, Hash};
 use crate::leadership::Leader;
-use crate::transaction::SignedTransaction;
 use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
 
@@ -23,15 +22,28 @@ pub use crate::date::{BlockDate, BlockDateParseError};
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
 /// with the position of that block in the chain.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub header: Header,
-
     pub contents: BlockContents,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl PartialEq for Block {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.header.hash() == rhs.header.hash()
+    }
+}
+impl Eq for Block {}
+
+#[derive(Debug, Clone)]
 pub struct BlockContents(Vec<Message>);
+
+impl PartialEq for BlockContents {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.compute_hash_size() == rhs.compute_hash_size()
+    }
+}
+impl Eq for BlockContents {}
 
 impl BlockContents {
     #[inline]
@@ -169,26 +181,6 @@ impl property::Deserialize for Block {
         Ok(Block {
             header: header,
             contents: contents,
-        })
-    }
-}
-
-impl property::HasTransaction for Block {
-    type Transaction = SignedTransaction;
-    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
-        Box::new(self.contents.0.iter().filter_map(|msg| match msg {
-            Message::Transaction(tx) => Some(tx),
-            _ => None,
-        }))
-    }
-
-    fn for_each_transaction<F>(&self, mut f: F)
-    where
-        F: FnMut(&Self::Transaction),
-    {
-        self.contents.0.iter().for_each(|msg| match msg {
-            Message::Transaction(tx) => f(tx),
-            _ => {}
         })
     }
 }

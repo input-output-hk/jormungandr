@@ -300,6 +300,36 @@ where
     }
 }
 
+// recursively try to replace a key's value.
+//
+// note, an update cannot create a new value, it can only delete or update an existing value.
+pub fn replace_rec<K: PartialEq + Clone, V: Clone>(
+    node: &Node<K, V>,
+    h: &HashedKey,
+    lvl: usize,
+    k: &K,
+    v: V,
+) -> Result<(Node<K, V>, V), ReplaceError> {
+    let level_hash = h.level_index(lvl);
+    let idx = node.bitmap.get_index_sparse(level_hash);
+    if idx.is_not_found() {
+        return Err(ReplaceError::KeyNotFound);
+    } else {
+        match &(node.get_child(idx)).as_ref() {
+            &Entry::Leaf(content) => {
+                let (new_content, oldv) = content.replace(k, v)?;
+                let new_ent = SharedRef::new(Entry::Leaf(new_content));
+                Ok((node.replace_at(idx, new_ent), oldv))
+            }
+            &Entry::SubNode(sub) => {
+                let (newsub, oldv) = replace_rec(sub, h, lvl + 1, k, v)?;
+                let e = Entry::SubNode(newsub);
+                Ok((node.replace_at(idx, SharedRef::new(e)), oldv))
+            }
+        }
+    }
+}
+
 pub fn size_rec<K, V>(node: &Node<K, V>) -> usize {
     let mut sum = 0;
     for c in node.children.iter() {

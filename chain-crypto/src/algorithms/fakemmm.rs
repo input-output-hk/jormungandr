@@ -8,7 +8,7 @@ use rand::{CryptoRng, RngCore};
 pub struct FakeMMM;
 
 #[derive(Clone)]
-pub struct Priv([u8; ed25519::PRIVATE_KEY_LENGTH]);
+pub struct Priv([u8; ed25519::SEED_LENGTH]);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Pub([u8; ed25519::PUBLIC_KEY_LENGTH]);
@@ -42,7 +42,7 @@ impl AsymmetricKey for FakeMMM {
     const PUBLIC_BECH32_HRP: &'static str = "fakemmm_public";
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Priv {
-        let mut priv_bytes = [0u8; ed25519::PRIVATE_KEY_LENGTH];
+        let mut priv_bytes = [0u8; ed25519::SEED_LENGTH];
         rng.fill_bytes(&mut priv_bytes);
         Priv(priv_bytes)
     }
@@ -53,11 +53,11 @@ impl AsymmetricKey for FakeMMM {
     }
 
     fn secret_from_binary(data: &[u8]) -> Result<Priv, SecretKeyError> {
-        if data.len() != ed25519::PRIVATE_KEY_LENGTH {
+        if data.len() != ed25519::SEED_LENGTH {
             return Err(SecretKeyError::SizeInvalid);
         }
-        let mut buf = [0; ed25519::PRIVATE_KEY_LENGTH];
-        buf[0..ed25519::PRIVATE_KEY_LENGTH].clone_from_slice(data);
+        let mut buf = [0; ed25519::SEED_LENGTH];
+        buf[0..ed25519::SEED_LENGTH].clone_from_slice(data);
         Ok(Priv(buf))
     }
     fn public_from_binary(data: &[u8]) -> Result<Pub, PublicKeyError> {

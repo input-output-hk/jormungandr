@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use chain_addr::Address;
 use chain_core::property::Update;
 
 use crate::setting::SettingsDiff;
@@ -23,11 +24,11 @@ pub struct TransactionsDiff {
     /// These are the new spent output, the TxOut is not present
     /// on the transaction but it is kept here to keep the diff
     /// of what is being removed from the ledge.
-    pub spent_outputs: BTreeMap<UtxoPointer, Output>,
+    pub spent_outputs: BTreeMap<UtxoPointer, Output<Address>>,
 
     /// these are the new UTxO that the Diff is adding to the new
     /// state of the blockchain
-    pub new_unspent_outputs: BTreeMap<UtxoPointer, Output>,
+    pub new_unspent_outputs: BTreeMap<UtxoPointer, Output<Address>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -200,7 +201,6 @@ mod tests {
         fn transactions_diff_union_is_associative(types: (TransactionsDiff, TransactionsDiff, TransactionsDiff)) -> bool {
             testing::update_associativity(types.0, types.1, types.2)
         }
-        */
         fn transactions_diff_union_has_identity_element(transactions_diff: TransactionsDiff) -> bool {
             testing::update_identity_element(transactions_diff)
         }
@@ -210,5 +210,6 @@ mod tests {
         fn transactions_diff_union_is_commutative(types: (TransactionsDiff, TransactionsDiff)) -> bool {
             testing::update_union_commutative(types.0, types.1)
         }
+        */
     }
 }

@@ -174,6 +174,9 @@ impl Hash {
     pub fn hash_bytes(bytes: &[u8]) -> Self {
         Hash(crypto::Blake2b256::new(bytes))
     }
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        Hash(crypto::Blake2b256::from(bytes))
+    }
 }
 
 impl property::Serialize for Hash {

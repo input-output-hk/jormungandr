@@ -10,6 +10,13 @@ impl Value {
     pub fn zero() -> Self {
         Value(0)
     }
+
+    pub fn sum<I>(values: I) -> Result<Self, ValueError>
+    where
+        I: Iterator<Item = Self>,
+    {
+        values.fold(Ok(Value::zero()), |acc, v| acc? + v)
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

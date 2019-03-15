@@ -1,3 +1,4 @@
+use chain_addr::Address;
 use chain_core::{packer, property};
 use chain_crypto::Ed25519Extended;
 use num_derive::FromPrimitive;
@@ -11,9 +12,9 @@ use crate::{
     transaction::SignedTransaction,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Message {
-    Transaction(SignedTransaction),
+    Transaction(SignedTransaction<Address>),
 
     StakeKeyRegistration(Signed<certificate::StakeKeyRegistration, Ed25519Extended>),
     StakeKeyDeregistration(Signed<certificate::StakeKeyDeregistration, Ed25519Extended>),

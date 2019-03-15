@@ -1,7 +1,7 @@
 //! define the Blockchain settings
 //!
 
-use crate::block::{BlockVersion, Message, BLOCK_VERSION_CONSENSUS_NONE};
+use crate::block::{BlockVersion, BLOCK_VERSION_CONSENSUS_NONE};
 use crate::key::Hash;
 use crate::update::ValueDiff;
 use chain_core::property::{self, BlockId};
@@ -137,72 +137,8 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 impl property::Settings for Settings {
-    type Update = SettingsDiff;
     type Error = Error;
     type Block = crate::block::Block;
-
-    fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
-        use chain_core::property::Block;
-
-        let mut update = <Self::Update as property::Update>::empty();
-
-        update.block_id = ValueDiff::Replace(self.last_block_id.clone(), input.id());
-
-        for msg in input.contents.iter() {
-            if let Message::Update(proposal) = msg {
-                if let Some(_max_number_of_transactions_per_block) =
-                    proposal.max_number_of_transactions_per_block
-                {
-                    /*
-                    update.max_number_of_transactions_per_block = ValueDiff::Replace(
-                        self.max_number_of_transactions_per_block,
-                        max_number_of_transactions_per_block,
-                    );
-                     */
-                    unimplemented!()
-                }
-
-                if let Some(bootstrap_key_slots_percentage) =
-                    proposal.bootstrap_key_slots_percentage
-                {
-                    update.bootstrap_key_slots_percentage = ValueDiff::Replace(
-                        self.bootstrap_key_slots_percentage,
-                        bootstrap_key_slots_percentage,
-                    );
-                }
-
-                if let Some(block_version) = proposal.block_version {
-                    update.block_version = ValueDiff::Replace(self.block_version, block_version);
-                }
-            }
-        }
-
-        Ok(update)
-    }
-
-    fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error> {
-        if !update.block_id.check(&self.last_block_id) {
-            match update.block_id {
-                ValueDiff::Replace(old, _) => {
-                    return Err(Error::InvalidCurrentBlockId(self.last_block_id, old));
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        if !update
-            .bootstrap_key_slots_percentage
-            .check(&self.bootstrap_key_slots_percentage)
-        {
-            return Err(Error::UpdateIsInvalid);
-        }
-
-        update.block_id.apply_to(&mut self.last_block_id);
-        update
-            .bootstrap_key_slots_percentage
-            .apply_to(&mut self.bootstrap_key_slots_percentage);
-        Ok(())
-    }
 
     fn tip(&self) -> <Self::Block as property::Block>::Id {
         self.last_block_id.clone()
