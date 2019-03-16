@@ -41,47 +41,6 @@ impl DelegationState {
         }
     }
 
-    pub fn get_stake_distribution(&self, ledger: &Ledger) -> StakeDistribution {
-        let mut dist = HashMap::new();
-
-        for output in ledger.utxos.iter() {
-            //assert_eq!(ptr.value, output.1);
-
-            // We're only interested in "group" addresses
-            // (i.e. containing a spending key and a stake key).
-            if let Kind::Group(_spending_key, stake_key) = output.address.kind() {
-                // Grmbl.
-                let stake_key = stake_key.clone().into();
-
-                // Do we have a stake key for this spending key?
-                if let Some(stake_key_info) = self.stake_keys.get(&stake_key) {
-                    // Is this stake key a member of a stake pool?
-                    if let Some(pool_id) = &stake_key_info.pool {
-                        let pool = &self.stake_pools[pool_id];
-                        debug_assert!(pool.members.contains(&stake_key));
-                        let stake_pool_dist =
-                            dist.entry(pool_id.clone())
-                                .or_insert_with(|| PoolStakeDistribution {
-                                    total_stake: Value(0),
-                                    member_stake: HashMap::new(),
-                                });
-                        // note: unwrap should be safe, the system should have a total less than overflow
-                        stake_pool_dist.total_stake =
-                            (stake_pool_dist.total_stake + output.value).unwrap();
-
-                        let member_dist = stake_pool_dist
-                            .member_stake
-                            .entry(stake_key.clone())
-                            .or_insert_with(|| Value::zero());
-                        *member_dist = (*member_dist + output.value).unwrap();
-                    }
-                }
-            }
-        }
-
-        StakeDistribution(dist)
-    }
-
     pub fn nr_stake_keys(&self) -> usize {
         self.stake_keys.len()
     }
@@ -275,6 +234,47 @@ impl property::Deserialize for StakeKeyId {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StakePoolId(pub(crate) PublicKey<Ed25519Extended>);
+
+pub fn get_stake_distribution(dstate: &DelegationState, ledger: &Ledger) -> StakeDistribution {
+    let mut dist = HashMap::new();
+
+    for output in ledger.utxos.iter() {
+        //assert_eq!(ptr.value, output.1);
+
+        // We're only interested in "group" addresses
+        // (i.e. containing a spending key and a stake key).
+        if let Kind::Group(_spending_key, stake_key) = output.address.kind() {
+            // Grmbl.
+            let stake_key = stake_key.clone().into();
+
+            // Do we have a stake key for this spending key?
+            if let Some(stake_key_info) = dstate.stake_keys.get(&stake_key) {
+                // Is this stake key a member of a stake pool?
+                if let Some(pool_id) = &stake_key_info.pool {
+                    let pool = &dstate.stake_pools[pool_id];
+                    debug_assert!(pool.members.contains(&stake_key));
+                    let stake_pool_dist =
+                        dist.entry(pool_id.clone())
+                            .or_insert_with(|| PoolStakeDistribution {
+                                total_stake: Value(0),
+                                member_stake: HashMap::new(),
+                            });
+                    // note: unwrap should be safe, the system should have a total less than overflow
+                    stake_pool_dist.total_stake =
+                        (stake_pool_dist.total_stake + output.value).unwrap();
+
+                    let member_dist = stake_pool_dist
+                        .member_stake
+                        .entry(stake_key.clone())
+                        .or_insert_with(|| Value::zero());
+                    *member_dist = (*member_dist + output.value).unwrap();
+                }
+            }
+        }
+    }
+
+    StakeDistribution(dist)
+}
 
 impl From<&SecretKey<Ed25519Extended>> for StakePoolId {
     fn from(key: &SecretKey<Ed25519Extended>) -> Self {
