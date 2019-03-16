@@ -189,7 +189,7 @@ fn input_account_verify(
     value: Value,
     witness: &Witness,
 ) -> Result<account::Ledger, Error> {
-    // check if there's enough value
+    // .remove_value() check if there's enough value and if not, returns a Err.
     let (new_ledger, spending_counter) = ledger.remove_value(account, value)?;
     ledger = new_ledger;
 
