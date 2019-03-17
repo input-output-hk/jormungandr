@@ -1,6 +1,6 @@
 //! Representation of the block in the mockchain.
 use crate::key::{make_signature, make_signature_update, Hash};
-use crate::leadership::Leader;
+use crate::leadership::{GenesisPraosLeader, Leader};
 use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
 
@@ -82,12 +82,17 @@ impl Block {
             }
             Leader::GenesisPraos(ref mut kes_secret, vrf_secret, proven_output_seed) => {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
+                let gpleader = GenesisPraosLeader {
+                    kes_public_key: kes_secret.to_public(),
+                    vrf_public_key: vrf_secret.to_public(),
+                };
                 let signature = make_signature_update(kes_secret, &common);
                 Proof::GenesisPraos(GenesisPraosProof {
-                    vrf_public_key: vrf_secret.public(),
+                    genesis_praos_id: gpleader.get_id(),
                     vrf_proof: proven_output_seed.clone(),
-                    kes_public_key: kes_secret.to_public().into(),
                     kes_proof: KESSignature(signature),
+                    //vrf_public_key: vrf_secret.public(),
+                    //kes_public_key: kes_secret.to_public().into(),
                 })
             }
         };

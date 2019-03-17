@@ -1,7 +1,7 @@
-use crate::key::{deserialize_public_key, serialize_public_key};
+use crate::key::{deserialize_public_key, serialize_public_key, Hash};
 use chain_core::property;
 use chain_crypto::algorithms::vrf::vrf::{self, ProvenOutputSeed};
-use chain_crypto::{Ed25519Extended, FakeMMM, PublicKey, SecretKey};
+use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
 pub mod bft;
 // pub mod genesis;
@@ -11,9 +11,18 @@ pub mod none;
 pub struct BftLeader(pub(crate) PublicKey<Ed25519Extended>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenesisPraosId(Hash);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenesisPraosLeader {
     pub(crate) kes_public_key: PublicKey<FakeMMM>,
-    pub(crate) vrf_public_key: vrf::PublicKey,
+    pub(crate) vrf_public_key: PublicKey<Curve25519_2HashDH>,
+}
+
+impl GenesisPraosLeader {
+    pub fn get_id(&self) -> GenesisPraosId {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -49,7 +58,11 @@ pub struct Update {
 pub enum Leader {
     None,
     BftLeader(SecretKey<Ed25519Extended>),
-    GenesisPraos(SecretKey<FakeMMM>, vrf::SecretKey, ProvenOutputSeed),
+    GenesisPraos(
+        SecretKey<FakeMMM>,
+        SecretKey<Curve25519_2HashDH>,
+        ProvenOutputSeed,
+    ),
 }
 
 impl chain_core::property::LeaderId for BftLeader {}

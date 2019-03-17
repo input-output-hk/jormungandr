@@ -5,10 +5,11 @@ use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     verify_signature, Hash,
 };
-use crate::leadership::{BftLeader, GenesisPraosLeader, PublicLeader};
-use chain_crypto::algorithms::vrf::vrf;
-use chain_crypto::algorithms::FakeMMM;
-use chain_crypto::{Ed25519Extended, PublicKey, Signature, Verification};
+use crate::leadership::{BftLeader, GenesisPraosId, GenesisPraosLeader, PublicLeader};
+use chain_crypto::{
+    Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, Signature, VerifiableRandomFunction,
+    Verification,
+};
 
 pub type HeaderHash = Hash;
 pub type BlockContentHash = Hash;
@@ -47,9 +48,8 @@ pub struct BftSignature(pub(crate) Signature<HeaderToSign, Ed25519Extended>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisPraosProof {
-    pub(crate) vrf_public_key: vrf::PublicKey,
-    pub(crate) vrf_proof: vrf::ProvenOutputSeed,
-    pub(crate) kes_public_key: PublicKey<FakeMMM>,
+    pub(crate) genesis_praos_id: GenesisPraosId,
+    pub(crate) vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
     pub(crate) kes_proof: KESSignature,
 }
 
@@ -95,6 +95,7 @@ impl PartialEq<Self> for KESSignature {
 }
 impl Eq for KESSignature {}
 
+/*
 impl Proof {
     pub fn leader_id(&self) -> Option<PublicLeader> {
         match self {
@@ -109,6 +110,7 @@ impl Proof {
         }
     }
 }
+*/
 
 impl Header {
     #[inline]
@@ -154,9 +156,14 @@ impl Header {
                 verify_signature(&bft_proof.signature.0, &bft_proof.leader_id.0, &self.common)
             }
             Proof::GenesisPraos(genesis_praos_proof) => {
+                let kes_public_key = {
+                    // use the ID to find the expected keys
+                    let id = &genesis_praos_proof.genesis_praos_id;
+                    unimplemented!()
+                };
                 verify_signature(
                     &genesis_praos_proof.kes_proof.0,
-                    &genesis_praos_proof.kes_public_key,
+                    &kes_public_key,
                     &self.common,
                 )
                 // TODO: verify the VRF too
@@ -224,6 +231,7 @@ impl property::Serialize for Header {
             }
             Proof::GenesisPraos(genesis_praos_proof) => {
                 use std::io::Write;
+                /*
                 {
                     let mut buf = [0; vrf::PUBLIC_SIZE];
                     genesis_praos_proof.vrf_public_key.to_buffer(&mut buf);
@@ -235,6 +243,8 @@ impl property::Serialize for Header {
                     buffered.write_all(&buf)?;
                 }
                 serialize_public_key(&genesis_praos_proof.kes_public_key, &mut buffered)?;
+                */
+                unimplemented!();
                 serialize_signature(&genesis_praos_proof.kes_proof.0, &mut buffered)?;
             }
         }
