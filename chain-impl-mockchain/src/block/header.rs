@@ -5,7 +5,7 @@ use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     verify_signature, Hash,
 };
-use crate::leadership::{BftLeader, GenesisPraosId, GenesisPraosLeader, PublicLeader};
+use crate::leadership::{bft, GenesisPraosId, GenesisPraosLeader, LeaderId};
 use chain_crypto::{
     Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, Signature, VerifiableRandomFunction,
     Verification,
@@ -39,7 +39,7 @@ pub type HeaderToSign = Common;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BftProof {
-    pub(crate) leader_id: BftLeader,
+    pub(crate) leader_id: bft::LeaderId,
     pub(crate) signature: BftSignature,
 }
 
@@ -97,12 +97,12 @@ impl Eq for KESSignature {}
 
 /*
 impl Proof {
-    pub fn leader_id(&self) -> Option<PublicLeader> {
+    pub fn leader_id(&self) -> Option<LeaderId> {
         match self {
             Proof::None => None,
-            Proof::Bft(bft_proof) => Some(PublicLeader::Bft(bft_proof.leader_id.clone())),
+            Proof::Bft(bft_proof) => Some(LeaderId::Bft(bft_proof.leader_id.clone())),
             Proof::GenesisPraos(genesis_praos_proof) => {
-                Some(PublicLeader::GenesisPraos(GenesisPraosLeader {
+                Some(LeaderId::GenesisPraos(GenesisPraosLeader {
                     kes_public_key: genesis_praos_proof.kes_public_key.clone(),
                     vrf_public_key: genesis_praos_proof.vrf_public_key.clone(),
                 }))
@@ -284,7 +284,7 @@ impl property::Deserialize for Header {
             BLOCK_VERSION_CONSENSUS_NONE => Proof::None,
             BLOCK_VERSION_CONSENSUS_BFT => {
                 // BFT
-                let leader_id = deserialize_public_key(&mut codec).map(BftLeader)?;
+                let leader_id = deserialize_public_key(&mut codec).map(bft::LeaderId)?;
                 let signature = deserialize_signature(&mut codec).map(BftSignature)?;
                 Proof::Bft(BftProof {
                     leader_id,
@@ -346,7 +346,7 @@ mod test {
             let pk = sk.to_public();
             let signature = chain_crypto::Signature::generate(&sk, &[0u8, 1, 2, 3]);
             BftProof {
-                leader_id: BftLeader(pk),
+                leader_id: bft::LeaderId(pk),
                 signature: BftSignature(signature.coerce()),
             }
         }

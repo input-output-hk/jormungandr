@@ -8,7 +8,7 @@ use crate::block::{
     BLOCK_VERSION_CONSENSUS_NONE,
 };
 use crate::key::{make_signature, make_signature_update};
-use crate::leadership::GenesisPraosId;
+use crate::leadership::{self, GenesisPraosId};
 use crate::transaction::SignedTransaction;
 use chain_addr::Address;
 use chain_crypto::{
@@ -114,7 +114,7 @@ impl BlockBuilder {
         assert_ne!(self.common.chain_length, 0);
         self.finalize_common(BLOCK_VERSION_CONSENSUS_BFT);
         let bft_proof = BftProof {
-            leader_id: bft_signing_key.to_public().into(),
+            leader_id: leadership::bft::LeaderId(bft_signing_key.to_public()),
             signature: super::BftSignature(make_signature(bft_signing_key, &self.common)),
         };
         self.make_block(Proof::Bft(bft_proof))

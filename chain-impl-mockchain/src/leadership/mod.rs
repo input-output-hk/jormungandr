@@ -41,18 +41,18 @@ pub struct Error {
     cause: Option<Box<dyn std::error::Error>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PublicLeader {
-    None,
-    Bft(BftLeader),
-    GenesisPraos(GenesisPraosLeader),
+/// Verification type for when validating a block
+#[derive(Debug)]
+pub enum Verification {
+    Success,
+    Failure(Error),
 }
 
-#[derive(Debug, Clone)]
-pub struct Update {
-    pub(crate) previous_leader: PublicLeader,
-    pub(crate) next_leader: PublicLeader,
-    //    pub(crate) genesis: genesis::GenesisSelectionDiff,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LeaderId {
+    None,
+    Bft(bft::LeaderId),
+    GenesisPraos(GenesisPraosLeader),
 }
 
 pub enum Leader {
@@ -65,49 +65,30 @@ pub enum Leader {
     ),
 }
 
-impl chain_core::property::LeaderId for BftLeader {}
-impl chain_core::property::LeaderId for PublicLeader {}
+impl chain_core::property::LeaderId for LeaderId {}
 
-impl From<PublicKey<Ed25519Extended>> for BftLeader {
-    fn from(key: PublicKey<Ed25519Extended>) -> Self {
-        BftLeader(key)
+impl Verification {
+    pub fn success() -> Self {
+        Verification::Success
+    }
+    pub fn failed(error: Error) -> Self {
+        Verification::Failure(error)
     }
 }
 
-impl property::Update for Update {
-    fn empty() -> Self {
-        Update {
-            previous_leader: PublicLeader::None,
-            next_leader: PublicLeader::None,
+impl Error {
+    pub fn new(kind: ErrorKind) -> Self {
+        Error {
+            kind: kind,
+            cause: None,
         }
     }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.next_leader = other.next_leader;
-        self
-    }
-    fn inverse(mut self) -> Self {
-        std::mem::swap(&mut self.previous_leader, &mut self.next_leader);
-        self
-    }
-}
 
-impl property::Serialize for BftLeader {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        serialize_public_key(&self.0, writer)
-    }
-}
-
-impl property::Deserialize for BftLeader {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        deserialize_public_key(reader).map(BftLeader)
-    }
-}
-
-impl AsRef<PublicKey<Ed25519Extended>> for BftLeader {
-    fn as_ref(&self) -> &PublicKey<Ed25519Extended> {
-        &self.0
+    pub fn new_(kind: ErrorKind, cause: Box<dyn std::error::Error>) -> Self {
+        Error {
+            kind: kind,
+            cause: Some(cause),
+        }
     }
 }
 
@@ -117,7 +98,9 @@ impl std::fmt::Display for ErrorKind {
             ErrorKind::IncompatibleBlockVersion => {
                 write!(f, "The block Version is incompatible with LeaderSelection.")
             }
-            ErrorKind::IncompatibleLeadershipMode => write!(f, "Incompatible leadership mode"),
+            ErrorKind::IncompatibleLeadershipMode => {
+                write!(f, "Incompatible leadership mode (the proof is invalid)")
+            }
             ErrorKind::InvalidLeader => write!(f, "Block has unexpected block leader"),
             ErrorKind::InvalidLeaderSignature => write!(f, "Block signature is invalid"),
             ErrorKind::InvalidBlockMessage => write!(f, "Invalid block message"),
@@ -137,24 +120,5 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {
     fn cause(&self) -> Option<&dyn std::error::Error> {
         self.cause.as_ref().map(std::ops::Deref::deref)
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    use super::*;
-    use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for BftLeader {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            use rand_chacha::ChaChaRng;
-            use rand_core::SeedableRng;
-            let mut seed = [0; 32];
-            for byte in seed.iter_mut() {
-                *byte = Arbitrary::arbitrary(g);
-            }
-            let mut rng = ChaChaRng::from_seed(seed);
-            BftLeader(SecretKey::generate(&mut rng).to_public())
-        }
     }
 }

@@ -1,6 +1,6 @@
 //! Representation of the block in the mockchain.
 use crate::key::{make_signature, make_signature_update, Hash};
-use crate::leadership::{GenesisPraosLeader, Leader};
+use crate::leadership::{bft, GenesisPraosLeader, Leader};
 use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
 
@@ -76,7 +76,7 @@ impl Block {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_BFT);
                 let signature = make_signature(&private_key, &common);
                 Proof::Bft(BftProof {
-                    leader_id: private_key.to_public().into(),
+                    leader_id: bft::LeaderId(private_key.to_public()),
                     signature: BftSignature(signature),
                 })
             }
