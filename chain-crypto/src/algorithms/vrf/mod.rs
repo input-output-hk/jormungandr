@@ -2,6 +2,7 @@ mod dleq;
 pub mod vrf;
 
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
+use crate::vrf::{VerifiableRandomFunction, Verification};
 use rand::{CryptoRng, RngCore};
 
 /// VRF
@@ -35,5 +36,31 @@ impl AsymmetricKey for Curve25519_2HashDH {
     }
     fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
         vrf::PublicKey::from_bytes(data)
+    }
+}
+
+impl VerifiableRandomFunction for Curve25519_2HashDH {
+    type VerifiedRandom = vrf::ProvenOutputSeed;
+    type Input = [u8];
+
+    fn evaluate<T: RngCore + CryptoRng>(
+        secret: &Self::Secret,
+        input: &Self::Input,
+        mut rng: T,
+    ) -> Self::VerifiedRandom {
+        secret.evaluate_simple(&mut rng, input)
+    }
+
+    fn verify(
+        public: &Self::Public,
+        input: &Self::Input,
+        vrand: &Self::VerifiedRandom,
+    ) -> Verification {
+        let v = vrand.verify(public, input);
+        if v {
+            Verification::Success
+        } else {
+            Verification::Failed
+        }
     }
 }
