@@ -2,7 +2,7 @@
 //!
 
 use crate::{
-    block::{BlockContents, Message},
+    block::{BlockContents, BlockDate, BlockId, Message},
     leadership,
     ledger::{self, Ledger},
     setting,
@@ -31,25 +31,34 @@ impl From<leadership::Error> for Error {
 }
 
 impl State {
-    pub fn apply(&self, contents: BlockContents) -> Result<State, Error> {
+    pub fn apply(
+        &self,
+        block_id: BlockId,
+        block_date: BlockDate,
+        contents: BlockContents,
+    ) -> Result<State, Error> {
         // for now we just clone ledger, since leadership is still inside the state.
         let mut new_ledger = self.ledger.clone();
         let mut new_delegation = self.delegation.clone();
+        let mut new_settings = self.settings.clone();
+        new_settings.last_block_id = block_id;
+        new_settings.last_block_date = block_date;
         for content in contents.iter() {
             match content {
                 Message::Transaction(signed_transaction) => {
-                    let ledger = new_ledger.apply_transaction(signed_transaction)?;
-                    new_ledger = ledger;
+                    new_ledger = new_ledger.apply_transaction(signed_transaction)?;
                 }
-                Message::Update(_update_proposal) => {}
+                Message::Update(update_proposal) => {
+                    new_settings = new_settings.apply(update_proposal.clone());
+                }
                 content => {
-                    let delegation = new_delegation.apply(content)?;
+                    new_delegation = new_delegation.apply(content)?;
                 }
             }
         }
         Ok(State {
             ledger: new_ledger,
-            settings: self.settings.clone(),
+            settings: new_settings,
             delegation: new_delegation,
         })
     }

@@ -3,11 +3,11 @@
 
 use crate::update::ValueDiff;
 use crate::{
-    block::{BlockVersion, BLOCK_VERSION_CONSENSUS_NONE},
+    block::{BlockDate, BlockId, BlockVersion, BLOCK_VERSION_CONSENSUS_NONE},
     key::Hash,
     leadership::bft,
 };
-use chain_core::property::{self, BlockId};
+use chain_core::property::{self, BlockId as _};
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -112,7 +112,8 @@ impl property::Deserialize for UpdateProposal {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
-    pub last_block_id: Hash,
+    pub last_block_id: BlockId,
+    pub last_block_date: BlockDate,
     pub max_number_of_transactions_per_block: u32,
     pub bootstrap_key_slots_percentage: u8, // == d * 100
     pub block_version: BlockVersion,
@@ -125,11 +126,31 @@ impl Settings {
     pub fn new() -> Self {
         Self {
             last_block_id: Hash::zero(),
+            last_block_date: BlockDate::first(),
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
             block_version: BLOCK_VERSION_CONSENSUS_NONE,
             bft_leaders: Vec::new(),
         }
+    }
+
+    pub fn apply(&self, update: UpdateProposal) -> Self {
+        let mut new_state = self.clone();
+        if let Some(max_number_of_transactions_per_block) =
+            update.max_number_of_transactions_per_block
+        {
+            new_state.max_number_of_transactions_per_block = max_number_of_transactions_per_block;
+        }
+        if let Some(bootstrap_key_slots_percentage) = update.bootstrap_key_slots_percentage {
+            new_state.bootstrap_key_slots_percentage = bootstrap_key_slots_percentage;
+        }
+        if let Some(block_version) = update.block_version {
+            new_state.block_version = block_version;
+        }
+        if let Some(leaders) = update.bft_leaders {
+            new_state.bft_leaders = leaders;
+        }
+        new_state
     }
 }
 
@@ -173,6 +194,7 @@ impl property::Settings for Settings {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SettingsDiff {
     pub block_id: ValueDiff<Hash>,
+    pub block_date: ValueDiff<BlockDate>,
     pub bootstrap_key_slots_percentage: ValueDiff<u8>,
     pub block_version: ValueDiff<BlockVersion>,
     pub bft_leaders: ValueDiff<Vec<bft::LeaderId>>,
@@ -182,6 +204,7 @@ impl property::Update for SettingsDiff {
     fn empty() -> Self {
         SettingsDiff {
             block_id: ValueDiff::None,
+            block_date: ValueDiff::None,
             bootstrap_key_slots_percentage: ValueDiff::None,
             block_version: ValueDiff::None,
             bft_leaders: ValueDiff::None,
@@ -190,6 +213,7 @@ impl property::Update for SettingsDiff {
     fn inverse(self) -> Self {
         SettingsDiff {
             block_id: self.block_id.inverse(),
+            block_date: self.block_date.inverse(),
             bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage.inverse(),
             block_version: self.block_version.inverse(),
             bft_leaders: self.bft_leaders.inverse(),
@@ -197,6 +221,7 @@ impl property::Update for SettingsDiff {
     }
     fn union(&mut self, other: Self) -> &mut Self {
         self.block_id.union(other.block_id);
+        self.block_date.union(other.block_date);
         self.bootstrap_key_slots_percentage
             .union(other.bootstrap_key_slots_percentage);
         self.block_version.union(other.block_version);
@@ -215,6 +240,7 @@ mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> SettingsDiff {
             SettingsDiff {
                 block_version: ValueDiff::None,
+                block_date: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
                 block_id: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
                 bootstrap_key_slots_percentage: ValueDiff::Replace(
                     Arbitrary::arbitrary(g),
