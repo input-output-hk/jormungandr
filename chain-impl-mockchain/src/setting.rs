@@ -1,10 +1,13 @@
 //! define the Blockchain settings
 //!
 
-use crate::block::{BlockVersion, BLOCK_VERSION_CONSENSUS_NONE};
-use crate::key::Hash;
-use crate::update::ValueDiff;
-use chain_core::property::{self, BlockId};
+use crate::{
+    block::{BlockDate, BlockId, BlockVersion, BLOCK_VERSION_CONSENSUS_NONE},
+    key::Hash,
+    leadership::bft,
+};
+use chain_core::property::{self, BlockId as _};
+use std::rc::Rc;
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -17,6 +20,7 @@ pub struct UpdateProposal {
     pub max_number_of_transactions_per_block: Option<u32>,
     pub bootstrap_key_slots_percentage: Option<u8>,
     pub block_version: Option<BlockVersion>,
+    pub bft_leaders: Option<Vec<bft::LeaderId>>,
 }
 
 impl UpdateProposal {
@@ -25,6 +29,7 @@ impl UpdateProposal {
             max_number_of_transactions_per_block: None,
             bootstrap_key_slots_percentage: None,
             block_version: None,
+            bft_leaders: None,
         }
     }
 }
@@ -35,6 +40,7 @@ enum UpdateTag {
     MaxNumberOfTransactionsPerBlock = 1,
     BootstrapKeySlotsPercentage = 2,
     BlockVersion = 3,
+    BftLeaders = 4,
 }
 
 impl property::Serialize for UpdateProposal {
@@ -55,6 +61,13 @@ impl property::Serialize for UpdateProposal {
         if let Some(block_version) = self.block_version {
             codec.put_u16(UpdateTag::BlockVersion as u16)?;
             codec.put_u16(block_version.0)?;
+        }
+        if let Some(leaders) = &self.bft_leaders {
+            codec.put_u16(UpdateTag::BftLeaders as u16)?;
+            codec.put_u8(leaders.len() as u8)?;
+            for leader in leaders.iter() {
+                leader.serialize(&mut codec)?;
+            }
         }
         codec.put_u16(UpdateTag::End as u16)?;
         Ok(())
@@ -83,24 +96,28 @@ impl property::Deserialize for UpdateProposal {
                 Some(UpdateTag::BlockVersion) => {
                     update.block_version = Some(codec.get_u16().map(BlockVersion)?);
                 }
+                Some(UpdateTag::BftLeaders) => {
+                    let len = codec.get_u8()? as usize;
+                    let mut leaders = Vec::with_capacity(len);
+                    for _ in 0..len {
+                        leaders.push(bft::LeaderId::deserialize(&mut codec)?);
+                    }
+                    update.bft_leaders = Some(leaders);
+                }
                 None => panic!("Unrecognized update tag {}.", tag),
             }
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Version {
-    major: u16,
-    minor: u16,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
-    pub last_block_id: Hash,
-    pub max_number_of_transactions_per_block: u32,
-    pub bootstrap_key_slots_percentage: u8, // == d * 100
-    pub block_version: BlockVersion,
+    pub last_block_id: BlockId,
+    pub last_block_date: BlockDate,
+    pub max_number_of_transactions_per_block: Rc<u32>,
+    pub bootstrap_key_slots_percentage: Rc<u8>, // == d * 100
+    pub block_version: Rc<BlockVersion>,
+    pub bft_leaders: Rc<Vec<bft::LeaderId>>,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -109,10 +126,32 @@ impl Settings {
     pub fn new() -> Self {
         Self {
             last_block_id: Hash::zero(),
-            max_number_of_transactions_per_block: 100,
-            bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
-            block_version: BLOCK_VERSION_CONSENSUS_NONE,
+            last_block_date: BlockDate::first(),
+            max_number_of_transactions_per_block: Rc::new(100),
+            bootstrap_key_slots_percentage: Rc::new(SLOTS_PERCENTAGE_RANGE),
+            block_version: Rc::new(BLOCK_VERSION_CONSENSUS_NONE),
+            bft_leaders: Rc::new(Vec::new()),
         }
+    }
+
+    pub fn apply(&self, update: UpdateProposal) -> Self {
+        let mut new_state = self.clone();
+        if let Some(max_number_of_transactions_per_block) =
+            update.max_number_of_transactions_per_block
+        {
+            new_state.max_number_of_transactions_per_block =
+                Rc::new(max_number_of_transactions_per_block);
+        }
+        if let Some(bootstrap_key_slots_percentage) = update.bootstrap_key_slots_percentage {
+            new_state.bootstrap_key_slots_percentage = Rc::new(bootstrap_key_slots_percentage);
+        }
+        if let Some(block_version) = update.block_version {
+            new_state.block_version = Rc::new(block_version);
+        }
+        if let Some(leaders) = update.bft_leaders {
+            new_state.bft_leaders = Rc::new(leaders);
+        }
+        new_state
     }
 }
 
@@ -145,79 +184,10 @@ impl property::Settings for Settings {
     }
 
     fn max_number_of_transactions_per_block(&self) -> u32 {
-        self.max_number_of_transactions_per_block
+        *self.max_number_of_transactions_per_block
     }
 
     fn block_version(&self) -> <Self::Block as property::Block>::Version {
-        self.block_version
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct SettingsDiff {
-    pub block_id: ValueDiff<Hash>,
-    pub bootstrap_key_slots_percentage: ValueDiff<u8>,
-    pub block_version: ValueDiff<BlockVersion>,
-}
-
-impl property::Update for SettingsDiff {
-    fn empty() -> Self {
-        SettingsDiff {
-            block_id: ValueDiff::None,
-            bootstrap_key_slots_percentage: ValueDiff::None,
-            block_version: ValueDiff::None,
-        }
-    }
-    fn inverse(self) -> Self {
-        SettingsDiff {
-            block_id: self.block_id.inverse(),
-            bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage.inverse(),
-            block_version: self.block_version.inverse(),
-        }
-    }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.block_id.union(other.block_id);
-        self.bootstrap_key_slots_percentage
-            .union(other.bootstrap_key_slots_percentage);
-        self.block_version.union(other.block_version);
-        self
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chain_core::property::testing;
-    use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for SettingsDiff {
-        fn arbitrary<G: Gen>(g: &mut G) -> SettingsDiff {
-            SettingsDiff {
-                block_version: ValueDiff::None,
-                block_id: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-                bootstrap_key_slots_percentage: ValueDiff::Replace(
-                    Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
-                ),
-            }
-        }
-    }
-
-    quickcheck! {
-        /*
-        FIXME: add tests for checking associativity of diffs on
-        randomly generated values of the type we're diffing.
-
-        fn settings_diff_union_is_associative(types: (SettingsDiff, SettingsDiff, SettingsDiff)) -> bool {
-            testing::update_associativity(types.0, types.1, types.2)
-        }
-        */
-        fn settings_diff_union_has_identity_element(settings_diff: SettingsDiff) -> bool {
-            testing::update_identity_element(settings_diff)
-        }
-        fn settings_diff_union_has_inverse_element(settings_diff: SettingsDiff) -> bool {
-            testing::update_inverse_element(settings_diff)
-        }
-
+        *self.block_version
     }
 }

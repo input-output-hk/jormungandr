@@ -1,23 +1,21 @@
-use crate::key::{deserialize_public_key, serialize_public_key};
-use chain_core::property;
-use chain_crypto::algorithms::vrf::vrf::{self, ProvenOutputSeed};
-use chain_crypto::{Ed25519Extended, FakeMMM, PublicKey, SecretKey};
+use crate::{
+    block::{
+        BlockVersion, Header, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
+        BLOCK_VERSION_CONSENSUS_NONE,
+    },
+    state::State,
+};
+use chain_crypto::algorithms::vrf::vrf::ProvenOutputSeed;
+use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
 
 pub mod bft;
-// pub mod genesis;
+pub mod genesis;
 pub mod none;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BftLeader(pub(crate) PublicKey<Ed25519Extended>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenesisPraosLeader {
-    pub(crate) kes_public_key: PublicKey<FakeMMM>,
-    pub(crate) vrf_public_key: vrf::PublicKey,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
+    Failure,
+    NoLeaderForThisSlot,
     IncompatibleBlockVersion,
     IncompatibleLeadershipMode,
     InvalidLeader,
@@ -32,79 +30,144 @@ pub struct Error {
     cause: Option<Box<dyn std::error::Error>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PublicLeader {
-    None,
-    Bft(BftLeader),
-    GenesisPraos(GenesisPraosLeader),
+/// Verification type for when validating a block
+#[derive(Debug)]
+pub enum Verification {
+    Success,
+    Failure(Error),
 }
 
-#[derive(Debug, Clone)]
-pub struct Update {
-    pub(crate) previous_leader: PublicLeader,
-    pub(crate) next_leader: PublicLeader,
-    //    pub(crate) genesis: genesis::GenesisSelectionDiff,
+macro_rules! try_check {
+    ($x:expr) => {
+        if $x.failure() {
+            return $x;
+        }
+    };
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LeaderId {
+    None,
+    Bft(bft::LeaderId),
+    GenesisPraos(genesis::GenesisPraosLeader),
 }
 
 pub enum Leader {
     None,
     BftLeader(SecretKey<Ed25519Extended>),
-    GenesisPraos(SecretKey<FakeMMM>, vrf::SecretKey, ProvenOutputSeed),
+    GenesisPraos(
+        SecretKey<FakeMMM>,
+        SecretKey<Curve25519_2HashDH>,
+        ProvenOutputSeed,
+    ),
 }
 
-impl chain_core::property::LeaderId for BftLeader {}
-impl chain_core::property::LeaderId for PublicLeader {}
-
-impl From<PublicKey<Ed25519Extended>> for BftLeader {
-    fn from(key: PublicKey<Ed25519Extended>) -> Self {
-        BftLeader(key)
-    }
+enum Inner {
+    None(none::NoLeadership),
+    Bft(bft::BftLeaderSelection),
+    GenesisPraos(genesis::GenesisLeaderSelection),
 }
 
-impl property::Update for Update {
-    fn empty() -> Self {
-        Update {
-            previous_leader: PublicLeader::None,
-            next_leader: PublicLeader::None,
+pub struct Leadership {
+    inner: Inner,
+}
+
+impl Inner {
+    #[inline]
+    fn verify_version(&self, block_version: &BlockVersion) -> Verification {
+        match self {
+            Inner::None(_) if block_version == &BLOCK_VERSION_CONSENSUS_NONE => {
+                Verification::Success
+            }
+            Inner::Bft(_) if block_version == &BLOCK_VERSION_CONSENSUS_BFT => Verification::Success,
+            _ => Verification::Failure(Error::new(ErrorKind::IncompatibleBlockVersion)),
         }
     }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.next_leader = other.next_leader;
-        self
-    }
-    fn inverse(mut self) -> Self {
-        std::mem::swap(&mut self.previous_leader, &mut self.next_leader);
-        self
+
+    #[inline]
+    fn verify_leader(&self, block_header: &Header) -> Verification {
+        match self {
+            Inner::None(none) => none.verify(block_header),
+            Inner::Bft(bft) => bft.verify(block_header),
+            Inner::GenesisPraos(genesis_praos) => genesis_praos.verify(block_header),
+        }
     }
 }
 
-impl property::Serialize for BftLeader {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        serialize_public_key(&self.0, writer)
+impl Leadership {
+    pub fn new(state: &State) -> Self {
+        match *state.settings.block_version {
+            BLOCK_VERSION_CONSENSUS_NONE => Leadership {
+                inner: Inner::None(none::NoLeadership),
+            },
+            BLOCK_VERSION_CONSENSUS_BFT => Leadership {
+                inner: Inner::Bft(bft::BftLeaderSelection::new(state).unwrap()),
+            },
+            BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => Leadership {
+                inner: Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(state)),
+            },
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn verify(&self, block_header: &Header) -> Verification {
+        try_check!(self.inner.verify_version(block_header.block_version()));
+
+        try_check!(self.inner.verify_leader(block_header));
+        Verification::Success
     }
 }
 
-impl property::Deserialize for BftLeader {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        deserialize_public_key(reader).map(BftLeader)
+impl chain_core::property::LeaderId for LeaderId {}
+
+impl Verification {
+    #[inline]
+    pub fn into_error(self) -> Result<(), Error> {
+        match self {
+            Verification::Success => Ok(()),
+            Verification::Failure(err) => Err(err),
+        }
+    }
+    #[inline]
+    pub fn success(&self) -> bool {
+        match self {
+            Verification::Success => true,
+            _ => false,
+        }
+    }
+    #[inline]
+    pub fn failure(&self) -> bool {
+        !self.success()
     }
 }
 
-impl AsRef<PublicKey<Ed25519Extended>> for BftLeader {
-    fn as_ref(&self) -> &PublicKey<Ed25519Extended> {
-        &self.0
+impl Error {
+    pub fn new(kind: ErrorKind) -> Self {
+        Error {
+            kind: kind,
+            cause: None,
+        }
+    }
+
+    pub fn new_(kind: ErrorKind, cause: Box<dyn std::error::Error>) -> Self {
+        Error {
+            kind: kind,
+            cause: Some(cause),
+        }
     }
 }
 
 impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            ErrorKind::Failure => write!(f, "The current state of the leader selection is invalid"),
+            ErrorKind::NoLeaderForThisSlot => write!(f, "No leader available for this block date"),
             ErrorKind::IncompatibleBlockVersion => {
                 write!(f, "The block Version is incompatible with LeaderSelection.")
             }
-            ErrorKind::IncompatibleLeadershipMode => write!(f, "Incompatible leadership mode"),
+            ErrorKind::IncompatibleLeadershipMode => {
+                write!(f, "Incompatible leadership mode (the proof is invalid)")
+            }
             ErrorKind::InvalidLeader => write!(f, "Block has unexpected block leader"),
             ErrorKind::InvalidLeaderSignature => write!(f, "Block signature is invalid"),
             ErrorKind::InvalidBlockMessage => write!(f, "Invalid block message"),
@@ -124,24 +187,5 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {
     fn cause(&self) -> Option<&dyn std::error::Error> {
         self.cause.as_ref().map(std::ops::Deref::deref)
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    use super::*;
-    use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for BftLeader {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            use rand_chacha::ChaChaRng;
-            use rand_core::SeedableRng;
-            let mut seed = [0; 32];
-            for byte in seed.iter_mut() {
-                *byte = Arbitrary::arbitrary(g);
-            }
-            let mut rng = ChaChaRng::from_seed(seed);
-            BftLeader(SecretKey::generate(&mut rng).to_public())
-        }
     }
 }

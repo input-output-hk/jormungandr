@@ -1,7 +1,23 @@
-use crate::block::Block;
-use crate::leadership::{BftLeader, Error, PublicLeader};
-
+use crate::block::{Block, Header, Proof};
+use crate::key::{deserialize_public_key, serialize_public_key};
+use crate::{
+    leadership::{self, Error, ErrorKind, Verification},
+    state::State,
+};
 use chain_core::property::{self, LeaderSelection};
+use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
+use std::rc::Rc;
+
+/// cryptographic signature algorithm used for the BFT leadership
+/// protocol.
+#[allow(non_camel_case_types)]
+pub type SIGNING_ALGORITHM = Ed25519Extended;
+
+/// BFT Leader signing key
+pub type SigningKey = SecretKey<SIGNING_ALGORITHM>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LeaderId(pub(crate) PublicKey<SIGNING_ALGORITHM>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BftRoundRobinIndex(u64);
@@ -9,30 +25,18 @@ pub struct BftRoundRobinIndex(u64);
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
 pub struct BftLeaderSelection {
-    leaders: Vec<BftLeader>,
-
-    current_leader: BftLeader,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum BftError {
-    BlockHasInvalidLeader(PublicLeader, PublicLeader),
-    BlockSignatureIsInvalid,
-    BlockProofIsDifferent,
-    UpdateHasInvalidCurrentLeader(PublicLeader, PublicLeader),
+    pub(crate) leaders: Rc<Vec<LeaderId>>,
 }
 
 impl BftLeaderSelection {
     /// Create a new BFT leadership
-    pub fn new(leaders: Vec<BftLeader>) -> Option<Self> {
-        if leaders.len() == 0 {
+    pub fn new(state: &State) -> Option<Self> {
+        if state.settings.bft_leaders.len() == 0 {
             return None;
         }
 
-        let current_leader = leaders[0].clone();
         Some(BftLeaderSelection {
-            leaders: leaders,
-            current_leader: current_leader,
+            leaders: state.settings.bft_leaders.clone(),
         })
     }
 
@@ -46,12 +50,29 @@ impl BftLeaderSelection {
         let max = self.number_of_leaders() as u64;
         BftRoundRobinIndex((block_number % max) as u64)
     }
+
+    pub(crate) fn verify(&self, block_header: &Header) -> Verification {
+        match &block_header.proof() {
+            Proof::Bft(bft_proof) => match self.get_leader_at(*block_header.block_date()) {
+                Ok(leadership::LeaderId::Bft(leader_at)) => {
+                    if bft_proof.leader_id != leader_at {
+                        Verification::Failure(Error::new(ErrorKind::InvalidLeader))
+                    } else {
+                        Verification::Success
+                    }
+                }
+                Err(error) => Verification::Failure(error),
+                Ok(_) => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+            },
+            _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+        }
+    }
 }
 
 impl LeaderSelection for BftLeaderSelection {
     type Block = Block;
     type Error = Error;
-    type LeaderId = PublicLeader;
+    type LeaderId = leadership::LeaderId;
 
     #[inline]
     fn get_leader_at(
@@ -59,26 +80,41 @@ impl LeaderSelection for BftLeaderSelection {
         date: <Self::Block as property::Block>::Date,
     ) -> Result<Self::LeaderId, Self::Error> {
         let BftRoundRobinIndex(ofs) = self.offset(date.slot_id as u64);
-        Ok(PublicLeader::Bft(self.leaders[ofs as usize].clone()))
+        Ok(leadership::LeaderId::Bft(
+            self.leaders[ofs as usize].clone(),
+        ))
     }
 }
 
-impl std::fmt::Display for BftError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            BftError::BlockHasInvalidLeader(expected, found) => write!(
-                f,
-                "Invalid block leader, expected {:?} but the given block was signed by {:?}",
-                expected, found
-            ),
-            BftError::BlockSignatureIsInvalid => write!(f, "The block signature is not valid"),
-            BftError::UpdateHasInvalidCurrentLeader(current, found) => write!(
-                f,
-                "Update has an incompatible leader, we expect to update from {:?} but we are at {:?}",
-                found, current
-            ),
-            BftError::BlockProofIsDifferent => write!(f, "The block proof is different and unexpected")
+impl property::Serialize for LeaderId {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        serialize_public_key(&self.0, writer)
+    }
+}
+
+impl property::Deserialize for LeaderId {
+    type Error = std::io::Error;
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        deserialize_public_key(reader).map(LeaderId)
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for LeaderId {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            use rand_chacha::ChaChaRng;
+            use rand_core::SeedableRng;
+            let mut seed = [0; 32];
+            for byte in seed.iter_mut() {
+                *byte = Arbitrary::arbitrary(g);
+            }
+            let mut rng = ChaChaRng::from_seed(seed);
+            LeaderId(SecretKey::generate(&mut rng).to_public())
         }
     }
 }
-impl std::error::Error for BftError {}

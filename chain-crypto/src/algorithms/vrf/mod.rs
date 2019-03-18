@@ -2,6 +2,7 @@ mod dleq;
 pub mod vrf;
 
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
+use crate::vrf::{VerifiableRandomFunction, Verification};
 use rand::{CryptoRng, RngCore};
 
 /// VRF
@@ -13,6 +14,9 @@ impl AsymmetricKey for Curve25519_2HashDH {
 
     const SECRET_BECH32_HRP: &'static str = "curve25519_2hashdh_secret";
     const PUBLIC_BECH32_HRP: &'static str = "curve25519_2hashdh_public";
+
+    const SECRET_KEY_SIZE: usize = vrf::SECRET_SIZE;
+    const PUBLIC_KEY_SIZE: usize = vrf::PUBLIC_SIZE;
 
     fn generate<T: RngCore + CryptoRng>(rng: T) -> Self::Secret {
         Self::Secret::random(rng)
@@ -35,5 +39,31 @@ impl AsymmetricKey for Curve25519_2HashDH {
     }
     fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
         vrf::PublicKey::from_bytes(data)
+    }
+}
+
+impl VerifiableRandomFunction for Curve25519_2HashDH {
+    type VerifiedRandom = vrf::ProvenOutputSeed;
+    type Input = [u8];
+
+    fn evaluate<T: RngCore + CryptoRng>(
+        secret: &Self::Secret,
+        input: &Self::Input,
+        mut rng: T,
+    ) -> Self::VerifiedRandom {
+        secret.evaluate_simple(&mut rng, input)
+    }
+
+    fn verify(
+        public: &Self::Public,
+        input: &Self::Input,
+        vrand: &Self::VerifiedRandom,
+    ) -> Verification {
+        let v = vrand.verify(public, input);
+        if v {
+            Verification::Success
+        } else {
+            Verification::Failed
+        }
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    block::Block,
-    leadership::{Error, PublicLeader},
+    block::{Block, Header, Proof},
+    leadership::{self, Error, ErrorKind, Verification},
 };
 use chain_core::property::{self, LeaderSelection};
 
@@ -14,15 +14,17 @@ use chain_core::property::{self, LeaderSelection};
 /// a `NoLeadership` block
 pub struct NoLeadership;
 
-/// error that may happen during the NoLeadership mod
-#[derive(Debug)]
-pub enum NoLeadershipError {
-    IncompatibleBlockVersion,
-    BlockProofIsDifferent,
+impl NoLeadership {
+    pub(crate) fn verify(&self, block_header: &Header) -> Verification {
+        match &block_header.proof() {
+            Proof::None => Verification::Success,
+            _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+        }
+    }
 }
 
 impl LeaderSelection for NoLeadership {
-    type LeaderId = PublicLeader;
+    type LeaderId = leadership::LeaderId;
     type Block = Block;
     type Error = Error;
 
@@ -30,22 +32,6 @@ impl LeaderSelection for NoLeadership {
         &self,
         _date: <Self::Block as property::Block>::Date,
     ) -> Result<Self::LeaderId, Self::Error> {
-        Ok(PublicLeader::None)
+        Ok(leadership::LeaderId::None)
     }
 }
-
-impl std::fmt::Display for NoLeadershipError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            NoLeadershipError::IncompatibleBlockVersion => {
-                write!(f, "The block version does no allow a NoLeadership mod")
-            }
-            NoLeadershipError::BlockProofIsDifferent => write!(
-                f,
-                "The block proof is different from the expected NoLeadership mod"
-            ),
-        }
-    }
-}
-
-impl std::error::Error for NoLeadershipError {}

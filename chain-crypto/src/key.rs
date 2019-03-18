@@ -22,6 +22,9 @@ pub trait AsymmetricKey {
     const SECRET_BECH32_HRP: &'static str;
     const PUBLIC_BECH32_HRP: &'static str;
 
+    const SECRET_KEY_SIZE: usize;
+    const PUBLIC_KEY_SIZE: usize;
+
     fn generate<T: RngCore + CryptoRng>(rng: T) -> Self::Secret;
 
     fn compute_public(secret: &Self::Secret) -> Self::Public;
