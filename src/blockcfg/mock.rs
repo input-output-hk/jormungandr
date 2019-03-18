@@ -13,18 +13,16 @@ impl BlockConfig for Mockchain {
     type BlockDate = block::BlockDate;
     type BlockHash = key::Hash;
     type BlockHeader = block::Header;
-    type Transaction = transaction::SignedTransaction;
-    type TransactionId = transaction::TransactionId;
+    type Message = block::Message;
+    type MessageId = block::message::MessageId;
     type GenesisData = GenesisData;
-    type Ledger = ledger::Ledger;
-    type Settings = setting::Settings;
-    type Leader = leadership::genesis::GenesisLeaderSelection;
-    type Update = update::Diff;
+    type State = state::State;
 
     type NodeSigningKey = leadership::Leader;
 
     type Gossip = p2p::Gossip;
 
+/*
     fn make_block(
         _secret_key: &Self::NodeSigningKey,
         settings: &Self::Settings,
@@ -53,6 +51,7 @@ impl BlockConfig for Mockchain {
 
         block::Block::new(content, common, &mut leadership::Leader::None)
     }
+    */
 }
 
 impl network_grpc::client::ProtocolConfig for Mockchain {

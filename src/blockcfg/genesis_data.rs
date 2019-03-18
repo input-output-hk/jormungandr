@@ -4,6 +4,8 @@ use chain_addr::AddressReadable;
 use chain_crypto::{self, AsymmetricKey, Ed25519Extended};
 use chain_impl_mockchain::leadership::LeaderId;
 use chain_impl_mockchain::{
+    block::{Block, BlockBuilder, Message, BLOCK_VERSION_CONSENSUS_BFT},
+    setting::UpdateProposal,
     transaction::{self, Output, UtxoPointer},
     value::Value,
 };
@@ -54,6 +56,22 @@ impl ConfigGenesisData {
             initial_utxos: genesis.initial_utxos,
             bft_leaders: genesis.bft_leaders,
         }
+    }
+}
+impl GenesisData {
+    pub fn to_block_0(self) -> Block {
+        let mut block_builder = BlockBuilder::new();
+        block_builder.message(Message::Update(UpdateProposal {
+            // TODO: this is not known yet
+            max_number_of_transactions_per_block: None,
+            // we are switching to BFT mode straight after this block
+            // so we don't need yet the GenesisPraos bootstrap d parameter
+            bootstrap_key_slots_percentage: None,
+            block_version: Some(BLOCK_VERSION_CONSENSUS_BFT),
+            bft_leaders: Some(self.bft_leaders.into_iter().map(|pk| pk.0).collect()),
+        }));
+        // TODO: the name is confusing here. this is the block 0 (not a genesis block)
+        block_builder.make_genesis_block()
     }
 }
 
@@ -128,7 +146,10 @@ impl GenesisData {
                 outputs: vec![],
             };
             while let Some(iu) = initial_utxo.next() {
-                let output = Output(iu.address.to_address(), iu.value.clone());
+                let output = Output {
+                    address: iu.address.to_address(),
+                    value: iu.value.clone(),
+                };
                 transaction.outputs.push(output);
                 if transaction.outputs.len() == 255 {
                     break;

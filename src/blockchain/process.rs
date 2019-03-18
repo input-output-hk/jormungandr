@@ -4,7 +4,7 @@ use crate::intercom::BlockMsg;
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::task::TaskBroadcastBox;
 
-use chain_core::property::{self, HasHeader};
+use chain_core::property::HasHeader;
 
 use std::fmt::Debug;
 
@@ -16,9 +16,6 @@ pub fn process<Chain>(
 ) where
     Chain: BlockConfig,
     Chain::BlockHeader: Debug,
-    <Chain::Ledger as property::Ledger>::Update: Clone,
-    <Chain::Settings as property::Settings>::Update: Clone,
-    <Chain::Leader as property::LeaderSelection>::Update: Clone,
 {
     let res = match bquery {
         BlockMsg::LeadershipBlock(block) => {
