@@ -1,11 +1,10 @@
 use crate::{
     block::{
-        Block, BlockVersion, Header, Proof, BLOCK_VERSION_CONSENSUS_BFT,
-        BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
+        BlockVersion, Header, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
+        BLOCK_VERSION_CONSENSUS_NONE,
     },
     state::State,
 };
-use chain_core::property::Block as _;
 use chain_crypto::algorithms::vrf::vrf::ProvenOutputSeed;
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
 
