@@ -1,8 +1,8 @@
 //! Generic Genesis data
 use bech32::{Bech32, FromBase32, ToBase32};
-use chain_addr::AddressReadable;
+use chain_addr::{Address, AddressReadable};
 use chain_crypto::{self, AsymmetricKey, Ed25519Extended};
-use chain_impl_mockchain::leadership::LeaderId;
+use chain_impl_mockchain::leadership::bft::LeaderId;
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder, Message, BLOCK_VERSION_CONSENSUS_BFT},
     setting::UpdateProposal,
@@ -135,7 +135,7 @@ impl GenesisData {
         self.bft_leaders.iter().map(|pk| &pk.0)
     }
 
-    pub fn initial_utxos(&self) -> HashMap<UtxoPointer, Output> {
+    pub fn initial_utxos(&self) -> HashMap<UtxoPointer, Output<Address>> {
         use chain_core::property::Transaction;
 
         let mut utxos = HashMap::new();
@@ -155,12 +155,12 @@ impl GenesisData {
                     break;
                 }
             }
-            let txid = transaction.id();
+            let txid = transaction.hash();
             for (index, output) in transaction.outputs.into_iter().enumerate() {
                 let ptr = UtxoPointer {
                     transaction_id: txid,
-                    output_index: index as u32,
-                    value: output.1.clone(),
+                    output_index: index as u8,
+                    value: output.value.clone(),
                 };
                 utxos.insert(ptr, output);
             }

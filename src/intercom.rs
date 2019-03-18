@@ -304,9 +304,9 @@ where
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg<B: BlockConfig> {
-    ProposeTransaction(Vec<B::TransactionId>, ReplyHandle<Vec<bool>>),
-    SendTransaction(Vec<B::Transaction>),
-    GetTransactions(Vec<B::TransactionId>, ReplyStreamHandle<B::Transaction>),
+    ProposeTransaction(Vec<B::MessageId>, ReplyHandle<Vec<bool>>),
+    SendTransaction(Vec<B::Message>),
+    GetTransactions(Vec<B::MessageId>, ReplyStreamHandle<B::Message>),
 }
 
 /// Client messages, mainly requests from connected peers to our node.

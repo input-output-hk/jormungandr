@@ -64,7 +64,7 @@ use blockcfg::{
 };
 use blockchain::{Blockchain, BlockchainR};
 use chain_crypto::{
-    Curve25519_2HashDH, AsymmetricKey, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
+    AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
 };
 use intercom::BlockMsg;
 use leadership::leadership_task;
@@ -83,7 +83,7 @@ pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
 pub mod clock;
-pub mod consensus;
+// pub mod consensus;
 pub mod intercom;
 pub mod leadership;
 pub mod network;

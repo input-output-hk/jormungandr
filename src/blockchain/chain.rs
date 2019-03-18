@@ -59,7 +59,9 @@ impl Blockchain<Mockchain> {
     pub fn new(genesis_data: GenesisData) -> Self {
         let state = State::new();
         let block_0 = genesis_data.to_block_0();
-        let state = state.apply(&block_0.header, block_0.messages()).unwrap();
+        let state = state
+            .apply_block(&block_0.header, block_0.messages())
+            .unwrap();
 
         let mut storage = MemoryBlockStore::new();
         storage.put_block(&block_0);
@@ -94,7 +96,7 @@ impl<B: BlockConfig> Blockchain<B> {
     fn handle_connected_block(&mut self, block_hash: B::BlockHash, block: B::Block) {
         let current_tip = self.state.tip();
 
-        match self.state.apply(&block.header(), block.messages()) {
+        match self.state.apply_block(&block.header(), block.messages()) {
             Ok(state) => {
                 self.storage.put_block(&block).unwrap();
                 if block_hash != current_tip {
