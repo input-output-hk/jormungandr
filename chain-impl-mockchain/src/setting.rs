@@ -1,7 +1,6 @@
 //! define the Blockchain settings
 //!
 
-use crate::update::ValueDiff;
 use crate::{
     block::{BlockDate, BlockId, BlockVersion, BLOCK_VERSION_CONSENSUS_NONE},
     key::Hash,
@@ -188,84 +187,5 @@ impl property::Settings for Settings {
 
     fn block_version(&self) -> <Self::Block as property::Block>::Version {
         self.block_version
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct SettingsDiff {
-    pub block_id: ValueDiff<Hash>,
-    pub block_date: ValueDiff<BlockDate>,
-    pub bootstrap_key_slots_percentage: ValueDiff<u8>,
-    pub block_version: ValueDiff<BlockVersion>,
-    pub bft_leaders: ValueDiff<Vec<bft::LeaderId>>,
-}
-
-impl property::Update for SettingsDiff {
-    fn empty() -> Self {
-        SettingsDiff {
-            block_id: ValueDiff::None,
-            block_date: ValueDiff::None,
-            bootstrap_key_slots_percentage: ValueDiff::None,
-            block_version: ValueDiff::None,
-            bft_leaders: ValueDiff::None,
-        }
-    }
-    fn inverse(self) -> Self {
-        SettingsDiff {
-            block_id: self.block_id.inverse(),
-            block_date: self.block_date.inverse(),
-            bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage.inverse(),
-            block_version: self.block_version.inverse(),
-            bft_leaders: self.bft_leaders.inverse(),
-        }
-    }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.block_id.union(other.block_id);
-        self.block_date.union(other.block_date);
-        self.bootstrap_key_slots_percentage
-            .union(other.bootstrap_key_slots_percentage);
-        self.block_version.union(other.block_version);
-        self.bft_leaders.union(other.bft_leaders);
-        self
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chain_core::property::testing;
-    use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for SettingsDiff {
-        fn arbitrary<G: Gen>(g: &mut G) -> SettingsDiff {
-            SettingsDiff {
-                block_version: ValueDiff::None,
-                block_date: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-                block_id: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-                bootstrap_key_slots_percentage: ValueDiff::Replace(
-                    Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
-                ),
-                bft_leaders: ValueDiff::None,
-            }
-        }
-    }
-
-    quickcheck! {
-        /*
-        FIXME: add tests for checking associativity of diffs on
-        randomly generated values of the type we're diffing.
-
-        fn settings_diff_union_is_associative(types: (SettingsDiff, SettingsDiff, SettingsDiff)) -> bool {
-            testing::update_associativity(types.0, types.1, types.2)
-        }
-        */
-        fn settings_diff_union_has_identity_element(settings_diff: SettingsDiff) -> bool {
-            testing::update_identity_element(settings_diff)
-        }
-        fn settings_diff_union_has_inverse_element(settings_diff: SettingsDiff) -> bool {
-            testing::update_inverse_element(settings_diff)
-        }
-
     }
 }

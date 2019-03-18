@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use chain_addr::Address;
 use chain_core::property::Update;
 
-use crate::setting::SettingsDiff;
 use crate::transaction::{Output, UtxoPointer};
 
 /// Diff between the 2 state of the blockchain.
@@ -14,9 +13,6 @@ use crate::transaction::{Output, UtxoPointer};
 pub struct Diff {
     /// these are the diff for the transaction
     pub transactions_diff: TransactionsDiff,
-
-    /// settings diff
-    pub settings_diff: SettingsDiff,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -99,18 +95,15 @@ impl Update for Diff {
     fn empty() -> Self {
         Diff {
             transactions_diff: TransactionsDiff::empty(),
-            settings_diff: SettingsDiff::empty(),
         }
     }
     fn inverse(self) -> Self {
         Diff {
             transactions_diff: self.transactions_diff.inverse(),
-            settings_diff: self.settings_diff.inverse(),
         }
     }
     fn union(&mut self, other: Self) -> &mut Self {
         self.transactions_diff.union(other.transactions_diff);
-        self.settings_diff.union(other.settings_diff);
         self
     }
 }
@@ -165,7 +158,6 @@ mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> Diff {
             Diff {
                 transactions_diff: Arbitrary::arbitrary(g),
-                settings_diff: Arbitrary::arbitrary(g),
             }
         }
     }

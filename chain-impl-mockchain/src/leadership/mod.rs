@@ -6,8 +6,8 @@ use crate::{
     state::State,
 };
 use chain_core::property::Block as _;
-use chain_crypto::algorithms::vrf::vrf::{self, ProvenOutputSeed};
-use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
+use chain_crypto::algorithms::vrf::vrf::ProvenOutputSeed;
+use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
 
 pub mod bft;
 pub mod genesis;
