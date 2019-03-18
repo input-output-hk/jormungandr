@@ -11,7 +11,6 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 pub enum Command {
     Start(start::Settings),
     Init(init::Settings),
-    GenerateKeys,
     GeneratePrivKey(GeneratePrivKeyArguments),
     GeneratePubKey,
 }
@@ -33,7 +32,6 @@ impl Command {
             ArgCommand::Start(ref args) => start::Settings::load(&command_line, args)
                 .map(Command::Start)
                 .map_err(Error::Start),
-            ArgCommand::GenerateKeys => Ok(Command::GenerateKeys),
             ArgCommand::GeneratePrivKey(args) => Ok(Command::GeneratePrivKey(args)),
             ArgCommand::GeneratePubKey => Ok(Command::GeneratePubKey),
         }
