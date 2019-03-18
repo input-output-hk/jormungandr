@@ -1,9 +1,12 @@
 use crate::block::{Block, Header, Proof};
 use crate::key::{deserialize_public_key, serialize_public_key};
-use crate::leadership::{self, Error, ErrorKind, Verification};
-
+use crate::{
+    leadership::{self, Error, ErrorKind, Verification},
+    state::State,
+};
 use chain_core::property::{self, LeaderSelection};
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
+use std::rc::Rc;
 
 /// cryptographic signature algorithm used for the BFT leadership
 /// protocol.
@@ -22,17 +25,19 @@ pub struct BftRoundRobinIndex(u64);
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
 pub struct BftLeaderSelection {
-    pub(crate) leaders: Vec<LeaderId>,
+    pub(crate) leaders: Rc<Vec<LeaderId>>,
 }
 
 impl BftLeaderSelection {
     /// Create a new BFT leadership
-    pub fn new(leaders: Vec<LeaderId>) -> Option<Self> {
-        if leaders.len() == 0 {
+    pub fn new(state: &State) -> Option<Self> {
+        if state.settings.bft_leaders.len() == 0 {
             return None;
         }
 
-        Some(BftLeaderSelection { leaders: leaders })
+        Some(BftLeaderSelection {
+            leaders: state.settings.bft_leaders.clone(),
+        })
     }
 
     #[inline]

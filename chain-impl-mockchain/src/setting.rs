@@ -7,6 +7,7 @@ use crate::{
     leadership::bft,
 };
 use chain_core::property::{self, BlockId as _};
+use std::rc::Rc;
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -113,10 +114,10 @@ impl property::Deserialize for UpdateProposal {
 pub struct Settings {
     pub last_block_id: BlockId,
     pub last_block_date: BlockDate,
-    pub max_number_of_transactions_per_block: u32,
-    pub bootstrap_key_slots_percentage: u8, // == d * 100
-    pub block_version: BlockVersion,
-    pub bft_leaders: Vec<bft::LeaderId>,
+    pub max_number_of_transactions_per_block: Rc<u32>,
+    pub bootstrap_key_slots_percentage: Rc<u8>, // == d * 100
+    pub block_version: Rc<BlockVersion>,
+    pub bft_leaders: Rc<Vec<bft::LeaderId>>,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -126,10 +127,10 @@ impl Settings {
         Self {
             last_block_id: Hash::zero(),
             last_block_date: BlockDate::first(),
-            max_number_of_transactions_per_block: 100,
-            bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
-            block_version: BLOCK_VERSION_CONSENSUS_NONE,
-            bft_leaders: Vec::new(),
+            max_number_of_transactions_per_block: Rc::new(100),
+            bootstrap_key_slots_percentage: Rc::new(SLOTS_PERCENTAGE_RANGE),
+            block_version: Rc::new(BLOCK_VERSION_CONSENSUS_NONE),
+            bft_leaders: Rc::new(Vec::new()),
         }
     }
 
@@ -138,16 +139,17 @@ impl Settings {
         if let Some(max_number_of_transactions_per_block) =
             update.max_number_of_transactions_per_block
         {
-            new_state.max_number_of_transactions_per_block = max_number_of_transactions_per_block;
+            new_state.max_number_of_transactions_per_block =
+                Rc::new(max_number_of_transactions_per_block);
         }
         if let Some(bootstrap_key_slots_percentage) = update.bootstrap_key_slots_percentage {
-            new_state.bootstrap_key_slots_percentage = bootstrap_key_slots_percentage;
+            new_state.bootstrap_key_slots_percentage = Rc::new(bootstrap_key_slots_percentage);
         }
         if let Some(block_version) = update.block_version {
-            new_state.block_version = block_version;
+            new_state.block_version = Rc::new(block_version);
         }
         if let Some(leaders) = update.bft_leaders {
-            new_state.bft_leaders = leaders;
+            new_state.bft_leaders = Rc::new(leaders);
         }
         new_state
     }
@@ -182,10 +184,10 @@ impl property::Settings for Settings {
     }
 
     fn max_number_of_transactions_per_block(&self) -> u32 {
-        self.max_number_of_transactions_per_block
+        *self.max_number_of_transactions_per_block
     }
 
     fn block_version(&self) -> <Self::Block as property::Block>::Version {
-        self.block_version
+        *self.block_version
     }
 }
