@@ -1,10 +1,7 @@
 extern crate chain_core;
 extern crate prost;
-#[macro_use]
-extern crate prost_derive;
 extern crate tower_grpc;
 extern crate tower_h2;
-extern crate tower_util;
 
 // Generated protobuf/gRPC code.
 #[allow(dead_code)]
