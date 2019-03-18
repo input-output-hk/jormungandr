@@ -17,6 +17,8 @@ pub mod none;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
+    Failure,
+    NoLeaderForThisSlot,
     IncompatibleBlockVersion,
     IncompatibleLeadershipMode,
     InvalidLeader,
@@ -139,6 +141,8 @@ impl Error {
 impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            ErrorKind::Failure => write!(f, "The current state of the leader selection is invalid"),
+            ErrorKind::NoLeaderForThisSlot => write!(f, "No leader available for this block date"),
             ErrorKind::IncompatibleBlockVersion => {
                 write!(f, "The block Version is incompatible with LeaderSelection.")
             }

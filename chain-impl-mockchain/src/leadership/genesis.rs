@@ -39,181 +39,86 @@ impl GenesisPraosLeader {
 pub struct GenesisLeaderSelection {
     delegation_state: DelegationState,
     distribution: StakeDistribution,
-}
-
-#[derive(Debug, Clone)]
-struct Pos {
-    next_date: BlockDate,
-    bft_blocks: usize,
-    genesis_blocks: usize, // FIXME: "genesis block" is rather ambiguous...
+    // the epoch this leader selection is valid for
+    epoch: Epoch,
 }
 
 impl GenesisLeaderSelection {
     pub fn new(state: &State) -> Self {
         let stake_distribution = get_stake_distribution(&state.delegation, &state.ledger);
+        // TODO: get this info from the state
+        let epoch_state = 0;
+
+        // TODO: get this info from the settings ? or is it static ?
+        let leader_selection_snapshot_interval = 2;
 
         GenesisLeaderSelection {
             distribution: stake_distribution,
             delegation_state: state.delegation.clone(),
+            epoch: epoch_state + leader_selection_snapshot_interval,
         }
     }
 
-    /*
-    pub fn new(
-        bft_leaders: Vec<BftLeader>,
-        ledger: Arc<RwLock<Ledger>>,
-        settings: Arc<RwLock<Settings>>,
-        initial_stake_pools: Vec<StakePoolInfo>,
-        initial_stake_keys: HashMap<StakeKeyId, Option<StakePoolId>>,
-    ) -> Option<Self> {
-        if bft_leaders.len() == 0 {
-            return None;
+    pub fn leader(&self, date: BlockDate) -> Result<Option<GenesisPraosLeader>, Error> {
+        if date.epoch != self.epoch {
+            // TODO: add more error details: invalid Date
+            return Err(Error::new(ErrorKind::Failure));
         }
 
-        let mut result = GenesisLeaderSelection {
-            ledger,
-            settings,
-            bft_leaders: bft_leaders,
-            pos: Pos {
-                next_date: BlockDate::first(),
-                bft_blocks: 0,
-                genesis_blocks: 0,
-            },
-            delegation_state: DelegationState::new(initial_stake_pools, initial_stake_keys),
-            stake_snapshots: BTreeMap::new(),
+        let stake_snapshot = &self.distribution;
+
+        // If we didn't have eligible stake pools in the epoch
+        // used for sampling, then we have to use BFT rules.
+        // FIXME: require a certain minimum number of stake pools?
+        let have_stakeholders = stake_snapshot.eligible_stake_pools() > 0;
+
+        // FIXME: the following is a placeholder for a
+        // proper VRF-based leader selection.
+
+        // Calculate the total stake.
+        let total_stake: Value = stake_snapshot.total_stake();
+
+        if total_stake.0 == 0 {
+            // TODO: give more info about the error here...
+            return Err(Error::new(ErrorKind::Failure));
+        }
+
+        // Pick a random point in the range [0, total_stake).
+        let mut rng: rand::rngs::StdRng =
+            SeedableRng::seed_from_u64((date.epoch as u64) << 32 | date.slot_id as u64);
+        let point = rng.gen_range(0, total_stake.0);
+
+        // Select the stake pool containing the point we
+        // picked.
+        let pool_id = stake_snapshot.select_pool(point).unwrap();
+        let pool_info = self
+            .delegation_state
+            .get_stake_pools()
+            .get(&pool_id)
+            .unwrap();
+        let keys = GenesisPraosLeader {
+            kes_public_key: pool_info.kes_public_key.clone(),
+            // TODO: crypto was not valid here: fix me
+            vrf_public_key: unimplemented!(),
         };
 
-        result
-            .stake_snapshots
-            .insert(0, result.get_stake_distribution());
-
-        Some(result)
-    }*/
-    fn advance_to(&self, to_date: BlockDate) -> (Pos, GenesisPraosLeader) {
-        let state_epoch = if self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0 {
-            self.pos.next_date.epoch - 1
-        } else {
-            self.pos.next_date.epoch
-        };
-
-        let mut now = self.pos.clone();
-
-        let d = self.settings.read().unwrap().bootstrap_key_slots_percentage;
-
-        loop {
-            assert!(now.next_date <= to_date);
-
-            let done = now.next_date == to_date;
-
-            let cur_epoch = now.next_date.epoch;
-
-            now.next_date = now.next_date.next();
-
-            // Base leadership selection on the stake distribution at
-            // the start of the previous epoch.
-            let stake_snapshot = if cur_epoch == 0 {
-                // We're still in the first epoch, so use the initial stake distribution.
-                Cow::Borrowed(&self.stake_snapshots[&0])
-            } else if cur_epoch == state_epoch || cur_epoch == state_epoch + 1 {
-                if let Some(snapshot) = self.stake_snapshots.get(&(cur_epoch - 1)) {
-                    // Use the stake distribution at the start of the previous epoch.
-                    Cow::Borrowed(snapshot)
-                } else {
-                    // We don't have the stake distribution at the
-                    // start of the previous epoch, which can happen
-                    // if the last block skipped a whole epoch. So use
-                    // the distribution at the start of that block's
-                    // epoch. The distribution in the epoch before
-                    // must be the same, since there were no blocks
-                    // that could have changed it.
-                    assert_eq!(self.stake_snapshots.len(), 1);
-                    Cow::Borrowed(&self.stake_snapshots[&(cur_epoch)])
-                }
-            } else if cur_epoch > state_epoch + 1 {
-                // We've advanced so far that we to use the current
-                // snapshot. FIXME: cache this across the loop.
-                Cow::Owned(self.get_stake_distribution())
-            } else {
-                unreachable!()
-            };
-
-            // If we didn't have eligible stake pools in the epoch
-            // used for sampling, then we have to use BFT rules.
-            // FIXME: require a certain minimum number of stake pools?
-            let have_stakeholders = stake_snapshot.eligible_stake_pools() > 0;
-
-            let is_bft_slot = d == setting::SLOTS_PERCENTAGE_RANGE
-                || !have_stakeholders
-                || now.bft_blocks * (setting::SLOTS_PERCENTAGE_RANGE as usize)
-                    < (d as usize) * (now.bft_blocks + now.genesis_blocks);
-
-            if is_bft_slot {
-                let cur_bft_leader = now.bft_blocks;
-                now.bft_blocks += 1;
-                if done {
-                    return (
-                        now,
-                        PublicLeader::Bft(
-                            self.bft_leaders[cur_bft_leader % self.bft_leaders.len()].clone(),
-                        ),
-                    );
-                }
-            } else {
-                now.genesis_blocks += 1;
-                if done {
-                    // FIXME: the following is a placeholder for a
-                    // proper VRF-based leader selection.
-
-                    // Calculate the total stake.
-                    let total_stake: Value = stake_snapshot.total_stake();
-
-                    assert!(total_stake.0 > 0);
-
-                    // Pick a random point in the range [0, total_stake).
-                    let mut rng: rand::rngs::StdRng = SeedableRng::seed_from_u64(
-                        (to_date.epoch as u64) << 32 | to_date.slot_id as u64,
-                    );
-                    let point = rng.gen_range(0, total_stake.0);
-
-                    // Select the stake pool containing the point we
-                    // picked.
-                    let pool_id = stake_snapshot.select_pool(point).unwrap();
-                    let pool_info = self
-                        .delegation_state
-                        .get_stake_pools()
-                        .get(&pool_id)
-                        .unwrap();
-                    let keys = GenesisPraosLeader {
-                        kes_public_key: pool_info.kes_public_key.clone(),
-                        vrf_public_key: pool_info.vrf_public_key.clone(),
-                    };
-                    return (now, PublicLeader::GenesisPraos(keys));
-                }
-            }
-        }
-    }
-
-    pub fn get_stake_distribution(&self) -> StakeDistribution {
-        self.delegation_state
-            .get_stake_distribution(&self.ledger.read().unwrap())
-    }
-
-    pub fn get_delegation_state(&self) -> &DelegationState {
-        &self.delegation_state
+        Ok(Some(keys))
     }
 }
 
 impl LeaderSelection for GenesisLeaderSelection {
     type Block = Block;
     type Error = Error;
-    type LeaderId = PublicLeader;
+    type LeaderId = LeaderId;
 
     fn get_leader_at(
         &self,
         date: <Self::Block as property::Block>::Date,
     ) -> Result<Self::LeaderId, Self::Error> {
-        let (_pos, stakeholder_id) = self.advance_to(date);
-        Ok(stakeholder_id)
+        match self.leader(date)? {
+            Some(keys) => Ok(LeaderId::GenesisPraos(keys)),
+            None => Err(Error::new(ErrorKind::NoLeaderForThisSlot)),
+        }
     }
 }
 
