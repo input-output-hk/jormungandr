@@ -100,6 +100,17 @@ impl property::Deserialize for LeaderId {
     }
 }
 
+impl AsRef<[u8]> for LeaderId {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+impl From<PublicKey<SIGNING_ALGORITHM>> for LeaderId {
+    fn from(v: PublicKey<SIGNING_ALGORITHM>) -> Self {
+        LeaderId(v)
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use super::*;
