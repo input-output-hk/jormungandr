@@ -11,9 +11,11 @@ use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
 use rand::{Rng, SeedableRng};
 
+/// Hash of GenesisPraosLeader
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GenesisPraosId(Hash);
 
+/// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenesisPraosLeader {
     pub(crate) kes_public_key: PublicKey<FakeMMM>,
@@ -22,7 +24,10 @@ pub struct GenesisPraosLeader {
 
 impl GenesisPraosLeader {
     pub fn get_id(&self) -> GenesisPraosId {
-        unimplemented!()
+        let mut v = Vec::new();
+        v.extend_from_slice(self.vrf_public_key.as_ref());
+        v.extend_from_slice(self.kes_public_key.as_ref());
+        GenesisPraosId(Hash::hash_bytes(&v))
     }
 }
 
