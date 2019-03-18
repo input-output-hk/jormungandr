@@ -14,7 +14,6 @@ extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate clap;
 extern crate cryptoxide;
-extern crate curve25519_dalek;
 extern crate exe_common;
 extern crate futures;
 extern crate generic_array;
