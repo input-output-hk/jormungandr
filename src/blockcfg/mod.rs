@@ -32,7 +32,7 @@ pub trait BlockConfig {
         + Send
         + Sync
         + Debug;
-    type Message: Message + Send + Clone;
+    type Message: Message<Id = Self::MessageId> + Send + Clone;
     type MessageId: MessageId + Send;
     type GenesisData;
 
