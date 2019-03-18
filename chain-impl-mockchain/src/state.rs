@@ -15,6 +15,7 @@ pub struct State {
     pub(crate) delegation: DelegationState,
 }
 
+#[derive(Debug)]
 pub enum Error {
     LedgerError(ledger::Error),
     Delegation(leadership::Error),
@@ -68,6 +69,23 @@ impl State {
             ledger: Ledger::new(),
             settings: setting::Settings::new(),
             delegation: DelegationState::new(Vec::new(), std::collections::HashMap::new()),
+        }
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::Delegation(error) => error.fmt(f),
+            Error::LedgerError(error) => error.fmt(f),
+        }
+    }
+}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Delegation(error) => error.source(),
+            Error::LedgerError(error) => error.source(),
         }
     }
 }
