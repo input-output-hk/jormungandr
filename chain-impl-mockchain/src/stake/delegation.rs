@@ -249,7 +249,8 @@ impl DelegationState {
                     ));
                 }
 
-                if let Some(old) = new_state.register_stake_key(reg.data.stake_key_id.clone()) {
+                if let Some(_original) = new_state.register_stake_key(reg.data.stake_key_id.clone())
+                {
                     // FIXME: error stake key already registered
                     return Err(Error::new_(
                         ErrorKind::InvalidBlockMessage,
