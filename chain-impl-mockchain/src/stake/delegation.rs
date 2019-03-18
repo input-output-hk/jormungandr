@@ -136,9 +136,9 @@ impl DelegationState {
         let stake_key_info = self.stake_keys.remove(&stake_key_id)?;
 
         // Remove this stake key from its pool, if any.
-        if let Some(pool_id) = stake_key_info.pool {
+        if let Some(ref pool_id) = &stake_key_info.pool {
             self.stake_pools
-                .get_mut(&pool_id)
+                .get_mut(pool_id)
                 .unwrap()
                 .members
                 .remove(&stake_key_id);
@@ -240,7 +240,7 @@ impl DelegationState {
                     ));
                 }
 
-                new_state.delegate_stake(reg.data.stake_key_id, reg.data.pool_id);
+                new_state.delegate_stake(reg.data.stake_key_id.clone(), reg.data.pool_id.clone());
             }
             Message::StakeKeyRegistration(reg) => {
                 if verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
@@ -252,7 +252,7 @@ impl DelegationState {
                     ));
                 }
 
-                if let Some(old) = new_state.register_stake_key(reg.data.stake_key_id) {
+                if let Some(old) = new_state.register_stake_key(reg.data.stake_key_id.clone()) {
                     // FIXME: error stake key already registered
                     return Err(Error::new_(
                         ErrorKind::InvalidBlockMessage,
@@ -270,7 +270,7 @@ impl DelegationState {
                     ));
                 }
 
-                if let None = self.deregister_stake_key(&reg.data.stake_key_id) {
+                if let None = new_state.deregister_stake_key(&reg.data.stake_key_id) {
                     return Err(Error::new_(
                         ErrorKind::InvalidBlockMessage,
                         Box::new(DelegationError::StakeKeyDeregistrationDoesNotExist),
@@ -287,7 +287,7 @@ impl DelegationState {
                     ));
                 }
 
-                if self.stake_pool_exists(&reg.data.pool_id) {
+                if new_state.stake_pool_exists(&reg.data.pool_id) {
                     // FIXME: support re-registration to change pool parameters.
                     return Err(Error::new_(
                         ErrorKind::InvalidBlockMessage,
@@ -303,7 +303,7 @@ impl DelegationState {
 
                 new_state.register_stake_pool(
                     reg.data.pool_id.clone(),
-                    reg.data.kes_public_key,
+                    reg.data.kes_public_key.clone(),
                     unimplemented!(), // reg.data.vrf_public_key, // TODO: crypto is invalid here...
                 );
             }
