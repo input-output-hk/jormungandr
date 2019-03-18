@@ -64,7 +64,7 @@ use blockcfg::{
 };
 use blockchain::{Blockchain, BlockchainR};
 use chain_crypto::{
-    vrf::Curve25519_2HashDH, AsymmetricKey, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
+    Curve25519_2HashDH, AsymmetricKey, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
 };
 use intercom::BlockMsg;
 use leadership::leadership_task;
