@@ -4,6 +4,7 @@ mod utxo;
 mod witness;
 
 use crate::value::*;
+use crate::certificate::{Certificate};
 use chain_addr::Address;
 use chain_core::property;
 
@@ -72,6 +73,7 @@ impl property::Deserialize for Transaction<Address> {
         Ok(transaction)
     }
 }
+
 impl property::Deserialize for SignedTransaction<Address> {
     type Error = std::io::Error;
 
@@ -134,6 +136,40 @@ where
     }
 }
 */
+
+/// Each transaction must be signed in order to be executed
+/// by the ledger. `SignedTransaction` represents such a transaction.
+#[derive(Debug, Clone)]
+pub struct SignedCertificateTransaction<OutAddress> {
+    pub transaction: Transaction<OutAddress>,
+    pub witnesses: Vec<Witness>,
+    pub certificate: Certificate,
+}
+
+impl property::Serialize for SignedCertificateTransaction<Address> {
+    type Error = std::io::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+
+        let mut codec = Codec::from(writer);
+        codec.put_u8(0x01)?;
+
+        assert_eq!(self.transaction.inputs.len(), self.witnesses.len());
+
+        // encode the transaction body
+        self.transaction.serialize(&mut codec)?;
+
+        // serialize transaction
+        self.certificate.serialize(&mut codec)?;
+
+        // encode the signatures
+        for witness in self.witnesses.iter() {
+            witness.serialize(&mut codec)?;
+        }
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod test {
