@@ -3,7 +3,7 @@ use crate::{
     leadership::genesis::GenesisPraosId,
 };
 use chain_core::property;
-use chain_crypto::{algorithms::vrf::vrf, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
+use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,7 +19,7 @@ pub struct StakePoolInfo {
     pub pool_id: GenesisPraosId,
     pub owner: StakeKeyId,
     pub members: HashSet<StakeKeyId>,
-    pub vrf_public_key: vrf::PublicKey,
+    pub vrf_public_key: PublicKey<Curve25519_2HashDH>,
     pub kes_public_key: PublicKey<FakeMMM>,
 }
 

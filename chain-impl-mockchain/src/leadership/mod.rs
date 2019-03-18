@@ -3,8 +3,6 @@ use crate::{
         Block, BlockVersion, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
         BLOCK_VERSION_CONSENSUS_NONE,
     },
-    key::Hash,
-    setting::Settings,
     state::State,
 };
 use chain_core::property::Block as _;

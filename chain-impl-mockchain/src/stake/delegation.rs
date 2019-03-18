@@ -3,7 +3,7 @@ use crate::{
     key::verify_signature,
     leadership::{genesis::GenesisPraosId, Error, ErrorKind},
 };
-use chain_crypto::{algorithms::vrf::vrf, Curve25519_2HashDH, FakeMMM, PublicKey};
+use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
 use std::collections::{HashMap, HashSet};
 
 use super::role::{StakeKeyId, StakeKeyInfo, StakePoolInfo};
@@ -156,7 +156,7 @@ impl DelegationState {
         pool_id: GenesisPraosId,
         owner: StakeKeyId,
         kes_public_key: PublicKey<FakeMMM>,
-        vrf_public_key: vrf::PublicKey,
+        vrf_public_key: PublicKey<Curve25519_2HashDH>,
     ) {
         assert!(!self.stake_pools.contains_key(&pool_id));
         self.stake_pools.insert(
@@ -302,7 +302,7 @@ impl DelegationState {
                     reg.data.pool_id.clone(),
                     reg.data.owner.clone(),
                     reg.data.kes_public_key.clone(),
-                    unimplemented!(), // reg.data.vrf_public_key, // TODO: crypto is invalid here...
+                    reg.data.vrf_public_key.clone(),
                 );
             }
             Message::StakePoolRetirement(reg) => {

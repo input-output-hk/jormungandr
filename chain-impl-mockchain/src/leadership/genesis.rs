@@ -1,24 +1,15 @@
 use crate::{
-    block::{Block, BlockDate, Message, Proof},
-    certificate,
+    block::{Block, BlockDate},
     date::Epoch,
     key::Hash,
-    leadership::{bft, Error, ErrorKind, LeaderId},
-    ledger::Ledger,
-    setting::{self, Settings},
+    leadership::{Error, ErrorKind, LeaderId},
     stake::{get_stake_distribution, DelegationState, StakeDistribution},
     state::State,
-    update::ValueDiff,
     value::Value,
 };
-use chain_core::property::{self, Block as _, LeaderSelection, Update as _};
+use chain_core::property::{self, LeaderSelection};
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
 use rand::{Rng, SeedableRng};
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, HashMap, HashSet},
-    sync::{Arc, RwLock},
-};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GenesisPraosId(Hash);
@@ -67,11 +58,6 @@ impl GenesisLeaderSelection {
 
         let stake_snapshot = &self.distribution;
 
-        // If we didn't have eligible stake pools in the epoch
-        // used for sampling, then we have to use BFT rules.
-        // FIXME: require a certain minimum number of stake pools?
-        let have_stakeholders = stake_snapshot.eligible_stake_pools() > 0;
-
         // FIXME: the following is a placeholder for a
         // proper VRF-based leader selection.
 
@@ -98,8 +84,7 @@ impl GenesisLeaderSelection {
             .unwrap();
         let keys = GenesisPraosLeader {
             kes_public_key: pool_info.kes_public_key.clone(),
-            // TODO: crypto was not valid here: fix me
-            vrf_public_key: unimplemented!(),
+            vrf_public_key: pool_info.vrf_public_key.clone(),
         };
 
         Ok(Some(keys))
