@@ -110,12 +110,6 @@ impl property::Deserialize for UpdateProposal {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Version {
-    major: u16,
-    minor: u16,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub last_block_id: Hash,
