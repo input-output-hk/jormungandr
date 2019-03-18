@@ -1,5 +1,13 @@
-use crate::key::{deserialize_public_key, serialize_public_key, Hash};
-use chain_core::property;
+use crate::{
+    block::{
+        Block, BlockVersion, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
+        BLOCK_VERSION_CONSENSUS_NONE,
+    },
+    setting::Settings,
+    state::State,
+    key::Hash,
+};
+use chain_core::property::Block as _;
 use chain_crypto::algorithms::vrf::vrf::{self, ProvenOutputSeed};
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
@@ -48,6 +56,14 @@ pub enum Verification {
     Failure(Error),
 }
 
+macro_rules! try_check {
+    ($x:expr) => {
+        if $x.failure() {
+            return $x;
+        }
+    };
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LeaderId {
     None,
@@ -65,14 +81,60 @@ pub enum Leader {
     ),
 }
 
+enum Inner {
+    None,
+    Bft(bft::BftLeaderSelection),
+    // GenesisPraos,
+}
+
+pub struct Leadership {
+    inner: Inner,
+}
+
+impl Inner {
+    #[inline]
+    fn verify_version(&self, block_version: BlockVersion) -> Verification {
+        match self {
+            Inner::None if block_version == BLOCK_VERSION_CONSENSUS_NONE => Verification::Success,
+            Inner::Bft(_) if block_version == BLOCK_VERSION_CONSENSUS_BFT => Verification::Success,
+            _ => Verification::Failure(Error::new(ErrorKind::IncompatibleBlockVersion)),
+        }
+    }
+}
+
+impl Leadership {
+    pub fn new(state: &State) -> Result<Self, Error> {
+        unimplemented!()
+    }
+
+    pub fn verify(&self, block: &Block) -> Verification {
+        try_check!(self.inner.verify_version(block.version()));
+
+        // let check_leader = self.inner.check_leader(&block.header);
+        Verification::Success
+    }
+}
+
 impl chain_core::property::LeaderId for LeaderId {}
 
 impl Verification {
-    pub fn success() -> Self {
-        Verification::Success
+    #[inline]
+    pub fn into_error(self) -> Result<(), Error> {
+        match self {
+            Verification::Success => Ok(()),
+            Verification::Failure(err) => Err(err),
+        }
     }
-    pub fn failed(error: Error) -> Self {
-        Verification::Failure(error)
+    #[inline]
+    pub fn success(&self) -> bool {
+        match self {
+            Verification::Success => true,
+            _ => false,
+        }
+    }
+    #[inline]
+    pub fn failure(&self) -> bool {
+        !self.success()
     }
 }
 
