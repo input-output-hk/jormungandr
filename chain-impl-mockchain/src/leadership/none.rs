@@ -1,8 +1,7 @@
 use crate::{
-    block::{Block, Header, Proof},
+    block::{BlockDate, Header, Proof},
     leadership::{self, Error, ErrorKind, Verification},
 };
-use chain_core::property::{self, LeaderSelection};
 
 /// Object for when there is no leadership for the block creation
 ///
@@ -21,17 +20,9 @@ impl NoLeadership {
             _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
         }
     }
-}
 
-impl LeaderSelection for NoLeadership {
-    type LeaderId = leadership::LeaderId;
-    type Block = Block;
-    type Error = Error;
-
-    fn get_leader_at(
-        &self,
-        _date: <Self::Block as property::Block>::Date,
-    ) -> Result<Self::LeaderId, Self::Error> {
+    #[inline]
+    pub(crate) fn get_leader_at(&self, _date: BlockDate) -> Result<leadership::LeaderId, Error> {
         Ok(leadership::LeaderId::None)
     }
 }

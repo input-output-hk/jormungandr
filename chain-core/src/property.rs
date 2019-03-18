@@ -232,6 +232,10 @@ pub trait LeaderSelection {
     /// Identifier of the leader (e.g. a public key).
     type LeaderId: LeaderId;
 
+    type State: State;
+
+    fn retrieve(state: &Self::State) -> Self;
+
     /// return the ID of the leader of the blockchain at the given
     /// date.
     fn get_leader_at(

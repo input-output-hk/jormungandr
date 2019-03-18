@@ -1,13 +1,13 @@
 use crate::{
-    block::{Block, BlockDate, Header, Proof},
+    block::{BlockDate, Header, Proof},
     date::Epoch,
     key::Hash,
-    leadership::{Error, ErrorKind, LeaderId, Verification},
+    leadership::{Error, ErrorKind, Verification},
     stake::{get_stake_distribution, DelegationState, StakeDistribution},
     state::State,
     value::Value,
 };
-use chain_core::property::{self, LeaderSelection};
+use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
 use rand::{Rng, SeedableRng};
 
@@ -95,29 +95,20 @@ impl GenesisLeaderSelection {
             Proof::GenesisPraos(genesis_praos_proof) => {
                 match self.get_leader_at(*block_header.block_date()) {
                     Err(error) => Verification::Failure(error),
-                    Ok(LeaderId::GenesisPraos(leader)) => {
+                    Ok(leader) => {
                         // TODO: check the leader and the proof's key matches
                         unimplemented!()
                     }
-                    Ok(_) => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
                 }
             }
             _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
         }
     }
-}
 
-impl LeaderSelection for GenesisLeaderSelection {
-    type Block = Block;
-    type Error = Error;
-    type LeaderId = LeaderId;
-
-    fn get_leader_at(
-        &self,
-        date: <Self::Block as property::Block>::Date,
-    ) -> Result<Self::LeaderId, Self::Error> {
+    #[inline]
+    pub(crate) fn get_leader_at(&self, date: BlockDate) -> Result<GenesisPraosLeader, Error> {
         match self.leader(date)? {
-            Some(keys) => Ok(LeaderId::GenesisPraos(keys)),
+            Some(keys) => Ok(keys),
             None => Err(Error::new(ErrorKind::NoLeaderForThisSlot)),
         }
     }
