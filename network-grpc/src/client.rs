@@ -128,6 +128,9 @@ type GrpcFuture<R> = tower_grpc::client::unary::ResponseFuture<
 type GrpcStreamFuture<R> =
     tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
 
+type GrpcBidiStreamFuture<R> =
+    tower_grpc::client::streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
+
 pub struct ResponseFuture<T, R> {
     state: unary_future::State<T, R>,
 }
@@ -148,6 +151,18 @@ impl<T, R> ResponseStreamFuture<T, R> {
     fn new(future: GrpcStreamFuture<R>) -> Self {
         ResponseStreamFuture {
             state: stream_future::State::Pending(future),
+        }
+    }
+}
+
+pub struct BidiStreamFuture<T, R> {
+    state: bidi_future::State<T, R>,
+}
+
+impl<T, R> BidiStreamFuture<T, R> {
+    fn new(future: GrpcBidiStreamFuture<R>) -> Self {
+        BidiStreamFuture {
+            state: bidi_future::State::Pending(future),
         }
     }
 }
@@ -274,7 +289,64 @@ mod stream_future {
     }
 }
 
-mod stream {
+mod bidi_future {
+    use super::{
+        convert_error, core_client, GrpcBidiStreamFuture, ResponseStream, BidiStreamFuture,
+    };
+    use futures::prelude::*;
+    use std::marker::PhantomData;
+    use tower_grpc::{Response, Status, Streaming};
+
+    fn poll_and_convert_response<T, R, F>(
+        future: &mut F,
+    ) -> Poll<ResponseStream<T, R>, core_client::Error>
+    where
+        F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = Status>,
+    {
+        match future.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(res)) => {
+                let stream = ResponseStream {
+                    inner: res.into_inner(),
+                    _phantom: PhantomData,
+                };
+                Ok(Async::Ready(stream))
+            }
+            Err(e) => Err(convert_error(e)),
+        }
+    }
+
+    pub enum State<T, R> {
+        Pending(GrpcBidiStreamFuture<R>),
+        Finished(PhantomData<T>),
+    }
+
+    impl<T, R> Future for BidiStreamFuture<T, R>
+    where
+        R: prost::Message + Default,
+    {
+        type Item = ResponseStream<T, R>;
+        type Error = core_client::Error;
+
+        fn poll(&mut self) -> Poll<ResponseStream<T, R>, core_client::Error> {
+            if let State::Pending(ref mut f) = self.state {
+                let res = poll_and_convert_response(f);
+                if let Ok(Async::NotReady) = res {
+                    return Ok(Async::NotReady);
+                }
+                self.state = State::Finished(PhantomData);
+                res
+            } else {
+                match self.state {
+                    State::Pending(_) => unreachable!(),
+                    State::Finished(_) => panic!("polled a finished response"),
+                }
+            }
+        }
+    }
+}
+
+mod response_stream {
     use super::{convert_error, core_client, FromResponse, ResponseStream};
     use futures::prelude::*;
     use tower_grpc::Status;
@@ -304,6 +376,62 @@ mod stream {
         type Error = core_client::Error;
 
         fn poll(&mut self) -> Poll<Option<T>, core_client::Error> {
+            poll_and_convert_item(&mut self.inner)
+        }
+    }
+}
+
+pub trait IntoRequest<R> {
+    fn into_request(self) -> Result<R, tower_grpc::Status>;
+}
+
+pub struct RequestStream<S, R> {
+    inner: S,
+    _phantom: PhantomData<R>,
+}
+
+impl<S, R> RequestStream<S, R>
+where
+    S: Stream,
+{
+    fn new(inner: S) -> Self {
+        RequestStream {
+            inner,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+mod request_stream {
+    use super::{IntoRequest, RequestStream};
+    use futures::prelude::*;
+    use tower_grpc::{Code, Status};
+
+    fn poll_and_convert_item<S, R>(stream: &mut S) -> Poll<Option<R>, Status>
+    where
+        S: Stream,
+        S::Item: IntoRequest<R>,
+    {
+        match stream.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
+            Ok(Async::Ready(Some(item))) => {
+                let item = item.into_request()?;
+                Ok(Async::Ready(Some(item)))
+            }
+            Err(_) => Err(Status::new(Code::Unknown, "request stream failure")),
+        }
+    }
+
+    impl<S, R> Stream for RequestStream<S, R>
+    where
+        S: Stream,
+        S::Item: IntoRequest<R>,
+    {
+        type Item = R;
+        type Error = Status;
+
+        fn poll(&mut self) -> Poll<Option<R>, Status> {
             poll_and_convert_item(&mut self.inner)
         }
     }
@@ -396,6 +524,16 @@ where
     }
 }
 
+impl<H> IntoRequest<gen::node::Header> for H
+where
+    H: chain_bounds::Header,
+{
+    fn into_request(self) -> Result<gen::node::Header, tower_grpc::Status> {
+        let content = serialize_to_bytes(&self);
+        Ok(gen::node::Header { content })
+    }
+}
+
 impl<C, S, E> BlockService for Client<C, S, E>
 where
     C: ProtocolConfig,
@@ -412,8 +550,7 @@ where
     type GetBlocksFuture = ResponseStreamFuture<C::Block, gen::node::Block>;
 
     type BlockSubscription = ResponseStream<C::Header, gen::node::Header>;
-    type BlockSubscriptionFuture = ResponseStreamFuture<C::Header, gen::node::Header>;
-    type AnnounceBlockFuture = ResponseFuture<(), gen::node::AnnounceBlockResponse>;
+    type BlockSubscriptionFuture = BidiStreamFuture<C::Header, gen::node::Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
@@ -428,17 +565,13 @@ where
         ResponseStreamFuture::new(future)
     }
 
-    fn subscribe_to_blocks(&mut self) -> Self::BlockSubscriptionFuture {
-        let req = gen::node::BlockSubscriptionRequest {};
-        let future = self.node.subscribe_to_blocks(Request::new(req));
-        ResponseStreamFuture::new(future)
-    }
-
-    fn announce_block(&mut self, header: C::Header) -> Self::AnnounceBlockFuture {
-        let content = serialize_to_bytes(&header);
-        let req = gen::node::Header { content };
-        let future = self.node.announce_block(Request::new(req));
-        ResponseFuture::new(future)
+    fn subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
+    where
+        Out: Stream<Item = C::Header> + Send + 'static,
+    {
+        let req = RequestStream::new(outbound);
+        let future = self.node.block_subscription(Request::new(req));
+        BidiStreamFuture::new(future)
     }
 }
 

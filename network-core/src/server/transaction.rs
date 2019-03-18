@@ -33,23 +33,31 @@ pub trait TransactionService {
     /// implementation to produce a server-streamed response.
     type GetTransactionsFuture: Future<Item = Self::GetTransactionsStream, Error = TransactionError>;
 
-    /// The type of asynchronous futures returned by `announce_transaction`.
-    type AnnounceTransactionFuture: Future<Item = (), Error = TransactionError>;
+    /// The type of an asynchronous stream that provides transactions announced
+    /// by the peer via the bidirectional subscription.
+    type TransactionSubscription: Stream<Item = Self::Transaction, Error = TransactionError>;
+
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a server-streamed response.
+    type TransactionSubscriptionFuture: Future<
+        Item = Self::TransactionSubscription,
+        Error = TransactionError,
+    >;
 
     /// Get all transactions by their id.
     fn get_transactions(&mut self, ids: &[Self::TransactionId]) -> Self::GetTransactionsFuture;
 
     /// Given a list of transaction IDs, return status of the transactions
     /// as known by this node.
+    ///
+    /// This method is only used by the NTT implementation.
     fn propose_transactions(
         &mut self,
         ids: &[Self::TransactionId],
     ) -> Self::ProposeTransactionsFuture;
 
-    fn announce_transaction(
-        &mut self,
-        id: &[Self::TransactionId],
-    ) -> Self::AnnounceTransactionFuture;
+    // TODO: add an incoming stream
+    fn subscribe(&mut self) -> Self::TransactionSubscriptionFuture;
 }
 
 /// Represents errors that can be returned by the transaction service.

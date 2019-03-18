@@ -7,7 +7,7 @@ use network_core::{
 };
 
 use futures::prelude::*;
-use tower_grpc::{self, Code, Request, Status};
+use tower_grpc::{self, Code, Request, Status, Streaming};
 
 use std::{error, marker::PhantomData, mem};
 
@@ -318,14 +318,6 @@ where
         Self::PullBlocksToTipStream,
         <<T as Node>::BlockService as BlockService>::PullBlocksFuture,
     >;
-    type SubscribeToBlocksStream = ResponseStream<
-        gen::node::Header,
-        <<T as Node>::BlockService as BlockService>::BlockSubscription,
-    >;
-    type SubscribeToBlocksFuture = ResponseFuture<
-        Self::SubscribeToBlocksStream,
-        <<T as Node>::BlockService as BlockService>::BlockSubscriptionFuture,
-    >;
     type TransactionsStream = ResponseStream<
         gen::node::Transaction,
         <<T as Node>::TransactionService as TransactionService>::GetTransactionsStream,
@@ -334,17 +326,25 @@ where
         Self::TransactionsStream,
         <<T as Node>::TransactionService as TransactionService>::GetTransactionsFuture,
     >;
+    type BlockSubscriptionStream = ResponseStream<
+        gen::node::Header,
+        <<T as Node>::BlockService as BlockService>::BlockSubscription,
+    >;
+    type BlockSubscriptionFuture = ResponseFuture<
+        Self::BlockSubscriptionStream,
+        <<T as Node>::BlockService as BlockService>::BlockSubscriptionFuture,
+    >;
+    type TransactionSubscriptionStream = ResponseStream<
+        gen::node::Transaction,
+        <<T as Node>::TransactionService as TransactionService>::TransactionSubscription,
+    >;
+    type TransactionSubscriptionFuture = ResponseFuture<
+        Self::TransactionSubscriptionStream,
+        <<T as Node>::TransactionService as TransactionService>::TransactionSubscriptionFuture,
+    >;
     type GossipFuture = ResponseFuture<
         gen::node::GossipMessage,
         <<T as Node>::GossipService as GossipService>::MessageFuture,
-    >;
-    type AnnounceBlockFuture = ResponseFuture<
-        gen::node::AnnounceBlockResponse,
-        <<T as Node>::BlockService as BlockService>::AnnounceBlockFuture,
-    >;
-    type AnnounceTransactionFuture = ResponseFuture<
-        gen::node::AnnounceTransactionResponse,
-        <<T as Node>::TransactionService as TransactionService>::AnnounceTransactionFuture,
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
@@ -372,14 +372,6 @@ where
             }
         };
         ResponseFuture::new(service.get_headers(&block_ids))
-    }
-
-    fn subscribe_to_blocks(
-        &mut self,
-        _req: Request<gen::node::BlockSubscriptionRequest>,
-    ) -> Self::SubscribeToBlocksFuture {
-        let service = try_get_service!(self.block_service);
-        ResponseFuture::new(service.subscribe())
     }
 
     fn pull_blocks_to_tip(
@@ -410,29 +402,22 @@ where
         ResponseFuture::new(service.get_transactions(&tx_ids))
     }
 
-    fn announce_block(&mut self, req: Request<gen::node::Header>) -> Self::AnnounceBlockFuture {
+    fn block_subscription(
+        &mut self,
+        request: Request<Streaming<gen::node::Header>>,
+    ) -> Self::BlockSubscriptionFuture {
         let service = try_get_service!(self.block_service);
-        let header = match deserialize_bytes(&req.get_ref().content) {
-            Ok(header) => header,
-            Err(status) => {
-                return ResponseFuture::error(status);
-            }
-        };
-        ResponseFuture::new(service.announce_block(&header))
+        // TODO: handle incoming stream
+        ResponseFuture::new(service.subscribe())
     }
 
-    fn announce_transaction(
+    fn transaction_subscription(
         &mut self,
-        req: Request<gen::node::TransactionIds>,
-    ) -> Self::AnnounceTransactionFuture {
+        request: Request<Streaming<gen::node::Transaction>>,
+    ) -> Self::TransactionSubscriptionFuture {
         let service = try_get_service!(self.tx_service);
-        let tx_ids = match deserialize_vec(&req.get_ref().id) {
-            Ok(tx_ids) => tx_ids,
-            Err(status) => {
-                return ResponseFuture::error(status);
-            }
-        };
-        ResponseFuture::new(service.announce_transaction(&tx_ids))
+        // TODO: handle incoming stream
+        ResponseFuture::new(service.subscribe())
     }
 
     /// Work with gossip message.
