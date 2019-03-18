@@ -66,7 +66,23 @@ impl property::State for State {
             delegation: new_delegation,
         })
     }
+}
 
+impl property::Settings for State {
+    type Block = Block;
+
+    fn tip(&self) -> <Self::Block as property::Block>::Id {
+        self.settings.tip()
+    }
+    fn max_number_of_transactions_per_block(&self) -> u32 {
+        self.settings.max_number_of_transactions_per_block()
+    }
+    fn block_version(&self) -> <Self::Block as property::Block>::Version {
+        self.settings.block_version()
+    }
+}
+
+impl State {
     pub fn new() -> Self {
         State {
             ledger: Ledger::new(),
