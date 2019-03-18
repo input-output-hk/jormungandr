@@ -176,7 +176,6 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 impl property::Settings for Settings {
-    type Error = Error;
     type Block = crate::block::Block;
 
     fn tip(&self) -> <Self::Block as property::Block>::Id {
