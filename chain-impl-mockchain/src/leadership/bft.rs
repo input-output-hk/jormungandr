@@ -6,7 +6,7 @@ use crate::{
 };
 use chain_core::property;
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// cryptographic signature algorithm used for the BFT leadership
 /// protocol.
@@ -25,7 +25,7 @@ pub struct BftRoundRobinIndex(u64);
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
 pub struct BftLeaderSelection {
-    pub(crate) leaders: Rc<Vec<LeaderId>>,
+    pub(crate) leaders: Arc<Vec<LeaderId>>,
 }
 
 impl BftLeaderSelection {
@@ -36,7 +36,7 @@ impl BftLeaderSelection {
         }
 
         Some(BftLeaderSelection {
-            leaders: state.settings.bft_leaders.clone(),
+            leaders: Arc::clone(&state.settings.bft_leaders),
         })
     }
 
