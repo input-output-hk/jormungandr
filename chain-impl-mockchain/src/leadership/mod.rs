@@ -1,7 +1,7 @@
 use crate::{
     block::{
-        Block, BlockVersion, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
-        BLOCK_VERSION_CONSENSUS_NONE,
+        Block, BlockVersion, Header, Proof, BLOCK_VERSION_CONSENSUS_BFT,
+        BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
     },
     state::State,
 };
@@ -64,7 +64,7 @@ pub enum Leader {
 }
 
 enum Inner {
-    None,
+    None(none::NoLeadership),
     Bft(bft::BftLeaderSelection),
     GenesisPraos(genesis::GenesisLeaderSelection),
 }
@@ -75,11 +75,22 @@ pub struct Leadership {
 
 impl Inner {
     #[inline]
-    fn verify_version(&self, block_version: BlockVersion) -> Verification {
+    fn verify_version(&self, block_version: &BlockVersion) -> Verification {
         match self {
-            Inner::None if block_version == BLOCK_VERSION_CONSENSUS_NONE => Verification::Success,
-            Inner::Bft(_) if block_version == BLOCK_VERSION_CONSENSUS_BFT => Verification::Success,
+            Inner::None(_) if block_version == &BLOCK_VERSION_CONSENSUS_NONE => {
+                Verification::Success
+            }
+            Inner::Bft(_) if block_version == &BLOCK_VERSION_CONSENSUS_BFT => Verification::Success,
             _ => Verification::Failure(Error::new(ErrorKind::IncompatibleBlockVersion)),
+        }
+    }
+
+    #[inline]
+    fn verify_leader(&self, block_header: &Header) -> Verification {
+        match self {
+            Inner::None(none) => none.verify(block_header),
+            Inner::Bft(bft) => bft.verify(block_header),
+            Inner::GenesisPraos(genesis_praos) => genesis_praos.verify(block_header),
         }
     }
 }
@@ -87,7 +98,9 @@ impl Inner {
 impl Leadership {
     pub fn new(state: &State) -> Self {
         match state.settings.block_version {
-            BLOCK_VERSION_CONSENSUS_NONE => Leadership { inner: Inner::None },
+            BLOCK_VERSION_CONSENSUS_NONE => Leadership {
+                inner: Inner::None(none::NoLeadership),
+            },
             BLOCK_VERSION_CONSENSUS_BFT => Leadership {
                 inner: Inner::Bft(
                     bft::BftLeaderSelection::new(state.settings.bft_leaders.clone()).unwrap(),
@@ -100,10 +113,10 @@ impl Leadership {
         }
     }
 
-    pub fn verify(&self, block: &Block) -> Verification {
-        try_check!(self.inner.verify_version(block.version()));
+    pub fn verify(&self, block_header: &Header) -> Verification {
+        try_check!(self.inner.verify_version(block_header.block_version()));
 
-        // let check_leader = self.inner.check_leader(&block.header);
+        try_check!(self.inner.verify_leader(block_header));
         Verification::Success
     }
 }

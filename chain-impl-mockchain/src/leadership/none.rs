@@ -1,6 +1,6 @@
 use crate::{
-    block::Block,
-    leadership::{self, Error},
+    block::{Block, Header, Proof},
+    leadership::{self, Error, ErrorKind, Verification},
 };
 use chain_core::property::{self, LeaderSelection};
 
@@ -13,6 +13,15 @@ use chain_core::property::{self, LeaderSelection};
 /// The NoLeadership mode may fail to produce a diff if the Block is not
 /// a `NoLeadership` block
 pub struct NoLeadership;
+
+impl NoLeadership {
+    pub(crate) fn verify(&self, block_header: &Header) -> Verification {
+        match &block_header.proof() {
+            Proof::None => Verification::Success,
+            _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+        }
+    }
+}
 
 impl LeaderSelection for NoLeadership {
     type LeaderId = leadership::LeaderId;

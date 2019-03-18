@@ -1,8 +1,8 @@
 use crate::{
-    block::{Block, BlockDate},
+    block::{Block, BlockDate, Header, Proof},
     date::Epoch,
     key::Hash,
-    leadership::{Error, ErrorKind, LeaderId},
+    leadership::{Error, ErrorKind, LeaderId, Verification},
     stake::{get_stake_distribution, DelegationState, StakeDistribution},
     state::State,
     value::Value,
@@ -88,6 +88,22 @@ impl GenesisLeaderSelection {
         };
 
         Ok(Some(keys))
+    }
+
+    pub(crate) fn verify(&self, block_header: &Header) -> Verification {
+        match &block_header.proof() {
+            Proof::GenesisPraos(genesis_praos_proof) => {
+                match self.get_leader_at(*block_header.block_date()) {
+                    Err(error) => Verification::Failure(error),
+                    Ok(LeaderId::GenesisPraos(leader)) => {
+                        // TODO: check the leader and the proof's key matches
+                        unimplemented!()
+                    }
+                    Ok(_) => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+                }
+            }
+            _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+        }
     }
 }
 

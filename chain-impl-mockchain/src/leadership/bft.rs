@@ -1,6 +1,6 @@
-use crate::block::Block;
+use crate::block::{Block, Header, Proof};
 use crate::key::{deserialize_public_key, serialize_public_key};
-use crate::leadership::{self, Error};
+use crate::leadership::{self, Error, ErrorKind, Verification};
 
 use chain_core::property::{self, LeaderSelection};
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
@@ -44,6 +44,23 @@ impl BftLeaderSelection {
     fn offset(&self, block_number: u64) -> BftRoundRobinIndex {
         let max = self.number_of_leaders() as u64;
         BftRoundRobinIndex((block_number % max) as u64)
+    }
+
+    pub(crate) fn verify(&self, block_header: &Header) -> Verification {
+        match &block_header.proof() {
+            Proof::Bft(bft_proof) => match self.get_leader_at(*block_header.block_date()) {
+                Ok(leadership::LeaderId::Bft(leader_at)) => {
+                    if bft_proof.leader_id != leader_at {
+                        Verification::Failure(Error::new(ErrorKind::InvalidLeader))
+                    } else {
+                        Verification::Success
+                    }
+                }
+                Err(error) => Verification::Failure(error),
+                Ok(_) => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+            },
+            _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+        }
     }
 }
 
