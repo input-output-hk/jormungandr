@@ -2,9 +2,10 @@
 //!
 
 use crate::block::{
-    BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion, Common,
-    GenesisPraosProof, Header, KESSignature, Message, Proof, BLOCK_VERSION_CONSENSUS_BFT,
-    BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
+    BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion,
+    ChainLength, Common, GenesisPraosProof, Header, KESSignature, Message, Proof,
+    BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
+    BLOCK_VERSION_CONSENSUS_NONE,
 };
 use crate::key::{make_signature, make_signature_update};
 use crate::transaction::SignedTransaction;
@@ -28,6 +29,7 @@ impl BlockBuilder {
                 block_version: BLOCK_VERSION_CONSENSUS_NONE,
                 block_parent_hash: BlockId::zero(),
                 block_date: BlockDate::first(),
+                chain_length: 0,
             },
             contents: BlockContents::new(Vec::new()),
         }
@@ -36,6 +38,12 @@ impl BlockBuilder {
     /// set the block date
     pub fn date(&mut self, block_date: BlockDate) -> &mut Self {
         self.common.block_date = block_date;
+        self
+    }
+
+    /// set the chain_length
+    pub fn chain_length(&mut self, chain_length: ChainLength) -> &mut Self {
+        self.common.chain_length = chain_length;
         self
     }
 
@@ -93,12 +101,14 @@ impl BlockBuilder {
         use chain_core::property::BlockId as _;
         assert!(self.common.block_parent_hash == BlockId::zero());
         assert!(self.common.block_date == BlockDate::first());
+        assert_eq!(self.common.chain_length, 0);
         self.finalize_common(BLOCK_VERSION_CONSENSUS_NONE);
         self.make_block(Proof::None)
     }
 
     /// create a BFT Block. this block will be signed with the given private key
     pub fn make_bft_block(mut self, bft_signing_key: &SecretKey<Ed25519Extended>) -> Block {
+        assert_ne!(self.common.chain_length, 0);
         self.finalize_common(BLOCK_VERSION_CONSENSUS_BFT);
         let bft_proof = BftProof {
             leader_id: bft_signing_key.to_public().into(),
@@ -115,6 +125,7 @@ impl BlockBuilder {
         vrf_public_key: vrf::PublicKey,
         vrf_proof: vrf::ProvenOutputSeed,
     ) -> Block {
+        assert_ne!(self.common.chain_length, 0);
         self.finalize_common(BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
 
         let genesis_praos_proof = GenesisPraosProof {

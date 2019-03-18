@@ -10,12 +10,13 @@ Format is:
 
 The header is a small piece of data, containing enough informations for validation and network deduplication and a strong signed cryptographic link to the content.
 
-Common (2 * 64 bits + 2 * 256 bits = 80 bytes):
+Common (2 * 64 bits + 1 * 32 bits + 2 * 256 bits = 84 bytes):
 
 * Size of Header: 16 bits: Maximum header is thus 64K not including the block content
 * Version of block: 16 bits
 * Size of Content: 32 bits
 * Block Date: Epoch (32 bits) + Slot-id (32 bits)
+* Chain length (number of ancestor blocks; first block has chain length 0): 32 bits
 * Hash of content `H(Content)` (256 bits)
 * Parent Header hash : 256 bits (with the special value of 0 to represent the lack of parent for the first block)
 

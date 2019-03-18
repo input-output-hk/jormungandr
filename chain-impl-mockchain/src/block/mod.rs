@@ -11,8 +11,8 @@ pub mod message;
 pub use self::builder::BlockBuilder;
 
 pub use self::header::{
-    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, Common,
-    GenesisPraosProof, Header, KESSignature, Proof, BLOCK_VERSION_CONSENSUS_BFT,
+    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, ChainLength,
+    Common, GenesisPraosProof, Header, KESSignature, Proof, BLOCK_VERSION_CONSENSUS_BFT,
     BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
 };
 pub use self::message::Message;

@@ -29,7 +29,10 @@ pub struct Common {
     pub block_content_size: BlockContentSize,
     pub block_content_hash: BlockContentHash,
     pub block_parent_hash: BlockId,
+    pub chain_length: ChainLength,
 }
+
+pub type ChainLength = u32;
 
 pub type HeaderToSign = Common;
 
@@ -193,6 +196,7 @@ impl property::Serialize for Common {
         codec.put_u32(self.block_content_size)?;
         codec.put_u32(self.block_date.epoch)?;
         codec.put_u32(self.block_date.slot_id)?;
+        codec.put_u32(self.chain_length)?;
         codec.write_all(self.block_content_hash.as_ref())?;
         codec.write_all(self.block_parent_hash.as_ref())?;
 
@@ -257,6 +261,7 @@ impl property::Deserialize for Header {
         let epoch = codec.get_u32()?;
         let slot_id = codec.get_u32()?;
         let block_date = BlockDate { epoch, slot_id };
+        let chain_length = codec.get_u32()?;
 
         let mut hash = [0; 32];
         codec.read_exact(&mut hash)?;
@@ -287,6 +292,7 @@ impl property::Deserialize for Header {
                 block_content_size,
                 block_content_hash,
                 block_parent_hash,
+                chain_length,
             },
             proof,
         })
@@ -319,6 +325,7 @@ mod test {
                 block_content_size: Arbitrary::arbitrary(g),
                 block_content_hash: Arbitrary::arbitrary(g),
                 block_parent_hash: Arbitrary::arbitrary(g),
+                chain_length: Arbitrary::arbitrary(g),
             }
         }
     }
