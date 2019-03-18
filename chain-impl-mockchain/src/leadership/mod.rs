@@ -66,7 +66,7 @@ pub enum Leader {
 enum Inner {
     None,
     Bft(bft::BftLeaderSelection),
-    // GenesisPraos,
+    GenesisPraos(genesis::GenesisLeaderSelection),
 }
 
 pub struct Leadership {
@@ -85,8 +85,19 @@ impl Inner {
 }
 
 impl Leadership {
-    pub fn new(state: &State) -> Result<Self, Error> {
-        unimplemented!()
+    pub fn new(state: &State) -> Self {
+        match state.settings.block_version {
+            BLOCK_VERSION_CONSENSUS_NONE => Leadership { inner: Inner::None },
+            BLOCK_VERSION_CONSENSUS_BFT => Leadership {
+                inner: Inner::Bft(
+                    bft::BftLeaderSelection::new(state.settings.bft_leaders.clone()).unwrap(),
+                ),
+            },
+            BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => Leadership {
+                inner: Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(state)),
+            },
+            _ => unimplemented!(),
+        }
     }
 
     pub fn verify(&self, block: &Block) -> Verification {

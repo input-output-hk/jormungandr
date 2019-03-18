@@ -1,9 +1,12 @@
 //! define the Blockchain settings
 //!
 
-use crate::block::{BlockVersion, BLOCK_VERSION_CONSENSUS_NONE};
-use crate::key::Hash;
 use crate::update::ValueDiff;
+use crate::{
+    block::{BlockVersion, BLOCK_VERSION_CONSENSUS_NONE},
+    key::Hash,
+    leadership::bft,
+};
 use chain_core::property::{self, BlockId};
 
 use num_derive::FromPrimitive;
@@ -17,6 +20,7 @@ pub struct UpdateProposal {
     pub max_number_of_transactions_per_block: Option<u32>,
     pub bootstrap_key_slots_percentage: Option<u8>,
     pub block_version: Option<BlockVersion>,
+    pub bft_leaders: Option<Vec<bft::LeaderId>>,
 }
 
 impl UpdateProposal {
@@ -25,6 +29,7 @@ impl UpdateProposal {
             max_number_of_transactions_per_block: None,
             bootstrap_key_slots_percentage: None,
             block_version: None,
+            bft_leaders: None,
         }
     }
 }
@@ -35,6 +40,7 @@ enum UpdateTag {
     MaxNumberOfTransactionsPerBlock = 1,
     BootstrapKeySlotsPercentage = 2,
     BlockVersion = 3,
+    BftLeaders = 4,
 }
 
 impl property::Serialize for UpdateProposal {
@@ -55,6 +61,13 @@ impl property::Serialize for UpdateProposal {
         if let Some(block_version) = self.block_version {
             codec.put_u16(UpdateTag::BlockVersion as u16)?;
             codec.put_u16(block_version.0)?;
+        }
+        if let Some(leaders) = &self.bft_leaders {
+            codec.put_u16(UpdateTag::BftLeaders as u16)?;
+            codec.put_u8(leaders.len() as u8)?;
+            for leader in leaders.iter() {
+                leader.serialize(&mut codec)?;
+            }
         }
         codec.put_u16(UpdateTag::End as u16)?;
         Ok(())
@@ -83,6 +96,14 @@ impl property::Deserialize for UpdateProposal {
                 Some(UpdateTag::BlockVersion) => {
                     update.block_version = Some(codec.get_u16().map(BlockVersion)?);
                 }
+                Some(UpdateTag::BftLeaders) => {
+                    let len = codec.get_u8()? as usize;
+                    let mut leaders = Vec::with_capacity(len);
+                    for _ in 0..len {
+                        leaders.push(bft::LeaderId::deserialize(&mut codec)?);
+                    }
+                    update.bft_leaders = Some(leaders);
+                }
                 None => panic!("Unrecognized update tag {}.", tag),
             }
         }
@@ -95,12 +116,13 @@ pub struct Version {
     minor: u16,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub last_block_id: Hash,
     pub max_number_of_transactions_per_block: u32,
     pub bootstrap_key_slots_percentage: u8, // == d * 100
     pub block_version: BlockVersion,
+    pub bft_leaders: Vec<bft::LeaderId>,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -112,6 +134,7 @@ impl Settings {
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
             block_version: BLOCK_VERSION_CONSENSUS_NONE,
+            bft_leaders: Vec::new(),
         }
     }
 }
@@ -158,6 +181,7 @@ pub struct SettingsDiff {
     pub block_id: ValueDiff<Hash>,
     pub bootstrap_key_slots_percentage: ValueDiff<u8>,
     pub block_version: ValueDiff<BlockVersion>,
+    pub bft_leaders: ValueDiff<Vec<bft::LeaderId>>,
 }
 
 impl property::Update for SettingsDiff {
@@ -166,6 +190,7 @@ impl property::Update for SettingsDiff {
             block_id: ValueDiff::None,
             bootstrap_key_slots_percentage: ValueDiff::None,
             block_version: ValueDiff::None,
+            bft_leaders: ValueDiff::None,
         }
     }
     fn inverse(self) -> Self {
@@ -173,6 +198,7 @@ impl property::Update for SettingsDiff {
             block_id: self.block_id.inverse(),
             bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage.inverse(),
             block_version: self.block_version.inverse(),
+            bft_leaders: self.bft_leaders.inverse(),
         }
     }
     fn union(&mut self, other: Self) -> &mut Self {
@@ -180,6 +206,7 @@ impl property::Update for SettingsDiff {
         self.bootstrap_key_slots_percentage
             .union(other.bootstrap_key_slots_percentage);
         self.block_version.union(other.block_version);
+        self.bft_leaders.union(other.bft_leaders);
         self
     }
 }
@@ -199,6 +226,7 @@ mod tests {
                     Arbitrary::arbitrary(g),
                     Arbitrary::arbitrary(g),
                 ),
+                bft_leaders: ValueDiff::None,
             }
         }
     }
