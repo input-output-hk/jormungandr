@@ -233,7 +233,6 @@ pub trait LeaderSelection {
 ///
 pub trait Settings {
     type Block: Block;
-    type Error: std::error::Error;
 
     /// return the tip of the current branch
     ///
