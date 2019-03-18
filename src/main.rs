@@ -261,7 +261,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
         let leader_id =
-            chain_impl_mockchain::leadership::LeaderId::from(secret.public().block_publickey);
+            chain_impl_mockchain::leadership::LeaderId::Bft(secret.public().block_publickey.into());
         let pk = chain_impl_mockchain::leadership::Leader::BftLeader(secret.block_privatekey);
         tasks.task_create("leadership", move || {
             leadership_task(leader_id, pk, tpool, blockchain, clock, block_task)
