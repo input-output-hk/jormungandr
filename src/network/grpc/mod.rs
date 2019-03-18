@@ -16,9 +16,6 @@ use network_grpc::peer::TcpPeer;
 pub fn bootstrap_from_peer<B>(peer: Peer, blockchain: BlockchainR<B>)
 where
     B: NetworkBlockConfig,
-    <B::Ledger as property::Ledger>::Update: Clone,
-    <B::Settings as property::Settings>::Update: Clone,
-    <B::Leader as property::LeaderSelection>::Update: Clone,
 {
     info!("connecting to bootstrap peer {}", peer.connection);
     let authority = http::uri::Authority::from_shared(Bytes::from(format!(

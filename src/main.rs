@@ -55,7 +55,7 @@ extern crate test;
 use std::io::{self, BufRead};
 use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 
-use chain_impl_mockchain::transaction::{SignedTransaction, TransactionId};
+use chain_impl_mockchain::block::{message::MessageId, Message};
 use futures::Future;
 
 use bech32::{u5, Bech32, FromBase32, ToBase32};
@@ -191,7 +191,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     // * new nodes subscribing to updates (blocks, transactions)
     // * client GetBlocks/Headers ...
 
-    let tpool_data: TPool<TransactionId, SignedTransaction> = TPool::new();
+    let tpool_data: TPool<MessageId, Message> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
     // Validation of consensus settings should make sure that we always have
