@@ -50,6 +50,9 @@ impl AsymmetricKey for Ed25519 {
     const SECRET_BECH32_HRP: &'static str = "ed25519_secret";
     const PUBLIC_BECH32_HRP: &'static str = "ed25519_public";
 
+    const SECRET_KEY_SIZE: usize = ed25519::SEED_LENGTH;
+    const PUBLIC_KEY_SIZE: usize = ed25519::PUBLIC_KEY_LENGTH;
+
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; ed25519::SEED_LENGTH];
         rng.fill_bytes(&mut priv_bytes);

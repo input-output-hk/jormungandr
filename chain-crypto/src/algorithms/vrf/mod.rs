@@ -15,6 +15,9 @@ impl AsymmetricKey for Curve25519_2HashDH {
     const SECRET_BECH32_HRP: &'static str = "curve25519_2hashdh_secret";
     const PUBLIC_BECH32_HRP: &'static str = "curve25519_2hashdh_public";
 
+    const SECRET_KEY_SIZE: usize = vrf::SECRET_SIZE;
+    const PUBLIC_KEY_SIZE: usize = vrf::PUBLIC_SIZE;
+
     fn generate<T: RngCore + CryptoRng>(rng: T) -> Self::Secret {
         Self::Secret::random(rng)
     }

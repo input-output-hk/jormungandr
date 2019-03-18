@@ -2,7 +2,7 @@ use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 
 use ed25519_bip32 as i;
-use ed25519_bip32::{XPrv, XPub, XPRV_SIZE};
+use ed25519_bip32::{XPrv, XPub, XPRV_SIZE, XPUB_SIZE};
 use rand::{CryptoRng, RngCore};
 
 /// Ed25519 BIP32 Signature algorithm
@@ -32,6 +32,9 @@ impl AsymmetricKey for Ed25519Bip32 {
 
     const SECRET_BECH32_HRP: &'static str = "ed25519bip32_secret";
     const PUBLIC_BECH32_HRP: &'static str = "ed25519bip32_public";
+
+    const SECRET_KEY_SIZE: usize = XPRV_SIZE;
+    const PUBLIC_KEY_SIZE: usize = XPUB_SIZE;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; XPRV_SIZE];
