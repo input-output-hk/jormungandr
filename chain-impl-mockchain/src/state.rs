@@ -38,9 +38,10 @@ impl property::State for State {
     type Header = Header;
     type Content = Message;
 
-    fn apply<I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
+    fn apply<'a, I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
     where
-        I: IntoIterator<Item = Self::Content>,
+        I: IntoIterator<Item = &'a Self::Content>,
+        Self::Content: 'a
     {
         let mut new_ledger = self.ledger.clone();
         let mut new_delegation = self.delegation.clone();
@@ -50,13 +51,13 @@ impl property::State for State {
         for content in contents {
             match content {
                 Message::Transaction(signed_transaction) => {
-                    new_ledger = new_ledger.apply_transaction(&signed_transaction)?;
+                    new_ledger = new_ledger.apply_transaction(signed_transaction)?;
                 }
                 Message::Update(update_proposal) => {
-                    new_settings = new_settings.apply(update_proposal);
+                    new_settings = new_settings.apply(update_proposal.clone());
                 }
                 content => {
-                    new_delegation = new_delegation.apply(&content)?;
+                    new_delegation = new_delegation.apply(content)?;
                 }
             }
         }
