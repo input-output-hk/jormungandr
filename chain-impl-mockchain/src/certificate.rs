@@ -2,6 +2,30 @@ use crate::{block::Message, key::*, leadership::genesis::GenesisPraosId, stake::
 use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
+#[derive(Debug, Clone)]
+pub enum Certificate {
+    StakeKeyRegistration(StakeKeyRegistration),
+    StakeKeyDeregistration(StakeKeyDeregistration),
+    StakeDelegation(StakeDelegation),
+    StakePoolRegistration(StakePoolRegistration),
+    StakePoolRetirement(StakePoolRetirement),
+}
+
+
+impl property::Serialize for Certificate {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        match self {
+            Certificate::StakeKeyRegistration(s) => s.serialize(writer),
+            Certificate::StakeKeyDeregistration(s) => s.serialize(writer),
+            Certificate::StakeDelegation(s) => s.serialize(writer),
+            Certificate::StakePoolRegistration(s) => s.serialize(writer),
+            Certificate::StakePoolRetirement(s) => s.serialize(writer),
+        }
+    }
+
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeKeyRegistration {
     pub stake_key_id: StakeKeyId,
