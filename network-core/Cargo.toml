@@ -15,8 +15,3 @@ edition = "2018"
 chain-core = { path = "../chain-core" }
 bytes = "0.4"
 futures = "0.1"
-prost = "0.5"
-prost-derive = "0.5"
-
-[build-dependencies]
-prost-build = "0.5"
