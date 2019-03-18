@@ -1,10 +1,11 @@
 use crate::{
     block::{
-        BlockVersion, Header, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
-        BLOCK_VERSION_CONSENSUS_NONE,
+        Block, BlockVersion, Header, BLOCK_VERSION_CONSENSUS_BFT,
+        BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
     },
     state::State,
 };
+use chain_core::property::{self, LeaderSelection};
 use chain_crypto::algorithms::vrf::vrf::ProvenOutputSeed;
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
 
@@ -115,6 +116,32 @@ impl Leadership {
 
         try_check!(self.inner.verify_leader(block_header));
         Verification::Success
+    }
+}
+
+impl LeaderSelection for Leadership {
+    type Error = Error;
+    type LeaderId = LeaderId;
+    type Block = Block;
+    type State = State;
+
+    fn retrieve(state: &Self::State) -> Self {
+        Self::new(state)
+    }
+
+    /// return the ID of the leader of the blockchain at the given
+    /// date.
+    fn get_leader_at(
+        &self,
+        date: <Self::Block as property::Block>::Date,
+    ) -> Result<Self::LeaderId, Self::Error> {
+        match &self.inner {
+            Inner::None(none) => none.get_leader_at(date),
+            Inner::Bft(bft) => bft.get_leader_at(date).map(LeaderId::Bft),
+            Inner::GenesisPraos(genesis_praos) => genesis_praos
+                .get_leader_at(date)
+                .map(LeaderId::GenesisPraos),
+        }
     }
 }
 
