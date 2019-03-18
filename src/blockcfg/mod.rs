@@ -38,18 +38,16 @@ pub trait BlockConfig {
 
     type State: State<Header = Self::BlockHeader, Content = Self::Message>
         + Settings<Block = Self::Block>;
+    type Leadership: LeaderSelection<State = Self::State, Block = Self::Block>;
 
     type Gossip: Gossip + Clone + Send + Sync + Debug;
 
     type NodeSigningKey;
 
-    /*
     fn make_block(
         secret_key: &Self::NodeSigningKey,
-        settings: &Self::Settings,
-        ledger: &Self::Ledger,
-        block_date: <Self::Block as Block>::Date,
-        transactions: Vec<Self::Transaction>,
+        block_date: Self::BlockDate,
+        parent_id: Self::BlockHash,
+        messages: Vec<Self::Message>,
     ) -> Self::Block;
-    */
 }

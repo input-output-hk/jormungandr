@@ -63,7 +63,11 @@ impl GenesisData {
         let mut block_builder = BlockBuilder::new();
         block_builder.message(Message::Update(UpdateProposal {
             // TODO: this is not known yet
-            max_number_of_transactions_per_block: None,
+            //
+            // update this value with a more appropriate one (that comes from the
+            // settings). We need to set this value so we know how many messages
+            // we are allowed when creating a block
+            max_number_of_transactions_per_block: Some(255),
             // we are switching to BFT mode straight after this block
             // so we don't need yet the GenesisPraos bootstrap d parameter
             bootstrap_key_slots_percentage: None,
