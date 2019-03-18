@@ -176,31 +176,12 @@ pub trait Transaction: Serialize + Deserialize {
     fn outputs(&self) -> &Self::Outputs;
 }
 
-/// Updates type needs to implement this feature so we can easily
-/// compose the Updates objects.
-///
-pub trait Update {
-    /// allowing to build unions of updates will allow us to compress
-    /// atomic modifications.
-    ///
-    /// For example, in the cardano model we can consider compressing
-    /// the Update diff of all the EPOCHs below `EPOCH - 2`
-    ///
-    fn union(&mut self, other: Self) -> &mut Self;
-
-    /// inverse an update. This will be useful for Rollback in case the
-    /// node has decided to rollback to a previous fork and un apply the
-    /// given update.
-    fn inverse(self) -> Self;
-
-    fn empty() -> Self;
-}
-
 pub trait State: Sized + Clone {
     type Error: std::error::Error;
+    type Header: Header;
     type Content: Message;
 
-    fn apply<I>(&self, contents: I) -> Result<Self, Self::Error>
+    fn apply<I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = Self::Content>;
 }
@@ -320,7 +301,7 @@ impl<T: Serialize> Serialize for &T {
 #[cfg(feature = "property-test-api")]
 pub mod testing {
     use super::*;
-    use quickcheck::{Arbitrary, Gen, TestResult};
+    use quickcheck::{Arbitrary, TestResult};
 
     /// test that any arbitrary given object can serialize and deserialize
     /// back into itself (i.e. it is a bijection,  or a one to one match
@@ -338,168 +319,5 @@ pub mod testing {
             Ok(v) => v,
         };
         TestResult::from_bool(decoded_t == t)
-    }
-
-    /*
-        /// test that arbitrary generated transaction fails, this test requires
-        /// that all the objects inside the transaction are arbitrary generated.
-        /// There is a very small probability of the event that all the objects
-        /// will match, i.e. the contents of the transaction list of the subscribers
-        /// and signatures will compose into a valid transaction, but if such
-        /// event would happen it can be treated as error due to lack of the
-        /// randomness.
-        pub fn prop_bad_transaction_fails<'a, L>(
-            ledger: L,
-            transaction: &'a L::Transaction,
-        ) -> TestResult
-        where
-            L: Ledger + Arbitrary,
-            &'a <L::Transaction as Transaction>::Inputs: IntoIterator,
-            <&'a <L::Transaction as Transaction>::Inputs as IntoIterator>::IntoIter: ExactSizeIterator,
-            &'a <L::Transaction as Transaction>::Outputs: IntoIterator,
-            <&'a <L::Transaction as Transaction>::Outputs as IntoIterator>::IntoIter: ExactSizeIterator,
-        {
-            if transaction.inputs().into_iter().len() == 0
-                && transaction.outputs().into_iter().len() == 0
-            {
-                return TestResult::discard();
-            }
-            TestResult::from_bool(ledger.diff_transaction(transaction).is_err())
-        }
-
-        /// Pair with a ledger and transaction that is valid in such state.
-        /// This structure is used for tests generation, when the framework
-        /// require user to pass valid transaction.
-        #[derive(Clone, Debug)]
-        pub struct LedgerWithValidTransaction<L, T>(pub L, pub T);
-
-        /// Test that checks if arbitrary valid transaction succeed and can
-        /// be added to the ledger.
-        pub fn prop_good_transactions_succeed<L>(
-            input: &mut LedgerWithValidTransaction<L, L::Transaction>,
-        ) -> bool
-        where
-            L: Ledger + Arbitrary,
-            L::Transaction: Transaction + Arbitrary,
-        {
-            match input.0.diff_transaction(&input.1) {
-                Err(e) => panic!("error {:#?}", e),
-                Ok(diff) => input.0.apply(diff).is_ok(),
-            }
-        }
-
-        /// Trait that provides a property of generation valid transactions
-        /// from the current state.
-        pub trait GenerateTransaction<T: Transaction> {
-            fn generate_transaction<G>(&mut self, g: &mut G) -> T
-            where
-                G: Gen;
-        }
-
-        /// Generate a number of transactions and run them, it's not
-        /// expected to have any errors during the run.
-        pub fn run_valid_transactions<G, L>(g: &mut G, ledger: &mut L, n: usize) -> ()
-        where
-            G: Gen,
-            L: Ledger + GenerateTransaction<<L as Ledger>::Transaction>,
-        {
-            for _ in 0..n {
-                let tx = ledger.generate_transaction(g);
-                let update = ledger.diff_transaction(&tx).unwrap();
-                ledger.apply(update).unwrap();
-            }
-        }
-
-        /// Checks that transaction id uniquely identifies the transaction,
-        /// i.e.
-        ///
-        /// ```text
-        /// forall tx1, tx2:Transaction: tx1.id() == tx2.id() <=> tx1 == tx2
-        /// ```
-        pub fn transaction_id_is_unique<T>(tx1: T, tx2: T) -> bool
-        where
-            T: Transaction + Arbitrary + PartialEq,
-            T::Id: PartialEq,
-        {
-            let id1 = tx1.id();
-            let id2 = tx2.id();
-            (id1 == id2 && tx1 == tx2) || (id1 != id2 && tx1 != tx2)
-        }
-    */
-    /// Checks the associativity
-    /// i.e.
-    ///
-    /// ```text
-    /// forall u : Update, v: Update, w:Update . u.union(v.union(w))== (u.union(v)).union(w)
-    /// ```
-    pub fn update_associativity<U>(u: U, v: U, w: U) -> bool
-    where
-        U: Update + Arbitrary + PartialEq + Clone,
-    {
-        let result1 = {
-            let mut u = u.clone();
-            let mut v = v.clone();
-            v.union(w.clone());
-            u.union(v);
-            u
-        };
-        let result2 = {
-            let mut u = u;
-            u.union(v).union(w);
-            u
-        };
-        result1 == result2
-    }
-
-    /// Checks the identify element
-    /// i.e.
-    ///
-    /// ```text
-    /// forall u : Update . u.union(empty)== u
-    /// ```
-    pub fn update_identity_element<U>(update: U) -> bool
-    where
-        U: Update + Arbitrary + PartialEq + Clone,
-    {
-        let result = update.clone().union(U::empty()).clone();
-        result == update
-    }
-
-    /// Checks for the inverse element
-    /// i.e.
-    ///
-    /// ```text
-    /// forall u : Update . u.inverse().union(u) == empty
-    /// ```
-    pub fn update_inverse_element<U>(update: U) -> bool
-    where
-        U: Update + Arbitrary + PartialEq + Clone,
-    {
-        let mut inversed = update.clone().inverse();
-        inversed.union(update);
-        inversed == U::empty()
-    }
-
-    /// Checks the commutativity of the Union
-    /// i.e.
-    ///
-    /// ```text
-    /// forall u : Update, v: Update . u.union(v)== v.union(u)
-    /// ```
-    pub fn update_union_commutative<U>(u1: U, u2: U) -> bool
-    where
-        U: Update + Arbitrary + PartialEq + Clone,
-    {
-        let r1 = {
-            let mut u1 = u1.clone();
-            u1.union(u2.clone());
-            u1
-        };
-        let r2 = {
-            let mut u2 = u2;
-            u2.union(u1);
-            u2
-        };
-        r1 == r2
     }
 }
