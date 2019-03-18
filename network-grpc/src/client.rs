@@ -107,12 +107,10 @@ where
             .make_service(())
             .map_err(|e| Error::Connect(e))
             .map(|conn| {
-                // TODO: add origin URL with add_origin middleware from tower-http
                 let conn = tower_add_origin::Builder::new()
                     .uri(uri)
                     .build(conn)
                     .unwrap();
-
                 Client {
                     node: gen_client::Node::new(conn),
                     _phantom: PhantomData,
