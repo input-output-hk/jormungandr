@@ -5,7 +5,7 @@ use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     verify_signature, Hash,
 };
-use crate::leadership::{bft, GenesisPraosId, GenesisPraosLeader, LeaderId};
+use crate::leadership::{bft, genesis, LeaderId};
 use chain_crypto::{
     Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, Signature, VerifiableRandomFunction,
     Verification,
@@ -48,7 +48,7 @@ pub struct BftSignature(pub(crate) Signature<HeaderToSign, Ed25519Extended>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisPraosProof {
-    pub(crate) genesis_praos_id: GenesisPraosId,
+    pub(crate) genesis_praos_id: genesis::GenesisPraosId,
     pub(crate) vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
     pub(crate) kes_proof: KESSignature,
 }

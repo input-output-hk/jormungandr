@@ -1,27 +1,42 @@
-use crate::block::{Block, BlockDate, Message, Proof};
-use crate::certificate;
-use crate::date::Epoch;
-use crate::leadership::{BftLeader, Error, ErrorKind, GenesisPraosLeader, PublicLeader, Update};
-use crate::ledger::Ledger;
-use crate::setting::{self, Settings};
-use crate::stake::*;
-use crate::update::ValueDiff;
-use crate::value::Value;
-
-use chain_core::property::Block as _;
-use chain_core::property::{self, LeaderSelection, Update as _};
-
+use crate::{
+    block::{Block, BlockDate, Message, Proof},
+    certificate,
+    date::Epoch,
+    key::Hash,
+    leadership::{bft, Error, ErrorKind, LeaderId},
+    ledger::Ledger,
+    setting::{self, Settings},
+    stake::DelegationState,
+    state::State,
+    update::ValueDiff,
+    value::Value,
+};
+use chain_core::property::{self, Block as _, LeaderSelection, Update as _};
+use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
 use rand::{Rng, SeedableRng};
-use std::borrow::Cow;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::sync::{Arc, RwLock};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap, HashSet},
+    sync::{Arc, RwLock},
+};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenesisPraosId(Hash);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenesisPraosLeader {
+    pub(crate) kes_public_key: PublicKey<FakeMMM>,
+    pub(crate) vrf_public_key: PublicKey<Curve25519_2HashDH>,
+}
+
+impl GenesisPraosLeader {
+    pub fn get_id(&self) -> GenesisPraosId {
+        unimplemented!()
+    }
+}
 
 #[derive(Debug)]
 pub struct GenesisLeaderSelection {
-    settings: Arc<RwLock<Settings>>,
-
-    bft_leaders: Vec<BftLeader>,
-
     delegation_state: DelegationState,
 
     /// Stake snapshots for recent epochs. They contain the stake
@@ -42,9 +57,9 @@ struct Pos {
 
 #[derive(Debug, PartialEq)]
 pub enum GenesisPraosError {
-    BlockHasInvalidLeader(PublicLeader, PublicLeader),
+    BlockHasInvalidLeader(LeaderId, LeaderId),
     BlockSignatureIsInvalid,
-    UpdateHasInvalidCurrentLeader(PublicLeader, PublicLeader),
+    UpdateHasInvalidCurrentLeader(LeaderId, LeaderId),
     UpdateIsInvalid, // FIXME: add specific errors for all fields?
     StakeKeyRegistrationSigIsInvalid,
     StakeKeyDeregistrationSigIsInvalid,
@@ -122,7 +137,11 @@ impl std::fmt::Display for GenesisPraosError {
 impl std::error::Error for GenesisPraosError {}
 
 impl GenesisLeaderSelection {
-    /// Create a new Genesis leadership
+    pub fn new(state: &State) -> Self {
+        unimplemented!()
+    }
+
+    /*
     pub fn new(
         bft_leaders: Vec<BftLeader>,
         ledger: Arc<RwLock<Ledger>>,
@@ -152,9 +171,8 @@ impl GenesisLeaderSelection {
             .insert(0, result.get_stake_distribution());
 
         Some(result)
-    }
-
-    fn advance_to(&self, to_date: BlockDate) -> (Pos, PublicLeader) {
+    }*/
+    fn advance_to(&self, to_date: BlockDate) -> (Pos, GenesisPraosLeader) {
         let state_epoch = if self.pos.next_date.slot_id == 0 && self.pos.next_date.epoch > 0 {
             self.pos.next_date.epoch - 1
         } else {

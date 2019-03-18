@@ -1,6 +1,6 @@
 //! Representation of the block in the mockchain.
 use crate::key::{make_signature, make_signature_update, Hash};
-use crate::leadership::{bft, GenesisPraosLeader, Leader};
+use crate::leadership::{bft, genesis::GenesisPraosLeader, Leader};
 use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
 

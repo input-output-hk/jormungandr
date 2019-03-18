@@ -3,35 +3,17 @@ use crate::{
         Block, BlockVersion, BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
         BLOCK_VERSION_CONSENSUS_NONE,
     },
+    key::Hash,
     setting::Settings,
     state::State,
-    key::Hash,
 };
 use chain_core::property::Block as _;
 use chain_crypto::algorithms::vrf::vrf::{self, ProvenOutputSeed};
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
 pub mod bft;
-// pub mod genesis;
+pub mod genesis;
 pub mod none;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BftLeader(pub(crate) PublicKey<Ed25519Extended>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenesisPraosId(Hash);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenesisPraosLeader {
-    pub(crate) kes_public_key: PublicKey<FakeMMM>,
-    pub(crate) vrf_public_key: PublicKey<Curve25519_2HashDH>,
-}
-
-impl GenesisPraosLeader {
-    pub fn get_id(&self) -> GenesisPraosId {
-        unimplemented!()
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
@@ -68,7 +50,7 @@ macro_rules! try_check {
 pub enum LeaderId {
     None,
     Bft(bft::LeaderId),
-    GenesisPraos(GenesisPraosLeader),
+    GenesisPraos(genesis::GenesisPraosLeader),
 }
 
 pub enum Leader {

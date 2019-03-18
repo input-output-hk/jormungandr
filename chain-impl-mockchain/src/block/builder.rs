@@ -8,7 +8,7 @@ use crate::block::{
     BLOCK_VERSION_CONSENSUS_NONE,
 };
 use crate::key::{make_signature, make_signature_update};
-use crate::leadership::{self, GenesisPraosId};
+use crate::leadership::{self, genesis};
 use crate::transaction::SignedTransaction;
 use chain_addr::Address;
 use chain_crypto::{
@@ -124,7 +124,7 @@ impl BlockBuilder {
     /// given KES key.
     pub fn make_genesis_praos_block(
         mut self,
-        genesis_praos_id: &GenesisPraosId,
+        genesis_praos_id: &genesis::GenesisPraosId,
         kes_signing_key: &mut SecretKey<FakeMMM>,
         vrf_public_key: &PublicKey<Curve25519_2HashDH>,
         vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
