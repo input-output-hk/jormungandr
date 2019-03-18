@@ -181,7 +181,18 @@ pub trait State: Sized + Clone {
     type Header: Header;
     type Content: Message;
 
-    fn apply<'a, I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
+    /// yield a new block in the state
+    ///
+    /// This will change the state in the sense that it acknowledge the creation
+    /// of a new block in its internal state.
+    fn apply_block<'a, I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = &'a Self::Content>,
+        Self::Content: 'a;
+
+    /// apply new block contents. This modify the state in small steps
+    /// however it does not acknowledge the creation of a new block
+    fn apply_contents<'a, I>(&self, contents: I) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = &'a Self::Content>,
         Self::Content: 'a;

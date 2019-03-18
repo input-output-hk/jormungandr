@@ -38,16 +38,25 @@ impl property::State for State {
     type Header = Header;
     type Content = Message;
 
-    fn apply<'a, I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
+    fn apply_block<'a, I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = &'a Self::Content>,
-        Self::Content: 'a
+        Self::Content: 'a,
+    {
+        let mut new_state = self.apply_contents(contents)?;
+        new_state.settings.last_block_id = header.id();
+        new_state.settings.last_block_date = header.date();
+        Ok(new_state)
+    }
+
+    fn apply_contents<'a, I>(&self, contents: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = &'a Self::Content>,
+        Self::Content: 'a,
     {
         let mut new_ledger = self.ledger.clone();
         let mut new_delegation = self.delegation.clone();
         let mut new_settings = self.settings.clone();
-        new_settings.last_block_id = header.id();
-        new_settings.last_block_date = header.date();
         for content in contents {
             match content {
                 Message::Transaction(signed_transaction) => {
