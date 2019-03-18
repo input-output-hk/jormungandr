@@ -181,9 +181,10 @@ pub trait State: Sized + Clone {
     type Header: Header;
     type Content: Message;
 
-    fn apply<I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
+    fn apply<'a, I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
     where
-        I: IntoIterator<Item = Self::Content>;
+        I: IntoIterator<Item = &'a Self::Content>,
+        Self::Content: 'a;
 }
 
 /// Define the Ledger side of the blockchain. This is not really on the blockchain
