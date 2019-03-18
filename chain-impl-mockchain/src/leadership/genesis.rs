@@ -20,7 +20,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GenesisPraosId(Hash);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -118,6 +118,33 @@ impl LeaderSelection for GenesisLeaderSelection {
         match self.leader(date)? {
             Some(keys) => Ok(LeaderId::GenesisPraos(keys)),
             None => Err(Error::new(ErrorKind::NoLeaderForThisSlot)),
+        }
+    }
+}
+
+impl property::Serialize for GenesisPraosId {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        self.0.serialize(writer)
+    }
+}
+
+impl property::Deserialize for GenesisPraosId {
+    type Error = std::io::Error;
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        Hash::deserialize(reader).map(GenesisPraosId)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for GenesisPraosId {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let bytes = Vec::arbitrary(g);
+            GenesisPraosId(Hash::hash_bytes(&bytes))
         }
     }
 }

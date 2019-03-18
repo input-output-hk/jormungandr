@@ -1,6 +1,4 @@
-use crate::block::Message;
-use crate::key::*;
-use crate::stake::{StakeKeyId, StakePoolId};
+use crate::{block::Message, key::*, leadership::genesis::GenesisPraosId, stake::StakeKeyId};
 use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
@@ -79,7 +77,7 @@ impl property::Deserialize for StakeKeyDeregistration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeDelegation {
     pub stake_key_id: StakeKeyId,
-    pub pool_id: StakePoolId,
+    pub pool_id: GenesisPraosId,
 }
 
 impl StakeDelegation {
@@ -112,15 +110,15 @@ impl property::Deserialize for StakeDelegation {
         let mut codec = Codec::from(reader);
         Ok(StakeDelegation {
             stake_key_id: StakeKeyId::deserialize(&mut codec)?,
-            pool_id: StakePoolId::deserialize(&mut codec)?,
+            pool_id: GenesisPraosId::deserialize(&mut codec)?,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolRegistration {
-    pub pool_id: StakePoolId,
-    //pub owner: StakeKeyId, // FIXME: support list of owners
+    pub pool_id: GenesisPraosId,
+    pub owner: StakeKeyId, // FIXME: support list of owners
     // reward sharing params: cost, margin, pledged amount of stake
     // alternative stake key reward account
     pub kes_public_key: PublicKey<FakeMMM>,
@@ -144,7 +142,7 @@ impl property::Serialize for StakePoolRegistration {
         self.pool_id.serialize(&mut writer)?;
         writer.write_all(self.vrf_public_key.as_ref())?;
         serialize_public_key(&self.kes_public_key, &mut writer)?;
-        //self.owner.serialize(&mut codec)?;
+        self.owner.serialize(&mut writer)?;
         Ok(())
     }
 }
@@ -153,21 +151,22 @@ impl property::Deserialize for StakePoolRegistration {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let pool_id = StakePoolId::deserialize(&mut reader)?;
+        let pool_id = GenesisPraosId::deserialize(&mut reader)?;
         let vrf_public_key = deserialize_public_key(&mut reader)?;
         let kes_public_key = deserialize_public_key(&mut reader)?;
+        let owner = StakeKeyId::deserialize(&mut reader)?;
         Ok(StakePoolRegistration {
             pool_id: pool_id,
             vrf_public_key: vrf_public_key,
             kes_public_key: kes_public_key,
-            // owner: StakeKeyId::deserialize(&mut codec)?,
+            owner: owner,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolRetirement {
-    pub pool_id: StakePoolId,
+    pub pool_id: GenesisPraosId,
     // TODO: add epoch when the retirement will take effect
 }
 
@@ -199,7 +198,7 @@ impl property::Deserialize for StakePoolRetirement {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         Ok(StakePoolRetirement {
-            pool_id: StakePoolId::deserialize(&mut codec)?,
+            pool_id: GenesisPraosId::deserialize(&mut codec)?,
         })
     }
 }
@@ -245,8 +244,8 @@ mod test {
             StakePoolRegistration {
                 pool_id: Arbitrary::arbitrary(g),
                 vrf_public_key: SecretKey::generate(&mut rng).to_public(),
-                kes_public_key: SecretKey::generate(&mut rng).to_public()
-                //owner: Arbitrary::arbitrary(g),
+                kes_public_key: SecretKey::generate(&mut rng).to_public(),
+                owner: Arbitrary::arbitrary(g),
             }
         }
     }

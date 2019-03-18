@@ -1,22 +1,18 @@
 use crate::{
     block::Message,
-    certificate::{
-        StakeDelegation, StakeKeyDeregistration, StakeKeyRegistration, StakePoolRegistration,
-        StakePoolRetirement,
-    },
     key::verify_signature,
-    leadership::{Error, ErrorKind},
+    leadership::{genesis::GenesisPraosId, Error, ErrorKind},
 };
 use chain_crypto::{algorithms::vrf::vrf, Curve25519_2HashDH, FakeMMM, PublicKey};
 use std::collections::{HashMap, HashSet};
 
-use super::role::{StakeKeyId, StakeKeyInfo, StakePoolId, StakePoolInfo};
+use super::role::{StakeKeyId, StakeKeyInfo, StakePoolInfo};
 
 /// A structure that keeps track of stake keys and stake pools.
 #[derive(Debug, Clone)]
 pub struct DelegationState {
     pub(super) stake_keys: HashMap<StakeKeyId, StakeKeyInfo>,
-    pub(super) stake_pools: HashMap<StakePoolId, StakePoolInfo>,
+    pub(super) stake_pools: HashMap<GenesisPraosId, StakePoolInfo>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -27,11 +23,11 @@ pub enum DelegationError {
     StakeKeyDeregistrationDoesNotExist,
     StakeDelegationSigIsInvalid,
     StakeDelegationStakeKeyIsInvalid(StakeKeyId),
-    StakeDelegationPoolKeyIsInvalid(StakePoolId),
+    StakeDelegationPoolKeyIsInvalid(GenesisPraosId),
     StakePoolRegistrationPoolSigIsInvalid,
-    StakePoolAlreadyExists(StakePoolId),
+    StakePoolAlreadyExists(GenesisPraosId),
     StakePoolRetirementSigIsInvalid,
-    StakePoolDoesNotExist(StakePoolId),
+    StakePoolDoesNotExist(GenesisPraosId),
 }
 
 impl std::fmt::Display for DelegationError {
@@ -94,9 +90,9 @@ impl std::error::Error for DelegationError {}
 impl DelegationState {
     pub fn new(
         initial_stake_pools: Vec<StakePoolInfo>,
-        initial_stake_keys: HashMap<StakeKeyId, Option<StakePoolId>>,
+        initial_stake_keys: HashMap<StakeKeyId, Option<GenesisPraosId>>,
     ) -> Self {
-        let mut stake_pools: HashMap<StakePoolId, StakePoolInfo> = initial_stake_pools
+        let mut stake_pools: HashMap<GenesisPraosId, StakePoolInfo> = initial_stake_pools
             .into_iter()
             .map(|pool_info| (pool_info.pool_id.clone(), pool_info))
             .collect();
@@ -147,17 +143,18 @@ impl DelegationState {
         Some(stake_key_info)
     }
 
-    pub fn get_stake_pools(&self) -> &HashMap<StakePoolId, StakePoolInfo> {
+    pub fn get_stake_pools(&self) -> &HashMap<GenesisPraosId, StakePoolInfo> {
         &self.stake_pools
     }
 
-    pub fn stake_pool_exists(&self, pool_id: &StakePoolId) -> bool {
+    pub fn stake_pool_exists(&self, pool_id: &GenesisPraosId) -> bool {
         self.stake_pools.contains_key(pool_id)
     }
 
     pub fn register_stake_pool(
         &mut self,
-        pool_id: StakePoolId,
+        pool_id: GenesisPraosId,
+        owner: StakeKeyId,
         kes_public_key: PublicKey<FakeMMM>,
         vrf_public_key: vrf::PublicKey,
     ) {
@@ -166,7 +163,7 @@ impl DelegationState {
             pool_id.clone(),
             StakePoolInfo {
                 pool_id: pool_id,
-                //owners: new_stake_pool.owners
+                owner: owner,
                 members: HashSet::new(),
                 kes_public_key: kes_public_key,
                 vrf_public_key: vrf_public_key,
@@ -174,7 +171,7 @@ impl DelegationState {
         );
     }
 
-    pub fn deregister_stake_pool(&mut self, pool_id: &StakePoolId) {
+    pub fn deregister_stake_pool(&mut self, pool_id: &GenesisPraosId) {
         let pool_info = self.stake_pools.remove(pool_id).unwrap();
 
         // Remove all pool members.
@@ -185,11 +182,11 @@ impl DelegationState {
         }
     }
 
-    pub fn nr_pool_members(&self, pool_id: StakePoolId) -> usize {
+    pub fn nr_pool_members(&self, pool_id: GenesisPraosId) -> usize {
         self.stake_pools[&pool_id].members.len()
     }
 
-    pub fn delegate_stake(&mut self, stake_key_id: StakeKeyId, pool_id: StakePoolId) {
+    pub fn delegate_stake(&mut self, stake_key_id: StakeKeyId, pool_id: GenesisPraosId) {
         let stake_key = self.stake_keys.get_mut(&stake_key_id).unwrap();
 
         // If this is a redelegation, remove the stake key from its previous pool.
@@ -278,7 +275,7 @@ impl DelegationState {
                 }
             }
             Message::StakePoolRegistration(reg) => {
-                if verify_signature(&reg.sig, &reg.data.pool_id.0, &reg.data)
+                if verify_signature(&reg.sig, &reg.data.owner.0, &reg.data)
                     == chain_crypto::Verification::Failed
                 {
                     return Err(Error::new_(
@@ -303,12 +300,20 @@ impl DelegationState {
 
                 new_state.register_stake_pool(
                     reg.data.pool_id.clone(),
+                    reg.data.owner.clone(),
                     reg.data.kes_public_key.clone(),
                     unimplemented!(), // reg.data.vrf_public_key, // TODO: crypto is invalid here...
                 );
             }
             Message::StakePoolRetirement(reg) => {
-                if verify_signature(&reg.sig, &reg.data.pool_id.0, &reg.data)
+                let pool_info = if let Some(pool_info) = self.stake_pools.get(&reg.data.pool_id) {
+                    pool_info
+                } else {
+                    // TODO: add proper error cause
+                    return Err(Error::new(ErrorKind::InvalidBlockMessage));
+                };
+
+                if verify_signature(&reg.sig, &pool_info.owner.0, &reg.data)
                     == chain_crypto::Verification::Failed
                 {
                     return Err(Error::new_(

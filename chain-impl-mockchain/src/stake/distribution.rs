@@ -1,15 +1,14 @@
-use crate::ledger::Ledger;
-use crate::value::Value;
+use crate::{leadership::genesis::GenesisPraosId, ledger::Ledger, value::Value};
 use chain_addr::Kind;
 use std::collections::HashMap;
 
 use super::delegation::DelegationState;
-use super::role::{StakeKeyId, StakePoolId};
+use super::role::StakeKeyId;
 
 /// For each stake pool, the total stake value, and the value for the
 /// stake pool members.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakeDistribution(pub HashMap<StakePoolId, PoolStakeDistribution>);
+pub struct StakeDistribution(pub HashMap<GenesisPraosId, PoolStakeDistribution>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoolStakeDistribution {
@@ -40,7 +39,7 @@ impl StakeDistribution {
     /// by ID), then return the ID of the one containing 'point'
     /// (which must be in the interval). This is used to randomly
     /// select a leader, taking stake into account.
-    pub fn select_pool(&self, mut point: u64) -> Option<StakePoolId> {
+    pub fn select_pool(&self, mut point: u64) -> Option<GenesisPraosId> {
         let mut pools_sorted: Vec<_> = self
             .0
             .iter()
