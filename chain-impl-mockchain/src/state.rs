@@ -2,13 +2,15 @@
 //!
 
 use crate::{
-    block::{BlockContents, BlockDate, BlockId, Message},
+    block::{Block, Header, Message},
     leadership,
     ledger::{self, Ledger},
     setting,
     stake::DelegationState,
 };
+use chain_core::property::{self, Header as _};
 
+#[derive(Clone)]
 pub struct State {
     pub(crate) ledger: Ledger,
     pub(crate) settings: setting::Settings,
@@ -31,29 +33,30 @@ impl From<leadership::Error> for Error {
     }
 }
 
-impl State {
-    pub fn apply(
-        &self,
-        block_id: BlockId,
-        block_date: BlockDate,
-        contents: BlockContents,
-    ) -> Result<State, Error> {
-        // for now we just clone ledger, since leadership is still inside the state.
+impl property::State for State {
+    type Error = Error;
+    type Header = Header;
+    type Content = Message;
+
+    fn apply<I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = Self::Content>,
+    {
         let mut new_ledger = self.ledger.clone();
         let mut new_delegation = self.delegation.clone();
         let mut new_settings = self.settings.clone();
-        new_settings.last_block_id = block_id;
-        new_settings.last_block_date = block_date;
-        for content in contents.iter() {
+        new_settings.last_block_id = header.id();
+        new_settings.last_block_date = header.date();
+        for content in contents {
             match content {
                 Message::Transaction(signed_transaction) => {
-                    new_ledger = new_ledger.apply_transaction(signed_transaction)?;
+                    new_ledger = new_ledger.apply_transaction(&signed_transaction)?;
                 }
                 Message::Update(update_proposal) => {
-                    new_settings = new_settings.apply(update_proposal.clone());
+                    new_settings = new_settings.apply(update_proposal);
                 }
                 content => {
-                    new_delegation = new_delegation.apply(content)?;
+                    new_delegation = new_delegation.apply(&content)?;
                 }
             }
         }
