@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-import "codes.proto";
-
 // gRPC protocol for a blockchain node
 package iohk.chain.node;
 
