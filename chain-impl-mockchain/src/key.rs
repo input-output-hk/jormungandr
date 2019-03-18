@@ -18,8 +18,6 @@ pub fn serialize_public_key<A: AsymmetricKey, W: std::io::Write>(
     key: &crypto::PublicKey<A>,
     mut writer: W,
 ) -> Result<(), std::io::Error> {
-    let size: usize = std::mem::size_of_val(key);
-    assert!(size == 32);
     writer.write_all(key.as_ref())?;
     Ok(())
 }
@@ -39,9 +37,7 @@ where
     A: AsymmetricKey,
     R: std::io::BufRead,
 {
-    let size: usize = std::mem::size_of::<crypto::PublicKey<A>>();
-    assert!(size == 32);
-    let mut buffer = vec![0; size];
+    let mut buffer = vec![0; A::PUBLIC_KEY_SIZE];
     reader.read_exact(&mut buffer)?;
     crypto::PublicKey::from_bytes(&buffer)
         .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err)))
