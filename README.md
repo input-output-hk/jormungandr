@@ -47,6 +47,19 @@ General tasks:
 
 ![Internal Architecture](/.architecture-1.png?raw=true "Internal Architecture")
 
+## How to install from sources
+
+We do support multiple versions of the rust compiler, however we recommend
+to utilise the most recent stable version of the rust compiler.
+
+1. [install rustup](https://www.rust-lang.org/tools/install)
+2. make sure you have cloned the submodule too: `git submodule update`
+3. install: `cargo install`
+
+Note:
+
+* on windows, you'll need to add the `/userProfile/.cargo/bin` into the Path;
+* on linux and OSX: add `${HOME}/.cargo/bin` to your `${PATH}`
 
 ## How To Use
 
