@@ -9,10 +9,10 @@ use network_core::{
 use futures::future::Executor;
 use tokio::io;
 use tokio::prelude::*;
+use tower::MakeService;
 use tower_add_origin::{self, AddOrigin};
 use tower_grpc::{codegen::server::tower::Service, BoxBody, Code, Request, Status, Streaming};
 use tower_h2::client::{Background, Connect, ConnectError, Connection};
-use tower_util::MakeService;
 
 use std::{error, fmt, marker::PhantomData};
 
@@ -175,8 +175,8 @@ mod unary_future {
 
     fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_client::Error>
     where
-        F: Future<Item = Response<R>, Error = Status>,
         T: FromResponse<R>,
+        F: Future<Item = Response<R>, Error = Status>,
     {
         match future.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
