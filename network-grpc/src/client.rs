@@ -1,4 +1,7 @@
-use crate::gen::{self, node::client as gen_client};
+use crate::{
+    convert::{serialize_to_bytes, serialize_to_vec},
+    gen::{self, node::client as gen_client},
+};
 
 use chain_core::property;
 use network_core::{
@@ -11,7 +14,7 @@ use tokio::io;
 use tokio::prelude::*;
 use tower::MakeService;
 use tower_add_origin::{self, AddOrigin};
-use tower_grpc::{codegen::server::tower::Service, BoxBody, Code, Request, Status, Streaming};
+use tower_grpc::{codegen::server::tower::Service, BoxBody, Request, Streaming};
 use tower_h2::client::{Background, Connect, ConnectError, Connection};
 
 use std::{error, fmt, marker::PhantomData};
@@ -170,25 +173,22 @@ fn convert_error(e: tower_grpc::Status) -> core_client::Error {
     core_client::Error::new(core_client::ErrorKind::Rpc, e)
 }
 
-pub trait FromResponse<T>: Sized {
-    fn from_response(response: T) -> Result<Self, core_client::Error>;
-}
-
 mod unary_future {
-    use super::{convert_error, core_client, FromResponse, GrpcFuture, ResponseFuture};
+    use super::{convert_error, core_client, GrpcFuture, ResponseFuture};
+    use crate::convert::FromProtobuf;
     use futures::prelude::*;
     use std::marker::PhantomData;
     use tower_grpc::{Response, Status};
 
     fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_client::Error>
     where
-        T: FromResponse<R>,
+        T: FromProtobuf<R>,
         F: Future<Item = Response<R>, Error = Status>,
     {
         match future.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(res)) => {
-                let item = T::from_response(res.into_inner())?;
+                let item = T::from_message(res.into_inner())?;
                 Ok(Async::Ready(item))
             }
             Err(e) => Err(convert_error(e)),
@@ -203,7 +203,7 @@ mod unary_future {
     impl<T, R> Future for ResponseFuture<T, R>
     where
         R: prost::Message + Default,
-        T: FromResponse<R>,
+        T: FromProtobuf<R>,
     {
         type Item = T;
         type Error = core_client::Error;
@@ -284,20 +284,21 @@ mod stream_future {
 }
 
 mod response_stream {
-    use super::{convert_error, core_client, FromResponse, ResponseStream};
+    use super::{convert_error, core_client, ResponseStream};
+    use crate::convert::FromProtobuf;
     use futures::prelude::*;
     use tower_grpc::Status;
 
     fn poll_and_convert_item<T, S, R>(stream: &mut S) -> Poll<Option<T>, core_client::Error>
     where
         S: Stream<Item = R, Error = Status>,
-        T: FromResponse<R>,
+        T: FromProtobuf<R>,
     {
         match stream.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
             Ok(Async::Ready(Some(item))) => {
-                let item = T::from_response(item)?;
+                let item = T::from_message(item)?;
                 Ok(Async::Ready(Some(item)))
             }
             Err(e) => Err(convert_error(e)),
@@ -307,7 +308,7 @@ mod response_stream {
     impl<T, R> Stream for ResponseStream<T, R>
     where
         R: prost::Message + Default,
-        T: FromResponse<R>,
+        T: FromProtobuf<R>,
     {
         type Item = T;
         type Error = core_client::Error;
@@ -316,10 +317,6 @@ mod response_stream {
             poll_and_convert_item(&mut self.inner)
         }
     }
-}
-
-pub trait IntoRequest<R> {
-    fn into_request(self) -> Result<R, tower_grpc::Status>;
 }
 
 pub struct RequestStream<S, R> {
@@ -340,20 +337,21 @@ where
 }
 
 mod request_stream {
-    use super::{IntoRequest, RequestStream};
+    use super::RequestStream;
+    use crate::convert::IntoProtobuf;
     use futures::prelude::*;
     use tower_grpc::{Code, Status};
 
     fn poll_and_convert_item<S, R>(stream: &mut S) -> Poll<Option<R>, Status>
     where
         S: Stream,
-        S::Item: IntoRequest<R>,
+        S::Item: IntoProtobuf<R>,
     {
         match stream.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
             Ok(Async::Ready(Some(item))) => {
-                let item = item.into_request()?;
+                let item = item.into_message()?;
                 Ok(Async::Ready(Some(item)))
             }
             Err(_) => Err(Status::new(Code::Unknown, "request stream failure")),
@@ -363,7 +361,7 @@ mod request_stream {
     impl<S, R> Stream for RequestStream<S, R>
     where
         S: Stream,
-        S::Item: IntoRequest<R>,
+        S::Item: IntoProtobuf<R>,
     {
         type Item = R;
         type Error = Status;
@@ -371,103 +369,6 @@ mod request_stream {
         fn poll(&mut self) -> Poll<Option<R>, Status> {
             poll_and_convert_item(&mut self.inner)
         }
-    }
-}
-
-fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_client::Error>
-where
-    T: property::Deserialize,
-{
-    T::deserialize(&mut buf).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
-}
-
-fn serialize_to_bytes<T>(x: &T) -> Vec<u8>
-where
-    T: property::Serialize,
-{
-    let mut v = Vec::new();
-    x.serialize(&mut v).unwrap();
-    v
-}
-
-fn serialize_to_vec<T>(values: &[T]) -> Vec<Vec<u8>>
-where
-    T: property::Serialize,
-{
-    values
-        .iter()
-        .map(|x| {
-            let mut v = Vec::new();
-            x.serialize(&mut v).unwrap();
-            v
-        })
-        .collect()
-}
-
-impl<H> FromResponse<gen::node::TipResponse> for H
-where
-    H: chain_bounds::Header,
-{
-    fn from_response(res: gen::node::TipResponse) -> Result<Self, core_client::Error> {
-        let block_header = deserialize_bytes(&res.block_header)?;
-        Ok(block_header)
-    }
-}
-
-impl<T> FromResponse<gen::node::Block> for T
-where
-    T: chain_bounds::Block,
-{
-    fn from_response(res: gen::node::Block) -> Result<T, core_client::Error> {
-        let block = deserialize_bytes(&res.content)?;
-        Ok(block)
-    }
-}
-
-impl<T> FromResponse<gen::node::Header> for T
-where
-    T: chain_bounds::Header,
-{
-    fn from_response(res: gen::node::Header) -> Result<T, core_client::Error> {
-        let block = deserialize_bytes(&res.content)?;
-        Ok(block)
-    }
-}
-
-impl<T> FromResponse<gen::node::GossipMessage> for (gossip::NodeId, T)
-where
-    T: Gossip,
-{
-    fn from_response(
-        res: gen::node::GossipMessage,
-    ) -> Result<(gossip::NodeId, T), core_client::Error> {
-        let node_id = match res.node_id {
-            None => Err(convert_error(Status::new(
-                Code::InvalidArgument,
-                "incorrect node encoding",
-            ))),
-            Some(gen::node::gossip_message::NodeId { content }) => {
-                match gossip::NodeId::from_slice(&content) {
-                    Ok(node_id) => Ok(node_id),
-                    Err(_v) => Err(convert_error(Status::new(
-                        Code::InvalidArgument,
-                        "incorrect node encoding",
-                    ))),
-                }
-            }
-        }?;
-        let gossip = deserialize_bytes(&res.content)?;
-        Ok((node_id, gossip))
-    }
-}
-
-impl<H> IntoRequest<gen::node::Header> for H
-where
-    H: chain_bounds::Header,
-{
-    fn into_request(self) -> Result<gen::node::Header, tower_grpc::Status> {
-        let content = serialize_to_bytes(&self);
-        Ok(gen::node::Header { content })
     }
 }
 
@@ -496,7 +397,7 @@ where
     }
 
     fn pull_blocks_to_tip(&mut self, from: &[C::BlockId]) -> Self::PullBlocksToTipFuture {
-        let from = serialize_to_vec(from);
+        let from = serialize_to_vec(from).unwrap();
         let req = gen::node::PullBlocksToTipRequest { from };
         let future = self.node.pull_blocks_to_tip(Request::new(req));
         ServerStreamFuture::new(future)
@@ -524,7 +425,7 @@ where
     fn gossip(&mut self, node_id: &gossip::NodeId, gossip: &C::Gossip) -> Self::GossipFuture {
         let content = node_id.to_bytes();
         let node_id = Some(gen::node::gossip_message::NodeId { content });
-        let content = serialize_to_bytes(&gossip);
+        let content = serialize_to_bytes(&gossip).unwrap();
         let req = gen::node::GossipMessage { node_id, content };
         let future = self.node.gossip(Request::new(req));
         ResponseFuture::new(future)

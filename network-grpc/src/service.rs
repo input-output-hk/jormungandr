@@ -1,8 +1,10 @@
-use crate::gen;
+use crate::{
+    convert::{IntoProtobuf, deserialize_bytes, deserialize_vec},
+    gen,
+};
 
-use chain_core::property::{Block, Deserialize, Header, Serialize, Transaction};
 use network_core::{
-    gossip::{self, Gossip},
+    gossip,
     server::{block::BlockService, gossip::GossipService, transaction::TransactionService, Node},
 };
 
@@ -52,7 +54,7 @@ pub enum ResponseFuture<T, F> {
 impl<T, F> ResponseFuture<T, F>
 where
     F: Future,
-    F::Item: IntoResponse<T>,
+    F::Item: IntoProtobuf<T>,
 {
     fn new(future: F) -> Self {
         ResponseFuture::Pending(future)
@@ -73,22 +75,18 @@ fn convert_error<E: error::Error>(e: E) -> tower_grpc::Status {
     Status::new(Code::Unknown, format!("{}", e))
 }
 
-pub trait IntoResponse<T> {
-    fn into_response(self) -> Result<T, tower_grpc::Status>;
-}
-
 fn poll_and_convert_response<T, F>(
     future: &mut F,
 ) -> Poll<tower_grpc::Response<T>, tower_grpc::Status>
 where
     F: Future,
-    F::Item: IntoResponse<T>,
+    F::Item: IntoProtobuf<T>,
     F::Error: error::Error,
 {
     match future.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
         Ok(Async::Ready(res)) => {
-            let item = res.into_response()?;
+            let item = res.into_message()?;
             let response = tower_grpc::Response::new(item);
             Ok(Async::Ready(response))
         }
@@ -99,14 +97,14 @@ where
 fn poll_and_convert_stream<T, S>(stream: &mut S) -> Poll<Option<T>, tower_grpc::Status>
 where
     S: Stream,
-    S::Item: IntoResponse<T>,
+    S::Item: IntoProtobuf<T>,
     S::Error: error::Error,
 {
     match stream.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
         Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
         Ok(Async::Ready(Some(item))) => {
-            let item = item.into_response()?;
+            let item = item.into_message()?;
             Ok(Async::Ready(Some(item)))
         }
         Err(e) => Err(convert_error(e)),
@@ -116,7 +114,7 @@ where
 impl<T, F> Future for ResponseFuture<T, F>
 where
     F: Future,
-    F::Item: IntoResponse<T>,
+    F::Item: IntoProtobuf<T>,
     F::Error: error::Error,
 {
     type Item = tower_grpc::Response<T>;
@@ -148,7 +146,7 @@ pub struct ResponseStream<T, S> {
 impl<T, S> ResponseStream<T, S>
 where
     S: Stream,
-    S::Item: IntoResponse<T>,
+    S::Item: IntoProtobuf<T>,
 {
     pub fn new(stream: S) -> Self {
         ResponseStream {
@@ -161,7 +159,7 @@ where
 impl<T, S> Stream for ResponseStream<T, S>
 where
     S: Stream,
-    S::Item: IntoResponse<T>,
+    S::Item: IntoProtobuf<T>,
     S::Error: error::Error,
 {
     type Item = T;
@@ -172,105 +170,14 @@ where
     }
 }
 
-fn deserialize_bytes<H: Deserialize>(v: &Vec<u8>) -> Result<H, tower_grpc::Status> {
-    match H::deserialize(&mut &v[..]) {
-        Ok(v) => Ok(v),
-        Err(e) => {
-            // FIXME: log the error
-            // (preferably with tower facilities outside of this implementation)
-            let status = Status::new(Code::InvalidArgument, format!("{}", e));
-            Err(status)
-        }
-    }
-}
-
-fn deserialize_vec<H: Deserialize>(pb: &[Vec<u8>]) -> Result<Vec<H>, tower_grpc::Status> {
-    match pb.iter().map(|v| H::deserialize(&mut &v[..])).collect() {
-        Ok(v) => Ok(v),
-        Err(e) => {
-            // FIXME: log the error
-            // (preferably with tower facilities outside of this implementation)
-            let status = Status::new(Code::InvalidArgument, format!("{}", e));
-            Err(status)
-        }
-    }
-}
-
-fn serialize_to_bytes<T>(obj: T) -> Result<Vec<u8>, tower_grpc::Status>
-where
-    T: Serialize,
-{
-    let mut bytes = Vec::new();
-    match obj.serialize(&mut bytes) {
-        Ok(()) => Ok(bytes),
-        Err(_e) => {
-            // FIXME: log the error
-            let status = Status::new(Code::InvalidArgument, "response serialization failed");
-            Err(status)
-        }
-    }
-}
-
-impl<S, T> IntoResponse<ResponseStream<T, S>> for S
+impl<S, T> IntoProtobuf<ResponseStream<T, S>> for S
 where
     S: Stream,
-    S::Item: IntoResponse<T>,
+    S::Item: IntoProtobuf<T>,
 {
-    fn into_response(self) -> Result<ResponseStream<T, S>, tower_grpc::Status> {
+    fn into_message(self) -> Result<ResponseStream<T, S>, tower_grpc::Status> {
         let stream = ResponseStream::new(self);
         Ok(stream)
-    }
-}
-
-impl<H> IntoResponse<gen::node::TipResponse> for H
-where
-    H: Header + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::TipResponse, tower_grpc::Status> {
-        let block_header = serialize_to_bytes(self)?;
-        Ok(gen::node::TipResponse { block_header })
-    }
-}
-
-impl<B> IntoResponse<gen::node::Block> for B
-where
-    B: Block + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::Block, tower_grpc::Status> {
-        let content = serialize_to_bytes(self)?;
-        Ok(gen::node::Block { content })
-    }
-}
-
-impl<G> IntoResponse<gen::node::GossipMessage> for (gossip::NodeId, G)
-where
-    G: Gossip + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::GossipMessage, tower_grpc::Status> {
-        let content = self.0.to_bytes();
-        let node_id = Some(gen::node::gossip_message::NodeId { content });
-        let content = serialize_to_bytes(self.1)?;
-        Ok(gen::node::GossipMessage { node_id, content })
-    }
-}
-
-impl<H> IntoResponse<gen::node::Header> for H
-where
-    H: Header + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::Header, tower_grpc::Status> {
-        let content = serialize_to_bytes(self)?;
-        Ok(gen::node::Header { content })
-    }
-}
-
-impl<T> IntoResponse<gen::node::Transaction> for T
-where
-    T: Transaction + Serialize,
-{
-    fn into_response(self) -> Result<gen::node::Transaction, tower_grpc::Status> {
-        let content = serialize_to_bytes(self)?;
-        Ok(gen::node::Transaction { content })
     }
 }
 
@@ -356,8 +263,8 @@ where
         let service = try_get_service!(self.block_service);
         let block_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(block_ids) => block_ids,
-            Err(status) => {
-                return ResponseFuture::error(status);
+            Err(e) => {
+                return ResponseFuture::error(convert_error(e));
             }
         };
         ResponseFuture::new(service.get_blocks(&block_ids))
@@ -367,8 +274,8 @@ where
         let service = try_get_service!(self.block_service);
         let block_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(block_ids) => block_ids,
-            Err(status) => {
-                return ResponseFuture::error(status);
+            Err(e) => {
+                return ResponseFuture::error(convert_error(e));
             }
         };
         ResponseFuture::new(service.get_headers(&block_ids))
@@ -381,8 +288,8 @@ where
         let service = try_get_service!(self.block_service);
         let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
-            Err(status) => {
-                return ResponseFuture::error(status);
+            Err(e) => {
+                return ResponseFuture::error(convert_error(e));
             }
         };
         ResponseFuture::new(service.pull_blocks_to_tip(&block_ids))
@@ -395,8 +302,8 @@ where
         let service = try_get_service!(self.tx_service);
         let tx_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(tx_ids) => tx_ids,
-            Err(status) => {
-                return ResponseFuture::error(status);
+            Err(e) => {
+                return ResponseFuture::error(convert_error(e));
             }
         };
         ResponseFuture::new(service.get_transactions(&tx_ids))
@@ -440,8 +347,8 @@ where
         };
         let gossip = match deserialize_bytes(&req.get_ref().content) {
             Ok(message) => message,
-            Err(status) => {
-                return ResponseFuture::error(status);
+            Err(e) => {
+                return ResponseFuture::error(convert_error(e));
             }
         };
         ResponseFuture::new(service.record_gossip(node_id, &gossip))
