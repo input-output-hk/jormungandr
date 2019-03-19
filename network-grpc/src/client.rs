@@ -125,12 +125,6 @@ type GrpcFuture<R> = tower_grpc::client::unary::ResponseFuture<
     tower_h2::RecvBody,
 >;
 
-type GrpcStreamFuture<R> =
-    tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
-
-type GrpcBidiStreamFuture<R> =
-    tower_grpc::client::streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
-
 pub struct ResponseFuture<T, R> {
     state: unary_future::State<T, R>,
 }
@@ -143,29 +137,29 @@ impl<T, R> ResponseFuture<T, R> {
     }
 }
 
-pub struct ResponseStreamFuture<T, R> {
-    state: stream_future::State<T, R>,
+pub struct ResponseStreamFuture<T, F> {
+    state: stream_future::State<T, F>,
 }
 
-impl<T, R> ResponseStreamFuture<T, R> {
-    fn new(future: GrpcStreamFuture<R>) -> Self {
+impl<T, F> ResponseStreamFuture<T, F> {
+    fn new(future: F) -> Self {
         ResponseStreamFuture {
             state: stream_future::State::Pending(future),
         }
     }
 }
 
-pub struct BidiStreamFuture<T, R> {
-    state: bidi_future::State<T, R>,
-}
+pub type ServerStreamFuture<T, R> =
+    ResponseStreamFuture<
+        T,
+        tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>,
+    >;
 
-impl<T, R> BidiStreamFuture<T, R> {
-    fn new(future: GrpcBidiStreamFuture<R>) -> Self {
-        BidiStreamFuture {
-            state: bidi_future::State::Pending(future),
-        }
-    }
-}
+pub type BidiStreamFuture<T, R> =
+    ResponseStreamFuture<
+        T,
+        tower_grpc::client::streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>,
+    >;
 
 pub struct ResponseStream<T, R> {
     inner: Streaming<R, tower_h2::RecvBody>,
@@ -234,7 +228,7 @@ mod unary_future {
 
 mod stream_future {
     use super::{
-        convert_error, core_client, GrpcStreamFuture, ResponseStream, ResponseStreamFuture,
+        convert_error, core_client, ResponseStream, ResponseStreamFuture,
     };
     use futures::prelude::*;
     use std::marker::PhantomData;
@@ -259,71 +253,14 @@ mod stream_future {
         }
     }
 
-    pub enum State<T, R> {
-        Pending(GrpcStreamFuture<R>),
+    pub enum State<T, F> {
+        Pending(F),
         Finished(PhantomData<T>),
     }
 
-    impl<T, R> Future for ResponseStreamFuture<T, R>
-    where
-        R: prost::Message + Default,
-    {
-        type Item = ResponseStream<T, R>;
-        type Error = core_client::Error;
-
-        fn poll(&mut self) -> Poll<ResponseStream<T, R>, core_client::Error> {
-            if let State::Pending(ref mut f) = self.state {
-                let res = poll_and_convert_response(f);
-                if let Ok(Async::NotReady) = res {
-                    return Ok(Async::NotReady);
-                }
-                self.state = State::Finished(PhantomData);
-                res
-            } else {
-                match self.state {
-                    State::Pending(_) => unreachable!(),
-                    State::Finished(_) => panic!("polled a finished response"),
-                }
-            }
-        }
-    }
-}
-
-mod bidi_future {
-    use super::{
-        convert_error, core_client, GrpcBidiStreamFuture, ResponseStream, BidiStreamFuture,
-    };
-    use futures::prelude::*;
-    use std::marker::PhantomData;
-    use tower_grpc::{Response, Status, Streaming};
-
-    fn poll_and_convert_response<T, R, F>(
-        future: &mut F,
-    ) -> Poll<ResponseStream<T, R>, core_client::Error>
+    impl<T, R, F> Future for ResponseStreamFuture<T, F>
     where
         F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = Status>,
-    {
-        match future.poll() {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(res)) => {
-                let stream = ResponseStream {
-                    inner: res.into_inner(),
-                    _phantom: PhantomData,
-                };
-                Ok(Async::Ready(stream))
-            }
-            Err(e) => Err(convert_error(e)),
-        }
-    }
-
-    pub enum State<T, R> {
-        Pending(GrpcBidiStreamFuture<R>),
-        Finished(PhantomData<T>),
-    }
-
-    impl<T, R> Future for BidiStreamFuture<T, R>
-    where
-        R: prost::Message + Default,
     {
         type Item = ResponseStream<T, R>;
         type Error = core_client::Error;
@@ -544,10 +481,10 @@ where
     type TipFuture = ResponseFuture<C::Header, gen::node::TipResponse>;
 
     type PullBlocksToTipStream = ResponseStream<C::Block, gen::node::Block>;
-    type PullBlocksToTipFuture = ResponseStreamFuture<C::Block, gen::node::Block>;
+    type PullBlocksToTipFuture = ServerStreamFuture<C::Block, gen::node::Block>;
 
     type GetBlocksStream = ResponseStream<C::Block, gen::node::Block>;
-    type GetBlocksFuture = ResponseStreamFuture<C::Block, gen::node::Block>;
+    type GetBlocksFuture = ServerStreamFuture<C::Block, gen::node::Block>;
 
     type BlockSubscription = ResponseStream<C::Header, gen::node::Header>;
     type BlockSubscriptionFuture = BidiStreamFuture<C::Header, gen::node::Header>;
@@ -562,7 +499,7 @@ where
         let from = serialize_to_vec(from);
         let req = gen::node::PullBlocksToTipRequest { from };
         let future = self.node.pull_blocks_to_tip(Request::new(req));
-        ResponseStreamFuture::new(future)
+        ServerStreamFuture::new(future)
     }
 
     fn subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
