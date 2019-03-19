@@ -2,6 +2,7 @@ use chain_addr::Address;
 use chain_impl_mockchain::{
     key::Hash,
     transaction::{Output, UtxoPointer},
+    utxo::Entry,
     value::Value,
 };
 
@@ -10,18 +11,18 @@ pub struct TxId(Hash);
 #[derive(Serialize)]
 pub struct Utxo {
     in_txid: TxId,
-    in_idx: u32,
+    in_idx: u8,
     out_addr: Address,
     out_value: Value,
 }
 
-impl<'a> From<(&'a UtxoPointer, &'a Output)> for Utxo {
-    fn from((pointer, output): (&'a UtxoPointer, &'a Output)) -> Self {
+impl<'a> From<Entry<'a, Address>> for Utxo {
+    fn from(utxo_entry: Entry<'a, Address>) -> Self {
         Self {
-            in_txid: TxId(pointer.transaction_id),
-            in_idx: pointer.output_index,
-            out_addr: output.0.clone(),
-            out_value: output.1,
+            in_txid: TxId(utxo_entry.transaction_id),
+            in_idx: utxo_entry.output_index,
+            out_addr: utxo_entry.output.address.clone(),
+            out_value: utxo_entry.output.value,
         }
     }
 }

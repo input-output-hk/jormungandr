@@ -223,9 +223,6 @@ where
 pub fn bootstrap<B>(config: &Configuration, blockchain: BlockchainR<B>)
 where
     B: NetworkBlockConfig,
-    <B::Ledger as property::Ledger>::Update: Clone,
-    <B::Settings as property::Settings>::Update: Clone,
-    <B::Leader as property::LeaderSelection>::Update: Clone,
 {
     if config.protocol != Protocol::Grpc {
         unimplemented!()

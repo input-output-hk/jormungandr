@@ -14,10 +14,7 @@ use network_core::{
     server::{
         block::{BlockError, BlockService},
         gossip::{GossipError, GossipService},
-        transaction::{
-            ProposeTransactionsResponse, RecordTransactionResponse, TransactionError,
-            TransactionService,
-        },
+        transaction::{ProposeTransactionsResponse, TransactionError, TransactionService},
         Node,
     },
 };
@@ -181,8 +178,6 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
     type TransactionId = B::TransactionId;
     type ProposeTransactionsFuture =
         ReplyFuture<ProposeTransactionsResponse<B::TransactionId>, TransactionError>;
-    type RecordTransactionFuture =
-        ReplyFuture<RecordTransactionResponse<B::TransactionId>, TransactionError>;
     type GetTransactionsStream = ReplyStream<Self::Transaction, TransactionError>;
     type GetTransactionsFuture = ReplyFuture<Self::GetTransactionsStream, TransactionError>;
     type AnnounceTransactionFuture = ReplyFuture<(), TransactionError>;

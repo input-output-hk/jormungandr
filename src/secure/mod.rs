@@ -1,5 +1,3 @@
-pub mod crypto;
-
 use bech32::{Bech32, FromBase32};
 use chain_crypto::{AsymmetricKey, Ed25519Extended, PublicKey, SecretKey};
 use std::fs;

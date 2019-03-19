@@ -14,7 +14,6 @@ extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate clap;
 extern crate cryptoxide;
-extern crate curve25519_dalek;
 extern crate exe_common;
 extern crate futures;
 extern crate generic_array;
@@ -56,7 +55,7 @@ extern crate test;
 use std::io::{self, BufRead};
 use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 
-use chain_impl_mockchain::transaction::{SignedTransaction, TransactionId};
+use chain_impl_mockchain::block::{message::MessageId, Message};
 use futures::Future;
 
 use bech32::{u5, Bech32, FromBase32, ToBase32};
@@ -65,7 +64,7 @@ use blockcfg::{
 };
 use blockchain::{Blockchain, BlockchainR};
 use chain_crypto::{
-    vrf::Curve25519_2HashDH, AsymmetricKey, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
+    AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
 };
 use intercom::BlockMsg;
 use leadership::leadership_task;
@@ -84,7 +83,7 @@ pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
 pub mod clock;
-pub mod consensus;
+// pub mod consensus;
 pub mod intercom;
 pub mod leadership;
 pub mod network;
@@ -192,7 +191,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     // * new nodes subscribing to updates (blocks, transactions)
     // * client GetBlocks/Headers ...
 
-    let tpool_data: TPool<TransactionId, SignedTransaction> = TPool::new();
+    let tpool_data: TPool<MessageId, Message> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
     // Validation of consensus settings should make sure that we always have
@@ -262,7 +261,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
         let leader_id =
-            chain_impl_mockchain::leadership::LeaderId::from(secret.public().block_publickey);
+            chain_impl_mockchain::leadership::LeaderId::Bft(secret.public().block_publickey.into());
         let pk = chain_impl_mockchain::leadership::Leader::BftLeader(secret.block_privatekey);
         tasks.task_create("leadership", move || {
             leadership_task(leader_id, pk, tpool, blockchain, clock, block_task)

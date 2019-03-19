@@ -1,36 +1,20 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
-use chain_core::property::{self, HasTransaction};
-use chain_impl_mockchain::{leadership, ledger, setting};
+use chain_core::property::{
+    Block as _, HasHeader as _, HasMessages as _, Settings as _, State as _,
+};
+use chain_impl_mockchain::state::State;
 use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStore};
 
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
 
-/// this structure holds all the state of the blockchains
-///
-/// It is meant to always be valid.
-pub struct State<B: BlockConfig> {
-    /// The current chain state corresponding to our tip.
-    pub ledger: Arc<RwLock<B::Ledger>>,
-    /// the setting of the blockchain corresponding to out tip
-    pub settings: Arc<RwLock<B::Settings>>,
-    pub leaders: B::Leader,
-}
-
 pub struct Blockchain<B: BlockConfig> {
-    pub genesis_data: B::GenesisData,
-
     /// the storage for the overall blockchains (blocks)
     pub storage: MemoryBlockStore<B::Block>,
 
-    pub state: State<B>,
-
-    pub change_log: Vec<(
-        <B::Leader as property::LeaderSelection>::Update,
-        <B::Ledger as property::Ledger>::Update,
-        <B::Settings as property::Settings>::Update,
-    )>,
+    // TODO use multiverse here
+    pub state: B::State,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
@@ -45,6 +29,7 @@ pub type BlockchainR<B> = Arc<RwLock<Blockchain<B>>>;
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
+/*
 impl State<Mockchain> {
     pub fn new(genesis: &GenesisData) -> Self {
         let ledger = Arc::new(RwLock::new(ledger::Ledger::new(genesis.initial_utxos())));
@@ -66,30 +51,29 @@ impl State<Mockchain> {
             leaders: leaders,
         }
     }
-}
+}*/
 
 impl Blockchain<Mockchain> {
     pub fn new(genesis_data: GenesisData) -> Self {
-        let state = State::new(&genesis_data);
+        let state = State::new();
+        let block_0 = genesis_data.to_block_0();
+        let state = state
+            .apply_block(&block_0.header, block_0.messages())
+            .unwrap();
+
+        let mut storage = MemoryBlockStore::new();
+        storage.put_block(&block_0);
+
         Blockchain {
-            genesis_data: genesis_data,
-            storage: MemoryBlockStore::new(),
+            storage: storage,
             state: state,
-            change_log: Vec::default(),
             unconnected_blocks: BTreeMap::default(),
         }
     }
 }
 
-impl<B> Blockchain<B>
-where
-    B: BlockConfig,
-    <B::Ledger as property::Ledger>::Update: Clone,
-    <B::Settings as property::Settings>::Update: Clone,
-    <B::Leader as property::LeaderSelection>::Update: Clone,
-{
+impl<B: BlockConfig> Blockchain<B> {
     pub fn handle_incoming_block(&mut self, block: B::Block) -> Result<(), storage::Error> {
-        use chain_core::property::Block;
         let block_hash = block.id();
         let parent_hash = block.parent_id();
 
@@ -107,40 +91,27 @@ where
 
     /// Handle a block whose ancestors are on disk.
     fn handle_connected_block(&mut self, block_hash: B::BlockHash, block: B::Block) {
-        use chain_core::property::{Block, LeaderSelection, Ledger, Settings};
+        let current_tip = self.state.tip();
 
-        let current_tip = self.state.settings.read().unwrap().tip();
-
-        // Quick optimization: don't do anything if the incoming block
-        // is already the tip. Ideally we would bail out if the
-        // incoming block is on the tip chain, but there is no quick
-        // way to check that.
-        if block_hash != current_tip {
-            if current_tip == block.parent_id() {
-                // FIXME: deadlock risk. But this issue will go away
-                // when we merge the states.
-                let mut ledger = self.state.ledger.write().unwrap();
-                let mut settings = self.state.settings.write().unwrap();
-
-                let leadership_diff = self.state.leaders.diff(&block).unwrap();
-                let ledger_diff = { ledger.diff(block.transactions()).unwrap() };
-                let setting_diff = settings.diff(&block).unwrap();
-
-                self.state.leaders.apply(leadership_diff.clone()).unwrap();
-                ledger.apply(ledger_diff.clone()).unwrap();
-                settings.apply(setting_diff.clone()).unwrap();
-
-                self.change_log
-                    .push((leadership_diff, ledger_diff, setting_diff));
+        match self.state.apply_block(&block.header(), block.messages()) {
+            Ok(state) => {
                 self.storage.put_block(&block).unwrap();
-                self.storage
-                    .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
-                    .unwrap();
-            } else {
-                // TODO chain state restoration ?
-                unimplemented!()
+                if block_hash != current_tip {
+                    self.storage
+                        .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
+                        .unwrap();
+                }
+
+                // TODO: update with the multiverse here
+                self.state = state;
             }
+            Err(error) => error!("Error with incoming block: {}", error),
         }
+    }
+
+    /// return the current tip hash and date
+    pub fn get_tip(&self) -> B::BlockHash {
+        self.state.tip()
     }
 }
 impl<B: BlockConfig> Blockchain<B> {
@@ -156,12 +127,6 @@ impl<B: BlockConfig> Blockchain<B> {
     /// Request a missing block from the network.
     fn sollicit_block(&mut self, _block_hash: &B::BlockHash) {
         //unimplemented!();
-    }
-
-    /// return the current tip hash and date
-    pub fn get_tip(&self) -> B::BlockHash {
-        use chain_core::property::Settings;
-        self.state.settings.read().unwrap().tip()
     }
 
     pub fn handle_block_announcement(

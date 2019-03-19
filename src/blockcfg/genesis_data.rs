@@ -1,9 +1,11 @@
 //! Generic Genesis data
 use bech32::{Bech32, FromBase32, ToBase32};
-use chain_addr::AddressReadable;
+use chain_addr::{Address, AddressReadable};
 use chain_crypto::{self, AsymmetricKey, Ed25519Extended};
-use chain_impl_mockchain::leadership::LeaderId;
+use chain_impl_mockchain::leadership::bft::LeaderId;
 use chain_impl_mockchain::{
+    block::{Block, BlockBuilder, Message, BLOCK_VERSION_CONSENSUS_BFT},
+    setting::UpdateProposal,
     transaction::{self, Output, UtxoPointer},
     value::Value,
 };
@@ -54,6 +56,26 @@ impl ConfigGenesisData {
             initial_utxos: genesis.initial_utxos,
             bft_leaders: genesis.bft_leaders,
         }
+    }
+}
+impl GenesisData {
+    pub fn to_block_0(self) -> Block {
+        let mut block_builder = BlockBuilder::new();
+        block_builder.message(Message::Update(UpdateProposal {
+            // TODO: this is not known yet
+            //
+            // update this value with a more appropriate one (that comes from the
+            // settings). We need to set this value so we know how many messages
+            // we are allowed when creating a block
+            max_number_of_transactions_per_block: Some(255),
+            // we are switching to BFT mode straight after this block
+            // so we don't need yet the GenesisPraos bootstrap d parameter
+            bootstrap_key_slots_percentage: None,
+            block_version: Some(BLOCK_VERSION_CONSENSUS_BFT),
+            bft_leaders: Some(self.bft_leaders.into_iter().map(|pk| pk.0).collect()),
+        }));
+        // TODO: the name is confusing here. this is the block 0 (not a genesis block)
+        block_builder.make_genesis_block()
     }
 }
 
@@ -117,7 +139,7 @@ impl GenesisData {
         self.bft_leaders.iter().map(|pk| &pk.0)
     }
 
-    pub fn initial_utxos(&self) -> HashMap<UtxoPointer, Output> {
+    pub fn initial_utxos(&self) -> HashMap<UtxoPointer, Output<Address>> {
         use chain_core::property::Transaction;
 
         let mut utxos = HashMap::new();
@@ -128,18 +150,21 @@ impl GenesisData {
                 outputs: vec![],
             };
             while let Some(iu) = initial_utxo.next() {
-                let output = Output(iu.address.to_address(), iu.value.clone());
+                let output = Output {
+                    address: iu.address.to_address(),
+                    value: iu.value.clone(),
+                };
                 transaction.outputs.push(output);
                 if transaction.outputs.len() == 255 {
                     break;
                 }
             }
-            let txid = transaction.id();
+            let txid = transaction.hash();
             for (index, output) in transaction.outputs.into_iter().enumerate() {
                 let ptr = UtxoPointer {
                     transaction_id: txid,
-                    output_index: index as u32,
-                    value: output.1.clone(),
+                    output_index: index as u8,
+                    value: output.value.clone(),
                 };
                 utxos.insert(ptr, output);
             }

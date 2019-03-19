@@ -1,13 +1,13 @@
-use std::sync::{mpsc::Receiver, Arc, RwLock};
-
-use crate::blockcfg::{BlockConfig, Ledger, Transaction};
+use crate::blockcfg::BlockConfig;
 use crate::blockchain::BlockchainR;
 use crate::intercom::{do_stream_reply, TransactionMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::transaction::TPool;
+use chain_core::property::{Message as _, State as _};
+use std::sync::{mpsc::Receiver, Arc, RwLock};
 
 #[allow(type_alias_bounds)]
-pub type TPoolR<B: BlockConfig> = Arc<RwLock<TPool<B::TransactionId, B::Transaction>>>;
+pub type TPoolR<B: BlockConfig> = Arc<RwLock<TPool<B::MessageId, B::Message>>>;
 
 pub fn transaction_task<B>(
     blockchain: BlockchainR<B>,
@@ -17,7 +17,7 @@ pub fn transaction_task<B>(
 ) -> !
 where
     B: BlockConfig,
-    B::TransactionId: Eq + std::hash::Hash,
+    B::MessageId: Eq + std::hash::Hash,
 {
     loop {
         let tquery = r.recv().unwrap();
@@ -31,7 +31,7 @@ where
             TransactionMsg::SendTransaction(txs) => {
                 let mut tpool = tpool.write().unwrap();
                 let blockchain = blockchain.read().unwrap();
-                let chain_state = &blockchain.state.ledger.read().unwrap();
+                let chain_state = &blockchain.state;
 
                 // this will test the transaction is valid within the current
                 // state of the local state of the global ledger.
@@ -39,7 +39,7 @@ where
                 // We don't want to keep transactions that are not valid within
                 // our state of the blockchain as we will not be able to add them
                 // in the blockchain.
-                if let Err(error) = chain_state.diff(txs.iter()) {
+                if let Err(error) = chain_state.apply_contents(txs.iter()) {
                     warn!("Received transactions where some are invalid, {}", error);
                 // TODO
                 } else {

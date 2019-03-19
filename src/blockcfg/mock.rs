@@ -3,6 +3,7 @@
 //!
 
 use crate::blockcfg::{genesis_data::GenesisData, BlockConfig};
+use chain_addr::Address;
 use chain_impl_mockchain::*;
 use network::p2p_topology as p2p;
 
@@ -13,45 +14,36 @@ impl BlockConfig for Mockchain {
     type BlockDate = block::BlockDate;
     type BlockHash = key::Hash;
     type BlockHeader = block::Header;
-    type Transaction = transaction::SignedTransaction;
+    type Transaction = transaction::SignedTransaction<Address>;
     type TransactionId = transaction::TransactionId;
+    type Message = block::Message;
+    type MessageId = block::message::MessageId;
     type GenesisData = GenesisData;
-    type Ledger = ledger::Ledger;
-    type Settings = setting::Settings;
-    type Leader = leadership::genesis::GenesisLeaderSelection;
-    type Update = update::Diff;
+    type State = state::State;
+    type Leadership = leadership::Leadership;
 
     type NodeSigningKey = leadership::Leader;
 
     type Gossip = p2p::Gossip;
 
     fn make_block(
-        _secret_key: &Self::NodeSigningKey,
-        settings: &Self::Settings,
-        _ledger: &Self::Ledger,
+        secret_key: &Self::NodeSigningKey,
         block_date: Self::BlockDate,
-        transactions: Vec<Self::Transaction>,
+        parent_id: Self::BlockHash,
+        messages: Vec<Self::Message>,
     ) -> Self::Block {
-        use chain_core::property::Settings;
+        let mut builder = block::BlockBuilder::new();
+        builder.messages(messages)
+            .date(block_date)
+            .parent(parent_id)
+            // TODO: .chain_length(chain_length)
+            ;
 
-        let content = block::BlockContents::new(
-            transactions
-                .into_iter()
-                .map(block::Message::Transaction)
-                .collect(),
-        );
-
-        let (content_hash, content_size) = content.compute_hash_size();
-
-        let common = block::Common {
-            block_version: block::BLOCK_VERSION_CONSENSUS_NONE,
-            block_date: block_date,
-            block_content_size: content_size as u32,
-            block_content_hash: content_hash,
-            block_parent_hash: settings.tip(),
-        };
-
-        block::Block::new(content, common, &mut leadership::Leader::None)
+        match secret_key {
+            leadership::Leader::None => builder.make_genesis_block(),
+            leadership::Leader::BftLeader(bft) => builder.make_bft_block(&bft),
+            leadership::Leader::GenesisPraos(_, _, _) => unimplemented!(),
+        }
     }
 }
 
