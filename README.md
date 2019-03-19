@@ -152,6 +152,7 @@ jormungandr start --genesis-config genesis.yaml \
 # documentations
 
 * [internal design](./doc/internal_design.md) of jormungandr
+* [cryptographic keys](./doc/jormungandr_keys.md)
 
 # Extra tooling
 
