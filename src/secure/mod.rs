@@ -23,6 +23,7 @@ impl NodeSecret {
     pub fn load_from_file(path: &Path) -> NodeSecret {
         let file_string = fs::read_to_string(path).unwrap();
         let bech32: Bech32 = file_string
+            .trim()
             .parse()
             .expect("Private key file should be bech32 encoded");
         if bech32.hrp() != Ed25519Extended::SECRET_BECH32_HRP {
