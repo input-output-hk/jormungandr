@@ -119,7 +119,7 @@ impl TransactionBuilder<Address> {
         // calculate initial fee, maybe we can fit it without any
         // additional calculations.
         let fee = fee_algorithm
-            .calculate_for(&self.tx)
+            .calculate_for(&self.tx, &self.cert)
             .ok_or(Error::MathErr(ValueError::Overflow))?;
         let pos = match balance(&self.tx, fee) {
             Ok(Balance::Negative(_)) => return Err(Error::TxNotEnoughTotalInput),
@@ -155,7 +155,7 @@ impl TransactionBuilder<Address> {
                     value: Value(0),
                 });
                 let fee = fee_algorithm
-                    .calculate_for(&tx)
+                    .calculate_for(&tx, &self.cert)
                     .ok_or(Error::MathErr(ValueError::Overflow))?;
                 match balance(&tx, fee) {
                     Ok(Balance::Positive(value)) => {
