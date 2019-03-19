@@ -100,6 +100,8 @@ pub struct InitArguments {
 #[derive(StructOpt, Debug)]
 pub struct GeneratePrivKeyArguments {
     /// Type of a private key
+    ///
+    /// value values are: ed25519, ed25510bip32, ed25519extended, curve25519_2hashdh
     #[structopt(long = "type")]
     pub key_type: GenPrivKeyType,
 }
