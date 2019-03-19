@@ -44,6 +44,10 @@ pub trait BlockDate: Eq + Ord + Clone {
     fn from_epoch_slot_id(epoch: u32, slot_id: u32) -> Self;
 }
 
+pub trait ChainLength {
+    fn next(&self) -> Self;
+}
+
 /// Trait identifying the transaction identifier type.
 pub trait TransactionId: Eq + Hash + Debug {}
 
@@ -54,6 +58,9 @@ pub trait Header: Serialize + Deserialize {
 
     /// The block date.
     type Date: BlockDate;
+
+    /// the length of the blockchain (number of blocks)
+    type ChainLength: ChainLength;
 
     /// the type associated to the version of a block
     type Version;
@@ -66,6 +73,11 @@ pub trait Header: Serialize + Deserialize {
 
     /// access the version of a given block
     fn version(&self) -> Self::Version;
+
+    /// get the block's chain length. The number of block
+    /// created following this thread of blocks on the blockchain
+    /// (including Self).
+    fn chain_length(&self) -> Self::ChainLength;
 }
 
 /// Block property
@@ -95,6 +107,9 @@ pub trait Block: Serialize + Deserialize {
     /// the type associated to the version of a block
     type Version;
 
+    /// the length of the blockchain (number of blocks)
+    type ChainLength: ChainLength;
+
     /// return the Block's identifier.
     fn id(&self) -> Self::Id;
 
@@ -107,6 +122,11 @@ pub trait Block: Serialize + Deserialize {
 
     /// access the version of a given block
     fn version(&self) -> Self::Version;
+
+    /// get the block's chain length. The number of block
+    /// created following this thread of blocks on the blockchain
+    /// (including Self).
+    fn chain_length(&self) -> Self::ChainLength;
 }
 
 /// Access to the block header.
@@ -253,6 +273,9 @@ pub trait Settings {
     /// return the tip of the current branch
     ///
     fn tip(&self) -> <Self::Block as Block>::Id;
+
+    /// the current chain_length
+    fn chain_length(&self) -> <Self::Block as Block>::ChainLength;
 
     /// the number of transactions in a block
     fn max_number_of_transactions_per_block(&self) -> u32;

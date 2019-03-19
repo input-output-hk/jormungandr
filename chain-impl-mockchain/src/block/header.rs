@@ -5,7 +5,7 @@ use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     verify_signature, Hash,
 };
-use crate::leadership::{bft, genesis, LeaderId};
+use crate::leadership::{bft, genesis};
 use chain_crypto::{
     Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, Signature, VerifiableRandomFunction,
     Verification,
@@ -33,7 +33,8 @@ pub struct Common {
     pub chain_length: ChainLength,
 }
 
-pub type ChainLength = u32;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ChainLength(pub(crate) u32);
 
 pub type HeaderToSign = Common;
 
@@ -172,10 +173,17 @@ impl Header {
     }
 }
 
+impl property::ChainLength for ChainLength {
+    fn next(&self) -> Self {
+        ChainLength(self.0 + 1)
+    }
+}
+
 impl property::Header for Header {
     type Id = HeaderHash;
     type Date = BlockDate;
     type Version = BlockVersion;
+    type ChainLength = ChainLength;
 
     fn id(&self) -> Self::Id {
         self.hash()
@@ -187,6 +195,10 @@ impl property::Header for Header {
 
     fn version(&self) -> Self::Version {
         *self.block_version()
+    }
+
+    fn chain_length(&self) -> Self::ChainLength {
+        self.common.chain_length
     }
 }
 
@@ -203,7 +215,7 @@ impl property::Serialize for Common {
         codec.put_u32(self.block_content_size)?;
         codec.put_u32(self.block_date.epoch)?;
         codec.put_u32(self.block_date.slot_id)?;
-        codec.put_u32(self.chain_length)?;
+        codec.put_u32(self.chain_length.0)?;
         codec.write_all(self.block_content_hash.as_ref())?;
         codec.write_all(self.block_parent_hash.as_ref())?;
 
@@ -271,7 +283,7 @@ impl property::Deserialize for Header {
         let epoch = codec.get_u32()?;
         let slot_id = codec.get_u32()?;
         let block_date = BlockDate { epoch, slot_id };
-        let chain_length = codec.get_u32()?;
+        let chain_length = codec.get_u32().map(ChainLength)?;
 
         let mut hash = [0; 32];
         codec.read_exact(&mut hash)?;

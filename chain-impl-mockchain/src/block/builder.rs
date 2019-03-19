@@ -32,7 +32,7 @@ impl BlockBuilder {
                 block_version: BLOCK_VERSION_CONSENSUS_NONE,
                 block_parent_hash: BlockId::zero(),
                 block_date: BlockDate::first(),
-                chain_length: 0,
+                chain_length: ChainLength(0),
             },
             contents: BlockContents::new(Vec::new()),
         }
@@ -104,14 +104,14 @@ impl BlockBuilder {
         use chain_core::property::BlockId as _;
         assert!(self.common.block_parent_hash == BlockId::zero());
         assert!(self.common.block_date == BlockDate::first());
-        assert_eq!(self.common.chain_length, 0);
+        assert_eq!(self.common.chain_length, ChainLength(0));
         self.finalize_common(BLOCK_VERSION_CONSENSUS_NONE);
         self.make_block(Proof::None)
     }
 
     /// create a BFT Block. this block will be signed with the given private key
     pub fn make_bft_block(mut self, bft_signing_key: &SecretKey<Ed25519Extended>) -> Block {
-        assert_ne!(self.common.chain_length, 0);
+        assert_ne!(self.common.chain_length, ChainLength(0));
         self.finalize_common(BLOCK_VERSION_CONSENSUS_BFT);
         let bft_proof = BftProof {
             leader_id: leadership::bft::LeaderId(bft_signing_key.to_public()),
@@ -129,7 +129,7 @@ impl BlockBuilder {
         vrf_public_key: &PublicKey<Curve25519_2HashDH>,
         vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
     ) -> Block {
-        assert_ne!(self.common.chain_length, 0);
+        assert_ne!(self.common.chain_length, ChainLength(0));
         self.finalize_common(BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
 
         let genesis_praos_proof = GenesisPraosProof {
