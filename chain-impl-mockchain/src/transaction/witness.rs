@@ -1,11 +1,11 @@
 use super::transaction::*;
 use crate::account;
 use crate::key::{
-    deserialize_signature, serialize_signature, SpendingPublicKey, SpendingSecretKey,
-    SpendingSignature,
+    deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
+    SpendingPublicKey, SpendingSecretKey, SpendingSignature,
 };
 use chain_core::property;
-use chain_crypto::Verification;
+use chain_crypto::{Ed25519Bip32, PublicKey, Verification};
 
 /// Structure that proofs that certain user agrees with
 /// some data. This structure is used to sign `Transaction`
@@ -16,8 +16,8 @@ use chain_crypto::Verification;
 #[derive(Debug, Clone)]
 pub enum Witness {
     Utxo(SpendingSignature<TransactionId>),
-    // OldUtxo
     Account(SpendingSignature<TransactionIdSpendingCounter>),
+    OldUtxo(PublicKey<Ed25519Bip32>, SpendingSignature<TransactionId>),
 }
 
 pub struct TransactionIdSpendingCounter(Vec<u8>);
@@ -54,12 +54,14 @@ impl Witness {
         transaction_id: &TransactionId,
     ) -> Verification {
         match self {
+            Witness::OldUtxo(_xpub, _signature) => unimplemented!(),
             Witness::Utxo(signature) => signature.verify(public_key, transaction_id),
             Witness::Account(_) => Verification::Failed,
         }
     }
 }
 
+const WITNESS_TAG_OLDUTXO: u8 = 0u8;
 const WITNESS_TAG_UTXO: u8 = 1u8;
 const WITNESS_TAG_ACCOUNT: u8 = 2u8;
 
@@ -72,6 +74,11 @@ impl property::Serialize for Witness {
 
         let mut codec = Codec::from(writer);
         match self {
+            Witness::OldUtxo(xpub, sig) => {
+                codec.put_u8(WITNESS_TAG_OLDUTXO)?;
+                serialize_public_key(xpub, &mut codec)?;
+                serialize_signature(sig, &mut codec)
+            }
             Witness::Utxo(sig) => {
                 codec.put_u8(WITNESS_TAG_UTXO)?;
                 serialize_signature(sig, codec.into_inner())
@@ -92,6 +99,11 @@ impl property::Deserialize for Witness {
         let mut codec = Codec::from(reader);
 
         match codec.get_u8()? {
+            WITNESS_TAG_OLDUTXO => {
+                let xpub = deserialize_public_key(&mut codec)?;
+                let sig = deserialize_signature(&mut codec)?;
+                Ok(Witness::OldUtxo(xpub, sig))
+            }
             WITNESS_TAG_UTXO => deserialize_signature(codec.into_inner()).map(Witness::Utxo),
             WITNESS_TAG_ACCOUNT => deserialize_signature(codec.into_inner()).map(Witness::Account),
             _ => unimplemented!(),
