@@ -243,20 +243,15 @@ impl property::Serialize for Header {
             }
             Proof::GenesisPraos(genesis_praos_proof) => {
                 use std::io::Write;
-                /*
+                genesis_praos_proof
+                    .genesis_praos_id
+                    .serialize(&mut buffered)?;
                 {
-                    let mut buf = [0; vrf::PUBLIC_SIZE];
-                    genesis_praos_proof.vrf_public_key.to_buffer(&mut buf);
-                    buffered.write_all(&buf)?;
-                }
-                {
-                    let mut buf = [0; vrf::PROOF_SIZE];
+                    let mut buf =
+                        [0; <Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE];
                     genesis_praos_proof.vrf_proof.to_bytes(&mut buf);
                     buffered.write_all(&buf)?;
                 }
-                serialize_public_key(&genesis_praos_proof.kes_public_key, &mut buffered)?;
-                */
-                unimplemented!();
                 serialize_signature(&genesis_praos_proof.kes_proof.0, &mut buffered)?;
             }
         }
