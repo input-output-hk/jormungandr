@@ -33,7 +33,7 @@ impl GenesisPraosLeader {
 
 #[derive(Debug)]
 pub struct GenesisLeaderSelection {
-    delegation_state: DelegationState,
+    //delegation_state: DelegationState,
     distribution: StakeDistribution,
     // the epoch this leader selection is valid for
     epoch: Epoch,
@@ -50,7 +50,7 @@ impl GenesisLeaderSelection {
 
         GenesisLeaderSelection {
             distribution: stake_distribution,
-            delegation_state: state.delegation.clone(),
+            //delegation_state: state.delegation.clone(),
             epoch: epoch_state + leader_selection_snapshot_interval,
         }
     }
@@ -82,6 +82,7 @@ impl GenesisLeaderSelection {
         // Select the stake pool containing the point we
         // picked.
         let pool_id = stake_snapshot.select_pool(point).unwrap();
+        /*
         let pool_info = self
             .delegation_state
             .get_stake_pools()
@@ -93,6 +94,8 @@ impl GenesisLeaderSelection {
         };
 
         Ok(Some(keys))
+        */
+        unimplemented!()
     }
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {
