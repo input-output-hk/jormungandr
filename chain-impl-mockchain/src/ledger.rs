@@ -28,6 +28,7 @@ pub enum Error {
     UtxoValueNotMatching(Value, Value),
     UtxoError(utxo::Error),
     UtxoInvalidSignature(UtxoPointer, Output<Address>, Witness),
+    OldUtxoInvalidSignature(UtxoPointer, Output<OldAddress>, Witness),
     AccountInvalidSignature(account::Identifier, Witness),
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
@@ -172,6 +173,34 @@ fn input_utxo_verify(
 ) -> Result<Ledger, Error> {
     match witness {
         Witness::Account(_) => return Err(Error::ExpectingUtxoWitness),
+        Witness::OldUtxo(xpub, signature) => {
+            let (old_utxos, associated_output) = ledger
+                .oldutxos
+                .remove(&utxo.transaction_id, utxo.output_index)?;
+
+            ledger.oldutxos = old_utxos;
+            if utxo.value != associated_output.value {
+                return Err(Error::UtxoValueNotMatching(
+                    utxo.value,
+                    associated_output.value,
+                ));
+            }
+
+            let verified = chain_crypto::Verification::Failed;
+            //signature.verify(
+            //    &associated_output.address.public_key().unwrap(),
+            //    &transaction_id,
+            //);
+            if verified == chain_crypto::Verification::Failed {
+                return Err(Error::OldUtxoInvalidSignature(
+                    utxo.clone(),
+                    associated_output.clone(),
+                    witness.clone(),
+                ));
+            };
+
+            Ok(ledger)
+        }
         Witness::Utxo(signature) => {
             let (new_utxos, associated_output) = ledger
                 .utxos
@@ -212,6 +241,7 @@ fn input_account_verify(
     ledger = new_ledger;
 
     match witness {
+        Witness::OldUtxo(_, _) => return Err(Error::ExpectingAccountWitness),
         Witness::Utxo(_) => return Err(Error::ExpectingAccountWitness),
         Witness::Account(sig) => {
             let tidsc = TransactionIdSpendingCounter::new(transaction_id, &spending_counter);
