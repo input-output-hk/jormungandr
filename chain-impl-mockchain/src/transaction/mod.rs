@@ -98,12 +98,11 @@ impl property::Deserialize for SignedTransaction<Address> {
     }
 }
 
-/*
 impl<OutAddress> property::Transaction for Transaction<OutAddress>
 where
     Transaction<OutAddress>: property::Serialize + property::Deserialize,
 {
-    type Input = UtxoPointer;
+    type Input = Input;
     type Output = Output<OutAddress>;
     type Inputs = [Self::Input];
     type Outputs = [Self::Output];
@@ -133,7 +132,6 @@ where
         self.transaction.outputs()
     }
 }
-*/
 
 #[cfg(test)]
 mod test {

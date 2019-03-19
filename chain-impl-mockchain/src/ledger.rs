@@ -6,6 +6,7 @@ use crate::value::*;
 use crate::{account, utxo};
 use cardano::address::Addr as OldAddress;
 use chain_addr::{Address, Kind};
+use chain_core::property;
 
 /// Overall ledger structure.
 ///
@@ -72,6 +73,23 @@ impl Ledger {
             &signed_tx.witnesses[..],
         )?;
         Ok(ledger)
+    }
+}
+
+impl property::Ledger<SignedTransaction<Address>> for Ledger {
+    type Error = Error;
+
+    fn input<'a, I>(&'a self, input: Input) -> Result<&'a Output<Address>, Self::Error> {
+        match input.to_enum() {
+            InputEnum::AccountInput(_, _) => {
+                Err(Error::UtxoError(utxo::Error::TransactionNotFound))
+            }
+            InputEnum::UtxoInput(utxo_ptr) => self
+                .utxos
+                .get(&utxo_ptr.transaction_id, &utxo_ptr.output_index)
+                .map(|entry| Ok(entry.output))
+                .unwrap_or_else(|| Err(Error::UtxoError(utxo::Error::TransactionNotFound))),
+        }
     }
 }
 

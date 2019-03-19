@@ -7,7 +7,9 @@ use crate::{
     ledger::{self, Ledger},
     setting,
     stake::DelegationState,
+    utxo,
 };
+use chain_addr::Address;
 use chain_core::property::{self, Header as _};
 
 #[derive(Clone)]
@@ -99,6 +101,10 @@ impl State {
             settings: setting::Settings::new(),
             delegation: DelegationState::new(Vec::new(), std::collections::HashMap::new()),
         }
+    }
+
+    pub fn utxos<'a>(&'a self) -> utxo::Iter<'a, Address> {
+        self.ledger.utxos.iter()
     }
 }
 

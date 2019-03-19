@@ -69,3 +69,5 @@ impl Transaction<Address> {
         TransactionId::hash_bytes(&bytes)
     }
 }
+
+impl property::TransactionId for TransactionId {}
