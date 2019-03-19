@@ -5,14 +5,16 @@ pub mod start;
 
 pub use self::command_arguments::GenPrivKeyType;
 
-use self::command_arguments::{Command as ArgCommand, CommandLine, GeneratePrivKeyArguments};
+use self::command_arguments::{
+    Command as ArgCommand, CommandLine, GeneratePrivKeyArguments, GeneratePubKeyArguments,
+};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 pub enum Command {
     Start(start::Settings),
     Init(init::Settings),
     GeneratePrivKey(GeneratePrivKeyArguments),
-    GeneratePubKey,
+    GeneratePubKey(GeneratePubKeyArguments),
 }
 
 #[derive(Debug)]
@@ -33,7 +35,7 @@ impl Command {
                 .map(Command::Start)
                 .map_err(Error::Start),
             ArgCommand::GeneratePrivKey(args) => Ok(Command::GeneratePrivKey(args)),
-            ArgCommand::GeneratePubKey => Ok(Command::GeneratePubKey),
+            ArgCommand::GeneratePubKey(args) => Ok(Command::GeneratePubKey(args)),
         }
     }
 }

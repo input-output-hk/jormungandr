@@ -2,51 +2,6 @@
 
 > Just because you call something a blockchain, that doesn't mean you aren't subject to normal engineering laws.
 
-## Internal Design
-
-
-Glossary:
-
-* **blockchains**: the current blockchain and possibly different known forks.
-* **clock**: general time tracking to know the time in blockchain unit (epoch/slot)
-* **tip**: the current fork that is considered the correct one, related to consensus algorithm.
-
-## Tasks.
-
-Each node runs several tasks. Task is a process with a clearly defined interface
-that abstracts a particular task.
-
-General tasks:
-
-* **Network task**: handle new connections, and perform lowlevel queries.
-  It does queries parsing and routing them to the other tasks: block,
-  client or transaction tasks.
-
-* **Block task**: handles blocks reception from other nodes and the leadership
-  thread. The blocks can be external and internal. External block (...), and
-  internal block (...).
-  When the task receives an external block it validates the block. If validation
-  succeeds then the task appends blocks to the blockchain and checks if the tip
-  needs any changes.
-  When the task receives an internal block it does the same actions except for
-  block validation. And then broadcasts the change of the tip to the network
-  thread.
-
-* **Leadership task**: waits for each new slot, evaluates if this node is
-  a slot leader. In case if it is, the task creates a new block
-  (with a set of known transactions) referencing the latest known
-  and agreed block in the blockchain. Then the task sends it to the block
-  thread for processing.
-
-* **Client task**: receives block header/body queries. This task is in charge
-  of in accord [!!!] with the blockchains, reply to the client.
-
-* **Transaction task**: receives new transactions from the network,
-  validates transaction and handle duplicates.
-  Also the broadcast to other nodes new (valid) transaction received.
-
-![Internal Architecture](/.architecture-1.png?raw=true "Internal Architecture")
-
 ## How to install from sources
 
 We do support multiple versions of the rust compiler, however we recommend
@@ -65,55 +20,9 @@ Note:
 
 In order to use jormungandr you need to configure your blockchain and
 configure your node.
-In order to configure a blockchain you should have a genesis file. If
-you want to create a new blockchain you can create a new genesis file.
-See 'create your genesis file' section.
 
-Then you need to configure your nodes, see 'node configuration section'.
-
-After configuring the blockchain and the node you can start one,
-see 'starting the node' section.
-
-### Create your genesis file
-
-In order to do so you should create:
-
-* the genesis data : That is the data that will be used to initialise the
-  protocol properties (like the initial UTxOs);
-* the protocol properties;
-
-Run following command to generate your `genesis.yaml` file:
-
-```
-jormungandr init \
-    --initial-utxos=ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s@999999999 \
-    --bft-leader=5b66c12d1aa6986d9c37b7bf905826a95db4b1c28e7c24fbaeb6ec277f75bd59 \
-    --bft-leader=f976bd9025d8c26928479ebdd39c12ac2cf5ce73f6534648a78ddc0da2f57794 > genesis.yaml
-```
-
-Running the command above will generate (WARNING: this is temporary, the genesis data format will be updated):
-
-```yaml
----
-start_time: 1550822014
-slot_duration: 15
-epoch_stability_depth: 2600
-initial_utxos:
-  - address: ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s
-    value: 999999999
-obft_leaders:
-  - 5b66c12d1aa6986d9c37b7bf905826a95db4b1c28e7c24fbaeb6ec277f75bd59
-  - f976bd9025d8c26928479ebdd39c12ac2cf5ce73f6534648a78ddc0da2f57794
-
-```
-
-You store this in a genesis.yaml file, you can the modify/tune your genesis data.
-
-Configuration fields meaning:
-  - *start_time*: when the blockchain starts (seconds since epoch).
-  - *slot_duration*: amount of time each slot is running (seconds).
-  - *epoch_stability_depth*: allowed size of the fork (in blocks).
-  - *initial_utuxos*: list of initial unspent outputs.
+* the Genesis File is the source of truth, the configuration of the blockchain;
+* the Node Configuration file is the configuration of the node (logging, peer addresses...);
 
 ### Node Configuration
 
@@ -146,7 +55,7 @@ Fields description:
      - *format*: log output format - plain or json.
   - *rest*: (optional) configuration of the rest endpoint.
      - *listen*: listen address
-     - *pkcs12*: certificate file
+     - *pkcs12*: certificate file (optional)
      - *prefix*: (optional) api prefix
   - *peer_2_peer*: the P2P network settings
      - *trusted_peers*: (optional) the list of nodes to connect to in order to
@@ -171,63 +80,16 @@ jormungandr start --genesis-config genesis.yaml \
   --without-leadership
 ```
 
-In order to start a leader node you need to generate key pairs using
-`jormungandr`:
+# documentations
 
-```
-$ jormungandr generate-priv-key --type Ed25519Extended
-ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexmfn7s96lqja5sv520zx6hx5hd0qsgahp3ta8grrrxkd8n0cjmaqre
+* [internal design](./doc/internal_design.md) of jormungandr
+* [cryptographic keys](./doc/jormungandr_keys.md)
+* [Starting a BFT Blockchain](./doc/starting_bft_blockchain.md)
+* [Starting a Generis Praos Blockchain](#) (**under construction**)
 
-$ echo ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexmfn7s96lqja5sv520zx6hx5hd0qsgahp3ta8grrrxkd8n0cjmaqre \
-  | cargo run -- generate-pub-key
-ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
-```
+# Extra tooling
 
-This is your private key you can put it in key.xprv file. If you expect your
-node to be a leader, put your public_key in the `genesis.yaml` leader.
-
-Then you should start node using:
-
-```
-jormungandr start --genesis-config genesis.yaml \
-  --config example.config \
-  --secret key.xprv
-```
-
-### Node client
-
-Jormungandr comes with a CLI client for manual communication with nodes over HTTP.
-
-#### Building
-
-```
-cargo build --bin sender
-```
-
-#### Convention
-
-Many CLI commands have common arguments:
-
-- `-h <addr>` or `--host <addr>` - Node API address. Must always have `http://` or
-`https://` prefix. E.g. `-h http://127.0.0.1`, `--host https://node.com:8443/cardano/api`
-
-#### Node stats
-
-Fetches node stats
-
-```
-sender v0 node stats get -h <node_addr>
-```
-
-JSON printed on success
-
-```
-{
-  "blockRecvCnt": 7,  // Blocks received by node  
-  "txRecvCnt": 90,    // Transactions received by node
-  "uptime": 2101      // Node uptitme in seconds
-}
-```
+* [CLI sender](./doc/cli_sender.md) for HTTP management
 
 # License
 

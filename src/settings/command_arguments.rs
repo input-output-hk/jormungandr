@@ -106,6 +106,16 @@ pub struct GeneratePrivKeyArguments {
     pub key_type: GenPrivKeyType,
 }
 
+#[derive(StructOpt, Debug)]
+pub struct GeneratePubKeyArguments {
+    /// the source private key to extract the public key from
+    ///
+    /// if no value passed, the private key will be read from the
+    /// standard input
+    #[structopt(name = "PRIVATE_KEY")]
+    pub private_key: Option<String>,
+}
+
 arg_enum! {
     #[derive(StructOpt, Debug)]
     pub enum GenPrivKeyType {
@@ -153,7 +163,7 @@ pub enum Command {
     /// generates a public key corresponding to a private key,
     /// reads private from stdin and prints its public to stdout, both encoded in bech32
     #[structopt(name = "generate-pub-key")]
-    GeneratePubKey,
+    GeneratePubKey(GeneratePubKeyArguments),
 }
 
 impl CommandLine {

@@ -320,16 +320,20 @@ fn main() {
             };
             println!("{}", priv_key_bech32);
         }
-        Command::GeneratePubKey => {
+        Command::GeneratePubKey(args) => {
             let stdin = io::stdin();
-            let bech32: Bech32 = stdin
-                .lock()
-                .lines()
-                .next()
-                .unwrap()
-                .unwrap()
-                .parse()
-                .unwrap();
+            let bech32: Bech32 = if let Some(private_key_str) = args.private_key {
+                private_key_str.parse().unwrap()
+            } else {
+                stdin
+                    .lock()
+                    .lines()
+                    .next()
+                    .unwrap()
+                    .unwrap()
+                    .parse()
+                    .unwrap()
+            };
             let pub_key_bech32 = match bech32.hrp() {
                 Ed25519::SECRET_BECH32_HRP => gen_pub_key_bech32::<Ed25519>(bech32.data()),
                 Ed25519Bip32::SECRET_BECH32_HRP => {
