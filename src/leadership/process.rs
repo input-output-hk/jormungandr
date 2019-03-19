@@ -2,7 +2,7 @@ use crate::blockcfg::{BlockConfig, Settings};
 use crate::transaction::TPoolR;
 use crate::{clock, intercom::BlockMsg, utils::task::TaskMessageBox, BlockchainR};
 
-use chain_core::property::{BlockDate, LeaderSelection};
+use chain_core::property::{BlockDate, ChainLength, LeaderSelection};
 
 pub fn leadership_task<B>(
     leader_id: <<B as BlockConfig>::Leadership as LeaderSelection>::LeaderId,
@@ -33,6 +33,7 @@ pub fn leadership_task<B>(
         let b = blockchain.read().unwrap();
         let leadership: B::Leadership = LeaderSelection::retrieve(&b.state);
         let parent_id = b.state.tip();
+        let chain_length = b.state.chain_length().next();
 
         let am_leader = leadership.get_leader_at(date.clone()).unwrap() == leader_id;
 
@@ -51,7 +52,7 @@ pub fn leadership_task<B>(
                 idx
             );
 
-            let block = B::make_block(&secret, date, parent_id, transactions);
+            let block = B::make_block(&secret, date, chain_length, parent_id, transactions);
 
             block_task.send_to(BlockMsg::LeadershipBlock(block));
         }
