@@ -11,6 +11,8 @@ pub trait VerifiableRandomFunction: key::AsymmetricKey {
     type VerifiedRandom;
     type Input: ?Sized;
 
+    const VERIFIED_RANDOM_SIZE: usize;
+
     fn evaluate<T: RngCore + CryptoRng>(
         secret: &Self::Secret,
         input: &Self::Input,

@@ -46,6 +46,8 @@ impl VerifiableRandomFunction for Curve25519_2HashDH {
     type VerifiedRandom = vrf::ProvenOutputSeed;
     type Input = [u8];
 
+    const VERIFIED_RANDOM_SIZE: usize = vrf::PROOF_SIZE;
+
     fn evaluate<T: RngCore + CryptoRng>(
         secret: &Self::Secret,
         input: &Self::Input,
