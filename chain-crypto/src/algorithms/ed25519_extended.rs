@@ -4,9 +4,9 @@ use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAl
 use super::ed25519 as ei;
 
 use cryptoxide::ed25519;
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 
-use ed25519_bip32::{XPrv, XPRV_SIZE};
+use ed25519_bip32::{XPrv, XPRV_SIZE, XPUB_SIZE};
 
 /// ED25519 Signing Algorithm with extended secret key
 pub struct Ed25519Extended;
@@ -31,6 +31,12 @@ impl ExtendedPriv {
 impl AsymmetricKey for Ed25519Extended {
     type Secret = ExtendedPriv;
     type Public = ei::Pub;
+
+    const SECRET_BECH32_HRP: &'static str = "ed25519extended_secret";
+    const PUBLIC_BECH32_HRP: &'static str = "ed25519extended_public";
+
+    const SECRET_KEY_SIZE: usize = ed25519::PRIVATE_KEY_LENGTH;
+    const PUBLIC_KEY_SIZE: usize = ed25519::PUBLIC_KEY_LENGTH;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; XPRV_SIZE];

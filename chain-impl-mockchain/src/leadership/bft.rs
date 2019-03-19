@@ -1,8 +1,23 @@
-use super::LeaderId;
-use crate::block::{Block, Proof};
-use crate::update::ValueDiff;
+use crate::block::{BlockDate, Header, Proof};
+use crate::key::{deserialize_public_key, serialize_public_key};
+use crate::{
+    leadership::{Error, ErrorKind, Verification},
+    state::State,
+};
+use chain_core::property;
+use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
+use std::sync::Arc;
 
-use chain_core::property::{self, LeaderSelection, Update};
+/// cryptographic signature algorithm used for the BFT leadership
+/// protocol.
+#[allow(non_camel_case_types)]
+pub type SIGNING_ALGORITHM = Ed25519Extended;
+
+/// BFT Leader signing key
+pub type SigningKey = SecretKey<SIGNING_ALGORITHM>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LeaderId(pub(crate) PublicKey<SIGNING_ALGORITHM>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BftRoundRobinIndex(u64);
@@ -10,29 +25,18 @@ pub struct BftRoundRobinIndex(u64);
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
 pub struct BftLeaderSelection {
-    leaders: Vec<LeaderId>,
-
-    current_leader: LeaderId,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    BlockHasInvalidLeader(LeaderId, LeaderId),
-    BlockSignatureIsInvalid,
-    UpdateHasInvalidCurrentLeader(LeaderId, LeaderId),
+    pub(crate) leaders: Arc<Vec<LeaderId>>,
 }
 
 impl BftLeaderSelection {
     /// Create a new BFT leadership
-    pub fn new(leaders: Vec<LeaderId>) -> Option<Self> {
-        if leaders.len() == 0 {
+    pub fn new(state: &State) -> Option<Self> {
+        if state.settings.bft_leaders.len() == 0 {
             return None;
         }
 
-        let current_leader = leaders[0].clone();
         Some(BftLeaderSelection {
-            leaders: leaders,
-            current_leader: current_leader,
+            leaders: Arc::clone(&state.settings.bft_leaders),
         })
     }
 
@@ -46,137 +50,70 @@ impl BftLeaderSelection {
         let max = self.number_of_leaders() as u64;
         BftRoundRobinIndex((block_number % max) as u64)
     }
-}
 
-impl LeaderSelection for BftLeaderSelection {
-    type Update = BftSelectionDiff;
-    type Block = Block;
-    type Error = Error;
-    type LeaderId = LeaderId;
-
-    fn diff(&self, input: &Self::Block) -> Result<Self::Update, Self::Error> {
-        use chain_core::property::Block;
-
-        let mut update = <Self::Update as property::Update>::empty();
-
-        let date = input.date();
-        let block_version = input.header.block_version();
-        let new_leader = self.get_leader_at(date)?;
-
-        match &input.header.proof() {
-            Proof::None => unimplemented!(),
-            Proof::GenesisPraos(_) => unimplemented!(),
-            Proof::Bft(bft_proof) => {
-                if bft_proof.leader_id != new_leader {
-                    return Err(Error::BlockHasInvalidLeader(
-                        new_leader,
-                        bft_proof.leader_id.clone(),
-                    ));
+    pub(crate) fn verify(&self, block_header: &Header) -> Verification {
+        match &block_header.proof() {
+            Proof::Bft(bft_proof) => match self.get_leader_at(*block_header.block_date()) {
+                Ok(leader_at) => {
+                    if bft_proof.leader_id != leader_at {
+                        Verification::Failure(Error::new(ErrorKind::InvalidLeader))
+                    } else {
+                        Verification::Success
+                    }
                 }
-            }
+                Err(error) => Verification::Failure(error),
+            },
+            _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
         }
-
-        if !input.verify() {
-            return Err(Error::BlockSignatureIsInvalid);
-        }
-
-        update.leader = ValueDiff::Replace(self.current_leader.clone(), new_leader);
-
-        Ok(update)
-    }
-    fn apply(&mut self, update: Self::Update) -> Result<(), Self::Error> {
-        match update.leader {
-            ValueDiff::None => {}
-            ValueDiff::Replace(current_leader, new_leader) => {
-                if current_leader != self.current_leader {
-                    return Err(Error::UpdateHasInvalidCurrentLeader(
-                        self.current_leader.clone(),
-                        current_leader,
-                    ));
-                } else {
-                    self.current_leader = new_leader;
-                }
-            }
-        }
-        Ok(())
     }
 
     #[inline]
-    fn get_leader_at(
-        &self,
-        date: <Self::Block as property::Block>::Date,
-    ) -> Result<Self::LeaderId, Self::Error> {
+    pub(crate) fn get_leader_at(&self, date: BlockDate) -> Result<LeaderId, Error> {
         let BftRoundRobinIndex(ofs) = self.offset(date.slot_id as u64);
         Ok(self.leaders[ofs as usize].clone())
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct BftSelectionDiff {
-    pub leader: ValueDiff<LeaderId>,
-}
-
-impl Update for BftSelectionDiff {
-    fn empty() -> Self {
-        BftSelectionDiff {
-            leader: ValueDiff::None,
-        }
-    }
-    fn inverse(self) -> Self {
-        BftSelectionDiff {
-            leader: self.leader.inverse(),
-        }
-    }
-    fn union(&mut self, other: Self) -> &mut Self {
-        self.leader.union(other.leader);
-        self
+impl property::Serialize for LeaderId {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        serialize_public_key(&self.0, writer)
     }
 }
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Error::BlockHasInvalidLeader(expected, found) => write!(
-                f,
-                "Invalid block leader, expected {:?} but the given block was signed by {:?}",
-                expected, found
-            ),
-            Error::BlockSignatureIsInvalid => write!(f, "The block signature is not valid"),
-            Error::UpdateHasInvalidCurrentLeader(current, found) => write!(
-                f,
-                "Update has an incompatible leader, we expect to update from {:?} but we are at {:?}",
-                found, current
-            ),
-        }
+impl property::Deserialize for LeaderId {
+    type Error = std::io::Error;
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        deserialize_public_key(reader).map(LeaderId)
     }
 }
-impl std::error::Error for Error {}
+
+impl AsRef<[u8]> for LeaderId {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+impl From<PublicKey<SIGNING_ALGORITHM>> for LeaderId {
+    fn from(v: PublicKey<SIGNING_ALGORITHM>) -> Self {
+        LeaderId(v)
+    }
+}
 
 #[cfg(test)]
-mod tests {
+pub mod test {
     use super::*;
-    use chain_core::property::testing;
     use quickcheck::{Arbitrary, Gen};
 
-    impl Arbitrary for BftSelectionDiff {
-        fn arbitrary<G: Gen>(g: &mut G) -> BftSelectionDiff {
-            BftSelectionDiff {
-                leader: ValueDiff::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
+    impl Arbitrary for LeaderId {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            use rand_chacha::ChaChaRng;
+            use rand_core::SeedableRng;
+            let mut seed = [0; 32];
+            for byte in seed.iter_mut() {
+                *byte = Arbitrary::arbitrary(g);
             }
-        }
-    }
-
-    quickcheck! {
-        /*
-        fn bft_selection_diff_union_is_associative(types: (BftSelectionDiff, BftSelectionDiff, BftSelectionDiff)) -> bool {
-            testing::update_associativity(types.0, types.1, types.2)
-        }
-        */
-        fn bft_selection_diff_union_has_identity_element(bft_selection_diff: BftSelectionDiff) -> bool {
-            testing::update_identity_element(bft_selection_diff)
-        }
-        fn bft_selection_diff_union_has_inverse_element(bft_selection_diff: BftSelectionDiff) -> bool {
-            testing::update_inverse_element(bft_selection_diff)
+            let mut rng = ChaChaRng::from_seed(seed);
+            LeaderId(SecretKey::generate(&mut rng).to_public())
         }
     }
 }

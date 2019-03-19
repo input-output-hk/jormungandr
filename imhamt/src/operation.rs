@@ -14,3 +14,8 @@ pub enum UpdateError<T> {
     KeyNotFound,
     ValueCallbackError(T),
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReplaceError {
+    KeyNotFound,
+}

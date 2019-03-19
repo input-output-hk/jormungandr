@@ -7,6 +7,8 @@ use chain_crypto::{
     AsymmetricKey, KeyEvolvingSignatureAlgorithm, SigningAlgorithm, VerificationAlgorithm,
 };
 
+use std::str::FromStr;
+
 pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519Extended>;
 pub type SpendingSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
 pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519Extended>;
@@ -16,8 +18,6 @@ pub fn serialize_public_key<A: AsymmetricKey, W: std::io::Write>(
     key: &crypto::PublicKey<A>,
     mut writer: W,
 ) -> Result<(), std::io::Error> {
-    let size: usize = std::mem::size_of_val(key);
-    assert!(size == 32);
     writer.write_all(key.as_ref())?;
     Ok(())
 }
@@ -37,9 +37,7 @@ where
     A: AsymmetricKey,
     R: std::io::BufRead,
 {
-    let size: usize = std::mem::size_of::<crypto::PublicKey<A>>();
-    assert!(size == 32);
-    let mut buffer = vec![0; size];
+    let mut buffer = vec![0; A::PUBLIC_KEY_SIZE];
     reader.read_exact(&mut buffer)?;
     crypto::PublicKey::from_bytes(&buffer)
         .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err)))
@@ -95,6 +93,20 @@ where
 {
     let bytes = data.serialize_as_vec().unwrap();
     signature.clone().coerce().verify(public_key, &bytes)
+}
+
+pub fn verify_multi_signature<T, A>(
+    signature: &crypto::Signature<T, A>,
+    public_key: &[crypto::PublicKey<A>],
+    data: &T,
+) -> crypto::Verification
+where
+    A: VerificationAlgorithm,
+    T: property::Serialize,
+{
+    assert!(public_key.len() > 0);
+    let bytes = data.serialize_as_vec().unwrap();
+    signature.clone().coerce().verify(&public_key[0], &bytes)
 }
 
 /// A serializable type T with a signature.
@@ -172,6 +184,9 @@ impl Hash {
     pub fn hash_bytes(bytes: &[u8]) -> Self {
         Hash(crypto::Blake2b256::new(bytes))
     }
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        Hash(crypto::Blake2b256::from(bytes))
+    }
 }
 
 impl property::Serialize for Hash {
@@ -197,7 +212,7 @@ impl property::BlockId for Hash {
     }
 }
 
-impl property::TransactionId for Hash {}
+impl property::MessageId for Hash {}
 
 impl AsRef<[u8]> for Hash {
     fn as_ref(&self) -> &[u8] {
@@ -214,6 +229,13 @@ impl From<crypto::Blake2b256> for Hash {
 impl std::fmt::Display for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for Hash {
+    type Err = crypto::hash::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Hash(crypto::Blake2b256::from_str(s)?))
     }
 }
 

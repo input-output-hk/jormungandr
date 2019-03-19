@@ -19,6 +19,12 @@ impl<K, V> KV<K, V> {
     }
 }
 
+impl<K: Clone, V> KV<K, V> {
+    pub fn replace(&self, v: V) -> Self {
+        KV(self.0.clone(), v)
+    }
+}
+
 pub enum SmallVec<T> {
     One(T),
     //Two(T, T),
@@ -213,6 +219,46 @@ impl<K: PartialEq + Clone, V> LeafContent<K, V> {
                                 Ok(Some(newcontent))
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<K: PartialEq + Clone, V: Clone> LeafContent<K, V> {
+    pub fn replace(&self, k: &K, v: V) -> Result<(Self, V), ReplaceError> {
+        match self.content {
+            SmallVec::One(ref fkv) => {
+                if k != fkv.get_key() {
+                    return Err(ReplaceError::KeyNotFound);
+                };
+                let lc = LeafContent {
+                    hashed: self.hashed,
+                    content: SmallVec::One(SharedRef::new(fkv.replace(v))),
+                };
+                Ok((lc, fkv.get_value().clone()))
+            }
+            SmallVec::Many(ref content) => {
+                let mut found = None;
+                for (i, fkv) in content.iter().enumerate() {
+                    if k == fkv.get_key() {
+                        found = Some(i);
+                        break;
+                    }
+                }
+                match found {
+                    None => Err(ReplaceError::KeyNotFound),
+                    Some(pos) => {
+                        let oldv = content[pos].get_value().clone();
+                        let newkv = KV::new(k.clone(), v);
+                        let new_array =
+                            clone_array_and_set_at_pos(content, SharedRef::new(newkv), pos);
+                        let newcontent = LeafContent {
+                            hashed: self.hashed,
+                            content: SmallVec::Many(new_array),
+                        };
+                        Ok((newcontent, oldv))
                     }
                 }
             }

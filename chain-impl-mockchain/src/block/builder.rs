@@ -2,13 +2,18 @@
 //!
 
 use crate::block::{
-    BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion, Common,
-    GenesisPraosProof, Header, KESSignature, Message, Proof, BLOCK_VERSION_CONSENSUS_BFT,
-    BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
+    BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion,
+    ChainLength, Common, GenesisPraosProof, Header, KESSignature, Message, Proof,
+    BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
+    BLOCK_VERSION_CONSENSUS_NONE,
 };
 use crate::key::{make_signature, make_signature_update};
+use crate::leadership::{self, genesis};
 use crate::transaction::SignedTransaction;
-use chain_crypto::{vrf::vrf, Ed25519Extended, FakeMMM, SecretKey};
+use chain_addr::Address;
+use chain_crypto::{
+    Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey, VerifiableRandomFunction,
+};
 
 pub struct BlockBuilder {
     pub common: Common,
@@ -27,6 +32,7 @@ impl BlockBuilder {
                 block_version: BLOCK_VERSION_CONSENSUS_NONE,
                 block_parent_hash: BlockId::zero(),
                 block_date: BlockDate::first(),
+                chain_length: ChainLength(0),
             },
             contents: BlockContents::new(Vec::new()),
         }
@@ -35,6 +41,12 @@ impl BlockBuilder {
     /// set the block date
     pub fn date(&mut self, block_date: BlockDate) -> &mut Self {
         self.common.block_date = block_date;
+        self
+    }
+
+    /// set the chain_length
+    pub fn chain_length(&mut self, chain_length: ChainLength) -> &mut Self {
+        self.common.chain_length = chain_length;
         self
     }
 
@@ -47,7 +59,7 @@ impl BlockBuilder {
     /// set a transaction in the block to build
     ///
     /// Equivalent to call `block_builder.message(Message::Transaction(transaction))`
-    pub fn transaction(&mut self, signed_transaction: SignedTransaction) -> &mut Self {
+    pub fn transaction(&mut self, signed_transaction: SignedTransaction<Address>) -> &mut Self {
         self.message(Message::Transaction(signed_transaction))
     }
 
@@ -92,15 +104,17 @@ impl BlockBuilder {
         use chain_core::property::BlockId as _;
         assert!(self.common.block_parent_hash == BlockId::zero());
         assert!(self.common.block_date == BlockDate::first());
+        assert_eq!(self.common.chain_length, ChainLength(0));
         self.finalize_common(BLOCK_VERSION_CONSENSUS_NONE);
         self.make_block(Proof::None)
     }
 
     /// create a BFT Block. this block will be signed with the given private key
     pub fn make_bft_block(mut self, bft_signing_key: &SecretKey<Ed25519Extended>) -> Block {
+        assert_ne!(self.common.chain_length, ChainLength(0));
         self.finalize_common(BLOCK_VERSION_CONSENSUS_BFT);
         let bft_proof = BftProof {
-            leader_id: bft_signing_key.to_public().into(),
+            leader_id: leadership::bft::LeaderId(bft_signing_key.to_public()),
             signature: super::BftSignature(make_signature(bft_signing_key, &self.common)),
         };
         self.make_block(Proof::Bft(bft_proof))
@@ -110,17 +124,19 @@ impl BlockBuilder {
     /// given KES key.
     pub fn make_genesis_praos_block(
         mut self,
+        genesis_praos_id: &genesis::GenesisPraosId,
         kes_signing_key: &mut SecretKey<FakeMMM>,
-        vrf_public_key: vrf::PublicKey,
-        vrf_proof: vrf::ProvenOutputSeed,
+        vrf_public_key: &PublicKey<Curve25519_2HashDH>,
+        vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
     ) -> Block {
+        assert_ne!(self.common.chain_length, ChainLength(0));
         self.finalize_common(BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
 
         let genesis_praos_proof = GenesisPraosProof {
-            kes_proof: KESSignature(make_signature_update(kes_signing_key, &self.common)),
-            kes_public_key: kes_signing_key.to_public(),
+            genesis_praos_id: genesis_praos_id.clone(),
             vrf_proof: vrf_proof,
-            vrf_public_key: vrf_public_key,
+            // ! SECURITY FIXME ! : also include id and vrf proof.
+            kes_proof: KESSignature(make_signature_update(kes_signing_key, &self.common)),
         };
         self.make_block(Proof::GenesisPraos(genesis_praos_proof))
     }

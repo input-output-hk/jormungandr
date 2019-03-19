@@ -1,19 +1,18 @@
 //! Representation of the block in the mockchain.
 use crate::key::{make_signature, make_signature_update, Hash};
-use crate::leadership::Leader;
-use crate::transaction::SignedTransaction;
-use chain_core::property;
+use crate::leadership::{bft, genesis::GenesisPraosLeader, Leader};
+use chain_core::property::{self, Header as _, Serialize};
 use chain_crypto::Verification;
 
 mod builder;
 mod header;
-mod message;
+pub mod message;
 
 pub use self::builder::BlockBuilder;
 
 pub use self::header::{
-    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, Common,
-    GenesisPraosProof, Header, KESSignature, Proof, BLOCK_VERSION_CONSENSUS_BFT,
+    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, ChainLength,
+    Common, GenesisPraosProof, Header, KESSignature, Proof, BLOCK_VERSION_CONSENSUS_BFT,
     BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
 };
 pub use self::message::Message;
@@ -23,15 +22,28 @@ pub use crate::date::{BlockDate, BlockDateParseError};
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
 /// with the position of that block in the chain.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub header: Header,
-
     pub contents: BlockContents,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl PartialEq for Block {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.header.hash() == rhs.header.hash()
+    }
+}
+impl Eq for Block {}
+
+#[derive(Debug, Clone)]
 pub struct BlockContents(Vec<Message>);
+
+impl PartialEq for BlockContents {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.compute_hash_size() == rhs.compute_hash_size()
+    }
+}
+impl Eq for BlockContents {}
 
 impl BlockContents {
     #[inline]
@@ -64,18 +76,23 @@ impl Block {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_BFT);
                 let signature = make_signature(&private_key, &common);
                 Proof::Bft(BftProof {
-                    leader_id: private_key.to_public().into(),
+                    leader_id: bft::LeaderId(private_key.to_public()),
                     signature: BftSignature(signature),
                 })
             }
             Leader::GenesisPraos(ref mut kes_secret, vrf_secret, proven_output_seed) => {
                 assert!(common.block_version == BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
+                let gpleader = GenesisPraosLeader {
+                    kes_public_key: kes_secret.to_public(),
+                    vrf_public_key: vrf_secret.to_public(),
+                };
                 let signature = make_signature_update(kes_secret, &common);
                 Proof::GenesisPraos(GenesisPraosProof {
-                    vrf_public_key: vrf_secret.public(),
+                    genesis_praos_id: gpleader.get_id(),
                     vrf_proof: proven_output_seed.clone(),
-                    kes_public_key: kes_secret.to_public().into(),
                     kes_proof: KESSignature(signature),
+                    //vrf_public_key: vrf_secret.public(),
+                    //kes_public_key: kes_secret.to_public().into(),
                 })
             }
         };
@@ -106,11 +123,11 @@ impl property::Block for Block {
     type Id = BlockId;
     type Date = BlockDate;
     type Version = BlockVersion;
+    type ChainLength = ChainLength;
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
     fn id(&self) -> Self::Id {
-        use chain_core::property::Header;
         self.header.id()
     }
 
@@ -126,6 +143,10 @@ impl property::Block for Block {
 
     fn version(&self) -> Self::Version {
         *self.header.block_version()
+    }
+
+    fn chain_length(&self) -> Self::ChainLength {
+        self.header.chain_length()
     }
 }
 
@@ -158,7 +179,7 @@ impl property::Deserialize for Block {
         let mut serialized_content_size = header.common.block_content_size;
         let mut contents = BlockContents(Vec::with_capacity(15_000));
         while serialized_content_size > 0 {
-            let (message, message_size) = Message::deserialize(&mut reader)?;
+            let (message, message_size) = Message::deserialize_with_size(&mut reader)?;
             contents.0.push(message);
             dbg!(contents.0.len());
 
@@ -173,23 +194,17 @@ impl property::Deserialize for Block {
     }
 }
 
-impl property::HasTransaction for Block {
-    type Transaction = SignedTransaction;
-    fn transactions<'a>(&'a self) -> Box<Iterator<Item = &SignedTransaction> + 'a> {
-        Box::new(self.contents.0.iter().filter_map(|msg| match msg {
-            Message::Transaction(tx) => Some(tx),
-            _ => None,
-        }))
+impl property::HasMessages for Block {
+    type Message = Message;
+    fn messages<'a>(&'a self) -> Box<Iterator<Item = &Message> + 'a> {
+        Box::new(self.contents.iter())
     }
 
-    fn for_each_transaction<F>(&self, mut f: F)
+    fn for_each_message<F>(&self, mut f: F)
     where
-        F: FnMut(&Self::Transaction),
+        F: FnMut(&Self::Message),
     {
-        self.contents.0.iter().for_each(|msg| match msg {
-            Message::Transaction(tx) => f(tx),
-            _ => {}
-        })
+        self.contents.iter().for_each(|msg| f(msg))
     }
 }
 

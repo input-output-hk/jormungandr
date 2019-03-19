@@ -1,6 +1,5 @@
 //! Transaction service abstraction.
 
-use crate::codes;
 use crate::error::Code as ErrorCode;
 
 use chain_core::property::{Deserialize, Serialize, Transaction, TransactionId};
@@ -21,12 +20,6 @@ pub trait TransactionService {
     /// The type of asynchronous futures returned by method `propose_transactions`.
     type ProposeTransactionsFuture: Future<
         Item = ProposeTransactionsResponse<Self::TransactionId>,
-        Error = TransactionError,
-    >;
-
-    /// The type of asynchronous futures returned by method `record_transaction`.
-    type RecordTransactionFuture: Future<
-        Item = RecordTransactionResponse<Self::TransactionId>,
         Error = TransactionError,
     >;
 
@@ -111,12 +104,5 @@ impl fmt::Display for TransactionError {
 /// Response from the `propose_transactions` method of a `TransactionService`.
 pub struct ProposeTransactionsResponse<Id> {
     // TODO: define fully
-    _items: Vec<(Id, codes::TransactionStatus)>,
-}
-
-/// Response from the `record_transactions` method of a `TransactionService`.
-pub struct RecordTransactionResponse<Id> {
-    // TODO: define
-    _id: Id,
-    _result: codes::TransactionAcceptance,
+    _ids: Vec<Id>,
 }

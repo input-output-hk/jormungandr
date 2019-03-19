@@ -25,7 +25,7 @@
 use bech32::{Bech32, FromBase32, ToBase32};
 use std::string::ToString;
 
-use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, PublicKeyError};
+use chain_crypto::{Ed25519Extended, PublicKey, PublicKeyError};
 
 use chain_core::property::{self, Serialize as PropertySerialize};
 
@@ -52,7 +52,7 @@ pub enum Discrimination {
 pub enum Kind {
     Single(PublicKey<Ed25519Extended>),
     Group(PublicKey<Ed25519Extended>, PublicKey<Ed25519Extended>),
-    Account(PublicKey<Ed25519>),
+    Account(PublicKey<Ed25519Extended>),
 }
 
 /// Kind Type of an address
@@ -418,7 +418,7 @@ pub mod testing {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
-    fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey<Ed25519> {
+    fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey<Ed25519Extended> {
         let mut bytes = [0; 32];
         for byte in bytes.iter_mut() {
             *byte = u8::arbitrary(g);
@@ -506,7 +506,7 @@ mod test {
             63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
         ])
         .unwrap();
-        let fake_accountkey: PublicKey<Ed25519> = PublicKey::from_binary(&[
+        let fake_accountkey: PublicKey<Ed25519Extended> = PublicKey::from_binary(&[
             41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
             63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
         ])

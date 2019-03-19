@@ -38,6 +38,7 @@ mod tests {
         DeleteOne(usize),
         Update(usize),
         UpdateRemoval(usize),
+        Replace(usize, V),
     }
 
     #[derive(Debug, Clone)]
@@ -51,12 +52,13 @@ mod tests {
             let mut v = Vec::new();
             for _ in 0..nb_ops {
                 let op_nb: u32 = Arbitrary::arbitrary(g);
-                let op = match op_nb % 5u32 {
+                let op = match op_nb % 6u32 {
                     0 => PlanOperation::Insert(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
                     1 => PlanOperation::DeleteOne(Arbitrary::arbitrary(g)),
                     2 => PlanOperation::DeleteOneMatching(Arbitrary::arbitrary(g)),
                     3 => PlanOperation::Update(Arbitrary::arbitrary(g)),
                     4 => PlanOperation::UpdateRemoval(Arbitrary::arbitrary(g)),
+                    5 => PlanOperation::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
                     _ => unimplemented!(),
                 };
                 v.push(op)
@@ -94,6 +96,10 @@ mod tests {
         assert_eq!(h3.lookup(&k1), Some(&v1));
         assert_eq!(h3.lookup(&k2), None);
         assert_eq!(h3.lookup(&k3), Some(&v3));
+
+        let (h4, oldk1) = h3.replace(&k1, v3).unwrap();
+        assert_eq!(oldk1, v1);
+        assert_eq!(h4.lookup(&k1), Some(&v3));
     }
 
     #[test]
@@ -326,10 +332,18 @@ mod tests {
                         h = h.remove_match(&k, &v).unwrap();
                     }
                 },
+                PlanOperation::Replace(r, newv) => match get_key_nth(&reference, *r) {
+                    None => continue,
+                    Some(k) => {
+                        let v = reference.get_mut(&k).unwrap();
+                        *v = newv.clone();
+
+                        h = h.replace(&k, *newv).unwrap().0;
+                    }
+                },
                 PlanOperation::Update(r) => match get_key_nth(&reference, *r) {
                     None => continue,
                     Some(k) => {
-                        //let oldv = v.clone();
                         let v = reference.get_mut(&k).unwrap();
                         *v = *v + 1;
 
@@ -339,7 +353,6 @@ mod tests {
                 PlanOperation::UpdateRemoval(r) => match get_key_nth(&reference, *r) {
                     None => continue,
                     Some(k) => {
-                        //let oldv = v.clone();
                         reference.remove(&k);
                         h = h.update::<_, ()>(&k, |_| Ok(None)).unwrap();
                     }

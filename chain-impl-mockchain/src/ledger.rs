@@ -1,132 +1,240 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::error::*;
 use crate::transaction::*;
-use crate::update::TransactionsDiff;
 use crate::value::*;
+use crate::{account, utxo};
+use cardano::address::Addr as OldAddress;
+use chain_addr::{Address, Kind};
 use chain_core::property;
-use std::collections::HashMap;
 
-/// Basic ledger structure. Ledger is represented as the
-/// state of unspent output values, associated with their
-/// owner.
-#[derive(Debug, Clone)]
+/// Overall ledger structure.
+///
+/// This represent a given state related to utxo/old utxo/accounts/... at a given
+/// point in time.
+///
+/// The ledger can be easily and cheaply cloned despite containing refering
+/// to a lot of data (millions of utxos, thousands of accounts, ..)
+#[derive(Clone)]
 pub struct Ledger {
-    pub unspent_outputs: HashMap<UtxoPointer, Output>,
+    pub(crate) utxos: utxo::Ledger<Address>,
+    pub(crate) oldutxos: utxo::Ledger<OldAddress>,
+    pub(crate) accounts: account::Ledger,
 }
+
+#[derive(Debug, Clone)]
+pub enum Error {
+    NotEnoughSignatures(usize, usize),
+    UtxoValueNotMatching(Value, Value),
+    UtxoError(utxo::Error),
+    UtxoInvalidSignature(UtxoPointer, Output<Address>, Witness),
+    AccountInvalidSignature(account::Identifier, Witness),
+    UtxoInputsTotal(ValueError),
+    UtxoOutputsTotal(ValueError),
+    Account(account::LedgerError),
+    NotBalanced(Value, Value),
+    ZeroOutput(Output<Address>),
+    ExpectingAccountWitness,
+    ExpectingUtxoWitness,
+}
+
+impl From<utxo::Error> for Error {
+    fn from(e: utxo::Error) -> Self {
+        Error::UtxoError(e)
+    }
+}
+
+impl From<account::LedgerError> for Error {
+    fn from(e: account::LedgerError) -> Self {
+        Error::Account(e)
+    }
+}
+
 impl Ledger {
-    pub fn new(input: HashMap<UtxoPointer, Output>) -> Self {
+    pub fn new() -> Self {
         Ledger {
-            unspent_outputs: input,
+            utxos: utxo::Ledger::new(),
+            oldutxos: utxo::Ledger::new(),
+            accounts: account::Ledger::new(),
+        }
+    }
+
+    pub fn apply_transaction(
+        &mut self,
+        signed_tx: &SignedTransaction<Address>,
+    ) -> Result<Self, Error> {
+        let mut ledger = self.clone();
+        let transaction_id = signed_tx.transaction.hash();
+        ledger = internal_apply_transaction(
+            ledger,
+            &transaction_id,
+            &signed_tx.transaction.inputs[..],
+            &signed_tx.transaction.outputs[..],
+            &signed_tx.witnesses[..],
+        )?;
+        Ok(ledger)
+    }
+}
+
+impl property::Ledger<SignedTransaction<Address>> for Ledger {
+    type Error = Error;
+
+    fn input<'a, I>(&'a self, input: Input) -> Result<&'a Output<Address>, Self::Error> {
+        match input.to_enum() {
+            InputEnum::AccountInput(_, _) => {
+                Err(Error::UtxoError(utxo::Error::TransactionNotFound))
+            }
+            InputEnum::UtxoInput(utxo_ptr) => self
+                .utxos
+                .get(&utxo_ptr.transaction_id, &utxo_ptr.output_index)
+                .map(|entry| Ok(entry.output))
+                .unwrap_or_else(|| Err(Error::UtxoError(utxo::Error::TransactionNotFound))),
         }
     }
 }
 
-impl property::Ledger for Ledger {
-    type Update = TransactionsDiff;
-    type Error = Error;
-    type Transaction = SignedTransaction;
+/// Apply the transaction
+fn internal_apply_transaction(
+    mut ledger: Ledger,
+    transaction_id: &TransactionId,
+    inputs: &[Input],
+    outputs: &[Output<Address>],
+    witnesses: &[Witness],
+) -> Result<Ledger, Error> {
+    assert!(inputs.len() < 255);
+    assert!(outputs.len() < 255);
+    assert!(witnesses.len() < 255);
 
-    fn input<'a>(
-        &'a self,
-        input: &<self::SignedTransaction as property::Transaction>::Input,
-    ) -> Result<&'a <self::SignedTransaction as property::Transaction>::Output, Self::Error> {
-        match self.unspent_outputs.get(&input) {
-            Some(output) => Ok(output),
-            None => Err(Error::InputDoesNotResolve(*input)),
+    // 1. verify that number of signatures matches number of
+    // transactions
+    if inputs.len() != witnesses.len() {
+        return Err(Error::NotEnoughSignatures(inputs.len(), witnesses.len()));
+    }
+
+    // 2. validate inputs of transaction by gathering what we know of it,
+    // then verifying the associated witness
+    for (input, witness) in inputs.iter().zip(witnesses.iter()) {
+        match input.to_enum() {
+            InputEnum::UtxoInput(utxo) => {
+                ledger = input_utxo_verify(ledger, transaction_id, &utxo, witness)?
+            }
+            InputEnum::AccountInput(account_id, value) => {
+                ledger.accounts = input_account_verify(
+                    ledger.accounts,
+                    transaction_id,
+                    &account_id,
+                    value,
+                    witness,
+                )?
+            }
         }
     }
 
-    fn diff_transaction(
-        &self,
-        transaction: &SignedTransaction,
-    ) -> Result<Self::Update, Self::Error> {
-        use chain_core::property::Transaction;
+    // 3. verify that transaction sum is zero.
+    // TODO: with fees this will change
+    let total_input =
+        Value::sum(inputs.iter().map(|i| i.value)).map_err(|e| Error::UtxoInputsTotal(e))?;
+    let total_output =
+        Value::sum(inputs.iter().map(|i| i.value)).map_err(|e| Error::UtxoOutputsTotal(e))?;
+    if total_input != total_output {
+        return Err(Error::NotBalanced(total_input, total_output));
+    }
 
-        let mut diff = <Self::Update as property::Update>::empty();
-        let id = transaction.id();
-
-        // FIXME: check that inputs is non-empty?
-
-        // 0. verify that number of signatures matches number of
-        // transactions
-        if transaction.transaction.inputs.len() > transaction.witnesses.len() {
-            return Err(Error::NotEnoughSignatures(
-                transaction.transaction.inputs.len(),
-                transaction.witnesses.len(),
-            ));
+    // 4. add the new outputs
+    let mut new_utxos = Vec::new();
+    for (index, output) in outputs.iter().enumerate() {
+        // Reject zero-valued outputs.
+        if output.value == Value::zero() {
+            return Err(Error::ZeroOutput(output.clone()));
         }
+        match output.address.kind() {
+            Kind::Single(_) | Kind::Group(_, _) => {
+                new_utxos.push((index as u8, output.clone()));
+            }
+            Kind::Account(identifier) => {
+                // don't have a way to make a newtype ref from the ref so .clone()
+                let account = identifier.clone().into();
+                ledger.accounts = ledger.accounts.add_value(&account, output.value)?;
+            }
+        }
+    }
 
-        // 1. validate transaction without looking into the context
-        // and that each input is validated by the matching key.
-        for (input, witness) in transaction
-            .transaction
-            .inputs
-            .iter()
-            .zip(transaction.witnesses.iter())
-        {
-            let associated_output = self.input(input)?;
+    ledger.utxos = ledger.utxos.add(transaction_id, &new_utxos)?;
 
-            if witness.verifies(
-                // TODO: when we have the crypto unified we should not need
-                // the clone here anymore
-                &associated_output.0.public_key().unwrap().clone(),
-                &transaction.transaction.id(),
-            ) == chain_crypto::Verification::Failed
-            {
-                return Err(Error::InvalidSignature(
-                    input.clone(),
+    Ok(ledger)
+}
+
+fn input_utxo_verify(
+    mut ledger: Ledger,
+    transaction_id: &TransactionId,
+    utxo: &UtxoPointer,
+    witness: &Witness,
+) -> Result<Ledger, Error> {
+    match witness {
+        Witness::Account(_) => return Err(Error::ExpectingUtxoWitness),
+        Witness::Utxo(signature) => {
+            let (new_utxos, associated_output) = ledger
+                .utxos
+                .remove(&utxo.transaction_id, utxo.output_index)?;
+            ledger.utxos = new_utxos;
+            if utxo.value != associated_output.value {
+                return Err(Error::UtxoValueNotMatching(
+                    utxo.value,
+                    associated_output.value,
+                ));
+            }
+
+            let verified = signature.verify(
+                &associated_output.address.public_key().unwrap(),
+                &transaction_id,
+            );
+            if verified == chain_crypto::Verification::Failed {
+                return Err(Error::UtxoInvalidSignature(
+                    utxo.clone(),
                     associated_output.clone(),
                     witness.clone(),
                 ));
-            }
-            if let Some(output) = diff.spent_outputs.insert(*input, associated_output.clone()) {
-                return Err(Error::DoubleSpend(*input, output));
-            }
+            };
+            Ok(ledger)
         }
-
-        // 2. prepare to add the new outputs
-        for (index, output) in transaction.transaction.outputs.iter().enumerate() {
-            // Reject zero-valued outputs.
-            if output.1 == Value(0) {
-                return Err(Error::ZeroOutput(output.clone()));
-            }
-            diff.new_unspent_outputs
-                .insert(UtxoPointer::new(id, index as u32, output.1), output.clone());
-        }
-
-        // 3. verify that transaction sum is zero.
-        let spent = diff
-            .spent_outputs
-            .iter()
-            .fold(0, |acc, (_, Output(_, Value(x)))| acc + x);
-        let new_unspent = diff
-            .new_unspent_outputs
-            .iter()
-            .fold(0, |acc, (_, Output(_, Value(x)))| acc + x);
-        if spent != new_unspent {
-            return Err(Error::TransactionSumIsNonZero(spent, new_unspent));
-        }
-        Ok(diff)
-    }
-
-    fn apply(&mut self, diff: Self::Update) -> Result<&mut Self, Self::Error> {
-        for spent_output in diff.spent_outputs.keys() {
-            if let None = self.unspent_outputs.remove(spent_output) {
-                return Err(Error::InputDoesNotResolve(*spent_output));
-            }
-        }
-
-        for (input, output) in diff.new_unspent_outputs {
-            if let Some(original_output) = self.unspent_outputs.insert(input, output.clone()) {
-                return Err(Error::InputWasAlreadySet(input, original_output, output));
-            }
-        }
-
-        Ok(self)
     }
 }
+
+fn input_account_verify(
+    mut ledger: account::Ledger,
+    transaction_id: &TransactionId,
+    account: &account::Identifier,
+    value: Value,
+    witness: &Witness,
+) -> Result<account::Ledger, Error> {
+    // .remove_value() check if there's enough value and if not, returns a Err.
+    let (new_ledger, spending_counter) = ledger.remove_value(account, value)?;
+    ledger = new_ledger;
+
+    match witness {
+        Witness::Utxo(_) => return Err(Error::ExpectingAccountWitness),
+        Witness::Account(sig) => {
+            let tidsc = TransactionIdSpendingCounter::new(transaction_id, &spending_counter);
+            let verified = sig.verify(&account.clone().into(), &tidsc);
+            if verified == chain_crypto::Verification::Failed {
+                return Err(Error::AccountInvalidSignature(
+                    account.clone(),
+                    witness.clone(),
+                ));
+            };
+            Ok(ledger)
+        }
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+impl std::error::Error for Error {}
+
+/*
 #[cfg(test)]
 pub mod test {
 
@@ -255,3 +363,4 @@ pub mod test {
         )
     }
 }
+*/

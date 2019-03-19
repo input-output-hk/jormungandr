@@ -1,10 +1,10 @@
 use super::content::{LeafIterator, KV};
 use super::hash::{Hash, HashedKey, Hasher};
 use super::node::{
-    insert_rec, lookup_one, remove_eq_rec, remove_rec, size_rec, update_rec, Entry, LookupRet,
-    Node, NodeIter,
+    insert_rec, lookup_one, remove_eq_rec, remove_rec, replace_rec, size_rec, update_rec, Entry,
+    LookupRet, Node, NodeIter,
 };
-pub use super::operation::{InsertError, RemoveError, UpdateError};
+pub use super::operation::{InsertError, RemoveError, ReplaceError, UpdateError};
 use super::sharedref::SharedRef;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
@@ -74,6 +74,22 @@ impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
     }
 }
 
+impl<H: Hasher + Default, K: Eq + Hash + Clone, V: Clone> Hamt<H, K, V> {
+    /// Replace the element at the key by the v and return the new tree
+    /// and the old value.
+    pub fn replace(&self, k: &K, v: V) -> Result<(Self, V), ReplaceError> {
+        let h = HashedKey::compute(self.hasher, &k);
+        let (newroot, oldv) = replace_rec(&self.root, &h, 0, k, v)?;
+        Ok((
+            Hamt {
+                root: newroot,
+                hasher: PhantomData,
+            },
+            oldv,
+        ))
+    }
+}
+
 impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
     pub fn update<F, U>(&self, k: &K, f: F) -> Result<Self, UpdateError<U>>
     where
@@ -106,6 +122,10 @@ impl<H: Hasher + Default, K: Hash + Eq, V> Hamt<H, K, V> {
                 }
             }
         }
+    }
+    /// Check if the key is contained into the HAMT
+    pub fn contains_key(&self, k: &K) -> bool {
+        self.lookup(k).map_or_else(|| false, |_| true)
     }
     pub fn iter(&self) -> HamtIter<K, V> {
         HamtIter {
