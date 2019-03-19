@@ -3,7 +3,25 @@ use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
 
 #[derive(Debug, Clone)]
-pub enum Certificate {
+pub struct SignatureRaw(Vec<u8>);
+
+impl property::Serialize for SignatureRaw {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        writer.write_all(self.0.as_ref())?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Certificate {
+    pub content: CertificateContent,
+    pub signatures: Vec<SignatureRaw>,
+}
+
+#[derive(Debug, Clone)]
+pub enum CertificateContent {
     StakeKeyRegistration(StakeKeyRegistration),
     StakeKeyDeregistration(StakeKeyDeregistration),
     StakeDelegation(StakeDelegation),
@@ -11,19 +29,32 @@ pub enum Certificate {
     StakePoolRetirement(StakePoolRetirement),
 }
 
-
 impl property::Serialize for Certificate {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        match self {
-            Certificate::StakeKeyRegistration(s) => s.serialize(writer),
-            Certificate::StakeKeyDeregistration(s) => s.serialize(writer),
-            Certificate::StakeDelegation(s) => s.serialize(writer),
-            Certificate::StakePoolRegistration(s) => s.serialize(writer),
-            Certificate::StakePoolRetirement(s) => s.serialize(writer),
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        let tag = match &self.content {
+            CertificateContent::StakeKeyRegistration(_) => 0x01,
+            CertificateContent::StakeKeyDeregistration(_) => 0x02,
+            CertificateContent::StakeDelegation(_) => 0x03,
+            CertificateContent::StakePoolRegistration(_) => 0x04,
+            CertificateContent::StakePoolRetirement(_) => 0x05,
+        };
+        codec.put_u8(tag)?;
+        match &self.content {
+            CertificateContent::StakeKeyRegistration(s) => s.serialize(&mut codec),
+            CertificateContent::StakeKeyDeregistration(s) => s.serialize(&mut codec),
+            CertificateContent::StakeDelegation(s) => s.serialize(&mut codec),
+            CertificateContent::StakePoolRegistration(s) => s.serialize(&mut codec),
+            CertificateContent::StakePoolRetirement(s) => s.serialize(&mut codec),
+        }?;
+        codec.put_u8(self.signatures.len() as u8)?;
+        for sig in &self.signatures {
+            sig.serialize(&mut codec)?;
         }
+        Ok(())
     }
-
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -84,21 +84,21 @@ impl TransactionBuilder<Address> {
 
     pub fn estimate_fee<F: FeeAlgorithm>(&self, fee_algorithm: F) -> Result<Value, ValueError> {
         fee_algorithm
-            .calculate_for(&self.0)
+            .calculate_for(&self.tx, &self.cert)
             .ok_or(ValueError::Overflow)
     }
 
     /// Get balance including current feee.
     pub fn get_balance<F: FeeAlgorithm>(&self, fee_algorithm: F) -> Result<Balance, ValueError> {
         let fee = fee_algorithm
-            .calculate_for(&self.0)
+            .calculate_for(&self.tx, &self.cert)
             .ok_or(ValueError::Overflow)?;
-        balance(&self.0, fee)
+        balance(&self.tx, fee)
     }
 
     /// Get transaction balance without fee included.
     pub fn get_balance_without_fee(&self) -> Result<Balance, ValueError> {
-        balance(&self.0, Value(0))
+        balance(&self.tx, Value(0))
     }
 
     /// We finalize the transaction by passing fee rule and return
@@ -160,9 +160,12 @@ impl TransactionBuilder<Address> {
                 match balance(&tx, fee) {
                     Ok(Balance::Positive(value)) => {
                         self.tx.outputs.push(tx::Output { address, value });
-                        Ok((Balance::Zero, TransactionFinalizer::new(self.tx, self.cert)));
+                        Ok((Balance::Zero, TransactionFinalizer::new(self.tx, self.cert)))
                     }
-                    _ => Ok((Balance::Positive(pos), TransactionFinalizer::new(self.0))),
+                    _ => Ok((
+                        Balance::Positive(pos),
+                        TransactionFinalizer::new(self.tx, self.cert),
+                    )),
                 }
             }
         }

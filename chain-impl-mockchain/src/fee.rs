@@ -46,6 +46,6 @@ impl FeeAlgorithm for LinearFee {
             .checked_mul(msz)?
             .checked_add(self.constant)?
             .checked_add(cert)?;
-        Ok(Value(fee))
+        Some(Value(fee))
     }
 }
