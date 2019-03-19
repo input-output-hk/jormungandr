@@ -1,21 +1,21 @@
 use crate::{
     block::Message,
-    key::verify_signature,
-    leadership::{genesis::GenesisPraosId, Error, ErrorKind},
+    key::{verify_multi_signature, verify_signature},
 };
-use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
-use std::collections::{HashMap, HashSet};
+use chain_crypto::{Ed25519Extended, PublicKey};
+use imhamt::{Hamt, UpdateError};
+use std::collections::hash_map::DefaultHasher;
 
-use super::role::{StakeKeyId, StakeKeyInfo, StakePoolInfo};
+use super::role::{StakeKeyId, StakeKeyInfo, StakePoolId, StakePoolInfo};
 
 /// A structure that keeps track of stake keys and stake pools.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DelegationState {
-    pub(super) stake_keys: HashMap<StakeKeyId, StakeKeyInfo>,
-    pub(super) stake_pools: HashMap<GenesisPraosId, StakePoolInfo>,
+    pub(super) stake_keys: Hamt<DefaultHasher, StakeKeyId, StakeKeyInfo>,
+    pub(super) stake_pools: Hamt<DefaultHasher, StakePoolId, StakePoolInfo>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DelegationError {
     StakeKeyAlreadyRegistered,
     StakeKeyRegistrationSigIsInvalid,
@@ -23,11 +23,11 @@ pub enum DelegationError {
     StakeKeyDeregistrationDoesNotExist,
     StakeDelegationSigIsInvalid,
     StakeDelegationStakeKeyIsInvalid(StakeKeyId),
-    StakeDelegationPoolKeyIsInvalid(GenesisPraosId),
+    StakeDelegationPoolKeyIsInvalid(StakePoolId),
     StakePoolRegistrationPoolSigIsInvalid,
-    StakePoolAlreadyExists(GenesisPraosId),
+    StakePoolAlreadyExists(StakePoolId),
     StakePoolRetirementSigIsInvalid,
-    StakePoolDoesNotExist(GenesisPraosId),
+    StakePoolDoesNotExist(StakePoolId),
 }
 
 impl std::fmt::Display for DelegationError {
@@ -88,124 +88,98 @@ impl std::fmt::Display for DelegationError {
 impl std::error::Error for DelegationError {}
 
 impl DelegationState {
-    pub fn new(
-        initial_stake_pools: Vec<StakePoolInfo>,
-        initial_stake_keys: HashMap<StakeKeyId, Option<GenesisPraosId>>,
-    ) -> Self {
-        let mut stake_pools: HashMap<GenesisPraosId, StakePoolInfo> = initial_stake_pools
-            .into_iter()
-            .map(|pool_info| (pool_info.pool_id.clone(), pool_info))
-            .collect();
-
-        let mut stake_keys = HashMap::new();
-        for (stake_key_id, pool_id) in initial_stake_keys {
-            if let Some(pool_id) = &pool_id {
-                if let Some(pool) = stake_pools.get_mut(&pool_id) {
-                    pool.members.insert(stake_key_id.clone());
-                } else {
-                    panic!("Pool '{:?}' does not exist.", pool_id)
-                }
-            }
-            stake_keys.insert(stake_key_id, StakeKeyInfo { pool: pool_id });
-        }
-
+    pub fn new() -> Self {
         DelegationState {
-            stake_keys,
-            stake_pools,
+            stake_keys: Hamt::new(),
+            stake_pools: Hamt::new(),
         }
     }
 
     pub fn nr_stake_keys(&self) -> usize {
-        self.stake_keys.len()
+        self.stake_keys.size()
     }
 
     pub fn stake_key_exists(&self, stake_key_id: &StakeKeyId) -> bool {
-        self.stake_keys.contains_key(stake_key_id)
-    }
-
-    pub fn register_stake_key(&mut self, stake_key_id: StakeKeyId) -> Option<StakeKeyInfo> {
         self.stake_keys
-            .insert(stake_key_id, StakeKeyInfo { pool: None })
+            .lookup(stake_key_id)
+            .map_or_else(|| false, |_| true)
     }
 
-    pub fn deregister_stake_key(&mut self, stake_key_id: &StakeKeyId) -> Option<StakeKeyInfo> {
-        let stake_key_info = self.stake_keys.remove(&stake_key_id)?;
-
-        // Remove this stake key from its pool, if any.
-        if let Some(ref pool_id) = &stake_key_info.pool {
-            self.stake_pools
-                .get_mut(pool_id)
-                .unwrap()
-                .members
-                .remove(&stake_key_id);
-        }
-
-        Some(stake_key_info)
+    pub fn register_stake_key(&self, stake_key_id: StakeKeyId) -> Result<Self, DelegationError> {
+        Ok(DelegationState {
+            stake_keys: self
+                .stake_keys
+                .insert(stake_key_id, StakeKeyInfo { pool: None })
+                .map_err(|_| DelegationError::StakeKeyAlreadyRegistered)?,
+            stake_pools: self.stake_pools.clone(),
+        })
     }
 
-    pub fn get_stake_pools(&self) -> &HashMap<GenesisPraosId, StakePoolInfo> {
-        &self.stake_pools
+    pub fn deregister_stake_key(&self, stake_key_id: &StakeKeyId) -> Result<Self, DelegationError> {
+        Ok(DelegationState {
+            stake_keys: self
+                .stake_keys
+                .remove(&stake_key_id)
+                .map_err(|_| DelegationError::StakeKeyDeregistrationDoesNotExist)?,
+            stake_pools: self.stake_pools.clone(),
+        })
     }
 
-    pub fn stake_pool_exists(&self, pool_id: &GenesisPraosId) -> bool {
-        self.stake_pools.contains_key(pool_id)
+    //pub fn get_stake_pools(&self) -> &HashMap<GenesisPraosId, StakePoolInfo> {
+    //    &self.stake_pools
+    //}
+
+    pub fn stake_pool_exists(&self, pool_id: &StakePoolId) -> bool {
+        self.stake_pools
+            .lookup(pool_id)
+            .map_or_else(|| false, |_| true)
     }
 
-    pub fn register_stake_pool(
-        &mut self,
-        pool_id: GenesisPraosId,
-        owner: StakeKeyId,
-        kes_public_key: PublicKey<FakeMMM>,
-        vrf_public_key: PublicKey<Curve25519_2HashDH>,
-    ) {
-        assert!(!self.stake_pools.contains_key(&pool_id));
-        self.stake_pools.insert(
-            pool_id.clone(),
-            StakePoolInfo {
-                pool_id: pool_id,
-                owner: owner,
-                members: HashSet::new(),
-                kes_public_key: kes_public_key,
-                vrf_public_key: vrf_public_key,
-            },
-        );
+    pub fn register_stake_pool(&self, owner: StakePoolInfo) -> Result<Self, DelegationError> {
+        let id = owner.to_id();
+        let new_pools = self
+            .stake_pools
+            .insert(id.clone(), owner)
+            .map_err(|_| DelegationError::StakePoolAlreadyExists(id))?;
+        Ok(DelegationState {
+            stake_pools: new_pools,
+            stake_keys: self.stake_keys.clone(),
+        })
     }
 
-    pub fn deregister_stake_pool(&mut self, pool_id: &GenesisPraosId) {
-        let pool_info = self.stake_pools.remove(pool_id).unwrap();
-
-        // Remove all pool members.
-        for member in pool_info.members {
-            let stake_key_info = self.stake_keys.get_mut(&member).unwrap();
-            assert_eq!(stake_key_info.pool.as_ref().unwrap(), pool_id);
-            stake_key_info.pool = None;
-        }
-    }
-
-    pub fn nr_pool_members(&self, pool_id: GenesisPraosId) -> usize {
-        self.stake_pools[&pool_id].members.len()
-    }
-
-    pub fn delegate_stake(&mut self, stake_key_id: StakeKeyId, pool_id: GenesisPraosId) {
-        let stake_key = self.stake_keys.get_mut(&stake_key_id).unwrap();
-
-        // If this is a redelegation, remove the stake key from its previous pool.
-        if let Some(prev_stake_pool) = &stake_key.pool {
-            let removed = self
+    pub fn deregister_stake_pool(&self, pool_id: &StakePoolId) -> Result<Self, DelegationError> {
+        Ok(DelegationState {
+            stake_pools: self
                 .stake_pools
-                .get_mut(&prev_stake_pool)
-                .unwrap()
-                .members
-                .remove(&stake_key_id);
-            assert!(removed);
-        }
-
-        let stake_pool = self.stake_pools.get_mut(&pool_id).unwrap();
-        stake_key.pool = Some(pool_id);
-        stake_pool.members.insert(stake_key_id);
+                .remove(pool_id)
+                .map_err(|_| DelegationError::StakePoolDoesNotExist(pool_id.clone()))?,
+            stake_keys: self.stake_keys.clone(),
+        })
     }
 
-    pub(crate) fn apply(&self, message: &Message) -> Result<Self, Error> {
+    pub fn delegate_stake(
+        &self,
+        stake_key_id: StakeKeyId,
+        pool_id: StakePoolId,
+    ) -> Result<Self, DelegationError> {
+        let new_keys = self
+            .stake_keys
+            .update(&stake_key_id, |ki| {
+                let mut kinfo = ki.clone();
+                kinfo.pool = Some(pool_id);
+                Ok(Some(kinfo))
+            })
+            // error mapping is wrong...
+            .map_err(|_: UpdateError<()>| {
+                DelegationError::StakeDelegationStakeKeyIsInvalid(stake_key_id.clone())
+            })?;
+        Ok(DelegationState {
+            stake_keys: new_keys,
+            stake_pools: self.stake_pools.clone(),
+        })
+    }
+
+    pub(crate) fn apply(&self, message: &Message) -> Result<Self, DelegationError> {
         let mut new_state = self.clone();
 
         match message {
@@ -213,123 +187,81 @@ impl DelegationState {
                 if verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
                     == chain_crypto::Verification::Failed
                 {
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakeDelegationSigIsInvalid),
-                    ));
+                    return Err(DelegationError::StakeDelegationSigIsInvalid);
                 }
 
                 if !self.stake_key_exists(&reg.data.stake_key_id) {
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakeDelegationStakeKeyIsInvalid(
-                            reg.data.stake_key_id.clone(),
-                        )),
+                    return Err(DelegationError::StakeDelegationStakeKeyIsInvalid(
+                        reg.data.stake_key_id.clone(),
                     ));
                 }
 
                 if !self.stake_pool_exists(&reg.data.pool_id) {
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakeDelegationPoolKeyIsInvalid(
-                            reg.data.pool_id.clone(),
-                        )),
+                    return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(
+                        reg.data.pool_id.clone(),
                     ));
                 }
 
-                new_state.delegate_stake(reg.data.stake_key_id.clone(), reg.data.pool_id.clone());
+                new_state = new_state
+                    .delegate_stake(reg.data.stake_key_id.clone(), reg.data.pool_id.clone())?
             }
             Message::StakeKeyRegistration(reg) => {
                 if verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
                     == chain_crypto::Verification::Failed
                 {
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakeKeyRegistrationSigIsInvalid),
-                    ));
+                    return Err(DelegationError::StakeKeyRegistrationSigIsInvalid);
                 }
 
-                if let Some(_original) = new_state.register_stake_key(reg.data.stake_key_id.clone())
-                {
-                    // FIXME: error stake key already registered
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakeKeyAlreadyRegistered),
-                    ));
-                }
+                new_state = new_state.register_stake_key(reg.data.stake_key_id.clone())?
             }
             Message::StakeKeyDeregistration(reg) => {
                 if verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
                     == chain_crypto::Verification::Failed
                 {
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakeKeyDeregistrationSigIsInvalid),
-                    ));
+                    return Err(DelegationError::StakeKeyDeregistrationSigIsInvalid);
                 }
 
-                if let None = new_state.deregister_stake_key(&reg.data.stake_key_id) {
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakeKeyDeregistrationDoesNotExist),
-                    ));
-                }
+                new_state = new_state.deregister_stake_key(&reg.data.stake_key_id)?
             }
             Message::StakePoolRegistration(reg) => {
-                if verify_signature(&reg.sig, &reg.data.owner.0, &reg.data)
+                // FIXME verify_multisig
+                let owner_keys: Vec<PublicKey<Ed25519Extended>> =
+                    reg.data.owners.clone().into_iter().map(|x| x.0).collect();
+                if verify_multi_signature(&reg.sig, &owner_keys, &reg.data)
                     == chain_crypto::Verification::Failed
                 {
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakePoolRegistrationPoolSigIsInvalid),
-                    ));
-                }
-
-                if new_state.stake_pool_exists(&reg.data.pool_id) {
-                    // FIXME: support re-registration to change pool parameters.
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakePoolAlreadyExists(
-                            reg.data.pool_id.clone(),
-                        )),
-                    ));
+                    return Err(DelegationError::StakePoolRegistrationPoolSigIsInvalid);
                 }
 
                 // FIXME: check owner_sig
 
                 // FIXME: should pool_id be a previously registered stake key?
 
-                new_state.register_stake_pool(
-                    reg.data.pool_id.clone(),
-                    reg.data.owner.clone(),
-                    reg.data.kes_public_key.clone(),
-                    reg.data.vrf_public_key.clone(),
-                );
+                new_state = new_state.register_stake_pool(reg.data.clone())?
             }
             Message::StakePoolRetirement(reg) => {
-                let pool_info = if let Some(pool_info) = self.stake_pools.get(&reg.data.pool_id) {
+                let pool_info = if let Some(pool_info) = self.stake_pools.lookup(&reg.data.pool_id)
+                {
                     pool_info
                 } else {
                     // TODO: add proper error cause
-                    return Err(Error::new(ErrorKind::InvalidBlockMessage));
+                    unimplemented!()
+                    //return Err(Error::new(ErrorKind::InvalidBlockMessage));
                 };
 
-                if verify_signature(&reg.sig, &pool_info.owner.0, &reg.data)
+                let owner_keys: Vec<PublicKey<Ed25519Extended>> =
+                    pool_info.owners.clone().into_iter().map(|x| x.0).collect();
+
+                if verify_multi_signature(&reg.sig, &owner_keys, &reg.data)
                     == chain_crypto::Verification::Failed
                 {
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakePoolRegistrationPoolSigIsInvalid),
-                    ));
+                    return Err(DelegationError::StakePoolRegistrationPoolSigIsInvalid);
                 }
 
                 if new_state.stake_pool_exists(&reg.data.pool_id) {
                     // FIXME: support re-registration to change pool parameters.
-                    return Err(Error::new_(
-                        ErrorKind::InvalidBlockMessage,
-                        Box::new(DelegationError::StakePoolAlreadyExists(
-                            reg.data.pool_id.clone(),
-                        )),
+                    return Err(DelegationError::StakePoolAlreadyExists(
+                        reg.data.pool_id.clone(),
                     ));
                 }
 
@@ -337,7 +269,7 @@ impl DelegationState {
 
                 // FIXME: should pool_id be a previously registered stake key?
 
-                new_state.deregister_stake_pool(&reg.data.pool_id);
+                new_state = new_state.deregister_stake_pool(&reg.data.pool_id)?
             }
             Message::Transaction(_) => unreachable!(),
             Message::Update(_) => unreachable!(),
