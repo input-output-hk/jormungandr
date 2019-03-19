@@ -3,6 +3,7 @@
 //!
 
 use crate::blockcfg::{genesis_data::GenesisData, BlockConfig};
+use chain_addr::Address;
 use chain_impl_mockchain::*;
 use network::p2p_topology as p2p;
 
@@ -13,6 +14,8 @@ impl BlockConfig for Mockchain {
     type BlockDate = block::BlockDate;
     type BlockHash = key::Hash;
     type BlockHeader = block::Header;
+    type Transaction = transaction::SignedTransaction<Address>;
+    type TransactionId = transaction::TransactionId;
     type Message = block::Message;
     type MessageId = block::message::MessageId;
     type GenesisData = GenesisData;
@@ -29,7 +32,7 @@ impl BlockConfig for Mockchain {
         parent_id: Self::BlockHash,
         messages: Vec<Self::Message>,
     ) -> Self::Block {
-        let builder = block::BlockBuilder::new();
+        let mut builder = block::BlockBuilder::new();
         builder.messages(messages)
             .date(block_date)
             .parent(parent_id)

@@ -10,8 +10,6 @@ use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStor
 use crate::blockcfg::{genesis_data::GenesisData, mock::Mockchain, BlockConfig};
 
 pub struct Blockchain<B: BlockConfig> {
-    pub genesis_data: B::GenesisData,
-
     /// the storage for the overall blockchains (blocks)
     pub storage: MemoryBlockStore<B::Block>,
 
@@ -67,7 +65,6 @@ impl Blockchain<Mockchain> {
         storage.put_block(&block_0);
 
         Blockchain {
-            genesis_data: genesis_data,
             storage: storage,
             state: state,
             unconnected_blocks: BTreeMap::default(),
