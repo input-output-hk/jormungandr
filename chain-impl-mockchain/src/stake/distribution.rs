@@ -62,7 +62,7 @@ impl StakeDistribution {
 pub fn get_stake_distribution(dstate: &DelegationState, ledger: &Ledger) -> StakeDistribution {
     let mut dist = HashMap::new();
 
-    for output in ledger.utxos.iter() {
+    for output in ledger.utxos.values() {
         //assert_eq!(ptr.value, output.1);
 
         // We're only interested in "group" addresses

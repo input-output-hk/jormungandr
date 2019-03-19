@@ -83,7 +83,23 @@ pub struct Ledger<OutAddress>(Hamt<DefaultHasher, TransactionId, TransactionUnsp
 
 pub struct Iter<'a, V> {
     hamt_iter: HamtIter<'a, TransactionId, TransactionUnspents<V>>,
+    unspents_iter: Option<(
+        &'a TransactionId,
+        btree_map::Iter<'a, TransactionIndex, Output<V>>,
+    )>,
+}
+
+pub struct Values<'a, V> {
+    hamt_iter: HamtIter<'a, TransactionId, TransactionUnspents<V>>,
     unspents_iter: Option<btree_map::Iter<'a, TransactionIndex, Output<V>>>,
+}
+
+/// structure used by the iterator or the getter of the UTxO `Ledger`
+///
+pub struct Entry<'a, OutputAddress> {
+    pub transaction_id: TransactionId,
+    pub output_index: u8,
+    pub output: &'a Output<OutputAddress>,
 }
 
 impl<OutAddress> Ledger<OutAddress> {
@@ -93,9 +109,31 @@ impl<OutAddress> Ledger<OutAddress> {
             unspents_iter: None,
         }
     }
+
+    pub fn values<'a>(&'a self) -> Values<'a, OutAddress> {
+        Values {
+            hamt_iter: self.0.iter(),
+            unspents_iter: None,
+        }
+    }
+
+    pub fn get<'a>(
+        &'a self,
+        tid: &TransactionId,
+        index: &TransactionIndex,
+    ) -> Option<Entry<'a, OutAddress>> {
+        self.0
+            .lookup(tid)
+            .and_then(|unspent| unspent.0.get(index))
+            .map(|output| Entry {
+                transaction_id: tid.clone(),
+                output_index: *index,
+                output: output,
+            })
+    }
 }
 
-impl<'a, V> Iterator for Iter<'a, V> {
+impl<'a, V> Iterator for Values<'a, V> {
     type Item = &'a Output<V>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -113,6 +151,33 @@ impl<'a, V> Iterator for Iter<'a, V> {
                     self.next()
                 }
                 Some(x) => Some(x.1),
+            },
+        }
+    }
+}
+
+impl<'a, V> Iterator for Iter<'a, V> {
+    type Item = Entry<'a, V>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.unspents_iter {
+            None => match self.hamt_iter.next() {
+                None => None,
+                Some(unspent) => {
+                    self.unspents_iter = Some((unspent.0, (unspent.1).0.iter()));
+                    self.next()
+                }
+            },
+            Some((id, o)) => match o.next() {
+                None => {
+                    self.unspents_iter = None;
+                    self.next()
+                }
+                Some(x) => Some(Entry {
+                    transaction_id: id.clone(),
+                    output_index: *x.0,
+                    output: x.1,
+                }),
             },
         }
     }
