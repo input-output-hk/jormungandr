@@ -396,20 +396,6 @@ where
     }
 }
 
-impl FromResponse<gen::node::AnnounceBlockResponse> for () {
-    fn from_response(_res: gen::node::AnnounceBlockResponse) -> Result<(), core_client::Error> {
-        Ok(())
-    }
-}
-
-impl FromResponse<gen::node::AnnounceTransactionResponse> for () {
-    fn from_response(
-        _res: gen::node::AnnounceTransactionResponse,
-    ) -> Result<(), core_client::Error> {
-        Ok(())
-    }
-}
-
 impl<C, S, E> BlockService for Client<C, S, E>
 where
     C: ProtocolConfig,

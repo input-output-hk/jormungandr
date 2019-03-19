@@ -62,10 +62,6 @@ message GossipMessage {
     bytes content = 2;
 }
 
-message AnnounceBlockResponse {}
-
-message AnnounceTransactionResponse {}
-
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
     rpc GetBlocks (BlockIds) returns (stream Block) {

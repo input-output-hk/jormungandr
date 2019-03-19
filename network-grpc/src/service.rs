@@ -254,18 +254,6 @@ where
     }
 }
 
-impl IntoResponse<gen::node::AnnounceBlockResponse> for () {
-    fn into_response(self) -> Result<gen::node::AnnounceBlockResponse, tower_grpc::Status> {
-        Ok(gen::node::AnnounceBlockResponse {})
-    }
-}
-
-impl IntoResponse<gen::node::AnnounceTransactionResponse> for () {
-    fn into_response(self) -> Result<gen::node::AnnounceTransactionResponse, tower_grpc::Status> {
-        Ok(gen::node::AnnounceTransactionResponse {})
-    }
-}
-
 impl<H> IntoResponse<gen::node::Header> for H
 where
     H: Header + Serialize,
