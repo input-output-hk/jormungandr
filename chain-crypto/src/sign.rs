@@ -27,6 +27,8 @@ pub enum SignatureError {
 pub trait VerificationAlgorithm: key::AsymmetricKey {
     type Signature: AsRef<[u8]> + Clone;
 
+    const SIGNATURE_SIZE: usize;
+
     fn verify_bytes(pubkey: &Self::Public, signature: &Self::Signature, msg: &[u8])
         -> Verification;
 

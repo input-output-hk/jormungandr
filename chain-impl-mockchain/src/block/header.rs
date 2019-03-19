@@ -7,8 +7,8 @@ use crate::key::{
 };
 use crate::leadership::{bft, genesis};
 use chain_crypto::{
-    Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, Signature, VerifiableRandomFunction,
-    Verification,
+    self, AsymmetricKey, Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, Signature,
+    VerifiableRandomFunction, Verification,
 };
 
 pub type HeaderHash = Hash;
@@ -298,7 +298,27 @@ impl property::Deserialize for Header {
                     signature,
                 })
             }
-            BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => unimplemented!(),
+            BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => {
+                let genesis_praos_id = genesis::GenesisPraosId::deserialize(&mut codec)?;
+                dbg!(&genesis_praos_id);
+                let vrf_proof = {
+                    let mut buf =
+                        [0; <Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE];
+                    codec.read_exact(&mut buf)?;
+
+                    <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom::from_bytes_unverified(&buf)
+                        .ok_or(std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid VRF Proof".to_owned()))?
+                };
+                dbg!(&vrf_proof);
+                let kes_proof = deserialize_signature(&mut codec).map(KESSignature)?;
+                dbg!(&kes_proof);
+
+                Proof::GenesisPraos(GenesisPraosProof {
+                    genesis_praos_id: genesis_praos_id,
+                    vrf_proof: vrf_proof,
+                    kes_proof: kes_proof,
+                })
+            }
             _ => unimplemented!("block_version: 0x{:08x}", block_version.0),
         };
 
@@ -329,9 +349,7 @@ mod test {
 
     impl Arbitrary for BlockVersion {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            // TODO: we are not testing the Proof for Genesis Praos at the moment
-            //       set the modulo to 3 when relevant
-            BlockVersion::new(u16::arbitrary(g) % 2)
+            BlockVersion::new(u16::arbitrary(g) % 3)
         }
     }
     impl Arbitrary for Common {
@@ -359,8 +377,32 @@ mod test {
         }
     }
     impl Arbitrary for GenesisPraosProof {
-        fn arbitrary<G: Gen>(_g: &mut G) -> Self {
-            unimplemented!()
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            use rand_chacha::ChaChaRng;
+            use rand_core::SeedableRng;
+            let mut seed = [0; 32];
+            for byte in seed.iter_mut() {
+                *byte = Arbitrary::arbitrary(g);
+            }
+            let mut rng = ChaChaRng::from_seed(seed);
+
+            let genesis_praos_id = genesis::GenesisPraosId(Arbitrary::arbitrary(g));
+
+            let vrf_proof = {
+                let sk = Curve25519_2HashDH::generate(&mut rng);
+                Curve25519_2HashDH::evaluate(&sk, &[0, 1, 2, 3], &mut rng)
+            };
+
+            let kes_proof = {
+                let mut sk = crate::key::test::arbitrary_secret_key(g);
+                let signature = Signature::generate_update(&mut sk, &[0u8, 1, 2, 3]);
+                KESSignature(signature)
+            };
+            GenesisPraosProof {
+                genesis_praos_id: genesis_praos_id,
+                vrf_proof: vrf_proof,
+                kes_proof: kes_proof,
+            }
         }
     }
 

@@ -13,7 +13,7 @@ use rand::{Rng, SeedableRng};
 
 /// Hash of GenesisPraosLeader
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GenesisPraosId(Hash);
+pub struct GenesisPraosId(pub(crate) Hash);
 
 /// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -76,8 +76,10 @@ impl AsymmetricKey for FakeMMM {
 impl VerificationAlgorithm for FakeMMM {
     type Signature = Sig;
 
+    const SIGNATURE_SIZE: usize = ed25519::SIGNATURE_LENGTH;
+
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
-        if data.len() == ed25519::SIGNATURE_LENGTH {
+        if data.len() != ed25519::SIGNATURE_LENGTH {
             return Err(SignatureError::SizeInvalid);
         }
         let mut buf = [0; ed25519::SIGNATURE_LENGTH];

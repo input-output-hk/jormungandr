@@ -69,6 +69,8 @@ type XSig = ed25519_bip32::Signature<u8>;
 impl VerificationAlgorithm for Ed25519Bip32 {
     type Signature = XSig;
 
+    const SIGNATURE_SIZE: usize = ed25519_bip32::SIGNATURE_SIZE;
+
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
         let xsig = XSig::from_slice(data)?;
         Ok(xsig)

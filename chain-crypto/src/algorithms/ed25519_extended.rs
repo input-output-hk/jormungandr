@@ -75,6 +75,8 @@ impl AsymmetricKey for Ed25519Extended {
 impl VerificationAlgorithm for Ed25519Extended {
     type Signature = ei::Sig;
 
+    const SIGNATURE_SIZE: usize = ed25519::SIGNATURE_LENGTH;
+
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
         if data.len() != ed25519::SIGNATURE_LENGTH {
             return Err(SignatureError::SizeInvalid);
