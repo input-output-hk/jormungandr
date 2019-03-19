@@ -175,13 +175,15 @@ In order to start a leader node you need to generate key pairs using
 `jormungandr`:
 
 ```
-jormungandr generate-keys
-signing_key: 90167eccc5db6ab75c643e33901ec727be847aa51f16890df06ec6fa401e9958
-public_key: 77d0edad4553bbb66115ce1ed78ca0e752534a0d2faa707d4356ea567a586475
+$ jormungandr generate-priv-key --type Ed25519Extended
+ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexmfn7s96lqja5sv520zx6hx5hd0qsgahp3ta8grrrxkd8n0cjmaqre
+
+$ echo ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexmfn7s96lqja5sv520zx6hx5hd0qsgahp3ta8grrrxkd8n0cjmaqre \
+  | cargo run -- generate-pub-key
+ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
 ```
 
-`singing_key` is your private key you can put it in key.xprv file,
-note that there should be no EOL in that file. If you expect your
+This is your private key you can put it in key.xprv file. If you expect your
 node to be a leader, put your public_key in the `genesis.yaml` leader.
 
 Then you should start node using:
