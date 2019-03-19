@@ -49,9 +49,6 @@ message Transaction {
     bytes content = 1;
 }
 
-// Request message for method SubscribeToBlocks.
-message BlockSubscriptionRequest {}
-
 // Gossip message.
 message GossipMessage {
     message NodeId {
