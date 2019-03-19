@@ -347,7 +347,7 @@ mod test {
                 block_content_size: Arbitrary::arbitrary(g),
                 block_content_hash: Arbitrary::arbitrary(g),
                 block_parent_hash: Arbitrary::arbitrary(g),
-                chain_length: Arbitrary::arbitrary(g),
+                chain_length: ChainLength(Arbitrary::arbitrary(g)),
             }
         }
     }
