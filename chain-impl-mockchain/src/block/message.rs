@@ -1,3 +1,4 @@
+use crate::stake::StakePoolInfo;
 use chain_addr::Address;
 use chain_core::{packer, property};
 use chain_crypto::Ed25519Extended;
@@ -19,7 +20,7 @@ pub enum Message {
     StakeKeyRegistration(Signed<certificate::StakeKeyRegistration, Ed25519Extended>),
     StakeKeyDeregistration(Signed<certificate::StakeKeyDeregistration, Ed25519Extended>),
     StakeDelegation(Signed<certificate::StakeDelegation, Ed25519Extended>),
-    StakePoolRegistration(Signed<certificate::StakePoolRegistration, Ed25519Extended>),
+    StakePoolRegistration(Signed<StakePoolInfo, Ed25519Extended>),
     StakePoolRetirement(Signed<certificate::StakePoolRetirement, Ed25519Extended>),
 
     // FIXME: Placeholder for the eventual update mechanism. Currently

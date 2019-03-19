@@ -6,7 +6,7 @@ use crate::{
     leadership,
     ledger::{self, Ledger},
     setting,
-    stake::DelegationState,
+    stake::{DelegationError, DelegationState},
     utxo,
 };
 use chain_addr::Address;
@@ -22,16 +22,22 @@ pub struct State {
 #[derive(Debug)]
 pub enum Error {
     LedgerError(ledger::Error),
-    Delegation(leadership::Error),
+    Leadership(leadership::Error),
+    Delegation(DelegationError),
 }
 impl From<ledger::Error> for Error {
     fn from(e: ledger::Error) -> Self {
         Error::LedgerError(e)
     }
 }
+impl From<DelegationError> for Error {
+    fn from(e: DelegationError) -> Self {
+        Error::Delegation(e)
+    }
+}
 impl From<leadership::Error> for Error {
     fn from(e: leadership::Error) -> Self {
-        Error::Delegation(e)
+        Error::Leadership(e)
     }
 }
 
@@ -103,7 +109,7 @@ impl State {
         State {
             ledger: Ledger::new(),
             settings: setting::Settings::new(),
-            delegation: DelegationState::new(Vec::new(), std::collections::HashMap::new()),
+            delegation: DelegationState::new(),
         }
     }
 
@@ -117,6 +123,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::Delegation(error) => error.fmt(f),
             Error::LedgerError(error) => error.fmt(f),
+            Error::Leadership(error) => error.fmt(f),
         }
     }
 }
@@ -125,6 +132,7 @@ impl std::error::Error for Error {
         match self {
             Error::Delegation(error) => error.source(),
             Error::LedgerError(error) => error.source(),
+            Error::Leadership(error) => error.source(),
         }
     }
 }
