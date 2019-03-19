@@ -11,9 +11,11 @@ use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
 use rand::{Rng, SeedableRng};
 
+/// Hash of GenesisPraosLeader
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GenesisPraosId(Hash);
 
+/// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenesisPraosLeader {
     pub(crate) kes_public_key: PublicKey<FakeMMM>,
@@ -22,13 +24,16 @@ pub struct GenesisPraosLeader {
 
 impl GenesisPraosLeader {
     pub fn get_id(&self) -> GenesisPraosId {
-        unimplemented!()
+        let mut v = Vec::new();
+        v.extend_from_slice(self.vrf_public_key.as_ref());
+        v.extend_from_slice(self.kes_public_key.as_ref());
+        GenesisPraosId(Hash::hash_bytes(&v))
     }
 }
 
 #[derive(Debug)]
 pub struct GenesisLeaderSelection {
-    delegation_state: DelegationState,
+    //delegation_state: DelegationState,
     distribution: StakeDistribution,
     // the epoch this leader selection is valid for
     epoch: Epoch,
@@ -45,7 +50,7 @@ impl GenesisLeaderSelection {
 
         GenesisLeaderSelection {
             distribution: stake_distribution,
-            delegation_state: state.delegation.clone(),
+            //delegation_state: state.delegation.clone(),
             epoch: epoch_state + leader_selection_snapshot_interval,
         }
     }
@@ -77,6 +82,7 @@ impl GenesisLeaderSelection {
         // Select the stake pool containing the point we
         // picked.
         let pool_id = stake_snapshot.select_pool(point).unwrap();
+        /*
         let pool_info = self
             .delegation_state
             .get_stake_pools()
@@ -88,6 +94,8 @@ impl GenesisLeaderSelection {
         };
 
         Ok(Some(keys))
+        */
+        unimplemented!()
     }
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {

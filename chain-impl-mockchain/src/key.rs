@@ -95,6 +95,20 @@ where
     signature.clone().coerce().verify(public_key, &bytes)
 }
 
+pub fn verify_multi_signature<T, A>(
+    signature: &crypto::Signature<T, A>,
+    public_key: &[crypto::PublicKey<A>],
+    data: &T,
+) -> crypto::Verification
+where
+    A: VerificationAlgorithm,
+    T: property::Serialize,
+{
+    assert!(public_key.len() > 0);
+    let bytes = data.serialize_as_vec().unwrap();
+    signature.clone().coerce().verify(&public_key[0], &bytes)
+}
+
 /// A serializable type T with a signature.
 pub struct Signed<T, A: SigningAlgorithm> {
     pub data: T,

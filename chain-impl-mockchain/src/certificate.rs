@@ -1,6 +1,10 @@
-use crate::{block::Message, key::*, leadership::genesis::GenesisPraosId, stake::StakeKeyId};
+use crate::{
+    block::Message,
+    key::*,
+    stake::{StakeKeyId, StakePoolId, StakePoolInfo},
+};
 use chain_core::property;
-use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey};
+use chain_crypto::{Ed25519Extended, SecretKey};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeKeyRegistration {
@@ -77,7 +81,7 @@ impl property::Deserialize for StakeKeyDeregistration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeDelegation {
     pub stake_key_id: StakeKeyId,
-    pub pool_id: GenesisPraosId,
+    pub pool_id: StakePoolId,
 }
 
 impl StakeDelegation {
@@ -110,22 +114,12 @@ impl property::Deserialize for StakeDelegation {
         let mut codec = Codec::from(reader);
         Ok(StakeDelegation {
             stake_key_id: StakeKeyId::deserialize(&mut codec)?,
-            pool_id: GenesisPraosId::deserialize(&mut codec)?,
+            pool_id: StakePoolId::deserialize(&mut codec)?,
         })
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakePoolRegistration {
-    pub pool_id: GenesisPraosId,
-    pub owner: StakeKeyId, // FIXME: support list of owners
-    // reward sharing params: cost, margin, pledged amount of stake
-    // alternative stake key reward account
-    pub kes_public_key: PublicKey<FakeMMM>,
-    pub vrf_public_key: PublicKey<Curve25519_2HashDH>,
-}
-
-impl StakePoolRegistration {
+impl StakePoolInfo {
     /// Create a certificate for this stake pool registration, signed
     /// by the pool's staking key and the owners.
     pub fn make_certificate(self, pool_private_key: &SecretKey<Ed25519Extended>) -> Message {
@@ -136,37 +130,9 @@ impl StakePoolRegistration {
     }
 }
 
-impl property::Serialize for StakePoolRegistration {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        self.pool_id.serialize(&mut writer)?;
-        writer.write_all(self.vrf_public_key.as_ref())?;
-        serialize_public_key(&self.kes_public_key, &mut writer)?;
-        self.owner.serialize(&mut writer)?;
-        Ok(())
-    }
-}
-
-impl property::Deserialize for StakePoolRegistration {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let pool_id = GenesisPraosId::deserialize(&mut reader)?;
-        let vrf_public_key = deserialize_public_key(&mut reader)?;
-        let kes_public_key = deserialize_public_key(&mut reader)?;
-        let owner = StakeKeyId::deserialize(&mut reader)?;
-        Ok(StakePoolRegistration {
-            pool_id: pool_id,
-            vrf_public_key: vrf_public_key,
-            kes_public_key: kes_public_key,
-            owner: owner,
-        })
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolRetirement {
-    pub pool_id: GenesisPraosId,
+    pub pool_id: StakePoolId,
     // TODO: add epoch when the retirement will take effect
 }
 
@@ -198,7 +164,7 @@ impl property::Deserialize for StakePoolRetirement {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         Ok(StakePoolRetirement {
-            pool_id: GenesisPraosId::deserialize(&mut codec)?,
+            pool_id: StakePoolId::deserialize(&mut codec)?,
         })
     }
 }
@@ -206,6 +172,7 @@ impl property::Deserialize for StakePoolRetirement {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::leadership::genesis::GenesisPraosLeader;
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for StakeKeyRegistration {
@@ -233,7 +200,7 @@ mod test {
         }
     }
 
-    impl Arbitrary for StakePoolRegistration {
+    impl Arbitrary for StakePoolInfo {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             use rand_core::SeedableRng;
             let mut seed = [0; 32];
@@ -241,11 +208,13 @@ mod test {
                 *byte = Arbitrary::arbitrary(g);
             }
             let mut rng = rand_chacha::ChaChaRng::from_seed(seed);
-            StakePoolRegistration {
-                pool_id: Arbitrary::arbitrary(g),
-                vrf_public_key: SecretKey::generate(&mut rng).to_public(),
-                kes_public_key: SecretKey::generate(&mut rng).to_public(),
-                owner: Arbitrary::arbitrary(g),
+            StakePoolInfo {
+                serial: Arbitrary::arbitrary(g),
+                owners: vec![Arbitrary::arbitrary(g)],
+                initial_key: GenesisPraosLeader {
+                    vrf_public_key: SecretKey::generate(&mut rng).to_public(),
+                    kes_public_key: SecretKey::generate(&mut rng).to_public(),
+                },
             }
         }
     }

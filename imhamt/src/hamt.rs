@@ -123,6 +123,10 @@ impl<H: Hasher + Default, K: Hash + Eq, V> Hamt<H, K, V> {
             }
         }
     }
+    /// Check if the key is contained into the HAMT
+    pub fn contains_key(&self, k: &K) -> bool {
+        self.lookup(k).map_or_else(|| false, |_| true)
+    }
     pub fn iter(&self) -> HamtIter<K, V> {
         HamtIter {
             stack: vec![self.root.iter()],

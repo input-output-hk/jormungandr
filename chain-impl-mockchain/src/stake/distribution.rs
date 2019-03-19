@@ -1,4 +1,4 @@
-use crate::{leadership::genesis::GenesisPraosId, ledger::Ledger, value::Value};
+use crate::{ledger::Ledger, stake::StakePoolId, value::Value};
 use chain_addr::Kind;
 use std::collections::HashMap;
 
@@ -8,7 +8,7 @@ use super::role::StakeKeyId;
 /// For each stake pool, the total stake value, and the value for the
 /// stake pool members.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakeDistribution(pub HashMap<GenesisPraosId, PoolStakeDistribution>);
+pub struct StakeDistribution(pub HashMap<StakePoolId, PoolStakeDistribution>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoolStakeDistribution {
@@ -39,7 +39,7 @@ impl StakeDistribution {
     /// by ID), then return the ID of the one containing 'point'
     /// (which must be in the interval). This is used to randomly
     /// select a leader, taking stake into account.
-    pub fn select_pool(&self, mut point: u64) -> Option<GenesisPraosId> {
+    pub fn select_pool(&self, mut point: u64) -> Option<StakePoolId> {
         let mut pools_sorted: Vec<_> = self
             .0
             .iter()
@@ -63,8 +63,6 @@ pub fn get_stake_distribution(dstate: &DelegationState, ledger: &Ledger) -> Stak
     let mut dist = HashMap::new();
 
     for output in ledger.utxos.values() {
-        //assert_eq!(ptr.value, output.1);
-
         // We're only interested in "group" addresses
         // (i.e. containing a spending key and a stake key).
         if let Kind::Group(_spending_key, stake_key) = output.address.kind() {
@@ -72,11 +70,9 @@ pub fn get_stake_distribution(dstate: &DelegationState, ledger: &Ledger) -> Stak
             let stake_key = stake_key.clone().into();
 
             // Do we have a stake key for this spending key?
-            if let Some(stake_key_info) = dstate.stake_keys.get(&stake_key) {
+            if let Some(stake_key_info) = dstate.stake_keys.lookup(&stake_key) {
                 // Is this stake key a member of a stake pool?
                 if let Some(pool_id) = &stake_key_info.pool {
-                    let pool = &dstate.stake_pools[pool_id];
-                    debug_assert!(pool.members.contains(&stake_key));
                     let stake_pool_dist =
                         dist.entry(pool_id.clone())
                             .or_insert_with(|| PoolStakeDistribution {
