@@ -48,6 +48,7 @@ impl property::State for State {
         let mut new_state = self.apply_contents(contents)?;
         new_state.settings.last_block_id = header.id();
         new_state.settings.last_block_date = header.date();
+        new_state.settings.chain_length = header.common.chain_length;
         Ok(new_state)
     }
 
@@ -91,6 +92,9 @@ impl property::Settings for State {
     }
     fn block_version(&self) -> <Self::Block as property::Block>::Version {
         self.settings.block_version()
+    }
+    fn chain_length(&self) -> <Self::Block as property::Block>::ChainLength {
+        self.settings.chain_length()
     }
 }
 

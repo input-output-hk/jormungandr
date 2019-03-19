@@ -1,7 +1,7 @@
 //! Representation of the block in the mockchain.
 use crate::key::{make_signature, make_signature_update, Hash};
 use crate::leadership::{bft, genesis::GenesisPraosLeader, Leader};
-use chain_core::property::{self, Serialize};
+use chain_core::property::{self, Header as _, Serialize};
 use chain_crypto::Verification;
 
 mod builder;
@@ -123,11 +123,11 @@ impl property::Block for Block {
     type Id = BlockId;
     type Date = BlockDate;
     type Version = BlockVersion;
+    type ChainLength = ChainLength;
 
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
     fn id(&self) -> Self::Id {
-        use chain_core::property::Header;
         self.header.id()
     }
 
@@ -143,6 +143,10 @@ impl property::Block for Block {
 
     fn version(&self) -> Self::Version {
         *self.header.block_version()
+    }
+
+    fn chain_length(&self) -> Self::ChainLength {
+        self.header.chain_length()
     }
 }
 

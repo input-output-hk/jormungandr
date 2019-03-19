@@ -2,7 +2,7 @@
 //!
 
 use crate::{
-    block::{BlockDate, BlockId, BlockVersion, BLOCK_VERSION_CONSENSUS_NONE},
+    block::{BlockDate, BlockId, BlockVersion, ChainLength, BLOCK_VERSION_CONSENSUS_NONE},
     key::Hash,
     leadership::bft,
 };
@@ -114,6 +114,7 @@ impl property::Deserialize for UpdateProposal {
 pub struct Settings {
     pub last_block_id: BlockId,
     pub last_block_date: BlockDate,
+    pub chain_length: ChainLength,
     pub max_number_of_transactions_per_block: Arc<u32>,
     pub bootstrap_key_slots_percentage: Arc<u8>, // == d * 100
     pub block_version: Arc<BlockVersion>,
@@ -127,6 +128,7 @@ impl Settings {
         Self {
             last_block_id: Hash::zero(),
             last_block_date: BlockDate::first(),
+            chain_length: ChainLength(0),
             max_number_of_transactions_per_block: Arc::new(100),
             bootstrap_key_slots_percentage: Arc::new(SLOTS_PERCENTAGE_RANGE),
             block_version: Arc::new(BLOCK_VERSION_CONSENSUS_NONE),
@@ -188,5 +190,9 @@ impl property::Settings for Settings {
 
     fn block_version(&self) -> <Self::Block as property::Block>::Version {
         *self.block_version
+    }
+
+    fn chain_length(&self) -> <Self::Block as property::Block>::ChainLength {
+        self.chain_length
     }
 }
