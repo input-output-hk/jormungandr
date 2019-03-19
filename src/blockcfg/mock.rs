@@ -12,6 +12,7 @@ pub struct Mockchain;
 impl BlockConfig for Mockchain {
     type Block = block::Block;
     type BlockDate = block::BlockDate;
+    type ChainLength = block::ChainLength;
     type BlockHash = key::Hash;
     type BlockHeader = block::Header;
     type Transaction = transaction::SignedTransaction<Address>;
@@ -29,15 +30,16 @@ impl BlockConfig for Mockchain {
     fn make_block(
         secret_key: &Self::NodeSigningKey,
         block_date: Self::BlockDate,
+        chain_length: Self::ChainLength,
         parent_id: Self::BlockHash,
         messages: Vec<Self::Message>,
     ) -> Self::Block {
         let mut builder = block::BlockBuilder::new();
-        builder.messages(messages)
+        builder
+            .messages(messages)
             .date(block_date)
             .parent(parent_id)
-            // TODO: .chain_length(chain_length)
-            ;
+            .chain_length(chain_length);
 
         match secret_key {
             leadership::Leader::None => builder.make_genesis_block(),
