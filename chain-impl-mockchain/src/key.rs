@@ -18,18 +18,14 @@ pub fn serialize_public_key<A: AsymmetricKey, W: std::io::Write>(
     key: &crypto::PublicKey<A>,
     mut writer: W,
 ) -> Result<(), std::io::Error> {
-    writer.write_all(key.as_ref())?;
-    Ok(())
+    writer.write_all(key.as_ref())
 }
 #[inline]
 pub fn serialize_signature<A: VerificationAlgorithm, T, W: std::io::Write>(
     signature: &crypto::Signature<T, A>,
     mut writer: W,
 ) -> Result<(), std::io::Error> {
-    let size: usize = std::mem::size_of_val(signature);
-    assert!(size == 64);
-    writer.write_all(signature.as_ref())?;
-    Ok(())
+    writer.write_all(signature.as_ref())
 }
 #[inline]
 pub fn deserialize_public_key<A, R>(mut reader: R) -> Result<crypto::PublicKey<A>, std::io::Error>
@@ -50,9 +46,7 @@ where
     A: VerificationAlgorithm,
     R: std::io::BufRead,
 {
-    let size: usize = std::mem::size_of::<crypto::Signature<T, A>>();
-    assert!(size == 64);
-    let mut buffer = vec![0; 64];
+    let mut buffer = vec![0; A::SIGNATURE_SIZE];
     reader.read_exact(&mut buffer)?;
     crypto::Signature::from_bytes(&buffer)
         .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err)))
