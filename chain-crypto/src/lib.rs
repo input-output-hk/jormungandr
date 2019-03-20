@@ -9,6 +9,7 @@ extern crate test;
 extern crate quickcheck;
 
 pub mod algorithms;
+pub mod bech32;
 pub mod hash;
 mod hex;
 mod kes;
