@@ -62,3 +62,12 @@ impl property::Deserialize for Value {
         codec.get_u64().map(Value)
     }
 }
+
+impl property::Serialize for Value {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        codec.put_u64(self.0)
+    }
+}

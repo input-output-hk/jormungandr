@@ -6,6 +6,7 @@ pub mod account;
 pub mod block;
 pub mod certificate;
 mod date;
+pub mod legacy;
 // #[cfg(test)]
 // pub mod environment;
 pub mod error;

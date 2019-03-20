@@ -5,6 +5,7 @@ use chain_core::property::{self, Header as _, Serialize};
 use chain_crypto::Verification;
 
 mod builder;
+//mod cstruct;
 mod header;
 pub mod message;
 

@@ -1,3 +1,4 @@
+use crate::legacy;
 use crate::stake::StakePoolInfo;
 use chain_addr::Address;
 use chain_core::{packer, property};
@@ -15,6 +16,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(SignedTransaction<Address>),
 
     StakeKeyRegistration(Signed<certificate::StakeKeyRegistration, Ed25519Extended>),
@@ -31,6 +33,7 @@ pub enum Message {
 
 #[derive(FromPrimitive)]
 enum MessageTag {
+    OldUtxoDeclaration = 0,
     Transaction = 1,
     StakeKeyRegistration = 2,
     StakeKeyDeregistration = 3,
@@ -68,6 +71,9 @@ impl property::Serialize for Message {
         use chain_core::packer::*;
         let codec = Codec::from(writer);
         let _codec = match self {
+            Message::OldUtxoDeclaration(s) => {
+                serialize_buffered(codec, MessageTag::OldUtxoDeclaration, s)?
+            }
             Message::Transaction(signed) => {
                 serialize_buffered(codec, MessageTag::Transaction, signed)?
             }
@@ -102,6 +108,10 @@ impl Message {
         let size = codec.get_u16()? + 2;
         let tag = codec.get_u8()?;
         match MessageTag::from_u8(tag) {
+            Some(MessageTag::OldUtxoDeclaration) => {
+                legacy::UtxoDeclaration::deserialize(&mut codec)
+                    .map(|msg| (Message::OldUtxoDeclaration(msg), size))
+            }
             Some(MessageTag::Transaction) => SignedTransaction::deserialize(&mut codec)
                 .map(|msg| (Message::Transaction(msg), size)),
             Some(MessageTag::StakeKeyRegistration) => Signed::deserialize(&mut codec)
@@ -162,6 +172,7 @@ mod test {
                 2 => Message::StakeDelegation(Arbitrary::arbitrary(g)),
                 3 => Message::StakePoolRegistration(Arbitrary::arbitrary(g)),
                 4 => Message::StakePoolRetirement(Arbitrary::arbitrary(g)),
+                4 => Message::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
                 _ => Message::Transaction(Arbitrary::arbitrary(g)),
             }
         }
