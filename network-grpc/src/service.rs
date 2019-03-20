@@ -4,6 +4,7 @@ use crate::{
 };
 
 use network_core::{
+    error as core_error,
     gossip,
     server::{block::BlockService, gossip::GossipService, transaction::TransactionService, Node},
 };
@@ -11,7 +12,7 @@ use network_core::{
 use futures::prelude::*;
 use tower_grpc::{self, Code, Request, Status, Streaming};
 
-use std::{error, marker::PhantomData, mem};
+use std::{marker::PhantomData, mem};
 
 pub struct NodeService<T: Node> {
     block_service: Option<T::BlockService>,
@@ -71,17 +72,27 @@ impl<T, F> ResponseFuture<T, F> {
     }
 }
 
-fn convert_error<E: error::Error>(e: E) -> tower_grpc::Status {
-    Status::new(Code::Unknown, format!("{}", e))
+fn convert_error(err: core_error::Error) -> Status {
+    use core_error::Code::*;
+
+    let code = match err.code() {
+        Canceled => Code::Cancelled,
+        Unknown => Code::Unknown,
+        InvalidArgument => Code::InvalidArgument,
+        NotFound => Code::NotFound,
+        Unimplemented => Code::Unimplemented,
+        Internal => Code::Internal,
+    };
+
+    Status::new(code, format!("{}", err))
 }
 
 fn poll_and_convert_response<T, F>(
     future: &mut F,
 ) -> Poll<tower_grpc::Response<T>, tower_grpc::Status>
 where
-    F: Future,
+    F: Future<Error = core_error::Error>,
     F::Item: IntoProtobuf<T>,
-    F::Error: error::Error,
 {
     match future.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -96,9 +107,8 @@ where
 
 fn poll_and_convert_stream<T, S>(stream: &mut S) -> Poll<Option<T>, tower_grpc::Status>
 where
-    S: Stream,
+    S: Stream<Error = core_error::Error>,
     S::Item: IntoProtobuf<T>,
-    S::Error: error::Error,
 {
     match stream.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -113,9 +123,8 @@ where
 
 impl<T, F> Future for ResponseFuture<T, F>
 where
-    F: Future,
+    F: Future<Error = core_error::Error>,
     F::Item: IntoProtobuf<T>,
-    F::Error: error::Error,
 {
     type Item = tower_grpc::Response<T>;
     type Error = tower_grpc::Status;
@@ -158,9 +167,8 @@ where
 
 impl<T, S> Stream for ResponseStream<T, S>
 where
-    S: Stream,
+    S: Stream<Error = core_error::Error>,
     S::Item: IntoProtobuf<T>,
-    S::Error: error::Error,
 {
     type Item = T;
     type Error = tower_grpc::Status;
