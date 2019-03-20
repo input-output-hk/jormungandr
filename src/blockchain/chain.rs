@@ -75,7 +75,7 @@ impl Blockchain<Mockchain> {
         };
 
         if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG).unwrap() {
-            debug!("restoring state at tip {}", tip_hash);
+            info!("restoring state at tip {}", tip_hash);
 
             // FIXME: should restore from serialized chain state once we have it.
             for info in storage
