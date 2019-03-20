@@ -66,4 +66,8 @@ where
             Ok(None)
         }
     }
+
+    fn as_trait(&self) -> &BlockStore<Block = Self::Block> {
+        self as &BlockStore<Block = Self::Block>
+    }
 }
