@@ -5,7 +5,8 @@ use crate::{
 
 use chain_core::property;
 use network_core::{
-    client::{self as core_client, block::BlockService, gossip::GossipService},
+    client::{block::BlockService, gossip::GossipService},
+    error as core_error,
     gossip::{self, Gossip},
 };
 
@@ -169,18 +170,29 @@ pub struct ResponseStream<T, R> {
     _phantom: PhantomData<T>,
 }
 
-fn convert_error(e: tower_grpc::Status) -> core_client::Error {
-    core_client::Error::new(core_client::ErrorKind::Rpc, e)
+fn convert_error(e: tower_grpc::Status) -> core_error::Error {
+    use tower_grpc::Code;
+
+    let code = match e.code() {
+        Code::Cancelled => core_error::Code::Canceled,
+        Code::Unknown => core_error::Code::Unknown,
+        Code::InvalidArgument => core_error::Code::InvalidArgument,
+        Code::NotFound => core_error::Code::NotFound,
+        Code::Unimplemented => core_error::Code::Unimplemented,
+        Code::Internal => core_error::Code::Internal,
+        _ => core_error::Code::Unknown,
+    };
+    core_error::Error::new(code, e)
 }
 
 mod unary_future {
-    use super::{convert_error, core_client, GrpcFuture, ResponseFuture};
+    use super::{convert_error, core_error, GrpcFuture, ResponseFuture};
     use crate::convert::FromProtobuf;
     use futures::prelude::*;
     use std::marker::PhantomData;
     use tower_grpc::{Response, Status};
 
-    fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_client::Error>
+    fn poll_and_convert_response<T, R, F>(future: &mut F) -> Poll<T, core_error::Error>
     where
         T: FromProtobuf<R>,
         F: Future<Item = Response<R>, Error = Status>,
@@ -206,9 +218,9 @@ mod unary_future {
         T: FromProtobuf<R>,
     {
         type Item = T;
-        type Error = core_client::Error;
+        type Error = core_error::Error;
 
-        fn poll(&mut self) -> Poll<T, core_client::Error> {
+        fn poll(&mut self) -> Poll<T, core_error::Error> {
             if let State::Pending(ref mut f) = self.state {
                 let res = poll_and_convert_response(f);
                 if let Ok(Async::NotReady) = res {
@@ -228,7 +240,7 @@ mod unary_future {
 
 mod stream_future {
     use super::{
-        convert_error, core_client, ResponseStream, ResponseStreamFuture,
+        convert_error, core_error, ResponseStream, ResponseStreamFuture,
     };
     use futures::prelude::*;
     use std::marker::PhantomData;
@@ -236,7 +248,7 @@ mod stream_future {
 
     fn poll_and_convert_response<T, R, F>(
         future: &mut F,
-    ) -> Poll<ResponseStream<T, R>, core_client::Error>
+    ) -> Poll<ResponseStream<T, R>, core_error::Error>
     where
         F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = Status>,
     {
@@ -263,9 +275,9 @@ mod stream_future {
         F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = Status>,
     {
         type Item = ResponseStream<T, R>;
-        type Error = core_client::Error;
+        type Error = core_error::Error;
 
-        fn poll(&mut self) -> Poll<ResponseStream<T, R>, core_client::Error> {
+        fn poll(&mut self) -> Poll<ResponseStream<T, R>, core_error::Error> {
             if let State::Pending(ref mut f) = self.state {
                 let res = poll_and_convert_response(f);
                 if let Ok(Async::NotReady) = res {
@@ -284,12 +296,12 @@ mod stream_future {
 }
 
 mod response_stream {
-    use super::{convert_error, core_client, ResponseStream};
+    use super::{convert_error, core_error, ResponseStream};
     use crate::convert::FromProtobuf;
     use futures::prelude::*;
     use tower_grpc::Status;
 
-    fn poll_and_convert_item<T, S, R>(stream: &mut S) -> Poll<Option<T>, core_client::Error>
+    fn poll_and_convert_item<T, S, R>(stream: &mut S) -> Poll<Option<T>, core_error::Error>
     where
         S: Stream<Item = R, Error = Status>,
         T: FromProtobuf<R>,
@@ -311,9 +323,9 @@ mod response_stream {
         T: FromProtobuf<R>,
     {
         type Item = T;
-        type Error = core_client::Error;
+        type Error = core_error::Error;
 
-        fn poll(&mut self) -> Poll<Option<T>, core_client::Error> {
+        fn poll(&mut self) -> Poll<Option<T>, core_error::Error> {
             poll_and_convert_item(&mut self.inner)
         }
     }

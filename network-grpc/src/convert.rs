@@ -2,26 +2,26 @@ use crate::gen;
 
 use chain_core::property;
 use network_core::{
-    client as core_client,
+    error as core_error,
     gossip::{self, Gossip},
 };
 
 pub trait FromProtobuf<R>: Sized {
-    fn from_message(message: R) -> Result<Self, core_client::Error>;
+    fn from_message(message: R) -> Result<Self, core_error::Error>;
 }
 
 pub trait IntoProtobuf<R> {
     fn into_message(self) -> Result<R, tower_grpc::Status>;
 }
 
-pub fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_client::Error>
+pub fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_error::Error>
 where
     T: property::Deserialize,
 {
-    T::deserialize(&mut buf).map_err(|e| core_client::Error::new(core_client::ErrorKind::Format, e))
+    T::deserialize(&mut buf).map_err(|e| core_error::Error::new(core_error::Code::InvalidArgument, e))
 }
 
-pub fn deserialize_vec<T>(pb: &[Vec<u8>]) -> Result<Vec<T>, core_client::Error>
+pub fn deserialize_vec<T>(pb: &[Vec<u8>]) -> Result<Vec<T>, core_error::Error>
 where
     T: property::Deserialize,
 {
@@ -32,7 +32,7 @@ impl<H> FromProtobuf<gen::node::TipResponse> for H
 where
     H: property::Header + property::Deserialize,
 {
-    fn from_message(msg: gen::node::TipResponse) -> Result<Self, core_client::Error> {
+    fn from_message(msg: gen::node::TipResponse) -> Result<Self, core_error::Error> {
         let block_header = deserialize_bytes(&msg.block_header)?;
         Ok(block_header)
     }
@@ -42,7 +42,7 @@ impl<T> FromProtobuf<gen::node::Block> for T
 where
     T: property::Block + property::Deserialize,
 {
-    fn from_message(msg: gen::node::Block) -> Result<T, core_client::Error> {
+    fn from_message(msg: gen::node::Block) -> Result<T, core_error::Error> {
         let block = deserialize_bytes(&msg.content)?;
         Ok(block)
     }
@@ -52,7 +52,7 @@ impl<T> FromProtobuf<gen::node::Header> for T
 where
     T: property::Header + property::Deserialize,
 {
-    fn from_message(msg: gen::node::Header) -> Result<T, core_client::Error> {
+    fn from_message(msg: gen::node::Header) -> Result<T, core_error::Error> {
         let block = deserialize_bytes(&msg.content)?;
         Ok(block)
     }
@@ -64,17 +64,17 @@ where
 {
     fn from_message(
         msg: gen::node::GossipMessage,
-    ) -> Result<(gossip::NodeId, T), core_client::Error> {
+    ) -> Result<(gossip::NodeId, T), core_error::Error> {
         let node_id = match msg.node_id {
-            None => Err(core_client::Error::new(
-                core_client::ErrorKind::Format,
+            None => Err(core_error::Error::new(
+                core_error::Code::InvalidArgument,
                 "incorrect node encoding",
             )),
             Some(gen::node::gossip_message::NodeId { content }) => {
                 match gossip::NodeId::from_slice(&content) {
                     Ok(node_id) => Ok(node_id),
-                    Err(_v) => Err(core_client::Error::new(
-                        core_client::ErrorKind::Format,
+                    Err(_v) => Err(core_error::Error::new(
+                        core_error::Code::InvalidArgument,
                         "incorrect node encoding",
                     )),
                 }

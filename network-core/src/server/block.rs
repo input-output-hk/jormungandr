@@ -1,12 +1,10 @@
 //! Block service abstraction.
 
-use crate::error::Code as ErrorCode;
+use crate::error::Error;
 
 use chain_core::property::{Block, BlockDate, BlockId, Deserialize, HasHeader, Header, Serialize};
 
 use futures::prelude::*;
-
-use std::{error, fmt};
 
 /// Interface for the blockchain node service implementation responsible for
 /// providing access to block data.
@@ -27,59 +25,59 @@ pub trait BlockService {
     ///
     /// The future resolves to the block identifier and the block date
     /// of the current chain tip as known by the serving node.
-    type TipFuture: Future<Item = Self::Header, Error = BlockError>;
+    type TipFuture: Future<Item = Self::Header, Error = Error>;
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to `pull_blocks_to_*` methods.
-    type PullBlocksStream: Stream<Item = Self::Block, Error = BlockError>;
+    type PullBlocksStream: Stream<Item = Self::Block, Error = Error>;
 
     /// The type of asynchronous futures returned by `pull_blocks_to_*` methods.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type PullBlocksFuture: Future<Item = Self::PullBlocksStream, Error = BlockError>;
+    type PullBlocksFuture: Future<Item = Self::PullBlocksStream, Error = Error>;
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to `get_blocks` method.
-    type GetBlocksStream: Stream<Item = Self::Block, Error = BlockError>;
+    type GetBlocksStream: Stream<Item = Self::Block, Error = Error>;
 
     /// The type of asynchronous futures returned by `get_blocks` methods.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = BlockError>;
+    type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = Error>;
 
     /// The type of an asynchronous stream that provides block headers in
     /// response to `pull_headers_to_*` methods.
-    type PullHeadersStream: Stream<Item = Self::Header, Error = BlockError>;
+    type PullHeadersStream: Stream<Item = Self::Header, Error = Error>;
 
     /// The type of asynchronous futures returned by `pull_headers_to*` methods.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type PullHeadersFuture: Future<Item = Self::PullHeadersStream, Error = BlockError>;
+    type PullHeadersFuture: Future<Item = Self::PullHeadersStream, Error = Error>;
 
     /// The type of an asynchronous stream that provides block headers in
     /// response to `get_headers` methods.
-    type GetHeadersStream: Stream<Item = Self::Header, Error = BlockError>;
+    type GetHeadersStream: Stream<Item = Self::Header, Error = Error>;
 
     /// The type of asynchronous futures returned by `get_headeres` methods.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = BlockError>;
+    type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error>;
 
     /// The type of an asynchronous stream that retrieves headers of new
     /// blocks as they are created.
-    type BlockSubscription: Stream<Item = Self::Header, Error = BlockError>;
+    type BlockSubscription: Stream<Item = Self::Header, Error = Error>;
 
     /// The type of asynchronous futures returned by method `subscribe`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = BlockError>;
+    type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = Error>;
 
-    type AnnounceBlockFuture: Future<Item = (), Error = BlockError>;
+    type AnnounceBlockFuture: Future<Item = (), Error = Error>;
 
     /// Request the current blockchain tip.
     /// The returned future resolves to the tip of the blockchain
@@ -121,53 +119,4 @@ pub trait BlockService {
     fn subscribe(&mut self) -> Self::BlockSubscriptionFuture;
 
     fn announce_block(&mut self, header: &Self::Header) -> Self::AnnounceBlockFuture;
-}
-
-/// Represents errors that can be returned by the block service.
-#[derive(Debug)]
-pub struct BlockError {
-    code: ErrorCode,
-    cause: Option<Box<dyn error::Error + Send + Sync>>,
-}
-
-impl BlockError {
-    pub fn failed<E>(cause: E) -> Self
-    where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
-    {
-        BlockError {
-            code: ErrorCode::Failed,
-            cause: Some(cause.into()),
-        }
-    }
-
-    pub fn with_code_and_cause<E>(code: ErrorCode, cause: E) -> Self
-    where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
-    {
-        BlockError {
-            code,
-            cause: Some(cause.into()),
-        }
-    }
-
-    pub fn code(&self) -> ErrorCode {
-        self.code
-    }
-}
-
-impl error::Error for BlockError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        if let Some(err) = &self.cause {
-            Some(&**err)
-        } else {
-            None
-        }
-    }
-}
-
-impl fmt::Display for BlockError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "block service error: {}", self.code)
-    }
 }

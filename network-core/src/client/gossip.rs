@@ -1,6 +1,7 @@
-use super::Error;
-
-use super::super::gossip::{self, Gossip};
+use crate::{
+    error::Error,
+    gossip::{self, Gossip},
+};
 
 use futures::prelude::*;
 

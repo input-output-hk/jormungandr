@@ -1,4 +1,4 @@
-use super::Error;
+use crate::error::Error;
 
 use chain_core::property::{Block, HasHeader};
 
