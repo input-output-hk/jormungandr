@@ -3,6 +3,7 @@ mod transfer;
 mod utxo;
 mod witness;
 
+use crate::certificate::Certificate;
 use crate::value::*;
 use chain_addr::Address;
 use chain_core::property;
@@ -72,6 +73,7 @@ impl property::Deserialize for Transaction<Address> {
         Ok(transaction)
     }
 }
+
 impl property::Deserialize for SignedTransaction<Address> {
     type Error = std::io::Error;
 
@@ -130,6 +132,74 @@ where
     }
     fn outputs(&self) -> &Self::Outputs {
         self.transaction.outputs()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CertificateTransaction<OutAddress> {
+    pub transaction: Transaction<OutAddress>,
+    pub certificate: Certificate,
+}
+
+impl CertificateTransaction<Address> {
+    pub fn hash(&self) -> TransactionId {
+        use chain_core::packer::*;
+        use chain_core::property::Serialize;
+
+        let writer = Vec::new();
+        let mut codec = Codec::from(writer);
+        let bytes = {
+            self.transaction.serialize(&mut codec).unwrap();
+            self.certificate.serialize(&mut codec).unwrap();
+            codec.into_inner()
+        };
+        TransactionId::hash_bytes(&bytes)
+    }
+}
+
+impl property::Serialize for CertificateTransaction<Address> {
+    type Error = std::io::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+
+        let mut codec = Codec::from(writer);
+        self.transaction.serialize(&mut codec)?;
+        self.certificate.serialize(&mut codec)?;
+        Ok(())
+    }
+}
+
+/// Each transaction must be signed in order to be executed
+/// by the ledger. `SignedTransaction` represents such a transaction.
+#[derive(Debug, Clone)]
+pub struct SignedCertificateTransaction<OutAddress> {
+    pub transaction: CertificateTransaction<OutAddress>,
+    pub witnesses: Vec<Witness>,
+}
+
+impl property::Serialize for SignedCertificateTransaction<Address> {
+    type Error = std::io::Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+
+        let mut codec = Codec::from(writer);
+        codec.put_u8(0x02)?;
+
+        assert_eq!(
+            self.transaction.transaction.inputs.len(),
+            self.witnesses.len()
+        );
+
+        // encode the transaction body
+        self.transaction.serialize(&mut codec)?;
+
+        // encode the signatures
+        for witness in self.witnesses.iter() {
+            witness.serialize(&mut codec)?;
+        }
+        Ok(())
     }
 }
 
