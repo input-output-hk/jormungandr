@@ -29,6 +29,7 @@ pub enum Error {
     UtxoError(utxo::Error),
     UtxoInvalidSignature(UtxoPointer, Output<Address>, Witness),
     OldUtxoInvalidSignature(UtxoPointer, Output<legacy::OldAddress>, Witness),
+    OldUtxoInvalidPublicKey(UtxoPointer, Output<legacy::OldAddress>, Witness),
     AccountInvalidSignature(account::Identifier, Witness),
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
@@ -195,13 +196,17 @@ fn input_utxo_verify(
                     utxo.value,
                     associated_output.value,
                 ));
-            }
+            };
 
-            let verified = chain_crypto::Verification::Failed;
-            //signature.verify(
-            //    &associated_output.address.public_key().unwrap(),
-            //    &transaction_id,
-            //);
+            if legacy::oldaddress_from_xpub(&associated_output.address, xpub) {
+                return Err(Error::OldUtxoInvalidPublicKey(
+                    utxo.clone(),
+                    associated_output.clone(),
+                    witness.clone(),
+                ));
+            };
+
+            let verified = signature.verify(&xpub, &transaction_id);
             if verified == chain_crypto::Verification::Failed {
                 return Err(Error::OldUtxoInvalidSignature(
                     utxo.clone(),

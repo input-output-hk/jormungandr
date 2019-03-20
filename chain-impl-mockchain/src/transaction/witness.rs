@@ -5,7 +5,7 @@ use crate::key::{
     SpendingPublicKey, SpendingSecretKey, SpendingSignature,
 };
 use chain_core::property;
-use chain_crypto::{Ed25519Bip32, PublicKey, Verification};
+use chain_crypto::{Ed25519Bip32, PublicKey, Signature, Verification};
 
 /// Structure that proofs that certain user agrees with
 /// some data. This structure is used to sign `Transaction`
@@ -17,7 +17,10 @@ use chain_crypto::{Ed25519Bip32, PublicKey, Verification};
 pub enum Witness {
     Utxo(SpendingSignature<TransactionId>),
     Account(SpendingSignature<TransactionIdSpendingCounter>),
-    OldUtxo(PublicKey<Ed25519Bip32>, SpendingSignature<TransactionId>),
+    OldUtxo(
+        PublicKey<Ed25519Bip32>,
+        Signature<TransactionId, Ed25519Bip32>,
+    ),
 }
 
 pub struct TransactionIdSpendingCounter(Vec<u8>);
