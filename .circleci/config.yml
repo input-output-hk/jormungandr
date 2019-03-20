@@ -12,7 +12,6 @@ jobs:
           keys:
             - cargo-v2-{{ checksum "Cargo.toml" }}-
             - cargo-v2-
-      - run: cargo update
       - run: cargo fetch
       - persist_to_workspace:
           root: "."

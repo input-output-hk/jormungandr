@@ -31,6 +31,7 @@ pub struct GenesisData {
     pub epoch_stability_depth: usize,
     pub initial_utxos: Vec<InitialUTxO>,
     pub bft_leaders: Vec<PublicKey>,
+    pub allow_account_creation: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,6 +42,7 @@ pub struct ConfigGenesisData {
     pub epoch_stability_depth: usize,
     pub initial_utxos: Vec<InitialUTxO>,
     pub bft_leaders: Vec<PublicKey>,
+    pub allow_account_creation: bool,
 }
 
 impl ConfigGenesisData {
@@ -55,6 +57,7 @@ impl ConfigGenesisData {
             epoch_stability_depth: genesis.epoch_stability_depth,
             initial_utxos: genesis.initial_utxos,
             bft_leaders: genesis.bft_leaders,
+            allow_account_creation: genesis.allow_account_creation,
         }
     }
 }
@@ -73,6 +76,7 @@ impl GenesisData {
             bootstrap_key_slots_percentage: None,
             block_version: Some(BLOCK_VERSION_CONSENSUS_BFT),
             bft_leaders: Some(self.bft_leaders.into_iter().map(|pk| pk.0).collect()),
+            allow_account_creation: Some(self.allow_account_creation),
         }));
 
         block_builder.message(Message::Transaction(transaction::SignedTransaction {
@@ -147,6 +151,7 @@ impl GenesisData {
             epoch_stability_depth: config.epoch_stability_depth,
             initial_utxos: config.initial_utxos,
             bft_leaders: config.bft_leaders,
+            allow_account_creation: config.allow_account_creation,
         })
     }
 
