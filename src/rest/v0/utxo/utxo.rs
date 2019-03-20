@@ -1,10 +1,5 @@
 use chain_addr::Address;
-use chain_impl_mockchain::{
-    key::Hash,
-    transaction::{Output, UtxoPointer},
-    utxo::Entry,
-    value::Value,
-};
+use chain_impl_mockchain::{key::Hash, utxo::Entry, value::Value};
 
 pub struct TxId(Hash);
 

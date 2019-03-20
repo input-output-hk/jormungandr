@@ -18,7 +18,6 @@ use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
 use self::p2p_topology::{self as p2p, P2pTopology};
-use chain_core::property;
 use futures::prelude::*;
 use futures::stream::{self, Stream};
 

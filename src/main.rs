@@ -12,6 +12,7 @@ extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
+extern crate chain_storage_sqlite;
 extern crate clap;
 extern crate cryptoxide;
 extern crate exe_common;
@@ -152,7 +153,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
 
     //let mut state = State::new();
 
-    let blockchain_data = Blockchain::new(genesis_data.clone());
+    let blockchain_data = Blockchain::new(genesis_data.clone(), &settings.storage);
 
     startup_info(&genesis_data, &blockchain_data, &settings);
 

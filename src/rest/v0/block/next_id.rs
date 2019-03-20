@@ -5,7 +5,6 @@ use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 use bytes::Bytes;
 use chain_core::property::Settings;
-use chain_storage::store::BlockStore;
 
 pub fn handle_request(
     blockchain: State<BlockchainR<Mockchain>>,
@@ -18,8 +17,8 @@ pub fn handle_request(
     // Assuming that during update whole blockchain is write-locked
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.state.tip();
-    blockchain
-        .storage
+    let storage = blockchain.storage.read().unwrap();
+    storage
         .iterate_range(&block_id, &tip)
         .map_err(|e| ErrorBadRequest(e))?
         .take(query_params.get_count())
