@@ -74,7 +74,22 @@ impl GenesisData {
             block_version: Some(BLOCK_VERSION_CONSENSUS_BFT),
             bft_leaders: Some(self.bft_leaders.into_iter().map(|pk| pk.0).collect()),
         }));
-        // TODO: the name is confusing here. this is the block 0 (not a genesis block)
+
+        block_builder.message(Message::Transaction(transaction::SignedTransaction {
+            transaction: transaction::Transaction {
+                inputs: Vec::new(),
+                outputs: self
+                    .initial_utxos
+                    .into_iter()
+                    .map(|utxo| transaction::Output {
+                        address: utxo.address.to_address(),
+                        value: utxo.value,
+                    })
+                    .collect(),
+            },
+            witnesses: Vec::new(),
+        }));
+
         block_builder.make_genesis_block()
     }
 }
