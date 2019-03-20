@@ -1,7 +1,11 @@
 use crate::value::Value;
 
+use cardano::address::{AddrType, ExtendedAddr, SpendingData};
+use cardano::hdwallet::XPub;
+
 pub use cardano::address::Addr as OldAddress;
 use chain_core::property;
+use chain_crypto::{Ed25519Bip32, PublicKey};
 
 #[derive(Debug, Clone)]
 pub struct UtxoDeclaration {
@@ -9,6 +13,21 @@ pub struct UtxoDeclaration {
 }
 
 type OldAddressBytes = Vec<u8>;
+
+pub fn oldaddress_from_xpub(address: &OldAddress, xpub: &PublicKey<Ed25519Bip32>) -> bool {
+    match XPub::from_slice(xpub.as_ref()) {
+        Err(_) => false,
+        Ok(xpub_old) => {
+            let a = address.deconstruct();
+            let ea = ExtendedAddr::new(
+                AddrType::ATPubKey,
+                SpendingData::PubKeyASD(xpub_old),
+                a.attributes.clone(),
+            );
+            ea == a
+        }
+    }
+}
 
 impl property::Deserialize for UtxoDeclaration {
     type Error = std::io::Error;
