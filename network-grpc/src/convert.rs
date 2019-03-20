@@ -53,7 +53,8 @@ pub fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_error::Error>
 where
     T: property::Deserialize,
 {
-    T::deserialize(&mut buf).map_err(|e| core_error::Error::new(core_error::Code::InvalidArgument, e))
+    T::deserialize(&mut buf)
+        .map_err(|e| core_error::Error::new(core_error::Code::InvalidArgument, e))
 }
 
 pub fn deserialize_vec<T>(pb: &[Vec<u8>]) -> Result<Vec<T>, core_error::Error>
@@ -142,10 +143,7 @@ pub fn serialize_to_vec<T>(values: &[T]) -> Result<Vec<Vec<u8>>, tower_grpc::Sta
 where
     T: property::Serialize,
 {
-    values
-        .iter()
-        .map(serialize_to_bytes)
-        .collect()
+    values.iter().map(serialize_to_bytes).collect()
 }
 
 impl<H> IntoProtobuf<gen::node::TipResponse> for H

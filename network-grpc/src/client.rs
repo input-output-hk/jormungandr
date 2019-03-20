@@ -153,17 +153,15 @@ impl<T, F> ResponseStreamFuture<T, F> {
     }
 }
 
-pub type ServerStreamFuture<T, R> =
-    ResponseStreamFuture<
-        T,
-        tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>,
-    >;
+pub type ServerStreamFuture<T, R> = ResponseStreamFuture<
+    T,
+    tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>,
+>;
 
-pub type BidiStreamFuture<T, R> =
-    ResponseStreamFuture<
-        T,
-        tower_grpc::client::streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>,
-    >;
+pub type BidiStreamFuture<T, R> = ResponseStreamFuture<
+    T,
+    tower_grpc::client::streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>,
+>;
 
 pub struct ResponseStream<T, R> {
     inner: Streaming<R, tower_h2::RecvBody>,
@@ -172,7 +170,7 @@ pub struct ResponseStream<T, R> {
 
 mod unary_future {
     use super::{core_error, GrpcFuture, ResponseFuture};
-    use crate::convert::{FromProtobuf, error_from_grpc};
+    use crate::convert::{error_from_grpc, FromProtobuf};
     use futures::prelude::*;
     use std::marker::PhantomData;
     use tower_grpc::{Response, Status};
@@ -281,7 +279,7 @@ mod stream_future {
 
 mod response_stream {
     use super::{core_error, ResponseStream};
-    use crate::convert::{FromProtobuf, error_from_grpc};
+    use crate::convert::{error_from_grpc, FromProtobuf};
     use futures::prelude::*;
     use tower_grpc::Status;
 

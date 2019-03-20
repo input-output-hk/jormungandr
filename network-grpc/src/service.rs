@@ -1,11 +1,10 @@
 use crate::{
-    convert::{IntoProtobuf, deserialize_bytes, deserialize_vec, error_into_grpc},
+    convert::{deserialize_bytes, deserialize_vec, error_into_grpc, IntoProtobuf},
     gen,
 };
 
 use network_core::{
-    error as core_error,
-    gossip,
+    error as core_error, gossip,
     server::{block::BlockService, gossip::GossipService, transaction::TransactionService, Node},
 };
 
