@@ -28,7 +28,7 @@ pub enum Error {
     UtxoValueNotMatching(Value, Value),
     UtxoError(utxo::Error),
     UtxoInvalidSignature(UtxoPointer, Output<Address>, Witness),
-    OldUtxoInvalidSignature(UtxoPointer, Output<OldAddress>, Witness),
+    OldUtxoInvalidSignature(UtxoPointer, Output<legacy::OldAddress>, Witness),
     AccountInvalidSignature(account::Identifier, Witness),
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
