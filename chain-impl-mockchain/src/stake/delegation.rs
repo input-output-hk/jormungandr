@@ -272,6 +272,7 @@ impl DelegationState {
                 new_state = new_state.deregister_stake_pool(&reg.data.pool_id)?
             }
             Message::Transaction(_) => unreachable!(),
+            Message::OldUtxoDeclaration(_) => unreachable!(),
             Message::Update(_) => unreachable!(),
         }
 
