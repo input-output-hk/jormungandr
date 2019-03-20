@@ -12,7 +12,6 @@ pub struct SignatureRaw(Vec<u8>);
 impl property::Serialize for SignatureRaw {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
         writer.write_all(self.0.as_ref())?;
         Ok(())
     }
@@ -29,7 +28,7 @@ pub enum CertificateContent {
     StakeKeyRegistration(StakeKeyRegistration),
     StakeKeyDeregistration(StakeKeyDeregistration),
     StakeDelegation(StakeDelegation),
-    StakePoolRegistration(StakePoolRegistration),
+    StakePoolRegistration(StakePoolInfo),
     StakePoolRetirement(StakePoolRetirement),
 }
 
