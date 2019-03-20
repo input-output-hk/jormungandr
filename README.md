@@ -47,7 +47,6 @@ peer_2_peer:
 
 Fields description:
 
-  - *bft.constants.t*: (to be removed)
   - *bft.leaders*: public keys of the nodes.
   - *storage*: (optional) path to the storage
   - *logger*: (optional) logger configuration,
