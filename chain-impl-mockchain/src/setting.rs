@@ -21,6 +21,9 @@ pub struct UpdateProposal {
     pub bootstrap_key_slots_percentage: Option<u8>,
     pub block_version: Option<BlockVersion>,
     pub bft_leaders: Option<Vec<bft::LeaderId>>,
+    /// update to trigger allowing the creation of accounts without
+    /// publishing a certificate
+    pub allow_account_creation: Option<bool>,
 }
 
 impl UpdateProposal {
@@ -30,6 +33,7 @@ impl UpdateProposal {
             bootstrap_key_slots_percentage: None,
             block_version: None,
             bft_leaders: None,
+            allow_account_creation: None,
         }
     }
 }
@@ -41,6 +45,7 @@ enum UpdateTag {
     BootstrapKeySlotsPercentage = 2,
     BlockVersion = 3,
     BftLeaders = 4,
+    AllowAccountCreation = 5,
 }
 
 impl property::Serialize for UpdateProposal {
@@ -68,6 +73,10 @@ impl property::Serialize for UpdateProposal {
             for leader in leaders.iter() {
                 leader.serialize(&mut codec)?;
             }
+        }
+        if let Some(allow_account_creation) = &self.allow_account_creation {
+            codec.put_u16(UpdateTag::AllowAccountCreation as u16)?;
+            codec.put_u8(if *allow_account_creation { 1 } else { 0 })?;
         }
         codec.put_u16(UpdateTag::End as u16)?;
         Ok(())
@@ -104,6 +113,10 @@ impl property::Deserialize for UpdateProposal {
                     }
                     update.bft_leaders = Some(leaders);
                 }
+                Some(UpdateTag::AllowAccountCreation) => {
+                    let boolean = codec.get_u8()? != 0;
+                    update.allow_account_creation = Some(boolean);
+                }
                 None => panic!("Unrecognized update tag {}.", tag),
             }
         }
@@ -119,6 +132,8 @@ pub struct Settings {
     pub bootstrap_key_slots_percentage: Arc<u8>, // == d * 100
     pub block_version: Arc<BlockVersion>,
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
+    /// allow for the creation of accounts without the certificate
+    pub allow_account_creation: Arc<bool>,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -133,7 +148,12 @@ impl Settings {
             bootstrap_key_slots_percentage: Arc::new(SLOTS_PERCENTAGE_RANGE),
             block_version: Arc::new(BLOCK_VERSION_CONSENSUS_NONE),
             bft_leaders: Arc::new(Vec::new()),
+            allow_account_creation: Arc::new(false),
         }
+    }
+
+    pub fn allow_account_creation(&self) -> bool {
+        *self.allow_account_creation
     }
 
     pub fn apply(&self, update: UpdateProposal) -> Self {
@@ -152,6 +172,9 @@ impl Settings {
         }
         if let Some(leaders) = update.bft_leaders {
             new_state.bft_leaders = Arc::new(leaders);
+        }
+        if let Some(allow_account_creation) = update.allow_account_creation {
+            new_state.allow_account_creation = Arc::new(allow_account_creation);
         }
         new_state
     }

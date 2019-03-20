@@ -69,7 +69,10 @@ impl property::State for State {
         for content in contents {
             match content {
                 Message::Transaction(signed_transaction) => {
-                    new_ledger = new_ledger.apply_transaction(signed_transaction)?;
+                    new_ledger = new_ledger.apply_transaction(
+                        signed_transaction,
+                        new_settings.allow_account_creation(),
+                    )?;
                 }
                 Message::Update(update_proposal) => {
                     new_settings = new_settings.apply(update_proposal.clone());
