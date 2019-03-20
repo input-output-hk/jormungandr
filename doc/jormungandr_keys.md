@@ -20,6 +20,6 @@ ed25519_secret1sx3vjuc733mmlfm86xc2ufrjx6hltas57yj6pklra3s2n03yfv2svckr67
 and to extract the associated public key:
 
 ```
-$ jormungandr generate-pub-key ed25519_secret1sx3vjuc733mmlfm86xc2ufrjx6hltas57yj6pklra3s2n03yfv2svckr67
+$ echo ed25519_secret1sx3vjuc733mmlfm86xc2ufrjx6hltas57yj6pklra3s2n03yfv2svckr67 | jormungandr generate-pub-key
 ed25519_public1zkt4e7yufvf4es45u4wc0kztzkfr0n3wa6ks04z6kltsxdalafxqp7m2ca
 ```
