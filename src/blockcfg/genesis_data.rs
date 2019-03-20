@@ -155,8 +155,6 @@ impl GenesisData {
     }
 
     pub fn initial_utxos(&self) -> HashMap<UtxoPointer, Output<Address>> {
-        use chain_core::property::Transaction;
-
         let mut utxos = HashMap::new();
         let mut initial_utxo = self.initial_utxos.iter();
         while initial_utxo.len() != 0 {

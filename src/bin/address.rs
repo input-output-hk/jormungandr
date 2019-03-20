@@ -4,7 +4,7 @@ extern crate chain_crypto;
 extern crate structopt;
 
 use bech32::{Bech32, FromBase32, ToBase32};
-use chain_addr::{Address, AddressReadable, Discrimination, Kind, KindType};
+use chain_addr::{Address, AddressReadable, Discrimination, Kind};
 use chain_crypto::{AsymmetricKey, PublicKey};
 use structopt::StructOpt;
 

@@ -9,7 +9,6 @@ pub use self::client::run_connect_socket;
 pub use self::server::run_listen_socket;
 
 use bytes::Bytes;
-use chain_core::property;
 use http;
 use network_grpc::peer::TcpPeer;
 
