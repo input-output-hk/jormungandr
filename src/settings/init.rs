@@ -39,6 +39,8 @@ pub struct Settings {
     pub epoch_stability_depth: usize,
 
     pub blockchain_start: std::time::SystemTime,
+
+    pub allow_account_creation: bool,
 }
 
 impl Settings {
@@ -60,6 +62,7 @@ impl Settings {
             epoch_stability_depth: command_arguments.epoch_stability_depth,
             blockchain_start: std::time::SystemTime::now(),
             bft_leaders: command_arguments.bft_leaders.clone(),
+            allow_account_creation: command_arguments.allow_account_creation,
         })
     }
 }

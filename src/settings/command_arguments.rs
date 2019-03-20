@@ -95,6 +95,14 @@ pub struct InitArguments {
     /// authoritative public keys that will control the blockchain
     #[structopt(long = "bft-leader", parse(try_from_str))]
     pub bft_leaders: Vec<PublicKey>,
+
+    /// set to allow the creation of account without publishing certificate
+    /// By default account are created only for the reward account.
+    ///
+    /// However it is possible to allows user of the blockchain to create an
+    /// account too by just setting this parameter
+    #[structopt(long = "allow-account-creation")]
+    pub allow_account_creation: bool,
 }
 
 #[derive(StructOpt, Debug)]

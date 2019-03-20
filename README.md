@@ -84,6 +84,7 @@ jormungandr start --genesis-config genesis.yaml \
 
 * [internal design](./doc/internal_design.md) of jormungandr
 * [cryptographic keys](./doc/jormungandr_keys.md)
+* [The genesis file](./doc/genesis_file.md)
 * [Starting a BFT Blockchain](./doc/starting_bft_blockchain.md)
 * [Starting a Generis Praos Blockchain](#) (**under construction**)
 
