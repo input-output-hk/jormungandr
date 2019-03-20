@@ -40,11 +40,7 @@ jormungandr init \
     --bft-leader=ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en > genesis.yaml
 ```
 
-Configuration fields meaning:
-  - *start_time*: when the blockchain starts (seconds since epoch).
-  - *slot_duration*: amount of time each slot is running (seconds).
-  - *epoch_stability_depth*: allowed size of the fork (in blocks).
-  - *initial_utxos*: list of initial unspent outputs.
+more information regarding the [genesis file here](./genesis_file.md).
 
 ## Starting the node
 
