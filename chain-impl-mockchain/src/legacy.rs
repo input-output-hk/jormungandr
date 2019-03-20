@@ -1,15 +1,33 @@
 use crate::value::Value;
 
+use cardano::address::{AddrType, ExtendedAddr, SpendingData};
+use cardano::hdwallet::XPub;
+
 pub use cardano::address::Addr as OldAddress;
 use chain_core::property;
+use chain_crypto::{Ed25519Bip32, PublicKey};
 
 #[derive(Debug, Clone)]
 pub struct UtxoDeclaration {
-    pub protocol_magic: u32,
     pub addrs: Vec<(OldAddressBytes, Value)>,
 }
 
 type OldAddressBytes = Vec<u8>;
+
+pub fn oldaddress_from_xpub(address: &OldAddress, xpub: &PublicKey<Ed25519Bip32>) -> bool {
+    match XPub::from_slice(xpub.as_ref()) {
+        Err(_) => false,
+        Ok(xpub_old) => {
+            let a = address.deconstruct();
+            let ea = ExtendedAddr::new(
+                AddrType::ATPubKey,
+                SpendingData::PubKeyASD(xpub_old),
+                a.attributes.clone(),
+            );
+            ea == a
+        }
+    }
+}
 
 impl property::Deserialize for UtxoDeclaration {
     type Error = std::io::Error;
@@ -17,7 +35,6 @@ impl property::Deserialize for UtxoDeclaration {
         use chain_core::packer::*;
         use std::io::Read;
         let mut codec = Codec::from(reader);
-        let protocol_magic = codec.get_u32()?;
         let nb_entries = codec.get_u8()?;
         // FIXME add proper error
         assert!(nb_entries < 0xff);
@@ -30,10 +47,7 @@ impl property::Deserialize for UtxoDeclaration {
             addrs.push((addr_buf, value))
         }
 
-        Ok(UtxoDeclaration {
-            protocol_magic: protocol_magic,
-            addrs: addrs,
-        })
+        Ok(UtxoDeclaration { addrs: addrs })
     }
 }
 
@@ -46,7 +60,6 @@ impl property::Serialize for UtxoDeclaration {
         assert!(self.addrs.len() < 255);
 
         let mut codec = Codec::from(writer);
-        codec.put_u32(self.protocol_magic)?;
         codec.put_u8(self.addrs.len() as u8)?;
         for (b, v) in &self.addrs {
             v.serialize(&mut codec)?;
@@ -64,7 +77,6 @@ mod test {
 
     impl Arbitrary for UtxoDeclaration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let protocol_magic = Arbitrary::arbitrary(g);
             let mut nb: usize = Arbitrary::arbitrary(g);
             nb = nb % 255;
             let mut addrs = Vec::with_capacity(nb);
@@ -74,10 +86,7 @@ mod test {
                 addrs.push((addr, value))
             }
 
-            UtxoDeclaration {
-                protocol_magic,
-                addrs,
-            }
+            UtxoDeclaration { addrs }
         }
     }
 }
