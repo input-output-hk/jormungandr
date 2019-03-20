@@ -112,7 +112,7 @@ impl PublicKey {
             .parse()
             .map_err(|e| format!("Public key should contain bech32 encoded public key: {}", e))?;
         if bech32.hrp() != Ed25519Extended::PUBLIC_BECH32_HRP {
-            Err("Public key should contain Ed25519 extended private key")?
+            Err("Public key should contain Ed25519 extended public key")?
         }
         let bytes = Vec::<u8>::from_base32(bech32.data()).map_err(|e| e.to_string())?;
         Self::try_from_bytes(&bytes)
