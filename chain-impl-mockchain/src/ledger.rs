@@ -1,10 +1,10 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
+use crate::legacy;
 use crate::transaction::*;
 use crate::value::*;
 use crate::{account, utxo};
-use cardano::address::Addr as OldAddress;
 use chain_addr::{Address, Kind};
 use chain_core::property;
 
@@ -18,7 +18,7 @@ use chain_core::property;
 #[derive(Clone)]
 pub struct Ledger {
     pub(crate) utxos: utxo::Ledger<Address>,
-    pub(crate) oldutxos: utxo::Ledger<OldAddress>,
+    pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
     pub(crate) accounts: account::Ledger,
 }
 
