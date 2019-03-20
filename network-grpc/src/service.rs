@@ -1,5 +1,5 @@
 use crate::{
-    convert::{IntoProtobuf, deserialize_bytes, deserialize_vec},
+    convert::{IntoProtobuf, deserialize_bytes, deserialize_vec, error_into_grpc},
     gen,
 };
 
@@ -72,21 +72,6 @@ impl<T, F> ResponseFuture<T, F> {
     }
 }
 
-fn convert_error(err: core_error::Error) -> Status {
-    use core_error::Code::*;
-
-    let code = match err.code() {
-        Canceled => Code::Cancelled,
-        Unknown => Code::Unknown,
-        InvalidArgument => Code::InvalidArgument,
-        NotFound => Code::NotFound,
-        Unimplemented => Code::Unimplemented,
-        Internal => Code::Internal,
-    };
-
-    Status::new(code, format!("{}", err))
-}
-
 fn poll_and_convert_response<T, F>(
     future: &mut F,
 ) -> Poll<tower_grpc::Response<T>, tower_grpc::Status>
@@ -101,7 +86,7 @@ where
             let response = tower_grpc::Response::new(item);
             Ok(Async::Ready(response))
         }
-        Err(e) => Err(convert_error(e)),
+        Err(e) => Err(error_into_grpc(e)),
     }
 }
 
@@ -117,7 +102,7 @@ where
             let item = item.into_message()?;
             Ok(Async::Ready(Some(item)))
         }
-        Err(e) => Err(convert_error(e)),
+        Err(e) => Err(error_into_grpc(e)),
     }
 }
 
@@ -272,7 +257,7 @@ where
         let block_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(block_ids) => block_ids,
             Err(e) => {
-                return ResponseFuture::error(convert_error(e));
+                return ResponseFuture::error(error_into_grpc(e));
             }
         };
         ResponseFuture::new(service.get_blocks(&block_ids))
@@ -283,7 +268,7 @@ where
         let block_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(block_ids) => block_ids,
             Err(e) => {
-                return ResponseFuture::error(convert_error(e));
+                return ResponseFuture::error(error_into_grpc(e));
             }
         };
         ResponseFuture::new(service.get_headers(&block_ids))
@@ -297,7 +282,7 @@ where
         let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
             Err(e) => {
-                return ResponseFuture::error(convert_error(e));
+                return ResponseFuture::error(error_into_grpc(e));
             }
         };
         ResponseFuture::new(service.pull_blocks_to_tip(&block_ids))
@@ -311,7 +296,7 @@ where
         let tx_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(tx_ids) => tx_ids,
             Err(e) => {
-                return ResponseFuture::error(convert_error(e));
+                return ResponseFuture::error(error_into_grpc(e));
             }
         };
         ResponseFuture::new(service.get_transactions(&tx_ids))
@@ -356,7 +341,7 @@ where
         let gossip = match deserialize_bytes(&req.get_ref().content) {
             Ok(message) => message,
             Err(e) => {
-                return ResponseFuture::error(convert_error(e));
+                return ResponseFuture::error(error_into_grpc(e));
             }
         };
         ResponseFuture::new(service.record_gossip(node_id, &gossip))

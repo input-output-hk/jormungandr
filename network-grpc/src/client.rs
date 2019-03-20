@@ -170,24 +170,9 @@ pub struct ResponseStream<T, R> {
     _phantom: PhantomData<T>,
 }
 
-fn convert_error(e: tower_grpc::Status) -> core_error::Error {
-    use tower_grpc::Code;
-
-    let code = match e.code() {
-        Code::Cancelled => core_error::Code::Canceled,
-        Code::Unknown => core_error::Code::Unknown,
-        Code::InvalidArgument => core_error::Code::InvalidArgument,
-        Code::NotFound => core_error::Code::NotFound,
-        Code::Unimplemented => core_error::Code::Unimplemented,
-        Code::Internal => core_error::Code::Internal,
-        _ => core_error::Code::Unknown,
-    };
-    core_error::Error::new(code, e)
-}
-
 mod unary_future {
-    use super::{convert_error, core_error, GrpcFuture, ResponseFuture};
-    use crate::convert::FromProtobuf;
+    use super::{core_error, GrpcFuture, ResponseFuture};
+    use crate::convert::{FromProtobuf, error_from_grpc};
     use futures::prelude::*;
     use std::marker::PhantomData;
     use tower_grpc::{Response, Status};
@@ -203,7 +188,7 @@ mod unary_future {
                 let item = T::from_message(res.into_inner())?;
                 Ok(Async::Ready(item))
             }
-            Err(e) => Err(convert_error(e)),
+            Err(e) => Err(error_from_grpc(e)),
         }
     }
 
@@ -239,9 +224,8 @@ mod unary_future {
 }
 
 mod stream_future {
-    use super::{
-        convert_error, core_error, ResponseStream, ResponseStreamFuture,
-    };
+    use super::{core_error, ResponseStream, ResponseStreamFuture};
+    use crate::convert::error_from_grpc;
     use futures::prelude::*;
     use std::marker::PhantomData;
     use tower_grpc::{Response, Status, Streaming};
@@ -261,7 +245,7 @@ mod stream_future {
                 };
                 Ok(Async::Ready(stream))
             }
-            Err(e) => Err(convert_error(e)),
+            Err(e) => Err(error_from_grpc(e)),
         }
     }
 
@@ -296,8 +280,8 @@ mod stream_future {
 }
 
 mod response_stream {
-    use super::{convert_error, core_error, ResponseStream};
-    use crate::convert::FromProtobuf;
+    use super::{core_error, ResponseStream};
+    use crate::convert::{FromProtobuf, error_from_grpc};
     use futures::prelude::*;
     use tower_grpc::Status;
 
@@ -313,7 +297,7 @@ mod response_stream {
                 let item = T::from_message(item)?;
                 Ok(Async::Ready(Some(item)))
             }
-            Err(e) => Err(convert_error(e)),
+            Err(e) => Err(error_from_grpc(e)),
         }
     }
 

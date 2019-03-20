@@ -6,6 +6,41 @@ use network_core::{
     gossip::{self, Gossip},
 };
 
+use tower_grpc::{Code, Status};
+
+pub fn error_into_grpc(err: core_error::Error) -> Status {
+    use core_error::Code::*;
+
+    let code = match err.code() {
+        Canceled => Code::Cancelled,
+        Unknown => Code::Unknown,
+        InvalidArgument => Code::InvalidArgument,
+        NotFound => Code::NotFound,
+        Unimplemented => Code::Unimplemented,
+        Internal => Code::Internal,
+        // When a new case has to be added here, remember to
+        // add the corresponding case in error_from_grpc below.
+    };
+
+    Status::new(code, format!("{}", err))
+}
+
+pub fn error_from_grpc(e: Status) -> core_error::Error {
+    use tower_grpc::Code::*;
+
+    let code = match e.code() {
+        Cancelled => core_error::Code::Canceled,
+        Unknown => core_error::Code::Unknown,
+        InvalidArgument => core_error::Code::InvalidArgument,
+        NotFound => core_error::Code::NotFound,
+        Unimplemented => core_error::Code::Unimplemented,
+        Internal => core_error::Code::Internal,
+        _ => core_error::Code::Unknown,
+    };
+
+    core_error::Error::new(code, e)
+}
+
 pub trait FromProtobuf<R>: Sized {
     fn from_message(message: R) -> Result<Self, core_error::Error>;
 }
