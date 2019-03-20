@@ -1,5 +1,8 @@
 use crate::{
-    convert::{deserialize_bytes, deserialize_vec, error_into_grpc, IntoProtobuf},
+    convert::{
+        deserialize_bytes, deserialize_vec, error_from_grpc, error_into_grpc, FromProtobuf,
+        IntoProtobuf,
+    },
     gen,
 };
 
@@ -173,6 +176,41 @@ where
     }
 }
 
+pub struct RequestStream<T, S> {
+    inner: S,
+    _phantom: PhantomData<T>,
+}
+
+impl<T, S> RequestStream<T, S> {
+    fn new(inner: S) -> Self {
+        RequestStream {
+            inner,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<T, S> Stream for RequestStream<T, S>
+where
+    S: Stream<Error = tower_grpc::Status>,
+    T: FromProtobuf<S::Item>,
+{
+    type Item = T;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Option<T>, core_error::Error> {
+        match self.inner.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
+            Ok(Async::Ready(Some(msg))) => {
+                let item = T::from_message(msg)?;
+                Ok(Async::Ready(Some(item)))
+            }
+            Err(e) => Err(error_from_grpc(e)),
+        }
+    }
+}
+
 macro_rules! try_get_service {
     ($opt_member:expr) => {
         match $opt_member {
@@ -306,8 +344,8 @@ where
         request: Request<Streaming<gen::node::Header>>,
     ) -> Self::BlockSubscriptionFuture {
         let service = try_get_service!(self.block_service);
-        // TODO: handle incoming stream
-        ResponseFuture::new(service.subscribe())
+        let stream = RequestStream::new(request.into_inner());
+        ResponseFuture::new(service.subscription(stream))
     }
 
     fn transaction_subscription(
@@ -315,8 +353,8 @@ where
         request: Request<Streaming<gen::node::Transaction>>,
     ) -> Self::TransactionSubscriptionFuture {
         let service = try_get_service!(self.tx_service);
-        // TODO: handle incoming stream
-        ResponseFuture::new(service.subscribe())
+        let stream = RequestStream::new(request.into_inner());
+        ResponseFuture::new(service.subscription(stream))
     }
 
     /// Work with gossip message.

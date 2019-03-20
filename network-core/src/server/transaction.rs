@@ -51,8 +51,14 @@ pub trait TransactionService {
         ids: &[Self::TransactionId],
     ) -> Self::ProposeTransactionsFuture;
 
-    // TODO: add an incoming stream
-    fn subscribe(&mut self) -> Self::TransactionSubscriptionFuture;
+    // Establishes a bidirectional subscription for announcing transactions,
+    // taking an asynchronous stream that provides the outbound announcements.
+    //
+    // Returns a future that resolves to an asynchronous subscription stream
+    // that receives transactions announced by the peer.
+    fn subscription<Out>(&mut self, outbound: Out) -> Self::TransactionSubscriptionFuture
+    where
+        Out: Stream<Item = Self::Transaction, Error = Error>;
 }
 
 /// Response from the `propose_transactions` method of a `TransactionService`.

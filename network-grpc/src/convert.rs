@@ -89,8 +89,18 @@ where
     T: property::Header + property::Deserialize,
 {
     fn from_message(msg: gen::node::Header) -> Result<T, core_error::Error> {
-        let block = deserialize_bytes(&msg.content)?;
-        Ok(block)
+        let header = deserialize_bytes(&msg.content)?;
+        Ok(header)
+    }
+}
+
+impl<T> FromProtobuf<gen::node::Transaction> for T
+where
+    T: property::Transaction + property::Deserialize,
+{
+    fn from_message(msg: gen::node::Transaction) -> Result<T, core_error::Error> {
+        let tx = deserialize_bytes(&msg.content)?;
+        Ok(tx)
     }
 }
 
