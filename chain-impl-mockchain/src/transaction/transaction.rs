@@ -1,5 +1,5 @@
 use super::transfer::*;
-use crate::{key::Hash, value::Value};
+use crate::key::Hash;
 use chain_addr::Address;
 use chain_core::property;
 
@@ -12,15 +12,6 @@ pub type TransactionId = Hash;
 pub struct Transaction<OutAddress> {
     pub inputs: Vec<Input>,
     pub outputs: Vec<Output<OutAddress>>,
-}
-
-impl property::Serialize for Value {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
-        codec.put_u64(self.0)
-    }
 }
 
 impl property::Serialize for Transaction<Address> {
