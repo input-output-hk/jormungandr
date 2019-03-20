@@ -63,11 +63,13 @@ impl Ledger {
     pub fn apply_transaction(
         &mut self,
         signed_tx: &SignedTransaction<Address>,
+        allow_account_creation: bool,
     ) -> Result<Self, Error> {
         let mut ledger = self.clone();
         let transaction_id = signed_tx.transaction.hash();
         ledger = internal_apply_transaction(
             ledger,
+            allow_account_creation,
             &transaction_id,
             &signed_tx.transaction.inputs[..],
             &signed_tx.transaction.outputs[..],
@@ -97,6 +99,7 @@ impl property::Ledger<SignedTransaction<Address>> for Ledger {
 /// Apply the transaction
 fn internal_apply_transaction(
     mut ledger: Ledger,
+    allow_account_creation: bool,
     transaction_id: &TransactionId,
     inputs: &[Input],
     outputs: &[Output<Address>],
@@ -155,7 +158,15 @@ fn internal_apply_transaction(
             Kind::Account(identifier) => {
                 // don't have a way to make a newtype ref from the ref so .clone()
                 let account = identifier.clone().into();
-                ledger.accounts = ledger.accounts.add_value(&account, output.value)?;
+                ledger.accounts = match ledger.accounts.add_value(&account, output.value) {
+                    Ok(accounts) => accounts,
+                    Err(account::LedgerError::NonExistent) if allow_account_creation => {
+                        // if the account was not existent and that we allow creating
+                        // account out of the blue, then fallback on adding the account
+                        ledger.accounts.add_account(&account, output.value)?
+                    }
+                    Err(error) => return Err(error.into()),
+                };
             }
         }
     }
