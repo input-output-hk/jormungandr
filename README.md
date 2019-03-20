@@ -48,7 +48,8 @@ peer_2_peer:
 Fields description:
 
   - *bft.leaders*: public keys of the nodes.
-  - *storage*: (optional) path to the storage
+  - *storage*: (optional) path to the storage. If omitted, the
+    blockchain is stored in memory only.
   - *logger*: (optional) logger configuration,
      - *verbosity*: 0 - warning, 1 - info, 2 -debug, 3 and above - trace
      - *format*: log output format - plain or json.
