@@ -16,7 +16,7 @@ pub fn handle_request(
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
     let blockchain = blockchain.read().unwrap();
-    let tip = blockchain.state.settings.read().unwrap().tip();
+    let tip = blockchain.state.tip();
     let storage = blockchain.storage.read().unwrap();
     storage
         .iterate_range(&block_id, &tip)

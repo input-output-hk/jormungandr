@@ -1,7 +1,7 @@
 use super::super::NetworkBlockConfig;
 use crate::blockchain::BlockchainR;
 
-use chain_core::property::{self, Deserialize, HasHeader};
+use chain_core::property::{Deserialize, HasHeader};
 use network_core::client::block::BlockService;
 use network_grpc::client::{Client, ProtocolConfig};
 
@@ -19,9 +19,6 @@ where
         tokio::io::AsyncWrite + tokio::io::AsyncRead + 'static + Send,
     <<B as ProtocolConfig>::Block as Deserialize>::Error: Send + Sync,
     <B::BlockHash as Deserialize>::Error: Send + Sync,
-    <B::Ledger as property::Ledger>::Update: Clone,
-    <B::Settings as property::Settings>::Update: Clone,
-    <B::Leader as property::LeaderSelection>::Update: Clone,
 {
     let bootstrap = Client::connect(peer, DefaultExecutor::current(), origin)
         .map_err(|e| {
@@ -60,9 +57,6 @@ where
     B: NetworkBlockConfig,
     S: Stream<Item = <B as ProtocolConfig>::Block>,
     S::Error: Debug,
-    <B::Ledger as property::Ledger>::Update: Clone,
-    <B::Settings as property::Settings>::Update: Clone,
-    <B::Leader as property::LeaderSelection>::Update: Clone,
 {
     stream
         .fold(blockchain, |blockchain, block| {

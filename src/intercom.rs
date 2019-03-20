@@ -304,9 +304,9 @@ where
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg<B: BlockConfig> {
-    ProposeTransaction(Vec<B::TransactionId>, ReplyHandle<Vec<bool>>),
-    SendTransaction(Vec<B::Transaction>),
-    GetTransactions(Vec<B::TransactionId>, ReplyStreamHandle<B::Transaction>),
+    ProposeTransaction(Vec<B::MessageId>, ReplyHandle<Vec<bool>>),
+    SendTransaction(Vec<B::Message>),
+    GetTransactions(Vec<B::MessageId>, ReplyStreamHandle<B::Message>),
 }
 
 /// Client messages, mainly requests from connected peers to our node.
@@ -368,12 +368,12 @@ where
 
 /// General Block Message for the block task
 pub enum BlockMsg<B: BlockConfig> {
-    /// A untrusted Block has been received from the network task
-    NetworkBlock(B::Block),
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(B::Block),
     /// The network task has a subscription to add
     Subscribe(SubscriptionHandle<B::BlockHeader>),
+    /// A untrusted block Header has been received from the network task
+    AnnouncedBlock(B::BlockHeader),
 }
 
 impl<B> Debug for BlockMsg<B>
@@ -384,9 +384,9 @@ where
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use BlockMsg::*;
         match self {
-            NetworkBlock(block) => f.debug_tuple("NetworkBlock").field(block).finish(),
             LeadershipBlock(block) => f.debug_tuple("LeadershipBlock").field(block).finish(),
             Subscribe(_) => f.debug_tuple("Subscribe").finish(),
+            AnnouncedBlock(header) => f.debug_tuple("AnnouncedBlock").field(header).finish(),
         }
     }
 }

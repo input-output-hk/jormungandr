@@ -149,7 +149,7 @@ impl<B: BlockConfig> Clone for ConnectionState<B> {
 }
 
 impl<B: BlockConfig> ConnectionState<B> {
-    fn new_listen(global: &GlobalState<B>, listen: Listen) -> Self {
+    fn new_listen(global: &GlobalState<B>, listen: &Listen) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
@@ -161,7 +161,7 @@ impl<B: BlockConfig> ConnectionState<B> {
         }
     }
 
-    fn new_peer(global: &GlobalState<B>, peer: Peer) -> Self {
+    fn new_peer(global: &GlobalState<B>, peer: &Peer) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
@@ -223,9 +223,6 @@ where
 pub fn bootstrap<B>(config: &Configuration, blockchain: BlockchainR<B>)
 where
     B: NetworkBlockConfig,
-    <B::Ledger as property::Ledger>::Update: Clone,
-    <B::Settings as property::Settings>::Update: Clone,
-    <B::Leader as property::LeaderSelection>::Update: Clone,
 {
     if config.protocol != Protocol::Grpc {
         unimplemented!()

@@ -8,6 +8,7 @@ use bytes::Bytes;
 use chain_core::property::Serialize;
 use chain_crypto::Blake2b256;
 use chain_impl_mockchain::key::Hash;
+use chain_storage::store::BlockStore;
 use hex::FromHex;
 
 pub fn create_handler(
@@ -42,8 +43,39 @@ fn handle_request(
 }
 
 fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
-    let bytes = <[u8; Blake2b256::HASH_SIZE]>::from_hex(hex).map_err(|e| ErrorBadRequest(e))?;
-    let hash = Blake2b256::from(bytes);
-    let block_hash = Hash::from(hash);
-    Ok(block_hash)
+    let hash: Blake2b256 = hex.parse().map_err(|e| ErrorBadRequest(e))?;
+    Ok(Hash::from(hash))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod parse_block_hash {
+        use super::*;
+
+        #[test]
+        fn parses_valid_hex_encoded_hashes() {
+            let hex = "000102030405060708090a0b0c0d0e0ff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
+
+            let result = parse_block_hash(hex);
+
+            let actual = result.unwrap();
+            let expected = [
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 240, 241, 242, 243, 244, 245,
+                246, 247, 248, 249, 250, 251, 252, 253, 254, 255,
+            ];
+            assert_eq!(expected, actual.as_ref());
+        }
+
+        #[test]
+        fn rejects_invalid_hex_encoded_hashes() {
+            let hex = "xx";
+
+            let result = parse_block_hash(hex);
+
+            let actual = result.unwrap_err();
+            assert_eq!("invalid hex encoding for hash value", actual.to_string());
+        }
+    }
 }

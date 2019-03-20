@@ -3,15 +3,17 @@ extern crate wasm_bindgen;
 
 mod utils;
 
+use cardano::util::hex;
 use cfg_if::cfg_if;
 use chain_addr as addr;
 use chain_core::property::Serialize;
+use chain_crypto::{algorithms::Ed25519Extended, SecretKey};
 use chain_impl_mockchain::key;
 use chain_impl_mockchain::transaction as tx;
-use rand::Rng;
-use wasm_bindgen::prelude::*;
-use cardano::util::hex;
+use chain_impl_mockchain::value;
 use std::str::FromStr;
+use wasm_bindgen::prelude::*;
+
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -24,40 +26,44 @@ cfg_if! {
 }
 
 #[wasm_bindgen]
-#[derive(Debug)]
-pub struct PrivateKey(key::PrivateKey);
+pub struct PrivateKey(key::SpendingSecretKey);
 
 #[wasm_bindgen]
 /// Private key.
 impl PrivateKey {
     /// Generate a new private key.
     pub fn generate() -> Self {
-        let mut rng = rand::thread_rng();
-        let bytes: [u8; 32] = rng.gen();
-        PrivateKey(key::PrivateKey::normalize_bytes(bytes))
+        let rng = rand::thread_rng();
+        PrivateKey(key::SpendingSecretKey::generate(rng))
     }
 
+    /*
     /// Convert private key to hex.
     pub fn to_hex(&self) -> String {
         use cardano::util::hex::encode;
-        encode(self.0.as_ref())
-    }
+        encode((self.0).0.as_ref())
+    } */
 
     /// Read private key form hex.
     pub fn from_hex(input: &str) -> Result<PrivateKey, JsValue> {
-        key::PrivateKey::from_hex(input)
+        use cardano::util::hex::decode;
+        decode(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
-            .map(PrivateKey)
+            .and_then(|bytes| {
+                SecretKey::<Ed25519Extended>::from_binary(&bytes)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+                    .map(PrivateKey)
+            })
     }
 
     /// Extract public key.
     pub fn public(&self) -> PublicKey {
-        PublicKey(self.0.public())
+        PublicKey(self.0.to_public())
     }
 }
 
 #[wasm_bindgen]
-pub struct PublicKey(key::PublicKey);
+pub struct PublicKey(key::SpendingPublicKey);
 
 #[wasm_bindgen]
 /// Public key wrapper.
@@ -70,7 +76,9 @@ impl PublicKey {
 
     /// Read public key from hex string.
     pub fn from_hex(input: &str) -> Result<PublicKey, JsValue> {
-        key::PublicKey::from_hex(input)
+        use cardano::util::hex::decode;
+        let bytes = decode(input).unwrap();
+        key::deserialize_public_key(std::io::Cursor::new(bytes))
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .map(PublicKey)
     }
@@ -79,7 +87,7 @@ impl PublicKey {
     pub fn address(&self) -> Address {
         Address(addr::Address(
             addr::Discrimination::Test,
-            addr::Kind::Single((self.0).0),
+            addr::Kind::Single((self.0).clone()),
         ))
     }
 }
@@ -90,13 +98,8 @@ pub struct Address(addr::Address);
 
 #[wasm_bindgen]
 impl Address {
-    pub fn base32(&self) -> String {
-        self.0.base32()
-    }
-
     pub fn from_hex(input: &str) -> Result<Address, JsValue> {
-        let bytes = hex::decode(input)
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let bytes = hex::decode(input).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
         let address = addr::Address::from_bytes(&bytes)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
         Ok(Address(address))
@@ -106,11 +109,13 @@ impl Address {
         hex::encode(&self.0.to_bytes())
     }
 
-    pub fn to_betch32(&self) -> String {
-        addr::AddressReadable::from_address(&self.0).as_string().to_string()
+    pub fn to_bech32(&self) -> String {
+        addr::AddressReadable::from_address(&self.0)
+            .as_string()
+            .to_string()
     }
 
-    pub fn from_betch32(input: String) -> Result<Address,JsValue> {
+    pub fn from_bech32(input: String) -> Result<Address, JsValue> {
         let addr = addr::AddressReadable::from_string(&input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
         Ok(Address(addr.to_address()))
@@ -127,7 +132,7 @@ impl UtxoPointer {
         UtxoPointer(tx::UtxoPointer {
             transaction_id: tx_id.0,
             output_index,
-            value: tx::Value(value),
+            value: value::Value(value),
         })
     }
 }
@@ -142,7 +147,7 @@ impl TransactionId {
         TransactionId(tx::TransactionId::hash_bytes(bytes))
     }
 
-    pub fn from_hex(input: &str) -> Result<TransactionId,JsValue> {
+    pub fn from_hex(input: &str) -> Result<TransactionId, JsValue> {
         tx::TransactionId::from_str(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .map(TransactionId)
@@ -171,7 +176,9 @@ impl TransactionBuilder {
     }
 
     pub fn add_output(&mut self, address: Address, value: u64) {
-        self.0.outputs.push(tx::Output(address.0, tx::Value(value)))
+        self.0
+            .outputs
+            .push(tx::Output(address.0, value::Value(value)))
     }
 
     pub fn finalize(self) -> TransactionFinalizer {
@@ -205,11 +212,13 @@ pub struct SignedTransaction(tx::SignedTransaction);
 
 #[wasm_bindgen]
 impl SignedTransaction {
-   pub fn to_hex(self) -> Result<String, JsValue> {
-       let v = self.0.serialize_as_vec()
+    pub fn to_hex(self) -> Result<String, JsValue> {
+        let v = self
+            .0
+            .serialize_as_vec()
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-       Ok(hex::encode(&v))
-   }
+        Ok(hex::encode(&v))
+    }
 }
 
 #[wasm_bindgen]
@@ -225,37 +234,3 @@ pub fn greet() {
     alert("Hello, mjolnir!");
 }
 
-#[test]
-fn build_transaction_case() {
-    // make private keys.
-    let priv0 =
-        PrivateKey::from_hex("A012881282b611ad8ce4fbf833831eeafea85f474e0b4d5bcaccf84749555459")
-            .unwrap();
-    let priv1 =
-        PrivateKey::from_hex("8012881282b611ad8ce4fbf833831eeafea85f474e0b4d5bcaccf84749555459")
-            .unwrap();
-    // make public keys.
-    let pub0 = priv0.public();
-    let pub1 = priv1.public();
-    // make addresses.
-    //let addr0 = pub0.address();
-    let addr1 = pub1.address();
-    // transaction id
-    let txid1 = TransactionId::from_bytes(&[0]);
-    assert_eq!("TransactionId(Hash(Blake2b256(0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314)))"
-              , format!("{:?}", txid1));
-
-    // build transaction
-    let utx0 = UtxoPointer::new(txid1.clone(), 0, 10);
-    let utx1 = UtxoPointer::new(txid1.clone(), 1, 20);
-    let mut tx = TransactionBuilder::new();
-    tx.add_input(utx0);
-    tx.add_input(utx1);
-    tx.add_output(addr1, 30);
-    let mut txf = tx.finalize();
-    assert_eq!("TransactionFinalizer(SignedTransaction { transaction: Transaction { inputs: [UtxoPointer { transaction_id: Hash(Blake2b256(0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314)), output_index: 0, value: Value(10) }, UtxoPointer { transaction_id: Hash(Blake2b256(0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314)), output_index: 1, value: Value(20) }], outputs: [Output(Address(Test, Single(08fdb9dbf6daec725179fbd0c9da1f6b88e758221af4c6319b17211907eddac3)), Value(30))] }, witnesses: [] })", format!("{:?}", txf));
-    txf.sign(&priv0);
-    txf.sign(&priv1);
-    let signed_tx = txf.build();
-    assert_eq!("SignedTransaction(SignedTransaction { transaction: Transaction { inputs: [UtxoPointer { transaction_id: Hash(Blake2b256(0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314)), output_index: 0, value: Value(10) }, UtxoPointer { transaction_id: Hash(Blake2b256(0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314)), output_index: 1, value: Value(20) }], outputs: [Output(Address(Test, Single(08fdb9dbf6daec725179fbd0c9da1f6b88e758221af4c6319b17211907eddac3)), Value(30))] }, witnesses: [Witness(Signature(ff16ae19b0419f7225328f094ee413a59fa8875c3037ecbeb9f317bdbbeb45b2cf111fc7424e6b7d3fd172e96da4f2e929b70955d907daeae3c814e135903c03)), Witness(Signature(fc7270e8b213543db085ab644e10f7a68ac94232b91b4cc23bad45c2159763a25eb0a67a65636ef590d31bcec5e90be09174d4c8d67e2adafb6523f003eb2f06))] })", format!("{:?}", signed_tx));
-}

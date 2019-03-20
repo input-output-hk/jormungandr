@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "with-bench", feature(test))]
 extern crate actix_net;
 extern crate actix_web;
+extern crate bech32;
 extern crate bincode;
 extern crate bytes;
 extern crate cardano;
@@ -14,7 +15,6 @@ extern crate chain_storage;
 extern crate chain_storage_sqlite;
 extern crate clap;
 extern crate cryptoxide;
-extern crate curve25519_dalek;
 extern crate exe_common;
 extern crate futures;
 extern crate generic_array;
@@ -27,6 +27,7 @@ extern crate network_core;
 extern crate network_grpc;
 extern crate poldercast;
 extern crate protocol_tokio as protocol;
+extern crate rand_chacha;
 extern crate tower_service;
 
 extern crate tokio;
@@ -44,7 +45,6 @@ extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use(o)]
 extern crate slog;
-extern crate hex;
 extern crate slog_async;
 extern crate slog_json;
 extern crate slog_term;
@@ -53,20 +53,27 @@ extern crate structopt;
 #[cfg(feature = "with-bench")]
 extern crate test;
 
+use std::io::{self, BufRead};
 use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 
-use chain_impl_mockchain::transaction::{SignedTransaction, TransactionId};
+use chain_impl_mockchain::block::{message::MessageId, Message};
 use futures::Future;
 
+use bech32::{u5, Bech32, FromBase32, ToBase32};
 use blockcfg::{
     genesis_data::ConfigGenesisData, genesis_data::GenesisData, mock::Mockchain as Cardano,
 };
-//use state::State;
 use blockchain::{Blockchain, BlockchainR};
+use chain_crypto::{
+    AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
+};
 use intercom::BlockMsg;
 use leadership::leadership_task;
+use rand::rngs::EntropyRng;
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 use rest::v0::node::stats::StatsCounter;
-use settings::Command;
+use settings::{Command, GenPrivKeyType};
 use transaction::{transaction_task, TPool};
 use utils::task::{TaskBroadcastBox, Tasks};
 
@@ -77,7 +84,7 @@ pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
 pub mod clock;
-pub mod consensus;
+// pub mod consensus;
 pub mod intercom;
 pub mod leadership;
 pub mod network;
@@ -139,7 +146,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     };
 
     let leader_secret = if let Some(secret_path) = &settings.leadership {
-        Some(secure::NodeSecret::load_from_file(secret_path.as_path()).unwrap())
+        Some(secure::NodeSecret::load_from_file(secret_path.as_path()))
     } else {
         None
     };
@@ -185,7 +192,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     // * new nodes subscribing to updates (blocks, transactions)
     // * client GetBlocks/Headers ...
 
-    let tpool_data: TPool<TransactionId, SignedTransaction> = TPool::new();
+    let tpool_data: TPool<MessageId, Message> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
 
     // Validation of consensus settings should make sure that we always have
@@ -255,7 +262,7 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
         let block_task = block_task.clone();
         let blockchain = blockchain.clone();
         let leader_id =
-            chain_impl_mockchain::leadership::LeaderId::from(secret.public().block_publickey);
+            chain_impl_mockchain::leadership::LeaderId::Bft(secret.public().block_publickey.into());
         let pk = chain_impl_mockchain::leadership::Leader::BftLeader(secret.block_privatekey);
         tasks.task_create("leadership", move || {
             leadership_task(leader_id, pk, tpool, blockchain, clock, block_task)
@@ -304,15 +311,45 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Command::GenerateKeys => {
-            use cardano::util::hex;
-            let seed: Vec<u8> = std::iter::repeat_with(|| rand::random())
-                .take(cardano::redeem::PRIVATEKEY_SIZE)
-                .collect();
-            let signing_key = cardano::redeem::PrivateKey::generate(&seed).unwrap();
-            let public_key = signing_key.public();
-            println!("signing_key: {}", hex::encode(signing_key.as_ref()));
-            println!("public_key: {}", hex::encode(public_key.as_ref()));
+        Command::GeneratePrivKey(args) => {
+            let priv_key_bech32 = match args.key_type {
+                GenPrivKeyType::Ed25519 => gen_priv_key_bech32::<Ed25519>(),
+                GenPrivKeyType::Ed25519Bip32 => gen_priv_key_bech32::<Ed25519Bip32>(),
+                GenPrivKeyType::Ed25519Extended => gen_priv_key_bech32::<Ed25519Extended>(),
+                GenPrivKeyType::FakeMMM => gen_priv_key_bech32::<FakeMMM>(),
+                GenPrivKeyType::Curve25519_2HashDH => gen_priv_key_bech32::<Curve25519_2HashDH>(),
+            };
+            println!("{}", priv_key_bech32);
+        }
+        Command::GeneratePubKey(args) => {
+            let stdin = io::stdin();
+            let bech32: Bech32 = if let Some(private_key_str) = args.private_key {
+                private_key_str.parse().unwrap()
+            } else {
+                stdin
+                    .lock()
+                    .lines()
+                    .next()
+                    .unwrap()
+                    .unwrap()
+                    .parse()
+                    .unwrap()
+            };
+            let pub_key_bech32 = match bech32.hrp() {
+                Ed25519::SECRET_BECH32_HRP => gen_pub_key_bech32::<Ed25519>(bech32.data()),
+                Ed25519Bip32::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Ed25519Bip32>(bech32.data())
+                }
+                Ed25519Extended::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Ed25519Extended>(bech32.data())
+                }
+                FakeMMM::SECRET_BECH32_HRP => gen_pub_key_bech32::<FakeMMM>(bech32.data()),
+                Curve25519_2HashDH::SECRET_BECH32_HRP => {
+                    gen_pub_key_bech32::<Curve25519_2HashDH>(bech32.data())
+                }
+                other => panic!("Unrecognized private key bech32 HRP: {}", other),
+            };
+            println!("{}", pub_key_bech32);
         }
         Command::Init(init_settings) => {
             let genesis = ConfigGenesisData::from_genesis(GenesisData {
@@ -326,4 +363,19 @@ fn main() {
             serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();
         }
     }
+}
+
+fn gen_priv_key_bech32<K: AsymmetricKey>() -> Bech32 {
+    let rng = ChaChaRng::from_rng(EntropyRng::new()).unwrap();
+    let secret = K::generate(rng);
+    let hrp = K::SECRET_BECH32_HRP.to_string();
+    Bech32::new(hrp, secret.to_base32()).unwrap()
+}
+
+fn gen_pub_key_bech32<K: AsymmetricKey>(priv_key_bech32: &[u5]) -> Bech32 {
+    let priv_key_bytes = Vec::<u8>::from_base32(priv_key_bech32).unwrap();
+    let priv_key = K::secret_from_binary(&priv_key_bytes).unwrap();
+    let pub_key = K::compute_public(&priv_key);
+    let hrp = K::PUBLIC_BECH32_HRP.to_string();
+    Bech32::new(hrp, pub_key.to_base32()).unwrap()
 }
