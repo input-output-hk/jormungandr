@@ -9,7 +9,7 @@ use crate::{
     stake::{DelegationError, DelegationState},
     utxo,
 };
-use chain_addr::Address;
+use chain_addr::{Address, Discrimination};
 use chain_core::property::{self, Header as _};
 
 #[derive(Clone)]
@@ -73,6 +73,7 @@ impl property::State for State {
                         signed_transaction,
                         new_settings.allow_account_creation(),
                         &new_settings.linear_fees(),
+                        new_settings.address_discrimination(),
                     )?;
                 }
                 Message::Update(update_proposal) => {
@@ -109,10 +110,10 @@ impl property::Settings for State {
 }
 
 impl State {
-    pub fn new() -> Self {
+    pub fn new(address_discrimination: Discrimination) -> Self {
         State {
             ledger: Ledger::new(),
-            settings: setting::Settings::new(),
+            settings: setting::Settings::new(address_discrimination),
             delegation: DelegationState::new(),
         }
     }
