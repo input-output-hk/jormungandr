@@ -5,6 +5,7 @@ let private_key = null;
 let public_key = null;
 let user_address = null;
 let user_address_hex = "";
+let fee = null;
 
 let utxos = [];
 let inputs = [];
@@ -12,8 +13,8 @@ let outputs = [];
 
 window.document.getElementById("store_pk").onclick = function(self) {
     console.log("loading private key..")
-    let hex = document.getElementById("private_key_hex").value;
-    private_key = mjolnir.PrivateKey.from_hex(hex);
+    let bech32 = document.getElementById("private_key_hex").value;
+    private_key = mjolnir.PrivateKey.from_bench32(bech32);
     console.log("extracting public key..")
     let public_key = private_key.public();
     document.getElementById("public_key_hex").value = public_key.to_hex();
@@ -47,8 +48,16 @@ window.document.getElementById("sign_btn").onclick = function(self) {
       var address = mjolnir.Address.from_bech32(output.address);
       txbuilder.add_output(address, output.value)
    });
-   var finalizer = txbuilder.finalize();
-   console.log("Adding outputs:");
+   console.log("Creating fee");
+   var fee = createFee();
+   console.log("Fee created", fee);
+   console.log("Policy");
+   var address = mjolnir.Address.from_bech32(
+         document.getElementById("input_policy_address").value);
+   var policy = mjolnir.OutputPolicy.one(address);
+   console.log("Policy created", policy);
+   var finalizer = txbuilder.finalize(fee, policy).get_result();
+   console.log("Adding signatures to:", finalizer);
    inputs.forEach(function (input, i) {
        console.log(private_key);
        finalizer.sign(private_key);
@@ -85,6 +94,13 @@ function refresh() {
             show_utxos();
    });
 }
+
+function createFee() {
+  var a = parseInt(document.getElementById("input_fee_a").value);
+  var b = parseInt(document.getElementById("input_fee_b").value);
+  return mjolnir.Fee.linear_fee(BigInt(a), BigInt(b));
+}
+
 
 function show_utxos() {
     var utxo_block = document.getElementById("utxo_block");

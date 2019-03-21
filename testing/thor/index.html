@@ -20,16 +20,17 @@
   </head>
   <body>
 
-    <h1> Mjolnir </h1>
+    <div> <h1 style="display: inline-block"> Mjolnir </h1>
+	    Address: <input type="text" value="http://localhost:8443"  name="address" readonly/> <button>check</button> </div>
+
     <div>
-    <fieldset> <legend> Private Key </legend>
-       <input id="private_key_hex" type="text"/>
-       <button id="store_pk">use</button> 
-       <div style="float:right">
-       public key: <input id="public_key_hex" type="text" readonly/> 
-       address key: <input id="user_address" type="text" readonly/>
-       </div>
-    </fieldset>
+       <fieldset> <legend> Private Key </legend>
+          <input id="private_key_hex" type="text"/>
+	  <button id="store_pk">use</button>  <br />
+	  
+	  public key: <input id="public_key_hex" type="text" readonly/> <br />
+          address key: <input id="user_address" type="text" readonly/> 
+       </fieldset>
     </div>
     <hr />
 
@@ -38,16 +39,15 @@
 	    <a href="#" id="refresh_btn">refresh</a> <br /> <ul id="utxo_block"> </ul>
     </fieldset>
 
+    <div class="blk" style="width: 70%">
+    <ul>
+       <li><a href="#"> Transaction builder </a></li>
+    </ul>
+
     <fieldset class="blk" style="width:70%"> <legend> Transaction </legend>
        <a href="#" id="clear_tx_btn">clear</a>
-       <div>
-          <fieldset style="width:95%"> <legend> inputs </legend>
-            <ul id="tx_input_block"> </ul> <hr/>
-            Total: <span id="tx_input_total"> </span>
-          </fieldset>
-       </div>
-       <div>
-         <fieldset class="blk" style="width:95%"> <legend> outputs </legend>
+
+       <fieldset class="blk" style="width:95%"> <legend> outputs </legend>
          <ul id="tx_output_block"> </ul> <hr />
            Total: <span id="tx_output_total"> </span>
            <fieldset> <legend> Add </legend>
@@ -57,18 +57,35 @@
                   </div>
                   <button id="tx_add"> add </button>
            </fieldset>
-          </fieldset>
-        </div>
-          <div>
-             <button id="sign_btn"> Sign </button> <button id="post_btn"> Post </button> <br/>
-             <textarea id="signed_tx_result" style="width: 100%;height:150px;" readonly>FABA</textarea>
-          </div>
+       </fieldset>
+
+       <fieldset style="width:95%"> <legend> inputs </legend>
+         <ul id="tx_input_block"> </ul> <hr/>
+         Total: <span id="tx_input_total"> </span>
+       </fieldset>
+
+       <fieldset> <legend> Fee </legend>
+         Type: <select> <option>Linear</option> </select>
+         A: <input id="input_fee_a" type="text" />
+         B: <input id="input_fee_b" type="text" />
+       </fieldset>
+
+       <fieldset> <legend> Output policy </legend>
+	  Type <select> <option>Forget</option> <option> One </option> </select>
+	  Address <input id="input_policy_address" type="text" />
+       </fieldset>
+
+       <button id="sign_btn"> Sign </button> <button id="post_btn"> Post </button> <br/>
+
+       <textarea id="signed_tx_result" style="width: 100%;height:150px;" readonly></textarea>
     </fieldset>
+    </div>
+
     </div>
     <div class="blk">
        <h3> useful constants (for debug purpose) </h3>
        <p>Private key hex:</p>
-       <p><code>909504467581c656e6e09e64966026cb082a1e9a04e7dcae073ed45c0e832444a03b58dc67498709c2d51f74633229665aa754d9ed3f99a53398b3b5ebbe2450</code></p>
+       <p><code>ed25519extended_secret1ar3hjscj2e057cmkxprvyx406d2tesyyu6035afxj8l3hek5sapvtad7tjaenr984tfrpyv4d26xlmspwg2u3ndm8rs6e4f64w5kfqcy0rgqa</code><p>
     </div>
     <script src="./bootstrap.js"></script>
   </body>

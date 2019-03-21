@@ -3,12 +3,13 @@ extern crate wasm_bindgen;
 
 mod utils;
 
+use bech32::{Bech32, FromBase32};
 use cardano::util::hex;
 use cfg_if::cfg_if;
 use chain_addr as addr;
 use chain_core::property::FromStr;
 use chain_core::property::Serialize;
-use chain_crypto::{algorithms::Ed25519Extended, SecretKey};
+use chain_crypto::{algorithms::Ed25519Extended, AsymmetricKey, SecretKey};
 use chain_impl_mockchain::fee;
 use chain_impl_mockchain::key;
 use chain_impl_mockchain::transaction as tx;
@@ -36,6 +37,23 @@ impl PrivateKey {
     pub fn generate() -> Self {
         let rng = rand::thread_rng();
         PrivateKey(key::SpendingSecretKey::generate(rng))
+    }
+
+    pub fn from_bench32(input: &str) -> Result<PrivateKey, JsValue> {
+        let bech32: Bech32 = input
+            .trim()
+            .parse()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        if bech32.hrp() != Ed25519Extended::SECRET_BECH32_HRP {
+            return Err(JsValue::from_str(
+                "Private key should contain Ed25519 extended private key",
+            ));
+        }
+        let bytes = Vec::<u8>::from_base32(bech32.data())
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let private_key =
+            SecretKey::from_bytes(&bytes).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        Ok(PrivateKey(private_key))
     }
 
     /// Read private key from hex representation.
@@ -172,6 +190,7 @@ pub struct TransactionBuilder(tb::TransactionBuilder<addr::Address>);
 #[wasm_bindgen]
 pub struct Fee(FeeVariant);
 
+#[wasm_bindgen]
 impl Fee {
     pub fn linear_fee(a: u64, b: u64) -> Fee {
         Fee(FeeVariant::Linear(fee::LinearFee::new(a, b, 0)))

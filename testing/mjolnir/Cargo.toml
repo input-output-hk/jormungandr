@@ -14,6 +14,7 @@ default = ["console_error_panic_hook"]
 cfg-if = "0.1.2"
 wasm-bindgen = "0.2"
 rand = "*"
+bech32 = "0.6"
 cardano = { path = "../../cardano-deps/cardano" }
 chain-addr = { path = "../../cardano-deps/chain-addr" }
 chain-core = { path = "../../cardano-deps/chain-core" }
