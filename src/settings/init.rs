@@ -1,4 +1,4 @@
-use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey, LinearFee, Discrimination};
+use crate::blockcfg::genesis_data::{Discrimination, InitialUTxO, LinearFee, PublicKey};
 use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
 
@@ -71,7 +71,7 @@ impl Settings {
                 constant: command_arguments.linear_fee_constant,
                 coefficient: command_arguments.linear_fee_coefficient,
                 certificate: command_arguments.linear_fee_certificate,
-            }
+            },
         })
     }
 }

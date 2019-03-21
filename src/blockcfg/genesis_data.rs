@@ -190,7 +190,7 @@ impl std::fmt::Display for Discrimination {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Discrimination::Production => write!(f, "production"),
-            Discrimination::Testing    => write!(f, "testing"),
+            Discrimination::Testing => write!(f, "testing"),
         }
     }
 }
@@ -200,7 +200,9 @@ impl std::str::FromStr for Discrimination {
         match s {
             "production" => Ok(Discrimination::Production),
             "testing" => Ok(Discrimination::Testing),
-            _ => Err(format!("Invalid discrimination, expected `production` or `testing`"))
+            _ => Err(format!(
+                "Invalid discrimination, expected `production` or `testing`"
+            )),
         }
     }
 }

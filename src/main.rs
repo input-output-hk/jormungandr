@@ -360,7 +360,7 @@ fn main() {
                 initial_utxos: init_settings.initial_utxos,
                 bft_leaders: init_settings.bft_leaders,
                 allow_account_creation: init_settings.allow_account_creation,
-                linear_fees: init_settings.linear_fee
+                linear_fees: init_settings.linear_fee,
             });
 
             serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();

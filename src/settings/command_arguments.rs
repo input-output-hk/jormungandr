@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use structopt::clap::{_clap_count_exprs, arg_enum};
 use structopt::StructOpt;
 
-use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey, Discrimination};
+use crate::blockcfg::genesis_data::{Discrimination, InitialUTxO, PublicKey};
 
 use crate::settings::logging::LogFormat;
 
