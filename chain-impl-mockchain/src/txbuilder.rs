@@ -101,6 +101,12 @@ impl TransactionBuilder<Address> {
         balance(&self.tx, Value(0))
     }
 
+    /// Create transaction finalizer without performing any
+    /// checks or output balancing.
+    pub fn unchecked_finalize(mut self) -> TransactionFinalizer {
+        TransactionFinalizer::new(self.tx, self.cert)
+    }
+
     /// We finalize the transaction by passing fee rule and return
     /// policy. Then after all calculations were made we can get
     /// the information back to us.
