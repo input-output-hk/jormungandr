@@ -5,6 +5,7 @@ use crate::{
     block::{BlockDate, BlockId, BlockVersion, ChainLength, BLOCK_VERSION_CONSENSUS_NONE},
     key::Hash,
     leadership::bft,
+    fee::LinearFee
 };
 use chain_core::property::{self, BlockId as _};
 use std::sync::Arc;
@@ -24,6 +25,8 @@ pub struct UpdateProposal {
     /// update to trigger allowing the creation of accounts without
     /// publishing a certificate
     pub allow_account_creation: Option<bool>,
+    /// update the LinearFee settings
+    pub linear_fees: Option<LinearFee>,
 }
 
 impl UpdateProposal {
@@ -34,6 +37,7 @@ impl UpdateProposal {
             block_version: None,
             bft_leaders: None,
             allow_account_creation: None,
+            linear_fees: None,
         }
     }
 }
@@ -46,6 +50,7 @@ enum UpdateTag {
     BlockVersion = 3,
     BftLeaders = 4,
     AllowAccountCreation = 5,
+    LinearFee = 6,
 }
 
 impl property::Serialize for UpdateProposal {
@@ -77,6 +82,12 @@ impl property::Serialize for UpdateProposal {
         if let Some(allow_account_creation) = &self.allow_account_creation {
             codec.put_u16(UpdateTag::AllowAccountCreation as u16)?;
             codec.put_u8(if *allow_account_creation { 1 } else { 0 })?;
+        }
+        if let Some(linear_fees) = &self.linear_fees {
+            codec.put_u16(UpdateTag::LinearFee as u16)?;
+            codec.put_u64(linear_fees.constant);
+            codec.put_u64(linear_fees.coefficient);
+            codec.put_u64(linear_fees.certificate);
         }
         codec.put_u16(UpdateTag::End as u16)?;
         Ok(())
@@ -117,6 +128,13 @@ impl property::Deserialize for UpdateProposal {
                     let boolean = codec.get_u8()? != 0;
                     update.allow_account_creation = Some(boolean);
                 }
+                Some(UpdateTag::LinearFee) => {
+                    update.linear_fees = Some(LinearFee {
+                        constant: codec.get_u64()?,
+                        coefficient: codec.get_u64()?,
+                        certificate: codec.get_u64()?,
+                    });
+                }
                 None => panic!("Unrecognized update tag {}.", tag),
             }
         }
@@ -134,6 +152,7 @@ pub struct Settings {
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
     /// allow for the creation of accounts without the certificate
     pub allow_account_creation: Arc<bool>,
+    pub linear_fees: Arc<LinearFee>,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -149,11 +168,16 @@ impl Settings {
             block_version: Arc::new(BLOCK_VERSION_CONSENSUS_NONE),
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: Arc::new(false),
+            linear_fees: Arc::new(LinearFee::new(0,0,0))
         }
     }
 
     pub fn allow_account_creation(&self) -> bool {
         *self.allow_account_creation
+    }
+
+    pub fn linear_fees(&self) -> LinearFee {
+        *self.linear_fees
     }
 
     pub fn apply(&self, update: UpdateProposal) -> Self {
@@ -175,6 +199,9 @@ impl Settings {
         }
         if let Some(allow_account_creation) = update.allow_account_creation {
             new_state.allow_account_creation = Arc::new(allow_account_creation);
+        }
+        if let Some(linear_fees) = update.linear_fees {
+            new_state.linear_fees = Arc::new(linear_fees);
         }
         new_state
     }
