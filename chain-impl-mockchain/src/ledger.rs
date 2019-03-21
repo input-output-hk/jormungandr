@@ -3,6 +3,7 @@
 
 use crate::legacy;
 use crate::transaction::*;
+use crate::fee::LinearFee;
 use crate::value::*;
 use crate::{account, utxo};
 use chain_addr::{Address, Kind};
@@ -65,12 +66,14 @@ impl Ledger {
         &mut self,
         signed_tx: &SignedTransaction<Address>,
         allow_account_creation: bool,
+        linear_fees: &LinearFee,
     ) -> Result<Self, Error> {
         let mut ledger = self.clone();
         let transaction_id = signed_tx.transaction.hash();
         ledger = internal_apply_transaction(
             ledger,
             allow_account_creation,
+            linear_fees,
             &transaction_id,
             &signed_tx.transaction.inputs[..],
             &signed_tx.transaction.outputs[..],
@@ -101,6 +104,7 @@ impl property::Ledger<SignedTransaction<Address>> for Ledger {
 fn internal_apply_transaction(
     mut ledger: Ledger,
     allow_account_creation: bool,
+    linear_fees: &LinearFee,
     transaction_id: &TransactionId,
     inputs: &[Input],
     outputs: &[Output<Address>],
