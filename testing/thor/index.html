@@ -71,11 +71,16 @@
        </fieldset>
 
        <fieldset> <legend> Output policy </legend>
-	  Type <select> <option>Forget</option> <option> One </option> </select>
+	  Type <select readonly> <option value="forget">Forget</option> <option value="one" selected> One </option> </select>
 	  Address <input id="input_policy_address" type="text" />
        </fieldset>
 
-       <button id="sign_btn"> Sign </button> <button id="post_btn"> Post </button> <br/>
+       <ul>
+	       <li> Balance: <span id="output_balance">..</span> </li>
+	       <li> Estimated fee: <span id="output_estimated_fee">..</span> </li>
+       </ul>
+
+       <button id="estimate_btn"> Estimate </button> <button id="sign_btn"> Sign </button> <button id="post_btn"> Post </button> <br/>
 
        <textarea id="signed_tx_result" style="width: 100%;height:150px;" readonly></textarea>
     </fieldset>

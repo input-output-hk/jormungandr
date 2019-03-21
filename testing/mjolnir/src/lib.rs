@@ -219,7 +219,35 @@ impl OutputPolicy {
 pub struct Balance(tb::Balance);
 
 #[wasm_bindgen]
+impl Balance {
+
+    pub fn get_sign(&self) -> JsValue {
+        JsValue::from_str(match self.0 {
+            tb::Balance::Positive(_) => "positive",
+            tb::Balance::Negative(_) => "negative",
+            tb::Balance::Zero => "zero",
+        })
+    }
+
+    pub fn get_value(&self) -> Value {
+        match self.0 {
+            tb::Balance::Positive(v) => Value(v),
+            tb::Balance::Negative(v) => Value(v),
+            tb::Balance::Zero => Value(value::Value(0)),
+        }
+    }
+
+}
+
+#[wasm_bindgen]
 pub struct Value(value::Value);
+
+#[wasm_bindgen]
+impl Value {
+    pub fn as_u64(&self) -> u64 {
+        (self.0).0
+    }
+}
 
 #[wasm_bindgen]
 pub struct FinalizationResult {

@@ -86,6 +86,10 @@ window.document.getElementById("post_btn").onclick = function(self) {
     xhr.send(bin);
 }
 
+window.document.getElementById("estimate_btn").onclick = function(self) {
+   show_balance();
+}
+
 function refresh() {
    axios.get("http://localhost:8443/api/v0/utxo",{})
          .then( result => {
@@ -101,6 +105,36 @@ function createFee() {
   return mjolnir.Fee.linear_fee(BigInt(a), BigInt(b));
 }
 
+function show_balance() {
+   console.log("Creating a builder.");
+   var txbuilder = mjolnir.TransactionBuilder.new();
+   console.log("Adding inputs:");
+   inputs.forEach(function (input, i) {
+      console.log("  input: ", input);
+      var tx = mjolnir.TransactionId.from_hex(input.in_txid);
+      var utxo = mjolnir.UtxoPointer.new(tx, input.in_idx, BigInt(input.out_value));
+      console.log("  utxo: ", utxo);
+      txbuilder.add_input(utxo);
+   })
+   console.log("Adding outputs:");
+   outputs.forEach(function (output, i) {
+      console.log("  output: ", output);
+      var address = mjolnir.Address.from_bech32(output.address);
+      txbuilder.add_output(address, output.value)
+   });
+   console.log("Creating fee");
+   var fee = createFee();
+   console.log("Fee created", fee);
+   console.log("Policy");
+   var address = mjolnir.Address.from_bech32(
+         document.getElementById("input_policy_address").value);
+   var policy = mjolnir.OutputPolicy.one(address);
+   console.log("Policy created", policy);
+   var balance = txbuilder.get_balance(fee);
+   document.getElementById("output_balance").textContent = balance.get_sign() + ' ' + balance.get_value().as_u64();
+   var estimated_fee = txbuilder.estimate_fee(fee);
+   document.getElementById("output_estimated_fee").textContent = estimated_fee.as_u64();
+}
 
 function show_utxos() {
     var utxo_block = document.getElementById("utxo_block");
