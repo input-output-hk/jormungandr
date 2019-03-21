@@ -53,7 +53,6 @@ fn add_to_block(argument: AddArgs) {
     let block = builder.make_genesis_block();
     let file = open_file_write(&argument.common.block);
     block.serialize(file).unwrap();
-    println!("{:#?}", block);
 }
 
 #[derive(StructOpt)]
