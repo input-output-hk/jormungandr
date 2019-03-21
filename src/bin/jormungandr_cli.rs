@@ -6,6 +6,7 @@ extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate reqwest;
 extern crate serde_json;
+extern crate serde_yaml;
 extern crate structopt;
 
 mod jormungandr_cli_app;
