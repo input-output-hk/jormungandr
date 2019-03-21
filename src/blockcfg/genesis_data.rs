@@ -28,6 +28,12 @@ pub struct LinearFee {
     pub certificate: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Discrimination {
+    Testing,
+    Production,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey(LeaderId);
 
@@ -35,6 +41,7 @@ pub struct PublicKey(LeaderId);
 pub struct GenesisData {
     pub start_time: time::SystemTime,
     pub slot_duration: time::Duration,
+    pub address_discrimination: Discrimination,
     /// also known as `t` in the BFT paper
     pub epoch_stability_depth: usize,
     pub initial_utxos: Vec<InitialUTxO>,
@@ -47,6 +54,7 @@ pub struct GenesisData {
 pub struct ConfigGenesisData {
     pub start_time: u64,
     pub slot_duration: u64,
+    pub address_discrimination: Discrimination,
     /// also known as `t` in the BFT paper
     pub epoch_stability_depth: usize,
     pub initial_utxos: Vec<InitialUTxO>,
@@ -58,6 +66,7 @@ pub struct ConfigGenesisData {
 impl ConfigGenesisData {
     pub fn from_genesis(genesis: GenesisData) -> Self {
         ConfigGenesisData {
+            address_discrimination: genesis.address_discrimination,
             start_time: genesis
                 .start_time
                 .duration_since(time::SystemTime::UNIX_EPOCH)
@@ -169,10 +178,38 @@ impl std::str::FromStr for PublicKey {
     }
 }
 
+impl Discrimination {
+    pub fn into(self) -> chain_addr::Discrimination {
+        match self {
+            Discrimination::Testing => chain_addr::Discrimination::Test,
+            Discrimination::Production => chain_addr::Discrimination::Production,
+        }
+    }
+}
+impl std::fmt::Display for Discrimination {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Discrimination::Production => write!(f, "production"),
+            Discrimination::Testing    => write!(f, "testing"),
+        }
+    }
+}
+impl std::str::FromStr for Discrimination {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "production" => Ok(Discrimination::Production),
+            "testing" => Ok(Discrimination::Testing),
+            _ => Err(format!("Invalid discrimination, expected `production` or `testing`"))
+        }
+    }
+}
+
 impl GenesisData {
     pub fn parse<R: io::BufRead>(reader: R) -> Result<Self, serde_yaml::Error> {
         let config: ConfigGenesisData = serde_yaml::from_reader(reader)?;
         Ok(GenesisData {
+            address_discrimination: config.address_discrimination,
             start_time: time::SystemTime::UNIX_EPOCH + time::Duration::from_secs(config.start_time),
             slot_duration: time::Duration::from_secs(config.slot_duration),
             epoch_stability_depth: config.epoch_stability_depth,

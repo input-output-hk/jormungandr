@@ -353,6 +353,7 @@ fn main() {
         }
         Command::Init(init_settings) => {
             let genesis = ConfigGenesisData::from_genesis(GenesisData {
+                address_discrimination: init_settings.address_discrimination,
                 start_time: init_settings.blockchain_start,
                 slot_duration: init_settings.slot_duration,
                 epoch_stability_depth: init_settings.epoch_stability_depth,

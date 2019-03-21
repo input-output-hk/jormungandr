@@ -56,7 +56,7 @@ impl State<Mockchain> {
 
 impl Blockchain<Mockchain> {
     pub fn new(genesis_data: GenesisData, storage_dir: &Option<std::path::PathBuf>) -> Self {
-        let mut state = State::new();
+        let mut state = State::new(genesis_data.address_discrimination.into());
 
         let mut storage: Box<BlockStore<Block = <Mockchain as BlockConfig>::Block> + Send + Sync>;
         match storage_dir {

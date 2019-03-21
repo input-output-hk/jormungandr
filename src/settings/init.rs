@@ -1,4 +1,4 @@
-use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey, LinearFee};
+use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey, LinearFee, Discrimination};
 use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
 
@@ -43,6 +43,7 @@ pub struct Settings {
     pub allow_account_creation: bool,
 
     pub linear_fee: LinearFee,
+    pub address_discrimination: Discrimination,
 }
 
 impl Settings {
@@ -58,6 +59,7 @@ impl Settings {
         let log_settings = generate_log_settings(&command_line);
 
         Ok(Settings {
+            address_discrimination: command_arguments.address_discrimination,
             log_settings: log_settings,
             initial_utxos: command_arguments.initial_utxos.clone(),
             slot_duration: command_arguments.slot_duration.clone(),

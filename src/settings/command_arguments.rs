@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use structopt::clap::{_clap_count_exprs, arg_enum};
 use structopt::StructOpt;
 
-use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey};
+use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey, Discrimination};
 
 use crate::settings::logging::LogFormat;
 
@@ -103,6 +103,10 @@ pub struct InitArguments {
     /// account too by just setting this parameter
     #[structopt(long = "allow-account-creation")]
     pub allow_account_creation: bool,
+
+    /// set the address discrimination (`testing` or `production`).
+    #[structopt(long = "discrimination")]
+    pub address_discrimination: Discrimination,
 
     /// the linear fee constant parameter
     #[structopt(long = "linear-fee-constant", default_value = "0")]

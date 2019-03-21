@@ -13,12 +13,13 @@ start_time: 1552990378
 slot_duration: 15
 epoch_stability_depth: 10
 allow_account_creation: true
+address_discimination: Production
 linear_fee:
   constant: 2
   coefficient: 1
   certificate: 4
 initial_utxos:
-  - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
+  - address: ca1qvy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvx5c3cy4
     value: 100
   - address: ca1q5y0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvx6g5gwu
     value: 10000
@@ -33,6 +34,7 @@ bft_leaders:
 | `slot_duration` | number | the number of seconds between the creation of 2 blocks |
 | `epoch_stability_depth` | number | allowed size of a fork (in number of block) |
 | `allow_account_creation` | boolean | allow creating accounts without publishing certificate |
+| `address_discrimination` | String | `Production` or `Testing` |
 | `linear_fee` | object | linear fee settings, set the fee for transaction and certificate publishing |
 | `initial_utxos` | array | the list of initial UTxO |
 | `bft_leaders` | array | the list of the BFT leader at the beginning of the blockchain |
