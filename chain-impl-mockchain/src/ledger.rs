@@ -64,7 +64,7 @@ impl Ledger {
     }
 
     pub fn apply_transaction(
-        &mut self,
+        &self,
         signed_tx: &SignedTransaction<Address>,
         allow_account_creation: bool,
         linear_fees: &LinearFee,
