@@ -1,5 +1,7 @@
+use crate::bech32::{self, Bech32};
 use crate::hex;
 use rand::{CryptoRng, RngCore};
+use std::borrow::Cow;
 use std::fmt;
 use std::hash::Hash;
 
@@ -169,6 +171,30 @@ impl<A: AsymmetricKey> Hash for PublicKey<A> {
         H: std::hash::Hasher,
     {
         self.0.as_ref().hash(state)
+    }
+}
+
+impl<A: AsymmetricKey> Bech32 for PublicKey<A> {
+    const BECH32_HRP: &'static str = A::PUBLIC_BECH32_HRP;
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self, bech32::Error> {
+        Self::from_bytes(bytes).map_err(|e| bech32::Error::DataInvalid(Box::new(e)))
+    }
+
+    fn to_bytes(&self) -> Cow<[u8]> {
+        self.as_ref().into()
+    }
+}
+
+impl<A: AsymmetricKey> Bech32 for SecretKey<A> {
+    const BECH32_HRP: &'static str = A::SECRET_BECH32_HRP;
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self, bech32::Error> {
+        Self::from_bytes(bytes).map_err(|e| bech32::Error::DataInvalid(Box::new(e)))
+    }
+
+    fn to_bytes(&self) -> Cow<[u8]> {
+        self.0.as_ref().into()
     }
 }
 
