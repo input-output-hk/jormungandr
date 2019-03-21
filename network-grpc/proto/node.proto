@@ -49,9 +49,6 @@ message Transaction {
     bytes content = 1;
 }
 
-// Request message for method SubscribeToBlocks.
-message BlockSubscriptionRequest {}
-
 // Gossip message.
 message GossipMessage {
     message NodeId {
@@ -61,10 +58,6 @@ message GossipMessage {
     NodeId node_id = 1;
     bytes content = 2;
 }
-
-message AnnounceBlockResponse {}
-
-message AnnounceTransactionResponse {}
 
 service Node {
     rpc Tip (TipRequest) returns (TipResponse);
@@ -78,13 +71,15 @@ service Node {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
 
-    // Establishes a subscription stream to receive information on new
-    // blocks created or accepted by the peer.
-    rpc SubscribeToBlocks (BlockSubscriptionRequest) returns (stream Header);
-
     rpc PullBlocksToTip (PullBlocksToTipRequest) returns (stream Block);
 
+    // Establishes a bidirectional stream to exchange information on new
+    // blocks created or accepted by the peers.
+    rpc BlockSubscription (stream Header) returns (stream Header);
+
+    // Establishes a bidirectional stream to exchange information on new
+    // transactions accepted by the peers.
+    rpc TransactionSubscription (stream Transaction) returns (stream Transaction);
+
     rpc Gossip (GossipMessage) returns (GossipMessage);
-    rpc AnnounceBlock (Header) returns (AnnounceBlockResponse);
-    rpc AnnounceTransaction (TransactionIds) returns (AnnounceTransactionResponse);
 }
