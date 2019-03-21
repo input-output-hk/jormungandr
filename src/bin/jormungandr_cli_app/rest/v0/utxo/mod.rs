@@ -3,21 +3,21 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub enum Stats {
-    /// Get node information
+pub enum Utxo {
+    /// Get all UTXOs
     Get {
         #[structopt(flatten)]
         addr: HostAddr,
     },
 }
 
-impl Stats {
+impl Utxo {
     pub fn exec(self) {
         let addr = match self {
-            Stats::Get { addr } => addr,
+            Utxo::Get { addr } => addr,
         };
-        let url = addr.with_segments(&["v0", "node", "stats"]).into_url();
-        let status: serde_json::Value = reqwest::Client::new()
+        let url = addr.with_segments(&["v0", "utxo"]).into_url();
+        let utxos: serde_json::Value = reqwest::Client::new()
             .get(url)
             .send()
             .unwrap()
@@ -25,7 +25,7 @@ impl Stats {
             .unwrap()
             .json()
             .unwrap();
-        let status_yaml = serde_yaml::to_string(&status).unwrap();
-        println!("{}", status_yaml);
+        let utxos_yaml = serde_yaml::to_string(&utxos).unwrap();
+        println!("{}", utxos_yaml);
     }
 }

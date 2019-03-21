@@ -22,12 +22,35 @@ The options are
 - -h <node_addr> - see [conventions](#conventions)
 
 
-JSON printed on success
+YAML printed on success
 
 ```
-{
-  "blockRecvCnt": 7,  // Blocks received by node
-  "txRecvCnt": 90,    // Transactions received by node
-  "uptime": 2101      // Node uptitme in seconds
+---
+blockRecvCnt: 7,  # Blocks received by node
+txRecvCnt: 90,    # Transactions received by node
+uptime: 2101      # Node uptitme in seconds
 }
+```
+
+## Whole UTXO
+
+Fetches whole UTXO
+
+```
+jormungandr_cli rest v0 utxo get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+
+
+YAML printed on success
+
+```
+---
+- in_idx: 0                                                                 # input index
+  in_txid: 50f21ac6bd3f57f231c4bf9c5fff7c45e2529c4dffed68f92410dbf7647541f1 # input transaction hash in hex
+  out_addr: ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s  # output address in bech32
+  out_value: 999999999                                                      # output value
 ```
