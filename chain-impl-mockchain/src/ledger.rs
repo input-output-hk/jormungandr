@@ -23,7 +23,7 @@ pub struct Ledger {
     pub(crate) accounts: account::Ledger,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     NotEnoughSignatures(usize, usize),
     UtxoValueNotMatching(Value, Value),
