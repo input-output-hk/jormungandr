@@ -353,13 +353,14 @@ fn main() {
         }
         Command::Init(init_settings) => {
             let genesis = ConfigGenesisData::from_genesis(GenesisData {
+                address_discrimination: init_settings.address_discrimination,
                 start_time: init_settings.blockchain_start,
                 slot_duration: init_settings.slot_duration,
                 epoch_stability_depth: init_settings.epoch_stability_depth,
                 initial_utxos: init_settings.initial_utxos,
                 bft_leaders: init_settings.bft_leaders,
                 allow_account_creation: init_settings.allow_account_creation,
-                linear_fees: init_settings.linear_fee
+                linear_fees: init_settings.linear_fee,
             });
 
             serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();
