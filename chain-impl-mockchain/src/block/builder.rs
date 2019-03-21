@@ -20,6 +20,15 @@ pub struct BlockBuilder {
     pub contents: BlockContents,
 }
 
+impl From<Block> for BlockBuilder {
+    fn from(block: Block) -> BlockBuilder {
+        BlockBuilder {
+            common: block.header.common,
+            contents: block.contents,
+        }
+    }
+}
+
 /// block builder to build and finalize the construction of a block
 impl BlockBuilder {
     /// default setting, equivalent to writing a genesis block (the empty block)
