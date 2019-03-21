@@ -1,12 +1,12 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
+use crate::fee::LinearFee;
 use crate::legacy;
 use crate::transaction::*;
-use crate::fee::LinearFee;
 use crate::value::*;
 use crate::{account, utxo};
-use chain_addr::{Address, Kind, Discrimination};
+use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property;
 
 /// Overall ledger structure.

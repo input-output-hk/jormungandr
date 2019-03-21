@@ -3,9 +3,9 @@
 
 use crate::{
     block::{BlockDate, BlockId, BlockVersion, ChainLength, BLOCK_VERSION_CONSENSUS_NONE},
+    fee::LinearFee,
     key::Hash,
     leadership::bft,
-    fee::LinearFee
 };
 use chain_addr::Discrimination;
 use chain_core::property::{self, BlockId as _};
@@ -171,7 +171,7 @@ impl Settings {
             block_version: Arc::new(BLOCK_VERSION_CONSENSUS_NONE),
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: Arc::new(false),
-            linear_fees: Arc::new(LinearFee::new(0,0,0))
+            linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
         }
     }
 
