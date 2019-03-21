@@ -23,7 +23,7 @@ pub struct Ledger {
     pub(crate) accounts: account::Ledger,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     NotEnoughSignatures(usize, usize),
     UtxoValueNotMatching(Value, Value),
@@ -64,7 +64,7 @@ impl Ledger {
     }
 
     pub fn apply_transaction(
-        &mut self,
+        &self,
         signed_tx: &SignedTransaction<Address>,
         allow_account_creation: bool,
         linear_fees: &LinearFee,
@@ -292,133 +292,103 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
-/*
 #[cfg(test)]
 pub mod test {
-
     use super::*;
-    use crate::key::SpendingSecretKey;
-    // use cardano::redeem as crypto;
+    use crate::key::{SpendingPublicKey, SpendingSecretKey};
     use chain_addr::{Address, Discrimination, Kind};
-    use quickcheck::{Arbitrary, Gen};
     use rand::{CryptoRng, RngCore};
 
-    impl Arbitrary for Ledger {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Ledger {
-                unspent_outputs: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-
-    pub fn make_key<R: RngCore + CryptoRng>(rng: &mut R) -> (SpendingSecretKey, Address) {
+    pub fn make_key<R: RngCore + CryptoRng>(
+        rng: &mut R,
+        discrimination: &Discrimination,
+    ) -> (SpendingSecretKey, SpendingPublicKey, Address) {
         let sk = SpendingSecretKey::generate(rng);
         let pk = sk.to_public();
-        let user_address = Address(Discrimination::Production, Kind::Single(pk));
-        (sk, user_address)
+        let user_address = Address(discrimination.clone(), Kind::Single(pk.clone()));
+        (sk, pk, user_address)
+    }
+
+    macro_rules! assert_err {
+        ($left: expr, $right: expr) => {
+            match &($left) {
+                left_val => match &($right) {
+                    Err(e) => {
+                        if !(e == left_val) {
+                            panic!(
+                                "assertion failed: error mismatch \
+                                 (left: `{:?}, right: `{:?}`)",
+                                *left_val, *e
+                            )
+                        }
+                    }
+                    Ok(_) => panic!(
+                        "assertion failed: expected error {:?} but got success",
+                        *left_val
+                    ),
+                },
+            }
+        };
     }
 
     #[test]
-    pub fn tx_no_witness() -> () {
-        use chain_core::property::Ledger;
+    pub fn utxo() -> () {
+        let no_fee = LinearFee::new(0, 0, 0);
+        let discrimination = Discrimination::Test;
         let mut rng = rand::thread_rng();
-        let (_pk1, user1_address) = make_key(&mut rng);
+        let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);
+        let (_sk2, _pk2, user2_address) = make_key(&mut rng, &discrimination);
         let tx0_id = TransactionId::hash_bytes(&[0]);
         let value = Value(42000);
+
+        let output0 = Output {
+            address: user1_address.clone(),
+            value: value,
+        };
+
         let utxo0 = UtxoPointer {
             transaction_id: tx0_id,
             output_index: 0,
             value: value,
         };
-        let ledger = crate::ledger::Ledger::new(
-            vec![(utxo0, Output(user1_address.clone(), Value(1)))]
-                .iter()
-                .cloned()
-                .collect(),
-        );
-        let tx = Transaction {
-            inputs: vec![utxo0],
-            outputs: vec![Output(user1_address, Value(1))],
+        let ledger = {
+            let mut l = Ledger::new();
+            l.utxos = l.utxos.add(&tx0_id, &[(0, output0)]).unwrap();
+            l
         };
-        let signed_tx = SignedTransaction {
-            transaction: tx,
-            witnesses: vec![],
-        };
-        assert_eq!(
-            Err(Error::NotEnoughSignatures(1, 0)),
-            ledger.diff_transaction(&signed_tx)
-        )
-    }
 
-    #[test]
-    pub fn tx_wrong_witness() -> () {
-        use chain_core::property::Ledger;
-        use chain_core::property::Transaction;
-        let mut rng = rand::thread_rng();
-        let (_, user0_address) = make_key(&mut rng);
-        let tx0_id = TransactionId::hash_bytes(&[0]);
-        let value = Value(42000);
-        let utxo0 = UtxoPointer {
-            transaction_id: tx0_id,
-            output_index: 0,
-            value: value,
-        };
-        let ledger = crate::ledger::Ledger::new(
-            vec![(utxo0, Output(user0_address.clone(), value))]
-                .iter()
-                .cloned()
-                .collect(),
-        );
-        let output0 = Output(user0_address, value);
-        let tx = crate::transaction::Transaction {
-            inputs: vec![utxo0],
-            outputs: vec![output0.clone()],
-        };
-        let (pk1, _) = make_key(&mut rng);
-        let witness = Witness::new(&tx.id(), &pk1);
-        let signed_tx = SignedTransaction {
-            transaction: tx,
-            witnesses: vec![witness.clone()],
-        };
-        assert_eq!(
-            Err(Error::InvalidSignature(utxo0, output0, witness)),
-            ledger.diff_transaction(&signed_tx)
-        )
-    }
+        {
+            let tx = Transaction {
+                inputs: vec![Input::from_utxo(utxo0)],
+                outputs: vec![Output {
+                    address: user2_address.clone(),
+                    value: Value(1),
+                }],
+            };
+            let signed_tx = SignedTransaction {
+                transaction: tx,
+                witnesses: vec![],
+            };
+            let r = ledger.apply_transaction(&signed_tx, false, &no_fee, &discrimination);
+            assert_err!(Error::NotEnoughSignatures(1, 0), r)
+        }
 
-    #[test]
-    fn cant_lose_money() {
-        use chain_core::property::Ledger;
-        use chain_core::property::Transaction;
-        let mut rng = rand::thread_rng();
-        let (pk1, user1_address) = make_key(&mut rng);
-        let tx0_id = TransactionId::hash_bytes(&[0]);
-        let value = Value(42000);
-        let utxo0 = UtxoPointer {
-            transaction_id: tx0_id,
-            output_index: 0,
-            value: value,
-        };
-        let ledger = crate::ledger::Ledger::new(
-            vec![(utxo0, Output(user1_address.clone(), Value(10)))]
-                .iter()
-                .cloned()
-                .collect(),
-        );
-        let output0 = Output(user1_address, Value(9));
-        let tx = crate::transaction::Transaction {
-            inputs: vec![utxo0],
-            outputs: vec![output0],
-        };
-        let witness = Witness::new(&tx.id(), &pk1);
-        let signed_tx = SignedTransaction {
-            transaction: tx,
-            witnesses: vec![witness],
-        };
-        assert_eq!(
-            Err(Error::TransactionSumIsNonZero(10, 9)),
-            ledger.diff_transaction(&signed_tx)
-        )
+        {
+            let tx = Transaction {
+                inputs: vec![Input::from_utxo(utxo0)],
+                outputs: vec![Output {
+                    address: user2_address.clone(),
+                    value: Value(1),
+                }],
+            };
+            let txid = tx.hash();
+            let w1 = Witness::new(&txid, &sk1);
+            let signed_tx = SignedTransaction {
+                transaction: tx,
+                witnesses: vec![w1],
+            };
+            let r = ledger.apply_transaction(&signed_tx, false, &no_fee, &discrimination);
+            assert!(r.is_ok())
+        }
     }
 }
-*/
