@@ -5,6 +5,7 @@ use chain_crypto::{self, AsymmetricKey, Ed25519Extended};
 use chain_impl_mockchain::leadership::bft::LeaderId;
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder, Message, BLOCK_VERSION_CONSENSUS_BFT},
+    fee,
     setting::UpdateProposal,
     transaction::{self, Output, UtxoPointer},
     value::Value,
@@ -20,6 +21,13 @@ pub struct InitialUTxO {
     pub value: Value,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinearFee {
+    pub constant: u64,
+    pub coefficient: u64,
+    pub certificate: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey(LeaderId);
 
@@ -32,6 +40,7 @@ pub struct GenesisData {
     pub initial_utxos: Vec<InitialUTxO>,
     pub bft_leaders: Vec<PublicKey>,
     pub allow_account_creation: bool,
+    pub linear_fees: LinearFee,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,6 +52,7 @@ pub struct ConfigGenesisData {
     pub initial_utxos: Vec<InitialUTxO>,
     pub bft_leaders: Vec<PublicKey>,
     pub allow_account_creation: bool,
+    pub linear_fees: LinearFee,
 }
 
 impl ConfigGenesisData {
@@ -58,6 +68,7 @@ impl ConfigGenesisData {
             initial_utxos: genesis.initial_utxos,
             bft_leaders: genesis.bft_leaders,
             allow_account_creation: genesis.allow_account_creation,
+            linear_fees: genesis.linear_fees,
         }
     }
 }
@@ -77,6 +88,9 @@ impl GenesisData {
             block_version: Some(BLOCK_VERSION_CONSENSUS_BFT),
             bft_leaders: Some(self.bft_leaders.into_iter().map(|pk| pk.0).collect()),
             allow_account_creation: Some(self.allow_account_creation),
+            // we don't want to set fee before adding all the initial transactions
+            // however set it in the update following the transaction
+            linear_fees: None,
         }));
 
         block_builder.message(Message::Transaction(transaction::SignedTransaction {
@@ -92,6 +106,19 @@ impl GenesisData {
                     .collect(),
             },
             witnesses: Vec::new(),
+        }));
+
+        block_builder.message(Message::Update(UpdateProposal {
+            max_number_of_transactions_per_block: None,
+            bootstrap_key_slots_percentage: None,
+            block_version: None,
+            bft_leaders: None,
+            allow_account_creation: None,
+            linear_fees: Some(fee::LinearFee::new(
+                self.linear_fees.constant,
+                self.linear_fees.coefficient,
+                self.linear_fees.certificate,
+            )),
         }));
 
         block_builder.make_genesis_block()
@@ -152,6 +179,7 @@ impl GenesisData {
             initial_utxos: config.initial_utxos,
             bft_leaders: config.bft_leaders,
             allow_account_creation: config.allow_account_creation,
+            linear_fees: config.linear_fees,
         })
     }
 

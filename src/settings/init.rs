@@ -1,4 +1,4 @@
-use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey};
+use crate::blockcfg::genesis_data::{InitialUTxO, PublicKey, LinearFee};
 use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
 
@@ -41,6 +41,8 @@ pub struct Settings {
     pub blockchain_start: std::time::SystemTime,
 
     pub allow_account_creation: bool,
+
+    pub linear_fee: LinearFee,
 }
 
 impl Settings {
@@ -63,6 +65,11 @@ impl Settings {
             blockchain_start: std::time::SystemTime::now(),
             bft_leaders: command_arguments.bft_leaders.clone(),
             allow_account_creation: command_arguments.allow_account_creation,
+            linear_fee: LinearFee {
+                constant: command_arguments.linear_fee_constant,
+                coefficient: command_arguments.linear_fee_coefficient,
+                certificate: command_arguments.linear_fee_certificate,
+            }
         })
     }
 }

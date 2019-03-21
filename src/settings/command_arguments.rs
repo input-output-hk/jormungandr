@@ -103,6 +103,16 @@ pub struct InitArguments {
     /// account too by just setting this parameter
     #[structopt(long = "allow-account-creation")]
     pub allow_account_creation: bool,
+
+    /// the linear fee constant parameter
+    #[structopt(long = "linear-fee-constant", default_value = "0")]
+    pub linear_fee_constant: u64,
+    /// the linear fee coefficient parameter
+    #[structopt(long = "linear-fee-coefficient", default_value = "0")]
+    pub linear_fee_coefficient: u64,
+    /// the linear fee certificate parameter
+    #[structopt(long = "linear-fee-certificate", default_value = "0")]
+    pub linear_fee_certificate: u64,
 }
 
 #[derive(StructOpt, Debug)]
