@@ -72,6 +72,7 @@ impl property::State for State {
                     new_ledger = new_ledger.apply_transaction(
                         signed_transaction,
                         new_settings.allow_account_creation(),
+                        &new_settings.linear_fees(),
                     )?;
                 }
                 Message::Update(update_proposal) => {
