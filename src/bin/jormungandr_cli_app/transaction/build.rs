@@ -45,6 +45,10 @@ pub struct Build {
         parse(try_from_str = "parse_spending_key")
     )]
     spending_keys: Vec<SpendingSecretKey>,
+    /// don't check the validity of the transaction when creating it
+    /// (no fee check, no balance check)
+    #[structopt(long)]
+    unchecked: bool,
 }
 
 impl Build {
@@ -65,7 +69,11 @@ impl Build {
             Some(addr) => OutputPolicy::One(addr),
             None => OutputPolicy::Forget,
         };
-        let (_, mut finalizer) = builder.finalize(fee, output_policy).unwrap();
+        let mut finalizer = if self.unchecked {
+            builder.unchecked_finalize()
+        } else {
+            builder.finalize(fee, output_policy).unwrap().1
+        };
         for spending_key in &self.spending_keys {
             finalizer.sign(spending_key);
         }
