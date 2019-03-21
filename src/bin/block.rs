@@ -1,9 +1,14 @@
+extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_impl_mockchain;
 extern crate structopt;
 
+use chain_addr::Address;
 use chain_core::property::{Block as _, Deserialize, Serialize};
-use chain_impl_mockchain::block::{Block, BlockBuilder, Message};
+use chain_impl_mockchain::{
+    block::{Block, BlockBuilder, Message},
+    transaction::SignedTransaction,
+};
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -37,7 +42,15 @@ fn print_hash(argument: Common) {
 }
 
 fn add_to_block(argument: AddArgs) {
-    let block = argument.common.open_block();
+    let mut builder: BlockBuilder = argument.common.open_block().into();
+
+    if argument.transaction.is_some() {
+        builder.transaction(argument.open_transaction());
+    }
+
+    let block = builder.make_genesis_block();
+    let file = open_file_write(&argument.common.block);
+    block.serialize(file).unwrap();
     println!("{:#?}", block);
 }
 
@@ -70,7 +83,7 @@ struct AddArgs {
     common: Common,
 
     /// message to add in the block
-    message: Option<std::path::PathBuf>,
+    transaction: Option<std::path::PathBuf>,
 }
 
 #[derive(StructOpt)]
@@ -99,9 +112,9 @@ impl Common {
 }
 
 impl AddArgs {
-    fn open_message(&self) -> Message {
-        let reader = open_file_read(&self.message);
-        Message::deserialize(reader).unwrap()
+    fn open_transaction(&self) -> SignedTransaction<Address> {
+        let reader = open_file_read(&self.transaction);
+        SignedTransaction::deserialize(reader).unwrap()
     }
 }
 
