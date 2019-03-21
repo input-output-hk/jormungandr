@@ -172,7 +172,7 @@ mod test {
                 2 => Message::StakeDelegation(Arbitrary::arbitrary(g)),
                 3 => Message::StakePoolRegistration(Arbitrary::arbitrary(g)),
                 4 => Message::StakePoolRetirement(Arbitrary::arbitrary(g)),
-                4 => Message::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
+                5 => Message::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
                 _ => Message::Transaction(Arbitrary::arbitrary(g)),
             }
         }
