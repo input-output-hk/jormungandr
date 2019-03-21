@@ -114,9 +114,10 @@ fn parse_output(input: &str) -> Result<(Address, Value), String> {
 }
 
 fn parse_address(input: &str) -> Result<Address, String> {
-    let addr_key = PublicKey::<Ed25519Extended>::try_from_bech32_str(input)
-        .map_err(|e| format!("failed to parse address: {}", e))?;
-    Ok(Address(Discrimination::Test, Kind::Single(addr_key)))
+    use std::str::FromStr;
+    chain_addr::AddressReadable::from_str(input)
+        .map(|ar| ar.to_address())
+        .map_err(|e| format!("Invalid address format: {}", e))
 }
 
 fn parse_spending_key(input: &str) -> Result<SpendingSecretKey, String> {
