@@ -86,9 +86,9 @@ impl property::Serialize for UpdateProposal {
         }
         if let Some(linear_fees) = &self.linear_fees {
             codec.put_u16(UpdateTag::LinearFee as u16)?;
-            codec.put_u64(linear_fees.constant);
-            codec.put_u64(linear_fees.coefficient);
-            codec.put_u64(linear_fees.certificate);
+            codec.put_u64(linear_fees.constant)?;
+            codec.put_u64(linear_fees.coefficient)?;
+            codec.put_u64(linear_fees.certificate)?;
         }
         codec.put_u16(UpdateTag::End as u16)?;
         Ok(())
