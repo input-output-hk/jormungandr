@@ -23,6 +23,20 @@ pub enum Witness {
     ),
 }
 
+impl PartialEq for Witness {
+    fn eq(&self, rhs: &Self) -> bool {
+        match (self, rhs) {
+            (Witness::Utxo(s1), Witness::Utxo(s2)) => s1.as_ref() == s2.as_ref(),
+            (Witness::Account(s1), Witness::Account(s2)) => s1.as_ref() == s2.as_ref(),
+            (Witness::OldUtxo(p1, s1), Witness::OldUtxo(p2, s2)) => {
+                s1.as_ref() == s2.as_ref() && p1 == p2
+            }
+            (_, _) => false,
+        }
+    }
+}
+impl Eq for Witness {}
+
 pub struct TransactionIdSpendingCounter(Vec<u8>);
 
 impl TransactionIdSpendingCounter {
