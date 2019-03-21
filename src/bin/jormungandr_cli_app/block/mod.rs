@@ -6,18 +6,20 @@ extern crate structopt;
 use chain_addr::Address;
 use chain_core::property::{Block as _, Deserialize, Serialize};
 use chain_impl_mockchain::{
-    block::{Block, BlockBuilder, Message},
+    block::{self, BlockBuilder},
     transaction::SignedTransaction,
 };
 use std::path::Path;
 use structopt::StructOpt;
 
-fn main() {
-    match Command::from_args() {
-        Command::Create(create_arguments) => create_block(create_arguments),
-        Command::Add(add_arguments) => add_to_block(add_arguments),
-        Command::Info(info_arguments) => print_block(info_arguments),
-        Command::Hash(hash_arguments) => print_hash(hash_arguments),
+impl Block {
+    pub fn exec(self) {
+        match self {
+            Block::Create(create_arguments) => create_block(create_arguments),
+            Block::Add(add_arguments) => add_to_block(add_arguments),
+            Block::Info(info_arguments) => print_block(info_arguments),
+            Block::Hash(hash_arguments) => print_hash(hash_arguments),
+        }
     }
 }
 
@@ -54,16 +56,9 @@ fn add_to_block(argument: AddArgs) {
     println!("{:#?}", block);
 }
 
-/// Jormungandr block tooling and helper
-///
-/// Command line to create or display the information of a given block.
 #[derive(StructOpt)]
-#[structopt(
-    name = "genesis",
-    rename_all = "kebab-case",
-    raw(setting = "structopt::clap::AppSettings::ColoredHelp")
-)]
-enum Command {
+#[structopt(name = "genesis", rename_all = "kebab-case")]
+pub enum Block {
     /// create a new block
     Create(Common),
 
@@ -78,7 +73,7 @@ enum Command {
 }
 
 #[derive(StructOpt)]
-struct AddArgs {
+pub struct AddArgs {
     #[structopt(flatten)]
     common: Common,
 
@@ -87,7 +82,7 @@ struct AddArgs {
 }
 
 #[derive(StructOpt)]
-struct Common {
+pub struct Common {
     /// the file path to the block to create/update/display
     ///
     /// If not available the command will expect to read the block from
@@ -105,9 +100,9 @@ impl Common {
         }
     }
 
-    fn open_block(&self) -> Block {
+    fn open_block(&self) -> block::Block {
         let reader = open_file_read(&self.block);
-        Block::deserialize(reader).unwrap()
+        block::Block::deserialize(reader).unwrap()
     }
 }
 

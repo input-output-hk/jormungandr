@@ -1,3 +1,4 @@
+extern crate bech32;
 extern crate cardano;
 extern crate chain_addr;
 extern crate chain_core;
@@ -7,11 +8,10 @@ extern crate reqwest;
 extern crate serde_json;
 extern crate structopt;
 
-mod sender_app;
-mod utils;
+mod jormungandr_cli_app;
 
 use structopt::StructOpt;
 
 fn main() {
-    sender_app::SenderApp::from_args().exec();
+    jormungandr_cli_app::JormungandrCli::from_args().exec()
 }

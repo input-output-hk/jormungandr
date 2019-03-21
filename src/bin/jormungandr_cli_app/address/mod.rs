@@ -1,29 +1,74 @@
-extern crate bech32;
-extern crate chain_addr;
-extern crate chain_crypto;
-extern crate structopt;
-
 use bech32::{Bech32, FromBase32, ToBase32};
-use chain_addr::{Address, AddressReadable, Discrimination, Kind};
+use chain_addr::{AddressReadable, Discrimination, Kind};
 use chain_crypto::{AsymmetricKey, PublicKey};
 use structopt::StructOpt;
 
-fn main() {
-    match Command::from_args() {
-        Command::Info(info_args) => address_info(&info_args.address),
-        Command::Single(single_args) => {
-            if let Some(delegation) = single_args.delegation {
-                mk_delegation(&single_args.key, single_args.testing, &delegation)
-            } else {
-                mk_single(&single_args.key, single_args.testing)
+#[derive(StructOpt)]
+#[structopt(name = "address", rename_all = "kebab-case")]
+pub enum Address {
+    /// start jormungandr service and start participating to the network
+    Info(InfoArgs),
+
+    /// create an address from the single public key. This address does
+    /// not have delegation
+    Single(SingleArgs),
+
+    /// create an address from the the single public key
+    Account(AccountArgs),
+}
+
+#[derive(StructOpt)]
+pub struct InfoArgs {
+    /// An address, in bech32 format, to display the content
+    /// and info that can be extracted from
+    #[structopt(name = "ADDRESS")]
+    address: AddressReadable,
+}
+
+#[derive(StructOpt)]
+pub struct SingleArgs {
+    /// A public key in bech32 encoding with the key type prefix
+    #[structopt(name = "PUBLIC_KEY")]
+    key: String,
+
+    /// A public key in bech32 encoding with the key type prefix
+    #[structopt(name = "DELEGATION_KEY")]
+    delegation: Option<String>,
+
+    /// set the discrimination type to testing (default is production)
+    #[structopt(long = "testing")]
+    testing: bool,
+}
+
+#[derive(StructOpt)]
+pub struct AccountArgs {
+    /// A public key in bech32 encoding with the key type prefix
+    #[structopt(name = "PUBLIC_KEY")]
+    key: String,
+
+    /// set the discrimination type to testing (default is production)
+    #[structopt(long = "testing")]
+    testing: bool,
+}
+
+impl Address {
+    pub fn exec(self) {
+        match self {
+            Address::Info(info_args) => address_info(&info_args.address),
+            Address::Single(single_args) => {
+                if let Some(delegation) = single_args.delegation {
+                    mk_delegation(&single_args.key, single_args.testing, &delegation)
+                } else {
+                    mk_single(&single_args.key, single_args.testing)
+                }
             }
+            Address::Account(account_args) => mk_account(&account_args.key, account_args.testing),
         }
-        Command::Account(account_args) => mk_account(&account_args.key, account_args.testing),
     }
 }
 
 fn address_info(address: &AddressReadable) {
-    let Address(discrimination, kind) = address.to_address();
+    let chain_addr::Address(discrimination, kind) = address.to_address();
     match discrimination {
         Discrimination::Production => {
             println!("discrimination: production");
@@ -81,7 +126,7 @@ where
 }
 
 fn mk_address(discrimination: Discrimination, kind: Kind) {
-    let address = Address(discrimination, kind);
+    let address = chain_addr::Address(discrimination, kind);
     println!("{}", AddressReadable::from_address(&address).to_string());
 }
 
@@ -123,59 +168,4 @@ fn parse_pub_key<A: AsymmetricKey>(s: &str) -> PublicKey<A> {
             A::PUBLIC_BECH32_HRP
         )
     }
-}
-
-/// Jormungandr address manipulation
-///
-/// Set of command to display and create addresses
-#[derive(StructOpt)]
-#[structopt(
-    name = "address",
-    rename_all = "kebab-case",
-    raw(setting = "structopt::clap::AppSettings::ColoredHelp")
-)]
-enum Command {
-    /// start jormungandr service and start participating to the network
-    Info(InfoArgs),
-
-    /// create an address from the single public key. This address does
-    /// not have delegation
-    Single(SingleArgs),
-
-    /// create an address from the the single public key
-    Account(AccountArgs),
-}
-
-#[derive(StructOpt)]
-struct InfoArgs {
-    /// An address, in bech32 format, to display the content
-    /// and info that can be extracted from
-    #[structopt(name = "ADDRESS")]
-    address: AddressReadable,
-}
-
-#[derive(StructOpt)]
-struct SingleArgs {
-    /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "PUBLIC_KEY")]
-    key: String,
-
-    /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "DELEGATION_KEY")]
-    delegation: Option<String>,
-
-    /// set the discrimination type to testing (default is production)
-    #[structopt(long = "testing")]
-    testing: bool,
-}
-
-#[derive(StructOpt)]
-struct AccountArgs {
-    /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "PUBLIC_KEY")]
-    key: String,
-
-    /// set the discrimination type to testing (default is production)
-    #[structopt(long = "testing")]
-    testing: bool,
 }

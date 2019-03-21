@@ -5,24 +5,12 @@ Jormungandr comes with a separate CLI to create and manipulate addresses.
 This is useful for creating addresses from public keys in the CLI,
 for debugging addresses and for testing.
 
-## Building
-
-```
-cargo build --bin address
-```
-
-or to run without installing:
-
-```
-cargo run --bin address
-```
-
 ## display address info
 
 To display an address and verify it is in a valid format you can utilise:
 
 ```
-$ cargo run --bin address \
+$ cargo run --bin jormungandr_cli -- address \
     info ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
 discrimination: testing
 public key: ed25519extended_public1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtps3t9h3a
@@ -31,7 +19,7 @@ public key: ed25519extended_public1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3j
 or for example:
 
 ```
-$ cargo run --bin address \
+$ cargo run --bin jormungandr_cli -- address \
     info \
     ca1qsy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxz8ah8dldkhvwfghn77se8dp76uguavzyxh5cccek9epryr7mkkr8n7kgx
 discrimination: production
@@ -50,7 +38,7 @@ a testnet environment. To create an address for testing simply add the flag `--t
 You can create a bootstrap era address utilising the following command.
 
 ```
-$ cargo run --bin address \
+$ cargo run --bin jormungandr_cli -- address \
     single ed25519extended_public1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtps3t9h3a
 ca1qvy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvx5c3cy4
 ```
@@ -61,7 +49,7 @@ desired.
 To add the delegation, simply add the delegation key as a second parameter of the command:
 
 ```
-$ cargo run --bin address \
+$ cargo run --bin jormungandr_cli -- address \
     single \
     ed25519extended_public1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtps3t9h3a \
     ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
@@ -76,7 +64,7 @@ but it is also possible to utilise them as a wallet.
 To create an account:
 
 ```
-$ cargo run --bin address \
+$ cargo run --bin jormungandr_cli -- address \
     account ed25519extended_public1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtps3t9h3a
 ca1q5y0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvx6g5gwu
 ```

@@ -1,7 +1,7 @@
+use jormungandr_cli_app::utils::HostAddr;
 use reqwest::Client;
 use serde_json::Value;
 use structopt::StructOpt;
-use utils::HostAddr;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
