@@ -6,7 +6,7 @@ use crate::transaction::*;
 use crate::fee::LinearFee;
 use crate::value::*;
 use crate::{account, utxo};
-use chain_addr::{Address, Kind};
+use chain_addr::{Address, Kind, Discrimination};
 use chain_core::property;
 
 /// Overall ledger structure.
@@ -37,6 +37,7 @@ pub enum Error {
     Account(account::LedgerError),
     NotBalanced(Value, Value),
     ZeroOutput(Output<Address>),
+    InvalidDiscrimination,
     ExpectingAccountWitness,
     ExpectingUtxoWitness,
 }
@@ -67,6 +68,7 @@ impl Ledger {
         signed_tx: &SignedTransaction<Address>,
         allow_account_creation: bool,
         linear_fees: &LinearFee,
+        discrimination: &Discrimination,
     ) -> Result<Self, Error> {
         let mut ledger = self.clone();
         let transaction_id = signed_tx.transaction.hash();
@@ -74,6 +76,7 @@ impl Ledger {
             ledger,
             allow_account_creation,
             linear_fees,
+            discrimination,
             &transaction_id,
             &signed_tx.transaction.inputs[..],
             &signed_tx.transaction.outputs[..],
@@ -105,6 +108,7 @@ fn internal_apply_transaction(
     mut ledger: Ledger,
     allow_account_creation: bool,
     linear_fees: &LinearFee,
+    discrimination: &Discrimination,
     transaction_id: &TransactionId,
     inputs: &[Input],
     outputs: &[Output<Address>],
@@ -155,6 +159,10 @@ fn internal_apply_transaction(
         // Reject zero-valued outputs.
         if output.value == Value::zero() {
             return Err(Error::ZeroOutput(output.clone()));
+        }
+
+        if output.address.discrimination() != *discrimination {
+            return Err(Error::InvalidDiscrimination);
         }
         match output.address.kind() {
             Kind::Single(_) | Kind::Group(_, _) => {

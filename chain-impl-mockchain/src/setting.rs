@@ -7,6 +7,7 @@ use crate::{
     leadership::bft,
     fee::LinearFee
 };
+use chain_addr::Discrimination;
 use chain_core::property::{self, BlockId as _};
 use std::sync::Arc;
 
@@ -143,6 +144,7 @@ impl property::Deserialize for UpdateProposal {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
+    pub discrimination: Discrimination,
     pub last_block_id: BlockId,
     pub last_block_date: BlockDate,
     pub chain_length: ChainLength,
@@ -158,8 +160,9 @@ pub struct Settings {
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
 
 impl Settings {
-    pub fn new() -> Self {
+    pub fn new(address_discrimination: Discrimination) -> Self {
         Self {
+            discrimination: address_discrimination,
             last_block_id: Hash::zero(),
             last_block_date: BlockDate::first(),
             chain_length: ChainLength(0),
@@ -178,6 +181,10 @@ impl Settings {
 
     pub fn linear_fees(&self) -> LinearFee {
         *self.linear_fees
+    }
+
+    pub fn address_discrimination(&self) -> &Discrimination {
+        &self.discrimination
     }
 
     pub fn apply(&self, update: UpdateProposal) -> Self {
