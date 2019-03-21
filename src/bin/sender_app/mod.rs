@@ -1,9 +1,9 @@
-mod utils;
 mod v0;
 
 use self::v0::V0;
 use structopt::StructOpt;
 
+/// Send request to node REST API
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum SenderApp {
