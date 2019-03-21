@@ -2,8 +2,9 @@ extern crate chain_core;
 extern crate chain_impl_mockchain;
 extern crate structopt;
 
-use chain_core::property::{Deserialize, Serialize};
-use chain_impl_mockchain::block::{Block, BlockBuilder};
+use chain_core::property::{Block as _, Deserialize, Serialize};
+use chain_impl_mockchain::block::{Block, BlockBuilder, Message};
+use std::path::Path;
 use structopt::StructOpt;
 
 fn main() {
@@ -11,6 +12,7 @@ fn main() {
         Command::Create(create_arguments) => create_block(create_arguments),
         Command::Add(add_arguments) => add_to_block(add_arguments),
         Command::Info(info_arguments) => print_block(info_arguments),
+        Command::Hash(hash_arguments) => print_hash(hash_arguments),
     }
 }
 
@@ -20,13 +22,18 @@ fn create_block(argument: Common) {
     }
 
     let block = BlockBuilder::new().make_genesis_block();
-    let file = argument.open_block_file_write();
+    let file = open_file_write(&argument.block);
     block.serialize(file).unwrap();
 }
 
 fn print_block(argument: Common) {
     let block = argument.open_block();
     println!("{:#?}", block);
+}
+
+fn print_hash(argument: Common) {
+    let block = argument.open_block();
+    println!("{}", block.id());
 }
 
 fn add_to_block(argument: AddArgs) {
@@ -52,12 +59,18 @@ enum Command {
 
     /// display the content of a block in human readable format
     Info(Common),
+
+    /// print the block hash (aka the block id)
+    Hash(Common),
 }
 
 #[derive(StructOpt)]
 struct AddArgs {
     #[structopt(flatten)]
     common: Common,
+
+    /// message to add in the block
+    message: Option<std::path::PathBuf>,
 }
 
 #[derive(StructOpt)]
@@ -79,40 +92,51 @@ impl Common {
         }
     }
 
-    fn open_block_file_write(&self) -> Box<dyn std::io::Write> {
-        if let Some(path) = &self.block {
-            Box::new(
-                std::fs::OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .read(false)
-                    .append(false)
-                    .open(path)
-                    .unwrap(),
-            )
-        } else {
-            Box::new(std::io::stdout())
-        }
-    }
-
-    fn open_block_file_read(&self) -> Box<dyn std::io::BufRead> {
-        if let Some(path) = &self.block {
-            Box::new(std::io::BufReader::new(
-                std::fs::OpenOptions::new()
-                    .create(false)
-                    .write(false)
-                    .read(true)
-                    .append(false)
-                    .open(path)
-                    .unwrap(),
-            ))
-        } else {
-            Box::new(std::io::BufReader::new(std::io::stdin()))
-        }
-    }
-
     fn open_block(&self) -> Block {
-        let reader = self.open_block_file_read();
+        let reader = open_file_read(&self.block);
         Block::deserialize(reader).unwrap()
+    }
+}
+
+impl AddArgs {
+    fn open_message(&self) -> Message {
+        let reader = open_file_read(&self.message);
+        Message::deserialize(reader).unwrap()
+    }
+}
+
+/// open the given file path as a writable stream, or stdout if no path
+/// provided
+fn open_file_write<P: AsRef<Path>>(path: &Option<P>) -> Box<dyn std::io::Write> {
+    if let Some(path) = path {
+        Box::new(
+            std::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .read(false)
+                .append(false)
+                .open(path)
+                .unwrap(),
+        )
+    } else {
+        Box::new(std::io::stdout())
+    }
+}
+
+/// open the given file path as a readable stream, or stdin if no path
+/// provided
+fn open_file_read<P: AsRef<Path>>(path: &Option<P>) -> Box<dyn std::io::BufRead> {
+    if let Some(path) = path {
+        Box::new(std::io::BufReader::new(
+            std::fs::OpenOptions::new()
+                .create(false)
+                .write(false)
+                .read(true)
+                .append(false)
+                .open(path)
+                .unwrap(),
+        ))
+    } else {
+        Box::new(std::io::BufReader::new(std::io::stdin()))
     }
 }
