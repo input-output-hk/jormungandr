@@ -1,20 +1,19 @@
-mod v0;
+mod build;
 
-use self::v0::V0;
 use structopt::StructOpt;
 
 /// Send request to node REST API
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub enum SenderApp {
-    /// API version 0
-    V0(V0),
+pub enum Transaction {
+    /// Build transaction
+    Build(build::Build),
 }
 
-impl SenderApp {
+impl Transaction {
     pub fn exec(self) {
         match self {
-            SenderApp::V0(v0) => v0.exec(),
+            Transaction::Build(build) => build.exec(),
         }
     }
 }

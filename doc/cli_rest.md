@@ -1,12 +1,6 @@
-# Node client
+# REST client
 
 Jormungandr comes with a CLI client for manual communication with nodes over HTTP.
-
-## Building
-
-```
-cargo build --bin sender
-```
 
 ## Convention
 
@@ -20,7 +14,7 @@ Many CLI commands have common arguments:
 Fetches node stats
 
 ```
-sender v0 node stats get <options>
+jormungandr_cli rest v0 node stats get <options>
 ```
 
 The options are

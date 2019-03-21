@@ -90,9 +90,19 @@ jormungandr start --genesis-config genesis.yaml \
 
 # Extra tooling
 
-* [CLI sender](./doc/cli_sender.md) for HTTP management
-* [CLI transaction builder](./doc/cli_tx_builder.md) for HTTP management
-* [CLI address](./doc/cli_address.md) for debugging addresses
+## CLI
+
+Building:
+
+```
+cargo build --bin jormungandr_cli
+```
+
+The binary has subcommands
+
+* [rest](./doc/cli_rest.md) for REST API calls
+* [transaction](./doc/cli_transaction.md) for offline transaction management
+* [address](./doc/cli_address.md) for debugging addresses
 
 # License
 

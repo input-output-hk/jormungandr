@@ -1,35 +1,19 @@
-extern crate cardano;
-extern crate chain_addr;
-extern crate chain_core;
-extern crate chain_crypto;
-extern crate chain_impl_mockchain;
-extern crate reqwest;
-extern crate serde_json;
-extern crate structopt;
-
-mod utils;
-
-use chain_addr::{Address, Discrimination, Kind};
+use chain_addr::{Address, AddressReadable};
 use chain_core::property::Serialize;
 use chain_crypto::bech32::Bech32;
-use chain_crypto::{Ed25519Extended, PublicKey};
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::key::SpendingSecretKey;
 use chain_impl_mockchain::transaction::{Input, TransactionId, UtxoPointer};
 use chain_impl_mockchain::txbuilder::{GeneratedTransaction, OutputPolicy, TransactionBuilder};
 use chain_impl_mockchain::value::Value;
+use jormungandr_cli_app::utils::SegmentParser;
 use std::io;
 use structopt::StructOpt;
-use utils::SegmentParser;
-
-fn main() {
-    TxBuilder::from_args().exec();
-}
 
 /// Create transaction binary blob
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct TxBuilder {
+pub struct Build {
     /// transaction input. Must have format
     /// `<hex-encoded-transaction-id>:<output-index>:<value>`.
     /// E.g. `1234567890abcdef:2:535`. At least 1 value required.
@@ -63,7 +47,7 @@ pub struct TxBuilder {
     spending_keys: Vec<SpendingSecretKey>,
 }
 
-impl TxBuilder {
+impl Build {
     pub fn exec(self) {
         let mut builder = TransactionBuilder::new();
         for input in &self.inputs {
@@ -114,10 +98,10 @@ fn parse_output(input: &str) -> Result<(Address, Value), String> {
 }
 
 fn parse_address(input: &str) -> Result<Address, String> {
-    use std::str::FromStr;
-    chain_addr::AddressReadable::from_str(input)
-        .map(|ar| ar.to_address())
+    input
+        .parse::<AddressReadable>()
         .map_err(|e| format!("Invalid address format: {}", e))
+        .map(|ar| ar.to_address())
 }
 
 fn parse_spending_key(input: &str) -> Result<SpendingSecretKey, String> {

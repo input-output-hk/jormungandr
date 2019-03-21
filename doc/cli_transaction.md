@@ -1,17 +1,15 @@
-# Transaction builder
+# Transaction
+
+Tooling for offline transactino creation
+
+## Builder
 
 Builds a signed transaction
 
-## Building
+### Usage
 
 ```
-cargo build --bin tx_builder
-```
-
-## Usage
-
-```
-tx_builder <options>
+jormungandr_cli transaction build <options>
 ```
 
 The options are
