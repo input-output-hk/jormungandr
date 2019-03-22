@@ -14,21 +14,12 @@ pub struct Transaction<OutAddress> {
     pub outputs: Vec<Output<OutAddress>>,
 }
 
-impl property::Serialize for Transaction<Address> {
-    type Error = std::io::Error;
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+impl Transaction<Address> {
+    pub fn serialize_body<W: std::io::Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
         use chain_core::packer::*;
+        use chain_core::property::Serialize;
 
         let mut codec = Codec::from(writer);
-
-        assert!(self.inputs.len() < 255);
-        assert!(self.outputs.len() < 255);
-
-        // store the number of inputs and outputs
-        codec.put_u8(self.inputs.len() as u8)?;
-        codec.put_u8(self.outputs.len() as u8)?;
-
         for input in self.inputs.iter() {
             input.serialize(&mut codec)?;
         }
@@ -38,26 +29,37 @@ impl property::Serialize for Transaction<Address> {
         }
         Ok(())
     }
+
+    pub fn serialize_with_header<W: std::io::Write>(
+        &self,
+        writer: W,
+    ) -> Result<(), std::io::Error> {
+        use chain_core::packer::*;
+
+        assert!(self.inputs.len() < 255);
+        assert!(self.outputs.len() < 255);
+
+        let mut codec = Codec::from(writer);
+
+        // store the number of inputs and outputs
+        codec.put_u8(self.inputs.len() as u8)?;
+        codec.put_u8(self.outputs.len() as u8)?;
+
+        self.serialize_body(&mut codec.into_inner())
+    }
+
+    pub fn hash(&self) -> TransactionId {
+        let mut bytes = Vec::new();
+        self.serialize_body(&mut bytes).unwrap();
+        TransactionId::hash_bytes(&bytes)
+    }
 }
 
-impl Transaction<Address> {
-    pub fn hash(&self) -> TransactionId {
-        use chain_core::packer::*;
-        use chain_core::property::Serialize;
+impl property::Serialize for Transaction<Address> {
+    type Error = std::io::Error;
 
-        let writer = Vec::new();
-        let mut codec = Codec::from(writer);
-        let bytes = {
-            for input in self.inputs.iter() {
-                input.serialize(&mut codec).unwrap();
-            }
-            for output in self.outputs.iter() {
-                output.address.serialize(&mut codec).unwrap();
-                output.value.serialize(&mut codec).unwrap();
-            }
-            codec.into_inner()
-        };
-        TransactionId::hash_bytes(&bytes)
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        self.serialize_with_header(writer)
     }
 }
 
