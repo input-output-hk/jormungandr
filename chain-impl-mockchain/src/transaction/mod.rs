@@ -144,23 +144,18 @@ pub struct SignedCertificateTransaction<OutAddress> {
 impl property::Serialize for SignedCertificateTransaction<Address> {
     type Error = std::io::Error;
 
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-
-        let mut codec = Codec::from(writer);
-        codec.put_u8(0x02)?;
-
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
         assert_eq!(
             self.transaction.transaction.inputs.len(),
             self.witnesses.len()
         );
 
         // encode the transaction body
-        self.transaction.serialize(&mut codec)?;
+        self.transaction.serialize(&mut writer)?;
 
         // encode the signatures
         for witness in self.witnesses.iter() {
-            witness.serialize(&mut codec)?;
+            witness.serialize(&mut writer)?;
         }
         Ok(())
     }
