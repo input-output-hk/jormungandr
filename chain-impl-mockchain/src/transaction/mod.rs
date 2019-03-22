@@ -64,41 +64,6 @@ impl property::Deserialize for AuthenticatedTransaction<Address> {
     }
 }
 
-impl<OutAddress> property::Transaction for Transaction<OutAddress>
-where
-    Transaction<OutAddress>: property::Serialize + property::Deserialize,
-{
-    type Input = Input;
-    type Output = Output<OutAddress>;
-    type Inputs = [Self::Input];
-    type Outputs = [Self::Output];
-
-    fn inputs(&self) -> &Self::Inputs {
-        &self.inputs
-    }
-    fn outputs(&self) -> &Self::Outputs {
-        &self.outputs
-    }
-}
-
-impl<OutAddress> property::Transaction for AuthenticatedTransaction<OutAddress>
-where
-    Transaction<OutAddress>: property::Transaction,
-    AuthenticatedTransaction<OutAddress>: property::Serialize + property::Deserialize,
-{
-    type Input = <Transaction<OutAddress> as property::Transaction>::Input;
-    type Output = <Transaction<OutAddress> as property::Transaction>::Output;
-    type Inputs = <Transaction<OutAddress> as property::Transaction>::Inputs;
-    type Outputs = <Transaction<OutAddress> as property::Transaction>::Outputs;
-
-    fn inputs(&self) -> &Self::Inputs {
-        self.transaction.inputs()
-    }
-    fn outputs(&self) -> &Self::Outputs {
-        self.transaction.outputs()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct CertificateTransaction<OutAddress> {
     pub transaction: Transaction<OutAddress>,
