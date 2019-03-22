@@ -17,12 +17,12 @@ pub use witness::*;
 /// Each transaction must be signed in order to be executed
 /// by the ledger. `SignedTransaction` represents such a transaction.
 #[derive(Debug, Clone)]
-pub struct SignedTransaction<OutAddress> {
+pub struct AuthenticatedTransaction<OutAddress> {
     pub transaction: Transaction<OutAddress>,
     pub witnesses: Vec<Witness>,
 }
 
-impl property::Serialize for SignedTransaction<Address> {
+impl property::Serialize for AuthenticatedTransaction<Address> {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -74,7 +74,7 @@ impl property::Deserialize for Transaction<Address> {
     }
 }
 
-impl property::Deserialize for SignedTransaction<Address> {
+impl property::Deserialize for AuthenticatedTransaction<Address> {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
@@ -86,7 +86,7 @@ impl property::Deserialize for SignedTransaction<Address> {
         let transaction = Transaction::deserialize(&mut codec)?;
         let num_witnesses = transaction.inputs.len();
 
-        let mut signed_transaction = SignedTransaction {
+        let mut signed_transaction = AuthenticatedTransaction {
             transaction: transaction,
             witnesses: Vec::with_capacity(num_witnesses),
         };
@@ -117,10 +117,10 @@ where
     }
 }
 
-impl<OutAddress> property::Transaction for SignedTransaction<OutAddress>
+impl<OutAddress> property::Transaction for AuthenticatedTransaction<OutAddress>
 where
     Transaction<OutAddress>: property::Transaction,
-    SignedTransaction<OutAddress>: property::Serialize + property::Deserialize,
+    AuthenticatedTransaction<OutAddress>: property::Serialize + property::Deserialize,
 {
     type Input = <Transaction<OutAddress> as property::Transaction>::Input;
     type Output = <Transaction<OutAddress> as property::Transaction>::Output;
@@ -265,11 +265,11 @@ mod test {
         }
     }
 
-    impl Arbitrary for SignedTransaction<Address> {
+    impl Arbitrary for AuthenticatedTransaction<Address> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let transaction = Transaction::arbitrary(g);
             let num_witnesses = transaction.inputs.len();
-            SignedTransaction {
+            AuthenticatedTransaction {
                 transaction: transaction,
                 witnesses: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(num_witnesses)

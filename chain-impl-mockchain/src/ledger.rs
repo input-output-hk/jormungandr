@@ -78,7 +78,7 @@ impl Ledger {
 
     pub fn apply_transaction(
         &self,
-        signed_tx: &SignedTransaction<Address>,
+        signed_tx: &AuthenticatedTransaction<Address>,
         static_params: &LedgerStaticParameters,
         dyn_params: &LedgerParameters,
     ) -> Result<Self, Error> {
@@ -95,9 +95,9 @@ impl Ledger {
         )?;
         Ok(ledger)
     }
-    }
+}
 
-impl property::Ledger<SignedTransaction<Address>> for Ledger {
+impl property::Ledger<AuthenticatedTransaction<Address>> for Ledger {
     type Error = Error;
 
     fn input<'a, I>(&'a self, input: Input) -> Result<&'a Output<Address>, Self::Error> {
@@ -383,7 +383,7 @@ pub mod test {
                     value: Value(1),
                 }],
             };
-            let signed_tx = SignedTransaction {
+            let signed_tx = AuthenticatedTransaction {
                 transaction: tx,
                 witnesses: vec![],
             };
@@ -401,7 +401,7 @@ pub mod test {
             };
             let txid = tx.hash();
             let w1 = Witness::new(&txid, &sk1);
-            let signed_tx = SignedTransaction {
+            let signed_tx = AuthenticatedTransaction {
                 transaction: tx,
                 witnesses: vec![w1],
             };

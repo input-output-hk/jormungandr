@@ -202,12 +202,12 @@ fn balance(tx: &tx::Transaction<Address>, fee: Value) -> Result<Balance, ValueEr
 }
 
 pub enum TransactionFinalizer {
-    Type1(tx::SignedTransaction<Address>),
+    Type1(tx::AuthenticatedTransaction<Address>),
     Type2(tx::SignedCertificateTransaction<Address>),
 }
 
 pub enum GeneratedTransaction {
-    Type1(tx::SignedTransaction<Address>),
+    Type1(tx::AuthenticatedTransaction<Address>),
     Type2(tx::SignedCertificateTransaction<Address>),
 }
 
@@ -221,7 +221,7 @@ impl TransactionFinalizer {
                 },
                 witnesses: vec![],
             }),
-            None => TransactionFinalizer::Type1(tx::SignedTransaction {
+            None => TransactionFinalizer::Type1(tx::AuthenticatedTransaction {
                 transaction,
                 witnesses: vec![],
             }),

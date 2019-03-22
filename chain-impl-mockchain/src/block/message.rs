@@ -11,13 +11,13 @@ use crate::{
     certificate,
     key::{Hash, Signed},
     setting,
-    transaction::SignedTransaction,
+    transaction::AuthenticatedTransaction,
 };
 
 #[derive(Debug, Clone)]
 pub enum Message {
     OldUtxoDeclaration(legacy::UtxoDeclaration),
-    Transaction(SignedTransaction<Address>),
+    Transaction(AuthenticatedTransaction<Address>),
 
     StakeKeyRegistration(Signed<certificate::StakeKeyRegistration, Ed25519Extended>),
     StakeKeyDeregistration(Signed<certificate::StakeKeyDeregistration, Ed25519Extended>),
@@ -112,7 +112,7 @@ impl Message {
                 legacy::UtxoDeclaration::deserialize(&mut codec)
                     .map(|msg| (Message::OldUtxoDeclaration(msg), size))
             }
-            Some(MessageTag::Transaction) => SignedTransaction::deserialize(&mut codec)
+            Some(MessageTag::Transaction) => AuthenticatedTransaction::deserialize(&mut codec)
                 .map(|msg| (Message::Transaction(msg), size)),
             Some(MessageTag::StakeKeyRegistration) => Signed::deserialize(&mut codec)
                 .map(|msg| (Message::StakeKeyRegistration(msg), size)),
