@@ -5,6 +5,8 @@ use crate::{
 };
 use chain_core::property;
 use chain_crypto::{Ed25519Extended, SecretKey};
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
 #[derive(Debug, Clone)]
 pub struct SignatureRaw(Vec<u8>);
