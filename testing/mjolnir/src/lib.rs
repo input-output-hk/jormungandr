@@ -3,17 +3,19 @@ extern crate wasm_bindgen;
 
 mod utils;
 
+use bech32::{Bech32, FromBase32};
 use cardano::util::hex;
 use cfg_if::cfg_if;
 use chain_addr as addr;
+use chain_core::property::FromStr;
 use chain_core::property::Serialize;
-use chain_crypto::{algorithms::Ed25519Extended, SecretKey};
+use chain_crypto::{algorithms::Ed25519Extended, AsymmetricKey, SecretKey};
+use chain_impl_mockchain::fee;
 use chain_impl_mockchain::key;
 use chain_impl_mockchain::transaction as tx;
+use chain_impl_mockchain::txbuilder as tb;
 use chain_impl_mockchain::value;
-use std::str::FromStr;
 use wasm_bindgen::prelude::*;
-
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -37,14 +39,24 @@ impl PrivateKey {
         PrivateKey(key::SpendingSecretKey::generate(rng))
     }
 
-    /*
-    /// Convert private key to hex.
-    pub fn to_hex(&self) -> String {
-        use cardano::util::hex::encode;
-        encode((self.0).0.as_ref())
-    } */
+    pub fn from_bench32(input: &str) -> Result<PrivateKey, JsValue> {
+        let bech32: Bech32 = input
+            .trim()
+            .parse()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        if bech32.hrp() != Ed25519Extended::SECRET_BECH32_HRP {
+            return Err(JsValue::from_str(
+                "Private key should contain Ed25519 extended private key",
+            ));
+        }
+        let bytes = Vec::<u8>::from_base32(bech32.data())
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let private_key =
+            SecretKey::from_bytes(&bytes).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        Ok(PrivateKey(private_key))
+    }
 
-    /// Read private key form hex.
+    /// Read private key from hex representation.
     pub fn from_hex(input: &str) -> Result<PrivateKey, JsValue> {
         use cardano::util::hex::decode;
         decode(input)
@@ -55,6 +67,8 @@ impl PrivateKey {
                     .map(PrivateKey)
             })
     }
+
+    //TODO: introduce from bench32 representation.
 
     /// Extract public key.
     pub fn public(&self) -> PublicKey {
@@ -82,6 +96,8 @@ impl PublicKey {
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .map(PublicKey)
     }
+
+    // TODO introduce from bench
 
     /// Get address.
     pub fn address(&self) -> Address {
@@ -123,12 +139,22 @@ impl Address {
 }
 
 #[wasm_bindgen]
+pub struct Input(tx::Input);
+
+#[wasm_bindgen]
+impl Input {
+    pub fn from_utxo(utxo_pointer: UtxoPointer) -> Self {
+        Input(tx::Input::from_utxo(utxo_pointer.0))
+    }
+}
+
+#[wasm_bindgen]
 #[derive(Debug)]
 pub struct UtxoPointer(tx::UtxoPointer);
 
 #[wasm_bindgen]
 impl UtxoPointer {
-    pub fn new(tx_id: TransactionId, output_index: u32, value: u64) -> UtxoPointer {
+    pub fn new(tx_id: TransactionId, output_index: u8, value: u64) -> UtxoPointer {
         UtxoPointer(tx::UtxoPointer {
             transaction_id: tx_id.0,
             output_index,
@@ -156,59 +182,162 @@ impl TransactionId {
 
 #[wasm_bindgen]
 #[derive(Debug)]
-pub struct Transaction(tx::Transaction);
+pub struct Transaction(tx::Transaction<addr::Address>);
 
 #[wasm_bindgen]
-#[derive(Debug)]
-pub struct TransactionBuilder(tx::Transaction);
+pub struct TransactionBuilder(tb::TransactionBuilder<addr::Address>);
+
+#[wasm_bindgen]
+pub struct Fee(FeeVariant);
+
+#[wasm_bindgen]
+impl Fee {
+    pub fn linear_fee(a: u64, b: u64) -> Fee {
+        Fee(FeeVariant::Linear(fee::LinearFee::new(a, b, 0)))
+    }
+}
+
+pub enum FeeVariant {
+    Linear(fee::LinearFee),
+}
+
+#[wasm_bindgen]
+pub struct OutputPolicy(tb::OutputPolicy);
+
+#[wasm_bindgen]
+impl OutputPolicy {
+    pub fn one(address: Address) -> Self {
+        OutputPolicy(tb::OutputPolicy::One(address.0))
+    }
+
+    pub fn forget() -> Self {
+        OutputPolicy(tb::OutputPolicy::Forget)
+    }
+}
+
+#[wasm_bindgen]
+pub struct Balance(tb::Balance);
+
+#[wasm_bindgen]
+impl Balance {
+
+    pub fn get_sign(&self) -> JsValue {
+        JsValue::from_str(match self.0 {
+            tb::Balance::Positive(_) => "positive",
+            tb::Balance::Negative(_) => "negative",
+            tb::Balance::Zero => "zero",
+        })
+    }
+
+    pub fn get_value(&self) -> Value {
+        match self.0 {
+            tb::Balance::Positive(v) => Value(v),
+            tb::Balance::Negative(v) => Value(v),
+            tb::Balance::Zero => Value(value::Value(0)),
+        }
+    }
+
+}
+
+#[wasm_bindgen]
+pub struct Value(value::Value);
+
+#[wasm_bindgen]
+impl Value {
+    pub fn as_u64(&self) -> u64 {
+        (self.0).0
+    }
+}
+
+#[wasm_bindgen]
+pub struct FinalizationResult {
+    balance: Balance,
+    result: TransactionFinalizer,
+}
+
+#[wasm_bindgen]
+impl FinalizationResult {
+    pub fn get_balance(self) -> Balance {
+        self.balance // TODO: fixme
+    }
+
+    pub fn get_result(self) -> TransactionFinalizer {
+        self.result
+    }
+}
 
 #[wasm_bindgen]
 impl TransactionBuilder {
     pub fn new() -> TransactionBuilder {
-        TransactionBuilder(tx::Transaction {
-            inputs: vec![],
-            outputs: vec![],
-        })
+        TransactionBuilder(tb::TransactionBuilder::new())
     }
 
-    pub fn add_input(&mut self, utxo: UtxoPointer) {
-        self.0.inputs.push(utxo.0)
+    pub fn add_input(&mut self, input: &Input) {
+        self.0.add_input(&input.0)
     }
 
     pub fn add_output(&mut self, address: Address, value: u64) {
-        self.0
-            .outputs
-            .push(tx::Output(address.0, value::Value(value)))
+        self.0.add_output(address.0, value::Value(value))
     }
 
-    pub fn finalize(self) -> TransactionFinalizer {
-        TransactionFinalizer(tx::SignedTransaction {
-            transaction: self.0,
-            witnesses: vec![],
-        })
+    pub fn get_balance(&mut self, fee_algorithm: &Fee) -> Result<Balance, JsValue> {
+        match fee_algorithm.0 {
+            FeeVariant::Linear(linear) => self
+                .0
+                .get_balance(linear)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+                .map(Balance),
+        }
+    }
+
+    pub fn estimate_fee(&mut self, fee_algorithm: &Fee) -> Result<Value, JsValue> {
+        match fee_algorithm.0 {
+            FeeVariant::Linear(linear) => self
+                .0
+                .estimate_fee(linear)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+                .map(Value),
+        }
+    }
+
+    pub fn finalize(
+        self,
+        fee_algorithm: &Fee,
+        policy: OutputPolicy,
+    ) -> Result<FinalizationResult, JsValue> {
+        match fee_algorithm.0 {
+            FeeVariant::Linear(linear) => self
+                .0
+                .finalize(linear, policy.0)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+                .map(|(balance, result)| FinalizationResult {
+                    balance: Balance(balance),
+                    result: TransactionFinalizer(result),
+                }),
+        }
     }
 }
 
 #[wasm_bindgen]
-#[derive(Debug)]
-pub struct TransactionFinalizer(tx::SignedTransaction);
+pub struct TransactionFinalizer(tb::TransactionFinalizer);
 
 #[wasm_bindgen]
 impl TransactionFinalizer {
     pub fn sign(&mut self, pk: &PrivateKey) {
-        use chain_core::property::Transaction;
-        let tx_id = self.0.transaction.id();
-        let witness = tx::Witness::new(&tx_id, &pk.0);
-        self.0.witnesses.push(witness);
+        self.0.sign(&pk.0)
     }
+
     pub fn build(self) -> SignedTransaction {
-        SignedTransaction(self.0)
+        match self.0.build() {
+            tb::GeneratedTransaction::Type1(tx) => SignedTransaction(tx),
+            tb::GeneratedTransaction::Type2(_) => unimplemented!(),
+        }
     }
 }
 
 #[wasm_bindgen]
 #[derive(Debug)]
-pub struct SignedTransaction(tx::SignedTransaction);
+pub struct SignedTransaction(tx::SignedTransaction<addr::Address>);
 
 #[wasm_bindgen]
 impl SignedTransaction {
@@ -220,17 +349,3 @@ impl SignedTransaction {
         Ok(hex::encode(&v))
     }
 }
-
-#[wasm_bindgen]
-pub struct Output(tx::Output);
-
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello, mjolnir!");
-}
-
