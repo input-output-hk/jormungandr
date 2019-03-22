@@ -1,5 +1,6 @@
 use super::transfer::*;
 use crate::key::Hash;
+use crate::value::Value;
 use chain_addr::Address;
 use chain_core::property;
 
@@ -15,7 +16,7 @@ pub struct Transaction<OutAddress> {
 }
 
 impl Transaction<Address> {
-    pub fn serialize_body<W: std::io::Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
+    fn serialize_body<W: std::io::Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
         use chain_core::packer::*;
         use chain_core::property::Serialize;
 
@@ -48,6 +49,44 @@ impl Transaction<Address> {
         self.serialize_body(&mut codec.into_inner())
     }
 
+    fn deserialize_body<R: std::io::BufRead>(
+        reader: R,
+        num_inputs: usize,
+        num_outputs: usize,
+    ) -> Result<Self, std::io::Error> {
+        use chain_core::packer::*;
+        use chain_core::property::Deserialize as _;
+        let mut codec = Codec::from(reader);
+
+        let mut transaction = Transaction {
+            inputs: Vec::with_capacity(num_inputs),
+            outputs: Vec::with_capacity(num_outputs),
+        };
+        for _ in 0..num_inputs {
+            let input = Input::deserialize(&mut codec)?;
+            transaction.inputs.push(input);
+        }
+
+        for _ in 0..num_outputs {
+            let address = Address::deserialize(&mut codec)?;
+            let value = Value::deserialize(&mut codec)?;
+            transaction.outputs.push(Output { address, value });
+        }
+
+        Ok(transaction)
+    }
+
+    pub fn deserialize_with_header<R: std::io::BufRead>(reader: R) -> Result<Self, std::io::Error> {
+        use chain_core::packer::*;
+
+        let mut codec = Codec::from(reader);
+
+        let num_inputs = codec.get_u8()? as usize;
+        let num_outputs = codec.get_u8()? as usize;
+
+        Self::deserialize_body(codec.into_inner(), num_inputs, num_outputs)
+    }
+
     pub fn hash(&self) -> TransactionId {
         let mut bytes = Vec::new();
         self.serialize_body(&mut bytes).unwrap();
@@ -60,6 +99,13 @@ impl property::Serialize for Transaction<Address> {
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         self.serialize_with_header(writer)
+    }
+}
+
+impl property::Deserialize for Transaction<Address> {
+    type Error = std::io::Error;
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        Self::deserialize_with_header(reader)
     }
 }
 

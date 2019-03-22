@@ -4,7 +4,6 @@ mod utxo;
 mod witness;
 
 use crate::certificate::Certificate;
-use crate::value::*;
 use chain_addr::Address;
 use chain_core::property;
 
@@ -25,52 +24,17 @@ pub struct AuthenticatedTransaction<OutAddress> {
 impl property::Serialize for AuthenticatedTransaction<Address> {
     type Error = std::io::Error;
 
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-
-        let mut codec = Codec::from(writer);
-        codec.put_u8(0x01)?;
-
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
         assert_eq!(self.transaction.inputs.len(), self.witnesses.len());
 
         // encode the transaction body
-        self.transaction.serialize(&mut codec)?;
+        self.transaction.serialize(&mut writer)?;
 
         // encode the signatures
         for witness in self.witnesses.iter() {
-            witness.serialize(&mut codec)?;
+            witness.serialize(&mut writer)?;
         }
         Ok(())
-    }
-}
-
-impl property::Deserialize for Transaction<Address> {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-
-        let mut codec = Codec::from(reader);
-
-        let num_inputs = codec.get_u8()? as usize;
-        let num_outputs = codec.get_u8()? as usize;
-
-        let mut transaction = Transaction {
-            inputs: Vec::with_capacity(num_inputs),
-            outputs: Vec::with_capacity(num_outputs),
-        };
-
-        for _ in 0..num_inputs {
-            let input = Input::deserialize(&mut codec)?;
-            transaction.inputs.push(input);
-        }
-
-        for _ in 0..num_outputs {
-            let address = Address::deserialize(&mut codec)?;
-            let value = Value::deserialize(&mut codec)?;
-            transaction.outputs.push(Output { address, value });
-        }
-
-        Ok(transaction)
     }
 }
 
@@ -82,7 +46,6 @@ impl property::Deserialize for AuthenticatedTransaction<Address> {
 
         let mut codec = Codec::from(reader);
 
-        let _transaction_type = codec.get_u8()?;
         let transaction = Transaction::deserialize(&mut codec)?;
         let num_witnesses = transaction.inputs.len();
 
@@ -206,6 +169,7 @@ impl property::Serialize for SignedCertificateTransaction<Address> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::value::Value;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
