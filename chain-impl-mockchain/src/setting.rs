@@ -7,7 +7,6 @@ use crate::{
     key::Hash,
     leadership::bft,
 };
-use chain_addr::Discrimination;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use std::sync::Arc;
