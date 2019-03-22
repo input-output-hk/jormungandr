@@ -32,25 +32,41 @@ pub enum CertificateContent {
     StakePoolRetirement(StakePoolRetirement),
 }
 
+#[derive(FromPrimitive)]
+enum CertificateTag {
+    StakeKeyRegistration = 1,
+    StakeKeyDeregistration = 2,
+    StakeDelegation = 3,
+    StakePoolRegistration = 4,
+    StakePoolRetirement = 5,
+}
+
 impl property::Serialize for Certificate {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(writer);
-        let tag = match &self.content {
-            CertificateContent::StakeKeyRegistration(_) => 0x01,
-            CertificateContent::StakeKeyDeregistration(_) => 0x02,
-            CertificateContent::StakeDelegation(_) => 0x03,
-            CertificateContent::StakePoolRegistration(_) => 0x04,
-            CertificateContent::StakePoolRetirement(_) => 0x05,
-        };
-        codec.put_u8(tag)?;
         match &self.content {
-            CertificateContent::StakeKeyRegistration(s) => s.serialize(&mut codec),
-            CertificateContent::StakeKeyDeregistration(s) => s.serialize(&mut codec),
-            CertificateContent::StakeDelegation(s) => s.serialize(&mut codec),
-            CertificateContent::StakePoolRegistration(s) => s.serialize(&mut codec),
-            CertificateContent::StakePoolRetirement(s) => s.serialize(&mut codec),
+            CertificateContent::StakeKeyRegistration(s) => {
+                codec.put_u8(CertificateTag::StakeKeyRegistration as u8)?;
+                s.serialize(&mut codec)
+            }
+            CertificateContent::StakeKeyDeregistration(s) => {
+                codec.put_u8(CertificateTag::StakeKeyDeregistration as u8)?;
+                s.serialize(&mut codec)
+            }
+            CertificateContent::StakeDelegation(s) => {
+                codec.put_u8(CertificateTag::StakeDelegation as u8)?;
+                s.serialize(&mut codec)
+            }
+            CertificateContent::StakePoolRegistration(s) => {
+                codec.put_u8(CertificateTag::StakePoolRegistration as u8)?;
+                s.serialize(&mut codec)
+            }
+            CertificateContent::StakePoolRetirement(s) => {
+                codec.put_u8(CertificateTag::StakePoolRetirement as u8)?;
+                s.serialize(&mut codec)
+            }
         }?;
         codec.put_u8(self.signatures.len() as u8)?;
         for sig in &self.signatures {
