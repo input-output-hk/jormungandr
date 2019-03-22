@@ -4,7 +4,7 @@
 use crate::{
     block::{Block, Header, Message},
     leadership,
-    ledger::{self, Ledger},
+    ledger::{self, Ledger, LedgerParameters, LedgerStaticParameters},
     setting,
     stake::{DelegationError, DelegationState},
     utxo,
@@ -66,14 +66,22 @@ impl property::State for State {
         let mut new_ledger = self.ledger.clone();
         let mut new_delegation = self.delegation.clone();
         let mut new_settings = self.settings.clone();
+
+        let static_params = LedgerStaticParameters {
+            allow_account_creation: new_settings.allow_account_creation(),
+            discrimination: *new_settings.address_discrimination(),
+        };
+        let dyn_params = LedgerParameters {
+            fees: new_settings.linear_fees(),
+        };
+
         for content in contents {
             match content {
                 Message::Transaction(signed_transaction) => {
                     new_ledger = new_ledger.apply_transaction(
                         signed_transaction,
-                        new_settings.allow_account_creation(),
-                        &new_settings.linear_fees(),
-                        new_settings.address_discrimination(),
+                        &static_params,
+                        &dyn_params,
                     )?;
                 }
                 Message::Update(update_proposal) => {
