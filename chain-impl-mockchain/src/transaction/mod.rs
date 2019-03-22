@@ -49,15 +49,16 @@ impl property::Deserialize for AuthenticatedTransaction<Address> {
         let transaction = Transaction::deserialize(&mut codec)?;
         let num_witnesses = transaction.inputs.len();
 
-        let mut signed_transaction = AuthenticatedTransaction {
-            transaction: transaction,
-            witnesses: Vec::with_capacity(num_witnesses),
-        };
-
+        let mut witnesses = Vec::with_capacity(num_witnesses);
         for _ in 0..num_witnesses {
             let witness = Witness::deserialize(&mut codec)?;
-            signed_transaction.witnesses.push(witness);
+            witnesses.push(witness);
         }
+
+        let signed_transaction = AuthenticatedTransaction {
+            transaction,
+            witnesses,
+        };
 
         Ok(signed_transaction)
     }
