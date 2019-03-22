@@ -1,24 +1,5 @@
 use chain_core::property::{Deserialize, Serialize};
-use std::{error, fmt, net::SocketAddr};
-
-#[derive(Clone, Debug)]
-pub enum NodeIdError {
-    InvalidSize(usize),
-}
-
-impl error::Error for NodeIdError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-}
-
-impl fmt::Display for NodeIdError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            NodeIdError::InvalidSize(size) => write!(f, "invalid node id size: {}", size),
-        }
-    }
-}
+use std::net::SocketAddr;
 
 /// Abstract trait for data types representing gossip about network nodes.
 pub trait NodeGossip {
