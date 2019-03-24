@@ -13,8 +13,8 @@ start_time: 1552990378
 slot_duration: 15
 epoch_stability_depth: 10
 allow_account_creation: true
-address_discimination: Production
-linear_fee:
+address_discrimination: Production
+linear_fees:
   constant: 2
   coefficient: 1
   certificate: 4
