@@ -205,11 +205,11 @@ mod test {
 
     impl Arbitrary for Message {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match g.next_u32() % 3 {
+            match g.next_u32() % 4 {
                 0 => Message::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
                 1 => Message::Transaction(Arbitrary::arbitrary(g)),
-                _ => Message::Certificate(Arbitrary::arbitrary(g)),
-                //_ => Message::Update(Arbitrary::arbitrary(g)),
+                2 => Message::Certificate(Arbitrary::arbitrary(g)),
+                _ => Message::Update(Arbitrary::arbitrary(g)),
             }
         }
     }

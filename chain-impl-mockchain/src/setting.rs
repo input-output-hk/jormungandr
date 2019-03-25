@@ -220,3 +220,22 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for UpdateProposal {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            UpdateProposal {
+                max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
+                bootstrap_key_slots_percentage: Arbitrary::arbitrary(g),
+                block_version: Arbitrary::arbitrary(g),
+                bft_leaders: None,
+                allow_account_creation: None,
+                linear_fees: None,
+            }
+        }
+    }
+}
