@@ -37,9 +37,7 @@ pub trait BlockConfig {
         + Sync
         + Debug
         + 'static;
-    type Transaction: Transaction + Send + Sync + Clone;
-    type TransactionId: TransactionId + Serialize + Deserialize;
-    type Message: Message<Id = Self::MessageId> + Send + Clone;
+    type Message: Message<Id = Self::MessageId> + Send + Sync + Clone;
     type MessageId: MessageId + Send;
     type GenesisData;
 

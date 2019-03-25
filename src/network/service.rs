@@ -168,14 +168,14 @@ impl<B: BlockConfig> Clone for ConnectionTransactionService<B> {
 }
 
 impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
-    type Transaction = B::Transaction;
-    type TransactionId = B::TransactionId;
+    type Transaction = B::Message;
+    type TransactionId = B::MessageId;
     type ProposeTransactionsFuture =
-        ReplyFuture<ProposeTransactionsResponse<B::TransactionId>, core_error::Error>;
+        ReplyFuture<ProposeTransactionsResponse<B::MessageId>, core_error::Error>;
     type GetTransactionsStream = ReplyStream<Self::Transaction, core_error::Error>;
     type GetTransactionsFuture = ReplyFuture<Self::GetTransactionsStream, core_error::Error>;
-    type TransactionSubscription = SubscriptionStream<B::Transaction>;
-    type TransactionSubscriptionFuture = SubscriptionFuture<B::Transaction>;
+    type TransactionSubscription = SubscriptionStream<B::Message>;
+    type TransactionSubscriptionFuture = SubscriptionFuture<B::Message>;
 
     fn propose_transactions(
         &mut self,
