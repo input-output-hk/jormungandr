@@ -1,6 +1,6 @@
 use crate::blockcfg::BlockConfig;
 
-use network_core::{error::Code, server::block::BlockError};
+use network_core::error as core_error;
 
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
@@ -10,13 +10,12 @@ use std::{
     error,
     fmt::{self, Debug, Display},
     marker::PhantomData,
-    sync::mpsc::RecvError as BusError,
 };
 
 /// The error values passed via intercom messages.
 #[derive(Debug)]
 pub struct Error {
-    code: Code,
+    code: core_error::Code,
     cause: Box<dyn error::Error + Send + Sync>,
 }
 
@@ -26,19 +25,19 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: Code::Failed,
+            code: core_error::Code::Unknown,
             cause: cause.into(),
         }
     }
 
     pub fn unimplemented<S: Into<String>>(message: S) -> Self {
         Error {
-            code: Code::Unimplemented,
+            code: core_error::Code::Unimplemented,
             cause: message.into().into(),
         }
     }
 
-    pub fn code(&self) -> Code {
+    pub fn code(&self) -> core_error::Code {
         self.code
     }
 }
@@ -46,7 +45,7 @@ impl Error {
 impl From<oneshot::Canceled> for Error {
     fn from(src: oneshot::Canceled) -> Self {
         Error {
-            code: Code::Canceled,
+            code: core_error::Code::Canceled,
             cause: src.into(),
         }
     }
@@ -57,7 +56,7 @@ impl From<chain_storage::error::Error> for Error {
         use chain_storage::error::Error::*;
 
         let code = match err {
-            BlockNotFound => Code::NotFound,
+            BlockNotFound => core_error::Code::NotFound,
         };
         Error {
             code,
@@ -223,26 +222,27 @@ impl<T: Sync + Clone> SubscriptionHandle<T> {
     }
 }
 
-pub struct SubscriptionFuture<T, E>
+pub struct SubscriptionFuture<T>
 where
     T: Clone + Sync,
 {
     receiver: oneshot::Receiver<BusReader<T>>,
-    _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Future for SubscriptionFuture<T, E>
+impl<T> Future for SubscriptionFuture<T>
 where
     T: Clone + Sync,
-    E: From<Error>,
 {
-    type Item = SubscriptionStream<T, E>;
-    type Error = E;
-    fn poll(&mut self) -> Poll<Self::Item, E> {
+    type Item = SubscriptionStream<T>;
+    type Error = core_error::Error;
+    fn poll(&mut self) -> Poll<Self::Item, core_error::Error> {
         let inner = match self.receiver.poll() {
             Err(oneshot::Canceled) => {
                 warn!("response canceled by the client request task");
-                return Err(Error::from(oneshot::Canceled).into());
+                return Err(core_error::Error::new(
+                    core_error::Code::Canceled,
+                    "subscription canceled",
+                ));
             }
             Ok(Async::NotReady) => {
                 return Ok(Async::NotReady);
@@ -250,54 +250,36 @@ where
             Ok(Async::Ready(item)) => item,
         };
 
-        Ok(Async::Ready(SubscriptionStream {
-            inner,
-            _phantom_error: PhantomData,
-        }))
+        Ok(Async::Ready(SubscriptionStream { inner }))
     }
 }
 
-pub struct SubscriptionStream<T: Clone + Sync, E> {
+pub struct SubscriptionStream<T: Clone + Sync> {
     inner: BusReader<T>,
-    _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Stream for SubscriptionStream<T, E>
+impl<T> Stream for SubscriptionStream<T>
 where
     T: Clone + Sync,
-    E: FromSubscriptionError,
 {
     type Item = T;
-    type Error = E;
+    type Error = core_error::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> Poll<Option<Self::Item>, core_error::Error> {
         match self.inner.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(item)) => Ok(Async::Ready(item)),
-            Err(e) => Err(E::from_subscription_error(e)),
+            Err(e) => Err(core_error::Error::new(core_error::Code::Unknown, e)),
         }
     }
 }
 
-pub trait FromSubscriptionError: Sized {
-    fn from_subscription_error(err: BusError) -> Self;
-}
-
-impl FromSubscriptionError for BlockError {
-    fn from_subscription_error(err: BusError) -> Self {
-        BlockError::failed(err)
-    }
-}
-
-pub fn subscription_reply<T, E>() -> (SubscriptionHandle<T>, SubscriptionFuture<T, E>)
+pub fn subscription_reply<T>() -> (SubscriptionHandle<T>, SubscriptionFuture<T>)
 where
     T: Clone + Sync,
 {
     let (sender, receiver) = oneshot::channel();
-    let future = SubscriptionFuture {
-        receiver,
-        _phantom_error: PhantomData,
-    };
+    let future = SubscriptionFuture { receiver };
     (SubscriptionHandle { sender }, future)
 }
 
@@ -395,12 +377,10 @@ where
 mod tests {
     use super::*;
     use crate::blockcfg::mock::Mockchain;
-    use chain_impl_mockchain::block::Header;
-    use network_core::server::block::BlockError;
 
     #[test]
     fn block_msg_subscribe_debug() {
-        let (handle, _) = subscription_reply::<Header, BlockError>();
+        let (handle, _) = subscription_reply();
         let msg = BlockMsg::Subscribe::<Mockchain>(handle);
         let debug_repr = format!("{:?}", msg);
         assert!(debug_repr.contains("Subscribe"));

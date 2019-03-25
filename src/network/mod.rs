@@ -20,6 +20,7 @@ use crate::utils::task::TaskMessageBox;
 use self::p2p_topology::{self as p2p, P2pTopology};
 use futures::prelude::*;
 use futures::stream::{self, Stream};
+use tokio::sync::mpsc;
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
@@ -126,6 +127,8 @@ pub struct ConnectionState<B: BlockConfig> {
 
     pub connected: Option<Connection>,
 
+    pub block_sender: mpsc::UnboundedSender<B::BlockHeader>,
+
     /// Network topology reference.
     pub topology: P2pTopology,
 
@@ -141,6 +144,7 @@ impl<B: BlockConfig> Clone for ConnectionState<B> {
             timeout: self.timeout,
             connection: self.connection.clone(),
             connected: self.connected.clone(),
+            block_sender: self.block_sender.clone(),
             node: self.node.clone(),
             topology: self.topology.clone(),
         }
@@ -148,25 +152,35 @@ impl<B: BlockConfig> Clone for ConnectionState<B> {
 }
 
 impl<B: BlockConfig> ConnectionState<B> {
-    fn new_listen(global: &GlobalState<B>, listen: &Listen) -> Self {
+    fn new_listen(
+        global: &GlobalState<B>,
+        listen: &Listen,
+        block_sender: mpsc::UnboundedSender<B::BlockHeader>,
+    ) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
             timeout: listen.timeout,
             connection: listen.connection,
             connected: None,
+            block_sender,
             node: global.node.clone(),
             topology: global.topology.clone(),
         }
     }
 
-    fn new_peer(global: &GlobalState<B>, peer: &Peer) -> Self {
+    fn new_peer(
+        global: &GlobalState<B>,
+        peer: &Peer,
+        block_sender: mpsc::UnboundedSender<B::BlockHeader>,
+    ) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
             timeout: peer.timeout,
             connection: peer.connection,
             connected: None,
+            block_sender,
             node: global.node.clone(),
             topology: global.topology.clone(),
         }

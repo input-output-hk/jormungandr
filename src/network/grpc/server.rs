@@ -6,7 +6,7 @@ use network_grpc::server::{listen, Server};
 
 use futures::future;
 use futures::prelude::*;
-use tokio::executor::DefaultExecutor;
+use tokio::{executor::DefaultExecutor, sync::mpsc};
 
 use std::net::SocketAddr;
 
@@ -30,7 +30,8 @@ pub fn run_listen_socket<B>(
 where
     B: BlockConfig + 'static,
 {
-    let state = ConnectionState::new_listen(&state, &listen_to);
+    let (block_sender, block_receiver) = mpsc::unbounded_channel();
+    let state = ConnectionState::new_listen(&state, &listen_to, block_sender);
 
     info!(
         "start listening and accepting gRPC connections on {}",

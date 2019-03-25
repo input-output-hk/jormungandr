@@ -10,16 +10,17 @@ use std::marker::PhantomData;
 
 use network::p2p_topology::{self as p2p, Gossip, Id, P2pTopology};
 use network_core::{
-    gossip,
+    error as core_error, gossip,
     server::{
-        block::{BlockError, BlockService},
-        gossip::{GossipError, GossipService},
-        transaction::{ProposeTransactionsResponse, TransactionError, TransactionService},
+        block::BlockService,
+        gossip::GossipService,
+        transaction::{ProposeTransactionsResponse, TransactionService},
         Node,
     },
 };
 
 use futures::future::{self, FutureResult};
+use futures::prelude::*;
 
 pub struct ConnectionServices<B: BlockConfig> {
     state: ConnectionState<B>,
@@ -50,9 +51,9 @@ impl<B: BlockConfig> Node for ConnectionServices<B> {
     }
 }
 
-impl From<intercom::Error> for BlockError {
+impl From<intercom::Error> for core_error::Error {
     fn from(err: intercom::Error) -> Self {
-        BlockError::with_code_and_cause(err.code(), err)
+        core_error::Error::new(err.code(), err)
     }
 }
 
@@ -83,19 +84,18 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     type BlockId = B::BlockHash;
     type BlockDate = B::BlockDate;
     type Block = B::Block;
-    type TipFuture = ReplyFuture<B::BlockHeader, BlockError>;
+    type TipFuture = ReplyFuture<B::BlockHeader, core_error::Error>;
     type Header = B::BlockHeader;
-    type PullBlocksStream = ReplyStream<B::Block, BlockError>;
-    type PullBlocksFuture = FutureResult<Self::PullBlocksStream, BlockError>;
-    type GetBlocksStream = ReplyStream<B::Block, BlockError>;
-    type GetBlocksFuture = FutureResult<Self::GetBlocksStream, BlockError>;
-    type PullHeadersStream = ReplyStream<B::BlockHeader, BlockError>;
-    type PullHeadersFuture = FutureResult<Self::PullHeadersStream, BlockError>;
-    type GetHeadersStream = ReplyStream<B::BlockHeader, BlockError>;
-    type GetHeadersFuture = FutureResult<Self::GetHeadersStream, BlockError>;
-    type BlockSubscription = SubscriptionStream<B::BlockHeader, BlockError>;
-    type BlockSubscriptionFuture = SubscriptionFuture<B::BlockHeader, BlockError>;
-    type AnnounceBlockFuture = ReplyFuture<(), BlockError>;
+    type PullBlocksStream = ReplyStream<B::Block, core_error::Error>;
+    type PullBlocksFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
+    type GetBlocksStream = ReplyStream<B::Block, core_error::Error>;
+    type GetBlocksFuture = FutureResult<Self::GetBlocksStream, core_error::Error>;
+    type PullHeadersStream = ReplyStream<B::BlockHeader, core_error::Error>;
+    type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
+    type GetHeadersStream = ReplyStream<B::BlockHeader, core_error::Error>;
+    type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
+    type BlockSubscription = SubscriptionStream<B::BlockHeader>;
+    type BlockSubscriptionFuture = SubscriptionFuture<B::BlockHeader>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
@@ -144,20 +144,14 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
         unimplemented!()
     }
 
-    fn subscribe(&mut self) -> Self::BlockSubscriptionFuture {
+    fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
+    where
+        Out: Stream<Item = Self::Header, Error = core_error::Error>,
+    {
+        // FIXME: plug in outbound stream
         let (handle, future) = subscription_reply();
         self.block_box.send_to(BlockMsg::Subscribe(handle));
         future
-    }
-
-    fn announce_block(&mut self, _header: &Self::Header) -> Self::AnnounceBlockFuture {
-        unimplemented!()
-    }
-}
-
-impl From<intercom::Error> for TransactionError {
-    fn from(err: intercom::Error) -> Self {
-        TransactionError::with_code_and_cause(err.code(), err)
     }
 }
 
@@ -177,10 +171,11 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
     type Transaction = B::Transaction;
     type TransactionId = B::TransactionId;
     type ProposeTransactionsFuture =
-        ReplyFuture<ProposeTransactionsResponse<B::TransactionId>, TransactionError>;
-    type GetTransactionsStream = ReplyStream<Self::Transaction, TransactionError>;
-    type GetTransactionsFuture = ReplyFuture<Self::GetTransactionsStream, TransactionError>;
-    type AnnounceTransactionFuture = ReplyFuture<(), TransactionError>;
+        ReplyFuture<ProposeTransactionsResponse<B::TransactionId>, core_error::Error>;
+    type GetTransactionsStream = ReplyStream<Self::Transaction, core_error::Error>;
+    type GetTransactionsFuture = ReplyFuture<Self::GetTransactionsStream, core_error::Error>;
+    type TransactionSubscription = SubscriptionStream<B::Transaction>;
+    type TransactionSubscriptionFuture = SubscriptionFuture<B::Transaction>;
 
     fn propose_transactions(
         &mut self,
@@ -193,10 +188,13 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
         unimplemented!()
     }
 
-    fn announce_transaction(
+    fn transaction_subscription<Out>(
         &mut self,
-        _tx: &[Self::TransactionId],
-    ) -> Self::AnnounceTransactionFuture {
+        _outbound: Out,
+    ) -> Self::TransactionSubscriptionFuture
+    where
+        Out: Stream<Item = Self::Transaction, Error = core_error::Error>,
+    {
         unimplemented!()
     }
 }
@@ -209,7 +207,7 @@ pub struct ConnectionGossipService<B: BlockConfig> {
 
 impl<B: BlockConfig> GossipService for ConnectionGossipService<B> {
     type Message = Gossip;
-    type MessageFuture = future::FutureResult<(gossip::NodeId, Self::Message), GossipError>;
+    type MessageFuture = future::FutureResult<(gossip::NodeId, Self::Message), core_error::Error>;
 
     /// Record and process gossip event.
     fn record_gossip(
@@ -229,7 +227,10 @@ impl<B: BlockConfig> GossipService for ConnectionGossipService<B> {
             let node_id = p2p::to_node_id(self.node.id());
             future::ok((node_id, reply))
         } else {
-            future::err(GossipError::failed("No message"))
+            future::err(core_error::Error::new(
+                core_error::Code::Internal,
+                "No message",
+            ))
         }
     }
 }
@@ -241,12 +242,6 @@ impl<B: BlockConfig> ConnectionGossipService<B> {
             node: state.node.clone(),
             _phantom: PhantomData,
         }
-    }
-}
-
-impl From<intercom::Error> for GossipError {
-    fn from(err: intercom::Error) -> Self {
-        GossipError::with_code_and_cause(err.code(), err)
     }
 }
 

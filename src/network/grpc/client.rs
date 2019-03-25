@@ -7,7 +7,7 @@ use network_grpc::{client::Client, peer as grpc_peer};
 use bytes::Bytes;
 use futures::future;
 use futures::prelude::*;
-use tokio::{executor::DefaultExecutor, net::TcpStream};
+use tokio::{executor::DefaultExecutor, net::TcpStream, sync::mpsc};
 
 pub fn run_connect_socket<B>(
     peer: Peer,
@@ -16,7 +16,8 @@ pub fn run_connect_socket<B>(
 where
     B: NetworkBlockConfig,
 {
-    let state = ConnectionState::new_peer(&state, &peer);
+    let (block_sender, block_receiver) = mpsc::unbounded_channel();
+    let state = ConnectionState::new_peer(&state, &peer, block_sender);
 
     info!("connecting to subscription peer {}", peer.connection);
     info!("address: {}", peer.address());
@@ -37,9 +38,11 @@ where
             error!("Error connecting to peer {}: {:?}", addr, err);
         })
         .and_then(|mut client: Client<B, TcpStream, DefaultExecutor>| {
-            client.subscribe_to_blocks().map_err(move |err| {
-                error!("SubscribeToBlocks request failed: {:?}", err);
-            })
+            client
+                .block_subscription(block_receiver)
+                .map_err(move |err| {
+                    error!("BlockSubscription request failed: {:?}", err);
+                })
         })
         .and_then(|subscription| {
             subscription
