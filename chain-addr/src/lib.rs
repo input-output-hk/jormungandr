@@ -138,11 +138,11 @@ impl From<bech32::Error> for Error {
     }
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+//pub type Result<T> = std::result::Result<T, Error>;
 
 impl Address {
     /// Try to convert from_bytes
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
         is_valid_data(bytes)?;
 
         let discr = get_discrimination_value(bytes[0]);
@@ -229,7 +229,7 @@ fn get_discrimination_value(first_byte: u8) -> Discrimination {
     }
 }
 
-fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType)> {
+fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType), Error> {
     if bytes.len() == 0 {
         return Err(Error::EmptyAddress);
     }
@@ -282,7 +282,7 @@ impl AddressReadable {
     }
 
     /// Validate from a String to create a valid AddressReadable
-    pub fn from_string(s: &str) -> Result<Self> {
+    pub fn from_string(s: &str) -> Result<Self, Error> {
         use std::str::FromStr;
         let r = Bech32::from_str(s)?;
         let expected_discrimination = if r.hrp() == Self::PRODUCTION_PREFIX {
@@ -337,7 +337,7 @@ impl std::str::FromStr for AddressReadable {
 impl PropertySerialize for Address {
     type Error = std::io::Error;
 
-    fn serialize<W: std::io::Write>(&self, writer: W) -> std::result::Result<(), Self::Error> {
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         use std::io::Write;
         let mut codec = Codec::from(writer);
@@ -359,7 +359,7 @@ impl PropertySerialize for Address {
         Ok(())
     }
 
-    fn serialize_as_vec(&self) -> std::result::Result<Vec<u8>, Self::Error> {
+    fn serialize_as_vec(&self) -> Result<Vec<u8>, Self::Error> {
         let mut data = Vec::with_capacity(self.to_size());
         self.serialize(&mut data)?;
         Ok(data)
@@ -368,7 +368,7 @@ impl PropertySerialize for Address {
 impl property::Deserialize for Address {
     type Error = std::io::Error;
 
-    fn deserialize<R: std::io::BufRead>(reader: R) -> std::result::Result<Self, Self::Error> {
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         use std::io::Read;
         let mut codec = Codec::from(reader);
