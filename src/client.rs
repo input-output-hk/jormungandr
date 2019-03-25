@@ -31,7 +31,7 @@ pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
     }
 }
 
-fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<B::BlockHeader, Error> {
+fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<HeaderHash, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
     let storage = blockchain.storage.read().unwrap();

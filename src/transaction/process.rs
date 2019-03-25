@@ -1,4 +1,4 @@
-use crate::blockcfg::BlockConfig;
+use crate::blockcfg::{Message, MessageId};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{do_stream_reply, TransactionMsg};
 use crate::rest::v0::node::stats::StatsCounter;
@@ -7,18 +7,14 @@ use chain_core::property::{Message as _, State as _};
 use std::sync::{mpsc::Receiver, Arc, RwLock};
 
 #[allow(type_alias_bounds)]
-pub type TPoolR<B: BlockConfig> = Arc<RwLock<TPool<B::MessageId, B::Message>>>;
+pub type TPoolR = Arc<RwLock<TPool<MessageId, Message>>>;
 
-pub fn transaction_task<B>(
-    blockchain: BlockchainR<B>,
-    tpool: TPoolR<B>,
-    r: Receiver<TransactionMsg<B>>,
+pub fn transaction_task(
+    blockchain: BlockchainR,
+    tpool: TPoolR,
+    r: Receiver<TransactionMsg>,
     stats_counter: StatsCounter,
-) -> !
-where
-    B: BlockConfig,
-    B::MessageId: Eq + std::hash::Hash,
-{
+) -> ! {
     loop {
         let tquery = r.recv().unwrap();
 
