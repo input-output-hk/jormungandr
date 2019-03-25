@@ -32,10 +32,11 @@ pub struct MultiVerse<ST> {
 impl<ST> MultiVerse<ST> {
     pub fn add(&mut self, prevhash: &HeaderHash, k: &HeaderHash, st: ST) {
         if !self.known_states.contains_key(k) {
-            self.known_states.insert(k, st);
-            match self.tips.remove(prevhash) {
-                None => self.tips.insert(k),
-                Some(_) => self.tips.insert(k),
+            self.known_states.insert(*k, st);
+            if self.tips.remove(prevhash) {
+                self.tips.insert(*k)
+            } else {
+                self.tips.insert(*k)
             }
         }
     }
@@ -45,7 +46,7 @@ impl<ST> MultiVerse<ST> {
     /// a gap between different version that gets bigger and bigger
     pub fn gc(&mut self) {}
 
-    pub fn get(&mut self, k: &HeaderHash) -> Option<ST> {
+    pub fn get(&mut self, k: &HeaderHash) -> Option<&ST> {
         self.known_states.get(k)
     }
 }
