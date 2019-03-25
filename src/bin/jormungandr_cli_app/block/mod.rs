@@ -110,7 +110,7 @@ impl Common {
 
 impl AddArgs {
     fn open_transaction(&self) -> AuthenticatedTransaction<Address, NoExtra> {
-        let reader = open_file_read(&self.transaction);
+        let mut reader = open_file_read(&self.transaction);
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes);
         let mut reader = ReadBuf::from(&bytes);
