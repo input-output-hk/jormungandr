@@ -1,13 +1,17 @@
-use chain_core::mempack::{ReadBuf, ReadError, Readable};
-use chain_core::property;
-
-use super::version::{BlockVersion, BlockVersionTag};
+use crate::block::{
+    headerraw::HeaderRaw,
+    version::{BlockVersion, BlockVersionTag},
+};
 use crate::date::BlockDate;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     verify_signature, Hash,
 };
 use crate::leadership::{bft, genesis};
+use chain_core::{
+    mempack::{read_from_raw, ReadBuf, ReadError, Readable},
+    property,
+};
 use chain_crypto::{
     self, Curve25519_2HashDH, Ed25519Extended, FakeMMM, Signature, VerifiableRandomFunction,
     Verification,
@@ -125,6 +129,11 @@ impl Header {
 
     pub fn chain_length(&self) -> ChainLength {
         self.common.chain_length
+    }
+
+    pub fn to_raw(&self) -> Result<HeaderRaw, std::io::Error> {
+        use chain_core::property::Serialize;
+        self.serialize_as_vec().map(HeaderRaw)
     }
 
     /// function to compute the Header Hash as per the spec. It is the hash
@@ -282,6 +291,34 @@ impl Readable for Header {
         };
 
         Ok(Header { common, proof })
+    }
+}
+
+impl property::Deserialize for Header {
+    type Error = std::io::Error;
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        let raw = HeaderRaw::deserialize(reader)?;
+        read_from_raw(raw.as_ref())
+    }
+}
+
+impl property::Header for Header {
+    type Id = HeaderHash;
+    type Date = BlockDate;
+    type Version = BlockVersion;
+    type ChainLength = ChainLength;
+
+    fn id(&self) -> Self::Id {
+        self.hash()
+    }
+    fn chain_length(&self) -> Self::ChainLength {
+        self.common.chain_length
+    }
+    fn date(&self) -> Self::Date {
+        *self.block_date()
+    }
+    fn version(&self) -> Self::Version {
+        *self.block_version()
     }
 }
 
