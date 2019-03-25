@@ -1,22 +1,15 @@
-use crate::blockcfg::BlockConfig;
 use crate::blockchain::chain;
 use crate::intercom::BlockMsg;
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::task::TaskBroadcastBox;
-
 use chain_core::property::HasHeader;
 
-use std::fmt::Debug;
-
-pub fn process<Chain>(
-    blockchain: &chain::BlockchainR<Chain>,
-    bquery: BlockMsg<Chain>,
-    network_broadcast: &mut TaskBroadcastBox<Chain::BlockHeader>,
+pub fn process(
+    blockchain: &chain::BlockchainR,
+    bquery: BlockMsg,
+    network_broadcast: &mut TaskBroadcastBox,
     stats_counter: &StatsCounter,
-) where
-    Chain: BlockConfig,
-    Chain::BlockHeader: Debug,
-{
+) {
     let res = match bquery {
         BlockMsg::LeadershipBlock(block) => {
             let header = block.header();
