@@ -35,8 +35,9 @@ pub trait BlockConfig {
         > + Clone
         + Send
         + Sync
-        + Debug;
-    type Transaction: Transaction + Send + Clone;
+        + Debug
+        + 'static;
+    type Transaction: Transaction + Send + Sync + Clone;
     type TransactionId: TransactionId + Serialize + Deserialize;
     type Message: Message<Id = Self::MessageId> + Send + Clone;
     type MessageId: MessageId + Send;
