@@ -2,14 +2,14 @@
 //!
 
 use crate::{
-    block::{BlockDate, BlockId, BlockVersion, BlockVersionTag, ChainLength},
+    block::{BlockVersion, BlockVersionTag},
     fee::LinearFee,
     key::Hash,
     leadership::bft,
 };
 use chain_addr::Discrimination;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
-use chain_core::property::{self, BlockId as _};
+use chain_core::property;
 use std::sync::Arc;
 
 use num_derive::FromPrimitive;
@@ -139,15 +139,12 @@ impl Readable for UpdateProposal {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub discrimination: Discrimination,
-    pub last_block_id: BlockId,
-    pub last_block_date: BlockDate,
-    pub chain_length: ChainLength,
-    pub max_number_of_transactions_per_block: Arc<u32>,
-    pub bootstrap_key_slots_percentage: Arc<u8>, // == d * 100
+    pub max_number_of_transactions_per_block: u32,
+    pub bootstrap_key_slots_percentage: u8, // == d * 100
     pub block_version: BlockVersion,
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
     /// allow for the creation of accounts without the certificate
-    pub allow_account_creation: Arc<bool>,
+    pub allow_account_creation: bool,
     pub linear_fees: Arc<LinearFee>,
 }
 
@@ -157,20 +154,17 @@ impl Settings {
     pub fn new(address_discrimination: Discrimination) -> Self {
         Self {
             discrimination: address_discrimination,
-            last_block_id: Hash::zero(),
-            last_block_date: BlockDate::first(),
-            chain_length: ChainLength(0),
-            max_number_of_transactions_per_block: Arc::new(100),
-            bootstrap_key_slots_percentage: Arc::new(SLOTS_PERCENTAGE_RANGE),
+            max_number_of_transactions_per_block: 100,
+            bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
             block_version: BlockVersionTag::ConsensusNone.to_block_version(),
             bft_leaders: Arc::new(Vec::new()),
-            allow_account_creation: Arc::new(false),
+            allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
         }
     }
 
     pub fn allow_account_creation(&self) -> bool {
-        *self.allow_account_creation
+        self.allow_account_creation
     }
 
     pub fn linear_fees(&self) -> LinearFee {
@@ -186,11 +180,10 @@ impl Settings {
         if let Some(max_number_of_transactions_per_block) =
             update.max_number_of_transactions_per_block
         {
-            new_state.max_number_of_transactions_per_block =
-                Arc::new(max_number_of_transactions_per_block);
+            new_state.max_number_of_transactions_per_block = max_number_of_transactions_per_block;
         }
         if let Some(bootstrap_key_slots_percentage) = update.bootstrap_key_slots_percentage {
-            new_state.bootstrap_key_slots_percentage = Arc::new(bootstrap_key_slots_percentage);
+            new_state.bootstrap_key_slots_percentage = bootstrap_key_slots_percentage;
         }
         if let Some(block_version) = update.block_version {
             new_state.block_version = block_version;
@@ -199,7 +192,7 @@ impl Settings {
             new_state.bft_leaders = Arc::new(leaders);
         }
         if let Some(allow_account_creation) = update.allow_account_creation {
-            new_state.allow_account_creation = Arc::new(allow_account_creation);
+            new_state.allow_account_creation = allow_account_creation;
         }
         if let Some(linear_fees) = update.linear_fees {
             new_state.linear_fees = Arc::new(linear_fees);
@@ -227,25 +220,3 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
-
-/*
-impl property::Settings for Settings {
-    type Block = crate::block::Block;
-
-    fn tip(&self) -> <Self::Block as property::Block>::Id {
-        self.last_block_id.clone()
-    }
-
-    fn max_number_of_transactions_per_block(&self) -> u32 {
-        *self.max_number_of_transactions_per_block
-    }
-
-    fn block_version(&self) -> <Self::Block as property::Block>::Version {
-        *self.block_version
-    }
-
-    fn chain_length(&self) -> <Self::Block as property::Block>::ChainLength {
-        self.chain_length
-    }
-}
-*/

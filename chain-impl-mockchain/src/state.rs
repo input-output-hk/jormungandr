@@ -40,34 +40,6 @@ impl From<leadership::Error> for Error {
     }
 }
 
-/*
-impl property::State for State {
-    type Error = Error;
-    type Header = Header;
-    type Content = Message;
-
-}
-*/
-
-/*
-impl property::Settings for State {
-    type Block = Block;
-
-    fn tip(&self) -> <Self::Block as property::Block>::Id {
-        self.settings.tip()
-    }
-    fn max_number_of_transactions_per_block(&self) -> u32 {
-        self.settings.max_number_of_transactions_per_block()
-    }
-    fn block_version(&self) -> <Self::Block as property::Block>::Version {
-        self.settings.block_version()
-    }
-    fn chain_length(&self) -> <Self::Block as property::Block>::ChainLength {
-        self.settings.chain_length()
-    }
-}
-*/
-
 impl State {
     pub fn new(address_discrimination: Discrimination) -> Self {
         State {
@@ -81,15 +53,7 @@ impl State {
         self.ledger.utxos.iter()
     }
 
-    pub fn apply_block(&self, header: &Header, contents: &[Message]) -> Result<Self, Error> {
-        let mut new_state = self.apply_contents(contents)?;
-        new_state.settings.last_block_id = header.hash();
-        new_state.settings.last_block_date = *header.block_date();
-        new_state.settings.chain_length = header.common.chain_length;
-        Ok(new_state)
-    }
-
-    fn apply_contents(&self, contents: &[Message]) -> Result<Self, Error> {
+    pub fn apply_block(&self, contents: &[Message]) -> Result<Self, Error> {
         let mut new_ledger = self.ledger.clone();
         let mut new_delegation = self.delegation.clone();
         let mut new_settings = self.settings.clone();
