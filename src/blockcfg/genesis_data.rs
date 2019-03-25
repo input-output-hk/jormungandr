@@ -4,7 +4,7 @@ use chain_addr::{Address, AddressReadable};
 use chain_crypto::{self, AsymmetricKey, Ed25519Extended};
 use chain_impl_mockchain::leadership::bft::LeaderId;
 use chain_impl_mockchain::{
-    block::{Block, BlockBuilder, Message, BLOCK_VERSION_CONSENSUS_BFT},
+    block::{Block, BlockBuilder, Message},
     fee,
     setting::UpdateProposal,
     transaction::{self, Output, UtxoPointer},

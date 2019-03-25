@@ -15,7 +15,7 @@ impl BlockConfig for Mockchain {
     type ChainLength = block::ChainLength;
     type BlockHash = key::Hash;
     type BlockHeader = block::Header;
-    type Transaction = transaction::SignedTransaction<Address>;
+    type Transaction = transaction::AuthenticatedTransaction<Address, transaction::NoExtra>;
     type TransactionId = transaction::TransactionId;
     type Message = block::Message;
     type MessageId = block::message::MessageId;

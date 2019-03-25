@@ -84,13 +84,11 @@ impl Blockchain<Mockchain> {
             {
                 let info = info.unwrap();
                 let block = &storage.get_block(&info.block_hash).unwrap().0;
-                state = state.apply_block(&block.header, block.messages()).unwrap();
+                state = state.apply_block(block.messages()).unwrap();
             }
         } else {
             let block_0 = genesis_data.to_block_0();
-            state = state
-                .apply_block(&block_0.header, block_0.messages())
-                .unwrap();
+            state = state.apply_block(block_0.messages()).unwrap();
             storage.put_block(&block_0).unwrap();
         }
 
