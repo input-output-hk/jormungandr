@@ -1,6 +1,7 @@
 //! Module provides cryptographic utilities and types related to
 //! the user keys.
 //!
+use chain_core::mempack::{read_mut_slice, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto as crypto;
 use chain_crypto::{
@@ -12,6 +13,27 @@ use std::str::FromStr;
 pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519Extended>;
 pub type SpendingSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
 pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519Extended>;
+
+fn chain_crypto_pub_err(e: crypto::PublicKeyError) -> ReadError {
+    match e {
+        crypto::PublicKeyError::SizeInvalid => {
+            ReadError::StructureInvalid("publickey size invalid".to_string())
+        }
+        crypto::PublicKeyError::StructureInvalid => {
+            ReadError::StructureInvalid("publickey structure invalid".to_string())
+        }
+    }
+}
+fn chain_crypto_sig_err(e: crypto::SignatureError) -> ReadError {
+    match e {
+        crypto::SignatureError::SizeInvalid => {
+            ReadError::StructureInvalid("signature size invalid".to_string())
+        }
+        crypto::SignatureError::StructureInvalid => {
+            ReadError::StructureInvalid("signature structure invalid".to_string())
+        }
+    }
+}
 
 #[inline]
 pub fn serialize_public_key<A: AsymmetricKey, W: std::io::Write>(
@@ -28,28 +50,26 @@ pub fn serialize_signature<A: VerificationAlgorithm, T, W: std::io::Write>(
     writer.write_all(signature.as_ref())
 }
 #[inline]
-pub fn deserialize_public_key<A, R>(mut reader: R) -> Result<crypto::PublicKey<A>, std::io::Error>
+pub fn deserialize_public_key<'a, A>(
+    buf: &mut ReadBuf<'a>,
+) -> Result<crypto::PublicKey<A>, ReadError>
 where
     A: AsymmetricKey,
-    R: std::io::BufRead,
 {
-    let mut buffer = vec![0; A::PUBLIC_KEY_SIZE];
-    reader.read_exact(&mut buffer)?;
-    crypto::PublicKey::from_bytes(&buffer)
-        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err)))
+    let mut bytes = vec![0u8; A::PUBLIC_KEY_SIZE];
+    read_mut_slice(buf, &mut bytes[..])?;
+    crypto::PublicKey::from_bytes(&bytes).map_err(chain_crypto_pub_err)
 }
 #[inline]
-pub fn deserialize_signature<A, T, R>(
-    mut reader: R,
-) -> Result<crypto::Signature<T, A>, std::io::Error>
+pub fn deserialize_signature<'a, A, T>(
+    buf: &mut ReadBuf<'a>,
+) -> Result<crypto::Signature<T, A>, ReadError>
 where
     A: VerificationAlgorithm,
-    R: std::io::BufRead,
 {
-    let mut buffer = vec![0; A::SIGNATURE_SIZE];
-    reader.read_exact(&mut buffer)?;
-    crypto::Signature::from_bytes(&buffer)
-        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err)))
+    let mut bytes = vec![0u8; A::SIGNATURE_SIZE];
+    read_mut_slice(buf, &mut bytes[..])?;
+    crypto::Signature::from_bytes(&bytes).map_err(chain_crypto_sig_err)
 }
 
 pub fn make_signature<T, A>(
@@ -132,16 +152,11 @@ where
     }
 }
 
-impl<T: property::Deserialize, A: SigningAlgorithm> property::Deserialize for Signed<T, A>
-where
-    std::io::Error: From<T::Error>,
-{
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
+impl<T: Readable, A: SigningAlgorithm> Readable for Signed<T, A> {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(Signed {
-            data: T::deserialize(&mut reader)?,
-            sig: deserialize_signature(&mut reader)?,
+            data: T::read(buf)?,
+            sig: deserialize_signature(buf)?,
         })
     }
 }
@@ -197,6 +212,13 @@ impl property::Deserialize for Hash {
         let mut buffer = [0; crypto::Blake2b256::HASH_SIZE];
         reader.read_exact(&mut buffer)?;
         Ok(Hash(crypto::Blake2b256::from(buffer)))
+    }
+}
+
+impl Readable for Hash {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let bytes = <[u8; crypto::Blake2b256::HASH_SIZE]>::read(buf)?;
+        Ok(Hash(crypto::Blake2b256::from(bytes)))
     }
 }
 
