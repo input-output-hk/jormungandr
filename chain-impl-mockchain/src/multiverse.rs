@@ -34,9 +34,9 @@ impl<ST> MultiVerse<ST> {
         if !self.known_states.contains_key(k) {
             self.known_states.insert(*k, st);
             if self.tips.remove(prevhash) {
-                self.tips.insert(*k)
+                self.tips.insert(*k);
             } else {
-                self.tips.insert(*k)
+                self.tips.insert(*k);
             }
         }
     }
