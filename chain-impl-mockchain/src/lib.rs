@@ -14,13 +14,13 @@ pub mod fee;
 pub mod key;
 pub mod leadership;
 pub mod ledger;
+pub mod multiverse;
 pub mod setting;
 pub mod stake;
 pub mod transaction;
 pub mod txbuilder;
 pub mod utxo;
 pub mod value;
-pub mod multiverse;
 
 #[cfg(test)]
 mod tests {}
