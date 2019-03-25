@@ -2,7 +2,7 @@
 //!
 
 use crate::{
-    block::{BlockDate, BlockId, BlockVersion, ChainLength, BLOCK_VERSION_CONSENSUS_NONE},
+    block::{BlockDate, BlockId, BlockVersion, BlockVersionTag, ChainLength},
     fee::LinearFee,
     key::Hash,
     leadership::bft,
@@ -150,7 +150,7 @@ pub struct Settings {
     pub chain_length: ChainLength,
     pub max_number_of_transactions_per_block: Arc<u32>,
     pub bootstrap_key_slots_percentage: Arc<u8>, // == d * 100
-    pub block_version: Arc<BlockVersion>,
+    pub block_version: BlockVersion,
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
     /// allow for the creation of accounts without the certificate
     pub allow_account_creation: Arc<bool>,
@@ -168,7 +168,7 @@ impl Settings {
             chain_length: ChainLength(0),
             max_number_of_transactions_per_block: Arc::new(100),
             bootstrap_key_slots_percentage: Arc::new(SLOTS_PERCENTAGE_RANGE),
-            block_version: Arc::new(BLOCK_VERSION_CONSENSUS_NONE),
+            block_version: BlockVersionTag::ConsensusNone.to_block_version(),
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: Arc::new(false),
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
@@ -199,7 +199,7 @@ impl Settings {
             new_state.bootstrap_key_slots_percentage = Arc::new(bootstrap_key_slots_percentage);
         }
         if let Some(block_version) = update.block_version {
-            new_state.block_version = Arc::new(block_version);
+            new_state.block_version = block_version;
         }
         if let Some(leaders) = update.bft_leaders {
             new_state.bft_leaders = Arc::new(leaders);

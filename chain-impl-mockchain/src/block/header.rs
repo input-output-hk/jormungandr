@@ -1,5 +1,6 @@
 use chain_core::property;
 
+use super::version::{BlockVersion, BlockVersionTag};
 use crate::date::BlockDate;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
@@ -15,13 +16,6 @@ pub type HeaderHash = Hash;
 pub type BlockContentHash = Hash;
 pub type BlockId = Hash;
 pub type BlockContentSize = u32;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BlockVersion(pub(crate) u16);
-
-pub const BLOCK_VERSION_CONSENSUS_NONE: BlockVersion = BlockVersion::new(0x0000_0000);
-pub const BLOCK_VERSION_CONSENSUS_BFT: BlockVersion = BlockVersion::new(0x0000_0001);
-pub const BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS: BlockVersion = BlockVersion::new(0x0000_0002);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Common {
@@ -74,12 +68,6 @@ pub enum Proof {
 pub struct Header {
     pub(crate) common: Common,
     pub(crate) proof: Proof,
-}
-
-impl BlockVersion {
-    pub const fn new(v: u16) -> Self {
-        BlockVersion(v)
-    }
 }
 
 impl PartialEq<Self> for BftSignature {
@@ -287,9 +275,9 @@ impl property::Deserialize for Header {
         codec.read_exact(&mut hash)?;
         let block_parent_hash = Hash::from(chain_crypto::Blake2b256::from(hash));
 
-        let proof = match block_version {
-            BLOCK_VERSION_CONSENSUS_NONE => Proof::None,
-            BLOCK_VERSION_CONSENSUS_BFT => {
+        let proof = match BlockVersionTag::from_block_version(common.block_version) {
+            Some(BlockVersionTag::ConsensusNone) => Proof::None,
+            Some(BlockVersionTag::ConsensusBft) => {
                 // BFT
                 let leader_id = deserialize_public_key(&mut codec).map(bft::LeaderId)?;
                 let signature = deserialize_signature(&mut codec).map(BftSignature)?;
@@ -298,8 +286,7 @@ impl property::Deserialize for Header {
                     signature,
                 })
             }
-            BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => {
-                let genesis_praos_id = genesis::GenesisPraosId::deserialize(&mut codec)?;
+            Some(BlockVersionTag::ConsensusGenesisPraos) => {
                 dbg!(&genesis_praos_id);
                 let vrf_proof = {
                     let mut buf =
@@ -408,14 +395,14 @@ mod test {
 
     impl Arbitrary for Header {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let common = Common::arbitrary(g);
-            let proof = match common.block_version {
-                BLOCK_VERSION_CONSENSUS_NONE => Proof::None,
-                BLOCK_VERSION_CONSENSUS_BFT => Proof::Bft(Arbitrary::arbitrary(g)),
-                BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => {
+            let mut common = Common::arbitrary(g);
+            let proof = match BlockVersionTag::from_block_version(common.block_version) {
+                Some(BlockVersionTag::ConsensusNone) => Proof::None,
+                Some(BlockVersionTag::ConsensusBft) => Proof::Bft(Arbitrary::arbitrary(g)),
+                Some(BlockVersionTag::ConsensusGenesisPraos) => {
                     Proof::GenesisPraos(Arbitrary::arbitrary(g))
                 }
-                _ => unreachable!(),
+                None => unreachable!(),
             };
             Header {
                 common: common,

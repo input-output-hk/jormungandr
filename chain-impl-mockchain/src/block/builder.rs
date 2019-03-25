@@ -2,10 +2,8 @@
 //!
 
 use crate::block::{
-    BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion,
+    BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersionTag,
     ChainLength, Common, GenesisPraosProof, Header, KESSignature, Message, Proof,
-    BLOCK_VERSION_CONSENSUS_BFT, BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS,
-    BLOCK_VERSION_CONSENSUS_NONE,
 };
 use crate::key::{make_signature, make_signature_update};
 use crate::leadership::{self, genesis};
@@ -38,7 +36,7 @@ impl BlockBuilder {
             common: Common {
                 block_content_size: 0,
                 block_content_hash: BlockContentHash::zero(),
-                block_version: BLOCK_VERSION_CONSENSUS_NONE,
+                block_version: BlockVersionTag::ConsensusNone.to_block_version(),
                 block_parent_hash: BlockId::zero(),
                 block_date: BlockDate::first(),
                 chain_length: ChainLength(0),
@@ -100,11 +98,11 @@ impl BlockBuilder {
         }
     }
 
-    fn finalize_common(&mut self, block_version: BlockVersion) -> &mut Self {
+    fn finalize_common(&mut self, block_version_tag: BlockVersionTag) -> &mut Self {
         let (content_hash, content_size) = self.contents.compute_hash_size();
         self.common.block_content_hash = content_hash;
         self.common.block_content_size = content_size as u32;
-        self.common.block_version = block_version;
+        self.common.block_version = block_version_tag.to_block_version();
         self
     }
 
@@ -117,14 +115,14 @@ impl BlockBuilder {
         assert!(self.common.block_parent_hash == BlockId::zero());
         assert!(self.common.block_date == BlockDate::first());
         assert_eq!(self.common.chain_length, ChainLength(0));
-        self.finalize_common(BLOCK_VERSION_CONSENSUS_NONE);
+        self.finalize_common(BlockVersionTag::ConsensusNone);
         self.make_block(Proof::None)
     }
 
     /// create a BFT Block. this block will be signed with the given private key
     pub fn make_bft_block(mut self, bft_signing_key: &SecretKey<Ed25519Extended>) -> Block {
         assert_ne!(self.common.chain_length, ChainLength(0));
-        self.finalize_common(BLOCK_VERSION_CONSENSUS_BFT);
+        self.finalize_common(BlockVersionTag::ConsensusBft);
         let bft_proof = BftProof {
             leader_id: leadership::bft::LeaderId(bft_signing_key.to_public()),
             signature: super::BftSignature(make_signature(bft_signing_key, &self.common)),
@@ -142,7 +140,7 @@ impl BlockBuilder {
         vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
     ) -> Block {
         assert_ne!(self.common.chain_length, ChainLength(0));
-        self.finalize_common(BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
+        self.finalize_common(BlockVersionTag::ConsensusGenesisPraos);
 
         let genesis_praos_proof = GenesisPraosProof {
             genesis_praos_id: genesis_praos_id.clone(),

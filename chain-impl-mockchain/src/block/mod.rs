@@ -8,15 +8,16 @@ mod builder;
 //mod cstruct;
 mod header;
 pub mod message;
+mod version;
+
+pub use self::version::*;
 
 pub use self::builder::BlockBuilder;
 
 pub use self::header::{
-    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, ChainLength,
-    Common, GenesisPraosProof, Header, KESSignature, Proof, BLOCK_VERSION_CONSENSUS_BFT,
-    BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
+    GenesisPraosProof, Header, KESSignature, Proof,
 };
-pub use self::message::Message;
+pub use self::version::*;
 
 pub use crate::date::{BlockDate, BlockDateParseError};
 
@@ -74,7 +75,6 @@ impl Block {
         let proof = match leader {
             Leader::None => Proof::None,
             Leader::BftLeader(private_key) => {
-                assert!(common.block_version == BLOCK_VERSION_CONSENSUS_BFT);
                 let signature = make_signature(&private_key, &common);
                 Proof::Bft(BftProof {
                     leader_id: bft::LeaderId(private_key.to_public()),
@@ -82,7 +82,6 @@ impl Block {
                 })
             }
             Leader::GenesisPraos(ref mut kes_secret, vrf_secret, proven_output_seed) => {
-                assert!(common.block_version == BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
                 let gpleader = GenesisPraosLeader {
                     kes_public_key: kes_secret.to_public(),
                     vrf_public_key: vrf_secret.to_public(),
