@@ -1,3 +1,4 @@
+use crate::blockcfg::HeaderHash;
 use crate::blockchain::chain;
 use crate::intercom::BlockMsg;
 use crate::rest::v0::node::stats::StatsCounter;
@@ -7,7 +8,7 @@ use chain_core::property::HasHeader;
 pub fn process(
     blockchain: &chain::BlockchainR,
     bquery: BlockMsg,
-    network_broadcast: &mut TaskBroadcastBox,
+    network_broadcast: &mut TaskBroadcastBox<HeaderHash>,
     stats_counter: &StatsCounter,
 ) {
     let res = match bquery {
