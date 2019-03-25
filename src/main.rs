@@ -62,6 +62,7 @@ use futures::Future;
 use bech32::{u5, Bech32, FromBase32, ToBase32};
 use blockcfg::{genesis_data::ConfigGenesisData, genesis_data::GenesisData};
 use blockchain::{Blockchain, BlockchainR};
+use chain_core::property::Settings as _;
 use chain_crypto::{
     AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
 };
@@ -116,9 +117,14 @@ fn block_task(
 
 fn startup_info(gd: &GenesisData, blockchain: &Blockchain, _settings: &settings::start::Settings) {
     println!(
-        "k={} tip={}",
+        "k={} tip={} length={:?}",
         gd.epoch_stability_depth,
-        blockchain.get_tip()
+        blockchain.get_tip(),
+        blockchain
+            .multiverse
+            .get(&blockchain.get_tip())
+            .unwrap()
+            .chain_length()
     );
 }
 

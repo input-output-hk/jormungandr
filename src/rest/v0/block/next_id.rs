@@ -3,7 +3,6 @@ use actix_web::error::{Error as ActixError, ErrorBadRequest, ErrorInternalServer
 use actix_web::{Path, Query, State};
 use blockchain::BlockchainR;
 use bytes::Bytes;
-use chain_core::property::Settings;
 
 pub fn handle_request(
     blockchain: State<BlockchainR>,
@@ -15,7 +14,7 @@ pub fn handle_request(
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
     let blockchain = blockchain.read().unwrap();
-    let tip = blockchain.state.tip();
+    let tip = blockchain.tip;
     let storage = blockchain.storage.read().unwrap();
     storage
         .iterate_range(&block_id, &tip)

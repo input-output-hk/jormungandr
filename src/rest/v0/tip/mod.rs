@@ -1,6 +1,5 @@
 use crate::blockchain::BlockchainR;
 use actix_web::{App, Responder, State};
-use chain_core::property::Settings as _;
 
 pub fn create_handler(
     blockchain: BlockchainR,
@@ -13,5 +12,5 @@ pub fn create_handler(
 }
 
 fn handle_request(settings: State<BlockchainR>) -> impl Responder {
-    settings.read().unwrap().state.tip().to_string()
+    settings.read().unwrap().tip.to_string()
 }

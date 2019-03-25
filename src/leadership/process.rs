@@ -30,9 +30,10 @@ pub fn leadership_task<B>(
         // on the blockchain as we are not expecting to be _blocked_ while creating
         // the block.
         let b = blockchain.read().unwrap();
-        let leadership: B::Leadership = LeaderSelection::retrieve(&b.state);
-        let parent_id = b.state.tip();
-        let chain_length = b.state.chain_length().next();
+        let state = b.multiverse.get(&b.tip).unwrap();
+        let leadership: B::Leadership = LeaderSelection::retrieve(state);
+        let parent_id = &b.tip;
+        let chain_length = state.chain_length().next();
 
         let am_leader = leadership.get_leader_at(date.clone()).unwrap() == leader_id;
 
@@ -42,7 +43,7 @@ pub fn leadership_task<B>(
             let transactions = transaction_pool
                 .write()
                 .unwrap()
-                .collect(b.state.max_number_of_transactions_per_block() as usize);
+                .collect(state.max_number_of_transactions_per_block() as usize);
 
             info!(
                 "leadership create tpool={} transactions ({}.{})",
@@ -51,7 +52,7 @@ pub fn leadership_task<B>(
                 idx
             );
 
-            let block = B::make_block(&secret, date, chain_length, parent_id, transactions);
+            let block = B::make_block(&secret, date, chain_length, parent_id.clone(), transactions);
 
             block_task.send_to(BlockMsg::LeadershipBlock(block));
         }

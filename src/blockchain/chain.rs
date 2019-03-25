@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use chain_core::property::{
     Block as _, BlockId as _, HasHeader as _, HasMessages as _, Settings as _, State as _,
 };
-use chain_impl_mockchain::state::State;
+use chain_impl_mockchain::multiverse;
 use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 
@@ -14,8 +14,9 @@ pub struct Blockchain {
     /// the storage for the overall blockchains (blocks)
     pub storage: Arc<RwLock<Box<BlockStore<Block = Block> + Send + Sync>>>,
 
-    // TODO use multiverse here
-    pub multiverse: MultiVerse<Ledger>,
+    pub multiverse: MultiVerse<HeaderHash, Ledger>,
+
+    pub tip: HeaderHash,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
@@ -50,7 +51,9 @@ impl Blockchain {
             }
         };
 
-        if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG).unwrap() {
+        let mut multiverse = multiverse::Multiverse::new();
+
+        let tip_hash = if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG).unwrap() {
             info!("restoring state at tip {}", tip_hash);
 
             // FIXME: should restore from serialized chain state once we have it.
@@ -60,17 +63,24 @@ impl Blockchain {
             {
                 let info = info.unwrap();
                 let block = &storage.get_block(&info.block_hash).unwrap().0;
-                state = state.apply_block(block.messages()).unwrap();
+                state = state.apply_block(&block.header, block.messages()).unwrap();
+                assert_eq!(state.tip(), info.block_hash);
+                multiverse.add(&info.block_hash, state.clone());
             }
+
+            tip_hash
         } else {
             let block_0 = genesis_data.to_block_0();
             state = state.apply_block(block_0.messages()).unwrap();
             storage.put_block(&block_0).unwrap();
-        }
+            multiverse.add(&block_0.id(), state);
+            block_0.id()
+        };
 
         Blockchain {
             storage: Arc::new(RwLock::new(storage)),
-            state: state,
+            multiverse,
+            tip: tip_hash,
             unconnected_blocks: BTreeMap::default(),
         }
     }
@@ -93,31 +103,35 @@ impl Blockchain {
 
     /// Handle a block whose ancestors are on disk.
     fn handle_connected_block(&mut self, block_hash: HeaderHash, block: Block) {
-        let current_tip = self
-            .storage
-            .get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)
-            .unwrap()
-            .unwrap();
+        if block_hash == self.tip {
+            return;
+        }
 
-        let current_ledger = self.multiverse.get(current_tip);
+        let state = self.multiverse.get(&self.tip).unwrap().clone(); // FIXME
 
-        match current_ledger.apply_block(&block.header(), block.messages()) {
+        match state.apply_block(&block.header(), block.messages()) {
             Ok(state) => {
-                if block_hash != current_tip {
-                    let mut storage = self.storage.write().unwrap();
-                    storage.put_block(&block).unwrap();
-                    storage
-                        .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
-                        .unwrap();
-                }
+                // FIXME: only update tip to a longer chain.
 
-                // TODO: update with the multiverse here
-                self.state = state;
+                assert_eq!(state.tip(), block_hash);
+
+                let mut storage = self.storage.write().unwrap();
+                storage.put_block(&block).unwrap();
+                storage
+                    .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
+                    .unwrap();
+
+                self.multiverse.add(&block_hash, state);
+                self.tip = block_hash;
             }
             Err(error) => error!("Error with incoming block: {}", error),
         }
     }
 
+    /// return the current tip hash and date
+    pub fn get_tip(&self) -> HeaderHash {
+        self.tip.clone()
+    }
     fn block_exists(&self, block_hash: &HeaderHash) -> Result<bool, storage::Error> {
         // TODO: we assume as an invariant that if a block exists on
         // disk, its ancestors exist on disk as well. Need to make
@@ -128,7 +142,8 @@ impl Blockchain {
     }
 
     /// Request a missing block from the network.
-    fn sollicit_block(&mut self, _block_hash: &HeaderHash) {
+    fn sollicit_block(&mut self, block_hash: &HeaderHash) {
+        info!("solliciting block {} from the network", block_hash);
         //unimplemented!();
     }
 

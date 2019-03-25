@@ -17,7 +17,7 @@ pub fn create_handler(
 
 fn handle_request(blockchain: State<BlockchainR>) -> impl Responder {
     let blockchain = blockchain.read().unwrap();
-    let utxos = blockchain.state.utxos();
+    let utxos = blockchain.multiverse.get(&blockchain.tip).unwrap().utxos();
     let utxos = utxos.map(Utxo::from).collect::<Vec<_>>();
     Json(utxos)
 }
