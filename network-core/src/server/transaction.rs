@@ -56,7 +56,10 @@ pub trait TransactionService {
     //
     // Returns a future that resolves to an asynchronous subscription stream
     // that receives transactions announced by the peer.
-    fn subscription<Out>(&mut self, outbound: Out) -> Self::TransactionSubscriptionFuture
+    fn transaction_subscription<Out>(
+        &mut self,
+        outbound: Out,
+    ) -> Self::TransactionSubscriptionFuture
     where
         Out: Stream<Item = Self::Transaction, Error = Error>;
 }

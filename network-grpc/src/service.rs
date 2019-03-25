@@ -345,7 +345,7 @@ where
     ) -> Self::BlockSubscriptionFuture {
         let service = try_get_service!(self.block_service);
         let stream = RequestStream::new(request.into_inner());
-        ResponseFuture::new(service.subscription(stream))
+        ResponseFuture::new(service.block_subscription(stream))
     }
 
     fn transaction_subscription(
@@ -354,7 +354,7 @@ where
     ) -> Self::TransactionSubscriptionFuture {
         let service = try_get_service!(self.tx_service);
         let stream = RequestStream::new(request.into_inner());
-        ResponseFuture::new(service.subscription(stream))
+        ResponseFuture::new(service.transaction_subscription(stream))
     }
 
     /// Work with gossip message.
