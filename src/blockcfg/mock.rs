@@ -9,43 +9,6 @@ use network::p2p_topology as p2p;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Mockchain;
-impl BlockConfig for Mockchain {
-    type Block = block::Block;
-    type BlockDate = block::BlockDate;
-    type ChainLength = block::ChainLength;
-    type BlockHash = key::Hash;
-    type BlockHeader = block::Header;
-    type Message = block::Message;
-    type MessageId = block::message::MessageId;
-    type GenesisData = GenesisData;
-    type State = state::State;
-    type Leadership = leadership::Leadership;
-
-    type NodeSigningKey = leadership::Leader;
-
-    type Gossip = p2p::Gossip;
-
-    fn make_block(
-        secret_key: &Self::NodeSigningKey,
-        block_date: Self::BlockDate,
-        chain_length: Self::ChainLength,
-        parent_id: Self::BlockHash,
-        messages: Vec<Self::Message>,
-    ) -> Self::Block {
-        let mut builder = block::BlockBuilder::new();
-        builder
-            .messages(messages)
-            .date(block_date)
-            .parent(parent_id)
-            .chain_length(chain_length);
-
-        match secret_key {
-            leadership::Leader::None => builder.make_genesis_block(),
-            leadership::Leader::BftLeader(bft) => builder.make_bft_block(&bft),
-            leadership::Leader::GenesisPraos(_, _, _) => unimplemented!(),
-        }
-    }
-}
 
 impl network_grpc::client::ProtocolConfig for Mockchain {
     type Block = block::Block;

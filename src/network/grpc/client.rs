@@ -1,4 +1,4 @@
-use super::super::{ConnectionState, GlobalState, NetworkBlockConfig};
+use super::super::{BlockConfig, ConnectionState, GlobalState};
 use crate::{intercom::BlockMsg, settings::start::network::Peer};
 
 use network_core::client::block::BlockService;
@@ -7,12 +7,9 @@ use network_grpc::{client::Client, peer as grpc_peer};
 use bytes::Bytes;
 use futures::future;
 use futures::prelude::*;
-use tokio::{executor::DefaultExecutor, net::TcpStream, sync::mpsc};
+use tokio::{executor::DefaultExecutor, sync::mpsc};
 
-pub fn run_connect_socket<B>(peer: Peer, state: GlobalState) -> impl Future<Item = (), Error = ()>
-where
-    B: NetworkBlockConfig,
-{
+pub fn run_connect_socket(peer: Peer, state: GlobalState) -> impl Future<Item = (), Error = ()> {
     let (block_sender, block_receiver) = mpsc::unbounded_channel();
     let state = ConnectionState::new_peer(&state, &peer, block_sender);
 
@@ -34,7 +31,7 @@ where
         .map_err(move |err| {
             error!("Error connecting to peer {}: {:?}", addr, err);
         })
-        .and_then(|mut client: Client<B, TcpStream, DefaultExecutor>| {
+        .and_then(|mut client: Client<BlockConfig, _, _>| {
             client
                 .block_subscription(block_receiver)
                 .map_err(move |err| {
