@@ -217,6 +217,13 @@ impl property::HasMessages for Block {
     }
 }
 
+impl property::HasHeader for Block {
+    type Header = Header;
+    fn header(&self) -> Self::Header {
+        self.header.clone()
+    }
+}
+
 #[cfg(test)]
 mod test {
 
