@@ -70,12 +70,6 @@ impl TransactionBuilder<Address, tx::NoExtra> {
             tx: self.tx.replace_extra(certificate),
         }
     }
-
-    /// Create transaction finalizer without performing any
-    /// checks or output balancing.
-    pub fn unchecked_finalize(self) -> TransactionFinalizer {
-        TransactionFinalizer::new_trans(self.tx)
-    }
 }
 
 impl<Extra: Clone> TransactionBuilder<Address, Extra> {
@@ -112,6 +106,12 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
     /// Get transaction balance without fee included.
     pub fn get_balance_without_fee(&self) -> Result<Balance, ValueError> {
         balance(&self.tx, Value(0))
+    }
+
+    /// Create transaction finalizer without performing any
+    /// checks or output balancing.
+    pub fn unchecked_finalize(self) -> tx::Transaction<Address, Extra> {
+        self.tx
     }
 
     /// We finalize the transaction by passing fee rule and return
@@ -213,16 +213,19 @@ pub enum GeneratedTransaction {
 }
 
 impl TransactionFinalizer {
-    fn new_trans(transaction: tx::Transaction<Address, tx::NoExtra>) -> Self {
+    pub fn new_trans(transaction: tx::Transaction<Address, tx::NoExtra>) -> Self {
+        let initial_capacity = transaction.inputs.len();
         TransactionFinalizer::Type1(tx::AuthenticatedTransaction {
-            transaction,
-            witnesses: Vec::new(),
+            transaction: transaction,
+            witnesses: Vec::with_capacity(initial_capacity),
         })
     }
-    fn new_cert(transaction: tx::Transaction<Address, cert::Certificate>) -> Self {
+
+    pub fn new_cert(transaction: tx::Transaction<Address, cert::Certificate>) -> Self {
+        let initial_capacity = transaction.inputs.len();
         TransactionFinalizer::Type2(tx::AuthenticatedTransaction {
-            transaction,
-            witnesses: Vec::new(),
+            transaction: transaction,
+            witnesses: Vec::with_capacity(initial_capacity),
         })
     }
 
