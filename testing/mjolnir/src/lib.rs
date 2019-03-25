@@ -1,5 +1,7 @@
 extern crate cfg_if;
 extern crate wasm_bindgen;
+#[macro_use]
+extern crate serde_derive;
 
 mod utils;
 
@@ -9,7 +11,8 @@ use cfg_if::cfg_if;
 use chain_addr as addr;
 use chain_core::property::FromStr;
 use chain_core::property::Serialize;
-use chain_crypto::{algorithms::Ed25519Extended, AsymmetricKey, SecretKey};
+use chain_crypto::{self as crypto, algorithms::Ed25519Extended, AsymmetricKey, SecretKey};
+use chain_impl_mockchain::account;
 use chain_impl_mockchain::fee;
 use chain_impl_mockchain::key;
 use chain_impl_mockchain::transaction as tx;
@@ -143,8 +146,15 @@ pub struct Input(tx::Input);
 
 #[wasm_bindgen]
 impl Input {
-    pub fn from_utxo(utxo_pointer: UtxoPointer) -> Self {
-        Input(tx::Input::from_utxo(utxo_pointer.0))
+    pub fn from_utxo(utxo_pointer: &UtxoPointer) -> Self {
+        Input(tx::Input::from_utxo(utxo_pointer.0.clone()))
+    }
+
+    pub fn from_account(account: &Account, v: u64) -> Self {
+        Input(tx::Input::from_account(
+            account.account.clone(),
+            value::Value(v),
+        ))
     }
 }
 
@@ -177,6 +187,16 @@ impl TransactionId {
         tx::TransactionId::from_str(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .map(TransactionId)
+        /*
+        let bech32: Bech32 = input
+            .trim()
+            .parse()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let bytes = Vec::<u8>::from_base32(bech32.data())
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        tx::TransactionId::from_bytes(&bytes)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .map(TransactionId)*/
     }
 }
 
@@ -220,7 +240,6 @@ pub struct Balance(tb::Balance);
 
 #[wasm_bindgen]
 impl Balance {
-
     pub fn get_sign(&self) -> JsValue {
         JsValue::from_str(match self.0 {
             tb::Balance::Positive(_) => "positive",
@@ -236,7 +255,6 @@ impl Balance {
             tb::Balance::Zero => Value(value::Value(0)),
         }
     }
-
 }
 
 #[wasm_bindgen]
@@ -263,6 +281,50 @@ impl FinalizationResult {
 
     pub fn get_result(self) -> TransactionFinalizer {
         self.result
+    }
+}
+
+#[wasm_bindgen]
+pub struct Account {
+    account: account::Identifier,
+    public: crypto::PublicKey<Ed25519Extended>,
+}
+
+#[wasm_bindgen]
+impl Account {
+    /// From bench32.
+    pub fn from_bech32(input: String) -> Result<Account, JsValue> {
+        let bech32: Bech32 = input
+            .trim()
+            .parse()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let bytes = Vec::<u8>::from_base32(bech32.data())
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        crypto::PublicKey::<Ed25519Extended>::from_bytes(&bytes)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .map(|x| Account {
+                account: account::Identifier::from(x.clone()),
+                public: x,
+            })
+    }
+
+    /// Make an account from account public key.
+    pub fn from_public(input: &PublicKey) -> Account {
+        Account {
+            account: account::Identifier::from(input.0.clone()),
+            public: input.0.clone(),
+        }
+    }
+
+    pub fn to_bech32(&self) -> Result<String, JsValue> {
+        let address = chain_addr::Address(
+            addr::Discrimination::Test,
+            addr::Kind::Account(self.public.clone()),
+        );
+        Ok(format!(
+            "{}",
+            addr::AddressReadable::from_address(&address).to_string()
+        ))
     }
 }
 
@@ -339,6 +401,13 @@ impl TransactionFinalizer {
 #[derive(Debug)]
 pub struct SignedTransaction(tx::SignedTransaction<addr::Address>);
 
+#[derive(Serialize)]
+pub struct SignedTxDescription {
+    pub inputs: Vec<String>,
+    pub outputs: Vec<String>,
+    pub witnesses: Vec<String>,
+}
+
 #[wasm_bindgen]
 impl SignedTransaction {
     pub fn to_hex(self) -> Result<String, JsValue> {
@@ -346,6 +415,54 @@ impl SignedTransaction {
             .0
             .serialize_as_vec()
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let hex = hex::encode(&v);
+        use chain_core::property::Deserialize;
+        hex::decode(&hex)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .and_then(|bytes| {
+                let reader = std::io::Cursor::new(&bytes);
+                tx::SignedTransaction::deserialize(reader)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+                    .map(SignedTransaction)
+            })?;
         Ok(hex::encode(&v))
+    }
+
+    pub fn from_hex(input: &str) -> Result<SignedTransaction, JsValue> {
+        use chain_core::property::Deserialize;
+        hex::decode(input)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .and_then(|bytes| {
+                let reader = std::io::Cursor::new(&bytes);
+                tx::SignedTransaction::deserialize(reader)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+                    .map(SignedTransaction)
+            })
+    }
+
+    pub fn describe(&self) -> JsValue {
+        let std: SignedTxDescription = SignedTxDescription {
+            inputs: self
+                .0
+                .transaction
+                .inputs
+                .iter()
+                .map(|i| format!("{:?}", i))
+                .collect(),
+            outputs: self
+                .0
+                .transaction
+                .outputs
+                .iter()
+                .map(|o| format!("{:?}", o))
+                .collect(),
+            witnesses: self
+                .0
+                .witnesses
+                .iter()
+                .map(|w| format!("{:?}", w))
+                .collect(),
+        };
+        JsValue::from_serde(&std).unwrap()
     }
 }
