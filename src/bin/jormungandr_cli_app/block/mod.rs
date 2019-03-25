@@ -4,10 +4,13 @@ extern crate chain_impl_mockchain;
 extern crate structopt;
 
 use chain_addr::Address;
-use chain_core::property::{Block as _, Deserialize, Serialize};
+use chain_core::{
+    mempack::{ReadBuf, Readable},
+    property::{Block as _, Deserialize, Serialize},
+};
 use chain_impl_mockchain::{
     block::{self, BlockBuilder},
-    transaction::SignedTransaction,
+    transaction::{AuthenticatedTransaction, NoExtra},
 };
 use std::path::Path;
 use structopt::StructOpt;
@@ -106,9 +109,12 @@ impl Common {
 }
 
 impl AddArgs {
-    fn open_transaction(&self) -> SignedTransaction<Address> {
+    fn open_transaction(&self) -> AuthenticatedTransaction<Address, NoExtra> {
         let reader = open_file_read(&self.transaction);
-        SignedTransaction::deserialize(reader).unwrap()
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes);
+        let mut reader = ReadBuf::from(&bytes);
+        AuthenticatedTransaction::read(&mut reader).unwrap()
     }
 }
 
