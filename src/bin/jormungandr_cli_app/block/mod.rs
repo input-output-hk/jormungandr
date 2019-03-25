@@ -112,7 +112,7 @@ impl AddArgs {
     fn open_transaction(&self) -> AuthenticatedTransaction<Address, NoExtra> {
         let mut reader = open_file_read(&self.transaction);
         let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes);
+        reader.read_to_end(&mut bytes).unwrap();
         let mut reader = ReadBuf::from(&bytes);
         AuthenticatedTransaction::read(&mut reader).unwrap()
     }
