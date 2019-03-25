@@ -109,9 +109,13 @@ impl Blockchain {
 
         let state = self.multiverse.get(&self.tip).unwrap().clone(); // FIXME
 
+        let tip_chain_length = state.chain_length();
+
         match state.apply_block(&block.header(), block.messages()) {
             Ok(state) => {
-                // FIXME: only update tip to a longer chain.
+                // FIXME: currently we store all incoming blocks and
+                // corresponding states, but to prevent a DoS, we may
+                // want to store only sufficiently long chains.
 
                 assert_eq!(state.tip(), block_hash);
 
@@ -121,8 +125,13 @@ impl Blockchain {
                     .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
                     .unwrap();
 
+                let new_chain_length = state.chain_length();
+
                 self.multiverse.add(&block_hash, state);
-                self.tip = block_hash;
+
+                if new_chain_length > tip_chain_length {
+                    self.tip = block_hash;
+                }
             }
             Err(error) => error!("Error with incoming block: {}", error),
         }
