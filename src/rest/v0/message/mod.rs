@@ -4,12 +4,8 @@ use crate::utils::task::TaskMessageBox;
 use actix_web::error::ErrorBadRequest;
 use actix_web::{App, Error as ActixError, HttpMessage, HttpRequest, Responder};
 use bytes::IntoBuf;
-use chain_addr::Address;
 use chain_core::property::Deserialize;
-use chain_impl_mockchain::{
-    block::Message,
-    transaction::{AuthenticatedTransaction, NoExtra},
-};
+use chain_impl_mockchain::block::Message;
 use futures::Future;
 use std::sync::{Arc, Mutex};
 
@@ -32,9 +28,7 @@ fn handle_request(
 {
     let sender = request.state().clone();
     request.body().map(move |message| -> Result<_, ActixError> {
-        let msg =
-            Message::deserialize(message.into_buf())
-                .map_err(|e| ErrorBadRequest(e))?;
+        let msg = Message::deserialize(message.into_buf()).map_err(|e| ErrorBadRequest(e))?;
         let msg = TransactionMsg::SendTransaction(vec![msg]);
         sender.lock().unwrap().send_to(msg);
         Ok("")
