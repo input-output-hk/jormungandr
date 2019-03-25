@@ -11,7 +11,7 @@ mod grpc;
 pub mod p2p_topology;
 mod service;
 
-use crate::blockcfg::BlockConfig;
+use crate::blockcfg::{Block, BlockDate, HeaderHash};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
@@ -27,35 +27,33 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 type Connection = SocketAddr;
 
 pub trait NetworkBlockConfig:
-    BlockConfig
-    + network_grpc::client::ProtocolConfig<
-        Block = <Self as BlockConfig>::Block,
-        Header = <Self as BlockConfig>::BlockHeader,
-        BlockId = <Self as BlockConfig>::BlockHash,
-        BlockDate = <Self as BlockConfig>::BlockDate,
-    >
+    network_grpc::client::ProtocolConfig<
+    Block = Block,
+    Header = HeaderHash,
+    BlockId = HeaderHash,
+    BlockDate = BlockDate,
+>
 {
 }
 
 impl<B> NetworkBlockConfig for B where
-    B: BlockConfig
-        + network_grpc::client::ProtocolConfig<
-            Block = <Self as BlockConfig>::Block,
-            Header = <Self as BlockConfig>::BlockHeader,
-            BlockId = <Self as BlockConfig>::BlockHash,
-            BlockDate = <Self as BlockConfig>::BlockDate,
-        >
+    B: network_grpc::client::ProtocolConfig<
+        Block = Block,
+        Header = HeaderHash,
+        BlockId = HeaderHash,
+        BlockDate = BlockDate,
+    >
 {
 }
 
 /// all the different channels the network may need to talk to
-pub struct Channels<B: BlockConfig> {
-    pub client_box: TaskMessageBox<ClientMsg<B>>,
-    pub transaction_box: TaskMessageBox<TransactionMsg<B>>,
-    pub block_box: TaskMessageBox<BlockMsg<B>>,
+pub struct Channels {
+    pub client_box: TaskMessageBox<ClientMsg>,
+    pub transaction_box: TaskMessageBox<TransactionMsg>,
+    pub block_box: TaskMessageBox<BlockMsg>,
 }
 
-impl<B: BlockConfig> Clone for Channels<B> {
+impl Clone for Channels {
     fn clone(&self) -> Self {
         Channels {
             client_box: self.client_box.clone(),
@@ -65,16 +63,16 @@ impl<B: BlockConfig> Clone for Channels<B> {
     }
 }
 
-pub struct GlobalState<B: BlockConfig> {
+pub struct GlobalState {
     pub config: Arc<Configuration>,
-    pub channels: Channels<B>,
+    pub channels: Channels,
     pub topology: P2pTopology,
     pub node: p2p::Node,
 }
 
-impl<B: BlockConfig> GlobalState<B> {
+impl GlobalState {
     /// the network global state
-    pub fn new(config: &Configuration, channels: Channels<B>) -> Self {
+    pub fn new(config: &Configuration, channels: Channels) -> Self {
         let node_id = p2p_topology::Id::generate(&mut rand::thread_rng());
         let node_address = config
             .public_address
@@ -100,7 +98,7 @@ impl<B: BlockConfig> GlobalState<B> {
     }
 }
 
-impl<B: BlockConfig> Clone for GlobalState<B> {
+impl Clone for GlobalState {
     fn clone(&self) -> Self {
         GlobalState {
             config: self.config.clone(),
@@ -111,13 +109,13 @@ impl<B: BlockConfig> Clone for GlobalState<B> {
     }
 }
 
-pub struct ConnectionState<B: BlockConfig> {
+pub struct ConnectionState {
     /// The global network configuration
     pub global_network_configuration: Arc<Configuration>,
 
     /// the channels the connection will need to have to
     /// send messages too
-    pub channels: Channels<B>,
+    pub channels: Channels,
 
     /// the timeout to wait for unbefore the connection replies
     pub timeout: Duration,
@@ -127,7 +125,7 @@ pub struct ConnectionState<B: BlockConfig> {
 
     pub connected: Option<Connection>,
 
-    pub block_sender: mpsc::UnboundedSender<B::BlockHeader>,
+    pub block_sender: mpsc::UnboundedSender<HeaderHash>,
 
     /// Network topology reference.
     pub topology: P2pTopology,
@@ -136,7 +134,7 @@ pub struct ConnectionState<B: BlockConfig> {
     pub node: p2p::Node,
 }
 
-impl<B: BlockConfig> Clone for ConnectionState<B> {
+impl Clone for ConnectionState {
     fn clone(&self) -> Self {
         ConnectionState {
             global_network_configuration: self.global_network_configuration.clone(),
@@ -151,11 +149,11 @@ impl<B: BlockConfig> Clone for ConnectionState<B> {
     }
 }
 
-impl<B: BlockConfig> ConnectionState<B> {
+impl ConnectionState {
     fn new_listen(
-        global: &GlobalState<B>,
+        global: &GlobalState,
         listen: &Listen,
-        block_sender: mpsc::UnboundedSender<B::BlockHeader>,
+        block_sender: mpsc::UnboundedSender<HeaderHash>,
     ) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
@@ -170,9 +168,9 @@ impl<B: BlockConfig> ConnectionState<B> {
     }
 
     fn new_peer(
-        global: &GlobalState<B>,
+        global: &GlobalState,
         peer: &Peer,
-        block_sender: mpsc::UnboundedSender<B::BlockHeader>,
+        block_sender: mpsc::UnboundedSender<HeaderHash>,
     ) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
@@ -191,10 +189,7 @@ impl<B: BlockConfig> ConnectionState<B> {
     }
 }
 
-pub fn run<B>(config: Configuration, channels: Channels<B>)
-where
-    B: NetworkBlockConfig + 'static,
-{
+pub fn run(config: Configuration, channels: Channels) {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
@@ -233,10 +228,7 @@ where
     tokio::run(connections.join(listener).map(|_| ()));
 }
 
-pub fn bootstrap<B>(config: &Configuration, blockchain: BlockchainR<B>)
-where
-    B: NetworkBlockConfig,
-{
+pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }

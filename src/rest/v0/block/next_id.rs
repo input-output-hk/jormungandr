@@ -1,13 +1,12 @@
 use super::parse_block_hash;
 use actix_web::error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError};
 use actix_web::{Path, Query, State};
-use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 use bytes::Bytes;
 use chain_core::property::Settings;
 
 pub fn handle_request(
-    blockchain: State<BlockchainR<Mockchain>>,
+    blockchain: State<BlockchainR>,
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> Result<Bytes, ActixError> {

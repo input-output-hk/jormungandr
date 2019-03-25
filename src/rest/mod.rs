@@ -6,14 +6,13 @@ pub mod v0;
 
 pub use self::server::{Error, Server};
 
-use crate::blockcfg::mock::Mockchain;
 use crate::blockchain::BlockchainR;
 use crate::settings::start::{Error as ConfigError, Rest};
 use crate::settings::Error as SettingsError;
 
 pub struct Context {
     pub stats_counter: v0::node::stats::StatsCounter,
-    pub blockchain: BlockchainR<Mockchain>,
+    pub blockchain: BlockchainR,
     pub transaction_task: v0::message::Task,
 }
 

@@ -1,4 +1,3 @@
-use crate::blockcfg::mock::Mockchain;
 use crate::intercom::TransactionMsg;
 use crate::utils::task::TaskMessageBox;
 use actix_web::error::ErrorBadRequest;
@@ -9,7 +8,7 @@ use chain_impl_mockchain::block::Message;
 use futures::Future;
 use std::sync::{Arc, Mutex};
 
-pub type Task = Arc<Mutex<TaskMessageBox<TransactionMsg<Mockchain>>>>;
+pub type Task = Arc<Mutex<TaskMessageBox<TransactionMsg>>>;
 
 pub fn create_handler(
     transaction_task: Task,
