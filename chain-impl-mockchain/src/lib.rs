@@ -21,6 +21,7 @@ pub mod transaction;
 pub mod txbuilder;
 pub mod utxo;
 pub mod value;
+pub mod multiverse;
 
 #[cfg(test)]
 mod tests {}
