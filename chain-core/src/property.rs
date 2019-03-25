@@ -44,7 +44,7 @@ pub trait BlockDate: Eq + Ord + Clone {
     fn from_epoch_slot_id(epoch: u32, slot_id: u32) -> Self;
 }
 
-pub trait ChainLength {
+pub trait ChainLength: Eq + Ord + Clone + Debug {
     fn next(&self) -> Self;
 }
 
