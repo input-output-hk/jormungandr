@@ -117,7 +117,7 @@ pub trait BlockService {
     //
     // Returns a future that resolves to an asynchronous subscription stream
     // that receives blocks announced by the peer.
-    fn subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
+    fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
     where
         Out: Stream<Item = Self::Header, Error = Error>;
 }

@@ -397,7 +397,7 @@ where
         ServerStreamFuture::new(future)
     }
 
-    fn subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
+    fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
     where
         Out: Stream<Item = C::Header> + Send + 'static,
     {

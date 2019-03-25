@@ -68,7 +68,7 @@ pub trait BlockService {
     ///
     /// The client can use the stream that the returned future resolves to
     /// as a long-lived subscription handle.
-    fn subscription<S>(&mut self, outbound: S) -> Self::BlockSubscriptionFuture
+    fn block_subscription<S>(&mut self, outbound: S) -> Self::BlockSubscriptionFuture
     where
         S: Stream<Item = <Self::Block as HasHeader>::Header> + Send + 'static;
 }
