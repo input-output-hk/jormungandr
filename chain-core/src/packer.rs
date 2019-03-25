@@ -51,6 +51,12 @@ impl<R: std::io::BufRead> Codec<R> {
         self.0.read_exact(&mut buf)?;
         Ok(u128::from_be_bytes(buf))
     }
+    #[inline]
+    pub fn get_bytes(&mut self, n: usize) -> std::io::Result<Vec<u8>> {
+        let mut buf = vec![0u8; n];
+        self.0.read_exact(&mut buf)?;
+        Ok(buf)
+    }
 }
 impl<W: std::io::Write> Codec<W> {
     #[inline]
