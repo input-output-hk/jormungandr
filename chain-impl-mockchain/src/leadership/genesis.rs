@@ -7,6 +7,7 @@ use crate::{
     state::State,
     value::Value,
 };
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
 use rand::{Rng, SeedableRng};
@@ -133,6 +134,12 @@ impl property::Deserialize for GenesisPraosId {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         Hash::deserialize(reader).map(GenesisPraosId)
+    }
+}
+
+impl Readable for GenesisPraosId {
+    fn read<'a>(reader: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        Hash::read(reader).map(GenesisPraosId)
     }
 }
 

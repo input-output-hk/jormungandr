@@ -1,8 +1,4 @@
-use crate::{
-    block::Message,
-    key::{verify_multi_signature, verify_signature},
-};
-use chain_crypto::{Ed25519Extended, PublicKey};
+use crate::certificate::{Certificate, CertificateContent};
 use imhamt::{Hamt, UpdateError};
 use std::collections::hash_map::DefaultHasher;
 
@@ -179,101 +175,32 @@ impl DelegationState {
         })
     }
 
-    pub(crate) fn apply(&self, message: &Message) -> Result<Self, DelegationError> {
+    pub(crate) fn apply(&self, certificate: &Certificate) -> Result<Self, DelegationError> {
         let mut new_state = self.clone();
 
-        match message {
-            Message::StakeDelegation(reg) => {
-                if verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
-                    == chain_crypto::Verification::Failed
-                {
-                    return Err(DelegationError::StakeDelegationSigIsInvalid);
-                }
-
-                if !self.stake_key_exists(&reg.data.stake_key_id) {
-                    return Err(DelegationError::StakeDelegationStakeKeyIsInvalid(
-                        reg.data.stake_key_id.clone(),
-                    ));
-                }
-
-                if !self.stake_pool_exists(&reg.data.pool_id) {
+        match certificate.content {
+            CertificateContent::StakeDelegation(ref reg) => {
+                if !self.stake_pool_exists(&reg.pool_id) {
                     return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(
-                        reg.data.pool_id.clone(),
+                        reg.pool_id.clone(),
                     ));
                 }
 
-                new_state = new_state
-                    .delegate_stake(reg.data.stake_key_id.clone(), reg.data.pool_id.clone())?
+                new_state =
+                    new_state.delegate_stake(reg.stake_key_id.clone(), reg.pool_id.clone())?
             }
-            Message::StakeKeyRegistration(reg) => {
-                if verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
-                    == chain_crypto::Verification::Failed
-                {
-                    return Err(DelegationError::StakeKeyRegistrationSigIsInvalid);
-                }
-
-                new_state = new_state.register_stake_key(reg.data.stake_key_id.clone())?
+            CertificateContent::StakeKeyRegistration(ref reg) => {
+                new_state = new_state.register_stake_key(reg.stake_key_id.clone())?
             }
-            Message::StakeKeyDeregistration(reg) => {
-                if verify_signature(&reg.sig, &reg.data.stake_key_id.0, &reg.data)
-                    == chain_crypto::Verification::Failed
-                {
-                    return Err(DelegationError::StakeKeyDeregistrationSigIsInvalid);
-                }
-
-                new_state = new_state.deregister_stake_key(&reg.data.stake_key_id)?
+            CertificateContent::StakeKeyDeregistration(ref reg) => {
+                new_state = new_state.deregister_stake_key(&reg.stake_key_id)?
             }
-            Message::StakePoolRegistration(reg) => {
-                // FIXME verify_multisig
-                let owner_keys: Vec<PublicKey<Ed25519Extended>> =
-                    reg.data.owners.clone().into_iter().map(|x| x.0).collect();
-                if verify_multi_signature(&reg.sig, &owner_keys, &reg.data)
-                    == chain_crypto::Verification::Failed
-                {
-                    return Err(DelegationError::StakePoolRegistrationPoolSigIsInvalid);
-                }
-
-                // FIXME: check owner_sig
-
-                // FIXME: should pool_id be a previously registered stake key?
-
-                new_state = new_state.register_stake_pool(reg.data.clone())?
+            CertificateContent::StakePoolRegistration(ref reg) => {
+                new_state = new_state.register_stake_pool(reg.clone())?
             }
-            Message::StakePoolRetirement(reg) => {
-                let pool_info = if let Some(pool_info) = self.stake_pools.lookup(&reg.data.pool_id)
-                {
-                    pool_info
-                } else {
-                    // TODO: add proper error cause
-                    unimplemented!()
-                    //return Err(Error::new(ErrorKind::InvalidBlockMessage));
-                };
-
-                let owner_keys: Vec<PublicKey<Ed25519Extended>> =
-                    pool_info.owners.clone().into_iter().map(|x| x.0).collect();
-
-                if verify_multi_signature(&reg.sig, &owner_keys, &reg.data)
-                    == chain_crypto::Verification::Failed
-                {
-                    return Err(DelegationError::StakePoolRegistrationPoolSigIsInvalid);
-                }
-
-                if new_state.stake_pool_exists(&reg.data.pool_id) {
-                    // FIXME: support re-registration to change pool parameters.
-                    return Err(DelegationError::StakePoolAlreadyExists(
-                        reg.data.pool_id.clone(),
-                    ));
-                }
-
-                // FIXME: check owner_sig
-
-                // FIXME: should pool_id be a previously registered stake key?
-
-                new_state = new_state.deregister_stake_pool(&reg.data.pool_id)?
+            CertificateContent::StakePoolRetirement(ref reg) => {
+                new_state = new_state.deregister_stake_pool(&reg.pool_id)?
             }
-            Message::Transaction(_) => unreachable!(),
-            Message::OldUtxoDeclaration(_) => unreachable!(),
-            Message::Update(_) => unreachable!(),
         }
 
         Ok(new_state)

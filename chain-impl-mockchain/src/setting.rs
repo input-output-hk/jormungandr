@@ -8,6 +8,7 @@ use crate::{
     leadership::bft,
 };
 use chain_addr::Discrimination;
+use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property::{self, BlockId as _};
 use std::sync::Arc;
 
@@ -95,45 +96,38 @@ impl property::Serialize for UpdateProposal {
     }
 }
 
-impl property::Deserialize for UpdateProposal {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+impl Readable for UpdateProposal {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let mut update = UpdateProposal::new();
         loop {
-            let tag = codec.get_u16()?;
+            let tag = buf.get_u16()?;
             match UpdateTag::from_u16(tag) {
                 Some(UpdateTag::End) => {
                     return Ok(update);
                 }
                 Some(UpdateTag::MaxNumberOfTransactionsPerBlock) => {
-                    update.max_number_of_transactions_per_block = Some(codec.get_u32()?);
+                    update.max_number_of_transactions_per_block = Some(buf.get_u32()?);
                 }
                 Some(UpdateTag::BootstrapKeySlotsPercentage) => {
-                    update.bootstrap_key_slots_percentage = Some(codec.get_u8()?);
+                    update.bootstrap_key_slots_percentage = Some(buf.get_u8()?);
                 }
                 Some(UpdateTag::BlockVersion) => {
-                    update.block_version = Some(codec.get_u16().map(BlockVersion)?);
+                    update.block_version = Some(buf.get_u16().map(BlockVersion)?);
                 }
                 Some(UpdateTag::BftLeaders) => {
-                    let len = codec.get_u8()? as usize;
-                    let mut leaders = Vec::with_capacity(len);
-                    for _ in 0..len {
-                        leaders.push(bft::LeaderId::deserialize(&mut codec)?);
-                    }
+                    let len = buf.get_u8()? as usize;
+                    let leaders = read_vec(buf, len)?;
                     update.bft_leaders = Some(leaders);
                 }
                 Some(UpdateTag::AllowAccountCreation) => {
-                    let boolean = codec.get_u8()? != 0;
+                    let boolean = buf.get_u8()? != 0;
                     update.allow_account_creation = Some(boolean);
                 }
                 Some(UpdateTag::LinearFee) => {
                     update.linear_fees = Some(LinearFee {
-                        constant: codec.get_u64()?,
-                        coefficient: codec.get_u64()?,
-                        certificate: codec.get_u64()?,
+                        constant: buf.get_u64()?,
+                        coefficient: buf.get_u64()?,
+                        certificate: buf.get_u64()?,
                     });
                 }
                 None => panic!("Unrecognized update tag {}.", tag),
@@ -234,6 +228,7 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
+/*
 impl property::Settings for Settings {
     type Block = crate::block::Block;
 
@@ -253,3 +248,4 @@ impl property::Settings for Settings {
         self.chain_length
     }
 }
+*/

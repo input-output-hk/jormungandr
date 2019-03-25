@@ -119,6 +119,7 @@ impl Leadership {
     }
 }
 
+/*
 impl LeaderSelection for Leadership {
     type Error = Error;
     type LeaderId = LeaderId;
@@ -144,6 +145,7 @@ impl LeaderSelection for Leadership {
         }
     }
 }
+*/
 
 impl chain_core::property::LeaderId for LeaderId {}
 

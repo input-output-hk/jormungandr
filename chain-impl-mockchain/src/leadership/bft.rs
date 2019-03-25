@@ -4,6 +4,7 @@ use crate::{
     leadership::{Error, ErrorKind, Verification},
     state::State,
 };
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
 use std::sync::Arc;
@@ -81,9 +82,8 @@ impl property::Serialize for LeaderId {
     }
 }
 
-impl property::Deserialize for LeaderId {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+impl Readable for LeaderId {
+    fn read<'a>(reader: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         deserialize_public_key(reader).map(LeaderId)
     }
 }

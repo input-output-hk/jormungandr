@@ -2,15 +2,13 @@
 //!
 
 use crate::{
-    block::{Block, Header, Message},
     leadership,
-    ledger::{self, Ledger, LedgerParameters, LedgerStaticParameters},
+    ledger::{self, Ledger},
     setting,
     stake::{DelegationError, DelegationState},
     utxo,
 };
 use chain_addr::{Address, Discrimination};
-use chain_core::property::{self, Header as _};
 
 #[derive(Clone)]
 pub struct State {
@@ -41,6 +39,7 @@ impl From<leadership::Error> for Error {
     }
 }
 
+/*
 impl property::State for State {
     type Error = Error;
     type Header = Header;
@@ -77,9 +76,9 @@ impl property::State for State {
 
         for content in contents {
             match content {
-                Message::Transaction(signed_transaction) => {
+                Message::Transaction(authenticated_tx) => {
                     new_ledger = new_ledger.apply_transaction(
-                        signed_transaction,
+                        authenticated_tx,
                         &static_params,
                         &dyn_params,
                     )?;
@@ -87,8 +86,14 @@ impl property::State for State {
                 Message::Update(update_proposal) => {
                     new_settings = new_settings.apply(update_proposal.clone());
                 }
-                content => {
-                    new_delegation = new_delegation.apply(content)?;
+                Message::Certificate(authenticated_cert_tx) => {
+                    new_ledger = new_ledger.apply_transaction(
+                        authenticated_cert_tx,
+                        &static_params,
+                        &dyn_params,
+                    )?;
+                    new_delegation =
+                        new_delegation.apply(&authenticated_cert_tx.transaction.extra)?;
                 }
             }
         }
@@ -99,7 +104,9 @@ impl property::State for State {
         })
     }
 }
+*/
 
+/*
 impl property::Settings for State {
     type Block = Block;
 
@@ -116,6 +123,7 @@ impl property::Settings for State {
         self.settings.chain_length()
     }
 }
+*/
 
 impl State {
     pub fn new(address_discrimination: Discrimination) -> Self {
