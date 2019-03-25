@@ -1,10 +1,6 @@
-use crate::{
-    block::Message,
-    key::*,
-    stake::{StakeKeyId, StakePoolId, StakePoolInfo},
-};
+use crate::stake::{StakeKeyId, StakePoolId, StakePoolInfo};
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, SecretKey};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
@@ -22,7 +18,7 @@ impl property::Serialize for SignatureRaw {
 #[derive(Debug, Clone)]
 pub struct Certificate {
     pub content: CertificateContent,
-    pub signatures: Vec<SignatureRaw>,
+    //pub signatures: Vec<SignatureRaw>,
 }
 
 #[derive(Debug, Clone)]
@@ -70,11 +66,39 @@ impl property::Serialize for Certificate {
                 s.serialize(&mut codec)
             }
         }?;
+        /* FIXME
         codec.put_u8(self.signatures.len() as u8)?;
         for sig in &self.signatures {
             sig.serialize(&mut codec)?;
         }
+        */
         Ok(())
+    }
+}
+
+impl Readable for Certificate {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let tag = buf.get_u8()?;
+        let content = match CertificateTag::from_u8(tag) {
+            Some(CertificateTag::StakeKeyRegistration) => {
+                CertificateContent::StakeKeyRegistration(StakeKeyRegistration::read(buf)?)
+            }
+            Some(CertificateTag::StakeKeyDeregistration) => {
+                CertificateContent::StakeKeyDeregistration(StakeKeyDeregistration::read(buf)?)
+            }
+            Some(CertificateTag::StakePoolRegistration) => {
+                CertificateContent::StakePoolRegistration(StakePoolInfo::read(buf)?)
+            }
+            Some(CertificateTag::StakePoolRetirement) => {
+                CertificateContent::StakePoolRetirement(StakePoolRetirement::read(buf)?)
+            }
+            Some(CertificateTag::StakeDelegation) => {
+                CertificateContent::StakeDelegation(StakeDelegation::read(buf)?)
+            }
+
+            None => panic!("not a certificate"),
+        };
+        Ok(Certificate { content })
     }
 }
 
@@ -83,6 +107,7 @@ pub struct StakeKeyRegistration {
     pub stake_key_id: StakeKeyId,
 }
 
+/*
 impl StakeKeyRegistration {
     pub fn make_certificate(self, stake_private_key: &SecretKey<Ed25519Extended>) -> Message {
         Message::StakeKeyRegistration(Signed {
@@ -91,6 +116,7 @@ impl StakeKeyRegistration {
         })
     }
 }
+*/
 
 impl property::Serialize for StakeKeyRegistration {
     type Error = std::io::Error;
@@ -102,14 +128,10 @@ impl property::Serialize for StakeKeyRegistration {
     }
 }
 
-impl property::Deserialize for StakeKeyRegistration {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+impl Readable for StakeKeyRegistration {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(StakeKeyRegistration {
-            stake_key_id: StakeKeyId::deserialize(&mut codec)?,
+            stake_key_id: StakeKeyId::read(buf)?,
         })
     }
 }
@@ -119,6 +141,7 @@ pub struct StakeKeyDeregistration {
     pub stake_key_id: StakeKeyId,
 }
 
+/*
 impl StakeKeyDeregistration {
     pub fn make_certificate(self, stake_private_key: &SecretKey<Ed25519Extended>) -> Message {
         Message::StakeKeyDeregistration(Signed {
@@ -127,6 +150,7 @@ impl StakeKeyDeregistration {
         })
     }
 }
+*/
 
 impl property::Serialize for StakeKeyDeregistration {
     type Error = std::io::Error;
@@ -138,14 +162,10 @@ impl property::Serialize for StakeKeyDeregistration {
     }
 }
 
-impl property::Deserialize for StakeKeyDeregistration {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+impl Readable for StakeKeyDeregistration {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(StakeKeyDeregistration {
-            stake_key_id: StakeKeyId::deserialize(&mut codec)?,
+            stake_key_id: StakeKeyId::read(buf)?,
         })
     }
 }
@@ -156,6 +176,7 @@ pub struct StakeDelegation {
     pub pool_id: StakePoolId,
 }
 
+/*
 impl StakeDelegation {
     pub fn make_certificate(self, stake_private_key: &SecretKey<Ed25519Extended>) -> Message {
         // FIXME: "It must be signed by sks_source, and that key must
@@ -166,6 +187,7 @@ impl StakeDelegation {
         })
     }
 }
+*/
 
 impl property::Serialize for StakeDelegation {
     type Error = std::io::Error;
@@ -178,19 +200,16 @@ impl property::Serialize for StakeDelegation {
     }
 }
 
-impl property::Deserialize for StakeDelegation {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+impl Readable for StakeDelegation {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(StakeDelegation {
-            stake_key_id: StakeKeyId::deserialize(&mut codec)?,
-            pool_id: StakePoolId::deserialize(&mut codec)?,
+            stake_key_id: StakeKeyId::read(buf)?,
+            pool_id: StakePoolId::read(buf)?,
         })
     }
 }
 
+/*
 impl StakePoolInfo {
     /// Create a certificate for this stake pool registration, signed
     /// by the pool's staking key and the owners.
@@ -201,6 +220,7 @@ impl StakePoolInfo {
         })
     }
 }
+*/
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolRetirement {
@@ -208,6 +228,7 @@ pub struct StakePoolRetirement {
     // TODO: add epoch when the retirement will take effect
 }
 
+/*
 impl StakePoolRetirement {
     /// Create a certificate for this stake pool retirement, signed
     /// by the pool's staking key.
@@ -218,6 +239,7 @@ impl StakePoolRetirement {
         })
     }
 }
+*/
 
 impl property::Serialize for StakePoolRetirement {
     type Error = std::io::Error;
@@ -229,14 +251,10 @@ impl property::Serialize for StakePoolRetirement {
     }
 }
 
-impl property::Deserialize for StakePoolRetirement {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+impl Readable for StakePoolRetirement {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(StakePoolRetirement {
-            pool_id: StakePoolId::deserialize(&mut codec)?,
+            pool_id: StakePoolId::read(buf)?,
         })
     }
 }
@@ -245,7 +263,21 @@ impl property::Deserialize for StakePoolRetirement {
 mod test {
     use super::*;
     use crate::leadership::genesis::GenesisPraosLeader;
+    use chain_crypto::SecretKey;
     use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Certificate {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let content = match g.next_u32() % 5 {
+                0 => CertificateContent::StakeKeyRegistration(Arbitrary::arbitrary(g)),
+                1 => CertificateContent::StakeKeyDeregistration(Arbitrary::arbitrary(g)),
+                2 => CertificateContent::StakeDelegation(Arbitrary::arbitrary(g)),
+                3 => CertificateContent::StakePoolRegistration(Arbitrary::arbitrary(g)),
+                _ => CertificateContent::StakePoolRetirement(Arbitrary::arbitrary(g)),
+            };
+            Certificate { content }
+        }
+    }
 
     impl Arbitrary for StakeKeyRegistration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
