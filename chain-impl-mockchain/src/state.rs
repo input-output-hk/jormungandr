@@ -2,7 +2,6 @@
 //!
 
 use crate::{
-    block::Message,
     leadership,
     ledger::{self, Ledger, LedgerParameters},
     utxo,

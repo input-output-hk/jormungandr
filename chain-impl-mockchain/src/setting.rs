@@ -182,8 +182,8 @@ impl Settings {
         if let Some(block_version) = update.block_version {
             new_state.block_version = block_version;
         }
-        if let Some(leaders) = update.bft_leaders {
-            new_state.bft_leaders = Arc::new(leaders);
+        if let Some(ref leaders) = update.bft_leaders {
+            new_state.bft_leaders = Arc::new(leaders.clone());
         }
         if let Some(allow_account_creation) = update.allow_account_creation {
             new_state.allow_account_creation = allow_account_creation;

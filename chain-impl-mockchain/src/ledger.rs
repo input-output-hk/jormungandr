@@ -413,6 +413,7 @@ pub mod test {
         };
 
         {
+            let ledger = ledger.clone();
             let tx = Transaction {
                 inputs: vec![Input::from_utxo(utxo0)],
                 outputs: vec![Output {
@@ -430,6 +431,7 @@ pub mod test {
         }
 
         {
+            let ledger = ledger.clone();
             let tx = Transaction {
                 inputs: vec![Input::from_utxo(utxo0)],
                 outputs: vec![Output {

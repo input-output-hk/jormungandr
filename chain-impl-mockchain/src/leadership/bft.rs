@@ -2,7 +2,7 @@ use crate::block::{BlockDate, Header, Proof};
 use crate::key::{deserialize_public_key, serialize_public_key};
 use crate::{
     leadership::{Error, ErrorKind, Verification},
-    state::State,
+    ledger::Ledger,
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
@@ -31,13 +31,13 @@ pub struct BftLeaderSelection {
 
 impl BftLeaderSelection {
     /// Create a new BFT leadership
-    pub fn new(state: &State) -> Option<Self> {
-        if state.settings.bft_leaders.len() == 0 {
+    pub fn new(ledger: &Ledger) -> Option<Self> {
+        if ledger.settings.bft_leaders.len() == 0 {
             return None;
         }
 
         Some(BftLeaderSelection {
-            leaders: Arc::clone(&state.settings.bft_leaders),
+            leaders: Arc::clone(&ledger.settings.bft_leaders),
         })
     }
 
