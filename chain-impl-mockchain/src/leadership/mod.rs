@@ -1,6 +1,6 @@
 use crate::{
     block::{BlockVersion, BlockVersionTag, Header},
-    state::State,
+    ledger::Ledger,
 };
 use chain_crypto::algorithms::vrf::vrf::ProvenOutputSeed;
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
@@ -96,16 +96,16 @@ impl Inner {
 }
 
 impl Leadership {
-    pub fn new(state: &State) -> Self {
-        match BlockVersionTag::from_block_version(state.settings.block_version.clone()) {
+    pub fn new(ledger: &Ledger) -> Self {
+        match BlockVersionTag::from_block_version(ledger.settings.block_version.clone()) {
             Some(BlockVersionTag::ConsensusNone) => Leadership {
                 inner: Inner::None(none::NoLeadership),
             },
             Some(BlockVersionTag::ConsensusBft) => Leadership {
-                inner: Inner::Bft(bft::BftLeaderSelection::new(state).unwrap()),
+                inner: Inner::Bft(bft::BftLeaderSelection::new(ledger).unwrap()),
             },
             Some(BlockVersionTag::ConsensusGenesisPraos) => Leadership {
-                inner: Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(state)),
+                inner: Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(ledger)),
             },
             None => unimplemented!(),
         }

@@ -1,5 +1,5 @@
-use crate::{ledger::Ledger, stake::StakePoolId, value::Value};
-use chain_addr::Kind;
+use crate::{stake::StakePoolId, utxo, value::Value};
+use chain_addr::{Address, Kind};
 use std::collections::HashMap;
 
 use super::delegation::DelegationState;
@@ -59,10 +59,13 @@ impl StakeDistribution {
     }
 }
 
-pub fn get_stake_distribution(dstate: &DelegationState, ledger: &Ledger) -> StakeDistribution {
+pub fn get_distribution(
+    dstate: &DelegationState,
+    utxos: &utxo::Ledger<Address>,
+) -> StakeDistribution {
     let mut dist = HashMap::new();
 
-    for output in ledger.utxos.values() {
+    for output in utxos.values() {
         // We're only interested in "group" addresses
         // (i.e. containing a spending key and a stake key).
         if let Kind::Group(_spending_key, stake_key) = output.address.kind() {

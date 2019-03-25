@@ -3,8 +3,8 @@ use crate::{
     date::Epoch,
     key::Hash,
     leadership::{Error, ErrorKind, Verification},
-    stake::{get_stake_distribution, DelegationState, StakeDistribution},
-    state::State,
+    ledger::Ledger,
+    stake::StakeDistribution,
     value::Value,
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -41,8 +41,8 @@ pub struct GenesisLeaderSelection {
 }
 
 impl GenesisLeaderSelection {
-    pub fn new(state: &State) -> Self {
-        let stake_distribution = get_stake_distribution(&state.delegation, &state.ledger);
+    pub fn new(ledger: &Ledger) -> Self {
+        let stake_distribution = ledger.get_stake_distribution();
         // TODO: get this info from the state
         let epoch_state = 0;
 

@@ -138,7 +138,6 @@ impl Readable for UpdateProposal {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
-    pub discrimination: Discrimination,
     pub max_number_of_transactions_per_block: u32,
     pub bootstrap_key_slots_percentage: u8, // == d * 100
     pub block_version: BlockVersion,
@@ -151,9 +150,8 @@ pub struct Settings {
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
 
 impl Settings {
-    pub fn new(address_discrimination: Discrimination) -> Self {
+    pub fn new() -> Self {
         Self {
-            discrimination: address_discrimination,
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
             block_version: BlockVersionTag::ConsensusNone.to_block_version(),
@@ -171,11 +169,7 @@ impl Settings {
         *self.linear_fees
     }
 
-    pub fn address_discrimination(&self) -> &Discrimination {
-        &self.discrimination
-    }
-
-    pub fn apply(&self, update: UpdateProposal) -> Self {
+    pub fn apply(&self, update: &UpdateProposal) -> Self {
         let mut new_state = self.clone();
         if let Some(max_number_of_transactions_per_block) =
             update.max_number_of_transactions_per_block
@@ -188,8 +182,8 @@ impl Settings {
         if let Some(block_version) = update.block_version {
             new_state.block_version = block_version;
         }
-        if let Some(leaders) = update.bft_leaders {
-            new_state.bft_leaders = Arc::new(leaders);
+        if let Some(ref leaders) = update.bft_leaders {
+            new_state.bft_leaders = Arc::new(leaders.clone());
         }
         if let Some(allow_account_creation) = update.allow_account_creation {
             new_state.allow_account_creation = allow_account_creation;

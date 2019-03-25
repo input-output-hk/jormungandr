@@ -1,18 +1,19 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
+use crate::block::Message;
 use crate::fee::LinearFee;
-use crate::legacy;
+use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
-use crate::{account, utxo};
+use crate::{account, certificate, legacy, setting, stake, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property;
+use std::sync::Arc;
 
 // static parameters, effectively this is constant in the parameter of the blockchain
 #[derive(Clone)]
 pub struct LedgerStaticParameters {
-    pub allow_account_creation: bool,
     pub discrimination: Discrimination,
 }
 
@@ -20,6 +21,7 @@ pub struct LedgerStaticParameters {
 #[derive(Clone)]
 pub struct LedgerParameters {
     pub fees: LinearFee,
+    pub allow_account_creation: bool,
 }
 
 /// Overall ledger structure.
@@ -27,13 +29,16 @@ pub struct LedgerParameters {
 /// This represent a given state related to utxo/old utxo/accounts/... at a given
 /// point in time.
 ///
-/// The ledger can be easily and cheaply cloned despite containing refering
+/// The ledger can be easily and cheaply cloned despite containing reference
 /// to a lot of data (millions of utxos, thousands of accounts, ..)
 #[derive(Clone)]
 pub struct Ledger {
     pub(crate) utxos: utxo::Ledger<Address>,
     pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
     pub(crate) accounts: account::Ledger,
+    pub(crate) settings: setting::Settings,
+    pub(crate) delegation: DelegationState,
+    pub(crate) static_params: Arc<LedgerStaticParameters>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,6 +55,7 @@ pub enum Error {
     Account(account::LedgerError),
     NotBalanced(Value, Value),
     ZeroOutput(Output<Address>),
+    Delegation(DelegationError),
     InvalidDiscrimination,
     ExpectingAccountWitness,
     ExpectingUtxoWitness,
@@ -67,41 +73,91 @@ impl From<account::LedgerError> for Error {
     }
 }
 
+impl From<DelegationError> for Error {
+    fn from(e: DelegationError) -> Self {
+        Error::Delegation(e)
+    }
+}
+
 impl Ledger {
-    pub fn new() -> Self {
+    pub fn new(static_parameters: LedgerStaticParameters, settings: setting::Settings) -> Self {
         Ledger {
             utxos: utxo::Ledger::new(),
             oldutxos: utxo::Ledger::new(),
             accounts: account::Ledger::new(),
+            settings: settings,
+            delegation: DelegationState::new(),
+            static_params: Arc::new(static_parameters),
         }
     }
 
-    pub fn apply_transaction<Extra: property::Serialize>(
+    /// Try to apply messages to a State, and return the new State if succesful
+    pub fn apply_block(
         &self,
+        ledger_params: &LedgerParameters,
+        contents: &[Message],
+    ) -> Result<Self, Error> {
+        let mut new_ledger = self.clone();
+
+        for content in contents {
+            match content {
+                Message::OldUtxoDeclaration(_) => unimplemented!(),
+                Message::Transaction(authenticated_tx) => {
+                    new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
+                }
+                Message::Update(update_proposal) => {
+                    new_ledger = new_ledger.apply_update(&update_proposal)?;
+                }
+                Message::Certificate(authenticated_cert_tx) => {
+                    new_ledger =
+                        new_ledger.apply_certificate(authenticated_cert_tx, &ledger_params)?;
+                }
+            }
+        }
+        Ok(new_ledger)
+    }
+
+    pub fn apply_transaction<Extra: property::Serialize>(
+        mut self,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
-        static_params: &LedgerStaticParameters,
         dyn_params: &LedgerParameters,
     ) -> Result<Self, Error> {
-        let mut ledger = self.clone();
         let transaction_id = signed_tx.transaction.hash();
-        ledger = internal_apply_transaction(
-            ledger,
-            static_params,
+        self = internal_apply_transaction(
+            self,
             dyn_params,
             &transaction_id,
             &signed_tx.transaction.inputs[..],
             &signed_tx.transaction.outputs[..],
             &signed_tx.witnesses[..],
         )?;
-        Ok(ledger)
+        Ok(self)
+    }
+
+    pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
+        self.settings = self.settings.apply(update);
+        Ok(self)
+    }
+
+    pub fn apply_certificate(
+        mut self,
+        auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
+        dyn_params: &LedgerParameters,
+    ) -> Result<Self, Error> {
+        self = self.apply_transaction(auth_cert, dyn_params)?;
+        self.delegation = self.delegation.apply(&auth_cert.transaction.extra)?;
+        Ok(self)
+    }
+
+    pub fn get_stake_distribution(&self) -> StakeDistribution {
+        stake::get_distribution(&self.delegation, &self.utxos)
     }
 }
 
 /// Apply the transaction
 fn internal_apply_transaction(
     mut ledger: Ledger,
-    static_params: &LedgerStaticParameters,
-    _dyn_params: &LedgerParameters,
+    dyn_params: &LedgerParameters,
     transaction_id: &TransactionId,
     inputs: &[Input],
     outputs: &[Output<Address>],
@@ -154,7 +210,7 @@ fn internal_apply_transaction(
             return Err(Error::ZeroOutput(output.clone()));
         }
 
-        if output.address.discrimination() != static_params.discrimination {
+        if output.address.discrimination() != ledger.static_params.discrimination {
             return Err(Error::InvalidDiscrimination);
         }
         match output.address.kind() {
@@ -166,9 +222,7 @@ fn internal_apply_transaction(
                 let account = identifier.clone().into();
                 ledger.accounts = match ledger.accounts.add_value(&account, output.value) {
                     Ok(accounts) => accounts,
-                    Err(account::LedgerError::NonExistent)
-                        if static_params.allow_account_creation =>
-                    {
+                    Err(account::LedgerError::NonExistent) if dyn_params.allow_account_creation => {
                         // if the account was not existent and that we allow creating
                         // account out of the blue, then fallback on adding the account
                         ledger.accounts.add_account(&account, output.value)?
@@ -329,11 +383,11 @@ pub mod test {
     #[test]
     pub fn utxo() -> () {
         let static_params = LedgerStaticParameters {
-            allow_account_creation: true,
             discrimination: Discrimination::Test,
         };
         let dyn_params = LedgerParameters {
             fees: LinearFee::new(0, 0, 0),
+            allow_account_creation: true,
         };
 
         let mut rng = rand::thread_rng();
@@ -353,12 +407,13 @@ pub mod test {
             value: value,
         };
         let ledger = {
-            let mut l = Ledger::new();
+            let mut l = Ledger::new(static_params, setting::Settings::new());
             l.utxos = l.utxos.add(&tx0_id, &[(0, output0)]).unwrap();
             l
         };
 
         {
+            let ledger = ledger.clone();
             let tx = Transaction {
                 inputs: vec![Input::from_utxo(utxo0)],
                 outputs: vec![Output {
@@ -371,11 +426,12 @@ pub mod test {
                 transaction: tx,
                 witnesses: vec![],
             };
-            let r = ledger.apply_transaction(&signed_tx, &static_params, &dyn_params);
+            let r = ledger.apply_transaction(&signed_tx, &dyn_params);
             assert_err!(Error::NotEnoughSignatures(1, 0), r)
         }
 
         {
+            let ledger = ledger.clone();
             let tx = Transaction {
                 inputs: vec![Input::from_utxo(utxo0)],
                 outputs: vec![Output {
@@ -390,7 +446,7 @@ pub mod test {
                 transaction: tx,
                 witnesses: vec![w1],
             };
-            let r = ledger.apply_transaction(&signed_tx, &static_params, &dyn_params);
+            let r = ledger.apply_transaction(&signed_tx, &dyn_params);
             assert!(r.is_ok())
         }
     }
