@@ -1,22 +1,28 @@
 //! Representation of the block in the mockchain.
 use crate::key::{make_signature, make_signature_update, Hash};
 use crate::leadership::{bft, genesis::GenesisPraosLeader, Leader};
-use chain_core::property::{self, Header as _, Serialize};
+use chain_core::mempack::read_from_raw;
+use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
 
 mod builder;
 //mod cstruct;
 mod header;
+mod headerraw;
 pub mod message;
+mod version;
+
+pub use self::version::*;
 
 pub use self::builder::BlockBuilder;
 
 pub use self::header::{
-    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, BlockVersion, ChainLength,
-    Common, GenesisPraosProof, Header, KESSignature, Proof, BLOCK_VERSION_CONSENSUS_BFT,
-    BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
+    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, ChainLength, Common,
+    GenesisPraosProof, Header, KESSignature, Proof,
 };
-pub use self::message::Message;
+pub use self::headerraw::HeaderRaw;
+pub use self::message::{Message, MessageRaw};
+pub use self::version::*;
 
 pub use crate::date::{BlockDate, BlockDateParseError};
 
@@ -59,7 +65,7 @@ impl BlockContents {
         let mut bytes = Vec::with_capacity(4096);
 
         for message in self.iter() {
-            message.serialize(&mut bytes).unwrap();
+            message.to_raw().serialize(&mut bytes).unwrap();
         }
 
         let hash = Hash::hash_bytes(&bytes);
@@ -74,7 +80,6 @@ impl Block {
         let proof = match leader {
             Leader::None => Proof::None,
             Leader::BftLeader(private_key) => {
-                assert!(common.block_version == BLOCK_VERSION_CONSENSUS_BFT);
                 let signature = make_signature(&private_key, &common);
                 Proof::Bft(BftProof {
                     leader_id: bft::LeaderId(private_key.to_public()),
@@ -82,7 +87,6 @@ impl Block {
                 })
             }
             Leader::GenesisPraos(ref mut kes_secret, vrf_secret, proven_output_seed) => {
-                assert!(common.block_version == BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS);
                 let gpleader = GenesisPraosLeader {
                     kes_public_key: kes_secret.to_public(),
                     vrf_public_key: vrf_secret.to_public(),
@@ -129,7 +133,7 @@ impl property::Block for Block {
     /// Identifier of the block, currently the hash of the
     /// serialized transaction.
     fn id(&self) -> Self::Id {
-        self.header.id()
+        self.header.hash()
     }
 
     /// Id of the parent block.
@@ -151,21 +155,20 @@ impl property::Block for Block {
     }
 }
 
-impl property::HasHeader for Block {
-    type Header = Header;
-    fn header(&self) -> Self::Header {
-        self.header.clone()
-    }
-}
-
 impl property::Serialize for Block {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        self.header.serialize(&mut writer)?;
+        let header_raw = {
+            let mut v = Vec::new();
+            self.header.serialize(&mut v)?;
+            HeaderRaw(v)
+        };
+        header_raw.serialize(&mut writer)?;
 
         for message in self.contents.iter() {
-            message.serialize(&mut writer)?;
+            let message_raw = message.to_raw();
+            message_raw.serialize(&mut writer)?;
         }
         Ok(())
     }
@@ -175,17 +178,22 @@ impl property::Deserialize for Block {
     type Error = std::io::Error;
 
     fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let header = Header::deserialize(&mut reader)?;
+        let header_raw = HeaderRaw::deserialize(&mut reader)?;
+        let header = read_from_raw::<Header>(header_raw.as_ref())?;
 
         let mut serialized_content_size = header.common.block_content_size;
-        let mut contents = BlockContents(Vec::with_capacity(15_000));
+        let mut contents = BlockContents(Vec::with_capacity(4));
+
         while serialized_content_size > 0 {
-            let (message, message_size) = Message::deserialize_with_size(&mut reader)?;
+            let message_raw = MessageRaw::deserialize(&mut reader)?;
+            let message_size = message_raw.size_bytes_plus_size();
+
+            // return error here if message serialize sized is bigger than remaining size
+
+            let message = read_from_raw(message_raw.as_ref())?;
             contents.0.push(message);
-            dbg!(contents.0.len());
 
             serialized_content_size -= message_size as u32;
-            dbg!(serialized_content_size);
         }
 
         Ok(Block {
@@ -216,8 +224,27 @@ mod test {
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
+        fn headerraw_serialization_bijection(b: HeaderRaw) -> TestResult {
+            property::testing::serialization_bijection(b)
+        }
+
+        fn header_serialization_bijection(b: Header) -> TestResult {
+            property::testing::serialization_bijection_r(b)
+        }
+
         fn block_serialization_bijection(b: Block) -> TestResult {
             property::testing::serialization_bijection(b)
+        }
+    }
+
+    impl Arbitrary for HeaderRaw {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let len = u16::arbitrary(g);
+            let mut v = Vec::new();
+            for _ in 0..len {
+                v.push(u8::arbitrary(g))
+            }
+            HeaderRaw(v)
         }
     }
 

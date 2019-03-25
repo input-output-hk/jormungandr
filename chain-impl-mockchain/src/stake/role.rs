@@ -1,5 +1,6 @@
 use crate::key::{deserialize_public_key, serialize_public_key, Hash};
 use crate::leadership::genesis::GenesisPraosLeader;
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
 
@@ -54,9 +55,8 @@ impl property::Serialize for StakeKeyId {
     }
 }
 
-impl property::Deserialize for StakeKeyId {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+impl Readable for StakeKeyId {
+    fn read<'a>(reader: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         deserialize_public_key(reader).map(StakeKeyId)
     }
 }
@@ -68,10 +68,9 @@ impl property::Serialize for StakePoolId {
     }
 }
 
-impl property::Deserialize for StakePoolId {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        Hash::deserialize(reader).map(StakePoolId)
+impl Readable for StakePoolId {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        Hash::read(buf).map(StakePoolId)
     }
 }
 
@@ -84,12 +83,10 @@ impl property::Serialize for GenesisPraosLeader {
     }
 }
 
-impl property::Deserialize for GenesisPraosLeader {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(mut reader: R) -> Result<Self, Self::Error> {
-        let kes_public_key = deserialize_public_key(&mut reader)?;
-        let vrf_public_key = deserialize_public_key(&mut reader)?;
+impl Readable for GenesisPraosLeader {
+    fn read<'a>(reader: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let kes_public_key = deserialize_public_key(reader)?;
+        let vrf_public_key = deserialize_public_key(reader)?;
         Ok(GenesisPraosLeader {
             vrf_public_key,
             kes_public_key,
@@ -115,21 +112,16 @@ impl property::Serialize for StakePoolInfo {
     }
 }
 
-impl property::Deserialize for StakePoolInfo {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::Codec;
-
-        let mut codec = Codec::from(reader);
-        let serial = codec.get_u128()?;
-        let owner_nb = codec.get_u8()? as usize;
+impl Readable for StakePoolInfo {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let serial = buf.get_u128()?;
+        let owner_nb = buf.get_u8()? as usize;
         let mut owners = Vec::with_capacity(owner_nb);
         for _ in 0..owner_nb {
-            let pub_key = deserialize_public_key(&mut codec)?;
+            let pub_key = deserialize_public_key(buf)?;
             owners.push(StakeKeyId(pub_key))
         }
-        let initial_key = GenesisPraosLeader::deserialize(&mut codec)?;
+        let initial_key = GenesisPraosLeader::read(buf)?;
 
         Ok(StakePoolInfo {
             serial,

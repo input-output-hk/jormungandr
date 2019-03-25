@@ -4,6 +4,7 @@ use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     SpendingPublicKey, SpendingSecretKey, SpendingSignature,
 };
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519Bip32, PublicKey, Signature, Verification};
 
@@ -108,22 +109,17 @@ impl property::Serialize for Witness {
     }
 }
 
-impl property::Deserialize for Witness {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
-
-        match codec.get_u8()? {
+impl Readable for Witness {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        match buf.get_u8()? {
             WITNESS_TAG_OLDUTXO => {
-                let xpub = deserialize_public_key(&mut codec)?;
-                let sig = deserialize_signature(&mut codec)?;
+                let xpub = deserialize_public_key(buf)?;
+                let sig = deserialize_signature(buf)?;
                 Ok(Witness::OldUtxo(xpub, sig))
             }
-            WITNESS_TAG_UTXO => deserialize_signature(codec.into_inner()).map(Witness::Utxo),
-            WITNESS_TAG_ACCOUNT => deserialize_signature(codec.into_inner()).map(Witness::Account),
-            _ => unimplemented!(),
+            WITNESS_TAG_UTXO => deserialize_signature(buf).map(Witness::Utxo),
+            WITNESS_TAG_ACCOUNT => deserialize_signature(buf).map(Witness::Account),
+            i => Err(ReadError::UnknownTag(i as u32)),
         }
     }
 }

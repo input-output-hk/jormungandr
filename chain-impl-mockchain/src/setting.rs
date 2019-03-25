@@ -2,13 +2,14 @@
 //!
 
 use crate::{
-    block::{BlockDate, BlockId, BlockVersion, ChainLength, BLOCK_VERSION_CONSENSUS_NONE},
+    block::{BlockVersion, BlockVersionTag},
     fee::LinearFee,
     key::Hash,
     leadership::bft,
 };
 use chain_addr::Discrimination;
-use chain_core::property::{self, BlockId as _};
+use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
+use chain_core::property;
 use std::sync::Arc;
 
 use num_derive::FromPrimitive;
@@ -95,45 +96,38 @@ impl property::Serialize for UpdateProposal {
     }
 }
 
-impl property::Deserialize for UpdateProposal {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+impl Readable for UpdateProposal {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let mut update = UpdateProposal::new();
         loop {
-            let tag = codec.get_u16()?;
+            let tag = buf.get_u16()?;
             match UpdateTag::from_u16(tag) {
                 Some(UpdateTag::End) => {
                     return Ok(update);
                 }
                 Some(UpdateTag::MaxNumberOfTransactionsPerBlock) => {
-                    update.max_number_of_transactions_per_block = Some(codec.get_u32()?);
+                    update.max_number_of_transactions_per_block = Some(buf.get_u32()?);
                 }
                 Some(UpdateTag::BootstrapKeySlotsPercentage) => {
-                    update.bootstrap_key_slots_percentage = Some(codec.get_u8()?);
+                    update.bootstrap_key_slots_percentage = Some(buf.get_u8()?);
                 }
                 Some(UpdateTag::BlockVersion) => {
-                    update.block_version = Some(codec.get_u16().map(BlockVersion)?);
+                    update.block_version = Some(buf.get_u16().map(BlockVersion)?);
                 }
                 Some(UpdateTag::BftLeaders) => {
-                    let len = codec.get_u8()? as usize;
-                    let mut leaders = Vec::with_capacity(len);
-                    for _ in 0..len {
-                        leaders.push(bft::LeaderId::deserialize(&mut codec)?);
-                    }
+                    let len = buf.get_u8()? as usize;
+                    let leaders = read_vec(buf, len)?;
                     update.bft_leaders = Some(leaders);
                 }
                 Some(UpdateTag::AllowAccountCreation) => {
-                    let boolean = codec.get_u8()? != 0;
+                    let boolean = buf.get_u8()? != 0;
                     update.allow_account_creation = Some(boolean);
                 }
                 Some(UpdateTag::LinearFee) => {
                     update.linear_fees = Some(LinearFee {
-                        constant: codec.get_u64()?,
-                        coefficient: codec.get_u64()?,
-                        certificate: codec.get_u64()?,
+                        constant: buf.get_u64()?,
+                        coefficient: buf.get_u64()?,
+                        certificate: buf.get_u64()?,
                     });
                 }
                 None => panic!("Unrecognized update tag {}.", tag),
@@ -145,15 +139,12 @@ impl property::Deserialize for UpdateProposal {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub discrimination: Discrimination,
-    pub last_block_id: BlockId,
-    pub last_block_date: BlockDate,
-    pub chain_length: ChainLength,
-    pub max_number_of_transactions_per_block: Arc<u32>,
-    pub bootstrap_key_slots_percentage: Arc<u8>, // == d * 100
-    pub block_version: Arc<BlockVersion>,
+    pub max_number_of_transactions_per_block: u32,
+    pub bootstrap_key_slots_percentage: u8, // == d * 100
+    pub block_version: BlockVersion,
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
     /// allow for the creation of accounts without the certificate
-    pub allow_account_creation: Arc<bool>,
+    pub allow_account_creation: bool,
     pub linear_fees: Arc<LinearFee>,
 }
 
@@ -163,20 +154,17 @@ impl Settings {
     pub fn new(address_discrimination: Discrimination) -> Self {
         Self {
             discrimination: address_discrimination,
-            last_block_id: Hash::zero(),
-            last_block_date: BlockDate::first(),
-            chain_length: ChainLength(0),
-            max_number_of_transactions_per_block: Arc::new(100),
-            bootstrap_key_slots_percentage: Arc::new(SLOTS_PERCENTAGE_RANGE),
-            block_version: Arc::new(BLOCK_VERSION_CONSENSUS_NONE),
+            max_number_of_transactions_per_block: 100,
+            bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
+            block_version: BlockVersionTag::ConsensusNone.to_block_version(),
             bft_leaders: Arc::new(Vec::new()),
-            allow_account_creation: Arc::new(false),
+            allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
         }
     }
 
     pub fn allow_account_creation(&self) -> bool {
-        *self.allow_account_creation
+        self.allow_account_creation
     }
 
     pub fn linear_fees(&self) -> LinearFee {
@@ -192,20 +180,19 @@ impl Settings {
         if let Some(max_number_of_transactions_per_block) =
             update.max_number_of_transactions_per_block
         {
-            new_state.max_number_of_transactions_per_block =
-                Arc::new(max_number_of_transactions_per_block);
+            new_state.max_number_of_transactions_per_block = max_number_of_transactions_per_block;
         }
         if let Some(bootstrap_key_slots_percentage) = update.bootstrap_key_slots_percentage {
-            new_state.bootstrap_key_slots_percentage = Arc::new(bootstrap_key_slots_percentage);
+            new_state.bootstrap_key_slots_percentage = bootstrap_key_slots_percentage;
         }
         if let Some(block_version) = update.block_version {
-            new_state.block_version = Arc::new(block_version);
+            new_state.block_version = block_version;
         }
         if let Some(leaders) = update.bft_leaders {
             new_state.bft_leaders = Arc::new(leaders);
         }
         if let Some(allow_account_creation) = update.allow_account_creation {
-            new_state.allow_account_creation = Arc::new(allow_account_creation);
+            new_state.allow_account_creation = allow_account_creation;
         }
         if let Some(linear_fees) = update.linear_fees {
             new_state.linear_fees = Arc::new(linear_fees);
@@ -233,23 +220,3 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
-
-impl property::Settings for Settings {
-    type Block = crate::block::Block;
-
-    fn tip(&self) -> <Self::Block as property::Block>::Id {
-        self.last_block_id.clone()
-    }
-
-    fn max_number_of_transactions_per_block(&self) -> u32 {
-        *self.max_number_of_transactions_per_block
-    }
-
-    fn block_version(&self) -> <Self::Block as property::Block>::Version {
-        *self.block_version
-    }
-
-    fn chain_length(&self) -> <Self::Block as property::Block>::ChainLength {
-        self.chain_length
-    }
-}

@@ -2,15 +2,14 @@
 //!
 
 use crate::{
-    block::{Block, Header, Message},
+    block::{Header, Message},
     leadership,
-    ledger::{self, Ledger},
+    ledger::{self, Ledger, LedgerParameters, LedgerStaticParameters},
     setting,
     stake::{DelegationError, DelegationState},
     utxo,
 };
 use chain_addr::{Address, Discrimination};
-use chain_core::property::{self, Header as _};
 
 #[derive(Clone)]
 pub struct State {
@@ -41,74 +40,6 @@ impl From<leadership::Error> for Error {
     }
 }
 
-impl property::State for State {
-    type Error = Error;
-    type Header = Header;
-    type Content = Message;
-
-    fn apply_block<'a, I>(&self, header: &Self::Header, contents: I) -> Result<Self, Self::Error>
-    where
-        I: IntoIterator<Item = &'a Self::Content>,
-        Self::Content: 'a,
-    {
-        let mut new_state = self.apply_contents(contents)?;
-        new_state.settings.last_block_id = header.id();
-        new_state.settings.last_block_date = header.date();
-        new_state.settings.chain_length = header.common.chain_length;
-        Ok(new_state)
-    }
-
-    fn apply_contents<'a, I>(&self, contents: I) -> Result<Self, Self::Error>
-    where
-        I: IntoIterator<Item = &'a Self::Content>,
-        Self::Content: 'a,
-    {
-        let mut new_ledger = self.ledger.clone();
-        let mut new_delegation = self.delegation.clone();
-        let mut new_settings = self.settings.clone();
-        for content in contents {
-            match content {
-                Message::Transaction(signed_transaction) => {
-                    new_ledger = new_ledger.apply_transaction(
-                        signed_transaction,
-                        new_settings.allow_account_creation(),
-                        &new_settings.linear_fees(),
-                        new_settings.address_discrimination(),
-                    )?;
-                }
-                Message::Update(update_proposal) => {
-                    new_settings = new_settings.apply(update_proposal.clone());
-                }
-                content => {
-                    new_delegation = new_delegation.apply(content)?;
-                }
-            }
-        }
-        Ok(State {
-            ledger: new_ledger,
-            settings: new_settings,
-            delegation: new_delegation,
-        })
-    }
-}
-
-impl property::Settings for State {
-    type Block = Block;
-
-    fn tip(&self) -> <Self::Block as property::Block>::Id {
-        self.settings.tip()
-    }
-    fn max_number_of_transactions_per_block(&self) -> u32 {
-        self.settings.max_number_of_transactions_per_block()
-    }
-    fn block_version(&self) -> <Self::Block as property::Block>::Version {
-        self.settings.block_version()
-    }
-    fn chain_length(&self) -> <Self::Block as property::Block>::ChainLength {
-        self.settings.chain_length()
-    }
-}
-
 impl State {
     pub fn new(address_discrimination: Discrimination) -> Self {
         State {
@@ -120,6 +51,50 @@ impl State {
 
     pub fn utxos<'a>(&'a self) -> utxo::Iter<'a, Address> {
         self.ledger.utxos.iter()
+    }
+
+    pub fn apply_block(&self, contents: &[Message]) -> Result<Self, Error> {
+        let mut new_ledger = self.ledger.clone();
+        let mut new_delegation = self.delegation.clone();
+        let mut new_settings = self.settings.clone();
+
+        let static_params = LedgerStaticParameters {
+            allow_account_creation: new_settings.allow_account_creation(),
+            discrimination: *new_settings.address_discrimination(),
+        };
+        let dyn_params = LedgerParameters {
+            fees: new_settings.linear_fees(),
+        };
+
+        for content in contents {
+            match content {
+                Message::OldUtxoDeclaration(_) => unimplemented!(),
+                Message::Transaction(authenticated_tx) => {
+                    new_ledger = new_ledger.apply_transaction(
+                        &authenticated_tx,
+                        &static_params,
+                        &dyn_params,
+                    )?;
+                }
+                Message::Update(update_proposal) => {
+                    new_settings = new_settings.apply(update_proposal.clone());
+                }
+                Message::Certificate(authenticated_cert_tx) => {
+                    new_ledger = new_ledger.apply_transaction(
+                        authenticated_cert_tx,
+                        &static_params,
+                        &dyn_params,
+                    )?;
+                    new_delegation =
+                        new_delegation.apply(&authenticated_cert_tx.transaction.extra)?;
+                }
+            }
+        }
+        Ok(State {
+            ledger: new_ledger,
+            settings: new_settings,
+            delegation: new_delegation,
+        })
     }
 }
 

@@ -1,3 +1,4 @@
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use std::ops;
 
@@ -60,6 +61,11 @@ impl property::Deserialize for Value {
         use chain_core::packer::*;
         let mut codec = Codec::from(reader);
         codec.get_u64().map(Value)
+    }
+}
+impl Readable for Value {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        buf.get_u64().map(Value)
     }
 }
 

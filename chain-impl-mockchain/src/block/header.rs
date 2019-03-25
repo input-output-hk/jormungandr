@@ -1,5 +1,7 @@
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 
+use super::version::{BlockVersion, BlockVersionTag};
 use crate::date::BlockDate;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
@@ -7,21 +9,14 @@ use crate::key::{
 };
 use crate::leadership::{bft, genesis};
 use chain_crypto::{
-    self, AsymmetricKey, Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, Signature,
-    VerifiableRandomFunction, Verification,
+    self, Curve25519_2HashDH, Ed25519Extended, FakeMMM, Signature, VerifiableRandomFunction,
+    Verification,
 };
 
 pub type HeaderHash = Hash;
 pub type BlockContentHash = Hash;
 pub type BlockId = Hash;
 pub type BlockContentSize = u32;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BlockVersion(pub(crate) u16);
-
-pub const BLOCK_VERSION_CONSENSUS_NONE: BlockVersion = BlockVersion::new(0x0000_0000);
-pub const BLOCK_VERSION_CONSENSUS_BFT: BlockVersion = BlockVersion::new(0x0000_0001);
-pub const BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS: BlockVersion = BlockVersion::new(0x0000_0002);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Common {
@@ -76,12 +71,6 @@ pub struct Header {
     pub(crate) proof: Proof,
 }
 
-impl BlockVersion {
-    pub const fn new(v: u16) -> Self {
-        BlockVersion(v)
-    }
-}
-
 impl PartialEq<Self> for BftSignature {
     fn eq(&self, other: &Self) -> bool {
         self.0.as_ref() == other.0.as_ref()
@@ -134,14 +123,18 @@ impl Header {
         &self.common.block_parent_hash
     }
 
+    pub fn chain_length(&self) -> ChainLength {
+        self.common.chain_length
+    }
+
     /// function to compute the Header Hash as per the spec. It is the hash
     /// of the serialized header (except the first 2bytes: the size)
     #[inline]
     pub fn hash(&self) -> HeaderHash {
-        // TODO: this is not the optimal way to compute the crypto graphic hash
+        // TODO: this is not the optimal way to compute the hash
         use chain_core::property::Serialize;
         let bytes = self.serialize_as_vec().unwrap();
-        HeaderHash::hash_bytes(&bytes[2..])
+        HeaderHash::hash_bytes(&bytes[..])
     }
 
     pub fn proof(&self) -> &Proof {
@@ -179,29 +172,6 @@ impl property::ChainLength for ChainLength {
     }
 }
 
-impl property::Header for Header {
-    type Id = HeaderHash;
-    type Date = BlockDate;
-    type Version = BlockVersion;
-    type ChainLength = ChainLength;
-
-    fn id(&self) -> Self::Id {
-        self.hash()
-    }
-
-    fn date(&self) -> Self::Date {
-        *self.block_date()
-    }
-
-    fn version(&self) -> Self::Version {
-        *self.block_version()
-    }
-
-    fn chain_length(&self) -> Self::ChainLength {
-        self.common.chain_length
-    }
-}
-
 impl property::Serialize for Common {
     type Error = std::io::Error;
 
@@ -226,91 +196,80 @@ impl property::Serialize for Common {
 impl property::Serialize for Header {
     type Error = std::io::Error;
 
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::Codec;
-
-        let mut buffered = Codec::from(writer).buffered();
-
-        let header_size_hole = buffered.hole(2)?;
-
-        self.common.serialize(&mut buffered)?;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        self.common.serialize(&mut writer)?;
 
         match &self.proof {
             Proof::None => {}
             Proof::Bft(bft_proof) => {
-                serialize_public_key(&bft_proof.leader_id.0, &mut buffered)?;
-                serialize_signature(&bft_proof.signature.0, &mut buffered)?;
+                serialize_public_key(&bft_proof.leader_id.0, &mut writer)?;
+                serialize_signature(&bft_proof.signature.0, &mut writer)?;
             }
             Proof::GenesisPraos(genesis_praos_proof) => {
-                use std::io::Write;
                 genesis_praos_proof
                     .genesis_praos_id
-                    .serialize(&mut buffered)?;
+                    .serialize(&mut writer)?;
                 {
                     let mut buf =
                         [0; <Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE];
                     genesis_praos_proof.vrf_proof.to_bytes(&mut buf);
-                    buffered.write_all(&buf)?;
+                    writer.write_all(&buf)?;
                 }
-                serialize_signature(&genesis_praos_proof.kes_proof.0, &mut buffered)?;
+                serialize_signature(&genesis_praos_proof.kes_proof.0, writer)?;
             }
         }
-
-        buffered.fill_hole_u16(header_size_hole, buffered.buffered_len() as u16 - 2);
-        let _codec = buffered.into_inner()?;
-
         Ok(())
     }
 }
 
-impl property::Deserialize for Header {
-    type Error = std::io::Error;
+impl Readable for Common {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let block_version = buf.get_u16().map(BlockVersion)?;
+        let block_content_size = buf.get_u32()?;
+        let epoch = buf.get_u32()?;
+        let slot_id = buf.get_u32()?;
+        let chain_length = buf.get_u32().map(ChainLength)?;
+        let block_content_hash = Hash::read(buf)?;
+        let block_parent_hash = Hash::read(buf)?;
 
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::Codec;
-        use std::io::Read;
-
-        let mut codec = Codec::from(reader);
-
-        let _header_size = codec.get_u16()?;
-        let block_version = codec.get_u16().map(BlockVersion::new)?;
-        let block_content_size = codec.get_u32()?;
-        let epoch = codec.get_u32()?;
-        let slot_id = codec.get_u32()?;
         let block_date = BlockDate { epoch, slot_id };
-        let chain_length = codec.get_u32().map(ChainLength)?;
+        Ok(Common {
+            block_version,
+            block_content_size,
+            block_date,
+            chain_length,
+            block_content_hash,
+            block_parent_hash,
+        })
+    }
+}
 
-        let mut hash = [0; 32];
-        codec.read_exact(&mut hash)?;
-        let block_content_hash = Hash::from(chain_crypto::Blake2b256::from(hash));
-        let mut hash = [0; 32];
-        codec.read_exact(&mut hash)?;
-        let block_parent_hash = Hash::from(chain_crypto::Blake2b256::from(hash));
+impl Readable for Header {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let common = Common::read(buf)?;
 
-        let proof = match block_version {
-            BLOCK_VERSION_CONSENSUS_NONE => Proof::None,
-            BLOCK_VERSION_CONSENSUS_BFT => {
+        let proof = match BlockVersionTag::from_block_version(common.block_version) {
+            Some(BlockVersionTag::ConsensusNone) => Proof::None,
+            Some(BlockVersionTag::ConsensusBft) => {
                 // BFT
-                let leader_id = deserialize_public_key(&mut codec).map(bft::LeaderId)?;
-                let signature = deserialize_signature(&mut codec).map(BftSignature)?;
+                let leader_id = deserialize_public_key(buf).map(bft::LeaderId)?;
+                let signature = deserialize_signature(buf).map(BftSignature)?;
                 Proof::Bft(BftProof {
                     leader_id,
                     signature,
                 })
             }
-            BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => {
-                let genesis_praos_id = genesis::GenesisPraosId::deserialize(&mut codec)?;
+            Some(BlockVersionTag::ConsensusGenesisPraos) => {
+                let genesis_praos_id = genesis::GenesisPraosId::read(buf)?;
                 dbg!(&genesis_praos_id);
                 let vrf_proof = {
-                    let mut buf =
-                        [0; <Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE];
-                    codec.read_exact(&mut buf)?;
+                    let bytes = <[u8;<Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE]>::read(buf)?;
 
-                    <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom::from_bytes_unverified(&buf)
-                        .ok_or(std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid VRF Proof".to_owned()))?
-                };
+                    <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom::from_bytes_unverified(&bytes)
+                        .ok_or(ReadError::StructureInvalid("VRF Proof".to_string()))
+                }?;
                 dbg!(&vrf_proof);
-                let kes_proof = deserialize_signature(&mut codec).map(KESSignature)?;
+                let kes_proof = deserialize_signature(buf).map(KESSignature)?;
                 dbg!(&kes_proof);
 
                 Proof::GenesisPraos(GenesisPraosProof {
@@ -319,31 +278,22 @@ impl property::Deserialize for Header {
                     kes_proof: kes_proof,
                 })
             }
-            _ => unimplemented!("block_version: 0x{:08x}", block_version.0),
+            None => return Err(ReadError::UnknownTag(common.block_version.0 as u32)),
         };
 
-        Ok(Header {
-            common: Common {
-                block_version,
-                block_date,
-                block_content_size,
-                block_content_hash,
-                block_parent_hash,
-                chain_length,
-            },
-            proof,
-        })
+        Ok(Header { common, proof })
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use chain_crypto::AsymmetricKey;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
         fn header_serialization_bijection(b: Header) -> TestResult {
-            property::testing::serialization_bijection(b)
+            property::testing::serialization_bijection_r(b)
         }
     }
 
@@ -408,14 +358,15 @@ mod test {
 
     impl Arbitrary for Header {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let common = Common::arbitrary(g);
-            let proof = match common.block_version {
-                BLOCK_VERSION_CONSENSUS_NONE => Proof::None,
-                BLOCK_VERSION_CONSENSUS_BFT => Proof::Bft(Arbitrary::arbitrary(g)),
-                BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => {
+            let mut common = Common::arbitrary(g);
+            //common.block_version = BlockVersionTag::ConsensusNone.to_block_version();
+            let proof = match BlockVersionTag::from_block_version(common.block_version) {
+                Some(BlockVersionTag::ConsensusNone) => Proof::None,
+                Some(BlockVersionTag::ConsensusBft) => Proof::Bft(Arbitrary::arbitrary(g)),
+                Some(BlockVersionTag::ConsensusGenesisPraos) => {
                     Proof::GenesisPraos(Arbitrary::arbitrary(g))
                 }
-                _ => unreachable!(),
+                None => unreachable!(),
             };
             Header {
                 common: common,

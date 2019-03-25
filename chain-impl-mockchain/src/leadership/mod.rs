@@ -1,11 +1,7 @@
 use crate::{
-    block::{
-        Block, BlockVersion, Header, BLOCK_VERSION_CONSENSUS_BFT,
-        BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS, BLOCK_VERSION_CONSENSUS_NONE,
-    },
+    block::{BlockVersion, BlockVersionTag, Header},
     state::State,
 };
-use chain_core::property::{self, LeaderSelection};
 use chain_crypto::algorithms::vrf::vrf::ProvenOutputSeed;
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
 
@@ -77,10 +73,14 @@ impl Inner {
     #[inline]
     fn verify_version(&self, block_version: &BlockVersion) -> Verification {
         match self {
-            Inner::None(_) if block_version == &BLOCK_VERSION_CONSENSUS_NONE => {
+            Inner::None(_)
+                if block_version == &BlockVersionTag::ConsensusNone.to_block_version() =>
+            {
                 Verification::Success
             }
-            Inner::Bft(_) if block_version == &BLOCK_VERSION_CONSENSUS_BFT => Verification::Success,
+            Inner::Bft(_) if block_version == &BlockVersionTag::ConsensusBft.to_block_version() => {
+                Verification::Success
+            }
             _ => Verification::Failure(Error::new(ErrorKind::IncompatibleBlockVersion)),
         }
     }
@@ -97,17 +97,17 @@ impl Inner {
 
 impl Leadership {
     pub fn new(state: &State) -> Self {
-        match *state.settings.block_version {
-            BLOCK_VERSION_CONSENSUS_NONE => Leadership {
+        match BlockVersionTag::from_block_version(state.settings.block_version.clone()) {
+            Some(BlockVersionTag::ConsensusNone) => Leadership {
                 inner: Inner::None(none::NoLeadership),
             },
-            BLOCK_VERSION_CONSENSUS_BFT => Leadership {
+            Some(BlockVersionTag::ConsensusBft) => Leadership {
                 inner: Inner::Bft(bft::BftLeaderSelection::new(state).unwrap()),
             },
-            BLOCK_VERSION_CONSENSUS_GENESIS_PRAOS => Leadership {
+            Some(BlockVersionTag::ConsensusGenesisPraos) => Leadership {
                 inner: Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(state)),
             },
-            _ => unimplemented!(),
+            None => unimplemented!(),
         }
     }
 
@@ -119,6 +119,7 @@ impl Leadership {
     }
 }
 
+/*
 impl LeaderSelection for Leadership {
     type Error = Error;
     type LeaderId = LeaderId;
@@ -144,6 +145,7 @@ impl LeaderSelection for Leadership {
         }
     }
 }
+*/
 
 impl chain_core::property::LeaderId for LeaderId {}
 

@@ -1,4 +1,3 @@
-use crate::certificate::Certificate;
 use crate::transaction as tx;
 use crate::value::Value;
 use chain_addr::Address;
@@ -23,29 +22,18 @@ impl LinearFee {
 }
 
 pub trait FeeAlgorithm {
-    fn calculate_for(
-        &self,
-        tx: &tx::Transaction<Address>,
-        certificate: &Option<Certificate>,
-    ) -> Option<Value>;
+    fn calculate_for<Extra>(&self, tx: &tx::Transaction<Address, Extra>) -> Option<Value>;
 }
 
 impl FeeAlgorithm for LinearFee {
-    fn calculate_for(
-        &self,
-        tx: &tx::Transaction<Address>,
-        certificate: &Option<Certificate>,
-    ) -> Option<Value> {
+    fn calculate_for<Extra>(&self, tx: &tx::Transaction<Address, Extra>) -> Option<Value> {
         let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
-        let cert = match certificate {
-            Some(_) => self.certificate,
-            None => 0,
-        };
+        // FIXME for now we don't consider extra as payload, however in the near future
+        // we need a trait related to the Extra that will give the fee valuation of the certificate
         let fee = self
             .coefficient
             .checked_mul(msz)?
-            .checked_add(self.constant)?
-            .checked_add(cert)?;
+            .checked_add(self.constant)?;
         Some(Value(fee))
     }
 }
