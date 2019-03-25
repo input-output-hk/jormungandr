@@ -96,7 +96,7 @@ where
 
 impl<T> FromProtobuf<gen::node::Transaction> for T
 where
-    T: property::Transaction + property::Deserialize,
+    T: property::Message + property::Deserialize,
 {
     fn from_message(msg: gen::node::Transaction) -> Result<T, core_error::Error> {
         let tx = deserialize_bytes(&msg.content)?;
@@ -188,7 +188,7 @@ where
 
 impl<T> IntoProtobuf<gen::node::Transaction> for T
 where
-    T: property::Transaction + property::Serialize,
+    T: property::Message + property::Serialize,
 {
     fn into_message(self) -> Result<gen::node::Transaction, tower_grpc::Status> {
         let content = serialize_to_bytes(&self)?;

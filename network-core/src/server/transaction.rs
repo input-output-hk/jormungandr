@@ -2,7 +2,7 @@
 
 use crate::error::Error;
 
-use chain_core::property::{Deserialize, Serialize, Transaction, TransactionId};
+use chain_core::property::{Deserialize, Message, MessageId, Serialize};
 
 use futures::prelude::*;
 
@@ -10,10 +10,10 @@ use futures::prelude::*;
 /// validating and accepting transactions.
 pub trait TransactionService {
     /// Transaction in the blockchain.
-    type Transaction: Transaction + Serialize;
+    type Transaction: Message + Serialize;
 
     /// The transaction identifier type for the blockchain.
-    type TransactionId: TransactionId + Serialize + Deserialize;
+    type TransactionId: MessageId + Serialize + Deserialize;
 
     /// The type of asynchronous futures returned by method `propose_transactions`.
     type ProposeTransactionsFuture: Future<
