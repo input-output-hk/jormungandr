@@ -13,7 +13,7 @@ pub trait GossipService {
     /// messages from a peer.
     type GossipSubscription: Stream<Item = Self::NodeGossip, Error = Error>;
 
-    /// The type of asynchronous futures returned by method `subscription`.
+    /// The type of asynchronous futures returned by method `gossip_subscription`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
@@ -24,7 +24,7 @@ pub trait GossipService {
     //
     // Returns a future that resolves to an asynchronous subscription stream
     // that receives node gossip messages sent by the peer.
-    fn subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
+    fn gossip_subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
     where
         Out: Stream<Item = Self::NodeGossip, Error = Error>;
 }

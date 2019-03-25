@@ -417,7 +417,7 @@ where
     type GossipSubscription = ResponseStream<C::NodeGossip, gen::node::NodeGossip>;
     type GossipSubscriptionFuture = BidiStreamFuture<C::NodeGossip, gen::node::NodeGossip>;
 
-    fn subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
+    fn gossip_subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
     where
         Out: Stream<Item = C::NodeGossip> + Send + 'static,
     {

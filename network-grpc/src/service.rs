@@ -361,6 +361,6 @@ where
     ) -> Self::GossipSubscriptionFuture {
         let service = try_get_service!(self.gossip_service);
         let stream = RequestStream::new(request.into_inner());
-        ResponseFuture::new(service.subscription(stream))
+        ResponseFuture::new(service.gossip_subscription(stream))
     }
 }
