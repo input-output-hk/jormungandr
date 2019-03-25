@@ -1,7 +1,7 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::Message;
+use crate::block::{HeaderHash, Message};
 use crate::fee::LinearFee;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
@@ -14,6 +14,7 @@ use std::sync::Arc;
 // static parameters, effectively this is constant in the parameter of the blockchain
 #[derive(Clone)]
 pub struct LedgerStaticParameters {
+    pub block0_initial_hash: HeaderHash,
     pub discrimination: Discrimination,
 }
 
@@ -47,9 +48,14 @@ pub enum Error {
     UtxoValueNotMatching(Value, Value),
     UtxoError(utxo::Error),
     UtxoInvalidSignature(UtxoPointer, Output<Address>, Witness),
+    OldUtxoNotInBlock0,
     OldUtxoInvalidSignature(UtxoPointer, Output<legacy::OldAddress>, Witness),
     OldUtxoInvalidPublicKey(UtxoPointer, Output<legacy::OldAddress>, Witness),
     AccountInvalidSignature(account::Identifier, Witness),
+    TransactionHasNoInput,
+    Block0TransactionHasInput,
+    Block0TransactionHasOutput,
+    Block0TransactionHasWitnesses,
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -80,15 +86,70 @@ impl From<DelegationError> for Error {
 }
 
 impl Ledger {
-    pub fn new(static_parameters: LedgerStaticParameters, settings: setting::Settings) -> Self {
-        Ledger {
+    pub fn new(
+        static_parameters: LedgerStaticParameters,
+        contents: &[Message],
+    ) -> Result<Self, Error> {
+        let mut ledger = Ledger {
             utxos: utxo::Ledger::new(),
             oldutxos: utxo::Ledger::new(),
             accounts: account::Ledger::new(),
-            settings: settings,
+            settings: setting::Settings::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_parameters),
+        };
+
+        let mut ledger_params = LedgerParameters {
+            fees: LinearFee::new(0, 0, 0),
+            allow_account_creation: false,
+        };
+
+        for content in contents {
+            match content {
+                Message::OldUtxoDeclaration(old) => {
+                    ledger.oldutxos = apply_old_declaration(ledger.oldutxos, old)?;
+                }
+                Message::Transaction(authenticated_tx) => {
+                    if authenticated_tx.transaction.inputs.len() != 0 {
+                        return Err(Error::Block0TransactionHasInput);
+                    }
+                    if authenticated_tx.witnesses.len() != 0 {
+                        return Err(Error::Block0TransactionHasWitnesses);
+                    }
+                    let transaction_id = authenticated_tx.transaction.hash();
+                    let (new_utxos, new_accounts) = internal_apply_transaction_output(
+                        ledger.utxos,
+                        ledger.accounts,
+                        &ledger.static_params,
+                        &ledger_params,
+                        &transaction_id,
+                        &authenticated_tx.transaction.outputs,
+                    )?;
+                    ledger.utxos = new_utxos;
+                    ledger.accounts = new_accounts;;
+                }
+                Message::Update(update_proposal) => {
+                    ledger = ledger.apply_update(&update_proposal)?;
+                    ledger_params = ledger.get_ledger_parameters();
+                }
+                Message::Certificate(authenticated_cert_tx) => {
+                    if authenticated_cert_tx.transaction.inputs.len() != 0 {
+                        return Err(Error::Block0TransactionHasInput);
+                    }
+                    if authenticated_cert_tx.witnesses.len() != 0 {
+                        return Err(Error::Block0TransactionHasWitnesses);
+                    }
+                    if authenticated_cert_tx.transaction.outputs.len() != 0 {
+                        return Err(Error::Block0TransactionHasOutput);
+                    }
+                    ledger.delegation = ledger
+                        .delegation
+                        .apply(&authenticated_cert_tx.transaction.extra)?;
+                }
+            }
         }
+
+        Ok(ledger)
     }
 
     /// Try to apply messages to a State, and return the new State if succesful
@@ -101,7 +162,7 @@ impl Ledger {
 
         for content in contents {
             match content {
-                Message::OldUtxoDeclaration(_) => unimplemented!(),
+                Message::OldUtxoDeclaration(_) => return Err(Error::OldUtxoNotInBlock0),
                 Message::Transaction(authenticated_tx) => {
                     new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
                 }
@@ -152,6 +213,31 @@ impl Ledger {
     pub fn get_stake_distribution(&self) -> StakeDistribution {
         stake::get_distribution(&self.delegation, &self.utxos)
     }
+
+    pub fn get_ledger_parameters(&self) -> LedgerParameters {
+        LedgerParameters {
+            fees: *self.settings.linear_fees,
+            allow_account_creation: self.settings.allow_account_creation,
+        }
+    }
+}
+
+fn apply_old_declaration(
+    mut utxos: utxo::Ledger<legacy::OldAddress>,
+    decl: &legacy::UtxoDeclaration,
+) -> Result<utxo::Ledger<legacy::OldAddress>, Error> {
+    assert!(decl.addrs.len() < 255);
+    let txid = decl.hash();
+    let mut outputs = Vec::with_capacity(decl.addrs.len());
+    for (i, d) in decl.addrs.iter().enumerate() {
+        let output = Output {
+            address: d.0.clone(),
+            value: d.1,
+        };
+        outputs.push((i as u8, output))
+    }
+    utxos = utxos.add(&txid, &outputs)?;
+    Ok(utxos)
 }
 
 /// Apply the transaction
@@ -166,6 +252,10 @@ fn internal_apply_transaction(
     assert!(inputs.len() < 255);
     assert!(outputs.len() < 255);
     assert!(witnesses.len() < 255);
+
+    if inputs.len() == 0 {
+        return Err(Error::TransactionHasNoInput);
+    }
 
     // 1. verify that number of signatures matches number of
     // transactions
@@ -203,6 +293,28 @@ fn internal_apply_transaction(
     }
 
     // 4. add the new outputs
+    let (new_utxos, new_accounts) = internal_apply_transaction_output(
+        ledger.utxos,
+        ledger.accounts,
+        &ledger.static_params,
+        dyn_params,
+        transaction_id,
+        outputs,
+    )?;
+    ledger.utxos = new_utxos;
+    ledger.accounts = new_accounts;
+
+    Ok(ledger)
+}
+
+fn internal_apply_transaction_output(
+    mut utxos: utxo::Ledger<Address>,
+    mut accounts: account::Ledger,
+    static_params: &LedgerStaticParameters,
+    dyn_params: &LedgerParameters,
+    transaction_id: &TransactionId,
+    outputs: &[Output<Address>],
+) -> Result<(utxo::Ledger<Address>, account::Ledger), Error> {
     let mut new_utxos = Vec::new();
     for (index, output) in outputs.iter().enumerate() {
         // Reject zero-valued outputs.
@@ -210,7 +322,7 @@ fn internal_apply_transaction(
             return Err(Error::ZeroOutput(output.clone()));
         }
 
-        if output.address.discrimination() != ledger.static_params.discrimination {
+        if output.address.discrimination() != static_params.discrimination {
             return Err(Error::InvalidDiscrimination);
         }
         match output.address.kind() {
@@ -220,12 +332,12 @@ fn internal_apply_transaction(
             Kind::Account(identifier) => {
                 // don't have a way to make a newtype ref from the ref so .clone()
                 let account = identifier.clone().into();
-                ledger.accounts = match ledger.accounts.add_value(&account, output.value) {
+                accounts = match accounts.add_value(&account, output.value) {
                     Ok(accounts) => accounts,
                     Err(account::LedgerError::NonExistent) if dyn_params.allow_account_creation => {
                         // if the account was not existent and that we allow creating
                         // account out of the blue, then fallback on adding the account
-                        ledger.accounts.add_account(&account, output.value)?
+                        accounts.add_account(&account, output.value)?
                     }
                     Err(error) => return Err(error.into()),
                 };
@@ -233,9 +345,8 @@ fn internal_apply_transaction(
         }
     }
 
-    ledger.utxos = ledger.utxos.add(transaction_id, &new_utxos)?;
-
-    Ok(ledger)
+    utxos = utxos.add(transaction_id, &new_utxos)?;
+    Ok((utxos, accounts))
 }
 
 fn input_utxo_verify(
@@ -382,18 +493,15 @@ pub mod test {
 
     #[test]
     pub fn utxo() -> () {
+        let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
         let static_params = LedgerStaticParameters {
+            block0_initial_hash: block0_hash,
             discrimination: Discrimination::Test,
-        };
-        let dyn_params = LedgerParameters {
-            fees: LinearFee::new(0, 0, 0),
-            allow_account_creation: true,
         };
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &static_params.discrimination);
         let (_sk2, _pk2, user2_address) = make_key(&mut rng, &static_params.discrimination);
-        let tx0_id = TransactionId::hash_bytes(&[0]);
         let value = Value(42000);
 
         let output0 = Output {
@@ -401,16 +509,25 @@ pub mod test {
             value: value,
         };
 
+        let first_trans = AuthenticatedTransaction {
+            transaction: Transaction {
+                inputs: vec![],
+                outputs: vec![output0],
+                extra: NoExtra,
+            },
+            witnesses: vec![],
+        };
+        let tx0_id = first_trans.transaction.hash();
+
         let utxo0 = UtxoPointer {
             transaction_id: tx0_id,
             output_index: 0,
             value: value,
         };
-        let ledger = {
-            let mut l = Ledger::new(static_params, setting::Settings::new());
-            l.utxos = l.utxos.add(&tx0_id, &[(0, output0)]).unwrap();
-            l
-        };
+
+        let messages = [Message::Transaction(first_trans)];
+        let ledger = Ledger::new(static_params, &messages).unwrap();
+        let dyn_params = ledger.get_ledger_parameters();
 
         {
             let ledger = ledger.clone();
