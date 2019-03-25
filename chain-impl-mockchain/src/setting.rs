@@ -138,7 +138,6 @@ impl Readable for UpdateProposal {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
-    pub discrimination: Discrimination,
     pub max_number_of_transactions_per_block: u32,
     pub bootstrap_key_slots_percentage: u8, // == d * 100
     pub block_version: BlockVersion,
@@ -151,9 +150,8 @@ pub struct Settings {
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
 
 impl Settings {
-    pub fn new(address_discrimination: Discrimination) -> Self {
+    pub fn new() -> Self {
         Self {
-            discrimination: address_discrimination,
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
             block_version: BlockVersionTag::ConsensusNone.to_block_version(),
@@ -169,10 +167,6 @@ impl Settings {
 
     pub fn linear_fees(&self) -> LinearFee {
         *self.linear_fees
-    }
-
-    pub fn address_discrimination(&self) -> &Discrimination {
-        &self.discrimination
     }
 
     pub fn apply(&self, update: UpdateProposal) -> Self {
