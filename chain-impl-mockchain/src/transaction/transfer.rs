@@ -2,6 +2,7 @@ use super::transaction::TransactionId;
 use super::utxo::UtxoPointer;
 use crate::account;
 use crate::value::*;
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::PublicKey;
 
@@ -100,10 +101,31 @@ impl property::Deserialize for Input {
     }
 }
 
+impl Readable for Input {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let index_or_account = buf.get_u8()?;
+        let value = Value::read(buf)?;
+        let input_ptr = <[u8; INPUT_PTR_SIZE]>::read(buf)?;
+        Ok(Input {
+            index_or_account: index_or_account,
+            value: value,
+            input_ptr: input_ptr,
+        })
+    }
+}
+
 /// Information how tokens are spent.
 /// A value of tokens is sent to the address.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Output<Address> {
     pub address: Address,
     pub value: Value,
+}
+
+impl<Address: Readable> Readable for Output<Address> {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let address = Address::read(buf)?;
+        let value = Value::read(buf)?;
+        Ok(Output { address, value })
+    }
 }

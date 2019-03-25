@@ -76,9 +76,9 @@ impl Ledger {
         }
     }
 
-    pub fn apply_transaction(
+    pub fn apply_transaction<Extra: property::Serialize>(
         &self,
-        signed_tx: &AuthenticatedTransaction<Address>,
+        signed_tx: &AuthenticatedTransaction<Address, Extra>,
         static_params: &LedgerStaticParameters,
         dyn_params: &LedgerParameters,
     ) -> Result<Self, Error> {
@@ -101,7 +101,7 @@ impl Ledger {
 fn internal_apply_transaction(
     mut ledger: Ledger,
     static_params: &LedgerStaticParameters,
-    dyn_params: &LedgerParameters,
+    _dyn_params: &LedgerParameters,
     transaction_id: &TransactionId,
     inputs: &[Input],
     outputs: &[Output<Address>],
@@ -365,6 +365,7 @@ pub mod test {
                     address: user2_address.clone(),
                     value: Value(1),
                 }],
+                extra: NoExtra,
             };
             let signed_tx = AuthenticatedTransaction {
                 transaction: tx,
@@ -381,6 +382,7 @@ pub mod test {
                     address: user2_address.clone(),
                     value: Value(1),
                 }],
+                extra: NoExtra,
             };
             let txid = tx.hash();
             let w1 = Witness::new(&txid, &sk1);

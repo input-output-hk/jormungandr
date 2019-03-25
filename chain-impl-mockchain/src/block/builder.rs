@@ -7,7 +7,7 @@ use crate::block::{
 };
 use crate::key::{make_signature, make_signature_update};
 use crate::leadership::{self, genesis};
-use crate::transaction::AuthenticatedTransaction;
+use crate::transaction::{AuthenticatedTransaction, NoExtra};
 use chain_addr::Address;
 use chain_crypto::{
     Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey, VerifiableRandomFunction,
@@ -68,7 +68,7 @@ impl BlockBuilder {
     /// Equivalent to call `block_builder.message(Message::Transaction(transaction))`
     pub fn transaction(
         &mut self,
-        signed_transaction: AuthenticatedTransaction<Address>,
+        signed_transaction: AuthenticatedTransaction<Address, NoExtra>,
     ) -> &mut Self {
         self.message(Message::Transaction(signed_transaction))
     }

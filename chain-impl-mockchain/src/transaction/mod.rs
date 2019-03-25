@@ -3,8 +3,8 @@ mod transfer;
 mod utxo;
 mod witness;
 
-use crate::certificate::Certificate;
 use chain_addr::Address;
+use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 
 // to remove..
@@ -15,16 +15,16 @@ pub use witness::*;
 
 /// Each transaction must be signed in order to be executed
 /// by the ledger. `SignedTransaction` represents such a transaction.
-#[derive(Debug, Clone)]
-pub struct AuthenticatedTransaction<OutAddress> {
-    pub transaction: Transaction<OutAddress>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthenticatedTransaction<OutAddress, Extra> {
+    pub transaction: Transaction<OutAddress, Extra>,
     pub witnesses: Vec<Witness>,
 }
 
-impl property::Serialize for AuthenticatedTransaction<Address> {
-    type Error = std::io::Error;
+impl<Extra: property::Serialize> property::Serialize for AuthenticatedTransaction<Address, Extra> {
+    type Error = Extra::Error;
 
-    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Extra::Error> {
         assert_eq!(self.transaction.inputs.len(), self.witnesses.len());
 
         // encode the transaction body
@@ -38,22 +38,11 @@ impl property::Serialize for AuthenticatedTransaction<Address> {
     }
 }
 
-impl property::Deserialize for AuthenticatedTransaction<Address> {
-    type Error = std::io::Error;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-
-        let mut codec = Codec::from(reader);
-
-        let transaction = Transaction::deserialize(&mut codec)?;
+impl<Extra: Readable> Readable for AuthenticatedTransaction<Address, Extra> {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let transaction = Transaction::read_with_header(buf)?;
         let num_witnesses = transaction.inputs.len();
-
-        let mut witnesses = Vec::with_capacity(num_witnesses);
-        for _ in 0..num_witnesses {
-            let witness = Witness::deserialize(&mut codec)?;
-            witnesses.push(witness);
-        }
+        let witnesses = read_vec(buf, num_witnesses)?;
 
         let signed_transaction = AuthenticatedTransaction {
             transaction,
@@ -64,69 +53,6 @@ impl property::Deserialize for AuthenticatedTransaction<Address> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct CertificateTransaction<OutAddress> {
-    pub transaction: Transaction<OutAddress>,
-    pub certificate: Certificate,
-}
-
-impl CertificateTransaction<Address> {
-    pub fn hash(&self) -> TransactionId {
-        use chain_core::packer::*;
-        use chain_core::property::Serialize;
-
-        let writer = Vec::new();
-        let mut codec = Codec::from(writer);
-        let bytes = {
-            self.transaction.serialize(&mut codec).unwrap();
-            self.certificate.serialize(&mut codec).unwrap();
-            codec.into_inner()
-        };
-        TransactionId::hash_bytes(&bytes)
-    }
-}
-
-impl property::Serialize for CertificateTransaction<Address> {
-    type Error = std::io::Error;
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-
-        let mut codec = Codec::from(writer);
-        self.transaction.serialize(&mut codec)?;
-        self.certificate.serialize(&mut codec)?;
-        Ok(())
-    }
-}
-
-/// Each transaction must be signed in order to be executed
-/// by the ledger. `SignedTransaction` represents such a transaction.
-#[derive(Debug, Clone)]
-pub struct SignedCertificateTransaction<OutAddress> {
-    pub transaction: CertificateTransaction<OutAddress>,
-    pub witnesses: Vec<Witness>,
-}
-
-impl property::Serialize for SignedCertificateTransaction<Address> {
-    type Error = std::io::Error;
-
-    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        assert_eq!(
-            self.transaction.transaction.inputs.len(),
-            self.witnesses.len()
-        );
-
-        // encode the transaction body
-        self.transaction.serialize(&mut writer)?;
-
-        // encode the signatures
-        for witness in self.witnesses.iter() {
-            witness.serialize(&mut writer)?;
-        }
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -134,14 +60,12 @@ mod test {
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
-        fn transaction_encode_decode(transaction: Transaction<Address>) -> TestResult {
-            chain_core::property::testing::serialization_bijection(transaction)
+        fn transaction_encode_decode(transaction: Transaction<Address, NoExtra>) -> TestResult {
+            chain_core::property::testing::serialization_bijection_r(transaction)
         }
-        /*
-        fn signed_transaction_encode_decode(transaction: SignedTransaction<Address>) -> TestResult {
-            chain_core::property::testing::serialization_bijection(transaction)
+        fn signed_transaction_encode_decode(transaction: AuthenticatedTransaction<Address, NoExtra>) -> TestResult {
+            chain_core::property::testing::serialization_bijection_r(transaction)
         }
-        */
     }
 
     impl Arbitrary for Value {
@@ -175,7 +99,13 @@ mod test {
         }
     }
 
-    impl Arbitrary for Transaction<Address> {
+    impl Arbitrary for NoExtra {
+        fn arbitrary<G: Gen>(_: &mut G) -> Self {
+            Self
+        }
+    }
+
+    impl<Extra: Arbitrary> Arbitrary for Transaction<Address, Extra> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let num_inputs = u8::arbitrary(g) as usize;
             let num_outputs = u8::arbitrary(g) as usize;
@@ -186,11 +116,12 @@ mod test {
                 outputs: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(num_outputs % 8)
                     .collect(),
+                extra: Arbitrary::arbitrary(g),
             }
         }
     }
 
-    impl Arbitrary for AuthenticatedTransaction<Address> {
+    impl<Extra: Arbitrary> Arbitrary for AuthenticatedTransaction<Address, Extra> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let transaction = Transaction::arbitrary(g);
             let num_witnesses = transaction.inputs.len();
