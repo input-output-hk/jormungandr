@@ -9,5 +9,6 @@ cfg_if! {
     }
 }
 
+pub mod mempack;
 pub mod packer;
 pub mod property;
