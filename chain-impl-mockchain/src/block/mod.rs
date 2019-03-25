@@ -21,7 +21,7 @@ pub use self::header::{
     GenesisPraosProof, Header, HeaderHash, KESSignature, Proof,
 };
 pub use self::headerraw::HeaderRaw;
-pub use self::message::{Message, MessageRaw};
+pub use self::message::{Message, MessageRaw, MessageId};
 pub use self::version::*;
 
 pub use crate::date::{BlockDate, BlockDateParseError};
