@@ -16,7 +16,6 @@ pub mod leadership;
 pub mod ledger;
 pub mod setting;
 pub mod stake;
-pub mod state;
 pub mod transaction;
 pub mod txbuilder;
 pub mod utxo;
