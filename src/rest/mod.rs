@@ -14,7 +14,7 @@ use crate::settings::Error as SettingsError;
 pub struct Context {
     pub stats_counter: v0::node::stats::StatsCounter,
     pub blockchain: BlockchainR<Mockchain>,
-    pub transaction_task: v0::transaction::Task,
+    pub transaction_task: v0::message::Task,
 }
 
 pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, SettingsError> {
@@ -27,7 +27,7 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, Sett
         .add_handler(v0::block::create_handler(context.blockchain.clone()))
         .add_handler(v0::node::stats::create_handler(context.stats_counter))
         .add_handler(v0::tip::create_handler(context.blockchain.clone()))
-        .add_handler(v0::transaction::create_handler(context.transaction_task))
+        .add_handler(v0::message::create_handler(context.transaction_task))
         .add_handler(v0::utxo::create_handler(context.blockchain))
         .build()
         .map_err(|e| SettingsError::Start(ConfigError::InvalidRest(e)))
