@@ -1,16 +1,13 @@
 use crate::legacy;
-use crate::stake::StakePoolInfo;
 use chain_addr::Address;
-use chain_core::mempack::{ReadBuf, ReadError, Readable};
-use chain_core::{packer, property};
-use chain_crypto::Ed25519Extended;
+use chain_core::mempack::{read_from_raw, ReadBuf, ReadError, Readable};
+use chain_core::property;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use std::mem::size_of;
 
 use crate::{
     certificate,
-    key::{Hash, Signed},
+    key::Hash,
     setting,
     transaction::{AuthenticatedTransaction, NoExtra},
 };
@@ -74,7 +71,7 @@ impl Message {
     pub fn to_raw(&self) -> MessageRaw {
         use chain_core::packer::*;
         use chain_core::property::Serialize;
-        let mut v = Vec::new();
+        let v = Vec::new();
         let mut codec = Codec::from(v);
         match self {
             Message::OldUtxoDeclaration(s) => {
@@ -98,34 +95,13 @@ impl Message {
     }
 }
 
-/*
 impl property::Serialize for Message {
     type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
-        match self {
-            Message::OldUtxoDeclaration(s) => {
-                codec.put_u8(MessageTag::OldUtxoDeclaration as u8)?;
-                s.serialize(&mut codec)?;
-            }
-            Message::Transaction(signed) => {
-                codec.put_u8(MessageTag::Transaction as u8)?;
-                signed.serialize(&mut codec)?;
-            }
-            Message::Certificate(signed) => {
-                codec.put_u8(MessageTag::Certificate as u8)?;
-                signed.serialize(&mut codec)?;
-            }
-            Message::Update(proposal) => {
-                codec.put_u8(MessageTag::Update as u8)?;
-                proposal.serialize(&mut codec)?;
-            }
-        };
-        Ok(())
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        let raw = self.to_raw();
+        writer.write_all(raw.as_ref())
     }
 }
-*/
 
 impl Readable for Message {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
@@ -168,35 +144,30 @@ impl Message {
         }
     }
 }
+*/
 
 impl property::Deserialize for Message {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        Ok(Self::deserialize_with_size(reader)?.0)
+        let raw = MessageRaw::deserialize(reader)?;
+        read_from_raw(raw.as_ref())
     }
 }
-*/
 
 // FIXME: should this be a wrapper type?
 pub type MessageId = Hash;
 
-/*
 impl property::Message for Message {
     type Id = MessageId;
 
     /// The ID of a message is a hash of its serialization *without* the size.
     fn id(&self) -> Self::Id {
-        use chain_core::property::Serialize;
-
         // TODO: we should be able to avoid to serialise the whole message
         // in memory, using a hasher.
-        let bytes = self
-            .serialize_as_vec()
-            .expect("In memory serialization is expected to work");
-        Hash::hash_bytes(&bytes[size_of::<MessageSize>()..])
+        let bytes = self.to_raw();
+        Hash::hash_bytes(bytes.as_ref())
     }
 }
-*/
 
 #[cfg(test)]
 mod test {
