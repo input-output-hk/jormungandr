@@ -54,3 +54,17 @@ YAML printed on success
   out_addr: ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s  # output address in bech32
   out_value: 999999999                                                      # output value
 ```
+
+## Post transaction
+
+Posts a signed, hex-encoded transaction
+
+```
+jormungandr_cli rest v0 transaction post <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- -f --file <file_path> - File containing hex-encoded transaction.
+If not provided, transaction will be read from stdin.
