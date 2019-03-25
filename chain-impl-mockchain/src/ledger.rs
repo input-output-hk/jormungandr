@@ -1,11 +1,13 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
+use crate::block::Message;
 use crate::fee::LinearFee;
 use crate::legacy;
+use crate::stake::{DelegationError, DelegationState};
 use crate::transaction::*;
 use crate::value::*;
-use crate::{account, utxo};
+use crate::{account, certificate, setting, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property;
 use std::sync::Arc;
@@ -35,6 +37,8 @@ pub struct Ledger {
     pub(crate) utxos: utxo::Ledger<Address>,
     pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
     pub(crate) accounts: account::Ledger,
+    pub(crate) settings: setting::Settings,
+    pub(crate) delegation: DelegationState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
 }
 
@@ -52,6 +56,7 @@ pub enum Error {
     Account(account::LedgerError),
     NotBalanced(Value, Value),
     ZeroOutput(Output<Address>),
+    Delegation(DelegationError),
     InvalidDiscrimination,
     ExpectingAccountWitness,
     ExpectingUtxoWitness,
@@ -69,32 +74,80 @@ impl From<account::LedgerError> for Error {
     }
 }
 
+impl From<DelegationError> for Error {
+    fn from(e: DelegationError) -> Self {
+        Error::Delegation(e)
+    }
+}
+
 impl Ledger {
-    pub fn new(static_parameters: LedgerStaticParameters) -> Self {
+    pub fn new(static_parameters: LedgerStaticParameters, settings: setting::Settings) -> Self {
         Ledger {
             utxos: utxo::Ledger::new(),
             oldutxos: utxo::Ledger::new(),
             accounts: account::Ledger::new(),
+            settings: settings,
+            delegation: DelegationState::new(),
             static_params: Arc::new(static_parameters),
         }
     }
 
-    pub fn apply_transaction<Extra: property::Serialize>(
+    /// Try to apply messages to a State, and return the new State if succesful
+    pub fn apply_block(
         &self,
+        ledger_params: &LedgerParameters,
+        contents: &[Message],
+    ) -> Result<Self, Error> {
+        let mut new_ledger = self.clone();
+
+        for content in contents {
+            match content {
+                Message::OldUtxoDeclaration(_) => unimplemented!(),
+                Message::Transaction(authenticated_tx) => {
+                    new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
+                }
+                Message::Update(update_proposal) => {
+                    new_ledger = new_ledger.apply_update(&update_proposal)?;
+                }
+                Message::Certificate(authenticated_cert_tx) => {
+                    new_ledger =
+                        new_ledger.apply_certificate(authenticated_cert_tx, &ledger_params)?;
+                }
+            }
+        }
+        Ok(new_ledger)
+    }
+
+    pub fn apply_transaction<Extra: property::Serialize>(
+        mut self,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
         dyn_params: &LedgerParameters,
     ) -> Result<Self, Error> {
-        let mut ledger = self.clone();
         let transaction_id = signed_tx.transaction.hash();
-        ledger = internal_apply_transaction(
-            ledger,
+        self = internal_apply_transaction(
+            self,
             dyn_params,
             &transaction_id,
             &signed_tx.transaction.inputs[..],
             &signed_tx.transaction.outputs[..],
             &signed_tx.witnesses[..],
         )?;
-        Ok(ledger)
+        Ok(self)
+    }
+
+    pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
+        self.settings = self.settings.apply(update);
+        Ok(self)
+    }
+
+    pub fn apply_certificate(
+        mut self,
+        auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
+        dyn_params: &LedgerParameters,
+    ) -> Result<Self, Error> {
+        self = self.apply_transaction(auth_cert, dyn_params)?;
+        self.delegation = self.delegation.apply(&auth_cert.transaction.extra)?;
+        Ok(self)
     }
 }
 
@@ -351,7 +404,7 @@ pub mod test {
             value: value,
         };
         let ledger = {
-            let mut l = Ledger::new(static_params);
+            let mut l = Ledger::new(static_params, setting::Settings::new());
             l.utxos = l.utxos.add(&tx0_id, &[(0, output0)]).unwrap();
             l
         };

@@ -11,7 +11,7 @@ pub struct DelegationState {
     pub(super) stake_pools: Hamt<DefaultHasher, StakePoolId, StakePoolInfo>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DelegationError {
     StakeKeyAlreadyRegistered,
     StakeKeyRegistrationSigIsInvalid,

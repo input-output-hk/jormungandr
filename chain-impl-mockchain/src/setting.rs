@@ -169,7 +169,7 @@ impl Settings {
         *self.linear_fees
     }
 
-    pub fn apply(&self, update: UpdateProposal) -> Self {
+    pub fn apply(&self, update: &UpdateProposal) -> Self {
         let mut new_state = self.clone();
         if let Some(max_number_of_transactions_per_block) =
             update.max_number_of_transactions_per_block
