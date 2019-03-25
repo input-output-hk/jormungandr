@@ -164,11 +164,13 @@ impl Header {
                     let id = &genesis_praos_proof.genesis_praos_id;
                     unimplemented!()
                 };
+                /*
                 verify_signature(
                     &genesis_praos_proof.kes_proof.0,
                     &kes_public_key,
                     &self.common,
                 )
+                */
                 // TODO: verify the VRF too
             }
         }
