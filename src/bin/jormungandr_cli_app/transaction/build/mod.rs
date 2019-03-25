@@ -1,7 +1,6 @@
 use self::tx_data::TxData;
 use cardano::util::hex;
 use std::fs::File;
-use std::io::{self, Write as _};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -45,7 +44,6 @@ impl Build {
             return;
         }
         let tx = self.tx_data.build_tx();
-        let tx_hex = hex::encode(&tx);
-        write!(io::stdout(), "{}\n", tx_hex).unwrap();
+        println!("{}", hex::encode(&tx));
     }
 }
