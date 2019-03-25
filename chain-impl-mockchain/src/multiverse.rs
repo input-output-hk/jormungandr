@@ -6,7 +6,7 @@
 //! For now this only track block at the headerhash level, and doesn't order them
 //! temporaly, leaving no way to do garbage collection
 
-use crate::block::HeaderHash;
+use chain_core::property::BlockId;
 use std::collections::{BTreeMap, BTreeSet};
 
 //
@@ -24,20 +24,26 @@ use std::collections::{BTreeMap, BTreeSet};
 // +------------------------------+-----> time
 // t=0                            t=latest known
 //
-pub struct MultiVerse<ST> {
-    known_states: BTreeMap<HeaderHash, ST>,
-    tips: BTreeSet<HeaderHash>,
+pub struct Multiverse<Hash: BlockId, ST> {
+    known_states: BTreeMap<Hash, ST>,
+    tips: BTreeSet<Hash>,
 }
 
-impl<ST> MultiVerse<ST> {
-    pub fn add(&mut self, prevhash: &HeaderHash, k: &HeaderHash, st: ST) {
+impl<Hash: BlockId, ST> Multiverse<Hash, ST> {
+    pub fn new() -> Self {
+        Multiverse {
+            known_states: BTreeMap::new(),
+            tips: BTreeSet::new(),
+        }
+    }
+
+    pub fn add(&mut self, k: &Hash, st: ST) {
         if !self.known_states.contains_key(k) {
-            self.known_states.insert(*k, st);
-            if self.tips.remove(prevhash) {
-                self.tips.insert(*k);
-            } else {
-                self.tips.insert(*k);
-            }
+            self.known_states.insert(k.clone(), st);
+            /*
+            self.tips.remove(prevhash);
+            self.tips.insert(k.clone());
+            */
         }
     }
 
@@ -46,7 +52,7 @@ impl<ST> MultiVerse<ST> {
     /// a gap between different version that gets bigger and bigger
     pub fn gc(&mut self) {}
 
-    pub fn get(&mut self, k: &HeaderHash) -> Option<&ST> {
-        self.known_states.get(k)
+    pub fn get(&self, k: &Hash) -> Option<&ST> {
+        self.known_states.get(&k)
     }
 }
