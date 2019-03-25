@@ -1,5 +1,6 @@
 mod message;
 mod node;
+mod tip;
 mod utxo;
 
 use structopt::StructOpt;
@@ -7,12 +8,14 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum V0 {
-    /// Node information
-    Node(node::Node),
-    /// UTXO information
-    Utxo(utxo::Utxo),
     /// Message sending
     Message(message::Message),
+    /// Node information
+    Node(node::Node),
+    /// Blockchain tip information
+    Tip(tip::Tip),
+    /// UTXO information
+    Utxo(utxo::Utxo),
 }
 
 impl V0 {
@@ -21,6 +24,7 @@ impl V0 {
             V0::Node(node) => node.exec(),
             V0::Utxo(utxo) => utxo.exec(),
             V0::Message(message) => message.exec(),
+            V0::Tip(tip) => tip.exec(),
         }
     }
 }
