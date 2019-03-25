@@ -15,7 +15,7 @@ pub struct Blockchain {
     pub storage: Arc<RwLock<Box<BlockStore<Block = Block> + Send + Sync>>>,
 
     // TODO use multiverse here
-    pub state: MultiVerse<Ledger>,
+    pub multiverse: MultiVerse<Ledger>,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
@@ -29,30 +29,6 @@ pub type BlockchainR = Arc<RwLock<Blockchain>>;
 
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
-
-/*
-impl State<Mockchain> {
-    pub fn new(genesis: &GenesisData) -> Self {
-        let ledger = Arc::new(RwLock::new(ledger::Ledger::new(genesis.initial_utxos())));
-
-        let settings = Arc::new(RwLock::new(setting::Settings::new()));
-
-        let leaders = leadership::genesis::GenesisLeaderSelection::new(
-            genesis.leaders().cloned().collect(),
-            ledger.clone(),
-            settings.clone(),
-            HashSet::new(), // initial_stake_pools
-            HashMap::new(), // initial_stake_keys
-        )
-        .unwrap();
-
-        State {
-            ledger,
-            settings,
-            leaders: leaders,
-        }
-    }
-}*/
 
 impl Blockchain {
     pub fn new(genesis_data: GenesisData, storage_dir: &Option<std::path::PathBuf>) -> Self {
@@ -98,6 +74,7 @@ impl Blockchain {
             unconnected_blocks: BTreeMap::default(),
         }
     }
+
     pub fn handle_incoming_block(&mut self, block: Block) -> Result<(), storage::Error> {
         let block_hash = block.id();
         let parent_hash = block.parent_id();
@@ -116,9 +93,15 @@ impl Blockchain {
 
     /// Handle a block whose ancestors are on disk.
     fn handle_connected_block(&mut self, block_hash: HeaderHash, block: Block) {
-        let current_tip = self.state.tip();
+        let current_tip = self
+            .storage
+            .get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)
+            .unwrap()
+            .unwrap();
 
-        match self.state.apply_block(&block.header(), block.messages()) {
+        let current_ledger = self.multiverse.get(current_tip);
+
+        match current_ledger.apply_block(&block.header(), block.messages()) {
             Ok(state) => {
                 if block_hash != current_tip {
                     let mut storage = self.storage.write().unwrap();
