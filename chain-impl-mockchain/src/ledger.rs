@@ -3,11 +3,10 @@
 
 use crate::block::Message;
 use crate::fee::LinearFee;
-use crate::legacy;
-use crate::stake::{DelegationError, DelegationState};
+use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
-use crate::{account, certificate, setting, utxo};
+use crate::{account, certificate, legacy, setting, stake, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property;
 use std::sync::Arc;
@@ -30,7 +29,7 @@ pub struct LedgerParameters {
 /// This represent a given state related to utxo/old utxo/accounts/... at a given
 /// point in time.
 ///
-/// The ledger can be easily and cheaply cloned despite containing refering
+/// The ledger can be easily and cheaply cloned despite containing reference
 /// to a lot of data (millions of utxos, thousands of accounts, ..)
 #[derive(Clone)]
 pub struct Ledger {
@@ -148,6 +147,10 @@ impl Ledger {
         self = self.apply_transaction(auth_cert, dyn_params)?;
         self.delegation = self.delegation.apply(&auth_cert.transaction.extra)?;
         Ok(self)
+    }
+
+    pub fn get_stake_distribution(&self) -> StakeDistribution {
+        stake::get_distribution(&self.delegation, &self.utxos)
     }
 }
 
