@@ -27,6 +27,7 @@ use std::string::ToString;
 
 use chain_crypto::{Ed25519Extended, PublicKey, PublicKeyError};
 
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property::{self, Serialize as PropertySerialize};
 
 #[cfg(feature = "generic-serialization")]
@@ -137,8 +138,6 @@ impl From<bech32::Error> for Error {
         Error::InvalidInternalEncoding
     }
 }
-
-//pub type Result<T> = std::result::Result<T, Error>;
 
 impl Address {
     /// Try to convert from_bytes
@@ -408,6 +407,45 @@ impl property::Deserialize for Address {
                 Kind::Account(stake_key)
             }
             _ => unreachable!(),
+        };
+        Ok(Address(discr, kind))
+    }
+}
+
+fn chain_crypto_err(e: chain_crypto::PublicKeyError) -> ReadError {
+    match e {
+        PublicKeyError::SizeInvalid => {
+            ReadError::StructureInvalid("publickey size invalid".to_string())
+        }
+        PublicKeyError::StructureInvalid => {
+            ReadError::StructureInvalid("publickey structure invalid".to_string())
+        }
+    }
+}
+
+impl Readable for Address {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let byte = buf.get_u8()?;
+        let discr = get_discrimination_value(byte);
+        let kind = match get_kind_value(byte) {
+            ADDR_KIND_SINGLE => {
+                let bytes = <[u8; 32]>::read(buf)?;
+                let spending = PublicKey::from_bytes(&bytes[..]).map_err(chain_crypto_err)?;
+                Kind::Single(spending)
+            }
+            ADDR_KIND_GROUP => {
+                let bytes = <[u8; 32]>::read(buf)?;
+                let spending = PublicKey::from_bytes(&bytes[..]).map_err(chain_crypto_err)?;
+                let bytes = <[u8; 32]>::read(buf)?;
+                let group = PublicKey::from_bytes(&bytes[..]).map_err(chain_crypto_err)?;
+                Kind::Group(spending, group)
+            }
+            ADDR_KIND_ACCOUNT => {
+                let bytes = <[u8; 32]>::read(buf)?;
+                let stake_key = PublicKey::from_bytes(&bytes[..]).map_err(chain_crypto_err)?;
+                Kind::Account(stake_key)
+            }
+            n => return Err(ReadError::UnknownTag(n as u32)),
         };
         Ok(Address(discr, kind))
     }
