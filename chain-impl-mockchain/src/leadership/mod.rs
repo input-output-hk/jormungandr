@@ -59,9 +59,9 @@ pub enum Leader {
     ),
 }
 
-pub enum LeaderOutput {
+pub enum LeaderOutput<'a> {
     None,
-    Bft(bool),
+    Bft(&'a SecretKey<Ed25519Extended>),
     GenesisPraos, // TODO
 }
 
@@ -101,14 +101,20 @@ impl Inner {
     }
 
     #[inline]
-    fn is_leader(&self, leader: &Leader, date: BlockDate) -> Result<LeaderOutput, Error> {
+    fn is_leader<'a>(
+        &self,
+        leader: &'a Leader,
+        date: BlockDate,
+    ) -> Result<LeaderOutput<'a>, Error> {
         match (self, leader) {
             (Inner::None(_none), Leader::None) => Ok(LeaderOutput::None),
             (Inner::Bft(bft), Leader::BftLeader(bft_leader)) => {
                 let bft_leader_id = bft.get_leader_at(date)?;
-                Ok(LeaderOutput::Bft(
-                    bft_leader_id == bft_leader.to_public().into(),
-                ))
+                if bft_leader_id == bft_leader.to_public().into() {
+                    Ok(LeaderOutput::Bft(bft_leader))
+                } else {
+                    Ok(LeaderOutput::None)
+                }
             }
             (Inner::GenesisPraos(genesis_praos), Leader::GenesisPraos(_kes_key, vrf_key)) => {
                 match genesis_praos.leader(vrf_key, date)? {
@@ -146,7 +152,11 @@ impl Leadership {
         Verification::Success
     }
 
-    pub fn is_leader(&self, leader: &Leader, date: BlockDate) -> Result<LeaderOutput, Error> {
+    pub fn is_leader<'a>(
+        &self,
+        leader: &'a Leader,
+        date: BlockDate,
+    ) -> Result<LeaderOutput<'a>, Error> {
         self.inner.is_leader(leader, date)
     }
 }
