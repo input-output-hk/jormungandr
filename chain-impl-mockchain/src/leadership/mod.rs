@@ -1,5 +1,5 @@
 use crate::{
-    block::{BlockVersion, BlockVersionTag, Header},
+    block::{BlockDate, BlockVersion, BlockVersionTag, Header},
     ledger::Ledger,
 };
 use chain_crypto::algorithms::vrf::vrf::ProvenOutputSeed;
@@ -55,8 +55,14 @@ pub enum Leader {
     GenesisPraos(
         SecretKey<FakeMMM>,
         SecretKey<Curve25519_2HashDH>,
-        ProvenOutputSeed,
+        /* TODO: missing the nonce for the VRF*/
     ),
+}
+
+pub enum LeaderOutput {
+    None,
+    Bft(bool),
+    GenesisPraos, // TODO
 }
 
 enum Inner {
@@ -93,6 +99,28 @@ impl Inner {
             Inner::GenesisPraos(genesis_praos) => genesis_praos.verify(block_header),
         }
     }
+
+    #[inline]
+    fn is_leader(&self, leader: &Leader, date: BlockDate) -> Result<LeaderOutput, Error> {
+        match (self, leader) {
+            (Inner::None(_none), Leader::None) => Ok(LeaderOutput::None),
+            (Inner::Bft(bft), Leader::BftLeader(bft_leader)) => {
+                let bft_leader_id = bft.get_leader_at(date)?;
+                Ok(LeaderOutput::Bft(
+                    bft_leader_id == bft_leader.to_public().into(),
+                ))
+            }
+            (Inner::GenesisPraos(genesis_praos), Leader::GenesisPraos(_kes_key, vrf_key)) => {
+                match genesis_praos.leader(vrf_key, date)? {
+                    None => unimplemented!(), // TODO? Fallback on the BFT ?
+                    Some(_) => {
+                        Ok(LeaderOutput::GenesisPraos) // TODO: add the output seed here too
+                    }
+                }
+            }
+            _ => Err(Error::new(ErrorKind::InvalidLeader)),
+        }
+    }
 }
 
 impl Leadership {
@@ -116,6 +144,10 @@ impl Leadership {
 
         try_check!(self.inner.verify_leader(block_header));
         Verification::Success
+    }
+
+    pub fn is_leader(&self, leader: &Leader, date: BlockDate) -> Result<LeaderOutput, Error> {
+        self.inner.is_leader(leader, date)
     }
 }
 

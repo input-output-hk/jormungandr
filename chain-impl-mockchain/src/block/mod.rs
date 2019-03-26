@@ -86,7 +86,7 @@ impl Block {
                     signature: BftSignature(signature),
                 })
             }
-            Leader::GenesisPraos(ref mut kes_secret, vrf_secret, proven_output_seed) => {
+            Leader::GenesisPraos(ref mut kes_secret, vrf_secret) => {
                 let gpleader = GenesisPraosLeader {
                     kes_public_key: kes_secret.to_public(),
                     vrf_public_key: vrf_secret.to_public(),
@@ -94,7 +94,7 @@ impl Block {
                 let signature = make_signature_update(kes_secret, &common);
                 Proof::GenesisPraos(GenesisPraosProof {
                     genesis_praos_id: gpleader.get_id(),
-                    vrf_proof: proven_output_seed.clone(),
+                    vrf_proof: unimplemented!(), // proven_output_seed.clone(),
                     kes_proof: KESSignature(signature),
                     //vrf_public_key: vrf_secret.public(),
                     //kes_public_key: kes_secret.to_public().into(),

@@ -1,6 +1,6 @@
 use crate::{
-    block::{BlockDate, Header, Proof},
-    leadership::{self, Error, ErrorKind, Verification},
+    block::{Header, Proof},
+    leadership::{Error, ErrorKind, Verification},
 };
 
 /// Object for when there is no leadership for the block creation
@@ -19,10 +19,5 @@ impl NoLeadership {
             Proof::None => Verification::Success,
             _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
         }
-    }
-
-    #[inline]
-    pub(crate) fn get_leader_at(&self, _date: BlockDate) -> Result<leadership::LeaderId, Error> {
-        Ok(leadership::LeaderId::None)
     }
 }
