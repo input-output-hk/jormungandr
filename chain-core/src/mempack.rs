@@ -80,6 +80,11 @@ impl<'a> ReadBuf<'a> {
         }
     }
 
+    /// Check if we reach the end of the buffer
+    pub fn is_end(&self) -> bool {
+        self.left() == 0
+    }
+
     /// Skip a number of bytes from the buffer.
     pub fn skip_bytes(&mut self, sz: usize) -> Result<(), ReadError> {
         self.assure_size(sz)?;
