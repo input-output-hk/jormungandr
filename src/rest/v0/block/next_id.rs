@@ -1,13 +1,11 @@
 use super::parse_block_hash;
 use actix_web::error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError};
 use actix_web::{Path, Query, State};
-use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 use bytes::Bytes;
-use chain_core::property::Settings;
 
 pub fn handle_request(
-    blockchain: State<BlockchainR<Mockchain>>,
+    blockchain: State<BlockchainR>,
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> Result<Bytes, ActixError> {
@@ -15,11 +13,11 @@ pub fn handle_request(
     // FIXME
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
+    // FIXME: don't hog the blockchain lock.
     let blockchain = blockchain.read().unwrap();
-    let tip = blockchain.state.tip();
     let storage = blockchain.storage.read().unwrap();
     storage
-        .iterate_range(&block_id, &tip)
+        .iterate_range(&block_id, &*blockchain.tip)
         .map_err(|e| ErrorBadRequest(e))?
         .take(query_params.get_count())
         .try_fold(Bytes::new(), |mut bytes, res| {

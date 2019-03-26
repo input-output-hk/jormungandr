@@ -1,4 +1,3 @@
-use crate::blockcfg::BlockConfig;
 use crate::network::{service::ConnectionServices, ConnectionState, GlobalState};
 use crate::settings::start::network::Listen;
 
@@ -10,11 +9,11 @@ use tokio::{executor::DefaultExecutor, sync::mpsc};
 
 use std::net::SocketAddr;
 
-struct GrpcServer<B: BlockConfig> {
-    state: ConnectionState<B>,
+struct GrpcServer {
+    state: ConnectionState,
 }
 
-impl<B: BlockConfig> Clone for GrpcServer<B> {
+impl Clone for GrpcServer {
     fn clone(&self) -> Self {
         GrpcServer {
             state: self.state.clone(),
@@ -22,14 +21,11 @@ impl<B: BlockConfig> Clone for GrpcServer<B> {
     }
 }
 
-pub fn run_listen_socket<B>(
+pub fn run_listen_socket(
     sockaddr: SocketAddr,
     listen_to: Listen,
-    state: GlobalState<B>,
-) -> impl Future<Item = (), Error = ()>
-where
-    B: BlockConfig + 'static,
-{
+    state: GlobalState,
+) -> impl Future<Item = (), Error = ()> {
     let (block_sender, block_receiver) = mpsc::unbounded_channel();
     let state = ConnectionState::new_listen(&state, &listen_to, block_sender);
 

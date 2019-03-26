@@ -1,22 +1,16 @@
-use crate::blockcfg::BlockConfig;
+use crate::blockcfg::Header;
 use crate::blockchain::chain;
 use crate::intercom::BlockMsg;
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::task::TaskBroadcastBox;
+use chain_core::property::{HasHeader, Header as _};
 
-use chain_core::property::HasHeader;
-
-use std::fmt::Debug;
-
-pub fn process<Chain>(
-    blockchain: &chain::BlockchainR<Chain>,
-    bquery: BlockMsg<Chain>,
-    network_broadcast: &mut TaskBroadcastBox<Chain::BlockHeader>,
+pub fn process(
+    blockchain: &chain::BlockchainR,
+    bquery: BlockMsg,
+    network_broadcast: &mut TaskBroadcastBox<Header>,
     stats_counter: &StatsCounter,
-) where
-    Chain: BlockConfig,
-    Chain::BlockHeader: Debug,
-{
+) {
     let res = match bquery {
         BlockMsg::LeadershipBlock(block) => {
             let header = block.header();
@@ -35,7 +29,7 @@ pub fn process<Chain>(
             let res = blockchain
                 .write()
                 .unwrap()
-                .handle_block_announcement(header);
+                .handle_block_announcement(header.id());
             if res.is_ok() {
                 stats_counter.add_block_recv_cnt(1);
             }

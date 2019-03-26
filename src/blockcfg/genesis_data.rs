@@ -4,7 +4,7 @@ use chain_addr::{Address, AddressReadable};
 use chain_crypto::{self, AsymmetricKey, Ed25519Extended};
 use chain_impl_mockchain::leadership::bft::LeaderId;
 use chain_impl_mockchain::{
-    block::{Block, BlockBuilder, Message, BLOCK_VERSION_CONSENSUS_BFT},
+    block::{Block, BlockBuilder, BlockVersionTag, Message},
     fee,
     setting::UpdateProposal,
     transaction::{self, Output, UtxoPointer},
@@ -94,7 +94,7 @@ impl GenesisData {
             // we are switching to BFT mode straight after this block
             // so we don't need yet the GenesisPraos bootstrap d parameter
             bootstrap_key_slots_percentage: None,
-            block_version: Some(BLOCK_VERSION_CONSENSUS_BFT),
+            block_version: Some(BlockVersionTag::ConsensusBft.to_block_version()),
             bft_leaders: Some(self.bft_leaders.into_iter().map(|pk| pk.0).collect()),
             allow_account_creation: Some(self.allow_account_creation),
             // we don't want to set fee before adding all the initial transactions
@@ -102,20 +102,23 @@ impl GenesisData {
             linear_fees: None,
         }));
 
-        block_builder.message(Message::Transaction(transaction::SignedTransaction {
-            transaction: transaction::Transaction {
-                inputs: Vec::new(),
-                outputs: self
-                    .initial_utxos
-                    .into_iter()
-                    .map(|utxo| transaction::Output {
-                        address: utxo.address.to_address(),
-                        value: utxo.value,
-                    })
-                    .collect(),
+        block_builder.message(Message::Transaction(
+            transaction::AuthenticatedTransaction {
+                transaction: transaction::Transaction {
+                    inputs: Vec::new(),
+                    outputs: self
+                        .initial_utxos
+                        .into_iter()
+                        .map(|utxo| transaction::Output {
+                            address: utxo.address.to_address(),
+                            value: utxo.value,
+                        })
+                        .collect(),
+                    extra: transaction::NoExtra,
+                },
+                witnesses: Vec::new(),
             },
-            witnesses: Vec::new(),
-        }));
+        ));
 
         block_builder.message(Message::Update(UpdateProposal {
             max_number_of_transactions_per_block: None,
@@ -233,6 +236,7 @@ impl GenesisData {
             let mut transaction = transaction::Transaction {
                 inputs: vec![],
                 outputs: vec![],
+                extra: transaction::NoExtra,
             };
             while let Some(iu) = initial_utxo.next() {
                 let output = Output {

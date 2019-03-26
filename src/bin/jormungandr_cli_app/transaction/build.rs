@@ -4,7 +4,9 @@ use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::key::SpendingSecretKey;
 use chain_impl_mockchain::transaction::{Input, TransactionId, UtxoPointer};
-use chain_impl_mockchain::txbuilder::{GeneratedTransaction, OutputPolicy, TransactionBuilder};
+use chain_impl_mockchain::txbuilder::{
+    GeneratedTransaction, OutputPolicy, TransactionBuilder, TransactionFinalizer,
+};
 use chain_impl_mockchain::value::Value;
 use jormungandr_cli_app::utils::SegmentParser;
 use std::io;
@@ -69,11 +71,12 @@ impl Build {
             Some(addr) => OutputPolicy::One(addr),
             None => OutputPolicy::Forget,
         };
-        let mut finalizer = if self.unchecked {
+        let transaction = if self.unchecked {
             builder.unchecked_finalize()
         } else {
             builder.finalize(fee, output_policy).unwrap().1
         };
+        let mut finalizer = TransactionFinalizer::new_trans(transaction);
         for spending_key in &self.spending_keys {
             finalizer.sign(spending_key);
         }

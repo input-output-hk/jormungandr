@@ -1,4 +1,4 @@
-use crate::blockcfg::BlockConfig;
+use crate::blockcfg::{Block, Header, HeaderHash, Message, MessageId};
 
 use network_core::error as core_error;
 
@@ -285,32 +285,24 @@ where
 
 /// ...
 #[derive(Debug)]
-pub enum TransactionMsg<B: BlockConfig> {
-    ProposeTransaction(Vec<B::MessageId>, ReplyHandle<Vec<bool>>),
-    SendTransaction(Vec<B::Message>),
-    GetTransactions(Vec<B::MessageId>, ReplyStreamHandle<B::Message>),
+pub enum TransactionMsg {
+    ProposeTransaction(Vec<MessageId>, ReplyHandle<Vec<bool>>),
+    SendTransaction(Vec<Message>),
+    GetTransactions(Vec<MessageId>, ReplyStreamHandle<Message>),
 }
 
 /// Client messages, mainly requests from connected peers to our node.
 /// Fetching the block headers, the block, the tip
-pub enum ClientMsg<B: BlockConfig> {
-    GetBlockTip(ReplyHandle<B::BlockHeader>),
-    GetHeaders(Vec<B::BlockHash>, ReplyStreamHandle<B::BlockHeader>),
-    GetHeadersRange(
-        Vec<B::BlockHash>,
-        B::BlockHash,
-        ReplyHandle<Vec<B::BlockHeader>>,
-    ),
-    GetBlocks(Vec<B::BlockHash>, ReplyStreamHandle<B::Block>),
-    GetBlocksRange(B::BlockHash, B::BlockHash, ReplyStreamHandle<B::Block>),
-    PullBlocksToTip(Vec<B::BlockHash>, ReplyStreamHandle<B::Block>),
+pub enum ClientMsg {
+    GetBlockTip(ReplyHandle<Header>),
+    GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
+    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyHandle<Vec<Header>>),
+    GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
+    GetBlocksRange(HeaderHash, HeaderHash, ReplyStreamHandle<Block>),
+    PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle<Block>),
 }
 
-impl<B> Debug for ClientMsg<B>
-where
-    B: BlockConfig,
-    B::BlockHash: Debug,
-{
+impl Debug for ClientMsg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ClientMsg::GetBlockTip(_) => f
@@ -349,20 +341,16 @@ where
 }
 
 /// General Block Message for the block task
-pub enum BlockMsg<B: BlockConfig> {
+pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
-    LeadershipBlock(B::Block),
+    LeadershipBlock(Block),
     /// The network task has a subscription to add
-    Subscribe(SubscriptionHandle<B::BlockHeader>),
+    Subscribe(SubscriptionHandle<Header>),
     /// A untrusted block Header has been received from the network task
-    AnnouncedBlock(B::BlockHeader),
+    AnnouncedBlock(Header),
 }
 
-impl<B> Debug for BlockMsg<B>
-where
-    B: BlockConfig,
-    B::Block: Debug,
-{
+impl Debug for BlockMsg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use BlockMsg::*;
         match self {
@@ -376,12 +364,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blockcfg::mock::Mockchain;
 
     #[test]
     fn block_msg_subscribe_debug() {
         let (handle, _) = subscription_reply();
-        let msg = BlockMsg::Subscribe::<Mockchain>(handle);
+        let msg = BlockMsg::Subscribe(handle);
         let debug_repr = format!("{:?}", msg);
         assert!(debug_repr.contains("Subscribe"));
     }

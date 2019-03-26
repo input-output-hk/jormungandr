@@ -1,5 +1,5 @@
 use super::ConnectionState;
-use crate::blockcfg::BlockConfig;
+use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
 use crate::intercom::{
     self, stream_reply, subscription_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture,
     ReplyStream, SubscriptionFuture, SubscriptionStream, TransactionMsg,
@@ -22,20 +22,20 @@ use network_core::{
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 
-pub struct ConnectionServices<B: BlockConfig> {
-    state: ConnectionState<B>,
+pub struct ConnectionServices {
+    state: ConnectionState,
 }
 
-impl<B: BlockConfig> ConnectionServices<B> {
-    pub fn new(state: ConnectionState<B>) -> Self {
+impl ConnectionServices {
+    pub fn new(state: ConnectionState) -> Self {
         ConnectionServices { state }
     }
 }
 
-impl<B: BlockConfig> Node for ConnectionServices<B> {
-    type BlockService = ConnectionBlockService<B>;
-    type TransactionService = ConnectionTransactionService<B>;
-    type GossipService = ConnectionGossipService<B>;
+impl Node for ConnectionServices {
+    type BlockService = ConnectionBlockService;
+    type TransactionService = ConnectionTransactionService;
+    type GossipService = ConnectionGossipService;
 
     fn block_service(&self) -> Option<Self::BlockService> {
         Some(ConnectionBlockService::new(&self.state))
@@ -57,13 +57,13 @@ impl From<intercom::Error> for core_error::Error {
     }
 }
 
-pub struct ConnectionBlockService<B: BlockConfig> {
-    client_box: TaskMessageBox<ClientMsg<B>>,
-    block_box: TaskMessageBox<BlockMsg<B>>,
+pub struct ConnectionBlockService {
+    client_box: TaskMessageBox<ClientMsg>,
+    block_box: TaskMessageBox<BlockMsg>,
 }
 
-impl<B: BlockConfig> ConnectionBlockService<B> {
-    pub fn new(conn: &ConnectionState<B>) -> Self {
+impl ConnectionBlockService {
+    pub fn new(conn: &ConnectionState) -> Self {
         ConnectionBlockService {
             client_box: conn.channels.client_box.clone(),
             block_box: conn.channels.block_box.clone(),
@@ -71,7 +71,7 @@ impl<B: BlockConfig> ConnectionBlockService<B> {
     }
 }
 
-impl<B: BlockConfig> Clone for ConnectionBlockService<B> {
+impl Clone for ConnectionBlockService {
     fn clone(&self) -> Self {
         ConnectionBlockService {
             client_box: self.client_box.clone(),
@@ -80,22 +80,22 @@ impl<B: BlockConfig> Clone for ConnectionBlockService<B> {
     }
 }
 
-impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
-    type BlockId = B::BlockHash;
-    type BlockDate = B::BlockDate;
-    type Block = B::Block;
-    type TipFuture = ReplyFuture<B::BlockHeader, core_error::Error>;
-    type Header = B::BlockHeader;
-    type PullBlocksStream = ReplyStream<B::Block, core_error::Error>;
+impl BlockService for ConnectionBlockService {
+    type BlockId = HeaderHash;
+    type BlockDate = BlockDate;
+    type Block = Block;
+    type TipFuture = ReplyFuture<Header, core_error::Error>;
+    type Header = Header;
+    type PullBlocksStream = ReplyStream<Block, core_error::Error>;
     type PullBlocksFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
-    type GetBlocksStream = ReplyStream<B::Block, core_error::Error>;
+    type GetBlocksStream = ReplyStream<Block, core_error::Error>;
     type GetBlocksFuture = FutureResult<Self::GetBlocksStream, core_error::Error>;
-    type PullHeadersStream = ReplyStream<B::BlockHeader, core_error::Error>;
+    type PullHeadersStream = ReplyStream<Header, core_error::Error>;
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
-    type GetHeadersStream = ReplyStream<B::BlockHeader, core_error::Error>;
+    type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type BlockSubscription = SubscriptionStream<B::BlockHeader>;
-    type BlockSubscriptionFuture = SubscriptionFuture<B::BlockHeader>;
+    type BlockSubscription = SubscriptionStream<Header>;
+    type BlockSubscriptionFuture = SubscriptionFuture<Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
@@ -155,11 +155,11 @@ impl<B: BlockConfig> BlockService for ConnectionBlockService<B> {
     }
 }
 
-pub struct ConnectionTransactionService<B: BlockConfig> {
-    transaction_box: TaskMessageBox<TransactionMsg<B>>,
+pub struct ConnectionTransactionService {
+    transaction_box: TaskMessageBox<TransactionMsg>,
 }
 
-impl<B: BlockConfig> Clone for ConnectionTransactionService<B> {
+impl Clone for ConnectionTransactionService {
     fn clone(&self) -> Self {
         ConnectionTransactionService {
             transaction_box: self.transaction_box.clone(),
@@ -167,15 +167,15 @@ impl<B: BlockConfig> Clone for ConnectionTransactionService<B> {
     }
 }
 
-impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
-    type Transaction = B::Transaction;
-    type TransactionId = B::TransactionId;
+impl TransactionService for ConnectionTransactionService {
+    type Transaction = Message;
+    type TransactionId = MessageId;
     type ProposeTransactionsFuture =
-        ReplyFuture<ProposeTransactionsResponse<B::TransactionId>, core_error::Error>;
+        ReplyFuture<ProposeTransactionsResponse<MessageId>, core_error::Error>;
     type GetTransactionsStream = ReplyStream<Self::Transaction, core_error::Error>;
     type GetTransactionsFuture = ReplyFuture<Self::GetTransactionsStream, core_error::Error>;
-    type TransactionSubscription = SubscriptionStream<B::Transaction>;
-    type TransactionSubscriptionFuture = SubscriptionFuture<B::Transaction>;
+    type TransactionSubscription = SubscriptionStream<Message>;
+    type TransactionSubscriptionFuture = SubscriptionFuture<Message>;
 
     fn propose_transactions(
         &mut self,
@@ -199,13 +199,13 @@ impl<B: BlockConfig> TransactionService for ConnectionTransactionService<B> {
     }
 }
 
-pub struct ConnectionGossipService<B: BlockConfig> {
+pub struct ConnectionGossipService {
     p2p: P2pTopology,
     node: poldercast::Node,
-    _phantom: PhantomData<B::Gossip>,
+    _phantom: PhantomData<Gossip>,
 }
 
-impl<B: BlockConfig> GossipService for ConnectionGossipService<B> {
+impl GossipService for ConnectionGossipService {
     type Message = Gossip;
     type MessageFuture = future::FutureResult<(gossip::NodeId, Self::Message), core_error::Error>;
 
@@ -235,8 +235,8 @@ impl<B: BlockConfig> GossipService for ConnectionGossipService<B> {
     }
 }
 
-impl<B: BlockConfig> ConnectionGossipService<B> {
-    fn new(state: &ConnectionState<B>) -> Self {
+impl ConnectionGossipService {
+    fn new(state: &ConnectionState) -> Self {
         ConnectionGossipService {
             p2p: state.topology.clone(),
             node: state.node.clone(),
@@ -245,7 +245,7 @@ impl<B: BlockConfig> ConnectionGossipService<B> {
     }
 }
 
-impl<B: BlockConfig> Clone for ConnectionGossipService<B> {
+impl Clone for ConnectionGossipService {
     fn clone(&self) -> Self {
         ConnectionGossipService {
             _phantom: PhantomData,

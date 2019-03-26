@@ -1,14 +1,10 @@
-use std::sync::mpsc::Receiver;
-
-use crate::blockcfg::{Block, BlockConfig, HasHeader};
+use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
+use chain_core::property::{Block as _, HasHeader as _};
+use std::sync::mpsc::Receiver;
 
-pub fn client_task<B>(blockchain: BlockchainR<B>, r: Receiver<ClientMsg<B>>)
-where
-    B: BlockConfig,
-    B::Block: HasHeader<Header = B::BlockHeader>,
-{
+pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
     loop {
         let query = r.recv().unwrap();
         debug!("client query received: {:?}", query);
@@ -35,11 +31,7 @@ where
     }
 }
 
-fn handle_get_block_tip<B>(blockchain: &BlockchainR<B>) -> Result<B::BlockHeader, Error>
-where
-    B: BlockConfig,
-    B::Block: HasHeader<Header = B::BlockHeader>,
-{
+fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<Header, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
     let storage = blockchain.storage.read().unwrap();
@@ -54,15 +46,11 @@ where
 
 const MAX_HEADERS: usize = 2000;
 
-fn handle_get_headers_range<B>(
-    blockchain: &BlockchainR<B>,
-    checkpoints: Vec<B::BlockHash>,
-    to: B::BlockHash,
-) -> Result<Vec<B::BlockHeader>, Error>
-where
-    B: BlockConfig,
-    B::Block: HasHeader<Header = B::BlockHeader>,
-{
+fn handle_get_headers_range(
+    blockchain: &BlockchainR,
+    checkpoints: Vec<HeaderHash>,
+    to: HeaderHash,
+) -> Result<Vec<Header>, Error> {
     let blockchain = blockchain.read().unwrap();
 
     /* Filter out the checkpoints that don't exist and sort them by
@@ -114,11 +102,11 @@ where
     }
 }
 
-fn handle_get_blocks_range<B: BlockConfig>(
-    blockchain: &BlockchainR<B>,
-    from: B::BlockHash,
-    to: B::BlockHash,
-    reply: &mut ReplyStreamHandle<B::Block>,
+fn handle_get_blocks_range(
+    blockchain: &BlockchainR,
+    from: HeaderHash,
+    to: HeaderHash,
+    reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 
@@ -141,10 +129,10 @@ fn handle_get_blocks_range<B: BlockConfig>(
     Ok(())
 }
 
-fn handle_get_blocks<B: BlockConfig>(
-    blockchain: &BlockchainR<B>,
-    ids: Vec<B::BlockHash>,
-    reply: &mut ReplyStreamHandle<B::Block>,
+fn handle_get_blocks(
+    blockchain: &BlockchainR,
+    ids: Vec<HeaderHash>,
+    reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 
@@ -156,10 +144,10 @@ fn handle_get_blocks<B: BlockConfig>(
     Ok(())
 }
 
-fn handle_get_headers<B: BlockConfig>(
-    blockchain: &BlockchainR<B>,
-    ids: Vec<B::BlockHash>,
-    reply: &mut ReplyStreamHandle<B::BlockHeader>,
+fn handle_get_headers(
+    blockchain: &BlockchainR,
+    ids: Vec<HeaderHash>,
+    reply: &mut ReplyStreamHandle<Header>,
 ) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 
@@ -171,10 +159,10 @@ fn handle_get_headers<B: BlockConfig>(
     Ok(())
 }
 
-fn handle_pull_blocks_to_tip<B: BlockConfig>(
-    blockchain: &BlockchainR<B>,
-    mut from: Vec<B::BlockHash>,
-    reply: &mut ReplyStreamHandle<B::Block>,
+fn handle_pull_blocks_to_tip(
+    blockchain: &BlockchainR,
+    mut from: Vec<HeaderHash>,
+    reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 

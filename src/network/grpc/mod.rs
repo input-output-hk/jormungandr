@@ -2,7 +2,6 @@ mod bootstrap;
 mod client;
 mod server;
 
-use super::NetworkBlockConfig;
 use crate::{blockchain::BlockchainR, settings::start::network::Peer};
 
 pub use self::client::run_connect_socket;
@@ -12,10 +11,7 @@ use bytes::Bytes;
 use http;
 use network_grpc::peer::TcpPeer;
 
-pub fn bootstrap_from_peer<B>(peer: Peer, blockchain: BlockchainR<B>)
-where
-    B: NetworkBlockConfig,
-{
+pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
     info!("connecting to bootstrap peer {}", peer.connection);
     let authority = http::uri::Authority::from_shared(Bytes::from(format!(
         "{}:{}",

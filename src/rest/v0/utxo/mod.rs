@@ -2,12 +2,11 @@ mod utxo;
 
 use self::utxo::Utxo;
 use actix_web::{App, Json, Responder, State};
-use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 
 pub fn create_handler(
-    blockchain: BlockchainR<Mockchain>,
-) -> impl Fn(&str) -> App<BlockchainR<Mockchain>> + Send + Sync + Clone + 'static {
+    blockchain: BlockchainR,
+) -> impl Fn(&str) -> App<BlockchainR> + Send + Sync + Clone + 'static {
     move |prefix: &str| {
         let app_prefix = format!("{}/v0/utxo", prefix);
         App::with_state(blockchain.clone())
@@ -16,9 +15,9 @@ pub fn create_handler(
     }
 }
 
-fn handle_request(blockchain: State<BlockchainR<Mockchain>>) -> impl Responder {
+fn handle_request(blockchain: State<BlockchainR>) -> impl Responder {
     let blockchain = blockchain.read().unwrap();
-    let utxos = blockchain.state.utxos();
+    let utxos = blockchain.multiverse.get(&blockchain.tip).unwrap().utxos();
     let utxos = utxos.map(Utxo::from).collect::<Vec<_>>();
     Json(utxos)
 }

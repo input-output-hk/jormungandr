@@ -2,7 +2,6 @@ pub mod next_id;
 
 use actix_web::error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError};
 use actix_web::{App, Path, State};
-use blockcfg::mock::Mockchain;
 use blockchain::BlockchainR;
 use bytes::Bytes;
 use chain_core::property::Serialize;
@@ -10,8 +9,8 @@ use chain_crypto::Blake2b256;
 use chain_impl_mockchain::key::Hash;
 
 pub fn create_handler(
-    blockchain: BlockchainR<Mockchain>,
-) -> impl Fn(&str) -> App<BlockchainR<Mockchain>> + Send + Sync + Clone + 'static {
+    blockchain: BlockchainR,
+) -> impl Fn(&str) -> App<BlockchainR> + Send + Sync + Clone + 'static {
     move |prefix: &str| {
         App::with_state(blockchain.clone())
             .prefix(format!("{}/v0/block", prefix))
@@ -23,7 +22,7 @@ pub fn create_handler(
 }
 
 fn handle_request(
-    blockchain: State<BlockchainR<Mockchain>>,
+    blockchain: State<BlockchainR>,
     block_id_hex: Path<String>,
 ) -> Result<Bytes, ActixError> {
     let block_id = parse_block_hash(&block_id_hex)?;

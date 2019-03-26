@@ -60,10 +60,9 @@ use chain_impl_mockchain::block::{message::MessageId, Message};
 use futures::Future;
 
 use bech32::{u5, Bech32, FromBase32, ToBase32};
-use blockcfg::{
-    genesis_data::ConfigGenesisData, genesis_data::GenesisData, mock::Mockchain as Cardano,
-};
+use blockcfg::{genesis_data::ConfigGenesisData, genesis_data::GenesisData};
 use blockchain::{Blockchain, BlockchainR};
+use chain_core::property::Block as _;
 use chain_crypto::{
     AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
 };
@@ -104,9 +103,9 @@ const BLOCK_BUS_CAPACITY: usize = 2;
 pub type TODO = u32;
 
 fn block_task(
-    blockchain: BlockchainR<Cardano>,
+    blockchain: BlockchainR,
     _clock: clock::Clock, // FIXME: use it or lose it
-    r: Receiver<BlockMsg<Cardano>>,
+    r: Receiver<BlockMsg>,
     stats_counter: StatsCounter,
 ) {
     let mut network_broadcast = TaskBroadcastBox::new(BLOCK_BUS_CAPACITY);
@@ -116,15 +115,12 @@ fn block_task(
     }
 }
 
-fn startup_info(
-    gd: &GenesisData,
-    blockchain: &Blockchain<Cardano>,
-    _settings: &settings::start::Settings,
-) {
+fn startup_info(gd: &GenesisData, blockchain: &Blockchain, _settings: &settings::start::Settings) {
     println!(
-        "k={} tip={}",
+        "k={} tip={} length={:?}",
         gd.epoch_stability_depth,
-        blockchain.get_tip()
+        blockchain.get_tip(),
+        blockchain.get_block_tip().unwrap().0.chain_length()
     );
 }
 
