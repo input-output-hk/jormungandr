@@ -1,3 +1,5 @@
+mod raw;
+
 use crate::legacy;
 use chain_addr::Address;
 use chain_core::mempack::{read_from_raw, ReadBuf, ReadError, Readable};
@@ -5,51 +7,14 @@ use chain_core::property;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
+pub use raw::*;
+
 use crate::{
     certificate,
     key::Hash,
     setting,
     transaction::{AuthenticatedTransaction, NoExtra},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MessageRaw(Vec<u8>);
-
-impl MessageRaw {
-    pub fn size_bytes_plus_size(&self) -> usize {
-        2 + self.0.len()
-    }
-}
-
-impl AsRef<[u8]> for MessageRaw {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl property::Deserialize for MessageRaw {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
-        let size = codec.get_u16()?;
-        let mut v = vec![0u8; size as usize];
-        codec.into_inner().read_exact(&mut v)?;
-        Ok(MessageRaw(v))
-    }
-}
-
-impl property::Serialize for MessageRaw {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-
-        let mut codec = Codec::from(writer);
-        codec.put_u16(self.0.len() as u16)?;
-        codec.into_inner().write_all(&self.0)?;
-        Ok(())
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum Message {
