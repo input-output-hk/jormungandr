@@ -223,6 +223,10 @@ impl Ledger {
             allow_account_creation: self.settings.allow_account_creation,
         }
     }
+
+    pub fn utxos<'a>(&'a self) -> utxo::Iter<'a, Address> {
+        self.utxos.iter()
+    }
 }
 
 fn apply_old_declaration(
