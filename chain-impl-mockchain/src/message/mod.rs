@@ -7,12 +7,10 @@ use chain_core::property;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-pub use raw::*;
+pub use raw::{MessageId, MessageRaw};
 
 use crate::{
-    certificate,
-    key::Hash,
-    setting,
+    certificate, setting,
     transaction::{AuthenticatedTransaction, NoExtra},
 };
 
@@ -87,30 +85,6 @@ impl Readable for Message {
     }
 }
 
-/*
-impl Message {
-    pub(crate) fn deserialize_with_size<'a>(
-        buf: &mut BufRead<'a>,
-    ) -> Result<(Self, u16), ReadError> {
-        let size = codec.get_u16()? + 2;
-        let tag = codec.get_u8()?;
-        match MessageTag::from_u8(tag) {
-            Some(MessageTag::OldUtxoDeclaration) => {
-                legacy::UtxoDeclaration::deserialize(&mut codec)
-                    .map(|msg| (Message::OldUtxoDeclaration(msg), size))
-            }
-            Some(MessageTag::Transaction) => AuthenticatedTransaction::read(&mut codec)
-                .map(|msg| (Message::Transaction(msg), size)),
-            Some(MessageTag::Certificate) => AuthenticatedTransaction::read(&mut codec)
-                .map(|msg| (Message::Certificate(msg), size)),
-            Some(MessageTag::Update) => setting::UpdateProposal::deserialize(&mut codec)
-                .map(|msg| (Message::Update(msg), size)),
-            None => panic!("Unrecognized certificate message tag {}.", tag),
-        }
-    }
-}
-*/
-
 impl property::Deserialize for Message {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
@@ -119,18 +93,12 @@ impl property::Deserialize for Message {
     }
 }
 
-// FIXME: should this be a wrapper type?
-pub type MessageId = Hash;
-
 impl property::Message for Message {
     type Id = MessageId;
 
     /// The ID of a message is a hash of its serialization *without* the size.
     fn id(&self) -> Self::Id {
-        // TODO: we should be able to avoid to serialise the whole message
-        // in memory, using a hasher.
-        let bytes = self.to_raw();
-        Hash::hash_bytes(bytes.as_ref())
+        self.to_raw().id()
     }
 }
 

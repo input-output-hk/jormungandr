@@ -1,11 +1,20 @@
+use crate::key::Hash;
 use chain_core::property;
 
+// FIXME: should this be a wrapper type?
+pub type MessageId = Hash;
+
+/// A serialized Message
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MessageRaw(pub(super) Vec<u8>);
 
 impl MessageRaw {
     pub fn size_bytes_plus_size(&self) -> usize {
         2 + self.0.len()
+    }
+
+    pub fn id(&self) -> MessageId {
+        MessageId::hash_bytes(self.0.as_ref())
     }
 }
 
