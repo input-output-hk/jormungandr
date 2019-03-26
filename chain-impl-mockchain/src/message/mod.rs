@@ -14,6 +14,7 @@ use crate::{
     transaction::{AuthenticatedTransaction, NoExtra},
 };
 
+/// All possible messages recordable in the content
 #[derive(Debug, Clone)]
 pub enum Message {
     OldUtxoDeclaration(legacy::UtxoDeclaration),
@@ -22,37 +23,38 @@ pub enum Message {
     Update(setting::UpdateProposal),
 }
 
+/// Tag enumeration of all known message
 #[derive(Debug, Clone, Copy, FromPrimitive, PartialEq, Eq)]
-enum MessageTag {
-    OldUtxoDeclaration = 0,
-    Transaction = 1,
-    Certificate = 2,
-    Update = 3,
+pub(super) enum MessageTag {
+    OldUtxoDeclaration = 1,
+    Transaction = 2,
+    Certificate = 3,
+    Update = 4,
 }
 
 impl Message {
+    /// Return the tag associated with the Message
+    pub(super) fn get_tag(&self) -> MessageTag {
+        match self {
+            Message::OldUtxoDeclaration(_) => MessageTag::OldUtxoDeclaration,
+            Message::Transaction(_) => MessageTag::Transaction,
+            Message::Certificate(_) => MessageTag::Certificate,
+            Message::Update(_) => MessageTag::Update,
+        }
+    }
+
+    /// Get the serialized representation of this message
     pub fn to_raw(&self) -> MessageRaw {
         use chain_core::packer::*;
         use chain_core::property::Serialize;
         let v = Vec::new();
         let mut codec = Codec::from(v);
+        codec.put_u8(self.get_tag() as u8).unwrap();
         match self {
-            Message::OldUtxoDeclaration(s) => {
-                codec.put_u8(MessageTag::OldUtxoDeclaration as u8).unwrap();
-                s.serialize(&mut codec).unwrap();
-            }
-            Message::Transaction(signed) => {
-                codec.put_u8(MessageTag::Transaction as u8).unwrap();
-                signed.serialize(&mut codec).unwrap();
-            }
-            Message::Certificate(signed) => {
-                codec.put_u8(MessageTag::Certificate as u8).unwrap();
-                signed.serialize(&mut codec).unwrap();
-            }
-            Message::Update(proposal) => {
-                codec.put_u8(MessageTag::Update as u8).unwrap();
-                proposal.serialize(&mut codec).unwrap();
-            }
+            Message::OldUtxoDeclaration(s) => s.serialize(&mut codec).unwrap(),
+            Message::Transaction(signed) => signed.serialize(&mut codec).unwrap(),
+            Message::Certificate(signed) => signed.serialize(&mut codec).unwrap(),
+            Message::Update(proposal) => proposal.serialize(&mut codec).unwrap(),
         }
         MessageRaw(codec.into_inner())
     }
