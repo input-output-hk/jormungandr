@@ -124,7 +124,12 @@ impl Blockchain {
         }
 
         let state = self.multiverse.get(&block.parent_id()).unwrap().clone(); // FIXME
-        let (block_tip, _block_tip_info) = self.get_block_tip().unwrap();
+        let (block_tip, _block_tip_info) = self
+            .storage
+            .read()
+            .unwrap()
+            .get_block(&block.parent_id())
+            .unwrap();
         let current_parameters = state.get_ledger_parameters();
 
         let tip_chain_length = block_tip.chain_length();
@@ -134,8 +139,6 @@ impl Blockchain {
                 // FIXME: currently we store all incoming blocks and
                 // corresponding states, but to prevent a DoS, we may
                 // want to store only sufficiently long chains.
-
-                assert_eq!(*self.tip, block_hash);
 
                 let mut storage = self.storage.write().unwrap();
                 storage.put_block(&block).unwrap();

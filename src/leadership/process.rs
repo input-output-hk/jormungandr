@@ -1,12 +1,14 @@
 use crate::{
-    blockcfg::{BlockBuilder, BlockDate, HeaderHash, Leader, LeaderOutput, Leadership},
+    blockcfg::{
+        BlockBuilder, BlockDate, ChainLength, HeaderHash, Leader, LeaderOutput, Leadership,
+    },
     clock,
     intercom::BlockMsg,
     transaction::TPoolR,
     utils::task::TaskMessageBox,
     BlockchainR,
 };
-use chain_core::property::BlockDate as _;
+use chain_core::property::{Block as _, BlockDate as _, ChainLength as _};
 
 pub fn leadership_task(
     secret: Leader,
@@ -30,7 +32,8 @@ pub fn leadership_task(
         // on the blockchain as we are not expecting to be _blocked_ while creating
         // the block.
         let b = blockchain.read().unwrap();
-        let (_last_block, _last_block_info) = b.get_block_tip().unwrap();
+        let (last_block, _last_block_info) = b.get_block_tip().unwrap();
+        let chain_length = last_block.chain_length().next();
         let state = b.multiverse.get_from_root(&b.tip);
         let leadership = Leadership::new(state);
         let parent_id = &*b.tip;
@@ -39,7 +42,8 @@ pub fn leadership_task(
         match leadership.is_leader(&secret, date).unwrap() {
             LeaderOutput::None => {}
             LeaderOutput::Bft(bft_secret_key) => {
-                let block_builder = prepare_block(&transaction_pool, date, *parent_id);
+                let block_builder =
+                    prepare_block(&transaction_pool, date, chain_length, *parent_id);
 
                 let block = block_builder.make_bft_block(bft_secret_key);
 
@@ -55,11 +59,12 @@ pub fn leadership_task(
 fn prepare_block(
     transaction_pool: &TPoolR,
     date: BlockDate,
+    chain_length: ChainLength,
     parent_id: HeaderHash,
 ) -> BlockBuilder {
     let mut bb = BlockBuilder::new();
 
-    bb.date(date).parent(parent_id);
+    bb.date(date).parent(parent_id).chain_length(chain_length);
     let messages = transaction_pool.write().unwrap().collect(250 /* TODO!! */);
     bb.messages(messages);
 
