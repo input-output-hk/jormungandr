@@ -9,7 +9,7 @@ use crate::{
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey};
+use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
 use rand::{Rng, SeedableRng};
 
 /// Hash of GenesisPraosLeader
@@ -56,7 +56,11 @@ impl GenesisLeaderSelection {
         }
     }
 
-    pub fn leader(&self, date: BlockDate) -> Result<Option<GenesisPraosLeader>, Error> {
+    pub fn leader(
+        &self,
+        vrf_key: &SecretKey<Curve25519_2HashDH>,
+        date: BlockDate,
+    ) -> Result<Option<GenesisPraosLeader>, Error> {
         if date.epoch != self.epoch {
             // TODO: add more error details: invalid Date
             return Err(Error::new(ErrorKind::Failure));
@@ -101,22 +105,18 @@ impl GenesisLeaderSelection {
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {
         match &block_header.proof() {
-            Proof::GenesisPraos(genesis_praos_proof) => {
-                match self.get_leader_at(*block_header.block_date()) {
-                    Err(error) => Verification::Failure(error),
-                    Ok(leader) => {
-                        // TODO: check the leader and the proof's key matches
-                        unimplemented!()
-                    }
-                }
-            }
+            Proof::GenesisPraos(genesis_praos_proof) => unimplemented!(),
             _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
         }
     }
 
     #[inline]
-    pub(crate) fn get_leader_at(&self, date: BlockDate) -> Result<GenesisPraosLeader, Error> {
-        match self.leader(date)? {
+    pub(crate) fn get_leader_at(
+        &self,
+        vrf_key: &SecretKey<Curve25519_2HashDH>,
+        date: BlockDate,
+    ) -> Result<GenesisPraosLeader, Error> {
+        match self.leader(vrf_key, date)? {
             Some(keys) => Ok(keys),
             None => Err(Error::new(ErrorKind::NoLeaderForThisSlot)),
         }
