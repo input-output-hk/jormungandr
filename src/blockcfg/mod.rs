@@ -4,6 +4,7 @@ pub mod genesis_data;
 
 pub use chain_impl_mockchain::{
     block::{Block, BlockDate, Header, HeaderHash, Message, MessageId},
-    ledger::Ledger,
+    leadership::{Leader, LeaderId, Leadership},
+    ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
     multiverse::Multiverse,
 };

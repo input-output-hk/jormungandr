@@ -28,6 +28,7 @@ pub fn transaction_task(
                 let mut tpool = tpool.write().unwrap();
                 let blockchain = blockchain.read().unwrap();
                 let chain_state = blockchain.multiverse.get(&blockchain.tip).unwrap();
+                let parameters = chain_state.get_ledger_parameters();
 
                 // this will test the transaction is valid within the current
                 // state of the local state of the global ledger.
@@ -35,7 +36,7 @@ pub fn transaction_task(
                 // We don't want to keep transactions that are not valid within
                 // our state of the blockchain as we will not be able to add them
                 // in the blockchain.
-                if let Err(error) = chain_state.apply_contents(txs.iter()) {
+                if let Err(error) = chain_state.apply_block(&parameters, txs.iter()) {
                     warn!("Received transactions where some are invalid, {}", error);
                 // TODO
                 } else {

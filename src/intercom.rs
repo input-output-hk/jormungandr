@@ -1,4 +1,4 @@
-use crate::blockcfg::{Block, HeaderHash, Message, MessageId};
+use crate::blockcfg::{Block, Header, HeaderHash, Message, MessageId};
 
 use network_core::error as core_error;
 
@@ -294,9 +294,9 @@ pub enum TransactionMsg {
 /// Client messages, mainly requests from connected peers to our node.
 /// Fetching the block headers, the block, the tip
 pub enum ClientMsg {
-    GetBlockTip(ReplyHandle<HeaderHash>),
-    GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<HeaderHash>),
-    GetHeadersRange(Vec<Block>, HeaderHash, ReplyHandle<Vec<HeaderHash>>),
+    GetBlockTip(ReplyHandle<Header>),
+    GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
+    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyHandle<Vec<Header>>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
     GetBlocksRange(HeaderHash, HeaderHash, ReplyStreamHandle<Block>),
     PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle<Block>),
@@ -345,9 +345,9 @@ pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
     /// The network task has a subscription to add
-    Subscribe(SubscriptionHandle<HeaderHash>),
+    Subscribe(SubscriptionHandle<Header>),
     /// A untrusted block Header has been received from the network task
-    AnnouncedBlock(HeaderHash),
+    AnnouncedBlock(Header),
 }
 
 impl Debug for BlockMsg {

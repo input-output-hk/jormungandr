@@ -1,14 +1,14 @@
-use crate::blockcfg::HeaderHash;
+use crate::blockcfg::Header;
 use crate::blockchain::chain;
 use crate::intercom::BlockMsg;
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::task::TaskBroadcastBox;
-use chain_core::property::HasHeader;
+use chain_core::property::{HasHeader, Header as _};
 
 pub fn process(
     blockchain: &chain::BlockchainR,
     bquery: BlockMsg,
-    network_broadcast: &mut TaskBroadcastBox<HeaderHash>,
+    network_broadcast: &mut TaskBroadcastBox<Header>,
     stats_counter: &StatsCounter,
 ) {
     let res = match bquery {
@@ -29,7 +29,7 @@ pub fn process(
             let res = blockchain
                 .write()
                 .unwrap()
-                .handle_block_announcement(header);
+                .handle_block_announcement(header.id());
             if res.is_ok() {
                 stats_counter.add_block_recv_cnt(1);
             }

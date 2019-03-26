@@ -84,7 +84,7 @@ impl BlockService for ConnectionBlockService {
     type BlockId = HeaderHash;
     type BlockDate = BlockDate;
     type Block = Block;
-    type TipFuture = ReplyFuture<HeaderHash, core_error::Error>;
+    type TipFuture = ReplyFuture<Header, core_error::Error>;
     type Header = Header;
     type PullBlocksStream = ReplyStream<Block, core_error::Error>;
     type PullBlocksFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
@@ -92,10 +92,10 @@ impl BlockService for ConnectionBlockService {
     type GetBlocksFuture = FutureResult<Self::GetBlocksStream, core_error::Error>;
     type PullHeadersStream = ReplyStream<HeaderHash, core_error::Error>;
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
-    type GetHeadersStream = ReplyStream<HeaderHash, core_error::Error>;
+    type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
     type BlockSubscription = SubscriptionStream<HeaderHash>;
-    type BlockSubscriptionFuture = SubscriptionFuture<HeaderHash>;
+    type BlockSubscriptionFuture = SubscriptionFuture<Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();

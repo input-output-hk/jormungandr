@@ -1,8 +1,8 @@
-use std::sync::mpsc::Receiver;
-
-use crate::blockcfg::{Block, HeaderHash};
+use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
+use chain_core::property::{Block as _, HasHeader as _};
+use std::sync::mpsc::Receiver;
 
 pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
     loop {
@@ -31,7 +31,7 @@ pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
     }
 }
 
-fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<HeaderHash, Error> {
+fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<Header, Error> {
     let blockchain = blockchain.read().unwrap();
     let tip = blockchain.get_tip();
     let storage = blockchain.storage.read().unwrap();
@@ -50,7 +50,7 @@ fn handle_get_headers_range(
     blockchain: &BlockchainR,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
-) -> Result<Vec<HeaderHash>, Error> {
+) -> Result<Vec<Header>, Error> {
     let blockchain = blockchain.read().unwrap();
 
     /* Filter out the checkpoints that don't exist and sort them by
@@ -147,7 +147,7 @@ fn handle_get_blocks(
 fn handle_get_headers(
     blockchain: &BlockchainR,
     ids: Vec<HeaderHash>,
-    reply: &mut ReplyStreamHandle<HeaderHash>,
+    reply: &mut ReplyStreamHandle<Header>,
 ) -> Result<(), Error> {
     let blockchain = blockchain.read().unwrap();
 

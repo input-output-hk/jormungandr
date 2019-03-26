@@ -1,14 +1,18 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
-use chain_core::property::{
-    Block as _, BlockId as _, HasHeader as _, HasMessages as _, Settings as _, State as _,
-};
+use chain_core::property::{Block as _, BlockId as _, HasMessages as _, Settings as _, State as _};
 use chain_impl_mockchain::multiverse;
-use chain_storage::{error as storage, memory::MemoryBlockStore, store::BlockStore};
+use chain_storage::{
+    error as storage,
+    memory::MemoryBlockStore,
+    store::{BlockInfo, BlockStore},
+};
 use chain_storage_sqlite::SQLiteBlockStore;
 
-use crate::blockcfg::{genesis_data::GenesisData, Block, HeaderHash, Ledger, Multiverse};
+use crate::blockcfg::{
+    genesis_data::GenesisData, Block, HeaderHash, Ledger, LedgerStaticParameters, Multiverse,
+};
 
 pub struct Blockchain {
     /// the storage for the overall blockchains (blocks)
@@ -33,9 +37,9 @@ pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
 impl Blockchain {
     pub fn new(genesis_data: GenesisData, storage_dir: &Option<std::path::PathBuf>) -> Self {
-        let mut state = State::new(genesis_data.address_discrimination.into());
+        // let mut state = State::new(genesis_data.address_discrimination.into());
 
-        let mut storage: Box<BlockStore<Block> + Send + Sync>;
+        let mut storage: Box<BlockStore<Block = Block> + Send + Sync>;
         match storage_dir {
             None => {
                 info!("storing blockchain in memory");
@@ -58,22 +62,31 @@ impl Blockchain {
 
             let mut tip = None;
 
+            let block_0_id = genesis_data.to_block_0().id(); // TODO: get this from the parameter
+            let (block_0, _block_0_info) = storage.get_block(&block_0_id).unwrap();
+            let parameter_0 = LedgerStaticParameters {
+                block0_initial_hash: block_0_id,
+                discrimination: genesis_data.address_discrimination.into(),
+            };
+            let mut state = Ledger::new(parameter_0, block_0.messages()).unwrap();
+
             // FIXME: should restore from serialized chain state once we have it.
-            for info in storage
-                .iterate_range(&HeaderHash::zero(), &tip_hash)
-                .unwrap()
-            {
+            for info in storage.iterate_range(&block_0_id, &tip_hash).unwrap() {
                 let info = info.unwrap();
+                let parameters = state.get_ledger_parameters();
                 let block = &storage.get_block(&info.block_hash).unwrap().0;
-                state = state.apply_block(&block.header, block.messages()).unwrap();
-                assert_eq!(state.tip(), info.block_hash);
+                state = state.apply_block(&parameters, block.messages()).unwrap();
                 tip = Some(multiverse.add(info.block_hash.clone(), state.clone()));
             }
 
             tip.unwrap()
         } else {
             let block_0 = genesis_data.to_block_0();
-            state = state.apply_block(block_0.messages()).unwrap();
+            let parameter_0 = LedgerStaticParameters {
+                block0_initial_hash: block_0.id(),
+                discrimination: genesis_data.address_discrimination.into(),
+            };
+            let state = Ledger::new(parameter_0, block_0.messages()).unwrap();
             storage.put_block(&block_0).unwrap();
             multiverse.add(block_0.id(), state)
         };
@@ -106,21 +119,23 @@ impl Blockchain {
 
     /// Handle a block whose ancestors are on disk.
     fn handle_connected_block(&mut self, block_hash: HeaderHash, block: Block) {
-        if block_hash == self.tip {
+        if block_hash == *self.tip {
             return;
         }
 
         let state = self.multiverse.get(&block.parent_id()).unwrap().clone(); // FIXME
+        let (block_tip, _block_tip_info) = self.get_block_tip().unwrap();
+        let current_parameters = state.get_ledger_parameters();
 
-        let tip_chain_length = state.chain_length();
+        let tip_chain_length = block_tip.chain_length();
 
-        match state.apply_block(&block.header(), block.messages()) {
+        match state.apply_block(&current_parameters, block.messages()) {
             Ok(state) => {
                 // FIXME: currently we store all incoming blocks and
                 // corresponding states, but to prevent a DoS, we may
                 // want to store only sufficiently long chains.
 
-                assert_eq!(state.tip(), block_hash);
+                assert_eq!(*self.tip, block_hash);
 
                 let mut storage = self.storage.write().unwrap();
                 storage.put_block(&block).unwrap();
@@ -128,7 +143,7 @@ impl Blockchain {
                     .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
                     .unwrap();
 
-                let new_chain_length = state.chain_length();
+                let new_chain_length = block.chain_length();
 
                 let tip = self.multiverse.add(block_hash, state);
 
@@ -144,6 +159,13 @@ impl Blockchain {
     pub fn get_tip(&self) -> HeaderHash {
         self.tip.clone()
     }
+
+    pub fn get_block_tip(
+        &self,
+    ) -> Result<(Block, BlockInfo<HeaderHash>), chain_storage::error::Error> {
+        self.storage.read().unwrap().get_block(&self.tip)
+    }
+
     fn block_exists(&self, block_hash: &HeaderHash) -> Result<bool, storage::Error> {
         // TODO: we assume as an invariant that if a block exists on
         // disk, its ancestors exist on disk as well. Need to make
