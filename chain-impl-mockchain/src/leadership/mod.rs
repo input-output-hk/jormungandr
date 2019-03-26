@@ -60,7 +60,6 @@ pub enum Leader {
 }
 
 pub enum LeaderOutput {
-    Error(Error),
     None,
     Bft(bool),
     GenesisPraos, // TODO
@@ -102,25 +101,24 @@ impl Inner {
     }
 
     #[inline]
-    fn is_leader(&self, leader: &Leader, date: BlockDate) -> LeaderOutput {
+    fn is_leader(&self, leader: &Leader, date: BlockDate) -> Result<LeaderOutput, Error> {
         match (self, leader) {
-            (Inner::None(_none), Leader::None) => LeaderOutput::None,
-            (Inner::Bft(bft), Leader::BftLeader(bft_leader)) => match bft.get_leader_at(date) {
-                Err(err) => LeaderOutput::Error(err),
-                Ok(bft_leader_id) => {
-                    LeaderOutput::Bft(bft_leader_id == bft_leader.to_public().into())
-                }
-            },
+            (Inner::None(_none), Leader::None) => Ok(LeaderOutput::None),
+            (Inner::Bft(bft), Leader::BftLeader(bft_leader)) => {
+                let bft_leader_id = bft.get_leader_at(date)?;
+                Ok(LeaderOutput::Bft(
+                    bft_leader_id == bft_leader.to_public().into(),
+                ))
+            }
             (Inner::GenesisPraos(genesis_praos), Leader::GenesisPraos(_kes_key, vrf_key)) => {
-                match genesis_praos.leader(vrf_key, date) {
-                    Err(err) => LeaderOutput::Error(err),
-                    Ok(None) => unimplemented!(), // TODO? Fallback on the BFT ?
-                    Ok(Some(_)) => {
-                        LeaderOutput::GenesisPraos // TODO: add the output seed here too
+                match genesis_praos.leader(vrf_key, date)? {
+                    None => unimplemented!(), // TODO? Fallback on the BFT ?
+                    Some(_) => {
+                        Ok(LeaderOutput::GenesisPraos) // TODO: add the output seed here too
                     }
                 }
             }
-            _ => LeaderOutput::Error(Error::new(ErrorKind::InvalidLeader)),
+            _ => Err(Error::new(ErrorKind::InvalidLeader)),
         }
     }
 }
@@ -148,7 +146,7 @@ impl Leadership {
         Verification::Success
     }
 
-    pub fn is_leader(&self, leader: &Leader, date: BlockDate) -> LeaderOutput {
+    pub fn is_leader(&self, leader: &Leader, date: BlockDate) -> Result<LeaderOutput, Error> {
         self.inner.is_leader(leader, date)
     }
 }
