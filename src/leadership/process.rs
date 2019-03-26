@@ -1,15 +1,14 @@
 use crate::{
-    blockcfg::{BlockDate, Leader, LeaderId, Leadership},
+    blockcfg::{BlockBuilder, BlockDate, HeaderHash, Leader, LeaderOutput, Leadership},
     clock,
     intercom::BlockMsg,
     transaction::TPoolR,
     utils::task::TaskMessageBox,
     BlockchainR,
 };
-use chain_core::property::{Block as _, BlockDate as _, ChainLength, LeaderSelection};
+use chain_core::property::BlockDate as _;
 
 pub fn leadership_task(
-    leader_id: LeaderId,
     secret: Leader,
     transaction_pool: TPoolR,
     blockchain: BlockchainR,
@@ -31,31 +30,38 @@ pub fn leadership_task(
         // on the blockchain as we are not expecting to be _blocked_ while creating
         // the block.
         let b = blockchain.read().unwrap();
-        let (last_block, _last_block_info) = b.get_block_tip().unwrap();
+        let (_last_block, _last_block_info) = b.get_block_tip().unwrap();
         let state = b.multiverse.get_from_root(&b.tip);
-        let parameters = state.get_ledger_parameters();
         let leadership = Leadership::new(state);
         let parent_id = &*b.tip;
-        let chain_length = last_block.chain_length().next();
 
         // let am_leader = leadership.get_leader_at(date.clone()).unwrap() == leader_id;
-        let am_leader: bool = unimplemented!();
+        match leadership.is_leader(&secret, date).unwrap() {
+            LeaderOutput::None => {}
+            LeaderOutput::Bft(bft_secret_key) => {
+                let block_builder = prepare_block(&transaction_pool, date, *parent_id);
 
-        if am_leader {
-            // collect up to `nr_transactions` from the transaction pool.
-            //
-            let transactions = transaction_pool.write().unwrap().collect(250 /* TODO!! */);
+                let block = block_builder.make_bft_block(bft_secret_key);
 
-            info!(
-                "leadership create tpool={} transactions ({}.{})",
-                transactions.len(),
-                epoch.0,
-                idx
-            );
-
-            let block = unimplemented!(); // make_block(&secret, date, chain_length, parent_id.clone(), transactions);
-
-            block_task.send_to(BlockMsg::LeadershipBlock(block));
+                block_task.send_to(BlockMsg::LeadershipBlock(block));
+            }
+            LeaderOutput::GenesisPraos => {
+                // TODO
+            }
         }
     }
+}
+
+fn prepare_block(
+    transaction_pool: &TPoolR,
+    date: BlockDate,
+    parent_id: HeaderHash,
+) -> BlockBuilder {
+    let mut bb = BlockBuilder::new();
+
+    bb.date(date).parent(parent_id);
+    let messages = transaction_pool.write().unwrap().collect(250 /* TODO!! */);
+    bb.messages(messages);
+
+    bb
 }
