@@ -1,8 +1,9 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::{HeaderHash, Message};
+use crate::block::HeaderHash;
 use crate::fee::LinearFee;
+use crate::message::Message;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;

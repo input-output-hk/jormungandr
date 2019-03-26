@@ -1,6 +1,7 @@
 //! Representation of the block in the mockchain.
 use crate::key::{make_signature, make_signature_update, Hash};
 use crate::leadership::{bft, genesis::GenesisPraosLeader, Leader};
+use crate::message::{Message, MessageRaw};
 use chain_core::mempack::read_from_raw;
 use chain_core::property::{self, Serialize};
 use chain_crypto::Verification;
@@ -9,7 +10,6 @@ mod builder;
 //mod cstruct;
 mod header;
 mod headerraw;
-pub mod message;
 mod version;
 
 pub use self::version::*;
@@ -21,7 +21,6 @@ pub use self::header::{
     GenesisPraosProof, Header, HeaderHash, KESSignature, Proof,
 };
 pub use self::headerraw::HeaderRaw;
-pub use self::message::{Message, MessageId, MessageRaw};
 pub use self::version::*;
 
 pub use crate::date::{BlockDate, BlockDateParseError};
