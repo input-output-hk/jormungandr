@@ -9,10 +9,7 @@ use futures::future;
 use futures::prelude::*;
 use tokio::{executor::DefaultExecutor, net::TcpStream, sync::mpsc};
 
-pub fn run_connect_socket<B>(
-    peer: Peer,
-    state: GlobalState<B>,
-) -> impl Future<Item = (), Error = ()>
+pub fn run_connect_socket<B>(peer: Peer, state: GlobalState) -> impl Future<Item = (), Error = ()>
 where
     B: NetworkBlockConfig,
 {

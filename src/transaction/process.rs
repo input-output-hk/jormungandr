@@ -3,7 +3,7 @@ use crate::blockchain::BlockchainR;
 use crate::intercom::{do_stream_reply, TransactionMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::transaction::TPool;
-use chain_core::property::{Message as _, State as _};
+use chain_core::property::Message as _;
 use std::sync::{mpsc::Receiver, Arc, RwLock};
 
 #[allow(type_alias_bounds)]

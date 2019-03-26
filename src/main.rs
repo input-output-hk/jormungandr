@@ -62,7 +62,7 @@ use futures::Future;
 use bech32::{u5, Bech32, FromBase32, ToBase32};
 use blockcfg::{genesis_data::ConfigGenesisData, genesis_data::GenesisData};
 use blockchain::{Blockchain, BlockchainR};
-use chain_core::property::{Block as _, Settings as _};
+use chain_core::property::Block as _;
 use chain_crypto::{
     AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
 };

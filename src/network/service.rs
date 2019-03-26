@@ -90,11 +90,11 @@ impl BlockService for ConnectionBlockService {
     type PullBlocksFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
     type GetBlocksStream = ReplyStream<Block, core_error::Error>;
     type GetBlocksFuture = FutureResult<Self::GetBlocksStream, core_error::Error>;
-    type PullHeadersStream = ReplyStream<HeaderHash, core_error::Error>;
+    type PullHeadersStream = ReplyStream<Header, core_error::Error>;
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type BlockSubscription = SubscriptionStream<HeaderHash>;
+    type BlockSubscription = SubscriptionStream<Header>;
     type BlockSubscriptionFuture = SubscriptionFuture<Header>;
 
     fn tip(&mut self) -> Self::TipFuture {

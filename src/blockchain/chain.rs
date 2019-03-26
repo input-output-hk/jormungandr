@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
-use chain_core::property::{Block as _, BlockId as _, HasMessages as _, Settings as _, State as _};
+use chain_core::property::{Block as _, BlockId as _, HasMessages as _};
 use chain_impl_mockchain::multiverse;
 use chain_storage::{
     error as storage,
@@ -37,7 +37,7 @@ pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
 impl Blockchain {
     pub fn new(genesis_data: GenesisData, storage_dir: &Option<std::path::PathBuf>) -> Self {
-        // let mut state = State::new(genesis_data.address_discrimination.into());
+        let discrimination = genesis_data.address_discrimination.into();
 
         let mut storage: Box<BlockStore<Block = Block> + Send + Sync>;
         match storage_dir {
@@ -66,7 +66,7 @@ impl Blockchain {
             let (block_0, _block_0_info) = storage.get_block(&block_0_id).unwrap();
             let parameter_0 = LedgerStaticParameters {
                 block0_initial_hash: block_0_id,
-                discrimination: genesis_data.address_discrimination.into(),
+                discrimination: discrimination,
             };
             let mut state = Ledger::new(parameter_0, block_0.messages()).unwrap();
 
@@ -84,7 +84,7 @@ impl Blockchain {
             let block_0 = genesis_data.to_block_0();
             let parameter_0 = LedgerStaticParameters {
                 block0_initial_hash: block_0.id(),
-                discrimination: genesis_data.address_discrimination.into(),
+                discrimination: discrimination,
             };
             let state = Ledger::new(parameter_0, block_0.messages()).unwrap();
             storage.put_block(&block_0).unwrap();

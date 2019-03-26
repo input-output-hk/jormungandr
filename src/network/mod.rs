@@ -11,13 +11,13 @@ mod grpc;
 pub mod p2p_topology;
 mod service;
 
-use crate::blockcfg::{Block, BlockDate, HeaderHash};
+use crate::blockcfg::{Block, BlockDate, Header, HeaderHash};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
-use self::p2p_topology::{self as p2p, P2pTopology};
+use self::p2p_topology::{self as p2p, Gossip, P2pTopology};
 use futures::prelude::*;
 use futures::stream::{self, Stream};
 use tokio::sync::mpsc;
@@ -29,7 +29,7 @@ type Connection = SocketAddr;
 pub trait NetworkBlockConfig:
     network_grpc::client::ProtocolConfig<
     Block = Block,
-    Header = HeaderHash,
+    Header = Header,
     BlockId = HeaderHash,
     BlockDate = BlockDate,
 >
@@ -39,11 +39,20 @@ pub trait NetworkBlockConfig:
 impl<B> NetworkBlockConfig for B where
     B: network_grpc::client::ProtocolConfig<
         Block = Block,
-        Header = HeaderHash,
+        Header = Header,
         BlockId = HeaderHash,
         BlockDate = BlockDate,
     >
 {
+}
+
+struct BlkCfg;
+impl network_grpc::client::ProtocolConfig for BlkCfg {
+    type Block = Block;
+    type Header = Header;
+    type BlockId = HeaderHash;
+    type BlockDate = BlockDate;
+    type Gossip = Gossip;
 }
 
 /// all the different channels the network may need to talk to
@@ -125,7 +134,7 @@ pub struct ConnectionState {
 
     pub connected: Option<Connection>,
 
-    pub block_sender: mpsc::UnboundedSender<HeaderHash>,
+    pub block_sender: mpsc::UnboundedSender<Header>,
 
     /// Network topology reference.
     pub topology: P2pTopology,
@@ -153,7 +162,7 @@ impl ConnectionState {
     fn new_listen(
         global: &GlobalState,
         listen: &Listen,
-        block_sender: mpsc::UnboundedSender<HeaderHash>,
+        block_sender: mpsc::UnboundedSender<Header>,
     ) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
@@ -170,7 +179,7 @@ impl ConnectionState {
     fn new_peer(
         global: &GlobalState,
         peer: &Peer,
-        block_sender: mpsc::UnboundedSender<HeaderHash>,
+        block_sender: mpsc::UnboundedSender<Header>,
     ) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
@@ -222,7 +231,7 @@ pub fn run(config: Configuration, channels: Channels) {
         .collect::<Vec<_>>();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
-        grpc::run_connect_socket(peer, state_connection.clone())
+        grpc::run_connect_socket::<BlkCfg>(peer, state_connection.clone())
     });
 
     tokio::run(connections.join(listener).map(|_| ()));
