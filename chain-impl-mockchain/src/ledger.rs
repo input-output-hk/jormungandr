@@ -86,10 +86,10 @@ impl From<DelegationError> for Error {
 }
 
 impl Ledger {
-    pub fn new(
-        static_parameters: LedgerStaticParameters,
-        contents: &[Message],
-    ) -> Result<Self, Error> {
+    pub fn new<'a, I>(static_parameters: LedgerStaticParameters, contents: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = &'a Message>,
+    {
         let mut ledger = Ledger {
             utxos: utxo::Ledger::new(),
             oldutxos: utxo::Ledger::new(),
@@ -153,11 +153,14 @@ impl Ledger {
     }
 
     /// Try to apply messages to a State, and return the new State if succesful
-    pub fn apply_block(
-        &self,
+    pub fn apply_block<'a, I>(
+        &'a self,
         ledger_params: &LedgerParameters,
-        contents: &[Message],
-    ) -> Result<Self, Error> {
+        contents: I,
+    ) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = &'a Message>,
+    {
         let mut new_ledger = self.clone();
 
         for content in contents {
