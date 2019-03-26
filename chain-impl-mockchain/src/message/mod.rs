@@ -1,3 +1,4 @@
+pub mod initial;
 mod raw;
 
 use crate::legacy;
@@ -7,6 +8,7 @@ use chain_core::property;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
+pub use initial::InitialEnts;
 pub use raw::{MessageId, MessageRaw};
 
 use crate::{
@@ -17,6 +19,7 @@ use crate::{
 /// All possible messages recordable in the content
 #[derive(Debug, Clone)]
 pub enum Message {
+    Initial(InitialEnts),
     OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
     Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
@@ -26,6 +29,7 @@ pub enum Message {
 /// Tag enumeration of all known message
 #[derive(Debug, Clone, Copy, FromPrimitive, PartialEq, Eq)]
 pub(super) enum MessageTag {
+    Initial = 0,
     OldUtxoDeclaration = 1,
     Transaction = 2,
     Certificate = 3,
@@ -36,6 +40,7 @@ impl Message {
     /// Return the tag associated with the Message
     pub(super) fn get_tag(&self) -> MessageTag {
         match self {
+            Message::Initial(_) => MessageTag::Initial,
             Message::OldUtxoDeclaration(_) => MessageTag::OldUtxoDeclaration,
             Message::Transaction(_) => MessageTag::Transaction,
             Message::Certificate(_) => MessageTag::Certificate,
@@ -51,6 +56,7 @@ impl Message {
         let mut codec = Codec::from(v);
         codec.put_u8(self.get_tag() as u8).unwrap();
         match self {
+            Message::Initial(i) => i.serialize(&mut codec).unwrap(),
             Message::OldUtxoDeclaration(s) => s.serialize(&mut codec).unwrap(),
             Message::Transaction(signed) => signed.serialize(&mut codec).unwrap(),
             Message::Certificate(signed) => signed.serialize(&mut codec).unwrap(),
@@ -72,6 +78,7 @@ impl Readable for Message {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let tag = buf.get_u8()?;
         match MessageTag::from_u8(tag) {
+            Some(MessageTag::Initial) => InitialEnts::read(buf).map(Message::Initial),
             Some(MessageTag::OldUtxoDeclaration) => {
                 legacy::UtxoDeclaration::read(buf).map(Message::OldUtxoDeclaration)
             }

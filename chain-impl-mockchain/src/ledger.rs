@@ -2,7 +2,9 @@
 //! current state and verify transactions.
 
 use crate::block::HeaderHash;
+use crate::config;
 use crate::fee::LinearFee;
+use crate::message::initial;
 use crate::message::Message;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
@@ -16,7 +18,18 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct LedgerStaticParameters {
     pub block0_initial_hash: HeaderHash,
+    pub block0_start_time: config::Block0Date,
     pub discrimination: Discrimination,
+}
+
+impl LedgerStaticParameters {
+    fn default() -> Self {
+        LedgerStaticParameters {
+            block0_initial_hash: HeaderHash::from_bytes([0u8; 32]),
+            block0_start_time: config::Block0Date(0),
+            discrimination: Discrimination::Test,
+        }
+    }
 }
 
 // parameters to validate ledger
@@ -45,18 +58,21 @@ pub struct Ledger {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
+    Config(config::Error),
+    UnknownConfig(initial::Tag),
     NotEnoughSignatures(usize, usize),
     UtxoValueNotMatching(Value, Value),
     UtxoError(utxo::Error),
     UtxoInvalidSignature(UtxoPointer, Output<Address>, Witness),
-    OldUtxoNotInBlock0,
     OldUtxoInvalidSignature(UtxoPointer, Output<legacy::OldAddress>, Witness),
     OldUtxoInvalidPublicKey(UtxoPointer, Output<legacy::OldAddress>, Witness),
     AccountInvalidSignature(account::Identifier, Witness),
     TransactionHasNoInput,
+    Block0OnlyMessageReceived,
     Block0TransactionHasInput,
     Block0TransactionHasOutput,
     Block0TransactionHasWitnesses,
+    Block0InitialMessageMissing,
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -66,6 +82,7 @@ pub enum Error {
     InvalidDiscrimination,
     ExpectingAccountWitness,
     ExpectingUtxoWitness,
+    ExpectingInitialMessage,
 }
 
 impl From<utxo::Error> for Error {
@@ -86,27 +103,62 @@ impl From<DelegationError> for Error {
     }
 }
 
+impl From<config::Error> for Error {
+    fn from(e: config::Error) -> Self {
+        Error::Config(e)
+    }
+}
+
 impl Ledger {
-    pub fn new<'a, I>(static_parameters: LedgerStaticParameters, contents: I) -> Result<Self, Error>
-    where
-        I: IntoIterator<Item = &'a Message>,
-    {
-        let mut ledger = Ledger {
+    fn empty(static_parameters: LedgerStaticParameters) -> Self {
+        Ledger {
             utxos: utxo::Ledger::new(),
             oldutxos: utxo::Ledger::new(),
             accounts: account::Ledger::new(),
             settings: setting::Settings::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_parameters),
-        };
+        }
+    }
 
+    pub fn new<'a, I>(block0_hash: HeaderHash, contents: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = &'a Message>,
+    {
+        let mut content_iter = contents.into_iter();
         let mut ledger_params = LedgerParameters {
             fees: LinearFee::new(0, 0, 0),
             allow_account_creation: false,
         };
 
-        for content in contents {
+        let static_parameters = match content_iter.next() {
+            None => Err(Error::Block0InitialMessageMissing),
+            Some(Message::Initial(ref ents)) => {
+                let mut params = LedgerStaticParameters::default();
+                for (tag, tagpayload) in ents.iter() {
+                    match *tag {
+                        <config::Block0Date as config::ConfigParam>::TAG => {
+                            params.block0_start_time = config::entity_from(*tag, tagpayload)?;
+                        }
+                        <Discrimination as config::ConfigParam>::TAG => {
+                            params.discrimination = config::entity_from(*tag, tagpayload)?;
+                        }
+                        _ => return Err(Error::UnknownConfig(*tag)),
+                    }
+                }
+                params.block0_initial_hash = block0_hash;
+                Ok(params)
+            }
+            Some(_) => Err(Error::Block0InitialMessageMissing),
+        }?;
+
+        let mut ledger = Self::empty(static_parameters);
+
+        for content in content_iter {
             match content {
+                Message::Initial(_) => {
+                    return Err(Error::Block0InitialMessageMissing);
+                }
                 Message::OldUtxoDeclaration(old) => {
                     ledger.oldutxos = apply_old_declaration(ledger.oldutxos, old)?;
                 }
@@ -166,7 +218,8 @@ impl Ledger {
 
         for content in contents {
             match content {
-                Message::OldUtxoDeclaration(_) => return Err(Error::OldUtxoNotInBlock0),
+                Message::Initial(_) => return Err(Error::Block0OnlyMessageReceived),
+                Message::OldUtxoDeclaration(_) => return Err(Error::Block0OnlyMessageReceived),
                 Message::Transaction(authenticated_tx) => {
                     new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
                 }
@@ -502,14 +555,13 @@ pub mod test {
     #[test]
     pub fn utxo() -> () {
         let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
-        let static_params = LedgerStaticParameters {
-            block0_initial_hash: block0_hash,
-            discrimination: Discrimination::Test,
-        };
+        let discrimination = Discrimination::Test;
+        let mut ie = initial::InitialEnts::new();
+        ie.push(config::entity_to(&discrimination));
 
         let mut rng = rand::thread_rng();
-        let (sk1, _pk1, user1_address) = make_key(&mut rng, &static_params.discrimination);
-        let (_sk2, _pk2, user2_address) = make_key(&mut rng, &static_params.discrimination);
+        let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);
+        let (_sk2, _pk2, user2_address) = make_key(&mut rng, &discrimination);
         let value = Value(42000);
 
         let output0 = Output {
@@ -533,8 +585,8 @@ pub mod test {
             value: value,
         };
 
-        let messages = [Message::Transaction(first_trans)];
-        let ledger = Ledger::new(static_params, &messages).unwrap();
+        let messages = [Message::Initial(ie), Message::Transaction(first_trans)];
+        let ledger = Ledger::new(block0_hash, &messages).unwrap();
         let dyn_params = ledger.get_ledger_parameters();
 
         {
