@@ -75,6 +75,12 @@ impl BftLeaderSelection {
     }
 }
 
+impl LeaderId {
+    pub fn as_public_key(&self) -> &PublicKey<SIGNING_ALGORITHM> {
+        &self.0
+    }
+}
+
 impl property::Serialize for LeaderId {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
