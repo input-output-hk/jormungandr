@@ -5,6 +5,7 @@ extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate reqwest;
+extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 extern crate structopt;
