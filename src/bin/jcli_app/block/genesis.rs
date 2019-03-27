@@ -39,7 +39,9 @@ fn encode_block_0(argument: Common) {
 
 fn decode_block_0(argument: Common) {
     let block = open_block(&argument.input_file);
-    println!("{:#?}", block);
+    let yaml = yaml::Genesis::from_block(&block);
+
+    serde_yaml::to_writer(io::open_file_write(&argument.output_file), &yaml).unwrap();
 }
 
 fn print_hash(argument: Input) {
