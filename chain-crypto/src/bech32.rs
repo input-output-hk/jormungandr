@@ -1,5 +1,4 @@
 use bech32::{Bech32 as Bech32Data, Error as Bech32Error, FromBase32, ToBase32};
-use std::borrow::Cow;
 use std::error::Error as StdError;
 use std::fmt;
 use std::result::Result as StdResult;
@@ -11,31 +10,26 @@ pub trait Bech32 {
 
     fn try_from_bech32_str(bech32_str: &str) -> Result<Self>
     where
-        Self: Sized,
-    {
-        let bech32: Bech32Data = bech32_str.parse()?;
-        if bech32.hrp() != Self::BECH32_HRP {
-            return Err(Error::HrpInvalid {
-                expected: Self::BECH32_HRP,
-                actual: bech32.hrp().to_string(),
-            });
-        }
-        let bytes = Vec::<u8>::from_base32(bech32.data())?;
-        Self::try_from_bytes(&bytes)
-    }
-
-    fn try_from_bytes(bytes: &[u8]) -> Result<Self>
-    where
         Self: Sized;
 
-    fn to_bech32_str(&self) -> String {
-        let data = self.to_bytes();
-        Bech32Data::new(Self::BECH32_HRP.to_string(), data.to_base32())
-            .unwrap_or_else(|e| panic!("Failed to build bech32: {}", e))
-            .to_string()
-    }
+    fn to_bech32_str(&self) -> String;
+}
 
-    fn to_bytes(&self) -> Cow<[u8]>;
+pub fn to_bech32_from_bytes<B: Bech32>(bytes: &[u8]) -> String {
+    Bech32Data::new(B::BECH32_HRP.to_string(), bytes.to_base32())
+        .unwrap_or_else(|e| panic!("Failed to build bech32: {}", e))
+        .to_string()
+}
+
+pub fn try_from_bech32_to_bytes<B: Bech32>(bech32_str: &str) -> Result<Vec<u8>> {
+    let bech32: Bech32Data = bech32_str.parse()?;
+    if bech32.hrp() != B::BECH32_HRP {
+        return Err(Error::HrpInvalid {
+            expected: B::BECH32_HRP,
+            actual: bech32.hrp().to_string(),
+        });
+    }
+    Vec::<u8>::from_base32(bech32.data()).map_err(Into::into)
 }
 
 #[derive(Debug)]
@@ -46,6 +40,12 @@ pub enum Error {
         actual: String,
     },
     DataInvalid(Box<StdError + 'static>),
+}
+
+impl Error {
+    pub fn data_invalid(cause: impl StdError + 'static) -> Self {
+        Error::DataInvalid(Box::new(cause))
+    }
 }
 
 impl From<Bech32Error> for Error {

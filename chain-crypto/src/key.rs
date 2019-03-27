@@ -1,7 +1,6 @@
 use crate::bech32::{self, Bech32};
 use crate::hex;
 use rand::{CryptoRng, RngCore};
-use std::borrow::Cow;
 use std::fmt;
 use std::hash::Hash;
 
@@ -177,24 +176,26 @@ impl<A: AsymmetricKey> Hash for PublicKey<A> {
 impl<A: AsymmetricKey> Bech32 for PublicKey<A> {
     const BECH32_HRP: &'static str = A::PUBLIC_BECH32_HRP;
 
-    fn try_from_bytes(bytes: &[u8]) -> Result<Self, bech32::Error> {
-        Self::from_bytes(bytes).map_err(|e| bech32::Error::DataInvalid(Box::new(e)))
+    fn try_from_bech32_str(bech32_str: &str) -> Result<Self, bech32::Error> {
+        let bytes = bech32::try_from_bech32_to_bytes::<Self>(bech32_str)?;
+        Self::from_bytes(&bytes).map_err(bech32::Error::data_invalid)
     }
 
-    fn to_bytes(&self) -> Cow<[u8]> {
-        self.as_ref().into()
+    fn to_bech32_str(&self) -> String {
+        bech32::to_bech32_from_bytes::<Self>(self.as_ref())
     }
 }
 
 impl<A: AsymmetricKey> Bech32 for SecretKey<A> {
     const BECH32_HRP: &'static str = A::SECRET_BECH32_HRP;
 
-    fn try_from_bytes(bytes: &[u8]) -> Result<Self, bech32::Error> {
-        Self::from_bytes(bytes).map_err(|e| bech32::Error::DataInvalid(Box::new(e)))
+    fn try_from_bech32_str(bech32_str: &str) -> Result<Self, bech32::Error> {
+        let bytes = bech32::try_from_bech32_to_bytes::<Self>(bech32_str)?;
+        Self::from_bytes(&bytes).map_err(bech32::Error::data_invalid)
     }
 
-    fn to_bytes(&self) -> Cow<[u8]> {
-        self.0.as_ref().into()
+    fn to_bech32_str(&self) -> String {
+        bech32::to_bech32_from_bytes::<Self>(self.0.as_ref())
     }
 }
 

@@ -1,13 +1,9 @@
 //! module to provide some handy interfaces atop the hashes so we have
 //! the common interfaces for the project to work with.
 
-use std::{
-    borrow::Cow,
-    error, fmt,
-    hash::{Hash, Hasher},
-    result,
-    str::FromStr,
-};
+use std::hash::{Hash, Hasher};
+use std::str::FromStr;
+use std::{error, fmt, result};
 
 use cryptoxide::blake2b::Blake2b;
 use cryptoxide::digest::Digest;
@@ -125,12 +121,13 @@ macro_rules! define_hash_object {
         impl Bech32 for $hash_ty {
             const BECH32_HRP: &'static str = $bech32_hrp;
 
-            fn try_from_bytes(bytes: &[u8]) -> bech32::Result<Self> {
-                Self::try_from_slice(bytes).map_err(|e| bech32::Error::DataInvalid(Box::new(e)))
+            fn try_from_bech32_str(bech32_str: &str) -> bech32::Result<Self> {
+                let bytes = bech32::try_from_bech32_to_bytes::<Self>(bech32_str)?;
+                Self::try_from_slice(&bytes).map_err(bech32::Error::data_invalid)
             }
 
-            fn to_bytes(&self) -> Cow<[u8]> {
-                self.as_ref().into()
+            fn to_bech32_str(&self) -> String {
+                bech32::to_bech32_from_bytes::<Self>(self.as_ref())
             }
         }
     };
