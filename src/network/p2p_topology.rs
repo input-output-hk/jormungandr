@@ -3,22 +3,19 @@
 
 use bincode;
 use chain_core::property;
-use network_core::gossip;
+use network_core::gossip::{self, Node as _};
 use poldercast::topology::{Cyclon, Module, Rings, Topology, Vicinity};
 use poldercast::Subscription;
-pub use poldercast::{Address, Id, InterestLevel, Node};
+pub use poldercast::{Address, InterestLevel};
 use std::{
     collections::BTreeMap,
     error, fmt, io,
+    net::SocketAddr,
     sync::{Arc, RwLock},
-    vec,
 };
 
 pub const NEW_TRANSACTIONS_TOPIC: u32 = 0u32;
 pub const NEW_BLOCKS_TOPIC: u32 = 1u32;
-
-#[derive(Debug, Clone)]
-pub struct Gossip(pub Vec<Node>);
 
 #[derive(Debug)]
 pub enum Error {
@@ -56,35 +53,39 @@ impl From<Box<bincode::ErrorKind>> for Error {
     }
 }
 
-pub fn from_node_id(node_id: &gossip::NodeId) -> Id {
-    let bytes = node_id.to_bytes();
-    let mut buf = [0; 16];
-    buf[0..16].clone_from_slice(&bytes);
-    Id::from(u128::from_be_bytes(buf))
-}
+#[derive(Clone, Debug)]
+pub struct Node(poldercast::Node);
 
-pub fn to_node_id(id: &Id) -> gossip::NodeId {
-    gossip::NodeId::from_slice(&id.as_u128().to_be_bytes()).unwrap()
-}
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct NodeId(poldercast::Id);
 
-impl gossip::Gossip for Gossip {
-    type NodeId = Id;
-    type Node = Node;
+impl gossip::Node for Node {
+    type Id = NodeId;
 
-    fn from_nodes<I>(iter: I) -> Self
-    where
-        I: IntoIterator<Item = Self::Node>,
-    {
-        Gossip(iter.into_iter().collect())
+    #[inline]
+    fn id(&self) -> Self::Id {
+        NodeId(self.0.id().clone())
+    }
+
+    #[inline]
+    fn address(&self) -> Option<SocketAddr> {
+        self.0.address().to_socketaddr()
     }
 }
 
-impl IntoIterator for Gossip {
-    type Item = Node;
-    type IntoIter = vec::IntoIter<Node>;
+impl gossip::NodeId for NodeId {}
 
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+impl Node {
+    #[inline]
+    pub fn new(id: NodeId, address: Address) -> Self {
+        Node(poldercast::Node::new(id.0, address))
+    }
+}
+
+impl NodeId {
+    #[inline]
+    pub fn generate() -> Self {
+        NodeId(poldercast::Id::generate(&mut rand::thread_rng()))
     }
 }
 
@@ -94,7 +95,7 @@ pub struct P2pTopology {
     topology: Arc<RwLock<Topology>>,
 }
 
-impl property::Serialize for Gossip {
+impl property::Serialize for Node {
     type Error = Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -102,12 +103,29 @@ impl property::Serialize for Gossip {
     }
 }
 
-impl property::Deserialize for Gossip {
+impl property::Deserialize for Node {
     type Error = Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let iter: Vec<Node> = bincode::deserialize_from(reader).map_err(Error::Encoding)?;
-        Ok(Gossip(iter))
+        let inner = bincode::deserialize_from(reader).map_err(Error::Encoding)?;
+        Ok(Node(inner))
+    }
+}
+
+impl property::Serialize for NodeId {
+    type Error = Error;
+
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        bincode::serialize_into(writer, &self.0).map_err(Error::Encoding)
+    }
+}
+
+impl property::Deserialize for NodeId {
+    type Error = Error;
+
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+        let id = bincode::deserialize_from(reader).map_err(Error::Encoding)?;
+        Ok(NodeId(id))
     }
 }
 
@@ -117,7 +135,7 @@ impl P2pTopology {
     /// The address is the public
     pub fn new(node: Node) -> Self {
         P2pTopology {
-            topology: Arc::new(RwLock::new(Topology::new(node))),
+            topology: Arc::new(RwLock::new(Topology::new(node.0))),
         }
     }
 
@@ -138,32 +156,47 @@ impl P2pTopology {
 
     /// this is the list of neighbors to contact for event dissemination
     pub fn view(&self) -> Vec<Node> {
-        self.topology.read().unwrap().view()
+        let topology = self.topology.read().unwrap();
+        topology.view().into_iter().map(Node).collect()
     }
 
     /// this is the function to utilise when we receive a gossip in order
     /// to update the P2P Topology internal state
-    pub fn update(&mut self, new_nodes: BTreeMap<Id, Node>) {
+    pub fn update<I>(&mut self, new_nodes: I)
+    where
+        I: IntoIterator<Item = Node>,
+    {
+        let tree = new_nodes
+            .into_iter()
+            .map(|node| (node.id().0, node.0))
+            .collect();
+        self.update_tree(tree)
+    }
+
+    fn update_tree(&mut self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
+        // Poldercast API should be better than this
         self.topology.write().unwrap().update(new_nodes)
     }
 
     /// this is the function to utilise in order to select gossips to share
     /// with a given node
-    pub fn select_gossips(&mut self, gossip_recipient: &Node) -> BTreeMap<Id, Node> {
-        self.topology
-            .write()
-            .unwrap()
-            .select_gossips(gossip_recipient)
+    pub fn select_gossips(&mut self, gossip_recipient: &Node) -> impl Iterator<Item = Node> {
+        let mut topology = self.topology.write().unwrap();
+        topology
+            .select_gossips(&gossip_recipient.0)
+            .into_iter()
+            .map(|(_, v)| Node(v))
     }
 }
 
 pub fn add_transaction_subscription(node: &mut Node, interest_level: InterestLevel) {
-    node.add_subscription(Subscription::new(
+    node.0.add_subscription(Subscription::new(
         NEW_TRANSACTIONS_TOPIC.into(),
         interest_level,
     ));
 }
 
 pub fn add_block_subscription(node: &mut Node, interest_level: InterestLevel) {
-    node.add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
+    node.0
+        .add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
 }

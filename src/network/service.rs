@@ -5,12 +5,11 @@ use crate::intercom::{
     ReplyStream, SubscriptionFuture, SubscriptionStream, TransactionMsg,
 };
 use crate::utils::task::TaskMessageBox;
-use std::collections::BTreeMap;
-use std::marker::PhantomData;
 
-use network::p2p_topology::{self as p2p, Gossip, Id, P2pTopology};
+use network::p2p_topology::{self as p2p, P2pTopology};
 use network_core::{
-    error as core_error, gossip,
+    error as core_error,
+    gossip::Gossip,
     server::{
         block::BlockService,
         content::{ContentService, ProposeTransactionsResponse},
@@ -198,37 +197,24 @@ impl ContentService for ConnectionContentService {
 
 pub struct ConnectionGossipService {
     p2p: P2pTopology,
-    node: poldercast::Node,
-    _phantom: PhantomData<Gossip>,
+    node: p2p::Node,
 }
 
 impl GossipService for ConnectionGossipService {
-    type Message = Gossip;
-    type MessageFuture = future::FutureResult<(gossip::NodeId, Self::Message), core_error::Error>;
+    type Node = p2p::Node;
+    type GossipSubscription = SubscriptionStream<Gossip<p2p::Node>>;
+    type GossipSubscriptionFuture = SubscriptionFuture<Gossip<p2p::Node>>;
 
-    /// Record and process gossip event.
-    fn record_gossip(
-        &mut self,
-        node_id: gossip::NodeId,
-        gossip: &Self::Message,
-    ) -> Self::MessageFuture {
-        let nodes: BTreeMap<_, _> = (&gossip.0)
-            .into_iter()
-            .map(|node| (*node.id(), node.clone()))
-            .collect();
-        let node_id: Id = p2p::from_node_id(&node_id);
-        if let Some(them) = nodes.get(&node_id).cloned() {
-            self.p2p.update(nodes);
-            let reply_nodes = self.p2p.select_gossips(&them);
-            let reply = gossip::Gossip::from_nodes(reply_nodes.into_iter().map(|(_, node)| node));
-            let node_id = p2p::to_node_id(self.node.id());
-            future::ok((node_id, reply))
-        } else {
-            future::err(core_error::Error::new(
-                core_error::Code::Internal,
-                "No message",
-            ))
-        }
+    fn gossip_subscription<In>(&mut self, inbound: In) -> Self::GossipSubscriptionFuture
+    where
+        In: Stream<Item = Gossip<p2p::Node>, Error = core_error::Error>,
+    {
+        inbound.for_each(|gossip| {
+            self.p2p.update(gossip.into_nodes());
+            future::ok(())
+        });
+        // TODO: send periodic updates to nodes
+        unimplemented!()
     }
 }
 
@@ -237,7 +223,6 @@ impl ConnectionGossipService {
         ConnectionGossipService {
             p2p: state.topology.clone(),
             node: state.node.clone(),
-            _phantom: PhantomData,
         }
     }
 }
@@ -245,7 +230,6 @@ impl ConnectionGossipService {
 impl Clone for ConnectionGossipService {
     fn clone(&self) -> Self {
         ConnectionGossipService {
-            _phantom: PhantomData,
             node: self.node.clone(),
             p2p: self.p2p.clone(),
         }

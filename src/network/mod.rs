@@ -11,13 +11,13 @@ mod grpc;
 pub mod p2p_topology;
 mod service;
 
-use crate::blockcfg::{Block, BlockDate, Header, HeaderHash};
+use crate::blockcfg::Header;
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
-use self::p2p_topology::{self as p2p, Gossip, P2pTopology};
+use self::p2p_topology::{self as p2p, P2pTopology};
 use futures::prelude::*;
 use futures::stream::{self, Stream};
 use tokio::sync::mpsc;
@@ -26,34 +26,7 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 type Connection = SocketAddr;
 
-pub trait NetworkBlockConfig:
-    network_grpc::client::ProtocolConfig<
-    Block = Block,
-    Header = Header,
-    BlockId = HeaderHash,
-    BlockDate = BlockDate,
->
-{
-}
-
-impl<B> NetworkBlockConfig for B where
-    B: network_grpc::client::ProtocolConfig<
-        Block = Block,
-        Header = Header,
-        BlockId = HeaderHash,
-        BlockDate = BlockDate,
-    >
-{
-}
-
-struct BlkCfg;
-impl network_grpc::client::ProtocolConfig for BlkCfg {
-    type Block = Block;
-    type Header = Header;
-    type BlockId = HeaderHash;
-    type BlockDate = BlockDate;
-    type Gossip = Gossip;
-}
+struct BlockConfig;
 
 /// all the different channels the network may need to talk to
 pub struct Channels {
@@ -82,7 +55,7 @@ pub struct GlobalState {
 impl GlobalState {
     /// the network global state
     pub fn new(config: &Configuration, channels: Channels) -> Self {
-        let node_id = p2p_topology::Id::generate(&mut rand::thread_rng());
+        let node_id = p2p_topology::NodeId::generate();
         let node_address = config
             .public_address
             .clone()
@@ -231,7 +204,7 @@ pub fn run(config: Configuration, channels: Channels) {
         .collect::<Vec<_>>();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
-        grpc::run_connect_socket::<BlkCfg>(peer, state_connection.clone())
+        grpc::run_connect_socket(peer, state_connection.clone())
     });
 
     tokio::run(connections.join(listener).map(|_| ()));
