@@ -94,11 +94,11 @@ where
     }
 }
 
-impl<T> FromProtobuf<gen::node::Transaction> for T
+impl<T> FromProtobuf<gen::node::Message> for T
 where
     T: property::Message + property::Deserialize,
 {
-    fn from_message(msg: gen::node::Transaction) -> Result<T, core_error::Error> {
+    fn from_message(msg: gen::node::Message) -> Result<T, core_error::Error> {
         let tx = deserialize_bytes(&msg.content)?;
         Ok(tx)
     }
@@ -186,13 +186,13 @@ where
     }
 }
 
-impl<T> IntoProtobuf<gen::node::Transaction> for T
+impl<T> IntoProtobuf<gen::node::Message> for T
 where
     T: property::Message + property::Serialize,
 {
-    fn into_message(self) -> Result<gen::node::Transaction, tower_grpc::Status> {
+    fn into_message(self) -> Result<gen::node::Message, tower_grpc::Status> {
         let content = serialize_to_bytes(&self)?;
-        Ok(gen::node::Transaction { content })
+        Ok(gen::node::Message { content })
     }
 }
 

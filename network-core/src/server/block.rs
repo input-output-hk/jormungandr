@@ -71,7 +71,7 @@ pub trait BlockService {
     /// blocks as they are created.
     type BlockSubscription: Stream<Item = Self::Header, Error = Error>;
 
-    /// The type of asynchronous futures returned by method `subscribe`.
+    /// The type of asynchronous futures returned by method `block_subscription`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
@@ -113,11 +113,11 @@ pub trait BlockService {
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
 
     // Establishes a bidirectional subscription for announcing blocks,
-    // taking an asynchronous stream that provides the outbound announcements.
+    // taking an asynchronous stream that provides the inbound announcements.
     //
     // Returns a future that resolves to an asynchronous subscription stream
     // that receives blocks announced by the peer.
-    fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
+    fn block_subscription<In>(&mut self, inbound: In) -> Self::BlockSubscriptionFuture
     where
-        Out: Stream<Item = Self::Header, Error = Error>;
+        In: Stream<Item = Self::Header, Error = Error>;
 }
