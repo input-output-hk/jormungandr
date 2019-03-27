@@ -36,7 +36,7 @@ pub trait ContentService {
     /// by the peer via the bidirectional subscription.
     type MessageSubscription: Stream<Item = Self::Message, Error = Error>;
 
-    /// The type of asynchronous futures returned by method `block_subscription`.
+    /// The type of asynchronous futures returned by method `message_subscription`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
