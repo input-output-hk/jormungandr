@@ -1,12 +1,11 @@
 use crate::gen;
 
 use chain_core::property;
-use network_core::{
-    error as core_error,
-    gossip::{self, Gossip},
-};
+use network_core::{error as core_error, gossip::NodeGossip};
 
 use tower_grpc::{Code, Status};
+
+use std::net::IpAddr;
 
 pub fn error_into_grpc(err: core_error::Error) -> Status {
     use core_error::Code::*;
@@ -104,30 +103,30 @@ where
     }
 }
 
-impl<T> FromProtobuf<gen::node::GossipMessage> for (gossip::NodeId, T)
+impl<T> FromProtobuf<gen::node::NodeGossip> for T
 where
-    T: Gossip,
+    T: NodeGossip,
 {
-    fn from_message(
-        msg: gen::node::GossipMessage,
-    ) -> Result<(gossip::NodeId, T), core_error::Error> {
-        let node_id = match msg.node_id {
-            None => Err(core_error::Error::new(
-                core_error::Code::InvalidArgument,
-                "incorrect node encoding",
-            )),
-            Some(gen::node::gossip_message::NodeId { content }) => {
-                match gossip::NodeId::from_slice(&content) {
-                    Ok(node_id) => Ok(node_id),
-                    Err(_v) => Err(core_error::Error::new(
-                        core_error::Code::InvalidArgument,
-                        "incorrect node encoding",
-                    )),
-                }
+    fn from_message(msg: gen::node::NodeGossip) -> Result<T, core_error::Error> {
+        let node_id = deserialize_bytes(&msg.id)?;
+        let host = match msg.host.parse::<IpAddr>() {
+            Ok(host) => host,
+            Err(e) => {
+                return Err(core_error::Error::new(core_error::Code::InvalidArgument, e));
             }
-        }?;
-        let gossip = deserialize_bytes(&msg.content)?;
-        Ok((node_id, gossip))
+        };
+        let port = match msg.port {
+            1..=65_535 => msg.port as u16,
+            _ => {
+                return Err(core_error::Error::new(
+                    core_error::Code::InvalidArgument,
+                    format!("invalid port number {}", msg.port),
+                ));
+            }
+        };
+        let addr = (host, port).into();
+        let gossip = NodeGossip::new(node_id, addr);
+        Ok(gossip)
     }
 }
 
@@ -196,14 +195,18 @@ where
     }
 }
 
-impl<G> IntoProtobuf<gen::node::GossipMessage> for (gossip::NodeId, G)
+impl<G> IntoProtobuf<gen::node::NodeGossip> for G
 where
-    G: Gossip + property::Serialize,
+    G: NodeGossip,
 {
-    fn into_message(self) -> Result<gen::node::GossipMessage, tower_grpc::Status> {
-        let content = self.0.to_bytes();
-        let node_id = Some(gen::node::gossip_message::NodeId { content });
-        let content = serialize_to_bytes(&self.1)?;
-        Ok(gen::node::GossipMessage { node_id, content })
+    fn into_message(self) -> Result<gen::node::NodeGossip, tower_grpc::Status> {
+        let node_id = serialize_to_bytes(&self.id())?;
+        let addr = self.addr();
+        let gossip = gen::node::NodeGossip {
+            id: node_id,
+            host: format!("{}", addr.ip()),
+            port: addr.port() as u32,
+        };
+        Ok(gossip)
     }
 }

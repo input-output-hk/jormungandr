@@ -1,8 +1,5 @@
 use crate::{
-    convert::{
-        deserialize_bytes, deserialize_vec, error_from_grpc, error_into_grpc, FromProtobuf,
-        IntoProtobuf,
-    },
+    convert::{deserialize_vec, error_from_grpc, error_into_grpc, FromProtobuf, IntoProtobuf},
     gen,
 };
 
@@ -279,9 +276,13 @@ where
         Self::MessageSubscriptionStream,
         <<T as Node>::ContentService as ContentService>::MessageSubscriptionFuture,
     >;
-    type GossipFuture = ResponseFuture<
-        gen::node::GossipMessage,
-        <<T as Node>::GossipService as GossipService>::MessageFuture,
+    type GossipSubscriptionStream = ResponseStream<
+        gen::node::NodeGossip,
+        <<T as Node>::GossipService as GossipService>::GossipSubscription,
+    >;
+    type GossipSubscriptionFuture = ResponseFuture<
+        Self::GossipSubscriptionStream,
+        <<T as Node>::GossipService as GossipService>::GossipSubscriptionFuture,
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
@@ -354,30 +355,12 @@ where
         ResponseFuture::new(service.message_subscription(stream))
     }
 
-    /// Work with gossip message.
-    fn gossip(&mut self, req: Request<gen::node::GossipMessage>) -> Self::GossipFuture {
+    fn gossip_subscription(
+        &mut self,
+        request: Request<Streaming<gen::node::NodeGossip>>,
+    ) -> Self::GossipSubscriptionFuture {
         let service = try_get_service!(self.gossip_service);
-        let node_id = match &req.get_ref().node_id {
-            Some(gen::node::gossip_message::NodeId { content }) => {
-                match gossip::NodeId::from_slice(&content) {
-                    Ok(node_id) => node_id,
-                    Err(_v) => {
-                        let status = Status::new(Code::InvalidArgument, "node decoding failed.");
-                        return ResponseFuture::error(status);
-                    }
-                }
-            }
-            None => {
-                let status = Status::new(Code::InvalidArgument, "node field is missing");
-                return ResponseFuture::error(status);
-            }
-        };
-        let gossip = match deserialize_bytes(&req.get_ref().content) {
-            Ok(message) => message,
-            Err(e) => {
-                return ResponseFuture::error(error_into_grpc(e));
-            }
-        };
-        ResponseFuture::new(service.record_gossip(node_id, &gossip))
+        let stream = RequestStream::new(request.into_inner());
+        ResponseFuture::new(service.subscription(stream))
     }
 }

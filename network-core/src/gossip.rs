@@ -1,8 +1,5 @@
 use chain_core::property::{Deserialize, Serialize};
-use std::{error, fmt};
-
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct NodeId([u8; 16]);
+use std::{error, fmt, net::SocketAddr};
 
 #[derive(Clone, Debug)]
 pub enum NodeIdError {
@@ -23,28 +20,17 @@ impl fmt::Display for NodeIdError {
     }
 }
 
-impl NodeId {
-    pub fn from_slice(slice: &[u8]) -> Result<Self, NodeIdError> {
-        if slice.len() != 16 {
-            return Err(NodeIdError::InvalidSize(slice.len()));
-        }
-        let mut buf = [0; 16];
-        buf[0..16].clone_from_slice(slice);
-        Ok(NodeId(buf))
-    }
+/// Abstract trait for data types representing gossip about network nodes.
+pub trait NodeGossip {
+    /// Type that represents the node identifier in the gossip message.
+    type NodeId: Serialize + Deserialize;
 
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.0[..].into()
-    }
-}
+    /// Constructs a new instance from an id and a socket address.
+    fn new(id: Self::NodeId, addr: SocketAddr) -> Self;
 
-pub trait Gossip: Serialize + Deserialize {
-    /// Type that represents NodeId in the gossip message.
-    type NodeId: Sized;
-    /// Information about the node that is kept in the gossip message.
-    type Node;
+    /// Returns the node identifier.
+    fn id(&self) -> Self::NodeId;
 
-    fn from_nodes<I>(iter: I) -> Self
-    where
-        I: IntoIterator<Item = Self::Node>;
+    /// Returns the TCP socket address.
+    fn addr(&self) -> SocketAddr;
 }
