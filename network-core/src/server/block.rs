@@ -71,7 +71,7 @@ pub trait BlockService {
     /// blocks as they are created.
     type BlockSubscription: Stream<Item = Self::Header, Error = Error>;
 
-    /// The type of asynchronous futures returned by method `subscribe`.
+    /// The type of asynchronous futures returned by method `block_subscription`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
