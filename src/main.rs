@@ -58,7 +58,6 @@ use chain_impl_mockchain::message::{Message, MessageId};
 use futures::Future;
 
 use bech32::{u5, Bech32, FromBase32, ToBase32};
-use blockcfg::{genesis_data::ConfigGenesisData, genesis_data::GenesisData};
 use blockchain::{Blockchain, BlockchainR};
 use chain_core::property::Block as _;
 use chain_crypto::{
@@ -113,10 +112,9 @@ fn block_task(
     }
 }
 
-fn startup_info(gd: &GenesisData, blockchain: &Blockchain, _settings: &settings::start::Settings) {
+fn startup_info(blockchain: &Blockchain, _settings: &settings::start::Settings) {
     println!(
-        "k={} tip={} length={:?}",
-        gd.epoch_stability_depth,
+        "tip={} length={:?}",
         blockchain.get_tip(),
         blockchain.get_block_tip().unwrap().0.chain_length()
     );
@@ -129,14 +127,16 @@ type Error = settings::Error;
 fn start(settings: settings::start::Settings) -> Result<(), Error> {
     settings.log_settings.apply();
 
-    let genesis_data = settings.read_genesis_data().unwrap();
+    let block_0 = settings.load_block_0();
+
+    let start_time = blockcfg::block_0_get_start_time(&block_0);
 
     let clock = {
         let initial_epoch = clock::ClockEpochConfiguration {
-            slot_duration: genesis_data.slot_duration,
-            slots_per_epoch: genesis_data.epoch_stability_depth * 10,
+            slot_duration: std::time::Duration::from_secs(2),
+            slots_per_epoch: 10 * 10,
         };
-        clock::Clock::new(genesis_data.start_time, initial_epoch)
+        clock::Clock::new(start_time, initial_epoch)
     };
 
     let leader_secret = if let Some(secret_path) = &settings.leadership {
@@ -147,9 +147,9 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
 
     //let mut state = State::new();
 
-    let blockchain_data = Blockchain::new(genesis_data.clone(), &settings.storage);
+    let blockchain_data = Blockchain::new(block_0, &settings.storage);
 
-    startup_info(&genesis_data, &blockchain_data, &settings);
+    startup_info(&blockchain_data, &settings);
 
     let blockchain = Arc::new(RwLock::new(blockchain_data));
 
@@ -342,20 +342,6 @@ fn main() {
                 other => panic!("Unrecognized private key bech32 HRP: {}", other),
             };
             println!("{}", pub_key_bech32);
-        }
-        Command::Init(init_settings) => {
-            let genesis = ConfigGenesisData::from_genesis(GenesisData {
-                address_discrimination: init_settings.address_discrimination,
-                start_time: init_settings.blockchain_start,
-                slot_duration: init_settings.slot_duration,
-                epoch_stability_depth: init_settings.epoch_stability_depth,
-                initial_utxos: init_settings.initial_utxos,
-                bft_leaders: init_settings.bft_leaders,
-                allow_account_creation: init_settings.allow_account_creation,
-                linear_fees: init_settings.linear_fee,
-            });
-
-            serde_yaml::to_writer(std::io::stdout(), &genesis).unwrap();
         }
     }
 }

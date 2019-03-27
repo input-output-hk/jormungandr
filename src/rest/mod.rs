@@ -8,7 +8,6 @@ pub use self::server::{Error, Server};
 
 use crate::blockchain::BlockchainR;
 use crate::settings::start::{Error as ConfigError, Rest};
-use crate::settings::Error as SettingsError;
 
 pub struct Context {
     pub stats_counter: v0::node::stats::StatsCounter,
@@ -16,7 +15,7 @@ pub struct Context {
     pub transaction_task: v0::message::Task,
 }
 
-pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, SettingsError> {
+pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, ConfigError> {
     let prefix = config
         .prefix
         .as_ref()
@@ -29,5 +28,5 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, Sett
         .add_handler(v0::message::create_handler(context.transaction_task))
         .add_handler(v0::utxo::create_handler(context.blockchain))
         .build()
-        .map_err(|e| SettingsError::Start(ConfigError::InvalidRest(e)))
+        .map_err(|e| ConfigError::InvalidRest(e))
 }

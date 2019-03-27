@@ -4,7 +4,6 @@ pub mod network;
 use self::config::ConfigLogSettings;
 pub use self::config::{Genesis, GenesisConstants, Rest};
 use self::network::Protocol;
-use crate::blockcfg::genesis_data::*;
 use crate::rest::Error as RestError;
 use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
@@ -80,7 +79,7 @@ pub struct Settings {
 
     pub storage: Option<PathBuf>,
 
-    pub genesis_data_config: PathBuf,
+    pub block_0: PathBuf,
 
     pub leadership: Option<PathBuf>,
 
@@ -125,7 +124,7 @@ impl Settings {
 
         Ok(Settings {
             storage: storage,
-            genesis_data_config: command_arguments.genesis_data_config.clone(),
+            block_0: command_arguments.block_0.clone(),
             network: network,
             leadership: secret,
             log_settings: log_settings,
@@ -133,11 +132,11 @@ impl Settings {
         })
     }
 
-    pub fn read_genesis_data(&self) -> Result<GenesisData, impl std::error::Error> {
-        let f = File::open(&self.genesis_data_config).unwrap();
-        let mut reader = std::io::BufReader::new(f);
-
-        GenesisData::parse(&mut reader)
+    pub fn load_block_0(&self) -> crate::blockcfg::Block {
+        use chain_core::property::Deserialize as _;
+        let f = File::open(&self.block_0).unwrap();
+        let reader = std::io::BufReader::new(f);
+        crate::blockcfg::Block::deserialize(reader).unwrap()
     }
 }
 

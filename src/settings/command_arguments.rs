@@ -1,11 +1,7 @@
-use chain_addr::AddressReadable;
-use chain_impl_mockchain::value::Value;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::clap::{_clap_count_exprs, arg_enum};
 use structopt::StructOpt;
-
-use crate::blockcfg::genesis_data::{Discrimination, InitialUTxO, PublicKey};
 
 use crate::settings::logging::LogFormat;
 
@@ -55,68 +51,9 @@ pub struct StartArguments {
     #[structopt(long = "secret", parse(from_os_str))]
     pub secret: Option<PathBuf>,
 
-    /// Set the genesis data config (in JSON format) to use as configuration
-    /// for the node's blockchain
-    #[structopt(long = "genesis-config", parse(from_os_str))]
-    pub genesis_data_config: PathBuf,
-}
-
-#[derive(StructOpt, Debug)]
-pub struct InitArguments {
-    /// set the address that will have all the initial funds associated to it.
-    /// This is the wallet that will serve as faucet on testnets and as initial
-    /// coin wallet for mainnets
-    ///
-    /// You will need to create an address (s) (make sure to save the
-    /// spending key securely) and then you can add initial-utxos:
-    ///
-    /// ```text
-    /// jormundandr --initial-utxos=ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s@999999999
-    /// ```
-    #[structopt(long = "initial-utxos", parse(try_from_str = "parse_initial_utxo"))]
-    pub initial_utxos: Vec<InitialUTxO>,
-
-    /// set the time between the creation of 2 blocks. Value is a positive integer to
-    /// be in seconds.
-    #[structopt(
-        short = "slot-duration",
-        parse(try_from_str = "parse_duration"),
-        default_value = "15"
-    )]
-    pub slot_duration: std::time::Duration,
-
-    /// set the number of blocks that can be used to pack in the storage
-    ///
-    /// In the BFT paper it corresponds to the `t` parameter.
-    #[structopt(long = "epoch-stability-depth", default_value = "10")]
-    pub epoch_stability_depth: usize,
-
-    /// one starting up the protocol will be in OBFT mode, you need to provide a list of
-    /// authoritative public keys that will control the blockchain
-    #[structopt(long = "bft-leader", parse(try_from_str))]
-    pub bft_leaders: Vec<PublicKey>,
-
-    /// set to allow the creation of account without publishing certificate
-    /// By default account are created only for the reward account.
-    ///
-    /// However it is possible to allows user of the blockchain to create an
-    /// account too by just setting this parameter
-    #[structopt(long = "allow-account-creation")]
-    pub allow_account_creation: bool,
-
-    /// set the address discrimination (`testing` or `production`).
-    #[structopt(long = "discrimination")]
-    pub address_discrimination: Discrimination,
-
-    /// the linear fee constant parameter
-    #[structopt(long = "linear-fee-constant", default_value = "0")]
-    pub linear_fee_constant: u64,
-    /// the linear fee coefficient parameter
-    #[structopt(long = "linear-fee-coefficient", default_value = "0")]
-    pub linear_fee_coefficient: u64,
-    /// the linear fee certificate parameter
-    #[structopt(long = "linear-fee-certificate", default_value = "0")]
-    pub linear_fee_certificate: u64,
+    /// Set the block 0 (the genesis block) of the blockchain
+    #[structopt(long = "genesis-block", parse(from_os_str))]
+    pub block_0: PathBuf,
 }
 
 #[derive(StructOpt, Debug)]
@@ -174,10 +111,6 @@ pub enum Command {
     #[structopt(name = "start")]
     Start(StartArguments),
 
-    /// initialize a new genesis configuration file
-    #[structopt(name = "init")]
-    Init(InitArguments),
-
     /// generate a random private key and print it to stdout encoded in bech32
     #[structopt(name = "generate-priv-key")]
     GeneratePrivKey(GeneratePrivKeyArguments),
@@ -198,33 +131,4 @@ impl CommandLine {
     pub fn load() -> Self {
         Self::from_args()
     }
-}
-
-fn parse_duration(s: &str) -> Result<std::time::Duration, std::num::ParseIntError> {
-    let time_seconds = s.parse::<u64>()?;
-    Ok(std::time::Duration::new(time_seconds, 0))
-}
-
-fn parse_initial_utxo(s: &str) -> Result<InitialUTxO, String> {
-    use std::str::FromStr;
-
-    let value: Vec<_> = s.split("@").collect();
-    if value.len() != 2 {
-        return Err(format!("Expecting initial UTxO format: <address>@<value>"));
-    }
-
-    let address = match AddressReadable::from_str(&value[0]) {
-        Err(error) => return Err(format!("Invalid initial UTxO's address: {}", error)),
-        Ok(address) => address,
-    };
-
-    let value = match value[1].parse::<u64>() {
-        Err(error) => return Err(format!("Invalid initial UTxO's value: {}", error)),
-        Ok(v) => Value(v),
-    };
-
-    Ok(InitialUTxO {
-        address: address,
-        value: value,
-    })
 }

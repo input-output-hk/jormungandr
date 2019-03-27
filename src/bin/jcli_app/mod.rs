@@ -13,7 +13,7 @@ pub enum JCli {
     /// Address tooling and helper
     Address(address::Address),
     /// Block tooling and helper
-    Block(block::Block),
+    Genesis(block::Genesis),
     /// Send request to node REST API
     Rest(rest::Rest),
     /// Build and view offline transaction
@@ -24,7 +24,7 @@ impl JCli {
     pub fn exec(self) {
         match self {
             JCli::Address(address) => address.exec(),
-            JCli::Block(block) => block.exec(),
+            JCli::Genesis(genesis) => genesis.exec(),
             JCli::Rest(rest) => rest.exec(),
             JCli::Transaction(transaction) => transaction.exec(),
         }

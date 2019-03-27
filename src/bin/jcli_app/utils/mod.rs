@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod host_addr;
+pub mod io;
 mod segment_parser;
 pub mod serde_with_string;
 

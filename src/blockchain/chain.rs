@@ -10,9 +10,7 @@ use chain_storage::{
 };
 use chain_storage_sqlite::SQLiteBlockStore;
 
-use crate::blockcfg::{
-    genesis_data::GenesisData, Block, HeaderHash, Ledger, LedgerStaticParameters, Multiverse,
-};
+use crate::blockcfg::{Block, HeaderHash, Ledger, Multiverse};
 
 pub struct Blockchain {
     /// the storage for the overall blockchains (blocks)
@@ -36,9 +34,7 @@ pub type BlockchainR = Arc<RwLock<Blockchain>>;
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
 impl Blockchain {
-    pub fn new(genesis_data: GenesisData, storage_dir: &Option<std::path::PathBuf>) -> Self {
-        let discrimination = genesis_data.address_discrimination.into();
-
+    pub fn new(block_0: Block, storage_dir: &Option<std::path::PathBuf>) -> Self {
         let mut storage: Box<BlockStore<Block = Block> + Send + Sync>;
         match storage_dir {
             None => {
@@ -62,7 +58,7 @@ impl Blockchain {
 
             let mut tip = None;
 
-            let block_0_id = genesis_data.to_block_0().id(); // TODO: get this from the parameter
+            let block_0_id = block_0.id(); // TODO: get this from the parameter
             let (block_0, _block_0_info) = storage.get_block(&block_0_id).unwrap();
             let mut state = Ledger::new(block_0_id, block_0.messages()).unwrap();
 
@@ -77,7 +73,6 @@ impl Blockchain {
 
             tip.unwrap()
         } else {
-            let block_0 = genesis_data.to_block_0();
             let state = Ledger::new(block_0.id(), block_0.messages()).unwrap();
             storage.put_block(&block_0).unwrap();
             multiverse.add(block_0.id(), state)
