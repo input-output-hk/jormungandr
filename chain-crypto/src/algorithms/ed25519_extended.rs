@@ -6,7 +6,7 @@ use super::ed25519 as ei;
 use cryptoxide::ed25519;
 use rand::{CryptoRng, RngCore};
 
-use ed25519_bip32::{XPrv, XPRV_SIZE, XPUB_SIZE};
+use ed25519_bip32::{XPrv, XPRV_SIZE};
 
 /// ED25519 Signing Algorithm with extended secret key
 pub struct Ed25519Extended;
@@ -59,7 +59,7 @@ impl AsymmetricKey for Ed25519Extended {
         }
         let mut buf = [0; ed25519::PRIVATE_KEY_LENGTH];
         buf[0..ed25519::PRIVATE_KEY_LENGTH].clone_from_slice(data);
-        /// TODO structure check
+        // TODO structure check
         Ok(ExtendedPriv(buf))
     }
     fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {

@@ -48,6 +48,12 @@ pub enum Error {
     DataInvalid(Box<StdError + 'static>),
 }
 
+impl Error {
+    pub fn data_invalid(cause: impl StdError + 'static) -> Self {
+        Error::DataInvalid(Box::new(cause))
+    }
+}
+
 impl From<Bech32Error> for Error {
     fn from(error: Bech32Error) -> Self {
         Error::Bech32Malformed(error)

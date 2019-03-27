@@ -178,7 +178,7 @@ impl<A: AsymmetricKey> Bech32 for PublicKey<A> {
     const BECH32_HRP: &'static str = A::PUBLIC_BECH32_HRP;
 
     fn try_from_bytes(bytes: &[u8]) -> Result<Self, bech32::Error> {
-        Self::from_bytes(bytes).map_err(|e| bech32::Error::DataInvalid(Box::new(e)))
+        Self::from_bytes(bytes).map_err(bech32::Error::data_invalid)
     }
 
     fn to_bytes(&self) -> Cow<[u8]> {

@@ -1,4 +1,6 @@
+use crate::bech32::{self, Bech32};
 use crate::{hex, kes, key};
+use std::borrow::Cow;
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -116,6 +118,18 @@ impl<T, A: VerificationAlgorithm> Clone for Signature<T, A> {
 impl<T, A: VerificationAlgorithm> AsRef<[u8]> for Signature<T, A> {
     fn as_ref(&self) -> &[u8] {
         self.signdata.as_ref()
+    }
+}
+
+impl<T, A: VerificationAlgorithm> Bech32 for Signature<T, A> {
+    const BECH32_HRP: &'static str = A::SECRET_BECH32_HRP;
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self, bech32::Error> {
+        Self::from_bytes(bytes).map_err(bech32::Error::data_invalid)
+    }
+
+    fn to_bytes(&self) -> Cow<[u8]> {
+        self.as_ref().into()
     }
 }
 
