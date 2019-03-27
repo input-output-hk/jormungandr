@@ -54,3 +54,59 @@ YAML printed on success
   out_addr: ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s  # output address in bech32
   out_value: 999999999                                                      # output value
 ```
+
+## Post transaction
+
+Posts a signed, hex-encoded transaction
+
+```
+jormungandr_cli rest v0 transaction post <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- -f --file <file_path> - File containing hex-encoded transaction.
+If not provided, transaction will be read from stdin.
+
+## Blockchain tip
+
+Retrieves a hex-encoded ID of the blockchain tip
+
+```
+jormungandr_cli rest v0 tip get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+
+## Get block
+
+Retrieves a hex-encoded block with given ID
+
+```
+jormungandr_cli rest v0 block <block_id> get <options>
+```
+
+<block_id> - hex-encoded block ID
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+
+## Get next block ID
+
+Retrieves a list of hex-encoded IDs of descendants of block with given ID.
+Every list element is in separate line. The IDs are sorted from closest to farthest.
+
+```
+jormungandr_cli rest v0 block <block_id> next-id get <options>
+```
+
+<block_id> - hex-encoded block ID
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- -c --count <count> - Maximum number of IDs, must be between 1 and 100, default 1
