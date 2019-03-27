@@ -15,7 +15,6 @@ extern crate chain_storage;
 extern crate chain_storage_sqlite;
 extern crate clap;
 extern crate cryptoxide;
-extern crate exe_common;
 extern crate futures;
 extern crate generic_array;
 extern crate http;
@@ -26,7 +25,6 @@ extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
 extern crate poldercast;
-extern crate protocol_tokio as protocol;
 extern crate rand_chacha;
 extern crate tower_service;
 
