@@ -4,8 +4,9 @@ use chain_addr::{Address, AddressReadable};
 use chain_crypto::{self, AsymmetricKey, Ed25519Extended};
 use chain_impl_mockchain::leadership::bft::LeaderId;
 use chain_impl_mockchain::{
-    block::{Block, BlockBuilder, BlockVersionTag, Message},
+    block::{Block, BlockBuilder, BlockVersionTag},
     fee,
+    message::Message,
     setting::UpdateProposal,
     transaction::{self, Output, UtxoPointer},
     value::Value,

@@ -13,8 +13,8 @@ use network_core::{
     error as core_error, gossip,
     server::{
         block::BlockService,
+        content::{ContentService, ProposeTransactionsResponse},
         gossip::GossipService,
-        transaction::{ProposeTransactionsResponse, TransactionService},
         Node,
     },
 };
@@ -34,14 +34,14 @@ impl ConnectionServices {
 
 impl Node for ConnectionServices {
     type BlockService = ConnectionBlockService;
-    type TransactionService = ConnectionTransactionService;
+    type ContentService = ConnectionContentService;
     type GossipService = ConnectionGossipService;
 
     fn block_service(&self) -> Option<Self::BlockService> {
         Some(ConnectionBlockService::new(&self.state))
     }
 
-    fn transaction_service(&self) -> Option<Self::TransactionService> {
+    fn content_service(&self) -> Option<Self::ContentService> {
         // Not implemented yet
         None
     }
@@ -155,45 +155,42 @@ impl BlockService for ConnectionBlockService {
     }
 }
 
-pub struct ConnectionTransactionService {
+pub struct ConnectionContentService {
     transaction_box: TaskMessageBox<TransactionMsg>,
 }
 
-impl Clone for ConnectionTransactionService {
+impl Clone for ConnectionContentService {
     fn clone(&self) -> Self {
-        ConnectionTransactionService {
+        ConnectionContentService {
             transaction_box: self.transaction_box.clone(),
         }
     }
 }
 
-impl TransactionService for ConnectionTransactionService {
-    type Transaction = Message;
-    type TransactionId = MessageId;
+impl ContentService for ConnectionContentService {
+    type Message = Message;
+    type MessageId = MessageId;
     type ProposeTransactionsFuture =
         ReplyFuture<ProposeTransactionsResponse<MessageId>, core_error::Error>;
-    type GetTransactionsStream = ReplyStream<Self::Transaction, core_error::Error>;
-    type GetTransactionsFuture = ReplyFuture<Self::GetTransactionsStream, core_error::Error>;
-    type TransactionSubscription = SubscriptionStream<Message>;
-    type TransactionSubscriptionFuture = SubscriptionFuture<Message>;
+    type GetMessagesStream = ReplyStream<Self::Message, core_error::Error>;
+    type GetMessagesFuture = ReplyFuture<Self::GetMessagesStream, core_error::Error>;
+    type MessageSubscription = SubscriptionStream<Message>;
+    type MessageSubscriptionFuture = SubscriptionFuture<Message>;
 
     fn propose_transactions(
         &mut self,
-        _ids: &[Self::TransactionId],
+        _ids: &[Self::MessageId],
     ) -> Self::ProposeTransactionsFuture {
         unimplemented!()
     }
 
-    fn get_transactions(&mut self, _ids: &[Self::TransactionId]) -> Self::GetTransactionsFuture {
+    fn get_messages(&mut self, _ids: &[Self::MessageId]) -> Self::GetMessagesFuture {
         unimplemented!()
     }
 
-    fn transaction_subscription<Out>(
-        &mut self,
-        _outbound: Out,
-    ) -> Self::TransactionSubscriptionFuture
+    fn message_subscription<S>(&mut self, _inbound: S) -> Self::MessageSubscriptionFuture
     where
-        Out: Stream<Item = Self::Transaction, Error = core_error::Error>,
+        S: Stream<Item = Self::Message, Error = core_error::Error>,
     {
         unimplemented!()
     }

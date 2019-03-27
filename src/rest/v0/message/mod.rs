@@ -4,7 +4,7 @@ use actix_web::error::ErrorBadRequest;
 use actix_web::{App, Error as ActixError, HttpMessage, HttpRequest, Responder};
 use bytes::IntoBuf;
 use chain_core::property::Deserialize;
-use chain_impl_mockchain::block::Message;
+use chain_impl_mockchain::message::Message;
 use futures::Future;
 use std::sync::{Arc, Mutex};
 
