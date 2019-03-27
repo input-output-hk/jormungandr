@@ -8,6 +8,10 @@ impl BlockVersion {
     pub const fn new(v: u16) -> Self {
         BlockVersion(v)
     }
+
+    pub const fn as_u16(&self) -> u16 {
+        self.0
+    }
 }
 
 #[derive(Debug, Clone, Copy, FromPrimitive, PartialEq, Eq)]
