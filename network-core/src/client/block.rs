@@ -53,7 +53,7 @@ pub trait BlockService {
     // implementation to produce a server-streamed response.
     //type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error>;
 
-    /// The type of asynchronous futures returned by method `subscribe`.
+    /// The type of asynchronous futures returned by method `block_subscription`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a subscription stream.

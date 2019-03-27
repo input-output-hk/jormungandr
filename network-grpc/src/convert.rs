@@ -3,7 +3,7 @@ use crate::gen;
 use chain_core::property;
 use network_core::{
     error as core_error,
-    gossip::{self, Gossip},
+    gossip::{Gossip, Node},
 };
 
 use tower_grpc::{Code, Status};
@@ -104,30 +104,15 @@ where
     }
 }
 
-impl<T> FromProtobuf<gen::node::GossipMessage> for (gossip::NodeId, T)
+impl<T> FromProtobuf<gen::node::Gossip> for Gossip<T>
 where
-    T: Gossip,
+    T: Node,
 {
-    fn from_message(
-        msg: gen::node::GossipMessage,
-    ) -> Result<(gossip::NodeId, T), core_error::Error> {
-        let node_id = match msg.node_id {
-            None => Err(core_error::Error::new(
-                core_error::Code::InvalidArgument,
-                "incorrect node encoding",
-            )),
-            Some(gen::node::gossip_message::NodeId { content }) => {
-                match gossip::NodeId::from_slice(&content) {
-                    Ok(node_id) => Ok(node_id),
-                    Err(_v) => Err(core_error::Error::new(
-                        core_error::Code::InvalidArgument,
-                        "incorrect node encoding",
-                    )),
-                }
-            }
-        }?;
-        let gossip = deserialize_bytes(&msg.content)?;
-        Ok((node_id, gossip))
+    fn from_message(msg: gen::node::Gossip) -> Result<Gossip<T>, core_error::Error> {
+        let sender = deserialize_bytes(&msg.sender)?;
+        let nodes = deserialize_vec(&msg.nodes)?;
+        let gossip = Gossip::from_nodes(sender, nodes);
+        Ok(gossip)
     }
 }
 
@@ -196,14 +181,14 @@ where
     }
 }
 
-impl<G> IntoProtobuf<gen::node::GossipMessage> for (gossip::NodeId, G)
+impl<T> IntoProtobuf<gen::node::Gossip> for Gossip<T>
 where
-    G: Gossip + property::Serialize,
+    T: Node,
 {
-    fn into_message(self) -> Result<gen::node::GossipMessage, tower_grpc::Status> {
-        let content = self.0.to_bytes();
-        let node_id = Some(gen::node::gossip_message::NodeId { content });
-        let content = serialize_to_bytes(&self.1)?;
-        Ok(gen::node::GossipMessage { node_id, content })
+    fn into_message(self) -> Result<gen::node::Gossip, tower_grpc::Status> {
+        let sender = serialize_to_bytes(self.sender())?;
+        let nodes = serialize_to_vec(self.nodes())?;
+        let gossip = gen::node::Gossip { sender, nodes };
+        Ok(gossip)
     }
 }

@@ -50,14 +50,12 @@ message Message {
     bytes content = 1;
 }
 
-// Gossip message.
-message GossipMessage {
-    message NodeId {
-      bytes content = 1;
-    }
-
-    NodeId node_id = 1;
-    bytes content = 2;
+// Gossip message with information on nodes in the network.
+message Gossip {
+    // ID of the sender node (TODO: replace with gRPC metadata).
+    bytes sender = 1;
+    // Serialized descriptions of nodes.
+    repeated bytes nodes = 2;
 }
 
 service Node {
@@ -82,5 +80,7 @@ service Node {
     // messages created or accepted by the peers.
     rpc MessageSubscription (stream Message) returns (stream Message);
 
-    rpc Gossip (GossipMessage) returns (GossipMessage);
+    // Establishes a bidirectional stream to exchange information on new
+    // network peers.
+    rpc GossipSubscription (stream Gossip) returns (stream Gossip);
 }

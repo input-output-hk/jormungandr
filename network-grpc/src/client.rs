@@ -1,5 +1,5 @@
 use crate::{
-    convert::{serialize_to_bytes, serialize_to_vec},
+    convert::serialize_to_vec,
     gen::{self, node::client as gen_client},
 };
 
@@ -7,7 +7,7 @@ use chain_core::property;
 use network_core::{
     client::{block::BlockService, gossip::GossipService},
     error as core_error,
-    gossip::{self, Gossip},
+    gossip::{Gossip, Node},
 };
 
 use futures::future::Executor;
@@ -77,7 +77,7 @@ pub trait ProtocolConfig {
     type Block: chain_bounds::Block
         + property::Block<Id = Self::BlockId, Date = Self::BlockDate>
         + property::HasHeader<Header = Self::Header>;
-    type Gossip: Gossip;
+    type Node: Node;
 }
 
 /// gRPC client for blockchain node.
@@ -89,7 +89,7 @@ where
     C: ProtocolConfig,
 {
     node: gen_client::Node<AddOrigin<Connection<S, E, BoxBody>>>,
-    _phantom: PhantomData<(C::Block, C::Gossip)>,
+    _phantom: PhantomData<(C::Block)>,
 }
 
 impl<C, S, E> Client<C, S, E>
@@ -413,16 +413,17 @@ where
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
 {
-    type Gossip = C::Gossip;
-    type GossipFuture = ResponseFuture<(gossip::NodeId, C::Gossip), gen::node::GossipMessage>;
+    type Node = C::Node;
+    type GossipSubscription = ResponseStream<Gossip<C::Node>, gen::node::Gossip>;
+    type GossipSubscriptionFuture = BidiStreamFuture<Gossip<C::Node>, gen::node::Gossip>;
 
-    fn gossip(&mut self, node_id: &gossip::NodeId, gossip: &C::Gossip) -> Self::GossipFuture {
-        let content = node_id.to_bytes();
-        let node_id = Some(gen::node::gossip_message::NodeId { content });
-        let content = serialize_to_bytes(&gossip).unwrap();
-        let req = gen::node::GossipMessage { node_id, content };
-        let future = self.node.gossip(Request::new(req));
-        ResponseFuture::new(future)
+    fn gossip_subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
+    where
+        Out: Stream<Item = Gossip<C::Node>> + Send + 'static,
+    {
+        let req = RequestStream::new(outbound);
+        let future = self.node.gossip_subscription(Request::new(req));
+        BidiStreamFuture::new(future)
     }
 }
 
