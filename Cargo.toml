@@ -53,7 +53,7 @@ chain-addr      = { path = "cardano-deps/chain-addr" }
 chain-crypto    = { path = "cardano-deps/chain-crypto" }
 network-core    = { path = "cardano-deps/network-core" }
 network-grpc    = { path = "cardano-deps/network-grpc" }
-cardano         = { path = "cardano-deps/cardano" }
+cardano         = { path = "cardano-deps/cardano", features = [ "generic-serialization" ] }
 cardano-storage = { path = "cardano-deps/storage" }
 poldercast = "0.2.1"
 tower-service = "0.2"

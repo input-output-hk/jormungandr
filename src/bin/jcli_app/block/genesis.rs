@@ -8,6 +8,8 @@ use chain_impl_mockchain::block::{self, BlockBuilder};
 use jcli_app::utils::io;
 use structopt::StructOpt;
 
+mod yaml;
+
 impl Genesis {
     pub fn exec(self) {
         match self {
@@ -24,22 +26,24 @@ fn init_genesis_yaml() {
 }
 
 fn encode_block_0(argument: Common) {
-    if argument.block_exists() {
-        panic!("Block already exists")
-    }
+    // read yaml file
+    let yaml: yaml::Genesis =
+        serde_yaml::from_reader(io::open_file_read(&argument.input_file)).unwrap();
 
-    let block = BlockBuilder::new().make_genesis_block();
-    let file = io::open_file_write(&argument.block);
-    block.serialize(file).unwrap();
+    let block = yaml.to_block();
+
+    block
+        .serialize(io::open_file_write(&argument.output_file))
+        .unwrap()
 }
 
 fn decode_block_0(argument: Common) {
-    let block = argument.open_block();
+    let block = open_block(&argument.input_file);
     println!("{:#?}", block);
 }
 
-fn print_hash(argument: Common) {
-    let block = argument.open_block();
+fn print_hash(argument: Input) {
+    let block = open_block(&argument.input_file);
     println!("{}", block.id());
 }
 
@@ -60,30 +64,41 @@ pub enum Genesis {
     Decode(Common),
 
     /// print the block hash (aka the block id) of the block 0
-    Hash(Common),
+    Hash(Input),
+}
+
+#[derive(StructOpt)]
+pub struct Input {
+    /// the file path to the genesis file defining the block 0
+    ///
+    /// If not available the command will expect to read the configuration from
+    /// the standard input.
+    #[structopt(long = "input", parse(from_os_str), name = "FILE_INPUT")]
+    input_file: Option<std::path::PathBuf>,
 }
 
 #[derive(StructOpt)]
 pub struct Common {
-    /// the file path to the block to create/update/display
+    /// the file path to the genesis file defining the block 0
     ///
-    /// If not available the command will expect to read the block from
-    /// the standard input and/or write the result to the standard output
-    #[structopt(parse(from_os_str), name = "FILE")]
-    block: Option<std::path::PathBuf>,
+    /// If not available the command will expect to read the configuration from
+    /// the standard input.
+    #[structopt(long = "input", parse(from_os_str), name = "FILE_INPUT")]
+    input_file: Option<std::path::PathBuf>,
+
+    /// the file path to the block to create
+    ///
+    /// If not available the command will expect to write the block to
+    /// to the standard output
+    #[structopt(long = "output", parse(from_os_str), name = "FILE_OUTPUT")]
+    output_file: Option<std::path::PathBuf>,
 }
 
-impl Common {
-    fn block_exists(&self) -> bool {
-        if let Some(path) = &self.block {
-            path.is_file()
-        } else {
-            false
-        }
-    }
+fn block_exists<P: AsRef<std::path::Path>>(path: P) -> bool {
+    path.as_ref().is_file()
+}
 
-    fn open_block(&self) -> block::Block {
-        let reader = io::open_file_read(&self.block);
-        block::Block::deserialize(reader).unwrap()
-    }
+fn open_block<P: AsRef<std::path::Path>>(path: &Option<P>) -> block::Block {
+    let reader = io::open_file_read(path);
+    block::Block::deserialize(reader).unwrap()
 }
