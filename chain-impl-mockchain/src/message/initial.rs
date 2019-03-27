@@ -96,7 +96,7 @@ impl Readable for InitialEnts {
         while !(buf.is_end()) {
             let taglen = TagLen(buf.get_u16()?);
             let (tag, len) = taglen.deconstruct();
-            let mut bytes = vec![0u8; len];
+            let mut bytes = Vec::with_capacity(len);
             bytes.extend_from_slice(buf.get_slice(len)?);
             ents.push((tag, bytes))
         }
