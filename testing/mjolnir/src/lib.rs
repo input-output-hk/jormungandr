@@ -11,7 +11,7 @@ use cfg_if::cfg_if;
 use chain_addr as addr;
 use chain_core::{
     mempack::{ReadBuf, Readable},
-    property::{FromStr, Serialize},
+    property::{FromStr},
 };
 use chain_crypto::{self as crypto, algorithms::Ed25519Extended, AsymmetricKey, SecretKey};
 use chain_impl_mockchain::account;
@@ -20,6 +20,7 @@ use chain_impl_mockchain::key;
 use chain_impl_mockchain::transaction as tx;
 use chain_impl_mockchain::txbuilder as tb;
 use chain_impl_mockchain::value;
+use chain_impl_mockchain::block::message as msg;
 use wasm_bindgen::prelude::*;
 
 cfg_if! {
@@ -385,17 +386,14 @@ impl TransactionFinalizer {
         self.0.sign(&pk.0)
     }
 
-    pub fn build(self) -> SignedTransaction {
+    pub fn build(self) -> Message {
         match self.0.build() {
-            tb::GeneratedTransaction::Type1(tx) => SignedTransaction(tx),
+            tb::GeneratedTransaction::Type1(tx) => 
+                Message(msg::Message::Transaction(tx)),
             tb::GeneratedTransaction::Type2(_) => unimplemented!(),
         }
     }
 }
-
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct SignedTransaction(tx::AuthenticatedTransaction<addr::Address, tx::NoExtra>);
 
 #[derive(Serialize)]
 pub struct SignedTxDescription {
@@ -404,50 +402,80 @@ pub struct SignedTxDescription {
     pub witnesses: Vec<String>,
 }
 
+fn describe_tx(this: &tx::AuthenticatedTransaction<addr::Address,tx::NoExtra>) -> SignedTxDescription {
+    SignedTxDescription {
+        inputs: this
+            .transaction
+            .inputs
+            .iter()
+            .map(|i| format!("{:?}", i))
+            .collect(),
+        outputs: this 
+            .transaction
+            .outputs
+            .iter()
+            .map(|o| format!("{:?}", o))
+            .collect(),
+        witnesses: this
+            .witnesses
+            .iter()
+            .map(|w| format!("{:?}", w))
+            .collect(),
+    }
+}
+
+#[derive(Serialize)]
+pub struct MessageDescription {
+    transaction: Option<SignedTxDescription>,
+}
+
 #[wasm_bindgen]
-impl SignedTransaction {
-    pub fn to_hex(self) -> Result<String, JsValue> {
-        let v = self
-            .0
-            .serialize_as_vec()
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-        Ok(hex::encode(&v))
+pub struct Message(msg::Message);
+
+#[wasm_bindgen]
+impl Message {
+
+    /// Get internal type of the message
+    pub fn get_type(&self) -> String {
+        match self.0 {
+            msg::Message::OldUtxoDeclaration(_) => "old",
+            msg::Message::Transaction(_) => "tx",
+            msg::Message::Certificate(_) => "cert",
+            msg::Message::Update(_) => "update",
+        }.to_string()
     }
 
-    pub fn from_hex(input: &str) -> Result<SignedTransaction, JsValue> {
+    /// Convert all the data to hex.
+    pub fn to_hex(&self) -> String {
+        let bytes = self.0.to_raw();
+        let bb = hex::encode(&bytes.as_ref());
+        let bytes1 = hex::decode(&bb).unwrap();
+        let mut reader = ReadBuf::from(&bytes1);
+        msg::Message::read(&mut reader).unwrap();
+        hex::encode(&bytes.as_ref())
+    }
+
+    /// Convert message from hex
+    pub fn from_hex(input: &str) -> Result<Message, JsValue> {
         hex::decode(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .and_then(|bytes| {
                 let mut reader = ReadBuf::from(&bytes);
-                tx::AuthenticatedTransaction::read(&mut reader)
+                msg::Message::read(&mut reader)
                     .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
-                    .map(SignedTransaction)
+                    .map(Message)
             })
     }
 
+    /// Describe existing message.
     pub fn describe(&self) -> JsValue {
-        let std: SignedTxDescription = SignedTxDescription {
-            inputs: self
-                .0
-                .transaction
-                .inputs
-                .iter()
-                .map(|i| format!("{:?}", i))
-                .collect(),
-            outputs: self
-                .0
-                .transaction
-                .outputs
-                .iter()
-                .map(|o| format!("{:?}", o))
-                .collect(),
-            witnesses: self
-                .0
-                .witnesses
-                .iter()
-                .map(|w| format!("{:?}", w))
-                .collect(),
+        let msg = match &self.0 {
+            msg::Message::Transaction(msg) => MessageDescription {
+                transaction: Some(describe_tx(&msg)),
+            },
+            _ => unimplemented!()
         };
-        JsValue::from_serde(&std).unwrap()
+        JsValue::from_serde(&msg).unwrap()
     }
+
 }

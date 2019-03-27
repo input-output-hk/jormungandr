@@ -97,7 +97,7 @@ window.document.getElementById("post_btn").onclick = function(self) {
     var tx = document.getElementById("signed_tx_result").textContent;
     var bin = new Buffer(tx, 'hex')
     var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'http://localhost:8443/api/v0/transaction');
+    xhr.open('POST', 'http://localhost:8443/api/v0/message');
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.send(bin);
 }
@@ -126,7 +126,7 @@ window.document.getElementById("btn_deserialize").onclick = function(self) {
    console.log("reading content..");
    var t = document.getElementById("transaction_input").value.trim();
    console.log("creating transaction from ", t);
-   var tx = mjolnir.SignedTransaction.from_hex(t);
+   var tx = mjolnir.Message.from_hex(t);
    console.log("deserializing...");
    document.getElementById("transaction_description").textContent = JSON.stringify(tx.describe());
 }
