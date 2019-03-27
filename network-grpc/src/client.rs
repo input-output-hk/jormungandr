@@ -7,7 +7,7 @@ use chain_core::property;
 use network_core::{
     client::{block::BlockService, gossip::GossipService},
     error as core_error,
-    gossip::NodeGossip,
+    gossip::{Gossip, Node},
 };
 
 use futures::future::Executor;
@@ -77,7 +77,7 @@ pub trait ProtocolConfig {
     type Block: chain_bounds::Block
         + property::Block<Id = Self::BlockId, Date = Self::BlockDate>
         + property::HasHeader<Header = Self::Header>;
-    type NodeGossip: NodeGossip;
+    type Node: Node;
 }
 
 /// gRPC client for blockchain node.
@@ -413,13 +413,13 @@ where
     S: AsyncRead + AsyncWrite,
     E: Executor<Background<S, BoxBody>> + Clone,
 {
-    type NodeGossip = C::NodeGossip;
-    type GossipSubscription = ResponseStream<C::NodeGossip, gen::node::NodeGossip>;
-    type GossipSubscriptionFuture = BidiStreamFuture<C::NodeGossip, gen::node::NodeGossip>;
+    type Node = C::Node;
+    type GossipSubscription = ResponseStream<Gossip<C::Node>, gen::node::Gossip>;
+    type GossipSubscriptionFuture = BidiStreamFuture<Gossip<C::Node>, gen::node::Gossip>;
 
     fn gossip_subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
     where
-        Out: Stream<Item = C::NodeGossip> + Send + 'static,
+        Out: Stream<Item = Gossip<C::Node>> + Send + 'static,
     {
         let req = RequestStream::new(outbound);
         let future = self.node.gossip_subscription(Request::new(req));

@@ -4,7 +4,7 @@ use crate::{
 };
 
 use network_core::{
-    error as core_error, gossip,
+    error as core_error,
     server::{block::BlockService, content::ContentService, gossip::GossipService, Node},
 };
 
@@ -277,7 +277,7 @@ where
         <<T as Node>::ContentService as ContentService>::MessageSubscriptionFuture,
     >;
     type GossipSubscriptionStream = ResponseStream<
-        gen::node::NodeGossip,
+        gen::node::Gossip,
         <<T as Node>::GossipService as GossipService>::GossipSubscription,
     >;
     type GossipSubscriptionFuture = ResponseFuture<
@@ -357,7 +357,7 @@ where
 
     fn gossip_subscription(
         &mut self,
-        request: Request<Streaming<gen::node::NodeGossip>>,
+        request: Request<Streaming<gen::node::Gossip>>,
     ) -> Self::GossipSubscriptionFuture {
         let service = try_get_service!(self.gossip_service);
         let stream = RequestStream::new(request.into_inner());

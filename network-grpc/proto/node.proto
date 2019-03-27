@@ -50,14 +50,12 @@ message Message {
     bytes content = 1;
 }
 
-// Gossip message with information of a single network node.
-message NodeGossip {
-    // The node identifier.
-    bytes id = 1;
-    // The IP address.
-    string host = 2;
-    // Port number.
-    uint32 port = 3;
+// Gossip message with information on nodes in the network.
+message Gossip {
+    // ID of the sender node (TODO: replace with gRPC metadata).
+    bytes sender = 1;
+    // Serialized descriptions of nodes.
+    repeated bytes nodes = 2;
 }
 
 service Node {
@@ -84,5 +82,5 @@ service Node {
 
     // Establishes a bidirectional stream to exchange information on new
     // network peers.
-    rpc GossipSubscription (stream NodeGossip) returns (stream NodeGossip);
+    rpc GossipSubscription (stream Gossip) returns (stream Gossip);
 }
