@@ -14,7 +14,7 @@ Many CLI commands have common arguments:
 Fetches node stats
 
 ```
-jormungandr_cli rest v0 node stats get <options>
+jcli rest v0 node stats get <options>
 ```
 
 The options are
@@ -37,7 +37,7 @@ uptime: 2101      # Node uptitme in seconds
 Fetches whole UTXO
 
 ```
-jormungandr_cli rest v0 utxo get <options>
+jcli rest v0 utxo get <options>
 ```
 
 The options are
@@ -60,7 +60,7 @@ YAML printed on success
 Posts a signed, hex-encoded transaction
 
 ```
-jormungandr_cli rest v0 transaction post <options>
+jcli rest v0 transaction post <options>
 ```
 
 The options are
@@ -74,7 +74,7 @@ If not provided, transaction will be read from stdin.
 Retrieves a hex-encoded ID of the blockchain tip
 
 ```
-jormungandr_cli rest v0 tip get <options>
+jcli rest v0 tip get <options>
 ```
 
 The options are
@@ -86,7 +86,7 @@ The options are
 Retrieves a hex-encoded block with given ID
 
 ```
-jormungandr_cli rest v0 block <block_id> get <options>
+jcli rest v0 block <block_id> get <options>
 ```
 
 <block_id> - hex-encoded block ID
@@ -101,7 +101,7 @@ Retrieves a list of hex-encoded IDs of descendants of block with given ID.
 Every list element is in separate line. The IDs are sorted from closest to farthest.
 
 ```
-jormungandr_cli rest v0 block <block_id> next-id get <options>
+jcli rest v0 block <block_id> next-id get <options>
 ```
 
 <block_id> - hex-encoded block ID

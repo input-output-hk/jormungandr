@@ -1,6 +1,6 @@
 use super::next_id::NextId;
 use cardano::util::hex;
-use jormungandr_cli_app::utils::HostAddr;
+use jcli_app::utils::HostAddr;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

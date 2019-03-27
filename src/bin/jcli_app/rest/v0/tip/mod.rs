@@ -1,4 +1,4 @@
-use jormungandr_cli_app::utils::HostAddr;
+use jcli_app::utils::HostAddr;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

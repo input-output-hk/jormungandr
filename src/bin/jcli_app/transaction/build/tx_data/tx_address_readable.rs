@@ -1,5 +1,5 @@
 use chain_addr::{Address, AddressReadable};
-use jormungandr_cli_app::utils::serde_with_string;
+use jcli_app::utils::serde_with_string;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::str::FromStr;
 
