@@ -64,11 +64,7 @@ impl Blockchain {
 
             let block_0_id = genesis_data.to_block_0().id(); // TODO: get this from the parameter
             let (block_0, _block_0_info) = storage.get_block(&block_0_id).unwrap();
-            let parameter_0 = LedgerStaticParameters {
-                block0_initial_hash: block_0_id,
-                discrimination: discrimination,
-            };
-            let mut state = Ledger::new(parameter_0, block_0.messages()).unwrap();
+            let mut state = Ledger::new(block_0_id, block_0.messages()).unwrap();
 
             // FIXME: should restore from serialized chain state once we have it.
             for info in storage.iterate_range(&block_0_id, &tip_hash).unwrap() {
@@ -82,11 +78,7 @@ impl Blockchain {
             tip.unwrap()
         } else {
             let block_0 = genesis_data.to_block_0();
-            let parameter_0 = LedgerStaticParameters {
-                block0_initial_hash: block_0.id(),
-                discrimination: discrimination,
-            };
-            let state = Ledger::new(parameter_0, block_0.messages()).unwrap();
+            let state = Ledger::new(block_0.id(), block_0.messages()).unwrap();
             storage.put_block(&block_0).unwrap();
             multiverse.add(block_0.id(), state)
         };
