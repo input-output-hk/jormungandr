@@ -2,11 +2,10 @@ mod build;
 
 use structopt::StructOpt;
 
-/// Send request to node REST API
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum Transaction {
-    /// Build signed transaction and write it to stdout as hex
+    /// Build transaction and write it to stdout as hex-encoded message
     Build(build::Build),
 }
 

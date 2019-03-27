@@ -1,10 +1,10 @@
 # Transaction
 
-Tooling for offline transactino creation
+Tooling for offline transaction creation
 
 ## Builder
 
-Builds a signed transaction.
+Builds a signed transaction message.
 
 The process can be split into steps by passing --file parameter. The intermediate state
 will be stored in the given file in YAML format or updated if it already exists. If
@@ -39,4 +39,4 @@ ed25519extended_public key.
 - -s, --spending-key <spending-key>... file with transaction spending keys. Must be
 bech32-encoded ed25519extended_secret. Required one for every input.
 
-Value outputted to stdout on success is transaction encoded as hex.
+Value outputted to stdout on success is transaction message encoded as hex.
