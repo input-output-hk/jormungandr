@@ -9,8 +9,10 @@ use bech32::{Bech32, FromBase32};
 use cardano::util::hex;
 use cfg_if::cfg_if;
 use chain_addr as addr;
-use chain_core::property::FromStr;
-use chain_core::property::Serialize;
+use chain_core::{
+    mempack::{ReadBuf, Readable},
+    property::{FromStr, Serialize},
+};
 use chain_crypto::{self as crypto, algorithms::Ed25519Extended, AsymmetricKey, SecretKey};
 use chain_impl_mockchain::account;
 use chain_impl_mockchain::fee;
@@ -94,10 +96,14 @@ impl PublicKey {
     /// Read public key from hex string.
     pub fn from_hex(input: &str) -> Result<PublicKey, JsValue> {
         use cardano::util::hex::decode;
-        let bytes = decode(input).unwrap();
-        key::deserialize_public_key(std::io::Cursor::new(bytes))
+        decode(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
-            .map(PublicKey)
+            .and_then(|bytes| {
+                let mut reader = ReadBuf::from(&bytes);
+                key::deserialize_public_key(&mut reader)
+                    .map(PublicKey)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            })
     }
 
     // TODO introduce from bench
@@ -187,25 +193,15 @@ impl TransactionId {
         tx::TransactionId::from_str(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .map(TransactionId)
-        /*
-        let bech32: Bech32 = input
-            .trim()
-            .parse()
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-        let bytes = Vec::<u8>::from_base32(bech32.data())
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-        tx::TransactionId::from_bytes(&bytes)
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
-            .map(TransactionId)*/
     }
 }
 
 #[wasm_bindgen]
 #[derive(Debug)]
-pub struct Transaction(tx::Transaction<addr::Address>);
+pub struct Transaction(tx::Transaction<addr::Address, tx::NoExtra>);
 
 #[wasm_bindgen]
-pub struct TransactionBuilder(tb::TransactionBuilder<addr::Address>);
+pub struct TransactionBuilder(tb::TransactionBuilder<addr::Address, tx::NoExtra>);
 
 #[wasm_bindgen]
 pub struct Fee(FeeVariant);
@@ -374,7 +370,7 @@ impl TransactionBuilder {
                 .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
                 .map(|(balance, result)| FinalizationResult {
                     balance: Balance(balance),
-                    result: TransactionFinalizer(result),
+                    result: TransactionFinalizer(tb::TransactionFinalizer::new_trans(result)),
                 }),
         }
     }
@@ -399,7 +395,7 @@ impl TransactionFinalizer {
 
 #[wasm_bindgen]
 #[derive(Debug)]
-pub struct SignedTransaction(tx::SignedTransaction<addr::Address>);
+pub struct SignedTransaction(tx::AuthenticatedTransaction<addr::Address, tx::NoExtra>);
 
 #[derive(Serialize)]
 pub struct SignedTxDescription {
@@ -415,26 +411,15 @@ impl SignedTransaction {
             .0
             .serialize_as_vec()
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-        let hex = hex::encode(&v);
-        use chain_core::property::Deserialize;
-        hex::decode(&hex)
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
-            .and_then(|bytes| {
-                let reader = std::io::Cursor::new(&bytes);
-                tx::SignedTransaction::deserialize(reader)
-                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
-                    .map(SignedTransaction)
-            })?;
         Ok(hex::encode(&v))
     }
 
     pub fn from_hex(input: &str) -> Result<SignedTransaction, JsValue> {
-        use chain_core::property::Deserialize;
         hex::decode(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .and_then(|bytes| {
-                let reader = std::io::Cursor::new(&bytes);
-                tx::SignedTransaction::deserialize(reader)
+                let mut reader = ReadBuf::from(&bytes);
+                tx::AuthenticatedTransaction::read(&mut reader)
                     .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
                     .map(SignedTransaction)
             })
