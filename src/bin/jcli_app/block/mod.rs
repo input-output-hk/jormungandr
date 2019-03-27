@@ -3,30 +3,22 @@ extern crate chain_core;
 extern crate chain_impl_mockchain;
 extern crate structopt;
 
-use chain_addr::Address;
-use chain_core::{
-    mempack::{ReadBuf, Readable},
-    property::{Block as _, Deserialize, Serialize},
-};
-use chain_impl_mockchain::{
-    block::{self, BlockBuilder},
-    transaction::{AuthenticatedTransaction, NoExtra},
-};
+use chain_core::property::{Block as _, Deserialize, Serialize};
+use chain_impl_mockchain::block::{self, BlockBuilder};
 use std::path::Path;
 use structopt::StructOpt;
 
-impl Block {
+impl Genesis {
     pub fn exec(self) {
         match self {
-            Block::Create(create_arguments) => create_block(create_arguments),
-            Block::Add(add_arguments) => add_to_block(add_arguments),
-            Block::Info(info_arguments) => print_block(info_arguments),
-            Block::Hash(hash_arguments) => print_hash(hash_arguments),
+            Genesis::Encode(create_arguments) => encode_block_0(create_arguments),
+            Genesis::Decode(info_arguments) => decode_block_0(info_arguments),
+            Genesis::Hash(hash_arguments) => print_hash(hash_arguments),
         }
     }
 }
 
-fn create_block(argument: Common) {
+fn encode_block_0(argument: Common) {
     if argument.block_exists() {
         panic!("Block already exists")
     }
@@ -36,7 +28,7 @@ fn create_block(argument: Common) {
     block.serialize(file).unwrap();
 }
 
-fn print_block(argument: Common) {
+fn decode_block_0(argument: Common) {
     let block = argument.open_block();
     println!("{:#?}", block);
 }
@@ -46,41 +38,18 @@ fn print_hash(argument: Common) {
     println!("{}", block.id());
 }
 
-fn add_to_block(argument: AddArgs) {
-    let mut builder: BlockBuilder = argument.common.open_block().into();
-
-    if argument.transaction.is_some() {
-        builder.transaction(argument.open_transaction());
-    }
-
-    let block = builder.make_genesis_block();
-    let file = open_file_write(&argument.common.block);
-    block.serialize(file).unwrap();
-}
-
+/// create block 0 of the blockchain (i.e. the genesis block)
 #[derive(StructOpt)]
 #[structopt(name = "genesis", rename_all = "kebab-case")]
-pub enum Block {
+pub enum Genesis {
     /// create a new block
-    Create(Common),
-
-    /// add entries to the block
-    Add(AddArgs),
+    Encode(Common),
 
     /// display the content of a block in human readable format
-    Info(Common),
+    Decode(Common),
 
     /// print the block hash (aka the block id)
     Hash(Common),
-}
-
-#[derive(StructOpt)]
-pub struct AddArgs {
-    #[structopt(flatten)]
-    common: Common,
-
-    /// message to add in the block
-    transaction: Option<std::path::PathBuf>,
 }
 
 #[derive(StructOpt)]
@@ -105,16 +74,6 @@ impl Common {
     fn open_block(&self) -> block::Block {
         let reader = open_file_read(&self.block);
         block::Block::deserialize(reader).unwrap()
-    }
-}
-
-impl AddArgs {
-    fn open_transaction(&self) -> AuthenticatedTransaction<Address, NoExtra> {
-        let mut reader = open_file_read(&self.transaction);
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).unwrap();
-        let mut reader = ReadBuf::from(&bytes);
-        AuthenticatedTransaction::read(&mut reader).unwrap()
     }
 }
 
