@@ -56,7 +56,7 @@ extern crate test;
 use std::io::{self, BufRead};
 use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 
-use chain_impl_mockchain::block::{message::MessageId, Message};
+use chain_impl_mockchain::message::{Message, MessageId};
 use futures::Future;
 
 use bech32::{u5, Bech32, FromBase32, ToBase32};
