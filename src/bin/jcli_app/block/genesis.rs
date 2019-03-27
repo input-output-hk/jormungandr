@@ -4,7 +4,7 @@ extern crate chain_impl_mockchain;
 extern crate structopt;
 
 use chain_core::property::{Block as _, Deserialize, Serialize};
-use chain_impl_mockchain::block::{self, BlockBuilder};
+use chain_impl_mockchain::block;
 use jcli_app::utils::io;
 use structopt::StructOpt;
 
@@ -94,10 +94,6 @@ pub struct Common {
     /// to the standard output
     #[structopt(long = "output", parse(from_os_str), name = "FILE_OUTPUT")]
     output_file: Option<std::path::PathBuf>,
-}
-
-fn block_exists<P: AsRef<std::path::Path>>(path: P) -> bool {
-    path.as_ref().is_file()
 }
 
 fn open_block<P: AsRef<std::path::Path>>(path: &Option<P>) -> block::Block {
