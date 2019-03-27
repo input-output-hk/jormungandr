@@ -2,7 +2,7 @@ use chain_addr::Address;
 use chain_impl_mockchain::transaction::{Input, TransactionId, UtxoPointer};
 use chain_impl_mockchain::txbuilder::TransactionBuilder;
 use chain_impl_mockchain::value::Value;
-use jormungandr_cli_app::utils::{serde_with_string, SegmentParser};
+use jcli_app::utils::{serde_with_string, SegmentParser};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 

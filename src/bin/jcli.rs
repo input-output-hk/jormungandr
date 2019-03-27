@@ -10,10 +10,10 @@ extern crate serde_json;
 extern crate serde_yaml;
 extern crate structopt;
 
-mod jormungandr_cli_app;
+mod jcli_app;
 
 use structopt::StructOpt;
 
 fn main() {
-    jormungandr_cli_app::JormungandrCli::from_args().exec()
+    jcli_app::JCli::from_args().exec()
 }

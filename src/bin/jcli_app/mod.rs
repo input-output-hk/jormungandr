@@ -9,7 +9,7 @@ use structopt::StructOpt;
 /// Jormungandr CLI toolkit
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub enum JormungandrCli {
+pub enum JCli {
     /// Address tooling and helper
     Address(address::Address),
     /// Block tooling and helper
@@ -20,13 +20,13 @@ pub enum JormungandrCli {
     Transaction(transaction::Transaction),
 }
 
-impl JormungandrCli {
+impl JCli {
     pub fn exec(self) {
         match self {
-            JormungandrCli::Address(address) => address.exec(),
-            JormungandrCli::Block(block) => block.exec(),
-            JormungandrCli::Rest(rest) => rest.exec(),
-            JormungandrCli::Transaction(transaction) => transaction.exec(),
+            JCli::Address(address) => address.exec(),
+            JCli::Block(block) => block.exec(),
+            JCli::Rest(rest) => rest.exec(),
+            JCli::Transaction(transaction) => transaction.exec(),
         }
     }
 }

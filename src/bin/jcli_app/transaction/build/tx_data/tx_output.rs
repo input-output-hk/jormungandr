@@ -2,7 +2,7 @@ use super::TxAddressReadable;
 use chain_addr::Address;
 use chain_impl_mockchain::txbuilder::TransactionBuilder;
 use chain_impl_mockchain::value::Value;
-use jormungandr_cli_app::utils::SegmentParser;
+use jcli_app::utils::SegmentParser;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 

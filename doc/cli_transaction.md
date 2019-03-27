@@ -13,7 +13,7 @@ transaction is not supposed to be finalized yet, pass --draft flag.
 ### Usage
 
 ```
-jormungandr_cli transaction build <options>
+jcli transaction build <options>
 ```
 
 The options are

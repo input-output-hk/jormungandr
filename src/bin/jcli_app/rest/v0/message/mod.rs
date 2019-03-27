@@ -1,5 +1,5 @@
 use cardano::util::hex;
-use jormungandr_cli_app::utils::HostAddr;
+use jcli_app::utils::HostAddr;
 use reqwest::header::CONTENT_TYPE;
 use std::fs;
 use std::io::{stdin, BufRead};

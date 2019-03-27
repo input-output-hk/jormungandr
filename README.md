@@ -95,7 +95,7 @@ jormungandr start --genesis-config genesis.yaml \
 Building:
 
 ```
-cargo build --bin jormungandr_cli
+cargo build --bin jcli
 ```
 
 The binary has subcommands

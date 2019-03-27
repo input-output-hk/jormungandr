@@ -1,23 +1,23 @@
-use jormungandr_cli_app::utils::HostAddr;
+use jcli_app::utils::HostAddr;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub enum Utxo {
-    /// Get all UTXOs
+pub enum Stats {
+    /// Get node information
     Get {
         #[structopt(flatten)]
         addr: HostAddr,
     },
 }
 
-impl Utxo {
+impl Stats {
     pub fn exec(self) {
         let addr = match self {
-            Utxo::Get { addr } => addr,
+            Stats::Get { addr } => addr,
         };
-        let url = addr.with_segments(&["v0", "utxo"]).into_url();
-        let utxos: serde_json::Value = reqwest::Client::new()
+        let url = addr.with_segments(&["v0", "node", "stats"]).into_url();
+        let status: serde_json::Value = reqwest::Client::new()
             .get(url)
             .send()
             .unwrap()
@@ -25,7 +25,7 @@ impl Utxo {
             .unwrap()
             .json()
             .unwrap();
-        let utxos_yaml = serde_yaml::to_string(&utxos).unwrap();
-        println!("{}", utxos_yaml);
+        let status_yaml = serde_yaml::to_string(&status).unwrap();
+        println!("{}", status_yaml);
     }
 }

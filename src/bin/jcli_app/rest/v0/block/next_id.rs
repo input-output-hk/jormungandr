@@ -1,6 +1,6 @@
 use cardano::util::hex;
 use chain_crypto::Blake2b256;
-use jormungandr_cli_app::utils::HostAddr;
+use jcli_app::utils::HostAddr;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
