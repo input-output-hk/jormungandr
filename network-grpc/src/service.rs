@@ -8,7 +8,7 @@ use crate::{
 
 use network_core::{
     error as core_error, gossip,
-    server::{block::BlockService, gossip::GossipService, transaction::TransactionService, Node},
+    server::{block::BlockService, content::ContentService, gossip::GossipService, Node},
 };
 
 use futures::prelude::*;
@@ -18,7 +18,7 @@ use std::{marker::PhantomData, mem};
 
 pub struct NodeService<T: Node> {
     block_service: Option<T::BlockService>,
-    tx_service: Option<T::TransactionService>,
+    tx_service: Option<T::ContentService>,
     gossip_service: Option<T::GossipService>,
 }
 
@@ -26,7 +26,7 @@ impl<T: Node> NodeService<T> {
     pub fn new(node: T) -> Self {
         NodeService {
             block_service: node.block_service(),
-            tx_service: node.transaction_service(),
+            tx_service: node.content_service(),
             gossip_service: node.gossip_service(),
         }
     }
@@ -36,7 +36,7 @@ impl<T> Clone for NodeService<T>
 where
     T: Node,
     T::BlockService: Clone,
-    T::TransactionService: Clone,
+    T::ContentService: Clone,
     T::GossipService: Clone,
 {
     fn clone(&self) -> Self {
@@ -224,7 +224,7 @@ impl<T> gen::node::server::Node for NodeService<T>
 where
     T: Node,
     <T as Node>::BlockService: Clone,
-    <T as Node>::TransactionService: Clone,
+    <T as Node>::ContentService: Clone,
     <T as Node>::GossipService: Clone,
 {
     type TipFuture = ResponseFuture<
@@ -255,13 +255,13 @@ where
         Self::PullBlocksToTipStream,
         <<T as Node>::BlockService as BlockService>::PullBlocksFuture,
     >;
-    type TransactionsStream = ResponseStream<
-        gen::node::Transaction,
-        <<T as Node>::TransactionService as TransactionService>::GetTransactionsStream,
+    type GetMessagesStream = ResponseStream<
+        gen::node::Message,
+        <<T as Node>::ContentService as ContentService>::GetMessagesStream,
     >;
-    type TransactionsFuture = ResponseFuture<
-        Self::TransactionsStream,
-        <<T as Node>::TransactionService as TransactionService>::GetTransactionsFuture,
+    type GetMessagesFuture = ResponseFuture<
+        Self::GetMessagesStream,
+        <<T as Node>::ContentService as ContentService>::GetMessagesFuture,
     >;
     type BlockSubscriptionStream = ResponseStream<
         gen::node::Header,
@@ -271,13 +271,13 @@ where
         Self::BlockSubscriptionStream,
         <<T as Node>::BlockService as BlockService>::BlockSubscriptionFuture,
     >;
-    type TransactionSubscriptionStream = ResponseStream<
-        gen::node::Transaction,
-        <<T as Node>::TransactionService as TransactionService>::TransactionSubscription,
+    type MessageSubscriptionStream = ResponseStream<
+        gen::node::Message,
+        <<T as Node>::ContentService as ContentService>::MessageSubscription,
     >;
-    type TransactionSubscriptionFuture = ResponseFuture<
-        Self::TransactionSubscriptionStream,
-        <<T as Node>::TransactionService as TransactionService>::TransactionSubscriptionFuture,
+    type MessageSubscriptionFuture = ResponseFuture<
+        Self::MessageSubscriptionStream,
+        <<T as Node>::ContentService as ContentService>::MessageSubscriptionFuture,
     >;
     type GossipFuture = ResponseFuture<
         gen::node::GossipMessage,
@@ -325,10 +325,7 @@ where
         ResponseFuture::new(service.pull_blocks_to_tip(&block_ids))
     }
 
-    fn transactions(
-        &mut self,
-        req: Request<gen::node::TransactionIds>,
-    ) -> Self::TransactionsFuture {
+    fn get_messages(&mut self, req: Request<gen::node::MessageIds>) -> Self::GetMessagesFuture {
         let service = try_get_service!(self.tx_service);
         let tx_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(tx_ids) => tx_ids,
@@ -336,7 +333,7 @@ where
                 return ResponseFuture::error(error_into_grpc(e));
             }
         };
-        ResponseFuture::new(service.get_transactions(&tx_ids))
+        ResponseFuture::new(service.get_messages(&tx_ids))
     }
 
     fn block_subscription(
@@ -348,13 +345,13 @@ where
         ResponseFuture::new(service.block_subscription(stream))
     }
 
-    fn transaction_subscription(
+    fn message_subscription(
         &mut self,
-        request: Request<Streaming<gen::node::Transaction>>,
-    ) -> Self::TransactionSubscriptionFuture {
+        request: Request<Streaming<gen::node::Message>>,
+    ) -> Self::MessageSubscriptionFuture {
         let service = try_get_service!(self.tx_service);
         let stream = RequestStream::new(request.into_inner());
-        ResponseFuture::new(service.transaction_subscription(stream))
+        ResponseFuture::new(service.message_subscription(stream))
     }
 
     /// Work with gossip message.

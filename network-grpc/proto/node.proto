@@ -19,7 +19,7 @@ message BlockIds {
 }
 
 // Request to fetch the methods for blocks and headers.
-message TransactionIds {
+message MessageIds {
     // The identifiers of blocks for loading.
     repeated bytes id = 1;
 }
@@ -43,9 +43,10 @@ message Header {
     bytes content = 1;
 }
 
-// Representation of a transaction.
-message Transaction {
-    // The serialized content of the transaction.
+// Representation of a blockchain message, that is, a transaction or other
+// content item. A block in the blockchain consists of messages.
+message Message {
+    // The serialized content of the message.
     bytes content = 1;
 }
 
@@ -67,7 +68,7 @@ service Node {
     rpc GetHeaders (BlockIds) returns (stream Header) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
-    rpc Transactions (TransactionIds) returns (stream Transaction) {
+    rpc GetMessages (MessageIds) returns (stream Message) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
 
@@ -78,8 +79,8 @@ service Node {
     rpc BlockSubscription (stream Header) returns (stream Header);
 
     // Establishes a bidirectional stream to exchange information on new
-    // transactions accepted by the peers.
-    rpc TransactionSubscription (stream Transaction) returns (stream Transaction);
+    // messages created or accepted by the peers.
+    rpc MessageSubscription (stream Message) returns (stream Message);
 
     rpc Gossip (GossipMessage) returns (GossipMessage);
 }
