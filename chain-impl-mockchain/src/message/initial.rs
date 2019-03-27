@@ -48,7 +48,7 @@ impl TagLen {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitialEnts(Vec<(Tag, TagPayload)>);
 
 impl InitialEnts {
@@ -96,7 +96,7 @@ impl Readable for InitialEnts {
         while !(buf.is_end()) {
             let taglen = TagLen(buf.get_u16()?);
             let (tag, len) = taglen.deconstruct();
-            let mut bytes = vec![0u8; len];
+            let mut bytes = Vec::with_capacity(len);
             bytes.extend_from_slice(buf.get_slice(len)?);
             ents.push((tag, bytes))
         }
@@ -106,3 +106,70 @@ impl Readable for InitialEnts {
 
 pub const TAG_DISCRIMINATION: Tag = Tag(1);
 pub const TAG_BLOCK0_DATE: Tag = Tag(2);
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::config::{entity_to, Block0Date};
+    use quickcheck::{Arbitrary, Gen, TestResult};
+
+    quickcheck! {
+        fn initial_ents_serialization_bijection(b: InitialEnts) -> TestResult {
+            property::testing::serialization_bijection_r(b)
+        }
+
+        fn tag_len_computation_correct(b: InitialEnt) -> TestResult {
+            let InitialEnt(tag, payload) = b;
+            let tag_len = if let Some(tg)= TagLen::new(tag, payload.len()) {
+                tg
+            } else {
+                return TestResult::error(format!("cannot construct valid TagLen"));
+            };
+
+            let (tag_, len_) = tag_len.deconstruct();
+
+            if tag_ != tag {
+                return TestResult::error(format!("Invalid decoded Tag, received: {:?}", tag_));
+            }
+            if len_ != payload.len() {
+                return TestResult::error(format!("Invalid decoded Len: received: {}", len_));
+            }
+            TestResult::passed()
+        }
+    }
+
+    fn arbitrary_discrimination<G: Gen>(g: &mut G) -> (Tag, TagPayload) {
+        match u8::arbitrary(g) % 2 {
+            0 => entity_to(&chain_addr::Discrimination::Production),
+            _ => entity_to(&chain_addr::Discrimination::Test),
+        }
+    }
+
+    fn arbitrary_tag_payload<G: Gen>(g: &mut G) -> (Tag, TagPayload) {
+        match u8::arbitrary(g) % 2 {
+            0 => arbitrary_discrimination(g),
+            _ => entity_to(&Block0Date::arbitrary(g)),
+        }
+    }
+
+    #[derive(PartialEq, Eq, Clone, Debug)]
+    struct InitialEnt(Tag, TagPayload);
+
+    impl Arbitrary for InitialEnt {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let (tag, payload) = arbitrary_tag_payload(g);
+            InitialEnt(tag, payload)
+        }
+    }
+
+    impl Arbitrary for InitialEnts {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let size = u8::arbitrary(g) as usize;
+            InitialEnts(
+                std::iter::repeat_with(move || arbitrary_tag_payload(g))
+                    .take(size)
+                    .collect(),
+            )
+        }
+    }
+}

@@ -49,7 +49,6 @@ pub struct ReadBuf<'a> {
 impl<'a> ReadBuf<'a> {
     /// Create a readbuf from a slice
     pub fn from(slice: &'a [u8]) -> Self {
-        assert!(slice.len() > 0);
         ReadBuf {
             offset: 0,
             data: slice,

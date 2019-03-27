@@ -118,3 +118,15 @@ pub fn entity_from_string<T: ConfigParam>(tag: &str, value: &str) -> Result<T, E
     }
     T::from_string(value)
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Block0Date {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Block0Date(Arbitrary::arbitrary(g))
+        }
+    }
+}
