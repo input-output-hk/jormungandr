@@ -8,10 +8,6 @@ jobs:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init
-      - restore_cache:
-          keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-
-            - cargo-v1-
       - run: cargo fetch
       - persist_to_workspace:
           root: "."
