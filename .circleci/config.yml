@@ -8,21 +8,28 @@ jobs:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init
-      - restore_cache:
-          keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-
-            - cargo-v2-
       - run: cargo fetch
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - Cargo.lock
       - save_cache:
-          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-cache-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
-  test:
+  rustfmt:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run:
+          name: Install rustfmt
+          command: rustup component add rustfmt
+      - run:
+          name: Print version information
+          command: cargo fmt -- --version
+      - run:
+          name: Check rustfmt
+          command: cargo fmt -- --check
+  build_debug:
     docker:
       - image: rust:latest
     working_directory: /mnt/crate
@@ -30,49 +37,77 @@ jobs:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init
-      - attach_workspace:
-          at: "."
       - restore_cache:
-          keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-cache-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build and test
-          command: cargo test --frozen --verbose
-          environment:
-            # Need this for the coverage run
-            RUSTFLAGS: "-C link-dead-code"
-      - run:
-          name: Prune the output files
-          command: |
-            for file in target/debug/* target/debug/.??*; do
-              [ -d $file -o ! -x $file ] && rm -r $file
-            done
+          name: Build
+          command: cargo build --frozen
       - persist_to_workspace:
-          root: "."
+          root: target
           paths:
-            - target/debug/*
+            - debug/*
+  test_debug:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - attach_workspace:
+          at: target
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          key: cargo-cache-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Test
+          command: cargo test --frozen --verbose
+
+  build_release:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          key: cargo-cache-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Build in release profile
+          command: cargo build --release --frozen
+      - persist_to_workspace:
+          root: target
+          paths:
+            - release/*
+
   test_release:
     docker:
       - image: rust:latest
     working_directory: /mnt/crate
     steps:
       - checkout
+      - attach_workspace:
+          at: target
       - run: git submodule sync
       - run: git submodule update --init
-      - attach_workspace:
-          at: "."
       - restore_cache:
-          keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-cache-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build and test in release profile
+          name: Test
           command: cargo test --release --frozen --verbose
+
   test_nightly:
     docker:
       - image: rustlang/rust:nightly
@@ -81,11 +116,8 @@ jobs:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init
-      - attach_workspace:
-          at: "."
       - restore_cache:
-          keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-cache-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -93,58 +125,53 @@ jobs:
           name: Build and test with nightly Rust
           command: cargo test --frozen --verbose
 
-  test_jcli:
+  test_jcli_debug:
     docker:
       - image: rust:latest
     working_directory: /mnt/crate
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
       - attach_workspace:
-          at: "."
-      - restore_cache:
-          keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Build
-          command: cargo build
+          at: target
       - run: ./testing/scripts/jcli.sh
 
-  test_jormungandr:
+  test_jormungandr_debug:
     docker:
       - image: rust:latest
     working_directory: /mnt/crate
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
       - attach_workspace:
-          at: "."
-      - restore_cache:
-          keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Build
-          command: cargo build
+          at: target
       - run: ./testing/scripts/jormungandr.sh
+
 workflows:
   version: 2
   test_all:
     jobs:
       - cargo_fetch
-      - test:
+      - rustfmt
+      - build_debug:
           requires:
+            - rustfmt
             - cargo_fetch
+      - build_release:
+          requires:
+            - rustfmt
+            - cargo_fetch
+      - test_debug:
+          requires:
+            - build_debug
       - test_release:
           requires:
-            - cargo_fetch
+            - build_release
       - test_nightly:
           requires:
+            - rustfmt
             - cargo_fetch
-      - test_jcli:
+      - test_jcli_debug:
           requires:
-            - test
-      - test_jormungandr:
+            - build_debug
+      - test_jormungandr_debug:
           requires:
-            - test
+            - build_debug
