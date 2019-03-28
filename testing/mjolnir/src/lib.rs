@@ -11,16 +11,19 @@ use cfg_if::cfg_if;
 use chain_addr as addr;
 use chain_core::{
     mempack::{ReadBuf, Readable},
-    property::{FromStr},
+    property::FromStr,
 };
-use chain_crypto::{self as crypto, algorithms::Ed25519Extended, AsymmetricKey, SecretKey};
+use chain_crypto::{
+    self as crypto, algorithms::Ed25519Extended, bech32::to_bech32_from_bytes, AsymmetricKey,
+    SecretKey,
+};
 use chain_impl_mockchain::account;
 use chain_impl_mockchain::fee;
 use chain_impl_mockchain::key;
+use chain_impl_mockchain::message as msg;
 use chain_impl_mockchain::transaction as tx;
 use chain_impl_mockchain::txbuilder as tb;
 use chain_impl_mockchain::value;
-use chain_impl_mockchain::block::message as msg;
 use wasm_bindgen::prelude::*;
 
 cfg_if! {
@@ -45,7 +48,7 @@ impl PrivateKey {
         PrivateKey(key::SpendingSecretKey::generate(rng))
     }
 
-    pub fn from_bench32(input: &str) -> Result<PrivateKey, JsValue> {
+    pub fn from_bech32(input: &str) -> Result<PrivateKey, JsValue> {
         let bech32: Bech32 = input
             .trim()
             .parse()
@@ -74,7 +77,7 @@ impl PrivateKey {
             })
     }
 
-    //TODO: introduce from bench32 representation.
+    //TODO: introduce from bech32 representation.
 
     /// Extract public key.
     pub fn public(&self) -> PublicKey {
@@ -106,8 +109,6 @@ impl PublicKey {
                     .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             })
     }
-
-    // TODO introduce from bench
 
     /// Get address.
     pub fn address(&self) -> Address {
@@ -289,7 +290,7 @@ pub struct Account {
 
 #[wasm_bindgen]
 impl Account {
-    /// From bench32.
+    /// Create account from bech32 representation.
     pub fn from_bech32(input: String) -> Result<Account, JsValue> {
         let bech32: Bech32 = input
             .trim()
@@ -388,8 +389,7 @@ impl TransactionFinalizer {
 
     pub fn build(self) -> Message {
         match self.0.build() {
-            tb::GeneratedTransaction::Type1(tx) => 
-                Message(msg::Message::Transaction(tx)),
+            tb::GeneratedTransaction::Type1(tx) => Message(msg::Message::Transaction(tx)),
             tb::GeneratedTransaction::Type2(_) => unimplemented!(),
         }
     }
@@ -402,7 +402,9 @@ pub struct SignedTxDescription {
     pub witnesses: Vec<String>,
 }
 
-fn describe_tx(this: &tx::AuthenticatedTransaction<addr::Address,tx::NoExtra>) -> SignedTxDescription {
+fn describe_tx(
+    this: &tx::AuthenticatedTransaction<addr::Address, tx::NoExtra>,
+) -> SignedTxDescription {
     SignedTxDescription {
         inputs: this
             .transaction
@@ -410,17 +412,13 @@ fn describe_tx(this: &tx::AuthenticatedTransaction<addr::Address,tx::NoExtra>) -
             .iter()
             .map(|i| format!("{:?}", i))
             .collect(),
-        outputs: this 
+        outputs: this
             .transaction
             .outputs
             .iter()
             .map(|o| format!("{:?}", o))
             .collect(),
-        witnesses: this
-            .witnesses
-            .iter()
-            .map(|w| format!("{:?}", w))
-            .collect(),
+        witnesses: this.witnesses.iter().map(|w| format!("{:?}", w)).collect(),
     }
 }
 
@@ -434,25 +432,25 @@ pub struct Message(msg::Message);
 
 #[wasm_bindgen]
 impl Message {
-
     /// Get internal type of the message
     pub fn get_type(&self) -> String {
         match self.0 {
+            msg::Message::Initial(_) => "initial",
             msg::Message::OldUtxoDeclaration(_) => "old",
             msg::Message::Transaction(_) => "tx",
             msg::Message::Certificate(_) => "cert",
             msg::Message::Update(_) => "update",
-        }.to_string()
+        }
+        .to_string()
     }
 
     /// Convert all the data to hex.
     pub fn to_hex(&self) -> String {
+        use chain_core::property::Serialize;
         let bytes = self.0.to_raw();
-        let bb = hex::encode(&bytes.as_ref());
-        let bytes1 = hex::decode(&bb).unwrap();
-        let mut reader = ReadBuf::from(&bytes1);
-        msg::Message::read(&mut reader).unwrap();
-        hex::encode(&bytes.as_ref())
+        let mut output = vec![];
+        bytes.serialize(&mut output).unwrap();
+        hex::encode(&(output.clone())) // &bytes.serialize(/seras_ref())
     }
 
     /// Convert message from hex
@@ -473,9 +471,34 @@ impl Message {
             msg::Message::Transaction(msg) => MessageDescription {
                 transaction: Some(describe_tx(&msg)),
             },
-            _ => unimplemented!()
+            _ => unimplemented!(),
         };
         JsValue::from_serde(&msg).unwrap()
     }
+}
 
+#[wasm_bindgen]
+pub struct Bytes(Vec<u8>);
+
+#[wasm_bindgen]
+impl Bytes {
+    pub fn from_hex(input: &str) -> Result<Bytes, JsValue> {
+        hex::decode(input)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .map(Bytes)
+    }
+
+    pub fn to_hex(&self) -> String {
+        hex::encode(&self.0)
+    }
+
+    pub fn from_bech32(input: &str) -> Result<Bytes, JsValue> {
+        let bech32: Bech32 = input
+            .trim()
+            .parse()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        Vec::<u8>::from_base32(bech32.data())
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .map(Bytes)
+    }
 }

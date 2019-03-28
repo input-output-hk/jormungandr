@@ -27,7 +27,8 @@ fn handle_request(
 {
     let sender = request.state().clone();
     request.body().map(move |message| -> Result<_, ActixError> {
-        let msg = Message::deserialize(message.into_buf()).map_err(|e| ErrorBadRequest(e))?;
+        println!("qquququq {:?}", message);
+        let msg = Message::deserialize(message.into_buf()).map_err(|e| { println!("{}", e); ErrorBadRequest(e) })?;
         let msg = TransactionMsg::SendTransaction(vec![msg]);
         sender.lock().unwrap().send_to(msg);
         Ok("")
