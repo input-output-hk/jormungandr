@@ -8,6 +8,12 @@ Example of a BFT genesis file with an initial address UTxO and an account UTxO.
 More info regarding [starting a BFT blockchain here](./starting_bft_blockchain.md)
 and [regarding addresses there](./cli_address.md).
 
+You can generate a documented pre-generated genesis file:
+
+```
+jcli genesis init
+```
+
 ```yaml
 blockchain_configuration:
   - [ block0-date, 1552990378 ]

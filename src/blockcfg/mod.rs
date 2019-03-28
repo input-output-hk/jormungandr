@@ -20,6 +20,18 @@ fn block_0_get_initial(block: &Block) -> &InitialEnts {
     panic!("Invalid Block0: missing the initial blockchain settings");
 }
 
+pub fn block_0_get_slot_duration(block: &Block) -> std::time::Duration {
+    let mut duration = None;
+    for message in block.messages() {
+        if let Message::Update(proposal) = message {
+            duration = proposal.slot_duration;
+        }
+    }
+
+    let duration = duration.expect("Slot Duration is a mandatory setting of the block 0");
+    std::time::Duration::from_secs(duration as u64)
+}
+
 pub fn block_0_get_start_time(block: &Block) -> std::time::SystemTime {
     let ents = block_0_get_initial(block);
 

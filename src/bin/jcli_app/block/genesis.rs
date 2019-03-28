@@ -22,7 +22,10 @@ impl Genesis {
 }
 
 fn init_genesis_yaml() {
-    unimplemented!()
+    let path: Option<&'static str> = None;
+    let out = io::open_file_write(&path);
+
+    yaml::documented_example(out, std::time::SystemTime::now()).unwrap()
 }
 
 fn encode_block_0(argument: Common) {
