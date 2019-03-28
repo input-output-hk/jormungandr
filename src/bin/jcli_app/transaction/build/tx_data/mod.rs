@@ -1,13 +1,14 @@
 use self::tx_address_readable::TxAddressReadable;
 use self::tx_input::TxInput;
 use self::tx_output::TxOutput;
+use chain_addr::Address;
 use chain_core::property::Serialize as _;
-use chain_crypto::bech32::Bech32;
+use chain_crypto::bech32::Bech32 as _;
+use chain_crypto::Signature;
 use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::key::SpendingSecretKey;
-use chain_impl_mockchain::txbuilder::{
-    GeneratedTransaction, OutputPolicy, TransactionBuilder, TransactionFinalizer,
-};
+use chain_impl_mockchain::message::Message;
+use chain_impl_mockchain::transaction::{AuthenticatedTransaction, NoExtra, Transaction, Witness};
+use chain_impl_mockchain::txbuilder::{OutputPolicy, TransactionBuilder};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -49,7 +50,17 @@ pub struct TxData {
 }
 
 impl TxData {
-    pub fn build_tx(&self) -> Vec<u8> {
+    pub fn build_message(&self) -> Vec<u8> {
+        let transaction = self.build_tx();
+        let witnesses = self.spending_keys.iter().map(create_witness).collect();
+        let auth_tx = AuthenticatedTransaction {
+            transaction,
+            witnesses,
+        };
+        Message::Transaction(auth_tx).serialize_as_vec().unwrap()
+    }
+
+    fn build_tx(&self) -> Transaction<Address, NoExtra> {
         let mut builder = TransactionBuilder::new();
         for input in &self.inputs {
             input.apply(&mut builder);
@@ -66,18 +77,7 @@ impl TxData {
             Some(addr) => OutputPolicy::One(addr.to_address()),
             None => OutputPolicy::Forget,
         };
-        let (_, transaction) = builder.finalize(fee, output_policy).unwrap();
-        let mut finalizer = TransactionFinalizer::new_trans(transaction);
-        for spending_key in &self.spending_keys {
-            apply_signature(spending_key, &mut finalizer);
-        }
-        let mut tx = vec![];
-        match finalizer.build() {
-            GeneratedTransaction::Type1(transaction) => transaction.serialize(&mut tx),
-            GeneratedTransaction::Type2(transaction) => transaction.serialize(&mut tx),
-        }
-        .unwrap();
-        tx
+        builder.finalize(fee, output_policy).unwrap().1
     }
 
     pub fn merge_old(&mut self, mut old: Self) {
@@ -91,8 +91,8 @@ impl TxData {
     }
 }
 
-fn apply_signature(key_path: &PathBuf, finalizer: &mut TransactionFinalizer) {
+fn create_witness(key_path: &PathBuf) -> Witness {
     let key_str = fs::read_to_string(key_path).unwrap();
-    let key = SpendingSecretKey::try_from_bech32_str(key_str.trim()).unwrap();
-    finalizer.sign(&key);
+    let signature = Signature::try_from_bech32_str(key_str.trim()).unwrap();
+    Witness::Utxo(signature)
 }

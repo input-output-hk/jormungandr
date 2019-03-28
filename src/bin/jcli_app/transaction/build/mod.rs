@@ -22,7 +22,7 @@ pub struct Build {
 impl Build {
     pub fn exec(mut self) {
         self.sync_tx_data_file();
-        self.print_tx();
+        self.print_message();
     }
 
     fn sync_tx_data_file(&mut self) {
@@ -39,11 +39,11 @@ impl Build {
         serde_yaml::to_writer(writer, &self.tx_data).unwrap();
     }
 
-    fn print_tx(&self) {
+    fn print_message(&self) {
         if self.draft {
             return;
         }
-        let tx = self.tx_data.build_tx();
+        let tx = self.tx_data.build_message();
         println!("{}", hex::encode(&tx));
     }
 }
