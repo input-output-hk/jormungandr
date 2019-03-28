@@ -109,8 +109,7 @@ jobs:
       - run:
           name: Build
           command: cargo build
-      - run: ./testing/scripts/jcli/genesis-init-encode-decode.sh
-      - run: ./testing/scripts/jcli/key-generate-to-public.sh
+      - run: ./testing/scripts/jcli.sh
 workflows:
   version: 2
   test_all:
