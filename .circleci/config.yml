@@ -50,6 +50,11 @@ jobs:
             for file in target/debug/* target/debug/.??*; do
               [ -d $file -o ! -x $file ] && rm -r $file
             done
+      - save_cache:
+          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          paths:
+            - ./target/debug/jcli
+            - ./target/debug/jormungandr
       - persist_to_workspace:
           root: "."
           paths:
@@ -104,11 +109,9 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Build
-          command: cargo build
+          keys: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - restore_cache:
+          keys: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
       - run: ./testing/scripts/jcli.sh
 
   test_jormungandr:
@@ -122,12 +125,11 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Build
-          command: cargo build
+          keys: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - restore_cache:
+          keys: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
       - run: ./testing/scripts/jormungandr.sh
+
 workflows:
   version: 2
   test_all:
