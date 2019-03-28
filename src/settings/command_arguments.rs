@@ -1,6 +1,5 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use structopt::clap::{_clap_count_exprs, arg_enum};
 use structopt::StructOpt;
 
 use crate::settings::logging::LogFormat;
@@ -57,36 +56,6 @@ pub struct StartArguments {
 }
 
 #[derive(StructOpt, Debug)]
-pub struct GeneratePrivKeyArguments {
-    /// Type of a private key
-    ///
-    /// value values are: ed25519, ed25510bip32, ed25519extended, curve25519_2hashdh
-    #[structopt(long = "type")]
-    pub key_type: GenPrivKeyType,
-}
-
-#[derive(StructOpt, Debug)]
-pub struct GeneratePubKeyArguments {
-    /// the source private key to extract the public key from
-    ///
-    /// if no value passed, the private key will be read from the
-    /// standard input
-    #[structopt(name = "PRIVATE_KEY")]
-    pub private_key: Option<String>,
-}
-
-arg_enum! {
-    #[derive(StructOpt, Debug)]
-    pub enum GenPrivKeyType {
-        Ed25519,
-        Ed25519Bip32,
-        Ed25519Extended,
-        FakeMMM,
-        Curve25519_2HashDH,
-    }
-}
-
-#[derive(StructOpt, Debug)]
 #[structopt(
     name = "jormungandr",
     raw(setting = "structopt::clap::AppSettings::ColoredHelp")
@@ -110,15 +79,6 @@ pub enum Command {
     /// start jormungandr service and start participating to the network
     #[structopt(name = "start")]
     Start(StartArguments),
-
-    /// generate a random private key and print it to stdout encoded in bech32
-    #[structopt(name = "generate-priv-key")]
-    GeneratePrivKey(GeneratePrivKeyArguments),
-
-    /// generates a public key corresponding to a private key,
-    /// reads private from stdin and prints its public to stdout, both encoded in bech32
-    #[structopt(name = "generate-pub-key")]
-    GeneratePubKey(GeneratePubKeyArguments),
 }
 
 impl CommandLine {
