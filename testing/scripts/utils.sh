@@ -55,6 +55,24 @@ die() {
     exit 1
 }
 
+timeout() {
+    max_time=${1}
+    command=${2}
+
+    tmp_output=$(mktemp)
+
+    (${command} &> ${tmp_output}) &
+    EXEC_ID=${!}
+    sleep ${max_time} && kill ${EXEC_ID} &> /dev/null &
+    wait ${EXEC_ID} &> /dev/null
+    res=${?}
+
+    cat ${tmp_output}
+    rm ${tmp_output}
+
+    return ${res}
+}
+
 jcli=$(pwd)/target/debug/jcli
 if [ ! -x ${jcli} ]; then
     jcli='cargo run --bin jcli --quiet --'
@@ -64,6 +82,9 @@ jormungandr=$(pwd)/target/debug/jormungandr
 if [ ! -x ${jormungandr} ]; then
     jormungandr='cargo run --bin jormungandr --'
 fi
+
+CONFIG=/tmp/config.yaml
+BLOCK0=/tmp/block_0.bin
 
 warn "path to jcli:        ${jcli}\n"
 warn "path to jormungandr: ${jormungandr}\n"

@@ -110,6 +110,7 @@ jobs:
           name: Build
           command: cargo build
       - run: ./testing/scripts/jcli.sh
+      - run: ./testing/scripts/jormungandr.sh
 workflows:
   version: 2
   test_all:
