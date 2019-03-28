@@ -68,9 +68,8 @@ impl Message {
 
 impl property::Serialize for Message {
     type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        let raw = self.to_raw();
-        writer.write_all(raw.as_ref())
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        self.to_raw().serialize(writer)
     }
 }
 
