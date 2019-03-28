@@ -93,7 +93,7 @@ jobs:
           name: Build and test with nightly Rust
           command: cargo test --frozen --verbose
 
-  test_integration:
+  test_jcli:
     docker:
       - image: rust:latest
     working_directory: /mnt/crate
