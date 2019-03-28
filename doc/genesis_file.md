@@ -9,46 +9,78 @@ More info regarding [starting a BFT blockchain here](./starting_bft_blockchain.m
 and [regarding addresses there](./cli_address.md).
 
 ```yaml
-start_time: 1552990378
-slot_duration: 15
-epoch_stability_depth: 10
-allow_account_creation: true
-address_discrimination: Production
-linear_fees:
-  constant: 2
-  coefficient: 1
-  certificate: 4
+blockchain_configuration:
+  - [ block0-date, 1552990378 ]
+  - [ discrimination, test ]
+initial_setting:
+  max_number_of_transactions_per_block: 255
+  bootstrap_key_slots_percentage: ~
+  slot_duration: 15
+  epoch_stability_depth: 10
+  block_version: 1
+  bft_leaders:
+    - ed25519extended_public1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
+    - ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
+  allow_account_creation: true
+  linear_fee:
+    constant: 2
+    coefficient: 1
+    certificate: 4
 initial_utxos:
-  - address: ca1qvy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvx5c3cy4
-    value: 100
-  - address: ca1q5y0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvx6g5gwu
+  - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
     value: 10000
-bft_leaders:
-  - ed25519extended_public1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
-  - ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
+legacy_utxos: ~
 ```
+
+There are multiple _parts_ in the genesis file:
+
+* `blockchain_configuration`: this is the static setting of the blockchain
+  the data the cannot change, ever.
+* `initial_setting`: this is a list of settings that can be change later
+  utilising the update protocol.
+* `initial_utxos`: the list of initial utxos (addresses and credited value);
+* `legacy_utxos`: the list of legacy cardano utxos (base58 encoded addresses
+  and credited values);
+
+### `blockchain_configuration` options
 
 | option | format | description |
 |:-------|:-------|:------------|
-| `start_time` | number | the official start time of the blockchain, in seconds since UNIX EPOCH |
+| `block0-date` | number | the official start time of the blockchain, in seconds since UNIX EPOCH |
+| `discrimination` | string | `production` or `test` |
+
+### initial settings
+
+| option | format | description |
+|:-------|:-------|:------------|
+| `max_number_of_transactions_per_block` | number | the maximum number of transactions allowed in a block |
+| `bootstrap_key_slots_percentage` | number | placeholder, do not use |
 | `slot_duration` | number | the number of seconds between the creation of 2 blocks |
 | `epoch_stability_depth` | number | allowed size of a fork (in number of block) |
+| `block_version` | number | the consensus version at the startup of the blockchain (`1` for BFT) |
 | `allow_account_creation` | boolean | allow creating accounts without publishing certificate |
-| `address_discrimination` | String | `Production` or `Testing` |
 | `linear_fee` | object | linear fee settings, set the fee for transaction and certificate publishing |
-| `initial_utxos` | array | the list of initial UTxO |
 | `bft_leaders` | array | the list of the BFT leader at the beginning of the blockchain |
 
-## The initial UTxO
+_for more information about the BFT leaders in the genesis file, see
+[Starting a BFT Blockchain](./starting_bft_blockchain.md)_
+
+### The initial UTxO
 
 This is a list of the initial token present in the blockchain. It can be:
 
 * classic UTxO: a [single address](./cli_address.md#address-for-utxo) and a value
-* a legacy UTxO: (TBD)
 * an account (if `allow_account_creation` is set to true): an
   [account address](./cli_address.md#address-for-account) and a value
 
-## The BFT leaders
+### The legacy UTxO
 
-for more information about the BFT leaders in the genesis file, see
-[Starting a BFT Blockchain](./starting_bft_blockchain.md)
+This is a list of legacy cardano addresses and associated credited value.
+
+Example:
+
+```yaml
+legacy_utxos:
+  - address: Ae2tdPwUPEZCEhYAUVU7evPfQCJjyuwM6n81x6hSjU9TBMSy2YwZEVydssL
+    value: 2000
+```
