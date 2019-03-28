@@ -14,7 +14,7 @@ jobs:
           paths:
             - Cargo.lock
       - save_cache:
-          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
@@ -29,8 +29,7 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -47,7 +46,7 @@ jobs:
               [ -d $file -o ! -x $file ] && rm -r $file
             done
       - save_cache:
-          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
           paths:
             - ./target/debug/jcli
             - ./target/debug/jormungandr
@@ -66,8 +65,7 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -85,8 +83,7 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -105,10 +102,9 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - restore_cache:
-          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
       - run: pwd
       - run: ls ./taget/debug
       - run: ./testing/scripts/jcli.sh
@@ -124,10 +120,9 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys:
-            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - restore_cache:
-          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
       - run: ./testing/scripts/jormungandr.sh
 
 workflows:
