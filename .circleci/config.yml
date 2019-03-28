@@ -109,9 +109,10 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          keys:
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - restore_cache:
-          keys: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
       - run: ./testing/scripts/jcli.sh
 
   test_jormungandr:
@@ -125,9 +126,10 @@ jobs:
       - attach_workspace:
           at: "."
       - restore_cache:
-          keys: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          keys:
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - restore_cache:
-          keys: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
       - run: ./testing/scripts/jormungandr.sh
 
 workflows:
