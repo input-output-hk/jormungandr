@@ -50,6 +50,7 @@ pub struct Update {
     allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
     slot_duration: u8,
+    epoch_stability_depth: u32,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -270,6 +271,7 @@ impl Update {
                 certificate: linear_fee.certificate,
             }),
             slot_duration: Some(self.slot_duration),
+            epoch_stability_depth: Some(self.epoch_stability_depth as u32),
         };
         Message::Update(update)
     }
@@ -299,6 +301,9 @@ impl Update {
             slot_duration: update_proposal
                 .slot_duration
                 .expect("slot_duration is mandatory"),
+            epoch_stability_depth: update_proposal
+                .epoch_stability_depth
+                .expect("epoch_stability_depth is mandatory"),
         }
     }
 }

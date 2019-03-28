@@ -130,10 +130,11 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
     let block_0 = settings.load_block_0();
 
     let start_time = blockcfg::block_0_get_start_time(&block_0);
+    let slot_duration = blockcfg::block_0_get_slot_duration(&block_0);
 
     let clock = {
         let initial_epoch = clock::ClockEpochConfiguration {
-            slot_duration: std::time::Duration::from_secs(2),
+            slot_duration: slot_duration,
             slots_per_epoch: 10 * 10,
         };
         clock::Clock::new(start_time, initial_epoch)
