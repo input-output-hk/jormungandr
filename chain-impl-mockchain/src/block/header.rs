@@ -1,6 +1,6 @@
 use crate::block::{
     headerraw::HeaderRaw,
-    version::{BlockVersion, BlockVersionTag},
+    version::{AnyBlockVersion, BlockVersion},
 };
 use crate::date::BlockDate;
 use crate::key::{
@@ -24,7 +24,7 @@ pub type BlockContentSize = u32;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Common {
-    pub block_version: BlockVersion,
+    pub any_block_version: AnyBlockVersion,
     pub block_date: BlockDate,
     pub block_content_size: BlockContentSize,
     pub block_content_hash: BlockContentHash,
@@ -108,8 +108,8 @@ impl Proof {
 
 impl Header {
     #[inline]
-    pub fn block_version(&self) -> &BlockVersion {
-        &self.common.block_version
+    pub fn block_version(&self) -> AnyBlockVersion {
+        self.common.any_block_version
     }
 
     #[inline]
@@ -159,9 +159,9 @@ impl Header {
                 verify_signature(&bft_proof.signature.0, &bft_proof.leader_id.0, &self.common)
             }
             Proof::GenesisPraos(genesis_praos_proof) => {
-                let kes_public_key = {
+                let _kes_public_key = {
                     // use the ID to find the expected keys
-                    let id = &genesis_praos_proof.genesis_praos_id;
+                    let _id = &genesis_praos_proof.genesis_praos_id;
                     unimplemented!()
                 };
                 /*
@@ -192,7 +192,7 @@ impl property::Serialize for Common {
 
         let mut codec = Codec::from(writer);
 
-        codec.put_u16(self.block_version.0)?;
+        codec.put_u16(self.any_block_version.into())?;
         codec.put_u32(self.block_content_size)?;
         codec.put_u32(self.block_date.epoch)?;
         codec.put_u32(self.block_date.slot_id)?;
@@ -235,7 +235,7 @@ impl property::Serialize for Header {
 
 impl Readable for Common {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let block_version = buf.get_u16().map(BlockVersion)?;
+        let any_block_version = buf.get_u16().map(Into::into)?;
         let block_content_size = buf.get_u32()?;
         let epoch = buf.get_u32()?;
         let slot_id = buf.get_u32()?;
@@ -245,7 +245,7 @@ impl Readable for Common {
 
         let block_date = BlockDate { epoch, slot_id };
         Ok(Common {
-            block_version,
+            any_block_version,
             block_content_size,
             block_date,
             chain_length,
@@ -259,9 +259,9 @@ impl Readable for Header {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let common = Common::read(buf)?;
 
-        let proof = match BlockVersionTag::from_block_version(common.block_version) {
-            Some(BlockVersionTag::ConsensusNone) => Proof::None,
-            Some(BlockVersionTag::ConsensusBft) => {
+        let proof = match common.any_block_version {
+            AnyBlockVersion::Supported(BlockVersion::Genesis) => Proof::None,
+            AnyBlockVersion::Supported(BlockVersion::Ed25519Signed) => {
                 // BFT
                 let leader_id = deserialize_public_key(buf).map(bft::LeaderId)?;
                 let signature = deserialize_signature(buf).map(BftSignature)?;
@@ -270,7 +270,7 @@ impl Readable for Header {
                     signature,
                 })
             }
-            Some(BlockVersionTag::ConsensusGenesisPraos) => {
+            AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => {
                 let genesis_praos_id = genesis::GenesisPraosId::read(buf)?;
                 dbg!(&genesis_praos_id);
                 let vrf_proof = {
@@ -289,7 +289,7 @@ impl Readable for Header {
                     kes_proof: kes_proof,
                 })
             }
-            None => return Err(ReadError::UnknownTag(common.block_version.0 as u32)),
+            AnyBlockVersion::Unsupported(version) => return Err(ReadError::UnknownTag(version as u32)),
         };
 
         Ok(Header { common, proof })
@@ -307,7 +307,7 @@ impl property::Deserialize for Header {
 impl property::Header for Header {
     type Id = HeaderHash;
     type Date = BlockDate;
-    type Version = BlockVersion;
+    type Version = AnyBlockVersion;
     type ChainLength = ChainLength;
 
     fn id(&self) -> Self::Id {
@@ -320,7 +320,7 @@ impl property::Header for Header {
         *self.block_date()
     }
     fn version(&self) -> Self::Version {
-        *self.block_version()
+        self.block_version()
     }
 }
 
@@ -336,15 +336,15 @@ mod test {
         }
     }
 
-    impl Arbitrary for BlockVersion {
+    impl Arbitrary for AnyBlockVersion {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            BlockVersion::new(u16::arbitrary(g) % 3)
+            AnyBlockVersion::from(u16::arbitrary(g) % 3)
         }
     }
     impl Arbitrary for Common {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Common {
-                block_version: Arbitrary::arbitrary(g),
+                any_block_version: Arbitrary::arbitrary(g),
                 block_date: Arbitrary::arbitrary(g),
                 block_content_size: Arbitrary::arbitrary(g),
                 block_content_hash: Arbitrary::arbitrary(g),
@@ -398,13 +398,11 @@ mod test {
     impl Arbitrary for Header {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let common = Common::arbitrary(g);
-            let proof = match BlockVersionTag::from_block_version(common.block_version) {
-                Some(BlockVersionTag::ConsensusNone) => Proof::None,
-                Some(BlockVersionTag::ConsensusBft) => Proof::Bft(Arbitrary::arbitrary(g)),
-                Some(BlockVersionTag::ConsensusGenesisPraos) => {
-                    Proof::GenesisPraos(Arbitrary::arbitrary(g))
-                }
-                None => unreachable!(),
+            let proof = match common.any_block_version {
+                AnyBlockVersion::Supported(BlockVersion::Genesis) => Proof::None,
+                AnyBlockVersion::Supported(BlockVersion::Ed25519Signed) => Proof::Bft(Arbitrary::arbitrary(g)),
+                AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => Proof::GenesisPraos(Arbitrary::arbitrary(g)),
+                AnyBlockVersion::Unsupported(_) => unreachable!(),
             };
             Header {
                 common: common,

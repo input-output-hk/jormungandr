@@ -12,7 +12,7 @@ mod header;
 mod headerraw;
 mod version;
 
-pub use self::version::*;
+pub use self::version::{AnyBlockVersion, BlockVersion, ConsensusVersion};
 
 pub use self::builder::BlockBuilder;
 
@@ -91,10 +91,11 @@ impl Block {
                     vrf_public_key: vrf_secret.to_public(),
                 };
                 let signature = make_signature_update(kes_secret, &common);
+                #[allow(unreachable_code)]
                 Proof::GenesisPraos(GenesisPraosProof {
                     genesis_praos_id: gpleader.get_id(),
-                    vrf_proof: unimplemented!(), // proven_output_seed.clone(),
                     kes_proof: KESSignature(signature),
+                    vrf_proof: unimplemented!(), // proven_output_seed.clone(),
                     //vrf_public_key: vrf_secret.public(),
                     //kes_public_key: kes_secret.to_public().into(),
                 })
@@ -126,7 +127,7 @@ impl Block {
 impl property::Block for Block {
     type Id = BlockId;
     type Date = BlockDate;
-    type Version = BlockVersion;
+    type Version = AnyBlockVersion;
     type ChainLength = ChainLength;
 
     /// Identifier of the block, currently the hash of the
@@ -146,7 +147,7 @@ impl property::Block for Block {
     }
 
     fn version(&self) -> Self::Version {
-        *self.header.block_version()
+        self.header.block_version()
     }
 
     fn chain_length(&self) -> Self::ChainLength {

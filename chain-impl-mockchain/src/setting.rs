@@ -2,7 +2,7 @@
 //!
 
 use crate::{
-    block::{BlockVersion, BlockVersionTag},
+    block::BlockVersion,
     fee::LinearFee,
     key::Hash,
     leadership::bft,
@@ -79,7 +79,7 @@ impl property::Serialize for UpdateProposal {
         }
         if let Some(block_version) = self.block_version {
             codec.put_u16(UpdateTag::BlockVersion as u16)?;
-            codec.put_u16(block_version.0)?;
+            codec.put_u16(block_version as u16)?;
         }
         if let Some(leaders) = &self.bft_leaders {
             codec.put_u16(UpdateTag::BftLeaders as u16)?;
@@ -127,7 +127,10 @@ impl Readable for UpdateProposal {
                     update.bootstrap_key_slots_percentage = Some(buf.get_u8()?);
                 }
                 Some(UpdateTag::BlockVersion) => {
-                    update.block_version = Some(buf.get_u16().map(BlockVersion)?);
+                    let version_u16 = buf.get_u16()?;
+                    let version = BlockVersion::from_u16(version_u16)
+                        .ok_or_else(|| ReadError::StructureInvalid(format!("Unrecognized block version {}", version_u16)))?;
+                    update.block_version = Some(version);
                 }
                 Some(UpdateTag::BftLeaders) => {
                     let len = buf.get_u8()? as usize;
@@ -161,7 +164,7 @@ impl Readable for UpdateProposal {
 pub struct Settings {
     pub max_number_of_transactions_per_block: u32,
     pub bootstrap_key_slots_percentage: u8, // == d * 100
-    pub block_version: BlockVersion,
+    pub block_version: BlockVersion, //TODO change to consensus version
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
     /// allow for the creation of accounts without the certificate
     pub allow_account_creation: bool,
@@ -177,7 +180,7 @@ impl Settings {
         Self {
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
-            block_version: BlockVersionTag::ConsensusNone.to_block_version(),
+            block_version: BlockVersion::Genesis,
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
@@ -250,13 +253,14 @@ impl std::error::Error for Error {}
 mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
+    use crate::block::AnyBlockVersion;
 
     impl Arbitrary for UpdateProposal {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             UpdateProposal {
                 max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
                 bootstrap_key_slots_percentage: Arbitrary::arbitrary(g),
-                block_version: Arbitrary::arbitrary(g),
+                block_version: Option::<AnyBlockVersion>::arbitrary(g).map(|version| version.try_into_block_version().unwrap()),
                 bft_leaders: None,
                 allow_account_creation: None,
                 linear_fees: None,
