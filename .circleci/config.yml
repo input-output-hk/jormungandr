@@ -113,6 +113,8 @@ jobs:
             - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - restore_cache:
           key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+      - run: pwd
+      - run: ls ./taget/debug
       - run: ./testing/scripts/jcli.sh
 
   test_jormungandr:
