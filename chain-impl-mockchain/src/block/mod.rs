@@ -189,7 +189,8 @@ impl property::Deserialize for Block {
 
             // return error here if message serialize sized is bigger than remaining size
 
-            let message = read_from_raw(message_raw.as_ref())?;
+            let message = Message::from_raw(&message_raw)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
             contents.0.push(message);
 
             serialized_content_size -= message_size as u32;
