@@ -2,17 +2,12 @@ mod command_arguments;
 pub mod logging;
 pub mod start;
 
-pub use self::command_arguments::GenPrivKeyType;
 pub use self::start::Error;
 
-use self::command_arguments::{
-    Command as ArgCommand, CommandLine, GeneratePrivKeyArguments, GeneratePubKeyArguments,
-};
+use self::command_arguments::{Command as ArgCommand, CommandLine};
 
 pub enum Command {
     Start(start::Settings),
-    GeneratePrivKey(GeneratePrivKeyArguments),
-    GeneratePubKey(GeneratePubKeyArguments),
 }
 
 impl Command {
@@ -23,8 +18,6 @@ impl Command {
             ArgCommand::Start(ref args) => {
                 start::Settings::load(&command_line, args).map(Command::Start)
             }
-            ArgCommand::GeneratePrivKey(args) => Ok(Command::GeneratePrivKey(args)),
-            ArgCommand::GeneratePubKey(args) => Ok(Command::GeneratePubKey(args)),
         }
     }
 }

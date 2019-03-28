@@ -1,5 +1,6 @@
 mod address;
 mod block;
+mod key;
 mod rest;
 mod transaction;
 mod utils;
@@ -10,6 +11,8 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum JCli {
+    /// Key Generation
+    Key(key::Key),
     /// Address tooling and helper
     Address(address::Address),
     /// Block tooling and helper
@@ -23,6 +26,7 @@ pub enum JCli {
 impl JCli {
     pub fn exec(self) {
         match self {
+            JCli::Key(key) => key.exec(),
             JCli::Address(address) => address.exec(),
             JCli::Genesis(genesis) => genesis.exec(),
             JCli::Rest(rest) => rest.exec(),
