@@ -397,8 +397,7 @@ mod test {
 
     impl Arbitrary for Header {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut common = Common::arbitrary(g);
-            //common.block_version = BlockVersionTag::ConsensusNone.to_block_version();
+            let common = Common::arbitrary(g);
             let proof = match BlockVersionTag::from_block_version(common.block_version) {
                 Some(BlockVersionTag::ConsensusNone) => Proof::None,
                 Some(BlockVersionTag::ConsensusBft) => Proof::Bft(Arbitrary::arbitrary(g)),

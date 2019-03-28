@@ -1,3 +1,6 @@
+use std::error::Error;
+use std::fmt;
+
 /// A local memory buffer to serialize data to
 pub struct WriteBuf(Vec<u8>);
 
@@ -39,6 +42,28 @@ pub enum ReadError {
     /// Unknown enumeration tag
     UnknownTag(u32),
 }
+
+impl fmt::Display for ReadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ReadError::NotEnoughBytes(left, demanded) => write!(
+                f,
+                "NotEnoughBytes: demanded {} bytes but got {}",
+                demanded, left
+            ),
+            ReadError::UnconsumedData(len) => write!(f, "Unconsumed data: {} bytes left", len),
+            ReadError::SizeTooBig(e, limit) => write!(
+                f,
+                "Ask for number of elements {} above expected limit value: {}",
+                e, limit
+            ),
+            ReadError::StructureInvalid(s) => write!(f, "Structure invalid: {}", s),
+            ReadError::UnknownTag(t) => write!(f, "Unknown tag: {}", t),
+        }
+    }
+}
+
+impl Error for ReadError {}
 
 /// A local memory slice to read from memory
 pub struct ReadBuf<'a> {

@@ -3,7 +3,7 @@ mod raw;
 
 use crate::legacy;
 use chain_addr::Address;
-use chain_core::mempack::{read_from_raw, ReadBuf, ReadError, Readable};
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -64,17 +64,9 @@ impl Message {
         }
         MessageRaw(codec.into_inner())
     }
-}
 
-impl property::Serialize for Message {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        self.to_raw().serialize(writer)
-    }
-}
-
-impl Readable for Message {
-    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+    pub fn from_raw(raw: &MessageRaw) -> Result<Self, ReadError> {
+        let buf = &mut ReadBuf::from(raw.as_ref());
         let tag = buf.get_u8()?;
         match MessageTag::from_u8(tag) {
             Some(MessageTag::Initial) => InitialEnts::read(buf).map(Message::Initial),
@@ -93,11 +85,19 @@ impl Readable for Message {
     }
 }
 
+impl property::Serialize for Message {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        self.to_raw().serialize(writer)
+    }
+}
+
 impl property::Deserialize for Message {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         let raw = MessageRaw::deserialize(reader)?;
-        read_from_raw(raw.as_ref())
+        Message::from_raw(&raw)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))
     }
 }
 
