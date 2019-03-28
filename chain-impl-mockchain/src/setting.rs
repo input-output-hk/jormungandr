@@ -30,6 +30,8 @@ pub struct UpdateProposal {
     pub linear_fees: Option<LinearFee>,
     /// setting the slot duration (in seconds, max value is 255sec -- 4min)
     pub slot_duration: Option<u8>,
+    /// Todo
+    pub epoch_stability_depth: Option<u32>,
 }
 
 impl UpdateProposal {
@@ -42,6 +44,7 @@ impl UpdateProposal {
             allow_account_creation: None,
             linear_fees: None,
             slot_duration: None,
+            epoch_stability_depth: None,
         }
     }
 }
@@ -56,6 +59,7 @@ enum UpdateTag {
     AllowAccountCreation = 5,
     LinearFee = 6,
     SlotDuration = 7,
+    EpochStabilityDepth = 8,
 }
 
 impl property::Serialize for UpdateProposal {
@@ -97,6 +101,10 @@ impl property::Serialize for UpdateProposal {
         if let Some(slot_duration) = self.slot_duration {
             codec.put_u16(UpdateTag::SlotDuration as u16)?;
             codec.put_u8(slot_duration)?;
+        }
+        if let Some(epoch_stability_depth) = self.epoch_stability_depth {
+            codec.put_u16(UpdateTag::EpochStabilityDepth as u16)?;
+            codec.put_u32(epoch_stability_depth)?;
         }
         codec.put_u16(UpdateTag::End as u16)?;
         Ok(())
@@ -140,6 +148,9 @@ impl Readable for UpdateProposal {
                 Some(UpdateTag::SlotDuration) => {
                     update.slot_duration = Some(buf.get_u8()?);
                 }
+                Some(UpdateTag::EpochStabilityDepth) => {
+                    update.epoch_stability_depth = Some(buf.get_u32()?);
+                }
                 None => panic!("Unrecognized update tag {}.", tag),
             }
         }
@@ -156,6 +167,7 @@ pub struct Settings {
     pub allow_account_creation: bool,
     pub linear_fees: Arc<LinearFee>,
     pub slot_duration: u8,
+    pub epoch_stability_depth: usize,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -169,7 +181,8 @@ impl Settings {
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
-            slot_duration: 10, // 10 sec
+            slot_duration: 10,         // 10 sec
+            epoch_stability_depth: 10, // num of block
         }
     }
 
@@ -205,6 +218,9 @@ impl Settings {
         }
         if let Some(slot_duration) = update.slot_duration {
             new_state.slot_duration = slot_duration;
+        }
+        if let Some(epoch_stability_depth) = update.epoch_stability_depth {
+            new_state.epoch_stability_depth = epoch_stability_depth as usize;
         }
         new_state
     }
@@ -245,6 +261,7 @@ mod test {
                 allow_account_creation: None,
                 linear_fees: None,
                 slot_duration: Arbitrary::arbitrary(g),
+                epoch_stability_depth: Arbitrary::arbitrary(g),
             }
         }
     }
