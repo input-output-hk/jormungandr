@@ -93,6 +93,23 @@ jobs:
           name: Build and test with nightly Rust
           command: cargo test --frozen --verbose
 
+  test_integration:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - attach_workspace:
+          at: "."
+      - restore_cache:
+          keys:
+            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Build
+          command: cargo build
+      - run: ./testing/scripts/jcli/genesis-init-encode-decode.sh
 workflows:
   version: 2
   test_all:
@@ -107,3 +124,6 @@ workflows:
       - test_nightly:
           requires:
             - cargo_fetch
+      - test_jcli:
+          requires:
+            - test
