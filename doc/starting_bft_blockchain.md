@@ -20,34 +20,44 @@ of the blockchain: the **Block 0**.
 Then, ony by one after the other, each Node will be allowed to create a block.
 Utilising a Round Robin algorithm.
 
-## Example of genesis configuration file
+## Example of genesis file
 
 ```yaml
-start_time: 1550822014
-slot_duration: 15
-epoch_stability_depth: 2600
-allow_account_creation: true
-address_discrimination: Production 
-initial_utxos: []
-linear_fees:
-        constant: 2
-        coefficient: 1
-        certificate: 4
-bft_leaders:
-          - ed25519extended_public1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
-          - ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
+blockchain_configuration:
+  - [ block0-date, 1550822014 ]
+  - [ discrimination, test ]
+initial_setting:
+  allow_account_creation: true
+  slot-duration: 15
+  epoch-stability-depth: 2600
+  linear_fees:
+    constant: 0
+    coefficient: 0
+    certificate: 0
+  block_version: 1
+  bft_leaders:
+    - ed25519extended_public1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
+    - ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
+initial_utxos:
+  - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
+    value: 10000
 ```
 
-Or you can generate it with the following command line:
+In order to start your blockchain in BFT mode you need to be sure that:
 
-```
-jormungandr init \
-    --bft-leader=ed25519extended_public1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3 \
-    --bft-leader=ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en \
-    --discrimination production > genesis.yaml
-```
+* `block_version` is set to `1`;
+* `bft_leaders` is non empty;
 
 more information regarding the [genesis file here](./genesis_file.md).
+
+## Creating the block 0
+
+```
+jcli genesis encode --input genesis.yaml --output block-0.bin
+```
+
+This command will create (or replace) the **Block 0** of the blockchain
+from the given genesis configuration file (`genesis.yaml`).
 
 ## Starting the node
 
@@ -63,7 +73,7 @@ ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexm
 Configure your Node (config.yml) and run the following command:
 
 ```
-$ jormungandr start --genesis-config genesis.yaml \
+$ jormungandr start --genesis-block block-0.bin \
     --config example.config \
     --secret private.key
 ```

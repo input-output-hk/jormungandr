@@ -16,6 +16,11 @@ Note:
 * on windows, you'll need to add the `/userProfile/.cargo/bin` into the Path;
 * on linux and OSX: add `${HOME}/.cargo/bin` to your `${PATH}`
 
+This will install 2 tools:
+
+* `jormungandr`: the cardano node;
+* `jcli`: a command line tool to help you use and setup the cardano node;
+
 ## How To Use
 
 In order to use jormungandr you need to configure your blockchain and
@@ -75,7 +80,7 @@ Fields description:
 If you are not a leader node, then you can start the jormundandr with:
 
 ```
-jormungandr start --genesis-config genesis.yaml \
+jormungandr start --genesis-block block-0.bin \
   --config example.config \
   --without-leadership
 ```
