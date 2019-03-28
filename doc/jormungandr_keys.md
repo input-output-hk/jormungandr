@@ -13,13 +13,13 @@ There are multiple type of key for multiple reasons.
 There is a command line parameter to generate this keys:
 
 ```
-$ jormungandr generate-priv-key --type=Ed25519
+$ jcli key generate --type=Ed25519
 ed25519_secret1sx3vjuc733mmlfm86xc2ufrjx6hltas57yj6pklra3s2n03yfv2svckr67
 ```
 
 and to extract the associated public key:
 
 ```
-$ echo ed25519_secret1sx3vjuc733mmlfm86xc2ufrjx6hltas57yj6pklra3s2n03yfv2svckr67 | jormungandr generate-pub-key
+$ echo ed25519_secret1sx3vjuc733mmlfm86xc2ufrjx6hltas57yj6pklra3s2n03yfv2svckr67 | jcli key to-public
 ed25519_public1zkt4e7yufvf4es45u4wc0kztzkfr0n3wa6ks04z6kltsxdalafxqp7m2ca
 ```
