@@ -28,6 +28,8 @@ pub struct UpdateProposal {
     pub allow_account_creation: Option<bool>,
     /// update the LinearFee settings
     pub linear_fees: Option<LinearFee>,
+    /// setting the slot duration (in seconds, max value is 255sec -- 4min)
+    pub slot_duration: Option<u8>,
 }
 
 impl UpdateProposal {
@@ -39,6 +41,7 @@ impl UpdateProposal {
             bft_leaders: None,
             allow_account_creation: None,
             linear_fees: None,
+            slot_duration: None,
         }
     }
 }
@@ -52,6 +55,7 @@ enum UpdateTag {
     BftLeaders = 4,
     AllowAccountCreation = 5,
     LinearFee = 6,
+    SlotDuration = 7,
 }
 
 impl property::Serialize for UpdateProposal {
@@ -89,6 +93,10 @@ impl property::Serialize for UpdateProposal {
             codec.put_u64(linear_fees.constant)?;
             codec.put_u64(linear_fees.coefficient)?;
             codec.put_u64(linear_fees.certificate)?;
+        }
+        if let Some(slot_duration) = self.slot_duration {
+            codec.put_u16(UpdateTag::SlotDuration as u16)?;
+            codec.put_u8(slot_duration)?;
         }
         codec.put_u16(UpdateTag::End as u16)?;
         Ok(())
@@ -129,6 +137,9 @@ impl Readable for UpdateProposal {
                         certificate: buf.get_u64()?,
                     });
                 }
+                Some(UpdateTag::SlotDuration) => {
+                    update.slot_duration = Some(buf.get_u8()?);
+                }
                 None => panic!("Unrecognized update tag {}.", tag),
             }
         }
@@ -144,6 +155,7 @@ pub struct Settings {
     /// allow for the creation of accounts without the certificate
     pub allow_account_creation: bool,
     pub linear_fees: Arc<LinearFee>,
+    pub slot_duration: u8,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -157,6 +169,7 @@ impl Settings {
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
+            slot_duration: 10, // 10 sec
         }
     }
 
@@ -189,6 +202,9 @@ impl Settings {
         }
         if let Some(linear_fees) = update.linear_fees {
             new_state.linear_fees = Arc::new(linear_fees);
+        }
+        if let Some(slot_duration) = update.slot_duration {
+            new_state.slot_duration = slot_duration;
         }
         new_state
     }
@@ -228,6 +244,7 @@ mod test {
                 bft_leaders: None,
                 allow_account_creation: None,
                 linear_fees: None,
+                slot_duration: Arbitrary::arbitrary(g),
             }
         }
     }
