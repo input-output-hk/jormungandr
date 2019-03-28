@@ -10,15 +10,15 @@ jobs:
       - run: git submodule update --init
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-
-            - cargo-v2-
+            - cargo-v1-{{ checksum "Cargo.toml" }}-
+            - cargo-v1-
       - run: cargo fetch
       - persist_to_workspace:
           root: "."
           paths:
             - Cargo.lock
       - save_cache:
-          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
@@ -34,7 +34,7 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -51,7 +51,7 @@ jobs:
               [ -d $file -o ! -x $file ] && rm -r $file
             done
       - save_cache:
-          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
           paths:
             - ./target/debug/jcli
             - ./target/debug/jormungandr
@@ -71,7 +71,7 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -90,7 +90,7 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -110,9 +110,9 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - restore_cache:
-          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
       - run: ./testing/scripts/jcli.sh
 
   test_jormungandr:
@@ -127,9 +127,9 @@ jobs:
           at: "."
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - restore_cache:
-          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
+          key: cargo-v1-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
       - run: ./testing/scripts/jormungandr.sh
 
 workflows:
