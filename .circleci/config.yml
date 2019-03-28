@@ -9,6 +9,8 @@ jobs:
       - run: git submodule sync
       - run: git submodule update --init
       - run: cargo fetch
+      - run: ls -lah /usr/local/cargo
+      - run: ls ${HOME}/.cargo
       - persist_to_workspace:
           root: "."
           paths:
@@ -105,8 +107,6 @@ jobs:
           key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - restore_cache:
           key: cargo-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}-test
-      - run: pwd
-      - run: ls ./taget/debug
       - run: ./testing/scripts/jcli.sh
 
   test_jormungandr:
