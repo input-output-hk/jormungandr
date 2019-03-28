@@ -49,6 +49,7 @@ pub struct Update {
     bft_leaders: Option<Vec<String>>,
     allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
+    slot_duration: u8,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -268,6 +269,7 @@ impl Update {
                 coefficient: linear_fee.coefficient,
                 certificate: linear_fee.certificate,
             }),
+            slot_duration: Some(self.slot_duration),
         };
         Message::Update(update)
     }
@@ -294,6 +296,9 @@ impl Update {
                     coefficient: linear_fee.coefficient,
                     certificate: linear_fee.certificate,
                 }),
+            slot_duration: update_proposal
+                .slot_duration
+                .expect("slot_duration is mandatory"),
         }
     }
 }
@@ -575,4 +580,18 @@ impl<'de> serde::de::Deserialize<'de> for InitialUTxO {
         }
         deserializer.deserialize_struct("InitialUTxO", FIELDS, InitialUTxOVisitor)
     }
+}
+
+pub fn documented_example<W>(mut writer: W, now: std::time::SystemTime) -> std::io::Result<()>
+where
+    W: std::io::Write,
+{
+    writeln!(
+        writer,
+        include_str!("DOCUMENTED_EXAMPLE.yaml"),
+        now = now
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    )
 }
