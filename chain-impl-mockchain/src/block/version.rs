@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
 use lazy_static::lazy_static;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnyBlockVersion {
@@ -68,27 +68,33 @@ impl BlockVersion {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, FromPrimitive, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ConsensusVersion {
-    None,
-    Bft,
-    GenesisPraos,
+    None = 0,
+    Bft = 1,
+    GenesisPraos = 2,
 }
 
 impl ConsensusVersion {
-    pub fn supported_block_versions(self) -> &'static[BlockVersion] {
+    pub fn supported_block_versions(self) -> &'static [BlockVersion] {
         lazy_static! {
             static ref MAPPING: BTreeMap<u16, Vec<BlockVersion>> = {
                 let mut map = BTreeMap::<_, Vec<_>>::new();
                 for block_ord in 0.. {
                     match BlockVersion::from_u64(block_ord) {
-                        Some(block) => map.entry(block.get_consensus() as u16).or_default().push(block),
+                        Some(block) => map
+                            .entry(block.get_consensus() as u16)
+                            .or_default()
+                            .push(block),
                         None => break,
                     }
                 }
                 map
             };
         }
-        MAPPING.get(&(self as u16)).map(AsRef::as_ref).unwrap_or_default()
+        MAPPING
+            .get(&(self as u16))
+            .map(AsRef::as_ref)
+            .unwrap_or_default()
     }
 }

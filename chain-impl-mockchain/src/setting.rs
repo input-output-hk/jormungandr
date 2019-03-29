@@ -1,12 +1,7 @@
 //! define the Blockchain settings
 //!
 
-use crate::{
-    block::BlockVersion,
-    fee::LinearFee,
-    key::Hash,
-    leadership::bft,
-};
+use crate::{block::ConsensusVersion, fee::LinearFee, key::Hash, leadership::bft};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use std::sync::Arc;
@@ -21,7 +16,7 @@ use num_traits::FromPrimitive;
 pub struct UpdateProposal {
     pub max_number_of_transactions_per_block: Option<u32>,
     pub bootstrap_key_slots_percentage: Option<u8>,
-    pub block_version: Option<BlockVersion>,
+    pub consensus_version: Option<ConsensusVersion>,
     pub bft_leaders: Option<Vec<bft::LeaderId>>,
     /// update to trigger allowing the creation of accounts without
     /// publishing a certificate
@@ -39,7 +34,7 @@ impl UpdateProposal {
         UpdateProposal {
             max_number_of_transactions_per_block: None,
             bootstrap_key_slots_percentage: None,
-            block_version: None,
+            consensus_version: None,
             bft_leaders: None,
             allow_account_creation: None,
             linear_fees: None,
@@ -54,7 +49,7 @@ enum UpdateTag {
     End = 0,
     MaxNumberOfTransactionsPerBlock = 1,
     BootstrapKeySlotsPercentage = 2,
-    BlockVersion = 3,
+    ConsensusVersion = 3,
     BftLeaders = 4,
     AllowAccountCreation = 5,
     LinearFee = 6,
@@ -77,9 +72,9 @@ impl property::Serialize for UpdateProposal {
             codec.put_u16(UpdateTag::BootstrapKeySlotsPercentage as u16)?;
             codec.put_u8(bootstrap_key_slots_percentage)?;
         }
-        if let Some(block_version) = self.block_version {
-            codec.put_u16(UpdateTag::BlockVersion as u16)?;
-            codec.put_u16(block_version as u16)?;
+        if let Some(consensus_version) = self.consensus_version {
+            codec.put_u16(UpdateTag::ConsensusVersion as u16)?;
+            codec.put_u16(consensus_version as u16)?;
         }
         if let Some(leaders) = &self.bft_leaders {
             codec.put_u16(UpdateTag::BftLeaders as u16)?;
@@ -126,11 +121,15 @@ impl Readable for UpdateProposal {
                 Some(UpdateTag::BootstrapKeySlotsPercentage) => {
                     update.bootstrap_key_slots_percentage = Some(buf.get_u8()?);
                 }
-                Some(UpdateTag::BlockVersion) => {
+                Some(UpdateTag::ConsensusVersion) => {
                     let version_u16 = buf.get_u16()?;
-                    let version = BlockVersion::from_u16(version_u16)
-                        .ok_or_else(|| ReadError::StructureInvalid(format!("Unrecognized block version {}", version_u16)))?;
-                    update.block_version = Some(version);
+                    let version = ConsensusVersion::from_u16(version_u16).ok_or_else(|| {
+                        ReadError::StructureInvalid(format!(
+                            "Unrecognized consensus version {}",
+                            version_u16
+                        ))
+                    })?;
+                    update.consensus_version = Some(version);
                 }
                 Some(UpdateTag::BftLeaders) => {
                     let len = buf.get_u8()? as usize;
@@ -164,7 +163,7 @@ impl Readable for UpdateProposal {
 pub struct Settings {
     pub max_number_of_transactions_per_block: u32,
     pub bootstrap_key_slots_percentage: u8, // == d * 100
-    pub block_version: BlockVersion, //TODO change to consensus version
+    pub consensus_version: ConsensusVersion,
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
     /// allow for the creation of accounts without the certificate
     pub allow_account_creation: bool,
@@ -180,7 +179,7 @@ impl Settings {
         Self {
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
-            block_version: BlockVersion::Genesis,
+            consensus_version: ConsensusVersion::None,
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
@@ -207,8 +206,8 @@ impl Settings {
         if let Some(bootstrap_key_slots_percentage) = update.bootstrap_key_slots_percentage {
             new_state.bootstrap_key_slots_percentage = bootstrap_key_slots_percentage;
         }
-        if let Some(block_version) = update.block_version {
-            new_state.block_version = block_version;
+        if let Some(consensus_version) = update.consensus_version {
+            new_state.consensus_version = consensus_version;
         }
         if let Some(ref leaders) = update.bft_leaders {
             new_state.bft_leaders = Arc::new(leaders.clone());
@@ -253,14 +252,13 @@ impl std::error::Error for Error {}
 mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
-    use crate::block::AnyBlockVersion;
 
     impl Arbitrary for UpdateProposal {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             UpdateProposal {
                 max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
                 bootstrap_key_slots_percentage: Arbitrary::arbitrary(g),
-                block_version: Option::<AnyBlockVersion>::arbitrary(g).map(|version| version.try_into_block_version().unwrap()),
+                consensus_version: Arbitrary::arbitrary(g),
                 bft_leaders: None,
                 allow_account_creation: None,
                 linear_fees: None,

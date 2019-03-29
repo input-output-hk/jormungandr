@@ -1,5 +1,5 @@
 use crate::{
-    block::{BlockDate, AnyBlockVersion, BlockVersion, Header},
+    block::{AnyBlockVersion, BlockDate, BlockVersion, ConsensusVersion, Header},
     ledger::Ledger,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
@@ -124,10 +124,12 @@ impl Inner {
 
 impl Leadership {
     pub fn new(ledger: &Ledger) -> Self {
-        let inner = match ledger.settings.block_version {
-            BlockVersion::Genesis => Inner::None(none::NoLeadership),
-            BlockVersion::Ed25519Signed => Inner::Bft(bft::BftLeaderSelection::new(ledger).unwrap()),
-            BlockVersion::KesVrfproof => Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(ledger)),
+        let inner = match ledger.settings.consensus_version {
+            ConsensusVersion::None => Inner::None(none::NoLeadership),
+            ConsensusVersion::Bft => Inner::Bft(bft::BftLeaderSelection::new(ledger).unwrap()),
+            ConsensusVersion::GenesisPraos => {
+                Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(ledger))
+            }
         };
         Leadership { inner }
     }

@@ -289,7 +289,9 @@ impl Readable for Header {
                     kes_proof: kes_proof,
                 })
             }
-            AnyBlockVersion::Unsupported(version) => return Err(ReadError::UnknownTag(version as u32)),
+            AnyBlockVersion::Unsupported(version) => {
+                return Err(ReadError::UnknownTag(version as u32));
+            }
         };
 
         Ok(Header { common, proof })
@@ -327,7 +329,9 @@ impl property::Header for Header {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::block::ConsensusVersion;
     use chain_crypto::AsymmetricKey;
+    use num_traits::FromPrimitive;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
@@ -341,6 +345,13 @@ mod test {
             AnyBlockVersion::from(u16::arbitrary(g) % 3)
         }
     }
+
+    impl Arbitrary for ConsensusVersion {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            ConsensusVersion::from_u16(u16::arbitrary(g) % 3).unwrap()
+        }
+    }
+
     impl Arbitrary for Common {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Common {
@@ -400,8 +411,12 @@ mod test {
             let common = Common::arbitrary(g);
             let proof = match common.any_block_version {
                 AnyBlockVersion::Supported(BlockVersion::Genesis) => Proof::None,
-                AnyBlockVersion::Supported(BlockVersion::Ed25519Signed) => Proof::Bft(Arbitrary::arbitrary(g)),
-                AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => Proof::GenesisPraos(Arbitrary::arbitrary(g)),
+                AnyBlockVersion::Supported(BlockVersion::Ed25519Signed) => {
+                    Proof::Bft(Arbitrary::arbitrary(g))
+                }
+                AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => {
+                    Proof::GenesisPraos(Arbitrary::arbitrary(g))
+                }
                 AnyBlockVersion::Unsupported(_) => unreachable!(),
             };
             Header {

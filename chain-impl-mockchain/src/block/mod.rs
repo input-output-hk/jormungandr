@@ -96,8 +96,8 @@ impl Block {
                     genesis_praos_id: gpleader.get_id(),
                     kes_proof: KESSignature(signature),
                     vrf_proof: unimplemented!(), // proven_output_seed.clone(),
-                    //vrf_public_key: vrf_secret.public(),
-                    //kes_public_key: kes_secret.to_public().into(),
+                                                 //vrf_public_key: vrf_secret.public(),
+                                                 //kes_public_key: kes_secret.to_public().into(),
                 })
             }
         };
