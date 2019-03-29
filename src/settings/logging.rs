@@ -17,6 +17,15 @@ pub enum LogFormat {
     Json,
 }
 
+impl Default for LogSettings {
+    fn default() -> Self {
+        LogSettings {
+            verbosity: slog::Level::Info,
+            format: LogFormat::Plain,
+        }
+    }
+}
+
 impl FromStr for LogFormat {
     type Err = String;
 

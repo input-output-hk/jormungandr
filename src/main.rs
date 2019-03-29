@@ -27,6 +27,8 @@ extern crate network_grpc;
 extern crate poldercast;
 extern crate rand_chacha;
 extern crate tower_service;
+#[macro_use]
+extern crate custom_error;
 
 extern crate tokio;
 extern crate tokio_bus;
@@ -79,6 +81,7 @@ pub mod network;
 pub mod rest;
 pub mod secure;
 pub mod settings;
+pub mod start_up;
 pub mod state;
 pub mod transaction;
 pub mod utils;
@@ -88,8 +91,6 @@ pub mod utils;
 // than one block as the network task should be able to broadcast the
 // block notifications in time.
 const BLOCK_BUS_CAPACITY: usize = 2;
-
-pub type TODO = u32;
 
 fn block_task(
     blockchain: BlockchainR,
@@ -104,92 +105,30 @@ fn block_task(
     }
 }
 
-fn startup_info(blockchain: &Blockchain, _settings: &Settings) {
-    println!(
-        "tip={} length={:?}",
-        blockchain.get_tip(),
-        blockchain.get_block_tip().unwrap().0.chain_length()
-    );
+fn start() -> Result<(), start_up::Error> {
+    let initialized_node = initialize_node()?;
+
+    let bootstrapped_node = bootstrap(initialized_node)?;
+
+    start_services(&bootstrapped_node)
 }
 
-// Expand the type with more variants
-// when it becomes necessary to represent different error cases.
-type Error = settings::Error;
+pub struct BootstrappedNode {
+    settings: Settings,
+    clock: clock::Clock,
+    blockchain: BlockchainR,
+}
 
-fn start(settings: Settings) -> Result<(), Error> {
-    settings.log_settings.apply();
-
-    let block_0 = settings.load_block_0();
-
-    let start_time = blockcfg::block_0_get_start_time(&block_0);
-    let slot_duration = blockcfg::block_0_get_slot_duration(&block_0);
-
-    let clock = {
-        let initial_epoch = clock::ClockEpochConfiguration {
-            slot_duration: slot_duration,
-            slots_per_epoch: 10 * 10,
-        };
-        clock::Clock::new(start_time, initial_epoch)
-    };
-
-    let leader_secret = if let Some(secret_path) = &settings.leadership {
-        Some(secure::NodeSecret::load_from_file(secret_path.as_path()))
-    } else {
-        None
-    };
-
-    //let mut state = State::new();
-
-    let blockchain_data = Blockchain::new(block_0, &settings.storage);
-
-    startup_info(&blockchain_data, &settings);
-
-    let blockchain = Arc::new(RwLock::new(blockchain_data));
-
+fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::Error> {
     let mut tasks = Tasks::new();
-
-    // # Bootstrap phase
-    //
-    // done at every startup: we need to bootstrap from whatever local state (including nothing)
-    // to the latest network state (or close to latest). until this happen, we don't participate in the network
-    // (no block creation) and our network connection(s) is only use to download data.
-    //
-    // Various aspects to do, similar to hermes:
-    // * download all the existing blocks
-    // * verify all the downloaded blocks
-    // * network / peer discoveries (?)
-    // * gclock sync ?
-
-    // Read block state
-    // init storage
-    // create blockchain storage
-
-    network::bootstrap(&settings.network, blockchain.clone());
-
-    // # Active phase
-    //
-    // now that we have caught up (or almost caught up) we download blocks from neighbor nodes,
-    // listen to announcements and actively listen to synchronous queries
-    //
-    // There's two simultaenous roles to this:
-    // * Leader: decided after global or local evaluation. Need to create and propagate a block
-    // * Non-Leader: always. receive (pushed-) blocks from other peers, investigate the correct blockchain updates
-    //
-    // Also receive synchronous connection queries:
-    // * new nodes subscribing to updates (blocks, transactions)
-    // * client GetBlocks/Headers ...
 
     let tpool_data: TPool<MessageId, Message> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
-
-    // Validation of consensus settings should make sure that we always have
-    // non-empty selection data.
-
     let stats_counter = StatsCounter::default();
 
     let transaction_task = {
         let tpool = tpool.clone();
-        let blockchain = blockchain.clone();
+        let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
         tasks.task_create_with_inputs("transaction", move |r| {
             transaction_task(blockchain, tpool, r, stats_counter)
@@ -197,8 +136,8 @@ fn start(settings: Settings) -> Result<(), Error> {
     };
 
     let block_task = {
-        let blockchain = blockchain.clone();
-        let clock = clock.clone();
+        let blockchain = bootstrapped_node.blockchain.clone();
+        let clock = bootstrapped_node.clock.clone();
         let stats_counter = stats_counter.clone();
         tasks.task_create_with_inputs("block", move |r| {
             block_task(blockchain, clock, r, stats_counter)
@@ -206,30 +145,15 @@ fn start(settings: Settings) -> Result<(), Error> {
     };
 
     let client_task = {
-        let blockchain = blockchain.clone();
+        let blockchain = bootstrapped_node.blockchain.clone();
         tasks.task_create_with_inputs("client-query", move |r| client::client_task(blockchain, r))
     };
 
-    // ** TODO **
-    // setup_network
-    //  connection-events:
-    //    poll:
-    //      recv_transaction:
-    //         check_transaction_valid
-    //         add transaction to pool
-    //      recv_block:
-    //         check block valid
-    //         try to extend blockchain with block
-    //         update utxo state
-    //         flush transaction pool if any txid made it
-    //      get block(s):
-    //         try to answer
-    //
     {
         let client_msgbox = client_task.clone();
         let transaction_msgbox = transaction_task.clone();
         let block_msgbox = block_task.clone();
-        let config = settings.network.clone();
+        let config = bootstrapped_node.settings.network.clone();
         let channels = network::Channels {
             client_box: client_msgbox,
             transaction_box: transaction_msgbox,
@@ -240,25 +164,31 @@ fn start(settings: Settings) -> Result<(), Error> {
         });
     };
 
+    let leader_secret = if let Some(secret_path) = &bootstrapped_node.settings.leadership {
+        Some(secure::NodeSecret::load_from_file(secret_path.as_path()))
+    } else {
+        None
+    };
+
     if let Some(secret) = leader_secret
     // == settings::start::Leadership::Yes
     //    && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes
     {
         let tpool = tpool.clone();
-        let clock = clock.clone();
+        let clock = bootstrapped_node.clock.clone();
         let block_task = block_task.clone();
-        let blockchain = blockchain.clone();
+        let blockchain = bootstrapped_node.blockchain.clone();
         let pk = chain_impl_mockchain::leadership::Leader::BftLeader(secret.block_privatekey);
         tasks.task_create("leadership", move || {
             leadership_task(pk, tpool, blockchain, clock, block_task)
         });
     };
 
-    let rest_server = match settings.rest {
+    let rest_server = match bootstrapped_node.settings.rest {
         Some(ref rest) => {
             let context = rest::Context {
                 stats_counter,
-                blockchain,
+                blockchain: bootstrapped_node.blockchain.clone(),
                 transaction_task: Arc::new(Mutex::new(transaction_task)),
             };
             Some(rest::start_rest_server(rest, context)?)
@@ -266,11 +196,6 @@ fn start(settings: Settings) -> Result<(), Error> {
         None => None,
     };
 
-    // periodically cleanup (custom):
-    //   storage cleanup/packing
-    //   tpool.gc()
-
-    // FIXME some sort of join so that the main thread does something ...
     tasks.join();
 
     if let Some(server) = rest_server {
@@ -280,11 +205,82 @@ fn start(settings: Settings) -> Result<(), Error> {
     Ok(())
 }
 
+/// # Bootstrap phase
+///
+/// done at every startup: we need to bootstrap from whatever local state (including nothing)
+/// to the latest network state (or close to latest). until this happen, we don't participate in the network
+/// (no block creation) and our network connection(s) is only use to download data.
+///
+/// Various aspects to do, similar to hermes:
+/// * download all the existing blocks
+/// * verify all the downloaded blocks
+/// * network / peer discoveries (?)
+/// * gclock sync ?
+///
+///
+fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
+    let block0 = initialized_node.block0;
+    let clock = initialized_node.clock;
+    let settings = initialized_node.settings;
+    let storage = initialized_node.storage;
+
+    let blockchain = start_up::load_blockchain(block0, storage)?;
+
+    network::bootstrap(&settings.network, blockchain.clone());
+
+    Ok(BootstrappedNode {
+        settings,
+        clock,
+        blockchain,
+    })
+}
+
+pub struct InitializedNode {
+    pub settings: Settings,
+    pub block0: blockcfg::Block,
+    pub clock: clock::Clock,
+    pub storage: start_up::NodeStorage,
+}
+
+fn initialize_node() -> Result<InitializedNode, start_up::Error> {
+    use start_up::*;
+
+    prepare_resources()?;
+
+    let command_line_arguments = load_command_line()?;
+
+    let node_settings = load_settings(&command_line_arguments)?;
+
+    prepare_logger(&node_settings)?;
+
+    let storage = prepare_storage(&node_settings)?;
+
+    // TODO: load network module here too (if needed)
+
+    let block0 = prepare_block_0(
+        &node_settings,
+        &storage,
+        /* add network to fetch block0 */
+    )?;
+
+    let clock = prepare_clock(&block0)?;
+
+    Ok(InitializedNode {
+        settings: node_settings,
+        block0: block0,
+        clock: clock,
+        storage: storage,
+    })
+}
+
 fn main() {
-    let command_args = CommandLine::load();
-    let start_settings = Settings::load(&command_args).unwrap();
-    if let Err(error) = start(start_settings) {
-        eprintln!("jormungandr error: {}", error);
-        std::process::exit(1);
+    use std::error::Error;
+
+    if let Err(error) = start() {
+        eprintln!("{}", error);
+        if let Some(source) = error.source() {
+            eprintln!("{}", source);
+        }
+        std::process::exit(error.code());
     }
 }

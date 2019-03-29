@@ -58,6 +58,7 @@ cardano-storage = { path = "cardano-deps/storage" }
 poldercast = "0.2.1"
 tower-service = "0.2"
 reqwest = "0.9.11"
+custom_error = "1.6"
 
 [patch."https://github.com/tower-rs/tower"]
 tower-service = "0.2"

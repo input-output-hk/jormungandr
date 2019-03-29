@@ -79,7 +79,7 @@ pub struct Settings {
 
     pub storage: Option<PathBuf>,
 
-    pub block_0: PathBuf,
+    pub block_0: Block0Info,
 
     pub leadership: Option<PathBuf>,
 
@@ -132,7 +132,11 @@ impl Settings {
 
     pub fn load_block_0(&self) -> crate::blockcfg::Block {
         use chain_core::property::Deserialize as _;
-        let f = File::open(&self.block_0).unwrap();
+        let f = if let Block0Info::Path(path) = &self.block_0 {
+            File::open(path).unwrap()
+        } else {
+            unimplemented!()
+        };
         let reader = std::io::BufReader::new(f);
         crate::blockcfg::Block::deserialize(reader).unwrap()
     }
@@ -152,9 +156,8 @@ fn generate_log_settings(command_arguments: &CommandLine, config: &config::Confi
     };
     LogSettings {
         verbosity: match level {
-            0 => slog::Level::Warning,
-            1 => slog::Level::Info,
-            2 => slog::Level::Debug,
+            0 => slog::Level::Info,
+            1 => slog::Level::Debug,
             _ => slog::Level::Trace,
         },
         format: command_arguments.log_format.clone(),
