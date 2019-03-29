@@ -6,6 +6,8 @@ jobs:
     working_directory: /mnt/crate
     steps:
       - checkout
+      - restore_cache:
+          key: cargo-cache-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run: git submodule sync
       - run: git submodule update --init
       - run: cargo fetch
