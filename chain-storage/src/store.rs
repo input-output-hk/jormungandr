@@ -115,7 +115,7 @@ pub trait BlockStore {
         match self.get_block_info(block_hash) {
             Ok(_) => Ok(true),
             Err(Error::BlockNotFound) => Ok(false),
-            //Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -229,7 +229,7 @@ pub trait BlockStore {
     ) -> Result<BlockIterator<'store, Self::Block>, Error> {
         // FIXME: put blocks loaded by is_ancestor into pending_infos.
         match self.is_ancestor(from, to)? {
-            None => panic!(), // FIXME: return error
+            None => Err(Error::CannotIterate),
             Some(distance) => {
                 let to_info = self.get_block_info(&to)?;
                 Ok(BlockIterator {
