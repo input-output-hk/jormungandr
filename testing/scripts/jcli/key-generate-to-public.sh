@@ -1,24 +1,26 @@
 #! /bin/sh
 
-cat << EOF
-This test generate private key and public keys for every
-supported algorithm
-EOF
+if [ "${jcli}x" = "x" ]; then
+    SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+    source ${SCRIPTPATH}/../utils.sh
+fi
 
-jcli='cargo run --bin jcli --'
-key="${jcli} key"
-generate="${key} generate"
-to_public="${key} to-public"
+title "Run generate private key and to public key"
 
 try_algorithm() {
     algorithm=${1}
 
-    ${generate} --type ${algorithm} | ${to_public}
+    info "  * ${algorithm} ..."
+    command="${jcli} key generate --type ${algorithm} | ${jcli} key to-public"
+    result=$(${jcli} key generate --type ${algorithm} | ${jcli} key to-public)
     if [ ${?} -ne 0 ]; then
-        cat >&2 << EOF
-Test Failed for "${algorithm}"
-EOF
-        exit 1
+        newline
+        echo ${result} >&2
+        warn "commands: ${command}\n"
+        die " FAILED"
+    else
+        success " PASSED"
+        newline
     fi
 }
 

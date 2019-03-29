@@ -1,21 +1,21 @@
 #! /bin/sh
 
-cat << EOF
-This test that the `genesis init` command it working as expected:
+if [ "x${jcli}" = "x" ]; then
+    SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+    source ${SCRIPTPATH}/../utils.sh
+fi
 
-* that it is a valid genesis file (it encodes into a block 0);
-* that the block0 generated is a valid block 0 (it decodes to genesis file)
-EOF
+title "check encode/decode between genesis file and block0"
 
-jcli='cargo run --bin jcli --'
-
-${jcli} genesis init | \
-    ${jcli} genesis encode | \
-    ${jcli} genesis decode
-
+info " running test ..."
+command="${jcli} genesis init | ${jcli} genesis encode | ${jcli} genesis decode"
+result=$(${jcli} genesis init | ${jcli} genesis encode | ${jcli} genesis decode)
 if [ ${?} -ne 0 ]; then
-    cat >&2 << EOF
-Test Failed
-EOF
-    exit 1
+    newline
+    echo ${result} >&2
+    warn "commands: ${command}\n"
+    die " FAILED"
+else
+    success " PASSED"
+    newline
 fi
