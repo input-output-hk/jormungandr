@@ -57,6 +57,7 @@ impl From<chain_storage::error::Error> for Error {
 
         let code = match err {
             BlockNotFound => core_error::Code::NotFound,
+            CannotIterate => core_error::Code::Internal,
         };
         Error {
             code,
