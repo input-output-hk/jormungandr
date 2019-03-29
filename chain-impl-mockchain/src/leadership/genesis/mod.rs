@@ -104,18 +104,6 @@ impl GenesisLeaderSelection {
             _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
         }
     }
-
-    #[inline]
-    pub(crate) fn get_leader_at(
-        &self,
-        vrf_key: &SecretKey<Curve25519_2HashDH>,
-        date: BlockDate,
-    ) -> Result<GenesisPraosLeader, Error> {
-        match self.leader(vrf_key, date)? {
-            Some(keys) => Ok(keys),
-            None => Err(Error::new(ErrorKind::NoLeaderForThisSlot)),
-        }
-    }
 }
 
 impl property::Serialize for GenesisPraosId {
