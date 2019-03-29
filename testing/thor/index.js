@@ -15,7 +15,7 @@ let accounts = [];
 window.document.getElementById("store_pk").onclick = function(self) {
     console.log("loading private key..")
     let bech32 = document.getElementById("private_key_hex").value;
-    private_key = mjolnir.PrivateKey.from_bench32(bech32);
+    private_key = mjolnir.PrivateKey.from_bech32(bech32);
     console.log("extracting public key..")
     let public_key = private_key.public();
     document.getElementById("public_key_hex").value = public_key.to_hex();
@@ -97,7 +97,7 @@ window.document.getElementById("post_btn").onclick = function(self) {
     var tx = document.getElementById("signed_tx_result").textContent;
     var bin = new Buffer(tx, 'hex')
     var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'http://localhost:8443/api/v0/transaction');
+    xhr.open('POST', 'http://localhost:8443/api/v0/message');
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.send(bin);
 }
@@ -107,7 +107,7 @@ window.document.getElementById("estimate_btn").onclick = function(self) {
 }
 
 window.document.getElementById("btn_add_account").onclick = function(self) {
-   var pk = mjolnir.PrivateKey.from_bench32(document.getElementById("input_account_pk").value.trim());
+   var pk = mjolnir.PrivateKey.from_bech32(document.getElementById("input_account_pk").value.trim());
    var pub = pk.public();
    var account = mjolnir.Account.from_public(pub);
    accounts.push({'private':pk, 'public': pub, 'account': account});
@@ -126,9 +126,15 @@ window.document.getElementById("btn_deserialize").onclick = function(self) {
    console.log("reading content..");
    var t = document.getElementById("transaction_input").value.trim();
    console.log("creating transaction from ", t);
-   var tx = mjolnir.SignedTransaction.from_hex(t);
+   var tx = mjolnir.Message.from_hex(t);
    console.log("deserializing...");
    document.getElementById("transaction_description").textContent = JSON.stringify(tx.describe());
+}
+
+window.document.getElementById("btn_convert_hex").onclick = function(self) {
+   var t = document.getElementById("inp_bech_in").value.trim();
+   var bytes = mjolnir.Bytes.from_bech(t);
+   document.getElementById("inp_hex_out").value = bytes.to_hex();
 }
 
 function refresh() {
