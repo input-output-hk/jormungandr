@@ -69,7 +69,7 @@ impl GenesisLeaderSelection {
         // Calculate the total stake.
         let total_stake: Value = stake_snapshot.total_stake();
 
-        if total_stake.0 == 0 {
+        if total_stake == Value::zero() {
             // TODO: give more info about the error here...
             return Err(Error::new(ErrorKind::Failure));
         }
