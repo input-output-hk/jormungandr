@@ -4,6 +4,7 @@ extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
+extern crate num_traits;
 extern crate rand;
 extern crate rand_chacha;
 extern crate reqwest;

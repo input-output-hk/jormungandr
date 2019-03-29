@@ -23,7 +23,7 @@ initial_setting:
   bootstrap_key_slots_percentage: ~
   slot_duration: 15
   epoch_stability_depth: 10
-  block_version: 1
+  consensus: bft
   bft_leaders:
     - ed25519extended_public1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
     - ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
@@ -63,7 +63,7 @@ There are multiple _parts_ in the genesis file:
 | `bootstrap_key_slots_percentage` | number | placeholder, do not use |
 | `slot_duration` | number | the number of seconds between the creation of 2 blocks |
 | `epoch_stability_depth` | number | allowed size of a fork (in number of block) |
-| `block_version` | number | the consensus version at the startup of the blockchain (`1` for BFT) |
+| `consensus` | string | the consensus version at the startup of the blockchain (`bft` for BFT) |
 | `allow_account_creation` | boolean | allow creating accounts without publishing certificate |
 | `linear_fee` | object | linear fee settings, set the fee for transaction and certificate publishing |
 | `bft_leaders` | array | the list of the BFT leader at the beginning of the blockchain |
