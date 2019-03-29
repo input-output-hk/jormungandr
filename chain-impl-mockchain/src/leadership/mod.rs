@@ -112,7 +112,7 @@ impl Inner {
             }
             (Inner::GenesisPraos(genesis_praos), Leader::GenesisPraos(_kes_key, vrf_key)) => {
                 match genesis_praos.leader(vrf_key, date)? {
-                    None => unimplemented!(), // TODO? Fallback on the BFT ?
+                    None => Ok(LeaderOutput::None),
                     Some(_) => {
                         Ok(LeaderOutput::GenesisPraos) // TODO: add the output seed here too
                     }
@@ -129,7 +129,8 @@ impl Leadership {
             ConsensusVersion::None => Inner::None(none::NoLeadership),
             ConsensusVersion::Bft => Inner::Bft(bft::BftLeaderSelection::new(ledger).unwrap()),
             ConsensusVersion::GenesisPraos => {
-                Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(epoch, ledger))
+                let node_id = unimplemented!();
+                Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(node_id, epoch, ledger))
             }
         };
         Leadership { inner }

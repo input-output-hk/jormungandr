@@ -35,6 +35,10 @@ impl StakeDistribution {
             .fold(Value::zero(), |sum, x| (sum + x).unwrap())
     }
 
+    pub fn get_stake_for(&self, poolid: &StakePoolId) -> Option<Value> {
+        self.0.get(poolid).map(|psd| psd.total_stake)
+    }
+
     /// Place the stake pools on the interval [0, total_stake) (sorted
     /// by ID), then return the ID of the one containing 'point'
     /// (which must be in the interval). This is used to randomly

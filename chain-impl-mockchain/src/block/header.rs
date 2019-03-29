@@ -49,7 +49,7 @@ pub struct BftSignature(pub(crate) Signature<HeaderToSign, Ed25519Extended>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisPraosProof {
     pub(crate) genesis_praos_id: genesis::GenesisPraosId,
-    pub(crate) vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
+    pub(crate) vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput,
     pub(crate) kes_proof: KESSignature,
 }
 
@@ -276,7 +276,7 @@ impl Readable for Header {
                 let vrf_proof = {
                     let bytes = <[u8;<Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE]>::read(buf)?;
 
-                    <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom::from_bytes_unverified(&bytes)
+                    <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput::from_bytes_unverified(&bytes)
                         .ok_or(ReadError::StructureInvalid("VRF Proof".to_string()))
                 }?;
                 dbg!(&vrf_proof);
@@ -393,7 +393,7 @@ mod test {
 
             let vrf_proof = {
                 let sk = Curve25519_2HashDH::generate(&mut rng);
-                Curve25519_2HashDH::evaluate(&sk, &[0, 1, 2, 3], &mut rng)
+                Curve25519_2HashDH::evaluate_and_proove(&sk, &[0, 1, 2, 3], &mut rng)
             };
 
             let kes_proof = {

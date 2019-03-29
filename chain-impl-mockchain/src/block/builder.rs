@@ -136,8 +136,7 @@ impl BlockBuilder {
         mut self,
         genesis_praos_id: &genesis::GenesisPraosId,
         kes_signing_key: &mut SecretKey<FakeMMM>,
-        _vrf_public_key: &PublicKey<Curve25519_2HashDH>,
-        vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
+        vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput,
     ) -> Block {
         assert_ne!(self.common.chain_length, ChainLength(0));
         self.finalize_common(BlockVersion::KesVrfproof);

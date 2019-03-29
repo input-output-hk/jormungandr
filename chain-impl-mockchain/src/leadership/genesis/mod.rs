@@ -1,10 +1,12 @@
+mod vrfeval;
+
 use crate::{
     block::{BlockDate, Header, Proof},
     date::Epoch,
     key::Hash,
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
-    stake::StakeDistribution,
+    stake::{StakeDistribution, StakePoolId},
     value::Value,
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -34,6 +36,8 @@ impl GenesisPraosLeader {
 
 #[derive(Debug)]
 pub struct GenesisLeaderSelection {
+    self_id: StakePoolId,
+    epoch_nonce: vrfeval::Nonce,
     //delegation_state: DelegationState,
     distribution: StakeDistribution,
     // the epoch this leader selection is valid for
@@ -41,10 +45,12 @@ pub struct GenesisLeaderSelection {
 }
 
 impl GenesisLeaderSelection {
-    pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
+    pub fn new(self_id: StakePoolId, epoch: Epoch, ledger: &Ledger) -> Self {
         let stake_distribution = ledger.get_stake_distribution();
 
         GenesisLeaderSelection {
+            self_id: self_id,
+            epoch_nonce: vrfeval::Nonce::zero(),
             distribution: stake_distribution,
             //delegation_state: state.delegation.clone(),
             epoch: epoch,
@@ -53,7 +59,7 @@ impl GenesisLeaderSelection {
 
     pub fn leader(
         &self,
-        _vrf_key: &SecretKey<Curve25519_2HashDH>,
+        vrf_key: &SecretKey<Curve25519_2HashDH>,
         date: BlockDate,
     ) -> Result<Option<GenesisPraosLeader>, Error> {
         if date.epoch != self.epoch {
@@ -63,39 +69,27 @@ impl GenesisLeaderSelection {
 
         let stake_snapshot = &self.distribution;
 
-        // FIXME: the following is a placeholder for a
-        // proper VRF-based leader selection.
+        match stake_snapshot.get_stake_for(&self.self_id) {
+            None => Ok(None),
+            Some(stake) => {
+                // Calculate the total stake.
+                let total_stake: Value = stake_snapshot.total_stake();
 
-        // Calculate the total stake.
-        let total_stake: Value = stake_snapshot.total_stake();
+                if total_stake == Value::zero() {
+                    // TODO: give more info about the error here...
+                    return Err(Error::new(ErrorKind::Failure));
+                }
 
-        if total_stake == Value::zero() {
-            // TODO: give more info about the error here...
-            return Err(Error::new(ErrorKind::Failure));
+                let percent_stake = vrfeval::PercentStake {
+                    stake: stake,
+                    total: total_stake,
+                };
+                match vrfeval::evaluate(percent_stake, vrf_key, &self.epoch_nonce, date.slot_id) {
+                    None => Ok(None),
+                    Some(vrfout) => unimplemented!(),
+                }
+            }
         }
-
-        // Pick a random point in the range [0, total_stake).
-        let mut rng: rand::rngs::StdRng =
-            SeedableRng::seed_from_u64((date.epoch as u64) << 32 | date.slot_id as u64);
-        let point = rng.gen_range(0, total_stake.0);
-
-        // Select the stake pool containing the point we
-        // picked.
-        let _pool_id = stake_snapshot.select_pool(point).unwrap();
-        /*
-        let pool_info = self
-            .delegation_state
-            .get_stake_pools()
-            .get(&pool_id)
-            .unwrap();
-        let keys = GenesisPraosLeader {
-            kes_public_key: pool_info.kes_public_key.clone(),
-            vrf_public_key: pool_info.vrf_public_key.clone(),
-        };
-
-        Ok(Some(keys))
-        */
-        unimplemented!()
     }
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {
