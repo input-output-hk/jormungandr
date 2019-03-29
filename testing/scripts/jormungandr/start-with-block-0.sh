@@ -10,7 +10,6 @@ title "Check jormungandr can read the block-0"
 info "  try starting node ..."
 output=$(timeout 3s "${jormungandr} --config ${CONFIG} --genesis-block ${BLOCK0} --without-leadership")
 
-echo ${output}
 echo ${output} | egrep --quiet 'panic|error'
 if [ ${?} -eq 0 ]; then
     display ${output}
