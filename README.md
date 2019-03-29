@@ -80,7 +80,7 @@ Fields description:
 If you are not a leader node, then you can start the jormundandr with:
 
 ```
-jormungandr start --genesis-block block-0.bin \
+jormungandr --genesis-block block-0.bin \
   --config example.config \
   --without-leadership
 ```

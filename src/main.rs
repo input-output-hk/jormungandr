@@ -61,7 +61,7 @@ use chain_core::property::Block as _;
 use intercom::BlockMsg;
 use leadership::leadership_task;
 use rest::v0::node::stats::StatsCounter;
-use settings::Command;
+use settings::{start::Settings, CommandLine};
 use transaction::{transaction_task, TPool};
 use utils::task::{TaskBroadcastBox, Tasks};
 
@@ -104,7 +104,7 @@ fn block_task(
     }
 }
 
-fn startup_info(blockchain: &Blockchain, _settings: &settings::start::Settings) {
+fn startup_info(blockchain: &Blockchain, _settings: &Settings) {
     println!(
         "tip={} length={:?}",
         blockchain.get_tip(),
@@ -116,7 +116,7 @@ fn startup_info(blockchain: &Blockchain, _settings: &settings::start::Settings) 
 // when it becomes necessary to represent different error cases.
 type Error = settings::Error;
 
-fn start(settings: settings::start::Settings) -> Result<(), Error> {
+fn start(settings: Settings) -> Result<(), Error> {
     settings.log_settings.apply();
 
     let block_0 = settings.load_block_0();
@@ -281,20 +281,10 @@ fn start(settings: settings::start::Settings) -> Result<(), Error> {
 }
 
 fn main() {
-    let command = match Command::load() {
-        Err(err) => {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        }
-        Ok(v) => v,
-    };
-
-    match command {
-        Command::Start(start_settings) => {
-            if let Err(error) = start(start_settings) {
-                eprintln!("jormungandr error: {}", error);
-                std::process::exit(1);
-            }
-        }
+    let command_args = CommandLine::load();
+    let start_settings = Settings::load(&command_args).unwrap();
+    if let Err(error) = start(start_settings) {
+        eprintln!("jormungandr error: {}", error);
+        std::process::exit(1);
     }
 }

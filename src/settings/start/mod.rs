@@ -94,10 +94,8 @@ impl Settings {
     /// - from the config
     ///
     /// This function will print&exit if anything is not as it should be.
-    pub fn load(
-        command_line: &CommandLine,
-        command_arguments: &StartArguments,
-    ) -> Result<Self, Error> {
+    pub fn load(command_line: &CommandLine) -> Result<Self, Error> {
+        let command_arguments = &command_line.start_arguments;
         let config: config::Config = {
             let mut file = File::open(command_arguments.node_config.clone()).unwrap();
             serde_yaml::from_reader(&mut file)?

@@ -70,15 +70,8 @@ pub struct CommandLine {
     #[structopt(long = "log-format", parse(try_from_str), default_value = "plain")]
     pub log_format: LogFormat,
 
-    #[structopt(subcommand)]
-    pub command: Command,
-}
-
-#[derive(StructOpt, Debug)]
-pub enum Command {
-    /// start jormungandr service and start participating to the network
-    #[structopt(name = "start")]
-    Start(StartArguments),
+    #[structopt(flatten)]
+    pub start_arguments: StartArguments,
 }
 
 impl CommandLine {
