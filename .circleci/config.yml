@@ -8,14 +8,14 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v2-{{ checksum "Cargo.toml" }}
-            - cargo-v2-
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run: git submodule sync
       - run: git submodule update --init
       - run: cargo fetch
       - save_cache:
-          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
@@ -44,9 +44,9 @@ jobs:
       - run: git submodule update --init
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v2-{{ checksum "Cargo.toml" }}
-            - cargo-v2-
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -69,9 +69,9 @@ jobs:
       - run: git submodule update --init
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v2-{{ checksum "Cargo.toml" }}
-            - cargo-v2-
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -89,9 +89,9 @@ jobs:
       - run: git submodule update --init
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v2-{{ checksum "Cargo.toml" }}
-            - cargo-v2-
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -115,9 +115,9 @@ jobs:
       - run: git submodule update --init
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v2-{{ checksum "Cargo.toml" }}
-            - cargo-v2-
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
@@ -135,9 +135,9 @@ jobs:
       - run: git submodule update --init
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v2-{{ checksum "Cargo.toml" }}
-            - cargo-v2-
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
