@@ -41,18 +41,13 @@ pub struct GenesisLeaderSelection {
 }
 
 impl GenesisLeaderSelection {
-    pub fn new(ledger: &Ledger) -> Self {
+    pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         let stake_distribution = ledger.get_stake_distribution();
-        // TODO: get this info from the state
-        let epoch_state = 0;
-
-        // TODO: get this info from the settings ? or is it static ?
-        let leader_selection_snapshot_interval = 2;
 
         GenesisLeaderSelection {
             distribution: stake_distribution,
             //delegation_state: state.delegation.clone(),
-            epoch: epoch_state + leader_selection_snapshot_interval,
+            epoch: epoch,
         }
     }
 
