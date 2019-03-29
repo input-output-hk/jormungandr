@@ -2,7 +2,7 @@ mod dleq;
 pub mod vrf;
 
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
-use crate::vrf::{VerifiableRandomFunction, Verification};
+use crate::vrf::{VRFVerification, VerifiableRandomFunction};
 use rand::{CryptoRng, RngCore};
 
 /// VRF
@@ -43,29 +43,34 @@ impl AsymmetricKey for Curve25519_2HashDH {
 }
 
 impl VerifiableRandomFunction for Curve25519_2HashDH {
-    type VerifiedRandom = vrf::ProvenOutputSeed;
+    type VerifiedRandomOutput = vrf::ProvenOutputSeed;
+    type RandomOutput = vrf::OutputSeed;
     type Input = [u8];
 
     const VERIFIED_RANDOM_SIZE: usize = vrf::PROOF_SIZE;
 
-    fn evaluate<T: RngCore + CryptoRng>(
+    fn evaluate_and_proove<T: RngCore + CryptoRng>(
         secret: &Self::Secret,
         input: &Self::Input,
         mut rng: T,
-    ) -> Self::VerifiedRandom {
+    ) -> Self::VerifiedRandomOutput {
         secret.evaluate_simple(&mut rng, input)
     }
 
     fn verify(
         public: &Self::Public,
         input: &Self::Input,
-        vrand: &Self::VerifiedRandom,
-    ) -> Verification {
+        vrand: &Self::VerifiedRandomOutput,
+    ) -> VRFVerification {
         let v = vrand.verify(public, input);
         if v {
-            Verification::Success
+            VRFVerification::Success
         } else {
-            Verification::Failed
+            VRFVerification::Failed
         }
+    }
+
+    fn strip_verification_output(vr: &Self::VerifiedRandomOutput) -> Self::RandomOutput {
+        vr.u.clone()
     }
 }

@@ -2,11 +2,11 @@
 //! using the 2-Hash-DH verifiable oblivious PRF
 //! defined in the Ouroboros Praos paper
 
+use crate::hash::Blake2b256;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 pub use curve25519_dalek::scalar::Scalar;
-use generic_array::GenericArray;
 use rand::{CryptoRng, Rng};
 use sha2::Digest;
 use sha2::Sha512;
@@ -54,7 +54,7 @@ pub struct OutputSeed(Point);
 /// VRF Proof of generation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenOutputSeed {
-    u: OutputSeed,
+    pub(crate) u: OutputSeed,
     dleq_proof: dleq::Proof,
 }
 
@@ -220,6 +220,10 @@ impl ProvenOutputSeed {
         }
     }
 
+    pub fn to_output(&self) -> OutputSeed {
+        self.u.clone()
+    }
+
     pub fn to_verifiable_output(&self, public_key: &PublicKey, input: &[u8]) -> Option<OutputSeed> {
         if self.verify(public_key, input) {
             Some(self.u.clone())
@@ -230,26 +234,14 @@ impl ProvenOutputSeed {
 }
 
 impl OutputSeed {
-    /// Create a new output generator using a simple digest seeding mechanism
-    ///
-    /// The digest returned can be used to generate multiple output given
-    /// different suffix
-    pub fn to_output_digest_generator<D: Digest>(&self, input: &[u8]) -> D {
-        let mut c = <D as Digest>::new();
-        c.input(input);
-        c.input(self.0.compress().as_bytes());
-        c
-    }
-
     /// Get the output for this input and a known suffix
-    pub fn to_output<D: Digest>(
-        &self,
-        input: &[u8],
-        suffix: &[u8],
-    ) -> GenericArray<u8, D::OutputSize> {
-        let mut c = self.to_output_digest_generator::<D>(input);
-        c.input(suffix);
-        c.result()
+    pub fn to_output(&self, input: &[u8], suffix: &[u8]) -> Blake2b256 {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(input);
+        buf.extend_from_slice(self.0.compress().as_bytes());
+        buf.extend_from_slice(suffix);
+
+        Blake2b256::new(&buf)
     }
 }
 
