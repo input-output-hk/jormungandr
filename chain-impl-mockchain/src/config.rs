@@ -119,6 +119,18 @@ pub fn entity_from_string<T: ConfigParam>(tag: &str, value: &str) -> Result<T, E
     T::from_string(value)
 }
 
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::InvalidTag => write!(f, "Invalid tag"),
+            Error::SizeInvalid => write!(f, "Invalid payload size"),
+            Error::StructureInvalid => write!(f, "Invalid payload structure"),
+            Error::UnknownString(s) => write!(f, "Invalid payload string: {}", s),
+        }
+    }
+}
+impl std::error::Error for Error {}
+
 #[cfg(test)]
 mod test {
     use super::*;
