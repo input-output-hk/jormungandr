@@ -73,7 +73,7 @@ ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexm
 Configure your Node (config.yml) and run the following command:
 
 ```
-$ jormungandr start --genesis-block block-0.bin \
+$ jormungandr --genesis-block block-0.bin \
     --config example.config \
     --secret private.key
 ```

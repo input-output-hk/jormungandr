@@ -2,7 +2,23 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::settings::logging::LogFormat;
+use crate::{blockcfg::HeaderHash, settings::logging::LogFormat};
+
+#[derive(Clone, Debug)]
+pub enum Block0Info {
+    Path(PathBuf),
+    Hash(HeaderHash),
+}
+
+impl std::str::FromStr for Block0Info {
+    type Err = std::string::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match HeaderHash::from_str(s) {
+            Err(_err) => PathBuf::from_str(s).map(Block0Info::Path),
+            Ok(hh) => Ok(Block0Info::Hash(hh)),
+        }
+    }
+}
 
 #[derive(StructOpt, Debug)]
 pub struct StartArguments {
@@ -51,8 +67,8 @@ pub struct StartArguments {
     pub secret: Option<PathBuf>,
 
     /// Set the block 0 (the genesis block) of the blockchain
-    #[structopt(long = "genesis-block", parse(from_os_str))]
-    pub block_0: PathBuf,
+    #[structopt(long = "genesis-block", parse(try_from_str))]
+    pub block_0: Block0Info,
 }
 
 #[derive(StructOpt, Debug)]
@@ -70,15 +86,8 @@ pub struct CommandLine {
     #[structopt(long = "log-format", parse(try_from_str), default_value = "plain")]
     pub log_format: LogFormat,
 
-    #[structopt(subcommand)]
-    pub command: Command,
-}
-
-#[derive(StructOpt, Debug)]
-pub enum Command {
-    /// start jormungandr service and start participating to the network
-    #[structopt(name = "start")]
-    Start(StartArguments),
+    #[structopt(flatten)]
+    pub start_arguments: StartArguments,
 }
 
 impl CommandLine {

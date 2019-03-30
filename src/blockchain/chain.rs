@@ -2,19 +2,17 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 use chain_core::property::{Block as _, BlockId as _, HasMessages as _};
-use chain_impl_mockchain::multiverse;
-use chain_storage::{
-    error as storage,
-    memory::MemoryBlockStore,
-    store::{BlockInfo, BlockStore},
-};
-use chain_storage_sqlite::SQLiteBlockStore;
+use chain_impl_mockchain::{ledger, multiverse};
+use chain_storage::{error as storage, store::BlockInfo};
 
-use crate::blockcfg::{Block, HeaderHash, Ledger, Multiverse};
+use crate::{
+    blockcfg::{Block, HeaderHash, Ledger, Multiverse},
+    start_up::NodeStorage,
+};
 
 pub struct Blockchain {
     /// the storage for the overall blockchains (blocks)
-    pub storage: Arc<RwLock<Box<BlockStore<Block = Block> + Send + Sync>>>,
+    pub storage: Arc<RwLock<NodeStorage>>,
 
     pub multiverse: Multiverse<HeaderHash, Ledger>,
 
@@ -33,59 +31,49 @@ pub type BlockchainR = Arc<RwLock<Blockchain>>;
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
-impl Blockchain {
-    pub fn new(block_0: Block, storage_dir: &Option<std::path::PathBuf>) -> Self {
-        let mut storage: Box<BlockStore<Block = Block> + Send + Sync>;
-        match storage_dir {
-            None => {
-                info!("storing blockchain in memory");
-                storage = Box::new(MemoryBlockStore::new());
-            }
-            Some(dir) => {
-                std::fs::create_dir_all(dir).unwrap();
-                let mut sqlite = dir.clone();
-                sqlite.push("blocks.sqlite");
-                let path = sqlite.to_str().unwrap();
-                info!("storing blockchain in '{}'", path);
-                storage = Box::new(SQLiteBlockStore::new(path));
-            }
-        };
+custom_error! {pub LoadError
+    Storage{source: storage::Error} = "Error in the blockchain storage: {source}",
+    Ledger{source: ledger::Error} = "Invalid blockchain state: {source}",
+}
 
+impl Blockchain {
+    pub fn load(block_0: Block, mut storage: NodeStorage) -> Result<Self, LoadError> {
         let mut multiverse = multiverse::Multiverse::new();
 
-        let tip = if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG).unwrap() {
+        let tip = if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)? {
             info!("restoring state at tip {}", tip_hash);
 
             let mut tip = None;
 
             let block_0_id = block_0.id(); // TODO: get this from the parameter
-            let (block_0, _block_0_info) = storage.get_block(&block_0_id).unwrap();
-            let mut state = Ledger::new(block_0_id, block_0.messages()).unwrap();
+            let (block_0, _block_0_info) = storage.get_block(&block_0_id)?;
+            let mut state = Ledger::new(block_0_id, block_0.messages())?;
 
             // FIXME: should restore from serialized chain state once we have it.
-            for info in storage.iterate_range(&block_0_id, &tip_hash).unwrap() {
-                let info = info.unwrap();
+            info!("restoring state from block0 {}", block_0_id);
+            for info in storage.iterate_range(&block_0_id, &tip_hash)? {
+                let info = info?;
                 let parameters = state.get_ledger_parameters();
-                let block = &storage.get_block(&info.block_hash).unwrap().0;
-                state = state.apply_block(&parameters, block.messages()).unwrap();
+                let block = &storage.get_block(&info.block_hash)?.0;
+                state = state.apply_block(&parameters, block.messages())?;
                 tip = Some(multiverse.add(info.block_hash.clone(), state.clone()));
             }
 
             tip.unwrap()
         } else {
-            let state = Ledger::new(block_0.id(), block_0.messages()).unwrap();
-            storage.put_block(&block_0).unwrap();
+            let state = Ledger::new(block_0.id(), block_0.messages())?;
+            storage.put_block(&block_0)?;
             multiverse.add(block_0.id(), state)
         };
 
         multiverse.gc();
 
-        Blockchain {
+        Ok(Blockchain {
             storage: Arc::new(RwLock::new(storage)),
             multiverse,
             tip,
             unconnected_blocks: BTreeMap::default(),
-        }
+        })
     }
 
     pub fn handle_incoming_block(&mut self, block: Block) -> Result<(), storage::Error> {
