@@ -28,5 +28,5 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, Conf
         .add_handler(v0::message::create_handler(context.transaction_task))
         .add_handler(v0::utxo::create_handler(context.blockchain))
         .build()
-        .map_err(|e| ConfigError::InvalidRest(e))
+        .map_err(|e| e.into())
 }

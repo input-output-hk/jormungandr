@@ -1,4 +1,4 @@
-use crate::{blockchain, settings};
+use crate::{blockcfg, blockchain, settings};
 use chain_storage::error::Error as StorageError;
 use std::io;
 
@@ -14,6 +14,7 @@ custom_error! {pub Error
     ParseError{ source: io::Error, reason: ErrorKind} = "Parsing error on {reason}",
     StorageError { source: StorageError } = "Storage error",
     Blockchain { source: blockchain::LoadError } = "Error while loading the blockchain state",
+    Block0 { source: blockcfg::Block0Error } = "Error in the genesis-block",
 }
 
 impl Error {
@@ -32,6 +33,7 @@ impl Error {
             } => 4,
             Error::StorageError { source: _ } => 5,
             Error::Blockchain { source: _ } => 6,
+            Error::Block0 { source: _ } => 7,
         }
     }
 }

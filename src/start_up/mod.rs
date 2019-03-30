@@ -47,9 +47,8 @@ pub fn prepare_storage(setting: &Settings) -> Result<NodeStorage, Error> {
             })?;
             let mut sqlite = dir.clone();
             sqlite.push("blocks.sqlite");
-            let path = sqlite.to_str().unwrap();
-            info!("storing blockchain in '{}'", path);
-            Ok(Box::new(SQLiteBlockStore::new(path)))
+            info!("storing blockchain in '{:?}'", sqlite);
+            Ok(Box::new(SQLiteBlockStore::new(sqlite)))
         }
     }
 }
@@ -98,8 +97,8 @@ pub fn prepare_block_0(settings: &Settings, storage: &NodeStorage) -> Result<Blo
 }
 
 pub fn prepare_clock(block0: &Block) -> Result<Clock, Error> {
-    let start_time = blockcfg::block_0_get_start_time(block0);
-    let slot_duration = blockcfg::block_0_get_slot_duration(block0);
+    let start_time = blockcfg::block_0_get_start_time(block0)?;
+    let slot_duration = blockcfg::block_0_get_slot_duration(block0)?;
 
     let initial_epoch = clock::ClockEpochConfiguration {
         slot_duration: slot_duration,
@@ -109,7 +108,11 @@ pub fn prepare_clock(block0: &Block) -> Result<Clock, Error> {
     info!(
         "blockchain started the {} ({})",
         humantime::format_rfc3339(start_time),
-        humantime::format_duration(start_time.elapsed().unwrap()),
+        humantime::format_duration(
+            start_time
+                .elapsed()
+                .expect("start time must be set in the past")
+        ),
     );
 
     Ok(Clock::new(start_time, initial_epoch))
