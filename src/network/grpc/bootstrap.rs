@@ -24,7 +24,7 @@ where
             error!("failed to connect to bootstrap peer: {:?}", e);
         })
         .and_then(|mut client: Client<BlockConfig, _, _>| {
-            let tip = blockchain.read().unwrap().get_tip();
+            let tip = blockchain.lock_read().get_tip();
             client
                 .pull_blocks_to_tip(&[tip])
                 .map_err(|e| {
@@ -56,7 +56,7 @@ where
                 "received block from the bootstrap node: {:#?}",
                 block.header()
             );
-            let res = blockchain.write().unwrap().handle_incoming_block(block);
+            let res = blockchain.lock_write().handle_incoming_block(block);
             if let Err(e) = res {
                 error!("error processing a bootstrap block: {:?}", e);
             }

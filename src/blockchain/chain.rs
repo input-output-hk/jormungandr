@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use chain_core::property::{Block as _, BlockId as _, HasMessages as _};
 use chain_impl_mockchain::{ledger, multiverse};
@@ -26,7 +26,41 @@ pub struct Blockchain {
     pub unconnected_blocks: BTreeMap<HeaderHash, BTreeMap<HeaderHash, Block>>,
 }
 
-pub type BlockchainR = Arc<RwLock<Blockchain>>;
+#[derive(Clone)]
+pub struct BlockchainR(Arc<RwLock<Blockchain>>);
+
+impl BlockchainR {
+    /// lock the blockchain for read access purpose.
+    ///
+    /// In the background we are utilising a RwLock. This allows for
+    /// multiple Reader to access the blockchain at the same time.
+    #[inline]
+    pub fn lock_read(&self) -> RwLockReadGuard<Blockchain> {
+        match self.0.read() {
+            Ok(r) => r,
+            Err(err) => panic!("BlockchainR lock is poisoned: {}", err),
+        }
+    }
+
+    /// lock the blockchain for write access purpose.
+    ///
+    /// In the background we are utilising a RwLock. This will require
+    /// that the multiple reads terminate to acquire the lock for
+    /// write purpose (preventing concurrent read)
+    #[inline]
+    pub fn lock_write(&self) -> RwLockWriteGuard<Blockchain> {
+        match self.0.write() {
+            Ok(r) => r,
+            Err(err) => panic!("BlockchainR lock is poisoned: {}", err),
+        }
+    }
+}
+
+impl From<Blockchain> for BlockchainR {
+    fn from(b: Blockchain) -> Self {
+        BlockchainR(Arc::new(RwLock::new(b)))
+    }
+}
 
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";

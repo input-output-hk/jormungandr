@@ -15,7 +15,7 @@ pub fn process(
         BlockMsg::LeadershipBlock(block) => {
             let header = block.header();
             debug!("received block from the leadership: {:#?}", header);
-            let res = blockchain.write().unwrap().handle_incoming_block(block);
+            let res = blockchain.lock_write().handle_incoming_block(block);
             network_broadcast.send_broadcast(header);
             res
         }
@@ -27,8 +27,7 @@ pub fn process(
         BlockMsg::AnnouncedBlock(header) => {
             debug!("received block header from the network: {:#?}", header);
             let res = blockchain
-                .write()
-                .unwrap()
+                .lock_write()
                 .handle_block_announcement(header.id());
             if res.is_ok() {
                 stats_counter.add_block_recv_cnt(1);

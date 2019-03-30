@@ -9,7 +9,6 @@ use crate::{
 };
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
-use std::sync::{Arc, RwLock};
 
 pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
 
@@ -120,5 +119,5 @@ pub fn prepare_clock(block0: &Block) -> Result<Clock, Error> {
 
 pub fn load_blockchain(block0: Block, storage: NodeStorage) -> Result<BlockchainR, Error> {
     let blockchain_data = Blockchain::load(block0, storage)?;
-    Ok(Arc::new(RwLock::new(blockchain_data)))
+    Ok(blockchain_data.into())
 }

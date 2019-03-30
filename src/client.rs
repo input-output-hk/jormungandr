@@ -32,7 +32,7 @@ pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
 }
 
 fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<Header, Error> {
-    let blockchain = blockchain.read().unwrap();
+    let blockchain = blockchain.lock_read();
     let tip = blockchain.get_tip();
     let storage = blockchain.storage.read().unwrap();
     match storage.get_block(&tip) {
@@ -51,7 +51,7 @@ fn handle_get_headers_range(
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
 ) -> Result<Vec<Header>, Error> {
-    let blockchain = blockchain.read().unwrap();
+    let blockchain = blockchain.lock_read();
 
     /* Filter out the checkpoints that don't exist and sort them by
      * block date. */
@@ -108,7 +108,7 @@ fn handle_get_blocks_range(
     to: HeaderHash,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
-    let blockchain = blockchain.read().unwrap();
+    let blockchain = blockchain.lock_read();
 
     // FIXME: include the from block
     for x in blockchain
@@ -134,7 +134,7 @@ fn handle_get_blocks(
     ids: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
-    let blockchain = blockchain.read().unwrap();
+    let blockchain = blockchain.lock_read();
 
     for id in ids.into_iter() {
         let (blk, _) = blockchain.storage.read().unwrap().get_block(&id)?;
@@ -149,7 +149,7 @@ fn handle_get_headers(
     ids: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Header>,
 ) -> Result<(), Error> {
-    let blockchain = blockchain.read().unwrap();
+    let blockchain = blockchain.lock_read();
 
     for id in ids.into_iter() {
         let (blk, _) = blockchain.storage.read().unwrap().get_block(&id)?;
@@ -164,7 +164,7 @@ fn handle_pull_blocks_to_tip(
     mut from: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
-    let blockchain = blockchain.read().unwrap();
+    let blockchain = blockchain.lock_read();
 
     // FIXME: handle multiple from addresses
     if from.len() != 1 {

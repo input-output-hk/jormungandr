@@ -14,7 +14,7 @@ pub fn handle_request(
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
     // FIXME: don't hog the blockchain lock.
-    let blockchain = blockchain.read().unwrap();
+    let blockchain = blockchain.lock_read();
     let storage = blockchain.storage.read().unwrap();
     storage
         .iterate_range(&block_id, &*blockchain.tip)

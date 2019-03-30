@@ -31,7 +31,7 @@ pub fn leadership_task(
         // if we have the leadership to create a new block we can require the lock
         // on the blockchain as we are not expecting to be _blocked_ while creating
         // the block.
-        let b = blockchain.read().unwrap();
+        let b = blockchain.lock_read();
         let (last_block, _last_block_info) = b.get_block_tip().unwrap();
         let chain_length = last_block.chain_length().next();
         let state = b.multiverse.get_from_root(&b.tip);
