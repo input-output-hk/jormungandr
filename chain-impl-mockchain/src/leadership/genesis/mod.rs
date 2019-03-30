@@ -12,7 +12,6 @@ use crate::{
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
-use rand::{Rng, SeedableRng};
 
 /// Hash of GenesisPraosLeader
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
