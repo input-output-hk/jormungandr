@@ -4,6 +4,7 @@ use chain_storage::{
     store::{BackLink, BlockInfo, BlockStore},
 };
 use rusqlite::types::Value;
+use std::path::Path;
 
 pub struct SQLiteBlockStore<B>
 where
@@ -17,7 +18,7 @@ impl<B> SQLiteBlockStore<B>
 where
     B: Block,
 {
-    pub fn new(path: &str) -> Self {
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
         let manager = r2d2_sqlite::SqliteConnectionManager::file(path);
         let pool = r2d2::Pool::new(manager).unwrap();
 
