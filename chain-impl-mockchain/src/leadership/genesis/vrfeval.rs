@@ -88,7 +88,7 @@ pub fn evaluate(
     slotid: SlotId,
 ) -> Option<Witness> {
     let input = Input::create(nonce, slotid);
-    let mut csprng = OsRng::new().unwrap();
+    let csprng = OsRng::new().unwrap();
     let vr = vrf_evaluate_and_proove(key, &input.0, csprng);
     let r = vrf_verified_get_output::<Curve25519_2HashDH>(&vr);
     let t = get_threshold(&input, &r);
