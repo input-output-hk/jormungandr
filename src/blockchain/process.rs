@@ -19,6 +19,14 @@ pub fn process(
                     warn!("rejecting node's created block: {:?}", reason);
                 }
                 HandledBlock::MissingBranchToBlock { to } => {
+                    // this is an error because we are in a situation
+                    // where the leadership has created a block but we
+                    // cannot add it in the blockchain because it is not
+                    // connected
+                    //
+                    // We might want to stop the node at this point as this
+                    // display corruption of the blockchain's state or of the
+                    // storage
                     error!(
                         "the block cannot be added, missing intermediate blocks to {}",
                         to
@@ -46,7 +54,14 @@ pub fn process(
                     info!("rejecting block announcement: {:?}", reason);
                 }
                 BlockHeaderTriage::MissingParentOrBranch { to } => {
-                    error!("Missing blocks to announced block {}", to);
+                    // blocks are missing between the received header and the
+                    // common ancestor.
+                    //
+                    // TODO reply to the network to ask for more blocks
+                    info!(
+                        "received a loose block ({}), missing parent(s) block(s)",
+                        to
+                    );
                 }
                 BlockHeaderTriage::ProcessBlockToState => {
                     info!("Block announcement is interesting, fetch block");
