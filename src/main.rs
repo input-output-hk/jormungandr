@@ -58,12 +58,11 @@ use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
 use chain_impl_mockchain::message::{Message, MessageId};
 use futures::Future;
 
-use blockchain::{Blockchain, BlockchainR};
-use chain_core::property::Block as _;
+use blockchain::BlockchainR;
 use intercom::BlockMsg;
 use leadership::leadership_task;
 use rest::v0::node::stats::StatsCounter;
-use settings::{start::Settings, CommandLine};
+use settings::start::Settings;
 use transaction::{transaction_task, TPool};
 use utils::task::{TaskBroadcastBox, Tasks};
 

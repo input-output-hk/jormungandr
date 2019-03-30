@@ -3,10 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use chain_core::property::{Block as _, BlockId as _, HasMessages as _};
 use chain_impl_mockchain::{ledger, multiverse};
-use chain_storage::{
-    error as storage,
-    store::{BlockInfo, BlockStore},
-};
+use chain_storage::{error as storage, store::BlockInfo};
 
 use crate::{
     blockcfg::{Block, HeaderHash, Ledger, Multiverse},
