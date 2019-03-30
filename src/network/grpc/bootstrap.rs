@@ -52,11 +52,12 @@ where
 {
     stream
         .fold(blockchain, |blockchain, block| {
+            use crate::blockchain::handle_block;
             debug!(
                 "received block from the bootstrap node: {:#?}",
                 block.header()
             );
-            let res = blockchain.lock_write().handle_incoming_block(block);
+            let res = handle_block(&mut blockchain.lock_write(), block, true);
             if let Err(e) = res {
                 error!("error processing a bootstrap block: {:?}", e);
             }

@@ -1,9 +1,9 @@
 use crate::blockcfg::Header;
-use crate::blockchain::chain;
+use crate::blockchain::chain::{self, BlockHeaderTriage, HandledBlock};
 use crate::intercom::BlockMsg;
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::task::TaskBroadcastBox;
-use chain_core::property::{HasHeader, Header as _};
+use chain_core::property::Header as _;
 
 pub fn process(
     blockchain: &chain::BlockchainR,
@@ -11,31 +11,50 @@ pub fn process(
     network_broadcast: &mut TaskBroadcastBox<Header>,
     stats_counter: &StatsCounter,
 ) {
-    let res = match bquery {
+    match bquery {
         BlockMsg::LeadershipBlock(block) => {
-            let header = block.header();
-            debug!("received block from the leadership: {:#?}", header);
-            let res = blockchain.lock_write().handle_incoming_block(block);
-            network_broadcast.send_broadcast(header);
-            res
+            let mut blockchain = blockchain.lock_write();
+            match chain::handle_block(&mut blockchain, block, true).unwrap() {
+                HandledBlock::Rejected { reason } => {
+                    warn!("rejecting node's created block: {:?}", reason);
+                }
+                HandledBlock::MissingBranchToBlock { to } => {
+                    error!(
+                        "the block cannot be added, missing intermediate blocks to {}",
+                        to
+                    );
+                }
+                HandledBlock::Acquired { header } => {
+                    info!(
+                        "block added successfully to Node's blockchain {}",
+                        header.id() ;
+                        date = header.date()
+                    );
+                    debug!("Header: {:?}", header);
+                    network_broadcast.send_broadcast(header);
+                }
+            }
         }
         BlockMsg::Subscribe(reply) => {
             let rx = network_broadcast.add_rx();
             reply.send(rx);
-            Ok(())
         }
         BlockMsg::AnnouncedBlock(header) => {
-            debug!("received block header from the network: {:#?}", header);
-            let res = blockchain
-                .lock_write()
-                .handle_block_announcement(header.id());
-            if res.is_ok() {
-                stats_counter.add_block_recv_cnt(1);
+            let blockchain = blockchain.lock_read();
+            match chain::header_triage(&blockchain, header, false).unwrap() {
+                BlockHeaderTriage::NotOfInterest { reason } => {
+                    info!("rejecting block announcement: {:?}", reason);
+                }
+                BlockHeaderTriage::MissingParentOrBranch { to } => {
+                    error!("Missing blocks to announced block {}", to);
+                }
+                BlockHeaderTriage::ProcessBlockToState => {
+                    info!("Block announcement is interesting, fetch block");
+                    // TODO: signal back to the network that the block is interesting
+                    // (get block/rquiest block)
+                    unimplemented!()
+                }
             }
-            res
         }
-    };
-    if let Err(e) = res {
-        error!("error processing an incoming block: {:?}", e);
     }
 }
