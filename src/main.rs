@@ -281,6 +281,12 @@ fn main() {
         if let Some(source) = error.source() {
             eprintln!("{}", source);
         }
+
+        // TODO: https://github.com/rust-lang/rust/issues/43301
+        //
+        // as soon as #43301 is stabilized it would be nice to no use
+        // `exit` but the more appropriate:
+        // https://doc.rust-lang.org/stable/std/process/trait.Termination.html
         std::process::exit(error.code());
     }
 }
