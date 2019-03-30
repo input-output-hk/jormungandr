@@ -313,6 +313,9 @@ impl property::Header for Header {
     fn id(&self) -> Self::Id {
         self.hash()
     }
+    fn parent_id(&self) -> Self::Id {
+        self.block_parent_hash().clone()
+    }
     fn chain_length(&self) -> Self::ChainLength {
         self.common.chain_length
     }

@@ -68,6 +68,10 @@ pub trait Header: Serialize + Deserialize {
     /// Retrieves the block's header id.
     fn id(&self) -> Self::Id;
 
+    /// get the parent block identifier (the previous block in the
+    /// blockchain).
+    fn parent_id(&self) -> Self::Id;
+
     /// Retrieves the block's date.
     fn date(&self) -> Self::Date;
 
