@@ -8,69 +8,12 @@ use crate::rest::Error as RestError;
 use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
 
-use std::{
-    collections::BTreeMap,
-    fmt::{self, Display},
-    fs::File,
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, fs::File, path::PathBuf};
 
-#[derive(Debug)]
-pub enum Error {
-    Config(serde_yaml::Error),
-    NoConsensusAlg,
-    NoStorage,
-    NoSecret,
-    InvalidRest(RestError),
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Config(e) => write!(f, "config error: {}", e),
-            Error::NoConsensusAlg => write!(f, "no consensus algorithm defined"),
-            Error::NoStorage => write!(
-                f,
-                "storage is needed for persistently saving the blocks of the blockchain"
-            ),
-            Error::NoSecret => write!(f, "secret config unspecified"),
-            Error::InvalidRest(e) => write!(f, "invalid REST config: {}", e),
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        match self {
-            Error::Config(e) => Some(e),
-            Error::NoConsensusAlg => None,
-            Error::NoStorage => None,
-            Error::NoSecret => None,
-            Error::InvalidRest(e) => Some(e),
-        }
-    }
-}
-
-impl From<serde_yaml::Error> for Error {
-    fn from(e: serde_yaml::Error) -> Error {
-        Error::Config(e)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Leadership {
-    Yes,
-    No,
-}
-
-impl From<bool> for Leadership {
-    fn from(b: bool) -> Self {
-        if b {
-            Leadership::Yes
-        } else {
-            Leadership::No
-        }
-    }
+custom_error! {pub Error
+   ConfigIo { source: std::io::Error } = "Cannot read the node configuration file",
+   Config { source: serde_yaml::Error } = "Error while parsing the node configuration file",
+   Rest { source: RestError } = "The Rest configuration is invalid",
 }
 
 /// Overall Settings for node
@@ -97,7 +40,7 @@ impl Settings {
     pub fn load(command_line: &CommandLine) -> Result<Self, Error> {
         let command_arguments = &command_line.start_arguments;
         let config: config::Config = {
-            let mut file = File::open(command_arguments.node_config.clone()).unwrap();
+            let mut file = File::open(command_arguments.node_config.clone())?;
             serde_yaml::from_reader(&mut file)?
         };
 
@@ -116,7 +59,10 @@ impl Settings {
             match (command_arguments.secret.as_ref(), config.secret_file) {
                 (Some(path), _) => Some(path.clone()),
                 (None, Some(path)) => Some(path.clone()),
-                (None, None) => return Err(Error::NoSecret),
+                (None, None) => {
+                    warn!("Node started without path to the stored secret keys, just like starting with `--without-leadership'");
+                    None
+                }
             }
         };
 
@@ -128,17 +74,6 @@ impl Settings {
             log_settings: log_settings,
             rest: config.rest,
         })
-    }
-
-    pub fn load_block_0(&self) -> crate::blockcfg::Block {
-        use chain_core::property::Deserialize as _;
-        let f = if let Block0Info::Path(path) = &self.block_0 {
-            File::open(path).unwrap()
-        } else {
-            unimplemented!()
-        };
-        let reader = std::io::BufReader::new(f);
-        crate::blockcfg::Block::deserialize(reader).unwrap()
     }
 }
 
