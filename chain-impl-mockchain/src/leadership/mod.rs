@@ -1,8 +1,7 @@
 use crate::{
-    block::{BlockDate, BlockVersion, BlockVersionTag, Header},
+    block::{AnyBlockVersion, BlockDate, BlockVersion, ConsensusVersion, Header},
     ledger::Ledger,
 };
-use chain_crypto::algorithms::vrf::vrf::ProvenOutputSeed;
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
 
 pub mod bft;
@@ -77,16 +76,10 @@ pub struct Leadership {
 
 impl Inner {
     #[inline]
-    fn verify_version(&self, block_version: &BlockVersion) -> Verification {
+    fn verify_version(&self, block_version: AnyBlockVersion) -> Verification {
         match self {
-            Inner::None(_)
-                if block_version == &BlockVersionTag::ConsensusNone.to_block_version() =>
-            {
-                Verification::Success
-            }
-            Inner::Bft(_) if block_version == &BlockVersionTag::ConsensusBft.to_block_version() => {
-                Verification::Success
-            }
+            Inner::None(_) if block_version == BlockVersion::Genesis => Verification::Success,
+            Inner::Bft(_) if block_version == BlockVersion::Ed25519Signed => Verification::Success,
             _ => Verification::Failure(Error::new(ErrorKind::IncompatibleBlockVersion)),
         }
     }
@@ -131,18 +124,14 @@ impl Inner {
 
 impl Leadership {
     pub fn new(ledger: &Ledger) -> Self {
-        match BlockVersionTag::from_block_version(ledger.settings.block_version.clone()) {
-            Some(BlockVersionTag::ConsensusNone) => Leadership {
-                inner: Inner::None(none::NoLeadership),
-            },
-            Some(BlockVersionTag::ConsensusBft) => Leadership {
-                inner: Inner::Bft(bft::BftLeaderSelection::new(ledger).unwrap()),
-            },
-            Some(BlockVersionTag::ConsensusGenesisPraos) => Leadership {
-                inner: Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(ledger)),
-            },
-            None => unimplemented!(),
-        }
+        let inner = match ledger.settings.consensus_version {
+            ConsensusVersion::None => Inner::None(none::NoLeadership),
+            ConsensusVersion::Bft => Inner::Bft(bft::BftLeaderSelection::new(ledger).unwrap()),
+            ConsensusVersion::GenesisPraos => {
+                Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(ledger))
+            }
+        };
+        Leadership { inner }
     }
 
     pub fn verify(&self, block_header: &Header) -> Verification {

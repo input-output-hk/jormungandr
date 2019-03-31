@@ -58,7 +58,7 @@ impl GenesisLeaderSelection {
 
     pub fn leader(
         &self,
-        vrf_key: &SecretKey<Curve25519_2HashDH>,
+        _vrf_key: &SecretKey<Curve25519_2HashDH>,
         date: BlockDate,
     ) -> Result<Option<GenesisPraosLeader>, Error> {
         if date.epoch != self.epoch {
@@ -86,7 +86,7 @@ impl GenesisLeaderSelection {
 
         // Select the stake pool containing the point we
         // picked.
-        let pool_id = stake_snapshot.select_pool(point).unwrap();
+        let _pool_id = stake_snapshot.select_pool(point).unwrap();
         /*
         let pool_info = self
             .delegation_state
@@ -105,7 +105,7 @@ impl GenesisLeaderSelection {
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {
         match &block_header.proof() {
-            Proof::GenesisPraos(genesis_praos_proof) => unimplemented!(),
+            Proof::GenesisPraos(_genesis_praos_proof) => unimplemented!(),
             _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
         }
     }
