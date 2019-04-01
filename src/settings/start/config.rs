@@ -85,10 +85,10 @@ impl Serialize for Topic {
     where
         S: Serializer,
     {
-        use crate::network::p2p_topology::{NEW_BLOCKS_TOPIC, NEW_TRANSACTIONS_TOPIC};
+        use crate::network::p2p_topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC};
         use serde::ser::Error;
-        if self.0 == NEW_TRANSACTIONS_TOPIC.into() {
-            serializer.serialize_str("transactions")
+        if self.0 == NEW_MESSAGES_TOPIC.into() {
+            serializer.serialize_str("messages")
         } else if self.0 == NEW_BLOCKS_TOPIC.into() {
             serializer.serialize_str("blocks")
         } else {
@@ -147,18 +147,18 @@ impl<'de> Deserialize<'de> for Topic {
             type Value = Topic;
 
             fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                write!(fmt, "Topic: transactions or blocks")
+                write!(fmt, "Topic: messages or blocks")
             }
 
             fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                use crate::network::p2p_topology::{NEW_BLOCKS_TOPIC, NEW_TRANSACTIONS_TOPIC};
+                use crate::network::p2p_topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC};
                 use serde::de::Unexpected;
 
                 match v {
-                    "transactions" => Ok(Topic(NEW_TRANSACTIONS_TOPIC.into())),
+                    "messages" => Ok(Topic(NEW_MESSAGES_TOPIC.into())),
                     "blocks" => Ok(Topic(NEW_BLOCKS_TOPIC.into())),
                     err => Err(E::invalid_value(Unexpected::Str(err), &self)),
                 }

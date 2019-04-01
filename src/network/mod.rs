@@ -65,8 +65,8 @@ impl GlobalState {
         let mut node = p2p_topology::Node::new(node_id, node_address);
 
         // TODO: load the subscriptions from the config
-        p2p_topology::add_transaction_subscription(&mut node, p2p_topology::InterestLevel::High);
-        p2p_topology::add_block_subscription(&mut node, p2p_topology::InterestLevel::High);
+        node.add_message_subscription(p2p_topology::InterestLevel::High);
+        node.add_block_subscription(p2p_topology::InterestLevel::High);
 
         let p2p_topology = P2pTopology::new(node.clone());
 

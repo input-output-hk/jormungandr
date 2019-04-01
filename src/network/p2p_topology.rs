@@ -14,7 +14,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-pub const NEW_TRANSACTIONS_TOPIC: u32 = 0u32;
+pub const NEW_MESSAGES_TOPIC: u32 = 0u32;
 pub const NEW_BLOCKS_TOPIC: u32 = 1u32;
 
 #[derive(Debug)]
@@ -79,6 +79,16 @@ impl Node {
     #[inline]
     pub fn new(id: NodeId, address: Address) -> Self {
         Node(poldercast::Node::new(id.0, address))
+    }
+
+    pub fn add_message_subscription(&mut self, interest_level: InterestLevel) {
+        self.0
+            .add_subscription(Subscription::new(NEW_MESSAGES_TOPIC.into(), interest_level));
+    }
+
+    pub fn add_block_subscription(&mut self, interest_level: InterestLevel) {
+        self.0
+            .add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
     }
 }
 
@@ -187,16 +197,4 @@ impl P2pTopology {
             .into_iter()
             .map(|(_, v)| Node(v))
     }
-}
-
-pub fn add_transaction_subscription(node: &mut Node, interest_level: InterestLevel) {
-    node.0.add_subscription(Subscription::new(
-        NEW_TRANSACTIONS_TOPIC.into(),
-        interest_level,
-    ));
-}
-
-pub fn add_block_subscription(node: &mut Node, interest_level: InterestLevel) {
-    node.0
-        .add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
 }
