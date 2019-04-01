@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use chain_core::property::{Block as _, BlockId as _, HasMessages as _};
+use chain_core::property::{Block as _, HasHeader as _, HasMessages as _, Header as _};
 use chain_impl_mockchain::{ledger, multiverse};
 use chain_storage::{error as storage, store::BlockInfo};
 
 use crate::{
-    blockcfg::{Block, HeaderHash, Ledger, Multiverse},
+    blockcfg::{Block, Header, HeaderHash, Ledger, Multiverse},
     start_up::NodeStorage,
 };
 
@@ -26,7 +26,41 @@ pub struct Blockchain {
     pub unconnected_blocks: BTreeMap<HeaderHash, BTreeMap<HeaderHash, Block>>,
 }
 
-pub type BlockchainR = Arc<RwLock<Blockchain>>;
+#[derive(Clone)]
+pub struct BlockchainR(Arc<RwLock<Blockchain>>);
+
+impl BlockchainR {
+    /// lock the blockchain for read access purpose.
+    ///
+    /// In the background we are utilising a RwLock. This allows for
+    /// multiple Reader to access the blockchain at the same time.
+    #[inline]
+    pub fn lock_read(&self) -> RwLockReadGuard<Blockchain> {
+        match self.0.read() {
+            Ok(r) => r,
+            Err(err) => panic!("BlockchainR lock is poisoned: {}", err),
+        }
+    }
+
+    /// lock the blockchain for write access purpose.
+    ///
+    /// In the background we are utilising a RwLock. This will require
+    /// that the multiple reads terminate to acquire the lock for
+    /// write purpose (preventing concurrent read)
+    #[inline]
+    pub fn lock_write(&self) -> RwLockWriteGuard<Blockchain> {
+        match self.0.write() {
+            Ok(r) => r,
+            Err(err) => panic!("BlockchainR lock is poisoned: {}", err),
+        }
+    }
+}
+
+impl From<Blockchain> for BlockchainR {
+    fn from(b: Blockchain) -> Self {
+        BlockchainR(Arc::new(RwLock::new(b)))
+    }
+}
 
 // FIXME: copied from cardano-cli
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
@@ -76,61 +110,8 @@ impl Blockchain {
         })
     }
 
-    pub fn handle_incoming_block(&mut self, block: Block) -> Result<(), storage::Error> {
-        let block_hash = block.id();
-        let parent_hash = block.parent_id();
-
-        if parent_hash == HeaderHash::zero() || self.block_exists(&parent_hash)? {
-            self.handle_connected_block(block_hash, block);
-        } else {
-            self.sollicit_block(&parent_hash);
-            self.unconnected_blocks
-                .entry(parent_hash)
-                .or_insert(BTreeMap::new())
-                .insert(block_hash, block);
-        }
-        Ok(())
-    }
-
-    /// Handle a block whose ancestors are on disk.
-    fn handle_connected_block(&mut self, block_hash: HeaderHash, block: Block) {
-        if block_hash == *self.tip {
-            return;
-        }
-
-        let state = self.multiverse.get(&block.parent_id()).unwrap().clone(); // FIXME
-        let (block_tip, _block_tip_info) = self
-            .storage
-            .read()
-            .unwrap()
-            .get_block(&block.parent_id())
-            .unwrap();
-        let current_parameters = state.get_ledger_parameters();
-
-        let tip_chain_length = block_tip.chain_length();
-
-        match state.apply_block(&current_parameters, block.messages()) {
-            Ok(state) => {
-                // FIXME: currently we store all incoming blocks and
-                // corresponding states, but to prevent a DoS, we may
-                // want to store only sufficiently long chains.
-
-                let mut storage = self.storage.write().unwrap();
-                storage.put_block(&block).unwrap();
-                storage
-                    .put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block_hash)
-                    .unwrap();
-
-                let new_chain_length = block.chain_length();
-
-                let tip = self.multiverse.add(block_hash, state);
-
-                if new_chain_length > tip_chain_length {
-                    self.tip = tip;
-                }
-            }
-            Err(error) => error!("Error with incoming block: {}", error),
-        }
+    pub fn get_ledger(&self, hash: &HeaderHash) -> Option<&Ledger> {
+        self.multiverse.get(hash)
     }
 
     /// return the current tip hash and date
@@ -138,10 +119,25 @@ impl Blockchain {
         self.tip.clone()
     }
 
-    pub fn get_block_tip(
+    pub fn get_block_tip(&self) -> Result<(Block, BlockInfo<HeaderHash>), storage::Error> {
+        self.get_block(&self.tip)
+    }
+
+    pub fn put_block(&mut self, block: &Block) -> Result<(), storage::Error> {
+        self.storage.write().unwrap().put_block(block)
+    }
+
+    pub fn put_tip(&mut self, block: &Block) -> Result<(), storage::Error> {
+        let mut storage = self.storage.write().unwrap();
+        storage.put_block(block)?;
+        storage.put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block.id())
+    }
+
+    pub fn get_block(
         &self,
-    ) -> Result<(Block, BlockInfo<HeaderHash>), chain_storage::error::Error> {
-        self.storage.read().unwrap().get_block(&self.tip)
+        hash: &HeaderHash,
+    ) -> Result<(Block, BlockInfo<HeaderHash>), storage::Error> {
+        self.storage.read().unwrap().get_block(hash)
     }
 
     fn block_exists(&self, block_hash: &HeaderHash) -> Result<bool, storage::Error> {
@@ -152,15 +148,136 @@ impl Blockchain {
         // order).
         self.storage.read().unwrap().block_exists(block_hash)
     }
+}
 
-    /// Request a missing block from the network.
-    fn sollicit_block(&mut self, block_hash: &HeaderHash) {
-        info!("solliciting block {} from the network", block_hash);
-        //unimplemented!();
+custom_error! {pub HandleBlockError
+    Storage{source: storage::Error} = "Error in the blockchain storage",
+    Ledger{source: ledger::Error} = "Invalid blockchain state",
+}
+
+pub enum HandledBlock {
+    /// the block has been rejected
+    Rejected { reason: RejectionReason },
+
+    /// More blocks are needed from the network
+    ///
+    /// TODO: add the block's id and a list of blocks in history
+    ///       that can be used to retrieve a common ancestor
+    ///       to start the download range from
+    MissingBranchToBlock { to: HeaderHash },
+
+    /// the block as been acquired, disseminate to the connected
+    /// network that a block has been processed
+    Acquired { header: Header },
+}
+
+#[derive(Debug)]
+pub enum RejectionReason {
+    /// the block is already present in the blockchain
+    AlreadyPresent,
+    /// the block is beyond the stability depth, we reject it
+    BeyondStabilityDepth,
+}
+
+pub enum BlockHeaderTriage {
+    /// mark that a block is of no interest for this blockchain
+    NotOfInterest { reason: RejectionReason },
+    /// the block or header is not connected on the node's blockchain
+    /// we need to store it within our cache and try to see if we
+    /// can fetch the remaining block
+    MissingParentOrBranch { to: HeaderHash },
+    /// process the block to the Ledger State
+    ProcessBlockToState,
+}
+
+pub fn handle_block(
+    blockchain: &mut Blockchain,
+    block: Block,
+    is_tip_candidate: bool,
+) -> Result<HandledBlock, HandleBlockError> {
+    match header_triage(blockchain, block.header(), is_tip_candidate)? {
+        BlockHeaderTriage::NotOfInterest { reason } => Ok(HandledBlock::Rejected { reason }),
+        BlockHeaderTriage::MissingParentOrBranch { to } => {
+            // the block is not directly connected to any block
+            // in the node blockchain
+            // we need to signal the network more blocks are required
+
+            blockchain
+                .unconnected_blocks
+                .entry(block.parent_id())
+                .or_insert(BTreeMap::new())
+                .insert(block.id(), block);
+            Ok(HandledBlock::MissingBranchToBlock { to })
+        }
+        BlockHeaderTriage::ProcessBlockToState => {
+            //
+            process_block(blockchain, block)
+        }
+    }
+}
+
+fn process_block(
+    blockchain: &mut Blockchain,
+    block: Block,
+) -> Result<HandledBlock, HandleBlockError> {
+    let (block_tip, _block_tip_info) = blockchain.get_block(&block.parent_id())?;
+
+    let tip_chain_length = block_tip.chain_length();
+
+    let state = {
+        let parent_state = blockchain.get_ledger(&block.parent_id()).unwrap();
+        let current_parameters = parent_state.get_ledger_parameters();
+        parent_state.apply_block(&current_parameters, block.messages())?
+    };
+
+    // FIXME: currently we store all incoming blocks and
+    // corresponding states, but to prevent a DoS, we may
+    // want to store only sufficiently long chains.
+
+    blockchain.put_tip(&block)?;
+    let new_chain_length = block.chain_length();
+    let tip = blockchain.multiverse.add(block.id(), state);
+    if new_chain_length > tip_chain_length {
+        blockchain.tip = tip;
     }
 
-    pub fn handle_block_announcement(&mut self, _header: HeaderHash) -> Result<(), storage::Error> {
-        info!("received block announcement, handling not implemented yet");
-        Ok(())
+    Ok(HandledBlock::Acquired {
+        header: block.header(),
+    })
+}
+
+pub fn header_triage(
+    blockchain: &Blockchain,
+    header: Header,
+    is_tip_candidate: bool,
+) -> Result<BlockHeaderTriage, HandleBlockError> {
+    let block_id = header.id();
+    let parent_id = header.parent_id();
+    let block_date = header.date();
+
+    if blockchain.block_exists(&block_id)? {
+        return Ok(BlockHeaderTriage::NotOfInterest {
+            reason: RejectionReason::AlreadyPresent,
+        });
     }
+
+    let (block_tip, _) = blockchain.get_block_tip()?;
+    // TODO: this is a wrong check, we need to get something more
+    //       dynamic than this dummy comparison
+    // hint: it might be worth utilising the Clock to know exactly
+    // how many blocks there is between the 2 given dates
+    // then to use the stability depth to compare if the block
+    // is not too far from the blockchain
+    //
+    if is_tip_candidate && block_date.epoch < block_tip.date().epoch - 2 {
+        return Ok(BlockHeaderTriage::NotOfInterest {
+            reason: RejectionReason::BeyondStabilityDepth,
+        });
+    }
+
+    if !blockchain.block_exists(&parent_id)? {
+        return Ok(BlockHeaderTriage::MissingParentOrBranch { to: parent_id });
+    }
+
+    Ok(BlockHeaderTriage::ProcessBlockToState)
 }

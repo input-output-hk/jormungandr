@@ -1,5 +1,7 @@
 mod chain;
 mod process;
 
-pub use self::chain::{Blockchain, BlockchainR, LoadError};
+pub use self::chain::{
+    handle_block, Blockchain, BlockchainR, HandleBlockError, HandledBlock, LoadError,
+};
 pub use self::process::process;

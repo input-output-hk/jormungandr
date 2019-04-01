@@ -26,7 +26,7 @@ pub fn transaction_task(
             }
             TransactionMsg::SendTransaction(txs) => {
                 let mut tpool = tpool.write().unwrap();
-                let blockchain = blockchain.read().unwrap();
+                let blockchain = blockchain.lock_read();
                 let chain_state = blockchain.multiverse.get(&blockchain.tip).unwrap();
                 let parameters = chain_state.get_ledger_parameters();
 
