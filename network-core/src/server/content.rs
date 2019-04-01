@@ -58,7 +58,7 @@ pub trait ContentService {
     // that receives messages announced by the peer.
     fn message_subscription<In>(&mut self, inbound: In) -> Self::MessageSubscriptionFuture
     where
-        In: Stream<Item = Self::Message, Error = Error>;
+        In: Stream<Item = Self::Message, Error = Error> + Send + 'static;
 }
 
 /// Response from the `propose_transactions` method of a `TransactionService`.

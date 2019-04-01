@@ -1,7 +1,7 @@
 ///! Gossip service abstraction.
 use crate::{
     error::Error,
-    gossip::{Gossip, Node},
+    gossip::{Gossip, Node, NodeId},
 };
 
 use futures::prelude::*;
@@ -9,8 +9,11 @@ use futures::prelude::*;
 /// Intreface for the node discovery service implementation
 /// in the p2p network.
 pub trait GossipService {
-    /// Gossip message content.
-    type Node: Node;
+    /// Network node identifier.
+    type NodeId: NodeId;
+
+    /// Gossip message describing a network node.
+    type Node: Node<Id = Self::NodeId>;
 
     /// The type of an asynchronous stream that retrieves node gossip
     /// messages from a peer.
@@ -29,5 +32,5 @@ pub trait GossipService {
     // that receives node gossip messages sent by the peer.
     fn gossip_subscription<In>(&mut self, inbound: In) -> Self::GossipSubscriptionFuture
     where
-        In: Stream<Item = Gossip<Self::Node>, Error = Error>;
+        In: Stream<Item = Gossip<Self::Node>, Error = Error> + Send + 'static;
 }

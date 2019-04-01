@@ -119,5 +119,5 @@ pub trait BlockService {
     // that receives blocks announced by the peer.
     fn block_subscription<In>(&mut self, inbound: In) -> Self::BlockSubscriptionFuture
     where
-        In: Stream<Item = Self::Header, Error = Error>;
+        In: Stream<Item = Self::Header, Error = Error> + Send + 'static;
 }
