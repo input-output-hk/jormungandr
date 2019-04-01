@@ -11,9 +11,9 @@ use crate::settings::logging::LogSettings;
 use std::{collections::BTreeMap, fs::File, path::PathBuf};
 
 custom_error! {pub Error
-   ConfigIo { source: std::io::Error } = "Cannot read the node configuration file",
-   Config { source: serde_yaml::Error } = "Error while parsing the node configuration file",
-   Rest { source: RestError } = "The Rest configuration is invalid",
+   ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
+   Config { source: serde_yaml::Error } = "Error while parsing the node configuration file: {source}",
+   Rest { source: RestError } = "The Rest configuration is invalid: {source}",
 }
 
 /// Overall Settings for node
