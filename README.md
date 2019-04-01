@@ -104,7 +104,8 @@ cargo build --bin jcli
 The binary has subcommands
 
 * [cryptographic keys](./doc/jormungandr_keys.md)
-* [The genesis file](./doc/genesis_file.md)* [rest](./doc/cli_rest.md) for REST API calls
+* [The genesis file](./doc/genesis_file.md)
+* [rest](./doc/cli_rest.md) for REST API calls
 * [transaction](./doc/cli_transaction.md) for offline transaction management
 * [address](./doc/cli_address.md) for debugging addresses
 
