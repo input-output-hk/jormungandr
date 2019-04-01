@@ -10,8 +10,10 @@ use futures::prelude::*;
 use tokio::{executor::DefaultExecutor, sync::mpsc};
 
 pub fn run_connect_socket(peer: Peer, state: GlobalState) -> impl Future<Item = (), Error = ()> {
+    let state = ConnectionState::new_peer(&state, &peer);
+
+    // TODO: plug in the outbound stream
     let (block_sender, block_receiver) = mpsc::unbounded_channel();
-    let state = ConnectionState::new_peer(&state, &peer, block_sender);
 
     info!("connecting to subscription peer {}", peer.connection);
     info!("address: {}", peer.address());

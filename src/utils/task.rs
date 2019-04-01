@@ -12,7 +12,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tokio_bus::{Bus, BusReader};
 
 /// hold onto the different services created
 pub struct Services {
@@ -48,8 +47,6 @@ pub struct ThreadServiceInfo {
 }
 
 pub struct TaskMessageBox<Msg>(Sender<Msg>);
-
-pub struct TaskBroadcastBox<Msg: Clone + Sync>(Bus<Msg>);
 
 /// Input for the different task with input service
 ///
@@ -213,22 +210,5 @@ impl<Msg> Clone for TaskMessageBox<Msg> {
 impl<Msg> TaskMessageBox<Msg> {
     pub fn send_to(&self, a: Msg) {
         self.0.send(a).unwrap()
-    }
-}
-
-impl<Msg: Clone + Sync> TaskBroadcastBox<Msg> {
-    pub fn new(len: usize) -> Self {
-        TaskBroadcastBox(Bus::new(len))
-    }
-
-    pub fn add_rx(&mut self) -> BusReader<Msg> {
-        self.0.add_rx()
-    }
-
-    pub fn send_broadcast(&mut self, val: Msg) {
-        match self.0.try_broadcast(val) {
-            Ok(()) => {}
-            Err(_) => panic!("broadcast failed, some network tasks may be blocked"),
-        }
     }
 }

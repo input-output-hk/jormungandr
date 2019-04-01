@@ -56,7 +56,7 @@ impl From<Box<bincode::ErrorKind>> for Error {
 #[derive(Clone, Debug)]
 pub struct Node(poldercast::Node);
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct NodeId(poldercast::Id);
 
 impl gossip::Node for Node {
@@ -172,7 +172,7 @@ impl P2pTopology {
 
     /// this is the function to utilise when we receive a gossip in order
     /// to update the P2P Topology internal state
-    pub fn update<I>(&mut self, new_nodes: I)
+    pub fn update<I>(&self, new_nodes: I)
     where
         I: IntoIterator<Item = Node>,
     {
@@ -183,7 +183,7 @@ impl P2pTopology {
         self.update_tree(tree)
     }
 
-    fn update_tree(&mut self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
+    fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
         // Poldercast API should be better than this
         self.topology.write().unwrap().update(new_nodes)
     }

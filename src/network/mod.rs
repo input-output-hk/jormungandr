@@ -9,18 +9,18 @@ mod grpc;
 // TODO: to be ported
 //mod ntt;
 pub mod p2p_topology;
+mod propagate;
 mod service;
 
-use crate::blockcfg::Header;
 use crate::blockchain::BlockchainR;
-use crate::intercom::{BlockMsg, ClientMsg, TransactionMsg};
+use crate::intercom::{BlockMsg, ClientMsg, NetworkPropagateMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
 use crate::utils::task::TaskMessageBox;
 
 use self::p2p_topology::{self as p2p, P2pTopology};
+
 use futures::prelude::*;
-use futures::stream::{self, Stream};
-use tokio::sync::mpsc;
+use futures::{future, stream, sync::mpsc};
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
@@ -91,6 +91,7 @@ impl Clone for GlobalState {
     }
 }
 
+#[derive(Clone)]
 pub struct ConnectionState {
     /// The global network configuration
     pub global_network_configuration: Arc<Configuration>,
@@ -107,62 +108,49 @@ pub struct ConnectionState {
 
     pub connected: Option<Connection>,
 
-    pub block_sender: mpsc::UnboundedSender<Header>,
-
     /// Network topology reference.
     pub topology: P2pTopology,
 
     /// Node inside network topology.
     pub node: p2p::Node,
+
+    /// State of the propagation subscriptions, if established.
+    pub propagation_peer: Option<PropagationPeer>,
 }
 
-impl Clone for ConnectionState {
-    fn clone(&self) -> Self {
-        ConnectionState {
-            global_network_configuration: self.global_network_configuration.clone(),
-            channels: self.channels.clone(),
-            timeout: self.timeout,
-            connection: self.connection.clone(),
-            connected: self.connected.clone(),
-            block_sender: self.block_sender.clone(),
-            node: self.node.clone(),
-            topology: self.topology.clone(),
-        }
-    }
+#[derive(Clone)]
+pub struct PropagationPeer {
+    /// Node identifier of the peer, once communicated.
+    pub id: p2p::NodeId,
+    // Subscription handles for the network streams.
+    // TODO: need either cloneable handles or non-cloneable state
+    //pub handles: propagate::PeerHandles,
 }
 
 impl ConnectionState {
-    fn new_listen(
-        global: &GlobalState,
-        listen: &Listen,
-        block_sender: mpsc::UnboundedSender<Header>,
-    ) -> Self {
+    fn new_listen(global: &GlobalState, listen: &Listen) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
             timeout: listen.timeout,
             connection: listen.connection,
             connected: None,
-            block_sender,
-            node: global.node.clone(),
             topology: global.topology.clone(),
+            node: global.node.clone(),
+            propagation_peer: None,
         }
     }
 
-    fn new_peer(
-        global: &GlobalState,
-        peer: &Peer,
-        block_sender: mpsc::UnboundedSender<Header>,
-    ) -> Self {
+    fn new_peer(global: &GlobalState, peer: &Peer) -> Self {
         ConnectionState {
             global_network_configuration: global.config.clone(),
             channels: global.channels.clone(),
             timeout: peer.timeout,
             connection: peer.connection,
             connected: None,
-            block_sender,
-            node: global.node.clone(),
             topology: global.topology.clone(),
+            node: global.node.clone(),
+            propagation_peer: None,
         }
     }
     fn connected(mut self, connection: Connection) -> Self {
@@ -171,7 +159,11 @@ impl ConnectionState {
     }
 }
 
-pub fn run(config: Configuration, channels: Channels) {
+pub fn run(
+    config: Configuration,
+    propagate_input: mpsc::UnboundedReceiver<NetworkPropagateMsg>,
+    channels: Channels,
+) {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
@@ -207,7 +199,14 @@ pub fn run(config: Configuration, channels: Channels) {
         grpc::run_connect_socket(peer, state_connection.clone())
     });
 
-    tokio::run(connections.join(listener).map(|_| ()));
+    let propagate = propagate_input
+        .for_each(|msg| {
+            // TODO: propagate message
+            future::ok(())
+        })
+        .map_err(|_| {});
+
+    tokio::run(connections.join(propagate).join(listener).map(|_| ()));
 }
 
 pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
