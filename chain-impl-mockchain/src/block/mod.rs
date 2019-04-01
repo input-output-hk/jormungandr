@@ -3,7 +3,6 @@ use crate::key::Hash;
 use crate::message::{Message, MessageRaw};
 use chain_core::mempack::read_from_raw;
 use chain_core::property::{self, Serialize};
-use chain_crypto::Verification;
 
 mod builder;
 //mod cstruct;

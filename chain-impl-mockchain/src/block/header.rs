@@ -4,8 +4,7 @@ use crate::block::{
 };
 use crate::date::BlockDate;
 use crate::key::{
-    deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
-    verify_signature, Hash,
+    deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature, Hash,
 };
 use crate::leadership::bft;
 use crate::stake::StakePoolId;
@@ -15,7 +14,6 @@ use chain_core::{
 };
 use chain_crypto::{
     self, Curve25519_2HashDH, Ed25519Extended, FakeMMM, Signature, VerifiableRandomFunction,
-    Verification,
 };
 
 pub type HeaderHash = Hash;
