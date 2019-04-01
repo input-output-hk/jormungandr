@@ -10,7 +10,7 @@ use crate::leadership::{self, genesis};
 use crate::transaction::{AuthenticatedTransaction, NoExtra};
 use chain_addr::Address;
 use chain_crypto::{
-    Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey, VerifiableRandomFunction,
+    Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey, VerifiableRandomFunction,
 };
 
 pub struct BlockBuilder {

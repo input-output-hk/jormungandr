@@ -49,38 +49,46 @@ pub enum LeaderId {
     GenesisPraos(genesis::GenesisPraosLeader),
 }
 
-pub enum Leader {
-    None,
-    BftLeader(SecretKey<Ed25519Extended>),
-    GenesisPraos(
-        SecretKey<FakeMMM>,
-        SecretKey<Curve25519_2HashDH>,
-        /* TODO: missing the nonce for the VRF*/
-    ),
+pub struct BftLeader {
+    sig_key: SecretKey<Ed25519Extended>,
 }
 
-pub enum LeaderOutput<'a> {
-    None,
-    Bft(&'a SecretKey<Ed25519Extended>),
-    GenesisPraos, // TODO
+pub struct GenesisLeader {
+    sig_key: SecretKey<FakeMMM>,
+    vrf_key: SecretKey<Curve25519_2HashDH>,
 }
 
-enum Inner {
+pub struct Leader {
+    bft_leader: Option<BftLeader>,
+    genesis_leader: Option<GenesisLeader>,
+}
+
+pub enum LeaderOutput {
+    None,
+    Bft(bft::LeaderId),
+    GenesisPraos(genesis::Witness),
+}
+
+enum LeadershipConsensus {
     None(none::NoLeadership),
     Bft(bft::BftLeaderSelection),
     GenesisPraos(genesis::GenesisLeaderSelection),
 }
 
 pub struct Leadership {
-    inner: Inner,
+    inner: LeadershipConsensus,
 }
 
-impl Inner {
+impl LeadershipConsensus {
     #[inline]
     fn verify_version(&self, block_version: AnyBlockVersion) -> Verification {
         match self {
-            Inner::None(_) if block_version == BlockVersion::Genesis => Verification::Success,
-            Inner::Bft(_) if block_version == BlockVersion::Ed25519Signed => Verification::Success,
+            LeadershipConsensus::None(_) if block_version == BlockVersion::Genesis => {
+                Verification::Success
+            }
+            LeadershipConsensus::Bft(_) if block_version == BlockVersion::Ed25519Signed => {
+                Verification::Success
+            }
             _ => Verification::Failure(Error::new(ErrorKind::IncompatibleBlockVersion)),
         }
     }
@@ -88,37 +96,34 @@ impl Inner {
     #[inline]
     fn verify_leader(&self, block_header: &Header) -> Verification {
         match self {
-            Inner::None(none) => none.verify(block_header),
-            Inner::Bft(bft) => bft.verify(block_header),
-            Inner::GenesisPraos(genesis_praos) => genesis_praos.verify(block_header),
+            LeadershipConsensus::None(none) => none.verify(block_header),
+            LeadershipConsensus::Bft(bft) => bft.verify(block_header),
+            LeadershipConsensus::GenesisPraos(genesis_praos) => genesis_praos.verify(block_header),
         }
     }
 
     #[inline]
-    fn is_leader<'a>(
-        &self,
-        leader: &'a Leader,
-        date: BlockDate,
-    ) -> Result<LeaderOutput<'a>, Error> {
-        match (self, leader) {
-            (Inner::None(_none), Leader::None) => Ok(LeaderOutput::None),
-            (Inner::Bft(bft), Leader::BftLeader(bft_leader)) => {
-                let bft_leader_id = bft.get_leader_at(date)?;
-                if bft_leader_id == bft_leader.to_public().into() {
-                    Ok(LeaderOutput::Bft(bft_leader))
-                } else {
-                    Ok(LeaderOutput::None)
-                }
-            }
-            (Inner::GenesisPraos(genesis_praos), Leader::GenesisPraos(_kes_key, vrf_key)) => {
-                match genesis_praos.leader(vrf_key, date)? {
-                    None => Ok(LeaderOutput::None),
-                    Some(_) => {
-                        Ok(LeaderOutput::GenesisPraos) // TODO: add the output seed here too
+    fn is_leader(&self, leader: &Leader, date: BlockDate) -> Result<LeaderOutput, Error> {
+        match self {
+            LeadershipConsensus::None(_none) => Ok(LeaderOutput::None),
+            LeadershipConsensus::Bft(bft) => match leader.bft_leader {
+                Some(ref bft_leader) => {
+                    let bft_leader_id = bft.get_leader_at(date)?;
+                    if bft_leader_id == bft_leader.sig_key.to_public().into() {
+                        Ok(LeaderOutput::Bft(bft_leader_id))
+                    } else {
+                        Ok(LeaderOutput::None)
                     }
                 }
-            }
-            _ => Err(Error::new(ErrorKind::InvalidLeader)),
+                None => Ok(LeaderOutput::None),
+            },
+            LeadershipConsensus::GenesisPraos(genesis_praos) => match leader.genesis_leader {
+                None => Ok(LeaderOutput::None),
+                Some(ref gen_leader) => match genesis_praos.leader(&gen_leader.vrf_key, date) {
+                    Ok(Some(witness)) => Ok(LeaderOutput::GenesisPraos(witness)),
+                    _ => Ok(LeaderOutput::None),
+                },
+            },
         }
     }
 }
@@ -126,16 +131,22 @@ impl Inner {
 impl Leadership {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         let inner = match ledger.settings.consensus_version {
-            ConsensusVersion::None => Inner::None(none::NoLeadership),
-            ConsensusVersion::Bft => Inner::Bft(bft::BftLeaderSelection::new(ledger).unwrap()),
+            ConsensusVersion::None => LeadershipConsensus::None(none::NoLeadership),
+            ConsensusVersion::Bft => {
+                LeadershipConsensus::Bft(bft::BftLeaderSelection::new(ledger).unwrap())
+            }
             ConsensusVersion::GenesisPraos => {
                 let node_id = unimplemented!();
-                Inner::GenesisPraos(genesis::GenesisLeaderSelection::new(node_id, epoch, ledger))
+                LeadershipConsensus::GenesisPraos(genesis::GenesisLeaderSelection::new(
+                    node_id, epoch, ledger,
+                ))
             }
         };
         Leadership { inner }
     }
 
+    /// Verify whether this header has been produced by a leader that fits with the leadership
+    ///
     pub fn verify(&self, block_header: &Header) -> Verification {
         try_check!(self.inner.verify_version(block_header.block_version()));
 
@@ -143,42 +154,16 @@ impl Leadership {
         Verification::Success
     }
 
-    pub fn is_leader<'a>(
+    /// Test that the given leader object is able to create a valid block for the leadership
+    /// at a given date.
+    pub fn is_leader_for_date<'a>(
         &self,
         leader: &'a Leader,
         date: BlockDate,
-    ) -> Result<LeaderOutput<'a>, Error> {
+    ) -> Result<LeaderOutput, Error> {
         self.inner.is_leader(leader, date)
     }
 }
-
-/*
-impl LeaderSelection for Leadership {
-    type Error = Error;
-    type LeaderId = LeaderId;
-    type Block = Block;
-    type State = State;
-
-    fn retrieve(state: &Self::State) -> Self {
-        Self::new(state)
-    }
-
-    /// return the ID of the leader of the blockchain at the given
-    /// date.
-    fn get_leader_at(
-        &self,
-        date: <Self::Block as property::Block>::Date,
-    ) -> Result<Self::LeaderId, Self::Error> {
-        match &self.inner {
-            Inner::None(none) => none.get_leader_at(date),
-            Inner::Bft(bft) => bft.get_leader_at(date).map(LeaderId::Bft),
-            Inner::GenesisPraos(genesis_praos) => genesis_praos
-                .get_leader_at(date)
-                .map(LeaderId::GenesisPraos),
-        }
-    }
-}
-*/
 
 impl chain_core::property::LeaderId for LeaderId {}
 

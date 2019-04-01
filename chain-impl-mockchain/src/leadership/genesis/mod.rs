@@ -12,6 +12,7 @@ use crate::{
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
+pub use vrfeval::Witness;
 
 /// Hash of GenesisPraosLeader
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -60,7 +61,7 @@ impl GenesisLeaderSelection {
         &self,
         vrf_key: &SecretKey<Curve25519_2HashDH>,
         date: BlockDate,
-    ) -> Result<Option<GenesisPraosLeader>, Error> {
+    ) -> Result<Option<Witness>, Error> {
         if date.epoch != self.epoch {
             // TODO: add more error details: invalid Date
             return Err(Error::new(ErrorKind::Failure));
@@ -85,7 +86,7 @@ impl GenesisLeaderSelection {
                 };
                 match vrfeval::evaluate(percent_stake, vrf_key, &self.epoch_nonce, date.slot_id) {
                     None => Ok(None),
-                    Some(vrfout) => unimplemented!(),
+                    Some(vrfout) => Ok(Some(vrfout)),
                 }
             }
         }
