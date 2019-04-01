@@ -2,6 +2,7 @@ use crate::{
     block::{AnyBlockVersion, BlockDate, BlockVersion, ConsensusVersion, Header},
     date::Epoch,
     ledger::Ledger,
+    stake::StakePoolId,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
 
@@ -42,18 +43,12 @@ macro_rules! try_check {
     };
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LeaderId {
-    None,
-    Bft(bft::LeaderId),
-    GenesisPraos(genesis::GenesisPraosLeader),
-}
-
 pub struct BftLeader {
     sig_key: SecretKey<Ed25519Extended>,
 }
 
 pub struct GenesisLeader {
+    node_id: StakePoolId,
     sig_key: SecretKey<FakeMMM>,
     vrf_key: SecretKey<Curve25519_2HashDH>,
 }
@@ -119,10 +114,12 @@ impl LeadershipConsensus {
             },
             LeadershipConsensus::GenesisPraos(genesis_praos) => match leader.genesis_leader {
                 None => Ok(LeaderOutput::None),
-                Some(ref gen_leader) => match genesis_praos.leader(&gen_leader.vrf_key, date) {
-                    Ok(Some(witness)) => Ok(LeaderOutput::GenesisPraos(witness)),
-                    _ => Ok(LeaderOutput::None),
-                },
+                Some(ref gen_leader) => {
+                    match genesis_praos.leader(&gen_leader.node_id, &gen_leader.vrf_key, date) {
+                        Ok(Some(witness)) => Ok(LeaderOutput::GenesisPraos(witness)),
+                        _ => Ok(LeaderOutput::None),
+                    }
+                }
             },
         }
     }
@@ -135,12 +132,9 @@ impl Leadership {
             ConsensusVersion::Bft => {
                 LeadershipConsensus::Bft(bft::BftLeaderSelection::new(ledger).unwrap())
             }
-            ConsensusVersion::GenesisPraos => {
-                let node_id = unimplemented!();
-                LeadershipConsensus::GenesisPraos(genesis::GenesisLeaderSelection::new(
-                    node_id, epoch, ledger,
-                ))
-            }
+            ConsensusVersion::GenesisPraos => LeadershipConsensus::GenesisPraos(
+                genesis::GenesisLeaderSelection::new(epoch, ledger),
+            ),
         };
         Leadership { inner }
     }
@@ -164,8 +158,6 @@ impl Leadership {
         self.inner.is_leader(leader, date)
     }
 }
-
-impl chain_core::property::LeaderId for LeaderId {}
 
 impl Verification {
     #[inline]

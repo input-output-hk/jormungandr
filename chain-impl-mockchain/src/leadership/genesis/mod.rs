@@ -3,20 +3,13 @@ mod vrfeval;
 use crate::{
     block::{BlockDate, Header, Proof},
     date::Epoch,
-    key::Hash,
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
-    stake::{StakeDistribution, StakePoolId},
+    stake::{self, StakeDistribution, StakePoolId},
     value::Value,
 };
-use chain_core::mempack::{ReadBuf, ReadError, Readable};
-use chain_core::property;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
 pub use vrfeval::Witness;
-
-/// Hash of GenesisPraosLeader
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GenesisPraosId(pub(crate) Hash);
 
 /// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -25,40 +18,29 @@ pub struct GenesisPraosLeader {
     pub(crate) vrf_public_key: PublicKey<Curve25519_2HashDH>,
 }
 
-impl GenesisPraosLeader {
-    pub fn get_id(&self) -> GenesisPraosId {
-        let mut v = Vec::new();
-        v.extend_from_slice(self.vrf_public_key.as_ref());
-        v.extend_from_slice(self.kes_public_key.as_ref());
-        GenesisPraosId(Hash::hash_bytes(&v))
-    }
-}
-
-#[derive(Debug)]
 pub struct GenesisLeaderSelection {
-    self_id: StakePoolId,
     epoch_nonce: vrfeval::Nonce,
-    //delegation_state: DelegationState,
+    nodes: stake::PoolTable,
     distribution: StakeDistribution,
     // the epoch this leader selection is valid for
     epoch: Epoch,
 }
 
 impl GenesisLeaderSelection {
-    pub fn new(self_id: StakePoolId, epoch: Epoch, ledger: &Ledger) -> Self {
+    pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         let stake_distribution = ledger.get_stake_distribution();
 
         GenesisLeaderSelection {
-            self_id: self_id,
             epoch_nonce: vrfeval::Nonce::zero(),
+            nodes: ledger.delegation.stake_pools.clone(),
             distribution: stake_distribution,
-            //delegation_state: state.delegation.clone(),
             epoch: epoch,
         }
     }
 
     pub fn leader(
         &self,
+        pool_id: &StakePoolId,
         vrf_key: &SecretKey<Curve25519_2HashDH>,
         date: BlockDate,
     ) -> Result<Option<Witness>, Error> {
@@ -69,7 +51,7 @@ impl GenesisLeaderSelection {
 
         let stake_snapshot = &self.distribution;
 
-        match stake_snapshot.get_stake_for(&self.self_id) {
+        match stake_snapshot.get_stake_for(&pool_id) {
             None => Ok(None),
             Some(stake) => {
                 // Calculate the total stake.
@@ -93,42 +75,42 @@ impl GenesisLeaderSelection {
     }
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {
-        match &block_header.proof() {
-            Proof::GenesisPraos(_genesis_praos_proof) => unimplemented!(),
-            _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
+        if block_header.block_date().epoch != self.epoch {
+            // TODO: add more error details: invalid Date
+            return Verification::Failure(Error::new(ErrorKind::Failure));
         }
-    }
-}
 
-impl property::Serialize for GenesisPraosId {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        self.0.serialize(writer)
-    }
-}
+        let stake_snapshot = &self.distribution;
 
-impl property::Deserialize for GenesisPraosId {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        Hash::deserialize(reader).map(GenesisPraosId)
-    }
-}
+        match &block_header.proof() {
+            Proof::GenesisPraos(ref genesis_praos_proof) => {
+                let node_id = &genesis_praos_proof.node_id;
+                match (
+                    stake_snapshot.get_stake_for(node_id),
+                    self.nodes.lookup(node_id),
+                ) {
+                    (Some(stake), Some(pool_info)) => {
+                        // Calculate the total stake.
+                        let total_stake: Value = stake_snapshot.total_stake();
 
-impl Readable for GenesisPraosId {
-    fn read<'a>(reader: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        Hash::read(reader).map(GenesisPraosId)
-    }
-}
+                        let percent_stake = vrfeval::PercentStake {
+                            stake: stake,
+                            total: total_stake,
+                        };
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for GenesisPraosId {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let bytes = Vec::arbitrary(g);
-            GenesisPraosId(Hash::hash_bytes(&bytes))
+                        let ononce = vrfeval::verify(
+                            percent_stake,
+                            &pool_info.initial_key.vrf_public_key,
+                            &self.epoch_nonce,
+                            block_header.block_date().slot_id,
+                            &genesis_praos_proof.vrf_proof,
+                        );
+                        unimplemented!()
+                    }
+                    (_, _) => Verification::Failure(Error::new(ErrorKind::InvalidBlockMessage)),
+                }
+            }
+            _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
         }
     }
 }

@@ -6,7 +6,8 @@ use crate::block::{
     ChainLength, Common, GenesisPraosProof, Header, KESSignature, Message, Proof,
 };
 use crate::key::{make_signature, make_signature_update};
-use crate::leadership::{self, genesis};
+use crate::leadership;
+use crate::stake;
 use crate::transaction::{AuthenticatedTransaction, NoExtra};
 use chain_addr::Address;
 use chain_crypto::{
@@ -134,7 +135,7 @@ impl BlockBuilder {
     /// given KES key.
     pub fn make_genesis_praos_block(
         mut self,
-        genesis_praos_id: &genesis::GenesisPraosId,
+        node_id: &stake::StakePoolId,
         kes_signing_key: &mut SecretKey<FakeMMM>,
         vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput,
     ) -> Block {
@@ -142,7 +143,7 @@ impl BlockBuilder {
         self.finalize_common(BlockVersion::KesVrfproof);
 
         let genesis_praos_proof = GenesisPraosProof {
-            genesis_praos_id: genesis_praos_id.clone(),
+            node_id: node_id.clone(),
             vrf_proof: vrf_proof,
             // ! SECURITY FIXME ! : also include id and vrf proof.
             kes_proof: KESSignature(make_signature_update(kes_signing_key, &self.common)),

@@ -4,11 +4,17 @@ use std::collections::hash_map::DefaultHasher;
 
 use super::role::{StakeKeyId, StakeKeyInfo, StakePoolId, StakePoolInfo};
 
+/// All registered Stake Node
+pub type PoolTable = Hamt<DefaultHasher, StakePoolId, StakePoolInfo>;
+
+/// All Registered Stake Keys
+pub type KeyTable = Hamt<DefaultHasher, StakeKeyId, StakeKeyInfo>;
+
 /// A structure that keeps track of stake keys and stake pools.
 #[derive(Clone)]
 pub struct DelegationState {
-    pub(super) stake_keys: Hamt<DefaultHasher, StakeKeyId, StakeKeyInfo>,
-    pub(super) stake_pools: Hamt<DefaultHasher, StakePoolId, StakePoolInfo>,
+    pub(super) stake_keys: KeyTable,
+    pub(crate) stake_pools: PoolTable,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
