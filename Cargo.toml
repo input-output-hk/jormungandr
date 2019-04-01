@@ -65,6 +65,7 @@ tower-service = "0.2"
 
 [dependencies.actix-web]
 version = "0.7.18"
+default-features = false
 features = [ "tls" ]
 
 [dependencies.clap]
