@@ -24,10 +24,7 @@ use std::path::Path;
 /// service trait `Node`.
 pub struct Server<T, E>
 where
-    T: Node,
-    T::BlockService: Clone,
-    T::ContentService: Clone,
-    T::GossipService: Clone,
+    T: Node + Clone,
     <T::BlockService as BlockService>::Header: Send + 'static,
     <T::ContentService as ContentService>::Message: Send + 'static,
     <T::GossipService as GossipService>::Node: Send + 'static,
@@ -44,10 +41,7 @@ where
 pub struct Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
-    T: Node,
-    T::BlockService: Clone,
-    T::ContentService: Clone,
-    T::GossipService: Clone,
+    T: Node + Clone,
     <T::BlockService as BlockService>::Header: Send + 'static,
     <T::ContentService as ContentService>::Message: Send + 'static,
     <T::GossipService as GossipService>::Node: Send + 'static,
@@ -65,10 +59,7 @@ where
 impl<S, T, E> Future for Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
-    T: Node + 'static,
-    T::BlockService: Clone,
-    T::ContentService: Clone,
-    T::GossipService: Clone,
+    T: Node + Clone + 'static,
     <T::BlockService as BlockService>::Header: Send + 'static,
     <T::ContentService as ContentService>::Message: Send + 'static,
     <T::GossipService as GossipService>::Node: Send + 'static,
@@ -89,10 +80,7 @@ where
 
 impl<T, E> Server<T, E>
 where
-    T: Node + 'static,
-    T::BlockService: Clone,
-    T::ContentService: Clone,
-    T::GossipService: Clone,
+    T: Node + Clone + 'static,
     <T::BlockService as BlockService>::Header: Send + 'static,
     <T::ContentService as ContentService>::Message: Send + 'static,
     <T::GossipService as GossipService>::Node: Send + 'static,
@@ -167,10 +155,7 @@ type H2Error<T> = tower_h2::server::Error<gen_server::NodeServer<NodeService<T>>
 // So we match it into our own variants.
 impl<T> From<H2Error<T>> for Error
 where
-    T: Node,
-    T::BlockService: Clone,
-    T::ContentService: Clone,
-    T::GossipService: Clone,
+    T: Node + Clone,
     <T::BlockService as BlockService>::Header: Send + 'static,
     <T::ContentService as ContentService>::Message: Send + 'static,
     <T::GossipService as GossipService>::Node: Send + 'static,

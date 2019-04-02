@@ -13,35 +13,14 @@ use tower_grpc::{self, Code, Request, Status, Streaming};
 
 use std::{marker::PhantomData, mem};
 
-pub struct NodeService<T: Node> {
-    block_service: Option<T::BlockService>,
-    tx_service: Option<T::ContentService>,
-    gossip_service: Option<T::GossipService>,
+#[derive(Clone, Debug)]
+pub struct NodeService<T> {
+    inner: T,
 }
 
 impl<T: Node> NodeService<T> {
     pub fn new(node: T) -> Self {
-        NodeService {
-            block_service: node.block_service(),
-            tx_service: node.content_service(),
-            gossip_service: node.gossip_service(),
-        }
-    }
-}
-
-impl<T> Clone for NodeService<T>
-where
-    T: Node,
-    T::BlockService: Clone,
-    T::ContentService: Clone,
-    T::GossipService: Clone,
-{
-    fn clone(&self) -> Self {
-        NodeService {
-            block_service: self.block_service.clone(),
-            tx_service: self.tx_service.clone(),
-            gossip_service: self.gossip_service.clone(),
-        }
+        NodeService { inner: node }
     }
 }
 
@@ -209,20 +188,17 @@ where
 }
 
 macro_rules! try_get_service {
-    ($opt_member:expr) => {
-        match $opt_member {
+    ($opt_ref:expr) => {
+        match $opt_ref {
             None => return ResponseFuture::unimplemented(),
-            Some(ref mut service) => service,
+            Some(service) => service,
         }
     };
 }
 
 impl<T> gen::node::server::Node for NodeService<T>
 where
-    T: Node,
-    T::BlockService: Clone,
-    T::ContentService: Clone,
-    T::GossipService: Clone,
+    T: Node + Clone,
     <T::BlockService as BlockService>::Header: Send + 'static,
     <T::ContentService as ContentService>::Message: Send + 'static,
     <T::GossipService as GossipService>::Node: Send + 'static,
@@ -290,12 +266,12 @@ where
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
-        let service = try_get_service!(self.block_service);
+        let service = try_get_service!(self.inner.block_service());
         ResponseFuture::new(service.tip())
     }
 
     fn get_blocks(&mut self, req: Request<gen::node::BlockIds>) -> Self::GetBlocksFuture {
-        let service = try_get_service!(self.block_service);
+        let service = try_get_service!(self.inner.block_service());
         let block_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(block_ids) => block_ids,
             Err(e) => {
@@ -306,7 +282,7 @@ where
     }
 
     fn get_headers(&mut self, req: Request<gen::node::BlockIds>) -> Self::GetHeadersFuture {
-        let service = try_get_service!(self.block_service);
+        let service = try_get_service!(self.inner.block_service());
         let block_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(block_ids) => block_ids,
             Err(e) => {
@@ -320,7 +296,7 @@ where
         &mut self,
         req: Request<gen::node::PullBlocksToTipRequest>,
     ) -> Self::PullBlocksToTipFuture {
-        let service = try_get_service!(self.block_service);
+        let service = try_get_service!(self.inner.block_service());
         let block_ids = match deserialize_vec(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
             Err(e) => {
@@ -331,7 +307,7 @@ where
     }
 
     fn get_messages(&mut self, req: Request<gen::node::MessageIds>) -> Self::GetMessagesFuture {
-        let service = try_get_service!(self.tx_service);
+        let service = try_get_service!(self.inner.content_service());
         let tx_ids = match deserialize_vec(&req.get_ref().id) {
             Ok(tx_ids) => tx_ids,
             Err(e) => {
@@ -345,7 +321,7 @@ where
         &mut self,
         request: Request<Streaming<gen::node::Header>>,
     ) -> Self::BlockSubscriptionFuture {
-        let service = try_get_service!(self.block_service);
+        let service = try_get_service!(self.inner.block_service());
         let stream = RequestStream::new(request.into_inner());
         ResponseFuture::new(service.block_subscription(stream))
     }
@@ -354,7 +330,7 @@ where
         &mut self,
         request: Request<Streaming<gen::node::Message>>,
     ) -> Self::MessageSubscriptionFuture {
-        let service = try_get_service!(self.tx_service);
+        let service = try_get_service!(self.inner.content_service());
         let stream = RequestStream::new(request.into_inner());
         ResponseFuture::new(service.message_subscription(stream))
     }
@@ -363,7 +339,7 @@ where
         &mut self,
         request: Request<Streaming<gen::node::Gossip>>,
     ) -> Self::GossipSubscriptionFuture {
-        let service = try_get_service!(self.gossip_service);
+        let service = try_get_service!(self.inner.gossip_service());
         let stream = RequestStream::new(request.into_inner());
         ResponseFuture::new(service.gossip_subscription(stream))
     }
