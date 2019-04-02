@@ -7,6 +7,8 @@
 //! temporaly, leaving no way to do garbage collection
 
 use crate::block::ChainLength;
+use chain_core::property::{BlockId as _, HasMessages as _};
+use chain_storage::store::BlockStore;
 use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
@@ -103,7 +105,11 @@ impl Multiverse {
             .or_insert(HashSet::new())
             .insert(k.clone());
         self.states_by_hash.entry(k.clone()).or_insert(st);
+        self.make_root(k)
+    }
 
+    fn make_root(&mut self, k: BlockId) -> GCRoot {
+        debug_assert!(self.states_by_hash.contains_key(&k));
         GCRoot::new(k, self.roots.clone())
     }
 
@@ -128,8 +134,8 @@ impl Multiverse {
                 if chain_length.0 + SUFFIX_TO_KEEP >= longest_chain.0 {
                     break;
                 }
-                // Keep states in gaps that get exponentially smaller as
-                // they get closer to the longest chain.
+                // Keep states in gaps that get exponentially smaller
+                // as they get closer to the longest chain.
                 if chain_length >= &to_keep {
                     to_keep = ChainLength(chain_length.0 + (longest_chain.0 - chain_length.0) / 2);
                 } else {
@@ -178,6 +184,57 @@ impl Multiverse {
         self.get(&*root).unwrap()
     }
 
+    /// Get the chain state at block 'k' from memory if present;
+    /// otherwise reconstruct it by reading blocks from storage and
+    /// applying them to the nearest ancestor state that we do have.
+    pub fn get_from_storage<S: BlockStore<Block = crate::block::Block>>(
+        &mut self,
+        k: BlockId,
+        store: &S,
+    ) -> Result<GCRoot, chain_storage::error::Error> {
+        if let Some(_) = self.states_by_hash.get(&k) {
+            return Ok(self.make_root(k));
+        }
+
+        // Find the most recent ancestor that we have in
+        // memory. FIXME: could do a binary search here on the chain
+        // length interval between 0 and k.chain_length(), though it
+        // doesn't matter much for complexity since we need to apply
+        // O(n) blocks anyway.
+
+        let mut blocks_to_apply = vec![];
+        let mut cur_hash = k.clone();
+
+        let mut state = loop {
+            if cur_hash == BlockId::zero() {
+                panic!("don't know how to reconstruct initial chain state");
+            }
+
+            if let Some(state) = self.get(&cur_hash) {
+                break state.clone();
+            }
+
+            let cur_block_info = store.get_block_info(&cur_hash).unwrap();
+            blocks_to_apply.push(k.clone());
+            cur_hash = cur_block_info.parent_id();
+        };
+
+        println!(
+            "applying {} blocks to reconstruct state",
+            blocks_to_apply.len()
+        );
+
+        for hash in blocks_to_apply.iter().rev() {
+            let block = store.get_block(&hash).unwrap().0;
+            state = state
+                .apply_block(&state.get_ledger_parameters(), block.messages())
+                .unwrap();
+            // FIXME: add the intermediate states to memory?
+        }
+
+        Ok(self.add(k, state))
+    }
+
     /// Return the number of states stored in memory.
     pub fn nr_states(&self) -> usize {
         self.states_by_hash.len()
@@ -191,6 +248,7 @@ mod test {
     use crate::block::{Block, BlockBuilder};
     use crate::message::{InitialEnts, Message};
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
+    use chain_storage::store::BlockStore;
     use quickcheck::StdGen;
 
     fn apply_block(state: &State, block: &Block) -> State {
@@ -209,16 +267,20 @@ mod test {
         let mut g = StdGen::new(rand::thread_rng(), 10);
         let leader_key = crate::key::test::arbitrary_secret_key(&mut g);
 
+        let mut store = chain_storage::memory::MemoryBlockStore::new();
+
         let mut genesis_block = BlockBuilder::new();
         genesis_block.message(Message::Initial(InitialEnts::new()));
         let genesis_block = genesis_block.make_genesis_block();
         let genesis_state = State::new(genesis_block.id(), genesis_block.messages()).unwrap();
         assert_eq!(genesis_state.chain_length().0, 0);
+        store.put_block(&genesis_block).unwrap();
         multiverse.add(genesis_block.id(), genesis_state.clone());
 
         let mut state = genesis_state;
         let mut _root = None;
         let mut parent = genesis_block.id();
+        let mut ids = vec![];
         for i in 1..10001 {
             let mut block = BlockBuilder::new();
             block.chain_length(state.chain_length.next());
@@ -226,14 +288,45 @@ mod test {
             let block = block.make_bft_block(&leader_key);
             state = apply_block(&state, &block);
             assert_eq!(state.chain_length().0, i);
+            store.put_block(&block).unwrap();
             _root = Some(multiverse.add(block.id(), state.clone()));
             multiverse.gc();
+            ids.push(block.id());
             parent = block.id();
             assert!(
                 multiverse.nr_states()
                     <= super::SUFFIX_TO_KEEP as usize + ((i as f32).log2()) as usize
             );
         }
+
+        {
+            let root = multiverse
+                .get_from_storage(ids[9999].clone(), &store)
+                .unwrap();
+            let state = multiverse.get_from_root(&root);
+            assert_eq!(state.chain_length().0, 10000);
+        }
+
+        {
+            let root = multiverse
+                .get_from_storage(ids[1234].clone(), &store)
+                .unwrap();
+            let state = multiverse.get_from_root(&root);
+            assert_eq!(state.chain_length().0, 1235);
+        }
+
+        {
+            let root = multiverse
+                .get_from_storage(ids[9500].clone(), &store)
+                .unwrap();
+            let state = multiverse.get_from_root(&root);
+            assert_eq!(state.chain_length().0, 9501);
+        }
+
+        let before = multiverse.nr_states();
+        multiverse.gc();
+        let after = multiverse.nr_states();
+        assert_eq!(before, after + 2);
     }
 
 }
