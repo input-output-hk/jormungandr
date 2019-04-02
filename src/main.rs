@@ -54,17 +54,19 @@ extern crate test;
 
 use std::sync::{Arc, Mutex, RwLock};
 
-use futures::{sync::mpsc, Future};
+use futures::Future;
 
 use chain_impl_mockchain::message::{Message, MessageId};
 
-use blockchain::BlockchainR;
-use intercom::BlockMsg;
-use leadership::leadership_task;
-use rest::v0::node::stats::StatsCounter;
-use settings::start::Settings;
-use transaction::TPool;
-use utils::task::Services;
+use crate::{
+    blockchain::BlockchainR,
+    intercom::BlockMsg,
+    leadership::leadership_task,
+    rest::v0::node::stats::StatsCounter,
+    settings::start::Settings,
+    transaction::TPool,
+    utils::{async_msg, task::Services},
+};
 
 #[macro_use]
 pub mod log_wrapper;
@@ -99,6 +101,8 @@ pub struct BootstrappedNode {
     blockchain: BlockchainR,
 }
 
+const NETWORK_TASK_QUEUE_LEN: usize = 32;
+
 fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::Error> {
     let mut services = Services::new();
 
@@ -106,7 +110,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
     let tpool = Arc::new(RwLock::new(tpool_data));
 
     // initialize the network propagation channel
-    let (propagate_sender, propagate_receiver) = mpsc::unbounded();
+    let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
 
     let stats_counter = StatsCounter::default();
 
@@ -123,9 +127,13 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         let blockchain = bootstrapped_node.blockchain.clone();
         // let clock = bootstrapped_node.clock.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_with_inputs("block", (), move |info, (), input| {
-            blockchain::handle_input(info, &blockchain, &stats_counter, &propagate_sender, input)
-        })
+        services.spawn_with_inputs(
+            "block",
+            network_msgbox,
+            move |info, network_msgbox, input| {
+                blockchain::handle_input(info, &blockchain, &stats_counter, network_msgbox, input)
+            },
+        )
     };
 
     let client_task = {
@@ -147,7 +155,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         };
 
         services.spawn("network", move |_info| {
-            network::run(config, propagate_receiver, channels);
+            network::run(config, network_queue, channels);
         });
     }
 

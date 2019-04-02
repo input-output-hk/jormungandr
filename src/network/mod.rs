@@ -15,12 +15,12 @@ mod service;
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkPropagateMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
-use crate::utils::task::TaskMessageBox;
+use crate::utils::{async_msg::MessageQueue, task::TaskMessageBox};
 
 use self::p2p_topology::{self as p2p, P2pTopology};
 
 use futures::prelude::*;
-use futures::{future, stream, sync::mpsc};
+use futures::{future, stream};
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
@@ -161,7 +161,7 @@ impl ConnectionState {
 
 pub fn run(
     config: Configuration,
-    propagate_input: mpsc::UnboundedReceiver<NetworkPropagateMsg>,
+    propagate_input: MessageQueue<NetworkPropagateMsg>,
     channels: Channels,
 ) {
     // TODO: the node needs to be saved/loaded
