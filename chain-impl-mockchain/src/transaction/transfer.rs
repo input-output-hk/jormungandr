@@ -19,12 +19,25 @@ pub struct Input {
     input_ptr: [u8; INPUT_PTR_SIZE],
 }
 
+pub enum InputType {
+    Utxo,
+    Account,
+}
+
 pub enum InputEnum {
     AccountInput(account::Identifier, Value),
     UtxoInput(UtxoPointer),
 }
 
 impl Input {
+    pub fn get_type(&self) -> InputType {
+        if self.index_or_account == 0xff {
+            InputType::Account
+        } else {
+            InputType::Utxo
+        }
+    }
+
     pub fn from_utxo(utxo_pointer: UtxoPointer) -> Self {
         let mut input_ptr = [0u8; INPUT_PTR_SIZE];
         input_ptr.clone_from_slice(utxo_pointer.transaction_id.as_ref());
@@ -47,16 +60,17 @@ impl Input {
     }
 
     pub fn to_enum(&self) -> InputEnum {
-        if self.index_or_account == 0xff {
-            let pk =
-                PublicKey::from_bytes(&self.input_ptr).expect("internal error in publickey type");
-            InputEnum::AccountInput(pk.into(), self.value)
-        } else {
-            InputEnum::UtxoInput(UtxoPointer::new(
+        match self.get_type() {
+            InputType::Account => {
+                let pk = PublicKey::from_bytes(&self.input_ptr)
+                    .expect("internal error in publickey type");
+                InputEnum::AccountInput(pk.into(), self.value)
+            }
+            InputType::Utxo => InputEnum::UtxoInput(UtxoPointer::new(
                 TransactionId::from_bytes(self.input_ptr.clone()),
                 self.index_or_account,
                 self.value,
-            ))
+            )),
         }
     }
 
