@@ -31,7 +31,6 @@ extern crate tower_service;
 extern crate custom_error;
 
 extern crate tokio;
-extern crate tokio_bus;
 
 #[cfg(test)]
 extern crate quickcheck;
@@ -55,16 +54,19 @@ extern crate test;
 
 use std::sync::{Arc, Mutex, RwLock};
 
-use chain_impl_mockchain::message::{Message, MessageId};
 use futures::Future;
 
-use blockchain::BlockchainR;
-use intercom::BlockMsg;
-use leadership::leadership_task;
-use rest::v0::node::stats::StatsCounter;
-use settings::start::Settings;
-use transaction::TPool;
-use utils::task::{Services, TaskBroadcastBox};
+use chain_impl_mockchain::message::{Message, MessageId};
+
+use crate::{
+    blockchain::BlockchainR,
+    intercom::BlockMsg,
+    leadership::leadership_task,
+    rest::v0::node::stats::StatsCounter,
+    settings::start::Settings,
+    transaction::TPool,
+    utils::{async_msg, task::Services},
+};
 
 #[macro_use]
 pub mod log_wrapper;
@@ -85,12 +87,6 @@ pub mod state;
 pub mod transaction;
 pub mod utils;
 
-// TODO: consider an appropriate size for the broadcast buffer.
-// For the block task, there should hardly be a need to buffer more
-// than one block as the network task should be able to broadcast the
-// block notifications in time.
-const BLOCK_BUS_CAPACITY: usize = 2;
-
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
 
@@ -105,11 +101,17 @@ pub struct BootstrappedNode {
     blockchain: BlockchainR,
 }
 
+const NETWORK_TASK_QUEUE_LEN: usize = 32;
+
 fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::Error> {
     let mut services = Services::new();
 
     let tpool_data: TPool<MessageId, Message> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
+
+    // initialize the network propagation channel
+    let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+
     let stats_counter = StatsCounter::default();
 
     let transaction_task = {
@@ -125,18 +127,11 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         let blockchain = bootstrapped_node.blockchain.clone();
         // let clock = bootstrapped_node.clock.clone();
         let stats_counter = stats_counter.clone();
-        let mut network_broadcast = TaskBroadcastBox::new(BLOCK_BUS_CAPACITY);
         services.spawn_with_inputs(
             "block",
-            network_broadcast,
-            move |info, network_broadcast, input| {
-                blockchain::handle_input(
-                    info,
-                    &blockchain,
-                    &stats_counter,
-                    network_broadcast,
-                    input,
-                )
+            network_msgbox,
+            move |info, network_msgbox, input| {
+                blockchain::handle_input(info, &blockchain, &stats_counter, network_msgbox, input)
             },
         )
     };
@@ -160,7 +155,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         };
 
         services.spawn("network", move |_info| {
-            network::run(config, channels);
+            network::run(config, network_queue, channels);
         });
     }
 

@@ -1,15 +1,18 @@
-use crate::blockcfg::Header;
 use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
-use crate::intercom::BlockMsg;
+use crate::intercom::{BlockMsg, NetworkPropagateMsg};
 use crate::rest::v0::node::stats::StatsCounter;
-use crate::utils::task::{Input, TaskBroadcastBox, ThreadServiceInfo};
+use crate::utils::{
+    async_msg::MessageBox,
+    task::{Input, ThreadServiceInfo},
+};
+
 use chain_core::property::Header as _;
 
 pub fn handle_input(
     _info: &ThreadServiceInfo,
     blockchain: &BlockchainR,
     _stats_counter: &StatsCounter,
-    network_broadcast: &mut TaskBroadcastBox<Header>,
+    network_propagate: &mut MessageBox<NetworkPropagateMsg>,
     input: Input<BlockMsg>,
 ) {
     let bquery = match input {
@@ -49,13 +52,9 @@ pub fn handle_input(
                         date = header.date()
                     );
                     debug!("Header: {:?}", header);
-                    network_broadcast.send_broadcast(header);
+                    network_propagate.send(NetworkPropagateMsg::Block(header));
                 }
             }
-        }
-        BlockMsg::Subscribe(reply) => {
-            let rx = network_broadcast.add_rx();
-            reply.send(rx);
         }
         BlockMsg::AnnouncedBlock(header) => {
             let blockchain = blockchain.lock_read();

@@ -14,7 +14,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-pub const NEW_TRANSACTIONS_TOPIC: u32 = 0u32;
+pub const NEW_MESSAGES_TOPIC: u32 = 0u32;
 pub const NEW_BLOCKS_TOPIC: u32 = 1u32;
 
 #[derive(Debug)]
@@ -56,7 +56,7 @@ impl From<Box<bincode::ErrorKind>> for Error {
 #[derive(Clone, Debug)]
 pub struct Node(poldercast::Node);
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct NodeId(poldercast::Id);
 
 impl gossip::Node for Node {
@@ -79,6 +79,16 @@ impl Node {
     #[inline]
     pub fn new(id: NodeId, address: Address) -> Self {
         Node(poldercast::Node::new(id.0, address))
+    }
+
+    pub fn add_message_subscription(&mut self, interest_level: InterestLevel) {
+        self.0
+            .add_subscription(Subscription::new(NEW_MESSAGES_TOPIC.into(), interest_level));
+    }
+
+    pub fn add_block_subscription(&mut self, interest_level: InterestLevel) {
+        self.0
+            .add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
     }
 }
 
@@ -162,7 +172,7 @@ impl P2pTopology {
 
     /// this is the function to utilise when we receive a gossip in order
     /// to update the P2P Topology internal state
-    pub fn update<I>(&mut self, new_nodes: I)
+    pub fn update<I>(&self, new_nodes: I)
     where
         I: IntoIterator<Item = Node>,
     {
@@ -173,7 +183,7 @@ impl P2pTopology {
         self.update_tree(tree)
     }
 
-    fn update_tree(&mut self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
+    fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
         // Poldercast API should be better than this
         self.topology.write().unwrap().update(new_nodes)
     }
@@ -187,16 +197,4 @@ impl P2pTopology {
             .into_iter()
             .map(|(_, v)| Node(v))
     }
-}
-
-pub fn add_transaction_subscription(node: &mut Node, interest_level: InterestLevel) {
-    node.0.add_subscription(Subscription::new(
-        NEW_TRANSACTIONS_TOPIC.into(),
-        interest_level,
-    ));
-}
-
-pub fn add_block_subscription(node: &mut Node, interest_level: InterestLevel) {
-    node.0
-        .add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
 }

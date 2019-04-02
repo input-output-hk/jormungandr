@@ -4,7 +4,6 @@ use network_core::error as core_error;
 
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
-use tokio_bus::BusReader;
 
 use std::{
     error,
@@ -210,80 +209,6 @@ where
     handler.close();
 }
 
-pub struct SubscriptionHandle<T: Sync + Clone> {
-    sender: oneshot::Sender<BusReader<T>>,
-}
-
-impl<T: Sync + Clone> SubscriptionHandle<T> {
-    pub fn send(self, rx: BusReader<T>) {
-        match self.sender.send(rx) {
-            Ok(()) => {}
-            Err(_) => panic!("failed to send subscription reader"),
-        }
-    }
-}
-
-pub struct SubscriptionFuture<T>
-where
-    T: Clone + Sync,
-{
-    receiver: oneshot::Receiver<BusReader<T>>,
-}
-
-impl<T> Future for SubscriptionFuture<T>
-where
-    T: Clone + Sync,
-{
-    type Item = SubscriptionStream<T>;
-    type Error = core_error::Error;
-    fn poll(&mut self) -> Poll<Self::Item, core_error::Error> {
-        let inner = match self.receiver.poll() {
-            Err(oneshot::Canceled) => {
-                warn!("response canceled by the client request task");
-                return Err(core_error::Error::new(
-                    core_error::Code::Canceled,
-                    "subscription canceled",
-                ));
-            }
-            Ok(Async::NotReady) => {
-                return Ok(Async::NotReady);
-            }
-            Ok(Async::Ready(item)) => item,
-        };
-
-        Ok(Async::Ready(SubscriptionStream { inner }))
-    }
-}
-
-pub struct SubscriptionStream<T: Clone + Sync> {
-    inner: BusReader<T>,
-}
-
-impl<T> Stream for SubscriptionStream<T>
-where
-    T: Clone + Sync,
-{
-    type Item = T;
-    type Error = core_error::Error;
-
-    fn poll(&mut self) -> Poll<Option<Self::Item>, core_error::Error> {
-        match self.inner.poll() {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(item)) => Ok(Async::Ready(item)),
-            Err(e) => Err(core_error::Error::new(core_error::Code::Unknown, e)),
-        }
-    }
-}
-
-pub fn subscription_reply<T>() -> (SubscriptionHandle<T>, SubscriptionFuture<T>)
-where
-    T: Clone + Sync,
-{
-    let (sender, receiver) = oneshot::channel();
-    let future = SubscriptionFuture { receiver };
-    (SubscriptionHandle { sender }, future)
-}
-
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg {
@@ -345,8 +270,6 @@ impl Debug for ClientMsg {
 pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
-    /// The network task has a subscription to add
-    Subscribe(SubscriptionHandle<Header>),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header),
 }
@@ -356,21 +279,17 @@ impl Debug for BlockMsg {
         use BlockMsg::*;
         match self {
             LeadershipBlock(block) => f.debug_tuple("LeadershipBlock").field(block).finish(),
-            Subscribe(_) => f.debug_tuple("Subscribe").finish(),
             AnnouncedBlock(header) => f.debug_tuple("AnnouncedBlock").field(header).finish(),
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn block_msg_subscribe_debug() {
-        let (handle, _) = subscription_reply();
-        let msg = BlockMsg::Subscribe(handle);
-        let debug_repr = format!("{:?}", msg);
-        assert!(debug_repr.contains("Subscribe"));
-    }
+/// Message to propagate to the connected peers.
+#[derive(Debug)]
+pub enum NetworkPropagateMsg {
+    Block(Header),
+    Message(Message),
 }
+
+#[cfg(test)]
+mod tests {}

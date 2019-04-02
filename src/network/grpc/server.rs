@@ -1,33 +1,20 @@
-use crate::network::{service::ConnectionServices, ConnectionState, GlobalState};
+use crate::network::{service::NodeServer, ConnectionState, GlobalState};
 use crate::settings::start::network::Listen;
 
 use network_grpc::server::{listen, Server};
 
 use futures::future;
 use futures::prelude::*;
-use tokio::{executor::DefaultExecutor, sync::mpsc};
+use tokio::executor::DefaultExecutor;
 
 use std::net::SocketAddr;
-
-struct GrpcServer {
-    state: ConnectionState,
-}
-
-impl Clone for GrpcServer {
-    fn clone(&self) -> Self {
-        GrpcServer {
-            state: self.state.clone(),
-        }
-    }
-}
 
 pub fn run_listen_socket(
     sockaddr: SocketAddr,
     listen_to: Listen,
     state: GlobalState,
 ) -> impl Future<Item = (), Error = ()> {
-    let (block_sender, block_receiver) = mpsc::unbounded_channel();
-    let state = ConnectionState::new_listen(&state, &listen_to, block_sender);
+    let state = ConnectionState::new_listen(&state, &listen_to);
 
     info!(
         "start listening and accepting gRPC connections on {}",
@@ -40,8 +27,8 @@ pub fn run_listen_socket(
             unimplemented!()
         }
         Ok(listener_stream) => {
-            let node_services = ConnectionServices::new(state);
-            let server = Server::new(node_services, DefaultExecutor::current());
+            let node_server = NodeServer::new(state);
+            let server = Server::new(node_server, DefaultExecutor::current());
 
             listener_stream
                 .map_err(move |err| {

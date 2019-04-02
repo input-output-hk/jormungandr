@@ -1,12 +1,10 @@
-use super::ConnectionState;
+use super::{p2p_topology as p2p, propagate::Subscription, ConnectionState};
+
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
 use crate::intercom::{
-    self, stream_reply, subscription_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture,
-    ReplyStream, SubscriptionFuture, SubscriptionStream, TransactionMsg,
+    self, stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream,
 };
-use crate::utils::task::TaskMessageBox;
 
-use network::p2p_topology::{self as p2p, P2pTopology};
 use network_core::{
     error as core_error,
     gossip::Gossip,
@@ -21,32 +19,33 @@ use network_core::{
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 
-pub struct ConnectionServices {
+#[derive(Clone)]
+pub struct NodeServer {
     state: ConnectionState,
 }
 
-impl ConnectionServices {
+impl NodeServer {
     pub fn new(state: ConnectionState) -> Self {
-        ConnectionServices { state }
+        NodeServer { state }
     }
 }
 
-impl Node for ConnectionServices {
-    type BlockService = ConnectionBlockService;
-    type ContentService = ConnectionContentService;
-    type GossipService = ConnectionGossipService;
+impl Node for NodeServer {
+    type BlockService = Self;
+    type ContentService = Self;
+    type GossipService = Self;
 
-    fn block_service(&self) -> Option<Self::BlockService> {
-        Some(ConnectionBlockService::new(&self.state))
+    fn block_service(&mut self) -> Option<&mut Self::BlockService> {
+        Some(self)
     }
 
-    fn content_service(&self) -> Option<Self::ContentService> {
+    fn content_service(&mut self) -> Option<&mut Self::ContentService> {
         // Not implemented yet
         None
     }
 
-    fn gossip_service(&self) -> Option<Self::GossipService> {
-        Some(ConnectionGossipService::new(&self.state))
+    fn gossip_service(&mut self) -> Option<&mut Self::GossipService> {
+        Some(self)
     }
 }
 
@@ -56,30 +55,7 @@ impl From<intercom::Error> for core_error::Error {
     }
 }
 
-pub struct ConnectionBlockService {
-    client_box: TaskMessageBox<ClientMsg>,
-    block_box: TaskMessageBox<BlockMsg>,
-}
-
-impl ConnectionBlockService {
-    pub fn new(conn: &ConnectionState) -> Self {
-        ConnectionBlockService {
-            client_box: conn.channels.client_box.clone(),
-            block_box: conn.channels.block_box.clone(),
-        }
-    }
-}
-
-impl Clone for ConnectionBlockService {
-    fn clone(&self) -> Self {
-        ConnectionBlockService {
-            client_box: self.client_box.clone(),
-            block_box: self.block_box.clone(),
-        }
-    }
-}
-
-impl BlockService for ConnectionBlockService {
+impl BlockService for NodeServer {
     type BlockId = HeaderHash;
     type BlockDate = BlockDate;
     type Block = Block;
@@ -93,32 +69,41 @@ impl BlockService for ConnectionBlockService {
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type BlockSubscription = SubscriptionStream<Header>;
-    type BlockSubscriptionFuture = SubscriptionFuture<Header>;
+    type BlockSubscription = Subscription<Header>;
+    type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
-        self.client_box.send_to(ClientMsg::GetBlockTip(handle));
+        self.state
+            .channels
+            .client_box
+            .send_to(ClientMsg::GetBlockTip(handle));
         future
     }
 
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture {
         let (handle, stream) = stream_reply();
-        self.client_box
+        self.state
+            .channels
+            .client_box
             .send_to(ClientMsg::PullBlocksToTip(from.into(), handle));
         future::ok(stream)
     }
 
     fn get_blocks(&mut self, ids: &[Self::BlockId]) -> Self::GetBlocksFuture {
         let (handle, stream) = stream_reply();
-        self.client_box
+        self.state
+            .channels
+            .client_box
             .send_to(ClientMsg::GetBlocks(ids.into(), handle));
         future::ok(stream)
     }
 
     fn get_headers(&mut self, ids: &[Self::BlockId]) -> Self::GetHeadersFuture {
         let (handle, stream) = stream_reply();
-        self.client_box
+        self.state
+            .channels
+            .client_box
             .send_to(ClientMsg::GetHeaders(ids.into(), handle));
         future::ok(stream)
     }
@@ -143,38 +128,47 @@ impl BlockService for ConnectionBlockService {
         unimplemented!()
     }
 
-    fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
+    fn block_subscription<In>(&mut self, inbound: In) -> Self::BlockSubscriptionFuture
     where
-        Out: Stream<Item = Self::Header, Error = core_error::Error>,
+        In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        // FIXME: plug in outbound stream
-        let (handle, future) = subscription_reply();
-        self.block_box.send_to(BlockMsg::Subscribe(handle));
-        future
-    }
-}
-
-pub struct ConnectionContentService {
-    transaction_box: TaskMessageBox<TransactionMsg>,
-}
-
-impl Clone for ConnectionContentService {
-    fn clone(&self) -> Self {
-        ConnectionContentService {
-            transaction_box: self.transaction_box.clone(),
+        let block_box = self.state.channels.block_box.clone();
+        tokio::spawn(
+            inbound
+                .for_each(move |header| {
+                    block_box.send_to(BlockMsg::AnnouncedBlock(header));
+                    future::ok(())
+                })
+                .map_err(|err| {
+                    error!("Block subscription failed: {:?}", err);
+                }),
+        );
+        match &self.state.propagation_peer {
+            None => future::err(core_error::Error::new(
+                core_error::Code::FailedPrecondition,
+                "node identifier not exchanged",
+            )),
+            Some(peer) => {
+                // TODO: implement
+                future::err(core_error::Error::new(
+                    core_error::Code::Unimplemented,
+                    "not implemented yet",
+                ))
+                //future::result(peer.handles.blocks.subscribe())
+            }
         }
     }
 }
 
-impl ContentService for ConnectionContentService {
+impl ContentService for NodeServer {
     type Message = Message;
     type MessageId = MessageId;
     type ProposeTransactionsFuture =
         ReplyFuture<ProposeTransactionsResponse<MessageId>, core_error::Error>;
     type GetMessagesStream = ReplyStream<Self::Message, core_error::Error>;
     type GetMessagesFuture = ReplyFuture<Self::GetMessagesStream, core_error::Error>;
-    type MessageSubscription = SubscriptionStream<Message>;
-    type MessageSubscriptionFuture = SubscriptionFuture<Message>;
+    type MessageSubscription = Subscription<Message>;
+    type MessageSubscriptionFuture = FutureResult<Self::MessageSubscription, core_error::Error>;
 
     fn propose_transactions(
         &mut self,
@@ -195,43 +189,28 @@ impl ContentService for ConnectionContentService {
     }
 }
 
-pub struct ConnectionGossipService {
-    p2p: P2pTopology,
-    node: p2p::Node,
-}
-
-impl GossipService for ConnectionGossipService {
+impl GossipService for NodeServer {
+    type NodeId = p2p::NodeId;
     type Node = p2p::Node;
-    type GossipSubscription = SubscriptionStream<Gossip<p2p::Node>>;
-    type GossipSubscriptionFuture = SubscriptionFuture<Gossip<p2p::Node>>;
+    type GossipSubscription = Subscription<Gossip<p2p::Node>>;
+    type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
 
     fn gossip_subscription<In>(&mut self, inbound: In) -> Self::GossipSubscriptionFuture
     where
-        In: Stream<Item = Gossip<p2p::Node>, Error = core_error::Error>,
+        In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        inbound.for_each(|gossip| {
-            self.p2p.update(gossip.into_nodes());
-            future::ok(())
-        });
+        let topology = self.state.topology.clone();
+        tokio::spawn(
+            inbound
+                .for_each(move |gossip| {
+                    topology.update(gossip.into_nodes());
+                    future::ok(())
+                })
+                .map_err(|err| {
+                    error!("gossip subscription inbound stream error: {:?}", err);
+                }),
+        );
         // TODO: send periodic updates to nodes
         unimplemented!()
-    }
-}
-
-impl ConnectionGossipService {
-    fn new(state: &ConnectionState) -> Self {
-        ConnectionGossipService {
-            p2p: state.topology.clone(),
-            node: state.node.clone(),
-        }
-    }
-}
-
-impl Clone for ConnectionGossipService {
-    fn clone(&self) -> Self {
-        ConnectionGossipService {
-            node: self.node.clone(),
-            p2p: self.p2p.clone(),
-        }
     }
 }
