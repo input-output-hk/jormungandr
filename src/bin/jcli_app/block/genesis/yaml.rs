@@ -2,7 +2,7 @@ use chain_addr::{AddressReadable, Discrimination};
 use chain_core::property::HasMessages as _;
 use chain_crypto::{bech32::Bech32, Ed25519Extended, PublicKey};
 use chain_impl_mockchain::{
-    block::{Block, BlockBuilder, BlockVersion},
+    block::{Block, BlockBuilder, ConsensusVersion},
     config::{
         entity_from, entity_from_string, entity_to, entity_to_string, Block0Date, ConfigParam,
     },
@@ -45,12 +45,22 @@ pub struct Configuration(Vec<(String, String)>);
 pub struct Update {
     max_number_of_transactions_per_block: Option<u32>,
     bootstrap_key_slots_percentage: Option<u8>,
-    block_version: String,
+    #[serde(with = "ConsensusVersionSerdeImpl")]
+    consensus: ConsensusVersion,
     bft_leaders: Option<Vec<String>>,
     allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
     slot_duration: u8,
     epoch_stability_depth: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "ConsensusVersion", rename_all = "lowercase")]
+enum ConsensusVersionSerdeImpl {
+    None,
+    Bft,
+    #[serde(rename = "genesis")]
+    GenesisPraos,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -250,10 +260,7 @@ impl Update {
         let update = UpdateProposal {
             max_number_of_transactions_per_block: self.max_number_of_transactions_per_block,
             bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage,
-            block_version: Some({
-                let v = self.block_version.parse::<u16>().unwrap();
-                BlockVersion::new(v)
-            }),
+            consensus_version: Some(self.consensus),
             bft_leaders: self.bft_leaders.clone().map(|leaders| {
                 leaders
                     .iter()
@@ -280,10 +287,9 @@ impl Update {
             max_number_of_transactions_per_block: update_proposal
                 .max_number_of_transactions_per_block,
             bootstrap_key_slots_percentage: update_proposal.bootstrap_key_slots_percentage,
-            block_version: update_proposal
-                .block_version
-                .map(|bv| format!("{}", bv.as_u16()))
-                .unwrap_or("1".to_owned()),
+            consensus: update_proposal
+                .consensus_version
+                .unwrap_or(ConsensusVersion::Bft),
             bft_leaders: update_proposal.bft_leaders.clone().map(|leaders| {
                 leaders
                     .iter()
