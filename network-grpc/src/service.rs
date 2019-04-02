@@ -220,9 +220,13 @@ macro_rules! try_get_service {
 impl<T> gen::node::server::Node for NodeService<T>
 where
     T: Node,
-    <T as Node>::BlockService: Clone,
-    <T as Node>::ContentService: Clone,
-    <T as Node>::GossipService: Clone,
+    T::BlockService: Clone,
+    T::ContentService: Clone,
+    T::GossipService: Clone,
+    <T::BlockService as BlockService>::Header: Send + 'static,
+    <T::ContentService as ContentService>::Message: Send + 'static,
+    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::GossipService as GossipService>::NodeId: Send + 'static,
 {
     type TipFuture = ResponseFuture<
         gen::node::TipResponse,

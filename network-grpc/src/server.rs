@@ -1,6 +1,8 @@
 use crate::{gen::node::server as gen_server, service::NodeService};
 
-use network_core::server::Node;
+use network_core::server::{
+    block::BlockService, content::ContentService, gossip::GossipService, Node,
+};
 
 use futures::future::Executor;
 use tokio::net::{TcpListener, TcpStream};
@@ -26,6 +28,10 @@ where
     T::BlockService: Clone,
     T::ContentService: Clone,
     T::GossipService: Clone,
+    <T::BlockService as BlockService>::Header: Send + 'static,
+    <T::ContentService as ContentService>::Message: Send + 'static,
+    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::GossipService as GossipService>::NodeId: Send + 'static,
 {
     h2: tower_h2::Server<
         gen_server::NodeServer<NodeService<T>>,
@@ -42,6 +48,10 @@ where
     T::BlockService: Clone,
     T::ContentService: Clone,
     T::GossipService: Clone,
+    <T::BlockService as BlockService>::Header: Send + 'static,
+    <T::ContentService as ContentService>::Message: Send + 'static,
+    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::GossipService as GossipService>::NodeId: Send + 'static,
 {
     h2: tower_h2::server::Connection<
         S,
@@ -59,6 +69,10 @@ where
     T::BlockService: Clone,
     T::ContentService: Clone,
     T::GossipService: Clone,
+    <T::BlockService as BlockService>::Header: Send + 'static,
+    <T::ContentService as ContentService>::Message: Send + 'static,
+    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::GossipService as GossipService>::NodeId: Send + 'static,
     E: Executor<
         tower_h2::server::Background<
             gen_server::node::ResponseFuture<NodeService<T>>,
@@ -79,6 +93,10 @@ where
     T::BlockService: Clone,
     T::ContentService: Clone,
     T::GossipService: Clone,
+    <T::BlockService as BlockService>::Header: Send + 'static,
+    <T::ContentService as ContentService>::Message: Send + 'static,
+    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::GossipService as GossipService>::NodeId: Send + 'static,
     E: Executor<
             tower_h2::server::Background<
                 gen_server::node::ResponseFuture<NodeService<T>>,
@@ -153,6 +171,10 @@ where
     T::BlockService: Clone,
     T::ContentService: Clone,
     T::GossipService: Clone,
+    <T::BlockService as BlockService>::Header: Send + 'static,
+    <T::ContentService as ContentService>::Message: Send + 'static,
+    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::GossipService as GossipService>::NodeId: Send + 'static,
 {
     fn from(err: H2Error<T>) -> Self {
         use tower_h2::server::Error::*;
