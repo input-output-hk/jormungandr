@@ -121,7 +121,10 @@ impl Multiverse {
             let mut to_keep = ChainLength(0);
 
             for (chain_length, hashes) in &self.states_by_chain_length {
-                // Keep states close to the current longest chain.
+                // Keep states close to the current longest
+                // chain. FIXME: we should keep only the state that is
+                // an ancestor of the current longest chain. However,
+                // checking ancestry requires access to BlockStore.
                 if chain_length.0 + SUFFIX_TO_KEEP >= longest_chain.0 {
                     break;
                 }
