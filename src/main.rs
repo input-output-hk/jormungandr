@@ -18,7 +18,6 @@ extern crate cryptoxide;
 extern crate futures;
 extern crate generic_array;
 extern crate http;
-extern crate sha2;
 #[macro_use]
 extern crate lazy_static;
 extern crate native_tls;
