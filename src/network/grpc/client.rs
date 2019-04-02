@@ -46,7 +46,8 @@ pub fn run_connect_socket(peer: Peer, state: GlobalState) -> impl Future<Item = 
                     state
                         .channels
                         .block_box
-                        .send_to(BlockMsg::AnnouncedBlock(header));
+                        .clone()
+                        .send(BlockMsg::AnnouncedBlock(header));
                     future::ok(())
                 })
                 .map_err(|err| {

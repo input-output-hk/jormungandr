@@ -5,13 +5,18 @@
 //! modules utilized in jormungandr.
 //!
 
-use crate::log_wrapper::logger::{get_global_logger, update_thread_logger};
+use crate::{
+    log_wrapper::logger::{get_global_logger, update_thread_logger},
+    utils::async_msg::{self, MessageBox},
+};
 use slog::Logger;
 use std::{
     sync::mpsc::{self, Sender},
     thread,
     time::{Duration, Instant},
 };
+use tokio::prelude::*;
+use tokio::runtime;
 
 /// hold onto the different services created
 pub struct Services {
@@ -46,6 +51,16 @@ pub struct ThreadServiceInfo {
     logger: Logger,
 }
 
+/// the current future service information
+///
+/// retrieve the name, the up time, the logger and the executor
+pub struct TokioServiceInfo {
+    name: &'static str,
+    up_time: Instant,
+    logger: Logger,
+    executor: runtime::TaskExecutor,
+}
+
 pub struct TaskMessageBox<Msg>(Sender<Msg>);
 
 /// Input for the different task with input service
@@ -61,7 +76,7 @@ pub enum Input<Msg> {
 }
 
 enum Inner {
-    // Tokio { runtime: runtime::Runtime },
+    Tokio { runtime: runtime::Runtime },
     Thread { handler: thread::JoinHandle<()> },
 }
 
@@ -143,6 +158,88 @@ impl Services {
         TaskMessageBox(tx)
     }
 
+    /// Spawn the given Future in a new dedicated runtime
+    ///
+    /// * utilising one thread only;
+    /// * 2MiB stack size max
+    pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
+    where
+        F: FnOnce(TokioServiceInfo) -> T,
+        T: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        let mut runtime = runtime::Builder::new()
+            .keep_alive(None)
+            .core_threads(1)
+            .blocking_threads(1)
+            .stack_size(2 * 1024 * 1024)
+            .name_prefix(name)
+            .build()
+            .unwrap();
+
+        let executor = runtime.executor();
+
+        let now = Instant::now();
+        let future_service_info = TokioServiceInfo {
+            name: name,
+            up_time: now,
+            logger: get_global_logger().new(o!("task" => name.to_owned())),
+            executor: executor,
+        };
+
+        runtime.spawn(f(future_service_info));
+
+        let task = Service::new_runtime(name, runtime, now);
+        self.services.push(task);
+    }
+
+    /// Spawn a tokio service that will await messages and will be executed
+    /// sequentially for every received inputs
+    ///
+    /// * utilising one thread only;
+    /// * 2MiB stack size max
+    ///
+    pub fn spawn_future_with_inputs<F, Msg, T>(
+        &mut self,
+        name: &'static str,
+        mut f: F,
+    ) -> MessageBox<Msg>
+    where
+        F: FnMut(&TokioServiceInfo, Input<Msg>) -> T,
+        F: Send + 'static,
+        Msg: Send + 'static,
+        T: IntoFuture<Item = (), Error = ()> + Send + 'static,
+        <T as futures::IntoFuture>::Future: Send,
+    {
+        let mut runtime = runtime::Builder::new()
+            .keep_alive(None)
+            .core_threads(1)
+            .blocking_threads(1)
+            .stack_size(2 * 1024 * 1024)
+            .name_prefix(name)
+            .build()
+            .unwrap();
+
+        let executor = runtime.executor();
+
+        let now = Instant::now();
+        let future_service_info = TokioServiceInfo {
+            name: name,
+            up_time: now,
+            logger: get_global_logger().new(o!("task" => name.to_owned())),
+            executor: executor,
+        };
+
+        let (msg_box, msg_queue) = async_msg::channel(1000);
+        let future = msg_queue.for_each(move |input| f(&future_service_info, Input::Input(input)));
+
+        runtime.spawn(future);
+
+        let task = Service::new_runtime(name, runtime, now);
+        self.services.push(task);
+
+        msg_box
+    }
+
     /// join on all the started services. this function will block
     /// until all services return
     ///
@@ -150,6 +247,7 @@ impl Services {
         for service in self.services {
             match service.inner {
                 Inner::Thread { handler } => handler.join().unwrap(),
+                Inner::Tokio { runtime } => runtime.shutdown_on_idle().wait().unwrap(),
             }
         }
     }
@@ -175,6 +273,34 @@ impl ThreadServiceInfo {
     }
 }
 
+impl TokioServiceInfo {
+    /// get the time this service has been running since
+    #[inline]
+    pub fn up_time(&self) -> Duration {
+        Instant::now().duration_since(self.up_time)
+    }
+
+    /// get the name of this Service
+    #[inline]
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// access the service's logger
+    #[inline]
+    pub fn logger(&self) -> &Logger {
+        &self.logger
+    }
+
+    /// spawn a future within the service's tokio executor
+    pub fn spawn<F>(&self, future: F)
+    where
+        F: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        self.executor.spawn(future)
+    }
+}
+
 impl Service {
     /// get the time this service has been running since
     #[inline]
@@ -194,6 +320,15 @@ impl Service {
             name,
             up_time: now,
             inner: Inner::Thread { handler },
+        }
+    }
+
+    #[inline]
+    fn new_runtime(name: &'static str, runtime: runtime::Runtime, now: Instant) -> Self {
+        Service {
+            name,
+            up_time: now,
+            inner: Inner::Tokio { runtime },
         }
     }
 }

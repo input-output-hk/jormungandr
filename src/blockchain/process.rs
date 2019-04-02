@@ -3,13 +3,13 @@ use crate::intercom::{BlockMsg, NetworkPropagateMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::{
     async_msg::MessageBox,
-    task::{Input, ThreadServiceInfo},
+    task::{Input, TokioServiceInfo},
 };
 
 use chain_core::property::Header as _;
 
 pub fn handle_input(
-    _info: &ThreadServiceInfo,
+    _info: &TokioServiceInfo,
     blockchain: &BlockchainR,
     _stats_counter: &StatsCounter,
     network_propagate: &MessageBox<NetworkPropagateMsg>,

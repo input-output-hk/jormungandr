@@ -127,8 +127,9 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         let blockchain = bootstrapped_node.blockchain.clone();
         // let clock = bootstrapped_node.clock.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_with_inputs("block", move |info, input| {
-            blockchain::handle_input(info, &blockchain, &stats_counter, &network_msgbox, input)
+        services.spawn_future_with_inputs("block", move |info, input| {
+            blockchain::handle_input(info, &blockchain, &stats_counter, &network_msgbox, input);
+            futures::future::ok(())
         })
     };
 

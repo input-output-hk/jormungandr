@@ -15,7 +15,10 @@ mod service;
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkPropagateMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
-use crate::utils::{async_msg::MessageQueue, task::TaskMessageBox};
+use crate::utils::{
+    async_msg::{MessageBox, MessageQueue},
+    task::TaskMessageBox,
+};
 
 use self::p2p_topology::{self as p2p, P2pTopology};
 
@@ -32,7 +35,7 @@ struct BlockConfig;
 pub struct Channels {
     pub client_box: TaskMessageBox<ClientMsg>,
     pub transaction_box: TaskMessageBox<TransactionMsg>,
-    pub block_box: TaskMessageBox<BlockMsg>,
+    pub block_box: MessageBox<BlockMsg>,
 }
 
 impl Clone for Channels {
