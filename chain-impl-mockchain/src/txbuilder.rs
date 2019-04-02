@@ -1,6 +1,5 @@
 use crate::certificate as cert;
 use crate::fee::FeeAlgorithm;
-use crate::key::SpendingSecretKey;
 use crate::transaction as tx;
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
@@ -203,8 +202,14 @@ fn balance<Extra>(tx: &tx::Transaction<Address, Extra>, fee: Value) -> Result<Ba
 }
 
 pub enum TransactionFinalizer {
-    Type1(tx::AuthenticatedTransaction<Address, tx::NoExtra>),
-    Type2(tx::AuthenticatedTransaction<Address, cert::Certificate>),
+    Type1(
+        tx::Transaction<Address, tx::NoExtra>,
+        Vec<Option<tx::Witness>>,
+    ),
+    Type2(
+        tx::Transaction<Address, cert::Certificate>,
+        Vec<Option<tx::Witness>>,
+    ),
 }
 
 pub enum GeneratedTransaction {
@@ -212,42 +217,84 @@ pub enum GeneratedTransaction {
     Type2(tx::AuthenticatedTransaction<Address, cert::Certificate>),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildError {
+    WitnessOutOfBound(usize, usize),
+    WitnessMismatch(usize),
+    MissingWitnessAt(usize),
+}
+
+fn set_witness<Address, Extra>(
+    transaction: &tx::Transaction<Address, Extra>,
+    witnesses: &mut Vec<Option<tx::Witness>>,
+    index: usize,
+    witness: tx::Witness,
+) -> Result<(), BuildError> {
+    if index >= witnesses.len() {
+        return Err(BuildError::WitnessOutOfBound(index, witnesses.len()));
+    }
+
+    match (transaction.inputs[index].get_type(), &witness) {
+        (tx::InputType::Utxo, tx::Witness::OldUtxo(_, _)) => (),
+        (tx::InputType::Utxo, tx::Witness::Utxo(_)) => (),
+        (tx::InputType::Account, tx::Witness::Account(_)) => (),
+        (_, _) => return Err(BuildError::WitnessMismatch(index)),
+    };
+
+    witnesses[index] = Some(witness);
+    Ok(())
+}
+
+fn get_full_witnesses(witnesses: Vec<Option<tx::Witness>>) -> Result<Vec<tx::Witness>, BuildError> {
+    let mut v = Vec::new();
+    for (i, w) in witnesses.iter().enumerate() {
+        match w {
+            None => return Err(BuildError::MissingWitnessAt(i)),
+            Some(w) => v.push(w.clone()),
+        }
+    }
+    Ok(v)
+}
+
 impl TransactionFinalizer {
     pub fn new_trans(transaction: tx::Transaction<Address, tx::NoExtra>) -> Self {
-        let initial_capacity = transaction.inputs.len();
-        TransactionFinalizer::Type1(tx::AuthenticatedTransaction {
-            transaction: transaction,
-            witnesses: Vec::with_capacity(initial_capacity),
-        })
+        let nb_inputs = transaction.inputs.len();
+        TransactionFinalizer::Type1(transaction, vec![None; nb_inputs])
     }
 
     pub fn new_cert(transaction: tx::Transaction<Address, cert::Certificate>) -> Self {
-        let initial_capacity = transaction.inputs.len();
-        TransactionFinalizer::Type2(tx::AuthenticatedTransaction {
-            transaction: transaction,
-            witnesses: Vec::with_capacity(initial_capacity),
-        })
+        let nb_inputs = transaction.inputs.len();
+        TransactionFinalizer::Type2(transaction, vec![None; nb_inputs])
     }
 
-    /// Sign transaction.
-    pub fn sign(&mut self, pk: &SpendingSecretKey) {
-        // TODO: check if signature is required.
-        // TODO: check if signature matches address.
-        let id = match &self {
-            TransactionFinalizer::Type1(t) => t.transaction.hash(),
-            TransactionFinalizer::Type2(t) => t.transaction.hash(),
-        };
-        let witness = tx::Witness::new(&id, pk);
+    pub fn set_witness(&mut self, index: usize, witness: tx::Witness) -> Result<(), BuildError> {
         match self {
-            TransactionFinalizer::Type1(t) => t.witnesses.push(witness),
-            TransactionFinalizer::Type2(t) => t.witnesses.push(witness),
+            TransactionFinalizer::Type1(ref t, ref mut w) => set_witness(t, w, index, witness),
+            TransactionFinalizer::Type2(ref t, ref mut w) => set_witness(t, w, index, witness),
         }
     }
 
-    pub fn build(self) -> GeneratedTransaction {
+    pub fn get_txid(&self) -> tx::TransactionId {
         match self {
-            TransactionFinalizer::Type1(t) => GeneratedTransaction::Type1(t),
-            TransactionFinalizer::Type2(t) => GeneratedTransaction::Type2(t),
+            TransactionFinalizer::Type1(t, _) => t.hash(),
+            TransactionFinalizer::Type2(t, _) => t.hash(),
+        }
+    }
+
+    pub fn build(self) -> Result<GeneratedTransaction, BuildError> {
+        match self {
+            TransactionFinalizer::Type1(t, witnesses) => {
+                Ok(GeneratedTransaction::Type1(tx::AuthenticatedTransaction {
+                    transaction: t,
+                    witnesses: get_full_witnesses(witnesses)?,
+                }))
+            }
+            TransactionFinalizer::Type2(t, witnesses) => {
+                Ok(GeneratedTransaction::Type2(tx::AuthenticatedTransaction {
+                    transaction: t,
+                    witnesses: get_full_witnesses(witnesses)?,
+                }))
+            }
         }
     }
 }
