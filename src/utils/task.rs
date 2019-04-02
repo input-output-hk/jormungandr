@@ -110,35 +110,32 @@ impl Services {
     /// the service will stop once there is no more input to read: the function
     /// will be called one last time with `Input::Shutdown` and then will return
     ///
-    pub fn spawn_with_inputs<F, Msg, B>(
+    pub fn spawn_with_inputs<F, Msg>(
         &mut self,
         name: &'static str,
-        b: B,
-        f: F,
+        // mut b: B,
+        mut f: F,
     ) -> TaskMessageBox<Msg>
     where
-        F: Fn(&ThreadServiceInfo, &mut B, Input<Msg>) -> (),
+        F: FnMut(&ThreadServiceInfo, Input<Msg>) -> (),
         F: Send + 'static,
-        B: Send + 'static,
+        // B: Send + 'static,
         Msg: Send + 'static,
     {
         let (tx, rx) = mpsc::channel::<Msg>();
 
-        self.spawn(name, move |info| {
-            let mut captured_b = b;
-            loop {
-                match rx.recv() {
-                    Ok(msg) => f(&info, &mut captured_b, Input::Input(msg)),
-                    Err(err) => {
-                        warn!(
-                            "Shutting down service {} (up since {}): {}",
-                            name,
-                            humantime::format_duration(info.up_time()),
-                            err
-                        );
-                        f(&info, &mut captured_b, Input::Shutdown);
-                        break;
-                    }
+        self.spawn(name, move |info| loop {
+            match rx.recv() {
+                Ok(msg) => f(&info, Input::Input(msg)),
+                Err(err) => {
+                    warn!(
+                        "Shutting down service {} (up since {}): {}",
+                        name,
+                        humantime::format_duration(info.up_time()),
+                        err
+                    );
+                    f(&info, Input::Shutdown);
+                    break;
                 }
             }
         });
