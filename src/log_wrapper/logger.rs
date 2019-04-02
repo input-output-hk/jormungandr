@@ -26,7 +26,7 @@ thread_local! {
 /// Utility function that returns a global logger
 /// in case if local one was not set. Returns `None`
 /// in case if local logger is set.
-fn get_global_logger() -> slog::Logger {
+pub fn get_global_logger() -> slog::Logger {
     let ref_cell = TOP_LOGGER.lock().unwrap();
     let cell = ref_cell.borrow();
     cell.clone()
