@@ -1,5 +1,6 @@
 mod address;
 mod block;
+mod debug;
 mod key;
 mod rest;
 mod transaction;
@@ -21,6 +22,8 @@ pub enum JCli {
     Rest(rest::Rest),
     /// Build and view offline transaction
     Transaction(transaction::Transaction),
+    /// Debug tools for developers
+    Debug(debug::Debug),
 }
 
 impl JCli {
@@ -31,6 +34,7 @@ impl JCli {
             JCli::Genesis(genesis) => genesis.exec(),
             JCli::Rest(rest) => rest.exec(),
             JCli::Transaction(transaction) => transaction.exec(),
+            JCli::Debug(debug) => debug.exec(),
         }
     }
 }
