@@ -1,16 +1,26 @@
 use crate::blockcfg::Header;
-use crate::blockchain::chain::{self, BlockHeaderTriage, HandledBlock};
+use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
 use crate::intercom::BlockMsg;
 use crate::rest::v0::node::stats::StatsCounter;
-use crate::utils::task::TaskBroadcastBox;
+use crate::utils::task::{Input, TaskBroadcastBox, ThreadServiceInfo};
 use chain_core::property::Header as _;
 
-pub fn process(
-    blockchain: &chain::BlockchainR,
-    bquery: BlockMsg,
+pub fn handle_input(
+    _info: &ThreadServiceInfo,
+    blockchain: &BlockchainR,
+    _stats_counter: &StatsCounter,
     network_broadcast: &mut TaskBroadcastBox<Header>,
-    stats_counter: &StatsCounter,
+    input: Input<BlockMsg>,
 ) {
+    let bquery = match input {
+        Input::Shutdown => {
+            // TODO: is there some work to do here to clean up the
+            //       the state and make sure all state is saved properly
+            return;
+        }
+        Input::Input(msg) => msg,
+    };
+
     match bquery {
         BlockMsg::LeadershipBlock(block) => {
             let mut blockchain = blockchain.lock_write();

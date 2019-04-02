@@ -53,7 +53,7 @@ extern crate structopt;
 #[cfg(feature = "with-bench")]
 extern crate test;
 
-use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use chain_impl_mockchain::message::{Message, MessageId};
 use futures::Future;
@@ -63,8 +63,8 @@ use intercom::BlockMsg;
 use leadership::leadership_task;
 use rest::v0::node::stats::StatsCounter;
 use settings::start::Settings;
-use transaction::{transaction_task, TPool};
-use utils::task::{TaskBroadcastBox, Tasks};
+use transaction::TPool;
+use utils::task::{Services, TaskBroadcastBox};
 
 #[macro_use]
 pub mod log_wrapper;
@@ -91,19 +91,6 @@ pub mod utils;
 // block notifications in time.
 const BLOCK_BUS_CAPACITY: usize = 2;
 
-fn block_task(
-    blockchain: BlockchainR,
-    _clock: clock::Clock, // FIXME: use it or lose it
-    r: Receiver<BlockMsg>,
-    stats_counter: StatsCounter,
-) {
-    let mut network_broadcast = TaskBroadcastBox::new(BLOCK_BUS_CAPACITY);
-    loop {
-        let bquery = r.recv().unwrap();
-        blockchain::process(&blockchain, bquery, &mut network_broadcast, &stats_counter);
-    }
-}
-
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
 
@@ -119,7 +106,7 @@ pub struct BootstrappedNode {
 }
 
 fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::Error> {
-    let mut tasks = Tasks::new();
+    let mut services = Services::new();
 
     let tpool_data: TPool<MessageId, Message> = TPool::new();
     let tpool = Arc::new(RwLock::new(tpool_data));
@@ -129,23 +116,36 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         let tpool = tpool.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
-        tasks.task_create_with_inputs("transaction", move |r| {
-            transaction_task(blockchain, tpool, r, stats_counter)
+        services.spawn_with_inputs("transaction", (), move |info, (), input| {
+            transaction::handle_input(info, &blockchain, &tpool, &stats_counter, input)
         })
     };
 
     let block_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
-        let clock = bootstrapped_node.clock.clone();
+        // let clock = bootstrapped_node.clock.clone();
         let stats_counter = stats_counter.clone();
-        tasks.task_create_with_inputs("block", move |r| {
-            block_task(blockchain, clock, r, stats_counter)
-        })
+        let mut network_broadcast = TaskBroadcastBox::new(BLOCK_BUS_CAPACITY);
+        services.spawn_with_inputs(
+            "block",
+            network_broadcast,
+            move |info, network_broadcast, input| {
+                blockchain::handle_input(
+                    info,
+                    &blockchain,
+                    &stats_counter,
+                    network_broadcast,
+                    input,
+                )
+            },
+        )
     };
 
     let client_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
-        tasks.task_create_with_inputs("client-query", move |r| client::client_task(blockchain, r))
+        services.spawn_with_inputs("client-query", (), move |info, (), input| {
+            client::handle_input(info, &blockchain, input)
+        })
     };
 
     {
@@ -158,10 +158,11 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
             transaction_box: transaction_msgbox,
             block_box: block_msgbox,
         };
-        tasks.task_create("network", move || {
+
+        services.spawn("network", move |_info| {
             network::run(config, channels);
         });
-    };
+    }
 
     let leader_secret = if let Some(secret_path) = &bootstrapped_node.settings.leadership {
         Some(secure::NodeSecret::load_from_file(secret_path.as_path()))
@@ -169,19 +170,16 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         None
     };
 
-    if let Some(secret) = leader_secret
-    // == settings::start::Leadership::Yes
-    //    && leadership::selection::can_lead(&selection) == leadership::IsLeading::Yes
-    {
+    if let Some(secret) = leader_secret {
         let tpool = tpool.clone();
         let clock = bootstrapped_node.clock.clone();
         let block_task = block_task.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
         let pk = chain_impl_mockchain::leadership::Leader::BftLeader(secret.block_privatekey);
-        tasks.task_create("leadership", move || {
+        services.spawn("leadership", move |_info| {
             leadership_task(pk, tpool, blockchain, clock, block_task)
         });
-    };
+    }
 
     let rest_server = match bootstrapped_node.settings.rest {
         Some(ref rest) => {
@@ -195,7 +193,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         None => None,
     };
 
-    tasks.join();
+    services.wait_all();
 
     if let Some(server) = rest_server {
         server.stop().wait().unwrap()

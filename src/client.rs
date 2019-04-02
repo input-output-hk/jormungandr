@@ -1,33 +1,32 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
+use crate::utils::task::{Input, ThreadServiceInfo};
 use chain_core::property::{Block as _, HasHeader as _};
-use std::sync::mpsc::Receiver;
 
-pub fn client_task(blockchain: BlockchainR, r: Receiver<ClientMsg>) {
-    loop {
-        let query = r.recv().unwrap();
-        debug!("client query received: {:?}", query);
+pub fn handle_input(_info: &ThreadServiceInfo, blockchain: &BlockchainR, input: Input<ClientMsg>) {
+    let cquery = match input {
+        Input::Shutdown => return,
+        Input::Input(msg) => msg,
+    };
 
-        match query {
-            ClientMsg::GetBlockTip(handler) => handler.reply(handle_get_block_tip(&blockchain)),
-            ClientMsg::GetHeaders(ids, handler) => do_stream_reply(handler, |handler| {
-                handle_get_headers(&blockchain, ids, handler)
-            }),
-            ClientMsg::GetHeadersRange(checkpoints, to, handler) => {
-                handler.reply(handle_get_headers_range(&blockchain, checkpoints, to))
-            }
-            ClientMsg::GetBlocks(ids, handler) => do_stream_reply(handler, |handler| {
-                handle_get_blocks(&blockchain, ids, handler)
-            }),
-
-            ClientMsg::GetBlocksRange(from, to, handler) => do_stream_reply(handler, |handler| {
-                handle_get_blocks_range(&blockchain, from, to, handler)
-            }),
-            ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
-                handle_pull_blocks_to_tip(&blockchain, from, handler)
-            }),
+    match cquery {
+        ClientMsg::GetBlockTip(handler) => handler.reply(handle_get_block_tip(&blockchain)),
+        ClientMsg::GetHeaders(ids, handler) => do_stream_reply(handler, |handler| {
+            handle_get_headers(&blockchain, ids, handler)
+        }),
+        ClientMsg::GetHeadersRange(checkpoints, to, handler) => {
+            handler.reply(handle_get_headers_range(&blockchain, checkpoints, to))
         }
+        ClientMsg::GetBlocks(ids, handler) => do_stream_reply(handler, |handler| {
+            handle_get_blocks(&blockchain, ids, handler)
+        }),
+        ClientMsg::GetBlocksRange(from, to, handler) => do_stream_reply(handler, |handler| {
+            handle_get_blocks_range(&blockchain, from, to, handler)
+        }),
+        ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
+            handle_pull_blocks_to_tip(&blockchain, from, handler)
+        }),
     }
 }
 
