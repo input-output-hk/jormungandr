@@ -61,7 +61,7 @@ impl AsRef<[u8]> for TransactionIdSpendingCounter {
 
 impl Witness {
     /// Creates new `Witness` value.
-    pub fn new(transaction_id: &TransactionId, secret_key: &SpendingSecretKey) -> Self {
+    pub fn new_utxo(transaction_id: &TransactionId, secret_key: &SpendingSecretKey) -> Self {
         Witness::Utxo(SpendingSignature::generate(secret_key, transaction_id))
     }
 
@@ -166,7 +166,7 @@ pub mod test {
         /// ```
         fn prop_witness_verifies_own_tx(sk: TransactionSigningKey, tx:TransactionId) -> bool {
             let pk = sk.0.to_public();
-            let witness = Witness::new(&tx, &sk.0);
+            let witness = Witness::new_utxo(&tx, &sk.0);
             witness.verify_utxo(&pk, &tx) == Verification::Success
         }
     }
