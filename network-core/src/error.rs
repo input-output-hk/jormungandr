@@ -7,6 +7,7 @@ pub enum Code {
     Unknown,
     InvalidArgument,
     NotFound,
+    FailedPrecondition,
     Unimplemented,
     Internal,
 }
@@ -47,6 +48,7 @@ impl fmt::Display for Error {
             Code::Unknown => "unknown error",
             Code::InvalidArgument => "invalid request data",
             Code::NotFound => "not found",
+            Code::FailedPrecondition => "system state does not permit the operation",
             Code::Unimplemented => "not implemented",
             Code::Internal => "internal processing error",
         };
