@@ -21,13 +21,13 @@ pub trait Node {
 
     /// Instantiates the block service,
     /// if supported by this node.
-    fn block_service(&self) -> Option<Self::BlockService>;
+    fn block_service(&mut self) -> Option<&mut Self::BlockService>;
 
     /// Instantiates the content service,
     /// if supported by this node.
-    fn content_service(&self) -> Option<Self::ContentService>;
+    fn content_service(&mut self) -> Option<&mut Self::ContentService>;
 
     /// Instantiates the gossip service,
     /// if supported by this node.
-    fn gossip_service(&self) -> Option<Self::GossipService>;
+    fn gossip_service(&mut self) -> Option<&mut Self::GossipService>;
 }
