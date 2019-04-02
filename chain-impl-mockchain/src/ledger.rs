@@ -1,7 +1,7 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::HeaderHash;
+use crate::block::{ChainLength, HeaderHash};
 use crate::config;
 use crate::fee::LinearFee;
 use crate::message::initial;
@@ -11,7 +11,7 @@ use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, utxo};
 use chain_addr::{Address, Discrimination, Kind};
-use chain_core::property;
+use chain_core::property::{self, ChainLength as _};
 use std::sync::Arc;
 
 // static parameters, effectively this is constant in the parameter of the blockchain
@@ -54,6 +54,7 @@ pub struct Ledger {
     pub(crate) settings: setting::Settings,
     pub(crate) delegation: DelegationState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
+    pub(crate) chain_length: ChainLength,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,6 +119,7 @@ impl Ledger {
             settings: setting::Settings::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_parameters),
+            chain_length: ChainLength(0),
         }
     }
 
@@ -216,6 +218,8 @@ impl Ledger {
     {
         let mut new_ledger = self.clone();
 
+        new_ledger.chain_length = self.chain_length.next();
+
         for content in contents {
             match content {
                 Message::Initial(_) => return Err(Error::Block0OnlyMessageReceived),
@@ -280,6 +284,10 @@ impl Ledger {
 
     pub fn utxos<'a>(&'a self) -> utxo::Iter<'a, Address> {
         self.utxos.iter()
+    }
+
+    pub fn chain_length(&self) -> ChainLength {
+        self.chain_length
     }
 }
 
