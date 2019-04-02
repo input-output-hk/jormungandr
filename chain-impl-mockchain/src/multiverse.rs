@@ -219,10 +219,12 @@ impl Multiverse {
             cur_hash = cur_block_info.parent_id();
         };
 
+        /*
         println!(
             "applying {} blocks to reconstruct state",
             blocks_to_apply.len()
         );
+        */
 
         for hash in blocks_to_apply.iter().rev() {
             let block = store.get_block(&hash).unwrap().0;
