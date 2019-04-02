@@ -34,6 +34,7 @@ pub struct Common {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ChainLength(pub(crate) u32);
 
+/// FIXME SECURITY : we want to sign Common + everything in proof except the signature
 pub type HeaderToSign = Common;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

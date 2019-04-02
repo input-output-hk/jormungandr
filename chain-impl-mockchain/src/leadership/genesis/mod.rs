@@ -3,11 +3,13 @@ mod vrfeval;
 use crate::{
     block::{BlockDate, Header, Proof},
     date::Epoch,
+    key::verify_signature,
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
     stake::{self, StakeDistribution, StakePoolId},
     value::Value,
 };
+use chain_crypto::Verification as SigningVerification;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
 pub use vrfeval::Witness;
 
@@ -98,14 +100,25 @@ impl GenesisLeaderSelection {
                             total: total_stake,
                         };
 
-                        let ononce = vrfeval::verify(
+                        let _ = vrfeval::verify(
                             percent_stake,
                             &pool_info.initial_key.vrf_public_key,
                             &self.epoch_nonce,
                             block_header.block_date().slot_id,
                             &genesis_praos_proof.vrf_proof,
                         );
-                        unimplemented!()
+
+                        let valid = verify_signature(
+                            &genesis_praos_proof.kes_proof.0,
+                            &pool_info.initial_key.kes_public_key,
+                            &block_header.common,
+                        );
+
+                        if valid == SigningVerification::Failed {
+                            Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature))
+                        } else {
+                            Verification::Success
+                        }
                     }
                     (_, _) => Verification::Failure(Error::new(ErrorKind::InvalidBlockMessage)),
                 }
