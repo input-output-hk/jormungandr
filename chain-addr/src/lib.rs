@@ -211,7 +211,7 @@ impl Address {
         match self.1 {
             Kind::Single(ref pk) => Some(pk),
             Kind::Group(ref pk, _) => Some(pk),
-            Kind::Account(ref pk) => None,
+            Kind::Account(ref pk) => Some(pk),
         }
     }
 }
