@@ -2,7 +2,7 @@ use crate::key::SpendingSecretKey;
 use crate::stake::{StakeKeyId, StakePoolId, StakePoolInfo};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, SecretKey};
+use chain_crypto::{Ed25519Extended, SecretKey, Verification};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
@@ -58,6 +58,53 @@ impl Certificate {
                 self.signatures.push(signature);
             }
         }
+    }
+
+    pub fn verify(&self) -> Verification {
+        match &self.content {
+            CertificateContent::StakeKeyRegistration(v) => verify_certificate(v, &self.signatures),
+            CertificateContent::StakeKeyDeregistration(v) => {
+                verify_certificate(v, &self.signatures)
+            }
+            CertificateContent::StakeDelegation(v) => verify_certificate(v, &self.signatures),
+            CertificateContent::StakePoolRegistration(v) => verify_certificate(v, &self.signatures),
+            CertificateContent::StakePoolRetirement(v) => verify_certificate(v, &self.signatures),
+        }
+    }
+}
+
+/// Keep an information how to extract public keys from
+/// the certificate.
+trait HasStakeKeyIds {
+    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a>;
+}
+
+fn verify_certificate<C>(certificate: &C, raw_signatures: &[SignatureRaw]) -> Verification
+where
+    C: HasStakeKeyIds + property::Serialize,
+{
+    use crate::key::{deserialize_signature, verify_signature};
+    let mut signatures = raw_signatures.iter();
+    loop {
+        for owner in certificate.public_keys() {
+            match signatures.next() {
+                None => return Verification::Failed,
+                Some(signature) => {
+                    let mut reader = ReadBuf::from(&signature.0);
+                    match deserialize_signature(&mut reader) {
+                        Ok(signature) => {
+                            if verify_signature(&signature, &owner.0, &certificate)
+                                == Verification::Failed
+                            {
+                                return Verification::Failed;
+                            }
+                        }
+                        Err(_) => return Verification::Failed,
+                    }
+                }
+            }
+        }
+        return Verification::Success;
     }
 }
 
@@ -157,6 +204,12 @@ impl StakeKeyRegistration {
     }
 }
 
+impl HasStakeKeyIds for StakeKeyRegistration {
+    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+        Box::new(std::iter::once(&self.stake_key_id))
+    }
+}
+
 impl property::Serialize for StakeKeyRegistration {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -184,6 +237,12 @@ impl StakeKeyDeregistration {
     pub fn make_certificate(&self, stake_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
         use crate::key::make_signature;
         SignatureRaw(make_signature(stake_private_key, &self).as_ref().to_vec())
+    }
+}
+
+impl HasStakeKeyIds for StakeKeyDeregistration {
+    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+        Box::new(std::iter::once(&self.stake_key_id))
     }
 }
 
@@ -220,6 +279,12 @@ impl StakeDelegation {
     }
 }
 
+impl HasStakeKeyIds for StakeDelegation {
+    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+        Box::new(std::iter::once(&self.stake_key_id))
+    }
+}
+
 impl property::Serialize for StakeDelegation {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -249,10 +314,17 @@ impl StakePoolInfo {
     }
 }
 
+impl HasStakeKeyIds for StakePoolInfo {
+    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+        Box::new(self.owners.iter())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolRetirement {
     pub pool_id: StakePoolId,
     // TODO: add epoch when the retirement will take effect
+    pub pool_info: StakePoolInfo,
 }
 
 impl StakePoolRetirement {
@@ -264,12 +336,19 @@ impl StakePoolRetirement {
     }
 }
 
+impl HasStakeKeyIds for StakePoolRetirement {
+    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+        Box::new(self.pool_info.owners.iter())
+    }
+}
+
 impl property::Serialize for StakePoolRetirement {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::from(writer);
         self.pool_id.serialize(&mut codec)?;
+        self.pool_info.serialize(&mut codec)?;
         Ok(())
     }
 }
@@ -278,6 +357,7 @@ impl Readable for StakePoolRetirement {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(StakePoolRetirement {
             pool_id: StakePoolId::read(buf)?,
+            pool_info: StakePoolInfo::read(buf)?,
         })
     }
 }
@@ -360,6 +440,7 @@ mod test {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             StakePoolRetirement {
                 pool_id: Arbitrary::arbitrary(g),
+                pool_info: Arbitrary::arbitrary(g),
             }
         }
     }
