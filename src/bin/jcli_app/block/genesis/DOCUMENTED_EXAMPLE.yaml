@@ -15,6 +15,14 @@ blockchain_configuration:
   # otherwise leave as this
   - [ discrimination, test ]
 
+  # The initial consensus version:
+  #
+  # * BFT consensus: bft
+  # * Genesis Praos consensus: genesis
+  - [ block0-consensus, bft ]
+
+
+
 # The Initial settings defines the settings than may change during
 # the life time of the blockchain.
 initial_setting:

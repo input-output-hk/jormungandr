@@ -3,12 +3,13 @@ pub use network_core::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
     block::{Block, BlockBuilder, BlockDate, ChainLength, Epoch, Header, HeaderHash, SlotId},
-    config::{self, entity_from, Block0Date, ConfigParam},
+    config::{self, Block0Date, ConfigParam},
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
     message::{InitialEnts, Message, MessageId},
     multiverse::Multiverse,
 };
+use std::time::{Duration, SystemTime};
 
 custom_error! {pub Block0Malformed
     NoInitialSettings = "Missing its initial settings",
@@ -49,16 +50,10 @@ pub fn block_0_get_slot_duration(block: &Block) -> Result<std::time::Duration, B
 pub fn block_0_get_start_time(block: &Block) -> Result<std::time::SystemTime, Block0Error> {
     let ents = block_0_get_initial(block)?;
 
-    for (tag, payload) in ents.iter() {
-        match tag {
-            &<Block0Date as ConfigParam>::TAG => {
-                let Block0Date(time_since_epoch) = entity_from(*tag, &payload)?;
-                return Ok(std::time::SystemTime::UNIX_EPOCH
-                    + std::time::Duration::from_secs(time_since_epoch));
-            }
-            _ => {}
+    for config in ents.iter() {
+        if let ConfigParam::Block0Date(date) = config {
+            return Ok(SystemTime::UNIX_EPOCH + Duration::from_secs(date.0));
         }
     }
-
     Err(Block0Malformed::NoStartTime.into())
 }
