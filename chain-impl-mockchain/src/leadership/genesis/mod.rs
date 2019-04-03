@@ -1,20 +1,17 @@
+mod vrfeval;
+
 use crate::{
     block::{BlockDate, Header, Proof},
     date::Epoch,
-    key::Hash,
+    key::verify_signature,
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
-    stake::StakeDistribution,
+    stake::{self, StakeDistribution, StakePoolId},
     value::Value,
 };
-use chain_core::mempack::{ReadBuf, ReadError, Readable};
-use chain_core::property;
+use chain_crypto::Verification as SigningVerification;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
-use rand::{Rng, SeedableRng};
-
-/// Hash of GenesisPraosLeader
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GenesisPraosId(pub(crate) Hash);
+pub use vrfeval::Witness;
 
 /// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -23,44 +20,32 @@ pub struct GenesisPraosLeader {
     pub(crate) vrf_public_key: PublicKey<Curve25519_2HashDH>,
 }
 
-impl GenesisPraosLeader {
-    pub fn get_id(&self) -> GenesisPraosId {
-        let mut v = Vec::new();
-        v.extend_from_slice(self.vrf_public_key.as_ref());
-        v.extend_from_slice(self.kes_public_key.as_ref());
-        GenesisPraosId(Hash::hash_bytes(&v))
-    }
-}
-
-#[derive(Debug)]
 pub struct GenesisLeaderSelection {
-    //delegation_state: DelegationState,
+    epoch_nonce: vrfeval::Nonce,
+    nodes: stake::PoolTable,
     distribution: StakeDistribution,
     // the epoch this leader selection is valid for
     epoch: Epoch,
 }
 
 impl GenesisLeaderSelection {
-    pub fn new(ledger: &Ledger) -> Self {
+    pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         let stake_distribution = ledger.get_stake_distribution();
-        // TODO: get this info from the state
-        let epoch_state = 0;
-
-        // TODO: get this info from the settings ? or is it static ?
-        let leader_selection_snapshot_interval = 2;
 
         GenesisLeaderSelection {
+            epoch_nonce: vrfeval::Nonce::zero(),
+            nodes: ledger.delegation.stake_pools.clone(),
             distribution: stake_distribution,
-            //delegation_state: state.delegation.clone(),
-            epoch: epoch_state + leader_selection_snapshot_interval,
+            epoch: epoch,
         }
     }
 
     pub fn leader(
         &self,
-        _vrf_key: &SecretKey<Curve25519_2HashDH>,
+        pool_id: &StakePoolId,
+        vrf_key: &SecretKey<Curve25519_2HashDH>,
         date: BlockDate,
-    ) -> Result<Option<GenesisPraosLeader>, Error> {
+    ) -> Result<Option<Witness>, Error> {
         if date.epoch != self.epoch {
             // TODO: add more error details: invalid Date
             return Err(Error::new(ErrorKind::Failure));
@@ -68,90 +53,77 @@ impl GenesisLeaderSelection {
 
         let stake_snapshot = &self.distribution;
 
-        // FIXME: the following is a placeholder for a
-        // proper VRF-based leader selection.
+        match stake_snapshot.get_stake_for(&pool_id) {
+            None => Ok(None),
+            Some(stake) => {
+                // Calculate the total stake.
+                let total_stake: Value = stake_snapshot.total_stake();
 
-        // Calculate the total stake.
-        let total_stake: Value = stake_snapshot.total_stake();
+                if total_stake == Value::zero() {
+                    // TODO: give more info about the error here...
+                    return Err(Error::new(ErrorKind::Failure));
+                }
 
-        if total_stake.0 == 0 {
-            // TODO: give more info about the error here...
-            return Err(Error::new(ErrorKind::Failure));
+                let percent_stake = vrfeval::PercentStake {
+                    stake: stake,
+                    total: total_stake,
+                };
+                match vrfeval::evaluate(percent_stake, vrf_key, &self.epoch_nonce, date.slot_id) {
+                    None => Ok(None),
+                    Some(vrfout) => Ok(Some(vrfout)),
+                }
+            }
         }
-
-        // Pick a random point in the range [0, total_stake).
-        let mut rng: rand::rngs::StdRng =
-            SeedableRng::seed_from_u64((date.epoch as u64) << 32 | date.slot_id as u64);
-        let point = rng.gen_range(0, total_stake.0);
-
-        // Select the stake pool containing the point we
-        // picked.
-        let _pool_id = stake_snapshot.select_pool(point).unwrap();
-        /*
-        let pool_info = self
-            .delegation_state
-            .get_stake_pools()
-            .get(&pool_id)
-            .unwrap();
-        let keys = GenesisPraosLeader {
-            kes_public_key: pool_info.kes_public_key.clone(),
-            vrf_public_key: pool_info.vrf_public_key.clone(),
-        };
-
-        Ok(Some(keys))
-        */
-        unimplemented!()
     }
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {
+        if block_header.block_date().epoch != self.epoch {
+            // TODO: add more error details: invalid Date
+            return Verification::Failure(Error::new(ErrorKind::Failure));
+        }
+
+        let stake_snapshot = &self.distribution;
+
         match &block_header.proof() {
-            Proof::GenesisPraos(_genesis_praos_proof) => unimplemented!(),
+            Proof::GenesisPraos(ref genesis_praos_proof) => {
+                let node_id = &genesis_praos_proof.node_id;
+                match (
+                    stake_snapshot.get_stake_for(node_id),
+                    self.nodes.lookup(node_id),
+                ) {
+                    (Some(stake), Some(pool_info)) => {
+                        // Calculate the total stake.
+                        let total_stake: Value = stake_snapshot.total_stake();
+
+                        let percent_stake = vrfeval::PercentStake {
+                            stake: stake,
+                            total: total_stake,
+                        };
+
+                        let _ = vrfeval::verify(
+                            percent_stake,
+                            &pool_info.initial_key.vrf_public_key,
+                            &self.epoch_nonce,
+                            block_header.block_date().slot_id,
+                            &genesis_praos_proof.vrf_proof,
+                        );
+
+                        let valid = verify_signature(
+                            &genesis_praos_proof.kes_proof.0,
+                            &pool_info.initial_key.kes_public_key,
+                            &block_header.common,
+                        );
+
+                        if valid == SigningVerification::Failed {
+                            Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature))
+                        } else {
+                            Verification::Success
+                        }
+                    }
+                    (_, _) => Verification::Failure(Error::new(ErrorKind::InvalidBlockMessage)),
+                }
+            }
             _ => Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature)),
-        }
-    }
-
-    #[inline]
-    pub(crate) fn get_leader_at(
-        &self,
-        vrf_key: &SecretKey<Curve25519_2HashDH>,
-        date: BlockDate,
-    ) -> Result<GenesisPraosLeader, Error> {
-        match self.leader(vrf_key, date)? {
-            Some(keys) => Ok(keys),
-            None => Err(Error::new(ErrorKind::NoLeaderForThisSlot)),
-        }
-    }
-}
-
-impl property::Serialize for GenesisPraosId {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        self.0.serialize(writer)
-    }
-}
-
-impl property::Deserialize for GenesisPraosId {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        Hash::deserialize(reader).map(GenesisPraosId)
-    }
-}
-
-impl Readable for GenesisPraosId {
-    fn read<'a>(reader: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        Hash::read(reader).map(GenesisPraosId)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for GenesisPraosId {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let bytes = Vec::arbitrary(g);
-            GenesisPraosId(Hash::hash_bytes(&bytes))
         }
     }
 }

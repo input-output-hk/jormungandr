@@ -1,10 +1,8 @@
 //! Representation of the block in the mockchain.
-use crate::key::{make_signature, make_signature_update, Hash};
-use crate::leadership::{bft, genesis::GenesisPraosLeader, Leader};
+use crate::key::Hash;
 use crate::message::{Message, MessageRaw};
 use chain_core::mempack::read_from_raw;
 use chain_core::property::{self, Serialize};
-use chain_crypto::Verification;
 
 mod builder;
 //mod cstruct;
@@ -73,53 +71,10 @@ impl BlockContents {
 }
 
 impl Block {
-    /// Create a new signed block.
-    #[deprecated(note = "utilise BlockBuilder instead")]
-    pub fn new(contents: BlockContents, common: Common, leader: &mut Leader) -> Self {
-        let proof = match leader {
-            Leader::None => Proof::None,
-            Leader::BftLeader(private_key) => {
-                let signature = make_signature(&private_key, &common);
-                Proof::Bft(BftProof {
-                    leader_id: bft::LeaderId(private_key.to_public()),
-                    signature: BftSignature(signature),
-                })
-            }
-            Leader::GenesisPraos(ref mut kes_secret, vrf_secret) => {
-                let gpleader = GenesisPraosLeader {
-                    kes_public_key: kes_secret.to_public(),
-                    vrf_public_key: vrf_secret.to_public(),
-                };
-                let signature = make_signature_update(kes_secret, &common);
-                #[allow(unreachable_code)]
-                Proof::GenesisPraos(GenesisPraosProof {
-                    genesis_praos_id: gpleader.get_id(),
-                    kes_proof: KESSignature(signature),
-                    vrf_proof: unimplemented!(), // proven_output_seed.clone(),
-                                                 //vrf_public_key: vrf_secret.public(),
-                                                 //kes_public_key: kes_secret.to_public().into(),
-                })
-            }
-        };
-        Block {
-            header: Header {
-                common: common,
-                proof: proof,
-            },
-            contents: contents,
-        }
-    }
-
-    /// Verify if block is correctly signed by the key.
-    /// Return `false` if there is no such signature or
-    /// if it can't be verified.
-    pub fn verify(&self) -> bool {
-        let header_proof = self.header.verify_proof();
-
+    pub fn is_consistent(&self) -> bool {
         let (content_hash, content_size) = self.contents.compute_hash_size();
 
-        header_proof == Verification::Success
-            && &content_hash == self.header.block_content_hash()
+        &content_hash == self.header.block_content_hash()
             && content_size == self.header.common.block_content_size as usize
     }
 }

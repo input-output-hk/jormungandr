@@ -4,17 +4,16 @@ use crate::block::{
 };
 use crate::date::BlockDate;
 use crate::key::{
-    deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
-    verify_signature, Hash,
+    deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature, Hash,
 };
-use crate::leadership::{bft, genesis};
+use crate::leadership::bft;
+use crate::stake::StakePoolId;
 use chain_core::{
     mempack::{read_from_raw, ReadBuf, ReadError, Readable},
     property,
 };
 use chain_crypto::{
     self, Curve25519_2HashDH, Ed25519Extended, FakeMMM, Signature, VerifiableRandomFunction,
-    Verification,
 };
 
 pub type HeaderHash = Hash;
@@ -35,6 +34,7 @@ pub struct Common {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ChainLength(pub(crate) u32);
 
+/// FIXME SECURITY : we want to sign Common + everything in proof except the signature
 pub type HeaderToSign = Common;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,8 +48,8 @@ pub struct BftSignature(pub(crate) Signature<HeaderToSign, Ed25519Extended>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisPraosProof {
-    pub(crate) genesis_praos_id: genesis::GenesisPraosId,
-    pub(crate) vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom,
+    pub(crate) node_id: StakePoolId,
+    pub(crate) vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput,
     pub(crate) kes_proof: KESSignature,
 }
 
@@ -88,23 +88,6 @@ impl PartialEq<Self> for KESSignature {
     }
 }
 impl Eq for KESSignature {}
-
-/*
-impl Proof {
-    pub fn leader_id(&self) -> Option<LeaderId> {
-        match self {
-            Proof::None => None,
-            Proof::Bft(bft_proof) => Some(LeaderId::Bft(bft_proof.leader_id.clone())),
-            Proof::GenesisPraos(genesis_praos_proof) => {
-                Some(LeaderId::GenesisPraos(GenesisPraosLeader {
-                    kes_public_key: genesis_praos_proof.kes_public_key.clone(),
-                    vrf_public_key: genesis_praos_proof.vrf_public_key.clone(),
-                }))
-            }
-        }
-    }
-}
-*/
 
 impl Header {
     #[inline]
@@ -149,32 +132,6 @@ impl Header {
     pub fn proof(&self) -> &Proof {
         &self.proof
     }
-
-    /// this function verify the proof and the consistency of the block
-    /// within itself.
-    pub fn verify_proof(&self) -> Verification {
-        match &self.proof {
-            Proof::None => Verification::Success,
-            Proof::Bft(bft_proof) => {
-                verify_signature(&bft_proof.signature.0, &bft_proof.leader_id.0, &self.common)
-            }
-            Proof::GenesisPraos(genesis_praos_proof) => {
-                let _kes_public_key = {
-                    // use the ID to find the expected keys
-                    let _id = &genesis_praos_proof.genesis_praos_id;
-                    unimplemented!()
-                };
-                /*
-                verify_signature(
-                    &genesis_praos_proof.kes_proof.0,
-                    &kes_public_key,
-                    &self.common,
-                )
-                */
-                // TODO: verify the VRF too
-            }
-        }
-    }
 }
 
 impl property::ChainLength for ChainLength {
@@ -217,9 +174,7 @@ impl property::Serialize for Header {
                 serialize_signature(&bft_proof.signature.0, &mut writer)?;
             }
             Proof::GenesisPraos(genesis_praos_proof) => {
-                genesis_praos_proof
-                    .genesis_praos_id
-                    .serialize(&mut writer)?;
+                genesis_praos_proof.node_id.serialize(&mut writer)?;
                 {
                     let mut buf =
                         [0; <Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE];
@@ -271,12 +226,12 @@ impl Readable for Header {
                 })
             }
             AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => {
-                let genesis_praos_id = genesis::GenesisPraosId::read(buf)?;
-                dbg!(&genesis_praos_id);
+                let node_id = StakePoolId::read(buf)?;
+                dbg!(&node_id);
                 let vrf_proof = {
                     let bytes = <[u8;<Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE]>::read(buf)?;
 
-                    <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandom::from_bytes_unverified(&bytes)
+                    <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput::from_bytes_unverified(&bytes)
                         .ok_or(ReadError::StructureInvalid("VRF Proof".to_string()))
                 }?;
                 dbg!(&vrf_proof);
@@ -284,7 +239,7 @@ impl Readable for Header {
                 dbg!(&kes_proof);
 
                 Proof::GenesisPraos(GenesisPraosProof {
-                    genesis_praos_id: genesis_praos_id,
+                    node_id: node_id,
                     vrf_proof: vrf_proof,
                     kes_proof: kes_proof,
                 })
@@ -389,11 +344,11 @@ mod test {
             }
             let mut rng = ChaChaRng::from_seed(seed);
 
-            let genesis_praos_id = genesis::GenesisPraosId(Arbitrary::arbitrary(g));
+            let node_id = Arbitrary::arbitrary(g);
 
             let vrf_proof = {
                 let sk = Curve25519_2HashDH::generate(&mut rng);
-                Curve25519_2HashDH::evaluate(&sk, &[0, 1, 2, 3], &mut rng)
+                Curve25519_2HashDH::evaluate_and_proove(&sk, &[0, 1, 2, 3], &mut rng)
             };
 
             let kes_proof = {
@@ -402,7 +357,7 @@ mod test {
                 KESSignature(signature)
             };
             GenesisPraosProof {
-                genesis_praos_id: genesis_praos_id,
+                node_id: node_id,
                 vrf_proof: vrf_proof,
                 kes_proof: kes_proof,
             }
