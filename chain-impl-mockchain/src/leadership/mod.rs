@@ -44,18 +44,18 @@ macro_rules! try_check {
 }
 
 pub struct BftLeader {
-    sig_key: SecretKey<Ed25519Extended>,
+    pub sig_key: SecretKey<Ed25519Extended>,
 }
 
 pub struct GenesisLeader {
-    node_id: StakePoolId,
-    sig_key: SecretKey<FakeMMM>,
-    vrf_key: SecretKey<Curve25519_2HashDH>,
+    pub node_id: StakePoolId,
+    pub sig_key: SecretKey<FakeMMM>,
+    pub vrf_key: SecretKey<Curve25519_2HashDH>,
 }
 
 pub struct Leader {
-    bft_leader: Option<BftLeader>,
-    genesis_leader: Option<GenesisLeader>,
+    pub bft_leader: Option<BftLeader>,
+    pub genesis_leader: Option<GenesisLeader>,
 }
 
 pub enum LeaderOutput {
