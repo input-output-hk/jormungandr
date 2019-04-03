@@ -4,7 +4,7 @@ pub use network_core::gossip::Gossip;
 pub use chain_impl_mockchain::{
     block::{Block, BlockBuilder, BlockDate, ChainLength, Header, HeaderHash},
     config::{self, entity_from, Block0Date, ConfigParam},
-    leadership::{Leader, LeaderId, LeaderOutput, Leadership},
+    leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
     message::{InitialEnts, Message, MessageId},
     multiverse::Multiverse,

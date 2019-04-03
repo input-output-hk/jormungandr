@@ -35,21 +35,26 @@ pub fn leadership_task(
         let (last_block, _last_block_info) = b.get_block_tip().unwrap();
         let chain_length = last_block.chain_length().next();
         let state = b.multiverse.get_from_root(&b.tip);
-        let leadership = Leadership::new(state);
+        let leadership = Leadership::new(epoch.0, state);
         let parent_id = &*b.tip;
 
         // let am_leader = leadership.get_leader_at(date.clone()).unwrap() == leader_id;
-        match leadership.is_leader(&secret, date).unwrap() {
+        match leadership.is_leader_for_date(&secret, date).unwrap() {
             LeaderOutput::None => {}
-            LeaderOutput::Bft(bft_secret_key) => {
-                let block_builder =
-                    prepare_block(&transaction_pool, date, chain_length, *parent_id);
+            LeaderOutput::Bft(bft_public_key) => {
+                if let Some(bft_secret_key) = &secret.bft_leader {
+                    if bft_public_key.as_public_key() != &bft_secret_key.sig_key.to_public() {
+                        panic!("Bft Secret key and public key mismatched");
+                    }
+                    let block_builder =
+                        prepare_block(&transaction_pool, date, chain_length, *parent_id);
 
-                let block = block_builder.make_bft_block(bft_secret_key);
+                    let block = block_builder.make_bft_block(&bft_secret_key.sig_key);
 
-                block_task.send(BlockMsg::LeadershipBlock(block));
+                    block_task.send(BlockMsg::LeadershipBlock(block));
+                }
             }
-            LeaderOutput::GenesisPraos => {
+            LeaderOutput::GenesisPraos(witness) => {
                 // TODO
             }
         }
