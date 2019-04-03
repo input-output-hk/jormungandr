@@ -1,8 +1,8 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::{ChainLength, HeaderHash};
-use crate::config;
+use crate::block::{ChainLength, ConsensusVersion, HeaderHash};
+use crate::config::{self, ConfigParam};
 use crate::fee::LinearFee;
 use crate::message::initial;
 use crate::message::Message;
@@ -19,6 +19,7 @@ use std::sync::Arc;
 pub struct LedgerStaticParameters {
     pub block0_initial_hash: HeaderHash,
     pub block0_start_time: config::Block0Date,
+    pub block0_consensus: ConsensusVersion,
     pub discrimination: Discrimination,
 }
 
@@ -27,6 +28,7 @@ impl LedgerStaticParameters {
         LedgerStaticParameters {
             block0_initial_hash: HeaderHash::from_bytes([0u8; 32]),
             block0_start_time: config::Block0Date(0),
+            block0_consensus: ConsensusVersion::None,
             discrimination: Discrimination::Test,
         }
     }
@@ -137,13 +139,16 @@ impl Ledger {
             None => Err(Error::Block0InitialMessageMissing),
             Some(Message::Initial(ref ents)) => {
                 let mut params = LedgerStaticParameters::default();
-                for (tag, tagpayload) in ents.iter() {
+                for (tag, payload) in ents.iter() {
                     match *tag {
-                        <config::Block0Date as config::ConfigParam>::TAG => {
-                            params.block0_start_time = config::entity_from(*tag, tagpayload)?;
+                        config::Block0Date::TAG => {
+                            params.block0_start_time = config::Block0Date::from_payload(payload)?
                         }
-                        <Discrimination as config::ConfigParam>::TAG => {
-                            params.discrimination = config::entity_from(*tag, tagpayload)?;
+                        Discrimination::TAG => {
+                            params.discrimination = Discrimination::from_payload(payload)?
+                        }
+                        ConsensusVersion::TAG => {
+                            params.block0_consensus = ConsensusVersion::from_payload(payload)?
                         }
                         _ => return Err(Error::UnknownConfig(*tag)),
                     }

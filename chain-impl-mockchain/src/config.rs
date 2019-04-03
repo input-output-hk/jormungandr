@@ -1,5 +1,7 @@
+use crate::block::ConsensusVersion;
 use crate::message::initial::{Tag, TagPayload};
 use chain_addr::Discrimination;
+use num_traits::FromPrimitive;
 use std::str::FromStr;
 
 /// Seconds elapsed since 1-Jan-1970 (unix time)
@@ -94,6 +96,33 @@ impl ConfigParam for Discrimination {
             "test" => Ok(Discrimination::Test),
             _ => Err(Error::UnknownString(s.to_string())),
         }
+    }
+}
+
+impl ConfigParam for ConsensusVersion {
+    const TAG: Tag = Tag::unchecked_new(3);
+    const NAME: &'static str = "block0-consensus";
+
+    fn to_payload(&self) -> TagPayload {
+        (*self as u16).to_be_bytes().to_vec()
+    }
+
+    fn from_payload(payload: &TagPayload) -> Result<Self, Error> {
+        let mut bytes = 0u16.to_ne_bytes();
+        if payload.len() != bytes.len() {
+            return Err(Error::SizeInvalid);
+        };
+        bytes.copy_from_slice(&payload);
+        let integer = u16::from_be_bytes(bytes);
+        ConsensusVersion::from_u16(integer).ok_or(Error::StructureInvalid)
+    }
+
+    fn to_string(&self) -> String {
+        format!("{}", self)
+    }
+
+    fn from_string(s: &str) -> Result<Self, Error> {
+        s.parse().map_err(|_| Error::UnknownString(s.to_string()))
     }
 }
 
