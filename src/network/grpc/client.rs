@@ -10,7 +10,7 @@ use futures::prelude::*;
 use tokio::{executor::DefaultExecutor, sync::mpsc};
 
 pub fn run_connect_socket(peer: Peer, state: GlobalState) -> impl Future<Item = (), Error = ()> {
-    let state = ConnectionState::new_peer(&state, &peer);
+    let mut state = ConnectionState::new_peer(&state, &peer);
 
     // TODO: plug in the outbound stream
     let (block_sender, block_receiver) = mpsc::unbounded_channel();
@@ -46,7 +46,7 @@ pub fn run_connect_socket(peer: Peer, state: GlobalState) -> impl Future<Item = 
                     state
                         .channels
                         .block_box
-                        .send_to(BlockMsg::AnnouncedBlock(header));
+                        .send(BlockMsg::AnnouncedBlock(header));
                     future::ok(())
                 })
                 .map_err(|err| {

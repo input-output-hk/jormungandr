@@ -5,7 +5,7 @@ use crate::{
     clock,
     intercom::BlockMsg,
     transaction::TPoolR,
-    utils::task::TaskMessageBox,
+    utils::async_msg::MessageBox,
     BlockchainR,
 };
 use chain_core::property::{Block as _, BlockDate as _, ChainLength as _};
@@ -15,7 +15,7 @@ pub fn leadership_task(
     transaction_pool: TPoolR,
     blockchain: BlockchainR,
     clock: clock::Clock,
-    block_task: TaskMessageBox<BlockMsg>,
+    mut block_task: MessageBox<BlockMsg>,
 ) {
     loop {
         let d = clock.wait_next_slot();
@@ -47,7 +47,7 @@ pub fn leadership_task(
 
                 let block = block_builder.make_bft_block(bft_secret_key);
 
-                block_task.send_to(BlockMsg::LeadershipBlock(block));
+                block_task.send(BlockMsg::LeadershipBlock(block));
             }
             LeaderOutput::GenesisPraos => {
                 // TODO

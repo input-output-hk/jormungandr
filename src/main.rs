@@ -117,7 +117,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         let tpool = tpool.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_with_inputs("transaction", (), move |info, (), input| {
+        services.spawn_with_inputs("transaction", move |info, input| {
             transaction::handle_input(info, &blockchain, &tpool, &stats_counter, input)
         })
     };
@@ -126,18 +126,15 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         let blockchain = bootstrapped_node.blockchain.clone();
         // let clock = bootstrapped_node.clock.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_with_inputs(
-            "block",
-            network_msgbox,
-            move |info, network_msgbox, input| {
-                blockchain::handle_input(info, &blockchain, &stats_counter, network_msgbox, input)
-            },
-        )
+        services.spawn_future_with_inputs("block", move |info, input| {
+            blockchain::handle_input(info, &blockchain, &stats_counter, &network_msgbox, input);
+            futures::future::ok(())
+        })
     };
 
     let client_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
-        services.spawn_with_inputs("client-query", (), move |info, (), input| {
+        services.spawn_with_inputs("client-query", move |info, input| {
             client::handle_input(info, &blockchain, input)
         })
     };

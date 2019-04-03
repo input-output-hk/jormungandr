@@ -132,11 +132,11 @@ impl BlockService for NodeServer {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        let block_box = self.state.channels.block_box.clone();
+        let mut block_box = self.state.channels.block_box.clone();
         tokio::spawn(
             inbound
                 .for_each(move |header| {
-                    block_box.send_to(BlockMsg::AnnouncedBlock(header));
+                    block_box.send(BlockMsg::AnnouncedBlock(header));
                     future::ok(())
                 })
                 .map_err(|err| {

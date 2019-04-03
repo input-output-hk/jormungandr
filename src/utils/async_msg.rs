@@ -43,3 +43,9 @@ impl<Msg> Stream for MessageQueue<Msg> {
         self.0.poll()
     }
 }
+
+impl<Msg> Clone for MessageBox<Msg> {
+    fn clone(&self) -> Self {
+        MessageBox(self.0.clone())
+    }
+}
