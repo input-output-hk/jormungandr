@@ -190,7 +190,8 @@ pub fn run(
         .collect::<Vec<_>>();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
-        grpc::run_connect_socket(peer, state_connection.clone())
+        let (conn, _propagation) = grpc::run_connect_socket(peer, state_connection.clone());
+        conn // TODO: manage propagation peers in a map
     });
 
     let propagate = propagate_input
