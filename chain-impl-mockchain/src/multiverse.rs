@@ -111,18 +111,29 @@ impl<State> Multiverse<State> {
         assert!(Arc::ptr_eq(&root.roots, &self.roots));
         self.get(&*root).unwrap()
     }
+
+    /// Return the number of states stored in memory.
+    pub fn nr_states(&self) -> usize {
+        self.states_by_hash.len()
+    }
+
+    /// Add a state to the multiverse. Return a GCRoot object that
+    /// pins the state into memory.
+    pub fn insert(&mut self, chain_length: ChainLength, k: BlockId, st: State) -> GCRoot {
+        self.states_by_chain_length
+            .entry(chain_length)
+            .or_insert(HashSet::new())
+            .insert(k.clone());
+        self.states_by_hash.entry(k.clone()).or_insert(st);
+        self.make_root(k)
+    }
 }
 
 impl Multiverse<Ledger> {
     /// Add a state to the multiverse. Return a GCRoot object that
     /// pins the state into memory.
     pub fn add(&mut self, k: BlockId, st: Ledger) -> GCRoot {
-        self.states_by_chain_length
-            .entry(st.chain_length())
-            .or_insert(HashSet::new())
-            .insert(k.clone());
-        self.states_by_hash.entry(k.clone()).or_insert(st);
-        self.make_root(k)
+        self.insert(st.chain_length(), k, st)
     }
 
     fn delete(&mut self, k: &BlockId) {
@@ -238,11 +249,6 @@ impl Multiverse<Ledger> {
         }
 
         Ok(self.add(k, state))
-    }
-
-    /// Return the number of states stored in memory.
-    pub fn nr_states(&self) -> usize {
-        self.states_by_hash.len()
     }
 }
 
