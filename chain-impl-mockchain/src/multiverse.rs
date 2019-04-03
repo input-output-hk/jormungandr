@@ -7,13 +7,15 @@
 //! temporaly, leaving no way to do garbage collection
 
 use crate::block::ChainLength;
+use crate::ledger::Ledger;
 use chain_core::property::{BlockId as _, HasMessages as _};
 use chain_storage::store::BlockStore;
 use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
-type State = crate::ledger::Ledger;
 type BlockId = crate::key::Hash;
+
+//type StateLedger = crate::ledger::Ledger;
 
 //
 // The multiverse is characterized by a single origin and multiple state of a given time
@@ -30,7 +32,7 @@ type BlockId = crate::key::Hash;
 // +------------------------------+-----> time
 // t=0                            t=latest known
 //
-pub struct Multiverse {
+pub struct Multiverse<State> {
     states_by_hash: HashMap<BlockId, State>,
     states_by_chain_length: BTreeMap<ChainLength, HashSet<BlockId>>, // FIXME: use multimap?
     roots: Arc<RwLock<Roots>>,
@@ -86,7 +88,7 @@ impl Drop for GCRoot {
     }
 }
 
-impl Multiverse {
+impl<State> Multiverse<State> {
     pub fn new() -> Self {
         Multiverse {
             states_by_hash: HashMap::new(),
@@ -96,10 +98,25 @@ impl Multiverse {
             })),
         }
     }
+    fn make_root(&mut self, k: BlockId) -> GCRoot {
+        debug_assert!(self.states_by_hash.contains_key(&k));
+        GCRoot::new(k, self.roots.clone())
+    }
 
+    pub fn get(&self, k: &BlockId) -> Option<&State> {
+        self.states_by_hash.get(&k)
+    }
+
+    pub fn get_from_root(&self, root: &GCRoot) -> &State {
+        assert!(Arc::ptr_eq(&root.roots, &self.roots));
+        self.get(&*root).unwrap()
+    }
+}
+
+impl Multiverse<Ledger> {
     /// Add a state to the multiverse. Return a GCRoot object that
     /// pins the state into memory.
-    pub fn add(&mut self, k: BlockId, st: State) -> GCRoot {
+    pub fn add(&mut self, k: BlockId, st: Ledger) -> GCRoot {
         self.states_by_chain_length
             .entry(st.chain_length())
             .or_insert(HashSet::new())
@@ -108,9 +125,23 @@ impl Multiverse {
         self.make_root(k)
     }
 
-    fn make_root(&mut self, k: BlockId) -> GCRoot {
-        debug_assert!(self.states_by_hash.contains_key(&k));
-        GCRoot::new(k, self.roots.clone())
+    fn delete(&mut self, k: &BlockId) {
+        //println!("deleting state {:?}", k);
+        let st = self.states_by_hash.remove(&k).unwrap();
+        // Remove the hash from states_by_chain_length, then prune
+        // the latter.
+        if let std::collections::btree_map::Entry::Occupied(mut entry) =
+            self.states_by_chain_length.entry(st.chain_length())
+        {
+            let removed = entry.get_mut().remove(&k);
+            assert!(removed);
+            if entry.get().is_empty() {
+                //println!("removing chain length {}", st.chain_length().0);
+                entry.remove_entry();
+            }
+        } else {
+            unreachable!();
+        }
     }
 
     /// Once the state are old in the timeline, they are less
@@ -154,34 +185,6 @@ impl Multiverse {
         for k in garbage {
             self.delete(&k);
         }
-    }
-
-    fn delete(&mut self, k: &BlockId) {
-        //println!("deleting state {:?}", k);
-        let st = self.states_by_hash.remove(&k).unwrap();
-        // Remove the hash from states_by_chain_length, then prune
-        // the latter.
-        if let std::collections::btree_map::Entry::Occupied(mut entry) =
-            self.states_by_chain_length.entry(st.chain_length())
-        {
-            let removed = entry.get_mut().remove(&k);
-            assert!(removed);
-            if entry.get().is_empty() {
-                //println!("removing chain length {}", st.chain_length().0);
-                entry.remove_entry();
-            }
-        } else {
-            unreachable!();
-        }
-    }
-
-    pub fn get(&self, k: &BlockId) -> Option<&State> {
-        self.states_by_hash.get(&k)
-    }
-
-    pub fn get_from_root(&self, root: &GCRoot) -> &State {
-        assert!(Arc::ptr_eq(&root.roots, &self.roots));
-        self.get(&*root).unwrap()
     }
 
     /// Get the chain state at block 'k' from memory if present;
@@ -246,14 +249,15 @@ impl Multiverse {
 #[cfg(test)]
 mod test {
 
-    use super::{Multiverse, State};
+    use super::Multiverse;
     use crate::block::{Block, BlockBuilder};
+    use crate::ledger::Ledger;
     use crate::message::{InitialEnts, Message};
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
     use chain_storage::store::BlockStore;
     use quickcheck::StdGen;
 
-    fn apply_block(state: &State, block: &Block) -> State {
+    fn apply_block(state: &Ledger, block: &Block) -> Ledger {
         if state.chain_length().0 != 0 {
             assert_eq!(state.chain_length().0 + 1, block.chain_length().0);
         }
@@ -274,7 +278,7 @@ mod test {
         let mut genesis_block = BlockBuilder::new();
         genesis_block.message(Message::Initial(InitialEnts::new()));
         let genesis_block = genesis_block.make_genesis_block();
-        let genesis_state = State::new(genesis_block.id(), genesis_block.messages()).unwrap();
+        let genesis_state = Ledger::new(genesis_block.id(), genesis_block.messages()).unwrap();
         assert_eq!(genesis_state.chain_length().0, 0);
         store.put_block(&genesis_block).unwrap();
         multiverse.add(genesis_block.id(), genesis_state.clone());
