@@ -18,6 +18,12 @@ use std::{
 use tokio::prelude::*;
 use tokio::runtime;
 
+// Limit on the length of a task message queue
+const MESSAGE_QUEUE_LEN: usize = 1000;
+
+// Stack size of a task thread
+const TASK_STACK_SIZE: usize = 2 * 1024 * 1024;
+
 /// hold onto the different services created
 pub struct Services {
     services: Vec<Service>,
@@ -171,7 +177,7 @@ impl Services {
             .keep_alive(None)
             .core_threads(1)
             .blocking_threads(1)
-            .stack_size(2 * 1024 * 1024)
+            .stack_size(TASK_STACK_SIZE)
             .name_prefix(name)
             .build()
             .unwrap();
@@ -210,36 +216,13 @@ impl Services {
         T: IntoFuture<Item = (), Error = ()> + Send + 'static,
         <T as futures::IntoFuture>::Future: Send,
     {
-        let mut runtime = runtime::Builder::new()
-            .keep_alive(None)
-            .core_threads(1)
-            .blocking_threads(1)
-            .stack_size(2 * 1024 * 1024)
-            .name_prefix(name)
-            .build()
-            .unwrap();
-
-        let executor = runtime.executor();
-
-        let now = Instant::now();
-        let future_service_info = TokioServiceInfo {
-            name: name,
-            up_time: now,
-            logger: get_global_logger().new(o!("task" => name.to_owned())),
-            executor: executor,
-        };
-
-        let (msg_box, msg_queue) = async_msg::channel(1000);
-        let future = msg_queue
-            .map(Input::Input)
-            .chain(stream::once(Ok(Input::Shutdown)))
-            .for_each(move |input| f(&future_service_info, input));
-
-        runtime.spawn(future);
-
-        let task = Service::new_runtime(name, runtime, now);
-        self.services.push(task);
-
+        let (msg_box, msg_queue) = async_msg::channel(MESSAGE_QUEUE_LEN);
+        self.spawn_future(name, move |future_service_info| {
+            msg_queue
+                .map(Input::Input)
+                .chain(stream::once(Ok(Input::Shutdown)))
+                .for_each(move |input| f(&future_service_info, input))
+        });
         msg_box
     }
 
