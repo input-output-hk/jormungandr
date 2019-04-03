@@ -136,7 +136,7 @@ impl Header {
 
 impl property::ChainLength for ChainLength {
     fn next(&self) -> Self {
-        ChainLength(self.0 + 1)
+        ChainLength(self.0.checked_add(1).unwrap())
     }
 }
 
