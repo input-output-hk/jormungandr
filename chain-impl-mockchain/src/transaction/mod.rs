@@ -25,8 +25,6 @@ impl<Extra: property::Serialize> property::Serialize for AuthenticatedTransactio
     type Error = Extra::Error;
 
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Extra::Error> {
-        assert_eq!(self.transaction.inputs.len(), self.witnesses.len());
-
         // encode the transaction body
         self.transaction.serialize(&mut writer)?;
 
