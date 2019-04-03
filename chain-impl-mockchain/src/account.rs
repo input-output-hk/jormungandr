@@ -106,6 +106,10 @@ impl State {
             })),
         }
     }
+
+    pub fn get_value(&self) -> Value {
+        self.value
+    }
 }
 
 /// Spending counter associated to an account.
@@ -204,5 +208,10 @@ impl Ledger {
             .update(account, |st| st.sub(value))
             .map(|ledger| (Ledger(ledger), counter))
             .map_err(|e| e.into())
+    }
+
+    pub fn get_total_value(&self) -> Result<Value, ValueError> {
+        let values = self.0.iter().map(|(_, state)| state.get_value());
+        Value::sum(values)
     }
 }

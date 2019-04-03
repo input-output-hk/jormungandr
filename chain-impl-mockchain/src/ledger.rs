@@ -76,6 +76,7 @@ pub enum Error {
     Block0TransactionHasOutput,
     Block0TransactionHasWitnesses,
     Block0InitialMessageMissing,
+    Block0UtxoTotalValueTooBig,
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -136,7 +137,6 @@ impl Ledger {
         };
 
         let static_parameters = match content_iter.next() {
-            None => Err(Error::Block0InitialMessageMissing),
             Some(Message::Initial(ref ents)) => {
                 let mut params = LedgerStaticParameters::default();
                 for (tag, payload) in ents.iter() {
@@ -156,7 +156,8 @@ impl Ledger {
                 params.block0_initial_hash = block0_hash;
                 Ok(params)
             }
-            Some(_) => Err(Error::Block0InitialMessageMissing),
+            Some(_) => Err(Error::ExpectingInitialMessage),
+            None => Err(Error::Block0InitialMessageMissing),
         }?;
 
         let mut ledger = Self::empty(static_parameters);
@@ -209,6 +210,7 @@ impl Ledger {
             }
         }
 
+        ledger.validate_utxo_total_value()?;
         Ok(ledger)
     }
 
@@ -298,6 +300,20 @@ impl Ledger {
 
     pub fn chain_length(&self) -> ChainLength {
         self.chain_length
+    }
+
+    fn validate_utxo_total_value(&self) -> Result<(), Error> {
+        let old_utxo_values = self.oldutxos.iter().map(|entry| entry.output.value);
+        let new_utxo_values = self.utxos.iter().map(|entry| entry.output.value);
+        let account_value = self
+            .accounts
+            .get_total_value()
+            .map_err(|_| Error::Block0UtxoTotalValueTooBig)?;
+        let all_utxo_values = old_utxo_values
+            .chain(new_utxo_values)
+            .chain(Some(account_value));
+        Value::sum(all_utxo_values).map_err(|_| Error::Block0UtxoTotalValueTooBig)?;
+        Ok(())
     }
 }
 
