@@ -1,7 +1,5 @@
 use crate::{
-    blockcfg::{
-        BlockBuilder, BlockDate, ChainLength, HeaderHash, Leader, LeaderOutput, Leadership,
-    },
+    blockcfg::{BlockBuilder, BlockDate, ChainLength, HeaderHash, Leader, LeaderOutput},
     clock,
     intercom::BlockMsg,
     transaction::TPoolR,
@@ -34,8 +32,7 @@ pub fn leadership_task(
         let b = blockchain.lock_read();
         let (last_block, _last_block_info) = b.get_block_tip().unwrap();
         let chain_length = last_block.chain_length().next();
-        let state = b.multiverse.get_from_root(&b.tip);
-        let leadership = Leadership::new(epoch.0, state);
+        let leadership = b.leaderships.get(epoch.0).unwrap().next().unwrap().1;
         let parent_id = &*b.tip;
 
         // let am_leader = leadership.get_leader_at(date.clone()).unwrap() == leader_id;
