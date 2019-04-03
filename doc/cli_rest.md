@@ -2,7 +2,7 @@
 
 Jormungandr comes with a CLI client for manual communication with nodes over HTTP.
 
-## Convention
+## Conventions
 
 Many CLI commands have common arguments:
 
@@ -60,7 +60,7 @@ YAML printed on success
 Posts a signed, hex-encoded transaction
 
 ```
-jcli rest v0 transaction post <options>
+jcli rest v0 message post <options>
 ```
 
 The options are

@@ -28,8 +28,8 @@ blockchain_configuration:
   - [ discrimination, test ]
 initial_setting:
   allow_account_creation: true
-  slot-duration: 15
-  epoch-stability-depth: 2600
+  slot_duration: 15
+  epoch_stability_depth: 2600
   linear_fees:
     constant: 0
     coefficient: 0
