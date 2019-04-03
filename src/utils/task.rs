@@ -230,7 +230,10 @@ impl Services {
         };
 
         let (msg_box, msg_queue) = async_msg::channel(1000);
-        let future = msg_queue.for_each(move |input| f(&future_service_info, Input::Input(input)));
+        let future = msg_queue
+            .map(Input::Input)
+            .chain(stream::once(Ok(Input::Shutdown)))
+            .for_each(move |input| f(&future_service_info, input));
 
         runtime.spawn(future);
 

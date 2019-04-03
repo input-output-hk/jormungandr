@@ -14,9 +14,9 @@ pub struct Blockchain {
     /// the storage for the overall blockchains (blocks)
     pub storage: Arc<RwLock<NodeStorage>>,
 
-    pub multiverse: Multiverse, // Multiverse<HeaderHash, Ledger>,
+    pub multiverse: Multiverse<Ledger>,
 
-    pub tip: multiverse::GCRoot, // multiverse::GCRoot<HeaderHash>,
+    pub tip: multiverse::GCRoot,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
