@@ -2,8 +2,7 @@ use cardano::util::hex;
 use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::message::Message as MockMessage;
 use jcli_app::utils;
-use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
