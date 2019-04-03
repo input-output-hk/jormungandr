@@ -58,6 +58,7 @@ use futures::Future;
 use chain_impl_mockchain::message::{Message, MessageId};
 
 use crate::{
+    blockcfg::{BftLeader, Leader},
     blockchain::BlockchainR,
     intercom::BlockMsg,
     leadership::leadership_task,
@@ -166,7 +167,12 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         let clock = bootstrapped_node.clock.clone();
         let block_task = block_task.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
-        let pk = chain_impl_mockchain::leadership::Leader::BftLeader(secret.block_privatekey);
+        let pk = Leader {
+            bft_leader: Some(BftLeader {
+                sig_key: secret.block_privatekey,
+            }),
+            genesis_leader: None,
+        };
         services.spawn("leadership", move |_info| {
             leadership_task(pk, tpool, blockchain, clock, block_task)
         });
