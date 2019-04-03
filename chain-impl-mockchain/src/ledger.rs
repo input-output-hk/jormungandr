@@ -618,7 +618,7 @@ pub mod test {
                 extra: NoExtra,
             };
             let txid = tx.hash();
-            let w1 = Witness::new(&txid, &sk1);
+            let w1 = Witness::new_utxo(&txid, &sk1);
             let signed_tx = AuthenticatedTransaction {
                 transaction: tx,
                 witnesses: vec![w1],

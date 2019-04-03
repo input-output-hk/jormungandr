@@ -1,5 +1,6 @@
+use crate::key;
 use crate::value::*;
-use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
+use chain_crypto::{Ed25519Extended, PublicKey};
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
 
@@ -56,7 +57,7 @@ impl From<Identifier> for PublicKey<AccountAlg> {
 }
 
 /// Account Secret Key
-pub struct Secret(SecretKey<AccountAlg>);
+pub type Secret = key::AccountSecretKey;
 
 #[derive(Clone)]
 pub struct State {

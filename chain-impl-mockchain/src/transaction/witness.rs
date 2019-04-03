@@ -2,7 +2,7 @@ use super::transaction::*;
 use crate::account;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
-    SpendingPublicKey, SpendingSecretKey, SpendingSignature,
+    AccountSecretKey, AccountSignature, SpendingPublicKey, SpendingSecretKey, SpendingSignature,
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
@@ -61,8 +61,19 @@ impl AsRef<[u8]> for TransactionIdSpendingCounter {
 
 impl Witness {
     /// Creates new `Witness` value.
-    pub fn new(transaction_id: &TransactionId, secret_key: &SpendingSecretKey) -> Self {
+    pub fn new_utxo(transaction_id: &TransactionId, secret_key: &SpendingSecretKey) -> Self {
         Witness::Utxo(SpendingSignature::generate(secret_key, transaction_id))
+    }
+
+    pub fn new_account(
+        transaction_id: &TransactionId,
+        spending_counter: &account::SpendingCounter,
+        secret_key: &AccountSecretKey,
+    ) -> Self {
+        Witness::Account(AccountSignature::generate(
+            secret_key,
+            &TransactionIdSpendingCounter::new(transaction_id, spending_counter),
+        ))
     }
 
     /// Verify the given `TransactionId` using the witness.
@@ -166,7 +177,7 @@ pub mod test {
         /// ```
         fn prop_witness_verifies_own_tx(sk: TransactionSigningKey, tx:TransactionId) -> bool {
             let pk = sk.0.to_public();
-            let witness = Witness::new(&tx, &sk.0);
+            let witness = Witness::new_utxo(&tx, &sk.0);
             witness.verify_utxo(&pk, &tx) == Verification::Success
         }
     }
