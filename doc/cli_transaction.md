@@ -40,3 +40,11 @@ ed25519extended_public key.
 bech32-encoded ed25519extended_secret. Required one for every input.
 
 Value outputted to stdout on success is transaction message encoded as hex.
+
+
+### Example
+
+```
+jcli transaction build --input f7f1b60d6033bf72409f5fca14fea21f657a0cee19729146351a698d2b6a853e:0:100  \
+--output ta1sv5er2j6vpvhqsj0yy248tmdrxwz0c6u2uvays27ujqhk697dyk6csdzwvm:70 -s key.private
+```
