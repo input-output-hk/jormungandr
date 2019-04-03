@@ -115,16 +115,7 @@ pub struct ConnectionState {
     pub node: p2p::Node,
 
     /// State of the propagation subscriptions, if established.
-    pub propagation_peer: Option<PropagationPeer>,
-}
-
-#[derive(Clone)]
-pub struct PropagationPeer {
-    /// Node identifier of the peer, once communicated.
-    pub id: p2p::NodeId,
-    // Subscription handles for the network streams.
-    // TODO: need either cloneable handles or non-cloneable state
-    //pub handles: propagate::PeerHandles,
+    pub propagation: propagate::PeerHandlesR,
 }
 
 impl ConnectionState {
@@ -137,7 +128,7 @@ impl ConnectionState {
             connected: None,
             topology: global.topology.clone(),
             node: global.node.clone(),
-            propagation_peer: None,
+            propagation: propagate::PeerHandles::new(),
         }
     }
 
@@ -150,7 +141,7 @@ impl ConnectionState {
             connected: None,
             topology: global.topology.clone(),
             node: global.node.clone(),
-            propagation_peer: None,
+            propagation: propagate::PeerHandles::new(),
         }
     }
     fn connected(mut self, connection: Connection) -> Self {
