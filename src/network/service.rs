@@ -143,20 +143,8 @@ impl BlockService for NodeServer {
                     error!("Block subscription failed: {:?}", err);
                 }),
         );
-        match &self.state.propagation_peer {
-            None => future::err(core_error::Error::new(
-                core_error::Code::FailedPrecondition,
-                "node identifier not exchanged",
-            )),
-            Some(peer) => {
-                // TODO: implement
-                future::err(core_error::Error::new(
-                    core_error::Code::Unimplemented,
-                    "not implemented yet",
-                ))
-                //future::result(peer.handles.blocks.subscribe())
-            }
-        }
+        let mut handles = self.state.propagation.lock().unwrap();
+        future::ok(handles.blocks.subscribe())
     }
 }
 
