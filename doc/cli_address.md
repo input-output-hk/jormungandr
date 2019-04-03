@@ -10,7 +10,7 @@ for debugging addresses and for testing.
 To display an address and verify it is in a valid format you can utilise:
 
 ```
-$  jcli  address  info ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
+$ jcli address info ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
 discrimination: testing
 public key: ed25519extended_public1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtps3t9h3a
 ```
@@ -18,7 +18,7 @@ public key: ed25519extended_public1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3j
 or for example:
 
 ```
-$  jcli address \
+$ jcli address \
     info \
     ca1qsy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxz8ah8dldkhvwfghn77se8dp76uguavzyxh5cccek9epryr7mkkr8n7kgx
 discrimination: production
@@ -63,7 +63,7 @@ but it is also possible to utilise them as a wallet.
 To create an account:
 
 ```
-$  jcli address \
+$ jcli address \
     account ed25519extended_public1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtps3t9h3a
 ca1q5y0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvx6g5gwu
 ```
