@@ -8,8 +8,10 @@ We do support multiple versions of the rust compiler, however we recommend
 to utilise the most recent stable version of the rust compiler.
 
 1. [install rustup](https://www.rust-lang.org/tools/install)
-2. make sure you have cloned the submodule too: `git submodule update`
-3. install: `cargo install`
+2. run `rustup install stable`
+3. run `rustup default stable`
+4. make sure you have cloned the submodule too: `git submodule update`
+5. install: `cargo install`
 
 Note:
 
