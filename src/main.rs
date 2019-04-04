@@ -41,7 +41,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_yaml;
-#[macro_use(o)]
+#[macro_use(o, slog_trace, slog_debug, slog_info, slog_warn, slog_error, slog_crit)]
 extern crate slog;
 extern crate slog_async;
 extern crate slog_json;
@@ -173,8 +173,8 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
             }),
             genesis_leader: None,
         };
-        services.spawn("leadership", move |_info| {
-            leadership_task(pk, tpool, blockchain, clock, block_task)
+        services.spawn("leadership", move |info| {
+            leadership_task(info, pk, tpool, blockchain, clock, block_task)
         });
     }
 

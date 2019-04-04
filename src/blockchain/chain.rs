@@ -2,13 +2,17 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use chain_core::property::{Block as _, HasHeader as _, HasMessages as _, Header as _};
-use chain_impl_mockchain::{leadership, ledger, multiverse};
+use chain_impl_mockchain::{
+    leadership::{self, Verification},
+    ledger, multiverse,
+};
 use chain_storage::{error as storage, store::BlockInfo};
 
 use crate::{
-    blockcfg::{Block, Header, HeaderHash, Ledger, Multiverse},
+    blockcfg::{Block, Epoch, Header, HeaderHash, Ledger, Multiverse},
     leadership::{Leadership, Leaderships},
     start_up::NodeStorage,
+    utils::borrow::Borrow,
 };
 
 pub struct Blockchain {
@@ -171,6 +175,28 @@ impl Blockchain {
         // order).
         self.storage.read().unwrap().block_exists(block_hash)
     }
+
+    /// get the leadership for the given epoch or build a new one
+    /// from the state associated to the given parent_hash
+    pub fn get_leadership_or_build<'a>(
+        &'a self,
+        epoch: Epoch,
+        parent_hash: &HeaderHash,
+    ) -> Option<Borrow<'a, Leadership>> {
+        match self
+            .leaderships
+            .get(epoch)
+            .and_then(|mut iter| iter.next())
+            .map(|leadership| leadership.1)
+        {
+            Some(borrowed) => Some(borrowed.into()),
+            None => {
+                let ledger = self.get_ledger(parent_hash)?;
+                let leadership = Leadership::new(epoch, ledger);
+                Some(leadership.into())
+            }
+        }
+    }
 }
 
 custom_error! {pub HandleBlockError
@@ -248,6 +274,7 @@ fn process_block(
     let (block_tip, _block_tip_info) = blockchain.get_block(&block.parent_id())?;
 
     let tip_chain_length = block_tip.chain_length();
+    let parent_epoch = block_tip.date().epoch;
 
     let state = {
         let parent_state = blockchain.get_ledger(&block.parent_id()).unwrap();
@@ -255,12 +282,15 @@ fn process_block(
         parent_state.apply_block(&current_parameters, block.messages())?
     };
 
-    if block.header.date().slot_id == 0 {
-        let leadership = Leadership::new(block.header.date().epoch, &state);
+    if block.header.date().epoch > parent_epoch {
+        let leadership = Leadership::new(
+            block.header.date().epoch,
+            blockchain.get_ledger(&block.parent_id()).unwrap(),
+        );
         let _gc_root = blockchain.leaderships.add(
             block.header.date().epoch,
             block.header.chain_length(),
-            block.header.id(),
+            block_tip.id(),
             leadership,
         );
     }
@@ -298,20 +328,14 @@ pub fn header_triage(
 
     let (block_tip, _) = blockchain.get_block_tip()?;
 
-    if let Some(mut leaderships) = blockchain.leaderships.get(block_date.epoch) {
-        if let Some((_, leadership)) = leaderships.next() {
-            use chain_impl_mockchain::leadership::Verification;
-
-            match leadership.verify(&header) {
-                Verification::Success => {}
-                Verification::Failure(err) => {
-                    return Ok(BlockHeaderTriage::NotOfInterest {
-                        reason: RejectionReason::Consensus(err),
-                    });
-                }
+    if let Some(leadership) = blockchain.get_leadership_or_build(block_date.epoch, &parent_id) {
+        match leadership.verify(&header) {
+            Verification::Success => {}
+            Verification::Failure(err) => {
+                return Ok(BlockHeaderTriage::NotOfInterest {
+                    reason: RejectionReason::Consensus(err),
+                });
             }
-        } else {
-            unimplemented!()
         }
     } else {
         // Error No leadership found for the epoch
