@@ -100,16 +100,7 @@ pub struct ConnectionState {
 }
 
 impl ConnectionState {
-    fn new_listen(global: Arc<GlobalState>, listen: &Listen) -> Self {
-        ConnectionState {
-            global,
-            timeout: listen.timeout,
-            connection: listen.connection,
-            propagation: Mutex::new(propagate::PeerHandles::new()),
-        }
-    }
-
-    fn new_peer(global: Arc<GlobalState>, peer: &Peer) -> Self {
+    fn new(global: Arc<GlobalState>, peer: &Peer) -> Self {
         ConnectionState {
             global,
             timeout: peer.timeout,
@@ -140,8 +131,7 @@ pub fn run(
         match protocol {
             Protocol::Grpc => {
                 let listen = Listen::new(public_address, protocol);
-                let conn_state = ConnectionState::new_listen(state.clone(), &listen);
-                grpc::run_listen_socket(public_address, conn_state, channels.clone())
+                grpc::run_listen_socket(listen, state.clone(), channels.clone())
             }
             Protocol::Ntt => unimplemented!(),
         }
@@ -157,7 +147,7 @@ pub fn run(
         .collect::<Vec<_>>();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
-        let conn_state = ConnectionState::new_peer(state.clone(), &peer);
+        let conn_state = ConnectionState::new(state.clone(), &peer);
         let conn = grpc::run_connect_socket(addr, conn_state, channels.clone());
         conn // TODO: manage propagation peers in a map
     });
