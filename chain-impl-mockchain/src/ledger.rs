@@ -275,6 +275,11 @@ impl Ledger {
         stake::get_distribution(&self.delegation, &self.utxos)
     }
 
+    /// access the ledger static parameters
+    pub fn get_static_parameters(&self) -> &LedgerStaticParameters {
+        self.static_params.as_ref()
+    }
+
     pub fn get_ledger_parameters(&self) -> LedgerParameters {
         LedgerParameters {
             fees: *self.settings.linear_fees,

@@ -21,7 +21,7 @@ pub use self::header::{
 pub use self::headerraw::HeaderRaw;
 pub use self::version::*;
 
-pub use crate::date::{BlockDate, BlockDateParseError};
+pub use crate::date::{BlockDate, BlockDateParseError, Epoch, SlotId};
 
 /// `Block` is an element of the blockchain it contains multiple
 /// transaction and a reference to the parent block. Alongside
