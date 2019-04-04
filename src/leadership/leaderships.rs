@@ -43,21 +43,6 @@ impl Leaderships {
         })
     }
 
-    pub fn get_last_before(
-        &self,
-        epoch: Epoch,
-    ) -> Option<impl Iterator<Item = (&HeaderHash, &Leadership)>> {
-        use std::ops::Bound::{Excluded, Unbounded};
-
-        self.anchors
-            .range((Unbounded, Excluded(epoch)))
-            .last()
-            .map(|(_, set)| {
-                set.iter()
-                    .map(move |h| (h, self.multiverse.get(h).unwrap()))
-            })
-    }
-
     pub fn add(
         &mut self,
         epoch: Epoch,
