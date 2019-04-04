@@ -25,8 +25,8 @@ tower-add-origin = { git = "https://github.com/tower-rs/tower-http" }
 
 [dependencies.tower-grpc]
 git = "https://github.com/tower-rs/tower-grpc"
-rev = "eaa4814f550696fa70290be918002a0f4a0b14ca"
+rev = "1f1dc25b0a9d5ab29372cadeea775a825ea29f81"
 
 [build-dependencies.tower-grpc-build]
 git = "https://github.com/tower-rs/tower-grpc"
-rev = "eaa4814f550696fa70290be918002a0f4a0b14ca"
+rev = "1f1dc25b0a9d5ab29372cadeea775a825ea29f81"
