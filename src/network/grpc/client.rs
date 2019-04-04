@@ -1,42 +1,35 @@
-use super::super::{propagate, BlockConfig, ConnectionState, GlobalState};
-use crate::{intercom::BlockMsg, settings::start::network::Peer};
+use super::{
+    super::{BlockConfig, Channels, ConnectionState},
+    origin_uri,
+};
+use crate::intercom::BlockMsg;
 
 use network_core::client::block::BlockService;
 use network_grpc::{client::Client, peer as grpc_peer};
 
-use bytes::Bytes;
 use futures::future;
 use futures::prelude::*;
 use tokio::executor::DefaultExecutor;
 
+use std::net::SocketAddr;
+
 pub fn run_connect_socket(
-    peer: Peer,
-    state: GlobalState,
-) -> (impl Future<Item = (), Error = ()>, propagate::PeerHandlesR) {
-    let state = ConnectionState::new_peer(&state, &peer);
+    addr: SocketAddr,
+    state: ConnectionState,
+    channels: Channels,
+) -> impl Future<Item = (), Error = ()> {
+    info!("connecting to subscription peer {}", state.connection);
+    info!("address: {}", addr);
+    let peer = grpc_peer::TcpPeer::new(addr);
+    let origin = origin_uri(addr);
+    let mut block_box = channels.block_box;
 
-    info!("connecting to subscription peer {}", peer.connection);
-    info!("address: {}", peer.address());
-    let peer = grpc_peer::TcpPeer::new(*peer.address());
-    let addr = peer.addr().clone();
-    let authority =
-        http::uri::Authority::from_shared(Bytes::from(format!("{}:{}", addr.ip(), addr.port())))
-            .unwrap();
-    let origin = http::uri::Builder::new()
-        .scheme("http")
-        .authority(authority)
-        .path_and_query("/")
-        .build()
-        .unwrap();
-    let propagation = state.propagation.clone();
-    let mut block_box = state.channels.block_box;
-
-    let fut = Client::connect(peer, DefaultExecutor::current(), origin)
+    Client::connect(peer, DefaultExecutor::current(), origin)
         .map_err(move |err| {
             error!("Error connecting to peer {}: {:?}", addr, err);
         })
         .and_then(move |mut client: Client<BlockConfig, _, _>| {
-            let mut sub_handles = propagation.lock().unwrap();
+            let mut sub_handles = state.propagation.lock().unwrap();
             client
                 .block_subscription(sub_handles.blocks.subscribe())
                 .map_err(move |err| {
@@ -52,7 +45,5 @@ pub fn run_connect_socket(
                 .map_err(|err| {
                     error!("Block subscription failed: {:?}", err);
                 })
-        });
-
-    (fut, state.propagation)
+        })
 }

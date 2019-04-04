@@ -9,12 +9,13 @@ use crate::{
     settings::start::network::Peer,
 };
 
+use http::Uri;
+use network_grpc::peer::TcpPeer;
+
+use std::net::SocketAddr;
+
 pub use self::client::run_connect_socket;
 pub use self::server::run_listen_socket;
-
-use bytes::Bytes;
-use http;
-use network_grpc::peer::TcpPeer;
 
 impl network_grpc::client::ProtocolConfig for BlockConfig {
     type Block = Block;
@@ -24,20 +25,20 @@ impl network_grpc::client::ProtocolConfig for BlockConfig {
     type Node = p2p::Node;
 }
 
-pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
-    info!("connecting to bootstrap peer {}", peer.connection);
-    let authority = http::uri::Authority::from_shared(Bytes::from(format!(
-        "{}:{}",
-        peer.address().ip(),
-        peer.address().port()
-    )))
-    .unwrap();
-    let origin = http::uri::Builder::new()
+fn origin_uri(addr: SocketAddr) -> Uri {
+    let authority = format!("{}:{}", addr.ip(), addr.port());
+    http::uri::Builder::new()
         .scheme("http")
-        .authority(authority)
+        .authority(authority.as_str())
         .path_and_query("/")
         .build()
-        .unwrap();
-    let peer = TcpPeer::new(*peer.address());
+        .unwrap()
+}
+
+pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
+    info!("connecting to bootstrap peer {}", peer.connection);
+    let addr = peer.address();
+    let origin = origin_uri(addr);
+    let peer = TcpPeer::new(addr);
     bootstrap::bootstrap_from_target(peer, blockchain, origin)
 }
