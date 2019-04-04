@@ -89,6 +89,12 @@ impl PartialEq<Self> for KESSignature {
 }
 impl Eq for KESSignature {}
 
+impl std::fmt::Display for ChainLength {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl Header {
     #[inline]
     pub fn block_version(&self) -> AnyBlockVersion {
