@@ -4,7 +4,6 @@
 use crate::block::{ChainLength, ConsensusVersion, HeaderHash};
 use crate::config::{self, ConfigParam};
 use crate::fee::LinearFee;
-use crate::message::initial;
 use crate::message::Message;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
@@ -62,7 +61,6 @@ pub struct Ledger {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Config(config::Error),
-    UnknownConfig(initial::Tag),
     NotEnoughSignatures(usize, usize),
     UtxoValueNotMatching(Value, Value),
     UtxoError(utxo::Error),
@@ -141,18 +139,15 @@ impl Ledger {
             Some(Message::Initial(ref ents)) => {
                 let mut params = LedgerStaticParameters::default();
                 let mut consensus = None;
-                for (tag, payload) in ents.iter() {
-                    match *tag {
-                        config::Block0Date::TAG => {
-                            params.block0_start_time = config::Block0Date::from_payload(payload)?
+                for config in ents.iter() {
+                    match config {
+                        ConfigParam::Block0Date(block0_start_time) => {
+                            params.block0_start_time = *block0_start_time
                         }
-                        Discrimination::TAG => {
-                            params.discrimination = Discrimination::from_payload(payload)?
+                        ConfigParam::Discrimination(discrimination) => {
+                            params.discrimination = *discrimination
                         }
-                        ConsensusVersion::TAG => {
-                            consensus = Some(ConsensusVersion::from_payload(payload)?)
-                        }
-                        _ => return Err(Error::UnknownConfig(*tag)),
+                        ConfigParam::ConsensusVersion(version) => consensus = Some(*version),
                     }
                 }
                 params.block0_consensus =
@@ -555,6 +550,7 @@ impl std::error::Error for Error {}
 pub mod test {
     use super::*;
     use crate::key::{SpendingPublicKey, SpendingSecretKey};
+    use crate::message::initial;
     use chain_addr::{Address, Discrimination, Kind};
     use rand::{CryptoRng, RngCore};
 
@@ -595,8 +591,8 @@ pub mod test {
         let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
         let discrimination = Discrimination::Test;
         let mut ie = initial::InitialEnts::new();
-        ie.push(config::entity_to(&discrimination));
-        ie.push(config::entity_to(&ConsensusVersion::Bft));
+        ie.push(ConfigParam::Discrimination(Discrimination::Test));
+        ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);
