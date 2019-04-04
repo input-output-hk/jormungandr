@@ -25,7 +25,11 @@ use self::p2p_topology::{self as p2p, P2pTopology};
 use futures::prelude::*;
 use futures::{future, stream};
 
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 type Connection = SocketAddr;
 
@@ -48,16 +52,16 @@ impl Clone for Channels {
     }
 }
 
+/// Global state shared between all network tasks.
 pub struct GlobalState {
-    pub config: Arc<Configuration>,
-    pub channels: Channels,
+    pub config: Configuration,
     pub topology: P2pTopology,
     pub node: p2p::Node,
 }
 
 impl GlobalState {
     /// the network global state
-    pub fn new(config: &Configuration, channels: Channels) -> Self {
+    pub fn new(config: Configuration) -> Self {
         let node_id = p2p_topology::NodeId::generate();
         let node_address = config
             .public_address
@@ -71,37 +75,19 @@ impl GlobalState {
         node.add_message_subscription(p2p_topology::InterestLevel::High);
         node.add_block_subscription(p2p_topology::InterestLevel::High);
 
-        let p2p_topology = P2pTopology::new(node.clone());
+        let topology = P2pTopology::new(node.clone());
 
-        let arc_config = Arc::new(config.clone());
         GlobalState {
-            config: arc_config,
-            channels: channels,
-            topology: p2p_topology,
+            config,
+            topology,
             node,
         }
     }
 }
 
-impl Clone for GlobalState {
-    fn clone(&self) -> Self {
-        GlobalState {
-            config: self.config.clone(),
-            channels: self.channels.clone(),
-            topology: self.topology.clone(),
-            node: self.node.clone(),
-        }
-    }
-}
-
-#[derive(Clone)]
 pub struct ConnectionState {
-    /// The global network configuration
-    pub global_network_configuration: Arc<Configuration>,
-
-    /// the channels the connection will need to have to
-    /// send messages too
-    pub channels: Channels,
+    /// The global state shared between all connections
+    pub global: Arc<GlobalState>,
 
     /// the timeout to wait for unbefore the connection replies
     pub timeout: Duration,
@@ -109,47 +95,27 @@ pub struct ConnectionState {
     /// the local (to the task) connection details
     pub connection: Connection,
 
-    pub connected: Option<Connection>,
-
-    /// Network topology reference.
-    pub topology: P2pTopology,
-
-    /// Node inside network topology.
-    pub node: p2p::Node,
-
-    /// State of the propagation subscriptions, if established.
-    pub propagation: propagate::PeerHandlesR,
+    /// State of the propagation subscriptions.
+    pub propagation: Mutex<propagate::PeerHandles>,
 }
 
 impl ConnectionState {
-    fn new_listen(global: &GlobalState, listen: &Listen) -> Self {
+    fn new_listen(global: Arc<GlobalState>, listen: &Listen) -> Self {
         ConnectionState {
-            global_network_configuration: global.config.clone(),
-            channels: global.channels.clone(),
+            global,
             timeout: listen.timeout,
             connection: listen.connection,
-            connected: None,
-            topology: global.topology.clone(),
-            node: global.node.clone(),
-            propagation: propagate::PeerHandles::new(),
+            propagation: Mutex::new(propagate::PeerHandles::new()),
         }
     }
 
-    fn new_peer(global: &GlobalState, peer: &Peer) -> Self {
+    fn new_peer(global: Arc<GlobalState>, peer: &Peer) -> Self {
         ConnectionState {
-            global_network_configuration: global.config.clone(),
-            channels: global.channels.clone(),
+            global,
             timeout: peer.timeout,
             connection: peer.connection,
-            connected: None,
-            topology: global.topology.clone(),
-            node: global.node.clone(),
-            propagation: propagate::PeerHandles::new(),
+            propagation: Mutex::new(propagate::PeerHandles::new()),
         }
-    }
-    fn connected(mut self, connection: Connection) -> Self {
-        self.connected = Some(connection);
-        self
     }
 }
 
@@ -161,20 +127,21 @@ pub fn run(
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
-    let state = GlobalState::new(&config, channels);
-    let protocol = config.protocol;
+    let state = Arc::new(GlobalState::new(config));
 
-    let state_listener = state.clone();
     // open the port for listening/accepting other peers to connect too
-    let listener = if let Some(public_address) = config
+    let listener = if let Some(public_address) = state
+        .config
         .public_address
+        .as_ref()
         .and_then(move |addr| addr.to_socketaddr())
     {
-        let protocol = protocol.clone();
-        match protocol.clone() {
+        let protocol = state.config.protocol;
+        match protocol {
             Protocol::Grpc => {
                 let listen = Listen::new(public_address, protocol);
-                grpc::run_listen_socket(public_address, listen, state_listener)
+                let conn_state = ConnectionState::new_listen(state.clone(), &listen);
+                grpc::run_listen_socket(public_address, conn_state, channels.clone())
             }
             Protocol::Ntt => unimplemented!(),
         }
@@ -182,15 +149,16 @@ pub fn run(
         unimplemented!()
     };
 
-    let state_connection = state.clone();
-    let addrs = config
+    let addrs = state
+        .config
         .trusted_addresses
         .iter()
         .filter_map(|paddr| paddr.to_socketaddr())
         .collect::<Vec<_>>();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
-        let (conn, _propagation) = grpc::run_connect_socket(peer, state_connection.clone());
+        let conn_state = ConnectionState::new_peer(state.clone(), &peer);
+        let conn = grpc::run_connect_socket(addr, conn_state, channels.clone());
         conn // TODO: manage propagation peers in a map
     });
 

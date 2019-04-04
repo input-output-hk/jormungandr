@@ -1,4 +1,4 @@
-use super::{p2p_topology as p2p, propagate::Subscription, ConnectionState};
+use super::{p2p_topology as p2p, propagate::Subscription, Channels, ConnectionState};
 
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
 use crate::intercom::{
@@ -19,14 +19,20 @@ use network_core::{
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 
+use std::sync::Arc;
+
 #[derive(Clone)]
 pub struct NodeServer {
-    state: ConnectionState,
+    state: Arc<ConnectionState>,
+    channels: Channels,
 }
 
 impl NodeServer {
-    pub fn new(state: ConnectionState) -> Self {
-        NodeServer { state }
+    pub fn new(state: ConnectionState, channels: Channels) -> Self {
+        NodeServer {
+            state: Arc::new(state),
+            channels,
+        }
     }
 }
 
@@ -74,8 +80,7 @@ impl BlockService for NodeServer {
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = unary_reply();
-        self.state
-            .channels
+        self.channels
             .client_box
             .send_to(ClientMsg::GetBlockTip(handle));
         future
@@ -83,8 +88,7 @@ impl BlockService for NodeServer {
 
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture {
         let (handle, stream) = stream_reply();
-        self.state
-            .channels
+        self.channels
             .client_box
             .send_to(ClientMsg::PullBlocksToTip(from.into(), handle));
         future::ok(stream)
@@ -92,8 +96,7 @@ impl BlockService for NodeServer {
 
     fn get_blocks(&mut self, ids: &[Self::BlockId]) -> Self::GetBlocksFuture {
         let (handle, stream) = stream_reply();
-        self.state
-            .channels
+        self.channels
             .client_box
             .send_to(ClientMsg::GetBlocks(ids.into(), handle));
         future::ok(stream)
@@ -101,8 +104,7 @@ impl BlockService for NodeServer {
 
     fn get_headers(&mut self, ids: &[Self::BlockId]) -> Self::GetHeadersFuture {
         let (handle, stream) = stream_reply();
-        self.state
-            .channels
+        self.channels
             .client_box
             .send_to(ClientMsg::GetHeaders(ids.into(), handle));
         future::ok(stream)
@@ -132,7 +134,7 @@ impl BlockService for NodeServer {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        let mut block_box = self.state.channels.block_box.clone();
+        let mut block_box = self.channels.block_box.clone();
         tokio::spawn(
             inbound
                 .for_each(move |header| {
@@ -187,12 +189,12 @@ impl GossipService for NodeServer {
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        let topology = self.state.topology.clone();
+        let global_state = self.state.global.clone();
         tokio::spawn(
             inbound
                 .for_each(move |gossip| {
-                    topology.update(gossip.into_nodes());
-                    future::ok(())
+                    global_state.topology.update(gossip.into_nodes());
+                    Ok(())
                 })
                 .map_err(|err| {
                     error!("gossip subscription inbound stream error: {:?}", err);

@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, net::SocketAddr, str, time::Duration};
 use crate::settings::start::config::{Address, InterestLevel, Topic};
 
 /// Protocol to use for a connection.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Protocol {
     Ntt,
     Grpc,
@@ -62,8 +62,8 @@ impl Peer {
             timeout: Duration::from_micros(DEFAULT_TIMEOUT_MICROSECONDS),
         }
     }
-    pub fn address(&self) -> &SocketAddr {
-        &self.connection
+    pub fn address(&self) -> SocketAddr {
+        self.connection
     }
 }
 
@@ -76,7 +76,7 @@ impl Listen {
         }
     }
 
-    pub fn address(&self) -> &SocketAddr {
-        &self.connection
+    pub fn address(&self) -> SocketAddr {
+        self.connection
     }
 }

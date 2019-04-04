@@ -7,12 +7,7 @@ use network_core::gossip::{self, Node as _};
 use poldercast::topology::{Cyclon, Module, Rings, Topology, Vicinity};
 use poldercast::Subscription;
 pub use poldercast::{Address, InterestLevel};
-use std::{
-    collections::BTreeMap,
-    error, fmt, io,
-    net::SocketAddr,
-    sync::{Arc, RwLock},
-};
+use std::{collections::BTreeMap, error, fmt, io, net::SocketAddr, sync::RwLock};
 
 pub const NEW_MESSAGES_TOPIC: u32 = 0u32;
 pub const NEW_BLOCKS_TOPIC: u32 = 1u32;
@@ -100,9 +95,8 @@ impl NodeId {
 }
 
 /// object holding the P2pTopology of the Node
-#[derive(Clone)]
 pub struct P2pTopology {
-    topology: Arc<RwLock<Topology>>,
+    lock: RwLock<Topology>,
 }
 
 impl property::Serialize for Node {
@@ -145,20 +139,21 @@ impl P2pTopology {
     /// The address is the public
     pub fn new(node: Node) -> Self {
         P2pTopology {
-            topology: Arc::new(RwLock::new(Topology::new(node.0))),
+            lock: RwLock::new(Topology::new(node.0)),
         }
     }
 
     /// set a P2P Topology Module. Each module will work independently from
     /// each other and will help improve the node connectivity
-    pub fn add_module<M: Module + Send + Sync + 'static>(&mut self, module: M) {
-        info!("setting P2P Topology module: {}", module.name());
-        self.topology.write().unwrap().add_module(module)
+    pub fn add_module<M: Module + Send + Sync + 'static>(&self, module: M) {
+        let mut topology = self.lock.write().unwrap();
+        info!("adding P2P Topology module: {}", module.name());
+        topology.add_module(module)
     }
 
     /// set all the default poldercast modules (Rings, Vicinity and Cyclon)
     pub fn set_poldercast_modules(&mut self) {
-        let mut topology = self.topology.write().unwrap();
+        let mut topology = self.lock.write().unwrap();
         topology.add_module(Rings::new());
         topology.add_module(Vicinity::new());
         topology.add_module(Cyclon::new());
@@ -166,7 +161,7 @@ impl P2pTopology {
 
     /// this is the list of neighbors to contact for event dissemination
     pub fn view(&self) -> Vec<Node> {
-        let topology = self.topology.read().unwrap();
+        let topology = self.lock.read().unwrap();
         topology.view().into_iter().map(Node).collect()
     }
 
@@ -185,13 +180,13 @@ impl P2pTopology {
 
     fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
         // Poldercast API should be better than this
-        self.topology.write().unwrap().update(new_nodes)
+        self.lock.write().unwrap().update(new_nodes)
     }
 
     /// this is the function to utilise in order to select gossips to share
     /// with a given node
-    pub fn select_gossips(&mut self, gossip_recipient: &Node) -> impl Iterator<Item = Node> {
-        let mut topology = self.topology.write().unwrap();
+    pub fn select_gossips(&self, gossip_recipient: &Node) -> impl Iterator<Item = Node> {
+        let mut topology = self.lock.write().unwrap();
         topology
             .select_gossips(&gossip_recipient.0)
             .into_iter()

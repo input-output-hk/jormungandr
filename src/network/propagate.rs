@@ -6,8 +6,6 @@ use network_core::{error::Error, gossip::Gossip};
 use futures::prelude::*;
 use futures::sync::mpsc;
 
-use std::sync::{Arc, Mutex};
-
 // Buffer size determines the number of stream items pending processing that
 // can be buffered before back pressure is applied to the inbound half of
 // a gRPC subscription stream.
@@ -89,20 +87,17 @@ enum SubscriptionState<T> {
 
 /// Propagation subscription handles for all stream types that a peer can
 /// be subscribed to.
+#[derive(Default)]
 pub struct PeerHandles {
     pub blocks: PropagationHandle<Header>,
     pub messages: PropagationHandle<Message>,
     pub gossip: PropagationHandle<Gossip<Node>>,
 }
 
-pub type PeerHandlesR = Arc<Mutex<PeerHandles>>;
-
 impl PeerHandles {
-    pub fn new() -> PeerHandlesR {
-        Arc::new(Mutex::new(PeerHandles {
-            blocks: Default::default(),
-            messages: Default::default(),
-            gossip: Default::default(),
-        }))
+    pub fn new() -> PeerHandles {
+        PeerHandles {
+            ..Default::default()
+        }
     }
 }
