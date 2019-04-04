@@ -71,10 +71,14 @@ fn handle_event(
     let parameters = state.get_ledger_parameters();
 
     let leadership = // if parameters.consensus_version == ConsensusVersion::BFT {
-            b.get_leadership(date.epoch).unwrap();
+        b
+        .get_leadership_or_build(date.epoch, &last_block.id())
+        .unwrap()
     // } else if parameters.consensus_version == ConsensusVersion::GenesisPraos {
     //    b.get_leadership(date.epoch.checked_sub(2).unwrap_or(date.epoch)).unwrap();
-    // };
+    // }
+    ;
+
     let parent_id = &*b.tip;
 
     let logger = Logger::root(
