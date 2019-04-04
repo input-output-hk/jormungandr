@@ -173,8 +173,8 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
             }),
             genesis_leader: None,
         };
-        services.spawn("leadership", move |_info| {
-            leadership_task(pk, tpool, blockchain, clock, block_task)
+        services.spawn("leadership", move |info| {
+            leadership_task(info, pk, tpool, blockchain, clock, block_task)
         });
     }
 

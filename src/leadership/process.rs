@@ -3,12 +3,13 @@ use crate::{
     clock,
     intercom::BlockMsg,
     transaction::TPoolR,
-    utils::async_msg::MessageBox,
+    utils::{async_msg::MessageBox, task::ThreadServiceInfo},
     BlockchainR,
 };
 use chain_core::property::{Block as _, BlockDate as _, ChainLength as _};
 
 pub fn leadership_task(
+    service_info: ThreadServiceInfo,
     mut secret: Leader,
     transaction_pool: TPoolR,
     blockchain: BlockchainR,
