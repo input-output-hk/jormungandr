@@ -41,7 +41,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_yaml;
-#[macro_use(o)]
+#[macro_use(o, slog_trace, slog_debug, slog_info, slog_warn, slog_error, slog_crit)]
 extern crate slog;
 extern crate slog_async;
 extern crate slog_json;
