@@ -312,7 +312,7 @@ mod test {
 
     impl Arbitrary for ConsensusVersion {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            ConsensusVersion::from_u16(u16::arbitrary(g) % 3).unwrap()
+            ConsensusVersion::from_u16(u16::arbitrary(g) % 2 + 1).unwrap()
         }
     }
 

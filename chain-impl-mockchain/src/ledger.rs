@@ -28,7 +28,7 @@ impl LedgerStaticParameters {
         LedgerStaticParameters {
             block0_initial_hash: HeaderHash::from_bytes([0u8; 32]),
             block0_start_time: config::Block0Date(0),
-            block0_consensus: ConsensusVersion::None,
+            block0_consensus: ConsensusVersion::Bft,
             discrimination: Discrimination::Test,
         }
     }
@@ -76,6 +76,7 @@ pub enum Error {
     Block0TransactionHasOutput,
     Block0TransactionHasWitnesses,
     Block0InitialMessageMissing,
+    Block0InitialMessageNoConsensus,
     Block0UtxoTotalValueTooBig,
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
@@ -139,6 +140,7 @@ impl Ledger {
         let static_parameters = match content_iter.next() {
             Some(Message::Initial(ref ents)) => {
                 let mut params = LedgerStaticParameters::default();
+                let mut consensus = None;
                 for (tag, payload) in ents.iter() {
                     match *tag {
                         config::Block0Date::TAG => {
@@ -148,11 +150,13 @@ impl Ledger {
                             params.discrimination = Discrimination::from_payload(payload)?
                         }
                         ConsensusVersion::TAG => {
-                            params.block0_consensus = ConsensusVersion::from_payload(payload)?
+                            consensus = Some(ConsensusVersion::from_payload(payload)?)
                         }
                         _ => return Err(Error::UnknownConfig(*tag)),
                     }
                 }
+                params.block0_consensus =
+                    consensus.ok_or(Error::Block0InitialMessageNoConsensus)?;
                 params.block0_initial_hash = block0_hash;
                 Ok(params)
             }
@@ -592,6 +596,7 @@ pub mod test {
         let discrimination = Discrimination::Test;
         let mut ie = initial::InitialEnts::new();
         ie.push(config::entity_to(&discrimination));
+        ie.push(config::entity_to(&ConsensusVersion::Bft));
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);

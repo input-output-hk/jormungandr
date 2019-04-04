@@ -61,11 +61,11 @@ pub enum BlockVersion {
 }
 
 impl BlockVersion {
-    pub fn get_consensus(self) -> ConsensusVersion {
+    pub fn get_consensus(self) -> Option<ConsensusVersion> {
         match self {
-            BlockVersion::Genesis => ConsensusVersion::None,
-            BlockVersion::Ed25519Signed => ConsensusVersion::Bft,
-            BlockVersion::KesVrfproof => ConsensusVersion::GenesisPraos,
+            BlockVersion::Genesis => None,
+            BlockVersion::Ed25519Signed => Some(ConsensusVersion::Bft),
+            BlockVersion::KesVrfproof => Some(ConsensusVersion::GenesisPraos),
         }
     }
 }
@@ -85,8 +85,6 @@ impl BlockVersion {
     Hash,
 )]
 pub enum ConsensusVersion {
-    #[strum(to_string = "none")]
-    None = 0,
     #[strum(to_string = "bft")]
     Bft = 1,
     #[strum(to_string = "genesis")]
@@ -99,9 +97,9 @@ impl ConsensusVersion {
             static ref MAPPING: BTreeMap<u16, Vec<BlockVersion>> = {
                 let mut map = BTreeMap::<_, Vec<_>>::new();
                 for block_version in BlockVersion::iter() {
-                    map.entry(block_version.get_consensus() as u16)
-                        .or_default()
-                        .push(block_version)
+                    if let Some(consensus) = block_version.get_consensus() {
+                        map.entry(consensus as u16).or_default().push(block_version)
+                    }
                 }
                 map
             };
