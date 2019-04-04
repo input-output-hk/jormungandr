@@ -67,6 +67,7 @@ fn handle_event(
     let state = b.get_ledger(&last_block.id()).unwrap();
 
     // get from the parameters the ConsensusVersion:
+    let static_parameters = state.get_static_parameters();
     let parameters = state.get_ledger_parameters();
 
     let leadership = // if parameters.consensus_version == ConsensusVersion::BFT {
@@ -75,6 +76,15 @@ fn handle_event(
     //    b.get_leadership(date.epoch.checked_sub(2).unwrap_or(date.epoch)).unwrap();
     // };
     let parent_id = &*b.tip;
+
+    let logger = Logger::root(
+        logger.clone(),
+        o!(
+            "chain_length" => chain_length.to_string(),
+            "initial_hash" => static_parameters.block0_initial_hash.to_string(),
+            "allow_accounts" => parameters.allow_account_creation,
+        ),
+    );
 
     // let am_leader = leadership.get_leader_at(date.clone()).unwrap() == leader_id;
     match leadership.is_leader_for_date(&secret, date).unwrap() {
@@ -90,6 +100,10 @@ fn handle_event(
                 assert!(leadership.verify(&block.header).success());
                 Some(block)
             } else {
+                slog_crit!(
+                    logger,
+                    "Node was elected for BFT, but does not have the setting"
+                );
                 None
             }
         }
@@ -108,6 +122,10 @@ fn handle_event(
                 assert!(leadership.verify(&block.header).success());
                 Some(block)
             } else {
+                slog_crit!(
+                    logger,
+                    "Node was elected for Genesis Praos, but does not have the setting"
+                );
                 None
             }
         }
