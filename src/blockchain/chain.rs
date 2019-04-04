@@ -176,7 +176,8 @@ impl Blockchain {
         self.storage.read().unwrap().block_exists(block_hash)
     }
 
-    /// get the leadership for the given epoch
+    /// get the leadership for the given epoch or build a new one
+    /// from the state associated to the given parent_hash
     pub fn get_leadership_or_build<'a>(
         &'a self,
         epoch: Epoch,
