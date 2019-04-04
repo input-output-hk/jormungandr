@@ -9,7 +9,7 @@ use crate::{
 use chain_core::property::{Block as _, BlockDate as _, ChainLength as _};
 
 pub fn leadership_task(
-    secret: Leader,
+    mut secret: Leader,
     transaction_pool: TPoolR,
     blockchain: BlockchainR,
     clock: clock::Clock,
@@ -38,21 +38,32 @@ pub fn leadership_task(
         // let am_leader = leadership.get_leader_at(date.clone()).unwrap() == leader_id;
         match leadership.is_leader_for_date(&secret, date).unwrap() {
             LeaderOutput::None => {}
-            LeaderOutput::Bft(bft_public_key) => {
+            LeaderOutput::Bft(_bft_public_key) => {
                 if let Some(bft_secret_key) = &secret.bft_leader {
-                    if bft_public_key.as_public_key() != &bft_secret_key.sig_key.to_public() {
-                        panic!("Bft Secret key and public key mismatched");
-                    }
                     let block_builder =
                         prepare_block(&transaction_pool, date, chain_length, *parent_id);
 
                     let block = block_builder.make_bft_block(&bft_secret_key.sig_key);
 
+                    assert!(leadership.verify(&block.header).success());
                     block_task.send(BlockMsg::LeadershipBlock(block));
                 }
             }
             LeaderOutput::GenesisPraos(witness) => {
-                // TODO
+                if let Some(genesis_leader) = &mut secret.genesis_leader {
+                    let block_builder =
+                        prepare_block(&transaction_pool, date, chain_length, *parent_id);
+
+                    let block = block_builder.make_genesis_praos_block(
+                        &genesis_leader.node_id,
+                        &mut genesis_leader.sig_key,
+                        witness,
+                    );
+
+                    assert!(leadership.verify(&block.header).success());
+
+                    block_task.send(BlockMsg::LeadershipBlock(block));
+                }
             }
         }
     }

@@ -27,7 +27,10 @@ impl Leaderships {
         let gc_root =
             multiverse.insert(block_0_header.chain_length(), block_0_header.id(), initial);
 
-        anchors.entry(0).or_insert(HashSet::new()).insert(*gc_root);
+        anchors
+            .entry(block_0_header.date().epoch)
+            .or_insert(HashSet::new())
+            .insert(*gc_root);
 
         Leaderships {
             multiverse: multiverse,
