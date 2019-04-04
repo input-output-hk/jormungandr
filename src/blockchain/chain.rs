@@ -2,11 +2,12 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use chain_core::property::{Block as _, HasHeader as _, HasMessages as _, Header as _};
-use chain_impl_mockchain::{ledger, multiverse};
+use chain_impl_mockchain::{leadership, ledger, multiverse};
 use chain_storage::{error as storage, store::BlockInfo};
 
 use crate::{
     blockcfg::{Block, Header, HeaderHash, Ledger, Multiverse},
+    leadership::{Leadership, Leaderships},
     start_up::NodeStorage,
 };
 
@@ -15,6 +16,8 @@ pub struct Blockchain {
     pub storage: Arc<RwLock<NodeStorage>>,
 
     pub multiverse: Multiverse<Ledger>,
+
+    pub leaderships: Leaderships,
 
     pub tip: multiverse::GCRoot,
 
@@ -74,37 +77,57 @@ impl Blockchain {
     pub fn load(block_0: Block, mut storage: NodeStorage) -> Result<Self, LoadError> {
         let mut multiverse = multiverse::Multiverse::new();
 
-        let tip = if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)? {
-            info!("restoring state at tip {}", tip_hash);
+        let (tip, leaderships) =
+            if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)? {
+                info!("restoring state at tip {}", tip_hash);
 
-            let mut tip = None;
+                let mut tip = None;
 
-            let block_0_id = block_0.id(); // TODO: get this from the parameter
-            let (block_0, _block_0_info) = storage.get_block(&block_0_id)?;
-            let mut state = Ledger::new(block_0_id, block_0.messages())?;
+                let block_0_id = block_0.id(); // TODO: get this from the parameter
+                let (block_0, _block_0_info) = storage.get_block(&block_0_id)?;
+                let mut state = Ledger::new(block_0_id, block_0.messages())?;
 
-            // FIXME: should restore from serialized chain state once we have it.
-            info!("restoring state from block0 {}", block_0_id);
-            for info in storage.iterate_range(&block_0_id, &tip_hash)? {
-                let info = info?;
-                let parameters = state.get_ledger_parameters();
-                let block = &storage.get_block(&info.block_hash)?.0;
-                state = state.apply_block(&parameters, block.messages())?;
-                tip = Some(multiverse.add(info.block_hash.clone(), state.clone()));
-            }
+                let mut epoch = block_0.date().epoch;
+                let initial_leadership = Leadership::new(epoch, &state);
+                let mut leaderships = Leaderships::new(&block_0.header, initial_leadership);
 
-            tip.unwrap()
-        } else {
-            let state = Ledger::new(block_0.id(), block_0.messages())?;
-            storage.put_block(&block_0)?;
-            multiverse.add(block_0.id(), state)
-        };
+                // FIXME: should restore from serialized chain state once we have it.
+                info!("restoring state from block0 {}", block_0_id);
+                for info in storage.iterate_range(&block_0_id, &tip_hash)? {
+                    let info = info?;
+                    let parameters = state.get_ledger_parameters();
+                    let block = &storage.get_block(&info.block_hash)?.0;
+                    let block_header = &block.header;
+                    state = state.apply_block(&parameters, block.messages())?;
+                    tip = Some(multiverse.add(info.block_hash.clone(), state.clone()));
+                    if block_header.date().epoch > epoch {
+                        epoch = block_header.date().epoch;
+                        let leadership = Leadership::new(block_header.date().epoch, &state);
+                        let _gc_root = leaderships.add(
+                            block_header.date().epoch,
+                            block_header.chain_length(),
+                            block_header.id(),
+                            leadership,
+                        );
+                    }
+                }
+
+                (tip.unwrap(), leaderships)
+            } else {
+                let state = Ledger::new(block_0.id(), block_0.messages())?;
+                storage.put_block(&block_0)?;
+                let initial_leadership = Leadership::new(block_0.date().epoch, &state);
+                let tip = multiverse.add(block_0.id(), state);
+                let leaderships = Leaderships::new(&block_0.header, initial_leadership);
+                (tip, leaderships)
+            };
 
         multiverse.gc();
 
         Ok(Blockchain {
             storage: Arc::new(RwLock::new(storage)),
             multiverse,
+            leaderships,
             tip,
             unconnected_blocks: BTreeMap::default(),
         })
@@ -177,6 +200,8 @@ pub enum RejectionReason {
     AlreadyPresent,
     /// the block is beyond the stability depth, we reject it
     BeyondStabilityDepth,
+    /// the block was rejected because of invalid consensus
+    Consensus(leadership::Error),
 }
 
 pub enum BlockHeaderTriage {
@@ -230,6 +255,16 @@ fn process_block(
         parent_state.apply_block(&current_parameters, block.messages())?
     };
 
+    if block.header.date().slot_id == 0 {
+        let leadership = Leadership::new(block.header.date().epoch, &state);
+        let _gc_root = blockchain.leaderships.add(
+            block.header.date().epoch,
+            block.header.chain_length(),
+            block.header.id(),
+            leadership,
+        );
+    }
+
     // FIXME: currently we store all incoming blocks and
     // corresponding states, but to prevent a DoS, we may
     // want to store only sufficiently long chains.
@@ -262,6 +297,31 @@ pub fn header_triage(
     }
 
     let (block_tip, _) = blockchain.get_block_tip()?;
+
+    if let Some(mut leaderships) = blockchain.leaderships.get(block_date.epoch) {
+        if let Some((_, leadership)) = leaderships.next() {
+            use chain_impl_mockchain::leadership::Verification;
+
+            match leadership.verify(&header) {
+                Verification::Success => {}
+                Verification::Failure(err) => {
+                    return Ok(BlockHeaderTriage::NotOfInterest {
+                        reason: RejectionReason::Consensus(err),
+                    });
+                }
+            }
+        } else {
+            unimplemented!()
+        }
+    } else {
+        // Error No leadership found for the epoch
+        //
+        // That the leadership is missing may not be a problem, we might simply
+        // need to try to retrieve it (this could be linked with the missing
+        // parent or branch (`BlockHeaderTriage::MissingParentOrBranch`)
+        unimplemented!()
+    }
+
     // TODO: this is a wrong check, we need to get something more
     //       dynamic than this dummy comparison
     // hint: it might be worth utilising the Clock to know exactly
@@ -269,7 +329,7 @@ pub fn header_triage(
     // then to use the stability depth to compare if the block
     // is not too far from the blockchain
     //
-    if is_tip_candidate && block_date.epoch < block_tip.date().epoch - 2 {
+    if is_tip_candidate && block_date.epoch < block_tip.date().epoch.checked_sub(2).unwrap_or(0) {
         return Ok(BlockHeaderTriage::NotOfInterest {
             reason: RejectionReason::BeyondStabilityDepth,
         });
