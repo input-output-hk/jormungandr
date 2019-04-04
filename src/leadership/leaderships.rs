@@ -1,12 +1,9 @@
-use crate::blockcfg::{ChainLength, Header, HeaderHash};
+use crate::blockcfg::{ChainLength, Epoch, Header, HeaderHash};
 use chain_core::property::Header as _;
 use chain_impl_mockchain::multiverse::{GCRoot, Multiverse};
 use std::collections::{BTreeMap, HashSet};
 
 pub use chain_impl_mockchain::leadership::Leadership;
-
-/// TODO: get the type from the chain-impl-mockchain
-type Epoch = u32;
 
 /// structure containing the leaderships at different
 /// time of the blockchain.

@@ -32,7 +32,16 @@ pub fn leadership_task(
         let b = blockchain.lock_read();
         let (last_block, _last_block_info) = b.get_block_tip().unwrap();
         let chain_length = last_block.chain_length().next();
-        let leadership = b.leaderships.get(epoch.0).unwrap().next().unwrap().1;
+        let state = b.get_ledger(&last_block.id()).unwrap();
+
+        // get from the parameters the ConsensusVersion:
+        let parameters = state.get_ledger_parameters();
+
+        let leadership = // if parameters.consensus_version == ConsensusVersion::BFT {
+            b.get_leadership(date.epoch).unwrap();
+        // } else if parameters.consensus_version == ConsensusVersion::GenesisPraos {
+        //    b.get_leadership(date.epoch.checked_sub(2).unwrap_or(date.epoch)).unwrap();
+        // };
         let parent_id = &*b.tip;
 
         // let am_leader = leadership.get_leader_at(date.clone()).unwrap() == leader_id;

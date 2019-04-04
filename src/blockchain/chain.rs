@@ -6,7 +6,7 @@ use chain_impl_mockchain::{leadership, ledger, multiverse};
 use chain_storage::{error as storage, store::BlockInfo};
 
 use crate::{
-    blockcfg::{Block, Header, HeaderHash, Ledger, Multiverse},
+    blockcfg::{Block, Epoch, Header, HeaderHash, Ledger, Multiverse},
     leadership::{Leadership, Leaderships},
     start_up::NodeStorage,
 };
@@ -170,6 +170,14 @@ impl Blockchain {
         // (e.g. loose block GC should delete blocks in reverse
         // order).
         self.storage.read().unwrap().block_exists(block_hash)
+    }
+
+    /// get the leadership for the given epoch
+    pub fn get_leadership(&self, epoch: Epoch) -> Option<&Leadership> {
+        self.leaderships
+            .get(epoch)
+            .and_then(|mut iter| iter.next())
+            .map(|leadership| leadership.1)
     }
 }
 
