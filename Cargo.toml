@@ -14,6 +14,8 @@ documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
 description = """
 Midgard Serpent
 """
+build = "tests/build/deploy_tests_resources.rs"
+links = "fs_extra"
 
 [dependencies]
 dirs = "1.0"
@@ -73,6 +75,15 @@ features = [ "suggestions", "color", "wrap_help" ]
 
 [dev-dependencies]
 quickcheck = "0.8"
+galvanic-test = "0.2.0"
+assert_cmd = "0.11"
+assert_fs = "0.11"
+fs_extra = "1.1.0"
+mktemp = "0.4.0"
+
+[build-dependencies]
+fs_extra = "1.1.0"
 
 [features]
 with-bench = []
+integration-test = []

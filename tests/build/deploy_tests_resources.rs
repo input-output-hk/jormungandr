@@ -1,14 +1,14 @@
 extern crate fs_extra;
-use fs_extra::dir::copy;
-use fs_extra::dir::*;
+use fs_extra::dir::{copy, CopyOptions};
 use std::env;
 
-pub const LOCAL_RESOURCE_DIRECTORY: &str = "./resources";
+pub const LOCAL_RESOURCE_DIRECTORY: &str = "./tests/resources";
 pub const TARGET_DIRECTORY: &str = "./target/";
 
 fn main() {
     let source_directory = LOCAL_RESOURCE_DIRECTORY;
-    let output_directory = TARGET_DIRECTORY.to_owned() + &env::var("PROFILE").unwrap();
+    let build_profile = &env::var("PROFILE").unwrap();
+    let output_directory = TARGET_DIRECTORY.to_owned() + build_profile;
 
     let mut options = CopyOptions::new();
     options.overwrite = true;
@@ -23,5 +23,8 @@ fn main() {
         "Copying all resources from '{}' to '{}'",
         &source_directory, &output_directory
     );
-    copy(&source_directory, &output_directory, &options);
+    copy(&source_directory, &output_directory, &options).expect(&format!(
+        "Cannot copy '{}' folder into {}",
+        &source_directory, &output_directory
+    ));
 }

@@ -2,6 +2,7 @@ blockchain_configuration:
   - [ block0-date, 1554185140 ]
   - [ discrimination, test ]
 initial_setting:
+  consensus: bft
   allow_account_creation: true
   slot_duration: 15
   epoch_stability_depth: 2600
