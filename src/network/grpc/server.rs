@@ -1,29 +1,32 @@
-use super::super::{service::NodeServer, Channels, ConnectionState};
+use super::super::{service::NodeService, Channels, GlobalState};
+use crate::settings::start::network::Listen;
 
-use network_grpc::server::{listen, Server};
+use network_grpc::server::{self, Server};
 
 use tokio::executor::DefaultExecutor;
 use tokio::prelude::*;
 
-use std::net::SocketAddr;
+use std::sync::Arc;
 
 pub fn run_listen_socket(
-    sockaddr: SocketAddr,
-    state: ConnectionState,
+    listen: Listen,
+    state: Arc<GlobalState>,
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
+    let sockaddr = listen.address();
+
     info!(
         "start listening and accepting gRPC connections on {}",
         sockaddr
     );
 
-    match listen(&sockaddr) {
+    match server::listen(&sockaddr) {
         Err(error) => {
             error!("Error while listening to {}", error ; sockaddr = sockaddr);
             unimplemented!()
         }
         Ok(listener_stream) => {
-            let node_server = NodeServer::new(state, channels);
+            let node_server = NodeService::new(channels, state);
             let server = Server::new(node_server, DefaultExecutor::current());
 
             listener_stream

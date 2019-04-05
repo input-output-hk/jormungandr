@@ -1,4 +1,4 @@
-use super::{p2p_topology as p2p, propagate::Subscription, Channels, ConnectionState};
+use super::{p2p_topology as p2p, propagate::Subscription, Channels, GlobalState};
 
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
 use crate::intercom::{
@@ -16,27 +16,30 @@ use network_core::{
     },
 };
 
-use futures::future::{self, FutureResult};
 use futures::prelude::*;
+use futures::{
+    future::{self, FutureResult},
+    stream,
+};
 
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct NodeServer {
-    state: Arc<ConnectionState>,
+pub struct NodeService {
     channels: Channels,
+    global_state: Arc<GlobalState>,
 }
 
-impl NodeServer {
-    pub fn new(state: ConnectionState, channels: Channels) -> Self {
-        NodeServer {
-            state: Arc::new(state),
+impl NodeService {
+    pub fn new(channels: Channels, global_state: Arc<GlobalState>) -> Self {
+        NodeService {
             channels,
+            global_state,
         }
     }
 }
 
-impl Node for NodeServer {
+impl Node for NodeService {
     type BlockService = Self;
     type ContentService = Self;
     type GossipService = Self;
@@ -61,7 +64,7 @@ impl From<intercom::Error> for core_error::Error {
     }
 }
 
-impl BlockService for NodeServer {
+impl BlockService for NodeService {
     type BlockId = HeaderHash;
     type BlockDate = BlockDate;
     type Block = Block;
@@ -75,7 +78,7 @@ impl BlockService for NodeServer {
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type BlockSubscription = Subscription<Header>;
+    type BlockSubscription = stream::Empty<Header, core_error::Error>;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn tip(&mut self) -> Self::TipFuture {
@@ -145,12 +148,17 @@ impl BlockService for NodeServer {
                     error!("Block subscription failed: {:?}", err);
                 }),
         );
-        let mut handles = self.state.propagation.lock().unwrap();
-        future::ok(handles.blocks.subscribe())
+
+        // FIXME: we can't have per-connection state associated with
+        // NodeService in the current tower-h2 design. Need to come up
+        // with a way to identify the peer making the subscription, so that
+        // we can use this stream for p2p propagation.
+        // See https://github.com/tower-rs/tower-h2/issues/64
+        future::ok(stream::empty())
     }
 }
 
-impl ContentService for NodeServer {
+impl ContentService for NodeService {
     type Message = Message;
     type MessageId = MessageId;
     type ProposeTransactionsFuture =
@@ -179,17 +187,17 @@ impl ContentService for NodeServer {
     }
 }
 
-impl GossipService for NodeServer {
+impl GossipService for NodeService {
     type NodeId = p2p::NodeId;
     type Node = p2p::Node;
-    type GossipSubscription = Subscription<Gossip<p2p::Node>>;
+    type GossipSubscription = stream::Empty<Gossip<p2p::Node>, core_error::Error>;
     type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
 
     fn gossip_subscription<In>(&mut self, inbound: In) -> Self::GossipSubscriptionFuture
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        let global_state = self.state.global.clone();
+        let global_state = self.global_state.clone();
         tokio::spawn(
             inbound
                 .for_each(move |gossip| {
@@ -200,7 +208,10 @@ impl GossipService for NodeServer {
                     error!("gossip subscription inbound stream error: {:?}", err);
                 }),
         );
+
         // TODO: send periodic updates to nodes
-        unimplemented!()
+        // See the BlockService::block_subscription impl for why this is
+        // currently not implemented.
+        future::ok(stream::empty())
     }
 }
