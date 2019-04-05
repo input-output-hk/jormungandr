@@ -111,6 +111,14 @@ The binary has subcommands
 * [transaction](./doc/cli_transaction.md) for offline transaction management
 * [address](./doc/cli_address.md) for debugging addresses
 
+## Integration tests
+
+Running:
+
+```
+cargo test --features integration-test
+```
+
 # License
 
 This project is licensed under either of the following licenses:
