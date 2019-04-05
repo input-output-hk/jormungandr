@@ -2,6 +2,8 @@ use lazy_static::lazy_static;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::collections::BTreeMap;
+use strum::IntoEnumIterator;
+use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnyBlockVersion {
@@ -51,7 +53,7 @@ impl From<BlockVersion> for AnyBlockVersion {
     }
 }
 
-#[derive(Debug, Clone, Copy, FromPrimitive, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, EnumIter, FromPrimitive, PartialEq, Eq)]
 pub enum BlockVersion {
     Genesis = 0,
     Ed25519Signed = 1,
@@ -59,19 +61,33 @@ pub enum BlockVersion {
 }
 
 impl BlockVersion {
-    pub fn get_consensus(self) -> ConsensusVersion {
+    pub fn get_consensus(self) -> Option<ConsensusVersion> {
         match self {
-            BlockVersion::Genesis => ConsensusVersion::None,
-            BlockVersion::Ed25519Signed => ConsensusVersion::Bft,
-            BlockVersion::KesVrfproof => ConsensusVersion::GenesisPraos,
+            BlockVersion::Genesis => None,
+            BlockVersion::Ed25519Signed => Some(ConsensusVersion::Bft),
+            BlockVersion::KesVrfproof => Some(ConsensusVersion::GenesisPraos),
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, FromPrimitive, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Display,
+    EnumString,
+    FromPrimitive,
+    IntoStaticStr,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+)]
 pub enum ConsensusVersion {
-    None = 0,
+    #[strum(to_string = "bft")]
     Bft = 1,
+    #[strum(to_string = "genesis")]
     GenesisPraos = 2,
 }
 
@@ -80,13 +96,9 @@ impl ConsensusVersion {
         lazy_static! {
             static ref MAPPING: BTreeMap<u16, Vec<BlockVersion>> = {
                 let mut map = BTreeMap::<_, Vec<_>>::new();
-                for block_ord in 0.. {
-                    match BlockVersion::from_u64(block_ord) {
-                        Some(block) => map
-                            .entry(block.get_consensus() as u16)
-                            .or_default()
-                            .push(block),
-                        None => break,
+                for block_version in BlockVersion::iter() {
+                    if let Some(consensus) = block_version.get_consensus() {
+                        map.entry(consensus as u16).or_default().push(block_version)
                     }
                 }
                 map

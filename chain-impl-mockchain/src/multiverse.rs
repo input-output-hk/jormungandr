@@ -256,7 +256,8 @@ impl Multiverse<Ledger> {
 mod test {
 
     use super::Multiverse;
-    use crate::block::{Block, BlockBuilder};
+    use crate::block::{Block, BlockBuilder, ConsensusVersion};
+    use crate::config::ConfigParam;
     use crate::ledger::Ledger;
     use crate::message::{InitialEnts, Message};
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
@@ -282,7 +283,9 @@ mod test {
         let mut store = chain_storage::memory::MemoryBlockStore::new();
 
         let mut genesis_block = BlockBuilder::new();
-        genesis_block.message(Message::Initial(InitialEnts::new()));
+        let mut ents = InitialEnts::new();
+        ents.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
+        genesis_block.message(Message::Initial(ents));
         let genesis_block = genesis_block.make_genesis_block();
         let genesis_state = Ledger::new(genesis_block.id(), genesis_block.messages()).unwrap();
         assert_eq!(genesis_state.chain_length().0, 0);

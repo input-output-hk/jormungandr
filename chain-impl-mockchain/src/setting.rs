@@ -179,7 +179,7 @@ impl Settings {
         Self {
             max_number_of_transactions_per_block: 100,
             bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
-            consensus_version: ConsensusVersion::None,
+            consensus_version: ConsensusVersion::Bft,
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),

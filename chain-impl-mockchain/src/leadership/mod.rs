@@ -128,7 +128,6 @@ impl LeadershipConsensus {
 impl Leadership {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         let inner = match ledger.settings.consensus_version {
-            ConsensusVersion::None => LeadershipConsensus::None(none::NoLeadership),
             ConsensusVersion::Bft => {
                 LeadershipConsensus::Bft(bft::BftLeaderSelection::new(ledger).unwrap())
             }

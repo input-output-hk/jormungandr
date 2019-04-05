@@ -1,10 +1,9 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::{ChainLength, HeaderHash};
-use crate::config;
+use crate::block::{ChainLength, ConsensusVersion, HeaderHash};
+use crate::config::{self, ConfigParam};
 use crate::fee::LinearFee;
-use crate::message::initial;
 use crate::message::Message;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
@@ -19,6 +18,7 @@ use std::sync::Arc;
 pub struct LedgerStaticParameters {
     pub block0_initial_hash: HeaderHash,
     pub block0_start_time: config::Block0Date,
+    pub block0_consensus: ConsensusVersion,
     pub discrimination: Discrimination,
 }
 
@@ -27,6 +27,7 @@ impl LedgerStaticParameters {
         LedgerStaticParameters {
             block0_initial_hash: HeaderHash::from_bytes([0u8; 32]),
             block0_start_time: config::Block0Date(0),
+            block0_consensus: ConsensusVersion::Bft,
             discrimination: Discrimination::Test,
         }
     }
@@ -60,7 +61,6 @@ pub struct Ledger {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Config(config::Error),
-    UnknownConfig(initial::Tag),
     NotEnoughSignatures(usize, usize),
     UtxoValueNotMatching(Value, Value),
     UtxoError(utxo::Error),
@@ -74,6 +74,8 @@ pub enum Error {
     Block0TransactionHasOutput,
     Block0TransactionHasWitnesses,
     Block0InitialMessageMissing,
+    Block0InitialMessageNoConsensus,
+    Block0UtxoTotalValueTooBig,
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -134,24 +136,27 @@ impl Ledger {
         };
 
         let static_parameters = match content_iter.next() {
-            None => Err(Error::Block0InitialMessageMissing),
             Some(Message::Initial(ref ents)) => {
                 let mut params = LedgerStaticParameters::default();
-                for (tag, tagpayload) in ents.iter() {
-                    match *tag {
-                        <config::Block0Date as config::ConfigParam>::TAG => {
-                            params.block0_start_time = config::entity_from(*tag, tagpayload)?;
+                let mut consensus = None;
+                for config in ents.iter() {
+                    match config {
+                        ConfigParam::Block0Date(block0_start_time) => {
+                            params.block0_start_time = *block0_start_time
                         }
-                        <Discrimination as config::ConfigParam>::TAG => {
-                            params.discrimination = config::entity_from(*tag, tagpayload)?;
+                        ConfigParam::Discrimination(discrimination) => {
+                            params.discrimination = *discrimination
                         }
-                        _ => return Err(Error::UnknownConfig(*tag)),
+                        ConfigParam::ConsensusVersion(version) => consensus = Some(*version),
                     }
                 }
+                params.block0_consensus =
+                    consensus.ok_or(Error::Block0InitialMessageNoConsensus)?;
                 params.block0_initial_hash = block0_hash;
                 Ok(params)
             }
-            Some(_) => Err(Error::Block0InitialMessageMissing),
+            Some(_) => Err(Error::ExpectingInitialMessage),
+            None => Err(Error::Block0InitialMessageMissing),
         }?;
 
         let mut ledger = Self::empty(static_parameters);
@@ -204,6 +209,7 @@ impl Ledger {
             }
         }
 
+        ledger.validate_utxo_total_value()?;
         Ok(ledger)
     }
 
@@ -293,6 +299,20 @@ impl Ledger {
 
     pub fn chain_length(&self) -> ChainLength {
         self.chain_length
+    }
+
+    fn validate_utxo_total_value(&self) -> Result<(), Error> {
+        let old_utxo_values = self.oldutxos.iter().map(|entry| entry.output.value);
+        let new_utxo_values = self.utxos.iter().map(|entry| entry.output.value);
+        let account_value = self
+            .accounts
+            .get_total_value()
+            .map_err(|_| Error::Block0UtxoTotalValueTooBig)?;
+        let all_utxo_values = old_utxo_values
+            .chain(new_utxo_values)
+            .chain(Some(account_value));
+        Value::sum(all_utxo_values).map_err(|_| Error::Block0UtxoTotalValueTooBig)?;
+        Ok(())
     }
 }
 
@@ -530,6 +550,7 @@ impl std::error::Error for Error {}
 pub mod test {
     use super::*;
     use crate::key::{SpendingPublicKey, SpendingSecretKey};
+    use crate::message::initial;
     use chain_addr::{Address, Discrimination, Kind};
     use rand::{CryptoRng, RngCore};
 
@@ -570,7 +591,8 @@ pub mod test {
         let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
         let discrimination = Discrimination::Test;
         let mut ie = initial::InitialEnts::new();
-        ie.push(config::entity_to(&discrimination));
+        ie.push(ConfigParam::Discrimination(Discrimination::Test));
+        ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);

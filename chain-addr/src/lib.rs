@@ -500,6 +500,16 @@ pub mod testing {
             Address(discrimination, kind)
         }
     }
+
+    impl Arbitrary for Discrimination {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            match u8::arbitrary(g) % 2 {
+                0 => Discrimination::Production,
+                1 => Discrimination::Test,
+                _ => unreachable!(),
+            }
+        }
+    }
 }
 
 #[cfg(test)]
