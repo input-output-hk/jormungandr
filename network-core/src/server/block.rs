@@ -96,8 +96,8 @@ pub trait BlockService {
         to: &Self::BlockId,
     ) -> Self::PullBlocksFuture;
 
-    // Stream blocks from either of the given starting points
-    // to the server's tip.
+    /// Stream blocks from either of the given starting points
+    /// to the server's tip.
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture;
 
     /// Get block headers, walking forward in a range between any of the given
@@ -108,8 +108,8 @@ pub trait BlockService {
         to: &Self::BlockId,
     ) -> Self::PullHeadersFuture;
 
-    // Stream block headers from either of the given starting points
-    // to the server's tip.
+    /// Stream block headers from either of the given starting points
+    /// to the server's tip.
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
 
     // Establishes a bidirectional subscription for announcing blocks,
