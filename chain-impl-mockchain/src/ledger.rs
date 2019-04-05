@@ -86,6 +86,7 @@ pub enum Error {
     ExpectingAccountWitness,
     ExpectingUtxoWitness,
     ExpectingInitialMessage,
+    CertificateInvalidSignature,
 }
 
 impl From<utxo::Error> for Error {
@@ -272,6 +273,10 @@ impl Ledger {
         auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
         dyn_params: &LedgerParameters,
     ) -> Result<Self, Error> {
+        let verified = auth_cert.transaction.extra.verify();
+        if verified == chain_crypto::Verification::Failed {
+            return Err(Error::CertificateInvalidSignature);
+        };
         self = self.apply_transaction(auth_cert, dyn_params)?;
         self.delegation = self.delegation.apply(&auth_cert.transaction.extra)?;
         Ok(self)
