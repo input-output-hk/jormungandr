@@ -26,17 +26,19 @@ pub struct SlotAndDuration {
 pub struct TimeFrame {
     timeline: Timeline,
     slot_offset: Slot,
-    slot_duration: NbSeconds,
-    //slot_configuration: Vec<u64>,
+    slot_duration: SlotDuration,
 }
 
+/// Duration of a slot
+///
+/// For now we only supports duration down to the seconds
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct NbSeconds(u64);
+pub struct SlotDuration(u64);
 
-impl NbSeconds {
-    pub fn new(seconds: u32) -> Self {
+impl SlotDuration {
+    pub fn from_secs(seconds: u32) -> Self {
         assert!(seconds < 600);
-        NbSeconds(seconds as u64)
+        SlotDuration(seconds as u64)
     }
 
     pub fn to_duration(&self) -> Duration {
@@ -57,7 +59,7 @@ impl TimeFrame {
     /// timeline
     /// ```
     ///
-    pub fn new(timeline: Timeline, per_slot: NbSeconds) -> Self {
+    pub fn new(timeline: Timeline, per_slot: SlotDuration) -> Self {
         TimeFrame {
             timeline,
             slot_offset: Slot(0),
@@ -71,16 +73,16 @@ impl TimeFrame {
     ///
     /// ```text
     /// 0        1        2        3        4        5                  
-    /// x--------x--------┳--------x--------x--------x  frame ticking at NbSeconds(9)
+    /// x--------x--------┳--------x--------x--------x  frame ticking at SlotDuration::from_secs(9)
     ///                   |
     ///                   ┕---x---x---x---x---x         returned frame
     ///                   2   3   4   5   6   7
     ///                   ↑
     ///                   |
-    ///                   frame.change_frame(Slot(2), NbSeconds(4))
+    ///                   frame.change_frame(Slot(2), SlotDuration::from_secs(4))
     /// ```
     ///
-    pub fn change_frame(&self, slot: Slot, duration_per_slot: NbSeconds) -> Self {
+    pub fn change_frame(&self, slot: Slot, duration_per_slot: SlotDuration) -> Self {
         let d = Duration::from_secs(slot.0 * self.slot_duration.0);
         let new_timeline = self.timeline.advance(d);
         TimeFrame {
@@ -139,7 +141,7 @@ mod test {
         let now = SystemTime::now();
         let t0 = Timeline::new(now);
 
-        let f0 = NbSeconds::new(5);
+        let f0 = SlotDuration::from_secs(5);
 
         let tf0 = TimeFrame::new(t0, f0);
 
@@ -149,7 +151,7 @@ mod test {
             assert_eq!(tf0.to_slot(&x), Some(expected_slot));
         }
 
-        let f1 = NbSeconds::new(2);
+        let f1 = SlotDuration::from_secs(2);
         let tf1_start = now + Duration::from_secs(10);
         let s0 = tf0.to_slot(&tf1_start);
         assert_eq!(s0, Some(Slot(2)));
