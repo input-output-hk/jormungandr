@@ -442,7 +442,7 @@ impl From<ConnectError<io::Error>> for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Connect(e) => write!(f, "connection error: {}", e),
+            Error::Connect(_) => write!(f, "failed to establish connection"),
         }
     }
 }
