@@ -117,7 +117,7 @@ where
     }
 }
 
-pub fn serialize_to_bytes<T>(obj: &T) -> Result<Vec<u8>, tower_grpc::Status>
+pub fn serialize_to_bytes<T>(obj: &T) -> Result<Vec<u8>, Status>
 where
     T: property::Serialize,
 {
@@ -125,11 +125,8 @@ where
     match obj.serialize(&mut bytes) {
         Ok(()) => Ok(bytes),
         Err(_e) => {
-            // FIXME: log the error
-            let status = tower_grpc::Status::new(
-                tower_grpc::Code::InvalidArgument,
-                "response serialization failed",
-            );
+            // TODO: log the error
+            let status = Status::new(Code::Internal, "response serialization failed");
             Err(status)
         }
     }
