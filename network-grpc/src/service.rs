@@ -1,7 +1,7 @@
 use crate::{
     convert::{
-        deserialize_bytes, deserialize_vec, error_from_grpc, error_into_grpc, FromProtobuf,
-        IntoProtobuf,
+        decode_node_id, deserialize_vec, encode_node_id, error_from_grpc, error_into_grpc,
+        FromProtobuf, IntoProtobuf,
     },
     gen,
 };
@@ -9,16 +9,16 @@ use crate::{
 use network_core::{
     error as core_error,
     gossip::NodeId,
-    server::{block::BlockService, content::ContentService, gossip::GossipService, Node},
+    server::{
+        block::BlockService, content::ContentService, gossip::GossipService, Node, P2pService,
+    },
 };
 
 use futures::prelude::*;
+use futures::try_ready;
 use tower_grpc::{self, Code, Request, Status, Streaming};
 
 use std::{marker::PhantomData, mem};
-
-// Name of the binary metadata key used to pass the node ID in subscription requests.
-const NODE_ID_HEADER: &'static str = "node-id-bin";
 
 #[derive(Clone, Debug)]
 pub struct NodeService<T> {
@@ -54,6 +54,39 @@ impl<T, F> ResponseFuture<T, F> {
 
     fn unimplemented() -> Self {
         ResponseFuture::Failed(Status::new(Code::Unimplemented, "not implemented"))
+    }
+}
+
+pub enum SubscriptionFuture<T, Id, F> {
+    Normal {
+        inner: ResponseFuture<T, F>,
+        node_id: Id,
+    },
+    Failed(Status),
+    Finished,
+}
+
+impl<T, Id, F> SubscriptionFuture<T, Id, F>
+where
+    Id: NodeId,
+    F: Future,
+    F::Item: IntoProtobuf<T>,
+{
+    fn new(node_id: Id, future: F) -> Self {
+        SubscriptionFuture::Normal {
+            inner: ResponseFuture::new(future),
+            node_id,
+        }
+    }
+}
+
+impl<T, Id, F> SubscriptionFuture<T, Id, F> {
+    fn error(status: Status) -> Self {
+        SubscriptionFuture::Failed(status)
+    }
+
+    fn unimplemented() -> Self {
+        SubscriptionFuture::Failed(Status::new(Code::Unimplemented, "not implemented"))
     }
 }
 
@@ -112,6 +145,30 @@ where
                 ResponseFuture::Pending(_) => unreachable!(),
                 ResponseFuture::Failed(status) => Err(status),
                 ResponseFuture::Finished(_) => panic!("polled a finished response"),
+            }
+        }
+    }
+}
+
+impl<T, Id, F> Future for SubscriptionFuture<T, Id, F>
+where
+    Id: NodeId,
+    F: Future<Error = core_error::Error>,
+    F::Item: IntoProtobuf<T>,
+{
+    type Item = tower_grpc::Response<T>;
+    type Error = tower_grpc::Status;
+
+    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Status> {
+        if let SubscriptionFuture::Normal { inner, node_id } = self {
+            let mut res = try_ready!(inner.poll());
+            encode_node_id(node_id, res.metadata_mut())?;
+            Ok(Async::Ready(res))
+        } else {
+            match mem::replace(self, SubscriptionFuture::Finished) {
+                SubscriptionFuture::Normal { .. } => unreachable!(),
+                SubscriptionFuture::Failed(status) => Err(status),
+                SubscriptionFuture::Finished => panic!("polled a finished subscription future"),
             }
         }
     }
@@ -203,40 +260,22 @@ macro_rules! try_get_service {
     };
 }
 
-macro_rules! try_decode_node_id {
-    ($req:expr) => {
-        match decode_node_id(&$req) {
-            Ok(id) => id,
-            Err(status) => return ResponseFuture::error(status),
+macro_rules! try_get_service_sub {
+    ($opt_ref:expr) => {
+        match $opt_ref {
+            None => return SubscriptionFuture::unimplemented(),
+            Some(service) => service,
         }
     };
 }
 
-fn decode_node_id<R, Id>(req: &Request<R>) -> Result<Id, Status>
-where
-    Id: NodeId,
-{
-    match req.metadata().get_bin(NODE_ID_HEADER) {
-        None => Err(Status::new(
-            Code::InvalidArgument,
-            format!("missing metadata {}", NODE_ID_HEADER),
-        )),
-        Some(val) => {
-            let val = val.to_bytes().map_err(|e| {
-                Status::new(
-                    Code::InvalidArgument,
-                    format!("invalid metadata value {}: {}", NODE_ID_HEADER, e),
-                )
-            })?;
-            let id = deserialize_bytes(&val).map_err(|e| {
-                Status::new(
-                    Code::InvalidArgument,
-                    format!("invalid node ID in {}: {}", NODE_ID_HEADER, e),
-                )
-            })?;
-            Ok(id)
+macro_rules! try_decode_node_id {
+    ($req:expr) => {
+        match decode_node_id($req.metadata()) {
+            Ok(id) => id,
+            Err(e) => return SubscriptionFuture::error(error_into_grpc(e)),
         }
-    }
+    };
 }
 
 impl<T> gen::node::server::Node for NodeService<T>
@@ -286,25 +325,28 @@ where
         gen::node::Header,
         <<T as Node>::BlockService as BlockService>::BlockSubscription,
     >;
-    type BlockSubscriptionFuture = ResponseFuture<
+    type BlockSubscriptionFuture = SubscriptionFuture<
         Self::BlockSubscriptionStream,
-        <<T as Node>::BlockService as BlockService>::BlockSubscriptionFuture,
+        <T::BlockService as P2pService>::NodeId,
+        <T::BlockService as BlockService>::BlockSubscriptionFuture,
     >;
     type MessageSubscriptionStream = ResponseStream<
         gen::node::Message,
         <<T as Node>::ContentService as ContentService>::MessageSubscription,
     >;
-    type MessageSubscriptionFuture = ResponseFuture<
+    type MessageSubscriptionFuture = SubscriptionFuture<
         Self::MessageSubscriptionStream,
-        <<T as Node>::ContentService as ContentService>::MessageSubscriptionFuture,
+        <T::ContentService as P2pService>::NodeId,
+        <T::ContentService as ContentService>::MessageSubscriptionFuture,
     >;
     type GossipSubscriptionStream = ResponseStream<
         gen::node::Gossip,
         <<T as Node>::GossipService as GossipService>::GossipSubscription,
     >;
-    type GossipSubscriptionFuture = ResponseFuture<
+    type GossipSubscriptionFuture = SubscriptionFuture<
         Self::GossipSubscriptionStream,
-        <<T as Node>::GossipService as GossipService>::GossipSubscriptionFuture,
+        <T::GossipService as P2pService>::NodeId,
+        <T::GossipService as GossipService>::GossipSubscriptionFuture,
     >;
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
@@ -363,29 +405,38 @@ where
         &mut self,
         req: Request<Streaming<gen::node::Header>>,
     ) -> Self::BlockSubscriptionFuture {
-        let service = try_get_service!(self.inner.block_service());
-        let node_id = try_decode_node_id!(&req);
+        let service = try_get_service_sub!(self.inner.block_service());
+        let subscriber = try_decode_node_id!(&req);
         let stream = RequestStream::new(req.into_inner());
-        ResponseFuture::new(service.block_subscription(node_id, stream))
+        SubscriptionFuture::new(
+            service.node_id(),
+            service.block_subscription(subscriber, stream),
+        )
     }
 
     fn message_subscription(
         &mut self,
         req: Request<Streaming<gen::node::Message>>,
     ) -> Self::MessageSubscriptionFuture {
-        let service = try_get_service!(self.inner.content_service());
-        let node_id = try_decode_node_id!(&req);
+        let service = try_get_service_sub!(self.inner.content_service());
+        let subscriber = try_decode_node_id!(&req);
         let stream = RequestStream::new(req.into_inner());
-        ResponseFuture::new(service.message_subscription(node_id, stream))
+        SubscriptionFuture::new(
+            service.node_id(),
+            service.message_subscription(subscriber, stream),
+        )
     }
 
     fn gossip_subscription(
         &mut self,
         req: Request<Streaming<gen::node::Gossip>>,
     ) -> Self::GossipSubscriptionFuture {
-        let service = try_get_service!(self.inner.gossip_service());
-        let node_id = try_decode_node_id!(&req);
+        let service = try_get_service_sub!(self.inner.gossip_service());
+        let subscriber = try_decode_node_id!(&req);
         let stream = RequestStream::new(req.into_inner());
-        ResponseFuture::new(service.gossip_subscription(node_id, stream))
+        SubscriptionFuture::new(
+            service.node_id(),
+            service.gossip_subscription(subscriber, stream),
+        )
     }
 }

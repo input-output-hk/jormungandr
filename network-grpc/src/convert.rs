@@ -3,10 +3,16 @@ use crate::gen;
 use chain_core::property;
 use network_core::{
     error as core_error,
-    gossip::{Gossip, Node},
+    gossip::{Gossip, Node, NodeId},
 };
 
-use tower_grpc::{Code, Status};
+use tower_grpc::{
+    metadata::{BinaryMetadataValue, MetadataMap},
+    Code, Status,
+};
+
+// Name of the binary metadata key used to pass the node ID in subscription requests.
+const NODE_ID_HEADER: &'static str = "node-id-bin";
 
 pub fn error_into_grpc(err: core_error::Error) -> Status {
     use core_error::Code::*;
@@ -187,4 +193,41 @@ where
         let nodes = serialize_to_vec(self.nodes())?;
         Ok(gen::node::Gossip { nodes })
     }
+}
+
+pub fn decode_node_id<Id>(metadata: &MetadataMap) -> Result<Id, core_error::Error>
+where
+    Id: NodeId,
+{
+    match metadata.get_bin(NODE_ID_HEADER) {
+        None => Err(core_error::Error::new(
+            core_error::Code::InvalidArgument,
+            format!("missing metadata {}", NODE_ID_HEADER),
+        )),
+        Some(val) => {
+            let val = val.to_bytes().map_err(|e| {
+                core_error::Error::new(
+                    core_error::Code::InvalidArgument,
+                    format!("invalid metadata value {}: {}", NODE_ID_HEADER, e),
+                )
+            })?;
+            let id = deserialize_bytes(&val).map_err(|e| {
+                core_error::Error::new(
+                    core_error::Code::InvalidArgument,
+                    format!("invalid node ID in {}: {}", NODE_ID_HEADER, e),
+                )
+            })?;
+            Ok(id)
+        }
+    }
+}
+
+pub fn encode_node_id<Id>(id: &Id, metadata: &mut MetadataMap) -> Result<(), Status>
+where
+    Id: NodeId,
+{
+    let bytes = serialize_to_bytes(id)?;
+    let val = BinaryMetadataValue::from_bytes(&bytes);
+    metadata.insert_bin(NODE_ID_HEADER, val);
+    Ok(())
 }
