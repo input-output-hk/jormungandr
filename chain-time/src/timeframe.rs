@@ -93,7 +93,7 @@ impl TimeFrame {
     }
 
     /// Given a system time get the slot and associated duration leftover
-    pub fn to_slot_and_remaining(&self, at: &SystemTime) -> Option<SlotAndDuration> {
+    pub fn slot_at_precise(&self, at: &SystemTime) -> Option<SlotAndDuration> {
         match self.timeline.differential(at) {
             None => None,
             Some(t) => {
@@ -108,8 +108,11 @@ impl TimeFrame {
         }
     }
 
-    /// Given a system time get the slot associated
-    pub fn to_slot(&self, at: &SystemTime) -> Option<Slot> {
+    /// Get the slot associated with the given system time.
+    ///
+    /// It returns None if the system time doesn't represent a valid slot in this time frame, for
+    /// example if the system time is before the time frame starting point.
+    pub fn slot_at(&self, at: &SystemTime) -> Option<Slot> {
         match self.timeline.differential(at) {
             None => None,
             Some(t) => {
@@ -148,23 +151,23 @@ mod test {
         {
             let expected_slot = Slot(16);
             let x = now + Duration::from_secs(expected_slot.0 * f0.0);
-            assert_eq!(tf0.to_slot(&x), Some(expected_slot));
+            assert_eq!(tf0.slot_at(&x), Some(expected_slot));
         }
 
         let f1 = SlotDuration::from_secs(2);
         let tf1_start = now + Duration::from_secs(10);
-        let s0 = tf0.to_slot(&tf1_start);
+        let s0 = tf0.slot_at(&tf1_start);
         assert_eq!(s0, Some(Slot(2)));
         let s0 = s0.unwrap();
 
         let tf1 = tf0.change_frame(s0, f1);
 
-        assert_eq!(tf1.to_slot(&tf1_start), Some(Slot(2)));
-        assert_eq!(tf1.to_slot(&now), None);
+        assert_eq!(tf1.slot_at(&tf1_start), Some(Slot(2)));
+        assert_eq!(tf1.slot_at(&now), None);
 
         let t2 = tf1_start + Duration::from_secs(10);
-        assert_eq!(tf1.to_slot(&t2), Some(Slot(7)));
+        assert_eq!(tf1.slot_at(&t2), Some(Slot(7)));
 
-        assert_eq!(tf0.to_slot(&t2), Some(Slot(4)));
+        assert_eq!(tf0.slot_at(&t2), Some(Slot(4)));
     }
 }
