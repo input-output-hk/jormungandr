@@ -8,79 +8,77 @@ message TipRequest {}
 
 // Response message for method Tip.
 message TipResponse {
-    // Serialized content of the tip block header.
-    bytes block_header = 1;
+  // Serialized content of the tip block header.
+  bytes block_header = 1;
 }
 
 // Request to fetch the methods for blocks and headers.
 message BlockIds {
-    // The identifiers of blocks for loading.
-    repeated bytes id = 1;
+  // The identifiers of blocks for loading.
+  repeated bytes id = 1;
 }
 
 // Request to fetch the methods for blocks and headers.
 message MessageIds {
-    // The identifiers of blocks for loading.
-    repeated bytes id = 1;
+  // The identifiers of blocks for loading.
+  repeated bytes id = 1;
 }
 
 // Request message for method PullBlocksToTip.
 message PullBlocksToTipRequest {
-    // The identifiers of blocks to consider as the
-    // starting point, in order of appearance.
-    repeated bytes from = 1;
+  // The identifiers of blocks to consider as the
+  // starting point, in order of appearance.
+  repeated bytes from = 1;
 }
 
 // Representation of a block.
 message Block {
-    // The serialized content of the block.
-    bytes content = 1;
+  // The serialized content of the block.
+  bytes content = 1;
 }
 
 // Representation of a block header.
 message Header {
-    // The serialized content of the block header.
-    bytes content = 1;
+  // The serialized content of the block header.
+  bytes content = 1;
 }
 
 // Representation of a blockchain message, that is, a transaction or other
 // content item. A block in the blockchain consists of messages.
 message Message {
-    // The serialized content of the message.
-    bytes content = 1;
+  // The serialized content of the message.
+  bytes content = 1;
 }
 
 // Gossip message with information on nodes in the network.
 message Gossip {
-    // ID of the sender node (TODO: replace with gRPC metadata).
-    bytes sender = 1;
-    // Serialized descriptions of nodes.
-    repeated bytes nodes = 2;
+  // Serialized descriptions of nodes.
+  repeated bytes nodes = 2;
 }
 
 service Node {
-    rpc Tip (TipRequest) returns (TipResponse);
-    rpc GetBlocks (BlockIds) returns (stream Block) {
-        option idempotency_level = NO_SIDE_EFFECTS;
-    }
-    rpc GetHeaders (BlockIds) returns (stream Header) {
-        option idempotency_level = NO_SIDE_EFFECTS;
-    }
-    rpc GetMessages (MessageIds) returns (stream Message) {
-        option idempotency_level = NO_SIDE_EFFECTS;
-    }
+  rpc Tip(TipRequest) returns (TipResponse);
+  rpc GetBlocks(BlockIds) returns (stream Block) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetHeaders(BlockIds) returns (stream Header) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetMessages(MessageIds) returns (stream Message) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
-    rpc PullBlocksToTip (PullBlocksToTipRequest) returns (stream Block);
+  rpc PullBlocksToTip(PullBlocksToTipRequest) returns (stream Block);
 
-    // Establishes a bidirectional stream to exchange information on new
-    // blocks created or accepted by the peers.
-    rpc BlockSubscription (stream Header) returns (stream Header);
+  // Establishes a bidirectional stream to exchange information on new
+  // blocks created or accepted by the peers.
+  rpc BlockSubscription(stream Header) returns (stream Header);
 
-    // Establishes a bidirectional stream to exchange information on new
-    // messages created or accepted by the peers.
-    rpc MessageSubscription (stream Message) returns (stream Message);
+  // Establishes a bidirectional stream to exchange information on new
+  // messages created or accepted by the peers.
+  rpc MessageSubscription(stream Message) returns (stream Message);
 
-    // Establishes a bidirectional stream to exchange information on new
-    // network peers.
-    rpc GossipSubscription (stream Gossip) returns (stream Gossip);
+  // Establishes a bidirectional stream to exchange information on new
+  // network peers.
+  rpc GossipSubscription(stream Gossip) returns (stream Gossip);
 }

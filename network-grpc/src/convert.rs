@@ -111,9 +111,8 @@ where
     T: Node,
 {
     fn from_message(msg: gen::node::Gossip) -> Result<Gossip<T>, core_error::Error> {
-        let sender = deserialize_bytes(&msg.sender)?;
         let nodes = deserialize_vec(&msg.nodes)?;
-        let gossip = Gossip::from_nodes(sender, nodes);
+        let gossip = Gossip::from_nodes(nodes);
         Ok(gossip)
     }
 }
@@ -188,9 +187,7 @@ where
     T: Node,
 {
     fn into_message(self) -> Result<gen::node::Gossip, tower_grpc::Status> {
-        let sender = serialize_to_bytes(self.sender())?;
         let nodes = serialize_to_vec(self.nodes())?;
-        let gossip = gen::node::Gossip { sender, nodes };
-        Ok(gossip)
+        Ok(gen::node::Gossip { nodes })
     }
 }

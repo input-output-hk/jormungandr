@@ -1,10 +1,14 @@
 use crate::{
-    convert::{deserialize_vec, error_from_grpc, error_into_grpc, FromProtobuf, IntoProtobuf},
+    convert::{
+        deserialize_bytes, deserialize_vec, error_from_grpc, error_into_grpc, FromProtobuf,
+        IntoProtobuf,
+    },
     gen,
 };
 
 use network_core::{
     error as core_error,
+    gossip::NodeId,
     server::{block::BlockService, content::ContentService, gossip::GossipService, Node},
 };
 
@@ -12,6 +16,9 @@ use futures::prelude::*;
 use tower_grpc::{self, Code, Request, Status, Streaming};
 
 use std::{marker::PhantomData, mem};
+
+// Name of the binary metadata key used to pass the node ID in subscription requests.
+const NODE_ID_HEADER: &'static str = "node-id-bin";
 
 #[derive(Clone, Debug)]
 pub struct NodeService<T> {
@@ -196,13 +203,48 @@ macro_rules! try_get_service {
     };
 }
 
+macro_rules! try_decode_node_id {
+    ($req:expr) => {
+        match decode_node_id(&$req) {
+            Ok(id) => id,
+            Err(status) => return ResponseFuture::error(status),
+        }
+    };
+}
+
+fn decode_node_id<R, Id>(req: &Request<R>) -> Result<Id, Status>
+where
+    Id: NodeId,
+{
+    match req.metadata().get_bin(NODE_ID_HEADER) {
+        None => Err(Status::new(
+            Code::InvalidArgument,
+            format!("missing metadata {}", NODE_ID_HEADER),
+        )),
+        Some(val) => {
+            let val = val.to_bytes().map_err(|e| {
+                Status::new(
+                    Code::InvalidArgument,
+                    format!("invalid metadata value {}: {}", NODE_ID_HEADER, e),
+                )
+            })?;
+            let id = deserialize_bytes(&val).map_err(|e| {
+                Status::new(
+                    Code::InvalidArgument,
+                    format!("invalid node ID in {}: {}", NODE_ID_HEADER, e),
+                )
+            })?;
+            Ok(id)
+        }
+    }
+}
+
 impl<T> gen::node::server::Node for NodeService<T>
 where
     T: Node + Clone,
     <T::BlockService as BlockService>::Header: Send + 'static,
     <T::ContentService as ContentService>::Message: Send + 'static,
     <T::GossipService as GossipService>::Node: Send + 'static,
-    <T::GossipService as GossipService>::NodeId: Send + 'static,
 {
     type TipFuture = ResponseFuture<
         gen::node::TipResponse,
@@ -319,28 +361,31 @@ where
 
     fn block_subscription(
         &mut self,
-        request: Request<Streaming<gen::node::Header>>,
+        req: Request<Streaming<gen::node::Header>>,
     ) -> Self::BlockSubscriptionFuture {
         let service = try_get_service!(self.inner.block_service());
-        let stream = RequestStream::new(request.into_inner());
-        ResponseFuture::new(service.block_subscription(stream))
+        let node_id = try_decode_node_id!(&req);
+        let stream = RequestStream::new(req.into_inner());
+        ResponseFuture::new(service.block_subscription(node_id, stream))
     }
 
     fn message_subscription(
         &mut self,
-        request: Request<Streaming<gen::node::Message>>,
+        req: Request<Streaming<gen::node::Message>>,
     ) -> Self::MessageSubscriptionFuture {
         let service = try_get_service!(self.inner.content_service());
-        let stream = RequestStream::new(request.into_inner());
-        ResponseFuture::new(service.message_subscription(stream))
+        let node_id = try_decode_node_id!(&req);
+        let stream = RequestStream::new(req.into_inner());
+        ResponseFuture::new(service.message_subscription(node_id, stream))
     }
 
     fn gossip_subscription(
         &mut self,
-        request: Request<Streaming<gen::node::Gossip>>,
+        req: Request<Streaming<gen::node::Gossip>>,
     ) -> Self::GossipSubscriptionFuture {
         let service = try_get_service!(self.inner.gossip_service());
-        let stream = RequestStream::new(request.into_inner());
-        ResponseFuture::new(service.gossip_subscription(stream))
+        let node_id = try_decode_node_id!(&req);
+        let stream = RequestStream::new(req.into_inner());
+        ResponseFuture::new(service.gossip_subscription(node_id, stream))
     }
 }

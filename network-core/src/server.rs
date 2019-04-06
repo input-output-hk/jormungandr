@@ -4,6 +4,8 @@ pub mod block;
 pub mod content;
 pub mod gossip;
 
+use crate::gossip::NodeId;
+
 /// Interface to application logic of the blockchain node server.
 ///
 /// An implementation of a blockchain node implements this trait to
@@ -35,4 +37,14 @@ pub trait Node {
     /// Instantiates the gossip service,
     /// if supported by this node.
     fn gossip_service(&mut self) -> Option<&mut Self::GossipService>;
+}
+
+/// Base trait for the services that use node identifiers to
+/// distinguish subscription streams.
+pub trait P2pService {
+    /// Network node identifier.
+    type NodeId: NodeId;
+
+    /// Returns the identifier of this node.
+    fn node_id(&self) -> Self::NodeId;
 }

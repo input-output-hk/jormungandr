@@ -23,23 +23,17 @@ pub trait Node: Serialize + Deserialize {
 
 #[derive(Clone, Debug)]
 pub struct Gossip<T: Node> {
-    sender: T::Id,
     nodes: Vec<T>,
 }
 
 impl<T: Node> Gossip<T> {
-    pub fn from_nodes<I>(sender: T::Id, iter: I) -> Self
+    pub fn from_nodes<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = T>,
     {
         Gossip {
-            sender,
-            nodes: Vec::from_iter(iter.into_iter()),
+            nodes: Vec::from_iter(iter),
         }
-    }
-
-    pub fn sender(&self) -> &T::Id {
-        &self.sender
     }
 
     pub fn nodes(&self) -> &[T] {
