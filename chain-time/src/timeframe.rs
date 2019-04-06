@@ -19,7 +19,7 @@ impl From<Slot> for u64 {
 pub struct SlotAndDuration {
     pub slot: Slot,
     /// The offset of a specific time frame in
-    pub slot_duration_offset: Duration,
+    pub offset: Duration,
 }
 
 /// Time frame which is a timeline that is configured to be split in discrete slots
@@ -102,7 +102,7 @@ impl TimeFrame {
                 let d = t.0 - Duration::from_secs(e); // cannot wrap
                 Some(SlotAndDuration {
                     slot: Slot(self.slot_offset.0 + slot_nb),
-                    slot_duration_offset: d,
+                    offset: d,
                 })
             }
         }
