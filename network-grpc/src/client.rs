@@ -15,8 +15,8 @@ use tokio::io;
 use tokio::prelude::*;
 use tower::{MakeService, Service};
 use tower_add_origin::{self, AddOrigin};
-use tower_h2::client::{Background, Connect, ConnectError, Connection};
 use tower_grpc::{BoxBody, Request, Streaming};
+use tower_h2::client::{Background, ConnectError};
 
 use std::{error, fmt, marker::PhantomData};
 
@@ -84,29 +84,29 @@ pub trait ProtocolConfig {
 ///
 /// This type encapsulates the gRPC protocol client that can
 /// make connections and perform requests towards other blockchain nodes.
-pub struct Client<C, S, E>
+pub struct Connection<P, T, E>
 where
-    C: ProtocolConfig,
+    P: ProtocolConfig,
 {
-    node: gen_client::Node<AddOrigin<Connection<S, E, BoxBody>>>,
-    _phantom: PhantomData<(C::Block)>,
+    node: gen_client::Node<AddOrigin<tower_h2::client::Connection<T, E, BoxBody>>>,
+    _phantom: PhantomData<(P::Block)>,
 }
 
-impl<C, S, E> Client<C, S, E>
+impl<P, T, E> Connection<P, T, E>
 where
-    C: ProtocolConfig,
-    S: AsyncRead + AsyncWrite,
-    E: Executor<Background<S, BoxBody>> + Clone,
+    P: ProtocolConfig,
+    T: AsyncRead + AsyncWrite,
+    E: Executor<Background<T, BoxBody>> + Clone,
 {
-    pub fn connect<P>(
-        peer: P,
+    pub fn connect<C>(
+        peer: C,
         executor: E,
         uri: http::Uri,
     ) -> impl Future<Item = Self, Error = Error>
     where
-        P: Service<(), Response = S, Error = io::Error> + 'static,
+        C: Service<(), Response = T, Error = io::Error> + 'static,
     {
-        let mut make_client = Connect::new(peer, Default::default(), executor);
+        let mut make_client = tower_h2::client::Connect::new(peer, Default::default(), executor);
         make_client
             .make_service(())
             .map_err(|e| Error::Connect(e))
@@ -115,7 +115,7 @@ where
                     .uri(uri)
                     .build(conn)
                     .unwrap();
-                Client {
+                Connection {
                     node: gen_client::Node::new(conn),
                     _phantom: PhantomData,
                 }
@@ -366,23 +366,23 @@ mod request_stream {
     }
 }
 
-impl<C, S, E> BlockService for Client<C, S, E>
+impl<P, T, E> BlockService for Connection<P, T, E>
 where
-    C: ProtocolConfig,
-    S: AsyncRead + AsyncWrite,
-    E: Executor<Background<S, BoxBody>> + Clone,
+    P: ProtocolConfig,
+    T: AsyncRead + AsyncWrite,
+    E: Executor<Background<T, BoxBody>> + Clone,
 {
-    type Block = C::Block;
-    type TipFuture = ResponseFuture<C::Header, gen::node::TipResponse>;
+    type Block = P::Block;
+    type TipFuture = ResponseFuture<P::Header, gen::node::TipResponse>;
 
-    type PullBlocksToTipStream = ResponseStream<C::Block, gen::node::Block>;
-    type PullBlocksToTipFuture = ServerStreamFuture<C::Block, gen::node::Block>;
+    type PullBlocksToTipStream = ResponseStream<P::Block, gen::node::Block>;
+    type PullBlocksToTipFuture = ServerStreamFuture<P::Block, gen::node::Block>;
 
-    type GetBlocksStream = ResponseStream<C::Block, gen::node::Block>;
-    type GetBlocksFuture = ServerStreamFuture<C::Block, gen::node::Block>;
+    type GetBlocksStream = ResponseStream<P::Block, gen::node::Block>;
+    type GetBlocksFuture = ServerStreamFuture<P::Block, gen::node::Block>;
 
-    type BlockSubscription = ResponseStream<C::Header, gen::node::Header>;
-    type BlockSubscriptionFuture = BidiStreamFuture<C::Header, gen::node::Header>;
+    type BlockSubscription = ResponseStream<P::Header, gen::node::Header>;
+    type BlockSubscriptionFuture = BidiStreamFuture<P::Header, gen::node::Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
@@ -390,7 +390,7 @@ where
         ResponseFuture::new(future)
     }
 
-    fn pull_blocks_to_tip(&mut self, from: &[C::BlockId]) -> Self::PullBlocksToTipFuture {
+    fn pull_blocks_to_tip(&mut self, from: &[P::BlockId]) -> Self::PullBlocksToTipFuture {
         let from = serialize_to_vec(from).unwrap();
         let req = gen::node::PullBlocksToTipRequest { from };
         let future = self.node.pull_blocks_to_tip(Request::new(req));
@@ -399,7 +399,7 @@ where
 
     fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
     where
-        Out: Stream<Item = C::Header> + Send + 'static,
+        Out: Stream<Item = P::Header> + Send + 'static,
     {
         let req = RequestStream::new(outbound);
         let future = self.node.block_subscription(Request::new(req));
@@ -407,19 +407,19 @@ where
     }
 }
 
-impl<C, S, E> GossipService for Client<C, S, E>
+impl<P, T, E> GossipService for Connection<P, T, E>
 where
-    C: ProtocolConfig,
-    S: AsyncRead + AsyncWrite,
-    E: Executor<Background<S, BoxBody>> + Clone,
+    P: ProtocolConfig,
+    T: AsyncRead + AsyncWrite,
+    E: Executor<Background<T, BoxBody>> + Clone,
 {
-    type Node = C::Node;
-    type GossipSubscription = ResponseStream<Gossip<C::Node>, gen::node::Gossip>;
-    type GossipSubscriptionFuture = BidiStreamFuture<Gossip<C::Node>, gen::node::Gossip>;
+    type Node = P::Node;
+    type GossipSubscription = ResponseStream<Gossip<P::Node>, gen::node::Gossip>;
+    type GossipSubscriptionFuture = BidiStreamFuture<Gossip<P::Node>, gen::node::Gossip>;
 
     fn gossip_subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
     where
-        Out: Stream<Item = Gossip<C::Node>> + Send + 'static,
+        Out: Stream<Item = Gossip<P::Node>> + Send + 'static,
     {
         let req = RequestStream::new(outbound);
         let future = self.node.gossip_subscription(Request::new(req));
