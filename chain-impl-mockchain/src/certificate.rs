@@ -76,7 +76,7 @@ impl Certificate {
 /// Keep an information how to extract public keys from
 /// the certificate.
 trait HasStakeKeyIds {
-    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a>;
+    fn public_keys<'a>(&'a self) -> Box<ExactSizeIterator<Item = &StakeKeyId> + 'a>;
 }
 
 fn verify_certificate<C>(certificate: &C, raw_signatures: &[SignatureRaw]) -> Verification
@@ -84,28 +84,26 @@ where
     C: HasStakeKeyIds + property::Serialize,
 {
     use crate::key::{deserialize_signature, verify_signature};
-    let mut signatures = raw_signatures.iter();
-    loop {
-        for owner in certificate.public_keys() {
-            match signatures.next() {
-                None => return Verification::Failed,
-                Some(signature) => {
-                    let mut reader = ReadBuf::from(&signature.0);
-                    match deserialize_signature(&mut reader) {
-                        Ok(signature) => {
-                            if verify_signature(&signature, &owner.0, &certificate)
-                                == Verification::Failed
-                            {
-                                return Verification::Failed;
-                            }
-                        }
-                        Err(_) => return Verification::Failed,
+    let signatures = raw_signatures.iter();
+    let owners = certificate.public_keys();
+    if owners.len() > signatures.len() {
+        return Verification::Failed;
+    }
+    owners
+        .zip(signatures)
+        .fold(Verification::Success, |_, (owner, signature)| {
+            let mut reader = ReadBuf::from(&signature.0);
+            match deserialize_signature(&mut reader) {
+                Ok(signature) => {
+                    if verify_signature(&signature, &owner.0, &certificate) == Verification::Failed
+                    {
+                        return Verification::Failed;
                     }
                 }
+                Err(_) => return Verification::Failed,
             }
-        }
-        return Verification::Success;
-    }
+            Verification::Success
+        })
 }
 
 #[derive(Debug, Clone)]
@@ -205,7 +203,7 @@ impl StakeKeyRegistration {
 }
 
 impl HasStakeKeyIds for StakeKeyRegistration {
-    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+    fn public_keys<'a>(&'a self) -> Box<ExactSizeIterator<Item = &StakeKeyId> + 'a> {
         Box::new(std::iter::once(&self.stake_key_id))
     }
 }
@@ -241,7 +239,7 @@ impl StakeKeyDeregistration {
 }
 
 impl HasStakeKeyIds for StakeKeyDeregistration {
-    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+    fn public_keys<'a>(&'a self) -> Box<ExactSizeIterator<Item = &StakeKeyId> + 'a> {
         Box::new(std::iter::once(&self.stake_key_id))
     }
 }
@@ -280,7 +278,7 @@ impl StakeDelegation {
 }
 
 impl HasStakeKeyIds for StakeDelegation {
-    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+    fn public_keys<'a>(&'a self) -> Box<ExactSizeIterator<Item = &StakeKeyId> + 'a> {
         Box::new(std::iter::once(&self.stake_key_id))
     }
 }
@@ -315,7 +313,7 @@ impl StakePoolInfo {
 }
 
 impl HasStakeKeyIds for StakePoolInfo {
-    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+    fn public_keys<'a>(&'a self) -> Box<ExactSizeIterator<Item = &StakeKeyId> + 'a> {
         Box::new(self.owners.iter())
     }
 }
@@ -337,7 +335,7 @@ impl StakePoolRetirement {
 }
 
 impl HasStakeKeyIds for StakePoolRetirement {
-    fn public_keys<'a>(&'a self) -> Box<Iterator<Item = &StakeKeyId> + 'a> {
+    fn public_keys<'a>(&'a self) -> Box<ExactSizeIterator<Item = &StakeKeyId> + 'a> {
         Box::new(self.pool_info.owners.iter())
     }
 }
