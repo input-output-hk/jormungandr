@@ -13,10 +13,10 @@ use network_core::{
 use futures::future::Executor;
 use tokio::io;
 use tokio::prelude::*;
-use tower::MakeService;
+use tower::{MakeService, Service};
 use tower_add_origin::{self, AddOrigin};
-use tower_grpc::{codegen::server::tower::Service, BoxBody, Request, Streaming};
 use tower_h2::client::{Background, Connect, ConnectError, Connection};
+use tower_grpc::{BoxBody, Request, Streaming};
 
 use std::{error, fmt, marker::PhantomData};
 
