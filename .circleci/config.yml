@@ -145,6 +145,26 @@ jobs:
           name: Build and test with nightly Rust
           command: cargo test --frozen --verbose
 
+  test_integration_nightly:
+    docker:
+      - image: rustlang/rust:nightly
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Build and test with nightly Rust
+          command: cargo test --features integration-test --frozen --verbose -- --nocapture
+
   test_jcli_debug:
     docker:
       - image: rust:latest
@@ -186,6 +206,10 @@ workflows:
           requires:
             - build_release
       - test_nightly:
+          requires:
+            - rustfmt
+            - cargo_fetch
+      - test_integration_nightly:
           requires:
             - rustfmt
             - cargo_fetch
