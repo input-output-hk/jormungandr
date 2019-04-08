@@ -147,26 +147,28 @@ where
     type Item = Connection<P, C::Connection, E>;
     type Error = ConnectError<C::Error>;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        if let State::Connecting {
-            inner,
-            origin_uri,
-            node_id,
-        } = &mut self.state
-        {
-            let conn = try_ready!(inner.poll());
-            let conn = tower_add_origin::Builder::new()
-                .uri(origin_uri.clone())
-                .build(conn)
-                .unwrap();
-            let conn = Connection {
-                service: gen_client::Node::new(conn),
-                node_id: node_id.clone(),
-            };
-            self.state = State::Finished;
-            return Ok(Async::Ready(conn));
-        }
+        let conn_ready = if let State::Connecting { inner, .. } = &mut self.state {
+            // If not connected yet, bail out here without modifying state
+            Some(try_ready!(inner.poll()))
+        } else {
+            None
+        };
         match mem::replace(&mut self.state, State::Finished) {
-            State::Connecting { .. } => unreachable!(),
+            State::Connecting {
+                inner: _,
+                origin_uri,
+                node_id,
+            } => {
+                let conn = tower_add_origin::Builder::new()
+                    .uri(origin_uri)
+                    .build(conn_ready.unwrap())
+                    .unwrap();
+                let conn = Connection {
+                    service: gen_client::Node::new(conn),
+                    node_id: node_id,
+                };
+                return Ok(Async::Ready(conn));
+            }
             State::Error(e) => Err(e),
             State::Finished => panic!("polled a finished future"),
         }
