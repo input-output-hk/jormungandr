@@ -1,12 +1,57 @@
-use bech32::{Bech32, FromBase32};
-use chain_crypto::{AsymmetricKey, Ed25519Extended, PublicKey, SecretKey};
-use std::fs;
+use chain_crypto::{
+    Blake2b256, Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey,
+};
+use chain_impl_mockchain::leadership::{bft, BftLeader, GenesisLeader};
+use serde::Deserialize;
 use std::path::Path;
 
+/// hold the node's bft secret setting
+#[derive(Clone, Deserialize)]
+pub struct Bft {
+    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
+    signing_key: bft::SigningKey,
+}
+
+/// the genesis praos setting
+///
+#[derive(Clone, Deserialize)]
+pub struct GenesisPraos {
+    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_hash")]
+    node_id: Blake2b256,
+    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
+    sig_key: SecretKey<FakeMMM>,
+    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
+    vrf_key: SecretKey<Curve25519_2HashDH>,
+}
+
+/// the genesis praos setting
+///
+#[derive(Clone, Deserialize)]
+pub struct GenesisPraosPublic {
+    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
+    sig_key: PublicKey<FakeMMM>,
+    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
+    vrf_key: PublicKey<Curve25519_2HashDH>,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct OwnerKey(
+    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
+    PublicKey<Ed25519Extended>,
+);
+
+#[derive(Clone, Deserialize)]
+pub struct StakePoolInfo {
+    serial: u128,
+    owners: Vec<OwnerKey>,
+    initial_key: GenesisPraosPublic,
+}
+
 /// Node Secret(s)
+#[derive(Clone, Deserialize)]
 pub struct NodeSecret {
-    pub block_privatekey: SecretKey<Ed25519Extended>,
-    pub public: NodePublic,
+    pub bft: Option<Bft>,
+    pub genesis: Option<GenesisPraos>,
 }
 
 /// Node Secret's Public parts
@@ -15,26 +60,28 @@ pub struct NodePublic {
     pub block_publickey: PublicKey<Ed25519Extended>,
 }
 
+custom_error! {pub NodeSecretFromFileError
+    Io { source: std::io::Error } = "Cannot read node's secrets: {source}",
+    Format { source: serde_yaml::Error } = "Invalid Node secret file: {source}",
+}
+
 impl NodeSecret {
-    pub fn public(&self) -> NodePublic {
-        self.public.clone()
+    pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<NodeSecret, NodeSecretFromFileError> {
+        let file = std::fs::File::open(path)?;
+        Ok(serde_yaml::from_reader(file)?)
     }
 
-    pub fn load_from_file(path: &Path) -> NodeSecret {
-        let file_string = fs::read_to_string(path).unwrap();
-        let bech32: Bech32 = file_string
-            .trim()
-            .parse()
-            .expect("Private key file should be bech32 encoded");
-        if bech32.hrp() != Ed25519Extended::SECRET_BECH32_HRP {
-            panic!("Private key file should contain Ed25519 extended private key")
-        }
-        let bytes = Vec::<u8>::from_base32(bech32.data()).unwrap();
-        let block_privatekey = SecretKey::from_binary(&bytes).unwrap();
-        let block_publickey = block_privatekey.to_public();
-        NodeSecret {
-            public: NodePublic { block_publickey },
-            block_privatekey,
-        }
+    pub fn bft(&self) -> Option<BftLeader> {
+        self.bft.clone().map(|bft| BftLeader {
+            sig_key: bft.signing_key,
+        })
+    }
+
+    pub fn genesis(&self) -> Option<GenesisLeader> {
+        self.genesis.clone().map(|genesis| GenesisLeader {
+            node_id: genesis.node_id.into(),
+            sig_key: genesis.sig_key,
+            vrf_key: genesis.vrf_key,
+        })
     }
 }
