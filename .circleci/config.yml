@@ -162,6 +162,9 @@ jobs:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
+          name: Install crates
+          command: cargo install
+      - run:
           name: Build and test with nightly Rust
           command: cargo test --features integration-test --frozen --verbose -- --nocapture
 
