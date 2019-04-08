@@ -1,5 +1,6 @@
 //! Block service abstraction.
 
+use super::P2pService;
 use crate::error::Error;
 
 use chain_core::property::{Block, BlockDate, BlockId, Deserialize, HasHeader, Header, Serialize};
@@ -8,7 +9,7 @@ use futures::prelude::*;
 
 /// Interface for the blockchain node service implementation responsible for
 /// providing access to block data.
-pub trait BlockService {
+pub trait BlockService: P2pService {
     /// The block identifier type for the blockchain.
     type BlockId: BlockId + Serialize + Deserialize;
 
@@ -96,8 +97,8 @@ pub trait BlockService {
         to: &Self::BlockId,
     ) -> Self::PullBlocksFuture;
 
-    // Stream blocks from either of the given starting points
-    // to the server's tip.
+    /// Stream blocks from either of the given starting points
+    /// to the server's tip.
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture;
 
     /// Get block headers, walking forward in a range between any of the given
@@ -108,16 +109,23 @@ pub trait BlockService {
         to: &Self::BlockId,
     ) -> Self::PullHeadersFuture;
 
-    // Stream block headers from either of the given starting points
-    // to the server's tip.
+    /// Stream block headers from either of the given starting points
+    /// to the server's tip.
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
 
-    // Establishes a bidirectional subscription for announcing blocks,
-    // taking an asynchronous stream that provides the inbound announcements.
-    //
-    // Returns a future that resolves to an asynchronous subscription stream
-    // that receives blocks announced by the peer.
-    fn block_subscription<In>(&mut self, inbound: In) -> Self::BlockSubscriptionFuture
+    /// Establishes a bidirectional subscription for announcing blocks.
+    ///
+    /// The network protocol implementation passes the node identifier of
+    /// the sender and an asynchronous stream that will provide the inbound
+    /// announcements.
+    ///
+    /// Returns a future resolving to an asynchronous stream
+    /// that will be used by this node to send block announcements.
+    fn block_subscription<In>(
+        &mut self,
+        subscriber: Self::NodeId,
+        inbound: In,
+    ) -> Self::BlockSubscriptionFuture
     where
         In: Stream<Item = Self::Header, Error = Error> + Send + 'static;
 }

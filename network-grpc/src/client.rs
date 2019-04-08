@@ -1,5 +1,7 @@
+mod connect;
+
 use crate::{
-    convert::serialize_to_vec,
+    convert::{encode_node_id, serialize_to_vec},
     gen::{self, node::client as gen_client},
 };
 
@@ -7,18 +9,18 @@ use chain_core::property;
 use network_core::{
     client::{block::BlockService, gossip::GossipService},
     error as core_error,
-    gossip::{Gossip, Node},
+    gossip::{self, Gossip},
 };
 
 use futures::future::Executor;
-use tokio::io;
 use tokio::prelude::*;
-use tower::MakeService;
 use tower_add_origin::{self, AddOrigin};
-use tower_grpc::{codegen::server::tower::Service, BoxBody, Request, Streaming};
-use tower_h2::client::{Background, Connect, ConnectError, Connection};
+use tower_grpc::{BoxBody, Request, Streaming};
+use tower_h2::client::Background;
 
-use std::{error, fmt, marker::PhantomData};
+use std::marker::PhantomData;
+
+pub use connect::{Connect, ConnectError, ConnectFuture};
 
 /// Traits setting additional bounds for blockchain entities
 /// that need to be satisfied for the protocol implementation.
@@ -77,50 +79,19 @@ pub trait ProtocolConfig {
     type Block: chain_bounds::Block
         + property::Block<Id = Self::BlockId, Date = Self::BlockDate>
         + property::HasHeader<Header = Self::Header>;
-    type Node: Node;
+    type Node: gossip::Node;
 }
 
 /// gRPC client for blockchain node.
 ///
 /// This type encapsulates the gRPC protocol client that can
 /// make connections and perform requests towards other blockchain nodes.
-pub struct Client<C, S, E>
+pub struct Connection<P, T, E>
 where
-    C: ProtocolConfig,
+    P: ProtocolConfig,
 {
-    node: gen_client::Node<AddOrigin<Connection<S, E, BoxBody>>>,
-    _phantom: PhantomData<(C::Block)>,
-}
-
-impl<C, S, E> Client<C, S, E>
-where
-    C: ProtocolConfig,
-    S: AsyncRead + AsyncWrite,
-    E: Executor<Background<S, BoxBody>> + Clone,
-{
-    pub fn connect<P>(
-        peer: P,
-        executor: E,
-        uri: http::Uri,
-    ) -> impl Future<Item = Self, Error = Error>
-    where
-        P: Service<(), Response = S, Error = io::Error> + 'static,
-    {
-        let mut make_client = Connect::new(peer, Default::default(), executor);
-        make_client
-            .make_service(())
-            .map_err(|e| Error::Connect(e))
-            .map(|conn| {
-                let conn = tower_add_origin::Builder::new()
-                    .uri(uri)
-                    .build(conn)
-                    .unwrap();
-                Client {
-                    node: gen_client::Node::new(conn),
-                    _phantom: PhantomData,
-                }
-            })
-    }
+    service: gen_client::Node<AddOrigin<tower_h2::client::Connection<T, E, BoxBody>>>,
+    node_id: <P::Node as gossip::Node>::Id,
 }
 
 type GrpcFuture<R> = tower_grpc::client::unary::ResponseFuture<
@@ -366,91 +337,78 @@ mod request_stream {
     }
 }
 
-impl<C, S, E> BlockService for Client<C, S, E>
+impl<P, T, E> Connection<P, T, E>
 where
-    C: ProtocolConfig,
-    S: AsyncRead + AsyncWrite,
-    E: Executor<Background<S, BoxBody>> + Clone,
+    P: ProtocolConfig,
 {
-    type Block = C::Block;
-    type TipFuture = ResponseFuture<C::Header, gen::node::TipResponse>;
+    fn new_subscription_request<R, Out>(&self, outbound: Out) -> Request<RequestStream<Out, R>>
+    where
+        Out: Stream + Send + 'static,
+    {
+        let rs = RequestStream::new(outbound);
+        let mut req = Request::new(rs);
+        encode_node_id(&self.node_id, req.metadata_mut()).unwrap();
+        req
+    }
+}
 
-    type PullBlocksToTipStream = ResponseStream<C::Block, gen::node::Block>;
-    type PullBlocksToTipFuture = ServerStreamFuture<C::Block, gen::node::Block>;
+impl<P, T, E> BlockService for Connection<P, T, E>
+where
+    P: ProtocolConfig,
+    T: AsyncRead + AsyncWrite,
+    E: Executor<Background<T, BoxBody>> + Clone,
+{
+    type Block = P::Block;
+    type TipFuture = ResponseFuture<P::Header, gen::node::TipResponse>;
 
-    type GetBlocksStream = ResponseStream<C::Block, gen::node::Block>;
-    type GetBlocksFuture = ServerStreamFuture<C::Block, gen::node::Block>;
+    type PullBlocksToTipStream = ResponseStream<P::Block, gen::node::Block>;
+    type PullBlocksToTipFuture = ServerStreamFuture<P::Block, gen::node::Block>;
 
-    type BlockSubscription = ResponseStream<C::Header, gen::node::Header>;
-    type BlockSubscriptionFuture = BidiStreamFuture<C::Header, gen::node::Header>;
+    type GetBlocksStream = ResponseStream<P::Block, gen::node::Block>;
+    type GetBlocksFuture = ServerStreamFuture<P::Block, gen::node::Block>;
+
+    type BlockSubscription = ResponseStream<P::Header, gen::node::Header>;
+    type BlockSubscriptionFuture = BidiStreamFuture<P::Header, gen::node::Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
-        let future = self.node.tip(Request::new(req));
+        let future = self.service.tip(Request::new(req));
         ResponseFuture::new(future)
     }
 
-    fn pull_blocks_to_tip(&mut self, from: &[C::BlockId]) -> Self::PullBlocksToTipFuture {
+    fn pull_blocks_to_tip(&mut self, from: &[P::BlockId]) -> Self::PullBlocksToTipFuture {
         let from = serialize_to_vec(from).unwrap();
         let req = gen::node::PullBlocksToTipRequest { from };
-        let future = self.node.pull_blocks_to_tip(Request::new(req));
+        let future = self.service.pull_blocks_to_tip(Request::new(req));
         ServerStreamFuture::new(future)
     }
 
     fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
     where
-        Out: Stream<Item = C::Header> + Send + 'static,
+        Out: Stream<Item = P::Header> + Send + 'static,
     {
-        let req = RequestStream::new(outbound);
-        let future = self.node.block_subscription(Request::new(req));
+        let req = self.new_subscription_request(outbound);
+        let future = self.service.block_subscription(req);
         BidiStreamFuture::new(future)
     }
 }
 
-impl<C, S, E> GossipService for Client<C, S, E>
+impl<P, T, E> GossipService for Connection<P, T, E>
 where
-    C: ProtocolConfig,
-    S: AsyncRead + AsyncWrite,
-    E: Executor<Background<S, BoxBody>> + Clone,
+    P: ProtocolConfig,
+    T: AsyncRead + AsyncWrite,
+    E: Executor<Background<T, BoxBody>> + Clone,
 {
-    type Node = C::Node;
-    type GossipSubscription = ResponseStream<Gossip<C::Node>, gen::node::Gossip>;
-    type GossipSubscriptionFuture = BidiStreamFuture<Gossip<C::Node>, gen::node::Gossip>;
+    type Node = P::Node;
+    type GossipSubscription = ResponseStream<Gossip<P::Node>, gen::node::Gossip>;
+    type GossipSubscriptionFuture = BidiStreamFuture<Gossip<P::Node>, gen::node::Gossip>;
 
     fn gossip_subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
     where
-        Out: Stream<Item = Gossip<C::Node>> + Send + 'static,
+        Out: Stream<Item = Gossip<P::Node>> + Send + 'static,
     {
-        let req = RequestStream::new(outbound);
-        let future = self.node.gossip_subscription(Request::new(req));
+        let req = self.new_subscription_request(outbound);
+        let future = self.service.gossip_subscription(req);
         BidiStreamFuture::new(future)
-    }
-}
-
-/// The error type for gRPC client operations.
-#[derive(Debug)]
-pub enum Error {
-    Connect(ConnectError<io::Error>),
-}
-
-impl From<ConnectError<io::Error>> for Error {
-    fn from(err: ConnectError<io::Error>) -> Self {
-        Error::Connect(err)
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Connect(e) => write!(f, "connection error: {}", e),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Error::Connect(e) => Some(e),
-        }
     }
 }

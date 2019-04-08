@@ -1,5 +1,6 @@
 //! Blockchain content service abstraction.
 
+use super::P2pService;
 use crate::error::Error;
 
 use chain_core::property::{Deserialize, Message, MessageId, Serialize};
@@ -9,7 +10,7 @@ use futures::prelude::*;
 /// Interface for the blockchain node service implementation responsible for
 /// validating and accepting transactions and other block contents, known
 /// together as messages.
-pub trait ContentService {
+pub trait ContentService: P2pService {
     /// The data type to represent messages constituting a block.
     type Message: Message + Serialize;
 
@@ -51,12 +52,19 @@ pub trait ContentService {
     /// This method is only used by the NTT implementation.
     fn propose_transactions(&mut self, ids: &[Self::MessageId]) -> Self::ProposeTransactionsFuture;
 
-    // Establishes a bidirectional subscription for announcing new messages,
-    // taking an asynchronous stream that provides the inbound announcements.
-    //
-    // Returns a future that resolves to an asynchronous subscription stream
-    // that receives messages announced by the peer.
-    fn message_subscription<In>(&mut self, inbound: In) -> Self::MessageSubscriptionFuture
+    /// Establishes a bidirectional subscription for announcing new messages.
+    ///
+    /// The network protocol implementation passes the node identifier of
+    /// the sender and an asynchronous stream that will provide the inbound
+    /// announcements.
+    ///
+    /// Returns a future resolving to an asynchronous stream
+    /// that will be used by this node to send message announcements.
+    fn message_subscription<In>(
+        &mut self,
+        subscriber: Self::NodeId,
+        inbound: In,
+    ) -> Self::MessageSubscriptionFuture
     where
         In: Stream<Item = Self::Message, Error = Error> + Send + 'static;
 }

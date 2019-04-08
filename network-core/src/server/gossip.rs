@@ -1,17 +1,15 @@
 ///! Gossip service abstraction.
+use super::P2pService;
 use crate::{
     error::Error,
-    gossip::{Gossip, Node, NodeId},
+    gossip::{Gossip, Node},
 };
 
 use futures::prelude::*;
 
-/// Intreface for the node discovery service implementation
-/// in the p2p network.
-pub trait GossipService {
-    /// Network node identifier.
-    type NodeId: NodeId;
-
+/// Interface for the node gossip service implementation
+/// in the peer-to-peer network.
+pub trait GossipService: P2pService {
     /// Gossip message describing a network node.
     type Node: Node<Id = Self::NodeId>;
 
@@ -25,12 +23,19 @@ pub trait GossipService {
     /// implementation to produce a server-streamed response.
     type GossipSubscriptionFuture: Future<Item = Self::GossipSubscription, Error = Error>;
 
-    // Establishes a bidirectional subscription for node gossip messages,
-    // taking an asynchronous stream that provides the inbound announcements.
-    //
-    // Returns a future that resolves to an asynchronous subscription stream
-    // that receives node gossip messages sent by the peer.
-    fn gossip_subscription<In>(&mut self, inbound: In) -> Self::GossipSubscriptionFuture
+    /// Establishes a bidirectional subscription for node gossip messages.
+    ///
+    /// The network protocol implementation passes the node identifier of
+    /// the sender and an asynchronous stream that will provide the inbound
+    /// announcements.
+    ///
+    /// Returns a future resolving to an asynchronous stream
+    /// that will be used by this node to send node gossip messages.
+    fn gossip_subscription<In>(
+        &mut self,
+        subscriber: Self::NodeId,
+        inbound: In,
+    ) -> Self::GossipSubscriptionFuture
     where
         In: Stream<Item = Gossip<Self::Node>, Error = Error> + Send + 'static;
 }
