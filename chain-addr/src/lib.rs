@@ -22,6 +22,13 @@
 //! Address human format is bech32 encoded
 //!
 
+#[cfg(test)]
+#[macro_use]
+extern crate quickcheck;
+
+#[macro_use]
+extern crate cfg_if;
+
 use bech32::{Bech32, FromBase32, ToBase32};
 use std::string::ToString;
 
@@ -30,10 +37,13 @@ use chain_crypto::{Ed25519Extended, PublicKey, PublicKeyError};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property::{self, Serialize as PropertySerialize};
 
-#[cfg(feature = "generic-serialization")]
-use serde::Serializer as SerdeSerializer;
-#[cfg(feature = "generic-serialization")]
-use serde_derive::Serialize;
+cfg_if! {
+   if #[cfg(test)] {
+        mod testing;
+    } else if #[cfg(feature = "property-test-api")] {
+        mod testing;
+    }
+}
 
 // Allow to differentiate between address in
 // production and testing setting, so that
@@ -260,14 +270,6 @@ fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType), Error> {
     Ok((get_discrimination_value(bytes[0]), kty))
 }
 
-#[cfg(feature = "generic-serialization")]
-impl serde::Serialize for Address {
-    fn serialize<S: SerdeSerializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
-        let address = AddressReadable::from_address(self);
-        serializer.serialize_str(address.as_string())
-    }
-}
-
 /// A valid address in a human readable format
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AddressReadable(String);
@@ -451,67 +453,6 @@ impl Readable for Address {
     }
 }
 
-#[cfg(feature = "property-test-api")]
-pub mod testing {
-    use super::*;
-    use quickcheck::{Arbitrary, Gen};
-
-    fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey<Ed25519Extended> {
-        let mut bytes = [0; 32];
-        for byte in bytes.iter_mut() {
-            *byte = u8::arbitrary(g);
-        }
-        PublicKey::from_binary(&bytes).unwrap()
-    }
-    fn arbitrary_extended_public_key<G: Gen>(g: &mut G) -> PublicKey<Ed25519Extended> {
-        let mut bytes = [0; 32];
-        for byte in bytes.iter_mut() {
-            *byte = u8::arbitrary(g);
-        }
-        PublicKey::from_binary(&bytes).unwrap()
-    }
-
-    impl Arbitrary for KindType {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match u8::arbitrary(g) % 3 {
-                0 => KindType::Single,
-                1 => KindType::Group,
-                2 => KindType::Account,
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    impl Arbitrary for Address {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let discrimination = if bool::arbitrary(g) {
-                Discrimination::Test
-            } else {
-                Discrimination::Production
-            };
-            let kind = match KindType::arbitrary(g) {
-                KindType::Single => Kind::Single(arbitrary_extended_public_key(g)),
-                KindType::Group => Kind::Group(
-                    arbitrary_extended_public_key(g),
-                    arbitrary_extended_public_key(g),
-                ),
-                KindType::Account => Kind::Account(arbitrary_public_key(g)),
-            };
-            Address(discrimination, kind)
-        }
-    }
-
-    impl Arbitrary for Discrimination {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match u8::arbitrary(g) % 2 {
-                0 => Discrimination::Production,
-                1 => Discrimination::Test,
-                _ => unreachable!(),
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -540,6 +481,22 @@ mod test {
             AddressReadable::from_string(ar.as_string()).expect("address is readable from string");
         assert_eq!(addr, &a);
         assert_eq!(ar, ar2);
+    }
+
+    quickcheck! {
+        fn from_address_to_address(address: Address) -> bool {
+            let readable = AddressReadable::from_address(&address);
+            let decoded  = readable.to_address();
+
+             address == decoded
+        }
+
+         fn to_bytes_from_bytes(address: Address) -> bool {
+            let readable = address.to_bytes();
+            let decoded  = Address::from_bytes(&readable).unwrap();
+
+             address == decoded
+        }
     }
 
     #[test]

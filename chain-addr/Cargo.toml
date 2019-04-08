@@ -7,7 +7,6 @@ edition = "2018"
 keywords = [ "Cardano", "Wallet", "Crypto", "Address" ]
 
 [features]
-generic-serialization = [ "serde", "serde_derive" ]
 property-test-api = ["quickcheck"]
 
 [dependencies]
@@ -15,9 +14,9 @@ bech32 = "0.6"
 chain-core = { path = "../chain-core" }
 chain-crypto = { path = "../chain-crypto" }
 cryptoxide = "0.1"
+cfg-if = "0.1"
 quickcheck = { version = "0.8", optional = true }
-serde = { version = "^1.0", optional = true }
-serde_derive = { version = "^1.0", optional = true }
 
 [dev-dependencies]
 quickcheck = "0.8"
+chain-crypto = { path = "../chain-crypto", features = [ "property-test-api" ] }
