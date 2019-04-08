@@ -55,7 +55,7 @@ There are multiple _parts_ in the genesis file:
 |:-------|:-------|:------------|
 | `block0_date` | number | the official start time of the blockchain, in seconds since UNIX EPOCH |
 | `discrimination` | string | `production` or `test` |
-| `discrimination` | string | `bft` |
+| `block0_genesis` | string | `bft` |
 
 ### initial settings
 
