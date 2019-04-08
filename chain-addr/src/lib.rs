@@ -453,6 +453,40 @@ impl Readable for Address {
     }
 }
 
+/// error that can happen when parsing the Discrimination
+/// from a string
+#[derive(Debug)]
+pub struct ParseDiscriminationError(String);
+impl std::fmt::Display for ParseDiscriminationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Invalid Address Discrimination `{}'. Expected `production' or `test'.",
+            self.0
+        )
+    }
+}
+impl std::error::Error for ParseDiscriminationError {}
+
+impl std::fmt::Display for Discrimination {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Discrimination::Production => write!(f, "production"),
+            Discrimination::Test => write!(f, "test"),
+        }
+    }
+}
+impl std::str::FromStr for Discrimination {
+    type Err = ParseDiscriminationError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "production" => Ok(Discrimination::Production),
+            "test" => Ok(Discrimination::Test),
+            _ => Err(ParseDiscriminationError(s.to_owned())),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
