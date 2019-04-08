@@ -1,7 +1,7 @@
 mod connect;
 
 use crate::{
-    convert::serialize_to_vec,
+    convert::{encode_node_id, serialize_to_vec},
     gen::{self, node::client as gen_client},
 };
 
@@ -337,6 +337,21 @@ mod request_stream {
     }
 }
 
+impl<P, T, E> Connection<P, T, E>
+where
+    P: ProtocolConfig,
+{
+    fn new_subscription_request<R, Out>(&self, outbound: Out) -> Request<RequestStream<Out, R>>
+    where
+        Out: Stream + Send + 'static,
+    {
+        let rs = RequestStream::new(outbound);
+        let mut req = Request::new(rs);
+        encode_node_id(&self.node_id, req.metadata_mut()).unwrap();
+        req
+    }
+}
+
 impl<P, T, E> BlockService for Connection<P, T, E>
 where
     P: ProtocolConfig,
@@ -372,8 +387,8 @@ where
     where
         Out: Stream<Item = P::Header> + Send + 'static,
     {
-        let req = RequestStream::new(outbound);
-        let future = self.service.block_subscription(Request::new(req));
+        let req = self.new_subscription_request(outbound);
+        let future = self.service.block_subscription(req);
         BidiStreamFuture::new(future)
     }
 }
@@ -392,8 +407,8 @@ where
     where
         Out: Stream<Item = Gossip<P::Node>> + Send + 'static,
     {
-        let req = RequestStream::new(outbound);
-        let future = self.service.gossip_subscription(Request::new(req));
+        let req = self.new_subscription_request(outbound);
+        let future = self.service.gossip_subscription(req);
         BidiStreamFuture::new(future)
     }
 }
