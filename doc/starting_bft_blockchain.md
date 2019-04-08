@@ -24,8 +24,9 @@ Utilising a Round Robin algorithm.
 
 ```yaml
 blockchain_configuration:
-  - [ block0-date, 1550822014 ]
-  - [ discrimination, test ]
+  block0_date: 1550822014
+  discrimination: test
+  block0_consensus: bft
 initial_setting:
   allow_account_creation: true
   slot_duration: 15

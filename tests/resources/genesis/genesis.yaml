@@ -1,6 +1,7 @@
 blockchain_configuration:
-  - [ block0-date, 1554185140 ]
-  - [ discrimination, test ]
+  block0_date: 1554185140
+  discrimination: test
+  block0_consensus: bft
 initial_setting:
   consensus: bft
   allow_account_creation: true

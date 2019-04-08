@@ -30,7 +30,7 @@ impl NodeSecret {
             panic!("Private key file should contain Ed25519 extended private key")
         }
         let bytes = Vec::<u8>::from_base32(bech32.data()).unwrap();
-        let block_privatekey = SecretKey::from_bytes(&bytes).unwrap();
+        let block_privatekey = SecretKey::from_binary(&bytes).unwrap();
         let block_publickey = block_privatekey.to_public();
         NodeSecret {
             public: NodePublic { block_publickey },
