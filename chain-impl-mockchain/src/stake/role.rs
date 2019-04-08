@@ -131,6 +131,17 @@ impl Readable for StakePoolInfo {
     }
 }
 
+impl From<Hash> for StakePoolId {
+    fn from(hash: Hash) -> Self {
+        StakePoolId(hash)
+    }
+}
+impl From<chain_crypto::Blake2b256> for StakePoolId {
+    fn from(hash: chain_crypto::Blake2b256) -> Self {
+        StakePoolId(hash.into())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
