@@ -78,6 +78,30 @@ jobs:
       - run:
           name: Test
           command: cargo test --frozen --verbose
+  test_integration_debug:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - attach_workspace:
+          at: target
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Install crates
+          command: cargo install
+      - run:
+          name: Run integration tests
+          command: cargo test --features integration-test --frozen --verbose
 
   build_release:
     docker:
@@ -124,6 +148,29 @@ jobs:
       - run:
           name: Test
           command: cargo test --release --frozen --verbose
+          
+  test_integration_release:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Install crates
+          command: cargo install
+      - run:
+          name: Run integration tests
+          command: cargo test --features integration-test --frozen --verbose
 
   test_nightly:
     docker:
@@ -165,8 +212,8 @@ jobs:
           name: Install crates
           command: cargo install
       - run:
-          name: Build and test with nightly Rust
-          command: cargo test --features integration-test --frozen --verbose -- --nocapture
+          name: Run integration tests
+          command: cargo test --features integration-test --frozen --verbose
 
   test_jcli_debug:
     docker:
@@ -206,6 +253,12 @@ workflows:
           requires:
             - build_debug
       - test_release:
+          requires:
+            - build_release
+      - test_integration_debug:
+          requires:
+            - build_debug
+      - test_integration_release:
           requires:
             - build_release
       - test_nightly:
