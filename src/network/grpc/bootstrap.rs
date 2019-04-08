@@ -4,26 +4,28 @@ use blockcfg::Block;
 
 use chain_core::property::{Deserialize, HasHeader};
 use network_core::client::block::BlockService as _;
-use network_grpc::client::Client;
+use network_grpc::client::{Connect, Connection};
 
+use http::uri;
 use tokio::prelude::*;
 use tokio::{executor::DefaultExecutor, runtime::current_thread};
+use tower_service::Service;
 
-use http;
 use std::fmt::Debug;
 
-pub fn bootstrap_from_target<P>(peer: P, blockchain: BlockchainR, origin: http::Uri)
+pub fn bootstrap_from_target<P>(peer: P, blockchain: BlockchainR, origin: uri::Authority)
 where
-    P: tower_service::Service<(), Error = std::io::Error> + 'static,
-    <P as tower_service::Service<()>>::Response:
-        tokio::io::AsyncWrite + tokio::io::AsyncRead + 'static + Send,
+    P: Service<(), Error = std::io::Error> + 'static,
+    <P as Service<()>>::Response: tokio::io::AsyncWrite + tokio::io::AsyncRead + 'static + Send,
     <Block as Deserialize>::Error: Send + Sync,
 {
-    let bootstrap = Client::connect(peer, DefaultExecutor::current(), origin)
+    let bootstrap = Connect::new(peer, DefaultExecutor::current())
+        .origin(uri::Scheme::HTTP, origin)
+        .call(())
         .map_err(|e| {
             error!("failed to connect to bootstrap peer: {:?}", e);
         })
-        .and_then(|mut client: Client<BlockConfig, _, _>| {
+        .and_then(|mut client: Connection<BlockConfig, _, _>| {
             let tip = blockchain.lock_read().get_tip();
             client
                 .pull_blocks_to_tip(&[tip])

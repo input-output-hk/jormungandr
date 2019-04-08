@@ -7,12 +7,12 @@ use crate::intercom::{
 
 use network_core::{
     error as core_error,
-    gossip::Gossip,
+    gossip::{Gossip, Node as _},
     server::{
         block::BlockService,
         content::{ContentService, ProposeTransactionsResponse},
         gossip::GossipService,
-        Node,
+        Node, P2pService,
     },
 };
 
@@ -61,6 +61,14 @@ impl Node for NodeService {
 impl From<intercom::Error> for core_error::Error {
     fn from(err: intercom::Error) -> Self {
         core_error::Error::new(err.code(), err)
+    }
+}
+
+impl P2pService for NodeService {
+    type NodeId = p2p::NodeId;
+
+    fn node_id(&self) -> p2p::NodeId {
+        self.global_state.node.id()
     }
 }
 
@@ -133,7 +141,11 @@ impl BlockService for NodeService {
         unimplemented!()
     }
 
-    fn block_subscription<In>(&mut self, inbound: In) -> Self::BlockSubscriptionFuture
+    fn block_subscription<In>(
+        &mut self,
+        subscriber: Self::NodeId,
+        inbound: In,
+    ) -> Self::BlockSubscriptionFuture
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
@@ -179,7 +191,11 @@ impl ContentService for NodeService {
         unimplemented!()
     }
 
-    fn message_subscription<S>(&mut self, _inbound: S) -> Self::MessageSubscriptionFuture
+    fn message_subscription<S>(
+        &mut self,
+        subscriber: Self::NodeId,
+        _inbound: S,
+    ) -> Self::MessageSubscriptionFuture
     where
         S: Stream<Item = Self::Message, Error = core_error::Error>,
     {
@@ -188,12 +204,15 @@ impl ContentService for NodeService {
 }
 
 impl GossipService for NodeService {
-    type NodeId = p2p::NodeId;
     type Node = p2p::Node;
     type GossipSubscription = stream::Empty<Gossip<p2p::Node>, core_error::Error>;
     type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
 
-    fn gossip_subscription<In>(&mut self, inbound: In) -> Self::GossipSubscriptionFuture
+    fn gossip_subscription<In>(
+        &mut self,
+        subscriber: Self::NodeId,
+        inbound: In,
+    ) -> Self::GossipSubscriptionFuture
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {

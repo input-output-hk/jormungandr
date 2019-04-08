@@ -61,9 +61,6 @@ custom_error = "1.6"
 num-traits = "0.2"
 jormungandr-utils = { path = "./utils" }
 
-[patch."https://github.com/tower-rs/tower"]
-tower-service = "0.2"
-
 [dependencies.actix-web]
 version = "0.7.18"
 default-features = false
