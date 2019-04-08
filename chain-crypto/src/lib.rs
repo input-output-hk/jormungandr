@@ -1,5 +1,8 @@
 #![cfg_attr(feature = "with-bench", feature(test))]
 
+#[macro_use]
+extern crate cfg_if;
+
 #[cfg(test)]
 #[cfg(feature = "with-bench")]
 extern crate test;
@@ -7,6 +10,14 @@ extern crate test;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
+
+cfg_if! {
+    if #[cfg(test)] {
+        mod testing;
+    } else if #[cfg(feature = "property-test-api")] {
+        mod testing;
+    }
+}
 
 pub mod algorithms;
 pub mod bech32;
@@ -26,4 +37,4 @@ pub use vrf::{
 };
 
 pub use algorithms::*;
-pub use hash::Blake2b256;
+pub use hash::{Blake2b224, Blake2b256, Sha3_256};

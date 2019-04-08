@@ -86,9 +86,10 @@ impl VerificationAlgorithm for Ed25519 {
     type Signature = Sig;
 
     const SIGNATURE_SIZE: usize = ed25519::SIGNATURE_LENGTH;
+    const SIGNATURE_BECH32_HRP: &'static str = "ed25519_signature";
 
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
-        if data.len() == ed25519::SIGNATURE_LENGTH {
+        if data.len() != ed25519::SIGNATURE_LENGTH {
             return Err(SignatureError::SizeInvalid);
         }
         let mut buf = [0; ed25519::SIGNATURE_LENGTH];

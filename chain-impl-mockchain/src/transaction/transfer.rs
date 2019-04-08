@@ -62,7 +62,7 @@ impl Input {
     pub fn to_enum(&self) -> InputEnum {
         match self.get_type() {
             InputType::Account => {
-                let pk = PublicKey::from_bytes(&self.input_ptr)
+                let pk = PublicKey::from_binary(&self.input_ptr)
                     .expect("internal error in publickey type");
                 InputEnum::AccountInput(pk.into(), self.value)
             }
