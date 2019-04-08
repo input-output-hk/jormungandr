@@ -77,6 +77,7 @@ impl VerificationAlgorithm for FakeMMM {
     type Signature = Sig;
 
     const SIGNATURE_SIZE: usize = ed25519::SIGNATURE_LENGTH;
+    const SIGNATURE_BECH32_HRP: &'static str = "fakemmm_signature";
 
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
         if data.len() != ed25519::SIGNATURE_LENGTH {

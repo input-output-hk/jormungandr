@@ -62,7 +62,7 @@ where
 {
     let mut bytes = vec![0u8; A::PUBLIC_KEY_SIZE];
     read_mut_slice(buf, &mut bytes[..])?;
-    crypto::PublicKey::from_bytes(&bytes).map_err(chain_crypto_pub_err)
+    crypto::PublicKey::from_binary(&bytes).map_err(chain_crypto_pub_err)
 }
 #[inline]
 pub fn deserialize_signature<'a, A, T>(
@@ -73,7 +73,7 @@ where
 {
     let mut bytes = vec![0u8; A::SIGNATURE_SIZE];
     read_mut_slice(buf, &mut bytes[..])?;
-    crypto::Signature::from_bytes(&bytes).map_err(chain_crypto_sig_err)
+    crypto::Signature::from_binary(&bytes).map_err(chain_crypto_sig_err)
 }
 
 pub fn make_signature<T, A>(

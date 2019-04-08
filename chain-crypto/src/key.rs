@@ -114,17 +114,11 @@ impl<A: AsymmetricKey> SecretKey<A> {
     pub fn from_binary(data: &[u8]) -> Result<Self, SecretKeyError> {
         Ok(SecretKey(<A as AsymmetricKey>::secret_from_binary(data)?))
     }
-    pub fn from_bytes(data: &[u8]) -> Result<Self, SecretKeyError> {
-        Self::from_binary(data)
-    }
 }
 
 impl<A: AsymmetricKey> PublicKey<A> {
     pub fn from_binary(data: &[u8]) -> Result<Self, PublicKeyError> {
         Ok(PublicKey(<A as AsymmetricKey>::public_from_binary(data)?))
-    }
-    pub fn from_bytes(data: &[u8]) -> Result<Self, PublicKeyError> {
-        Self::from_binary(data)
     }
 }
 
@@ -178,7 +172,7 @@ impl<A: AsymmetricKey> Bech32 for PublicKey<A> {
 
     fn try_from_bech32_str(bech32_str: &str) -> Result<Self, bech32::Error> {
         let bytes = bech32::try_from_bech32_to_bytes::<Self>(bech32_str)?;
-        Self::from_bytes(&bytes).map_err(bech32::Error::data_invalid)
+        Self::from_binary(&bytes).map_err(bech32::Error::data_invalid)
     }
 
     fn to_bech32_str(&self) -> String {
@@ -191,7 +185,7 @@ impl<A: AsymmetricKey> Bech32 for SecretKey<A> {
 
     fn try_from_bech32_str(bech32_str: &str) -> Result<Self, bech32::Error> {
         let bytes = bech32::try_from_bech32_to_bytes::<Self>(bech32_str)?;
-        Self::from_bytes(&bytes).map_err(bech32::Error::data_invalid)
+        Self::from_binary(&bytes).map_err(bech32::Error::data_invalid)
     }
 
     fn to_bech32_str(&self) -> String {
@@ -203,50 +197,13 @@ impl<A: AsymmetricKey> Bech32 for SecretKey<A> {
 mod test {
     use super::*;
 
-    use quickcheck::{Arbitrary, Gen};
-    use rand::SeedableRng;
-    use rand_chacha::ChaChaRng;
-
-    pub fn arbitrary_public_key<A: AsymmetricKey, G: Gen>(g: &mut G) -> PublicKey<A> {
-        arbitrary_secret_key(g).to_public()
-    }
-
-    pub fn arbitrary_secret_key<A, G>(g: &mut G) -> SecretKey<A>
+    // ONLY ALLOWED WHEN TESTING
+    impl<A> std::fmt::Debug for SecretKey<A>
     where
         A: AsymmetricKey,
-        G: Gen,
     {
-        let rng = ChaChaRng::seed_from_u64(Arbitrary::arbitrary(g));
-        SecretKey::generate(rng)
-    }
-
-    impl<A> Arbitrary for PublicKey<A>
-    where
-        A: AsymmetricKey + 'static,
-        A::Public: Send,
-    {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            arbitrary_public_key(g)
-        }
-    }
-    impl<A> Arbitrary for SecretKey<A>
-    where
-        A: AsymmetricKey + 'static,
-        A::Secret: Send,
-    {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            arbitrary_secret_key(g)
-        }
-    }
-    impl<A> Arbitrary for KeyPair<A>
-    where
-        A: AsymmetricKey + 'static,
-        A::Secret: Send,
-        A::Public: Send,
-    {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let secret_key = SecretKey::arbitrary(g);
-            KeyPair::from(secret_key)
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "SecretKey ({:?})", self.0.as_ref())
         }
     }
 }

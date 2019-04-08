@@ -15,6 +15,9 @@ digest = "^0.8"
 generic-array = "^0.12"
 rand = "0.6"
 ed25519-bip32 = { path = "../ed25519-bip32" }
+quickcheck = {version = "0.8", optional = true }
+rand_chacha = {version = "0.1", optional = true }
+cfg-if = "0.1"
 
 [dev-dependencies]
 quickcheck = "0.8"
@@ -22,3 +25,4 @@ rand_chacha = "0.1"
 
 [features]
 with-bench = []
+property-test-api = [ "quickcheck", "rand_chacha" ]

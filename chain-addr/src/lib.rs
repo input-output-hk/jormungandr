@@ -380,7 +380,7 @@ impl property::Deserialize for Address {
             ADDR_KIND_SINGLE => {
                 let mut bytes = [0u8; 32];
                 codec.read_exact(&mut bytes)?;
-                let spending = PublicKey::from_bytes(&bytes[..]).map_err(|err| {
+                let spending = PublicKey::from_binary(&bytes[..]).map_err(|err| {
                     std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err))
                 })?;
                 Kind::Single(spending)
@@ -388,12 +388,12 @@ impl property::Deserialize for Address {
             ADDR_KIND_GROUP => {
                 let mut bytes = [0u8; 32];
                 codec.read_exact(&mut bytes)?;
-                let spending = PublicKey::from_bytes(&bytes[..]).map_err(|err| {
+                let spending = PublicKey::from_binary(&bytes[..]).map_err(|err| {
                     std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err))
                 })?;
                 let mut bytes = [0u8; 32];
                 codec.read_exact(&mut bytes)?;
-                let group = PublicKey::from_bytes(&bytes[..]).map_err(|err| {
+                let group = PublicKey::from_binary(&bytes[..]).map_err(|err| {
                     std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err))
                 })?;
                 Kind::Group(spending, group)
@@ -401,7 +401,7 @@ impl property::Deserialize for Address {
             ADDR_KIND_ACCOUNT => {
                 let mut bytes = [0u8; 32];
                 codec.read_exact(&mut bytes)?;
-                let stake_key = PublicKey::from_bytes(&bytes[..]).map_err(|err| {
+                let stake_key = PublicKey::from_binary(&bytes[..]).map_err(|err| {
                     std::io::Error::new(std::io::ErrorKind::InvalidData, Box::new(err))
                 })?;
                 Kind::Account(stake_key)
@@ -430,19 +430,19 @@ impl Readable for Address {
         let kind = match get_kind_value(byte) {
             ADDR_KIND_SINGLE => {
                 let bytes = <[u8; 32]>::read(buf)?;
-                let spending = PublicKey::from_bytes(&bytes[..]).map_err(chain_crypto_err)?;
+                let spending = PublicKey::from_binary(&bytes[..]).map_err(chain_crypto_err)?;
                 Kind::Single(spending)
             }
             ADDR_KIND_GROUP => {
                 let bytes = <[u8; 32]>::read(buf)?;
-                let spending = PublicKey::from_bytes(&bytes[..]).map_err(chain_crypto_err)?;
+                let spending = PublicKey::from_binary(&bytes[..]).map_err(chain_crypto_err)?;
                 let bytes = <[u8; 32]>::read(buf)?;
-                let group = PublicKey::from_bytes(&bytes[..]).map_err(chain_crypto_err)?;
+                let group = PublicKey::from_binary(&bytes[..]).map_err(chain_crypto_err)?;
                 Kind::Group(spending, group)
             }
             ADDR_KIND_ACCOUNT => {
                 let bytes = <[u8; 32]>::read(buf)?;
-                let stake_key = PublicKey::from_bytes(&bytes[..]).map_err(chain_crypto_err)?;
+                let stake_key = PublicKey::from_binary(&bytes[..]).map_err(chain_crypto_err)?;
                 Kind::Account(stake_key)
             }
             n => return Err(ReadError::UnknownTag(n as u32)),
