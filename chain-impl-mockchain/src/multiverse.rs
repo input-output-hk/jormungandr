@@ -262,7 +262,7 @@ mod test {
     use crate::message::{InitialEnts, Message};
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
     use chain_storage::store::BlockStore;
-    use quickcheck::StdGen;
+    use quickcheck::{Arbitrary, StdGen};
 
     fn apply_block(state: &Ledger, block: &Block) -> Ledger {
         if state.chain_length().0 != 0 {
@@ -278,7 +278,7 @@ mod test {
         let mut multiverse = Multiverse::new();
 
         let mut g = StdGen::new(rand::thread_rng(), 10);
-        let leader_key = crate::key::test::arbitrary_secret_key(&mut g);
+        let leader_key = Arbitrary::arbitrary(&mut g);
 
         let mut store = chain_storage::memory::MemoryBlockStore::new();
 

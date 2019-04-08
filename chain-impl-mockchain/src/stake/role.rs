@@ -138,7 +138,7 @@ mod test {
 
     impl Arbitrary for StakeKeyId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            StakeKeyId::from(&crate::key::test::arbitrary_secret_key(g))
+            StakeKeyId::from(&Arbitrary::arbitrary(g))
         }
     }
 

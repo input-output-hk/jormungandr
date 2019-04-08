@@ -9,9 +9,6 @@ authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
           ]
 edition = "2018"
 
-[features]
-generic-serialization = [ "chain-addr/generic-serialization", "serde", "serde_derive" ]
-
 [dependencies]
 num-traits = "0.2"
 num-derive = "0.2"
@@ -31,6 +28,7 @@ strum_macros = "0.15.0"
 [dev-dependencies]
 quickcheck = "0.8"
 chain-core = { path = "../chain-core", features=["property-test-api"]}
+chain-crypto = { path = "../chain-crypto", features=["property-test-api"]}
 chain-addr = { path = "../chain-addr", features=["property-test-api"]}
 rand_chacha = "0.1"
 rand_core = "0.4"
