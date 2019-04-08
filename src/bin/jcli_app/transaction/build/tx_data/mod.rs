@@ -51,6 +51,13 @@ pub struct TxData {
 
 impl TxData {
     pub fn build_message(&self) -> Vec<u8> {
+        if self.inputs.len() != self.spending_keys.len() {
+            panic!(
+                "Invalid number of spending keys ({}) should be same as inputs ({})",
+                self.spending_keys.len(),
+                self.inputs.len()
+            )
+        }
         let transaction = self.build_tx();
         let witnesses = self.spending_keys.iter().map(create_witness).collect();
         let auth_tx = AuthenticatedTransaction {

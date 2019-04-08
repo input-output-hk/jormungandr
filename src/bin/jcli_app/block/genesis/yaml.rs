@@ -1,11 +1,8 @@
-use chain_addr::{AddressReadable, Discrimination};
+use chain_addr::AddressReadable;
 use chain_core::property::HasMessages as _;
 use chain_crypto::{bech32::Bech32, Ed25519Extended, PublicKey};
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder, ConsensusVersion},
-    config::{
-        entity_from, entity_from_string, entity_to, entity_to_string, Block0Date, ConfigParam,
-    },
     fee::LinearFee,
     legacy::{self, OldAddress},
     message::{InitialEnts, Message},
@@ -13,12 +10,21 @@ use chain_impl_mockchain::{
     transaction,
     value::Value,
 };
+use jcli_app::utils::serde_with_string;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Genesis {
-    pub blockchain_configuration: Configuration,
+    /// the initial configuration of the blockchain
+    ///
+    /// * the start date of the block 0;
+    /// * the discrimination;
+    /// * ...
+    ///
+    /// All that is static and does not need to have any update
+    /// mechanism.
+    pub blockchain_configuration: InitialEnts,
 
     pub initial_setting: Update,
 
@@ -28,39 +34,19 @@ pub struct Genesis {
 
 /// the initial configuration of the blockchain
 ///
-/// * the start date of the block 0;
-/// * the discrimination;
-/// * ...
-///
-/// All that is static and does not need to have any update
-/// mechanism.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Configuration(Vec<(String, String)>);
-
-/// the initial configuration of the blockchain
-///
 /// This is the data tha may be updated but which needs
 /// to have an initial value in the blockchain (or not)
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Update {
     max_number_of_transactions_per_block: Option<u32>,
     bootstrap_key_slots_percentage: Option<u8>,
-    #[serde(with = "ConsensusVersionSerdeImpl")]
+    #[serde(with = "serde_with_string")]
     consensus: ConsensusVersion,
     bft_leaders: Option<Vec<String>>,
     allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
     slot_duration: u8,
     epoch_stability_depth: u32,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(remote = "ConsensusVersion", rename_all = "lowercase")]
-enum ConsensusVersionSerdeImpl {
-    None,
-    Bft,
-    #[serde(rename = "genesis")]
-    GenesisPraos,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -87,7 +73,7 @@ impl Genesis {
         let mut messages = block.messages();
 
         let blockchain_configuration = if let Some(Message::Initial(initial)) = messages.next() {
-            Configuration::from_message(initial)
+            initial.clone()
         } else {
             panic!("Expecting the second Message of the block 0 to be `Message::Initial`")
         };
@@ -103,7 +89,7 @@ impl Genesis {
         let legacy_utxos = get_legacy_utxos(&mut messages);
 
         Genesis {
-            blockchain_configuration: blockchain_configuration,
+            blockchain_configuration,
             initial_setting: initial_setting,
             initial_utxos: if initial_utxos.is_empty() {
                 None
@@ -121,7 +107,7 @@ impl Genesis {
     pub fn to_block(&self) -> Block {
         let mut builder = BlockBuilder::new();
 
-        builder.message(self.blockchain_configuration.to_message());
+        builder.message(Message::Initial(self.blockchain_configuration.clone()));
         builder.message(self.initial_setting.clone().to_message());
 
         builder.messages(
@@ -311,57 +297,6 @@ impl Update {
                 .epoch_stability_depth
                 .expect("epoch_stability_depth is mandatory"),
         }
-    }
-}
-
-impl Configuration {
-    pub fn from_message(initial_ents: &InitialEnts) -> Self {
-        let mut data = Vec::with_capacity(initial_ents.iter().len());
-
-        for (t, v) in initial_ents.iter() {
-            match t {
-                &<Block0Date as ConfigParam>::TAG => {
-                    let t = entity_from::<Block0Date>(*t, v).expect("Failed to parse block0-date");
-                    let (k, v) = entity_to_string(&t);
-                    data.push((k.to_owned(), v));
-                }
-                &<Discrimination as ConfigParam>::TAG => {
-                    let t = entity_from::<Discrimination>(*t, v)
-                        .expect("Failed to parse discrimination");
-                    let (k, v) = entity_to_string(&t);
-                    data.push((k.to_owned(), v));
-                }
-                _ => panic!(),
-            }
-        }
-
-        Configuration(data)
-    }
-
-    pub fn to_message(&self) -> Message {
-        let mut initial = InitialEnts::new();
-        for (t, v) in self.0.iter() {
-            match t.as_str() {
-                <Block0Date as ConfigParam>::NAME => {
-                    let t = entity_from_string::<Block0Date>(t, v).unwrap();
-                    initial.push(entity_to(&t));
-                }
-                <Discrimination as ConfigParam>::NAME => {
-                    let t = match entity_from_string::<Discrimination>(t, v) {
-                        Err(err) => panic!("{:?}, expected values (`test' or `production')", err),
-                        Ok(v) => v,
-                    };
-                    initial.push(entity_to(&t));
-                }
-                s => panic!(
-                    "Unknown tag: {} (supported: {}, {})",
-                    s,
-                    <Block0Date as ConfigParam>::NAME,
-                    <Discrimination as ConfigParam>::NAME,
-                ),
-            }
-        }
-        Message::Initial(initial)
     }
 }
 
