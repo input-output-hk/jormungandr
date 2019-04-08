@@ -8,49 +8,102 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-
-            - cargo-v2-
-      - run: cargo update
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
+      - run: git submodule sync
+      - run: git submodule update --init
       - run: cargo fetch
       - persist_to_workspace:
-          root: "."
+          root: /mnt/crate
           paths:
             - Cargo.lock
       - save_cache:
-          key: cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          key: cargo-v3-{{ checksum "Cargo.toml" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
-  test:
+
+  rustfmt:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run:
+          name: Install rustfmt
+          command: rustup component add rustfmt
+      - run:
+          name: Print version information
+          command: cargo fmt -- --version
+      - run:
+          name: Check rustfmt
+          command: cargo fmt -- --check
+
+  build_debug:
     docker:
       - image: rust:latest
     working_directory: /mnt/crate
     steps:
       - checkout
       - attach_workspace:
-          at: "."
+          at: /mnt/crate
+      - run: git submodule sync
+      - run: git submodule update --init
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build and test
-          command: cargo test --frozen --verbose
-          environment:
-            # Need this for the coverage run
-            RUSTFLAGS: "-C link-dead-code"
+          name: Build
+          command: cargo build
+  test_debug:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /mnt/crate
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
-          name: Prune the output files
-          command: |
-            for file in target/debug/* target/debug/.??*; do
-              [ -d $file -o ! -x $file ] && rm -r $file
-            done
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - target/debug/*
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Test
+          command: cargo test --verbose
+
+  build_release:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /mnt/crate
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Build in release profile
+          command: cargo build --release
+
   test_release:
     docker:
       - image: rust:latest
@@ -58,16 +111,21 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: "."
+          at: /mnt/crate
+      - run: git submodule sync
+      - run: git submodule update --init
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build and test in release profile
-          command: cargo test --release --frozen --verbose
+          name: Test
+          command: cargo test --release --verbose
+
   test_nightly:
     docker:
       - image: rustlang/rust:nightly
@@ -75,79 +133,41 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: "."
+          at: /mnt/crate
       - restore_cache:
           keys:
-            - cargo-v2-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build and test with nightly Rust
-          command: cargo test --frozen --verbose
-  coverage:
-    docker:
-      - image: ragnaroek/kcov:v33
-        entrypoint: /bin/bash
-    working_directory: /mnt/crate
-    steps:
-      - checkout
-      - attach_workspace:
-          at: "."
-      - run: mkdir target/coverage
-      - run:
-          name: Rerun the tests collecting coverage
-          command: |
-            for file in ./target/debug/*; do
-              if test -x $file; then
-                kcov --verify --exclude-pattern=tests \
-                  --exclude-path=src/testmocks.rs \
-                  target/coverage/$(basename $file) \
-                  $file --quiet
-              fi
-            done
-            kcov --merge target/coverage-merged target/coverage/*
-      - store_artifacts:
-          path: target/coverage
-          destination: coverage
-      - store_artifacts:
-          path: target/coverage-merged
-          destination: coverage-merged
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - target/coverage
-  codecov_upload:
-    docker:
-      - image: buildpack-deps:curl
-    working_directory: /mnt/crate
-    steps:
-      # Codecov uploader needs the source and binaries
-      # exactly as everything was during the test run.
-      - checkout
-      - attach_workspace:
-          at: "."
-      - run:
-          name: Upload to Codecov
-          command: bash <(curl -s https://codecov.io/bash)
+          command: cargo test --verbose
+
 
 workflows:
   version: 2
-  test_all_and_coverage:
+  test_all:
     jobs:
       - cargo_fetch
-      - test:
+      - rustfmt
+      - build_debug:
           requires:
+            - rustfmt
             - cargo_fetch
+      - build_release:
+          requires:
+            - rustfmt
+            - cargo_fetch
+      - test_debug:
+          requires:
+            - build_debug
       - test_release:
           requires:
-            - cargo_fetch
+            - build_release
       - test_nightly:
           requires:
+            - rustfmt
             - cargo_fetch
-      - coverage:
-          requires:
-            - test
-      - codecov_upload:
-          requires:
-            - coverage
