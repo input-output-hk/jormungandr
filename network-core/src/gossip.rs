@@ -7,7 +7,7 @@ use std::{
 };
 
 /// Marker trait for the type representing a node ID.
-pub trait NodeId: Serialize + Deserialize {}
+pub trait NodeId: Clone + Serialize + Deserialize {}
 
 /// Abstract trait for data types representing gossip about network nodes.
 pub trait Node: Serialize + Deserialize {

@@ -1,3 +1,5 @@
+mod connect;
+
 use crate::{
     convert::serialize_to_vec,
     gen::{self, node::client as gen_client},
@@ -7,18 +9,18 @@ use chain_core::property;
 use network_core::{
     client::{block::BlockService, gossip::GossipService},
     error as core_error,
-    gossip::{Gossip, Node},
+    gossip::{self, Gossip},
 };
 
 use futures::future::Executor;
-use tokio::io;
 use tokio::prelude::*;
-use tower::{MakeService, Service};
 use tower_add_origin::{self, AddOrigin};
 use tower_grpc::{BoxBody, Request, Streaming};
-use tower_h2::client::{Background, ConnectError};
+use tower_h2::client::Background;
 
-use std::{error, fmt, marker::PhantomData};
+use std::marker::PhantomData;
+
+pub use connect::{Connect, ConnectError, ConnectFuture};
 
 /// Traits setting additional bounds for blockchain entities
 /// that need to be satisfied for the protocol implementation.
@@ -77,7 +79,7 @@ pub trait ProtocolConfig {
     type Block: chain_bounds::Block
         + property::Block<Id = Self::BlockId, Date = Self::BlockDate>
         + property::HasHeader<Header = Self::Header>;
-    type Node: Node;
+    type Node: gossip::Node;
 }
 
 /// gRPC client for blockchain node.
@@ -88,39 +90,8 @@ pub struct Connection<P, T, E>
 where
     P: ProtocolConfig,
 {
-    node: gen_client::Node<AddOrigin<tower_h2::client::Connection<T, E, BoxBody>>>,
-    _phantom: PhantomData<(P::Block)>,
-}
-
-impl<P, T, E> Connection<P, T, E>
-where
-    P: ProtocolConfig,
-    T: AsyncRead + AsyncWrite,
-    E: Executor<Background<T, BoxBody>> + Clone,
-{
-    pub fn connect<C>(
-        peer: C,
-        executor: E,
-        uri: http::Uri,
-    ) -> impl Future<Item = Self, Error = Error>
-    where
-        C: Service<(), Response = T, Error = io::Error> + 'static,
-    {
-        let mut make_client = tower_h2::client::Connect::new(peer, Default::default(), executor);
-        make_client
-            .make_service(())
-            .map_err(|e| Error::Connect(e))
-            .map(|conn| {
-                let conn = tower_add_origin::Builder::new()
-                    .uri(uri)
-                    .build(conn)
-                    .unwrap();
-                Connection {
-                    node: gen_client::Node::new(conn),
-                    _phantom: PhantomData,
-                }
-            })
-    }
+    service: gen_client::Node<AddOrigin<tower_h2::client::Connection<T, E, BoxBody>>>,
+    node_id: <P::Node as gossip::Node>::Id,
 }
 
 type GrpcFuture<R> = tower_grpc::client::unary::ResponseFuture<
@@ -386,14 +357,14 @@ where
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
-        let future = self.node.tip(Request::new(req));
+        let future = self.service.tip(Request::new(req));
         ResponseFuture::new(future)
     }
 
     fn pull_blocks_to_tip(&mut self, from: &[P::BlockId]) -> Self::PullBlocksToTipFuture {
         let from = serialize_to_vec(from).unwrap();
         let req = gen::node::PullBlocksToTipRequest { from };
-        let future = self.node.pull_blocks_to_tip(Request::new(req));
+        let future = self.service.pull_blocks_to_tip(Request::new(req));
         ServerStreamFuture::new(future)
     }
 
@@ -402,7 +373,7 @@ where
         Out: Stream<Item = P::Header> + Send + 'static,
     {
         let req = RequestStream::new(outbound);
-        let future = self.node.block_subscription(Request::new(req));
+        let future = self.service.block_subscription(Request::new(req));
         BidiStreamFuture::new(future)
     }
 }
@@ -422,35 +393,7 @@ where
         Out: Stream<Item = Gossip<P::Node>> + Send + 'static,
     {
         let req = RequestStream::new(outbound);
-        let future = self.node.gossip_subscription(Request::new(req));
+        let future = self.service.gossip_subscription(Request::new(req));
         BidiStreamFuture::new(future)
-    }
-}
-
-/// The error type for gRPC client operations.
-#[derive(Debug)]
-pub enum Error {
-    Connect(ConnectError<io::Error>),
-}
-
-impl From<ConnectError<io::Error>> for Error {
-    fn from(err: ConnectError<io::Error>) -> Self {
-        Error::Connect(err)
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Connect(_) => write!(f, "failed to establish connection"),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Error::Connect(e) => Some(e),
-        }
     }
 }
