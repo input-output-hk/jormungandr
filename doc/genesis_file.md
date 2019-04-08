@@ -16,8 +16,9 @@ jcli genesis init
 
 ```yaml
 blockchain_configuration:
-  - [ block0-date, 1552990378 ]
-  - [ discrimination, test ]
+  block0_date: 1552990378
+  discrimination: test
+  block0_consensus: bft
 initial_setting:
   max_number_of_transactions_per_block: 255
   bootstrap_key_slots_percentage: ~
@@ -52,8 +53,9 @@ There are multiple _parts_ in the genesis file:
 
 | option | format | description |
 |:-------|:-------|:------------|
-| `block0-date` | number | the official start time of the blockchain, in seconds since UNIX EPOCH |
+| `block0_date` | number | the official start time of the blockchain, in seconds since UNIX EPOCH |
 | `discrimination` | string | `production` or `test` |
+| `discrimination` | string | `bft` |
 
 ### initial settings
 

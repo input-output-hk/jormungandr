@@ -5,21 +5,20 @@ blockchain_configuration:
 
   # The block0-date defines the date the blockchain starts
   # expected value in seconds since UNIX_EPOCH
-  - [ block0-date, {now} ]
+  block0_date: {now}
 
   # This is the type of dicrimination of the blockchain
   # of this blockchain is meant for production then
-  # use the following instead
-  # - [ discrimination, proudction ]
+  # use 'production' instead.
   #
   # otherwise leave as this
-  - [ discrimination, test ]
+  discrimination: test
 
   # The initial consensus version:
   #
   # * BFT consensus: bft
   # * Genesis Praos consensus: genesis
-  - [ block0-consensus, bft ]
+  block0_consensus: bft
 
 
 

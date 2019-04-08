@@ -1,0 +1,12 @@
+[package]
+name = "jormungandr-utils"
+version = "0.1.0"
+authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
+edition = "2018"
+
+[dependencies]
+chain-core      = { path = "../cardano-deps/chain-core" }
+chain-addr      = { path = "../cardano-deps/chain-addr" }
+chain-crypto    = { path = "../cardano-deps/chain-crypto" }
+chain-impl-mockchain = { path = "../cardano-deps/chain-impl-mockchain" }
+serde = "1.0"

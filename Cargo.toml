@@ -45,7 +45,7 @@ native-tls = "0.2.2"
 regex = "1.1.2"
 bech32 = "0.6"
 chain-core      = { path = "cardano-deps/chain-core" }
-chain-impl-mockchain = { path = "cardano-deps/chain-impl-mockchain", features = [ "generic-serialization" ] }
+chain-impl-mockchain = { path = "cardano-deps/chain-impl-mockchain" }
 chain-storage   = { path = "cardano-deps/chain-storage" }
 chain-storage-sqlite = { path = "cardano-deps/chain-storage-sqlite" }
 chain-addr      = { path = "cardano-deps/chain-addr" }
@@ -59,6 +59,7 @@ tower-service = "0.2"
 reqwest = "0.9.11"
 custom_error = "1.6"
 num-traits = "0.2"
+jormungandr-utils = { path = "./utils" }
 
 [patch."https://github.com/tower-rs/tower"]
 tower-service = "0.2"

@@ -7,7 +7,9 @@ pub struct TxId(Hash);
 pub struct Utxo {
     in_txid: TxId,
     in_idx: u8,
+    #[serde(serialize_with = "jormungandr_utils::serde::address::serialize")]
     out_addr: Address,
+    #[serde(serialize_with = "jormungandr_utils::serde::value::serialize")]
     out_value: Value,
 }
 
