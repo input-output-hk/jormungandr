@@ -46,7 +46,6 @@ impl UpdateProposal {
 
 #[derive(FromPrimitive)]
 enum UpdateTag {
-    End = 0,
     MaxNumberOfTransactionsPerBlock = 1,
     BootstrapKeySlotsPercentage = 2,
     ConsensusVersion = 3,
@@ -55,6 +54,7 @@ enum UpdateTag {
     LinearFee = 6,
     SlotDuration = 7,
     EpochStabilityDepth = 8,
+    End = 0xffff,
 }
 
 impl property::Serialize for UpdateProposal {
@@ -109,8 +109,16 @@ impl property::Serialize for UpdateProposal {
 impl Readable for UpdateProposal {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let mut update = UpdateProposal::new();
+        let mut prev_tag = 0;
         loop {
             let tag = buf.get_u16()?;
+            if tag <= prev_tag {
+                panic!(
+                    "Update tags are not in canonical order (got {} after {}).",
+                    tag, prev_tag
+                );
+            }
+            prev_tag = tag;
             match UpdateTag::from_u16(tag) {
                 Some(UpdateTag::End) => {
                     return Ok(update);
