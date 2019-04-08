@@ -1,53 +1,35 @@
 extern crate assert_cmd;
 extern crate galvanic_test;
 extern crate mktemp;
-#[macro_use]
-extern crate lazy_static;
 
 use galvanic_test::test_suite;
 
 #[cfg(feature = "integration-test")]
 test_suite! {
 
-    use std::process::Command;
-    use mktemp::Temp;
     use assert_cmd::prelude::{OutputOkExt,OutputAssertExt};
-    use std::{path::PathBuf, env};
+    use std::path::PathBuf;
 
     mod file_assert;
-
-    const GENESIS_YAML_FILE_PATH: &str = "./tests/resources/genesis/genesis.yaml";
-
-    lazy_static! {
-        static ref JCLI : PathBuf = {
-            let jcli : PathBuf = env!("JCLI").into();
-            assert!(jcli.is_file(), "File does not exist: {:?}, pwd: {:?}", jcli, env::var("PWD"));
-            jcli
-        };
-    }
+    mod file_utils;
+    mod resources_const;
+    mod jcli_wrapper;
 
     fixture genesis_fixture() -> PathBuf {
         setup(&mut self) {
-             let temp_dir = Temp::new_dir().unwrap();
-             let mut path = temp_dir.to_path_buf();
-             path.push("block-0.bin");
+             let mut path = file_utils::get_path_in_temp("block-0.bin");
              println!("Setup: location for output block file: {}",&path.to_str().unwrap());
-             temp_dir.release();
              path
         }
     }
 
     test test_genesis_block_is_built_from_corect_yaml(genesis_fixture) {
 
-        let path_to_output_block = genesis_fixture.val;
+        let input_yaml_file_path = resources_const::GENESIS_YAML_FILE_PATH;
+        let path_to_output_block = genesis_fixture.val.to_str().unwrap();
 
-        Command::new(JCLI.as_os_str())
-            .arg("genesis")
-            .arg("encode")
-            .arg("--input")
-            .arg(&GENESIS_YAML_FILE_PATH)
-            .arg("--output")
-            .arg(path_to_output_block.as_os_str())
+
+        jcli_wrapper::run_genesis_encode_command(&input_yaml_file_path,&path_to_output_block)
             .unwrap()
             .assert()
             .success();
