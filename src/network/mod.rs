@@ -24,7 +24,7 @@ use self::p2p_topology::{self as p2p, P2pTopology};
 use self::propagate::PropagationMap;
 
 use futures::prelude::*;
-use futures::{future, stream};
+use futures::stream;
 
 use std::{
     net::SocketAddr,
@@ -121,20 +121,20 @@ pub fn run(
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
-    let state = Arc::new(GlobalState::new(config));
+    let global_state = Arc::new(GlobalState::new(config));
 
     // open the port for listening/accepting other peers to connect too
-    let listener = if let Some(public_address) = state
+    let listener = if let Some(public_address) = global_state
         .config
         .public_address
         .as_ref()
         .and_then(move |addr| addr.to_socketaddr())
     {
-        let protocol = state.config.protocol;
+        let protocol = global_state.config.protocol;
         match protocol {
             Protocol::Grpc => {
                 let listen = Listen::new(public_address, protocol);
-                grpc::run_listen_socket(listen, state.clone(), channels.clone())
+                grpc::run_listen_socket(listen, global_state.clone(), channels.clone())
             }
             Protocol::Ntt => unimplemented!(),
         }
@@ -142,12 +142,13 @@ pub fn run(
         unimplemented!()
     };
 
-    let addrs = state
+    let addrs = global_state
         .config
         .trusted_addresses
         .iter()
         .filter_map(|paddr| paddr.to_socketaddr())
         .collect::<Vec<_>>();
+    let state = global_state.clone();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
         let conn_state = ConnectionState::new(state.clone(), &peer);
@@ -155,10 +156,21 @@ pub fn run(
         conn // TODO: manage propagation peers in a map
     });
 
+    let state = global_state.clone();
     let propagate = propagate_input
-        .for_each(|msg| {
-            // TODO: propagate message
-            future::ok(())
+        .for_each(move |msg| {
+            let node_ids = state.topology.view_ids();
+            match msg {
+                NetworkPropagateMsg::Block(header) => {
+                    state.propagation_peers.propagate_block(&node_ids, header);
+                }
+                NetworkPropagateMsg::Message(message) => {
+                    state
+                        .propagation_peers
+                        .propagate_message(&node_ids, message);
+                }
+            }
+            Ok(())
         })
         .map_err(|_| {});
 
