@@ -16,8 +16,8 @@ pub use vrfeval::Witness;
 /// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenesisPraosLeader {
-    pub(crate) kes_public_key: PublicKey<FakeMMM>,
-    pub(crate) vrf_public_key: PublicKey<Curve25519_2HashDH>,
+    pub kes_public_key: PublicKey<FakeMMM>,
+    pub vrf_public_key: PublicKey<Curve25519_2HashDH>,
 }
 
 pub struct GenesisLeaderSelection {
