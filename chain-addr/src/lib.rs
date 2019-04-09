@@ -275,7 +275,6 @@ fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType), Error> {
 pub struct AddressReadable(String);
 
 impl AddressReadable {
-
     const PRODUCTION_ADDRESS_PREFIX: &'static str = env!("PRODUCTION_ADDRESS_PREFIX");
     const TEST_ADDRESS_PREFIX: &'static str = env!("TEST_ADDRESS_PREFIX");
 
