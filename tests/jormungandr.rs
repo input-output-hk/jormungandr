@@ -14,7 +14,7 @@ test_suite! {
     mod jcli_wrapper;
     mod process_assert;
     mod process_utils;
-    
+
     test test_jormungandr_node_starts_successfully() {
 
         let node_config = resources_const::NODE_CONFIG_FILE_PATH;
@@ -25,20 +25,20 @@ test_suite! {
             jcli_wrapper::run_genesis_encode_command_default(&path_to_output_block),
             "jcli genesis encode"
         );
-       
+
         file_assert::assert_file_exists(&path_to_output_block);
 
         let process = jormungandr_wrapper::start_jormungandr_node(&node_config,&path_to_output_block)
                 .spawn()
                 .expect("failed to execute 'start jormungandr node'");
         let _guard = process_utils::ProcessKillGuard::new(process);
-        
+
         process_utils::run_process_until_exited_successfully(
             jcli_wrapper::run_rest_stats_command_default(),
             2,
             5,
-            "get stats from jormungandr node", 
+            "get stats from jormungandr node",
             "jormungandr node is not up"
-        );       
+        );
     }
 }
