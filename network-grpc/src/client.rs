@@ -91,7 +91,7 @@ where
     P: ProtocolConfig,
 {
     service: gen_client::Node<AddOrigin<tower_h2::client::Connection<T, E, BoxBody>>>,
-    node_id: <P::Node as gossip::Node>::Id,
+    node_id: Option<<P::Node as gossip::Node>::Id>,
 }
 
 type GrpcFuture<R> = tower_grpc::client::unary::ResponseFuture<
@@ -347,7 +347,14 @@ where
     {
         let rs = RequestStream::new(outbound);
         let mut req = Request::new(rs);
-        encode_node_id(&self.node_id, req.metadata_mut()).unwrap();
+        if let Some(ref id) = self.node_id {
+            encode_node_id(id, req.metadata_mut()).unwrap();
+        } else {
+            // In the current server-side implementation, the request
+            // will be rejected as invalid without the node ID.
+            // It makes the code simpler to try regardless, and there may
+            // eventually be permissive node implementations.
+        }
         req
     }
 }
