@@ -7,6 +7,7 @@ use network_core::gossip::{self, Node as _};
 use poldercast::topology::{Cyclon, Module, Rings, Topology, Vicinity};
 use poldercast::Subscription;
 pub use poldercast::{Address, InterestLevel};
+
 use std::{collections::BTreeMap, error, fmt, io, net::SocketAddr, sync::RwLock};
 
 pub const NEW_MESSAGES_TOPIC: u32 = 0u32;
@@ -94,6 +95,12 @@ impl NodeId {
     }
 }
 
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0.as_u128())
+    }
+}
+
 /// object holding the P2pTopology of the Node
 pub struct P2pTopology {
     lock: RwLock<Topology>,
@@ -159,10 +166,15 @@ impl P2pTopology {
         topology.add_module(Cyclon::new());
     }
 
-    /// this is the list of neighbors to contact for event dissemination
-    pub fn view(&self) -> Vec<Node> {
+    /// Returns a list of neighbors selected in this turn
+    /// to contact for event dissemination.
+    pub fn view_ids(&self) -> Vec<NodeId> {
         let topology = self.lock.read().unwrap();
-        topology.view().into_iter().map(Node).collect()
+        topology
+            .view()
+            .into_iter()
+            .map(|node| NodeId(*node.id()))
+            .collect()
     }
 
     /// this is the function to utilise when we receive a gossip in order
