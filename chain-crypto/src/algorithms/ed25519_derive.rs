@@ -30,8 +30,8 @@ impl AsymmetricKey for Ed25519Bip32 {
     type Secret = XPrv;
     type Public = XPub;
 
-    const SECRET_BECH32_HRP: &'static str = "ed25519bip32_secret";
-    const PUBLIC_BECH32_HRP: &'static str = "ed25519bip32_public";
+    const SECRET_BECH32_HRP: &'static str = "xprv";
+    const PUBLIC_BECH32_HRP: &'static str = "xpub";
 
     const SECRET_KEY_SIZE: usize = XPRV_SIZE;
     const PUBLIC_KEY_SIZE: usize = XPUB_SIZE;
@@ -70,7 +70,7 @@ impl VerificationAlgorithm for Ed25519Bip32 {
     type Signature = XSig;
 
     const SIGNATURE_SIZE: usize = ed25519_bip32::SIGNATURE_SIZE;
-    const SIGNATURE_BECH32_HRP: &'static str = "ed25519bip32_signature";
+    const SIGNATURE_BECH32_HRP: &'static str = "xsig";
 
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
         let xsig = XSig::from_slice(data)?;

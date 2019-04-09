@@ -12,8 +12,8 @@ impl AsymmetricKey for Curve25519_2HashDH {
     type Secret = vrf::SecretKey;
     type Public = vrf::PublicKey;
 
-    const SECRET_BECH32_HRP: &'static str = "curve25519_2hashdh_secret";
-    const PUBLIC_BECH32_HRP: &'static str = "curve25519_2hashdh_public";
+    const SECRET_BECH32_HRP: &'static str = "vrf_sk";
+    const PUBLIC_BECH32_HRP: &'static str = "vrf_pk";
 
     const SECRET_KEY_SIZE: usize = vrf::SECRET_SIZE;
     const PUBLIC_KEY_SIZE: usize = vrf::PUBLIC_SIZE;
