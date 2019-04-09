@@ -155,7 +155,7 @@ impl PropagationMap {
         for id in ids {
             if let hash_map::Entry::Occupied(mut entry) = map.entry(id.clone()) {
                 f(entry.get_mut()).unwrap_or_else(|e| {
-                    info!("propagation stream error: {:?}", e);
+                    info!("propagation to peer {} failed: {:?}", id, e);
                     debug!("unsubscribing peer {}", id);
                     entry.remove_entry();
                 });
