@@ -26,7 +26,7 @@ FLAGS:
 OPTIONS:
 - -c, --change <change> change address. Value taken from inputs and not spent on outputs
 or fees will be returned to this address. If not provided, the change will go to treasury.
-Must be bech32-encoded ed25519extended_public key.
+Must be bech32-encoded ed25519e_pk key.
 - -b, --fee-base <fee-base> fee base which will be always added to the transaction
 - -a, --fee-per-addr <fee-per-addr> fee which will be added to the transaction for every
 input and output
@@ -34,10 +34,10 @@ input and output
 - -i, --input <input>... transaction input. Must have format
 `<hex-encoded-transaction-id>:<output-index>:<value>`. E.g. `1234567890abcdef:2:535`.
 - -o, --output <output>... transaction output. Must have format `<address>:<value>`.
-E.g. `ed25519extended_public1abcdef1234567890:501`. The address must be bech32-encoded
+E.g. `ed25519e_pk1abcdef1234567890:501`. The address must be bech32-encoded
 ed25519extended_public key.
 - -s, --spending-key <spending-key>... file with transaction spending keys. Must be
-bech32-encoded ed25519extended_secret. Required one for every input.
+bech32-encoded ed25519e_sk. Required one for every input.
 
 Value outputted to stdout on success is transaction message encoded as hex.
 

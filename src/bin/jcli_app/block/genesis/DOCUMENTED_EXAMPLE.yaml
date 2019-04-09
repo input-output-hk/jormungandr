@@ -44,8 +44,8 @@ initial_setting:
   # A list of Ed25519 Extended PublicKey that represents the
   # BFT leaders. The order in the list matters.
   bft_leaders:
-    - ed25519extended_public1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
-    - ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
+    - ed25519e_pk1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
+    - ed25519e_pk13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
 
   # Allow the creation of accounts from the output of a transaction
   #
