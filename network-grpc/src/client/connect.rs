@@ -85,12 +85,7 @@ where
                 return ConnectFuture::error(ConnectError(ErrorKind::OriginMissing));
             }
         };
-        let node_id = match self.node_id.as_ref() {
-            Some(id) => id.clone(),
-            None => {
-                return ConnectFuture::error(ConnectError(ErrorKind::NodeIdMissing));
-            }
-        };
+        let node_id = self.node_id.clone();
         let inner = self.tower_connect.make_service(target);
         ConnectFuture {
             state: State::Connecting {
@@ -120,7 +115,7 @@ where
     Connecting {
         inner: tower_h2::client::ConnectFuture<A, C, E, BoxBody>,
         origin_uri: Uri,
-        node_id: <P::Node as gossip::Node>::Id,
+        node_id: Option<<P::Node as gossip::Node>::Id>,
     },
     Error(ConnectError<C::Error>),
     Finished,
@@ -183,7 +178,6 @@ enum ErrorKind<T> {
     Http(tower_h2::client::ConnectError<T>),
     OriginMissing,
     InvalidOrigin(http::Error),
-    NodeIdMissing,
 }
 
 impl<T> fmt::Display for ConnectError<T> {
@@ -192,7 +186,6 @@ impl<T> fmt::Display for ConnectError<T> {
             ErrorKind::Http(_) => write!(f, "HTTP/2.0 connection error"),
             ErrorKind::OriginMissing => write!(f, "request origin not specified"),
             ErrorKind::InvalidOrigin(_) => write!(f, "invalid request origin"),
-            ErrorKind::NodeIdMissing => write!(f, "node identifier not set"),
         }
     }
 }
@@ -206,7 +199,6 @@ where
             ErrorKind::Http(ref e) => Some(e),
             ErrorKind::OriginMissing => None,
             ErrorKind::InvalidOrigin(ref e) => Some(e),
-            ErrorKind::NodeIdMissing => None,
         }
     }
 }
