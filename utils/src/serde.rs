@@ -112,7 +112,169 @@ pub mod address {
             }
         }
     }
+}
 
+pub mod crypto {
+    use super::*;
+    use chain_crypto::{bech32::Bech32 as _, AsymmetricKey, Blake2b256, PublicKey, SecretKey};
+
+    pub fn deserialize_secret<'de, D, A>(deserializer: D) -> Result<SecretKey<A>, D::Error>
+    where
+        D: Deserializer<'de>,
+        A: AsymmetricKey,
+    {
+        let secret_key_visitor = SecretKeyVisitor::new();
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_str(secret_key_visitor)
+        } else {
+            deserializer.deserialize_bytes(secret_key_visitor)
+        }
+    }
+
+    pub fn deserialize_public<'de, D, A>(deserializer: D) -> Result<PublicKey<A>, D::Error>
+    where
+        D: Deserializer<'de>,
+        A: AsymmetricKey,
+    {
+        let public_key_visitor = PublicKeyVisitor::new();
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_str(public_key_visitor)
+        } else {
+            deserializer.deserialize_bytes(public_key_visitor)
+        }
+    }
+
+    pub fn deserialize_hash<'de, D>(deserializer: D) -> Result<Blake2b256, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_str(FromStrVisitor::new("Blake2b 256"))
+        } else {
+            unimplemented!()
+        }
+    }
+
+    struct SecretKeyVisitor<A: AsymmetricKey> {
+        _marker: std::marker::PhantomData<A>,
+    }
+    struct PublicKeyVisitor<A: AsymmetricKey> {
+        _marker: std::marker::PhantomData<A>,
+    }
+    impl<A: AsymmetricKey> SecretKeyVisitor<A> {
+        fn new() -> Self {
+            SecretKeyVisitor {
+                _marker: std::marker::PhantomData,
+            }
+        }
+    }
+    impl<A: AsymmetricKey> PublicKeyVisitor<A> {
+        fn new() -> Self {
+            PublicKeyVisitor {
+                _marker: std::marker::PhantomData,
+            }
+        }
+    }
+
+    impl<'de, A> Visitor<'de> for SecretKeyVisitor<A>
+    where
+        A: AsymmetricKey,
+    {
+        type Value = SecretKey<A>;
+
+        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            write!(
+                fmt,
+                "Expecting a secret key for algorithm {}",
+                A::SECRET_BECH32_HRP
+            )
+        }
+
+        fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
+        where
+            E: DeserializerError,
+        {
+            use chain_crypto::bech32::Error as Bech32Error;
+            match Self::Value::try_from_bech32_str(&v) {
+                Err(Bech32Error::DataInvalid(err)) => {
+                    Err(E::custom(format!("Invalid data: {}", err)))
+                }
+                Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
+                    "Invalid prefix: expected {} but was {}",
+                    expected, actual
+                ))),
+                Err(Bech32Error::Bech32Malformed(err)) => {
+                    Err(E::custom(format!("Invalid bech32: {}", err)))
+                }
+                Ok(key) => Ok(key),
+            }
+        }
+
+        fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
+        where
+            E: DeserializerError,
+        {
+            use chain_crypto::SecretKeyError;
+            match Self::Value::from_binary(v) {
+                Err(SecretKeyError::SizeInvalid) => Err(E::custom(format!(
+                    "Invalid size (expected: {}bytes)",
+                    A::SECRET_KEY_SIZE
+                ))),
+                Err(SecretKeyError::StructureInvalid) => Err(E::custom("Invalid structure")),
+                Ok(key) => Ok(key),
+            }
+        }
+    }
+
+    impl<'de, A> Visitor<'de> for PublicKeyVisitor<A>
+    where
+        A: AsymmetricKey,
+    {
+        type Value = PublicKey<A>;
+
+        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            write!(
+                fmt,
+                "Expecting a public key for algorithm {}",
+                A::PUBLIC_BECH32_HRP
+            )
+        }
+
+        fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
+        where
+            E: DeserializerError,
+        {
+            use chain_crypto::bech32::Error as Bech32Error;
+            match Self::Value::try_from_bech32_str(&v) {
+                Err(Bech32Error::DataInvalid(err)) => {
+                    Err(E::custom(format!("Invalid data: {}", err)))
+                }
+                Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
+                    "Invalid prefix: expected {} but was {}",
+                    expected, actual
+                ))),
+                Err(Bech32Error::Bech32Malformed(err)) => {
+                    Err(E::custom(format!("Invalid bech32: {}", err)))
+                }
+                Ok(key) => Ok(key),
+            }
+        }
+
+        fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
+        where
+            E: DeserializerError,
+        {
+            use chain_crypto::PublicKeyError;
+            match Self::Value::from_binary(v) {
+                Err(PublicKeyError::SizeInvalid) => Err(E::custom(format!(
+                    "Invalid size (expected: {}bytes)",
+                    A::PUBLIC_KEY_SIZE
+                ))),
+                Err(PublicKeyError::StructureInvalid) => Err(E::custom("Invalid structure")),
+                Ok(key) => Ok(key),
+            }
+        }
+    }
 }
 
 pub mod block {

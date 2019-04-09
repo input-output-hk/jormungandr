@@ -68,8 +68,9 @@ Now that the blockchain is initialized, you need to start your node.
 Write you private key in a file on your HD:
 
 ```
-$ cat private.key
-ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexmfn7s96lqja5sv520zx6hx5hd0qsgahp3ta8grrrxkd8n0cjmaqre
+$ cat node_secret.yaml
+bft:
+  signing_key: ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexmfn7s96lqja5sv520zx6hx5hd0qsgahp3ta8grrrxkd8n0cjmaqre
 ```
 
 Configure your Node (config.yml) and run the following command:
@@ -77,5 +78,5 @@ Configure your Node (config.yml) and run the following command:
 ```
 $ jormungandr --genesis-block block-0.bin \
     --config example.config \
-    --secret private.key
+    --secret node_secret.yaml
 ```
