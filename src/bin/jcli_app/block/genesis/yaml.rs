@@ -27,8 +27,8 @@ pub struct Genesis {
 
     pub initial_setting: Update,
 
-    pub initial_utxos: Option<Vec<InitialUTxO>>,
-    pub legacy_utxos: Option<Vec<LegacyUTxO>>,
+    pub initial_funds: Option<Vec<InitialUTxO>>,
+    pub legacy_funds: Option<Vec<LegacyUTxO>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -119,12 +119,12 @@ impl Genesis {
         Genesis {
             blockchain_configuration,
             initial_setting: initial_setting,
-            initial_utxos: if initial_utxos.is_empty() {
+            initial_funds: if initial_utxos.is_empty() {
                 None
             } else {
                 Some(initial_utxos)
             },
-            legacy_utxos: if legacy_utxos.is_empty() {
+            legacy_funds: if legacy_utxos.is_empty() {
                 None
             } else {
                 Some(legacy_utxos)
@@ -160,7 +160,7 @@ impl Genesis {
 
     fn to_initial_messages(&self, max_output_per_message: usize) -> Vec<Message> {
         let mut messages = Vec::new();
-        if let Some(initial_utxos) = &self.initial_utxos {
+        if let Some(initial_utxos) = &self.initial_funds {
             let mut utxo_iter = initial_utxos.iter();
 
             while let Some(utxo) = utxo_iter.next() {
@@ -196,7 +196,7 @@ impl Genesis {
     }
     fn to_legacy_messages(&self, max_output_per_message: usize) -> Vec<Message> {
         let mut messages = Vec::new();
-        if let Some(legacy_utxos) = &self.legacy_utxos {
+        if let Some(legacy_utxos) = &self.legacy_funds {
             let mut utxo_iter = legacy_utxos.iter();
 
             while let Some(utxo) = utxo_iter.next() {

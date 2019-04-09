@@ -66,7 +66,7 @@ initial_setting:
 # The initial deposits present in the blockchain.
 #
 # It can be UTxO addresses or account (if allow_account_creation is set).
-initial_utxos:
+initial_funds:
   # this is the personal address of the developers, have a good heart and
   # leave a good initial deposit for them
   - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
@@ -74,4 +74,4 @@ initial_utxos:
 
 # the initial deposits present in the blockchain but utilising the
 # legacy cardano address format
-legacy_utxos: ~
+legacy_funds: ~

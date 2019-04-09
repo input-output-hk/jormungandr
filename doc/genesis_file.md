@@ -32,10 +32,10 @@ initial_setting:
     constant: 2
     coefficient: 1
     certificate: 4
-initial_utxos:
+initial_funds:
   - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
     value: 10000
-legacy_utxos: ~
+legacy_funds: ~
 ```
 
 There are multiple _parts_ in the genesis file:
@@ -71,7 +71,7 @@ There are multiple _parts_ in the genesis file:
 _for more information about the BFT leaders in the genesis file, see
 [Starting a BFT Blockchain](./starting_bft_blockchain.md)_
 
-### The initial UTxO
+### The initial Funds
 
 This is a list of the initial token present in the blockchain. It can be:
 
@@ -79,14 +79,14 @@ This is a list of the initial token present in the blockchain. It can be:
 * an account (if `allow_account_creation` is set to true): an
   [account address](./cli_address.md#address-for-account) and a value
 
-### The legacy UTxO
+### The legacy Funds
 
 This is a list of legacy cardano addresses and associated credited value.
 
 Example:
 
 ```yaml
-legacy_utxos:
+legacy_funds:
   - address: Ae2tdPwUPEZCEhYAUVU7evPfQCJjyuwM6n81x6hSjU9TBMSy2YwZEVydssL
     value: 2000
 ```
