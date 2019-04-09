@@ -1,6 +1,6 @@
 use bech32::{Bech32, FromBase32, ToBase32};
 use chain_addr::{AddressReadable, Discrimination, Kind};
-use chain_crypto::{AsymmetricKey, PublicKey};
+use chain_crypto::{AsymmetricKey, Ed25519Extended, PublicKey};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -28,12 +28,12 @@ pub struct InfoArgs {
 #[derive(StructOpt)]
 pub struct SingleArgs {
     /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "PUBLIC_KEY")]
-    key: String,
+    #[structopt(name = "PUBLIC_KEY", parse(from_str = "parse_pub_key"))]
+    key: PublicKey<Ed25519Extended>,
 
     /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "DELEGATION_KEY")]
-    delegation: Option<String>,
+    #[structopt(name = "DELEGATION_KEY", parse(from_str = "parse_pub_key"))]
+    delegation: Option<PublicKey<Ed25519Extended>>,
 
     /// set the discrimination type to testing (default is production)
     #[structopt(long = "testing")]
@@ -43,8 +43,8 @@ pub struct SingleArgs {
 #[derive(StructOpt)]
 pub struct AccountArgs {
     /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "PUBLIC_KEY")]
-    key: String,
+    #[structopt(name = "PUBLIC_KEY", parse(from_str = "parse_pub_key"))]
+    key: PublicKey<Ed25519Extended>,
 
     /// set the discrimination type to testing (default is production)
     #[structopt(long = "testing")]
@@ -57,12 +57,12 @@ impl Address {
             Address::Info(info_args) => address_info(&info_args.address),
             Address::Single(single_args) => {
                 if let Some(delegation) = single_args.delegation {
-                    mk_delegation(&single_args.key, single_args.testing, &delegation)
+                    mk_delegation(single_args.key, single_args.testing, delegation)
                 } else {
-                    mk_single(&single_args.key, single_args.testing)
+                    mk_single(single_args.key, single_args.testing)
                 }
             }
-            Address::Account(account_args) => mk_account(&account_args.key, account_args.testing),
+            Address::Account(account_args) => mk_account(account_args.key, account_args.testing),
         }
     }
 }
@@ -88,15 +88,15 @@ fn address_info(address: &AddressReadable) {
     }
 }
 
-fn mk_single(s: &str, testing: bool) {
+fn mk_single(s: PublicKey<Ed25519Extended>, testing: bool) {
     mk_address_1(s, testing, Kind::Single)
 }
 
-fn mk_delegation(s: &str, testing: bool, d: &str) {
+fn mk_delegation(s: PublicKey<Ed25519Extended>, testing: bool, d: PublicKey<Ed25519Extended>) {
     mk_address_2(s, d, testing, Kind::Group)
 }
 
-fn mk_account(s: &str, testing: bool) {
+fn mk_account(s: PublicKey<Ed25519Extended>, testing: bool) {
     mk_address_1(s, testing, Kind::Account)
 }
 
@@ -108,46 +108,29 @@ fn mk_discrimination(testing: bool) -> Discrimination {
     }
 }
 
-fn mk_kind_1<A, F>(s: &str, f: F) -> Kind
-where
-    F: FnOnce(PublicKey<A>) -> Kind,
-    A: AsymmetricKey,
-{
-    f(parse_pub_key(s))
-}
-
-fn mk_kind_2<A1, A2, F>(s1: &str, s2: &str, f: F) -> Kind
-where
-    F: FnOnce(PublicKey<A1>, PublicKey<A2>) -> Kind,
-    A1: AsymmetricKey,
-    A2: AsymmetricKey,
-{
-    f(parse_pub_key(s1), parse_pub_key(s2))
-}
-
 fn mk_address(discrimination: Discrimination, kind: Kind) {
     let address = chain_addr::Address(discrimination, kind);
     println!("{}", AddressReadable::from_address(&address).to_string());
 }
 
-fn mk_address_1<A, F>(s: &str, testing: bool, f: F)
+fn mk_address_1<A, F>(s: PublicKey<A>, testing: bool, f: F)
 where
     F: FnOnce(PublicKey<A>) -> Kind,
     A: AsymmetricKey,
 {
     let discrimination = mk_discrimination(testing);
-    let kind = mk_kind_1(s, f);
+    let kind = f(s);
     mk_address(discrimination, kind);
 }
 
-fn mk_address_2<A1, A2, F>(s: &str, d: &str, testing: bool, f: F)
+fn mk_address_2<A1, A2, F>(s: PublicKey<A1>, d: PublicKey<A2>, testing: bool, f: F)
 where
     F: FnOnce(PublicKey<A1>, PublicKey<A2>) -> Kind,
     A1: AsymmetricKey,
     A2: AsymmetricKey,
 {
     let discrimination = mk_discrimination(testing);
-    let kind = mk_kind_2(s, d, f);
+    let kind = f(s, d);
     mk_address(discrimination, kind);
 }
 

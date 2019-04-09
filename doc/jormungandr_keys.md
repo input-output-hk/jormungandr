@@ -14,12 +14,12 @@ There is a command line parameter to generate this keys:
 
 ```
 $ jcli key generate --type=Ed25519
-ed25519_secret1sx3vjuc733mmlfm86xc2ufrjx6hltas57yj6pklra3s2n03yfv2svckr67
+ed25519_sk1cvac48ddf2rpk9na94nv2zqhj74j0j8a99q33gsqdvalkrz6ar9srnhvmt
 ```
 
 and to extract the associated public key:
 
 ```
-$ echo ed25519_secret1sx3vjuc733mmlfm86xc2ufrjx6hltas57yj6pklra3s2n03yfv2svckr67 | jcli key to-public
-ed25519_public1zkt4e7yufvf4es45u4wc0kztzkfr0n3wa6ks04z6kltsxdalafxqp7m2ca
+$ echo ed25519_sk1cvac48ddf2rpk9na94nv2zqhj74j0j8a99q33gsqdvalkrz6ar9srnhvmt | jcli key to-public
+ed25519_pk1z2ffur59cq7t806nc9y2g64wa60pg5m6e9cmrhxz9phppaxk5d4sn8nsqg
 ```

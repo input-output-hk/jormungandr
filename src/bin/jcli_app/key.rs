@@ -6,10 +6,7 @@ use jcli_app::utils::io;
 use rand::{rngs::EntropyRng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::{io::Read as _, path::PathBuf};
-use structopt::{
-    clap::{_clap_count_exprs, arg_enum},
-    StructOpt,
-};
+use structopt::{clap::arg_enum, StructOpt};
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "genesis", rename_all = "kebab-case")]

@@ -24,19 +24,18 @@ initial_setting:
   bootstrap_key_slots_percentage: ~
   slot_duration: 15
   epoch_stability_depth: 10
-  consensus: bft
   bft_leaders:
-    - ed25519extended_public1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
-    - ed25519extended_public13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
+    - ed25519e_pk1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
+    - ed25519e_pk13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
   allow_account_creation: true
   linear_fee:
     constant: 2
     coefficient: 1
     certificate: 4
-initial_utxos:
+initial_funds:
   - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
     value: 10000
-legacy_utxos: ~
+legacy_funds: ~
 ```
 
 There are multiple _parts_ in the genesis file:
@@ -55,7 +54,7 @@ There are multiple _parts_ in the genesis file:
 |:-------|:-------|:------------|
 | `block0_date` | number | the official start time of the blockchain, in seconds since UNIX EPOCH |
 | `discrimination` | string | `production` or `test` |
-| `block0_genesis` | string | `bft` |
+| `block0_consensus` | string | `bft` |
 
 ### initial settings
 
@@ -65,7 +64,6 @@ There are multiple _parts_ in the genesis file:
 | `bootstrap_key_slots_percentage` | number | placeholder, do not use |
 | `slot_duration` | number | the number of seconds between the creation of 2 blocks |
 | `epoch_stability_depth` | number | allowed size of a fork (in number of block) |
-| `consensus` | string | the consensus version at the startup of the blockchain (`bft` for BFT) |
 | `allow_account_creation` | boolean | allow creating accounts without publishing certificate |
 | `linear_fee` | object | linear fee settings, set the fee for transaction and certificate publishing |
 | `bft_leaders` | array | the list of the BFT leader at the beginning of the blockchain |
@@ -73,7 +71,7 @@ There are multiple _parts_ in the genesis file:
 _for more information about the BFT leaders in the genesis file, see
 [Starting a BFT Blockchain](./starting_bft_blockchain.md)_
 
-### The initial UTxO
+### The initial Funds
 
 This is a list of the initial token present in the blockchain. It can be:
 
@@ -81,14 +79,14 @@ This is a list of the initial token present in the blockchain. It can be:
 * an account (if `allow_account_creation` is set to true): an
   [account address](./cli_address.md#address-for-account) and a value
 
-### The legacy UTxO
+### The legacy Funds
 
 This is a list of legacy cardano addresses and associated credited value.
 
 Example:
 
 ```yaml
-legacy_utxos:
+legacy_funds:
   - address: Ae2tdPwUPEZCEhYAUVU7evPfQCJjyuwM6n81x6hSjU9TBMSy2YwZEVydssL
     value: 2000
 ```

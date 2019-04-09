@@ -3,7 +3,6 @@ blockchain_configuration:
   discrimination: test
   block0_consensus: bft
 initial_setting:
-  consensus: bft
   allow_account_creation: true
   slot_duration: 15
   epoch_stability_depth: 2600
@@ -13,9 +12,9 @@ initial_setting:
     certificate: 0
   block_version: 1
   bft_leaders:
-    -  ed25519extended_public1nhnr6nfff3uhuky94evw9ejfxx9h5yhk6zk97kd5mssezlhlpryqy5xljp
-    -  ed25519extended_public1gl7rvurvvsllkmp4xmt250s6jl85e0fprw3mk4e7fwuv5kmu7vtsftgku8
-initial_utxos:
+    - ed25519e_pk1else5uqslegj6n5rxnrayz2x99cel6m2g492ac6tpv76kns0dwlqpjnh0l
+    - ed25519e_pk1xuqdxht6f0kkh0lf3ck3gfyvnpk33s09du92w6740mfmxl6hsfpsp8grmk
+initial_funds:
   - address: ta1svaengshtf3f0mc3qrq76c7autjpyxeuyfkn9h5r0vr9qrek6e0y6zpe8ls
     value: 100
   - address: ta1sv5er2j6vpvhqsj0yy248tmdrxwz0c6u2uvays27ujqhk697dyk6csdzwvm
