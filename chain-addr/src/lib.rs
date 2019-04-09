@@ -275,8 +275,8 @@ fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType), Error> {
 pub struct AddressReadable(String);
 
 impl AddressReadable {
-    const PRODUCTION_PREFIX: &'static str = "ca";
-    const TEST_PREFIX: &'static str = "ta";
+    const PRODUCTION_ADDRESS_PREFIX: &'static str = env!("PRODUCTION_ADDRESS_PREFIX");
+    const TEST_ADDRESS_PREFIX: &'static str = env!("TEST_ADDRESS_PREFIX");
 
     pub fn as_string(&self) -> &str {
         &self.0
@@ -286,9 +286,9 @@ impl AddressReadable {
     pub fn from_string(s: &str) -> Result<Self, Error> {
         use std::str::FromStr;
         let r = Bech32::from_str(s)?;
-        let expected_discrimination = if r.hrp() == Self::PRODUCTION_PREFIX {
+        let expected_discrimination = if r.hrp() == Self::PRODUCTION_ADDRESS_PREFIX {
             Discrimination::Production
-        } else if r.hrp() == Self::TEST_PREFIX {
+        } else if r.hrp() == Self::TEST_ADDRESS_PREFIX {
             Discrimination::Test
         } else {
             return Err(Error::InvalidPrefix);
@@ -305,8 +305,8 @@ impl AddressReadable {
     pub fn from_address(addr: &Address) -> Self {
         let v = ToBase32::to_base32(&addr.to_bytes());
         let prefix = match addr.0 {
-            Discrimination::Production => Self::PRODUCTION_PREFIX.to_string(),
-            Discrimination::Test => Self::TEST_PREFIX.to_string(),
+            Discrimination::Production => Self::PRODUCTION_ADDRESS_PREFIX.to_string(),
+            Discrimination::Test => Self::TEST_ADDRESS_PREFIX.to_string(),
         };
         let r = Bech32::new(prefix, v).unwrap();
         AddressReadable(r.to_string())

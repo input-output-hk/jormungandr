@@ -1,4 +1,4 @@
-use crate::{KindType, Kind, Address, Discrimination, AddressReadable};
+use crate::{Address, AddressReadable, Discrimination, Kind, KindType};
 use quickcheck::{Arbitrary, Gen};
 
 impl Arbitrary for Discrimination {
@@ -32,11 +32,8 @@ impl Arbitrary for Address {
         let discrimination = Arbitrary::arbitrary(g);
         let kind = match KindType::arbitrary(g) {
             KindType::Single => Kind::Single(Arbitrary::arbitrary(g)),
-            KindType::Group => Kind::Group(
-                Arbitrary::arbitrary(g),
-                Arbitrary::arbitrary(g),
-            ),
-            KindType::Account => Kind::Account(Arbitrary::arbitrary(g))
+            KindType::Group => Kind::Group(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
+            KindType::Account => Kind::Account(Arbitrary::arbitrary(g)),
         };
         Address(discrimination, kind)
     }
