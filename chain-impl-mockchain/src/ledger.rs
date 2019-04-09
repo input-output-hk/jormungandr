@@ -298,6 +298,11 @@ impl Ledger {
         }
     }
 
+    pub fn consensus_version(&self) -> ConsensusVersion {
+        // TODO: this may be updated overtime (bft -> switch to genesis ?)
+        self.static_params.block0_consensus
+    }
+
     pub fn utxos<'a>(&'a self) -> utxo::Iter<'a, Address> {
         self.utxos.iter()
     }
