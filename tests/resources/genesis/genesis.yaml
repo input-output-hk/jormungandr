@@ -3,7 +3,6 @@ blockchain_configuration:
   discrimination: test
   block0_consensus: bft
 initial_setting:
-  consensus: bft
   allow_account_creation: true
   slot_duration: 15
   epoch_stability_depth: 2600

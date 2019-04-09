@@ -31,7 +31,6 @@ initial_setting:
   allow_account_creation: true
   slot_duration: 15
   epoch_stability_depth: 2600
-  consensus: bft
   linear_fees:
     constant: 0
     coefficient: 0

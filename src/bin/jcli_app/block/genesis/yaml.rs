@@ -10,7 +10,6 @@ use chain_impl_mockchain::{
     transaction,
     value::Value,
 };
-use jcli_app::utils::serde_with_string;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
@@ -59,8 +58,6 @@ pub struct BlockchainConfiguration {
 pub struct Update {
     max_number_of_transactions_per_block: Option<u32>,
     bootstrap_key_slots_percentage: Option<u8>,
-    #[serde(with = "serde_with_string")]
-    consensus: ConsensusVersion,
     bft_leaders: Option<Vec<String>>,
     allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
@@ -321,7 +318,7 @@ impl Update {
         let update = UpdateProposal {
             max_number_of_transactions_per_block: self.max_number_of_transactions_per_block,
             bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage,
-            consensus_version: Some(self.consensus),
+            consensus_version: None,
             bft_leaders: self.bft_leaders.clone().map(|leaders| {
                 leaders
                     .iter()
@@ -348,9 +345,6 @@ impl Update {
             max_number_of_transactions_per_block: update_proposal
                 .max_number_of_transactions_per_block,
             bootstrap_key_slots_percentage: update_proposal.bootstrap_key_slots_percentage,
-            consensus: update_proposal
-                .consensus_version
-                .unwrap_or(ConsensusVersion::Bft),
             bft_leaders: update_proposal.bft_leaders.clone().map(|leaders| {
                 leaders
                     .iter()
