@@ -1,3 +1,4 @@
+use super::P2pService;
 use crate::error::Error;
 
 use chain_core::property::{Block, HasHeader};
@@ -6,7 +7,7 @@ use futures::prelude::*;
 
 /// Interface for the blockchain node service responsible for
 /// providing access to blocks.
-pub trait BlockService {
+pub trait BlockService: P2pService {
     /// The type of blockchain block served by this service.
     type Block: Block + HasHeader;
 
@@ -55,9 +56,12 @@ pub trait BlockService {
 
     /// The type of asynchronous futures returned by method `block_subscription`.
     ///
-    /// The future resolves to a stream that will be used by the protocol
-    /// implementation to produce a subscription stream.
-    type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = Error>;
+    /// The future resolves to a stream of blocks sent by the remote node
+    /// and the identifier of the node in the network.
+    type BlockSubscriptionFuture: Future<
+        Item = (Self::BlockSubscription, Self::NodeId),
+        Error = Error,
+    >;
 
     /// The type of an asynchronous stream that provides notifications
     /// of blocks created or accepted by the remote node.

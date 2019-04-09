@@ -1,3 +1,4 @@
+use super::P2pService;
 use crate::{
     error::Error,
     gossip::{Gossip, Node},
@@ -5,8 +6,8 @@ use crate::{
 
 use futures::prelude::*;
 
-pub trait GossipService {
-    type Node: Node;
+pub trait GossipService: P2pService {
+    type Node: Node<Id = Self::NodeId>;
 
     /// The type of an asynchronous stream that provides node gossip messages
     /// sent by the peer.
@@ -14,9 +15,12 @@ pub trait GossipService {
 
     /// The type of asynchronous futures returned by method `gossip_subscription`.
     ///
-    /// The future resolves to a stream that will be used by the protocol
-    /// implementation to produce a subscription stream.
-    type GossipSubscriptionFuture: Future<Item = Self::GossipSubscription, Error = Error>;
+    /// The future resolves to a stream of gossip messages sent by the remote node
+    /// and the identifier of the node in the network.
+    type GossipSubscriptionFuture: Future<
+        Item = (Self::GossipSubscription, Self::NodeId),
+        Error = Error,
+    >;
 
     /// Establishes a bidirectional stream of notifications for gossip
     /// messages.

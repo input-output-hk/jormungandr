@@ -1,4 +1,6 @@
 extern crate chain_core;
+#[macro_use]
+extern crate futures;
 extern crate prost;
 extern crate tower_grpc;
 extern crate tower_h2;
