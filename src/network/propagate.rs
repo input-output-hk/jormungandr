@@ -1,10 +1,12 @@
-use super::p2p_topology::Node;
+use super::p2p_topology as p2p;
 use crate::blockcfg::{Header, Message};
 
 use network_core::{error::Error, gossip::Gossip};
 
 use futures::prelude::*;
 use futures::sync::mpsc;
+
+use std::{collections::HashMap, sync::RwLock};
 
 // Buffer size determines the number of stream items pending processing that
 // can be buffered before back pressure is applied to the inbound half of
@@ -91,7 +93,7 @@ enum SubscriptionState<T> {
 pub struct PeerHandles {
     pub blocks: PropagationHandle<Header>,
     pub messages: PropagationHandle<Message>,
-    pub gossip: PropagationHandle<Gossip<Node>>,
+    pub gossip: PropagationHandle<Gossip<p2p::Node>>,
 }
 
 impl PeerHandles {
@@ -99,5 +101,46 @@ impl PeerHandles {
         PeerHandles {
             ..Default::default()
         }
+    }
+}
+
+/// The map of peer nodes currently subscribed to chain or network updates.
+///
+/// This map object uses internal read-write locking and is shared between
+/// all network connection tasks.
+pub struct PropagationMap {
+    lock: RwLock<HashMap<p2p::NodeId, PeerHandles>>,
+}
+
+fn ensure_propagation_peer<'a>(
+    map: &'a mut HashMap<p2p::NodeId, PeerHandles>,
+    id: p2p::NodeId,
+) -> &'a mut PeerHandles {
+    map.entry(id).or_insert(PeerHandles::new())
+}
+
+impl PropagationMap {
+    pub fn new() -> Self {
+        PropagationMap {
+            lock: RwLock::new(HashMap::new()),
+        }
+    }
+
+    pub fn subscribe_to_blocks(&self, id: p2p::NodeId) -> Subscription<Header> {
+        let mut map = self.lock.write().unwrap();
+        let handles = ensure_propagation_peer(&mut map, id);
+        handles.blocks.subscribe()
+    }
+
+    pub fn subscribe_to_messages(&self, id: p2p::NodeId) -> Subscription<Message> {
+        let mut map = self.lock.write().unwrap();
+        let handles = ensure_propagation_peer(&mut map, id);
+        handles.messages.subscribe()
+    }
+
+    pub fn subscribe_to_gossip(&self, id: p2p::NodeId) -> Subscription<Gossip<p2p::Node>> {
+        let mut map = self.lock.write().unwrap();
+        let handles = ensure_propagation_peer(&mut map, id);
+        handles.gossip.subscribe()
     }
 }

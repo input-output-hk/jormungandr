@@ -21,6 +21,7 @@ use crate::utils::{
 };
 
 use self::p2p_topology::{self as p2p, P2pTopology};
+use self::propagate::PropagationMap;
 
 use futures::prelude::*;
 use futures::{future, stream};
@@ -57,6 +58,7 @@ pub struct GlobalState {
     pub config: Configuration,
     pub topology: P2pTopology,
     pub node: p2p::Node,
+    pub propagation_peers: PropagationMap,
 }
 
 impl GlobalState {
@@ -81,6 +83,7 @@ impl GlobalState {
             config,
             topology,
             node,
+            propagation_peers: PropagationMap::new(),
         }
     }
 }

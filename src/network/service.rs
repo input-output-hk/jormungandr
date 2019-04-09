@@ -16,11 +16,8 @@ use network_core::{
     },
 };
 
+use futures::future::{self, FutureResult};
 use futures::prelude::*;
-use futures::{
-    future::{self, FutureResult},
-    stream,
-};
 
 use std::sync::Arc;
 
@@ -86,7 +83,7 @@ impl BlockService for NodeService {
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type BlockSubscription = stream::Empty<Header, core_error::Error>;
+    type BlockSubscription = Subscription<Header>;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn tip(&mut self) -> Self::TipFuture {
@@ -161,12 +158,11 @@ impl BlockService for NodeService {
                 }),
         );
 
-        // FIXME: we can't have per-connection state associated with
-        // NodeService in the current tower-h2 design. Need to come up
-        // with a way to identify the peer making the subscription, so that
-        // we can use this stream for p2p propagation.
-        // See https://github.com/tower-rs/tower-h2/issues/64
-        future::ok(stream::empty())
+        let subscription = self
+            .global_state
+            .propagation_peers
+            .subscribe_to_blocks(subscriber);
+        future::ok(subscription)
     }
 }
 
@@ -205,7 +201,7 @@ impl ContentService for NodeService {
 
 impl GossipService for NodeService {
     type Node = p2p::Node;
-    type GossipSubscription = stream::Empty<Gossip<p2p::Node>, core_error::Error>;
+    type GossipSubscription = Subscription<Gossip<p2p::Node>>;
     type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
 
     fn gossip_subscription<In>(
@@ -228,9 +224,10 @@ impl GossipService for NodeService {
                 }),
         );
 
-        // TODO: send periodic updates to nodes
-        // See the BlockService::block_subscription impl for why this is
-        // currently not implemented.
-        future::ok(stream::empty())
+        let subscription = self
+            .global_state
+            .propagation_peers
+            .subscribe_to_gossip(subscriber);
+        future::ok(subscription)
     }
 }
