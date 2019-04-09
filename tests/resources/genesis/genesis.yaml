@@ -12,8 +12,8 @@ initial_setting:
     certificate: 0
   block_version: 1
   bft_leaders:
-    - ed25519e_pk1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
-    - ed25519e_pk13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
+    - ed25519e_pk1else5uqslegj6n5rxnrayz2x99cel6m2g492ac6tpv76kns0dwlqpjnh0l
+    - ed25519e_pk1xuqdxht6f0kkh0lf3ck3gfyvnpk33s09du92w6740mfmxl6hsfpsp8grmk
 initial_funds:
   - address: ta1svaengshtf3f0mc3qrq76c7autjpyxeuyfkn9h5r0vr9qrek6e0y6zpe8ls
     value: 100
