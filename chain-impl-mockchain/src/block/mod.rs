@@ -4,6 +4,8 @@ use crate::message::{Message, MessageRaw};
 use chain_core::mempack::read_from_raw;
 use chain_core::property::{self, Serialize};
 
+use std::slice;
+
 mod builder;
 //mod cstruct;
 mod header;
@@ -159,17 +161,11 @@ impl property::Deserialize for Block {
     }
 }
 
-impl property::HasMessages for Block {
+impl<'a> property::HasMessages<'a> for &'a Block {
     type Message = Message;
-    fn messages<'a>(&'a self) -> Box<Iterator<Item = &Message> + 'a> {
-        Box::new(self.contents.iter())
-    }
-
-    fn for_each_message<F>(&self, mut f: F)
-    where
-        F: FnMut(&Self::Message),
-    {
-        self.contents.iter().for_each(|msg| f(msg))
+    type Messages = slice::Iter<'a, Message>;
+    fn messages(self) -> Self::Messages {
+        self.contents.0.iter()
     }
 }
 
