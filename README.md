@@ -111,13 +111,17 @@ The binary has subcommands
 * [transaction](./doc/cli_transaction.md) for offline transaction management
 * [address](./doc/cli_address.md) for debugging addresses
 
-## Integration tests
+# Integration tests
 
 Running:
 
 ```
 cargo test --features integration-test
 ```
+
+NOTE:
+jcli and jormundandr crates need to be installed (``` cargo install ```) prior to test run
+
 
 # License
 

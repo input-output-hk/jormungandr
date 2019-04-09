@@ -1,5 +1,6 @@
 use std::process::Command;
 use super::resources_const::GENESIS_YAML_FILE_PATH;
+use super::resources_const::JORMUNGANDR_ADDRESS;
 
 /// Run genesis encode command. NOTE: it uses jcli which is already installed on current environment
 /// (by cargo install command)
@@ -37,4 +38,21 @@ pub fn run_genesis_encode_command_default(path_to_output_block: &str ) -> Comman
             .arg("--output")
             .arg(&path_to_output_block);
          command   
+}
+
+/// Run rest  stat command. Uses [default host and port](super::test_const::JORMUNGANDR_ADDRESS)
+/// NOTE: it uses jcli which is already installed on current environment
+/// (by cargo install command)
+///
+///
+pub fn run_rest_stats_command_default() -> Command {
+        let mut command =  Command::new("jcli");
+        command.arg("rest")
+            .arg("v0")
+            .arg("node")
+            .arg("stats")
+            .arg("get")
+            .arg("-h")
+            .arg(&JORMUNGANDR_ADDRESS);
+        command   
 }

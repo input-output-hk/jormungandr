@@ -21,9 +21,7 @@ use std::process::Stdio;
 ///        Ok(process) => process,
 ///        Err(err)    => panic!("Running process error: {}", err),
 /// };
-/// 
-/// 
-/// 
+///
 pub fn start_jormungandr_node(config_path: &str, genesis_block_path: &str) -> Command {
     let mut command = Command::new("jormungandr");
         command.arg("--config")
