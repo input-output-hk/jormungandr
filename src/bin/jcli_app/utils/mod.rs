@@ -2,6 +2,7 @@
 
 mod host_addr;
 pub mod io;
+pub mod key_parser;
 mod segment_parser;
 pub mod serde_with_string;
 

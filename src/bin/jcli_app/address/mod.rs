@@ -1,6 +1,7 @@
 use bech32::{Bech32, FromBase32, ToBase32};
 use chain_addr::{AddressReadable, Discrimination, Kind};
 use chain_crypto::{AsymmetricKey, Ed25519Extended, PublicKey};
+use jcli_app::utils::key_parser::parse_pub_key;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -137,18 +138,4 @@ where
 fn print_pub_key<A: AsymmetricKey>(pk: PublicKey<A>) -> Bech32 {
     let hrp = A::PUBLIC_BECH32_HRP.to_string();
     Bech32::new(hrp, pk.to_base32()).unwrap()
-}
-
-fn parse_pub_key<A: AsymmetricKey>(s: &str) -> PublicKey<A> {
-    let bech32: Bech32 = s.parse().unwrap();
-    if bech32.hrp() == A::PUBLIC_BECH32_HRP {
-        let pub_key_bytes = Vec::<u8>::from_base32(bech32.data()).unwrap();
-        PublicKey::from_binary(&pub_key_bytes).unwrap()
-    } else {
-        panic!(
-            "Invalid Key Type, received {} but was expecting {}",
-            bech32.hrp(),
-            A::PUBLIC_BECH32_HRP
-        )
-    }
 }
