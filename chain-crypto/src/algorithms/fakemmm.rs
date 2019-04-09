@@ -38,8 +38,8 @@ impl AsymmetricKey for FakeMMM {
     type Secret = Priv;
     type Public = Pub;
 
-    const SECRET_BECH32_HRP: &'static str = "fakemmm_secret";
-    const PUBLIC_BECH32_HRP: &'static str = "fakemmm_public";
+    const SECRET_BECH32_HRP: &'static str = "fakemmm_sk";
+    const PUBLIC_BECH32_HRP: &'static str = "fakemmm_pk";
 
     const SECRET_KEY_SIZE: usize = ed25519::SEED_LENGTH;
     const PUBLIC_KEY_SIZE: usize = ed25519::PUBLIC_KEY_LENGTH;
@@ -77,7 +77,7 @@ impl VerificationAlgorithm for FakeMMM {
     type Signature = Sig;
 
     const SIGNATURE_SIZE: usize = ed25519::SIGNATURE_LENGTH;
-    const SIGNATURE_BECH32_HRP: &'static str = "fakemmm_signature";
+    const SIGNATURE_BECH32_HRP: &'static str = "fakemmm_sig";
 
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
         if data.len() != ed25519::SIGNATURE_LENGTH {

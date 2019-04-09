@@ -32,8 +32,8 @@ impl AsymmetricKey for Ed25519Extended {
     type Secret = ExtendedPriv;
     type Public = ei::Pub;
 
-    const SECRET_BECH32_HRP: &'static str = "ed25519extended_secret";
-    const PUBLIC_BECH32_HRP: &'static str = "ed25519extended_public";
+    const SECRET_BECH32_HRP: &'static str = "ed25519e_sk";
+    const PUBLIC_BECH32_HRP: &'static str = "ed25519e_pk";
 
     const SECRET_KEY_SIZE: usize = ed25519::PRIVATE_KEY_LENGTH;
     const PUBLIC_KEY_SIZE: usize = ed25519::PUBLIC_KEY_LENGTH;
@@ -76,7 +76,7 @@ impl VerificationAlgorithm for Ed25519Extended {
     type Signature = ei::Sig;
 
     const SIGNATURE_SIZE: usize = ed25519::SIGNATURE_LENGTH;
-    const SIGNATURE_BECH32_HRP: &'static str = "ed25519extended_signature";
+    const SIGNATURE_BECH32_HRP: &'static str = "ed25519e_sig";
 
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
         if data.len() != ed25519::SIGNATURE_LENGTH {
