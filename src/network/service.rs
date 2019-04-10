@@ -142,10 +142,7 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        tokio::spawn(subscription::process_blocks(
-            inbound,
-            self.channels.block_box.clone(),
-        ));
+        subscription::process_blocks(inbound, self.channels.block_box.clone());
 
         let subscription = self
             .global_state
@@ -201,10 +198,7 @@ impl GossipService for NodeService {
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        tokio::spawn(subscription::process_gossip(
-            inbound,
-            self.global_state.clone(),
-        ));
+        subscription::process_gossip(inbound, self.global_state.clone());
 
         let subscription = self
             .global_state

@@ -61,8 +61,8 @@ fn subscribe(
                 );
                 return Err(());
             }
-            tokio::spawn(subscription::process_blocks(block_sub, block_box));
-            tokio::spawn(subscription::process_gossip(gossip_sub, global_state));
+            subscription::process_blocks(block_sub, block_box);
+            subscription::process_gossip(gossip_sub, global_state);
             Ok(())
         })
 }
