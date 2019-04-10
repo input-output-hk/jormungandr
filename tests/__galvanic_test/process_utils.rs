@@ -1,5 +1,5 @@
 use std::{thread, time};
-use std::process::{Command,Child};
+use std::process::{Child,Command};
 
 /// Run command for n times with m second interval. 
 /// 
@@ -28,37 +28,37 @@ use std::process::{Command,Child};
 ///    );
 ///
 pub fn run_process_until_exited_successfully(mut command: Command, timeout: u64, max_attempts: i32,
-        command_description: &str, error_description: &str) {
+    command_description: &str, error_description: &str) {
 
-       let one_second = time::Duration::from_millis(&timeout * 1000);
-       let mut attempts = max_attempts.clone();
+    let one_second = time::Duration::from_millis(&timeout * 1000);
+    let mut attempts = max_attempts.clone();
 
-       loop{
-            if command
-                .status()
-                .expect(&format!("failed to get exit status of command: {}",&command_description))
-                .success()  {
-                break;
-            }
+    loop{
+        if command
+             .status()
+             .expect(&format!("failed to get exit status of command: {}",&command_description))
+             .success()  {
+            break;
+        }
 
-            if attempts <= 0  {
-                break;
-            }
+        if attempts <= 0  {
+            break;
+        }
 
-            println!("non-zero status with message(). waiting {} s and trying again ({} of {})",
-                &timeout,
-                &max_attempts - &attempts + 1,
-                &max_attempts);
+        println!("non-zero status with message(). waiting {} s and trying again ({} of {})",
+            &timeout,
+            &max_attempts - &attempts + 1,
+            &max_attempts);
 
-            attempts = attempts -1;
-            thread::sleep(one_second);
-       }
+        attempts = attempts -1;
+        thread::sleep(one_second);
+    }
 
-       if attempts <= 0  {
-            panic!("{} (tried to connect {} times with {} s interval)",
-                &error_description,
-                &max_attempts,
-                &timeout);
+    if attempts <= 0  {
+        panic!("{} (tried to connect {} times with {} s interval)",
+            &error_description,
+            &max_attempts,
+            &timeout);
        }
 }
 

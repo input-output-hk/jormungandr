@@ -1,5 +1,4 @@
 use mktemp::Temp;
-use std::process::Command;
 use std::path::PathBuf;
    
 /// Gets path in temp directory (does not create it)

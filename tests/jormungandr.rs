@@ -9,7 +9,7 @@ test_suite! {
 
     mod file_assert;
     mod file_utils;
-    mod resources_const;
+    mod configuration;
     mod jormungandr_wrapper;
     mod jcli_wrapper;
     mod process_assert;
@@ -17,9 +17,8 @@ test_suite! {
 
     test test_jormungandr_node_starts_successfully() {
 
-        let node_config = resources_const::NODE_CONFIG_FILE_PATH;
-        let path_buf = file_utils::get_path_in_temp("block-0.bin");
-        let path_to_output_block = path_buf.to_str().unwrap();
+        let node_config = configuration::get_node_config_path();
+        let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
 
         process_assert::assert_process_exited_successfully(
             jcli_wrapper::run_genesis_encode_command_default(&path_to_output_block),

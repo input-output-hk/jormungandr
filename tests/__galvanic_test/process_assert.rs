@@ -1,4 +1,3 @@
-use std::process::Child;
 use std::process::Command;
 
 /// Assert process exited successfully

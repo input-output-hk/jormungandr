@@ -1,6 +1,12 @@
-
 use std::process::Command;
-use std::process::Stdio;
+use std::path::PathBuf;
+
+use super::configuration;
+
+fn get_jormungandr_app_path() -> PathBuf {	
+    let jormungandr : PathBuf = configuration::get_jormungandr_app_variable_as_path_from_os();
+    jormungandr	
+}
 
 /// Starts jormungandr node. 
 /// NOTE: it uses jormungandr which is already installed on current environment
@@ -22,11 +28,11 @@ use std::process::Stdio;
 ///        Err(err)    => panic!("Running process error: {}", err),
 /// };
 ///
-pub fn start_jormungandr_node(config_path: &str, genesis_block_path: &str) -> Command {
-    let mut command = Command::new("jormungandr");
-        command.arg("--config")
-            .arg(&config_path)
-            .arg("--genesis-block")
-            .arg(&genesis_block_path);
+pub fn start_jormungandr_node(config_path: &PathBuf, genesis_block_path: &PathBuf) -> Command {
+    let mut command = Command::new(get_jormungandr_app_path().as_os_str());
+    command.arg("--config")
+        .arg(config_path.as_os_str())
+        .arg("--genesis-block")
+        .arg(genesis_block_path.as_os_str());
     command
 }
