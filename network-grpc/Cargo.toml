@@ -21,12 +21,12 @@ prost = "0.5"
 tokio = "0.1"
 tower = { git = "https://github.com/tower-rs/tower" }
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
-tower-add-origin = { git = "https://github.com/tower-rs/tower-http" }
+tower-request-modifier = { git = "https://github.com/tower-rs/tower-http" }
 
 [dependencies.tower-grpc]
 git = "https://github.com/tower-rs/tower-grpc"
-rev = "1f1dc25b0a9d5ab29372cadeea775a825ea29f81"
+rev = "4159eab8cf22324a25967cb33b9288f6501c0922"
 
 [build-dependencies.tower-grpc-build]
 git = "https://github.com/tower-rs/tower-grpc"
-rev = "1f1dc25b0a9d5ab29372cadeea775a825ea29f81"
+rev = "4159eab8cf22324a25967cb33b9288f6501c0922"

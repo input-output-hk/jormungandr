@@ -154,8 +154,8 @@ where
                 origin_uri,
                 node_id,
             } => {
-                let conn = tower_add_origin::Builder::new()
-                    .uri(origin_uri)
+                let conn = tower_request_modifier::Builder::new()
+                    .set_origin(origin_uri)
                     .build(conn_ready.unwrap())
                     .unwrap();
                 let conn = Connection {

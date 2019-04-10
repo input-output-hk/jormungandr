@@ -17,9 +17,9 @@ use network_core::{
 
 use futures::future::Executor;
 use tokio::prelude::*;
-use tower_add_origin::{self, AddOrigin};
 use tower_grpc::{BoxBody, Code, Request, Status, Streaming};
 use tower_h2::client::Background;
+use tower_request_modifier::{self, RequestModifier};
 
 use std::marker::PhantomData;
 
@@ -93,7 +93,8 @@ pub struct Connection<P, T, E>
 where
     P: ProtocolConfig,
 {
-    service: gen_client::Node<AddOrigin<tower_h2::client::Connection<T, E, BoxBody>>>,
+    service:
+        gen_client::Node<RequestModifier<tower_h2::client::Connection<T, E, BoxBody>, BoxBody>>,
     node_id: Option<<P::Node as gossip::Node>::Id>,
 }
 
