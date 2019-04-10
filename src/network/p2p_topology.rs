@@ -168,13 +168,9 @@ impl P2pTopology {
 
     /// Returns a list of neighbors selected in this turn
     /// to contact for event dissemination.
-    pub fn view_ids(&self) -> Vec<NodeId> {
+    pub fn view(&self) -> impl Iterator<Item = Node> {
         let topology = self.lock.read().unwrap();
-        topology
-            .view()
-            .into_iter()
-            .map(|node| NodeId(*node.id()))
-            .collect()
+        topology.view().into_iter().map(Node)
     }
 
     /// this is the function to utilise when we receive a gossip in order
