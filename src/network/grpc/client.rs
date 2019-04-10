@@ -1,5 +1,8 @@
 use super::{
-    super::{propagate, subscription, BlockConfig, Channels, ConnectionState, GlobalStateR},
+    super::{
+        p2p_topology as p2p, propagate, subscription, BlockConfig, Channels, ConnectionState,
+        GlobalStateR,
+    },
     origin_authority,
 };
 
@@ -19,11 +22,11 @@ use tower_service::Service as _;
 
 use std::net::SocketAddr;
 
-pub fn run_connect_socket(
+pub fn connect(
     addr: SocketAddr,
     state: ConnectionState,
     channels: Channels,
-) -> impl Future<Item = (), Error = ()> {
+) -> impl Future<Item = (p2p::NodeId, propagate::PeerHandles), Error = ()> {
     info!("connecting to subscription peer {}", state.connection);
     info!("address: {}", addr);
     let peer = grpc_peer::TcpPeer::new(addr);
@@ -43,7 +46,7 @@ fn subscribe(
     mut client: Connection<BlockConfig, TcpStream, DefaultExecutor>,
     global_state: GlobalStateR,
     channels: Channels,
-) -> impl Future<Item = (), Error = ()> {
+) -> impl Future<Item = (p2p::NodeId, propagate::PeerHandles), Error = ()> {
     let block_box = channels.block_box;
     let mut prop_handles = propagate::PeerHandles::new();
     let block_sub = client.block_subscription(prop_handles.blocks.subscribe());
@@ -61,11 +64,8 @@ fn subscribe(
                 );
                 return Err(());
             }
-            global_state
-                .propagation_peers
-                .insert_peer(node_id, prop_handles);
             subscription::process_blocks(block_sub, block_box);
             subscription::process_gossip(gossip_sub, global_state);
-            Ok(())
+            Ok((node_id, prop_handles))
         })
 }

@@ -147,7 +147,10 @@ pub fn run(
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
         let conn_state = ConnectionState::new(state.clone(), &peer);
-        grpc::run_connect_socket(addr, conn_state, channels.clone())
+        let state = state.clone();
+        grpc::connect(addr, conn_state, channels.clone()).map(move |(node_id, prop_handles)| {
+            state.propagation_peers.insert_peer(node_id, prop_handles);
+        })
     });
 
     let state = global_state.clone();

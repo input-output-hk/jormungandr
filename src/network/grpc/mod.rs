@@ -14,7 +14,7 @@ use network_grpc::peer::TcpPeer;
 
 use std::net::SocketAddr;
 
-pub use self::client::run_connect_socket;
+pub use self::client::connect;
 pub use self::server::run_listen_socket;
 
 impl network_grpc::client::ProtocolConfig for BlockConfig {
