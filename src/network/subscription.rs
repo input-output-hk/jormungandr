@@ -16,7 +16,7 @@ where
                 Ok(())
             })
             .map_err(|err| {
-                error!("block subscription stream failure: {:?}", err);
+                info!("block subscription stream failure: {:?}", err);
             }),
     )
 }
