@@ -11,6 +11,7 @@ mod grpc;
 pub mod p2p_topology;
 mod propagate;
 mod service;
+mod subscription;
 
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkPropagateMsg, TransactionMsg};
@@ -26,11 +27,7 @@ use self::propagate::PropagationMap;
 use futures::prelude::*;
 use futures::stream;
 
-use std::{
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 type Connection = SocketAddr;
 
@@ -61,6 +58,8 @@ pub struct GlobalState {
     pub propagation_peers: PropagationMap,
 }
 
+type GlobalStateR = Arc<GlobalState>;
+
 impl GlobalState {
     /// the network global state
     pub fn new(config: Configuration) -> Self {
@@ -90,25 +89,21 @@ impl GlobalState {
 
 pub struct ConnectionState {
     /// The global state shared between all connections
-    pub global: Arc<GlobalState>,
+    pub global: GlobalStateR,
 
     /// the timeout to wait for unbefore the connection replies
     pub timeout: Duration,
 
     /// the local (to the task) connection details
     pub connection: Connection,
-
-    /// State of the propagation subscriptions.
-    pub propagation: Mutex<propagate::PeerHandles>,
 }
 
 impl ConnectionState {
-    fn new(global: Arc<GlobalState>, peer: &Peer) -> Self {
+    fn new(global: GlobalStateR, peer: &Peer) -> Self {
         ConnectionState {
             global,
             timeout: peer.timeout,
             connection: peer.connection,
-            propagation: Mutex::new(propagate::PeerHandles::new()),
         }
     }
 }
@@ -152,8 +147,7 @@ pub fn run(
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
         let conn_state = ConnectionState::new(state.clone(), &peer);
-        let conn = grpc::run_connect_socket(addr, conn_state, channels.clone());
-        conn // TODO: manage propagation peers in a map
+        grpc::run_connect_socket(addr, conn_state, channels.clone())
     });
 
     let state = global_state.clone();
