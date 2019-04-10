@@ -254,13 +254,15 @@ impl Multiverse<Ledger> {
 
 #[cfg(test)]
 mod test {
-
     use super::Multiverse;
     use crate::block::{Block, BlockBuilder, ConsensusVersion};
-    use crate::config::ConfigParam;
+    use crate::config::{Block0Date, ConfigParam};
+    use crate::leadership::bft::LeaderId;
     use crate::ledger::Ledger;
     use crate::message::{InitialEnts, Message};
+    use chain_addr::Discrimination;
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
+    use chain_crypto::SecretKey;
     use chain_storage::store::BlockStore;
     use quickcheck::{Arbitrary, StdGen};
 
@@ -284,7 +286,13 @@ mod test {
 
         let mut genesis_block = BlockBuilder::new();
         let mut ents = InitialEnts::new();
+        ents.push(ConfigParam::Discrimination(Discrimination::Test));
         ents.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
+        let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
+        ents.push(ConfigParam::ConsensusLeaderId(LeaderId::from(
+            leader_pub_key,
+        )));
+        ents.push(ConfigParam::Block0Date(Block0Date(0)));
         genesis_block.message(Message::Initial(ents));
         let genesis_block = genesis_block.make_genesis_block();
         let genesis_state = Ledger::new(genesis_block.id(), genesis_block.messages()).unwrap();

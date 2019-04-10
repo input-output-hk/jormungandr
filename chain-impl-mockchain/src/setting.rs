@@ -169,7 +169,7 @@ pub struct Settings {
     pub allow_account_creation: bool,
     pub linear_fees: Arc<LinearFee>,
     pub slot_duration: u8,
-    pub epoch_stability_depth: usize,
+    pub epoch_stability_depth: u32,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -222,7 +222,7 @@ impl Settings {
             new_state.slot_duration = slot_duration;
         }
         if let Some(epoch_stability_depth) = update.epoch_stability_depth {
-            new_state.epoch_stability_depth = epoch_stability_depth as usize;
+            new_state.epoch_stability_depth = epoch_stability_depth;
         }
         new_state
     }
