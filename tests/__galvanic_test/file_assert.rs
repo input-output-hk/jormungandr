@@ -32,7 +32,7 @@ pub fn assert_file_exists_and_not_empty<P: AsRef<Path>>(file_name: P) {
 ///
 pub fn assert_file_exists<P: AsRef<Path>>(file_name: P) {
     assert!(
-       file_name.as_ref().exists(),
+        file_name.as_ref().exists(),
         "file '{:?}' does not exist",
         file_name.as_ref()
     );
@@ -51,9 +51,8 @@ pub fn assert_file_exists<P: AsRef<Path>>(file_name: P) {
 /// assert_file_not_empty(&file_name);
 ///
 pub fn assert_file_not_empty<P: AsRef<Path>>(file_name: P) {
-    let metadata = metadata(file_name.as_ref()).expect(
-        &format!("file '{:?}' does not exist", file_name.as_ref())
-    );
+    let metadata = metadata(file_name.as_ref())
+        .expect(&format!("file '{:?}' does not exist", file_name.as_ref()));
 
     assert!(
         metadata.len() > 0,

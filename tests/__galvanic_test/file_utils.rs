@@ -1,11 +1,11 @@
 use mktemp::Temp;
 use std::path::PathBuf;
-   
+
 /// Gets path in temp directory (does not create it)
 ///
 /// # Arguments
 ///
-/// * `file_path` - A string slice that holds the path 
+/// * `file_path` - A string slice that holds the path
 /// that will be glued to temp directory path
 ///
 /// # Example

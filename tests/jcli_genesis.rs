@@ -9,7 +9,6 @@ test_suite! {
 
     use assert_cmd::prelude::{OutputOkExt,OutputAssertExt};
     use std::path::PathBuf;
-
     mod file_assert;
     mod file_utils;
     mod configuration;
@@ -18,7 +17,7 @@ test_suite! {
     fixture genesis_fixture() -> PathBuf {
         setup(&mut self) {
              let mut path = file_utils::get_path_in_temp("block-0.bin");
-             println!("Setup: location for output block file: {}",path.as_os_str().to_str().unwrap());
+             println!("Setup: location for output block file: {:?}",path);
              path
         }
     }

@@ -1,8 +1,8 @@
+use std::process::{Child, Command};
 use std::{thread, time};
-use std::process::{Child,Command};
 
-/// Run command for n times with m second interval. 
-/// 
+/// Run command for n times with m second interval.
+///
 /// # Panics
 ///
 /// Panics if max_attempts is exceeded and none of attempts return successful exit code.
@@ -18,53 +18,63 @@ use std::process::{Child,Command};
 /// # Example
 ///
 /// use process_utils::run_process_until_exited_successfully;
-/// 
+///
 ///    process_utils::run_process_until_exited_successfully(
 ///         jcli_wrapper::run_rest_stats_command_default(),
 ///         2,
 ///         5,
-///         "get stats from jormungandr node", 
+///         "get stats from jormungandr node",
 ///         "jormungandr node is not up"
 ///    );
 ///
-pub fn run_process_until_exited_successfully(mut command: Command, timeout: u64, max_attempts: i32,
-    command_description: &str, error_description: &str) {
-
+pub fn run_process_until_exited_successfully(
+    mut command: Command,
+    timeout: u64,
+    max_attempts: i32,
+    command_description: &str,
+    error_description: &str,
+) {
     let one_second = time::Duration::from_millis(&timeout * 1000);
     let mut attempts = max_attempts.clone();
 
-    loop{
+    loop {
         if command
-             .status()
-             .expect(&format!("failed to get exit status of command: {}",&command_description))
-             .success()  {
+            .status()
+            .expect(&format!(
+                "failed to get exit status of command: {}",
+                &command_description
+            ))
+            .success()
+        {
             break;
         }
 
-        if attempts <= 0  {
+        if attempts <= 0 {
             break;
         }
 
-        println!("non-zero status with message(). waiting {} s and trying again ({} of {})",
+        println!(
+            "non-zero status with message(). waiting {} s and trying again ({} of {})",
             &timeout,
             &max_attempts - &attempts + 1,
-            &max_attempts);
+            &max_attempts
+        );
 
-        attempts = attempts -1;
+        attempts = attempts - 1;
         thread::sleep(one_second);
     }
 
-    if attempts <= 0  {
-        panic!("{} (tried to connect {} times with {} s interval)",
-            &error_description,
-            &max_attempts,
-            &timeout);
-       }
+    if attempts <= 0 {
+        panic!(
+            "{} (tried to connect {} times with {} s interval)",
+            &error_description, &max_attempts, &timeout
+        );
+    }
 }
 
 /// Struct ensures child process is killed if leaves given scope
-/// 
-pub struct ProcessKillGuard{
+///
+pub struct ProcessKillGuard {
     child: Child,
 }
 
