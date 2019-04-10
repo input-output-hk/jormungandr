@@ -1,9 +1,7 @@
-use super::{p2p_topology as p2p, propagate::Subscription, Channels, GlobalState};
+use super::{p2p_topology as p2p, propagate::Subscription, subscription, Channels, GlobalStateR};
 
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
-use crate::intercom::{
-    self, stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream,
-};
+use crate::intercom::{self, stream_reply, unary_reply, ClientMsg, ReplyFuture, ReplyStream};
 
 use network_core::{
     error as core_error,
@@ -19,16 +17,14 @@ use network_core::{
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 
-use std::sync::Arc;
-
 #[derive(Clone)]
 pub struct NodeService {
     channels: Channels,
-    global_state: Arc<GlobalState>,
+    global_state: GlobalStateR,
 }
 
 impl NodeService {
-    pub fn new(channels: Channels, global_state: Arc<GlobalState>) -> Self {
+    pub fn new(channels: Channels, global_state: GlobalStateR) -> Self {
         NodeService {
             channels,
             global_state,
@@ -146,17 +142,7 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        let mut block_box = self.channels.block_box.clone();
-        tokio::spawn(
-            inbound
-                .for_each(move |header| {
-                    block_box.send(BlockMsg::AnnouncedBlock(header));
-                    future::ok(())
-                })
-                .map_err(|err| {
-                    error!("Block subscription failed: {:?}", err);
-                }),
-        );
+        subscription::process_blocks(inbound, self.channels.block_box.clone());
 
         let subscription = self
             .global_state
@@ -212,17 +198,7 @@ impl GossipService for NodeService {
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        let global_state = self.global_state.clone();
-        tokio::spawn(
-            inbound
-                .for_each(move |gossip| {
-                    global_state.topology.update(gossip.into_nodes());
-                    Ok(())
-                })
-                .map_err(|err| {
-                    error!("gossip subscription inbound stream error: {:?}", err);
-                }),
-        );
+        subscription::process_gossip(inbound, self.global_state.clone());
 
         let subscription = self
             .global_state

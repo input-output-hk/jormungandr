@@ -1,4 +1,4 @@
-use super::super::{service::NodeService, Channels, GlobalState};
+use super::super::{service::NodeService, Channels, GlobalStateR};
 use crate::settings::start::network::Listen;
 
 use network_grpc::server::{self, Server};
@@ -6,11 +6,9 @@ use network_grpc::server::{self, Server};
 use tokio::executor::DefaultExecutor;
 use tokio::prelude::*;
 
-use std::sync::Arc;
-
 pub fn run_listen_socket(
     listen: Listen,
-    state: Arc<GlobalState>,
+    state: GlobalStateR,
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
     let sockaddr = listen.address();
