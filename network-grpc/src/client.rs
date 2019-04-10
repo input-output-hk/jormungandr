@@ -1,15 +1,15 @@
 mod connect;
 
 use crate::{
-    convert::{encode_node_id, serialize_to_vec},
+    convert::{decode_node_id, encode_node_id, error_from_grpc, serialize_to_vec},
     gen::{self, node::client as gen_client},
 };
 
 use chain_core::property;
 use network_core::{
-    client::{block::BlockService, gossip::GossipService},
+    client::{block::BlockService, gossip::GossipService, P2pService},
     error as core_error,
-    gossip::{self, Gossip},
+    gossip::{self, Gossip, NodeId},
 };
 
 use futures::future::Executor;
@@ -94,45 +94,57 @@ where
     node_id: Option<<P::Node as gossip::Node>::Id>,
 }
 
-type GrpcFuture<R> = tower_grpc::client::unary::ResponseFuture<
+type GrpcUnaryFuture<R> = tower_grpc::client::unary::ResponseFuture<
     R,
     tower_h2::client::ResponseFuture,
     tower_h2::RecvBody,
 >;
+
+type GrpcServerStreamingFuture<R> =
+    tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
+
+type GrpcBidiStreamingFuture<R> =
+    tower_grpc::client::streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
 
 pub struct ResponseFuture<T, R> {
     state: unary_future::State<T, R>,
 }
 
 impl<T, R> ResponseFuture<T, R> {
-    fn new(future: GrpcFuture<R>) -> Self {
+    fn new(future: GrpcUnaryFuture<R>) -> Self {
         ResponseFuture {
             state: unary_future::State::Pending(future),
         }
     }
 }
 
-pub struct ResponseStreamFuture<T, F> {
-    state: stream_future::State<T, F>,
+pub struct ResponseStreamFuture<T, R> {
+    inner: GrpcServerStreamingFuture<R>,
+    _phantom: PhantomData<T>,
 }
 
-impl<T, F> ResponseStreamFuture<T, F> {
-    fn new(future: F) -> Self {
+impl<T, R> ResponseStreamFuture<T, R> {
+    fn new(inner: GrpcServerStreamingFuture<R>) -> Self {
         ResponseStreamFuture {
-            state: stream_future::State::Pending(future),
+            inner,
+            _phantom: PhantomData,
         }
     }
 }
 
-pub type ServerStreamFuture<T, R> = ResponseStreamFuture<
-    T,
-    tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>,
->;
+pub struct SubscriptionFuture<T, Id, R> {
+    inner: GrpcBidiStreamingFuture<R>,
+    _phantom: PhantomData<(T, Id)>,
+}
 
-pub type BidiStreamFuture<T, R> = ResponseStreamFuture<
-    T,
-    tower_grpc::client::streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>,
->;
+impl<T, Id, R> SubscriptionFuture<T, Id, R> {
+    fn new(inner: GrpcBidiStreamingFuture<R>) -> Self {
+        SubscriptionFuture {
+            inner,
+            _phantom: PhantomData,
+        }
+    }
+}
 
 pub struct ResponseStream<T, R> {
     inner: Streaming<R, tower_h2::RecvBody>,
@@ -140,7 +152,7 @@ pub struct ResponseStream<T, R> {
 }
 
 mod unary_future {
-    use super::{core_error, GrpcFuture, ResponseFuture};
+    use super::{core_error, GrpcUnaryFuture, ResponseFuture};
     use crate::convert::{error_from_grpc, FromProtobuf};
     use futures::prelude::*;
     use std::marker::PhantomData;
@@ -162,7 +174,7 @@ mod unary_future {
     }
 
     pub enum State<T, R> {
-        Pending(GrpcFuture<R>),
+        Pending(GrpcUnaryFuture<R>),
         Finished(PhantomData<T>),
     }
 
@@ -192,59 +204,39 @@ mod unary_future {
     }
 }
 
-mod stream_future {
-    use super::{core_error, ResponseStream, ResponseStreamFuture};
-    use crate::convert::error_from_grpc;
-    use futures::prelude::*;
-    use std::marker::PhantomData;
-    use tower_grpc::{Response, Status, Streaming};
+impl<T, R> Future for ResponseStreamFuture<T, R>
+where
+    R: prost::Message + Default,
+{
+    type Item = ResponseStream<T, R>;
+    type Error = core_error::Error;
 
-    fn poll_and_convert_response<T, R, F>(
-        future: &mut F,
-    ) -> Poll<ResponseStream<T, R>, core_error::Error>
-    where
-        F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = Status>,
-    {
-        match future.poll() {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(res)) => {
-                let stream = ResponseStream {
-                    inner: res.into_inner(),
-                    _phantom: PhantomData,
-                };
-                Ok(Async::Ready(stream))
-            }
-            Err(e) => Err(error_from_grpc(e)),
-        }
+    fn poll(&mut self) -> Poll<ResponseStream<T, R>, core_error::Error> {
+        let res = try_ready!(self.inner.poll().map_err(error_from_grpc));
+        let stream = ResponseStream {
+            inner: res.into_inner(),
+            _phantom: PhantomData,
+        };
+        Ok(Async::Ready(stream))
     }
+}
 
-    pub enum State<T, F> {
-        Pending(F),
-        Finished(PhantomData<T>),
-    }
+impl<T, Id, R> Future for SubscriptionFuture<T, Id, R>
+where
+    R: prost::Message + Default,
+    Id: NodeId,
+{
+    type Item = (ResponseStream<T, R>, Id);
+    type Error = core_error::Error;
 
-    impl<T, R, F> Future for ResponseStreamFuture<T, F>
-    where
-        F: Future<Item = Response<Streaming<R, tower_h2::RecvBody>>, Error = Status>,
-    {
-        type Item = ResponseStream<T, R>;
-        type Error = core_error::Error;
-
-        fn poll(&mut self) -> Poll<ResponseStream<T, R>, core_error::Error> {
-            if let State::Pending(ref mut f) = self.state {
-                let res = poll_and_convert_response(f);
-                if let Ok(Async::NotReady) = res {
-                    return Ok(Async::NotReady);
-                }
-                self.state = State::Finished(PhantomData);
-                res
-            } else {
-                match self.state {
-                    State::Pending(_) => unreachable!(),
-                    State::Finished(_) => panic!("polled a finished response"),
-                }
-            }
-        }
+    fn poll(&mut self) -> Poll<Self::Item, core_error::Error> {
+        let res = try_ready!(self.inner.poll().map_err(error_from_grpc));
+        let id = decode_node_id(res.metadata())?;
+        let stream = ResponseStream {
+            inner: res.into_inner(),
+            _phantom: PhantomData,
+        };
+        Ok(Async::Ready((stream, id)))
     }
 }
 
@@ -359,6 +351,13 @@ where
     }
 }
 
+impl<P, T, E> P2pService for Connection<P, T, E>
+where
+    P: ProtocolConfig,
+{
+    type NodeId = <P::Node as gossip::Node>::Id;
+}
+
 impl<P, T, E> BlockService for Connection<P, T, E>
 where
     P: ProtocolConfig,
@@ -369,13 +368,13 @@ where
     type TipFuture = ResponseFuture<P::Header, gen::node::TipResponse>;
 
     type PullBlocksToTipStream = ResponseStream<P::Block, gen::node::Block>;
-    type PullBlocksToTipFuture = ServerStreamFuture<P::Block, gen::node::Block>;
+    type PullBlocksToTipFuture = ResponseStreamFuture<P::Block, gen::node::Block>;
 
     type GetBlocksStream = ResponseStream<P::Block, gen::node::Block>;
-    type GetBlocksFuture = ServerStreamFuture<P::Block, gen::node::Block>;
+    type GetBlocksFuture = ResponseStreamFuture<P::Block, gen::node::Block>;
 
     type BlockSubscription = ResponseStream<P::Header, gen::node::Header>;
-    type BlockSubscriptionFuture = BidiStreamFuture<P::Header, gen::node::Header>;
+    type BlockSubscriptionFuture = SubscriptionFuture<P::Header, Self::NodeId, gen::node::Header>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
@@ -387,7 +386,7 @@ where
         let from = serialize_to_vec(from).unwrap();
         let req = gen::node::PullBlocksToTipRequest { from };
         let future = self.service.pull_blocks_to_tip(Request::new(req));
-        ServerStreamFuture::new(future)
+        ResponseStreamFuture::new(future)
     }
 
     fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
@@ -396,7 +395,7 @@ where
     {
         let req = self.new_subscription_request(outbound);
         let future = self.service.block_subscription(req);
-        BidiStreamFuture::new(future)
+        SubscriptionFuture::new(future)
     }
 }
 
@@ -408,7 +407,8 @@ where
 {
     type Node = P::Node;
     type GossipSubscription = ResponseStream<Gossip<P::Node>, gen::node::Gossip>;
-    type GossipSubscriptionFuture = BidiStreamFuture<Gossip<P::Node>, gen::node::Gossip>;
+    type GossipSubscriptionFuture =
+        SubscriptionFuture<Gossip<P::Node>, Self::NodeId, gen::node::Gossip>;
 
     fn gossip_subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
     where
@@ -416,6 +416,6 @@ where
     {
         let req = self.new_subscription_request(outbound);
         let future = self.service.gossip_subscription(req);
-        BidiStreamFuture::new(future)
+        SubscriptionFuture::new(future)
     }
 }
