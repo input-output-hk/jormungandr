@@ -48,7 +48,7 @@ peer_2_peer:
   trusted_peers: []
   public_access: "/ip4/127.0.0.1/tcp/8080"
   topics_of_interests:
-    transactions: low
+    messages: low
     blocks: normal
 ```
 
@@ -72,7 +72,7 @@ Fields description:
        of the network that may find interest into participating to the blockchain
        dissemination with the node;
      - *topics_of_interests*: the different topics we are interested to hear about:
-       - *transactions*: notify other peers this node is interested about Transactions
+       - *messages*: notify other peers this node is interested about Transactions
          typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
        - *blocks*: notify other peers this node is interested about new Blocs.
          typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`;
@@ -111,13 +111,17 @@ The binary has subcommands
 * [transaction](./doc/cli_transaction.md) for offline transaction management
 * [address](./doc/cli_address.md) for debugging addresses
 
-## Integration tests
+# Integration tests
 
 Running:
 
 ```
 cargo test --features integration-test
 ```
+
+NOTE:
+jcli and jormundandr crates need to be installed (``` cargo install ```) prior to test run
+
 
 # License
 
