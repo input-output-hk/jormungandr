@@ -155,6 +155,21 @@ pub mod crypto {
         }
     }
 
+    pub fn deserialize_bench32<'de, D>(
+        deserializer: D,
+        hrp: &'static str,
+    ) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let secret_key_visitor = BytesInBech32Visitor::new(hrp);
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_str(secret_key_visitor)
+        } else {
+            deserializer.deserialize_bytes(secret_key_visitor)
+        }
+    }
+
     struct SecretKeyVisitor<A: AsymmetricKey> {
         _marker: std::marker::PhantomData<A>,
     }
@@ -173,6 +188,44 @@ pub mod crypto {
             PublicKeyVisitor {
                 _marker: std::marker::PhantomData,
             }
+        }
+    }
+
+    pub struct BytesInBech32Visitor {
+        hrp: &'static str,
+    }
+
+    impl BytesInBech32Visitor {
+        pub fn new(hrp: &'static str) -> Self {
+            BytesInBech32Visitor { hrp }
+        }
+    }
+
+    impl<'de> Visitor<'de> for BytesInBech32Visitor {
+        type Value = Vec<u8>;
+
+        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            write!(fmt, "Expecting bech32 data with HRP {}", self.hrp)
+        }
+
+        fn visit_str<'a, E>(self, bech32_str: &'a str) -> Result<Self::Value, E>
+        where
+            E: DeserializerError,
+        {
+            use bech32::{Bech32, FromBase32};
+            let bech32: Bech32 = bech32_str
+                .parse()
+                .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
+            if bech32.hrp() != self.hrp {
+                return Err(E::custom(format!(
+                    "Invalid prefix: expected {} but was {}",
+                    self.hrp,
+                    bech32.hrp()
+                )));
+            }
+            let bytes = Vec::<u8>::from_base32(bech32.data())
+                .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
+            Ok(bytes)
         }
     }
 
@@ -373,4 +426,33 @@ where
             Ok(address) => Ok(address),
         }
     }
+}
+
+pub mod certificate {
+
+    use super::*;
+    use chain_impl_mockchain::certificate::Certificate;
+
+    pub fn serialize<S>(cert: &Certificate, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use crate::certificate as cert;
+        let bech32 = cert::serialize_to_bech32(cert).map_err(|err| S::Error::custom(err))?;
+        serializer.serialize_str(&bech32.to_string())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Certificate, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use chain_core::mempack::{ReadBuf, Readable};
+        deserializer
+            .deserialize_str(crypto::BytesInBech32Visitor::new("cert"))
+            .and_then(|bytes| {
+                let mut buf = ReadBuf::from(&bytes);
+                Certificate::read(&mut buf).map_err(|err| D::Error::custom(err))
+            })
+    }
+
 }

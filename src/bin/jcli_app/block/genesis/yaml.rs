@@ -3,6 +3,7 @@ use chain_core::property::HasMessages as _;
 use chain_crypto::{bech32::Bech32, Ed25519Extended, PublicKey};
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder, ConsensusVersion},
+    certificate::Certificate,
     fee::LinearFee,
     legacy::{self, OldAddress},
     message::{InitialEnts, Message},
@@ -10,7 +11,7 @@ use chain_impl_mockchain::{
     transaction,
     value::Value,
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::time::SystemTime;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -28,6 +29,7 @@ pub struct Genesis {
     pub initial_setting: Update,
 
     pub initial_funds: Option<Vec<InitialUTxO>>,
+    pub initial_certs: Option<Vec<InitialCertificate>>,
     pub legacy_funds: Option<Vec<LegacyUTxO>>,
 }
 
@@ -70,6 +72,26 @@ pub struct InitialLinearFee {
     coefficient: u64,
     constant: u64,
     certificate: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct InitialCertificate(Certificate);
+
+impl Serialize for InitialCertificate where {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        jormungandr_utils::serde::certificate::serialize(&self.0, serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for InitialCertificate where {
+    fn deserialize<D>(deserializer: D) -> Result<InitialCertificate, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(InitialCertificate(
+            jormungandr_utils::serde::certificate::deserialize(deserializer)?,
+        ))
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -115,6 +137,7 @@ impl Genesis {
 
         let initial_utxos = get_initial_utxos(&mut messages);
         let legacy_utxos = get_legacy_utxos(&mut messages);
+        let initial_certs = get_initial_certs(&mut messages);
 
         Genesis {
             blockchain_configuration,
@@ -128,6 +151,11 @@ impl Genesis {
                 None
             } else {
                 Some(legacy_utxos)
+            },
+            initial_certs: if initial_certs.is_empty() {
+                None
+            } else {
+                Some(initial_certs)
             },
         }
     }
@@ -154,7 +182,7 @@ impl Genesis {
                     .unwrap_or(255) as usize,
             ),
         );
-
+        builder.messages(self.to_certificate_messages());
         builder.make_genesis_block()
     }
 
@@ -194,6 +222,28 @@ impl Genesis {
 
         messages
     }
+
+    fn to_certificate_messages(&self) -> Vec<Message> {
+        let mut messages = Vec::new();
+        if let Some(initial_certs) = &self.initial_certs {
+            let mut cert_iter = initial_certs.iter().cloned();
+
+            while let Some(InitialCertificate(cert)) = cert_iter.next() {
+                let transaction = transaction::AuthenticatedTransaction {
+                    transaction: transaction::Transaction {
+                        inputs: Vec::new(),
+                        outputs: Vec::new(),
+                        extra: cert,
+                    },
+                    witnesses: Vec::new(),
+                };
+                messages.push(Message::Certificate(transaction));
+            }
+        }
+
+        messages
+    }
+
     fn to_legacy_messages(&self, max_output_per_message: usize) -> Vec<Message> {
         let mut messages = Vec::new();
         if let Some(legacy_utxos) = &self.legacy_funds {
@@ -266,6 +316,23 @@ fn get_legacy_utxos<'a>(
 
             vec.push(legacy_utxo);
         }
+    }
+
+    vec
+}
+fn get_initial_certs<'a>(
+    messages: &mut std::iter::Peekable<
+        std::boxed::Box<
+            (dyn std::iter::Iterator<Item = &'a chain_impl_mockchain::message::Message> + 'a),
+        >,
+    >,
+) -> Vec<InitialCertificate> {
+    let mut vec = Vec::new();
+
+    while let Some(Message::Certificate(transaction)) = messages.peek() {
+        messages.next();
+        let cert = transaction.transaction.extra.clone();
+        vec.push(InitialCertificate(cert));
     }
 
     vec

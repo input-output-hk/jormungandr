@@ -1,5 +1,6 @@
 mod address;
 mod block;
+mod certificate;
 mod debug;
 mod key;
 mod rest;
@@ -24,6 +25,8 @@ pub enum JCli {
     Transaction(transaction::Transaction),
     /// Debug tools for developers
     Debug(debug::Debug),
+    /// Certificate generation tool
+    Certificate(certificate::Certificate),
 }
 
 impl JCli {
@@ -35,6 +38,7 @@ impl JCli {
             JCli::Rest(rest) => rest.exec(),
             JCli::Transaction(transaction) => transaction.exec(),
             JCli::Debug(debug) => debug.exec(),
+            JCli::Certificate(certificate) => certificate.exec(),
         }
     }
 }

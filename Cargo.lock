@@ -1172,6 +1172,7 @@ dependencies = [
 name = "jormungandr-utils"
 version = "0.1.0"
 dependencies = [
+ "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "chain-addr 0.1.0",
  "chain-core 0.1.0",
  "chain-crypto 0.1.0",
