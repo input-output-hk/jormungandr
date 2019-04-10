@@ -44,7 +44,7 @@ pub fn run_connect_socket(
                     error!("BlockSubscription request failed: {:?}", err);
                 })
         })
-        .and_then(move |subscription| {
+        .and_then(move |(subscription, _node_id)| {
             subscription
                 .for_each(move |header| {
                     block_box.send(BlockMsg::AnnouncedBlock(header));
