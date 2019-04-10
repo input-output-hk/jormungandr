@@ -45,9 +45,9 @@ fn subscribe(
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
     let block_box = channels.block_box;
-    let mut sub_handles = propagate::PeerHandles::new();
-    let block_sub = client.block_subscription(sub_handles.blocks.subscribe());
-    let gossip_sub = client.gossip_subscription(sub_handles.gossip.subscribe());
+    let mut prop_handles = propagate::PeerHandles::new();
+    let block_sub = client.block_subscription(prop_handles.blocks.subscribe());
+    let gossip_sub = client.gossip_subscription(prop_handles.gossip.subscribe());
     block_sub
         .join(gossip_sub)
         .map_err(move |err| {
@@ -61,6 +61,9 @@ fn subscribe(
                 );
                 return Err(());
             }
+            global_state
+                .propagation_peers
+                .insert_peer(node_id, prop_handles);
             subscription::process_blocks(block_sub, block_box);
             subscription::process_gossip(gossip_sub, global_state);
             Ok(())

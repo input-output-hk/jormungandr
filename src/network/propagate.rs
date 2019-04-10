@@ -129,6 +129,11 @@ impl PropagationMap {
         }
     }
 
+    pub fn insert_peer(&self, id: p2p::NodeId, handles: PeerHandles) {
+        let mut map = self.mutex.lock().unwrap();
+        map.insert(id, handles);
+    }
+
     pub fn subscribe_to_blocks(&self, id: p2p::NodeId) -> Subscription<Header> {
         let mut map = self.mutex.lock().unwrap();
         let handles = ensure_propagation_peer(&mut map, id);
