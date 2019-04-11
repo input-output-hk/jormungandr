@@ -1,9 +1,7 @@
-use super::{
-    super::{
-        p2p_topology as p2p, propagate, subscription, BlockConfig, Channels, ConnectionState,
-        GlobalStateR,
-    },
-    origin_authority,
+use super::origin_authority;
+use crate::network::{
+    p2p_topology as p2p, propagate, subscription, BlockConfig, Channels, ConnectionState,
+    GlobalStateR,
 };
 
 use network_core::{
