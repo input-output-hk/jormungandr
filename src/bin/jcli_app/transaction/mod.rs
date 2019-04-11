@@ -72,11 +72,15 @@ impl Transaction {
 }
 
 fn display_id(common: common::CommonTransaction) -> Result<(), TransactionError> {
-    let id = common.load_transaction().map(|tx| tx.hash()).or_else(|_| {
-        common
-            .load_auth_transaction()
-            .map(|auth_tx| auth_tx.transaction.hash())
-    })?;
+    let id = common
+        .load_transaction()
+        .map(|tx| tx.hash())
+        .or_else(|_| {
+            common
+                .load_auth_transaction()
+                .map(|txaux| txaux.transaction.hash())
+        })
+        .or_else(|_| common.load_message().map(|txaux| txaux.transaction.hash()))?;
 
     println!("{}", id);
     Ok(())
