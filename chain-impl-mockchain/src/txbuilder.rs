@@ -1,6 +1,6 @@
 use crate::certificate as cert;
 use crate::fee::FeeAlgorithm;
-use crate::transaction as tx;
+use crate::transaction::{self as tx, Balance};
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use std::{error, fmt};
@@ -99,12 +99,12 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
         let fee = fee_algorithm
             .calculate_for(&self.tx)
             .ok_or(ValueError::Overflow)?;
-        balance(&self.tx, fee)
+        self.tx.balance(fee)
     }
 
     /// Get transaction balance without fee included.
     pub fn get_balance_without_fee(&self) -> Result<Balance, ValueError> {
-        balance(&self.tx, Value(0))
+        self.tx.balance(Value::zero())
     }
 
     /// Create transaction finalizer without performing any
@@ -133,7 +133,7 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
         let fee = fee_algorithm
             .calculate_for(&self.tx)
             .ok_or(Error::MathErr(ValueError::Overflow))?;
-        let pos = match balance(&self.tx, fee) {
+        let pos = match self.tx.balance(fee) {
             Ok(Balance::Negative(_)) => return Err(Error::TxNotEnoughTotalInput),
             Ok(Balance::Positive(v)) => v,
             Ok(Balance::Zero) => {
@@ -166,7 +166,7 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
                 let fee = fee_algorithm
                     .calculate_for(&tx)
                     .ok_or(Error::MathErr(ValueError::Overflow))?;
-                match balance(&tx, fee) {
+                match tx.balance(fee) {
                     Ok(Balance::Positive(value)) => {
                         self.tx.outputs.push(tx::Output { address, value });
                         Ok((Balance::Zero, self.tx))
@@ -175,29 +175,6 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
                 }
             }
         }
-    }
-}
-
-/// Amount of the balance in the transaction.
-pub enum Balance {
-    /// Balance is positive.
-    Positive(Value),
-    /// Balance is negative, such transaction can't be valid.
-    Negative(Value),
-    /// Balance is zero.
-    Zero,
-}
-
-fn balance<Extra>(tx: &tx::Transaction<Address, Extra>, fee: Value) -> Result<Balance, ValueError> {
-    let inputs = Value::sum(tx.inputs.iter().map(|i| i.value))?;
-    let outputs = Value::sum(tx.outputs.iter().map(|o| o.value))?;
-    let z = (outputs + fee)?;
-    if inputs > z {
-        Ok(Balance::Positive((inputs - z)?))
-    } else if inputs < z {
-        Ok(Balance::Negative((z - inputs)?))
-    } else {
-        Ok(Balance::Zero)
     }
 }
 
