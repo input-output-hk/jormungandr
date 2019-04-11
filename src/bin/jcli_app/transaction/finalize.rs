@@ -1,16 +1,13 @@
-use chain_addr::Address;
-use chain_impl_mockchain::{
-    transaction::AuthenticatedTransaction,
-    txbuilder::{OutputPolicy, TransactionBuilder},
-};
+use chain_impl_mockchain::message::Message;
 use jcli_app::transaction::common;
-use jormungandr_utils::structopt;
 use structopt::StructOpt;
 
 custom_error! {pub FinalizeError
+    Io { source: std::io::Error } = "I/O error",
+    Bech32 { source: bech32::Error } = "Invalid Bech32",
+    WriteMessage { error: common::CommonError } = "cannot write the finalized transaction: {error}",
     ReadTransaction { error: common::CommonError } = "cannot read the transaction: {error}",
-    WriteTransaction { error: common::CommonError } = "cannot save changes of the transaction: {error}",
-    TransactionCannotBeFinalized { source : chain_impl_mockchain::txbuilder::Error } = "Transaction cannot be finalized"
+    NotEnoughWitnesses = "Not enough witnesses, cannot finalize the transaction",
 }
 
 #[derive(StructOpt)]
@@ -18,39 +15,21 @@ custom_error! {pub FinalizeError
 pub struct Finalize {
     #[structopt(flatten)]
     pub common: common::CommonTransaction,
-
-    #[structopt(flatten)]
-    pub fee: common::CommonFees,
-
-    /// Set the change in the given address
-    #[structopt(parse(try_from_str = "structopt::try_parse_address"))]
-    pub change: Option<Address>,
 }
 
 impl Finalize {
     pub fn exec(self) -> Result<(), FinalizeError> {
         let transaction = self
             .common
-            .load_transaction()
+            .load_auth_transaction()
             .map_err(|error| FinalizeError::ReadTransaction { error })?;
 
-        let builder = TransactionBuilder::from(transaction);
-        let fee_algo = self.fee.linear_fee();
-        let output_policy = match self.change {
-            None => OutputPolicy::Forget,
-            Some(change) => OutputPolicy::One(change),
-        };
-
-        let (_balance, finalized) = builder.finalize(fee_algo, output_policy)?;
-
-        let auth = AuthenticatedTransaction {
-            transaction: finalized,
-            witnesses: Vec::new(),
-        };
-
-        Ok(self
-            .common
-            .write_auth_transaction(&auth)
-            .map_err(|error| FinalizeError::WriteTransaction { error })?)
+        if transaction.witnesses.len() != transaction.transaction.inputs.len() {
+            Err(FinalizeError::NotEnoughWitnesses)
+        } else {
+            self.common
+                .write_message(&Message::Transaction(transaction))
+                .map_err(|error| FinalizeError::WriteMessage { error })
+        }
     }
 }

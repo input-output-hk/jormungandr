@@ -83,7 +83,8 @@ impl Info {
                 self.common
                     .load_auth_transaction()
                     .map(OneOrTheOther::TxAux)
-            })?;
+            })
+            .or_else(|_| self.common.load_message().map(OneOrTheOther::TxAux))?;
 
         let mut output = io::open_file_write(&self.output);
 

@@ -5,6 +5,7 @@ mod add_witness;
 mod common;
 mod finalize;
 mod info;
+mod lock;
 mod mk_witness;
 mod new;
 
@@ -25,14 +26,16 @@ pub enum Transaction {
     AddOutput(add_output::AddOutput),
     /// add output to the finalized transaction
     AddWitness(add_witness::AddWitness),
-
+    /// Lock a transaction and start adding witnesses
+    Lock(lock::Lock),
+    /// Finalize the transaction
     Finalize(finalize::Finalize),
     /// get the Transaction ID from the given transaction
     /// (if the transaction is edited, the returned value will change)
     Id(common::CommonTransaction),
     /// display the info regarding a given transaction
     Info(info::Info),
-
+    /// create witnesses
     MakeWitness(mk_witness::MkWitness),
 }
 
@@ -44,6 +47,7 @@ custom_error! {pub TransactionError
     AddWitnessError { source: add_witness::AddWitnessError } = "Cannot add witness to the transaction",
     InfoError { source: info::InfoError } = "{source}",
     TransactionError { source: common::CommonError } = "Invalid transaction",
+    LockError { source: lock::LockError } = "cannot lock transaction",
     FinalizeError { source: finalize::FinalizeError } = "cannot finalize transaction",
     MakeWitness { source: mk_witness::MkWitnessError } = "Cannot make witness",
 }
@@ -56,6 +60,7 @@ impl Transaction {
             Transaction::AddAccount(add_account) => add_account.exec()?,
             Transaction::AddOutput(add_output) => add_output.exec()?,
             Transaction::AddWitness(add_witness) => add_witness.exec()?,
+            Transaction::Lock(lock) => lock.exec()?,
             Transaction::Finalize(finalize) => finalize.exec()?,
             Transaction::Id(common) => display_id(common)?,
             Transaction::Info(info) => info.exec()?,
