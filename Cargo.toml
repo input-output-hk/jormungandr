@@ -60,6 +60,7 @@ reqwest = "0.9.11"
 custom_error = "1.6"
 num-traits = "0.2"
 jormungandr-utils = { path = "./utils" }
+strfmt = "0.1"
 
 [dependencies.actix-web]
 version = "0.7.18"

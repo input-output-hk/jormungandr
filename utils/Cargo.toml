@@ -11,3 +11,4 @@ chain-addr      = { path = "../cardano-deps/chain-addr" }
 chain-crypto    = { path = "../cardano-deps/chain-crypto" }
 chain-impl-mockchain = { path = "../cardano-deps/chain-impl-mockchain" }
 serde = "1.0"
+custom_error = "1.6"

@@ -13,6 +13,9 @@ extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 extern crate structopt;
+#[macro_use(custom_error)]
+extern crate custom_error;
+extern crate strfmt;
 
 mod jcli_app;
 

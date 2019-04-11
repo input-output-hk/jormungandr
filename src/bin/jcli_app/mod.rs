@@ -36,9 +36,24 @@ impl JCli {
             JCli::Address(address) => address.exec(),
             JCli::Genesis(genesis) => genesis.exec(),
             JCli::Rest(rest) => rest.exec(),
-            JCli::Transaction(transaction) => transaction.exec(),
+            JCli::Transaction(transaction) => {
+                if let Err(error) = transaction.exec() {
+                    report_error(error)
+                }
+            }
             JCli::Debug(debug) => debug.exec(),
             JCli::Certificate(certificate) => certificate.exec(),
         }
     }
+}
+
+fn report_error<E: std::error::Error>(error: E) {
+    eprintln!("{}", error);
+    let mut source = error.source();
+    while let Some(sub_error) = source {
+        eprintln!("  |-> {}", sub_error);
+        source = sub_error.source();
+    }
+
+    std::process::exit(1)
 }
