@@ -1,7 +1,10 @@
 use super::p2p_topology as p2p;
 use crate::blockcfg::{Header, Message};
 
-use network_core::{error::Error, gossip::Gossip};
+use network_core::{
+    error::Error,
+    gossip::{Gossip, Node},
+};
 
 use futures::prelude::*;
 use futures::sync::mpsc;
@@ -105,6 +108,18 @@ impl PeerHandles {
             ..Default::default()
         }
     }
+
+    pub fn try_send_block(&mut self, header: Header) -> Result<(), PropagateError> {
+        self.blocks.try_send(header)
+    }
+
+    pub fn try_send_message(&mut self, message: Message) -> Result<(), PropagateError> {
+        self.messages.try_send(message)
+    }
+
+    pub fn try_send_gossip(&mut self, gossip: Gossip<p2p::Node>) -> Result<(), PropagateError> {
+        self.gossip.try_send(gossip)
+    }
 }
 
 /// The map of peer nodes currently subscribed to chain or network updates.
@@ -152,34 +167,58 @@ impl PropagationMap {
         handles.gossip.subscribe()
     }
 
-    fn propagate_with<F>(&self, ids: &[p2p::NodeId], f: F)
+    fn propagate_with<F>(&self, nodes: Vec<p2p::Node>, f: F) -> Result<(), Vec<p2p::Node>>
     where
         F: Fn(&mut PeerHandles) -> Result<(), PropagateError>,
     {
         let mut map = self.mutex.lock().unwrap();
-        for id in ids {
-            if let hash_map::Entry::Occupied(mut entry) = map.entry(id.clone()) {
-                f(entry.get_mut()).unwrap_or_else(|e| {
-                    info!("propagation to peer {} failed: {:?}", id, e);
-                    debug!("unsubscribing peer {}", id);
-                    entry.remove_entry();
-                });
-            } else {
-                // TODO: connect asynchronously and deliver the item
-                // once subscribed
-            }
+        let unreached_nodes = nodes
+            .into_iter()
+            .filter(|node| {
+                let id = node.id();
+                if let hash_map::Entry::Occupied(mut entry) = map.entry(id) {
+                    match f(entry.get_mut()) {
+                        Ok(()) => false,
+                        Err(e) => {
+                            info!("propagation to peer {} failed: {:?}", id, e);
+                            debug!("unsubscribing peer {}", id);
+                            entry.remove_entry();
+                            true
+                        }
+                    }
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<_>>();
+        if unreached_nodes.is_empty() {
+            Ok(())
+        } else {
+            Err(unreached_nodes)
         }
     }
 
-    pub fn propagate_block(&self, ids: &[p2p::NodeId], header: Header) {
-        self.propagate_with(ids, |handles| handles.blocks.try_send(header.clone()))
+    pub fn propagate_block(
+        &self,
+        nodes: Vec<p2p::Node>,
+        header: Header,
+    ) -> Result<(), Vec<p2p::Node>> {
+        self.propagate_with(nodes, |handles| handles.try_send_block(header.clone()))
     }
 
-    pub fn propagate_message(&self, ids: &[p2p::NodeId], message: Message) {
-        self.propagate_with(ids, |handles| handles.messages.try_send(message.clone()))
+    pub fn propagate_message(
+        &self,
+        nodes: Vec<p2p::Node>,
+        message: Message,
+    ) -> Result<(), Vec<p2p::Node>> {
+        self.propagate_with(nodes, |handles| handles.try_send_message(message.clone()))
     }
 
-    pub fn propagate_gossip(&self, ids: &[p2p::NodeId], gossip: Gossip<p2p::Node>) {
-        self.propagate_with(ids, |handles| handles.gossip.try_send(gossip.clone()))
+    pub fn propagate_gossip(
+        &self,
+        nodes: Vec<p2p::Node>,
+        gossip: Gossip<p2p::Node>,
+    ) -> Result<(), Vec<p2p::Node>> {
+        self.propagate_with(nodes, |handles| handles.try_send_gossip(gossip.clone()))
     }
 }

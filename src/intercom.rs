@@ -285,7 +285,7 @@ impl Debug for BlockMsg {
 }
 
 /// Message to propagate to the connected peers.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum NetworkPropagateMsg {
     Block(Header),
     Message(Message),

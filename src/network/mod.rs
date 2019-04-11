@@ -24,6 +24,8 @@ use crate::utils::{
 use self::p2p_topology::{self as p2p, P2pTopology};
 use self::propagate::PropagationMap;
 
+use network_core::gossip::Node;
+
 use futures::prelude::*;
 use futures::stream;
 
@@ -144,31 +146,88 @@ pub fn run(
         .filter_map(|paddr| paddr.to_socketaddr())
         .collect::<Vec<_>>();
     let state = global_state.clone();
+    let conn_channels = channels.clone();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
         let peer = Peer::new(addr, Protocol::Grpc);
         let conn_state = ConnectionState::new(state.clone(), &peer);
-        grpc::run_connect_socket(addr, conn_state, channels.clone())
+        let state = state.clone();
+        grpc::connect(addr, conn_state, conn_channels.clone()).map(
+            move |(node_id, prop_handles)| {
+                state.propagation_peers.insert_peer(node_id, prop_handles);
+            },
+        )
     });
 
-    let state = global_state.clone();
-    let propagate = propagate_input
-        .for_each(move |msg| {
-            let node_ids = state.topology.view_ids();
-            match msg {
-                NetworkPropagateMsg::Block(header) => {
-                    state.propagation_peers.propagate_block(&node_ids, header);
-                }
-                NetworkPropagateMsg::Message(message) => {
-                    state
-                        .propagation_peers
-                        .propagate_message(&node_ids, message);
-                }
-            }
-            Ok(())
-        })
-        .map_err(|_| {});
+    let propagate = handle_propagation(propagate_input, channels.clone(), global_state.clone());
 
     tokio::run(connections.join(propagate).join(listener).map(|_| ()));
+}
+
+fn handle_propagation(
+    input: MessageQueue<NetworkPropagateMsg>,
+    channels: Channels,
+    state: GlobalStateR,
+) -> impl Future<Item = (), Error = ()> {
+    input
+        .for_each(move |msg| {
+            let channels = channels.clone();
+            let state = state.clone();
+            let nodes = state.topology.view().collect();
+            let res = match msg {
+                NetworkPropagateMsg::Block(ref header) => state
+                    .propagation_peers
+                    .propagate_block(nodes, header.clone()),
+                NetworkPropagateMsg::Message(ref message) => state
+                    .propagation_peers
+                    .propagate_message(nodes, message.clone()),
+            };
+            // If any nodes selected for propagation are not in the
+            // active subscriptions map, connect to them and deliver
+            // the item.
+            res.map_err(move |unreached_nodes| {
+                for (node_id, addr) in unreached_nodes
+                    .iter()
+                    .filter_map(|node| node.address().map(|addr| (node.id(), addr)))
+                {
+                    let peer = Peer::new(addr, Protocol::Grpc);
+                    let conn_state = ConnectionState::new(state.clone(), &peer);
+                    let msg = msg.clone();
+                    let state = state.clone();
+                    let cf = grpc::connect(addr, conn_state, channels.clone()).map(
+                        move |(connected_node_id, mut handles)| {
+                            if connected_node_id == node_id {
+                                let res = match msg {
+                                    NetworkPropagateMsg::Block(header) => {
+                                        handles.try_send_block(header)
+                                    }
+                                    NetworkPropagateMsg::Message(message) => {
+                                        handles.try_send_message(message)
+                                    }
+                                };
+                                match res {
+                                    Ok(()) => (),
+                                    Err(e) => {
+                                        info!("propagation to peer {} failed just after connection: {:?}", connected_node_id, e);
+                                        return;
+                                    }
+                                }
+                            } else {
+                                info!(
+                                    "peer at {} responded with different node id: {}",
+                                    addr, connected_node_id
+                                );
+                            };
+
+                            state
+                                .propagation_peers
+                                .insert_peer(connected_node_id, handles);
+                        },
+                    );
+                    tokio::spawn(cf);
+                }
+            })
+        })
+        .map_err(|_| {})
 }
 
 pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
