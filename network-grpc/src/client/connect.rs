@@ -7,9 +7,10 @@ use futures::future::Executor;
 use futures::prelude::*;
 use futures::try_ready;
 use http::uri::{self, Uri};
-use tower::{MakeConnection, MakeService, Service};
 use tower_grpc::BoxBody;
 use tower_h2::client::Background;
+use tower_service::Service;
+use tower_util::{MakeConnection, MakeService};
 
 use std::{error::Error, fmt, mem};
 
