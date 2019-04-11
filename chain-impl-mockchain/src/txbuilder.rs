@@ -71,6 +71,12 @@ impl TransactionBuilder<Address, tx::NoExtra> {
     }
 }
 
+impl<Address, Extra> From<tx::Transaction<Address, Extra>> for TransactionBuilder<Address, Extra> {
+    fn from(tx: tx::Transaction<Address, Extra>) -> Self {
+        TransactionBuilder { tx }
+    }
+}
+
 impl<Extra: Clone> TransactionBuilder<Address, Extra> {
     /// Create new transaction builder.
 
