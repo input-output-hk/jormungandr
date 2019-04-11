@@ -122,12 +122,20 @@ impl State {
 pub struct SpendingCounter(u32);
 
 impl SpendingCounter {
+    pub fn zero() -> Self {
+        SpendingCounter(0)
+    }
     fn increment(&self) -> Option<Self> {
         self.0.checked_add(1).map(SpendingCounter)
     }
 
     pub fn to_bytes(&self) -> [u8; 4] {
         self.0.to_le_bytes()
+    }
+}
+impl From<u32> for SpendingCounter {
+    fn from(v: u32) -> Self {
+        SpendingCounter(v)
     }
 }
 
