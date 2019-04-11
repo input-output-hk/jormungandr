@@ -4,6 +4,7 @@ members = [
     "imhamt",
     "chain-core",
     "chain-addr",
+    "chain-time",
     "chain-crypto",
     "chain-storage",
     "chain-storage-sqlite",
