@@ -63,3 +63,62 @@ impl TimeEra {
         Slot(self.slot_start.0 + slot_offset)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::timeframe::*;
+    use crate::timeline::Timeline;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    pub fn it_works() {
+        let now = SystemTime::now();
+        let t0 = Timeline::new(now);
+
+        let f0 = SlotDuration::from_secs(5);
+
+        let tf0 = TimeFrame::new(t0, f0);
+
+        let t1 = now + Duration::from_secs(10);
+        let t2 = now + Duration::from_secs(20);
+        let t3 = now + Duration::from_secs(100);
+
+        let slot1 = tf0.slot_at(&t1).unwrap();
+        let slot2 = tf0.slot_at(&t2).unwrap();
+        let slot3 = tf0.slot_at(&t3).unwrap();
+
+        assert_eq!(slot1, Slot(2));
+        assert_eq!(slot2, Slot(4));
+        assert_eq!(slot3, Slot(20));
+
+        let era = TimeEra::new_era(slot1, Epoch(2), 4);
+
+        let p1 = era.from_slot_to_era(slot1).unwrap();
+        let p2 = era.from_slot_to_era(slot2).unwrap();
+        let p3 = era.from_slot_to_era(slot3).unwrap();
+
+        assert_eq!(
+            p1,
+            EpochPosition {
+                epoch: Epoch(2),
+                slot: EpochSlotOffset(0)
+            }
+        );
+        assert_eq!(
+            p2,
+            EpochPosition {
+                epoch: Epoch(2),
+                slot: EpochSlotOffset(2)
+            }
+        );
+        // 20 - 2 => 18 / 4 => era_start(2) + (4, 2)
+        assert_eq!(
+            p3,
+            EpochPosition {
+                epoch: Epoch(6),
+                slot: EpochSlotOffset(2)
+            }
+        );
+    }
+}
