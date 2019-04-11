@@ -20,7 +20,23 @@ use std::{
 const BUFFER_LEN: usize = 8;
 
 #[derive(Debug)]
-pub enum PropagateError {
+pub struct PropagateError<T> {
+    kind: ErrorKind,
+    item: T,
+}
+
+impl<T> PropagateError<T> {
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
+    }
+
+    pub fn into_item(self) -> T {
+        self.item
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ErrorKind {
     NotSubscribed,
     SubscriptionClosed,
     StreamOverflow,
@@ -70,18 +86,30 @@ impl<T> PropagationHandle<T> {
 
     // Try sending the item to the subscriber.
     // Sending is done as best effort: if the stream buffer is full due to a
-    // blockage downstream, an `Err(PropagateError::StreamOverflow)` is
+    // blockage downstream, a `StreamOverflow` error is
     // returned and the item is dropped.
-    pub fn try_send(&mut self, item: T) -> Result<(), PropagateError> {
+    pub fn try_send(&mut self, item: T) -> Result<(), PropagateError<T>> {
         match self.state {
-            SubscriptionState::NotSubscribed => Err(PropagateError::NotSubscribed),
+            SubscriptionState::NotSubscribed => Err(PropagateError {
+                kind: ErrorKind::NotSubscribed,
+                item,
+            }),
             SubscriptionState::Subscribed(ref mut sender) => sender.try_send(item).map_err(|e| {
                 if e.is_disconnected() {
-                    PropagateError::SubscriptionClosed
+                    PropagateError {
+                        kind: ErrorKind::SubscriptionClosed,
+                        item: e.into_inner(),
+                    }
                 } else if e.is_full() {
-                    PropagateError::StreamOverflow
+                    PropagateError {
+                        kind: ErrorKind::StreamOverflow,
+                        item: e.into_inner(),
+                    }
                 } else {
-                    PropagateError::Unexpected
+                    PropagateError {
+                        kind: ErrorKind::Unexpected,
+                        item: e.into_inner(),
+                    }
                 }
             }),
         }
@@ -109,15 +137,18 @@ impl PeerHandles {
         }
     }
 
-    pub fn try_send_block(&mut self, header: Header) -> Result<(), PropagateError> {
+    pub fn try_send_block(&mut self, header: Header) -> Result<(), PropagateError<Header>> {
         self.blocks.try_send(header)
     }
 
-    pub fn try_send_message(&mut self, message: Message) -> Result<(), PropagateError> {
+    pub fn try_send_message(&mut self, message: Message) -> Result<(), PropagateError<Message>> {
         self.messages.try_send(message)
     }
 
-    pub fn try_send_gossip(&mut self, gossip: Gossip<p2p::Node>) -> Result<(), PropagateError> {
+    pub fn try_send_gossip(
+        &mut self,
+        gossip: Gossip<p2p::Node>,
+    ) -> Result<(), PropagateError<Gossip<p2p::Node>>> {
         self.gossip.try_send(gossip)
     }
 }
@@ -167,9 +198,9 @@ impl PropagationMap {
         handles.gossip.subscribe()
     }
 
-    fn propagate_with<F>(&self, nodes: Vec<p2p::Node>, f: F) -> Result<(), Vec<p2p::Node>>
+    fn propagate_with<T, F>(&self, nodes: Vec<p2p::Node>, f: F) -> Result<(), Vec<p2p::Node>>
     where
-        F: Fn(&mut PeerHandles) -> Result<(), PropagateError>,
+        F: Fn(&mut PeerHandles) -> Result<(), PropagateError<T>>,
     {
         let mut map = self.mutex.lock().unwrap();
         let unreached_nodes = nodes
@@ -180,7 +211,7 @@ impl PropagationMap {
                     match f(entry.get_mut()) {
                         Ok(()) => false,
                         Err(e) => {
-                            info!("propagation to peer {} failed: {:?}", id, e);
+                            info!("propagation to peer {} failed: {:?}", id, e.kind());
                             debug!("unsubscribing peer {}", id);
                             entry.remove_entry();
                             true
@@ -214,11 +245,29 @@ impl PropagationMap {
         self.propagate_with(nodes, |handles| handles.try_send_message(message.clone()))
     }
 
-    pub fn propagate_gossip(
+    pub fn propagate_gossip_to(
         &self,
-        nodes: Vec<p2p::Node>,
+        target: p2p::NodeId,
         gossip: Gossip<p2p::Node>,
-    ) -> Result<(), Vec<p2p::Node>> {
-        self.propagate_with(nodes, |handles| handles.try_send_gossip(gossip.clone()))
+    ) -> Result<(), Gossip<p2p::Node>> {
+        let mut map = self.mutex.lock().unwrap();
+        if let hash_map::Entry::Occupied(mut entry) = map.entry(target) {
+            let res = {
+                let handles = entry.get_mut();
+                handles.try_send_gossip(gossip)
+            };
+            res.map_err(|e| {
+                info!(
+                    "gossip propagation to peer {} failed: {:?}",
+                    target,
+                    e.kind()
+                );
+                debug!("unsubscribing peer {}", target);
+                entry.remove_entry();
+                e.into_item()
+            })
+        } else {
+            Err(gossip)
+        }
     }
 }
