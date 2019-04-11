@@ -19,9 +19,10 @@ http = "0.1.16"
 h2 = "0.1.11"
 prost = "0.5"
 tokio = "0.1"
-tower = { git = "https://github.com/tower-rs/tower" }
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
 tower-request-modifier = { git = "https://github.com/tower-rs/tower-http" }
+tower-service = "0.2"
+tower-util = { git = "https://github.com/tower-rs/tower" }
 
 [dependencies.tower-grpc]
 git = "https://github.com/tower-rs/tower-grpc"
