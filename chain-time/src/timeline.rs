@@ -1,9 +1,11 @@
 use std::time::{Duration, SystemTime};
 
 /// Represent a timeline with a specific start point rooted on earth time.
+#[derive(Debug, Clone)]
 pub struct Timeline(pub(crate) SystemTime);
 
 /// Represent an offset in time units in the timeline
+#[derive(Debug, Clone)]
 pub struct TimeOffset(pub(crate) Duration);
 
 impl From<SystemTime> for Timeline {

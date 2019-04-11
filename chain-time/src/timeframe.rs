@@ -5,7 +5,7 @@ use std::time::{Duration, SystemTime};
 ///
 /// The slots are not comparable to others slots made on a
 /// different time frame
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Slot(pub(crate) u64);
 
 impl From<Slot> for u64 {
@@ -23,9 +23,10 @@ pub struct SlotAndDuration {
 }
 
 /// Time frame which is a timeline that is configured to be split in discrete slots
+#[derive(Debug, Clone)]
 pub struct TimeFrame {
     timeline: Timeline,
-    slot_offset: Slot,
+    pub(crate) slot_offset: Slot,
     slot_duration: SlotDuration,
 }
 
@@ -52,7 +53,7 @@ impl TimeFrame {
     /// ```text
     ///
     /// 0        1        2        3        4        5                  
-    /// x--------x--------┳--------x--------x--------x  frame ticking at per_slot
+    /// x--------x--------x--------x--------x--------x  frame ticking at per_slot
     ///
     /// ^
     /// |
