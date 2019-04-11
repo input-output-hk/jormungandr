@@ -20,10 +20,11 @@ impl Value {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ValueError {
-    NegativeAmount,
-    Overflow,
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub ValueError
+        NegativeAmount = "Value cannot be negative",
+        Overflow = "Value overflowed its maximum value",
 }
 
 impl ops::Add for Value {

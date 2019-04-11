@@ -24,6 +24,7 @@ imhamt = { path = "../imhamt" }
 lazy_static = "1.3.0"
 strum = "0.15.0"
 strum_macros = "0.15.0"
+custom_error = "1.6"
 
 [dev-dependencies]
 quickcheck = "0.8"

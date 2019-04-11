@@ -1,6 +1,6 @@
 use super::transfer::*;
 use crate::key::Hash;
-use crate::value::Value;
+use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
@@ -37,6 +37,16 @@ pub struct Transaction<OutAddress, Extra> {
     pub inputs: Vec<Input>,
     pub outputs: Vec<Output<OutAddress>>,
     pub extra: Extra,
+}
+
+/// Amount of the balance in the transaction.
+pub enum Balance {
+    /// Balance is positive.
+    Positive(Value),
+    /// Balance is negative, such transaction can't be valid.
+    Negative(Value),
+    /// Balance is zero.
+    Zero,
 }
 
 impl<Extra: Readable> Transaction<Address, Extra> {
@@ -185,6 +195,27 @@ impl<A, Extra> Transaction<A, Extra> {
             inputs: self.inputs,
             outputs: self.outputs,
             extra: e2,
+        }
+    }
+
+    pub fn total_input(&self) -> Result<Value, ValueError> {
+        Value::sum(self.inputs.iter().map(|input| input.value))
+    }
+
+    pub fn total_output(&self) -> Result<Value, ValueError> {
+        Value::sum(self.outputs.iter().map(|output| output.value))
+    }
+
+    pub fn balance(&self, fee: Value) -> Result<Balance, ValueError> {
+        let inputs = self.total_input()?;
+        let outputs = self.total_output()?;
+        let z = (outputs + fee)?;
+        if inputs > z {
+            Ok(Balance::Positive((inputs - z)?))
+        } else if inputs < z {
+            Ok(Balance::Negative((z - inputs)?))
+        } else {
+            Ok(Balance::Zero)
         }
     }
 }

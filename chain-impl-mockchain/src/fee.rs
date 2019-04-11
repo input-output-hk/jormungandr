@@ -25,6 +25,12 @@ pub trait FeeAlgorithm {
     fn calculate_for<Extra>(&self, tx: &tx::Transaction<Address, Extra>) -> Option<Value>;
 }
 
+impl<'a, FA: FeeAlgorithm> FeeAlgorithm for &'a FA {
+    fn calculate_for<Extra>(&self, tx: &tx::Transaction<Address, Extra>) -> Option<Value> {
+        (*self).calculate_for(tx)
+    }
+}
+
 impl FeeAlgorithm for LinearFee {
     fn calculate_for<Extra>(&self, tx: &tx::Transaction<Address, Extra>) -> Option<Value> {
         let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
