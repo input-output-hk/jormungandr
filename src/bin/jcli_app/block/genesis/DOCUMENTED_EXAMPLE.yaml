@@ -20,6 +20,27 @@ blockchain_configuration:
   # * Genesis Praos consensus: genesis
   block0_consensus: bft
 
+  # Number of slots in each epoch
+  slots_per_epoch: 5
+
+  # The slot duration, in seconds, is the time between the creation
+  # of 2 blocks
+  slot_duration: 15
+
+  # The number of blocks (*10) per epoch
+  epoch_stability_depth: 10
+
+  # A list of Ed25519 Extended PublicKey that represents the
+  # BFT leaders encoded as bech32. The order in the list matters.
+  consensus_leader_ids:
+    - ed25519e_pk1hj8k4jyhsrva7ndynak25jagf3qcj4usnp54gnzvrejnwrufxpgqytzy6u
+
+  # Genesis praos parameter D
+  consensus_genesis_praos_param_d: 11.22
+
+  # Genesis praos parameter F
+  consensus_genesis_praos_param_f: 11.22
+
 
 
 # The Initial settings defines the settings than may change during
@@ -31,21 +52,7 @@ initial_setting:
 
   # This is the `d` parameter when running in BFT/genesis praos
   # compatibility mode
-  #
   bootstrap_key_slots_percentage: ~
-
-  # The slot duration, in seconds, is the time between the creation
-  # of 2 blocks
-  slot_duration: 15
-
-  # The number of blocks (*10) per epoch
-  epoch_stability_depth: 10
-
-  # A list of Ed25519 Extended PublicKey that represents the
-  # BFT leaders. The order in the list matters.
-  bft_leaders:
-    - ed25519e_pk1else5uqslegj6n5rxnrayz2x99cel6m2g492ac6tpv76kns0dwlqpjnh0l
-    - ed25519e_pk1xuqdxht6f0kkh0lf3ck3gfyvnpk33s09du92w6740mfmxl6hsfpsp8grmk
 
   # Allow the creation of accounts from the output of a transaction
   #
@@ -78,4 +85,6 @@ initial_certs:
 
 # the initial deposits present in the blockchain but utilising the
 # legacy cardano address format
-legacy_funds: ~
+legacy_funds:
+  - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
+    value: 123

@@ -7,15 +7,14 @@ pub struct BlockchainConfig {
     pub block0_date: i32,
     pub discrimination: String,
     pub block0_consensus: String,
+    pub slot_duration: i32,
+    pub epoch_stability_depth: i32,
+    pub consensus_leader_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InitialSetting {
     pub allow_account_creation: bool,
-    pub slot_duration: i32,
-    pub epoch_stability_depth: i32,
-    pub block_version: i32,
-    pub bft_leaders: Vec<String>,
     pub linear_fees: LinearFees,
 }
 
@@ -64,18 +63,9 @@ impl GenesisYaml {
                 block0_date: 1554185140,
                 discrimination: String::from("test"),
                 block0_consensus: String::from("bft"),
-            },
-            initial_setting: InitialSetting {
-                allow_account_creation: true,
                 slot_duration: 15,
                 epoch_stability_depth: 2600,
-                block_version: 1,
-                linear_fees: LinearFees {
-                    constant: 0,
-                    coefficient: 0,
-                    certificate: 0,
-                },
-                bft_leaders: vec![
+                consensus_leader_ids: vec![
                     String::from(
                         "ed25519e_pk1else5uqslegj6n5rxnrayz2x99cel6m2g492ac6tpv76kns0dwlqpjnh0l",
                     ),
@@ -83,6 +73,14 @@ impl GenesisYaml {
                         "ed25519e_pk1xuqdxht6f0kkh0lf3ck3gfyvnpk33s09du92w6740mfmxl6hsfpsp8grmk",
                     ),
                 ],
+            },
+            initial_setting: InitialSetting {
+                allow_account_creation: true,
+                linear_fees: LinearFees {
+                    constant: 0,
+                    coefficient: 0,
+                    certificate: 0,
+                },
             },
             initial_funds,
         }
