@@ -22,12 +22,13 @@ use crate::utils::{
 };
 
 use self::p2p_topology::{self as p2p, P2pTopology};
-use self::propagate::PropagationMap;
+use self::propagate::{PeerHandles, PropagationMap};
 
-use network_core::gossip::Node;
+use network_core::gossip::{Gossip, Node};
 
 use futures::prelude::*;
 use futures::stream;
+use tokio::timer::Interval;
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
@@ -158,76 +159,123 @@ pub fn run(
         )
     });
 
-    let propagate = handle_propagation(propagate_input, channels.clone(), global_state.clone());
+    let propagate = handle_propagation(propagate_input, global_state.clone(), channels.clone());
+
+    // TODO: get gossip propagation interval from configuration
+    tokio::spawn(
+        Interval::new_interval(Duration::from_secs(10))
+            .map_err(|e| {
+                error!("interval timer error: {:?}", e);
+            })
+            .for_each(move |_| {
+                send_gossip(global_state.clone(), channels.clone());
+                Ok(())
+            }),
+    );
 
     tokio::run(connections.join(propagate).join(listener).map(|_| ()));
 }
 
 fn handle_propagation(
     input: MessageQueue<NetworkPropagateMsg>,
-    channels: Channels,
     state: GlobalStateR,
+    channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
-    input
-        .for_each(move |msg| {
-            let channels = channels.clone();
-            let state = state.clone();
-            let nodes = state.topology.view().collect();
-            let res = match msg {
-                NetworkPropagateMsg::Block(ref header) => state
-                    .propagation_peers
-                    .propagate_block(nodes, header.clone()),
-                NetworkPropagateMsg::Message(ref message) => state
-                    .propagation_peers
-                    .propagate_message(nodes, message.clone()),
-            };
-            // If any nodes selected for propagation are not in the
-            // active subscriptions map, connect to them and deliver
-            // the item.
-            res.map_err(move |unreached_nodes| {
-                for (node_id, addr) in unreached_nodes
-                    .iter()
-                    .filter_map(|node| node.address().map(|addr| (node.id(), addr)))
-                {
-                    let peer = Peer::new(addr, Protocol::Grpc);
-                    let conn_state = ConnectionState::new(state.clone(), &peer);
-                    let msg = msg.clone();
-                    let state = state.clone();
-                    let cf = grpc::connect(addr, conn_state, channels.clone()).map(
-                        move |(connected_node_id, mut handles)| {
-                            if connected_node_id == node_id {
-                                let res = match msg {
-                                    NetworkPropagateMsg::Block(header) => {
-                                        handles.try_send_block(header)
-                                    }
-                                    NetworkPropagateMsg::Message(message) => {
-                                        handles.try_send_message(message)
-                                    }
-                                };
-                                match res {
-                                    Ok(()) => (),
-                                    Err(e) => {
-                                        info!("propagation to peer {} failed just after connection: {:?}", connected_node_id, e);
-                                        return;
-                                    }
-                                }
-                            } else {
-                                info!(
-                                    "peer at {} responded with different node id: {}",
-                                    addr, connected_node_id
-                                );
-                            };
-
-                            state
-                                .propagation_peers
-                                .insert_peer(connected_node_id, handles);
-                        },
-                    );
-                    tokio::spawn(cf);
-                }
-            })
+    input.for_each(move |msg| {
+        let channels = channels.clone();
+        let state = state.clone();
+        let nodes = state.topology.view().collect();
+        let res = match msg {
+            NetworkPropagateMsg::Block(ref header) => state
+                .propagation_peers
+                .propagate_block(nodes, header.clone()),
+            NetworkPropagateMsg::Message(ref message) => state
+                .propagation_peers
+                .propagate_message(nodes, message.clone()),
+        };
+        // If any nodes selected for propagation are not in the
+        // active subscriptions map, connect to them and deliver
+        // the item.
+        res.map_err(|unreached_nodes| {
+            for node in unreached_nodes {
+                let msg = msg.clone();
+                connect_and_propagate_with(node, state.clone(), channels.clone(), |handles| {
+                    match msg {
+                        NetworkPropagateMsg::Block(header) => {
+                            handles.try_send_block(header).map_err(|e| e.kind())
+                        }
+                        NetworkPropagateMsg::Message(message) => {
+                            handles.try_send_message(message).map_err(|e| e.kind())
+                        }
+                    }
+                });
+            }
         })
-        .map_err(|_| {})
+    })
+}
+
+fn send_gossip(state: GlobalStateR, channels: Channels) {
+    for node in state.topology.view() {
+        let gossip = Gossip::from_nodes(state.topology.select_gossips(&node));
+        debug!("sending gossip to node {}", node.id());
+        let res = state
+            .propagation_peers
+            .propagate_gossip_to(node.id(), gossip);
+        if let Err(gossip) = res {
+            connect_and_propagate_with(node, state.clone(), channels.clone(), |handles| {
+                handles.try_send_gossip(gossip).map_err(|e| e.kind())
+            });
+        }
+    }
+}
+
+fn connect_and_propagate_with<F>(
+    node: p2p::Node,
+    state: GlobalStateR,
+    channels: Channels,
+    once_connected: F,
+) where
+    F: FnOnce(&mut PeerHandles) -> Result<(), propagate::ErrorKind> + Send + 'static,
+{
+    let addr = match node.address() {
+        Some(addr) => addr,
+        None => {
+            info!("ignoring P2P node without an IP address: {:?}", node);
+            return;
+        }
+    };
+    let node_id = node.id();
+    debug!("connecting to node {} at {}", node_id, addr);
+    let peer = Peer::new(addr, Protocol::Grpc);
+    let conn_state = ConnectionState::new(state.clone(), &peer);
+    let state = state.clone();
+    let cf = grpc::connect(addr, conn_state, channels.clone()).map(
+        move |(connected_node_id, mut handles)| {
+            if connected_node_id == node_id {
+                let res = once_connected(&mut handles);
+                match res {
+                    Ok(()) => (),
+                    Err(e) => {
+                        info!(
+                            "propagation to peer {} failed just after connection: {:?}",
+                            connected_node_id, e
+                        );
+                        return;
+                    }
+                }
+            } else {
+                info!(
+                    "peer at {} responded with different node id: {}",
+                    addr, connected_node_id
+                );
+            };
+
+            state
+                .propagation_peers
+                .insert_peer(connected_node_id, handles);
+        },
+    );
+    tokio::spawn(cf);
 }
 
 pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
