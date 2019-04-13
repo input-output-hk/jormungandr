@@ -47,7 +47,7 @@ pub struct CommonFees {
 pub struct CommonTransaction {
     /// place where the transaction is going to be save during its staging phase
     /// If a file is given, the transaction will be read from this file and
-    /// modification will be read from this same file.
+    /// modification will be written into this same file.
     /// If no file is given, the transaction will be read from the standard
     /// input and will be rendered in the standard output
     #[structopt(long = "staging", alias = "transaction")]
