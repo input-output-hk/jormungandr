@@ -54,7 +54,7 @@ pub struct Info {
     ///
     /// available variables: txid, index and value.
     ///
-    #[structopt(alias = "utxo", default_value = " - {txid}:{index} {value}")]
+    #[structopt(alias = "utxo", default_value = " - {txid}:{index} {value}\n")]
     pub format_utxo_input: String,
 
     /// formatting for the Account inputs of the transaction. This format
@@ -62,14 +62,14 @@ pub struct Info {
     ///
     /// available variables: account and value.
     ///
-    #[structopt(alias = "account", default_value = " - {account} {value}")]
+    #[structopt(alias = "account", default_value = " - {account} {value}\n")]
     pub format_account_input: String,
 
     /// Display the outputs of the transaction, this function will be called
     /// for every outputs of the transaction
     ///
     /// available variables: address and value.
-    #[structopt(alias = "output", default_value = " + {address} {value}")]
+    #[structopt(alias = "output", default_value = " + {address} {value}\n")]
     pub format_output: String,
 }
 
@@ -140,7 +140,7 @@ impl Info {
         );
         vars.insert("value".to_owned(), output.value.0.to_string());
 
-        let formatted = strfmt(&self.format, &vars)?;
+        let formatted = strfmt(&self.format_output, &vars)?;
         write!(writer, "{}", formatted)?;
         Ok(())
     }
@@ -148,20 +148,21 @@ impl Info {
     fn display_input<W: Write>(&self, mut writer: W, input: InputEnum) -> Result<(), InfoError> {
         let mut vars = HashMap::new();
 
-        match input {
+        let formatted = match input {
             InputEnum::UtxoInput(utxo_ptr) => {
                 vars.insert("txid".to_owned(), utxo_ptr.transaction_id.to_string());
                 vars.insert("index".to_owned(), utxo_ptr.output_index.to_string());
                 vars.insert("value".to_owned(), utxo_ptr.value.0.to_string());
+                strfmt(&self.format_utxo_input, &vars)?
             }
             InputEnum::AccountInput(account, value) => {
                 let account: chain_crypto::PublicKey<_> = account.into();
                 vars.insert("account".to_owned(), account.to_string());
                 vars.insert("value".to_owned(), value.0.to_string());
+                strfmt(&self.format_account_input, &vars)?
             }
-        }
+        };
 
-        let formatted = strfmt(&self.format, &vars)?;
         write!(writer, "{}", formatted)?;
         Ok(())
     }
