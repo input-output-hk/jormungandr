@@ -47,7 +47,7 @@ pub enum OutputPolicy {
 /// Transaction builder is an object to construct
 /// a transaction with iterative steps (inputs, outputs)
 pub struct TransactionBuilder<Address, Extra> {
-    tx: tx::Transaction<Address, Extra>,
+    pub tx: tx::Transaction<Address, Extra>,
 }
 
 impl TransactionBuilder<Address, tx::NoExtra> {
