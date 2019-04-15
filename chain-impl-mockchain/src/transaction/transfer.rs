@@ -14,9 +14,9 @@ const INPUT_PTR_SIZE: usize = 32;
 /// This uniquely refer to a specific source of value.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Input {
-    index_or_account: u8,
+    pub index_or_account: u8,
     pub value: Value,
-    input_ptr: [u8; INPUT_PTR_SIZE],
+    pub input_ptr: [u8; INPUT_PTR_SIZE],
 }
 
 pub enum InputType {

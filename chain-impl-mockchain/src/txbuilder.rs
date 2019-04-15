@@ -47,7 +47,7 @@ pub enum OutputPolicy {
 /// Transaction builder is an object to construct
 /// a transaction with iterative steps (inputs, outputs)
 pub struct TransactionBuilder<Address, Extra> {
-    tx: tx::Transaction<Address, Extra>,
+    pub tx: tx::Transaction<Address, Extra>,
 }
 
 impl TransactionBuilder<Address, tx::NoExtra> {
@@ -200,11 +200,10 @@ pub enum GeneratedTransaction {
     Type2(tx::AuthenticatedTransaction<Address, cert::Certificate>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BuildError {
-    WitnessOutOfBound(usize, usize),
-    WitnessMismatch(usize),
-    MissingWitnessAt(usize),
+custom_error! {pub BuildError
+    WitnessOutOfBound { index: usize, max: usize } = "Witness index {index} out of bound (max {max})",
+    WitnessMismatch { index: usize } = "Invalid witness type at index {index}",
+    MissingWitnessAt { index: usize } = "Missing a witness for input at index {index}",
 }
 
 fn set_witness<Address, Extra>(
@@ -214,14 +213,17 @@ fn set_witness<Address, Extra>(
     witness: tx::Witness,
 ) -> Result<(), BuildError> {
     if index >= witnesses.len() {
-        return Err(BuildError::WitnessOutOfBound(index, witnesses.len()));
+        return Err(BuildError::WitnessOutOfBound {
+            index,
+            max: witnesses.len(),
+        });
     }
 
     match (transaction.inputs[index].get_type(), &witness) {
         (tx::InputType::Utxo, tx::Witness::OldUtxo(_, _)) => (),
         (tx::InputType::Utxo, tx::Witness::Utxo(_)) => (),
         (tx::InputType::Account, tx::Witness::Account(_)) => (),
-        (_, _) => return Err(BuildError::WitnessMismatch(index)),
+        (_, _) => return Err(BuildError::WitnessMismatch { index }),
     };
 
     witnesses[index] = Some(witness);
@@ -232,7 +234,7 @@ fn get_full_witnesses(witnesses: Vec<Option<tx::Witness>>) -> Result<Vec<tx::Wit
     let mut v = Vec::new();
     for (i, w) in witnesses.iter().enumerate() {
         match w {
-            None => return Err(BuildError::MissingWitnessAt(i)),
+            None => return Err(BuildError::MissingWitnessAt { index: i }),
             Some(w) => v.push(w.clone()),
         }
     }
