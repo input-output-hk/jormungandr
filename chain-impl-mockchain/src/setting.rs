@@ -13,6 +13,8 @@ use std::sync::Arc;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
+use std::iter;
+
 #[derive(Clone, Debug)]
 pub struct UpdateState {
     // Note: we use a BTreeMap to ensure that proposals are processed
@@ -309,11 +311,10 @@ pub struct UpdateProposalWithProposer {
     pub proposer_id: UpdateVoterId,
 }
 
-impl HasPublicKeys for UpdateProposalWithProposer {
-    fn public_keys<'a>(
-        &'a self,
-    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
-        Box::new(std::iter::once(&self.proposer_id.0))
+impl<'a> HasPublicKeys<'a> for &'a UpdateProposalWithProposer {
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+    fn public_keys(self) -> Self::PublicKeys {
+        std::iter::once(&self.proposer_id.0)
     }
 }
 
@@ -390,11 +391,10 @@ pub struct UpdateVote {
     pub voter_id: UpdateVoterId,
 }
 
-impl HasPublicKeys for UpdateVote {
-    fn public_keys<'a>(
-        &'a self,
-    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
-        Box::new(std::iter::once(&self.voter_id.0))
+impl<'a> HasPublicKeys<'a> for &'a UpdateVote {
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+    fn public_keys(self) -> Self::PublicKeys {
+        std::iter::once(&self.voter_id.0)
     }
 }
 
