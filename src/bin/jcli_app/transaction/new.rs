@@ -1,7 +1,9 @@
-use chain_impl_mockchain::transaction::{NoExtra, Transaction};
 use structopt::StructOpt;
 
-use jcli_app::transaction::common;
+use jcli_app::transaction::{
+    common,
+    staging::{Staging, StagingError},
+};
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -11,15 +13,12 @@ pub struct New {
 }
 
 custom_error! {pub NewError
-    WriteTransaction { source: common::CommonError } = "cannot create new transaction"
+    WriteTransaction { source: StagingError } = "cannot create new transaction"
 }
 
 impl New {
     pub fn exec(self) -> Result<(), NewError> {
-        Ok(self.common.write_transaction(&Transaction {
-            inputs: Vec::new(),
-            outputs: Vec::new(),
-            extra: NoExtra,
-        })?)
+        let staging = Staging::new();
+        Ok(self.common.store(&staging)?)
     }
 }

@@ -5,12 +5,13 @@ use chain_impl_mockchain::{
 };
 use structopt::StructOpt;
 
-use jcli_app::transaction::common;
+use jcli_app::transaction::{common, staging::StagingError};
 use jormungandr_utils::structopt;
 
 custom_error! {pub AddAccountError
-    ReadTransaction { error: common::CommonError } = "cannot read the transaction: {error}",
-    WriteTransaction { error: common::CommonError } = "cannot save changes of the transaction: {error}",
+    ReadTransaction { error: StagingError } = "cannot read the transaction: {error}",
+    WriteTransaction { error: StagingError } = "cannot save changes of the transaction: {error}",
+    AddInput { source: StagingError } = "cannot add account",
     InvalidAddressSingle = "Invalid input account, this is a UTxO address.",
     InvalidAddressGroup = "Invalid input account, this is a UTxO address with delegation.",
 }
@@ -34,7 +35,7 @@ impl AddAccount {
     pub fn exec(self) -> Result<(), AddAccountError> {
         let mut transaction = self
             .common
-            .load_transaction()
+            .load()
             .map_err(|error| AddAccountError::ReadTransaction { error })?;
 
         let account_identifier = match self.account.kind() {
@@ -43,16 +44,14 @@ impl AddAccount {
             Kind::Group(_, _) => return Err(AddAccountError::InvalidAddressGroup),
         };
 
-        transaction
-            .inputs
-            .push(Input::from_enum(InputEnum::AccountInput(
-                account_identifier,
-                self.value,
-            )));
+        transaction.add_input(Input::from_enum(InputEnum::AccountInput(
+            account_identifier,
+            self.value,
+        )))?;
 
         Ok(self
             .common
-            .write_transaction(&transaction)
+            .store(&transaction)
             .map_err(|error| AddAccountError::WriteTransaction { error })?)
     }
 }

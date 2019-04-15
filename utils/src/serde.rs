@@ -3,14 +3,15 @@
 //!
 
 use serde::{
-    de::{Deserialize, Deserializer, Error as DeserializerError, Visitor},
-    ser::{Error as SerializerError, Serialize, Serializer},
+    de::{Deserializer, Error as DeserializerError, Visitor},
+    ser::Serializer,
 };
 use std::fmt;
 
 pub mod value {
     use super::*;
     use chain_impl_mockchain::value::Value;
+    use serde::{de::Deserialize as _, ser::Serialize as _};
 
     pub fn serialize<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -114,6 +115,48 @@ pub mod address {
     }
 }
 
+pub mod witness {
+    use super::*;
+    use chain_core::{
+        mempack::{ReadBuf, Readable as _},
+        property::Serialize as _,
+    };
+    use chain_impl_mockchain::transaction::Witness;
+    use serde::{de::Deserialize as _, ser::Error as _};
+
+    pub fn serialize<S>(witness: &Witness, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let bytes = witness
+            .serialize_as_vec()
+            .map_err(|err| S::Error::custom(err))?;
+
+        if serializer.is_human_readable() {
+            use bech32::{Bech32, ToBase32 as _};
+            let bech32 = Bech32::new("witness".to_owned(), bytes.to_base32())
+                .map_err(|err| S::Error::custom(err))?;
+            serializer.serialize_str(&bech32.to_string())
+        } else {
+            serializer.serialize_bytes(&bytes)
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Witness, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = if deserializer.is_human_readable() {
+            deserializer.deserialize_str(BytesInBech32Visitor::new("witness"))?
+        } else {
+            Vec::deserialize(deserializer)?
+        };
+
+        let mut reader = ReadBuf::from(&bytes);
+        Witness::read(&mut reader).map_err(D::Error::custom)
+    }
+}
+
 pub mod crypto {
     use super::*;
     use chain_crypto::{bech32::Bech32 as _, AsymmetricKey, Blake2b256, PublicKey, SecretKey};
@@ -188,44 +231,6 @@ pub mod crypto {
             PublicKeyVisitor {
                 _marker: std::marker::PhantomData,
             }
-        }
-    }
-
-    pub struct BytesInBech32Visitor {
-        hrp: &'static str,
-    }
-
-    impl BytesInBech32Visitor {
-        pub fn new(hrp: &'static str) -> Self {
-            BytesInBech32Visitor { hrp }
-        }
-    }
-
-    impl<'de> Visitor<'de> for BytesInBech32Visitor {
-        type Value = Vec<u8>;
-
-        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            write!(fmt, "Expecting bech32 data with HRP {}", self.hrp)
-        }
-
-        fn visit_str<'a, E>(self, bech32_str: &'a str) -> Result<Self::Value, E>
-        where
-            E: DeserializerError,
-        {
-            use bech32::{Bech32, FromBase32};
-            let bech32: Bech32 = bech32_str
-                .parse()
-                .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
-            if bech32.hrp() != self.hrp {
-                return Err(E::custom(format!(
-                    "Invalid prefix: expected {} but was {}",
-                    self.hrp,
-                    bech32.hrp()
-                )));
-            }
-            let bytes = Vec::<u8>::from_base32(bech32.data())
-                .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
-            Ok(bytes)
         }
     }
 
@@ -428,6 +433,44 @@ where
     }
 }
 
+pub struct BytesInBech32Visitor {
+    hrp: &'static str,
+}
+
+impl BytesInBech32Visitor {
+    pub fn new(hrp: &'static str) -> Self {
+        BytesInBech32Visitor { hrp }
+    }
+}
+
+impl<'de> Visitor<'de> for BytesInBech32Visitor {
+    type Value = Vec<u8>;
+
+    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "Expecting bech32 data with HRP {}", self.hrp)
+    }
+
+    fn visit_str<'a, E>(self, bech32_str: &'a str) -> Result<Self::Value, E>
+    where
+        E: DeserializerError,
+    {
+        use bech32::{Bech32, FromBase32};
+        let bech32: Bech32 = bech32_str
+            .parse()
+            .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
+        if bech32.hrp() != self.hrp {
+            return Err(E::custom(format!(
+                "Invalid prefix: expected {} but was {}",
+                self.hrp,
+                bech32.hrp()
+            )));
+        }
+        let bytes = Vec::<u8>::from_base32(bech32.data())
+            .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
+        Ok(bytes)
+    }
+}
+
 pub mod certificate {
 
     use super::*;
@@ -438,6 +481,7 @@ pub mod certificate {
         S: Serializer,
     {
         use crate::certificate as cert;
+        use serde::ser::Error as _;
         let bech32 = cert::serialize_to_bech32(cert).map_err(|err| S::Error::custom(err))?;
         serializer.serialize_str(&bech32.to_string())
     }
@@ -448,7 +492,7 @@ pub mod certificate {
     {
         use chain_core::mempack::{ReadBuf, Readable};
         deserializer
-            .deserialize_str(crypto::BytesInBech32Visitor::new("cert"))
+            .deserialize_str(BytesInBech32Visitor::new("cert"))
             .and_then(|bytes| {
                 let mut buf = ReadBuf::from(&bytes);
                 Certificate::read(&mut buf).map_err(|err| D::Error::custom(err))
