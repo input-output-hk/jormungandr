@@ -14,8 +14,13 @@ custom_error! {pub Error
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Sign {
+    /// path to the file with the signing key
     pub signing_key: PathBuf,
+    /// get the certificate to sign from the given file. If no file
+    /// provided, it will be read from the standard input
     pub input: Option<PathBuf>,
+    /// write the signed certificate into the given file. If no file
+    /// provided it will be written into the standard output
     pub output: Option<PathBuf>,
 }
 
