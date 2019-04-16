@@ -1,12 +1,15 @@
 use chain_addr::{Address, AddressReadable};
 use chain_impl_mockchain::{
-    transaction::{
-        AuthenticatedTransaction, Balance, Input, InputEnum, InputType, NoExtra, Output,
-        Transaction, TransactionId, Witness,
-    },
-    value::{Value, ValueError},
+    transaction::{Balance, Input, InputEnum, InputType, Output},
+    value::ValueError,
 };
-use jcli_app::{transaction::common, utils::io};
+use jcli_app::{
+    transaction::{
+        common,
+        staging::{Staging, StagingError},
+    },
+    utils::io,
+};
 use std::{collections::HashMap, io::Write, path::PathBuf};
 use strfmt::{strfmt, FmtError};
 use structopt::StructOpt;
@@ -14,7 +17,7 @@ use structopt::StructOpt;
 custom_error! {pub InfoError
     Io { source: std::io::Error } = "I/O Error",
     FormatError { source: FmtError } = "Invalid format",
-    ReadTransaction { source: common::CommonError } = "cannot read the transaction",
+    ReadTransaction { source: StagingError } = "cannot read the staging transaction",
     ValueError { source: ValueError } = "Invalid values",
 }
 
@@ -34,11 +37,11 @@ pub struct Info {
     /// user "{name}" to display the variable with the named `name'.
     ///
     /// available variables: id, num_inputs, num_outputs, num_witnesses, fee
-    /// balance, input, output
+    /// balance, input, output and status
     ///
     #[structopt(
         long = "format",
-        default_value = "Transaction `{id}'\n  Input:   {input}\n  Output:  {output}\n  Fees:    {fee}\n  Balance: {balance}\n"
+        default_value = "Transaction `{id}' ({status})\n  Input:   {input}\n  Output:  {output}\n  Fees:    {fee}\n  Balance: {balance}\n"
     )]
     pub format: String,
 
@@ -75,24 +78,15 @@ pub struct Info {
 
 impl Info {
     pub fn exec(self) -> Result<(), InfoError> {
-        let transaction = self
-            .common
-            .load_transaction()
-            .map(OneOrTheOther::Tx)
-            .or_else(|_| {
-                self.common
-                    .load_auth_transaction()
-                    .map(OneOrTheOther::TxAux)
-            })
-            .or_else(|_| self.common.load_message().map(OneOrTheOther::TxAux))?;
+        let transaction = self.common.load()?;
 
         let mut output = io::open_file_write(&self.output);
 
         self.display_info(&mut output, &transaction)?;
-        self.display_inputs(&mut output, transaction.inputs())?;
+        self.display_inputs(&mut output, &transaction.inputs())?;
 
         if !self.only_accounts || !self.only_utxos {
-            self.display_outputs(&mut output, transaction.outputs())?;
+            self.display_outputs(&mut output, &transaction.outputs())?;
         }
         Ok(())
     }
@@ -170,30 +164,28 @@ impl Info {
     fn display_info<W: Write>(
         &self,
         mut writer: W,
-        transaction: &OneOrTheOther,
+        transaction: &Staging,
     ) -> Result<(), InfoError> {
         let mut vars = HashMap::new();
 
         let fee_algo = self.fee.linear_fee();
         let builder = transaction.builder();
 
-        vars.insert("id".to_owned(), transaction.id().to_string());
-        vars.insert(
-            "num_inputs".to_owned(),
-            transaction.inputs().len().to_string(),
-        );
+        vars.insert("status".to_owned(), transaction.kind.to_string());
+        vars.insert("id".to_owned(), builder.tx.hash().to_string());
+        vars.insert("num_inputs".to_owned(), builder.tx.inputs.len().to_string());
         vars.insert(
             "num_outputs".to_owned(),
-            transaction.outputs().len().to_string(),
+            builder.tx.outputs.len().to_string(),
         );
         vars.insert(
             "num_witnesses".to_owned(),
-            transaction.witnesses().len().to_string(),
+            transaction.witnesses.len().to_string(),
         );
-        vars.insert("input".to_owned(), transaction.total_input()?.0.to_string());
+        vars.insert("input".to_owned(), builder.tx.total_input()?.0.to_string());
         vars.insert(
             "output".to_owned(),
-            transaction.total_output()?.0.to_string(),
+            builder.tx.total_output()?.0.to_string(),
         );
         vars.insert(
             "fee".to_owned(),
@@ -212,45 +204,5 @@ impl Info {
 
         write!(writer, "{}", formatted)?;
         Ok(())
-    }
-}
-
-enum OneOrTheOther {
-    Tx(Transaction<Address, NoExtra>),
-    TxAux(AuthenticatedTransaction<Address, NoExtra>),
-}
-
-use chain_impl_mockchain::txbuilder::TransactionBuilder;
-
-impl OneOrTheOther {
-    fn builder(&self) -> TransactionBuilder<Address, NoExtra> {
-        self.transaction().clone().into()
-    }
-    fn transaction(&self) -> &Transaction<Address, NoExtra> {
-        match self {
-            OneOrTheOther::Tx(tx) => tx,
-            OneOrTheOther::TxAux(txaux) => &txaux.transaction,
-        }
-    }
-    fn id(&self) -> TransactionId {
-        self.transaction().hash()
-    }
-    fn inputs(&self) -> &[Input] {
-        &self.transaction().inputs
-    }
-    fn outputs(&self) -> &[Output<Address>] {
-        &self.transaction().outputs
-    }
-    fn total_input(&self) -> Result<Value, InfoError> {
-        Ok(self.transaction().total_input()?)
-    }
-    fn total_output(&self) -> Result<Value, InfoError> {
-        Ok(self.transaction().total_output()?)
-    }
-    fn witnesses(&self) -> &[Witness] {
-        match self {
-            OneOrTheOther::Tx(_) => &[],
-            OneOrTheOther::TxAux(txaux) => &txaux.witnesses,
-        }
     }
 }

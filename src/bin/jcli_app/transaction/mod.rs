@@ -5,10 +5,13 @@ mod add_witness;
 mod common;
 mod finalize;
 mod info;
-mod lock;
 mod mk_witness;
 mod new;
+mod seal;
+mod staging;
 
+use cardano::util::hex;
+use chain_core::property::Serialize as _;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -27,9 +30,9 @@ pub enum Transaction {
     /// add output to the finalized transaction
     AddWitness(add_witness::AddWitness),
     /// Lock a transaction and start adding witnesses
-    Lock(lock::Lock),
-    /// Finalize the transaction
     Finalize(finalize::Finalize),
+    /// Finalize the transaction
+    Seal(seal::Seal),
     /// get the Transaction ID from the given transaction
     /// (if the transaction is edited, the returned value will change)
     Id(common::CommonTransaction),
@@ -37,18 +40,20 @@ pub enum Transaction {
     Info(info::Info),
     /// create witnesses
     MakeWitness(mk_witness::MkWitness),
+    /// get the message format out of a sealed transaction
+    ToMessage(common::CommonTransaction),
 }
 
 custom_error! {pub TransactionError
     NewError { source: new::NewError } = "Cannot create new transaction",
-    AddInputError { source: add_input::AddInputError } = "Cannot add input to the transaction",
+    AddInputError { error: add_input::AddInputError } = "{error}",
     AddAccountError { source: add_account::AddAccountError } = "Cannot add input account to the transaction",
     AddOutputError { source: add_output::AddOutputError } = "Cannot add output to the transaction",
     AddWitnessError { source: add_witness::AddWitnessError } = "Cannot add witness to the transaction",
     InfoError { source: info::InfoError } = "{source}",
     TransactionError { source: common::CommonError } = "Invalid transaction",
-    LockError { source: lock::LockError } = "cannot lock transaction",
     FinalizeError { source: finalize::FinalizeError } = "cannot finalize transaction",
+    SealError { source: seal::SealError } = "cannot seal transaction",
     MakeWitness { source: mk_witness::MkWitnessError } = "Cannot make witness",
 }
 
@@ -60,11 +65,12 @@ impl Transaction {
             Transaction::AddAccount(add_account) => add_account.exec()?,
             Transaction::AddOutput(add_output) => add_output.exec()?,
             Transaction::AddWitness(add_witness) => add_witness.exec()?,
-            Transaction::Lock(lock) => lock.exec()?,
             Transaction::Finalize(finalize) => finalize.exec()?,
+            Transaction::Seal(seal) => seal.exec()?,
             Transaction::Id(common) => display_id(common)?,
             Transaction::Info(info) => info.exec()?,
             Transaction::MakeWitness(mk_witness) => mk_witness.exec()?,
+            Transaction::ToMessage(common) => display_message(common)?,
         }
 
         Ok(())
@@ -72,16 +78,17 @@ impl Transaction {
 }
 
 fn display_id(common: common::CommonTransaction) -> Result<(), TransactionError> {
-    let id = common
-        .load_transaction()
-        .map(|tx| tx.hash())
-        .or_else(|_| {
-            common
-                .load_auth_transaction()
-                .map(|txaux| txaux.transaction.hash())
-        })
-        .or_else(|_| common.load_message().map(|txaux| txaux.transaction.hash()))?;
+    let id = common.load()?.transaction().hash();
 
     println!("{}", id);
+    Ok(())
+}
+
+fn display_message(common: common::CommonTransaction) -> Result<(), TransactionError> {
+    let message = common.load()?.message()?;
+
+    let bytes: Vec<u8> = message.serialize_as_vec().unwrap();
+
+    println!("{}", hex::encode(&bytes));
     Ok(())
 }

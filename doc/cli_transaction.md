@@ -16,14 +16,15 @@ There is a couple of commands that can be used to:
     - `add-input`
     - `add-account`
     - `add-output`
-2. `lock` the transaction for signing:
+2. `finalize` the transaction for signing:
 3. create witnesses and add the witnesses:
     - `make-witness`
     - `add-witness`
-4. `finalize` the transaction, ready to send to the blockchain
+4. `seal` the transaction, ready to send to the blockchain
 
 There are also functions to help decode and display the
 content information of a transaction:
 
 * `info`
 * `id` to get the **Transaction ID** of the transaction
+* `to-message` to get the hexadecimal encoded message, ready to send with `cli rest message`

@@ -2,14 +2,11 @@ use chain_impl_mockchain::{
     transaction::{Input, InputEnum, TransactionId, TransactionIndex, UtxoPointer},
     value::Value,
 };
-use jcli_app::transaction::common;
+use jcli_app::transaction::{common, staging::StagingError};
 use jormungandr_utils::structopt;
 use structopt::StructOpt;
 
-custom_error! {pub AddInputError
-    ReadTransaction { error: common::CommonError } = "cannot read the transaction: {error}",
-    WriteTransaction { error: common::CommonError } = "cannot save changes of the transaction: {error}",
-}
+pub type AddInputError = StagingError;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -32,22 +29,14 @@ pub struct AddInput {
 
 impl AddInput {
     pub fn exec(self) -> Result<(), AddInputError> {
-        let mut transaction = self
-            .common
-            .load_transaction()
-            .map_err(|error| AddInputError::ReadTransaction { error })?;
+        let mut transaction = self.common.load()?;
 
-        transaction
-            .inputs
-            .push(Input::from_enum(InputEnum::UtxoInput(UtxoPointer {
-                transaction_id: self.transaction_id,
-                output_index: self.index,
-                value: self.value,
-            })));
+        transaction.add_input(Input::from_enum(InputEnum::UtxoInput(UtxoPointer {
+            transaction_id: self.transaction_id,
+            output_index: self.index,
+            value: self.value,
+        })))?;
 
-        Ok(self
-            .common
-            .write_transaction(&transaction)
-            .map_err(|error| AddInputError::WriteTransaction { error })?)
+        self.common.store(&transaction)
     }
 }

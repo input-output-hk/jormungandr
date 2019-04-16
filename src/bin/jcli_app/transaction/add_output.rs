@@ -1,13 +1,10 @@
 use chain_addr::Address;
 use chain_impl_mockchain::{transaction::Output, value::Value};
-use jcli_app::transaction::common;
+use jcli_app::transaction::{common, staging::StagingError};
 use jormungandr_utils::structopt;
 use structopt::StructOpt;
 
-custom_error! {pub AddOutputError
-    ReadTransaction { error: common::CommonError } = "cannot read the transaction: {error}",
-    WriteTransaction { error: common::CommonError } = "cannot save changes of the transaction: {error}",
-}
+pub type AddOutputError = StagingError;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -26,19 +23,13 @@ pub struct AddOutput {
 
 impl AddOutput {
     pub fn exec(self) -> Result<(), AddOutputError> {
-        let mut transaction = self
-            .common
-            .load_transaction()
-            .map_err(|error| AddOutputError::ReadTransaction { error })?;
+        let mut transaction = self.common.load()?;
 
-        transaction.outputs.push(Output {
+        transaction.add_output(Output {
             address: self.address,
             value: self.value,
-        });
+        })?;
 
-        Ok(self
-            .common
-            .write_transaction(&transaction)
-            .map_err(|error| AddOutputError::WriteTransaction { error })?)
+        self.common.store(&transaction)
     }
 }
