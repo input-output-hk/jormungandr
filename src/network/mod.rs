@@ -162,18 +162,16 @@ pub fn run(
     let propagate = handle_propagation(propagate_input, global_state.clone(), channels.clone());
 
     // TODO: get gossip propagation interval from configuration
-    tokio::spawn(
-        Interval::new_interval(Duration::from_secs(10))
-            .map_err(|e| {
-                error!("interval timer error: {:?}", e);
-            })
-            .for_each(move |_| {
-                send_gossip(global_state.clone(), channels.clone());
-                Ok(())
-            }),
-    );
+    let gossip = Interval::new_interval(Duration::from_secs(10))
+        .map_err(|e| {
+            error!("interval timer error: {:?}", e);
+        })
+        .for_each(move |_| {
+            send_gossip(global_state.clone(), channels.clone());
+            Ok(())
+        });
 
-    tokio::run(connections.join(propagate).join(listener).map(|_| ()));
+    tokio::run(listener.join4(connections, propagate, gossip).map(|_| ()));
 }
 
 fn handle_propagation(
