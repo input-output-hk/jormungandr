@@ -27,6 +27,18 @@ pub enum JCli {
     Debug(debug::Debug),
     /// Certificate generation tool
     Certificate(certificate::Certificate),
+    /// Auto completion
+    AutoCompletion(AutoCompletion),
+}
+
+#[derive(StructOpt)]
+#[structopt(rename_all = "kebab-case")]
+pub struct AutoCompletion {
+    /// set the type shell for the auto completion output (bash, zsh...)
+    shell: structopt::clap::Shell,
+
+    /// path to the directory to write the generated auto completion files
+    output: std::path::PathBuf,
 }
 
 impl JCli {
@@ -46,6 +58,10 @@ impl JCli {
                 if let Err(error) = certificate.exec() {
                     report_error(error)
                 }
+            }
+            JCli::AutoCompletion(auto_completion) => {
+                let mut jcli = JCli::clap();
+                jcli.gen_completions("jcli", auto_completion.shell, auto_completion.output);
             }
         }
     }
