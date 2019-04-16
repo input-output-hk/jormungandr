@@ -30,11 +30,11 @@ pub enum Certificate {
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum NewArgs {
-    /// build a stake poole registration certificate
+    /// build a stake pool registration certificate
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
-    /// build a stake poole registration certificate
+    /// build a stake pool registration certificate
     StakeKeyRegistration(new_stake_key_registration::StakeKeyRegistration),
-    /// build a stake poole registration certificate
+    /// build a stake pool registration certificate
     StakeDelegation(new_stake_delegation::StakeDelegation),
 }
 
