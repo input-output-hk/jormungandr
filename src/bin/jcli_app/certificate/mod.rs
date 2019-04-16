@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 mod get_stake_pool_id;
+mod new_stake_delegation;
 mod new_stake_key_registration;
 mod new_stake_pool_registration;
 mod sign;
@@ -9,6 +10,7 @@ mod sign;
 custom_error! {pub Error
     CannotCreatePoolRegistration { source: new_stake_pool_registration::Error } = "Cannot create new stake pool registration certificate",
     CannotCreateKeyRegistration { source: new_stake_key_registration::Error } = "Cannot create new stake key registration certificate",
+    CannotCreateDelegation { source: new_stake_delegation::Error } = "Cannot create new stake delegation certificate",
     CannotSignCertificate { source: sign::Error } = "Cannot sign certificate",
     CannotGetStakePoolId { source: get_stake_pool_id::Error } = "Cannot get stake pool id from the certificate",
 }
@@ -32,6 +34,8 @@ pub enum NewArgs {
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
     /// build a stake poole registration certificate
     StakeKeyRegistration(new_stake_key_registration::StakeKeyRegistration),
+    /// build a stake poole registration certificate
+    StakeDelegation(new_stake_delegation::StakeDelegation),
 }
 
 #[derive(StructOpt)]
@@ -57,6 +61,7 @@ impl NewArgs {
         match self {
             NewArgs::StakePoolRegistration(args) => args.exec()?,
             NewArgs::StakeKeyRegistration(args) => args.exec()?,
+            NewArgs::StakeDelegation(args) => args.exec()?,
         }
         Ok(())
     }
