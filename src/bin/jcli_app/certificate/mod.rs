@@ -2,11 +2,13 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 mod get_stake_pool_id;
+mod new_stake_key_registration;
 mod new_stake_pool_registration;
 mod sign;
 
 custom_error! {pub Error
     CannotCreatePoolRegistration { source: new_stake_pool_registration::Error } = "Cannot create new stake pool registration certificate",
+    CannotCreateKeyRegistration { source: new_stake_key_registration::Error } = "Cannot create new stake key registration certificate",
     CannotSignCertificate { source: sign::Error } = "Cannot sign certificate",
     CannotGetStakePoolId { source: get_stake_pool_id::Error } = "Cannot get stake pool id from the certificate",
 }
@@ -28,16 +30,8 @@ pub enum Certificate {
 pub enum NewArgs {
     /// build a stake poole registration certificate
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
-}
-
-#[derive(StructOpt)]
-pub struct StakeKeyRegistrationArgs {
-    /// stake pool signing public key
-    #[structopt(name = "PUBLIC_KEY")]
-    pub key: String,
-    /// stake pool signing public key
-    #[structopt(name = "SIGNING_KEY")]
-    pub private_key: PathBuf,
+    /// build a stake poole registration certificate
+    StakeKeyRegistration(new_stake_key_registration::StakeKeyRegistration),
 }
 
 #[derive(StructOpt)]
@@ -62,6 +56,7 @@ impl NewArgs {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             NewArgs::StakePoolRegistration(args) => args.exec()?,
+            NewArgs::StakeKeyRegistration(args) => args.exec()?,
         }
         Ok(())
     }
