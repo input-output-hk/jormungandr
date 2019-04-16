@@ -42,7 +42,11 @@ impl JCli {
                 }
             }
             JCli::Debug(debug) => debug.exec(),
-            JCli::Certificate(certificate) => certificate.exec(),
+            JCli::Certificate(certificate) => {
+                if let Err(error) = certificate.exec() {
+                    report_error(error)
+                }
+            }
         }
     }
 }

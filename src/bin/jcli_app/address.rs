@@ -1,4 +1,4 @@
-use bech32::{Bech32, FromBase32, ToBase32};
+use bech32::{Bech32, ToBase32};
 use chain_addr::{AddressReadable, Discrimination, Kind};
 use chain_crypto::{AsymmetricKey, Ed25519Extended, PublicKey};
 use jcli_app::utils::key_parser::parse_pub_key;
