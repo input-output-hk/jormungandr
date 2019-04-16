@@ -141,6 +141,11 @@ impl From<chain_crypto::Blake2b256> for StakePoolId {
         StakePoolId(hash.into())
     }
 }
+impl std::fmt::Display for StakePoolId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
 
 #[cfg(test)]
 mod test {
