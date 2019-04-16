@@ -74,6 +74,7 @@ where
                 match Uri::builder()
                     .scheme(origin.scheme.clone())
                     .authority(origin.authority.clone())
+                    .path_and_query("")
                     .build()
                 {
                     Ok(uri) => uri,
