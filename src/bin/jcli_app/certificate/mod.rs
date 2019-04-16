@@ -1,12 +1,14 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+mod get_stake_pool_id;
 mod new_stake_pool_registration;
 mod sign;
 
 custom_error! {pub Error
     CannotCreatePoolRegistration { source: new_stake_pool_registration::Error } = "Cannot create new stake pool registration certificate",
     CannotSignCertificate { source: sign::Error } = "Cannot sign certificate",
+    CannotGetStakePoolId { source: get_stake_pool_id::Error } = "Cannot get stake pool id from the certificate",
 }
 
 #[derive(StructOpt)]
@@ -14,8 +16,11 @@ custom_error! {pub Error
 pub enum Certificate {
     /// Build certificate
     New(NewArgs),
-    /// Sign certificate
+    /// Sign certificate, you can call this command multiple
+    /// time to add multiple signatures if this is required.
     Sign(sign::Sign),
+    /// get the stake pool id from the given stake pool registration certificate
+    GetStakePoolId(get_stake_pool_id::GetStakePoolId),
 }
 
 #[derive(StructOpt)]
@@ -67,6 +72,7 @@ impl Certificate {
         match self {
             Certificate::New(args) => args.exec()?,
             Certificate::Sign(args) => args.exec()?,
+            Certificate::GetStakePoolId(args) => args.exec()?,
         }
 
         Ok(())
