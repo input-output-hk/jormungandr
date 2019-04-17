@@ -1,5 +1,8 @@
 use crate::{
-    blockcfg::{Block, BlockBuilder, BlockDate, ChainLength, HeaderHash, Leader, LeaderOutput},
+    blockcfg::{
+        Block, BlockBuilder, BlockDate, ChainLength, ConsensusVersion, HeaderHash, Leader,
+        LeaderOutput,
+    },
     clock,
     intercom::BlockMsg,
     transaction::TPoolR,
@@ -67,17 +70,20 @@ fn handle_event(
     let state = b.get_ledger(&last_block.id()).unwrap();
 
     // get from the parameters the ConsensusVersion:
-    let static_parameters = state.get_static_parameters();
+    let consensus = state.consensus_version();
     let parameters = state.get_ledger_parameters();
 
-    let leadership = // if parameters.consensus_version == ConsensusVersion::BFT {
-        b
-        .get_leadership_or_build(date.epoch, &last_block.id())
-        .unwrap()
-    // } else if parameters.consensus_version == ConsensusVersion::GenesisPraos {
-    //    b.get_leadership(date.epoch.checked_sub(2).unwrap_or(date.epoch)).unwrap();
-    // }
-    ;
+    let leadership = match consensus {
+        ConsensusVersion::Bft => b
+            .get_leadership_or_build(date.epoch, &last_block.id())
+            .unwrap(),
+        ConsensusVersion::GenesisPraos => b
+            .get_leadership(date.epoch - 2)
+            .or_else(|| b.get_leadership(date.epoch - 1))
+            .or_else(|| b.get_leadership(date.epoch))
+            .or_else(|| b.get_leadership_or_build(date.epoch, &last_block.id()))
+            .unwrap(),
+    };
 
     let parent_id = &*b.tip;
 
@@ -85,7 +91,7 @@ fn handle_event(
         logger.clone(),
         o!(
             "chain_length" => chain_length.to_string(),
-            "initial_hash" => static_parameters.block0_initial_hash.to_string(),
+            "consensus-version" => consensus.to_string(),
             "allow_accounts" => parameters.allow_account_creation,
         ),
     );

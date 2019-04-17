@@ -178,24 +178,32 @@ impl Blockchain {
 
     /// get the leadership for the given epoch or build a new one
     /// from the state associated to the given parent_hash
+    ///
+    /// This function returns None if the `get_ledger(parent_hash)`
+    /// call returns None:
+    ///
+    /// 1. there is no existing leadership for the given epoch;
+    /// 2. there is no existing ledget state available for the
+    ///    given block
     pub fn get_leadership_or_build<'a>(
         &'a self,
         epoch: Epoch,
         parent_hash: &HeaderHash,
     ) -> Option<Borrow<'a, Leadership>> {
-        match self
-            .leaderships
+        self.get_leadership(epoch)
+            .or_else(|| self.build_leadership(epoch, parent_hash).map(Borrow::Owned))
+    }
+
+    pub fn build_leadership(&self, epoch: Epoch, parent_hash: &HeaderHash) -> Option<Leadership> {
+        self.get_ledger(parent_hash)
+            .map(|ledger| Leadership::new(epoch, ledger))
+    }
+
+    pub fn get_leadership<'a>(&'a self, epoch: Epoch) -> Option<Borrow<'a, Leadership>> {
+        self.leaderships
             .get(epoch)
             .and_then(|mut iter| iter.next())
-            .map(|leadership| leadership.1)
-        {
-            Some(borrowed) => Some(borrowed.into()),
-            None => {
-                let ledger = self.get_ledger(parent_hash)?;
-                let leadership = Leadership::new(epoch, ledger);
-                Some(leadership.into())
-            }
-        }
+            .map(|leadership| leadership.1.into())
     }
 }
 
