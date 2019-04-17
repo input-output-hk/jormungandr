@@ -11,6 +11,7 @@ pub mod config;
 mod date;
 pub mod legacy;
 pub mod message;
+pub mod milli;
 // #[cfg(test)]
 // pub mod environment;
 pub mod error;

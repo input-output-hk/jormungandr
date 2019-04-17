@@ -2,8 +2,9 @@
 //! current state and verify transactions.
 
 use crate::block::{ChainLength, ConsensusVersion, HeaderHash};
-use crate::config::{self, ConfigParam};
+use crate::config::{self, Block0Date, ConfigParam};
 use crate::fee::LinearFee;
+use crate::leadership::bft::LeaderId;
 use crate::message::Message;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
@@ -20,17 +21,6 @@ pub struct LedgerStaticParameters {
     pub block0_start_time: config::Block0Date,
     pub block0_consensus: ConsensusVersion,
     pub discrimination: Discrimination,
-}
-
-impl LedgerStaticParameters {
-    fn default() -> Self {
-        LedgerStaticParameters {
-            block0_initial_hash: HeaderHash::from_bytes([0u8; 32]),
-            block0_start_time: config::Block0Date(0),
-            block0_consensus: ConsensusVersion::Bft,
-            discrimination: Discrimination::Test,
-        }
-    }
 }
 
 // parameters to validate ledger
@@ -74,7 +64,16 @@ pub enum Error {
     Block0TransactionHasOutput,
     Block0TransactionHasWitnesses,
     Block0InitialMessageMissing,
-    Block0InitialMessageNoConsensus,
+    Block0InitialMessageDuplicateBlock0Date,
+    Block0InitialMessageDuplicateDiscrimination,
+    Block0InitialMessageDuplicateConsensusVersion,
+    Block0InitialMessageDuplicateSlotDuration,
+    Block0InitialMessageDuplicateEpochStabilityDepth,
+    Block0InitialMessageNoBlock0Date,
+    Block0InitialMessageNoDiscrimination,
+    Block0InitialMessageNoConsensusVersion,
+    Block0InitialMessageNoSlotDuration,
+    Block0InitialMessageNoConsensusLeaderId,
     Block0UtxoTotalValueTooBig,
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
@@ -114,18 +113,6 @@ impl From<config::Error> for Error {
 }
 
 impl Ledger {
-    fn empty(static_parameters: LedgerStaticParameters) -> Self {
-        Ledger {
-            utxos: utxo::Ledger::new(),
-            oldutxos: utxo::Ledger::new(),
-            accounts: account::Ledger::new(),
-            settings: setting::Settings::new(),
-            delegation: DelegationState::new(),
-            static_params: Arc::new(static_parameters),
-            chain_length: ChainLength(0),
-        }
-    }
-
     pub fn new<'a, I>(block0_hash: HeaderHash, contents: I) -> Result<Self, Error>
     where
         I: IntoIterator<Item = &'a Message>,
@@ -136,31 +123,18 @@ impl Ledger {
             allow_account_creation: false,
         };
 
-        let static_parameters = match content_iter.next() {
-            Some(Message::Initial(ref ents)) => {
-                let mut params = LedgerStaticParameters::default();
-                let mut consensus = None;
-                for config in ents.iter() {
-                    match config {
-                        ConfigParam::Block0Date(block0_start_time) => {
-                            params.block0_start_time = *block0_start_time
-                        }
-                        ConfigParam::Discrimination(discrimination) => {
-                            params.discrimination = *discrimination
-                        }
-                        ConfigParam::ConsensusVersion(version) => consensus = Some(*version),
-                    }
-                }
-                params.block0_consensus =
-                    consensus.ok_or(Error::Block0InitialMessageNoConsensus)?;
-                params.block0_initial_hash = block0_hash;
-                Ok(params)
-            }
+        let init_ents = match content_iter.next() {
+            Some(Message::Initial(ref init_ents)) => Ok(init_ents),
             Some(_) => Err(Error::ExpectingInitialMessage),
             None => Err(Error::Block0InitialMessageMissing),
         }?;
-
-        let mut ledger = Self::empty(static_parameters);
+        let mut ledger = init_ents
+            .iter()
+            .try_fold(
+                Default::default(),
+                EmptyLedgerBuilder::try_with_config_param,
+            )?
+            .build(block0_hash)?;
 
         for content in content_iter {
             match content {
@@ -556,12 +530,101 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
+#[derive(Debug, Default)]
+struct EmptyLedgerBuilder {
+    block0_date: Option<Block0Date>,
+    discrimination: Option<Discrimination>,
+    consensus_version: Option<ConsensusVersion>,
+    slot_duration: Option<u8>,
+    epoch_stability_depth: Option<u32>,
+    consensus_leader_ids: Vec<LeaderId>,
+}
+
+impl EmptyLedgerBuilder {
+    pub fn try_with_config_param(mut self, param: &ConfigParam) -> Result<Self, Error> {
+        match param {
+            ConfigParam::Block0Date(param) => self
+                .block0_date
+                .replace(*param)
+                .map(|_| Error::Block0InitialMessageDuplicateBlock0Date),
+            ConfigParam::Discrimination(param) => self
+                .discrimination
+                .replace(*param)
+                .map(|_| Error::Block0InitialMessageDuplicateDiscrimination),
+            ConfigParam::ConsensusVersion(param) => self
+                .consensus_version
+                .replace(*param)
+                .map(|_| Error::Block0InitialMessageDuplicateConsensusVersion),
+            ConfigParam::SlotDuration(param) => self
+                .slot_duration
+                .replace(*param)
+                .map(|_| Error::Block0InitialMessageDuplicateSlotDuration),
+            ConfigParam::EpochStabilityDepth(param) => self
+                .epoch_stability_depth
+                .replace(*param)
+                .map(|_| Error::Block0InitialMessageDuplicateEpochStabilityDepth),
+            ConfigParam::ConsensusLeaderId(param) => {
+                self.consensus_leader_ids.push(param.clone());
+                None
+            }
+            ConfigParam::SlotsPerEpoch(_)
+            | ConfigParam::ConsensusGenesisPraosParamD(_)
+            | ConfigParam::ConsensusGenesisPraosParamF(_) => None,
+        }
+        .map(|e| Err(e))
+        .unwrap_or(Ok(self))
+    }
+
+    pub fn build(self, block0_initial_hash: HeaderHash) -> Result<Ledger, Error> {
+        // generates warnings for each unused parameter
+        let EmptyLedgerBuilder {
+            block0_date,
+            discrimination,
+            consensus_version,
+            slot_duration,
+            epoch_stability_depth,
+            consensus_leader_ids,
+        } = self;
+
+        let mut settings = setting::Settings::new();
+        if let Some(slot_duration) = slot_duration {
+            settings.slot_duration = slot_duration;
+        }
+        if let Some(epoch_stability_depth) = epoch_stability_depth {
+            settings.epoch_stability_depth = epoch_stability_depth;
+        }
+        match consensus_leader_ids.len() {
+            0 => return Err(Error::Block0InitialMessageNoConsensusLeaderId),
+            _ => settings.bft_leaders = Arc::new(consensus_leader_ids),
+        }
+
+        let static_params = LedgerStaticParameters {
+            block0_initial_hash,
+            block0_start_time: block0_date.ok_or(Error::Block0InitialMessageNoBlock0Date)?,
+            block0_consensus: consensus_version
+                .ok_or(Error::Block0InitialMessageNoConsensusVersion)?,
+            discrimination: discrimination.ok_or(Error::Block0InitialMessageNoDiscrimination)?,
+        };
+
+        Ok(Ledger {
+            utxos: utxo::Ledger::new(),
+            oldutxos: utxo::Ledger::new(),
+            accounts: account::Ledger::new(),
+            settings,
+            delegation: DelegationState::new(),
+            static_params: Arc::new(static_params),
+            chain_length: ChainLength(0),
+        })
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use super::*;
     use crate::key::{SpendingPublicKey, SpendingSecretKey};
     use crate::message::initial;
     use chain_addr::{Address, Discrimination, Kind};
+    use chain_crypto::SecretKey;
     use rand::{CryptoRng, RngCore};
 
     pub fn make_key<R: RngCore + CryptoRng>(
@@ -603,6 +666,11 @@ pub mod test {
         let mut ie = initial::InitialEnts::new();
         ie.push(ConfigParam::Discrimination(Discrimination::Test));
         ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
+        let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
+        ie.push(ConfigParam::ConsensusLeaderId(LeaderId::from(
+            leader_pub_key,
+        )));
+        ie.push(ConfigParam::Block0Date(Block0Date(0)));
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);
