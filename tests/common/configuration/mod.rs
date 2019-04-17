@@ -1,10 +1,7 @@
+use std::env;
 use std::path::PathBuf;
-use std::{env, env::VarError};
 
-pub fn get_genesis_yaml_path() -> PathBuf {
-    let path = PathBuf::from("./tests/resources/genesis/genesis.yaml");
-    path
-}
+pub mod genesis_model;
 
 pub fn get_node_config_path() -> PathBuf {
     let path = PathBuf::from("./tests/resources/jormungandr/node.config");
