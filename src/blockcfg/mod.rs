@@ -2,7 +2,10 @@ use chain_core::property::HasMessages as _;
 pub use network_core::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
-    block::{Block, BlockBuilder, BlockDate, ChainLength, Epoch, Header, HeaderHash, SlotId},
+    block::{
+        Block, BlockBuilder, BlockDate, ChainLength, ConsensusVersion, Epoch, Header, HeaderHash,
+        SlotId,
+    },
     config::{self, Block0Date, ConfigParam},
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
