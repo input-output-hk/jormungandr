@@ -30,7 +30,7 @@ use futures::prelude::*;
 use futures::stream;
 use tokio::timer::Interval;
 
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{iter, net::SocketAddr, sync::Arc, time::Duration};
 
 type Connection = SocketAddr;
 
@@ -153,8 +153,18 @@ pub fn run(
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
         grpc::connect(addr, conn_state, conn_channels.clone()).map(
-            move |(node_id, prop_handles)| {
-                state.propagation_peers.insert_peer(node_id, prop_handles);
+            move |(node_id, mut prop_handles)| {
+                debug!("connected to {:?} at {}", node_id, addr);
+                let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
+                match prop_handles.try_send_gossip(gossip) {
+                    Ok(()) => state.propagation_peers.insert_peer(node_id, prop_handles),
+                    Err(e) => {
+                        info!(
+                            "gossiping to peer {} failed just after connection: {:?}",
+                            node_id, e
+                        );
+                    }
+                }
             },
         )
     });
