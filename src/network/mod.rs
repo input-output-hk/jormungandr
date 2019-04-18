@@ -155,7 +155,7 @@ pub fn run(
         let state = state.clone();
         grpc::connect(addr, conn_state, conn_channels.clone()).map(
             move |(node_id, mut prop_handles)| {
-                debug!("connected to {:?} at {}", node_id, addr);
+                debug!("connected to {} at {}", node_id, addr);
                 let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
                 match prop_handles.try_send_gossip(gossip) {
                     Ok(()) => state.propagation_peers.insert_peer(node_id, prop_handles),
