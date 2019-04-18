@@ -28,6 +28,7 @@ where
     tokio::spawn(
         inbound
             .for_each(move |gossip| {
+                debug!("received gossip: {:?}", gossip);
                 state.topology.update(gossip.into_nodes());
                 Ok(())
             })
