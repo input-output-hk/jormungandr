@@ -44,7 +44,11 @@ pub struct AutoCompletion {
 impl JCli {
     pub fn exec(self) {
         match self {
-            JCli::Key(key) => key.exec(),
+            JCli::Key(key) => {
+                if let Err(error) = key.exec() {
+                    report_error(error)
+                }
+            }
             JCli::Address(address) => address.exec(),
             JCli::Genesis(genesis) => genesis.exec(),
             JCli::Rest(rest) => rest.exec(),
