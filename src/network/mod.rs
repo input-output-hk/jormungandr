@@ -79,7 +79,8 @@ impl GlobalState {
         node.add_message_subscription(p2p_topology::InterestLevel::High);
         node.add_block_subscription(p2p_topology::InterestLevel::High);
 
-        let topology = P2pTopology::new(node.clone());
+        let mut topology = P2pTopology::new(node.clone());
+        topology.set_poldercast_modules();
 
         GlobalState {
             config,
