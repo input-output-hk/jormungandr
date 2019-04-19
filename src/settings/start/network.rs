@@ -1,6 +1,9 @@
 use std::{collections::BTreeMap, net::SocketAddr, str, time::Duration};
 
-use crate::settings::start::config::{Address, InterestLevel, Topic};
+use crate::{
+    network::p2p_topology::NodeId,
+    settings::start::config::{Address, InterestLevel, Topic, TrustedPeer},
+};
 
 /// Protocol to use for a connection.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -35,14 +38,18 @@ pub struct Listen {
 
 const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 
+///
 /// The network static configuration settings
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Configuration {
     /// optional address to listen from
     pub public_address: Option<Address>,
 
+    /// optional Node I
+    pub public_id: Option<NodeId>,
+
     /// list of trusted addresses
-    pub trusted_addresses: Vec<Address>,
+    pub trusted_peers: Vec<TrustedPeer>,
 
     /// the protocol to utilise for the p2p network
     pub protocol: Protocol,
