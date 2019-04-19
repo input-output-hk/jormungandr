@@ -7,53 +7,23 @@ use network_core::gossip::{self, Node as _};
 use poldercast::topology::{Cyclon, Module, Rings, Topology, Vicinity};
 use poldercast::Subscription;
 pub use poldercast::{Address, InterestLevel};
+use serde::{Deserialize, Serialize};
 
-use std::{collections::BTreeMap, error, fmt, io, net::SocketAddr, sync::RwLock};
+use std::{collections::BTreeMap, fmt, io, net::SocketAddr, sync::RwLock};
 
 pub const NEW_MESSAGES_TOPIC: u32 = 0u32;
 pub const NEW_BLOCKS_TOPIC: u32 = 1u32;
 
-#[derive(Debug)]
-pub enum Error {
-    Encoding(Box<bincode::ErrorKind>),
-    Io(io::Error),
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Error::Encoding(source) => Some(source),
-            Error::Io(source) => Some(source),
-        }
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Encoding(_) => write!(f, "serialization error"),
-            Error::Io(_) => write!(f, "io error"),
-        }
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Error::Io(e)
-    }
-}
-
-impl From<Box<bincode::ErrorKind>> for Error {
-    fn from(e: Box<bincode::ErrorKind>) -> Self {
-        Error::Encoding(e)
-    }
+custom_error! {pub Error
+    Encoding { source: bincode::Error } = "Serialization error",
+    Io { source: io::Error } = "I/O Error",
 }
 
 #[derive(Clone, Debug)]
 pub struct Node(poldercast::Node);
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct NodeId(poldercast::Id);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct NodeId(pub poldercast::Id);
 
 impl gossip::Node for Node {
     type Id = NodeId;
@@ -110,7 +80,7 @@ impl property::Serialize for Node {
     type Error = Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        bincode::serialize_into(writer, &self.0).map_err(Error::Encoding)
+        Ok(bincode::serialize_into(writer, &self.0)?)
     }
 }
 
@@ -118,7 +88,7 @@ impl property::Deserialize for Node {
     type Error = Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let inner = bincode::deserialize_from(reader).map_err(Error::Encoding)?;
+        let inner = bincode::deserialize_from(reader)?;
         Ok(Node(inner))
     }
 }
@@ -127,7 +97,7 @@ impl property::Serialize for NodeId {
     type Error = Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        bincode::serialize_into(writer, &self.0).map_err(Error::Encoding)
+        Ok(bincode::serialize_into(writer, &self.0)?)
     }
 }
 
@@ -135,7 +105,7 @@ impl property::Deserialize for NodeId {
     type Error = Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let id = bincode::deserialize_from(reader).map_err(Error::Encoding)?;
+        let id = bincode::deserialize_from(reader)?;
         Ok(NodeId(id))
     }
 }
@@ -170,6 +140,7 @@ impl P2pTopology {
     /// to contact for event dissemination.
     pub fn view(&self) -> impl Iterator<Item = Node> {
         let topology = self.lock.read().unwrap();
+        debug!("loading P2P local topology view {:?}", topology.view());
         topology.view().into_iter().map(Node)
     }
 
@@ -188,16 +159,59 @@ impl P2pTopology {
 
     fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
         // Poldercast API should be better than this
+        debug!("updating P2P local topology");
         self.lock.write().unwrap().update(new_nodes)
     }
 
     /// this is the function to utilise in order to select gossips to share
     /// with a given node
     pub fn select_gossips(&self, gossip_recipient: &Node) -> impl Iterator<Item = Node> {
+        debug!("selecting gossips for {}", gossip_recipient.id());
         let mut topology = self.lock.write().unwrap();
         topology
             .select_gossips(&gossip_recipient.0)
             .into_iter()
             .map(|(_, v)| Node(v))
+    }
+}
+
+pub mod modules {
+    use poldercast::{topology::Module, Id, Node};
+    use std::collections::BTreeMap;
+
+    pub struct TrustedPeers {
+        peers: Vec<Node>,
+    }
+    impl TrustedPeers {
+        pub fn new_with<I>(nodes: I) -> Self
+        where
+            I: IntoIterator<Item = Node>,
+        {
+            TrustedPeers {
+                peers: nodes.into_iter().collect(),
+            }
+        }
+    }
+
+    impl Module for TrustedPeers {
+        fn name(&self) -> &'static str {
+            "trusted-peers"
+        }
+        fn update(&mut self, _our_node: &Node, _known_nodes: &BTreeMap<Id, Node>) {
+            // DO NOTHING
+        }
+        fn select_gossips(
+            &self,
+            _our_node: &Node,
+            _gossip_recipient: &Node,
+            _known_nodes: &BTreeMap<Id, Node>,
+        ) -> BTreeMap<Id, Node> {
+            // Never gossip about our trusted nodes, this could breach network
+            // trust
+            BTreeMap::new()
+        }
+        fn view(&self, _: &BTreeMap<Id, Node>, view: &mut BTreeMap<Id, Node>) {
+            view.extend(self.peers.iter().map(|node| (*node.id(), node.clone())))
+        }
     }
 }

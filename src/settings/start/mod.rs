@@ -103,10 +103,11 @@ fn generate_network(
     _command_arguments: &StartArguments,
     config: &config::Config,
 ) -> network::Configuration {
-    let public_address = config.peer_2_peer.public_access.clone();
+    let public_address = config.peer_2_peer.public_address.clone();
     network::Configuration {
         public_address: public_address,
-        trusted_addresses: config.peer_2_peer.trusted_peers.clone().unwrap_or(vec![]),
+        public_id: config.peer_2_peer.public_id.clone(),
+        trusted_peers: config.peer_2_peer.trusted_peers.clone().unwrap_or(vec![]),
         protocol: Protocol::Grpc,
         subscriptions: config
             .peer_2_peer

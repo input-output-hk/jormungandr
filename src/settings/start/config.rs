@@ -1,4 +1,4 @@
-use crate::settings::logging::LogFormat;
+use crate::{network::p2p_topology::NodeId, settings::logging::LogFormat};
 use poldercast;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::path::PathBuf;
@@ -45,10 +45,11 @@ pub struct Rest {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct P2pConfig {
     /// the address to which other peers may connect to
-    pub public_access: Option<Address>,
+    pub public_address: Option<Address>,
+    pub public_id: Option<NodeId>,
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
-    pub trusted_peers: Option<Vec<Address>>,
+    pub trusted_peers: Option<Vec<TrustedPeer>>,
     /// the topic subscriptions
     ///
     /// When connecting to different nodes we will expose these too in order to
@@ -65,6 +66,12 @@ pub struct Topic(pub poldercast::Topic);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterestLevel(pub poldercast::InterestLevel);
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrustedPeer {
+    pub address: Address,
+    pub id: NodeId,
+}
 
 impl Address {
     pub fn to_socketaddr(&self) -> Option<SocketAddr> {

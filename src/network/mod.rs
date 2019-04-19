@@ -66,7 +66,8 @@ type GlobalStateR = Arc<GlobalState>;
 impl GlobalState {
     /// the network global state
     pub fn new(config: Configuration) -> Self {
-        let node_id = p2p_topology::NodeId::generate();
+        let node_id = config.public_id.unwrap_or(p2p_topology::NodeId::generate());
+        info!("our node id: {}", node_id);
         let node_address = config
             .public_address
             .clone()
@@ -81,6 +82,11 @@ impl GlobalState {
 
         let mut topology = P2pTopology::new(node.clone());
         topology.set_poldercast_modules();
+        topology.add_module(p2p::modules::TrustedPeers::new_with(
+            config.trusted_peers.iter().cloned().map(|trusted_peer| {
+                poldercast::Node::new(trusted_peer.id.0, trusted_peer.address.0)
+            }),
+        ));
 
         GlobalState {
             config,
@@ -142,10 +148,9 @@ pub fn run(
     };
 
     let addrs = global_state
-        .config
-        .trusted_addresses
-        .iter()
-        .filter_map(|paddr| paddr.to_socketaddr())
+        .topology
+        .view()
+        .filter_map(|paddr| paddr.address())
         .collect::<Vec<_>>();
     let state = global_state.clone();
     let conn_channels = channels.clone();
@@ -291,8 +296,8 @@ pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
-    let peer = config.trusted_addresses.iter().next();
-    match peer.and_then(|a| a.to_socketaddr()) {
+    let peer = config.trusted_peers.iter().next();
+    match peer.and_then(|trusted_peer| trusted_peer.address.to_socketaddr()) {
         Some(address) => {
             let peer = Peer::new(address, Protocol::Grpc);
             grpc::bootstrap_from_peer(peer, blockchain)
