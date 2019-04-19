@@ -2,16 +2,20 @@
 //! to serialize and deserialize most of the objects
 //!
 
+use chain_crypto::{bech32::Bech32, Ed25519Extended, PublicKey};
+use chain_impl_mockchain::leadership::bft::LeaderId;
 use serde::{
     de::{Deserializer, Error as DeserializerError, Visitor},
-    ser::Serializer,
+    ser::{Error as _, Serializer},
+    Deserialize, Serialize
 };
-use std::fmt;
+use std::fmt::{self, Display};
+use std::str::FromStr;
 
 pub mod value {
     use super::*;
     use chain_impl_mockchain::value::Value;
-    use serde::{de::Deserialize as _, ser::Serialize as _};
+    use serde::de::Deserialize as _;
 
     pub fn serialize<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -30,7 +34,7 @@ pub mod value {
 
 pub mod address {
     use super::*;
-    use chain_addr::{Address, AddressReadable, Discrimination};
+    use chain_addr::{Address, AddressReadable};
 
     pub fn serialize<S>(address: &Address, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -38,7 +42,7 @@ pub mod address {
     {
         if serializer.is_human_readable() {
             let address = AddressReadable::from_address(address);
-            serialize_readable(&address, serializer)
+            serializer.serialize_str(address.as_string())
         } else {
             let bytes = address.to_bytes();
             serializer.serialize_bytes(&bytes)
@@ -50,46 +54,10 @@ pub mod address {
         D: Deserializer<'de>,
     {
         if deserializer.is_human_readable() {
-            deserializer
-                .deserialize_str(FromStrVisitor::new("Address"))
-                .map(|address_readable: AddressReadable| address_readable.to_address())
+            deserializer.deserialize_str(StrParseVisitor::new("address", |s| s.parse().map(|addr: AddressReadable| addr.to_address())))
         } else {
             deserializer.deserialize_bytes(AddressVisitor)
         }
-    }
-
-    pub fn serialize_discrimination<S>(
-        discrimination: &Discrimination,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&discrimination.to_string())
-    }
-
-    pub fn deserialize_discrimination<'de, D>(deserializer: D) -> Result<Discrimination, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(FromStrVisitor::new("Address Discrimination"))
-    }
-
-    pub fn serialize_readable<S>(
-        address: &AddressReadable,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(address.as_string())
-    }
-
-    pub fn deserialize_readable<'de, D>(deserializer: D) -> Result<AddressReadable, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(FromStrVisitor::new("A bech32 encoded address"))
     }
 
     struct AddressVisitor;
@@ -122,7 +90,7 @@ pub mod witness {
         property::Serialize as _,
     };
     use chain_impl_mockchain::transaction::Witness;
-    use serde::{de::Deserialize as _, ser::Error as _};
+    use serde::ser::Error as _;
 
     pub fn serialize<S>(witness: &Witness, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -159,7 +127,8 @@ pub mod witness {
 
 pub mod crypto {
     use super::*;
-    use chain_crypto::{bech32::Bech32 as _, AsymmetricKey, Blake2b256, PublicKey, SecretKey};
+    use ::bech32::{Bech32 as Bech32Data, FromBase32 as _};
+    use chain_crypto::{AsymmetricKey, Blake2b256, PublicKey, SecretKey};
 
     pub fn deserialize_secret<'de, D, A>(deserializer: D) -> Result<SecretKey<A>, D::Error>
     where
@@ -192,7 +161,7 @@ pub mod crypto {
         D: Deserializer<'de>,
     {
         if deserializer.is_human_readable() {
-            deserializer.deserialize_str(FromStrVisitor::new("Blake2b 256"))
+            as_string::deserialize(deserializer)
         } else {
             unimplemented!()
         }
@@ -231,6 +200,43 @@ pub mod crypto {
             PublicKeyVisitor {
                 _marker: std::marker::PhantomData,
             }
+        }
+    }
+
+    pub struct BytesInBech32Visitor {
+        hrp: &'static str,
+    }
+
+    impl BytesInBech32Visitor {
+        pub fn new(hrp: &'static str) -> Self {
+            BytesInBech32Visitor { hrp }
+        }
+    }
+
+    impl<'de> Visitor<'de> for BytesInBech32Visitor {
+        type Value = Vec<u8>;
+
+        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            write!(fmt, "Expecting bech32 data with HRP {}", self.hrp)
+        }
+
+        fn visit_str<'a, E>(self, bech32_str: &'a str) -> Result<Self::Value, E>
+        where
+            E: DeserializerError,
+        {
+            let bech32: Bech32Data = bech32_str
+                .parse()
+                .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
+            if bech32.hrp() != self.hrp {
+                return Err(E::custom(format!(
+                    "Invalid prefix: expected {} but was {}",
+                    self.hrp,
+                    bech32.hrp()
+                )));
+            }
+            let bytes = Vec::<u8>::from_base32(bech32.data())
+                .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
+            Ok(bytes)
         }
     }
 
@@ -335,101 +341,42 @@ pub mod crypto {
     }
 }
 
-pub mod block {
-    use super::*;
-    use chain_impl_mockchain::block::ConsensusVersion;
-
-    pub fn serialize_consensus_version<S>(
-        version: &ConsensusVersion,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&version.to_string())
-    }
-
-    pub fn deserialize_consensus_version<'de, D>(
-        deserializer: D,
-    ) -> Result<ConsensusVersion, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(FromStrVisitor::new("consensus version"))
-    }
-}
-
 pub mod time {
     use super::*;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-    pub fn serialize_system_time_in_sec<S>(
+    pub fn serialize<S>(
         time: &SystemTime,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_u64(time.duration_since(UNIX_EPOCH).unwrap().as_secs())
+        time.duration_since(UNIX_EPOCH).unwrap().as_secs().serialize(serializer)
     }
 
-    pub fn deserialize_system_time_in_sec<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let duration_since_unix_epoch = deserializer.deserialize_u64(DurationVisitor)?;
-        let time = SystemTime::UNIX_EPOCH + duration_since_unix_epoch;
-        Ok(time)
-    }
-
-    struct DurationVisitor;
-    impl<'de> Visitor<'de> for DurationVisitor {
-        type Value = Duration;
-
-        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            write!(fmt, "Expecting a duration in seconds")
-        }
-        fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
-        where
-            E: DeserializerError,
-        {
-            Ok(Duration::from_secs(v))
-        }
+        let duration_since_unix_epoch = u64::deserialize(deserializer)?;
+        Ok(SystemTime::UNIX_EPOCH + Duration::from_secs(duration_since_unix_epoch))
     }
 }
 
-pub(crate) struct FromStrVisitor<A> {
-    pub(crate) what: &'static str,
-    pub(crate) _marker: std::marker::PhantomData<A>,
-}
-impl<A> FromStrVisitor<A> {
-    pub(crate) fn new(what: &'static str) -> Self {
-        FromStrVisitor {
-            what,
-            _marker: std::marker::PhantomData,
-        }
+#[derive(Clone, Debug)]
+pub struct SerdeLeaderId(pub LeaderId);
+
+impl Serialize for SerdeLeaderId {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        as_bech32::serialize(self.0.as_public_key(), serializer)
     }
 }
 
-impl<'de, A> Visitor<'de> for FromStrVisitor<A>
-where
-    A: std::str::FromStr,
-    A::Err: std::error::Error,
-{
-    type Value = A;
-
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "Expecting a {}", self.what)
-    }
-
-    fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
-    where
-        E: DeserializerError,
-    {
-        match Self::Value::from_str(v) {
-            Err(err) => Err(E::custom(err)),
-            Ok(address) => Ok(address),
-        }
+impl<'de> Deserialize<'de> for SerdeLeaderId {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        as_bech32::deserialize::<D, PublicKey<Ed25519Extended>>(deserializer)
+            .map(|key| SerdeLeaderId(key.into()))
     }
 }
 
@@ -498,5 +445,126 @@ pub mod certificate {
                 Certificate::read(&mut buf).map_err(|err| D::Error::custom(err))
             })
     }
+}
 
+#[derive(Serialize)]
+#[serde(bound = "T: ToString", transparent)]
+pub struct SerdeAsString<T> (
+    #[serde(with = "as_string")]
+    pub T
+);
+
+impl<'de, E: Display, T: FromStr<Err = E> + SerdeExpected> Deserialize<'de> for SerdeAsString<T> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        as_string::deserialize(deserializer).map(Self)
+    }
+}
+
+impl<T: Clone> Clone for SerdeAsString<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(bound(deserialize = "T: Bech32 + SerdeExpected", serialize = "T: Bech32"), transparent)]
+pub struct SerdeAsBech32<T>(
+    #[serde(with = "as_bech32")]
+    pub T
+);
+
+impl<T: Clone> Clone for SerdeAsBech32<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+pub mod as_string {
+    use super::*;
+
+    pub fn serialize<S: Serializer, T: ToString>(data: &T, serializer: S) -> Result<S::Ok, S::Error> {
+        data.to_string().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, E, T>(deserializer: D) -> Result<T, D::Error>
+        where
+            D: Deserializer<'de>,
+            E: Display,
+            T: FromStr<Err = E> + SerdeExpected,
+        {
+        let visitor = StrParseVisitor::new(T::EXPECTED, str::parse);
+        deserializer.deserialize_str(visitor)
+    }
+}
+
+pub mod as_bech32 {
+    use super::*;
+    use chain_crypto::bech32::Bech32;
+
+    pub fn serialize<S: Serializer, T: Bech32>(data: &T, serializer: S) -> Result<S::Ok, S::Error> {
+        data.to_bech32_str().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+        where D: Deserializer<'de>,
+        T: Bech32 + SerdeExpected,
+        {
+        let visitor = StrParseVisitor::new(T::EXPECTED, Bech32::try_from_bech32_str);
+        deserializer.deserialize_str(visitor)
+    }
+}
+
+#[derive(Default)]
+struct StrParseVisitor<'a, P> {
+    expected: &'a str,
+    parser: P,
+}
+
+impl<'a, E, T, P> StrParseVisitor<'a, P>
+    where
+        E: Display,
+        P: FnOnce(&str) -> Result<T, E> {
+    pub fn new(expected: &'a str, parser: P) -> Self {
+        Self { expected, parser }
+    }
+}
+
+impl<'a, 'de, E, T, P> Visitor<'de> for StrParseVisitor<'a, P>
+    where
+        E: Display,
+        P: FnOnce(&str) -> Result<T, E> {
+    type Value = T;
+
+    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}", self.expected)
+    }
+
+    fn visit_str<D: DeserializerError>(self, s: &str) -> Result<Self::Value, D> {
+        (self.parser)(s).map_err(D::custom)
+    }
+}
+
+// used to generate deserialize error messages telling what data was expected
+pub trait SerdeExpected {
+    const EXPECTED: &'static str;
+}
+
+impl SerdeExpected for chain_impl_mockchain::milli::Milli {
+    const EXPECTED: &'static str = "floating point number in decimal form";
+}
+
+impl SerdeExpected for chain_crypto::PublicKey<chain_crypto::Ed25519Extended> {
+    const EXPECTED: &'static str = "extended ED25519 public key";
+}
+
+impl SerdeExpected for chain_addr::Discrimination {
+    const EXPECTED: &'static str = "address discrimination";
+}
+
+impl SerdeExpected for chain_impl_mockchain::block::ConsensusVersion {
+    const EXPECTED: &'static str = "consensus version";
+}
+
+impl SerdeExpected for chain_crypto::Blake2b256 {
+    const EXPECTED: &'static str = "Blake2b 256";
 }

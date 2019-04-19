@@ -14,49 +14,58 @@ pub use chain_impl_mockchain::{
 };
 use std::time::{Duration, SystemTime};
 
-custom_error! {pub Block0Malformed
-    NoInitialSettings = "Missing its initial settings",
-    NoStartTime = "Missing `block0-start' value in the block0",
-    NoDiscrimination = "Missing `discrimination' value in the block0",
-    NoSlotDuration = "Missing `slot_duration' value in the block0",
-}
 custom_error! {pub Block0Error
-    CannotParseEntity{source: config::Error} = "Block0 Initial settings",
-    Malformed{source: Block0Malformed} = "Block0 is invalid or malformed"
+    CannotParseEntity{source: config::Error} = "Block0 Initial settings: {source}",
+    Malformed{source: Block0Malformed} = "Block0 is invalid or malformed: {source}"
 }
 
-fn block_0_get_initial(block: &Block) -> Result<&InitialEnts, Block0Error> {
+custom_error! {pub Block0Malformed
+    NoInitialSettings = "missing its initial settings",
+    NoStartTime = "missing `block0-start' value in the block0",
+    NoDiscrimination = "missing `discrimination' value in the block0",
+    NoSlotDuration = "missing `slot_duration' value in the block0",
+}
+
+pub trait Block0DataSource {
+    fn slot_duration(&self) -> Result<Duration, Block0Error>;
+    fn slots_per_epoch(&self) -> Result<Option<u64>, Block0Error>;
+    fn start_time(&self) -> Result<SystemTime, Block0Error>;
+}
+
+impl Block0DataSource for Block {
+    fn slot_duration(&self) -> Result<Duration, Block0Error> {
+        for config in initial(self)?.iter() {
+            if let ConfigParam::SlotDuration(duration) = config {
+                return Ok(Duration::from_secs(*duration as u64));
+            }
+        }
+        Err(Block0Malformed::NoSlotDuration.into())
+    }
+
+    fn slots_per_epoch(&self) -> Result<Option<u64>, Block0Error> {
+        for config in initial(self)?.iter() {
+            if let ConfigParam::SlotsPerEpoch(slots) = config {
+                return Ok(Some(*slots));
+            }
+        }
+        Ok(None)
+    }
+
+    fn start_time(&self) -> Result<SystemTime, Block0Error> {
+        for config in initial(self)?.iter() {
+            if let ConfigParam::Block0Date(date) = config {
+                return Ok(SystemTime::UNIX_EPOCH + Duration::from_secs(date.0));
+            }
+        }
+        Err(Block0Malformed::NoStartTime.into())
+    }
+}
+
+fn initial(block: &Block) -> Result<&InitialEnts, Block0Malformed> {
     for message in block.messages() {
         if let Message::Initial(init) = message {
             return Ok(init);
         }
     }
-
-    Err(Block0Malformed::NoInitialSettings.into())
-}
-
-pub fn block_0_get_slot_duration(block: &Block) -> Result<std::time::Duration, Block0Error> {
-    let mut duration = None;
-    for message in block.messages() {
-        if let Message::Update(proposal) = message {
-            duration = proposal.slot_duration;
-        }
-    }
-
-    if let Some(duration) = duration {
-        Ok(std::time::Duration::from_secs(duration as u64))
-    } else {
-        Err(Block0Malformed::NoSlotDuration.into())
-    }
-}
-
-pub fn block_0_get_start_time(block: &Block) -> Result<std::time::SystemTime, Block0Error> {
-    let ents = block_0_get_initial(block)?;
-
-    for config in ents.iter() {
-        if let ConfigParam::Block0Date(date) = config {
-            return Ok(SystemTime::UNIX_EPOCH + Duration::from_secs(date.0));
-        }
-    }
-    Err(Block0Malformed::NoStartTime.into())
+    Err(Block0Malformed::NoInitialSettings)
 }

@@ -2,9 +2,9 @@ mod error;
 
 pub use self::error::{Error, ErrorKind};
 use crate::{
-    blockcfg::{self, Block},
+    blockcfg::{Block, Block0DataSource as _},
     blockchain::{Blockchain, BlockchainR},
-    clock::{self, Clock},
+    clock::{Clock, ClockEpochConfiguration},
     settings::{logging::LogSettings, start::Settings, CommandLine},
 };
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
@@ -96,12 +96,13 @@ pub fn prepare_block_0(settings: &Settings, storage: &NodeStorage) -> Result<Blo
 }
 
 pub fn prepare_clock(block0: &Block) -> Result<Clock, Error> {
-    let start_time = blockcfg::block_0_get_start_time(block0)?;
-    let slot_duration = blockcfg::block_0_get_slot_duration(block0)?;
+    let start_time = block0.start_time()?;
+    let slot_duration = block0.slot_duration()?;
+    let slots_per_epoch = block0.slots_per_epoch()?;
 
-    let initial_epoch = clock::ClockEpochConfiguration {
-        slot_duration: slot_duration,
-        slots_per_epoch: 10 * 10,
+    let initial_epoch = ClockEpochConfiguration {
+        slot_duration,
+        slots_per_epoch: slots_per_epoch.unwrap_or(10 * 10),
     };
 
     info!(
