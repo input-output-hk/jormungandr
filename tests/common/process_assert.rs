@@ -1,5 +1,7 @@
 use std::process::{Command, Output};
 
+use super::process_utils::output_extensions::ProcessOutput;
+
 /// Assert process exited successfully
 ///
 /// # Arguments
@@ -32,12 +34,25 @@ pub fn run_and_assert_process_exited_successfully(mut command: Command, descript
     );
 }
 
+/// Asserts process has non-zero exit code and finished with an error
+pub fn assert_process_failed(output: Output) {
+    println!("Running transaction new command...");
+
+    assert_eq!(
+        output.status.success(),
+        false,
+        "Unexpected zero exit code {}",
+        &output.status.code().unwrap()
+    );
+}
+
 /// Asserts process has correct exit code and finished without an error
-pub fn assert_process_exited_successfully(command: Output) {
-    println!("stdout: {}", String::from_utf8_lossy(&command.stdout));
+pub fn assert_process_exited_successfully(output: Output) {
+    println!("Asserting process exited sucessfully...");
+
     assert!(
-        command.status.success(),
+        output.status.success(),
         "non-zero exit code {}",
-        &command.status.code().unwrap()
+        &output.status.code().unwrap()
     );
 }

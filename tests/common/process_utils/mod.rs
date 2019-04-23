@@ -1,61 +1,29 @@
 extern crate serde_yaml;
 
+pub mod output_extensions;
 pub mod process_guard;
-use super::process_assert;
-use std::collections::BTreeMap;
-use std::process::{Command, Stdio};
+use self::output_extensions::ProcessOutput;
+use std::process::{Command, Output, Stdio};
 use std::{thread, time};
 
-/// Runs command, wait for output and returns it as a single yaml node
+/// Runs command, wait for output and returns it output
 ///
 /// # Arguments
 ///
 /// * `command` - Command which will be invoked
 ///
-pub fn run_process_and_get_yaml_single(command: Command) -> BTreeMap<String, String> {
-    let content = run_process_and_get_output(command);
-    let deserialized_map: BTreeMap<String, String> = serde_yaml::from_str(&content).unwrap();
-    deserialized_map
-}
-
-/// Runs command, wait for output and returns it as a collection of yaml nodes
-///
-/// # Arguments
-///
-/// * `command` - Command which will be invoked
-///
-pub fn run_process_and_get_yaml_collection(command: Command) -> Vec<BTreeMap<String, String>> {
-    let content = run_process_and_get_output(command);
-    let deserialized_map: Vec<BTreeMap<String, String>> = serde_yaml::from_str(&content).unwrap();
-    deserialized_map
-}
-
-/// Runs command, wait for output and returns it as a string
-///
-/// # Arguments
-///
-/// * `command` - Command which will be invoked
-///
-pub fn run_process_and_get_output(mut command: Command) -> String {
+pub fn run_process_and_get_output(mut command: Command) -> Output {
+    println!("Running command: {:?}", &command);
     let content = command
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap()
         .wait_with_output()
         .expect("failed to execute process");
 
-    process_assert::assert_process_exited_successfully(content.clone());
-
-    let content = String::from_utf8_lossy(&content.stdout).into_owned();
-    content
-}
-
-pub fn run_process_and_get_output_line(command: Command) -> String {
-    let mut content = run_process_and_get_output(command);
-    if content.ends_with("\n") {
-        let len = content.len();
-        content.truncate(len - 1);
-    }
+    println!("Standard Output: {}", content.as_lossy_string());
+    println!("Standard Error: {}", content.err_as_lossy_string());
     content
 }
 

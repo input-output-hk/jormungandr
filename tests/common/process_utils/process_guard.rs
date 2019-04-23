@@ -4,19 +4,20 @@ use std::process::Child;
 ///
 pub struct ProcessKillGuard {
     child: Child,
+    description: String,
 }
 
 impl ProcessKillGuard {
-    pub fn new(child: Child) -> ProcessKillGuard {
-        ProcessKillGuard { child }
+    pub fn new(child: Child, description: String) -> ProcessKillGuard {
+        ProcessKillGuard { child, description }
     }
 }
 
 impl Drop for ProcessKillGuard {
     fn drop(&mut self) {
         match self.child.kill() {
-            Err(e) => println!("Could not kill child process: {}", e),
-            Ok(_) => println!("Successfully killed child process"),
+            Err(e) => println!("Could not kill {}: {}", self.description, e),
+            Ok(_) => println!("Successfully killed {}", self.description),
         }
     }
 }
