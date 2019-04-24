@@ -25,13 +25,16 @@ use crate::utils::{
 use self::p2p_topology::{self as p2p, P2pTopology};
 use self::propagate::{PeerHandles, PropagationMap};
 
-use network_core::gossip::{Gossip, Node};
+use network_core::{
+    error as core_error,
+    gossip::{Gossip, Node},
+};
 
 use futures::prelude::*;
 use futures::stream;
 use tokio::timer::Interval;
 
-use std::{iter, net::SocketAddr, sync::Arc, time::Duration};
+use std::{error::Error, iter, net::SocketAddr, sync::Arc, time::Duration};
 
 type Connection = SocketAddr;
 
@@ -325,18 +328,23 @@ pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
 /// The calling thread is blocked until the block is retrieved.
 /// This function is called during blockchain initialization
 /// to retrieve the genesis block.
-pub fn fetch_block(config: &Configuration, hash: &HeaderHash) -> Result<Block, ()> {
+pub fn fetch_block(config: &Configuration, hash: &HeaderHash) -> Result<Block, FetchBlockError> {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
     match first_trusted_peer_address(config) {
-        None => {
-            error!("no gRPC peers specified, cannot retrieve block {}", hash);
-            Err(())
-        }
+        None => Err(FetchBlockError::NoTrustedPeers),
         Some(address) => {
             let peer = Peer::new(address, Protocol::Grpc);
             grpc::fetch_block(peer, hash)
         }
     }
+}
+
+custom_error! {
+    pub FetchBlockError
+        NoTrustedPeers = "no trusted peers specified",
+        Connect { source: Box<Error> } = "connection to peer failed",
+        GetBlocks { source: core_error::Error } = "block request failed",
+        NoBlocks = "no blocks in the stream",
 }
