@@ -1,8 +1,10 @@
+extern crate rand;
 extern crate serde_derive;
+use self::rand::Rng;
 use self::serde_derive::{Deserialize, Serialize};
-use std::path::PathBuf;
-
 use super::file_utils;
+use std::net::TcpListener;
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Logger {
@@ -18,7 +20,7 @@ pub struct Rest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Peer2Peer {
-    pub public_access: String,
+    pub public_address: String,
     pub topics_of_interests: TopicsOfInterests,
 }
 
@@ -37,13 +39,16 @@ pub struct NodeConfig {
 }
 
 impl NodeConfig {
-    pub fn serialize(node_config: NodeConfig) -> PathBuf {
+    pub fn serialize(node_config: &NodeConfig) -> PathBuf {
         let content = serde_yaml::to_string(&node_config).unwrap();
         let node_config_file_path = file_utils::create_file_in_temp("node.config", &content);
         node_config_file_path
     }
 
     pub fn new() -> NodeConfig {
+        let rest_port = get_available_port();
+        let public_address_port = get_available_port();
+
         NodeConfig {
             storage: String::from("/tmp/storage"),
             logger: Logger {
@@ -51,16 +56,38 @@ impl NodeConfig {
                 format: String::from("json"),
             },
             rest: Rest {
-                listen: String::from("127.0.0.1:8443"),
+                listen: format!("127.0.0.1:{}", rest_port.to_string()),
                 prefix: String::from("api"),
             },
             peer_2_peer: Peer2Peer {
-                public_access: String::from("/ip4/127.0.0.1/tcp/8080"),
+                public_address: format!("/ip4/127.0.0.1/tcp/{}", public_address_port.to_string()),
                 topics_of_interests: TopicsOfInterests {
                     messages: String::from("low"),
                     blocks: String::from("normal"),
                 },
             },
         }
+    }
+
+    pub fn get_node_address(&self) -> String {
+        let output = format!("http://{}/{}", self.rest.listen, self.rest.prefix);
+        output
+    }
+}
+
+fn get_available_port() -> u16 {
+    let available_port = loop {
+        let port = rand::thread_rng().gen_range(8000, 9999);
+        if port_is_available(port) {
+            break port;
+        }
+    };
+    available_port
+}
+
+fn port_is_available(port: u16) -> bool {
+    match TcpListener::bind(("127.0.0.1", port)) {
+        Ok(_) => true,
+        Err(_) => false,
     }
 }

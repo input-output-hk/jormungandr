@@ -34,5 +34,3 @@ pub fn get_jcli_app() -> PathBuf {
     );
     path
 }
-
-pub const JORMUNGANDR_ADDRESS: &str = "http://127.0.0.1:8443/api";

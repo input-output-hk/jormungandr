@@ -5,6 +5,8 @@ extern crate mktemp;
 mod common;
 
 use common::configuration;
+use common::configuration::genesis_model::GenesisYaml;
+use common::configuration::node_config_model::NodeConfig;
 use common::file_assert;
 use common::file_utils;
 use common::jcli_wrapper;
@@ -17,11 +19,13 @@ use common::startup;
 #[test]
 #[cfg(feature = "integration-test")]
 pub fn test_unbalanced_output_utxo_transation_is_rejected() {
-    let genesis_yaml = configuration::genesis_model::GenesisYaml::new();
-    let process = startup::start_jormungandr_node_with_genesis_conf(genesis_yaml);
+    let node_config = NodeConfig::new();
+    let jormungandr_rest_address = node_config.get_node_address();
+    let _jormungandr =
+        startup::start_jormungandr_node_with_genesis_conf(&GenesisYaml::new(), &node_config);
 
     let jcli_transaction_wrapper = JCLITransactionWrapper::new();
-    let utxos = jcli_wrapper::assert_rest_utxo_get_command_default();
+    let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
 
     let first_utxo = &utxos[0];
     let second_utxo = &utxos[1];
@@ -44,11 +48,13 @@ pub fn test_unbalanced_output_utxo_transation_is_rejected() {
 #[test]
 #[cfg(feature = "integration-test")]
 pub fn test_utxo_transation_with_more_than_one_witness_is_rejected() {
-    let genesis_yaml = configuration::genesis_model::GenesisYaml::new();
-    let process = startup::start_jormungandr_node_with_genesis_conf(genesis_yaml);
+    let node_config = NodeConfig::new();
+    let jormungandr_rest_address = node_config.get_node_address();
+    let _jormungandr =
+        startup::start_jormungandr_node_with_genesis_conf(&GenesisYaml::new(), &node_config);
 
     let jcli_transaction_wrapper = JCLITransactionWrapper::new();
-    let utxos = jcli_wrapper::assert_rest_utxo_get_command_default();
+    let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
 
     let first_utxo = &utxos[0];
     let second_utxo = &utxos[1];
@@ -64,7 +70,7 @@ pub fn test_utxo_transation_with_more_than_one_witness_is_rejected() {
 
     jcli_transaction_wrapper.assert_finalize();
 
-    let witness_key = jcli_wrapper::assert_key_generate_command_default();
+    let witness_key = jcli_wrapper::assert_key_generate_default();
     jcli_transaction_wrapper.save_witness_key(&witness_key);
     let transaction_id = jcli_transaction_wrapper.get_transaction_id();
 
@@ -77,12 +83,14 @@ pub fn test_utxo_transation_with_more_than_one_witness_is_rejected() {
 #[test]
 #[cfg(feature = "integration-test")]
 pub fn test_correct_utxo_transaction_is_accepted_by_node() {
-    let genesis_yaml = configuration::genesis_model::GenesisYaml::new();
-    let process = startup::start_jormungandr_node_with_genesis_conf(genesis_yaml);
+    let node_config = NodeConfig::new();
+    let jormungandr_rest_address = node_config.get_node_address();
+    let _jormungandr =
+        startup::start_jormungandr_node_with_genesis_conf(&GenesisYaml::new(), &node_config);
 
     let jcli_transaction_wrapper = JCLITransactionWrapper::new();
 
-    let utxos = jcli_wrapper::assert_rest_utxo_get_command_default();
+    let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
 
     let first_utxo = &utxos[0];
     let second_utxo = &utxos[1];
@@ -98,7 +106,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
 
     jcli_transaction_wrapper.assert_finalize();
 
-    let witness_key = jcli_wrapper::assert_key_generate_command_default();
+    let witness_key = jcli_wrapper::assert_key_generate_default();
     jcli_transaction_wrapper.save_witness_key(&witness_key);
     let transaction_id = jcli_transaction_wrapper.get_transaction_id();
 
@@ -109,9 +117,9 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
 
     let transaction_message = jcli_transaction_wrapper.assert_transaction_to_message();
 
-    jcli_wrapper::assert_post_transaction_default(&transaction_message);
+    jcli_wrapper::assert_post_transaction(&transaction_message, &jormungandr_rest_address);
 
-    let node_stats = jcli_wrapper::assert_rest_stats_command_default();
+    let node_stats = jcli_wrapper::assert_rest_stats(&jormungandr_rest_address);
     /*
     assert_eq!(
         "1",

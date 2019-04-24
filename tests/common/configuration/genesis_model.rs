@@ -42,7 +42,7 @@ pub struct GenesisYaml {
 }
 
 impl GenesisYaml {
-    pub fn serialize(genesis_yaml: GenesisYaml) -> PathBuf {
+    pub fn serialize(genesis_yaml: &GenesisYaml) -> PathBuf {
         let content = serde_yaml::to_string(&genesis_yaml).unwrap();
         let input_yaml_file_path = file_utils::create_file_in_temp("genesis.yaml", &content);
         input_yaml_file_path
