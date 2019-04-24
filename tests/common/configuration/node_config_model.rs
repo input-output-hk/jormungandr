@@ -40,7 +40,7 @@ pub struct NodeConfig {
 
 impl NodeConfig {
     pub fn serialize(node_config: &NodeConfig) -> PathBuf {
-        let content = serde_yaml::to_string(&node_config).unwrap();
+        let content = serde_yaml::to_string(&node_config).expect("Canot serialize node config");
         let node_config_file_path = file_utils::create_file_in_temp("node.config", &content);
         node_config_file_path
     }

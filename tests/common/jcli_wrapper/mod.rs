@@ -141,10 +141,10 @@ pub fn assert_post_transaction(transaction_hash: &str, host: &str) -> () {
     assert_eq!("Success!", single_line);
 }
 
-/// Get post transaction command. Uses [default host and port](super::test_const::JORMUNGANDR_ADDRESS)
+/// Get post transaction command.
 fn get_post_transaction_command(transaction_hash: &str, host: &str) -> Command {
     let transaction_hash_file_path =
-        file_utils::create_file_in_temp("spending_key", &transaction_hash);
+        file_utils::create_file_in_temp("transaction.hash", &transaction_hash);
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
         .arg("rest")

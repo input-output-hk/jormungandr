@@ -14,6 +14,7 @@ pub fn start_jormungandr_node_and_wait(
     genesis_block_path: &PathBuf,
 ) -> ProcessKillGuard {
     println!("Starting jormungandr node...");
+    println!("Node Configuration : {:?}", &node_config);
 
     let rest_address = node_config.get_node_address();
     let config_path = NodeConfig::serialize(&node_config);
