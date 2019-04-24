@@ -48,9 +48,10 @@ impl NodeConfig {
     pub fn new() -> NodeConfig {
         let rest_port = get_available_port();
         let public_address_port = get_available_port();
+        let storage_suffix = rand::thread_rng().gen_range(1, 9999);
 
         NodeConfig {
-            storage: String::from("/tmp/storage"),
+            storage: format!("/tmp/storage{}", &storage_suffix),
             logger: Logger {
                 verbosity: 1,
                 format: String::from("json"),
