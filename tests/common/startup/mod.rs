@@ -13,12 +13,11 @@ pub fn start_jormungandr_node_and_wait(
     node_config: &NodeConfig,
     genesis_block_path: &PathBuf,
 ) -> ProcessKillGuard {
-    println!("Starting jormungandr node...");
-    println!("Node Configuration : {:?}", &node_config);
-
+    println!("Starting node with configuration : {:?}", &node_config);
     let rest_address = node_config.get_node_address();
     let config_path = NodeConfig::serialize(&node_config);
 
+    println!("Starting jormungandr node...");
     let process = jormungandr_wrapper::start_jormungandr_node(&config_path, &genesis_block_path)
         .spawn()
         .expect("failed to execute 'start jormungandr node'");
@@ -26,14 +25,14 @@ pub fn start_jormungandr_node_and_wait(
 
     process_utils::run_process_until_response_matches(
         jcli_wrapper::get_rest_stats_command(&rest_address),
-        |output| {
-            output
-                .as_single_node_yaml()
-                .get("uptime")
-                .unwrap()
-                .parse::<i32>()
-                .unwrap()
-                > 2
+        |output| match output.as_single_node_yaml().get("uptime") {
+            Some(uptime) => {
+                uptime
+                    .parse::<i32>()
+                    .expect(&format!("Cannot parse uptime {}", uptime.to_string()))
+                    > 2
+            }
+            None => false,
         },
         2,
         5,
