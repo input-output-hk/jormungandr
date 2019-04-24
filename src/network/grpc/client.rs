@@ -1,7 +1,11 @@
 use super::origin_authority;
-use crate::network::{
-    p2p_topology as p2p, propagate, subscription, BlockConfig, Channels, ConnectionState,
-    GlobalStateR,
+use crate::{
+    blockcfg::{Block, HeaderHash},
+    network::{
+        p2p_topology as p2p, propagate, subscription, BlockConfig, Channels, ConnectionState,
+        GlobalStateR,
+    },
+    settings::start::network::Peer,
 };
 
 use network_core::{
@@ -18,7 +22,7 @@ use http::uri;
 use tokio::{executor::DefaultExecutor, net::TcpStream};
 use tower_service::Service as _;
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, slice};
 
 pub fn connect(
     addr: SocketAddr,
@@ -66,4 +70,39 @@ fn subscribe(
             subscription::process_gossip(gossip_sub, global_state);
             Ok((node_id, prop_handles))
         })
+}
+
+// Fetches a block from a network peer in a one-off, blocking call.
+// This function is used during node bootstrap to fetch the genesis block.
+pub fn fetch_block(peer: Peer, hash: &HeaderHash) -> Result<Block, ()> {
+    info!("fetching block {} from {}", hash, peer.connection);
+    let addr = peer.address();
+    let origin = origin_authority(addr);
+    let peer = grpc_peer::TcpPeer::new(addr);
+    let fetch = Connect::new(peer, DefaultExecutor::current())
+        .origin(uri::Scheme::HTTP, origin)
+        .call(())
+        .map_err(move |err| {
+            error!("Error connecting to peer {}: {:?}", addr, err);
+        })
+        .and_then(move |mut client: Connection<BlockConfig, _, _>| {
+            client
+                .get_blocks(slice::from_ref(hash))
+                .map_err(move |err| {
+                    error!("Error fetching block: {:?}", err);
+                })
+        })
+        .and_then(move |stream| {
+            stream.into_future().map_err(|_| {
+                error!("stream has failed to futurize");
+            })
+        })
+        .and_then(|(maybe_block, _)| match maybe_block {
+            None => {
+                error!("no blocks in the stream");
+                Err(())
+            }
+            Some(block) => Ok(block),
+        });
+    fetch.wait()
 }

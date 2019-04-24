@@ -13,6 +13,7 @@ mod propagate;
 mod service;
 mod subscription;
 
+use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkPropagateMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
@@ -196,9 +197,14 @@ fn handle_propagation(
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
     input.for_each(move |msg| {
+        debug!("to propagate: {:?}", &msg);
         let channels = channels.clone();
         let state = state.clone();
-        let nodes = state.topology.view().collect();
+        let nodes = state.topology.view().collect::<Vec<_>>();
+        debug!(
+            "will propagate to: {:?}",
+            nodes.iter().map(|node| node.id()).collect::<Vec<_>>()
+        );
         let res = match msg {
             NetworkPropagateMsg::Block(ref header) => state
                 .propagation_peers
@@ -292,18 +298,45 @@ fn connect_and_propagate_with<F>(
     tokio::spawn(cf);
 }
 
+fn first_trusted_peer_address(config: &Configuration) -> Option<SocketAddr> {
+    config
+        .trusted_peers
+        .iter()
+        .filter_map(|peer| peer.address.to_socketaddr())
+        .next()
+}
+
 pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
-    let peer = config.trusted_peers.iter().next();
-    match peer.and_then(|trusted_peer| trusted_peer.address.to_socketaddr()) {
+    match first_trusted_peer_address(config) {
         Some(address) => {
             let peer = Peer::new(address, Protocol::Grpc);
             grpc::bootstrap_from_peer(peer, blockchain)
         }
         None => {
             warn!("no gRPC peers specified, skipping bootstrap");
+        }
+    }
+}
+
+/// Queries the trusted peers for a block identified with the hash.
+/// The calling thread is blocked until the block is retrieved.
+/// This function is called during blockchain initialization
+/// to retrieve the genesis block.
+pub fn fetch_block(config: &Configuration, hash: &HeaderHash) -> Result<Block, ()> {
+    if config.protocol != Protocol::Grpc {
+        unimplemented!()
+    }
+    match first_trusted_peer_address(config) {
+        None => {
+            error!("no gRPC peers specified, cannot retrieve block {}", hash);
+            Err(())
+        }
+        Some(address) => {
+            let peer = Peer::new(address, Protocol::Grpc);
+            grpc::fetch_block(peer, hash)
         }
     }
 }
