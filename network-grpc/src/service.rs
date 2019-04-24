@@ -356,7 +356,7 @@ where
 
     fn get_blocks(&mut self, req: Request<gen::node::BlockIds>) -> Self::GetBlocksFuture {
         let service = try_get_service!(self.inner.block_service());
-        let block_ids = match deserialize_vec(&req.get_ref().id) {
+        let block_ids = match deserialize_vec(&req.get_ref().ids) {
             Ok(block_ids) => block_ids,
             Err(e) => {
                 return ResponseFuture::error(error_into_grpc(e));
@@ -367,7 +367,7 @@ where
 
     fn get_headers(&mut self, req: Request<gen::node::BlockIds>) -> Self::GetHeadersFuture {
         let service = try_get_service!(self.inner.block_service());
-        let block_ids = match deserialize_vec(&req.get_ref().id) {
+        let block_ids = match deserialize_vec(&req.get_ref().ids) {
             Ok(block_ids) => block_ids,
             Err(e) => {
                 return ResponseFuture::error(error_into_grpc(e));
@@ -392,7 +392,7 @@ where
 
     fn get_messages(&mut self, req: Request<gen::node::MessageIds>) -> Self::GetMessagesFuture {
         let service = try_get_service!(self.inner.content_service());
-        let tx_ids = match deserialize_vec(&req.get_ref().id) {
+        let tx_ids = match deserialize_vec(&req.get_ref().ids) {
             Ok(tx_ids) => tx_ids,
             Err(e) => {
                 return ResponseFuture::error(error_into_grpc(e));

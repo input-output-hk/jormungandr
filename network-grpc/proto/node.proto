@@ -15,13 +15,13 @@ message TipResponse {
 // Request to fetch the methods for blocks and headers.
 message BlockIds {
   // The identifiers of blocks for loading.
-  repeated bytes id = 1;
+  repeated bytes ids = 1;
 }
 
 // Request to fetch the methods for blocks and headers.
 message MessageIds {
   // The identifiers of blocks for loading.
-  repeated bytes id = 1;
+  repeated bytes ids = 1;
 }
 
 // Request message for method PullBlocksToTip.
