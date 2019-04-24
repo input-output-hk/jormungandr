@@ -112,8 +112,13 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
 
     loop {
         let output = command
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap()
+            .wait_with_output()
             .expect(&format!("cannot get output from command {:?}", &command));
+
         if is_output_ok(output) {
             break;
         }
