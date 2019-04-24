@@ -20,9 +20,10 @@ use common::startup;
 #[cfg(feature = "integration-test")]
 pub fn test_unbalanced_output_utxo_transation_is_rejected() {
     let node_config = NodeConfig::new();
+    let genesis_model = GenesisYaml::new();
     let jormungandr_rest_address = node_config.get_node_address();
     let _jormungandr =
-        startup::start_jormungandr_node_with_genesis_conf(&GenesisYaml::new(), &node_config);
+        startup::start_jormungandr_node_with_genesis_conf(&genesis_model, &node_config);
 
     let jcli_transaction_wrapper = JCLITransactionWrapper::new();
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
@@ -49,9 +50,10 @@ pub fn test_unbalanced_output_utxo_transation_is_rejected() {
 #[cfg(feature = "integration-test")]
 pub fn test_utxo_transation_with_more_than_one_witness_is_rejected() {
     let node_config = NodeConfig::new();
+    let genesis_model = GenesisYaml::new();
     let jormungandr_rest_address = node_config.get_node_address();
     let _jormungandr =
-        startup::start_jormungandr_node_with_genesis_conf(&GenesisYaml::new(), &node_config);
+        startup::start_jormungandr_node_with_genesis_conf(&genesis_model, &node_config);
 
     let jcli_transaction_wrapper = JCLITransactionWrapper::new();
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
@@ -84,9 +86,10 @@ pub fn test_utxo_transation_with_more_than_one_witness_is_rejected() {
 #[cfg(feature = "integration-test")]
 pub fn test_correct_utxo_transaction_is_accepted_by_node() {
     let node_config = NodeConfig::new();
+    let genesis_model = GenesisYaml::new();
     let jormungandr_rest_address = node_config.get_node_address();
     let _jormungandr =
-        startup::start_jormungandr_node_with_genesis_conf(&GenesisYaml::new(), &node_config);
+        startup::start_jormungandr_node_with_genesis_conf(&genesis_model, &node_config);
 
     let jcli_transaction_wrapper = JCLITransactionWrapper::new();
 
