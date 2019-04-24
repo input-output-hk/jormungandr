@@ -110,6 +110,8 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
     let one_second = time::Duration::from_millis(&timeout * 1000);
     let mut attempts = max_attempts.clone();
 
+    println!("Running command {:?} in loop", command);
+
     loop {
         let output = command
             .stdout(Stdio::piped())
@@ -119,7 +121,10 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
             .wait_with_output()
             .expect(&format!("cannot get output from command {:?}", &command));
 
-        if is_output_ok(output) {
+        println!("Standard Output: {}", output.as_lossy_string());
+        println!("Standard Error: {}", output.err_as_lossy_string());
+
+        if output.status.success() && is_output_ok(output) {
             break;
         }
 
