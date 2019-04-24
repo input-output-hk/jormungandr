@@ -44,6 +44,9 @@ pub trait BlockService: P2pService {
     /// implementation to produce a server-streamed response.
     type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = Error>;
 
+    /// Retrieves the identified blocks in an asynchronous stream.
+    fn get_blocks(&mut self, ids: &[<Self::Block as Block>::Id]) -> Self::GetBlocksFuture;
+
     // The type of an asynchronous stream that provides block headers in
     // response to method `get_headers`.
     //type GetHeadersStream: Stream<Item = <Self::Block as Block>::Header, Error = Error>;

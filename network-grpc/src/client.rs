@@ -318,6 +318,13 @@ where
         ResponseStreamFuture::new(future)
     }
 
+    fn get_blocks(&mut self, ids: &[P::BlockId]) -> Self::GetBlocksFuture {
+        let ids = serialize_to_vec(ids).unwrap();
+        let req = gen::node::BlockIds { ids };
+        let future = self.service.get_blocks(Request::new(req));
+        ResponseStreamFuture::new(future)
+    }
+
     fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
     where
         Out: Stream<Item = P::Header> + Send + 'static,
