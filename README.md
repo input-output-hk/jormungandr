@@ -40,13 +40,13 @@ storage: "/tmp/storage"
 logger:
   verbosity: 1
   format: json
-rest:
-  listen: "127.0.0.1:8443"
-  pkcs12: "example.p12"
-  prefix: "api"
 peer_2_peer:
-  trusted_peers: []
-  public_access: "/ip4/127.0.0.1/tcp/8080"
+  trusted_peers:
+    - id: 1
+      address: "/ipv4/104.24.28.11/tcp/8299"
+    - id: 2
+      address: "/ipv4/104.24.29.11/tcp/8299"
+  public_address: "/ip4/127.0.0.1/tcp/8080"
   topics_of_interests:
     messages: low
     blocks: normal
@@ -54,7 +54,6 @@ peer_2_peer:
 
 Fields description:
 
-  - *bft.leaders*: public keys of the nodes.
   - *storage*: (optional) path to the storage. If omitted, the
     blockchain is stored in memory only.
   - *logger*: (optional) logger configuration,
@@ -67,7 +66,9 @@ Fields description:
   - *peer_2_peer*: the P2P network settings
      - *trusted_peers*: (optional) the list of nodes to connect to in order to
        bootstrap the p2p topology (and bootstrap our local blockchain);
-     - *public_address*: (optional) the address to listen from and accept connection
+     - *public_id*: (optional) the public identifier send to the other nodes in the
+       p2p network. If not set it will be randomly generated.
+     - *public_access*: the address to listen from and accept connection
        from. This is the public address that will be distributed to other peers
        of the network that may find interest into participating to the blockchain
        dissemination with the node;
