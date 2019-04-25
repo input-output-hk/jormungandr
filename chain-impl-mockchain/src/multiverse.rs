@@ -248,6 +248,7 @@ impl Multiverse<Ledger> {
                     &state.get_ledger_parameters(),
                     block.messages(),
                     block.date(),
+                    block.chain_length(),
                 )
                 .unwrap();
             // FIXME: add the intermediate states to memory?
@@ -280,6 +281,7 @@ mod test {
                 &state.get_ledger_parameters(),
                 block.messages(),
                 block.date(),
+                block.chain_length(),
             )
             .unwrap()
     }

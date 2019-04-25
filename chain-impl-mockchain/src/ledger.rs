@@ -90,6 +90,14 @@ pub enum Error {
     ExpectingInitialMessage,
     CertificateInvalidSignature,
     Update(setting::Error),
+    WrongChainLength {
+        actual: ChainLength,
+        expected: ChainLength,
+    },
+    NonMonotonicDate {
+        block_date: BlockDate,
+        chain_date: BlockDate,
+    },
 }
 
 impl From<utxo::Error> for Error {
@@ -213,6 +221,7 @@ impl Ledger {
         ledger_params: &LedgerParameters,
         contents: I,
         date: BlockDate,
+        chain_length: ChainLength,
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = &'a Message>,
@@ -220,6 +229,20 @@ impl Ledger {
         let mut new_ledger = self.clone();
 
         new_ledger.chain_length = self.chain_length.next();
+
+        if chain_length != new_ledger.chain_length {
+            return Err(Error::WrongChainLength {
+                actual: chain_length,
+                expected: new_ledger.chain_length,
+            });
+        }
+
+        if date <= self.date {
+            return Err(Error::NonMonotonicDate {
+                block_date: date,
+                chain_date: self.date,
+            });
+        }
 
         let (updates, settings) =
             new_ledger
