@@ -1,7 +1,7 @@
 //! define the Blockchain settings
 //!
 
-use crate::{block::ConsensusVersion, fee::LinearFee, key::Hash, leadership::bft};
+use crate::{block::ConsensusVersion, fee::LinearFee, leadership::bft};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use std::collections::{HashMap, HashSet};
@@ -12,23 +12,40 @@ use num_traits::FromPrimitive;
 
 #[derive(Clone, Debug)]
 pub struct UpdateState {
-    pub updates: HashMap<UpdateProposalId, UpdateProposal>,
+    pub proposals: HashMap<UpdateProposalId, UpdateProposalState>,
 }
 
 impl UpdateState {
     pub fn new() -> Self {
         UpdateState {
-            updates: HashMap::new(),
+            proposals: HashMap::new(),
+        }
+    }
+
+    pub fn apply_vote(mut self, vote: &UpdateVote) -> Result<Self, Error> {
+        if let Some(proposal) = self.proposals.get_mut(&vote.proposal_id) {
+            if proposal.votes.insert(vote.voter_id.clone()) {
+                Ok(self)
+            } else {
+                Err(Error::DuplicateVote(
+                    vote.proposal_id.clone(),
+                    vote.voter_id.clone(),
+                ))
+            }
+        } else {
+            Err(Error::VoteForMissingProposal(vote.proposal_id.clone()))
         }
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct UpdateProposalState {
     pub proposal: UpdateProposal,
-    pub votes: HashSet<bft::LeaderId>,
+    pub votes: HashSet<UpdateVoterId>,
 }
 
 type UpdateProposalId = crate::message::MessageId;
+type UpdateVoterId = bft::LeaderId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateProposal {
@@ -189,12 +206,7 @@ impl Readable for UpdateProposal {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateVote {
     pub proposal_id: UpdateProposalId,
-}
-
-impl UpdateVote {
-    pub fn new(proposal_id: UpdateProposalId) -> Self {
-        UpdateVote { proposal_id }
-    }
+    pub voter_id: UpdateVoterId,
 }
 
 impl property::Serialize for UpdateVote {
@@ -203,6 +215,7 @@ impl property::Serialize for UpdateVote {
         use chain_core::packer::*;
         let mut codec = Codec::from(writer);
         self.proposal_id.serialize(&mut codec)?;
+        self.voter_id.serialize(&mut codec)?;
         Ok(())
     }
 }
@@ -210,7 +223,11 @@ impl property::Serialize for UpdateVote {
 impl Readable for UpdateVote {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let proposal_id = UpdateProposalId::read(buf)?;
-        Ok(UpdateVote::new(proposal_id))
+        let voter_id = UpdateVoterId::read(buf)?;
+        Ok(UpdateVote {
+            proposal_id,
+            voter_id,
+        })
     }
 }
 
@@ -283,20 +300,36 @@ impl Settings {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
+    /*
     InvalidCurrentBlockId(Hash, Hash),
     UpdateIsInvalid,
+    */
+    VoteForMissingProposal(UpdateProposalId),
+    DuplicateVote(UpdateProposalId, UpdateVoterId),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            /*
             Error::InvalidCurrentBlockId(current_one, update_one) => {
                 write!(f, "Cannot apply Setting Update. Update needs to be applied to from block {:?} but received {:?}", update_one, current_one)
             }
             Error::UpdateIsInvalid => write!(
                 f,
                 "Update does not apply to current state"
+            ),
+             */
+            Error::VoteForMissingProposal(proposal_id) => write!(
+                f,
+                "Received a vote for a non-existent proposal {}",
+                proposal_id
+            ),
+            Error::DuplicateVote(proposal_id, voter_id) => write!(
+                f,
+                "Received a duplicate vote from {:?} for proposal {}",
+                voter_id, proposal_id
             ),
         }
     }

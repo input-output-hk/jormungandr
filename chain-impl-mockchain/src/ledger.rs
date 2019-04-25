@@ -88,6 +88,7 @@ pub enum Error {
     ExpectingUtxoWitness,
     ExpectingInitialMessage,
     CertificateInvalidSignature,
+    Update(setting::Error),
 }
 
 impl From<utxo::Error> for Error {
@@ -111,6 +112,12 @@ impl From<DelegationError> for Error {
 impl From<config::Error> for Error {
     fn from(e: config::Error) -> Self {
         Error::Config(e)
+    }
+}
+
+impl From<setting::Error> for Error {
+    fn from(e: setting::Error) -> Self {
+        Error::Update(e)
     }
 }
 
@@ -222,7 +229,7 @@ impl Ledger {
                     new_ledger = new_ledger.apply_update(&update_proposal)?;
                 }
                 Message::UpdateVote(vote) => {
-                    // FIXME
+                    new_ledger = new_ledger.apply_update_vote(&vote)?;
                 }
                 Message::Certificate(authenticated_cert_tx) => {
                     new_ledger =
@@ -252,6 +259,11 @@ impl Ledger {
 
     pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
         self.settings = self.settings.apply(update);
+        Ok(self)
+    }
+
+    pub fn apply_update_vote(mut self, vote: &setting::UpdateVote) -> Result<Self, Error> {
+        self.updates = self.updates.apply_vote(vote)?;
         Ok(self)
     }
 
