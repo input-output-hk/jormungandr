@@ -1,10 +1,14 @@
 use super::super::BlockConfig;
-use crate::blockchain::BlockchainR;
+use super::origin_authority;
+use crate::{blockchain::BlockchainR, settings::start::network::Peer};
 use blockcfg::Block;
 
-use chain_core::property::{Deserialize, HasHeader};
+use chain_core::property::HasHeader;
 use network_core::client::block::BlockService as _;
-use network_grpc::client::{Connect, Connection};
+use network_grpc::{
+    client::{Connect, Connection},
+    peer::TcpPeer,
+};
 
 use http::uri;
 use tokio::prelude::*;
@@ -13,13 +17,11 @@ use tower_service::Service;
 
 use std::fmt::Debug;
 
-pub fn bootstrap_from_target<P>(peer: P, blockchain: BlockchainR, origin: uri::Authority)
-where
-    P: Service<(), Error = std::io::Error> + 'static,
-    <P as Service<()>>::Response: tokio::io::AsyncWrite + tokio::io::AsyncRead + 'static + Send,
-    <Block as Deserialize>::Error: Send + Sync,
-{
-    let bootstrap = Connect::new(peer, DefaultExecutor::current())
+pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
+    info!("connecting to bootstrap peer {}", peer.connection);
+    let addr = peer.address();
+    let origin = origin_authority(addr);
+    let bootstrap = Connect::new(TcpPeer::new(addr), DefaultExecutor::current())
         .origin(uri::Scheme::HTTP, origin)
         .call(())
         .map_err(|e| {
