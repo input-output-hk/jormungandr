@@ -502,7 +502,7 @@ mod test {
 
     impl Arbitrary for UpdateProposal {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            UpdateProposal {
+            Self {
                 max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
                 bootstrap_key_slots_percentage: Arbitrary::arbitrary(g),
                 consensus_version: Arbitrary::arbitrary(g),
@@ -515,10 +515,38 @@ mod test {
         }
     }
 
+    impl Arbitrary for UpdateProposalWithProposer {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Self {
+                proposal: Arbitrary::arbitrary(g),
+                proposer_id: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for SignedUpdateProposal {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Self {
+                proposal: Arbitrary::arbitrary(g),
+                signature: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
     impl Arbitrary for UpdateVote {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            UpdateVote {
+            Self {
                 proposal_id: Arbitrary::arbitrary(g),
+                voter_id: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for SignedUpdateVote {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Self {
+                vote: Arbitrary::arbitrary(g),
+                signature: Arbitrary::arbitrary(g),
             }
         }
     }
