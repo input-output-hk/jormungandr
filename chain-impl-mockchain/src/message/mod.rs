@@ -24,7 +24,7 @@ pub enum Message {
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
     Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
     UpdateProposal(setting::UpdateProposal),
-    UpdateVote(setting::UpdateVote),
+    UpdateVote(setting::SignedUpdateVote),
 }
 
 /// Tag enumeration of all known message
@@ -86,7 +86,9 @@ impl Message {
             Some(MessageTag::UpdateProposal) => {
                 setting::UpdateProposal::read(buf).map(Message::UpdateProposal)
             }
-            Some(MessageTag::UpdateVote) => setting::UpdateVote::read(buf).map(Message::UpdateVote),
+            Some(MessageTag::UpdateVote) => {
+                setting::SignedUpdateVote::read(buf).map(Message::UpdateVote)
+            }
             None => Err(ReadError::UnknownTag(tag as u32)),
         }
     }

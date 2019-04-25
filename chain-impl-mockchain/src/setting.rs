@@ -1,9 +1,11 @@
 //! define the Blockchain settings
 //!
 
+use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::{block::ConsensusVersion, fee::LinearFee, leadership::bft};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
+use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -22,18 +24,27 @@ impl UpdateState {
         }
     }
 
-    pub fn apply_vote(mut self, vote: &UpdateVote) -> Result<Self, Error> {
-        if let Some(proposal) = self.proposals.get_mut(&vote.proposal_id) {
-            if proposal.votes.insert(vote.voter_id.clone()) {
-                Ok(self)
-            } else {
-                Err(Error::DuplicateVote(
-                    vote.proposal_id.clone(),
-                    vote.voter_id.clone(),
-                ))
+    pub fn apply_vote(mut self, vote: &SignedUpdateVote) -> Result<Self, Error> {
+        match vote.verify() {
+            Verification::Failed => Err(Error::BadVoteSignature(
+                vote.vote.proposal_id.clone(),
+                vote.vote.voter_id.clone(),
+            )),
+            Verification::Success => {
+                let vote = &vote.vote;
+                if let Some(proposal) = self.proposals.get_mut(&vote.proposal_id) {
+                    if proposal.votes.insert(vote.voter_id.clone()) {
+                        Ok(self)
+                    } else {
+                        Err(Error::DuplicateVote(
+                            vote.proposal_id.clone(),
+                            vote.voter_id.clone(),
+                        ))
+                    }
+                } else {
+                    Err(Error::VoteForMissingProposal(vote.proposal_id.clone()))
+                }
             }
-        } else {
-            Err(Error::VoteForMissingProposal(vote.proposal_id.clone()))
         }
     }
 }
@@ -209,6 +220,14 @@ pub struct UpdateVote {
     pub voter_id: UpdateVoterId,
 }
 
+impl HasPublicKeys for UpdateVote {
+    fn public_keys<'a>(
+        &'a self,
+    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
+        Box::new(std::iter::once(&self.voter_id.0))
+    }
+}
+
 impl property::Serialize for UpdateVote {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -228,6 +247,44 @@ impl Readable for UpdateVote {
             proposal_id,
             voter_id,
         })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SignedUpdateVote {
+    pub vote: UpdateVote,
+    pub signature: SignatureRaw,
+}
+
+impl UpdateVote {
+    pub fn make_certificate(&self, voter_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
+        use crate::key::make_signature;
+        SignatureRaw(make_signature(voter_private_key, &self).as_ref().to_vec())
+    }
+}
+
+impl SignedUpdateVote {
+    pub fn verify(&self) -> Verification {
+        verify_certificate(&self.vote, &vec![self.signature.clone()])
+    }
+}
+
+impl property::Serialize for SignedUpdateVote {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        self.vote.serialize(&mut codec)?;
+        self.signature.serialize(&mut codec)?;
+        Ok(())
+    }
+}
+
+impl Readable for SignedUpdateVote {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let vote = UpdateVote::read(buf)?;
+        let signature = crate::certificate::SignatureRaw::read(buf)?;
+        Ok(SignedUpdateVote { vote, signature })
     }
 }
 
@@ -307,6 +364,7 @@ pub enum Error {
     UpdateIsInvalid,
     */
     VoteForMissingProposal(UpdateProposalId),
+    BadVoteSignature(UpdateProposalId, UpdateVoterId),
     DuplicateVote(UpdateProposalId, UpdateVoterId),
 }
 impl std::fmt::Display for Error {
@@ -325,6 +383,11 @@ impl std::fmt::Display for Error {
                 f,
                 "Received a vote for a non-existent proposal {}",
                 proposal_id
+            ),
+            Error::BadVoteSignature(proposal_id, voter_id) => write!(
+                f,
+                "Vote from {:?} for proposal {} has an incorrect signature",
+                voter_id, proposal_id
             ),
             Error::DuplicateVote(proposal_id, voter_id) => write!(
                 f,
