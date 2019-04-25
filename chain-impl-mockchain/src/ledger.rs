@@ -11,7 +11,7 @@ use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, utxo};
 use chain_addr::{Address, Discrimination, Kind};
-use chain_core::property::{self, ChainLength as _};
+use chain_core::property::{self, ChainLength as _, Message as _};
 use std::sync::Arc;
 
 // static parameters, effectively this is constant in the parameter of the blockchain
@@ -182,7 +182,7 @@ impl Ledger {
                     ledger = ledger.apply_update(&update_proposal.proposal.proposal)?;
                     ledger_params = ledger.get_ledger_parameters();
                 }
-                Message::UpdateVote(vote) => {
+                Message::UpdateVote(_) => {
                     return Err(Error::Block0HasUpdateVote);
                 }
                 Message::Certificate(authenticated_cert_tx) => {
@@ -227,8 +227,8 @@ impl Ledger {
                     new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
                 }
                 Message::UpdateProposal(update_proposal) => {
-                    // FIXME
-                    new_ledger = new_ledger.apply_update(&update_proposal.proposal.proposal)?;
+                    new_ledger =
+                        new_ledger.apply_update_proposal(content.id(), &update_proposal)?;
                 }
                 Message::UpdateVote(vote) => {
                     new_ledger = new_ledger.apply_update_vote(&vote)?;
@@ -261,6 +261,17 @@ impl Ledger {
 
     pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
         self.settings = self.settings.apply(update);
+        Ok(self)
+    }
+
+    pub fn apply_update_proposal(
+        mut self,
+        proposal_id: setting::UpdateProposalId,
+        proposal: &setting::SignedUpdateProposal,
+    ) -> Result<Self, Error> {
+        self.updates = self
+            .updates
+            .apply_proposal(proposal_id, proposal, &self.settings)?;
         Ok(self)
     }
 

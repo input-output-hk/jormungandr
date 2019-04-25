@@ -24,6 +24,41 @@ impl UpdateState {
         }
     }
 
+    pub fn apply_proposal(
+        mut self,
+        proposal_id: UpdateProposalId,
+        proposal: &SignedUpdateProposal,
+        settings: &Settings,
+    ) -> Result<Self, Error> {
+        let proposer_id = &proposal.proposal.proposer_id;
+
+        if proposal.verify() == Verification::Failed {
+            return Err(Error::BadProposalSignature(
+                proposal_id,
+                proposer_id.clone(),
+            ));
+        }
+
+        if !settings.bft_leaders.contains(proposer_id) {
+            return Err(Error::BadProposer(proposal_id, proposer_id.clone()));
+        }
+
+        let proposal = &proposal.proposal.proposal;
+
+        if let Some(_) = self.proposals.get_mut(&proposal_id) {
+            Err(Error::DuplicateProposal(proposal_id))
+        } else {
+            self.proposals.insert(
+                proposal_id,
+                UpdateProposalState {
+                    proposal: proposal.clone(),
+                    votes: HashSet::new(),
+                },
+            );
+            Ok(self)
+        }
+    }
+
     pub fn apply_vote(
         mut self,
         vote: &SignedUpdateVote,
@@ -66,8 +101,8 @@ pub struct UpdateProposalState {
     pub votes: HashSet<UpdateVoterId>,
 }
 
-type UpdateProposalId = crate::message::MessageId;
-type UpdateVoterId = bft::LeaderId;
+pub type UpdateProposalId = crate::message::MessageId;
+pub type UpdateVoterId = bft::LeaderId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateProposal {
@@ -452,7 +487,10 @@ pub enum Error {
     /*
     InvalidCurrentBlockId(Hash, Hash),
     UpdateIsInvalid,
-    */
+     */
+    BadProposalSignature(UpdateProposalId, UpdateVoterId),
+    BadProposer(UpdateProposalId, UpdateVoterId),
+    DuplicateProposal(UpdateProposalId),
     VoteForMissingProposal(UpdateProposalId),
     BadVoteSignature(UpdateProposalId, UpdateVoterId),
     BadVoter(UpdateProposalId, UpdateVoterId),
@@ -470,6 +508,19 @@ impl std::fmt::Display for Error {
                 "Update does not apply to current state"
             ),
              */
+            Error::BadProposalSignature(proposal_id, proposer_id) => write!(
+                f,
+                "Proposal {} from {:?} has an incorrect signature",
+                proposal_id, proposer_id
+            ),
+            Error::BadProposer(proposal_id, proposer_id) => write!(
+                f,
+                "Proposer {:?} for proposal {} is not a BFT leader",
+                proposer_id, proposal_id
+            ),
+            Error::DuplicateProposal(proposal_id) => {
+                write!(f, "Received a duplicate proposal {}", proposal_id)
+            }
             Error::VoteForMissingProposal(proposal_id) => write!(
                 f,
                 "Received a vote for a non-existent proposal {}",
