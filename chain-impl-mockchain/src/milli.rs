@@ -3,16 +3,24 @@ use std::{fmt, iter};
 
 const MILLI_MULTIPLIER: u64 = 1000;
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Milli(u64);
 
 impl Milli {
+    pub const ZERO: Milli = Milli(0);
+    pub const HALF: Milli = Milli(MILLI_MULTIPLIER / 2);
+    pub const ONE: Milli = Milli(MILLI_MULTIPLIER);
+
     pub fn from_millis(value: u64) -> Self {
         Milli(value)
     }
 
-    pub fn into_millis(self) -> u64 {
+    pub fn to_millis(self) -> u64 {
         self.0
+    }
+
+    pub fn to_float(self) -> f64 {
+        self.0 as f64 / MILLI_MULTIPLIER as f64
     }
 }
 

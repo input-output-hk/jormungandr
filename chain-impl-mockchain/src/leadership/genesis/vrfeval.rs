@@ -1,12 +1,16 @@
 /// This contains the current evaluation methods for the VRF and its link to
 /// the stake distribution
 use crate::date::SlotId;
+use crate::milli::Milli;
 use crate::value::Value;
 use chain_crypto::{
-    vrf_evaluate_and_proove, vrf_verified_get_output, vrf_verify, Curve25519_2HashDH, PublicKey,
+    vrf_evaluate_and_prove, vrf_verified_get_output, vrf_verify, Curve25519_2HashDH, PublicKey,
     SecretKey, VRFVerification, VerifiableRandomFunction,
 };
 use rand::rngs::OsRng;
+use std::convert::TryFrom;
+use std::error::Error;
+use std::fmt::{self, Display, Formatter};
 
 /// Nonce gathered per block
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,14 +22,42 @@ impl Nonce {
     }
 }
 
-/// number between 0.0 and 1.0 that is used to calculate to
-pub struct F(f64);
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum FError {
+    InvalidValue(Milli),
+}
 
-impl F {
-    // TODO: error handling and replace by TryFrom once more stable
-    pub fn create(v: f64) -> F {
-        assert!(v > 0.0 && v <= 1.0);
-        F(v)
+impl Display for FError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            FError::InvalidValue(v) => write!(f, "Invalid value {}, should be in range (0,1]", v),
+        }
+    }
+}
+
+impl Error for FError {}
+
+/// Active slots coefficient used for calculating minimum stake to become slot leader candidate
+/// Described in Ouroboros Praos paper, also referred to as parameter F of phi function
+/// Always in range (0, 1]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct F(Milli);
+
+impl TryFrom<Milli> for F {
+    type Error = FError;
+
+    fn try_from(value: Milli) -> Result<Self, Self::Error> {
+        if value > Milli::ZERO && value <= Milli::ONE {
+            Ok(F(value))
+        } else {
+            Err(FError::InvalidValue(value))
+        }
+    }
+}
+
+impl Into<f64> for F {
+    fn into(self) -> f64 {
+        self.0.to_float()
     }
 }
 
@@ -55,12 +87,6 @@ pub struct PercentStake {
     pub total: Value,
 }
 
-pub fn phi(f: F, rs: PercentStake) -> Threshold {
-    assert!(rs.stake <= rs.total);
-    let t = (rs.stake.0 as f64) / (rs.total.0 as f64);
-    Threshold(1.0 - (1.0 - f.0).powf(t))
-}
-
 /// previous epoch nonce and the slotid encoded in big endian
 struct Input([u8; 36]);
 
@@ -78,55 +104,63 @@ impl Input {
 pub type Witness = <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput;
 pub type WitnessOutput = <Curve25519_2HashDH as VerifiableRandomFunction>::RandomOutput;
 
-/// Evaluate if the threshold is above for a given input for the key and the associated stake
-///
-/// On threshold success, the witness is returned, otherwise None is returned
-pub fn evaluate(
-    my_stake: PercentStake,
-    key: &SecretKey<Curve25519_2HashDH>,
-    nonce: &Nonce,
-    slotid: SlotId,
-) -> Option<Witness> {
-    let input = Input::create(nonce, slotid);
-    let csprng = OsRng::new().unwrap();
-    let vr = vrf_evaluate_and_proove(key, &input.0, csprng);
-    let r = vrf_verified_get_output::<Curve25519_2HashDH>(&vr);
-    let t = get_threshold(&input, &r);
-    if above_stake_threshold(t, my_stake) {
-        Some(vr)
-    } else {
-        None
-    }
+pub struct VrfEvaluator<'a> {
+    pub stake: PercentStake,
+    pub nonce: &'a Nonce,
+    pub slot_id: SlotId,
+    pub param_f: F,
 }
 
-/// verify that the witness pass the threshold for this witness for a given
-/// key and its associated stake.
-///
-/// On success, the nonce is returned, otherwise None is returned
-pub fn verify(
-    key_stake: PercentStake,
-    key: &PublicKey<Curve25519_2HashDH>,
-    nonce: &Nonce,
-    slotid: SlotId,
-    witness: &Witness,
-) -> Option<Nonce> {
-    let input = Input::create(nonce, slotid);
-    if vrf_verify(key, &input.0, witness) == VRFVerification::Success {
-        let r = vrf_verified_get_output::<Curve25519_2HashDH>(witness);
+impl<'a> VrfEvaluator<'a> {
+    /// Evaluate if the threshold is above for a given input for the key and the associated stake
+    ///
+    /// On threshold success, the witness is returned, otherwise None is returned
+    pub fn evaluate(&self, key: &SecretKey<Curve25519_2HashDH>) -> Option<Witness> {
+        let input = Input::create(self.nonce, self.slot_id);
+        let csprng = OsRng::new().unwrap();
+        let vr = vrf_evaluate_and_prove(key, &input.0, csprng);
+        let r = vrf_verified_get_output::<Curve25519_2HashDH>(&vr);
         let t = get_threshold(&input, &r);
-        if above_stake_threshold(t, key_stake) {
-            Some(get_nonce(&input, &r))
+        if above_stake_threshold(t, &self.stake, self.param_f) {
+            Some(vr)
         } else {
             None
         }
-    } else {
-        None
+    }
+
+    /// verify that the witness pass the threshold for this witness for a given
+    /// key and its associated stake.
+    ///
+    /// On success, the nonce is returned, otherwise None is returned
+    pub fn verify(
+        &self,
+        key: &PublicKey<Curve25519_2HashDH>,
+        witness: &'a Witness,
+    ) -> Option<Nonce> {
+        let input = Input::create(&self.nonce, self.slot_id);
+        if vrf_verify(key, &input.0, witness) == VRFVerification::Success {
+            let r = vrf_verified_get_output::<Curve25519_2HashDH>(witness);
+            let t = get_threshold(&input, &r);
+            if above_stake_threshold(t, &self.stake, self.param_f) {
+                Some(get_nonce(&input, &r))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
-fn above_stake_threshold(threshold: Threshold, stake: PercentStake) -> bool {
-    // TODO F is hardcoded here
-    threshold >= phi(F::create(0.5), stake)
+fn above_stake_threshold(threshold: Threshold, stake: &PercentStake, f: F) -> bool {
+    threshold >= phi(f, stake)
+}
+
+fn phi(f: F, rs: &PercentStake) -> Threshold {
+    assert!(rs.stake <= rs.total);
+    let t = (rs.stake.0 as f64) / (rs.total.0 as f64);
+    let f: f64 = f.into();
+    Threshold(1.0 - (1.0 - f).powf(t))
 }
 
 const DOMAIN_NONCE: &'static [u8] = b"NONCE";

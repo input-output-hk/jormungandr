@@ -14,7 +14,7 @@ pub trait VerifiableRandomFunction: key::AsymmetricKey {
 
     const VERIFIED_RANDOM_SIZE: usize;
 
-    fn evaluate_and_proove<T: RngCore + CryptoRng>(
+    fn evaluate_and_prove<T: RngCore + CryptoRng>(
         secret: &Self::Secret,
         input: &Self::Input,
         rng: T,
@@ -30,12 +30,12 @@ pub trait VerifiableRandomFunction: key::AsymmetricKey {
 }
 
 /// Evaluate the VRF for a specific input and return a verified output
-pub fn vrf_evaluate_and_proove<VRF: VerifiableRandomFunction, T: RngCore + CryptoRng>(
+pub fn vrf_evaluate_and_prove<VRF: VerifiableRandomFunction, T: RngCore + CryptoRng>(
     secret: &key::SecretKey<VRF>,
     input: &<VRF as VerifiableRandomFunction>::Input,
     rng: T,
 ) -> <VRF as VerifiableRandomFunction>::VerifiedRandomOutput {
-    VRF::evaluate_and_proove(&secret.0, input, rng)
+    VRF::evaluate_and_prove(&secret.0, input, rng)
 }
 
 /// Verify the VRF output for a specific input is correct

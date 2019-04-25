@@ -11,7 +11,8 @@ use crate::{
 };
 use chain_crypto::Verification as SigningVerification;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
-pub use vrfeval::Witness;
+pub use vrfeval::{FError, Witness, F};
+use vrfeval::{Nonce, PercentStake, VrfEvaluator};
 
 /// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -21,22 +22,22 @@ pub struct GenesisPraosLeader {
 }
 
 pub struct GenesisLeaderSelection {
-    epoch_nonce: vrfeval::Nonce,
+    epoch_nonce: Nonce,
     nodes: stake::PoolTable,
     distribution: StakeDistribution,
     // the epoch this leader selection is valid for
     epoch: Epoch,
+    genesis_param_f: F,
 }
 
 impl GenesisLeaderSelection {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
-        let stake_distribution = ledger.get_stake_distribution();
-
         GenesisLeaderSelection {
-            epoch_nonce: vrfeval::Nonce::zero(),
+            epoch_nonce: Nonce::zero(),
             nodes: ledger.delegation.stake_pools.clone(),
-            distribution: stake_distribution,
-            epoch: epoch,
+            distribution: ledger.get_stake_distribution(),
+            epoch,
+            genesis_param_f: ledger.settings.genesis_param_f,
         }
     }
 
@@ -64,14 +65,17 @@ impl GenesisLeaderSelection {
                     return Err(Error::new(ErrorKind::Failure));
                 }
 
-                let percent_stake = vrfeval::PercentStake {
+                let percent_stake = PercentStake {
                     stake: stake,
                     total: total_stake,
                 };
-                match vrfeval::evaluate(percent_stake, vrf_key, &self.epoch_nonce, date.slot_id) {
-                    None => Ok(None),
-                    Some(vrfout) => Ok(Some(vrfout)),
-                }
+                let evaluator = VrfEvaluator {
+                    stake: percent_stake,
+                    nonce: &self.epoch_nonce,
+                    slot_id: date.slot_id,
+                    param_f: self.genesis_param_f,
+                };
+                Ok(evaluator.evaluate(vrf_key))
             }
         }
     }
@@ -95,16 +99,19 @@ impl GenesisLeaderSelection {
                         // Calculate the total stake.
                         let total_stake: Value = stake_snapshot.total_stake();
 
-                        let percent_stake = vrfeval::PercentStake {
+                        let percent_stake = PercentStake {
                             stake: stake,
                             total: total_stake,
                         };
 
-                        let _ = vrfeval::verify(
-                            percent_stake,
+                        let _ = VrfEvaluator {
+                            stake: percent_stake,
+                            nonce: &self.epoch_nonce,
+                            slot_id: block_header.block_date().slot_id,
+                            param_f: self.genesis_param_f,
+                        }
+                        .verify(
                             &pool_info.initial_key.vrf_public_key,
-                            &self.epoch_nonce,
-                            block_header.block_date().slot_id,
                             &genesis_praos_proof.vrf_proof,
                         );
 

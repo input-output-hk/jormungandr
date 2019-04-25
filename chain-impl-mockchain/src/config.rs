@@ -268,7 +268,7 @@ impl ConfigParamVariant for u32 {
 
 impl ConfigParamVariant for Milli {
     fn to_payload(&self) -> Vec<u8> {
-        self.into_millis().to_payload()
+        self.to_millis().to_payload()
     }
 
     fn from_payload(payload: &[u8]) -> Result<Self, Error> {

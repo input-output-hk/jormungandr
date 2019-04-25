@@ -266,6 +266,7 @@ mod test {
     use crate::leadership::bft::LeaderId;
     use crate::ledger::Ledger;
     use crate::message::{InitialEnts, Message};
+    use crate::milli::Milli;
     use chain_addr::Discrimination;
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
     use chain_crypto::SecretKey;
@@ -304,6 +305,7 @@ mod test {
             leader_pub_key,
         )));
         ents.push(ConfigParam::Block0Date(Block0Date(0)));
+        ents.push(ConfigParam::ConsensusGenesisPraosParamF(Milli::HALF));
         genesis_block.message(Message::Initial(ents));
         let genesis_block = genesis_block.make_genesis_block();
         let mut date = genesis_block.date();

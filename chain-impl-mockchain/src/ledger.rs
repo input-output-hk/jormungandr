@@ -5,13 +5,16 @@ use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderHash};
 use crate::config::{self, Block0Date, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::bft::LeaderId;
+use crate::leadership::genesis;
 use crate::message::Message;
+use crate::milli::Milli;
 use crate::stake::{CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property::{self, ChainLength as _, Message as _};
+use std::convert::TryInto;
 use std::sync::Arc;
 
 // static parameters, effectively this is constant in the parameter of the blockchain
@@ -71,14 +74,17 @@ pub enum Error {
     Block0InitialMessageDuplicateConsensusVersion,
     Block0InitialMessageDuplicateSlotDuration,
     Block0InitialMessageDuplicateEpochStabilityDepth,
+    Block0InitialMessageDuplicatePraosParamF,
     Block0InitialMessageNoBlock0Date,
     Block0InitialMessageNoDiscrimination,
     Block0InitialMessageNoConsensusVersion,
     Block0InitialMessageNoSlotDuration,
     Block0InitialMessageNoConsensusLeaderId,
+    Block0InitialMessageNoPraosParamF,
     Block0UtxoTotalValueTooBig,
     Block0HasUpdateVote,
     FeeCalculationError(ValueError),
+    PraosParamFInvalid(genesis::FError),
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -672,6 +678,7 @@ struct EmptyLedgerBuilder {
     slot_duration: Option<u8>,
     epoch_stability_depth: Option<u32>,
     consensus_leader_ids: Vec<LeaderId>,
+    genesis_f: Option<Milli>,
 }
 
 impl EmptyLedgerBuilder {
@@ -701,9 +708,11 @@ impl EmptyLedgerBuilder {
                 self.consensus_leader_ids.push(param.clone());
                 None
             }
-            ConfigParam::SlotsPerEpoch(_)
-            | ConfigParam::ConsensusGenesisPraosParamD(_)
-            | ConfigParam::ConsensusGenesisPraosParamF(_) => None,
+            ConfigParam::ConsensusGenesisPraosParamF(param) => self
+                .genesis_f
+                .replace(*param)
+                .map(|_| Error::Block0InitialMessageDuplicatePraosParamF),
+            ConfigParam::SlotsPerEpoch(_) | ConfigParam::ConsensusGenesisPraosParamD(_) => None,
         }
         .map(|e| Err(e))
         .unwrap_or(Ok(self))
@@ -718,6 +727,7 @@ impl EmptyLedgerBuilder {
             slot_duration,
             epoch_stability_depth,
             consensus_leader_ids,
+            genesis_f,
         } = self;
 
         let mut settings = setting::Settings::new();
@@ -731,6 +741,11 @@ impl EmptyLedgerBuilder {
             0 => return Err(Error::Block0InitialMessageNoConsensusLeaderId),
             _ => settings.bft_leaders = Arc::new(consensus_leader_ids),
         }
+
+        settings.genesis_param_f = genesis_f
+            .ok_or(Error::Block0InitialMessageNoPraosParamF)?
+            .try_into()
+            .map_err(Error::PraosParamFInvalid)?;
 
         let static_params = LedgerStaticParameters {
             block0_initial_hash,
@@ -749,6 +764,7 @@ pub mod test {
     use super::*;
     use crate::key::{SpendingPublicKey, SpendingSecretKey};
     use crate::message::initial;
+    use crate::milli::Milli;
     use chain_addr::{Address, Discrimination, Kind};
     use chain_crypto::SecretKey;
     use rand::{CryptoRng, RngCore};
@@ -786,7 +802,7 @@ pub mod test {
     }
 
     #[test]
-    pub fn utxo() -> () {
+    pub fn utxo() {
         let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
         let discrimination = Discrimination::Test;
         let mut ie = initial::InitialEnts::new();
@@ -797,6 +813,7 @@ pub mod test {
             leader_pub_key,
         )));
         ie.push(ConfigParam::Block0Date(Block0Date(0)));
+        ie.push(ConfigParam::ConsensusGenesisPraosParamF(Milli::HALF));
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);
