@@ -8,7 +8,7 @@
 
 use crate::block::ChainLength;
 use crate::ledger::Ledger;
-use chain_core::property::{BlockId as _, HasMessages as _};
+use chain_core::property::{Block as _, BlockId as _, HasMessages as _};
 use chain_storage::store::BlockStore;
 use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
@@ -243,7 +243,11 @@ impl Multiverse<Ledger> {
         for hash in blocks_to_apply.iter().rev() {
             let block = store.get_block(&hash).unwrap().0;
             state = state
-                .apply_block(&state.get_ledger_parameters(), block.messages())
+                .apply_block(
+                    &state.get_ledger_parameters(),
+                    block.messages(),
+                    block.date(),
+                )
                 .unwrap();
             // FIXME: add the intermediate states to memory?
         }
@@ -271,7 +275,11 @@ mod test {
             assert_eq!(state.chain_length().0 + 1, block.chain_length().0);
         }
         state
-            .apply_block(&state.get_ledger_parameters(), block.messages())
+            .apply_block(
+                &state.get_ledger_parameters(),
+                block.messages(),
+                block.date(),
+            )
             .unwrap()
     }
 

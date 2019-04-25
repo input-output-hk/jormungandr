@@ -1,7 +1,7 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::{ChainLength, ConsensusVersion, HeaderHash};
+use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderHash};
 use crate::config::{self, Block0Date, ConfigParam};
 use crate::fee::LinearFee;
 use crate::leadership::bft::LeaderId;
@@ -46,6 +46,7 @@ pub struct Ledger {
     pub(crate) updates: setting::UpdateState,
     pub(crate) delegation: DelegationState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
+    pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
 }
 
@@ -211,6 +212,7 @@ impl Ledger {
         &'a self,
         ledger_params: &LedgerParameters,
         contents: I,
+        date: BlockDate,
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = &'a Message>,
@@ -246,6 +248,9 @@ impl Ledger {
                 }
             }
         }
+
+        new_ledger.date = date;
+
         Ok(new_ledger)
     }
 
@@ -659,6 +664,7 @@ impl EmptyLedgerBuilder {
             updates: setting::UpdateState::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_params),
+            date: BlockDate::first(),
             chain_length: ChainLength(0),
         })
     }
