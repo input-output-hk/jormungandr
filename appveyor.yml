@@ -57,12 +57,8 @@ before_deploy:
 
 deploy:
   artifact: /.*\.zip/
-  # TODO update `auth_token.secure`
-  # - Create a `public_repo` GitHub token. Go to: https://github.com/settings/tokens/new
-  # - Encrypt it. Go to https://ci.appveyor.com/tools/encrypt
-  # - Paste the output down here
   auth_token:
-    secure: t3puM/2hOig26EHhAodcZBc61NywF7/PFEpimR6SwGaCiqS07KR5i7iAhSABmBp7
+    secure: g8zro/la2pNmg9GTWATDxfw04FaQ5MUyJPrZMWYRX2vXTmgsyjTDS62dOQU2EFoy
   description: ''
   on:
     # TODO Here you can pick which targets will generate binary releases
