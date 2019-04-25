@@ -235,8 +235,9 @@ impl Multiverse<Ledger> {
 
         /*
         println!(
-            "applying {} blocks to reconstruct state",
-            blocks_to_apply.len()
+            "applying {} blocks to reconstruct state at {}",
+            blocks_to_apply.len(),
+            k
         );
         */
 
@@ -303,6 +304,7 @@ mod test {
         ents.push(ConfigParam::Block0Date(Block0Date(0)));
         genesis_block.message(Message::Initial(ents));
         let genesis_block = genesis_block.make_genesis_block();
+        let mut date = genesis_block.date();
         let genesis_state = Ledger::new(genesis_block.id(), genesis_block.messages()).unwrap();
         assert_eq!(genesis_state.chain_length().0, 0);
         store.put_block(&genesis_block).unwrap();
@@ -316,9 +318,12 @@ mod test {
             let mut block = BlockBuilder::new();
             block.chain_length(state.chain_length.next());
             block.parent(parent);
+            date = date.next();
+            block.date(date);
             let block = block.make_bft_block(&leader_key);
             state = apply_block(&state, &block);
             assert_eq!(state.chain_length().0, i);
+            assert_eq!(state.date, block.date());
             store.put_block(&block).unwrap();
             _root = Some(multiverse.add(block.id(), state.clone()));
             multiverse.gc();
