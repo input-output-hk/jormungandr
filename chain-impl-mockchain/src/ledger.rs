@@ -176,8 +176,10 @@ impl Ledger {
                     // We assume here that the initial block contains
                     // a single update proposal with the initial
                     // settings, which we apply immediately without
-                    // requiring any votes.
-                    ledger = ledger.apply_update(&update_proposal)?;
+                    // requiring any votes. FIXME: check the
+                    // signature? Doesn't really matter, we have to
+                    // trust block 0 anyway.
+                    ledger = ledger.apply_update(&update_proposal.proposal.proposal)?;
                     ledger_params = ledger.get_ledger_parameters();
                 }
                 Message::UpdateVote(vote) => {
@@ -226,7 +228,7 @@ impl Ledger {
                 }
                 Message::UpdateProposal(update_proposal) => {
                     // FIXME
-                    new_ledger = new_ledger.apply_update(&update_proposal)?;
+                    new_ledger = new_ledger.apply_update(&update_proposal.proposal.proposal)?;
                 }
                 Message::UpdateVote(vote) => {
                     new_ledger = new_ledger.apply_update_vote(&vote)?;

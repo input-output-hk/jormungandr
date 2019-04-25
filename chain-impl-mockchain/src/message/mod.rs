@@ -23,7 +23,7 @@ pub enum Message {
     OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
     Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
-    UpdateProposal(setting::UpdateProposal),
+    UpdateProposal(setting::SignedUpdateProposal),
     UpdateVote(setting::SignedUpdateVote),
 }
 
@@ -84,7 +84,7 @@ impl Message {
                 AuthenticatedTransaction::read(buf).map(Message::Certificate)
             }
             Some(MessageTag::UpdateProposal) => {
-                setting::UpdateProposal::read(buf).map(Message::UpdateProposal)
+                setting::SignedUpdateProposal::read(buf).map(Message::UpdateProposal)
             }
             Some(MessageTag::UpdateVote) => {
                 setting::SignedUpdateVote::read(buf).map(Message::UpdateVote)

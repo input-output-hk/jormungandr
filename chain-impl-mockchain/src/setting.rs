@@ -213,6 +213,86 @@ impl Readable for UpdateProposal {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct UpdateProposalWithProposer {
+    pub proposal: UpdateProposal,
+    pub proposer_id: UpdateVoterId,
+}
+
+impl HasPublicKeys for UpdateProposalWithProposer {
+    fn public_keys<'a>(
+        &'a self,
+    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
+        Box::new(std::iter::once(&self.proposer_id.0))
+    }
+}
+
+impl property::Serialize for UpdateProposalWithProposer {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        self.proposal.serialize(&mut codec)?;
+        self.proposer_id.serialize(&mut codec)?;
+        Ok(())
+    }
+}
+
+impl Readable for UpdateProposalWithProposer {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        Ok(Self {
+            proposal: Readable::read(buf)?,
+            proposer_id: Readable::read(buf)?,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SignedUpdateProposal {
+    pub proposal: UpdateProposalWithProposer,
+    pub signature: SignatureRaw,
+}
+
+impl UpdateProposal {
+    pub fn make_certificate(
+        &self,
+        proposer_private_key: &SecretKey<Ed25519Extended>,
+    ) -> SignatureRaw {
+        use crate::key::make_signature;
+        SignatureRaw(
+            make_signature(proposer_private_key, &self)
+                .as_ref()
+                .to_vec(),
+        )
+    }
+}
+
+impl SignedUpdateProposal {
+    pub fn verify(&self) -> Verification {
+        verify_certificate(&self.proposal, &vec![self.signature.clone()])
+    }
+}
+
+impl property::Serialize for SignedUpdateProposal {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        self.proposal.serialize(&mut codec)?;
+        self.signature.serialize(&mut codec)?;
+        Ok(())
+    }
+}
+
+impl Readable for SignedUpdateProposal {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        Ok(Self {
+            proposal: Readable::read(buf)?,
+            signature: Readable::read(buf)?,
+        })
+    }
+}
+
 // A positive vote for a proposal.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateVote {
@@ -241,11 +321,9 @@ impl property::Serialize for UpdateVote {
 
 impl Readable for UpdateVote {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let proposal_id = UpdateProposalId::read(buf)?;
-        let voter_id = UpdateVoterId::read(buf)?;
         Ok(UpdateVote {
-            proposal_id,
-            voter_id,
+            proposal_id: Readable::read(buf)?,
+            voter_id: Readable::read(buf)?,
         })
     }
 }
@@ -282,9 +360,10 @@ impl property::Serialize for SignedUpdateVote {
 
 impl Readable for SignedUpdateVote {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let vote = UpdateVote::read(buf)?;
-        let signature = crate::certificate::SignatureRaw::read(buf)?;
-        Ok(SignedUpdateVote { vote, signature })
+        Ok(SignedUpdateVote {
+            vote: Readable::read(buf)?,
+            signature: Readable::read(buf)?,
+        })
     }
 }
 
