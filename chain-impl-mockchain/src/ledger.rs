@@ -43,6 +43,7 @@ pub struct Ledger {
     pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
     pub(crate) accounts: account::Ledger,
     pub(crate) settings: setting::Settings,
+    pub(crate) updates: setting::UpdateState,
     pub(crate) delegation: DelegationState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
     pub(crate) chain_length: ChainLength,
@@ -75,6 +76,7 @@ pub enum Error {
     Block0InitialMessageNoSlotDuration,
     Block0InitialMessageNoConsensusLeaderId,
     Block0UtxoTotalValueTooBig,
+    Block0HasUpdateVote,
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -163,9 +165,16 @@ impl Ledger {
                     ledger.utxos = new_utxos;
                     ledger.accounts = new_accounts;;
                 }
-                Message::Update(update_proposal) => {
+                Message::UpdateProposal(update_proposal) => {
+                    // We assume here that the initial block contains
+                    // a single update proposal with the initial
+                    // settings, which we apply immediately without
+                    // requiring any votes.
                     ledger = ledger.apply_update(&update_proposal)?;
                     ledger_params = ledger.get_ledger_parameters();
+                }
+                Message::UpdateVote(vote) => {
+                    return Err(Error::Block0HasUpdateVote);
                 }
                 Message::Certificate(authenticated_cert_tx) => {
                     if authenticated_cert_tx.transaction.inputs.len() != 0 {
@@ -208,8 +217,12 @@ impl Ledger {
                 Message::Transaction(authenticated_tx) => {
                     new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
                 }
-                Message::Update(update_proposal) => {
+                Message::UpdateProposal(update_proposal) => {
+                    // FIXME
                     new_ledger = new_ledger.apply_update(&update_proposal)?;
+                }
+                Message::UpdateVote(vote) => {
+                    // FIXME
                 }
                 Message::Certificate(authenticated_cert_tx) => {
                     new_ledger =
@@ -611,6 +624,7 @@ impl EmptyLedgerBuilder {
             oldutxos: utxo::Ledger::new(),
             accounts: account::Ledger::new(),
             settings,
+            updates: setting::UpdateState::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_params),
             chain_length: ChainLength(0),

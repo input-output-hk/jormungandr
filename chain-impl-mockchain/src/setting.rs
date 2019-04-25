@@ -4,13 +4,31 @@
 use crate::{block::ConsensusVersion, fee::LinearFee, key::Hash, leadership::bft};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-// FIXME: sign UpdateProposals, add voting, execute updates at an
-// epoch boundary.
+#[derive(Clone, Debug)]
+pub struct UpdateState {
+    pub updates: HashMap<UpdateProposalId, UpdateProposal>,
+}
+
+impl UpdateState {
+    pub fn new() -> Self {
+        UpdateState {
+            updates: HashMap::new(),
+        }
+    }
+}
+
+pub struct UpdateProposalState {
+    pub proposal: UpdateProposal,
+    pub votes: HashSet<bft::LeaderId>,
+}
+
+type UpdateProposalId = crate::message::MessageId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateProposal {
@@ -167,6 +185,35 @@ impl Readable for UpdateProposal {
     }
 }
 
+// A positive vote for a proposal.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UpdateVote {
+    pub proposal_id: UpdateProposalId,
+}
+
+impl UpdateVote {
+    pub fn new(proposal_id: UpdateProposalId) -> Self {
+        UpdateVote { proposal_id }
+    }
+}
+
+impl property::Serialize for UpdateVote {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+        use chain_core::packer::*;
+        let mut codec = Codec::from(writer);
+        self.proposal_id.serialize(&mut codec)?;
+        Ok(())
+    }
+}
+
+impl Readable for UpdateVote {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let proposal_id = UpdateProposalId::read(buf)?;
+        Ok(UpdateVote::new(proposal_id))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub max_number_of_transactions_per_block: u32,
@@ -272,6 +319,14 @@ mod test {
                 linear_fees: None,
                 slot_duration: Arbitrary::arbitrary(g),
                 epoch_stability_depth: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for UpdateVote {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            UpdateVote {
+                proposal_id: Arbitrary::arbitrary(g),
             }
         }
     }
