@@ -23,6 +23,11 @@ pub fn get_path_in_temp(file_path: &str) -> PathBuf {
     path
 }
 
+pub fn create_empty_file_in_temp(file_name: &str) -> PathBuf {
+    let path = create_file_in_temp(&file_name, "");
+    path
+}
+
 /// Gets path in temp directory (does not create it)
 ///
 /// # Arguments
@@ -57,4 +62,11 @@ pub fn create_file_with_content(path: &PathBuf, content: &str) -> () {
     let mut file = File::create(&path).unwrap();
     file.write_all(content.as_bytes())
         .expect(&format!("cannot write to file {:?}", path));
+}
+
+pub fn read_file(path: &PathBuf) -> String {
+    let mut file = File::create(&path).unwrap();
+    let mut buffer = String::new();
+    std::fs::read_to_string(&mut buffer);
+    buffer
 }
