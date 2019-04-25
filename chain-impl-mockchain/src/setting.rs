@@ -2,6 +2,7 @@
 //!
 
 use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
+use crate::date::BlockDate;
 use crate::{block::ConsensusVersion, fee::LinearFee, leadership::bft};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
@@ -31,6 +32,7 @@ impl UpdateState {
         proposal_id: UpdateProposalId,
         proposal: &SignedUpdateProposal,
         settings: &Settings,
+        cur_date: BlockDate,
     ) -> Result<Self, Error> {
         let proposer_id = &proposal.proposal.proposer_id;
 
@@ -54,6 +56,7 @@ impl UpdateState {
                 proposal_id,
                 UpdateProposalState {
                     proposal: proposal.clone(),
+                    proposal_date: cur_date,
                     votes: HashSet::new(),
                 },
             );
@@ -96,25 +99,39 @@ impl UpdateState {
         }
     }
 
-    // FIXME: do this at an epoch boundary
-    pub fn process_proposals(mut self, mut settings: Settings) -> (Self, Settings) {
+    pub fn process_proposals(
+        mut self,
+        mut settings: Settings,
+        prev_date: BlockDate,
+        new_date: BlockDate,
+    ) -> (Self, Settings) {
         let mut expired_ids = vec![];
 
-        for (proposal_id, proposal_state) in &self.proposals {
-            // FIXME: remove expired proposals.
+        assert!(prev_date < new_date);
 
-            // If a majority of BFT leaders voted for the proposal,
-            // then apply it. Note that multiple proposals might
-            // become accepted at the same time, in which case they're
-            // applied in order of proposal ID.
-            if proposal_state.votes.len() > settings.bft_leaders.len() / 2 {
-                settings = settings.apply(&proposal_state.proposal);
-                expired_ids.push(proposal_id.clone());
+        // If we entered a new epoch, then delete expired update
+        // proposals and apply accepted update proposals.
+        if prev_date.epoch < new_date.epoch {
+            for (proposal_id, proposal_state) in &self.proposals {
+                // If a majority of BFT leaders voted for the
+                // proposal, then apply it. FIXME: multiple proposals
+                // might become accepted at the same time, in which
+                // case they're currently applied in order of proposal
+                // ID. FIXME: delay the effectuation of the proposal
+                // for some number of epochs.
+                if proposal_state.votes.len() > settings.bft_leaders.len() / 2 {
+                    settings = settings.apply(&proposal_state.proposal);
+                    expired_ids.push(proposal_id.clone());
+                } else if proposal_state.proposal_date.epoch + settings.proposal_expiration
+                    > new_date.epoch
+                {
+                    expired_ids.push(proposal_id.clone());
+                }
             }
-        }
 
-        for proposal_id in expired_ids {
-            self.proposals.remove(&proposal_id);
+            for proposal_id in expired_ids {
+                self.proposals.remove(&proposal_id);
+            }
         }
 
         (self, settings)
@@ -124,6 +141,7 @@ impl UpdateState {
 #[derive(Clone, Debug)]
 pub struct UpdateProposalState {
     pub proposal: UpdateProposal,
+    pub proposal_date: BlockDate,
     pub votes: HashSet<UpdateVoterId>,
 }
 
@@ -450,6 +468,11 @@ pub struct Settings {
     pub linear_fees: Arc<LinearFee>,
     pub slot_duration: u8,
     pub epoch_stability_depth: u32,
+    /// The number of epochs that a proposal remains valid. To be
+    /// precise, if a proposal is made at date (epoch_p, slot), then
+    /// it expires at the start of epoch 'epoch_p +
+    /// proposal_expiration + 1'. FIXME: make updateable.
+    pub proposal_expiration: u32,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -465,6 +488,7 @@ impl Settings {
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
             slot_duration: 10,         // 10 sec
             epoch_stability_depth: 10, // num of block
+            proposal_expiration: 100,
         }
     }
 

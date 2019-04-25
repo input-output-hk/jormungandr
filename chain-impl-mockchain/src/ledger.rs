@@ -221,10 +221,10 @@ impl Ledger {
 
         new_ledger.chain_length = self.chain_length.next();
 
-        // If we entered a new epoch, then delete expired update
-        // proposals and apply accepted update proposals.
-        // FIXME: do this at an epoch boundary; need to know current date.
-        let (updates, settings) = new_ledger.updates.process_proposals(new_ledger.settings);
+        let (updates, settings) =
+            new_ledger
+                .updates
+                .process_proposals(new_ledger.settings, new_ledger.date, date);
         new_ledger.updates = updates;
         new_ledger.settings = settings;
 
@@ -237,7 +237,7 @@ impl Ledger {
                 }
                 Message::UpdateProposal(update_proposal) => {
                     new_ledger =
-                        new_ledger.apply_update_proposal(content.id(), &update_proposal)?;
+                        new_ledger.apply_update_proposal(content.id(), &update_proposal, date)?;
                 }
                 Message::UpdateVote(vote) => {
                     new_ledger = new_ledger.apply_update_vote(&vote)?;
@@ -280,10 +280,11 @@ impl Ledger {
         mut self,
         proposal_id: setting::UpdateProposalId,
         proposal: &setting::SignedUpdateProposal,
+        cur_date: BlockDate,
     ) -> Result<Self, Error> {
-        self.updates = self
-            .updates
-            .apply_proposal(proposal_id, proposal, &self.settings)?;
+        self.updates =
+            self.updates
+                .apply_proposal(proposal_id, proposal, &self.settings, cur_date)?;
         Ok(self)
     }
 
