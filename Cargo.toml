@@ -15,7 +15,6 @@ description = """
 Midgard Serpent
 """
 build = "tests/build/deploy_tests_resources.rs"
-links = "fs_extra"
 
 [dependencies]
 dirs = "1.0"
