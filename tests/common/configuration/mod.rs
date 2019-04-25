@@ -1,12 +1,9 @@
+use super::file_utils;
 use std::env;
 use std::path::PathBuf;
 
 pub mod genesis_model;
-
-pub fn get_node_config_path() -> PathBuf {
-    let path = PathBuf::from("./tests/resources/jormungandr/node.config");
-    path
-}
+pub mod node_config_model;
 
 /// Get jcli executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {
@@ -37,5 +34,3 @@ pub fn get_jcli_app() -> PathBuf {
     );
     path
 }
-
-pub const JORMUNGANDR_ADDRESS: &str = "http://127.0.0.1:8443/api";

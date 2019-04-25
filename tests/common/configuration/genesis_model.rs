@@ -1,6 +1,9 @@
 extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::vec::Vec;
+
+use super::file_utils;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlockchainConfig {
@@ -39,6 +42,12 @@ pub struct GenesisYaml {
 }
 
 impl GenesisYaml {
+    pub fn serialize(genesis_yaml: &GenesisYaml) -> PathBuf {
+        let content = serde_yaml::to_string(&genesis_yaml).unwrap();
+        let input_yaml_file_path = file_utils::create_file_in_temp("genesis.yaml", &content);
+        input_yaml_file_path
+    }
+
     pub fn new() -> GenesisYaml {
         let initial_funds = vec![
             Fund {

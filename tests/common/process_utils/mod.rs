@@ -1,61 +1,29 @@
 extern crate serde_yaml;
 
+pub mod output_extensions;
 pub mod process_guard;
-use super::process_assert;
-use std::collections::BTreeMap;
-use std::process::{Command, Stdio};
+use self::output_extensions::ProcessOutput;
+use std::process::{Command, Output, Stdio};
 use std::{thread, time};
 
-/// Runs command, wait for output and returns it as a single yaml node
+/// Runs command, wait for output and returns it output
 ///
 /// # Arguments
 ///
 /// * `command` - Command which will be invoked
 ///
-pub fn run_process_and_get_yaml_single(command: Command) -> BTreeMap<String, String> {
-    let content = run_process_and_get_output(command);
-    let deserialized_map: BTreeMap<String, String> = serde_yaml::from_str(&content).unwrap();
-    deserialized_map
-}
-
-/// Runs command, wait for output and returns it as a collection of yaml nodes
-///
-/// # Arguments
-///
-/// * `command` - Command which will be invoked
-///
-pub fn run_process_and_get_yaml_collection(command: Command) -> Vec<BTreeMap<String, String>> {
-    let content = run_process_and_get_output(command);
-    let deserialized_map: Vec<BTreeMap<String, String>> = serde_yaml::from_str(&content).unwrap();
-    deserialized_map
-}
-
-/// Runs command, wait for output and returns it as a string
-///
-/// # Arguments
-///
-/// * `command` - Command which will be invoked
-///
-pub fn run_process_and_get_output(mut command: Command) -> String {
+pub fn run_process_and_get_output(mut command: Command) -> Output {
+    println!("Running command: {:?}", &command);
     let content = command
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap()
         .wait_with_output()
         .expect("failed to execute process");
 
-    process_assert::assert_process_exited_successfully(content.clone());
-
-    let content = String::from_utf8_lossy(&content.stdout).into_owned();
-    content
-}
-
-pub fn run_process_and_get_output_line(command: Command) -> String {
-    let mut content = run_process_and_get_output(command);
-    if content.ends_with("\n") {
-        let len = content.len();
-        content.truncate(len - 1);
-    }
+    println!("Standard Output: {}", content.as_lossy_string());
+    println!("Standard Error: {}", content.err_as_lossy_string());
     content
 }
 
@@ -104,6 +72,59 @@ pub fn run_process_until_exited_successfully(
             ))
             .success()
         {
+            break;
+        }
+
+        if attempts <= 0 {
+            break;
+        }
+
+        println!(
+            "non-zero status with message(). waiting {} s and trying again ({} of {})",
+            &timeout,
+            &max_attempts - &attempts + 1,
+            &max_attempts
+        );
+
+        attempts = attempts - 1;
+        thread::sleep(one_second);
+    }
+
+    if attempts <= 0 {
+        panic!(
+            "{} (tried to connect {} times with {} s interval)",
+            &error_description, &max_attempts, &timeout
+        );
+    }
+    println!("Success: {}", &command_description);
+}
+
+pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
+    mut command: Command,
+    is_output_ok: F,
+    timeout: u64,
+    max_attempts: i32,
+    command_description: &str,
+    error_description: &str,
+) {
+    let one_second = time::Duration::from_millis(&timeout * 1000);
+    let mut attempts = max_attempts.clone();
+
+    println!("Running command {:?} in loop", command);
+
+    loop {
+        let output = command
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap()
+            .wait_with_output()
+            .expect(&format!("cannot get output from command {:?}", &command));
+
+        println!("Standard Output: {}", output.as_lossy_string());
+        println!("Standard Error: {}", output.err_as_lossy_string());
+
+        if output.status.success() && is_output_ok(output) {
             break;
         }
 
