@@ -48,7 +48,7 @@ pub fn test_unbalanced_output_utxo_transation_is_rejected() {
 
 #[test]
 #[cfg(feature = "integration-test")]
-pub fn test_utxo_transation_with_more_than_one_witness_is_rejected() {
+pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
     let node_config = NodeConfig::new();
     let genesis_model = GenesisYaml::new();
     let jormungandr_rest_address = node_config.get_node_address();
