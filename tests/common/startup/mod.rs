@@ -24,7 +24,7 @@ pub fn start_jormungandr_node_and_wait(
     let guard = ProcessKillGuard::new(process, String::from("Jormungandr node"));
 
     process_utils::run_process_until_response_matches(
-        jcli_wrapper::get_rest_stats_command(&rest_address),
+        jcli_wrapper::jcli_commands::get_rest_stats_command(&rest_address),
         |output| match output.as_single_node_yaml().get("uptime") {
             Some(uptime) => {
                 uptime
