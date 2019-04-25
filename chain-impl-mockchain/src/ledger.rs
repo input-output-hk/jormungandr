@@ -219,6 +219,13 @@ impl Ledger {
 
         new_ledger.chain_length = self.chain_length.next();
 
+        // If we entered a new epoch, then delete expired update
+        // proposals and apply accepted update proposals.
+        // FIXME: do this at an epoch boundary; need to know current date.
+        let (updates, settings) = new_ledger.updates.process_proposals(new_ledger.settings);
+        new_ledger.updates = updates;
+        new_ledger.settings = settings;
+
         for content in contents {
             match content {
                 Message::Initial(_) => return Err(Error::Block0OnlyMessageReceived),

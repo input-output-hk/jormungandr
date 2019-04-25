@@ -6,7 +6,7 @@ use crate::{block::ConsensusVersion, fee::LinearFee, leadership::bft};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
 use num_derive::FromPrimitive;
@@ -14,13 +14,15 @@ use num_traits::FromPrimitive;
 
 #[derive(Clone, Debug)]
 pub struct UpdateState {
-    pub proposals: HashMap<UpdateProposalId, UpdateProposalState>,
+    // Note: we use a BTreeMap to ensure that proposals are processed
+    // in a well-defined (sorted) order.
+    pub proposals: BTreeMap<UpdateProposalId, UpdateProposalState>,
 }
 
 impl UpdateState {
     pub fn new() -> Self {
         UpdateState {
-            proposals: HashMap::new(),
+            proposals: BTreeMap::new(),
         }
     }
 
@@ -92,6 +94,30 @@ impl UpdateState {
         } else {
             Err(Error::VoteForMissingProposal(vote.proposal_id.clone()))
         }
+    }
+
+    // FIXME: do this at an epoch boundary
+    pub fn process_proposals(mut self, mut settings: Settings) -> (Self, Settings) {
+        let mut expired_ids = vec![];
+
+        for (proposal_id, proposal_state) in &self.proposals {
+            // FIXME: remove expired proposals.
+
+            // If a majority of BFT leaders voted for the proposal,
+            // then apply it. Note that multiple proposals might
+            // become accepted at the same time, in which case they're
+            // applied in order of proposal ID.
+            if proposal_state.votes.len() > settings.bft_leaders.len() / 2 {
+                settings = settings.apply(&proposal_state.proposal);
+                expired_ids.push(proposal_id.clone());
+            }
+        }
+
+        for proposal_id in expired_ids {
+            self.proposals.remove(&proposal_id);
+        }
+
+        (self, settings)
     }
 }
 
