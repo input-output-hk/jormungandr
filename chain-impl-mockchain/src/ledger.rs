@@ -265,7 +265,7 @@ impl Ledger {
     }
 
     pub fn apply_update_vote(mut self, vote: &setting::SignedUpdateVote) -> Result<Self, Error> {
-        self.updates = self.updates.apply_vote(vote)?;
+        self.updates = self.updates.apply_vote(vote, &self.settings)?;
         Ok(self)
     }
 

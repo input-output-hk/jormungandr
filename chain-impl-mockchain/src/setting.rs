@@ -24,27 +24,38 @@ impl UpdateState {
         }
     }
 
-    pub fn apply_vote(mut self, vote: &SignedUpdateVote) -> Result<Self, Error> {
-        match vote.verify() {
-            Verification::Failed => Err(Error::BadVoteSignature(
+    pub fn apply_vote(
+        mut self,
+        vote: &SignedUpdateVote,
+        settings: &Settings,
+    ) -> Result<Self, Error> {
+        if vote.verify() == Verification::Failed {
+            return Err(Error::BadVoteSignature(
                 vote.vote.proposal_id.clone(),
                 vote.vote.voter_id.clone(),
-            )),
-            Verification::Success => {
-                let vote = &vote.vote;
-                if let Some(proposal) = self.proposals.get_mut(&vote.proposal_id) {
-                    if proposal.votes.insert(vote.voter_id.clone()) {
-                        Ok(self)
-                    } else {
-                        Err(Error::DuplicateVote(
-                            vote.proposal_id.clone(),
-                            vote.voter_id.clone(),
-                        ))
-                    }
-                } else {
-                    Err(Error::VoteForMissingProposal(vote.proposal_id.clone()))
-                }
+            ));
+        }
+
+        let vote = &vote.vote;
+
+        if !settings.bft_leaders.contains(&vote.voter_id) {
+            return Err(Error::BadVoter(
+                vote.proposal_id.clone(),
+                vote.voter_id.clone(),
+            ));
+        }
+
+        if let Some(proposal) = self.proposals.get_mut(&vote.proposal_id) {
+            if !proposal.votes.insert(vote.voter_id.clone()) {
+                return Err(Error::DuplicateVote(
+                    vote.proposal_id.clone(),
+                    vote.voter_id.clone(),
+                ));
             }
+
+            Ok(self)
+        } else {
+            Err(Error::VoteForMissingProposal(vote.proposal_id.clone()))
         }
     }
 }
@@ -444,6 +455,7 @@ pub enum Error {
     */
     VoteForMissingProposal(UpdateProposalId),
     BadVoteSignature(UpdateProposalId, UpdateVoterId),
+    BadVoter(UpdateProposalId, UpdateVoterId),
     DuplicateVote(UpdateProposalId, UpdateVoterId),
 }
 impl std::fmt::Display for Error {
@@ -466,6 +478,11 @@ impl std::fmt::Display for Error {
             Error::BadVoteSignature(proposal_id, voter_id) => write!(
                 f,
                 "Vote from {:?} for proposal {} has an incorrect signature",
+                voter_id, proposal_id
+            ),
+            Error::BadVoter(proposal_id, voter_id) => write!(
+                f,
+                "Voter {:?} for proposal {} is not a BFT leader",
                 voter_id, proposal_id
             ),
             Error::DuplicateVote(proposal_id, voter_id) => write!(
