@@ -229,7 +229,7 @@ impl Multiverse<Ledger> {
             }
 
             let cur_block_info = store.get_block_info(&cur_hash).unwrap();
-            blocks_to_apply.push(k.clone());
+            blocks_to_apply.push(cur_hash.clone());
             cur_hash = cur_block_info.parent_id();
         };
 
