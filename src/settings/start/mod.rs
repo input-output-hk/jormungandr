@@ -2,7 +2,7 @@ mod config;
 pub mod network;
 
 use self::config::ConfigLogSettings;
-pub use self::config::{Genesis, GenesisConstants, Rest};
+pub use self::config::Rest;
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::command_arguments::*;

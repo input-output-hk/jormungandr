@@ -7,26 +7,12 @@ use std::{collections::BTreeMap, fmt, net::SocketAddr};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub secret_file: Option<PathBuf>,
-    pub genesis: Option<Genesis>,
-    pub legacy_listen: Option<Vec<SocketAddr>>,
-    pub grpc_listen: Option<Vec<SocketAddr>>,
     pub legacy_peers: Option<Vec<SocketAddr>>,
     pub grpc_peers: Option<Vec<SocketAddr>>,
     pub storage: Option<PathBuf>,
     pub logger: Option<ConfigLogSettings>,
     pub rest: Option<Rest>,
     pub peer_2_peer: P2pConfig,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Genesis {
-    pub constant: GenesisConstants,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct GenesisConstants {
-    /// stability time
-    k: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
