@@ -7,7 +7,8 @@ pub mod node_config_model;
 
 /// Get jcli executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {
-    let mut path: PathBuf = env!("JORMUNGANDR").into();
+    let mut path = get_working_directory();
+    path.push("jormungandr");
     if cfg!(windows) {
         path.set_extension("exe");
     }
@@ -22,7 +23,8 @@ pub fn get_jormungandr_app() -> PathBuf {
 
 /// Get jcli executable from current environment
 pub fn get_jcli_app() -> PathBuf {
-    let mut path: PathBuf = env!("JCLI").into();
+    let mut path = get_working_directory();
+    path.push("jcli");
     if cfg!(windows) {
         path.set_extension("exe");
     }
@@ -33,4 +35,15 @@ pub fn get_jcli_app() -> PathBuf {
         env::current_dir()
     );
     path
+}
+
+/// Gets working directory
+fn get_working_directory() -> PathBuf {
+    let mut output_directory: PathBuf = std::env::current_exe().unwrap().into();
+
+    /// current exe directory is ./target/{profile}/deps/{app_name}.exe
+    /// We would like to navigate to ./target/{profile}
+    output_directory.pop();
+    output_directory.pop();
+    output_directory
 }
