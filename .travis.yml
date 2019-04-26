@@ -1,30 +1,75 @@
+# Based on the "trust" template v0.1.2
+# https://github.com/japaric/trust/tree/v0.1.2
+
+dist: trusty
 language: rust
-cache: cargo
+services: docker
+sudo: required
+
+env:
+  global:
+    # TODO Update this to match the name of your project.
+    - CRATE_NAME=jormungandr
+
 matrix:
   include:
-    - rust: stable
-      os: linux
-      env: CHECK_RUSTFMT="true"
-    - rust: nightly
-      os: linux
-      env: RUN_TEST="true"
-  allow_failures:
-#    - rust: stable
-#      os: windows
-#      env: CARDANO_C="false" CARDANO_WASM="false" RUN_TEST="true"
+    # Linux
+    - env: TARGET=aarch64-unknown-linux-gnu DISABLE_TESTS=1
+    - env: TARGET=arm-unknown-linux-gnueabi DISABLE_TESTS=1
+    - env: TARGET=armv7-unknown-linux-gnueabihf DISABLE_TESTS=1
+    - env: TARGET=mips64-unknown-linux-gnuabi64 DISABLE_TESTS=1
+    - env: TARGET=mips64el-unknown-linux-gnuabi64 DISABLE_TESTS=1
+    - env: TARGET=powerpc64-unknown-linux-gnu DISABLE_TESTS=1
+    - env: TARGET=powerpc64le-unknown-linux-gnu DISABLE_TESTS=1
+    - env: TARGET=x86_64-unknown-linux-gnu
+    - env: TARGET=x86_64-unknown-linux-musl
 
-before_script:
-  - |
-    if [ "${CARDANO_WASM}" = "true" ]; then
-       rustup target add ${TARGET} --toolchain nightly
-    fi
-  - |
-    if [ "${CHECK_RUSTFMT}" = "true" ]; then
-       rustup component add rustfmt-preview
-    fi
+    # OSX
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+
+    # *BSD
+    - env: TARGET=x86_64-unknown-freebsd DISABLE_TESTS=1
+    - env: TARGET=x86_64-unknown-netbsd DISABLE_TESTS=1
+
+before_install:
+  - set -e
+  - rustup self update
+
+install:
+  - sh ci/install.sh
+  - source ~/.cargo/env || true
+
 script:
-  - |
-    if [ "${CHECK_RUSTFMT}" = "true" ]; then
-       cargo fmt -- --check
-    fi
-  - if [ "${RUN_TEST}" = "true" ]; then cargo build --verbose --all && cargo test --verbose --all; fi
+  - bash ci/script.sh
+
+after_script: set +e
+
+before_deploy:
+  - sh ci/before_deploy.sh
+
+deploy:
+  api_key:
+    secure: yQ7C2wgLhS2wwEFB+iUDjSQyBxXzQRUYlSEpbRHPY+L0JAOWnnnh+MnraZxrnEXcMcYvt+wI6+B/ZakuQ9SjPy639RLNQfC+L2dCT+jsHKdgxTpeveHQhdsdExpkIKhGFwAlDHv3hhnNkBcYKLc6NksngyR/P6jfv9H/RKpKbCMQcHIoA55sd6yJ3uF4umJKHKQUGwiqWGAfNOMtLazJasLviJQBRtzZw0Xly4ANqxNRkW8T9Aw3eQiD3p5RS+ELVhbqFqtqQGe/iJ8O2fnfY9HUcrxWBRrF+9rWVNzIj+uyeSP4NuJTtyMye2M1TbfsHwbIcDWka0S+I2/lS5tr5JYNhZ4NJFRuLgqRGDWFv9Q8eauDdX6PnOCkPjA8pZ0toCstz5x6wqV9P2M95FB5ZAlcptvM/lR4+7J/AwoPC+1Js4wMv5S1cyEJehTR3wSorO2+tYTVfJCcrHg+uRSr1lpdWFRALlC/2I9CGx9ddtSaop6vNCVhgAy2rdWKSXdcQS2tAGy/Qd82kiNxohorfYhN5ttAMv+In1/oL3bvjzmDMnVhmzhMwKwO00CQs2oEYEFbC9uHRY6x2JJmz28bx46AA9IX5kMG+ks97GOIkufGp0V7/aIGqubDubLwei6TAUlMeCkpfryOkF51yZfvdxpWmzcEGY0Ha1Mhx7gk4dM=
+  file_glob: true
+  file: $CRATE_NAME-$TRAVIS_TAG-$TARGET.*
+  on:
+    condition: $TRAVIS_RUST_VERSION = stable
+    tags: true
+  provider: releases
+  skip_cleanup: true
+
+cache: cargo
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
+
+branches:
+  only:
+    # release tags
+    - /^v\d+\.\d+\.\d+.*$/
+    - master
+
+notifications:
+  email:
+    on_success: never
