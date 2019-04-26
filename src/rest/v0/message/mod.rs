@@ -27,7 +27,6 @@ fn handle_request(
 {
     let sender = request.state().clone();
     request.body().map(move |message| -> Result<_, ActixError> {
-        println!("qquququq {:?}", message);
         let msg = Message::deserialize(message.into_buf()).map_err(|e| {
             println!("{}", e);
             ErrorBadRequest(e)
