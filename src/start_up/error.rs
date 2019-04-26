@@ -1,4 +1,4 @@
-use crate::{blockcfg, blockchain, secure, settings};
+use crate::{blockcfg, blockchain, network, secure, settings};
 use chain_storage::error::Error as StorageError;
 use std::io;
 
@@ -15,6 +15,7 @@ custom_error! {pub Error
     StorageError { source: StorageError } = "Storage error",
     Blockchain { source: blockchain::LoadError } = "Error while loading the blockchain state",
     Block0 { source: blockcfg::Block0Error } = "Error in the genesis-block",
+    FetchBlock0 { source: network::FetchBlockError } = "Error fetching the genesis block from the network",
     NodeSecrets { source: secure::NodeSecretFromFileError} = "Error while loading the node's secrets."
 }
 
@@ -36,6 +37,7 @@ impl Error {
             Error::Blockchain { source: _ } => 6,
             Error::Block0 { source: _ } => 7,
             Error::NodeSecrets { source: _ } => 8,
+            Error::FetchBlock0 { .. } => 9,
         }
     }
 }
