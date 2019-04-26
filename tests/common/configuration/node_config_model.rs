@@ -1,4 +1,6 @@
+extern crate rand;
 extern crate serde_derive;
+use self::rand::Rng;
 use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
 use std::net::TcpListener;
