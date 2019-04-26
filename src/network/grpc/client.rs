@@ -19,7 +19,7 @@ use network_grpc::{
 
 use futures::prelude::*;
 use http::uri;
-use tokio::{executor::DefaultExecutor, net::TcpStream};
+use tokio::{executor::DefaultExecutor, net::TcpStream, runtime};
 use tower_service::Service as _;
 
 use std::{net::SocketAddr, slice};
@@ -99,5 +99,5 @@ pub fn fetch_block(peer: Peer, hash: &HeaderHash) -> Result<Block, FetchBlockErr
             None => Err(FetchBlockError::NoBlocks),
             Some(block) => Ok(block),
         });
-    fetch.wait()
+    runtime::current_thread::block_on_all(fetch)
 }
