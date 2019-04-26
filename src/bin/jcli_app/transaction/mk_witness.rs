@@ -1,5 +1,6 @@
 use bech32::{Bech32, ToBase32 as _};
 use chain_core::property::Serialize as _;
+use chain_crypto::bech32::{self as bech32_crypto, Bech32 as _};
 use chain_crypto::{AsymmetricKey, SecretKey, SecretKeyError};
 use chain_impl_mockchain::{
     account::SpendingCounter,
@@ -11,6 +12,7 @@ use structopt::StructOpt;
 
 custom_error! {pub MkWitnessError
     Bech32 { source: bech32::Error } = "Invalid Bech32",
+    Bech32Crypto { source: bech32_crypto::Error } = "Invalid Bech32",
     ReadTransaction { error: common::CommonError } = "cannot read the transaction: {error}",
     WriteTransaction { error: common::CommonError } = "cannot save changes of the transaction: {error}",
     Io { source: std::io::Error} = "cannot read or write data",
@@ -74,9 +76,11 @@ impl std::str::FromStr for WitnessType {
 
 impl MkWitness {
     fn secret<A: AsymmetricKey>(&self) -> Result<SecretKey<A>, MkWitnessError> {
-        let reader = io::open_file_read(&self.secret);
-        read_secret(reader)
+        let mut bech32_str = String::new();
+        io::open_file_read(&self.secret).read_to_string(&mut bech32_str)?;
+        Ok(SecretKey::try_from_bech32_str(&bech32_str)?)
     }
+
     pub fn exec(self) -> Result<(), MkWitnessError> {
         let witness = match self.witness_type {
             WitnessType::UTxO => {
@@ -110,15 +114,4 @@ impl MkWitness {
         writeln!(writer, "{}", bech32)?;
         Ok(())
     }
-}
-
-fn read_secret<A, R>(mut reader: R) -> Result<SecretKey<A>, MkWitnessError>
-where
-    A: AsymmetricKey,
-    R: Read,
-{
-    let mut bytes = vec![0u8; A::SECRET_KEY_SIZE];
-    reader.read_exact(&mut bytes)?;
-
-    Ok(SecretKey::from_binary(&bytes)?)
 }

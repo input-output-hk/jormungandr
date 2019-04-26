@@ -1,7 +1,5 @@
 use std::process::{Command, Output};
 
-use super::process_utils::output_extensions::ProcessOutput;
-
 /// Assert process exited successfully
 ///
 /// # Arguments

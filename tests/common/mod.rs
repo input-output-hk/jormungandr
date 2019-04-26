@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+
+extern crate serde_derive;
+
 pub mod configuration;
 pub mod file_assert;
 pub mod file_utils;

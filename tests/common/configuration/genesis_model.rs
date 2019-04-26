@@ -1,5 +1,4 @@
-extern crate serde_derive;
-use self::serde_derive::{Deserialize, Serialize};
+use common::serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::vec::Vec;
 

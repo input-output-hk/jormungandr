@@ -1,23 +1,18 @@
+#![cfg(feature = "integration-test")]
+
 extern crate assert_cmd;
 extern crate galvanic_test;
 extern crate mktemp;
 
 mod common;
 
-use common::configuration;
-use common::configuration::genesis_model::GenesisYaml;
+use common::configuration::genesis_model::{Fund, GenesisYaml};
 use common::configuration::node_config_model::NodeConfig;
-use common::file_assert;
-use common::file_utils;
 use common::jcli_wrapper;
 use common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
-use common::jormungandr_wrapper;
-use common::process_assert;
-use common::process_utils;
 use common::startup;
 
 #[test]
-#[cfg(feature = "integration-test")]
 pub fn test_unbalanced_output_utxo_transation_is_rejected() {
     let node_config = NodeConfig::new();
     let genesis_model = GenesisYaml::new();
@@ -47,7 +42,6 @@ pub fn test_unbalanced_output_utxo_transation_is_rejected() {
 }
 
 #[test]
-#[cfg(feature = "integration-test")]
 pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
     let node_config = NodeConfig::new();
     let genesis_model = GenesisYaml::new();
@@ -83,34 +77,35 @@ pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
 }
 
 #[test]
-#[cfg(feature = "integration-test")]
 pub fn test_correct_utxo_transaction_is_accepted_by_node() {
+    let jcli_transaction_wrapper = JCLITransactionWrapper::new();
+    let sender_priv = jcli_wrapper::assert_key_generate_default();
+    let sender_pub = jcli_wrapper::assert_key_to_public_default(&sender_priv);
+    let sender_addr = jcli_wrapper::assert_address_single_default(&sender_pub);
+    let recv_priv = jcli_wrapper::assert_key_generate_default();
+    let recv_pub = jcli_wrapper::assert_key_to_public_default(&recv_priv);
+    let recv_addr = jcli_wrapper::assert_address_single_default(&recv_pub);
+
     let node_config = NodeConfig::new();
-    let genesis_model = GenesisYaml::new();
+    let genesis_model = GenesisYaml::new_with_funds(vec![Fund {
+        address: sender_addr,
+        value: 100,
+    }]);
     let jormungandr_rest_address = node_config.get_node_address();
     let _jormungandr =
         startup::start_jormungandr_node_with_genesis_conf(&genesis_model, &node_config);
 
-    let jcli_transaction_wrapper = JCLITransactionWrapper::new();
-
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
 
-    let first_utxo = &utxos[0];
-    let second_utxo = &utxos[1];
+    let utxo = &utxos[0];
 
     jcli_transaction_wrapper.assert_new_transaction();
-    jcli_transaction_wrapper.assert_add_input(
-        &first_utxo.in_txid,
-        &first_utxo.in_idx,
-        &first_utxo.out_value,
-    );
+    jcli_transaction_wrapper.assert_add_input(&utxo.in_txid, &utxo.in_idx, &utxo.out_value);
 
-    jcli_transaction_wrapper.assert_add_output(&second_utxo.out_addr, &second_utxo.out_value);
+    jcli_transaction_wrapper.assert_add_output(&recv_addr, &utxo.out_value);
 
     jcli_transaction_wrapper.assert_finalize();
-
-    let witness_key = jcli_wrapper::assert_key_generate_default();
-    jcli_transaction_wrapper.save_witness_key(&witness_key);
+    jcli_transaction_wrapper.save_witness_key(&sender_priv);
     let transaction_id = jcli_transaction_wrapper.get_transaction_id();
 
     jcli_transaction_wrapper.assert_make_witness(&transaction_id, "utxo", &0);
@@ -123,13 +118,6 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
     jcli_wrapper::assert_post_transaction(&transaction_message, &jormungandr_rest_address);
 
     let node_stats = jcli_wrapper::assert_rest_stats(&jormungandr_rest_address);
-    /*
-        TODO: this assertion expected value was changed from 1 to 0 because of bug #237.
-        If test fails on below assertion please revert change to make it pass.
-    */
-    assert_eq!(
-        "0",
-        node_stats.get("txRecvCnt").unwrap(),
-        "Due to bug #237 expected value was changed to wrong one (should be 1) to enable this test to pass. If this assertion fails, that means bug is fixed,"
-    );
+
+    assert_eq!("1", node_stats.get("txRecvCnt").unwrap());
 }

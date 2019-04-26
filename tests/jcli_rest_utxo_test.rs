@@ -1,3 +1,5 @@
+#![cfg(feature = "integration-test")]
+
 extern crate assert_cmd;
 extern crate galvanic_test;
 extern crate mktemp;
@@ -6,11 +8,9 @@ mod common;
 use common::configuration;
 use common::configuration::genesis_model::Fund;
 use common::jcli_wrapper;
-use common::jormungandr_wrapper;
 use common::startup;
 
 #[test]
-#[cfg(feature = "integration-test")]
 pub fn test_correct_utxos_are_read_from_node() {
     let sender_private_key = jcli_wrapper::assert_key_generate_default();
     println!("Sender private key generated: {}", &sender_private_key);
