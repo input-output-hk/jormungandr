@@ -8,7 +8,7 @@ pub mod node_config_model;
 /// Get jcli executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {
     let mut path = get_working_directory();
-    path.push("JORMUNGANDR");
+    path.push("jormungandr");
     if cfg!(windows) {
         path.set_extension("exe");
     }
@@ -24,7 +24,7 @@ pub fn get_jormungandr_app() -> PathBuf {
 /// Get jcli executable from current environment
 pub fn get_jcli_app() -> PathBuf {
     let mut path = get_working_directory();
-    path.push("JCLI");
+    path.push("jcli");
     if cfg!(windows) {
         path.set_extension("exe");
     }
