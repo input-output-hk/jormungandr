@@ -40,13 +40,10 @@ install:
   - cargo -V
   - git submodule update --init --recursive
 
-# TODO This is the "test phase", tweak it as you see fit
 test_script:
   # we don't run the "test phase" when doing deploys
   - if [%APPVEYOR_REPO_TAG%]==[false] (
-      cargo build --target %TARGET% &&
       cargo build --target %TARGET% --release &&
-      cargo test --target %TARGET% --features=integration-test &&
       cargo test --target %TARGET% --features=integration-test --release
     )
 

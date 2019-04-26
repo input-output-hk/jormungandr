@@ -14,14 +14,13 @@ env:
 matrix:
   include:
     # Linux
-    - env: TARGET=aarch64-unknown-linux-gnu
-    - env: TARGET=arm-unknown-linux-gnueabi
-    - env: TARGET=armv7-unknown-linux-gnueabihf
-    - env: TARGET=mips64-unknown-linux-gnuabi64
-    - env: TARGET=mips64el-unknown-linux-gnuabi64
-    - env: TARGET=powerpc64-unknown-linux-gnu
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-    - env: TARGET=s390x-unknown-linux-gnu DISABLE_TESTS=1
+    - env: TARGET=aarch64-unknown-linux-gnu DISABLE_TESTS=1
+    - env: TARGET=arm-unknown-linux-gnueabi DISABLE_TESTS=1
+    - env: TARGET=armv7-unknown-linux-gnueabihf DISABLE_TESTS=1
+    - env: TARGET=mips64-unknown-linux-gnuabi64 DISABLE_TESTS=1
+    - env: TARGET=mips64el-unknown-linux-gnuabi64 DISABLE_TESTS=1
+    - env: TARGET=powerpc64-unknown-linux-gnu DISABLE_TESTS=1
+    - env: TARGET=powerpc64le-unknown-linux-gnu DISABLE_TESTS=1
     - env: TARGET=x86_64-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-musl
 
@@ -32,16 +31,6 @@ matrix:
     # *BSD
     - env: TARGET=x86_64-unknown-freebsd DISABLE_TESTS=1
     - env: TARGET=x86_64-unknown-netbsd DISABLE_TESTS=1
-
-    # Windows
-    - env: TARGET=x86_64-pc-windows-gnu
-
-    # Testing other channels
-    - env: TARGET=x86_64-unknown-linux-gnu
-      rust: nightly
-    - env: TARGET=x86_64-apple-darwin
-      os: osx
-      rust: nightly
 
 before_install:
   - set -e
