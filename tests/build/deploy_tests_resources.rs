@@ -3,8 +3,11 @@ use std::{env, path::PathBuf};
 pub const TARGET_DIRECTORY: &str = "./target/";
 
 fn main() {
-    let build_profile: PathBuf = env::var("PROFILE").unwrap().into();
-    let output_directory = PathBuf::from(TARGET_DIRECTORY).join(build_profile);
+    let mut output_directory: PathBuf = env::var("OUT_DIR").unwrap().into();
+
+    output_directory.pop();
+    output_directory.pop();
+    output_directory.pop();
 
     println!(
         "cargo:rustc-env=JCLI={}",
