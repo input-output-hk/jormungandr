@@ -5,6 +5,7 @@ use crate::{
     blockcfg::{Block, Block0DataSource as _},
     blockchain::{Blockchain, BlockchainR},
     clock::{Clock, ClockEpochConfiguration},
+    network,
     settings::{logging::LogSettings, start::Settings, CommandLine},
 };
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
@@ -88,8 +89,7 @@ pub fn prepare_block_0(settings: &Settings, storage: &NodeStorage) -> Result<Blo
                 Ok(block0)
             } else {
                 debug!("retrieving block0 from network with hash {}", block0_id);
-
-                unimplemented!("Retrieving the block0 from network")
+                network::fetch_block(&settings.network, &block0_id).map_err(|e| e.into())
             }
         }
     }
