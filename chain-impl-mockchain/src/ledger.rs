@@ -351,6 +351,7 @@ fn internal_apply_transaction(
             InputEnum::AccountInput(account_id, value) => {
                 ledger.accounts = input_account_verify(
                     ledger.accounts,
+                    &ledger.static_params.block0_initial_hash,
                     transaction_id,
                     &account_id,
                     value,
@@ -456,7 +457,11 @@ fn input_utxo_verify(
                 ));
             };
 
-            let verified = signature.verify(&xpub, &transaction_id);
+            let data_to_verify = Block0TransactionId::new(
+                &ledger.static_params.block0_initial_hash,
+                &transaction_id,
+            );
+            let verified = signature.verify(&xpub, &data_to_verify);
             if verified == chain_crypto::Verification::Failed {
                 return Err(Error::OldUtxoInvalidSignature(
                     utxo.clone(),
@@ -479,9 +484,13 @@ fn input_utxo_verify(
                 ));
             }
 
+            let data_to_verify = Block0TransactionId::new(
+                &ledger.static_params.block0_initial_hash,
+                &transaction_id,
+            );
             let verified = signature.verify(
                 &associated_output.address.public_key().unwrap(),
-                &transaction_id,
+                &data_to_verify,
             );
             if verified == chain_crypto::Verification::Failed {
                 return Err(Error::UtxoInvalidSignature(
@@ -497,6 +506,7 @@ fn input_utxo_verify(
 
 fn input_account_verify(
     mut ledger: account::Ledger,
+    block0_hash: &HeaderHash,
     transaction_id: &TransactionId,
     account: &account::Identifier,
     value: Value,
@@ -510,7 +520,11 @@ fn input_account_verify(
         Witness::OldUtxo(_, _) => return Err(Error::ExpectingAccountWitness),
         Witness::Utxo(_) => return Err(Error::ExpectingAccountWitness),
         Witness::Account(sig) => {
-            let tidsc = TransactionIdSpendingCounter::new(transaction_id, &spending_counter);
+            let tidsc = Block0TransactionIdSpendingCounter::new(
+                block0_hash,
+                transaction_id,
+                &spending_counter,
+            );
             let verified = sig.verify(&account.clone().into(), &tidsc);
             if verified == chain_crypto::Verification::Failed {
                 return Err(Error::AccountInvalidSignature(
@@ -731,7 +745,7 @@ pub mod test {
                 extra: NoExtra,
             };
             let txid = tx.hash();
-            let w1 = Witness::new_utxo(&txid, &sk1);
+            let w1 = Witness::new_utxo(&block0_hash, &txid, &sk1);
             let signed_tx = AuthenticatedTransaction {
                 transaction: tx,
                 witnesses: vec![w1],
