@@ -129,6 +129,7 @@ impl JCLITransactionWrapper {
 
     pub fn assert_make_witness(
         &self,
+        block0_hash: &str,
         tx_id: &str,
         addr_type: &str,
         spending_account_counter: &i32,
@@ -136,6 +137,7 @@ impl JCLITransactionWrapper {
         println!("Runing make transaction witness command...");
 
         let output = process_utils::run_process_and_get_output(self.get_make_witness_command(
+            block0_hash,
             &tx_id,
             &addr_type,
             &spending_account_counter,
@@ -145,6 +147,7 @@ impl JCLITransactionWrapper {
 
     fn get_make_witness_command(
         &self,
+        block0_hash: &str,
         tx_id: &str,
         addr_type: &str,
         spending_account_counter: &i32,
@@ -153,6 +156,8 @@ impl JCLITransactionWrapper {
         command
             .arg("transaction")
             .arg("make-witness")
+            .arg("--block0-hash")
+            .arg(block0_hash)
             .arg("--type")
             .arg(&addr_type)
             .arg(&tx_id)

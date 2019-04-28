@@ -25,6 +25,22 @@ pub fn get_genesis_encode_command(
     command
 }
 
+/// Get genesis hash command.
+///
+/// # Arguments
+///
+/// * `path_to_output_block` - Path to output block file
+///
+pub fn get_genesis_hash_command(path_to_output_block: &PathBuf) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("genesis")
+        .arg("hash")
+        .arg("--input")
+        .arg(path_to_output_block.as_os_str());
+    command
+}
+
 /// Get rest stat command. Uses [default host and port](super::test_const::JORMUNGANDR_ADDRESS)
 pub fn get_rest_stats_command(host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());

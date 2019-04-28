@@ -29,6 +29,23 @@ pub fn assert_genesis_encode(
     );
 }
 
+pub fn assert_genesis_hash(path_to_output_block: &PathBuf) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_genesis_hash_command(&path_to_output_block),
+    );
+
+    let hash = output.as_single_line();
+
+    process_assert::assert_process_exited_successfully(output);
+
+    println!(
+        "Get genesis block hash ({}) from genesis block ({:?}) ",
+        hash, path_to_output_block,
+    );
+
+    hash
+}
+
 pub fn assert_rest_stats(host: &str) -> BTreeMap<String, String> {
     let output =
         process_utils::run_process_and_get_output(jcli_commands::get_rest_stats_command(&host));
