@@ -17,11 +17,11 @@ use chain_crypto::{Ed25519Bip32, PublicKey, Signature, Verification};
 /// and may not know the contents of the internal transaction.
 #[derive(Debug, Clone)]
 pub enum Witness {
-    Utxo(SpendingSignature<Block0TransactionId>),
-    Account(SpendingSignature<Block0TransactionIdSpendingCounter>),
+    Utxo(SpendingSignature<WitnessUtxoData>),
+    Account(SpendingSignature<WitnessAccountData>),
     OldUtxo(
         PublicKey<Ed25519Bip32>,
-        Signature<Block0TransactionId, Ed25519Bip32>,
+        Signature<WitnessUtxoData, Ed25519Bip32>,
     ),
 }
 
@@ -39,26 +39,26 @@ impl PartialEq for Witness {
 }
 impl Eq for Witness {}
 
-pub struct Block0TransactionId(Vec<u8>);
+pub struct WitnessUtxoData(Vec<u8>);
 
-impl Block0TransactionId {
+impl WitnessUtxoData {
     pub fn new(block0: &HeaderHash, transaction_id: &TransactionId) -> Self {
         let mut v = Vec::with_capacity(65);
         v.extend_from_slice(block0.as_ref());
         v.extend_from_slice(transaction_id.as_ref());
-        Block0TransactionId(v)
+        WitnessUtxoData(v)
     }
 }
 
-impl AsRef<[u8]> for Block0TransactionId {
+impl AsRef<[u8]> for WitnessUtxoData {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-pub struct Block0TransactionIdSpendingCounter(Vec<u8>);
+pub struct WitnessAccountData(Vec<u8>);
 
-impl Block0TransactionIdSpendingCounter {
+impl WitnessAccountData {
     pub fn new(
         block0: &HeaderHash,
         transaction_id: &TransactionId,
@@ -69,11 +69,11 @@ impl Block0TransactionIdSpendingCounter {
         v.extend_from_slice(block0.as_ref());
         v.extend_from_slice(transaction_id.as_ref());
         v.extend_from_slice(&spending_counter.to_bytes());
-        Block0TransactionIdSpendingCounter(v)
+        WitnessAccountData(v)
     }
 }
 
-impl AsRef<[u8]> for Block0TransactionIdSpendingCounter {
+impl AsRef<[u8]> for WitnessAccountData {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
@@ -88,7 +88,7 @@ impl Witness {
     ) -> Self {
         Witness::Utxo(SpendingSignature::generate(
             secret_key,
-            &Block0TransactionId::new(block0, transaction_id),
+            &WitnessUtxoData::new(block0, transaction_id),
         ))
     }
 
@@ -100,11 +100,11 @@ impl Witness {
     ) -> Self {
         Witness::Account(AccountSignature::generate(
             secret_key,
-            &Block0TransactionIdSpendingCounter::new(block0, transaction_id, spending_counter),
+            &WitnessAccountData::new(block0, transaction_id, spending_counter),
         ))
     }
 
-    /// Verify the given `TransactionId` using the witness.
+    // Verify the given `TransactionId` using the witness.
     pub fn verify_utxo(
         &self,
         public_key: &SpendingPublicKey,
@@ -113,10 +113,9 @@ impl Witness {
     ) -> Verification {
         match self {
             Witness::OldUtxo(_xpub, _signature) => unimplemented!(),
-            Witness::Utxo(signature) => signature.verify(
-                public_key,
-                &Block0TransactionId::new(block0, transaction_id),
-            ),
+            Witness::Utxo(signature) => {
+                signature.verify(public_key, &WitnessUtxoData::new(block0, transaction_id))
+            }
             Witness::Account(_) => Verification::Failed,
         }
     }

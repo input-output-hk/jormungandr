@@ -457,10 +457,8 @@ fn input_utxo_verify(
                 ));
             };
 
-            let data_to_verify = Block0TransactionId::new(
-                &ledger.static_params.block0_initial_hash,
-                &transaction_id,
-            );
+            let data_to_verify =
+                WitnessUtxoData::new(&ledger.static_params.block0_initial_hash, &transaction_id);
             let verified = signature.verify(&xpub, &data_to_verify);
             if verified == chain_crypto::Verification::Failed {
                 return Err(Error::OldUtxoInvalidSignature(
@@ -484,10 +482,8 @@ fn input_utxo_verify(
                 ));
             }
 
-            let data_to_verify = Block0TransactionId::new(
-                &ledger.static_params.block0_initial_hash,
-                &transaction_id,
-            );
+            let data_to_verify =
+                WitnessUtxoData::new(&ledger.static_params.block0_initial_hash, &transaction_id);
             let verified = signature.verify(
                 &associated_output.address.public_key().unwrap(),
                 &data_to_verify,
@@ -520,11 +516,7 @@ fn input_account_verify(
         Witness::OldUtxo(_, _) => return Err(Error::ExpectingAccountWitness),
         Witness::Utxo(_) => return Err(Error::ExpectingAccountWitness),
         Witness::Account(sig) => {
-            let tidsc = Block0TransactionIdSpendingCounter::new(
-                block0_hash,
-                transaction_id,
-                &spending_counter,
-            );
+            let tidsc = WitnessAccountData::new(block0_hash, transaction_id, &spending_counter);
             let verified = sig.verify(&account.clone().into(), &tidsc);
             if verified == chain_crypto::Verification::Failed {
                 return Err(Error::AccountInvalidSignature(
