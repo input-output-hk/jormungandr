@@ -131,6 +131,20 @@ impl From<setting::Error> for Error {
 }
 
 impl Ledger {
+    fn empty(settings: setting::Settings, static_params: LedgerStaticParameters) -> Self {
+        Ledger {
+            utxos: utxo::Ledger::new(),
+            oldutxos: utxo::Ledger::new(),
+            accounts: account::Ledger::new(),
+            settings,
+            updates: setting::UpdateState::new(),
+            delegation: DelegationState::new(),
+            static_params: Arc::new(static_params),
+            date: BlockDate::first(),
+            chain_length: ChainLength(0),
+        }
+    }
+
     pub fn new<'a, I>(block0_hash: HeaderHash, contents: I) -> Result<Self, Error>
     where
         I: IntoIterator<Item = &'a Message>,
@@ -686,17 +700,7 @@ impl EmptyLedgerBuilder {
             discrimination: discrimination.ok_or(Error::Block0InitialMessageNoDiscrimination)?,
         };
 
-        Ok(Ledger {
-            utxos: utxo::Ledger::new(),
-            oldutxos: utxo::Ledger::new(),
-            accounts: account::Ledger::new(),
-            settings,
-            updates: setting::UpdateState::new(),
-            delegation: DelegationState::new(),
-            static_params: Arc::new(static_params),
-            date: BlockDate::first(),
-            chain_length: ChainLength(0),
-        })
+        Ok(Ledger::empty(settings, static_params))
     }
 }
 
