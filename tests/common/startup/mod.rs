@@ -53,6 +53,12 @@ pub fn start_jormungandr_node_with_genesis_conf(
     process
 }
 
+pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
+    let path_to_output_block = build_genesis_block(&genesis_yaml);
+
+    jcli_wrapper::assert_genesis_hash(&path_to_output_block)
+}
+
 pub fn build_genesis_block(genesis_yaml: &GenesisYaml) -> PathBuf {
     let input_yaml_file_path = GenesisYaml::serialize(&genesis_yaml);
     let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");

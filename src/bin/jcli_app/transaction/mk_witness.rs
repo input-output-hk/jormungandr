@@ -4,6 +4,7 @@ use chain_crypto::bech32::{self as bech32_crypto, Bech32 as _};
 use chain_crypto::{AsymmetricKey, SecretKey, SecretKeyError};
 use chain_impl_mockchain::{
     account::SpendingCounter,
+    block::HeaderHash,
     transaction::{TransactionId, Witness},
 };
 use jcli_app::{transaction::common, utils::io};
@@ -36,8 +37,13 @@ pub struct MkWitness {
     /// If omitted it will be printed to the standard output.
     pub output: Option<PathBuf>,
 
+    /// the type of witness to build: account, UTxO or Legacy UtxO
     #[structopt(long = "type", parse(try_from_str))]
     pub witness_type: WitnessType,
+
+    /// the hash of the block0, the first block of the blockchain
+    #[structopt(long = "genesis-block-hash", parse(try_from_str))]
+    pub genesis_block_hash: HeaderHash,
 
     /// value is mandatory is `--type=account' It is the counter for
     /// every time the account is being utilized.
@@ -85,7 +91,7 @@ impl MkWitness {
         let witness = match self.witness_type {
             WitnessType::UTxO => {
                 let secret_key = self.secret()?;
-                Witness::new_utxo(&self.transaction_id, &secret_key)
+                Witness::new_utxo(&self.genesis_block_hash, &self.transaction_id, &secret_key)
             }
             WitnessType::OldUTxO => {
                 // let secret_key = self.secret()?;
@@ -98,7 +104,12 @@ impl MkWitness {
                     .map(SpendingCounter::from)?;
 
                 let secret_key = self.secret()?;
-                Witness::new_account(&self.transaction_id, &account_spending_counter, &secret_key)
+                Witness::new_account(
+                    &self.genesis_block_hash,
+                    &self.transaction_id,
+                    &account_spending_counter,
+                    &secret_key,
+                )
             }
         };
 

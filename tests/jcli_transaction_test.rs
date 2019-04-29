@@ -48,6 +48,7 @@ pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
     let jormungandr_rest_address = node_config.get_node_address();
     let _jormungandr =
         startup::start_jormungandr_node_with_genesis_conf(&genesis_model, &node_config);
+    let block0_hash = startup::get_genesis_block_hash(&genesis_model);
 
     let jcli_transaction_wrapper = JCLITransactionWrapper::new();
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
@@ -70,7 +71,7 @@ pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
     jcli_transaction_wrapper.save_witness_key(&witness_key);
     let transaction_id = jcli_transaction_wrapper.get_transaction_id();
 
-    jcli_transaction_wrapper.assert_make_witness(&transaction_id, "utxo", &0);
+    jcli_transaction_wrapper.assert_make_witness(&block0_hash, &transaction_id, "utxo", &0);
     jcli_transaction_wrapper.assert_add_witness();
 
     jcli_transaction_wrapper.assert_add_witness_fail("cannot add anymore witnesses");
@@ -94,6 +95,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
     let jormungandr_rest_address = node_config.get_node_address();
     let _jormungandr =
         startup::start_jormungandr_node_with_genesis_conf(&genesis_model, &node_config);
+    let block0_hash = startup::get_genesis_block_hash(&genesis_model);
 
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
 
@@ -108,7 +110,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
     jcli_transaction_wrapper.save_witness_key(&sender_priv);
     let transaction_id = jcli_transaction_wrapper.get_transaction_id();
 
-    jcli_transaction_wrapper.assert_make_witness(&transaction_id, "utxo", &0);
+    jcli_transaction_wrapper.assert_make_witness(&block0_hash, &transaction_id, "utxo", &0);
     jcli_transaction_wrapper.assert_add_witness();
 
     jcli_transaction_wrapper.assert_seal();
