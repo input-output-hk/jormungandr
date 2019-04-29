@@ -42,8 +42,8 @@ pub struct MkWitness {
     pub witness_type: WitnessType,
 
     /// the hash of the block0, the first block of the blockchain
-    #[structopt(long = "block0-hash", parse(try_from_str))]
-    pub block0_hash: HeaderHash,
+    #[structopt(long = "genesis-block-hash", parse(try_from_str))]
+    pub genesis_block_hash: HeaderHash,
 
     /// value is mandatory is `--type=account' It is the counter for
     /// every time the account is being utilized.
@@ -91,7 +91,7 @@ impl MkWitness {
         let witness = match self.witness_type {
             WitnessType::UTxO => {
                 let secret_key = self.secret()?;
-                Witness::new_utxo(&self.block0_hash, &self.transaction_id, &secret_key)
+                Witness::new_utxo(&self.genesis_block_hash, &self.transaction_id, &secret_key)
             }
             WitnessType::OldUTxO => {
                 // let secret_key = self.secret()?;
@@ -105,7 +105,7 @@ impl MkWitness {
 
                 let secret_key = self.secret()?;
                 Witness::new_account(
-                    &self.block0_hash,
+                    &self.genesis_block_hash,
                     &self.transaction_id,
                     &account_spending_counter,
                     &secret_key,

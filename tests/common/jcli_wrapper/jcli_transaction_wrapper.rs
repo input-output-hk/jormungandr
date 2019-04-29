@@ -156,7 +156,7 @@ impl JCLITransactionWrapper {
         command
             .arg("transaction")
             .arg("make-witness")
-            .arg("--block0-hash")
+            .arg("--genesis-block-hash")
             .arg(block0_hash)
             .arg("--type")
             .arg(&addr_type)
