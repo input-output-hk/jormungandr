@@ -161,22 +161,19 @@ pub trait Message: Serialize + Deserialize {
     fn id(&self) -> Self::Id;
 }
 
-/// Accessor to messages within a block
-pub trait HasMessages {
+/// Accessor to messages within a block.
+///
+/// This trait has a lifetime parameter and is normally implemented by
+/// reference types.
+pub trait HasMessages<'a> {
     /// The type of messages in this block.
-    type Message;
+    type Message: 'a + Message;
+
+    /// Iterator over block's messages.
+    type Messages: 'a + Iterator<Item = &'a Self::Message>;
 
     /// Returns an iterator over the messages in the block.
-    ///
-    /// Note that the iterator is dynamically allocated, and the iterator's
-    /// `next` method is invoked via dynamic dispatch. The method
-    /// `for_each_transaction` provides a statically monomorphised
-    /// alternative.
-    fn messages<'a>(&'a self) -> Box<Iterator<Item = &Self::Message> + 'a>;
-
-    fn for_each_message<F>(&self, f: F)
-    where
-        F: FnMut(&Self::Message);
+    fn messages(self) -> Self::Messages;
 }
 
 /// define a transaction within the blockchain. This transaction can be used

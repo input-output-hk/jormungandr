@@ -6,6 +6,8 @@ use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
+use std::{iter, slice};
+
 #[derive(Debug, Clone)]
 pub struct SignatureRaw(pub Vec<u8>);
 
@@ -73,19 +75,20 @@ impl Certificate {
     }
 }
 
-/// Keep an information how to extract public keys from
-/// the certificate.
-pub(crate) trait HasPublicKeys {
-    fn public_keys<'a>(&'a self)
-        -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a>;
+/// Abstracts extracting public stake key identifiers
+/// from a certificate.
+pub(crate) trait HasPublicKeys<'a> {
+    type PublicKeys: 'a + ExactSizeIterator<Item = &'a PublicKey<Ed25519Extended>>;
+    fn public_keys(self) -> Self::PublicKeys;
 }
 
-pub(crate) fn verify_certificate<C>(
-    certificate: &C,
+pub(crate) fn verify_certificate<'a, C>(
+    certificate: &'a C,
     raw_signatures: &[SignatureRaw],
 ) -> Verification
 where
-    C: HasPublicKeys + property::Serialize,
+    &'a C: HasPublicKeys<'a>,
+    C: property::Serialize,
 {
     use crate::key::{deserialize_signature, verify_signature};
     let signatures = raw_signatures.iter();
@@ -99,7 +102,7 @@ where
             let mut reader = ReadBuf::from(&signature.0);
             match deserialize_signature(&mut reader) {
                 Ok(signature) => {
-                    if verify_signature(&signature, &owner, &certificate) == Verification::Failed {
+                    if verify_signature(&signature, owner, &certificate) == Verification::Failed {
                         return Verification::Failed;
                     }
                 }
@@ -205,11 +208,11 @@ impl StakeKeyRegistration {
     }
 }
 
-impl HasPublicKeys for StakeKeyRegistration {
-    fn public_keys<'a>(
-        &'a self,
-    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
-        Box::new(std::iter::once(&self.stake_key_id.0))
+impl<'a> HasPublicKeys<'a> for &'a StakeKeyRegistration {
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+
+    fn public_keys(self) -> Self::PublicKeys {
+        iter::once(&self.stake_key_id.0)
     }
 }
 
@@ -243,11 +246,11 @@ impl StakeKeyDeregistration {
     }
 }
 
-impl HasPublicKeys for StakeKeyDeregistration {
-    fn public_keys<'a>(
-        &'a self,
-    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
-        Box::new(std::iter::once(&self.stake_key_id.0))
+impl<'a> HasPublicKeys<'a> for &'a StakeKeyDeregistration {
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+
+    fn public_keys(self) -> Self::PublicKeys {
+        iter::once(&self.stake_key_id.0)
     }
 }
 
@@ -284,11 +287,11 @@ impl StakeDelegation {
     }
 }
 
-impl HasPublicKeys for StakeDelegation {
-    fn public_keys<'a>(
-        &'a self,
-    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
-        Box::new(std::iter::once(&self.stake_key_id.0))
+impl<'a> HasPublicKeys<'a> for &'a StakeDelegation {
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+
+    fn public_keys(self) -> Self::PublicKeys {
+        iter::once(&self.stake_key_id.0)
     }
 }
 
@@ -321,11 +324,14 @@ impl StakePoolInfo {
     }
 }
 
-impl HasPublicKeys for StakePoolInfo {
-    fn public_keys<'a>(
-        &'a self,
-    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
-        Box::new(self.owners.iter().map(|x| &x.0))
+impl<'a> HasPublicKeys<'a> for &'a StakePoolInfo {
+    type PublicKeys = iter::Map<
+        slice::Iter<'a, StakeKeyId>,
+        fn(&'a StakeKeyId) -> &'a PublicKey<Ed25519Extended>,
+    >;
+
+    fn public_keys(self) -> Self::PublicKeys {
+        self.owners.iter().map(|x| &x.0)
     }
 }
 
@@ -345,11 +351,14 @@ impl StakePoolRetirement {
     }
 }
 
-impl HasPublicKeys for StakePoolRetirement {
-    fn public_keys<'a>(
-        &'a self,
-    ) -> Box<ExactSizeIterator<Item = &PublicKey<Ed25519Extended>> + 'a> {
-        Box::new(self.pool_info.owners.iter().map(|x| &x.0))
+impl<'a> HasPublicKeys<'a> for &'a StakePoolRetirement {
+    type PublicKeys = iter::Map<
+        slice::Iter<'a, StakeKeyId>,
+        fn(&'a StakeKeyId) -> &'a PublicKey<Ed25519Extended>,
+    >;
+
+    fn public_keys(self) -> Self::PublicKeys {
+        self.pool_info.owners.iter().map(|x| &x.0)
     }
 }
 
