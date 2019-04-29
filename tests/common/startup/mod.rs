@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::path::PathBuf;
 
 use super::configuration::genesis_model::GenesisYaml;

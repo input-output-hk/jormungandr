@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 extern crate regex;
 
 use self::regex::Regex;
@@ -61,7 +63,7 @@ pub fn assert_process_exited_successfully(output: Output) {
     );
 }
 
-pub fn assert_process_failed_and_contains_message(mut command: Command, expected_part: &str) {
+pub fn assert_process_failed_and_contains_message(command: Command, expected_part: &str) {
     let output = process_utils::run_process_and_get_output(command);
     let actual = output.err_as_single_line();
 

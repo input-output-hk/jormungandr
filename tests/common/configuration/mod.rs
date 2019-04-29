@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::file_utils;
 use std::env;
 use std::path::PathBuf;
@@ -38,11 +40,12 @@ pub fn get_jcli_app() -> PathBuf {
 }
 
 /// Gets working directory
+/// Uses std::env::current_exe() for this purpose.
+/// Current exe directory is ./target/{profile}/deps/{app_name}.exe
+/// Function returns ./target/{profile}
 fn get_working_directory() -> PathBuf {
     let mut output_directory: PathBuf = std::env::current_exe().unwrap().into();
 
-    /// current exe directory is ./target/{profile}/deps/{app_name}.exe
-    /// We would like to navigate to ./target/{profile}
     output_directory.pop();
     output_directory.pop();
     output_directory

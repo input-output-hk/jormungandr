@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
 pub mod utxo;
@@ -10,7 +12,6 @@ use super::process_utils;
 use super::process_utils::output_extensions::ProcessOutput;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::process::Command;
 
 pub fn assert_genesis_encode(
     genesis_yaml_file_path: &PathBuf,

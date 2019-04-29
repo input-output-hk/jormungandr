@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 extern crate rand;
 extern crate serde_derive;
 use self::rand::Rng;

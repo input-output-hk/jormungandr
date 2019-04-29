@@ -1,14 +1,7 @@
 mod common;
 
-extern crate bytes;
-use bytes::Bytes;
-use common::configuration::genesis_model::GenesisYaml;
-use common::file_utils;
 use common::jcli_wrapper;
 use common::process_assert;
-use common::process_utils;
-use common::process_utils::output_extensions::ProcessOutput;
-use common::startup;
 
 #[test]
 #[cfg(feature = "integration-test")]
@@ -19,8 +12,8 @@ pub fn test_utxo_address_made_of_ed25519_extended_key() {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
-    let utxoAddress = jcli_wrapper::assert_address_single_default(&public_key);
-    assert_ne!(utxoAddress, "", "generated utxo address is empty");
+    let utxo_address = jcli_wrapper::assert_address_single_default(&public_key);
+    assert_ne!(utxo_address, "", "generated utxo address is empty");
 }
 
 #[test]
@@ -32,8 +25,8 @@ pub fn test_account_address_made_of_ed25519_extended_key() {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
-    let accountAddress = jcli_wrapper::assert_address_account_default(&public_key);
-    assert_ne!(accountAddress, "", "generated account address is empty");
+    let account_address = jcli_wrapper::assert_address_account_default(&public_key);
+    assert_ne!(account_address, "", "generated account address is empty");
 }
 
 #[test]
@@ -52,10 +45,10 @@ pub fn test_delegation_address_made_of_ed25519_extended_seed_key() {
     let delegation_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("delegation key: {}", &delegation_key);
 
-    let delegationAddress =
+    let delegation_address =
         jcli_wrapper::assert_address_delegation_default(&public_key, &delegation_key);
     assert_ne!(
-        delegationAddress, "",
+        delegation_address, "",
         "generated delegation adress is empty"
     );
 }
@@ -71,10 +64,10 @@ pub fn test_delegation_address_is_the_same_as_public() {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
-    let delegationAddress =
+    let delegation_address =
         jcli_wrapper::assert_address_delegation_default(&public_key, &public_key);
     assert_ne!(
-        delegationAddress, "",
+        delegation_address, "",
         "generated delegation adress is empty"
     );
 }

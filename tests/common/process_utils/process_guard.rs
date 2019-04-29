@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::process::Child;
 
 /// Struct ensures child process is killed if leaves given scope
