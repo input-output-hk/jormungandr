@@ -6,9 +6,7 @@ use crate::config::{self, Block0Date, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::bft::LeaderId;
 use crate::message::Message;
-use crate::stake::{
-    CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution, StakePoolId,
-};
+use crate::stake::{CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, utxo};
