@@ -1,14 +1,16 @@
 use chain_addr::{Address, Discrimination};
 use chain_core::property::HasMessages as _;
+use chain_crypto::bech32::Bech32;
+use chain_crypto::{Ed25519Extended, PublicKey};
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder, ConsensusVersion},
-    certificate::Certificate,
+    certificate::{Certificate, SignatureRaw},
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
     legacy::{self, OldAddress},
     message::{InitialEnts, Message},
     milli::Milli,
-    setting::UpdateProposal,
+    setting::{SignedUpdateProposal, UpdateProposal, UpdateProposalWithProposer},
     transaction,
     value::Value,
 };
@@ -100,10 +102,10 @@ impl Genesis {
         } else {
             panic!("Expecting the second Message of the block 0 to be `Message::Initial`")
         };
-        let initial_setting = if let Some(Message::Update(update)) = messages.next() {
-            Update::from_message(update)
+        let initial_setting = if let Some(Message::UpdateProposal(update)) = messages.next() {
+            Update::from_message(&update.proposal.proposal)
         } else {
-            panic!("Expecting the second Message of the block 0 to be `Message::Update`")
+            panic!("Expecting the second Message of the block 0 to be `Message::UpdateProposal`")
         };
 
         let mut messages = messages.peekable();
@@ -398,7 +400,7 @@ impl BlockchainConfiguration {
 
 impl Update {
     pub fn to_message(self) -> Message {
-        let update = UpdateProposal {
+        let proposal = UpdateProposal {
             max_number_of_transactions_per_block: self.max_number_of_transactions_per_block,
             bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage,
             consensus_version: None,
@@ -412,7 +414,20 @@ impl Update {
             slot_duration: None,
             epoch_stability_depth: None,
         };
-        Message::Update(update)
+        // FIXME: we probably want to sign using an actual BFT leader
+        // here, but currently the update proposal in block 0 is not
+        // verified anyway. So use a dummy proposer / signature.
+        Message::UpdateProposal(SignedUpdateProposal {
+            proposal: UpdateProposalWithProposer {
+                proposal,
+                proposer_id: PublicKey::<Ed25519Extended>::try_from_bech32_str(
+                    "ed25519e_pk144xm656epf857f8ljfx4qwrc9xfshltfdhl87444sm3mzv78ru8sknr26a",
+                )
+                .unwrap()
+                .into(),
+            },
+            signature: SignatureRaw(vec![]),
+        })
     }
     pub fn from_message(update_proposal: &UpdateProposal) -> Self {
         Update {
