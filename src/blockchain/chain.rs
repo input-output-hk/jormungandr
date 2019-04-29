@@ -102,7 +102,12 @@ impl Blockchain {
                     let parameters = state.get_ledger_parameters();
                     let block = &storage.get_block(&info.block_hash)?.0;
                     let block_header = &block.header;
-                    state = state.apply_block(&parameters, block.messages())?;
+                    state = state.apply_block(
+                        &parameters,
+                        block.messages(),
+                        block.date(),
+                        block.chain_length(),
+                    )?;
                     tip = Some(multiverse.add(info.block_hash.clone(), state.clone()));
                     if block_header.date().epoch > epoch {
                         epoch = block_header.date().epoch;
@@ -287,7 +292,12 @@ fn process_block(
     let state = {
         let parent_state = blockchain.get_ledger(&block.parent_id()).unwrap();
         let current_parameters = parent_state.get_ledger_parameters();
-        parent_state.apply_block(&current_parameters, block.messages())?
+        parent_state.apply_block(
+            &current_parameters,
+            block.messages(),
+            block.date(),
+            block.chain_length(),
+        )?
     };
 
     if block.header.date().epoch > parent_epoch {

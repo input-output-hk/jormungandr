@@ -27,18 +27,19 @@ blockchain_configuration:
   block0_date: 1550822014
   discrimination: test
   block0_consensus: bft
+  slots_per_epoch: 5
+  slot_duration: 15
+  epoch_stability_depth: 10
+  consensus_leader_ids:
+    - ed25519e_pk1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
+    - ed25519e_pk13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
 initial_setting:
   allow_account_creation: true
-  slot_duration: 15
-  epoch_stability_depth: 2600
   linear_fees:
     constant: 0
     coefficient: 0
     certificate: 0
   block_version: 1
-  bft_leaders:
-    - ed25519e_pk1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
-    - ed25519e_pk13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
 initial_funds:
   - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
     value: 10000
@@ -69,7 +70,7 @@ Write you private key in a file on your HD:
 ```
 $ cat node_secret.yaml
 bft:
-  signing_key: ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexmfn7s96lqja5sv520zx6hx5hd0qsgahp3ta8grrrxkd8n0cjmaqre
+  signing_key: ed25519e_sk1hpvne...
 ```
 
 Configure your Node (config.yml) and run the following command:

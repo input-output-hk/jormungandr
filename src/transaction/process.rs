@@ -4,7 +4,7 @@ use crate::intercom::{do_stream_reply, TransactionMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::transaction::TPool;
 use crate::utils::task::{Input, ThreadServiceInfo};
-use chain_core::property::Message as _;
+use chain_core::property::{ChainLength as _, Message as _};
 use std::sync::{Arc, RwLock};
 
 #[allow(type_alias_bounds)]
@@ -39,7 +39,12 @@ pub fn handle_input(
             // We don't want to keep transactions that are not valid within
             // our state of the blockchain as we will not be able to add them
             // in the blockchain.
-            if let Err(error) = chain_state.apply_block(&parameters, txs.iter()) {
+            if let Err(error) = chain_state.apply_block(
+                &parameters,
+                txs.iter(),
+                chain_state.date().next(),
+                chain_state.chain_length().next(),
+            ) {
                 warn!("Received transactions where some are invalid, {}", error);
             // TODO
             } else {
