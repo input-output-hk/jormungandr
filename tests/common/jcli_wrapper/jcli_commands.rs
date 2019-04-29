@@ -105,7 +105,7 @@ pub fn get_address_delegation_command_default(public_key: &str, delegation_key: 
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
         .arg("address")
-        .arg("singl")
+        .arg("single")
         .arg(&public_key)
         .arg(&delegation_key)
         .arg("--testing");

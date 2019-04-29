@@ -16,6 +16,7 @@ pub fn test_ed25519_key_generation() {
     let generated_key = jcli_wrapper::assert_key_generate("ed25519");
     assert_ne!(generated_key, "", "generated key is empty");
 }
+
 #[test]
 #[cfg(feature = "integration-test")]
 pub fn test_ed25510bip32_key_generation() {
@@ -47,21 +48,10 @@ pub fn test_fake_mm_key_generation() {
 #[test]
 #[cfg(feature = "integration-test")]
 pub fn test_unknown_key_type_generation() {
-    let output = process_utils::run_process_and_get_output(
+    process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_key_generate_command("unknown"),
+        "Invalid value for '--type <key_type>'",
     );
-    let actual = output.err_as_single_line();
-    let expected_part = "Invalid value for '--type <key_type>'";
-
-    assert_eq!(
-        actual.contains(&expected_part),
-        true,
-        "message : '{}' does not contain expected part '{}'",
-        &actual,
-        &expected_part
-    );
-
-    process_assert::assert_process_failed(output);
 }
 
 #[test]
@@ -88,45 +78,23 @@ pub fn test_key_with_too_long_seed_generation() {
 }
 
 fn test_key_invalid_seed_length(seed: &str) -> () {
-    let output = process_utils::run_process_and_get_output(
+    process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_key_generate_with_seed_command("Ed25519Extended", &seed),
+        "Invalid seed length, expected 32 bytes but received",
     );
-    let actual = output.err_as_single_line();
-    let expected_part = "Invalid seed length, expected 32 bytes but received";
-
-    assert_eq!(
-        actual.contains(&expected_part),
-        true,
-        "message : '{}' does not contain expected part '{}'",
-        &actual,
-        &expected_part
-    );
-
-    process_assert::assert_process_failed(output);
 }
 
 #[test]
 #[cfg(feature = "integration-test")]
 pub fn test_key_with_seed_with_unknown_symbol_generation() {
     let incorrect_seed = "73855612722627931e20c850f8ad53eb04c615c7601a95747be073dcay";
-    let output = process_utils::run_process_and_get_output(
+    process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_key_generate_with_seed_command(
             "Ed25519Extended",
             &incorrect_seed,
         ),
+        "error: Invalid value for '--seed <SEED>': Unknown symbol at byte index",
     );
-    let actual = output.err_as_single_line();
-    let expected_part = "error: Invalid value for '--seed <SEED>': Unknown symbol at byte index";
-
-    assert_eq!(
-        actual.contains(&expected_part),
-        true,
-        "message : '{}' does not contain expected part '{}'",
-        &actual,
-        &expected_part
-    );
-
-    process_assert::assert_process_failed(output);
 }
 
 #[test]
@@ -141,21 +109,10 @@ pub fn test_key_to_public() {
 #[cfg(feature = "integration-test")]
 pub fn test_key_to_public_invalid_key() {
     let private_key = "ed2551ssss9_sk1357nu8uaxvdekg6uhqmdd0zcd3tjv3qq0p2029uk6pvfxuks5rzstp5ceq";
-    let output = process_utils::run_process_and_get_output(
+    process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_key_to_public_command(&private_key),
+        "invalid checksum",
     );
-    let actual = output.err_as_single_line();
-    let expected_part = "invalid checksum";
-
-    assert_eq!(
-        actual.contains(&expected_part),
-        true,
-        "message : '{}' does not contain expected part '{}'",
-        &actual,
-        &expected_part
-    );
-
-    process_assert::assert_process_failed(output);
 }
 
 #[test]
