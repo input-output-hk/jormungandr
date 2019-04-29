@@ -43,7 +43,6 @@ pub fn get_genesis_hash_command(path_to_output_block: &PathBuf) -> Command {
     command
 }
 
-
 /// Get rest stats command.
 pub fn get_rest_stats_command(host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
