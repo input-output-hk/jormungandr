@@ -256,10 +256,10 @@ impl Ledger {
             });
         }
 
-        if date <= self.date {
+        if date <= new_ledger.date {
             return Err(Error::NonMonotonicDate {
                 block_date: date,
-                chain_date: self.date,
+                chain_date: new_ledger.date,
             });
         }
 
