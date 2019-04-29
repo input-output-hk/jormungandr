@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::configuration;
 use super::file_utils;
 use super::process_assert;

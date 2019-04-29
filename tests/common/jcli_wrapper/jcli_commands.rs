@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::configuration;
 use super::file_utils;
 use std::path::PathBuf;
@@ -41,7 +43,8 @@ pub fn get_genesis_hash_command(path_to_output_block: &PathBuf) -> Command {
     command
 }
 
-/// Get rest stat command. Uses [default host and port](super::test_const::JORMUNGANDR_ADDRESS)
+
+/// Get rest stats command.
 pub fn get_rest_stats_command(host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
@@ -55,7 +58,7 @@ pub fn get_rest_stats_command(host: &str) -> Command {
     command
 }
 
-/// Get utxo get command. Uses [default host and port](super::test_const::JORMUNGANDR_ADDRESS)
+/// Get utxo get command.
 pub fn get_rest_utxo_get_command(host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
@@ -133,7 +136,7 @@ pub fn get_post_transaction_command(transaction_hash: &str, host: &str) -> Comma
 /// Get key generate command
 pub fn get_key_generate_command_default() -> Command {
     let deafult_extended_key_type = "Ed25519Extended";
-    let mut command = get_key_generate_command(&deafult_extended_key_type);
+    let command = get_key_generate_command(&deafult_extended_key_type);
     command
 }
 

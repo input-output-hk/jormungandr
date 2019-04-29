@@ -1,14 +1,9 @@
 mod common;
 
 extern crate bytes;
-use bytes::Bytes;
-use common::configuration::genesis_model::GenesisYaml;
 use common::file_utils;
 use common::jcli_wrapper;
 use common::process_assert;
-use common::process_utils;
-use common::process_utils::output_extensions::ProcessOutput;
-use common::startup;
 
 #[test]
 #[cfg(feature = "integration-test")]

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::fs::metadata;
 use std::path::Path;
 

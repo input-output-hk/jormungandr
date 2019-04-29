@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 extern crate serde_yaml;
 
 pub mod output_extensions;
