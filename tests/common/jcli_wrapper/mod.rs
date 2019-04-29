@@ -65,6 +65,24 @@ pub fn assert_address_single_default(public_key: &str) -> String {
     single_line
 }
 
+pub fn assert_address_delegation_default(public_key: &str, delegation_key: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_address_delegation_command_default(&public_key, &delegation_key),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_address_account_default(public_key: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_address_account_command_default(&public_key),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
 pub fn assert_post_transaction(transaction_hash: &str, host: &str) -> () {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_post_transaction_command(&transaction_hash, &host),
