@@ -359,6 +359,10 @@ impl Ledger {
         self.chain_length
     }
 
+    pub fn date(&self) -> BlockDate {
+        self.date
+    }
+
     fn validate_utxo_total_value(&self) -> Result<(), Error> {
         let old_utxo_values = self.oldutxos.iter().map(|entry| entry.output.value);
         let new_utxo_values = self.utxos.iter().map(|entry| entry.output.value);
