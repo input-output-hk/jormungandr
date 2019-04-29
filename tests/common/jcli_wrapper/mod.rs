@@ -162,3 +162,29 @@ pub fn assert_key_from_bytes(path_to_input_file: &PathBuf, key_type: &str) -> St
     process_assert::assert_process_exited_successfully(output);
     single_line
 }
+
+pub fn assert_rest_get_block_tip(host: &str) -> String {
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_rest_block_tip_command(&host));
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_rest_get_block_command(&block_id, &host),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_rest_get_next_block_id_command(&block_id, &id_count, &host),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}

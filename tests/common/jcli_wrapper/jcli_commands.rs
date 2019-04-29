@@ -41,7 +41,7 @@ pub fn get_genesis_hash_command(path_to_output_block: &PathBuf) -> Command {
     command
 }
 
-/// Get rest stat command. Uses [default host and port](super::test_const::JORMUNGANDR_ADDRESS)
+/// Get rest stat command.
 pub fn get_rest_stats_command(host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
@@ -55,7 +55,51 @@ pub fn get_rest_stats_command(host: &str) -> Command {
     command
 }
 
-/// Get utxo get command. Uses [default host and port](super::test_const::JORMUNGANDR_ADDRESS)
+/// Get rest block tip command.
+pub fn get_rest_block_tip_command(host: &str) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("tip")
+        .arg("get")
+        .arg("-h")
+        .arg(&host);
+    command
+}
+
+/// Get rest block command.
+pub fn get_rest_get_block_command(block_id: &str, host: &str) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("block")
+        .arg(&block_id)
+        .arg("get")
+        .arg("-h")
+        .arg(&host);
+    command
+}
+
+/// Get rest next block id command.
+pub fn get_rest_get_next_block_id_command(block_id: &str, id_count: &i32, host: &str) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("block")
+        .arg(&block_id)
+        .arg("next-id")
+        .arg("get")
+        .arg("--count")
+        .arg(id_count.to_string())
+        .arg("-h")
+        .arg(&host);
+    command
+}
+
+/// Get utxo get command.
 pub fn get_rest_utxo_get_command(host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
