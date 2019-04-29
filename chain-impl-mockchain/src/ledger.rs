@@ -3,7 +3,7 @@
 
 use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderHash};
 use crate::config::{self, Block0Date, ConfigParam};
-use crate::fee::LinearFee;
+use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::bft::LeaderId;
 use crate::message::Message;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
@@ -78,6 +78,7 @@ pub enum Error {
     Block0InitialMessageNoConsensusLeaderId,
     Block0UtxoTotalValueTooBig,
     Block0HasUpdateVote,
+    FeeCalculationError(ValueError),
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -291,12 +292,21 @@ impl Ledger {
         Ok(new_ledger)
     }
 
-    pub fn apply_transaction<Extra: property::Serialize>(
+    pub fn apply_transaction<Extra>(
         mut self,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
         dyn_params: &LedgerParameters,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, Error>
+    where
+        Extra: property::Serialize,
+        LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
+    {
         let transaction_id = signed_tx.transaction.hash();
+        let fee = dyn_params
+            .fees
+            .calculate(&signed_tx.transaction)
+            .map(Ok)
+            .unwrap_or(Err(Error::FeeCalculationError(ValueError::Overflow)))?;
         self = internal_apply_transaction(
             self,
             dyn_params,
@@ -304,6 +314,7 @@ impl Ledger {
             &signed_tx.transaction.inputs[..],
             &signed_tx.transaction.outputs[..],
             &signed_tx.witnesses[..],
+            fee,
         )?;
         Ok(self)
     }
@@ -418,6 +429,7 @@ fn internal_apply_transaction(
     inputs: &[Input],
     outputs: &[Output<Address>],
     witnesses: &[Witness],
+    fee: Value,
 ) -> Result<Ledger, Error> {
     assert!(inputs.len() < 255);
     assert!(outputs.len() < 255);
@@ -454,11 +466,10 @@ fn internal_apply_transaction(
     }
 
     // 3. verify that transaction sum is zero.
-    // TODO: with fees this will change
     let total_input =
         Value::sum(inputs.iter().map(|i| i.value)).map_err(|e| Error::UtxoInputsTotal(e))?;
-    let total_output =
-        Value::sum(inputs.iter().map(|i| i.value)).map_err(|e| Error::UtxoOutputsTotal(e))?;
+    let total_output = Value::sum(inputs.iter().map(|i| i.value).chain(std::iter::once(fee)))
+        .map_err(|e| Error::UtxoOutputsTotal(e))?;
     if total_input != total_output {
         return Err(Error::NotBalanced(total_input, total_output));
     }

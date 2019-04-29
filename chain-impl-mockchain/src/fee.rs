@@ -1,3 +1,4 @@
+use crate::certificate::Certificate;
 use crate::transaction as tx;
 use crate::value::Value;
 use chain_addr::Address;
@@ -21,25 +22,35 @@ impl LinearFee {
     }
 }
 
-pub trait FeeAlgorithm {
-    fn calculate_for<Extra>(&self, tx: &tx::Transaction<Address, Extra>) -> Option<Value>;
+pub trait FeeAlgorithm<P> {
+    fn calculate(&self, part: &P) -> Option<Value>;
 }
 
-impl<'a, FA: FeeAlgorithm> FeeAlgorithm for &'a FA {
-    fn calculate_for<Extra>(&self, tx: &tx::Transaction<Address, Extra>) -> Option<Value> {
-        (*self).calculate_for(tx)
+impl<'a, P, FA: FeeAlgorithm<P>> FeeAlgorithm<P> for &'a FA {
+    fn calculate(&self, part: &P) -> Option<Value> {
+        (*self).calculate(part)
     }
 }
 
-impl FeeAlgorithm for LinearFee {
-    fn calculate_for<Extra>(&self, tx: &tx::Transaction<Address, Extra>) -> Option<Value> {
+impl FeeAlgorithm<tx::Transaction<Address, tx::NoExtra>> for LinearFee {
+    fn calculate(&self, tx: &tx::Transaction<Address, tx::NoExtra>) -> Option<Value> {
         let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
-        // FIXME for now we don't consider extra as payload, however in the near future
-        // we need a trait related to the Extra that will give the fee valuation of the certificate
         let fee = self
             .coefficient
             .checked_mul(msz)?
             .checked_add(self.constant)?;
+        Some(Value(fee))
+    }
+}
+
+impl FeeAlgorithm<tx::Transaction<Address, Certificate>> for LinearFee {
+    fn calculate(&self, tx: &tx::Transaction<Address, Certificate>) -> Option<Value> {
+        let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
+        let fee = self
+            .coefficient
+            .checked_mul(msz)?
+            .checked_add(self.constant)?
+            .checked_add(self.certificate)?;
         Some(Value(fee))
     }
 }

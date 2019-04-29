@@ -94,16 +94,22 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
         self.tx.outputs.push(tx::Output { address, value })
     }
 
-    pub fn estimate_fee<F: FeeAlgorithm>(&self, fee_algorithm: F) -> Result<Value, ValueError> {
+    pub fn estimate_fee<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+        &self,
+        fee_algorithm: F,
+    ) -> Result<Value, ValueError> {
         fee_algorithm
-            .calculate_for(&self.tx)
+            .calculate(&self.tx)
             .ok_or(ValueError::Overflow)
     }
 
     /// Get balance including current feee.
-    pub fn get_balance<F: FeeAlgorithm>(&self, fee_algorithm: F) -> Result<Balance, ValueError> {
+    pub fn get_balance<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+        &self,
+        fee_algorithm: F,
+    ) -> Result<Balance, ValueError> {
         let fee = fee_algorithm
-            .calculate_for(&self.tx)
+            .calculate(&self.tx)
             .ok_or(ValueError::Overflow)?;
         self.tx.balance(fee)
     }
@@ -123,7 +129,7 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
     /// policy. Then after all calculations were made we can get
     /// the information back to us.
     ///
-    pub fn finalize<F: FeeAlgorithm>(
+    pub fn finalize<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
         mut self,
         fee_algorithm: F,
         policy: OutputPolicy,
@@ -137,7 +143,7 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
         // calculate initial fee, maybe we can fit it without any
         // additional calculations.
         let fee = fee_algorithm
-            .calculate_for(&self.tx)
+            .calculate(&self.tx)
             .ok_or(Error::MathErr(ValueError::Overflow))?;
         let pos = match self.tx.balance(fee) {
             Ok(Balance::Negative(_)) => return Err(Error::TxNotEnoughTotalInput),
@@ -170,7 +176,7 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
                     value: Value(0),
                 });
                 let fee = fee_algorithm
-                    .calculate_for(&tx)
+                    .calculate(&tx)
                     .ok_or(Error::MathErr(ValueError::Overflow))?;
                 match tx.balance(fee) {
                     Ok(Balance::Positive(value)) => {
