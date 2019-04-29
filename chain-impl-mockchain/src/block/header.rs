@@ -135,8 +135,17 @@ impl Header {
         HeaderHash::hash_bytes(&bytes[..])
     }
 
+    #[inline]
     pub fn proof(&self) -> &Proof {
         &self.proof
+    }
+
+    #[inline]
+    pub fn get_stakepool_id(&self) -> Option<&StakePoolId> {
+        match self.proof() {
+            Proof::GenesisPraos(proof) => Some(&proof.node_id),
+            _ => None,
+        }
     }
 }
 
