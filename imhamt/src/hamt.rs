@@ -4,7 +4,9 @@ use super::node::{
     insert_rec, lookup_one, remove_eq_rec, remove_rec, replace_rec, size_rec, update_rec, Entry,
     LookupRet, Node, NodeIter,
 };
-pub use super::operation::{InsertError, RemoveError, ReplaceError, UpdateError};
+pub use super::operation::{
+    InsertError, InsertOrUpdateError, RemoveError, ReplaceError, UpdateError,
+};
 use super::sharedref::SharedRef;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
@@ -103,6 +105,17 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
                 root: r,
                 hasher: PhantomData,
             }),
+        }
+    }
+
+    pub fn insert_or_update<F, U>(&self, k: K, v: V, f: F) -> Result<Self, InsertOrUpdateError<U>>
+    where
+        F: FnOnce(&V) -> Result<Option<V>, U>,
+    {
+        match self.update(&k, f) {
+            Ok(new_self) => Ok(new_self),
+            Err(UpdateError::KeyNotFound) => self.insert(k, v).map_err(InsertOrUpdateError::Insert),
+            Err(err) => Err(InsertOrUpdateError::Update(err)),
         }
     }
 }
