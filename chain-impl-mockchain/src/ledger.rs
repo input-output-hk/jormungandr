@@ -6,7 +6,9 @@ use crate::config::{self, Block0Date, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::bft::LeaderId;
 use crate::message::Message;
-use crate::stake::{DelegationError, DelegationState, StakeDistribution};
+use crate::stake::{
+    CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution, StakePoolId,
+};
 use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, utxo};
@@ -219,9 +221,11 @@ impl Ledger {
                     if authenticated_cert_tx.transaction.outputs.len() != 0 {
                         return Err(Error::Block0TransactionHasOutput);
                     }
-                    ledger.delegation = ledger
+                    let (new_delegation, action) = ledger
                         .delegation
                         .apply(&authenticated_cert_tx.transaction.extra)?;
+                    ledger.delegation = new_delegation;
+                    ledger.apply_delegation_action(action)?;
                 }
             }
         }
@@ -351,8 +355,22 @@ impl Ledger {
             return Err(Error::CertificateInvalidSignature);
         };
         self = self.apply_transaction(auth_cert, dyn_params)?;
-        self.delegation = self.delegation.apply(&auth_cert.transaction.extra)?;
-        Ok(self)
+        let (new_delegation, action) = self.delegation.apply(&auth_cert.transaction.extra)?;
+        self.delegation = new_delegation;
+        self.apply_delegation_action(action)?;
+        Ok((self, fee))
+    }
+
+    #[inline]
+    fn apply_delegation_action(&mut self, actions: CertificateApplyOutput) -> Result<(), Error> {
+        match actions {
+            CertificateApplyOutput::None => {}
+            CertificateApplyOutput::CreateAccount(stake_key_id) => {
+                let account = stake_key_id.0.clone().into();
+                self.accounts = self.accounts.add_account(&account, Value::zero())?;
+            }
+        }
+        Ok(())
     }
 
     pub fn get_stake_distribution(&self) -> StakeDistribution {

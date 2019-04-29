@@ -17,6 +17,11 @@ pub struct DelegationState {
     pub(crate) stake_pools: PoolTable,
 }
 
+pub enum CertificateApplyOutput {
+    None,
+    CreateAccount(StakeKeyId),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DelegationError {
     StakeKeyAlreadyRegistered,
@@ -181,8 +186,12 @@ impl DelegationState {
         })
     }
 
-    pub(crate) fn apply(&self, certificate: &Certificate) -> Result<Self, DelegationError> {
+    pub(crate) fn apply(
+        &self,
+        certificate: &Certificate,
+    ) -> Result<(Self, CertificateApplyOutput), DelegationError> {
         let mut new_state = self.clone();
+        let mut output = CertificateApplyOutput::None;
 
         match certificate.content {
             CertificateContent::StakeDelegation(ref reg) => {
@@ -196,7 +205,8 @@ impl DelegationState {
                     new_state.delegate_stake(reg.stake_key_id.clone(), reg.pool_id.clone())?
             }
             CertificateContent::StakeKeyRegistration(ref reg) => {
-                new_state = new_state.register_stake_key(reg.stake_key_id.clone())?
+                new_state = new_state.register_stake_key(reg.stake_key_id.clone())?;
+                output = CertificateApplyOutput::CreateAccount(reg.stake_key_id.clone());
             }
             CertificateContent::StakeKeyDeregistration(ref reg) => {
                 new_state = new_state.deregister_stake_key(&reg.stake_key_id)?
@@ -209,6 +219,6 @@ impl DelegationState {
             }
         }
 
-        Ok(new_state)
+        Ok((new_state, output))
     }
 }
