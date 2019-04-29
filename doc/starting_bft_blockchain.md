@@ -69,7 +69,7 @@ Write you private key in a file on your HD:
 ```
 $ cat node_secret.yaml
 bft:
-  signing_key: ed25519extended_secret1vzpkw6lqk5sfaa0rtp64s28s7zcegpwqte0psqneum5w9mcgafd0gwexmfn7s96lqja5sv520zx6hx5hd0qsgahp3ta8grrrxkd8n0cjmaqre
+  signing_key: ed25519e_sk1hpvne...
 ```
 
 Configure your Node (config.yml) and run the following command:
