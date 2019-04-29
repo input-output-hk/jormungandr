@@ -18,6 +18,22 @@ impl Value {
     {
         values.fold(Ok(Value::zero()), |acc, v| acc? + v)
     }
+
+    #[inline]
+    pub fn checked_add(self, other: Self) -> Result<Self, ValueError> {
+        self.0
+            .checked_add(other.0)
+            .map(Value)
+            .ok_or(ValueError::Overflow)
+    }
+
+    #[inline]
+    pub fn checked_sub(self, other: Value) -> Result<Value, ValueError> {
+        self.0
+            .checked_sub(other.0)
+            .map(Value)
+            .ok_or(ValueError::NegativeAmount)
+    }
 }
 
 custom_error! {
@@ -31,10 +47,7 @@ impl ops::Add for Value {
     type Output = Result<Value, ValueError>;
 
     fn add(self, other: Value) -> Self::Output {
-        self.0
-            .checked_add(other.0)
-            .map(Value)
-            .ok_or(ValueError::Overflow)
+        self.checked_add(other)
     }
 }
 
@@ -42,10 +55,7 @@ impl ops::Sub for Value {
     type Output = Result<Value, ValueError>;
 
     fn sub(self, other: Value) -> Self::Output {
-        self.0
-            .checked_sub(other.0)
-            .map(Value)
-            .ok_or(ValueError::NegativeAmount)
+        self.checked_sub(other)
     }
 }
 
