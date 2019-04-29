@@ -17,7 +17,7 @@ pub struct StakeDelegation {
     #[structopt(name = "STAKE_POOL_ID", parse(try_from_str))]
     pub pool_id: chain_crypto::Blake2b256,
     /// the delegation key
-    #[structopt(name = "DELEGATION_ID", parse(from_str = "parse_pub_key"))]
+    #[structopt(name = "DELEGATION_ID", parse(try_from_str = "parse_pub_key"))]
     pub stake_id: PublicKey<Ed25519Extended>,
     /// print the output signed certificate in the given file, if no file given
     /// the output will be printed in the standard output

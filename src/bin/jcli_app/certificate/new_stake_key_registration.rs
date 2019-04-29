@@ -16,7 +16,7 @@ custom_error! {pub Error
 #[derive(StructOpt)]
 pub struct StakeKeyRegistration {
     /// the delegation key
-    #[structopt(name = "PUBLIC_KEY", parse(from_str = "parse_pub_key"))]
+    #[structopt(name = "PUBLIC_KEY", parse(try_from_str = "parse_pub_key"))]
     pub key: PublicKey<Ed25519Extended>,
     /// print the output signed certificate in the given file, if no file given
     /// the output will be printed in the standard output
