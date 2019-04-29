@@ -275,7 +275,9 @@ impl Ledger {
                 Message::Initial(_) => return Err(Error::Block0OnlyMessageReceived),
                 Message::OldUtxoDeclaration(_) => return Err(Error::Block0OnlyMessageReceived),
                 Message::Transaction(authenticated_tx) => {
-                    new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
+                    let (new_ledger_, _fee) =
+                        new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
+                    new_ledger = new_ledger_;
                 }
                 Message::UpdateProposal(update_proposal) => {
                     new_ledger =
@@ -285,8 +287,9 @@ impl Ledger {
                     new_ledger = new_ledger.apply_update_vote(&vote)?;
                 }
                 Message::Certificate(authenticated_cert_tx) => {
-                    new_ledger =
+                    let (new_ledger_, _fee) =
                         new_ledger.apply_certificate(authenticated_cert_tx, &ledger_params)?;
+                    new_ledger = new_ledger_;
                 }
             }
         }
@@ -300,7 +303,7 @@ impl Ledger {
         mut self,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
         dyn_params: &LedgerParameters,
-    ) -> Result<Self, Error>
+    ) -> Result<(Self, Value), Error>
     where
         Extra: property::Serialize,
         LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
@@ -320,7 +323,7 @@ impl Ledger {
             &signed_tx.witnesses[..],
             fee,
         )?;
-        Ok(self)
+        Ok((self, fee))
     }
 
     pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
@@ -349,12 +352,13 @@ impl Ledger {
         mut self,
         auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
         dyn_params: &LedgerParameters,
-    ) -> Result<Self, Error> {
+    ) -> Result<(Self, Value), Error> {
         let verified = auth_cert.transaction.extra.verify();
         if verified == chain_crypto::Verification::Failed {
             return Err(Error::CertificateInvalidSignature);
         };
-        self = self.apply_transaction(auth_cert, dyn_params)?;
+        let (new_ledger, fee) = self.apply_transaction(auth_cert, dyn_params)?;
+        self = new_ledger;
         let (new_delegation, action) = self.delegation.apply(&auth_cert.transaction.extra)?;
         self.delegation = new_delegation;
         self.apply_delegation_action(action)?;
