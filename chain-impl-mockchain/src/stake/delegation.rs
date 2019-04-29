@@ -209,7 +209,8 @@ impl DelegationState {
                 output = CertificateApplyOutput::CreateAccount(reg.stake_key_id.clone());
             }
             CertificateContent::StakeKeyDeregistration(ref reg) => {
-                new_state = new_state.deregister_stake_key(&reg.stake_key_id)?
+                new_state = new_state.deregister_stake_key(&reg.stake_key_id)?;
+                // don't delete account
             }
             CertificateContent::StakePoolRegistration(ref reg) => {
                 new_state = new_state.register_stake_pool(reg.clone())?
