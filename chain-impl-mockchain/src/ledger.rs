@@ -367,7 +367,12 @@ impl Ledger {
             CertificateApplyOutput::None => {}
             CertificateApplyOutput::CreateAccount(stake_key_id) => {
                 let account = stake_key_id.0.clone().into();
-                self.accounts = self.accounts.add_account(&account, Value::zero())?;
+                if !self.accounts.exists(&account) {
+                    self.accounts = self.accounts.add_account(&account, Value::zero())?;
+                } else {
+                    // it is possible the account already exists, in this case
+                    // we don't need to do anything
+                }
             }
         }
         Ok(())
