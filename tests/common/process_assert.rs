@@ -78,7 +78,27 @@ pub fn assert_process_failed_and_contains_message(command: Command, expected_par
     assert_process_failed(output);
 }
 
-pub fn assert_process_failed_and_matches_message(mut command: Command, expected_part: &str) {
+pub fn assert_process_failed_and_contains_message_with_desc(
+    command: Command,
+    expected_part: &str,
+    description: &str,
+) {
+    let output = process_utils::run_process_and_get_output(command);
+    let actual = output.err_as_single_line();
+
+    assert_eq!(
+        actual.contains(&expected_part),
+        true,
+        "message : '{}' does not contain expected part '{}'. {}",
+        &actual,
+        &expected_part,
+        &description
+    );
+
+    assert_process_failed(output);
+}
+
+pub fn assert_process_failed_and_matches_message(command: Command, expected_part: &str) {
     let output = process_utils::run_process_and_get_output(command);
     let actual = output.err_as_single_line();
 
@@ -87,9 +107,9 @@ pub fn assert_process_failed_and_matches_message(mut command: Command, expected_
     assert_eq!(
         re.is_match(&actual),
         true,
-        "message : '{}' does not contain expected regex '{}'",
+        "message : '{}' does not match expected regex '{}'",
         &actual,
-        &expected_part
+        &expected_part,
     );
 
     assert_process_failed(output);
