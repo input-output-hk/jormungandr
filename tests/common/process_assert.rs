@@ -1,3 +1,6 @@
+extern crate regex;
+
+use self::regex::Regex;
 use std::process::{Command, Output};
 
 use super::process_utils;
@@ -66,6 +69,23 @@ pub fn assert_process_failed_and_contains_message(mut command: Command, expected
         actual.contains(&expected_part),
         true,
         "message : '{}' does not contain expected part '{}'",
+        &actual,
+        &expected_part
+    );
+
+    assert_process_failed(output);
+}
+
+pub fn assert_process_failed_and_matches_message(mut command: Command, expected_part: &str) {
+    let output = process_utils::run_process_and_get_output(command);
+    let actual = output.err_as_single_line();
+
+    let re = Regex::new(expected_part).unwrap();
+
+    assert_eq!(
+        re.is_match(&actual),
+        true,
+        "message : '{}' does not contain expected regex '{}'",
         &actual,
         &expected_part
     );
