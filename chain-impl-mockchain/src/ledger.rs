@@ -1,7 +1,7 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::{ChainLength, ConsensusVersion, HeaderHash};
+use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderHash};
 use crate::config::{self, Block0Date, ConfigParam};
 use crate::fee::LinearFee;
 use crate::leadership::bft::LeaderId;
@@ -11,7 +11,7 @@ use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, utxo};
 use chain_addr::{Address, Discrimination, Kind};
-use chain_core::property::{self, ChainLength as _};
+use chain_core::property::{self, ChainLength as _, Message as _};
 use std::sync::Arc;
 
 // static parameters, effectively this is constant in the parameter of the blockchain
@@ -43,8 +43,10 @@ pub struct Ledger {
     pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
     pub(crate) accounts: account::Ledger,
     pub(crate) settings: setting::Settings,
+    pub(crate) updates: setting::UpdateState,
     pub(crate) delegation: DelegationState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
+    pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
 }
 
@@ -75,6 +77,7 @@ pub enum Error {
     Block0InitialMessageNoSlotDuration,
     Block0InitialMessageNoConsensusLeaderId,
     Block0UtxoTotalValueTooBig,
+    Block0HasUpdateVote,
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -86,6 +89,15 @@ pub enum Error {
     ExpectingUtxoWitness,
     ExpectingInitialMessage,
     CertificateInvalidSignature,
+    Update(setting::Error),
+    WrongChainLength {
+        actual: ChainLength,
+        expected: ChainLength,
+    },
+    NonMonotonicDate {
+        block_date: BlockDate,
+        chain_date: BlockDate,
+    },
 }
 
 impl From<utxo::Error> for Error {
@@ -109,6 +121,12 @@ impl From<DelegationError> for Error {
 impl From<config::Error> for Error {
     fn from(e: config::Error) -> Self {
         Error::Config(e)
+    }
+}
+
+impl From<setting::Error> for Error {
+    fn from(e: setting::Error) -> Self {
+        Error::Update(e)
     }
 }
 
@@ -163,9 +181,18 @@ impl Ledger {
                     ledger.utxos = new_utxos;
                     ledger.accounts = new_accounts;;
                 }
-                Message::Update(update_proposal) => {
-                    ledger = ledger.apply_update(&update_proposal)?;
+                Message::UpdateProposal(update_proposal) => {
+                    // We assume here that the initial block contains
+                    // a single update proposal with the initial
+                    // settings, which we apply immediately without
+                    // requiring any votes. FIXME: check the
+                    // signature? Doesn't really matter, we have to
+                    // trust block 0 anyway.
+                    ledger = ledger.apply_update(&update_proposal.proposal.proposal)?;
                     ledger_params = ledger.get_ledger_parameters();
+                }
+                Message::UpdateVote(_) => {
+                    return Err(Error::Block0HasUpdateVote);
                 }
                 Message::Certificate(authenticated_cert_tx) => {
                     if authenticated_cert_tx.transaction.inputs.len() != 0 {
@@ -193,6 +220,8 @@ impl Ledger {
         &'a self,
         ledger_params: &LedgerParameters,
         contents: I,
+        date: BlockDate,
+        chain_length: ChainLength,
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = &'a Message>,
@@ -201,6 +230,27 @@ impl Ledger {
 
         new_ledger.chain_length = self.chain_length.next();
 
+        if chain_length != new_ledger.chain_length {
+            return Err(Error::WrongChainLength {
+                actual: chain_length,
+                expected: new_ledger.chain_length,
+            });
+        }
+
+        if date <= self.date {
+            return Err(Error::NonMonotonicDate {
+                block_date: date,
+                chain_date: self.date,
+            });
+        }
+
+        let (updates, settings) =
+            new_ledger
+                .updates
+                .process_proposals(new_ledger.settings, new_ledger.date, date);
+        new_ledger.updates = updates;
+        new_ledger.settings = settings;
+
         for content in contents {
             match content {
                 Message::Initial(_) => return Err(Error::Block0OnlyMessageReceived),
@@ -208,8 +258,12 @@ impl Ledger {
                 Message::Transaction(authenticated_tx) => {
                     new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
                 }
-                Message::Update(update_proposal) => {
-                    new_ledger = new_ledger.apply_update(&update_proposal)?;
+                Message::UpdateProposal(update_proposal) => {
+                    new_ledger =
+                        new_ledger.apply_update_proposal(content.id(), &update_proposal, date)?;
+                }
+                Message::UpdateVote(vote) => {
+                    new_ledger = new_ledger.apply_update_vote(&vote)?;
                 }
                 Message::Certificate(authenticated_cert_tx) => {
                     new_ledger =
@@ -217,6 +271,9 @@ impl Ledger {
                 }
             }
         }
+
+        new_ledger.date = date;
+
         Ok(new_ledger)
     }
 
@@ -239,6 +296,23 @@ impl Ledger {
 
     pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
         self.settings = self.settings.apply(update);
+        Ok(self)
+    }
+
+    pub fn apply_update_proposal(
+        mut self,
+        proposal_id: setting::UpdateProposalId,
+        proposal: &setting::SignedUpdateProposal,
+        cur_date: BlockDate,
+    ) -> Result<Self, Error> {
+        self.updates =
+            self.updates
+                .apply_proposal(proposal_id, proposal, &self.settings, cur_date)?;
+        Ok(self)
+    }
+
+    pub fn apply_update_vote(mut self, vote: &setting::SignedUpdateVote) -> Result<Self, Error> {
+        self.updates = self.updates.apply_vote(vote, &self.settings)?;
         Ok(self)
     }
 
@@ -617,8 +691,10 @@ impl EmptyLedgerBuilder {
             oldutxos: utxo::Ledger::new(),
             accounts: account::Ledger::new(),
             settings,
+            updates: setting::UpdateState::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_params),
+            date: BlockDate::first(),
             chain_length: ChainLength(0),
         })
     }
