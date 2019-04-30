@@ -61,7 +61,7 @@ pub fn assert_process_exited_successfully(output: Output) {
     );
 }
 
-pub fn assert_process_failed_and_contains_message(mut command: Command, expected_part: &str) {
+pub fn assert_process_failed_and_contains_message(command: Command, expected_part: &str) {
     let output = process_utils::run_process_and_get_output(command);
     let actual = output.err_as_single_line();
 
@@ -108,6 +108,28 @@ pub fn assert_process_failed_and_matches_message(command: Command, expected_part
         "message : '{}' does not match expected regex '{}'",
         &actual,
         &expected_part,
+    );
+
+    assert_process_failed(output);
+}
+
+pub fn assert_process_failed_and_matches_message_with_desc(
+    command: Command,
+    expected_part: &str,
+    descripion: &str,
+) {
+    let output = process_utils::run_process_and_get_output(command);
+    let actual = output.err_as_single_line();
+
+    let re = Regex::new(expected_part).unwrap();
+
+    assert_eq!(
+        re.is_match(&actual),
+        true,
+        "message : '{}' does not match expected regex '{}'. {}",
+        &actual,
+        &expected_part,
+        &descripion
     );
 
     assert_process_failed(output);
