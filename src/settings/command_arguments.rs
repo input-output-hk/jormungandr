@@ -4,22 +4,6 @@ use structopt::StructOpt;
 
 use crate::{blockcfg::HeaderHash, settings::logging::LogFormat};
 
-#[derive(Clone, Debug)]
-pub enum Block0Info {
-    Path(PathBuf),
-    Hash(HeaderHash),
-}
-
-impl std::str::FromStr for Block0Info {
-    type Err = std::string::ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match HeaderHash::from_str(s) {
-            Err(_err) => PathBuf::from_str(s).map(Block0Info::Path),
-            Ok(hh) => Ok(Block0Info::Hash(hh)),
-        }
-    }
-}
-
 #[derive(StructOpt, Debug)]
 pub struct StartArguments {
     /// The address to listen for inbound legacy protocol connections at.
@@ -66,9 +50,15 @@ pub struct StartArguments {
     #[structopt(long = "secret", parse(from_os_str))]
     pub secret: Option<PathBuf>,
 
-    /// Set the block 0 (the genesis block) of the blockchain
+    /// Path to the genesis block (the block0) of the blockchain
     #[structopt(long = "genesis-block", parse(try_from_str))]
-    pub block_0: Block0Info,
+    pub block_0_path: Option<PathBuf>,
+
+    /// set the genesis block hash (the hash of the block0) so we can retrieve the
+    /// genesis block (and the blockchain configuration) from the existing storage
+    /// or from the network.
+    #[structopt(long = "genesis-block-hash", parse(try_from_str))]
+    pub block_0_hash: Option<HeaderHash>,
 }
 
 #[derive(StructOpt, Debug)]

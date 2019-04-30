@@ -5,8 +5,8 @@ use self::config::ConfigLogSettings;
 pub use self::config::Rest;
 use self::network::Protocol;
 use crate::rest::Error as RestError;
-use crate::settings::command_arguments::*;
 use crate::settings::logging::LogSettings;
+use crate::settings::{command_arguments::*, Block0Info};
 
 use std::{collections::BTreeMap, fs::File, path::PathBuf};
 
@@ -14,6 +14,8 @@ custom_error! {pub Error
    ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
    Config { source: serde_yaml::Error } = "Error while parsing the node configuration file: {source}",
    Rest { source: RestError } = "The Rest configuration is invalid: {source}",
+   ExpectedBlock0Info = "Cannot start the node without the information to retrieve the genesis block",
+   TooMuchBlock0Info = "Use only `--genesis-block-hash' or `--genesis-block'",
 }
 
 /// Overall Settings for node
@@ -66,9 +68,19 @@ impl Settings {
             }
         };
 
+        let block0_info = match (
+            &command_arguments.block_0_path,
+            &command_arguments.block_0_hash,
+        ) {
+            (None, None) => return Err(Error::ExpectedBlock0Info),
+            (Some(_path), Some(_hash)) => return Err(Error::TooMuchBlock0Info),
+            (Some(path), None) => Block0Info::Path(path.clone()),
+            (None, Some(hash)) => Block0Info::Hash(hash.clone()),
+        };
+
         Ok(Settings {
             storage: storage,
-            block_0: command_arguments.block_0.clone(),
+            block_0: block0_info,
             network: network,
             leadership: secret,
             log_settings: log_settings,
