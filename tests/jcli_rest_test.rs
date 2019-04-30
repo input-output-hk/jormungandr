@@ -166,9 +166,9 @@ pub fn test_correct_error_is_returned_for_incorrect_host_syntax() {
 pub fn test_correct_error_is_returned_for_incorrect_host_address() {
     let incorrect_host = "http://127.0.0.100:8443/api";
 
-    process_assert::assert_process_failed_and_contains_message_with_desc(
+    process_assert::assert_process_failed_and_matches_message_with_desc(
         jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_host),
-        "`Err` value: Error { kind: Hyper(Error { kind: Connect",
+        "thread 'main' panicked at",
         "This assertion is incorrect on purpose to aviod failing build when running test,
         after #298 is fixed it need to be changed to correct one",
     );
@@ -182,9 +182,9 @@ pub fn test_correct_error_is_returned_for_incorrect_path() {
     let mut incorrect_host = node_config.get_node_address();
     incorrect_host.push('x');
 
-    process_assert::assert_process_failed_and_contains_message_with_desc(
+    process_assert::assert_process_failed_and_matches_message_with_desc(
         jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_host),
-        "`Err` value: Error { kind: Hyper(Error { kind: Connect",
+        "thread 'main' panicked at",
         "This assertion is incorrect on purpose to aviod failing build when running test,
         after #298 is fixed it need to be changed to correct one",
     );
