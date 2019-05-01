@@ -21,20 +21,6 @@ Currently, the update semantics are very simple:
 * An accepted proposal becomes active at the start of the epoch
   following the slot containg the deciding vote.
 
-* Proposals that change settings other than the consensus version can
-  (and must) be applied automatically by any node without a software
-  update. A change to the consensus version may require a software
-  update, since nodes must be able to process blocks with the new
-  version. Since accepted proposals become active almost immediately,
-  nodes should only vote in favor of a proposal for a new consensus
-  version if they can already support that version.
-
-TODO: what is consensus version exactly? Does it correspond to the
-version in the block header? (E.g. we could change the consensus rules
-without changing the block format. But if they're different, we
-currently don't have a way to identify the intended consensus version
-of a block.)
-
 TBD: what to do if multiple versions are accepted at the same time?
 
 TODO: add a way to delay activation of accepted proposals by a number
