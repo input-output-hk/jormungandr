@@ -12,8 +12,9 @@ pub use initial::InitialEnts;
 pub use raw::{MessageId, MessageRaw};
 
 use crate::{
-    certificate, setting,
+    certificate,
     transaction::{AuthenticatedTransaction, NoExtra},
+    update::{SignedUpdateProposal, SignedUpdateVote},
 };
 
 /// All possible messages recordable in the content
@@ -23,8 +24,8 @@ pub enum Message {
     OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
     Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
-    UpdateProposal(setting::SignedUpdateProposal),
-    UpdateVote(setting::SignedUpdateVote),
+    UpdateProposal(SignedUpdateProposal),
+    UpdateVote(SignedUpdateVote),
 }
 
 /// Tag enumeration of all known message
@@ -90,11 +91,9 @@ impl Readable for Message {
                 AuthenticatedTransaction::read(buf).map(Message::Certificate)
             }
             Some(MessageTag::UpdateProposal) => {
-                setting::SignedUpdateProposal::read(buf).map(Message::UpdateProposal)
+                SignedUpdateProposal::read(buf).map(Message::UpdateProposal)
             }
-            Some(MessageTag::UpdateVote) => {
-                setting::SignedUpdateVote::read(buf).map(Message::UpdateVote)
-            }
+            Some(MessageTag::UpdateVote) => SignedUpdateVote::read(buf).map(Message::UpdateVote),
             None => Err(ReadError::UnknownTag(tag as u32)),
         }
     }

@@ -24,6 +24,7 @@ pub mod setting;
 pub mod stake;
 pub mod transaction;
 pub mod txbuilder;
+pub mod update;
 pub mod utxo;
 pub mod value;
 

@@ -11,7 +11,7 @@ use crate::milli::Milli;
 use crate::stake::{CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
-use crate::{account, certificate, legacy, setting, stake, utxo};
+use crate::{account, certificate, legacy, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property::{self, ChainLength as _, Message as _};
 use std::convert::TryInto;
@@ -46,7 +46,7 @@ pub struct Ledger {
     pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
     pub(crate) accounts: account::Ledger,
     pub(crate) settings: setting::Settings,
-    pub(crate) updates: setting::UpdateState,
+    pub(crate) updates: update::UpdateState,
     pub(crate) delegation: DelegationState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
     pub(crate) date: BlockDate,
@@ -96,7 +96,7 @@ pub enum Error {
     ExpectingUtxoWitness,
     ExpectingInitialMessage,
     CertificateInvalidSignature,
-    Update(setting::Error),
+    Update(update::Error),
     WrongChainLength {
         actual: ChainLength,
         expected: ChainLength,
@@ -131,8 +131,8 @@ impl From<config::Error> for Error {
     }
 }
 
-impl From<setting::Error> for Error {
-    fn from(e: setting::Error) -> Self {
+impl From<update::Error> for Error {
+    fn from(e: update::Error) -> Self {
         Error::Update(e)
     }
 }
@@ -144,7 +144,7 @@ impl Ledger {
             oldutxos: utxo::Ledger::new(),
             accounts: account::Ledger::new(),
             settings,
-            updates: setting::UpdateState::new(),
+            updates: update::UpdateState::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_params),
             date: BlockDate::first(),
@@ -330,15 +330,15 @@ impl Ledger {
         Ok((self, fee))
     }
 
-    pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
+    pub fn apply_update(mut self, update: &update::UpdateProposal) -> Result<Self, Error> {
         self.settings = self.settings.apply(update);
         Ok(self)
     }
 
     pub fn apply_update_proposal(
         mut self,
-        proposal_id: setting::UpdateProposalId,
-        proposal: &setting::SignedUpdateProposal,
+        proposal_id: update::UpdateProposalId,
+        proposal: &update::SignedUpdateProposal,
         cur_date: BlockDate,
     ) -> Result<Self, Error> {
         self.updates =
@@ -347,7 +347,7 @@ impl Ledger {
         Ok(self)
     }
 
-    pub fn apply_update_vote(mut self, vote: &setting::SignedUpdateVote) -> Result<Self, Error> {
+    pub fn apply_update_vote(mut self, vote: &update::SignedUpdateVote) -> Result<Self, Error> {
         self.updates = self.updates.apply_vote(vote, &self.settings)?;
         Ok(self)
     }
