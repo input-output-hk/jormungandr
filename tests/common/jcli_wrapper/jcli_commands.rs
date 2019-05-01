@@ -70,7 +70,7 @@ pub fn get_rest_block_tip_command(host: &str) -> Command {
     command
 }
 
-/// Get rest block command.
+/// Get rest get block command.
 pub fn get_rest_get_block_command(block_id: &str, host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
@@ -84,7 +84,7 @@ pub fn get_rest_get_block_command(block_id: &str, host: &str) -> Command {
     command
 }
 
-/// Get rest next block id command.
+/// Get rest stat command.
 pub fn get_rest_get_next_block_id_command(block_id: &str, id_count: &i32, host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command

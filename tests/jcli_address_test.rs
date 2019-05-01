@@ -114,7 +114,7 @@ pub fn test_delegation_address_made_of_random_string() {
     let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
     println!("private key: {}", &private_key);
 
-    let mut public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
+    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
     let delegation_key = "adfasdfasdfdasfasdfadfasdf";
