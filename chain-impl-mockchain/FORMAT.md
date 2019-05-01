@@ -1,5 +1,16 @@
 **This is a draft document**
 
+# Preliminaries
+
+All integers are encoded in big-endian format.
+
+`Signature` has the format
+
+    Length | Payload
+
+where `Length` is a 16-bit unsigned integer `N`, and `Payload` is `N`
+bytes of signature data.
+
 # Block
 
 Format is:
@@ -150,7 +161,7 @@ The message, w.r.t the cryptographic signature, is generally of the form:
 
 Where HEADER, INPUTS and OUTPUTS comes from the Token Transfer type, and EXTRA is the optional data serialized between the token transfer type, and the witnesses.
 
-## Type 1: Transaction
+## Type 2: Transaction
 
 Transaction is the composition of the TokenTransfer structure followed directly by the witnesses. EXTRA needs to be empty. Effectively:
 
@@ -161,7 +172,7 @@ TODO:
 * Multisig
 * Fees
 
-## Type 2: Certificate
+## Type 3: Certificate
 
 Certificate is the composition of the TokenTransfer structure, followed by the certificate data, then the witnesses. Effectively:
 
@@ -177,3 +188,57 @@ Content:
 
 * PublicKey
 * Signature of the witness with the private key associated to the revealed PublicKey
+
+## Type 4: Update Proposal
+
+Update proposal messages propose new values for blockchain
+settings. These can subsequently be voted on. They have the following
+form:
+
+    Proposal | ProposerId | Signature
+
+where `ProposerId` is a ed25519 extended public key, and `Signature`
+is a signature by the corresponding private key over the string
+`Proposal | ProposerId`.
+
+`Proposal` is a list of setting types and values, terminated by the
+16-bit integer 0xffff:
+
+    (SettingTag | SettingValue)* 0xffff
+
+`SettingTag` is a 16-bit unsigned integer specifying the type of
+setting, and `SettingValue` is a variable-length encoding of the
+proposed value of the setting. The following setting types are
+defined, with their corresponding values:
+
+* 1: maximum number of transactions per block: 32-bit unsigned integer
+* 2: 'd' parameter, i.e. percentage of slots that must be signed by
+  BFT leaders: 8-bit integer in the range 0-100
+* 3: consensus version: 16-bit unsigned integer
+* 4: BFT leaders: 8-bit unsigned integer count of BFT leaders `N`,
+  followed by `N` ed25519 public keys
+* 5: whether account creation is allowed: a byte `0` for no, or `1`
+  for yes
+* 6: transaction linear fee: 64-bit summand, 64-bit multiplier, and a
+  certificate (TODO)
+* 7: slot duration: 8-bit unsigned integer
+* 8: epoch stability depth: 32-bit unsigned integer
+
+Settings must appear in monotonically increasing order of their tags,
+that is, if tag N < M, then setting N must appear before M, and
+settings cannot be repeated.
+
+TODO: should `SettingValue` contain a length so we can at least parse
+proposals containing unknown settings?
+
+## Type 5: Update votes
+
+Vote messages register a positive vote for an earlier update
+proposal. They have the format
+
+    ProposalId | VoterId | Signature
+
+where `ProposalId` is the message ID of an earlier update proposal
+message, `VoterId` is an ed25519 extended public key, and `Signature`
+is a signature by the corresponding secret key over `ProposalId |
+VoterId`.
