@@ -173,6 +173,12 @@ impl Ledger {
             .map_err(|e| e.into())
     }
 
+    /// check if an account already exits
+    #[inline]
+    pub fn exists(&self, account: &Identifier) -> bool {
+        self.0.contains_key(account)
+    }
+
     /// Remove an account from this ledger
     ///
     /// If the account still have value > 0, then error

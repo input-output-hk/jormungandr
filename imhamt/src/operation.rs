@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InsertError {
     EntryExists,
 }
@@ -18,4 +18,10 @@ pub enum UpdateError<T> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReplaceError {
     KeyNotFound,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InsertOrUpdateError<T> {
+    Insert(InsertError),
+    Update(UpdateError<T>),
 }

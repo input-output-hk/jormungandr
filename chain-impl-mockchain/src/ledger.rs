@@ -6,7 +6,7 @@ use crate::config::{self, Block0Date, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::bft::LeaderId;
 use crate::message::Message;
-use crate::stake::{DelegationError, DelegationState, StakeDistribution};
+use crate::stake::{CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, utxo};
@@ -219,9 +219,11 @@ impl Ledger {
                     if authenticated_cert_tx.transaction.outputs.len() != 0 {
                         return Err(Error::Block0TransactionHasOutput);
                     }
-                    ledger.delegation = ledger
+                    let (new_delegation, action) = ledger
                         .delegation
                         .apply(&authenticated_cert_tx.transaction.extra)?;
+                    ledger.delegation = new_delegation;
+                    ledger.apply_delegation_action(action)?;
                 }
             }
         }
@@ -252,10 +254,10 @@ impl Ledger {
             });
         }
 
-        if date <= self.date {
+        if date <= new_ledger.date {
             return Err(Error::NonMonotonicDate {
                 block_date: date,
-                chain_date: self.date,
+                chain_date: new_ledger.date,
             });
         }
 
@@ -271,7 +273,9 @@ impl Ledger {
                 Message::Initial(_) => return Err(Error::Block0OnlyMessageReceived),
                 Message::OldUtxoDeclaration(_) => return Err(Error::Block0OnlyMessageReceived),
                 Message::Transaction(authenticated_tx) => {
-                    new_ledger = new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
+                    let (new_ledger_, _fee) =
+                        new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
+                    new_ledger = new_ledger_;
                 }
                 Message::UpdateProposal(update_proposal) => {
                     new_ledger =
@@ -281,8 +285,9 @@ impl Ledger {
                     new_ledger = new_ledger.apply_update_vote(&vote)?;
                 }
                 Message::Certificate(authenticated_cert_tx) => {
-                    new_ledger =
+                    let (new_ledger_, _fee) =
                         new_ledger.apply_certificate(authenticated_cert_tx, &ledger_params)?;
+                    new_ledger = new_ledger_;
                 }
             }
         }
@@ -296,7 +301,7 @@ impl Ledger {
         mut self,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
         dyn_params: &LedgerParameters,
-    ) -> Result<Self, Error>
+    ) -> Result<(Self, Value), Error>
     where
         Extra: property::Serialize,
         LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
@@ -316,7 +321,7 @@ impl Ledger {
             &signed_tx.witnesses[..],
             fee,
         )?;
-        Ok(self)
+        Ok((self, fee))
     }
 
     pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
@@ -345,14 +350,34 @@ impl Ledger {
         mut self,
         auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
         dyn_params: &LedgerParameters,
-    ) -> Result<Self, Error> {
+    ) -> Result<(Self, Value), Error> {
         let verified = auth_cert.transaction.extra.verify();
         if verified == chain_crypto::Verification::Failed {
             return Err(Error::CertificateInvalidSignature);
         };
-        self = self.apply_transaction(auth_cert, dyn_params)?;
-        self.delegation = self.delegation.apply(&auth_cert.transaction.extra)?;
-        Ok(self)
+        let (new_ledger, fee) = self.apply_transaction(auth_cert, dyn_params)?;
+        self = new_ledger;
+        let (new_delegation, action) = self.delegation.apply(&auth_cert.transaction.extra)?;
+        self.delegation = new_delegation;
+        self.apply_delegation_action(action)?;
+        Ok((self, fee))
+    }
+
+    #[inline]
+    fn apply_delegation_action(&mut self, actions: CertificateApplyOutput) -> Result<(), Error> {
+        match actions {
+            CertificateApplyOutput::None => {}
+            CertificateApplyOutput::CreateAccount(stake_key_id) => {
+                let account = stake_key_id.0.clone().into();
+                if !self.accounts.exists(&account) {
+                    self.accounts = self.accounts.add_account(&account, Value::zero())?;
+                } else {
+                    // it is possible the account already exists, in this case
+                    // we don't need to do anything
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn get_stake_distribution(&self) -> StakeDistribution {
