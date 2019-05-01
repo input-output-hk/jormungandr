@@ -31,3 +31,7 @@ TODO: maybe we can use the update proposal ID as the version? That's a
 lot more unique than integers. Also, update proposals can then have a
 parent version, so you get a chain of versions. Downside: it makes the
 block header a bit bigger.
+
+TODO: need a way to distinguish between setting changes (which don't
+require a software update) and other changes (which do). Currently
+UpdateProposal can only do the former.
