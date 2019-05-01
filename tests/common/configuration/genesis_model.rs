@@ -40,7 +40,9 @@ pub struct Fund {
 pub struct GenesisYaml {
     pub blockchain_configuration: BlockchainConfig,
     pub initial_setting: InitialSetting,
-    pub initial_funds: Vec<Fund>,
+    pub initial_funds: Option<Vec<Fund>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legacy_funds: Option<Vec<Fund>>,
 }
 
 impl GenesisYaml {
@@ -93,7 +95,8 @@ impl GenesisYaml {
                     certificate: 0,
                 },
             },
-            initial_funds,
+            initial_funds: Some(initial_funds),
+            legacy_funds: None,
         }
     }
 }

@@ -2,9 +2,9 @@
 
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
-pub mod utxo;
-use self::utxo::Utxo;
+
 use super::configuration;
+use super::data::utxo::Utxo;
 use super::file_assert;
 use super::file_utils;
 use super::process_assert;
@@ -55,6 +55,7 @@ pub fn assert_rest_stats(host: &str) -> BTreeMap<String, String> {
     process_assert::assert_process_exited_successfully(output);
     content
 }
+
 pub fn assert_rest_utxo_get(host: &str) -> Vec<Utxo> {
     let output =
         process_utils::run_process_and_get_output(jcli_commands::get_rest_utxo_get_command(&host));
@@ -110,6 +111,23 @@ pub fn assert_post_transaction(transaction_hash: &str, host: &str) -> () {
     assert_eq!("Success!", single_line);
 }
 
+pub fn assert_transaction_post_accepted(transaction_hash: &str, host: &str) -> () {
+    let node_stats = self::assert_rest_stats(&host);
+    let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
+
+    self::assert_post_transaction(&transaction_hash, &host);
+    let node_stats = self::assert_rest_stats(&host);
+    let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
+    assert_eq!(
+        before + 1,
+        after,
+        "Transaction was NOT accepted by node:
+     txRecvCnt counter wasn't incremented after post"
+    );
+
+    self::assert_rest_utxo_get(&host);
+}
+
 pub fn assert_key_generate_default() -> String {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_key_generate_command_default(),
@@ -158,6 +176,32 @@ pub fn assert_key_to_bytes(private_key: &str, path_to_output_file: &PathBuf) -> 
 pub fn assert_key_from_bytes(path_to_input_file: &PathBuf, key_type: &str) -> String {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_key_from_bytes_command(&path_to_input_file, &key_type),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_rest_get_block_tip(host: &str) -> String {
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_rest_block_tip_command(&host));
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_rest_get_block_command(&block_id, &host),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_rest_get_next_block_id_command(&block_id, &id_count, &host),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
