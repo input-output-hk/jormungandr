@@ -15,7 +15,7 @@ impl property::Serialize for SignatureRaw {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         codec.put_u16(self.0.len() as u16)?;
         codec.into_inner().write_all(&self.0.as_ref())?;
         Ok(())
@@ -134,7 +134,7 @@ impl property::Serialize for Certificate {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         match &self.content {
             CertificateContent::StakeKeyRegistration(s) => {
                 codec.put_u8(CertificateTag::StakeKeyRegistration as u8)?;
@@ -220,7 +220,7 @@ impl property::Serialize for StakeKeyRegistration {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         self.stake_key_id.serialize(&mut codec)?;
         Ok(())
     }
@@ -258,7 +258,7 @@ impl property::Serialize for StakeKeyDeregistration {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         self.stake_key_id.serialize(&mut codec)?;
         Ok(())
     }
@@ -299,7 +299,7 @@ impl property::Serialize for StakeDelegation {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         self.stake_key_id.serialize(&mut codec)?;
         self.pool_id.serialize(&mut codec)?;
         Ok(())
@@ -366,7 +366,7 @@ impl property::Serialize for StakePoolRetirement {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         self.pool_id.serialize(&mut codec)?;
         self.pool_info.serialize(&mut codec)?;
         Ok(())

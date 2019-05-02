@@ -132,7 +132,7 @@ impl property::Serialize for Witness {
         use chain_core::packer::*;
         //use chain_core::property::Serialize;
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         match self {
             Witness::OldUtxo(xpub, sig) => {
                 codec.put_u8(WITNESS_TAG_OLDUTXO)?;

@@ -28,7 +28,7 @@ impl property::Deserialize for MessageRaw {
     type Error = std::io::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(reader);
+        let mut codec = Codec::new(reader);
         let size = codec.get_u16()?;
         let mut v = vec![0u8; size as usize];
         codec.into_inner().read_exact(&mut v)?;
@@ -41,7 +41,7 @@ impl property::Serialize for MessageRaw {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         codec.put_u16(self.0.len() as u16)?;
         codec.into_inner().write_all(&self.0)?;
         Ok(())

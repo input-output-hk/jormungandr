@@ -147,7 +147,7 @@ impl property::Serialize for ConfigParam {
                 "initial ent payload too big".to_string(),
             )
         })?;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         codec.put_u16(taglen.0)?;
         codec.write_all(&bytes)
     }

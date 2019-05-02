@@ -17,7 +17,7 @@ impl property::Serialize for HeaderRaw {
         use chain_core::packer::*;
         use std::io::Write;
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         //dbg!(self.0.len());
         codec.put_u16(self.0.len() as u16)?;
         codec.write_all(&self.0)?;
@@ -32,7 +32,7 @@ impl property::Deserialize for HeaderRaw {
         use chain_core::packer::Codec;
         use std::io::Read;
 
-        let mut codec = Codec::from(reader);
+        let mut codec = Codec::new(reader);
 
         let header_size = codec.get_u16()? as usize;
         //dbg!(header_size);

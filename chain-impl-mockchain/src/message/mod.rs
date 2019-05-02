@@ -56,7 +56,7 @@ impl Message {
         use chain_core::packer::*;
         use chain_core::property::Serialize;
         let v = Vec::new();
-        let mut codec = Codec::from(v);
+        let mut codec = Codec::new(v);
         codec.put_u8(self.get_tag() as u8).unwrap();
         match self {
             Message::Initial(i) => i.serialize(&mut codec).unwrap(),

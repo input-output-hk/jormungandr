@@ -341,7 +341,7 @@ impl PropertySerialize for Address {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         use std::io::Write;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
 
         let first_byte = match self.0 {
             Discrimination::Production => self.to_kind_value(),
@@ -372,7 +372,7 @@ impl property::Deserialize for Address {
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
         use std::io::Read;
-        let mut codec = Codec::from(reader);
+        let mut codec = Codec::new(reader);
         // is_valid_data(bytes)?;
 
         let byte = codec.get_u8()?;

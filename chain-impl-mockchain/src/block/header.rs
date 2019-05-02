@@ -162,7 +162,7 @@ impl property::Serialize for Common {
         use chain_core::packer::Codec;
         use std::io::Write;
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
 
         codec.put_u16(self.any_block_version.into())?;
         codec.put_u32(self.block_content_size)?;

@@ -85,7 +85,7 @@ impl<Extra: property::Serialize> Transaction<Address, Extra> {
         use chain_core::packer::*;
         use chain_core::property::Serialize;
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         for input in self.inputs.iter() {
             input.serialize(&mut codec)?;
         }
@@ -103,7 +103,7 @@ impl<Extra: property::Serialize> Transaction<Address, Extra> {
         assert!(self.inputs.len() < 255);
         assert!(self.outputs.len() < 255);
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
 
         // store the number of inputs and outputs
         codec.put_u8(self.inputs.len() as u8)?;
@@ -127,7 +127,7 @@ impl<Extra: property::Deserialize> Transaction<Address, Extra> {
     ) -> Result<Self, Extra::Error> {
         use chain_core::packer::*;
         use chain_core::property::Deserialize as _;
-        let mut codec = Codec::from(reader);
+        let mut codec = Codec::new(reader);
 
         let mut inputs = Vec::with_capacity(num_inputs);
         let mut outputs = Vec::with_capacity(num_outputs);
@@ -154,7 +154,7 @@ impl<Extra: property::Deserialize> Transaction<Address, Extra> {
     pub fn deserialize_with_header<R: std::io::BufRead>(reader: R) -> Result<Self, Extra::Error> {
         use chain_core::packer::*;
 
-        let mut codec = Codec::from(reader);
+        let mut codec = Codec::new(reader);
 
         let num_inputs = codec.get_u8()? as usize;
         let num_outputs = codec.get_u8()? as usize;

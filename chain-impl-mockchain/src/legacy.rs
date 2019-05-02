@@ -66,7 +66,7 @@ impl property::Serialize for UtxoDeclaration {
 
         assert!(self.addrs.len() < 255);
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         codec.put_u8(self.addrs.len() as u8)?;
         for (b, v) in &self.addrs {
             v.serialize(&mut codec)?;
