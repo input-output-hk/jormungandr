@@ -29,11 +29,11 @@ pub struct InfoArgs {
 #[derive(StructOpt)]
 pub struct SingleArgs {
     /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "PUBLIC_KEY", parse(from_str = "parse_pub_key"))]
+    #[structopt(name = "PUBLIC_KEY", parse(try_from_str = "parse_pub_key"))]
     key: PublicKey<Ed25519Extended>,
 
     /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "DELEGATION_KEY", parse(from_str = "parse_pub_key"))]
+    #[structopt(name = "DELEGATION_KEY", parse(try_from_str = "parse_pub_key"))]
     delegation: Option<PublicKey<Ed25519Extended>>,
 
     /// set the discrimination type to testing (default is production)
@@ -44,7 +44,7 @@ pub struct SingleArgs {
 #[derive(StructOpt)]
 pub struct AccountArgs {
     /// A public key in bech32 encoding with the key type prefix
-    #[structopt(name = "PUBLIC_KEY", parse(from_str = "parse_pub_key"))]
+    #[structopt(name = "PUBLIC_KEY", parse(try_from_str = "parse_pub_key"))]
     key: PublicKey<Ed25519Extended>,
 
     /// set the discrimination type to testing (default is production)

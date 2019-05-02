@@ -21,13 +21,25 @@ pub struct StakePoolRegistration {
     #[structopt(long = "serial", name = "SERIAL")]
     pub serial: u128,
     /// public key of the owner(s)
-    #[structopt(long = "owner", name = "PUBLIC_KEY", parse(from_str = "parse_pub_key"))]
+    #[structopt(
+        long = "owner",
+        name = "PUBLIC_KEY",
+        parse(try_from_str = "parse_pub_key")
+    )]
     pub owners: Vec<PublicKey<Ed25519Extended>>,
     /// Public key of the block signing key
-    #[structopt(long = "kes-key", name = "KES_KEY", parse(from_str = "parse_pub_key"))]
+    #[structopt(
+        long = "kes-key",
+        name = "KES_KEY",
+        parse(try_from_str = "parse_pub_key")
+    )]
     pub kes_key: PublicKey<FakeMMM>,
     /// public key of the VRF key
-    #[structopt(long = "vrf-key", name = "VRF_KEY", parse(from_str = "parse_pub_key"))]
+    #[structopt(
+        long = "vrf-key",
+        name = "VRF_KEY",
+        parse(try_from_str = "parse_pub_key")
+    )]
     pub vrf_key: PublicKey<Curve25519_2HashDH>,
     /// print the output signed certificate in the given file, if no file given
     /// the output will be printed in the standard output
