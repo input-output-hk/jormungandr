@@ -268,14 +268,6 @@ impl Readable for Header {
     }
 }
 
-impl property::Deserialize for Header {
-    type Error = std::io::Error;
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let raw = HeaderRaw::deserialize(reader)?;
-        read_from_raw(raw.as_ref())
-    }
-}
-
 impl property::Header for Header {
     type Id = HeaderHash;
     type Date = BlockDate;
