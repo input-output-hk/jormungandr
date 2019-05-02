@@ -88,7 +88,7 @@ impl property::Serialize for Input {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         codec.put_u8(self.index_or_account)?;
         self.value.serialize(&mut codec)?;
         codec.into_inner().write_all(&self.input_ptr)?;
@@ -102,7 +102,7 @@ impl property::Deserialize for Input {
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         use chain_core::packer::*;
 
-        let mut codec = Codec::from(reader);
+        let mut codec = Codec::new(reader);
         let index_or_account = codec.get_u8()?;
         let value = Value::deserialize(&mut codec)?;
         let mut input_ptr = [0; INPUT_PTR_SIZE];

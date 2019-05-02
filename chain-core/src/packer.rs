@@ -7,6 +7,10 @@ const INITIAL_BUFFERED_CAPACITY: usize = 2048;
 
 pub struct Codec<I>(I);
 impl<I> Codec<I> {
+    pub fn new(inner: I) -> Self {
+        Codec(inner)
+    }
+
     pub fn into_inner(self) -> I {
         self.0
     }
@@ -169,12 +173,6 @@ impl<W: std::io::Write> std::io::Write for Buffered<W> {
     #[inline]
     fn flush(&mut self) -> std::io::Result<()> {
         self.1.flush()
-    }
-}
-impl<I> From<I> for Codec<I> {
-    #[inline]
-    fn from(inner: I) -> Self {
-        Codec(inner)
     }
 }
 impl<I: std::io::Write> std::ops::Deref for Buffered<I> {

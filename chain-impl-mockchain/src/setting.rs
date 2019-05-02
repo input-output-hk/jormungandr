@@ -199,7 +199,7 @@ impl property::Serialize for UpdateProposal {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         if let Some(max_number_of_transactions_per_block) =
             self.max_number_of_transactions_per_block
         {
@@ -322,7 +322,7 @@ impl property::Serialize for UpdateProposalWithProposer {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         self.proposal.serialize(&mut codec)?;
         self.proposer_id.serialize(&mut codec)?;
         Ok(())
@@ -368,7 +368,7 @@ impl property::Serialize for SignedUpdateProposal {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         self.proposal.serialize(&mut codec)?;
         self.signature.serialize(&mut codec)?;
         Ok(())
@@ -402,7 +402,7 @@ impl property::Serialize for UpdateVote {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         self.proposal_id.serialize(&mut codec)?;
         self.voter_id.serialize(&mut codec)?;
         Ok(())
@@ -441,7 +441,7 @@ impl property::Serialize for SignedUpdateVote {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         self.vote.serialize(&mut codec)?;
         self.signature.serialize(&mut codec)?;
         Ok(())

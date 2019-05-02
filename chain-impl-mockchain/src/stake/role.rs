@@ -101,7 +101,7 @@ impl property::Serialize for StakePoolInfo {
 
         use chain_core::packer::Codec;
 
-        let mut codec = Codec::from(writer);
+        let mut codec = Codec::new(writer);
         codec.put_u128(self.serial)?;
         codec.put_u8(self.owners.len() as u8)?;
         for o in &self.owners {
