@@ -12,7 +12,7 @@ pub type TPoolR = Arc<RwLock<TPool<MessageId, Message>>>;
 
 pub fn handle_input(
     _info: &ThreadServiceInfo,
-    blockchain: &BlockchainR,
+    _: &BlockchainR,
     tpool: &TPoolR,
     stats_counter: &StatsCounter,
     input: Input<TransactionMsg>,
@@ -29,29 +29,21 @@ pub fn handle_input(
         }
         TransactionMsg::SendTransaction(txs) => {
             let mut tpool = tpool.write().unwrap();
-            let blockchain = blockchain.lock_read();
-            let chain_state = blockchain.multiverse.get(&blockchain.tip).unwrap();
-            let parameters = chain_state.get_ledger_parameters();
 
-            // this will test the transaction is valid within the current
-            // state of the local state of the global ledger.
-            //
-            // We don't want to keep transactions that are not valid within
-            // our state of the blockchain as we will not be able to add them
-            // in the blockchain.
-            if let Err(error) = chain_state.apply_block(
-                &parameters,
-                txs.iter(),
-                chain_state.date().next(),
-                chain_state.chain_length().next(),
-            ) {
-                warn!("Received transactions where some are invalid, {}", error);
-            // TODO
-            } else {
-                stats_counter.add_tx_recv_cnt(txs.len());
-                for tx in txs {
-                    tpool.add(tx.id(), tx);
-                }
+            // Note that we cannot use apply_block here, since we don't have a valid context to which to apply
+            // those blocks. one valid tx in a given context, could be invalid in another. for example
+            // fee calculations, existence utxo / account solvency.
+
+            // FIXME/TODO check that the txs are valid within themselves with basic requirements (e.g. inputs >= outputs).
+            // we also want to keep a basic capability to filter away repetitive queries or definitely discarded txid.
+
+            // This interface only makes sense for messages coming from arbitrary users (like transaction, certificates),
+            // for other message we don't want to receive them through this interface, and possibly
+            // put them in another pool.
+
+            stats_counter.add_tx_recv_cnt(txs.len());
+            for tx in txs {
+                tpool.add(tx.id(), tx);
             }
         }
         TransactionMsg::GetTransactions(txids, handler) => do_stream_reply(handler, |handler| {
