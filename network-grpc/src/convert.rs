@@ -1,6 +1,9 @@
 use crate::gen;
 
-use chain_core::property;
+use chain_core::{
+    mempack::{self, ReadBuf},
+    property,
+};
 use network_core::{
     error as core_error,
     gossip::{Gossip, Node, NodeId},
@@ -57,24 +60,24 @@ pub trait IntoProtobuf<R> {
     fn into_message(self) -> Result<R, tower_grpc::Status>;
 }
 
-pub fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_error::Error>
+pub fn deserialize_bytes<T>(buf: &[u8]) -> Result<T, core_error::Error>
 where
-    T: property::Deserialize,
+    T: mempack::Readable,
 {
-    T::deserialize(&mut buf)
-        .map_err(|e| core_error::Error::new(core_error::Code::InvalidArgument, e))
+    let mut buf = ReadBuf::from(buf);
+    T::read(&mut buf).map_err(|e| core_error::Error::new(core_error::Code::InvalidArgument, e))
 }
 
 pub fn deserialize_vec<T>(pb: &[Vec<u8>]) -> Result<Vec<T>, core_error::Error>
 where
-    T: property::Deserialize,
+    T: mempack::Readable,
 {
     pb.iter().map(|v| deserialize_bytes(&v[..])).collect()
 }
 
 impl<H> FromProtobuf<gen::node::TipResponse> for H
 where
-    H: property::Header + property::Deserialize,
+    H: property::Header + mempack::Readable,
 {
     fn from_message(msg: gen::node::TipResponse) -> Result<Self, core_error::Error> {
         let block_header = deserialize_bytes(&msg.block_header)?;
@@ -84,7 +87,7 @@ where
 
 impl<T> FromProtobuf<gen::node::Block> for T
 where
-    T: property::Block + property::Deserialize,
+    T: property::Block + mempack::Readable,
 {
     fn from_message(msg: gen::node::Block) -> Result<T, core_error::Error> {
         let block = deserialize_bytes(&msg.content)?;
@@ -94,7 +97,7 @@ where
 
 impl<T> FromProtobuf<gen::node::Header> for T
 where
-    T: property::Header + property::Deserialize,
+    T: property::Header + mempack::Readable,
 {
     fn from_message(msg: gen::node::Header) -> Result<T, core_error::Error> {
         let header = deserialize_bytes(&msg.content)?;
@@ -104,7 +107,7 @@ where
 
 impl<T> FromProtobuf<gen::node::Message> for T
 where
-    T: property::Message + property::Deserialize,
+    T: property::Message + mempack::Readable,
 {
     fn from_message(msg: gen::node::Message) -> Result<T, core_error::Error> {
         let tx = deserialize_bytes(&msg.content)?;
