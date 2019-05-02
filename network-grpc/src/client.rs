@@ -33,39 +33,39 @@ pub use connect::{Connect, ConnectError, ConnectFuture};
 /// so that, should the implementation requrements change, only these trait
 /// definitions and blanket implementations need to be modified.
 pub mod chain_bounds {
-    use chain_core::property;
+    use chain_core::{mempack, property};
 
-    pub trait BlockId: property::BlockId + property::Deserialize
+    pub trait BlockId: property::BlockId + mempack::Readable
     // Alas, bounds on associated types of the supertrait do not have
     // the desired effect:
     // https://github.com/rust-lang/rust/issues/32722
     //
     // where
-    //    <Self as property::Deserialize>::Error: Send + Sync,
+    //    <Self as mempack::Readable>::Error: Send + Sync,
     {
     }
 
-    impl<T> BlockId for T where T: property::BlockId + property::Deserialize {}
+    impl<T> BlockId for T where T: property::BlockId + mempack::Readable {}
 
     pub trait BlockDate: property::BlockDate + property::FromStr {}
 
     impl<T> BlockDate for T where T: property::BlockDate + property::FromStr {}
 
-    pub trait Header: property::Header + property::Deserialize {}
+    pub trait Header: property::Header + mempack::Readable {}
 
     impl<T> Header for T
     where
-        T: property::Header + property::Deserialize,
+        T: property::Header + mempack::Readable,
         <T as property::Header>::Id: BlockId,
         <T as property::Header>::Date: BlockDate,
     {
     }
 
-    pub trait Block: property::Block + property::HasHeader + property::Deserialize {}
+    pub trait Block: property::Block + property::HasHeader + mempack::Readable {}
 
     impl<T> Block for T
     where
-        T: property::Block + property::HasHeader + property::Deserialize,
+        T: property::Block + property::HasHeader + mempack::Readable,
         <T as property::Block>::Id: BlockId,
         <T as property::Block>::Date: BlockDate,
         <T as property::HasHeader>::Header: Header,

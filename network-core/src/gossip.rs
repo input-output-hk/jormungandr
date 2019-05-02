@@ -1,4 +1,4 @@
-use chain_core::property::{Deserialize, Serialize};
+use chain_core::{mempack, property};
 
 use std::{
     iter::{DoubleEndedIterator, FromIterator, FusedIterator},
@@ -7,10 +7,10 @@ use std::{
 };
 
 /// Marker trait for the type representing a node ID.
-pub trait NodeId: Clone + Serialize + Deserialize {}
+pub trait NodeId: Clone + property::Serialize + mempack::Readable {}
 
 /// Abstract trait for data types representing gossip about network nodes.
-pub trait Node: Serialize + Deserialize {
+pub trait Node: property::Serialize + mempack::Readable {
     /// Type that represents the node identifier in the gossip message.
     type Id: NodeId;
 

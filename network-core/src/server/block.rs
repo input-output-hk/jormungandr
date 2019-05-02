@@ -3,7 +3,10 @@
 use super::P2pService;
 use crate::error::Error;
 
-use chain_core::property::{Block, BlockDate, BlockId, Deserialize, HasHeader, Header, Serialize};
+use chain_core::{
+    mempack,
+    property::{Block, BlockDate, BlockId, HasHeader, Header, Serialize},
+};
 
 use futures::prelude::*;
 
@@ -11,7 +14,7 @@ use futures::prelude::*;
 /// providing access to block data.
 pub trait BlockService: P2pService {
     /// The block identifier type for the blockchain.
-    type BlockId: BlockId + Serialize + Deserialize;
+    type BlockId: BlockId + Serialize + mempack::Readable;
 
     /// The block date type for the blockchain.
     type BlockDate: BlockDate + ToString;
@@ -20,7 +23,7 @@ pub trait BlockService: P2pService {
     type Block: Block<Id = Self::BlockId, Date = Self::BlockDate> + HasHeader<Header = Self::Header>;
 
     /// The type representing metadata header of a block.
-    type Header: Header<Id = Self::BlockId, Date = Self::BlockDate> + Serialize;
+    type Header: Header<Id = Self::BlockId, Date = Self::BlockDate> + Serialize + mempack::Readable;
 
     /// The type of asynchronous futures returned by method `tip`.
     ///

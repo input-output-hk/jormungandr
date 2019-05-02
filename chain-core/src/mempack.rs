@@ -165,10 +165,8 @@ impl<'a> ReadBuf<'a> {
     }
 }
 
-pub trait Readable {
-    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError>
-    where
-        Self: Sized;
+pub trait Readable: Sized {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError>;
 }
 
 macro_rules! read_prim_impl {

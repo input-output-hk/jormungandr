@@ -52,7 +52,7 @@ pub trait ChainLength: Eq + Ord + Clone + Debug {
 pub trait TransactionId: Eq + Hash + Debug {}
 
 /// Trait identifying the block header type.
-pub trait Header: Serialize + Deserialize {
+pub trait Header: Serialize {
     /// The block header id.
     type Id: BlockId;
 
