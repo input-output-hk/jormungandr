@@ -117,11 +117,17 @@ impl<'a> ReadBuf<'a> {
     }
 
     /// Return a slice of the next bytes from the buffer
-    pub fn get_slice(&mut self, sz: usize) -> Result<&[u8], ReadError> {
+    pub fn get_slice(&mut self, sz: usize) -> Result<&'a [u8], ReadError> {
         self.assure_size(sz)?;
         let s = &self.data[self.offset..self.offset + sz];
         self.offset += sz;
         Ok(s)
+    }
+
+    /// Return a sub-buffer ending at the given byte offset
+    pub fn split_to(&mut self, sz: usize) -> Result<ReadBuf<'a>, ReadError> {
+        let slice = self.get_slice(sz)?;
+        Ok(ReadBuf::from(slice))
     }
 
     /// Return the next u8 from the buffer
