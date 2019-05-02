@@ -11,7 +11,7 @@ use crate::{
 };
 use chain_crypto::Verification as SigningVerification;
 use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
-pub use vrfeval::{FError, Witness, F};
+pub use vrfeval::{ActiveSlotsCoeff, ActiveSlotsCoeffError, Witness};
 use vrfeval::{Nonce, PercentStake, VrfEvaluator};
 
 /// Praos Leader consisting of the KES public key and VRF public key
@@ -27,7 +27,7 @@ pub struct GenesisLeaderSelection {
     distribution: StakeDistribution,
     // the epoch this leader selection is valid for
     epoch: Epoch,
-    genesis_param_f: F,
+    active_slots_coeff: ActiveSlotsCoeff,
 }
 
 impl GenesisLeaderSelection {
@@ -37,7 +37,7 @@ impl GenesisLeaderSelection {
             nodes: ledger.delegation.stake_pools.clone(),
             distribution: ledger.get_stake_distribution(),
             epoch,
-            genesis_param_f: ledger.settings.genesis_param_f,
+            active_slots_coeff: ledger.settings.active_slots_coeff,
         }
     }
 
@@ -73,7 +73,7 @@ impl GenesisLeaderSelection {
                     stake: percent_stake,
                     nonce: &self.epoch_nonce,
                     slot_id: date.slot_id,
-                    param_f: self.genesis_param_f,
+                    active_slots_coeff: self.active_slots_coeff,
                 };
                 Ok(evaluator.evaluate(vrf_key))
             }
@@ -108,7 +108,7 @@ impl GenesisLeaderSelection {
                             stake: percent_stake,
                             nonce: &self.epoch_nonce,
                             slot_id: block_header.block_date().slot_id,
-                            param_f: self.genesis_param_f,
+                            active_slots_coeff: self.active_slots_coeff,
                         }
                         .verify(
                             &pool_info.initial_key.vrf_public_key,

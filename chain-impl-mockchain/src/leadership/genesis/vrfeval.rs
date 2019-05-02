@@ -23,39 +23,41 @@ impl Nonce {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum FError {
+pub enum ActiveSlotsCoeffError {
     InvalidValue(Milli),
 }
 
-impl Display for FError {
+impl Display for ActiveSlotsCoeffError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            FError::InvalidValue(v) => write!(f, "Invalid value {}, should be in range (0,1]", v),
+            ActiveSlotsCoeffError::InvalidValue(v) => {
+                write!(f, "Invalid value {}, should be in range (0,1]", v)
+            }
         }
     }
 }
 
-impl Error for FError {}
+impl Error for ActiveSlotsCoeffError {}
 
 /// Active slots coefficient used for calculating minimum stake to become slot leader candidate
 /// Described in Ouroboros Praos paper, also referred to as parameter F of phi function
 /// Always in range (0, 1]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct F(Milli);
+pub struct ActiveSlotsCoeff(Milli);
 
-impl TryFrom<Milli> for F {
-    type Error = FError;
+impl TryFrom<Milli> for ActiveSlotsCoeff {
+    type Error = ActiveSlotsCoeffError;
 
     fn try_from(value: Milli) -> Result<Self, Self::Error> {
         if value > Milli::ZERO && value <= Milli::ONE {
-            Ok(F(value))
+            Ok(ActiveSlotsCoeff(value))
         } else {
-            Err(FError::InvalidValue(value))
+            Err(ActiveSlotsCoeffError::InvalidValue(value))
         }
     }
 }
 
-impl Into<f64> for F {
+impl Into<f64> for ActiveSlotsCoeff {
     fn into(self) -> f64 {
         self.0.to_float()
     }
@@ -108,7 +110,7 @@ pub struct VrfEvaluator<'a> {
     pub stake: PercentStake,
     pub nonce: &'a Nonce,
     pub slot_id: SlotId,
-    pub param_f: F,
+    pub active_slots_coeff: ActiveSlotsCoeff,
 }
 
 impl<'a> VrfEvaluator<'a> {
@@ -121,7 +123,7 @@ impl<'a> VrfEvaluator<'a> {
         let vr = vrf_evaluate_and_prove(key, &input.0, csprng);
         let r = vrf_verified_get_output::<Curve25519_2HashDH>(&vr);
         let t = get_threshold(&input, &r);
-        if above_stake_threshold(t, &self.stake, self.param_f) {
+        if above_stake_threshold(t, &self.stake, self.active_slots_coeff) {
             Some(vr)
         } else {
             None
@@ -141,7 +143,7 @@ impl<'a> VrfEvaluator<'a> {
         if vrf_verify(key, &input.0, witness) == VRFVerification::Success {
             let r = vrf_verified_get_output::<Curve25519_2HashDH>(witness);
             let t = get_threshold(&input, &r);
-            if above_stake_threshold(t, &self.stake, self.param_f) {
+            if above_stake_threshold(t, &self.stake, self.active_slots_coeff) {
                 Some(get_nonce(&input, &r))
             } else {
                 None
@@ -152,14 +154,18 @@ impl<'a> VrfEvaluator<'a> {
     }
 }
 
-fn above_stake_threshold(threshold: Threshold, stake: &PercentStake, f: F) -> bool {
-    threshold >= phi(f, stake)
+fn above_stake_threshold(
+    threshold: Threshold,
+    stake: &PercentStake,
+    active_slots_coeff: ActiveSlotsCoeff,
+) -> bool {
+    threshold >= phi(active_slots_coeff, stake)
 }
 
-fn phi(f: F, rs: &PercentStake) -> Threshold {
+fn phi(active_slots_coeff: ActiveSlotsCoeff, rs: &PercentStake) -> Threshold {
     assert!(rs.stake <= rs.total);
     let t = (rs.stake.0 as f64) / (rs.total.0 as f64);
-    let f: f64 = f.into();
+    let f: f64 = active_slots_coeff.into();
     Threshold(1.0 - (1.0 - f).powf(t))
 }
 

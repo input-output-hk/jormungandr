@@ -5,7 +5,7 @@ use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderHash};
 use crate::config::{self, Block0Date, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::bft::LeaderId;
-use crate::leadership::genesis;
+use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::message::Message;
 use crate::milli::Milli;
 use crate::stake::{CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution};
@@ -74,17 +74,17 @@ pub enum Error {
     Block0InitialMessageDuplicateConsensusVersion,
     Block0InitialMessageDuplicateSlotDuration,
     Block0InitialMessageDuplicateEpochStabilityDepth,
-    Block0InitialMessageDuplicatePraosParamF,
+    Block0InitialMessageDuplicatePraosActiveSlotsCoeff,
     Block0InitialMessageNoBlock0Date,
     Block0InitialMessageNoDiscrimination,
     Block0InitialMessageNoConsensusVersion,
     Block0InitialMessageNoSlotDuration,
     Block0InitialMessageNoConsensusLeaderId,
-    Block0InitialMessageNoPraosParamF,
+    Block0InitialMessageNoPraosActiveSlotsCoeff,
     Block0UtxoTotalValueTooBig,
     Block0HasUpdateVote,
     FeeCalculationError(ValueError),
-    PraosParamFInvalid(genesis::FError),
+    PraosActiveSlotsCoeffInvalid(ActiveSlotsCoeffError),
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
     Account(account::LedgerError),
@@ -678,7 +678,7 @@ struct EmptyLedgerBuilder {
     slot_duration: Option<u8>,
     epoch_stability_depth: Option<u32>,
     consensus_leader_ids: Vec<LeaderId>,
-    genesis_f: Option<Milli>,
+    active_slots_coeff: Option<Milli>,
 }
 
 impl EmptyLedgerBuilder {
@@ -708,10 +708,10 @@ impl EmptyLedgerBuilder {
                 self.consensus_leader_ids.push(param.clone());
                 None
             }
-            ConfigParam::ConsensusGenesisPraosParamF(param) => self
-                .genesis_f
+            ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(param) => self
+                .active_slots_coeff
                 .replace(*param)
-                .map(|_| Error::Block0InitialMessageDuplicatePraosParamF),
+                .map(|_| Error::Block0InitialMessageDuplicatePraosActiveSlotsCoeff),
             ConfigParam::SlotsPerEpoch(_) | ConfigParam::ConsensusGenesisPraosParamD(_) => None,
         }
         .map(|e| Err(e))
@@ -727,7 +727,7 @@ impl EmptyLedgerBuilder {
             slot_duration,
             epoch_stability_depth,
             consensus_leader_ids,
-            genesis_f,
+            active_slots_coeff,
         } = self;
 
         let mut settings = setting::Settings::new();
@@ -742,10 +742,10 @@ impl EmptyLedgerBuilder {
             _ => settings.bft_leaders = Arc::new(consensus_leader_ids),
         }
 
-        settings.genesis_param_f = genesis_f
-            .ok_or(Error::Block0InitialMessageNoPraosParamF)?
+        settings.active_slots_coeff = active_slots_coeff
+            .ok_or(Error::Block0InitialMessageNoPraosActiveSlotsCoeff)?
             .try_into()
-            .map_err(Error::PraosParamFInvalid)?;
+            .map_err(Error::PraosActiveSlotsCoeffInvalid)?;
 
         let static_params = LedgerStaticParameters {
             block0_initial_hash,
@@ -813,7 +813,9 @@ pub mod test {
             leader_pub_key,
         )));
         ie.push(ConfigParam::Block0Date(Block0Date(0)));
-        ie.push(ConfigParam::ConsensusGenesisPraosParamF(Milli::HALF));
+        ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
+            Milli::HALF,
+        ));
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);

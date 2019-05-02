@@ -305,7 +305,9 @@ mod test {
             leader_pub_key,
         )));
         ents.push(ConfigParam::Block0Date(Block0Date(0)));
-        ents.push(ConfigParam::ConsensusGenesisPraosParamF(Milli::HALF));
+        ents.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
+            Milli::HALF,
+        ));
         genesis_block.message(Message::Initial(ents));
         let genesis_block = genesis_block.make_genesis_block();
         let mut date = genesis_block.date();

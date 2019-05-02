@@ -5,7 +5,7 @@ use crate::block::ConsensusVersion;
 use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::date::BlockDate;
 use crate::fee::LinearFee;
-use crate::leadership::{bft, genesis};
+use crate::leadership::{bft, genesis::ActiveSlotsCoeff};
 use crate::milli::Milli;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
@@ -477,7 +477,7 @@ pub struct Settings {
     /// it expires at the start of epoch 'epoch_p +
     /// proposal_expiration + 1'. FIXME: make updateable.
     pub proposal_expiration: u32,
-    pub genesis_param_f: genesis::F,
+    pub active_slots_coeff: ActiveSlotsCoeff,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -494,7 +494,7 @@ impl Settings {
             slot_duration: 10,         // 10 sec
             epoch_stability_depth: 10, // num of block
             proposal_expiration: 100,
-            genesis_param_f: genesis::F::try_from(Milli::HALF).unwrap(),
+            active_slots_coeff: ActiveSlotsCoeff::try_from(Milli::HALF).unwrap(),
         }
     }
 
