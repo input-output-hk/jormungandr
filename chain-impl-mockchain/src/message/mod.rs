@@ -70,7 +70,13 @@ impl Message {
     }
 
     pub fn from_raw(raw: &MessageRaw) -> Result<Self, ReadError> {
-        let buf = &mut ReadBuf::from(raw.as_ref());
+        let mut buf = ReadBuf::from(raw.as_ref());
+        Message::read(&mut buf)
+    }
+}
+
+impl Readable for Message {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let tag = buf.get_u8()?;
         match MessageTag::from_u8(tag) {
             Some(MessageTag::Initial) => InitialEnts::read(buf).map(Message::Initial),
