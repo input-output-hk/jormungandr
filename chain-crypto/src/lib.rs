@@ -32,7 +32,7 @@ pub use kes::KeyEvolvingSignatureAlgorithm;
 pub use key::{AsymmetricKey, KeyPair, PublicKey, PublicKeyError, SecretKey, SecretKeyError};
 pub use sign::{Signature, SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 pub use vrf::{
-    vrf_evaluate_and_proove, vrf_verified_get_output, vrf_verify, VRFVerification,
+    vrf_evaluate_and_prove, vrf_verified_get_output, vrf_verify, VRFVerification,
     VerifiableRandomFunction,
 };
 

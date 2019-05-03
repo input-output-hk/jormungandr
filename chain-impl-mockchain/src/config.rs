@@ -50,7 +50,7 @@ pub enum ConfigParam {
     EpochStabilityDepth(u32),
     ConsensusLeaderId(LeaderId),
     ConsensusGenesisPraosParamD(Milli),
-    ConsensusGenesisPraosParamF(Milli),
+    ConsensusGenesisPraosActiveSlotsCoeff(Milli),
 }
 
 // Discriminants can NEVER be 1024 or higher
@@ -73,7 +73,7 @@ enum Tag {
     #[strum(to_string = "genesis-praos-param-d")]
     ConsensusGenesisPraosParamD = 8,
     #[strum(to_string = "genesis-praos-param-f")]
-    ConsensusGenesisPraosParamF = 9,
+    ConsensusGenesisPraosActiveSlotsCoeff = 9,
 }
 
 impl<'a> From<&'a ConfigParam> for Tag {
@@ -87,7 +87,9 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::EpochStabilityDepth(_) => Tag::EpochStabilityDepth,
             ConfigParam::ConsensusLeaderId(_) => Tag::ConsensusLeaderId,
             ConfigParam::ConsensusGenesisPraosParamD(_) => Tag::ConsensusGenesisPraosParamD,
-            ConfigParam::ConsensusGenesisPraosParamF(_) => Tag::ConsensusGenesisPraosParamF,
+            ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(_) => {
+                Tag::ConsensusGenesisPraosActiveSlotsCoeff
+            }
         }
     }
 }
@@ -118,8 +120,8 @@ impl Readable for ConfigParam {
             }
             Tag::ConsensusGenesisPraosParamD => ConfigParamVariant::from_payload(bytes)
                 .map(ConfigParam::ConsensusGenesisPraosParamD),
-            Tag::ConsensusGenesisPraosParamF => ConfigParamVariant::from_payload(bytes)
-                .map(ConfigParam::ConsensusGenesisPraosParamF),
+            Tag::ConsensusGenesisPraosActiveSlotsCoeff => ConfigParamVariant::from_payload(bytes)
+                .map(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff),
         }
         .map_err(Into::into)
     }
@@ -139,7 +141,7 @@ impl property::Serialize for ConfigParam {
             ConfigParam::EpochStabilityDepth(data) => data.to_payload(),
             ConfigParam::ConsensusLeaderId(data) => data.to_payload(),
             ConfigParam::ConsensusGenesisPraosParamD(data) => data.to_payload(),
-            ConfigParam::ConsensusGenesisPraosParamF(data) => data.to_payload(),
+            ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(data) => data.to_payload(),
         };
         let taglen = TagLen::new(tag, bytes.len()).ok_or_else(|| {
             io::Error::new(
@@ -268,7 +270,7 @@ impl ConfigParamVariant for u32 {
 
 impl ConfigParamVariant for Milli {
     fn to_payload(&self) -> Vec<u8> {
-        self.into_millis().to_payload()
+        self.to_millis().to_payload()
     }
 
     fn from_payload(payload: &[u8]) -> Result<Self, Error> {
@@ -339,7 +341,7 @@ mod test {
                 4 => ConfigParam::SlotDuration(Arbitrary::arbitrary(g)),
                 5 => ConfigParam::ConsensusLeaderId(Arbitrary::arbitrary(g)),
                 6 => ConfigParam::ConsensusGenesisPraosParamD(Arbitrary::arbitrary(g)),
-                7 => ConfigParam::ConsensusGenesisPraosParamF(Arbitrary::arbitrary(g)),
+                7 => ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),
             }
         }

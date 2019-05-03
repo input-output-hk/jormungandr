@@ -49,7 +49,7 @@ impl VerifiableRandomFunction for Curve25519_2HashDH {
 
     const VERIFIED_RANDOM_SIZE: usize = vrf::PROOF_SIZE;
 
-    fn evaluate_and_proove<T: RngCore + CryptoRng>(
+    fn evaluate_and_prove<T: RngCore + CryptoRng>(
         secret: &Self::Secret,
         input: &Self::Input,
         mut rng: T,

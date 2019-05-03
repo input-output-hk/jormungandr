@@ -355,7 +355,7 @@ mod test {
 
             let vrf_proof = {
                 let sk = Curve25519_2HashDH::generate(&mut rng);
-                Curve25519_2HashDH::evaluate_and_proove(&sk, &[0, 1, 2, 3], &mut rng)
+                Curve25519_2HashDH::evaluate_and_prove(&sk, &[0, 1, 2, 3], &mut rng)
             };
 
             let kes_proof = {

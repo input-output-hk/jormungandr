@@ -1,13 +1,17 @@
 //! define the Blockchain settings
 //!
 
+use crate::block::ConsensusVersion;
 use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::date::BlockDate;
-use crate::{block::ConsensusVersion, fee::LinearFee, leadership::bft};
+use crate::fee::LinearFee;
+use crate::leadership::{bft, genesis::ActiveSlotsCoeff};
+use crate::milli::Milli;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
 use std::collections::{BTreeMap, HashSet};
+use std::convert::TryFrom;
 use std::sync::Arc;
 
 use num_derive::FromPrimitive;
@@ -457,7 +461,7 @@ impl Readable for SignedUpdateVote {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Settings {
     pub max_number_of_transactions_per_block: u32,
     pub bootstrap_key_slots_percentage: u8, // == d * 100
@@ -473,6 +477,7 @@ pub struct Settings {
     /// it expires at the start of epoch 'epoch_p +
     /// proposal_expiration + 1'. FIXME: make updateable.
     pub proposal_expiration: u32,
+    pub active_slots_coeff: ActiveSlotsCoeff,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -489,6 +494,7 @@ impl Settings {
             slot_duration: 10,         // 10 sec
             epoch_stability_depth: 10, // num of block
             proposal_expiration: 100,
+            active_slots_coeff: ActiveSlotsCoeff::try_from(Milli::HALF).unwrap(),
         }
     }
 
