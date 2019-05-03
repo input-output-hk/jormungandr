@@ -9,7 +9,7 @@ use crate::key::{
 use crate::leadership::bft;
 use crate::stake::StakePoolId;
 use chain_core::{
-    mempack::{read_from_raw, ReadBuf, ReadError, Readable},
+    mempack::{ReadBuf, ReadError, Readable},
     property,
 };
 use chain_crypto::{

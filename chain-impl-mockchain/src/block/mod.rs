@@ -1,7 +1,7 @@
 //! Representation of the block in the mockchain.
 use crate::key::Hash;
 use crate::message::{Message, MessageRaw};
-use chain_core::mempack::read_from_raw;
+use chain_core::mempack::{read_from_raw, ReadBuf, ReadError, Readable};
 use chain_core::property::{self, Serialize};
 
 use std::slice;
@@ -152,6 +152,34 @@ impl property::Deserialize for Block {
             contents.0.push(message);
 
             serialized_content_size -= message_size as u32;
+        }
+
+        Ok(Block {
+            header: header,
+            contents: contents,
+        })
+    }
+}
+
+impl Readable for Block {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let header_size = buf.get_u16()? as usize;
+        let mut header_buf = buf.split_to(header_size)?;
+        let header = Header::read(&mut header_buf)?;
+
+        let mut remaining_content_size = header.common.block_content_size;
+        let mut contents = BlockContents(Vec::with_capacity(4));
+
+        while remaining_content_size > 0 {
+            let message_size = buf.get_u16()?;
+            let mut message_buf = buf.split_to(message_size as usize)?;
+
+            // return error here if message serialize sized is bigger than remaining size
+
+            let message = Message::read(&mut message_buf)?;
+            contents.0.push(message);
+
+            remaining_content_size -= 2 + message_size as u32;
         }
 
         Ok(Block {
