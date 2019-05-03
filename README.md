@@ -90,9 +90,9 @@ jormungandr --genesis-block block-0.bin \
 
 # documentations
 
+Documentation is available as markdown [here](doc/SUMMARY.md)
+
 * [internal design](./doc/internal_design.md) of jormungandr
-* [Starting a BFT Blockchain](./doc/starting_bft_blockchain.md)
-* [Starting a Generis Praos Blockchain](#) (**under construction**)
 
 # Extra tooling
 
@@ -104,14 +104,6 @@ Building:
 cargo build --bin jcli
 ```
 
-The binary has subcommands
-
-* [cryptographic keys](./doc/jormungandr_keys.md)
-* [The genesis file](./doc/genesis_file.md)
-* [rest](./doc/cli_rest.md) for REST API calls
-* [transaction](./doc/cli_transaction.md) for offline transaction management
-* [address](./doc/cli_address.md) for debugging addresses
-
 # Integration tests
 
 Running:
@@ -119,10 +111,6 @@ Running:
 ```
 cargo test --features integration-test
 ```
-
-NOTE:
-jcli and jormundandr crates need to be installed (``` cargo install ```) prior to test run
-
 
 # License
 
