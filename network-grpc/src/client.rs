@@ -82,7 +82,8 @@ pub trait ProtocolConfig {
     type Block: chain_bounds::Block
         + property::Block<Id = Self::BlockId, Date = Self::BlockDate>
         + property::HasHeader<Header = Self::Header>;
-    type Node: gossip::Node;
+    type Node: gossip::Node<Id = Self::NodeId> + property::Serialize + property::Deserialize;
+    type NodeId: gossip::NodeId + property::Serialize + property::Deserialize;
 }
 
 /// gRPC client for blockchain node.
@@ -192,7 +193,7 @@ where
 impl<T, Id, R> Future for SubscriptionFuture<T, Id, R>
 where
     R: prost::Message + Default,
-    Id: NodeId,
+    Id: NodeId + property::Deserialize,
 {
     type Item = (ResponseStream<T, R>, Id);
     type Error = core_error::Error;

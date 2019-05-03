@@ -1,4 +1,7 @@
-use crate::{gen::node::server as gen_server, service::NodeService};
+use crate::{
+    gen::node::server as gen_server,
+    service::{protocol_bounds, NodeService},
+};
 
 use network_core::server::{
     block::BlockService, content::ContentService, gossip::GossipService, Node,
@@ -25,9 +28,9 @@ use std::path::Path;
 pub struct Server<T, E>
 where
     T: Node + Clone,
-    <T::BlockService as BlockService>::Header: Send + 'static,
-    <T::ContentService as ContentService>::Message: Send + 'static,
-    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::BlockService as BlockService>::Header: protocol_bounds::Header,
+    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
+    <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     h2: tower_h2::Server<
         gen_server::NodeServer<NodeService<T>>,
@@ -41,9 +44,9 @@ pub struct Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
     T: Node + Clone,
-    <T::BlockService as BlockService>::Header: Send + 'static,
-    <T::ContentService as ContentService>::Message: Send + 'static,
-    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::BlockService as BlockService>::Header: protocol_bounds::Header,
+    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
+    <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     h2: tower_h2::server::Connection<
         S,
@@ -58,9 +61,9 @@ impl<S, T, E> Future for Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
     T: Node + Clone + 'static,
-    <T::BlockService as BlockService>::Header: Send + 'static,
-    <T::ContentService as ContentService>::Message: Send + 'static,
-    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::BlockService as BlockService>::Header: protocol_bounds::Header,
+    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
+    <T::GossipService as GossipService>::Node: protocol_bounds::Node,
     E: Executor<
         tower_h2::server::Background<
             gen_server::node::ResponseFuture<NodeService<T>>,
@@ -78,9 +81,9 @@ where
 impl<T, E> Server<T, E>
 where
     T: Node + Clone + 'static,
-    <T::BlockService as BlockService>::Header: Send + 'static,
-    <T::ContentService as ContentService>::Message: Send + 'static,
-    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::BlockService as BlockService>::Header: protocol_bounds::Header,
+    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
+    <T::GossipService as GossipService>::Node: protocol_bounds::Node,
     E: Executor<
             tower_h2::server::Background<
                 gen_server::node::ResponseFuture<NodeService<T>>,
@@ -152,9 +155,9 @@ type H2Error<T> = tower_h2::server::Error<gen_server::NodeServer<NodeService<T>>
 impl<T> From<H2Error<T>> for Error
 where
     T: Node + Clone,
-    <T::BlockService as BlockService>::Header: Send + 'static,
-    <T::ContentService as ContentService>::Message: Send + 'static,
-    <T::GossipService as GossipService>::Node: Send + 'static,
+    <T::BlockService as BlockService>::Header: protocol_bounds::Header,
+    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
+    <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     fn from(err: H2Error<T>) -> Self {
         use tower_h2::server::Error::*;
