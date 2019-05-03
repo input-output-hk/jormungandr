@@ -3,10 +3,7 @@
 use super::P2pService;
 use crate::error::Error;
 
-use chain_core::{
-    mempack,
-    property::{Message, MessageId, Serialize},
-};
+use chain_core::property::{Message, MessageId};
 
 use futures::prelude::*;
 
@@ -15,10 +12,10 @@ use futures::prelude::*;
 /// together as messages.
 pub trait ContentService: P2pService {
     /// The data type to represent messages constituting a block.
-    type Message: Message + Serialize + mempack::Readable;
+    type Message: Message;
 
     /// The message identifier type for the blockchain.
-    type MessageId: MessageId + Serialize + mempack::Readable;
+    type MessageId: MessageId;
 
     /// The type of asynchronous futures returned by method `propose_transactions`.
     type ProposeTransactionsFuture: Future<

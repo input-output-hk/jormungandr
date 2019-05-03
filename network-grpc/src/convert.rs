@@ -117,7 +117,7 @@ where
 
 impl<T> FromProtobuf<gen::node::Gossip> for Gossip<T>
 where
-    T: Node,
+    T: Node + property::Deserialize,
 {
     fn from_message(msg: gen::node::Gossip) -> Result<Gossip<T>, core_error::Error> {
         let nodes = deserialize_vec(&msg.nodes)?;
@@ -190,7 +190,7 @@ where
 
 impl<T> IntoProtobuf<gen::node::Gossip> for Gossip<T>
 where
-    T: Node,
+    T: Node + property::Serialize,
 {
     fn into_message(self) -> Result<gen::node::Gossip, tower_grpc::Status> {
         let nodes = serialize_to_vec(self.nodes())?;
@@ -200,7 +200,7 @@ where
 
 pub fn decode_node_id<Id>(metadata: &MetadataMap) -> Result<Id, core_error::Error>
 where
-    Id: NodeId,
+    Id: NodeId + property::Deserialize,
 {
     match metadata.get_bin(NODE_ID_HEADER) {
         None => Err(core_error::Error::new(
@@ -227,7 +227,7 @@ where
 
 pub fn encode_node_id<Id>(id: &Id, metadata: &mut MetadataMap) -> Result<(), Status>
 where
-    Id: NodeId,
+    Id: NodeId + property::Serialize,
 {
     let bytes = serialize_to_bytes(id)?;
     let val = BinaryMetadataValue::from_bytes(&bytes);
