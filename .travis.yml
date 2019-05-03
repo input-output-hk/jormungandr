@@ -80,7 +80,7 @@ deploy:
       secure: yQ7C2wgLhS2wwEFB+iUDjSQyBxXzQRUYlSEpbRHPY+L0JAOWnnnh+MnraZxrnEXcMcYvt+wI6+B/ZakuQ9SjPy639RLNQfC+L2dCT+jsHKdgxTpeveHQhdsdExpkIKhGFwAlDHv3hhnNkBcYKLc6NksngyR/P6jfv9H/RKpKbCMQcHIoA55sd6yJ3uF4umJKHKQUGwiqWGAfNOMtLazJasLviJQBRtzZw0Xly4ANqxNRkW8T9Aw3eQiD3p5RS+ELVhbqFqtqQGe/iJ8O2fnfY9HUcrxWBRrF+9rWVNzIj+uyeSP4NuJTtyMye2M1TbfsHwbIcDWka0S+I2/lS5tr5JYNhZ4NJFRuLgqRGDWFv9Q8eauDdX6PnOCkPjA8pZ0toCstz5x6wqV9P2M95FB5ZAlcptvM/lR4+7J/AwoPC+1Js4wMv5S1cyEJehTR3wSorO2+tYTVfJCcrHg+uRSr1lpdWFRALlC/2I9CGx9ddtSaop6vNCVhgAy2rdWKSXdcQS2tAGy/Qd82kiNxohorfYhN5ttAMv+In1/oL3bvjzmDMnVhmzhMwKwO00CQs2oEYEFbC9uHRY6x2JJmz28bx46AA9IX5kMG+ks97GOIkufGp0V7/aIGqubDubLwei6TAUlMeCkpfryOkF51yZfvdxpWmzcEGY0Ha1Mhx7gk4dM=
     file_glob: true
     skip-cleanup: true
-    local-dir: book
+    local-dir: book/html
     keep-history: false
     on:
       condition: $DOCUMENTATION = 1
