@@ -41,8 +41,8 @@ matrix:
       rust: stable
       before_install:
       install:
-        - cargo install mdbook
-        - cargo install mdbook-linkcheck
+        - which mdbook || cargo install mdbook
+        - which mdbook || cargo install mdbook-linkcheck
       script:
         - mdbook build
       after_script:
