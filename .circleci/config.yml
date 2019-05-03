@@ -146,7 +146,7 @@ jobs:
       - run:
           name: Test
           command: cargo test --release --frozen --verbose
-          
+
   test_integration_release:
     docker:
       - image: rust:latest
@@ -207,26 +207,6 @@ jobs:
           name: Run integration tests
           command: cargo test --features integration-test --frozen --verbose
 
-  test_jcli_debug:
-    docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
-    steps:
-      - checkout
-      - attach_workspace:
-          at: target
-      - run: ./testing/scripts/jcli.sh
-
-  test_jormungandr_debug:
-    docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
-    steps:
-      - checkout
-      - attach_workspace:
-          at: target
-      - run: ./testing/scripts/jormungandr.sh
-
 workflows:
   version: 2
   test_all:
@@ -261,9 +241,3 @@ workflows:
           requires:
             - rustfmt
             - cargo_fetch
-      - test_jcli_debug:
-          requires:
-            - build_debug
-      - test_jormungandr_debug:
-          requires:
-            - build_debug
