@@ -60,7 +60,22 @@ pub trait IntoProtobuf<R> {
     fn into_message(self) -> Result<R, tower_grpc::Status>;
 }
 
-pub fn deserialize_bytes<T>(buf: &[u8]) -> Result<T, core_error::Error>
+pub fn deserialize_bytes<T>(mut buf: &[u8]) -> Result<T, core_error::Error>
+where
+    T: property::Deserialize,
+{
+    T::deserialize(&mut buf)
+        .map_err(|e| core_error::Error::new(core_error::Code::InvalidArgument, e))
+}
+
+pub fn deserialize_repeated_bytes<T>(pb: &[Vec<u8>]) -> Result<Vec<T>, core_error::Error>
+where
+    T: property::Deserialize,
+{
+    pb.iter().map(|v| deserialize_bytes(&v[..])).collect()
+}
+
+pub fn parse_bytes<T>(buf: &[u8]) -> Result<T, core_error::Error>
 where
     T: mempack::Readable,
 {
@@ -68,11 +83,11 @@ where
     T::read(&mut buf).map_err(|e| core_error::Error::new(core_error::Code::InvalidArgument, e))
 }
 
-pub fn deserialize_vec<T>(pb: &[Vec<u8>]) -> Result<Vec<T>, core_error::Error>
+pub fn parse_repeated_bytes<T>(pb: &[Vec<u8>]) -> Result<Vec<T>, core_error::Error>
 where
     T: mempack::Readable,
 {
-    pb.iter().map(|v| deserialize_bytes(&v[..])).collect()
+    pb.iter().map(|v| parse_bytes(&v[..])).collect()
 }
 
 impl<H> FromProtobuf<gen::node::TipResponse> for H
@@ -80,7 +95,7 @@ where
     H: property::Header + mempack::Readable,
 {
     fn from_message(msg: gen::node::TipResponse) -> Result<Self, core_error::Error> {
-        let block_header = deserialize_bytes(&msg.block_header)?;
+        let block_header = parse_bytes(&msg.block_header)?;
         Ok(block_header)
     }
 }
@@ -100,7 +115,7 @@ where
     T: property::Header + mempack::Readable,
 {
     fn from_message(msg: gen::node::Header) -> Result<T, core_error::Error> {
-        let header = deserialize_bytes(&msg.content)?;
+        let header = parse_bytes(&msg.content)?;
         Ok(header)
     }
 }
@@ -120,7 +135,12 @@ where
     T: Node + property::Deserialize,
 {
     fn from_message(msg: gen::node::Gossip) -> Result<Gossip<T>, core_error::Error> {
-        let nodes = deserialize_vec(&msg.nodes)?;
+        let mut nodes = Vec::with_capacity(msg.nodes.len());
+        for proto_node in msg.nodes {
+            let node = T::deserialize(&proto_node[..])
+                .map_err(|e| core_error::Error::new(core_error::Code::InvalidArgument, e))?;
+            nodes.push(node);
+        }
         let gossip = Gossip::from_nodes(nodes);
         Ok(gossip)
     }

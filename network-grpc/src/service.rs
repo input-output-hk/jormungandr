@@ -1,7 +1,7 @@
 use crate::{
     convert::{
-        decode_node_id, deserialize_vec, encode_node_id, error_from_grpc, error_into_grpc,
-        FromProtobuf, IntoProtobuf,
+        decode_node_id, deserialize_repeated_bytes, encode_node_id, error_from_grpc,
+        error_into_grpc, FromProtobuf, IntoProtobuf,
     },
     gen,
 };
@@ -381,7 +381,7 @@ where
 
     fn get_blocks(&mut self, req: Request<gen::node::BlockIds>) -> Self::GetBlocksFuture {
         let service = try_get_service!(self.inner.block_service());
-        let block_ids = match deserialize_vec(&req.get_ref().ids) {
+        let block_ids = match deserialize_repeated_bytes(&req.get_ref().ids) {
             Ok(block_ids) => block_ids,
             Err(e) => {
                 return ResponseFuture::error(error_into_grpc(e));
@@ -392,7 +392,7 @@ where
 
     fn get_headers(&mut self, req: Request<gen::node::BlockIds>) -> Self::GetHeadersFuture {
         let service = try_get_service!(self.inner.block_service());
-        let block_ids = match deserialize_vec(&req.get_ref().ids) {
+        let block_ids = match deserialize_repeated_bytes(&req.get_ref().ids) {
             Ok(block_ids) => block_ids,
             Err(e) => {
                 return ResponseFuture::error(error_into_grpc(e));
@@ -406,7 +406,7 @@ where
         req: Request<gen::node::PullBlocksToTipRequest>,
     ) -> Self::PullBlocksToTipFuture {
         let service = try_get_service!(self.inner.block_service());
-        let block_ids = match deserialize_vec(&req.get_ref().from) {
+        let block_ids = match deserialize_repeated_bytes(&req.get_ref().from) {
             Ok(block_ids) => block_ids,
             Err(e) => {
                 return ResponseFuture::error(error_into_grpc(e));
@@ -417,7 +417,7 @@ where
 
     fn get_messages(&mut self, req: Request<gen::node::MessageIds>) -> Self::GetMessagesFuture {
         let service = try_get_service!(self.inner.content_service());
-        let tx_ids = match deserialize_vec(&req.get_ref().ids) {
+        let tx_ids = match deserialize_repeated_bytes(&req.get_ref().ids) {
             Ok(tx_ids) => tx_ids,
             Err(e) => {
                 return ResponseFuture::error(error_into_grpc(e));
