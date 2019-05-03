@@ -1,6 +1,6 @@
 # Summary
 
-[Introduction](./_introduction.md)
+[Introduction](./introduction.md)
 
 - [Quickstart](./quickstart/introduction.md)
     - [Command lines tools](./quickstart/01_command_line.md)
