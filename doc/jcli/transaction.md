@@ -1,4 +1,4 @@
-# Transaction
+# transaction
 
 Tooling for offline transaction creation and signing.
 

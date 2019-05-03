@@ -1,4 +1,4 @@
-# Certificate
+# certificate
 
 Tooling for offline transaction creation
 
@@ -7,7 +7,7 @@ Tooling for offline transaction creation
 Builds a signed certificate.
 
 The process can be split into steps on the first step certificate
-is created. 
+is created.
 ```
 jcli certificate new stake-pool-registration \
   --vrf-key <vrf-public-key> --kes-key <kes-public-key> \
