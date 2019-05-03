@@ -1,4 +1,4 @@
-# address CLI
+# address
 
 Jormungandr comes with a separate CLI to create and manipulate addresses.
 

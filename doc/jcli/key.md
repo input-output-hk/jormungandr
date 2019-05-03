@@ -1,4 +1,4 @@
-# Jormungandr Keys
+# cryptographic keys
 
 There are multiple type of key for multiple reasons.
 

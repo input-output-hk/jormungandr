@@ -1,4 +1,4 @@
-# REST client
+# REST
 
 Jormungandr comes with a CLI client for manual communication with nodes over HTTP.
 
@@ -24,8 +24,8 @@ The options are
 
 YAML printed on success
 
-```
----
+```json
+{
 blockRecvCnt: 7,  # Blocks received by node
 txRecvCnt: 90,    # Transactions received by node
 uptime: 2101      # Node uptitme in seconds

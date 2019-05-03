@@ -1,4 +1,4 @@
-# Starting an Ouroboros-BFT blockchain
+# starting a bft node
 
 BFT stands for the Byzantine Fault Tolerant
 ([read the paper](https://iohk.io/research/papers/#L5IHCV53)).
@@ -11,7 +11,7 @@ the right to create blocks.
 
 It is fairly simple. A given number of Nodes (`N`) will generate
 a key pairs of type `Ed25519Extended` (see
-[Jormungandr's Keys](./jormungandr_keys.md)).
+[JCLI's Keys](./../jcli/key.md)).
 
 They all share the public key and add them in the genesis.yaml file.
 It is the source of truth, the file that will generate the first block
@@ -50,7 +50,7 @@ In order to start your blockchain in BFT mode you need to be sure that:
 * `block_version` is set to `1`;
 * `bft_leaders` is non empty;
 
-more information regarding the [genesis file here](./genesis_file.md).
+more information regarding the [genesis file here](./01_the_genesis_block.md).
 
 ## Creating the block 0
 
