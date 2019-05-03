@@ -2,6 +2,8 @@
 
 > Just because you call something a blockchain, that doesn't mean you aren't subject to normal engineering laws.
 
+Documentation available [here](https://input-output-hk.github.io/jormungandr)
+
 ## How to install from sources
 
 We do support multiple versions of the rust compiler, however we recommend
