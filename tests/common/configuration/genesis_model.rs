@@ -15,6 +15,8 @@ pub struct BlockchainConfig {
     pub slot_duration: i32,
     pub epoch_stability_depth: i32,
     pub consensus_leader_ids: Vec<String>,
+    pub consensus_genesis_praos_param_d: Option<String>,
+    pub consensus_genesis_praos_param_f: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,6 +86,8 @@ impl GenesisYaml {
                         "ed25519e_pk1xuqdxht6f0kkh0lf3ck3gfyvnpk33s09du92w6740mfmxl6hsfpsp8grmk",
                     ),
                 ],
+                consensus_genesis_praos_param_d: Some("0.222".to_owned()),
+                consensus_genesis_praos_param_f: Some("0.444".to_owned()),
             },
             initial_setting: InitialSetting {
                 allow_account_creation: true,
