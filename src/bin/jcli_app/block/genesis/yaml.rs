@@ -315,9 +315,11 @@ impl BlockchainConfiguration {
                 ConfigParam::ConsensusGenesisPraosParamD(param) => consensus_genesis_praos_param_d
                     .replace(SerdeAsString(*param))
                     .map(|_| "ConsensusGenesisPraosParamD"),
-                ConfigParam::ConsensusGenesisPraosParamF(param) => consensus_genesis_praos_param_f
-                    .replace(SerdeAsString(*param))
-                    .map(|_| "ConsensusGenesisPraosParamF"),
+                ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(param) => {
+                    consensus_genesis_praos_param_f
+                        .replace(SerdeAsString(*param))
+                        .map(|_| "ConsensusGenesisPraosParamF")
+                }
             }
             .map(|param| panic!("Init message contains {} twice", param));
         }
@@ -374,7 +376,7 @@ impl BlockchainConfiguration {
             ))
         }
         if let Some(consensus_genesis_praos_param_f) = consensus_genesis_praos_param_f {
-            initial_ents.push(ConfigParam::ConsensusGenesisPraosParamF(
+            initial_ents.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
                 consensus_genesis_praos_param_f.0,
             ))
         }
