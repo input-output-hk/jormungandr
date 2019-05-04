@@ -1,5 +1,10 @@
 use chain_addr::Address;
-use chain_impl_mockchain::{self as chain, value::Value};
+use chain_impl_mockchain::{
+    self as chain,
+    fee::FeeAlgorithm,
+    transaction::{NoExtra, Transaction},
+    value::Value,
+};
 use jcli_app::utils::io;
 use jormungandr_utils;
 use serde::{Deserialize, Serialize};
@@ -151,7 +156,7 @@ impl Staging {
         output_policy: chain::txbuilder::OutputPolicy,
     ) -> Result<chain::transaction::Balance, StagingError>
     where
-        FA: chain::fee::FeeAlgorithm,
+        FA: FeeAlgorithm<Transaction<Address, NoExtra>>,
     {
         if self.kind != StagingKind::Balancing {
             return Err(StagingError::CannotFinalize { kind: self.kind });
