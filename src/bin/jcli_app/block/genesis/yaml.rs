@@ -465,8 +465,8 @@ blockchain_configuration:
   consensus_leader_ids:
     - ed25519e_pk1hj8k4jyhsrva7ndynak25jagf3qcj4usnp54gnzvrejnwrufxpgqytzy6u
     - ed25519e_pk173x5f5xhg66x9yl4x50wnqg9mfwmmt4fma0styptcq4fuyvg3p7q9zxvy7
-  consensus_genesis_praos_param_d: "11.222"
-  consensus_genesis_praos_param_f: "33.444"
+  consensus_genesis_praos_param_d: "0.222"
+  consensus_genesis_praos_param_f: "0.444"
 initial_setting:
   max_number_of_transactions_per_block: 255
   bootstrap_key_slots_percentage: 4

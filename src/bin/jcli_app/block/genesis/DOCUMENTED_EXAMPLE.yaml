@@ -36,10 +36,10 @@ blockchain_configuration:
     - ed25519e_pk1hj8k4jyhsrva7ndynak25jagf3qcj4usnp54gnzvrejnwrufxpgqytzy6u
 
   # Genesis praos parameter D
-  consensus_genesis_praos_param_d: 11.22
+  consensus_genesis_praos_param_d: 0.220
 
   # Genesis praos parameter F
-  consensus_genesis_praos_param_f: 11.22
+  consensus_genesis_praos_param_f: 0.220
 
 
 
