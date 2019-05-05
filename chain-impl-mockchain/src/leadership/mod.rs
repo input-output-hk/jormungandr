@@ -5,6 +5,7 @@ use crate::{
     stake::StakePoolId,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
+use chain_time::era::TimeEra;
 
 pub mod bft;
 pub mod genesis;
@@ -71,6 +72,8 @@ enum LeadershipConsensus {
 }
 
 pub struct Leadership {
+    epoch: Epoch,
+    era: TimeEra,
     inner: LeadershipConsensus,
 }
 
@@ -135,7 +138,11 @@ impl Leadership {
                 genesis::GenesisLeaderSelection::new(epoch, ledger),
             ),
         };
-        Leadership { inner }
+        Leadership {
+            epoch: epoch,
+            era: ledger.settings.era.clone(),
+            inner,
+        }
     }
 
     /// Verify whether this header has been produced by a leader that fits with the leadership
