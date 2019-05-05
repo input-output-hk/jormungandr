@@ -5,11 +5,17 @@ use crate::leadership::genesis::ActiveSlotsCoeff;
 use crate::milli::Milli;
 use crate::update::Error;
 use crate::{block::ConsensusVersion, config::ConfigParam, fee::LinearFee, leadership::bft};
+use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
+use chain_core::property;
+use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
+use chain_time::era::TimeEra;
+use std::collections::{BTreeMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Settings {
+    pub era: TimeEra,
     pub consensus_version: ConsensusVersion,
     pub slots_per_epoch: u32,
     pub slot_duration: u8,
@@ -31,8 +37,9 @@ pub struct Settings {
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
 
 impl Settings {
-    pub fn new() -> Self {
+    pub fn new(era: TimeEra) -> Self {
         Self {
+            era: era,
             consensus_version: ConsensusVersion::Bft,
             slots_per_epoch: crate::date::EPOCH_DURATION,
             slot_duration: 10,         // 10 sec

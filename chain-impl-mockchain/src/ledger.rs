@@ -12,7 +12,13 @@ use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property::{self, ChainLength as _, Message as _};
+use chain_time::{
+    era::{Epoch, TimeEra},
+    timeframe::{SlotDuration, TimeFrame},
+    timeline::Timeline,
+};
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
 // static parameters, effectively this is constant in the parameter of the blockchain
 #[derive(Clone)]
@@ -175,6 +181,7 @@ impl Ledger {
 
         let mut regular_ents = crate::message::ConfigParams::new();
         let mut block0_start_time = None;
+        let mut slot_duration = None;
         let mut discrimination = None;
 
         for param in init_ents.iter() {
@@ -184,6 +191,9 @@ impl Ledger {
                 }
                 ConfigParam::Discrimination(d) => {
                     discrimination = Some(*d);
+                }
+                ConfigParam::SlotDuration(d) => {
+                    slot_duration = Some(*d);
                 }
                 _ => regular_ents.push(param.clone()),
             }
@@ -197,13 +207,29 @@ impl Ledger {
             return Err(Error::Block0(Block0Error::InitialMessageNoDiscrimination));
         }
 
+        if slot_duration.is_none() {
+            return Err(Error::Block0(Block0Error::InitialMessageNoSlotDuration));
+        }
+
         let static_params = LedgerStaticParameters {
             block0_initial_hash,
             block0_start_time: block0_start_time.unwrap(),
             discrimination: discrimination.unwrap(),
         };
 
-        let settings = setting::Settings::new().apply(&regular_ents)?;
+        let system_time =
+            SystemTime::UNIX_EPOCH + Duration::from_secs(block0_start_time.unwrap().0);
+        let timeline = Timeline::new(system_time);
+        let tf = TimeFrame::new(
+            timeline,
+            SlotDuration::from_secs(slot_duration.unwrap() as u32),
+        );
+        let slot0 = tf.slot0();
+
+        // TODO -- configurable slots per epoch
+        let era = TimeEra::new_era(slot0, Epoch(0), 21600);
+
+        let settings = setting::Settings::new(era).apply(&regular_ents)?;
 
         if settings.bft_leaders.is_empty() {
             return Err(Error::Block0(
