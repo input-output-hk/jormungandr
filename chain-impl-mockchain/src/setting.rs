@@ -1,19 +1,15 @@
 //! define the Blockchain settings
 //!
 
-use crate::config::Block0Date;
 use crate::leadership::genesis::ActiveSlotsCoeff;
 use crate::milli::Milli;
-use crate::update;
+use crate::update::Error;
 use crate::{block::ConsensusVersion, config::ConfigParam, fee::LinearFee, leadership::bft};
-use chain_addr::Discrimination;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Settings {
-    pub block0_date: Block0Date,
-    pub discrimination: Discrimination,
     pub consensus_version: ConsensusVersion,
     pub slots_per_epoch: u32,
     pub slot_duration: u8,
@@ -37,8 +33,6 @@ pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
 impl Settings {
     pub fn new() -> Self {
         Self {
-            block0_date: Block0Date(0),
-            discrimination: Discrimination::Test,
             consensus_version: ConsensusVersion::Bft,
             slots_per_epoch: crate::date::EPOCH_DURATION,
             slot_duration: 10,         // 10 sec
@@ -61,16 +55,13 @@ impl Settings {
         *self.linear_fees
     }
 
-    pub fn apply(&self, update: &update::UpdateProposal) -> Self {
+    pub fn apply(&self, changes: &crate::message::config::ConfigParams) -> Result<Self, Error> {
         let mut new_state = self.clone();
 
-        for param in update.changes.iter() {
+        for param in changes.iter() {
             match param {
-                ConfigParam::Block0Date(d) => {
-                    new_state.block0_date = *d;
-                }
-                ConfigParam::Discrimination(d) => {
-                    new_state.discrimination = *d;
+                ConfigParam::Block0Date(_) | ConfigParam::Discrimination(_) => {
+                    return Err(Error::ReadOnlySetting);
                 }
                 ConfigParam::ConsensusVersion(d) => {
                     new_state.consensus_version = *d;
@@ -86,8 +77,9 @@ impl Settings {
                 ConfigParam::EpochStabilityDepth(d) => {
                     new_state.epoch_stability_depth = *d;
                 }
-                ConfigParam::ConsensusGenesisPraosParamD(d) => {
+                ConfigParam::ConsensusGenesisPraosParamD(_d) => {
                     // FIXME: implement
+                    panic!()
                 }
                 ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(d) => {
                     new_state.active_slots_coeff = ActiveSlotsCoeff(*d);
@@ -126,6 +118,6 @@ impl Settings {
             }
         }
 
-        new_state
+        Ok(new_state)
     }
 }

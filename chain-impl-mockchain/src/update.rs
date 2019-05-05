@@ -1,14 +1,9 @@
 use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::date::BlockDate;
-use crate::{
-    block::ConsensusVersion, fee::LinearFee, leadership::bft, message::config::ConfigParams,
-    setting::Settings,
-};
-use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
+use crate::{leadership::bft, message::config::ConfigParams, setting::Settings};
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 use std::collections::{BTreeMap, HashSet};
 use std::iter;
 
@@ -103,7 +98,7 @@ impl UpdateState {
         mut settings: Settings,
         prev_date: BlockDate,
         new_date: BlockDate,
-    ) -> (Self, Settings) {
+    ) -> Result<(Self, Settings), Error> {
         let mut expired_ids = vec![];
 
         assert!(prev_date < new_date);
@@ -119,7 +114,7 @@ impl UpdateState {
                 // ID. FIXME: delay the effectuation of the proposal
                 // for some number of epochs.
                 if proposal_state.votes.len() > settings.bft_leaders.len() / 2 {
-                    settings = settings.apply(&proposal_state.proposal);
+                    settings = settings.apply(&proposal_state.proposal.changes)?;
                     expired_ids.push(proposal_id.clone());
                 } else if proposal_state.proposal_date.epoch + settings.proposal_expiration
                     > new_date.epoch
@@ -133,7 +128,7 @@ impl UpdateState {
             }
         }
 
-        (self, settings)
+        Ok((self, settings))
     }
 }
 
@@ -157,6 +152,7 @@ pub enum Error {
     BadVoteSignature(UpdateProposalId, UpdateVoterId),
     BadVoter(UpdateProposalId, UpdateVoterId),
     DuplicateVote(UpdateProposalId, UpdateVoterId),
+    ReadOnlySetting,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -202,6 +198,10 @@ impl std::fmt::Display for Error {
                 f,
                 "Received a duplicate vote from {:?} for proposal {}",
                 voter_id, proposal_id
+            ),
+            Error::ReadOnlySetting => write!(
+                f,
+                "Received a proposal to modify a chain parameter that can only be set in block 0"
             ),
         }
     }
@@ -403,9 +403,7 @@ mod test {
             for _ in 0..u8::arbitrary(g) % 10 {
                 changes.push(Arbitrary::arbitrary(g));
             }
-            Self {
-                changes
-            }
+            Self { changes }
         }
     }
 

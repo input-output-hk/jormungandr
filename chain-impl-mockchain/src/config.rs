@@ -1,4 +1,4 @@
-use crate::leadership::{bft::LeaderId, genesis::ActiveSlotsCoeff};
+use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
 use crate::{block::ConsensusVersion, fee::LinearFee};
 use chain_addr::Discrimination;
@@ -273,7 +273,7 @@ impl ConfigParamVariant for LeaderId {
 
 impl ConfigParamVariant for bool {
     fn to_payload(&self) -> Vec<u8> {
-        vec![if *self { 0 } else { 1 }]
+        vec![if *self { 1 } else { 0 }]
     }
 
     fn from_payload(payload: &[u8]) -> Result<Self, Error> {
