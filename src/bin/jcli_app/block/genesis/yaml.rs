@@ -1,5 +1,5 @@
 use chain_addr::{Address, Discrimination};
-use chain_core::property::HasMessages as _;
+use chain_core::property::HasMessages;
 use chain_crypto::bech32::Bech32;
 use chain_crypto::{Ed25519Extended, PublicKey};
 use chain_impl_mockchain::{
@@ -94,7 +94,7 @@ struct LegacyUTxO {
 }
 
 impl Genesis {
-    pub fn from_block<'a>(block: &'a Block) -> Self {
+    pub fn from_block(block: &Block) -> Self {
         let mut messages = block.messages();
 
         let blockchain_configuration = if let Some(Message::Initial(initial)) = messages.next() {
@@ -223,13 +223,9 @@ impl Genesis {
     }
 }
 
-fn get_initial_utxos<'a>(
-    messages: &mut std::iter::Peekable<
-        std::boxed::Box<
-            (dyn std::iter::Iterator<Item = &'a chain_impl_mockchain::message::Message> + 'a),
-        >,
-    >,
-) -> Vec<InitialUTxO> {
+type PeekableMessages<'a> = std::iter::Peekable<<&'a Block as HasMessages<'a>>::Messages>;
+
+fn get_initial_utxos<'a>(messages: &mut PeekableMessages<'a>) -> Vec<InitialUTxO> {
     let mut vec = Vec::new();
 
     while let Some(Message::Transaction(transaction)) = messages.peek() {
@@ -250,13 +246,7 @@ fn get_initial_utxos<'a>(
 
     vec
 }
-fn get_legacy_utxos<'a>(
-    messages: &mut std::iter::Peekable<
-        std::boxed::Box<
-            (dyn std::iter::Iterator<Item = &'a chain_impl_mockchain::message::Message> + 'a),
-        >,
-    >,
-) -> Vec<LegacyUTxO> {
+fn get_legacy_utxos<'a>(messages: &mut PeekableMessages<'a>) -> Vec<LegacyUTxO> {
     let mut vec = Vec::new();
 
     while let Some(Message::OldUtxoDeclaration(old_decls)) = messages.peek() {
@@ -273,13 +263,7 @@ fn get_legacy_utxos<'a>(
 
     vec
 }
-fn get_initial_certs<'a>(
-    messages: &mut std::iter::Peekable<
-        std::boxed::Box<
-            (dyn std::iter::Iterator<Item = &'a chain_impl_mockchain::message::Message> + 'a),
-        >,
-    >,
-) -> Vec<InitialCertificate> {
+fn get_initial_certs<'a>(messages: &mut PeekableMessages<'a>) -> Vec<InitialCertificate> {
     let mut vec = Vec::new();
 
     while let Some(Message::Certificate(transaction)) = messages.peek() {
@@ -331,9 +315,11 @@ impl BlockchainConfiguration {
                 ConfigParam::ConsensusGenesisPraosParamD(param) => consensus_genesis_praos_param_d
                     .replace(SerdeAsString(*param))
                     .map(|_| "ConsensusGenesisPraosParamD"),
-                ConfigParam::ConsensusGenesisPraosParamF(param) => consensus_genesis_praos_param_f
-                    .replace(SerdeAsString(*param))
-                    .map(|_| "ConsensusGenesisPraosParamF"),
+                ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(param) => {
+                    consensus_genesis_praos_param_f
+                        .replace(SerdeAsString(*param))
+                        .map(|_| "ConsensusGenesisPraosParamF")
+                }
             }
             .map(|param| panic!("Init message contains {} twice", param));
         }
@@ -390,7 +376,7 @@ impl BlockchainConfiguration {
             ))
         }
         if let Some(consensus_genesis_praos_param_f) = consensus_genesis_praos_param_f {
-            initial_ents.push(ConfigParam::ConsensusGenesisPraosParamF(
+            initial_ents.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
                 consensus_genesis_praos_param_f.0,
             ))
         }
@@ -479,8 +465,8 @@ blockchain_configuration:
   consensus_leader_ids:
     - ed25519e_pk1hj8k4jyhsrva7ndynak25jagf3qcj4usnp54gnzvrejnwrufxpgqytzy6u
     - ed25519e_pk173x5f5xhg66x9yl4x50wnqg9mfwmmt4fma0styptcq4fuyvg3p7q9zxvy7
-  consensus_genesis_praos_param_d: "11.222"
-  consensus_genesis_praos_param_f: "33.444"
+  consensus_genesis_praos_param_d: "0.222"
+  consensus_genesis_praos_param_f: "0.444"
 initial_setting:
   max_number_of_transactions_per_block: 255
   bootstrap_key_slots_percentage: 4

@@ -19,6 +19,7 @@ impl network_grpc::client::ProtocolConfig for BlockConfig {
     type BlockId = HeaderHash;
     type BlockDate = BlockDate;
     type Node = p2p::Node;
+    type NodeId = p2p::NodeId;
 }
 
 fn origin_authority(addr: SocketAddr) -> uri::Authority {
