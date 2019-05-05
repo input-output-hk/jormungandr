@@ -301,7 +301,7 @@ mod test {
         ents.push(ConfigParam::Discrimination(Discrimination::Test));
         ents.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
         let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
-        ents.push(ConfigParam::ConsensusLeaderId(LeaderId::from(
+        ents.push(ConfigParam::AddBftLeader(LeaderId::from(
             leader_pub_key,
         )));
         ents.push(ConfigParam::Block0Date(Block0Date(0)));

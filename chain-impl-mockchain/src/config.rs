@@ -1,6 +1,6 @@
-use crate::block::ConsensusVersion;
-use crate::leadership::bft::LeaderId;
+use crate::leadership::{bft::LeaderId, genesis::ActiveSlotsCoeff};
 use crate::milli::Milli;
+use crate::{block::ConsensusVersion, fee::LinearFee};
 use chain_addr::Discrimination;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::packer::Codec;
@@ -17,6 +17,7 @@ use strum_macros::{AsRefStr, EnumIter, EnumString};
 pub enum Error {
     InvalidTag,
     SizeInvalid,
+    BoolInvalid,
     StructureInvalid,
     UnknownString(String),
 }
@@ -26,6 +27,7 @@ impl Display for Error {
         match self {
             Error::InvalidTag => write!(f, "Invalid config parameter tag"),
             Error::SizeInvalid => write!(f, "Invalid config parameter size"),
+            Error::BoolInvalid => write!(f, "Invalid Boolean in config parameter"),
             Error::StructureInvalid => write!(f, "Invalid config parameter structure"),
             Error::UnknownString(s) => write!(f, "Invalid config parameter string '{}'", s),
         }
@@ -45,12 +47,18 @@ pub enum ConfigParam {
     Block0Date(Block0Date),
     Discrimination(Discrimination),
     ConsensusVersion(ConsensusVersion),
-    SlotsPerEpoch(u64),
+    SlotsPerEpoch(u32),
     SlotDuration(u8),
     EpochStabilityDepth(u32),
-    ConsensusLeaderId(LeaderId),
     ConsensusGenesisPraosParamD(Milli),
     ConsensusGenesisPraosActiveSlotsCoeff(Milli),
+    MaxNumberOfTransactionsPerBlock(u32),
+    BootstrapKeySlotsPercentage(u8),
+    AddBftLeader(LeaderId),
+    RemoveBftLeader(LeaderId),
+    AllowAccountCreation(bool),
+    LinearFee(LinearFee),
+    ProposalExpiration(u32),
 }
 
 // Discriminants can NEVER be 1024 or higher
@@ -68,12 +76,24 @@ enum Tag {
     SlotDuration = 5,
     #[strum(to_string = "epoch_stability_depth")]
     EpochStabilityDepth = 6,
-    #[strum(to_string = "block0-consensus-leader")]
-    ConsensusLeaderId = 7,
     #[strum(to_string = "genesis-praos-param-d")]
-    ConsensusGenesisPraosParamD = 8,
+    ConsensusGenesisPraosParamD = 7,
     #[strum(to_string = "genesis-praos-param-f")]
-    ConsensusGenesisPraosActiveSlotsCoeff = 9,
+    ConsensusGenesisPraosActiveSlotsCoeff = 8,
+    #[strum(to_string = "max-number-of-transactions-per-block")]
+    MaxNumberOfTransactionsPerBlock = 9,
+    #[strum(to_string = "bootstrap-key-slots-percentage")]
+    BootstrapKeySlotsPercentage = 10,
+    #[strum(to_string = "add-bft-leader")]
+    AddBftLeader = 11,
+    #[strum(to_string = "remove-bft-leader")]
+    RemoveBftLeader = 12,
+    #[strum(to_string = "allow-account-creation")]
+    AllowAccountCreation = 13,
+    #[strum(to_string = "linear-fee")]
+    LinearFee = 14,
+    #[strum(to_string = "proposal-expiration")]
+    ProposalExpiration = 15,
 }
 
 impl<'a> From<&'a ConfigParam> for Tag {
@@ -85,11 +105,17 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::SlotsPerEpoch(_) => Tag::SlotsPerEpoch,
             ConfigParam::SlotDuration(_) => Tag::SlotDuration,
             ConfigParam::EpochStabilityDepth(_) => Tag::EpochStabilityDepth,
-            ConfigParam::ConsensusLeaderId(_) => Tag::ConsensusLeaderId,
             ConfigParam::ConsensusGenesisPraosParamD(_) => Tag::ConsensusGenesisPraosParamD,
             ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(_) => {
                 Tag::ConsensusGenesisPraosActiveSlotsCoeff
             }
+            ConfigParam::MaxNumberOfTransactionsPerBlock(_) => Tag::MaxNumberOfTransactionsPerBlock,
+            ConfigParam::BootstrapKeySlotsPercentage(_) => Tag::BootstrapKeySlotsPercentage,
+            ConfigParam::AddBftLeader(_) => Tag::AddBftLeader,
+            ConfigParam::RemoveBftLeader(_) => Tag::RemoveBftLeader,
+            ConfigParam::AllowAccountCreation(_) => Tag::AllowAccountCreation,
+            ConfigParam::LinearFee(_) => Tag::LinearFee,
+            ConfigParam::ProposalExpiration(_) => Tag::ProposalExpiration,
         }
     }
 }
@@ -115,13 +141,27 @@ impl Readable for ConfigParam {
             Tag::EpochStabilityDepth => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::EpochStabilityDepth)
             }
-            Tag::ConsensusLeaderId => {
-                ConfigParamVariant::from_payload(bytes).map(ConfigParam::ConsensusLeaderId)
-            }
             Tag::ConsensusGenesisPraosParamD => ConfigParamVariant::from_payload(bytes)
                 .map(ConfigParam::ConsensusGenesisPraosParamD),
             Tag::ConsensusGenesisPraosActiveSlotsCoeff => ConfigParamVariant::from_payload(bytes)
                 .map(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff),
+            Tag::MaxNumberOfTransactionsPerBlock => ConfigParamVariant::from_payload(bytes)
+                .map(ConfigParam::MaxNumberOfTransactionsPerBlock),
+            Tag::BootstrapKeySlotsPercentage => ConfigParamVariant::from_payload(bytes)
+                .map(ConfigParam::BootstrapKeySlotsPercentage),
+            Tag::AddBftLeader => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::AddBftLeader)
+            }
+            Tag::RemoveBftLeader => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::RemoveBftLeader)
+            }
+            Tag::AllowAccountCreation => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::AllowAccountCreation)
+            }
+            Tag::LinearFee => ConfigParamVariant::from_payload(bytes).map(ConfigParam::LinearFee),
+            Tag::ProposalExpiration => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::ProposalExpiration)
+            }
         }
         .map_err(Into::into)
     }
@@ -139,9 +179,15 @@ impl property::Serialize for ConfigParam {
             ConfigParam::SlotsPerEpoch(data) => data.to_payload(),
             ConfigParam::SlotDuration(data) => data.to_payload(),
             ConfigParam::EpochStabilityDepth(data) => data.to_payload(),
-            ConfigParam::ConsensusLeaderId(data) => data.to_payload(),
             ConfigParam::ConsensusGenesisPraosParamD(data) => data.to_payload(),
             ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(data) => data.to_payload(),
+            ConfigParam::MaxNumberOfTransactionsPerBlock(data) => data.to_payload(),
+            ConfigParam::BootstrapKeySlotsPercentage(data) => data.to_payload(),
+            ConfigParam::AddBftLeader(data) => data.to_payload(),
+            ConfigParam::RemoveBftLeader(data) => data.to_payload(),
+            ConfigParam::AllowAccountCreation(data) => data.to_payload(),
+            ConfigParam::LinearFee(data) => data.to_payload(),
+            ConfigParam::ProposalExpiration(data) => data.to_payload(),
         };
         let taglen = TagLen::new(tag, bytes.len()).ok_or_else(|| {
             io::Error::new(
@@ -225,6 +271,23 @@ impl ConfigParamVariant for LeaderId {
     }
 }
 
+impl ConfigParamVariant for bool {
+    fn to_payload(&self) -> Vec<u8> {
+        vec![if *self { 0 } else { 1 }]
+    }
+
+    fn from_payload(payload: &[u8]) -> Result<Self, Error> {
+        match payload.len() {
+            1 => match payload[0] {
+                0 => Ok(false),
+                1 => Ok(true),
+                _ => Err(Error::BoolInvalid),
+            },
+            _ => Err(Error::SizeInvalid),
+        }
+    }
+}
+
 impl ConfigParamVariant for u8 {
     fn to_payload(&self) -> Vec<u8> {
         vec![*self]
@@ -275,6 +338,26 @@ impl ConfigParamVariant for Milli {
 
     fn from_payload(payload: &[u8]) -> Result<Self, Error> {
         u64::from_payload(payload).map(Milli::from_millis)
+    }
+}
+
+impl ConfigParamVariant for LinearFee {
+    fn to_payload(&self) -> Vec<u8> {
+        let mut v = self.constant.to_payload();
+        v.extend(self.coefficient.to_payload());
+        v.extend(self.certificate.to_payload());
+        v
+    }
+
+    fn from_payload(payload: &[u8]) -> Result<Self, Error> {
+        if payload.len() != 3 * 8 {
+            return Err(Error::SizeInvalid);
+        }
+        Ok(LinearFee {
+            constant: u64::from_payload(&payload[0..8])?,
+            coefficient: u64::from_payload(&payload[8..16])?,
+            certificate: u64::from_payload(&payload[16..24])?,
+        })
     }
 }
 
@@ -333,15 +416,21 @@ mod test {
 
     impl Arbitrary for ConfigParam {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match u8::arbitrary(g) % 8 {
+            match u8::arbitrary(g) % 14 {
                 0 => ConfigParam::Block0Date(Arbitrary::arbitrary(g)),
                 1 => ConfigParam::Discrimination(Arbitrary::arbitrary(g)),
                 2 => ConfigParam::ConsensusVersion(Arbitrary::arbitrary(g)),
                 3 => ConfigParam::SlotsPerEpoch(Arbitrary::arbitrary(g)),
                 4 => ConfigParam::SlotDuration(Arbitrary::arbitrary(g)),
-                5 => ConfigParam::ConsensusLeaderId(Arbitrary::arbitrary(g)),
-                6 => ConfigParam::ConsensusGenesisPraosParamD(Arbitrary::arbitrary(g)),
-                7 => ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(Arbitrary::arbitrary(g)),
+                5 => ConfigParam::ConsensusGenesisPraosParamD(Arbitrary::arbitrary(g)),
+                6 => ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(Arbitrary::arbitrary(g)),
+                7 => ConfigParam::MaxNumberOfTransactionsPerBlock(Arbitrary::arbitrary(g)),
+                8 => ConfigParam::BootstrapKeySlotsPercentage(Arbitrary::arbitrary(g)),
+                9 => ConfigParam::AddBftLeader(Arbitrary::arbitrary(g)),
+                10 => ConfigParam::RemoveBftLeader(Arbitrary::arbitrary(g)),
+                11 => ConfigParam::AllowAccountCreation(Arbitrary::arbitrary(g)),
+                12 => ConfigParam::LinearFee(Arbitrary::arbitrary(g)),
+                13 => ConfigParam::ProposalExpiration(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),
             }
         }

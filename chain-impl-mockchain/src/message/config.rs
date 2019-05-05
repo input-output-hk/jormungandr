@@ -27,6 +27,7 @@ impl ConfigParams {
 impl property::Serialize for ConfigParams {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        // FIXME: put params in canonical order (e.g. sorted by tag)?
         for config in &self.0 {
             config.serialize(&mut writer)?
         }
@@ -36,6 +37,7 @@ impl property::Serialize for ConfigParams {
 
 impl Readable for ConfigParams {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        // FIXME: check canonical order?
         let mut configs = vec![];
         while !buf.is_end() {
             configs.push(ConfigParam::read(buf)?);

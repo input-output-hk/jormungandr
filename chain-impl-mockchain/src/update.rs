@@ -1,6 +1,9 @@
 use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::date::BlockDate;
-use crate::{block::ConsensusVersion, fee::LinearFee, leadership::bft, setting::Settings};
+use crate::{
+    block::ConsensusVersion, fee::LinearFee, leadership::bft, message::config::ConfigParams,
+    setting::Settings,
+};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
@@ -210,156 +213,30 @@ pub type UpdateVoterId = bft::LeaderId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateProposal {
-    pub max_number_of_transactions_per_block: Option<u32>,
-    pub bootstrap_key_slots_percentage: Option<u8>,
-    pub consensus_version: Option<ConsensusVersion>,
-    pub bft_leaders: Option<Vec<bft::LeaderId>>,
-    /// update to trigger allowing the creation of accounts without
-    /// publishing a certificate
-    pub allow_account_creation: Option<bool>,
-    /// update the LinearFee settings
-    pub linear_fees: Option<LinearFee>,
-    /// setting the slot duration (in seconds, max value is 255sec -- 4min)
-    pub slot_duration: Option<u8>,
-    /// Todo
-    pub epoch_stability_depth: Option<u32>,
+    pub changes: ConfigParams,
 }
 
 impl UpdateProposal {
     pub fn new() -> Self {
         UpdateProposal {
-            max_number_of_transactions_per_block: None,
-            bootstrap_key_slots_percentage: None,
-            consensus_version: None,
-            bft_leaders: None,
-            allow_account_creation: None,
-            linear_fees: None,
-            slot_duration: None,
-            epoch_stability_depth: None,
+            changes: ConfigParams::new(),
         }
     }
-}
-
-#[derive(FromPrimitive)]
-enum UpdateTag {
-    MaxNumberOfTransactionsPerBlock = 1,
-    BootstrapKeySlotsPercentage = 2,
-    ConsensusVersion = 3,
-    BftLeaders = 4,
-    AllowAccountCreation = 5,
-    LinearFee = 6,
-    SlotDuration = 7,
-    EpochStabilityDepth = 8,
-    End = 0xffff,
 }
 
 impl property::Serialize for UpdateProposal {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::new(writer);
-        if let Some(max_number_of_transactions_per_block) =
-            self.max_number_of_transactions_per_block
-        {
-            codec.put_u16(UpdateTag::MaxNumberOfTransactionsPerBlock as u16)?;
-            codec.put_u32(max_number_of_transactions_per_block)?;
-        }
-        if let Some(bootstrap_key_slots_percentage) = self.bootstrap_key_slots_percentage {
-            codec.put_u16(UpdateTag::BootstrapKeySlotsPercentage as u16)?;
-            codec.put_u8(bootstrap_key_slots_percentage)?;
-        }
-        if let Some(consensus_version) = self.consensus_version {
-            codec.put_u16(UpdateTag::ConsensusVersion as u16)?;
-            codec.put_u16(consensus_version as u16)?;
-        }
-        if let Some(leaders) = &self.bft_leaders {
-            codec.put_u16(UpdateTag::BftLeaders as u16)?;
-            codec.put_u8(leaders.len() as u8)?;
-            for leader in leaders.iter() {
-                leader.serialize(&mut codec)?;
-            }
-        }
-        if let Some(allow_account_creation) = &self.allow_account_creation {
-            codec.put_u16(UpdateTag::AllowAccountCreation as u16)?;
-            codec.put_u8(if *allow_account_creation { 1 } else { 0 })?;
-        }
-        if let Some(linear_fees) = &self.linear_fees {
-            codec.put_u16(UpdateTag::LinearFee as u16)?;
-            codec.put_u64(linear_fees.constant)?;
-            codec.put_u64(linear_fees.coefficient)?;
-            codec.put_u64(linear_fees.certificate)?;
-        }
-        if let Some(slot_duration) = self.slot_duration {
-            codec.put_u16(UpdateTag::SlotDuration as u16)?;
-            codec.put_u8(slot_duration)?;
-        }
-        if let Some(epoch_stability_depth) = self.epoch_stability_depth {
-            codec.put_u16(UpdateTag::EpochStabilityDepth as u16)?;
-            codec.put_u32(epoch_stability_depth)?;
-        }
-        codec.put_u16(UpdateTag::End as u16)?;
+        self.changes.serialize(writer)?;
         Ok(())
     }
 }
 
 impl Readable for UpdateProposal {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let mut update = UpdateProposal::new();
-        let mut prev_tag = 0;
-        loop {
-            let tag = buf.get_u16()?;
-            if tag <= prev_tag {
-                panic!(
-                    "Update tags are not in canonical order (got {} after {}).",
-                    tag, prev_tag
-                );
-            }
-            prev_tag = tag;
-            match UpdateTag::from_u16(tag) {
-                Some(UpdateTag::End) => {
-                    return Ok(update);
-                }
-                Some(UpdateTag::MaxNumberOfTransactionsPerBlock) => {
-                    update.max_number_of_transactions_per_block = Some(buf.get_u32()?);
-                }
-                Some(UpdateTag::BootstrapKeySlotsPercentage) => {
-                    update.bootstrap_key_slots_percentage = Some(buf.get_u8()?);
-                }
-                Some(UpdateTag::ConsensusVersion) => {
-                    let version_u16 = buf.get_u16()?;
-                    let version = ConsensusVersion::from_u16(version_u16).ok_or_else(|| {
-                        ReadError::StructureInvalid(format!(
-                            "Unrecognized consensus version {}",
-                            version_u16
-                        ))
-                    })?;
-                    update.consensus_version = Some(version);
-                }
-                Some(UpdateTag::BftLeaders) => {
-                    let len = buf.get_u8()? as usize;
-                    let leaders = read_vec(buf, len)?;
-                    update.bft_leaders = Some(leaders);
-                }
-                Some(UpdateTag::AllowAccountCreation) => {
-                    let boolean = buf.get_u8()? != 0;
-                    update.allow_account_creation = Some(boolean);
-                }
-                Some(UpdateTag::LinearFee) => {
-                    update.linear_fees = Some(LinearFee {
-                        constant: buf.get_u64()?,
-                        coefficient: buf.get_u64()?,
-                        certificate: buf.get_u64()?,
-                    });
-                }
-                Some(UpdateTag::SlotDuration) => {
-                    update.slot_duration = Some(buf.get_u8()?);
-                }
-                Some(UpdateTag::EpochStabilityDepth) => {
-                    update.epoch_stability_depth = Some(buf.get_u32()?);
-                }
-                None => panic!("Unrecognized update tag {}.", tag),
-            }
-        }
+        Ok(Self {
+            changes: ConfigParams::read(buf)?,
+        })
     }
 }
 
@@ -522,15 +399,12 @@ mod test {
 
     impl Arbitrary for UpdateProposal {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut changes = ConfigParams::new();
+            for _ in 0..u8::arbitrary(g) % 10 {
+                changes.push(Arbitrary::arbitrary(g));
+            }
             Self {
-                max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
-                bootstrap_key_slots_percentage: Arbitrary::arbitrary(g),
-                consensus_version: Arbitrary::arbitrary(g),
-                bft_leaders: None,
-                allow_account_creation: None,
-                linear_fees: None,
-                slot_duration: Arbitrary::arbitrary(g),
-                epoch_stability_depth: Arbitrary::arbitrary(g),
+                changes
             }
         }
     }

@@ -43,7 +43,7 @@ impl Error for ActiveSlotsCoeffError {}
 /// Described in Ouroboros Praos paper, also referred to as parameter F of phi function
 /// Always in range (0, 1]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ActiveSlotsCoeff(Milli);
+pub struct ActiveSlotsCoeff(pub(crate) Milli);
 
 impl TryFrom<Milli> for ActiveSlotsCoeff {
     type Error = ActiveSlotsCoeffError;

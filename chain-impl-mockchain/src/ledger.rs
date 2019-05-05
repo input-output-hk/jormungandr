@@ -704,21 +704,19 @@ impl EmptyLedgerBuilder {
                 .epoch_stability_depth
                 .replace(*param)
                 .map(|_| Error::Block0InitialMessageDuplicateEpochStabilityDepth),
-            ConfigParam::ConsensusLeaderId(param) => {
-                self.consensus_leader_ids.push(param.clone());
-                None
-            }
             ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(param) => self
                 .active_slots_coeff
                 .replace(*param)
                 .map(|_| Error::Block0InitialMessageDuplicatePraosActiveSlotsCoeff),
             ConfigParam::SlotsPerEpoch(_) | ConfigParam::ConsensusGenesisPraosParamD(_) => None,
+            _ => unimplemented!(), // FIXME
         }
         .map(|e| Err(e))
         .unwrap_or(Ok(self))
     }
 
     pub fn build(self, block0_initial_hash: HeaderHash) -> Result<Ledger, Error> {
+        /*
         // generates warnings for each unused parameter
         let EmptyLedgerBuilder {
             block0_date,
@@ -756,6 +754,8 @@ impl EmptyLedgerBuilder {
         };
 
         Ok(Ledger::empty(settings, static_params))
+         */
+        unimplemented!()
     }
 }
 
@@ -809,7 +809,7 @@ pub mod test {
         ie.push(ConfigParam::Discrimination(Discrimination::Test));
         ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
         let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
-        ie.push(ConfigParam::ConsensusLeaderId(LeaderId::from(
+        ie.push(ConfigParam::AddBftLeader(LeaderId::from(
             leader_pub_key,
         )));
         ie.push(ConfigParam::Block0Date(Block0Date(0)));
