@@ -1,4 +1,4 @@
-pub mod initial;
+pub mod config;
 mod raw;
 
 use crate::legacy;
@@ -8,7 +8,7 @@ use chain_core::property;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-pub use initial::InitialEnts;
+pub use config::ConfigParams;
 pub use raw::{MessageId, MessageRaw};
 
 use crate::{
@@ -20,7 +20,7 @@ use crate::{
 /// All possible messages recordable in the content
 #[derive(Debug, Clone)]
 pub enum Message {
-    Initial(InitialEnts),
+    Initial(ConfigParams),
     OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
     Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
@@ -80,7 +80,7 @@ impl Readable for Message {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let tag = buf.get_u8()?;
         match MessageTag::from_u8(tag) {
-            Some(MessageTag::Initial) => InitialEnts::read(buf).map(Message::Initial),
+            Some(MessageTag::Initial) => ConfigParams::read(buf).map(Message::Initial),
             Some(MessageTag::OldUtxoDeclaration) => {
                 legacy::UtxoDeclaration::read(buf).map(Message::OldUtxoDeclaration)
             }

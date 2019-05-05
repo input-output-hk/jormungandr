@@ -763,7 +763,7 @@ impl EmptyLedgerBuilder {
 pub mod test {
     use super::*;
     use crate::key::{SpendingPublicKey, SpendingSecretKey};
-    use crate::message::initial;
+    use crate::message::config;
     use crate::milli::Milli;
     use chain_addr::{Address, Discrimination, Kind};
     use chain_crypto::SecretKey;
@@ -805,7 +805,7 @@ pub mod test {
     pub fn utxo() {
         let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
         let discrimination = Discrimination::Test;
-        let mut ie = initial::InitialEnts::new();
+        let mut ie = config::ConfigParams::new();
         ie.push(ConfigParam::Discrimination(Discrimination::Test));
         ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
         let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
