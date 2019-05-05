@@ -54,3 +54,19 @@ impl FeeAlgorithm<tx::Transaction<Address, Certificate>> for LinearFee {
         Some(Value(fee))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for LinearFee {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Self {
+                constant: Arbitrary::arbitrary(g),
+                coefficient: Arbitrary::arbitrary(g),
+                certificate: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+}
