@@ -1,4 +1,4 @@
-pub mod initial;
+pub mod config;
 mod raw;
 
 use crate::legacy;
@@ -8,23 +8,24 @@ use chain_core::property;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
-pub use initial::InitialEnts;
+pub use config::ConfigParams;
 pub use raw::{MessageId, MessageRaw};
 
 use crate::{
-    certificate, setting,
+    certificate,
     transaction::{AuthenticatedTransaction, NoExtra},
+    update::{SignedUpdateProposal, SignedUpdateVote},
 };
 
 /// All possible messages recordable in the content
 #[derive(Debug, Clone)]
 pub enum Message {
-    Initial(InitialEnts),
+    Initial(ConfigParams),
     OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
     Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
-    UpdateProposal(setting::SignedUpdateProposal),
-    UpdateVote(setting::SignedUpdateVote),
+    UpdateProposal(SignedUpdateProposal),
+    UpdateVote(SignedUpdateVote),
 }
 
 /// Tag enumeration of all known message
@@ -79,7 +80,7 @@ impl Readable for Message {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let tag = buf.get_u8()?;
         match MessageTag::from_u8(tag) {
-            Some(MessageTag::Initial) => InitialEnts::read(buf).map(Message::Initial),
+            Some(MessageTag::Initial) => ConfigParams::read(buf).map(Message::Initial),
             Some(MessageTag::OldUtxoDeclaration) => {
                 legacy::UtxoDeclaration::read(buf).map(Message::OldUtxoDeclaration)
             }
@@ -90,11 +91,9 @@ impl Readable for Message {
                 AuthenticatedTransaction::read(buf).map(Message::Certificate)
             }
             Some(MessageTag::UpdateProposal) => {
-                setting::SignedUpdateProposal::read(buf).map(Message::UpdateProposal)
+                SignedUpdateProposal::read(buf).map(Message::UpdateProposal)
             }
-            Some(MessageTag::UpdateVote) => {
-                setting::SignedUpdateVote::read(buf).map(Message::UpdateVote)
-            }
+            Some(MessageTag::UpdateVote) => SignedUpdateVote::read(buf).map(Message::UpdateVote),
             None => Err(ReadError::UnknownTag(tag as u32)),
         }
     }

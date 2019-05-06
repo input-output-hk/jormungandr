@@ -8,11 +8,11 @@ use chain_core::property;
     derive(serde_derive::Serialize, serde_derive::Deserialize),
     serde(transparent)
 )]
-pub struct InitialEnts(Vec<ConfigParam>);
+pub struct ConfigParams(pub(crate) Vec<ConfigParam>);
 
-impl InitialEnts {
+impl ConfigParams {
     pub fn new() -> Self {
-        InitialEnts(Vec::new())
+        ConfigParams(Vec::new())
     }
 
     pub fn push(&mut self, config: ConfigParam) {
@@ -24,9 +24,12 @@ impl InitialEnts {
     }
 }
 
-impl property::Serialize for InitialEnts {
+impl property::Serialize for ConfigParams {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        // FIXME: put params in canonical order (e.g. sorted by tag)?
+        use chain_core::packer::*;
+        Codec::new(&mut writer).put_u16(self.0.len() as u16)?;
         for config in &self.0 {
             config.serialize(&mut writer)?
         }
@@ -34,13 +37,15 @@ impl property::Serialize for InitialEnts {
     }
 }
 
-impl Readable for InitialEnts {
+impl Readable for ConfigParams {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        // FIXME: check canonical order?
+        let len = buf.get_u16()?;
         let mut configs = vec![];
-        while !buf.is_end() {
+        for _ in 0..len {
             configs.push(ConfigParam::read(buf)?);
         }
-        Ok(InitialEnts(configs))
+        Ok(ConfigParams(configs))
     }
 }
 
@@ -50,15 +55,15 @@ mod test {
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
-        fn initial_ents_serialization_bijection(b: InitialEnts) -> TestResult {
+        fn initial_ents_serialization_bijection(b: ConfigParams) -> TestResult {
             property::testing::serialization_bijection_r(b)
         }
     }
 
-    impl Arbitrary for InitialEnts {
+    impl Arbitrary for ConfigParams {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let size = u8::arbitrary(g) as usize;
-            InitialEnts(
+            ConfigParams(
                 std::iter::repeat_with(|| ConfigParam::arbitrary(g))
                     .take(size)
                     .collect(),

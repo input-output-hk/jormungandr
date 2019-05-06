@@ -2,19 +2,16 @@
 //! current state and verify transactions.
 
 use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderHash};
-use crate::config::{self, Block0Date, ConfigParam};
+use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
-use crate::leadership::bft::LeaderId;
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::message::Message;
-use crate::milli::Milli;
 use crate::stake::{CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
-use crate::{account, certificate, legacy, setting, stake, utxo};
+use crate::{account, certificate, legacy, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property::{self, ChainLength as _, Message as _};
-use std::convert::TryInto;
 use std::sync::Arc;
 
 // static parameters, effectively this is constant in the parameter of the blockchain
@@ -22,7 +19,6 @@ use std::sync::Arc;
 pub struct LedgerStaticParameters {
     pub block0_initial_hash: HeaderHash,
     pub block0_start_time: config::Block0Date,
-    pub block0_consensus: ConsensusVersion,
     pub discrimination: Discrimination,
 }
 
@@ -46,7 +42,7 @@ pub struct Ledger {
     pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
     pub(crate) accounts: account::Ledger,
     pub(crate) settings: setting::Settings,
-    pub(crate) updates: setting::UpdateState,
+    pub(crate) updates: update::UpdateState,
     pub(crate) delegation: DelegationState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
     pub(crate) date: BlockDate,
@@ -82,6 +78,7 @@ pub enum Error {
     Block0InitialMessageNoConsensusLeaderId,
     Block0InitialMessageNoPraosActiveSlotsCoeff,
     Block0UtxoTotalValueTooBig,
+    Block0HasUpdateProposal,
     Block0HasUpdateVote,
     FeeCalculationError(ValueError),
     PraosActiveSlotsCoeffInvalid(ActiveSlotsCoeffError),
@@ -96,7 +93,7 @@ pub enum Error {
     ExpectingUtxoWitness,
     ExpectingInitialMessage,
     CertificateInvalidSignature,
-    Update(setting::Error),
+    Update(update::Error),
     WrongChainLength {
         actual: ChainLength,
         expected: ChainLength,
@@ -131,8 +128,8 @@ impl From<config::Error> for Error {
     }
 }
 
-impl From<setting::Error> for Error {
-    fn from(e: setting::Error) -> Self {
+impl From<update::Error> for Error {
+    fn from(e: update::Error) -> Self {
         Error::Update(e)
     }
 }
@@ -144,7 +141,7 @@ impl Ledger {
             oldutxos: utxo::Ledger::new(),
             accounts: account::Ledger::new(),
             settings,
-            updates: setting::UpdateState::new(),
+            updates: update::UpdateState::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_params),
             date: BlockDate::first(),
@@ -152,28 +149,57 @@ impl Ledger {
         }
     }
 
-    pub fn new<'a, I>(block0_hash: HeaderHash, contents: I) -> Result<Self, Error>
+    pub fn new<'a, I>(block0_initial_hash: HeaderHash, contents: I) -> Result<Self, Error>
     where
         I: IntoIterator<Item = &'a Message>,
     {
         let mut content_iter = contents.into_iter();
-        let mut ledger_params = LedgerParameters {
-            fees: LinearFee::new(0, 0, 0),
-            allow_account_creation: false,
-        };
 
         let init_ents = match content_iter.next() {
             Some(Message::Initial(ref init_ents)) => Ok(init_ents),
             Some(_) => Err(Error::ExpectingInitialMessage),
             None => Err(Error::Block0InitialMessageMissing),
         }?;
-        let mut ledger = init_ents
-            .iter()
-            .try_fold(
-                Default::default(),
-                EmptyLedgerBuilder::try_with_config_param,
-            )?
-            .build(block0_hash)?;
+
+        let mut regular_ents = crate::message::ConfigParams::new();
+        let mut block0_start_time = None;
+        let mut discrimination = None;
+
+        for param in init_ents.iter() {
+            match param {
+                ConfigParam::Block0Date(d) => {
+                    block0_start_time = Some(*d);
+                }
+                ConfigParam::Discrimination(d) => {
+                    discrimination = Some(*d);
+                }
+                _ => regular_ents.push(param.clone()),
+            }
+        }
+
+        if block0_start_time.is_none() {
+            return Err(Error::Block0InitialMessageNoBlock0Date);
+        }
+
+        if discrimination.is_none() {
+            return Err(Error::Block0InitialMessageNoDiscrimination);
+        }
+
+        let static_params = LedgerStaticParameters {
+            block0_initial_hash,
+            block0_start_time: block0_start_time.unwrap(),
+            discrimination: discrimination.unwrap(),
+        };
+
+        let settings = setting::Settings::new().apply(&regular_ents)?;
+
+        if settings.bft_leaders.is_empty() {
+            return Err(Error::Block0InitialMessageNoConsensusLeaderId);
+        }
+
+        let mut ledger = Ledger::empty(settings, static_params);
+
+        let ledger_params = ledger.get_ledger_parameters();
 
         for content in content_iter {
             match content {
@@ -202,15 +228,8 @@ impl Ledger {
                     ledger.utxos = new_utxos;
                     ledger.accounts = new_accounts;;
                 }
-                Message::UpdateProposal(update_proposal) => {
-                    // We assume here that the initial block contains
-                    // a single update proposal with the initial
-                    // settings, which we apply immediately without
-                    // requiring any votes. FIXME: check the
-                    // signature? Doesn't really matter, we have to
-                    // trust block 0 anyway.
-                    ledger = ledger.apply_update(&update_proposal.proposal.proposal)?;
-                    ledger_params = ledger.get_ledger_parameters();
+                Message::UpdateProposal(_) => {
+                    return Err(Error::Block0HasUpdateProposal);
                 }
                 Message::UpdateVote(_) => {
                     return Err(Error::Block0HasUpdateVote);
@@ -270,7 +289,7 @@ impl Ledger {
         let (updates, settings) =
             new_ledger
                 .updates
-                .process_proposals(new_ledger.settings, new_ledger.date, date);
+                .process_proposals(new_ledger.settings, new_ledger.date, date)?;
         new_ledger.updates = updates;
         new_ledger.settings = settings;
 
@@ -330,15 +349,15 @@ impl Ledger {
         Ok((self, fee))
     }
 
-    pub fn apply_update(mut self, update: &setting::UpdateProposal) -> Result<Self, Error> {
-        self.settings = self.settings.apply(update);
+    pub fn apply_update(mut self, update: &update::UpdateProposal) -> Result<Self, Error> {
+        self.settings = self.settings.apply(&update.changes)?;
         Ok(self)
     }
 
     pub fn apply_update_proposal(
         mut self,
-        proposal_id: setting::UpdateProposalId,
-        proposal: &setting::SignedUpdateProposal,
+        proposal_id: update::UpdateProposalId,
+        proposal: &update::SignedUpdateProposal,
         cur_date: BlockDate,
     ) -> Result<Self, Error> {
         self.updates =
@@ -347,7 +366,7 @@ impl Ledger {
         Ok(self)
     }
 
-    pub fn apply_update_vote(mut self, vote: &setting::SignedUpdateVote) -> Result<Self, Error> {
+    pub fn apply_update_vote(mut self, vote: &update::SignedUpdateVote) -> Result<Self, Error> {
         self.updates = self.updates.apply_vote(vote, &self.settings)?;
         Ok(self)
     }
@@ -403,8 +422,7 @@ impl Ledger {
     }
 
     pub fn consensus_version(&self) -> ConsensusVersion {
-        // TODO: this may be updated overtime (bft -> switch to genesis ?)
-        self.static_params.block0_consensus
+        self.settings.consensus_version
     }
 
     pub fn utxos<'a>(&'a self) -> utxo::Iter<'a, Address> {
@@ -670,100 +688,11 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
-#[derive(Debug, Default)]
-struct EmptyLedgerBuilder {
-    block0_date: Option<Block0Date>,
-    discrimination: Option<Discrimination>,
-    consensus_version: Option<ConsensusVersion>,
-    slot_duration: Option<u8>,
-    epoch_stability_depth: Option<u32>,
-    consensus_leader_ids: Vec<LeaderId>,
-    active_slots_coeff: Option<Milli>,
-}
-
-impl EmptyLedgerBuilder {
-    pub fn try_with_config_param(mut self, param: &ConfigParam) -> Result<Self, Error> {
-        match param {
-            ConfigParam::Block0Date(param) => self
-                .block0_date
-                .replace(*param)
-                .map(|_| Error::Block0InitialMessageDuplicateBlock0Date),
-            ConfigParam::Discrimination(param) => self
-                .discrimination
-                .replace(*param)
-                .map(|_| Error::Block0InitialMessageDuplicateDiscrimination),
-            ConfigParam::ConsensusVersion(param) => self
-                .consensus_version
-                .replace(*param)
-                .map(|_| Error::Block0InitialMessageDuplicateConsensusVersion),
-            ConfigParam::SlotDuration(param) => self
-                .slot_duration
-                .replace(*param)
-                .map(|_| Error::Block0InitialMessageDuplicateSlotDuration),
-            ConfigParam::EpochStabilityDepth(param) => self
-                .epoch_stability_depth
-                .replace(*param)
-                .map(|_| Error::Block0InitialMessageDuplicateEpochStabilityDepth),
-            ConfigParam::ConsensusLeaderId(param) => {
-                self.consensus_leader_ids.push(param.clone());
-                None
-            }
-            ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(param) => self
-                .active_slots_coeff
-                .replace(*param)
-                .map(|_| Error::Block0InitialMessageDuplicatePraosActiveSlotsCoeff),
-            ConfigParam::SlotsPerEpoch(_) | ConfigParam::ConsensusGenesisPraosParamD(_) => None,
-        }
-        .map(|e| Err(e))
-        .unwrap_or(Ok(self))
-    }
-
-    pub fn build(self, block0_initial_hash: HeaderHash) -> Result<Ledger, Error> {
-        // generates warnings for each unused parameter
-        let EmptyLedgerBuilder {
-            block0_date,
-            discrimination,
-            consensus_version,
-            slot_duration,
-            epoch_stability_depth,
-            consensus_leader_ids,
-            active_slots_coeff,
-        } = self;
-
-        let mut settings = setting::Settings::new();
-        if let Some(slot_duration) = slot_duration {
-            settings.slot_duration = slot_duration;
-        }
-        if let Some(epoch_stability_depth) = epoch_stability_depth {
-            settings.epoch_stability_depth = epoch_stability_depth;
-        }
-        match consensus_leader_ids.len() {
-            0 => return Err(Error::Block0InitialMessageNoConsensusLeaderId),
-            _ => settings.bft_leaders = Arc::new(consensus_leader_ids),
-        }
-
-        settings.active_slots_coeff = active_slots_coeff
-            .ok_or(Error::Block0InitialMessageNoPraosActiveSlotsCoeff)?
-            .try_into()
-            .map_err(Error::PraosActiveSlotsCoeffInvalid)?;
-
-        let static_params = LedgerStaticParameters {
-            block0_initial_hash,
-            block0_start_time: block0_date.ok_or(Error::Block0InitialMessageNoBlock0Date)?,
-            block0_consensus: consensus_version
-                .ok_or(Error::Block0InitialMessageNoConsensusVersion)?,
-            discrimination: discrimination.ok_or(Error::Block0InitialMessageNoDiscrimination)?,
-        };
-
-        Ok(Ledger::empty(settings, static_params))
-    }
-}
-
 #[cfg(test)]
 pub mod test {
     use super::*;
     use crate::key::{SpendingPublicKey, SpendingSecretKey};
-    use crate::message::initial;
+    use crate::message::config;
     use crate::milli::Milli;
     use chain_addr::{Address, Discrimination, Kind};
     use chain_crypto::SecretKey;
@@ -805,14 +734,12 @@ pub mod test {
     pub fn utxo() {
         let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
         let discrimination = Discrimination::Test;
-        let mut ie = initial::InitialEnts::new();
+        let mut ie = config::ConfigParams::new();
         ie.push(ConfigParam::Discrimination(Discrimination::Test));
         ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
         let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
-        ie.push(ConfigParam::ConsensusLeaderId(LeaderId::from(
-            leader_pub_key,
-        )));
-        ie.push(ConfigParam::Block0Date(Block0Date(0)));
+        ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
+        ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
         ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
             Milli::HALF,
         ));
