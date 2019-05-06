@@ -2,7 +2,7 @@ mod connect;
 
 use crate::{
     convert::{
-        decode_node_id, encode_node_id, error_from_grpc, serialize_to_vec, FromProtobuf,
+        decode_node_id, encode_node_id, error_from_grpc, serialize_to_repeated_bytes, FromProtobuf,
         IntoProtobuf,
     },
     gen::{self, node::client as gen_client},
@@ -313,14 +313,14 @@ where
     }
 
     fn pull_blocks_to_tip(&mut self, from: &[P::BlockId]) -> Self::PullBlocksToTipFuture {
-        let from = serialize_to_vec(from).unwrap();
+        let from = serialize_to_repeated_bytes(from).unwrap();
         let req = gen::node::PullBlocksToTipRequest { from };
         let future = self.service.pull_blocks_to_tip(Request::new(req));
         ResponseStreamFuture::new(future)
     }
 
     fn get_blocks(&mut self, ids: &[P::BlockId]) -> Self::GetBlocksFuture {
-        let ids = serialize_to_vec(ids).unwrap();
+        let ids = serialize_to_repeated_bytes(ids).unwrap();
         let req = gen::node::BlockIds { ids };
         let future = self.service.get_blocks(Request::new(req));
         ResponseStreamFuture::new(future)
