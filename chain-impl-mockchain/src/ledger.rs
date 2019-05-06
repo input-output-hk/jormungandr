@@ -12,11 +12,8 @@ use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property::{self, ChainLength as _, Message as _};
-use chain_time::{
-    era::{Epoch, TimeEra},
-    timeframe::{SlotDuration, TimeFrame},
-    timeline::Timeline,
-};
+use chain_time::*;
+use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 

@@ -41,7 +41,7 @@ impl Settings {
         Self {
             era: era,
             consensus_version: ConsensusVersion::Bft,
-            slots_per_epoch: crate::date::EPOCH_DURATION,
+            slots_per_epoch: 1,
             slot_duration: 10,         // 10 sec
             epoch_stability_depth: 10, // num of block
             active_slots_coeff: ActiveSlotsCoeff::try_from(Milli::HALF).unwrap(),
@@ -74,8 +74,6 @@ impl Settings {
                     new_state.consensus_version = *d;
                 }
                 ConfigParam::SlotsPerEpoch(d) => {
-                    // FIXME: support changing the epoch length
-                    assert_eq!(*d, crate::date::EPOCH_DURATION);
                     new_state.slots_per_epoch = *d;
                 }
                 ConfigParam::SlotDuration(d) => {
