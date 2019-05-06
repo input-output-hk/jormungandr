@@ -780,6 +780,7 @@ pub mod test {
         let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
         ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
         ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
+        ie.push(ConfigParam::SlotDuration(10));
         ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
             Milli::HALF,
         ));
