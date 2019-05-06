@@ -271,7 +271,9 @@ mod test {
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
     use chain_crypto::SecretKey;
     use chain_storage::store::BlockStore;
+    use chain_time::*;
     use quickcheck::{Arbitrary, StdGen};
+    use std::time::SystemTime;
 
     fn apply_block(state: &Ledger, block: &Block) -> Ledger {
         if state.chain_length().0 != 0 {
@@ -290,6 +292,13 @@ mod test {
     #[test]
     pub fn multiverse() {
         let mut multiverse = Multiverse::new();
+
+        let system_time = SystemTime::UNIX_EPOCH;
+        let timeline = Timeline::new(system_time);
+        let tf = TimeFrame::new(timeline, SlotDuration::from_secs(10));
+
+        let slot0 = tf.slot0();
+        let era = TimeEra::new_era(slot0, Epoch(0), 1000);
 
         let mut g = StdGen::new(rand::thread_rng(), 10);
         let leader_key = Arbitrary::arbitrary(&mut g);
@@ -322,7 +331,7 @@ mod test {
             let mut block = BlockBuilder::new();
             block.chain_length(state.chain_length.next());
             block.parent(parent);
-            date = date.next();
+            date = date.next(&era);
             block.date(date);
             let block = block.make_bft_block(&leader_key);
             state = apply_block(&state, &block);
