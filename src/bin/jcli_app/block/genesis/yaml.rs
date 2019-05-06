@@ -1,16 +1,13 @@
 use chain_addr::{Address, Discrimination};
 use chain_core::property::HasMessages;
-use chain_crypto::bech32::Bech32;
-use chain_crypto::{Ed25519Extended, PublicKey};
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder, ConsensusVersion},
-    certificate::{Certificate, SignatureRaw},
+    certificate::Certificate,
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
     legacy::{self, OldAddress},
-    message::{InitialEnts, Message},
+    message::{ConfigParams, Message},
     milli::Milli,
-    setting::{SignedUpdateProposal, UpdateProposal, UpdateProposalWithProposer},
     transaction,
     value::Value,
 };
@@ -29,7 +26,6 @@ pub struct Genesis {
     /// All that is static and does not need to have any update
     /// mechanism.
     blockchain_configuration: BlockchainConfiguration,
-    initial_setting: Update,
     #[serde(default)]
     initial_funds: Vec<InitialUTxO>,
     #[serde(default)]
@@ -46,27 +42,20 @@ struct BlockchainConfiguration {
     discrimination: Discrimination,
     #[serde(with = "serde::as_string")]
     block0_consensus: ConsensusVersion,
-    slots_per_epoch: Option<u64>,
+    slots_per_epoch: Option<u32>,
     slot_duration: u8,
     epoch_stability_depth: Option<u32>,
     #[serde(default)]
     consensus_leader_ids: Vec<SerdeLeaderId>,
     consensus_genesis_praos_param_d: Option<SerdeAsString<Milli>>,
     consensus_genesis_praos_param_f: Option<SerdeAsString<Milli>>,
-}
-
-/// the initial configuration of the blockchain
-///
-/// This is the data tha may be updated but which needs
-/// to have an initial value in the blockchain (or not)
-#[derive(Clone, Serialize, Deserialize)]
-struct Update {
     max_number_of_transactions_per_block: Option<u32>,
     bootstrap_key_slots_percentage: Option<u8>,
     allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
 }
 
+// FIXME: duplicates LinearFee, can we get rid of this?
 #[derive(Clone, Serialize, Deserialize)]
 struct InitialLinearFee {
     coefficient: u64,
@@ -100,12 +89,7 @@ impl Genesis {
         let blockchain_configuration = if let Some(Message::Initial(initial)) = messages.next() {
             BlockchainConfiguration::from_ents(initial)
         } else {
-            panic!("Expecting the second Message of the block 0 to be `Message::Initial`")
-        };
-        let initial_setting = if let Some(Message::UpdateProposal(update)) = messages.next() {
-            Update::from_message(&update.proposal.proposal)
-        } else {
-            panic!("Expecting the second Message of the block 0 to be `Message::UpdateProposal`")
+            panic!("Expecting the first Message of the block 0 to be `Message::Initial`")
         };
 
         let mut messages = messages.peekable();
@@ -116,7 +100,6 @@ impl Genesis {
 
         Genesis {
             blockchain_configuration,
-            initial_setting,
             initial_funds,
             legacy_funds,
             initial_certs,
@@ -129,18 +112,17 @@ impl Genesis {
         builder.message(Message::Initial(
             self.blockchain_configuration.clone().to_ents(),
         ));
-        builder.message(self.initial_setting.clone().to_message());
 
         builder.messages(
             self.to_initial_messages(
-                self.initial_setting
+                self.blockchain_configuration
                     .max_number_of_transactions_per_block
                     .unwrap_or(255) as usize,
             ),
         );
         builder.messages(
             self.to_legacy_messages(
-                self.initial_setting
+                self.blockchain_configuration
                     .max_number_of_transactions_per_block
                     .unwrap_or(255) as usize,
             ),
@@ -276,7 +258,7 @@ fn get_initial_certs<'a>(messages: &mut PeekableMessages<'a>) -> Vec<InitialCert
 }
 
 impl BlockchainConfiguration {
-    fn from_ents(ents: &InitialEnts) -> Self {
+    fn from_ents(ents: &ConfigParams) -> Self {
         use chain_impl_mockchain::config::ConfigParam;
         let mut block0_date = None;
         let mut discrimination = None;
@@ -287,6 +269,10 @@ impl BlockchainConfiguration {
         let mut consensus_leader_ids = vec![];
         let mut consensus_genesis_praos_param_d = None;
         let mut consensus_genesis_praos_param_f = None;
+        let mut max_number_of_transactions_per_block = None;
+        let mut bootstrap_key_slots_percentage = None;
+        let mut allow_account_creation = None;
+        let mut linear_fee = None;
 
         for ent in ents.iter() {
             match ent {
@@ -308,9 +294,12 @@ impl BlockchainConfiguration {
                 ConfigParam::EpochStabilityDepth(param) => epoch_stability_depth
                     .replace(*param)
                     .map(|_| "EpochStabilityDepth"),
-                ConfigParam::ConsensusLeaderId(param) => {
+                ConfigParam::AddBftLeader(param) => {
                     consensus_leader_ids.push(SerdeLeaderId(param.clone()));
                     None
+                }
+                ConfigParam::RemoveBftLeader(_) => {
+                    panic!("block 0 attempts to remove a BFT leader")
                 }
                 ConfigParam::ConsensusGenesisPraosParamD(param) => consensus_genesis_praos_param_d
                     .replace(SerdeAsString(*param))
@@ -320,6 +309,25 @@ impl BlockchainConfiguration {
                         .replace(SerdeAsString(*param))
                         .map(|_| "ConsensusGenesisPraosParamF")
                 }
+                ConfigParam::MaxNumberOfTransactionsPerBlock(param) => {
+                    max_number_of_transactions_per_block
+                        .replace(*param)
+                        .map(|_| "MaxNumberOfTransactionsPerBlock")
+                }
+                ConfigParam::BootstrapKeySlotsPercentage(param) => bootstrap_key_slots_percentage
+                    .replace(*param)
+                    .map(|_| "BootstrapKeySlotsPercentage"),
+                ConfigParam::AllowAccountCreation(param) => allow_account_creation
+                    .replace(*param)
+                    .map(|_| "AllowAccountCreation"),
+                ConfigParam::LinearFee(param) => linear_fee
+                    .replace(InitialLinearFee {
+                        constant: param.constant,
+                        coefficient: param.coefficient,
+                        certificate: param.certificate,
+                    })
+                    .map(|_| "LinearFee"),
+                ConfigParam::ProposalExpiration(_param) => unimplemented!(),
             }
             .map(|param| panic!("Init message contains {} twice", param));
         }
@@ -335,10 +343,14 @@ impl BlockchainConfiguration {
             consensus_leader_ids,
             consensus_genesis_praos_param_d,
             consensus_genesis_praos_param_f,
+            max_number_of_transactions_per_block,
+            bootstrap_key_slots_percentage,
+            allow_account_creation,
+            linear_fee,
         }
     }
 
-    fn to_ents(self) -> InitialEnts {
+    fn to_ents(self) -> ConfigParams {
         // Generate warning or error for each unused field
         let BlockchainConfiguration {
             block0_date,
@@ -350,8 +362,12 @@ impl BlockchainConfiguration {
             consensus_leader_ids,
             consensus_genesis_praos_param_d,
             consensus_genesis_praos_param_f,
+            max_number_of_transactions_per_block,
+            bootstrap_key_slots_percentage,
+            allow_account_creation,
+            linear_fee,
         } = self;
-        let mut initial_ents = InitialEnts::new();
+        let mut initial_ents = ConfigParams::new();
         initial_ents.push(ConfigParam::Block0Date(Block0Date(
             block0_date
                 .duration_since(SystemTime::UNIX_EPOCH)
@@ -368,7 +384,7 @@ impl BlockchainConfiguration {
             initial_ents.push(ConfigParam::EpochStabilityDepth(epoch_stability_depth))
         }
         for leader_id in consensus_leader_ids {
-            initial_ents.push(ConfigParam::ConsensusLeaderId(leader_id.0))
+            initial_ents.push(ConfigParam::AddBftLeader(leader_id.0))
         }
         if let Some(consensus_genesis_praos_param_d) = consensus_genesis_praos_param_d {
             initial_ents.push(ConfigParam::ConsensusGenesisPraosParamD(
@@ -380,55 +396,23 @@ impl BlockchainConfiguration {
                 consensus_genesis_praos_param_f.0,
             ))
         }
-        initial_ents
-    }
-}
-
-impl Update {
-    pub fn to_message(self) -> Message {
-        let proposal = UpdateProposal {
-            max_number_of_transactions_per_block: self.max_number_of_transactions_per_block,
-            bootstrap_key_slots_percentage: self.bootstrap_key_slots_percentage,
-            consensus_version: None,
-            bft_leaders: None,
-            allow_account_creation: self.allow_account_creation,
-            linear_fees: self.linear_fee.map(|linear_fee| LinearFee {
-                constant: linear_fee.constant,
-                coefficient: linear_fee.coefficient,
-                certificate: linear_fee.certificate,
-            }),
-            slot_duration: None,
-            epoch_stability_depth: None,
-        };
-        // FIXME: we probably want to sign using an actual BFT leader
-        // here, but currently the update proposal in block 0 is not
-        // verified anyway. So use a dummy proposer / signature.
-        Message::UpdateProposal(SignedUpdateProposal {
-            proposal: UpdateProposalWithProposer {
-                proposal,
-                proposer_id: PublicKey::<Ed25519Extended>::try_from_bech32_str(
-                    "ed25519e_pk144xm656epf857f8ljfx4qwrc9xfshltfdhl87444sm3mzv78ru8sknr26a",
-                )
-                .unwrap()
-                .into(),
-            },
-            signature: SignatureRaw(vec![]),
-        })
-    }
-    pub fn from_message(update_proposal: &UpdateProposal) -> Self {
-        Update {
-            max_number_of_transactions_per_block: update_proposal
-                .max_number_of_transactions_per_block,
-            bootstrap_key_slots_percentage: update_proposal.bootstrap_key_slots_percentage,
-            allow_account_creation: update_proposal.allow_account_creation,
-            linear_fee: update_proposal
-                .linear_fees
-                .map(|linear_fee| InitialLinearFee {
-                    constant: linear_fee.constant,
-                    coefficient: linear_fee.coefficient,
-                    certificate: linear_fee.certificate,
-                }),
+        if let Some(d) = max_number_of_transactions_per_block {
+            initial_ents.push(ConfigParam::MaxNumberOfTransactionsPerBlock(d))
         }
+        if let Some(d) = bootstrap_key_slots_percentage {
+            initial_ents.push(ConfigParam::BootstrapKeySlotsPercentage(d))
+        }
+        if let Some(d) = allow_account_creation {
+            initial_ents.push(ConfigParam::AllowAccountCreation(d))
+        }
+        if let Some(d) = linear_fee {
+            initial_ents.push(ConfigParam::LinearFee(LinearFee {
+                constant: d.constant,
+                coefficient: d.coefficient,
+                certificate: d.certificate,
+            }))
+        }
+        initial_ents
     }
 }
 
@@ -467,7 +451,6 @@ blockchain_configuration:
     - ed25519e_pk173x5f5xhg66x9yl4x50wnqg9mfwmmt4fma0styptcq4fuyvg3p7q9zxvy7
   consensus_genesis_praos_param_d: "0.222"
   consensus_genesis_praos_param_f: "0.444"
-initial_setting:
   max_number_of_transactions_per_block: 255
   bootstrap_key_slots_percentage: 4
   allow_account_creation: true

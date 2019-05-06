@@ -9,7 +9,7 @@ pub use chain_impl_mockchain::{
     config::{self, Block0Date, ConfigParam},
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
-    message::{InitialEnts, Message, MessageId},
+    message::{ConfigParams, Message, MessageId},
     multiverse::Multiverse,
 };
 use std::time::{Duration, SystemTime};
@@ -28,7 +28,7 @@ custom_error! {pub Block0Malformed
 
 pub trait Block0DataSource {
     fn slot_duration(&self) -> Result<Duration, Block0Error>;
-    fn slots_per_epoch(&self) -> Result<Option<u64>, Block0Error>;
+    fn slots_per_epoch(&self) -> Result<Option<u32>, Block0Error>;
     fn start_time(&self) -> Result<SystemTime, Block0Error>;
 }
 
@@ -42,7 +42,7 @@ impl Block0DataSource for Block {
         Err(Block0Malformed::NoSlotDuration.into())
     }
 
-    fn slots_per_epoch(&self) -> Result<Option<u64>, Block0Error> {
+    fn slots_per_epoch(&self) -> Result<Option<u32>, Block0Error> {
         for config in initial(self)?.iter() {
             if let ConfigParam::SlotsPerEpoch(slots) = config {
                 return Ok(Some(*slots));
@@ -61,7 +61,7 @@ impl Block0DataSource for Block {
     }
 }
 
-fn initial(block: &Block) -> Result<&InitialEnts, Block0Malformed> {
+fn initial(block: &Block) -> Result<&ConfigParams, Block0Malformed> {
     for message in block.messages() {
         if let Message::Initial(init) = message {
             return Ok(init);

@@ -45,7 +45,7 @@ blockchain_configuration:
 
 # The Initial settings defines the settings than may change during
 # the life time of the blockchain.
-initial_setting:
+blockchain_configuration:
 
   # This is hte max number of messages allowed in a given Block
   max_number_of_transactions_per_block: 255

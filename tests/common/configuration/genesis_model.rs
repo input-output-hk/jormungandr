@@ -17,10 +17,6 @@ pub struct BlockchainConfig {
     pub consensus_leader_ids: Vec<String>,
     pub consensus_genesis_praos_param_d: Option<String>,
     pub consensus_genesis_praos_param_f: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct InitialSetting {
     pub allow_account_creation: bool,
     pub linear_fees: LinearFees,
 }
@@ -41,7 +37,6 @@ pub struct Fund {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GenesisYaml {
     pub blockchain_configuration: BlockchainConfig,
-    pub initial_setting: InitialSetting,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub initial_funds: Option<Vec<Fund>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -102,8 +97,6 @@ impl GenesisYaml {
                 ],
                 consensus_genesis_praos_param_d: Some("0.222".to_owned()),
                 consensus_genesis_praos_param_f: Some("0.444".to_owned()),
-            },
-            initial_setting: InitialSetting {
                 allow_account_creation: true,
                 linear_fees: LinearFees {
                     constant: 0,

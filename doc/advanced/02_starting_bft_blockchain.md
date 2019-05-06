@@ -33,7 +33,6 @@ blockchain_configuration:
   consensus_leader_ids:
     - ed25519e_pk1k3wjgdcdcn23k6dwr0cyh88ad7a4ayenyxaherfazwy363pyy8wqppn7j3
     - ed25519e_pk13talprd9grgaqzs42mkm0x2xek5wf9mdf0eefdy8a6dk5grka2gstrp3en
-initial_setting:
   allow_account_creation: true
   linear_fees:
     constant: 0
