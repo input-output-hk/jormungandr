@@ -1,4 +1,5 @@
 use chain_core::property;
+use chain_time::era::TimeEra;
 
 use std::{error, fmt, num::ParseIntError, str};
 
@@ -14,8 +15,6 @@ pub struct BlockDate {
 pub type Epoch = u32;
 pub type SlotId = u32;
 
-pub const EPOCH_DURATION: SlotId = 100; // FIXME: remove, make configurable
-
 impl BlockDate {
     pub fn first() -> BlockDate {
         BlockDate {
@@ -25,9 +24,10 @@ impl BlockDate {
     }
 
     /// Get the slot following this one.
-    pub fn next(&self) -> BlockDate {
-        assert!(self.slot_id < EPOCH_DURATION);
-        if self.slot_id + 1 == EPOCH_DURATION {
+    pub fn next(&self, era: &TimeEra) -> BlockDate {
+        let epoch_duration = era.slots_per_epoch;
+        assert!(self.slot_id < epoch_duration);
+        if self.slot_id + 1 == epoch_duration {
             BlockDate {
                 epoch: self.epoch + 1,
                 slot_id: 0,
@@ -50,7 +50,6 @@ impl BlockDate {
 
 impl property::BlockDate for BlockDate {
     fn from_epoch_slot_id(epoch: Epoch, slot_id: SlotId) -> Self {
-        assert!(slot_id < EPOCH_DURATION);
         BlockDate {
             epoch: epoch,
             slot_id: slot_id,

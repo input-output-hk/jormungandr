@@ -19,11 +19,11 @@ pub struct EpochPosition {
 
 /// Describe a new era, which start at epoch_start and is associated
 /// to a specific slot. Each epoch have a constant number of slots on a given time era.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimeEra {
     epoch_start: Epoch,
     slot_start: Slot,
-    slots_per_epoch: u32,
+    pub slots_per_epoch: u32,
 }
 
 impl TimeEra {

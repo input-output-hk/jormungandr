@@ -93,6 +93,10 @@ impl TimeFrame {
         }
     }
 
+    pub fn slot0(&self) -> Slot {
+        Slot(self.slot_offset.0)
+    }
+
     /// Given a system time get the slot and associated duration leftover
     pub fn slot_at_precise(&self, at: &SystemTime) -> Option<SlotAndDuration> {
         match self.timeline.differential(at) {

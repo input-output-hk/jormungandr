@@ -12,7 +12,9 @@ use crate::value::*;
 use crate::{account, certificate, legacy, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property::{self, ChainLength as _, Message as _};
+use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
 // static parameters, effectively this is constant in the parameter of the blockchain
 #[derive(Clone)]
@@ -50,6 +52,31 @@ pub struct Ledger {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Block0Error {
+    OnlyMessageReceived,
+    TransactionHasInput,
+    TransactionHasOutput,
+    TransactionHasWitnesses,
+    InitialMessageMissing,
+    InitialMessageMany,
+    InitialMessageDuplicateBlock0Date,
+    InitialMessageDuplicateDiscrimination,
+    InitialMessageDuplicateConsensusVersion,
+    InitialMessageDuplicateSlotDuration,
+    InitialMessageDuplicateEpochStabilityDepth,
+    InitialMessageDuplicatePraosActiveSlotsCoeff,
+    InitialMessageNoDate,
+    InitialMessageNoSlotDuration,
+    InitialMessageNoDiscrimination,
+    InitialMessageNoConsensusVersion,
+    InitialMessageNoConsensusLeaderId,
+    InitialMessageNoPraosActiveSlotsCoeff,
+    UtxoTotalValueTooBig,
+    HasUpdateProposal,
+    HasUpdateVote,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Config(config::Error),
     NotEnoughSignatures(usize, usize),
@@ -60,30 +87,11 @@ pub enum Error {
     OldUtxoInvalidPublicKey(UtxoPointer, Output<legacy::OldAddress>, Witness),
     AccountInvalidSignature(account::Identifier, Witness),
     TransactionHasNoInput,
-    Block0OnlyMessageReceived,
-    Block0TransactionHasInput,
-    Block0TransactionHasOutput,
-    Block0TransactionHasWitnesses,
-    Block0InitialMessageMissing,
-    Block0InitialMessageDuplicateBlock0Date,
-    Block0InitialMessageDuplicateDiscrimination,
-    Block0InitialMessageDuplicateConsensusVersion,
-    Block0InitialMessageDuplicateSlotDuration,
-    Block0InitialMessageDuplicateEpochStabilityDepth,
-    Block0InitialMessageDuplicatePraosActiveSlotsCoeff,
-    Block0InitialMessageNoBlock0Date,
-    Block0InitialMessageNoDiscrimination,
-    Block0InitialMessageNoConsensusVersion,
-    Block0InitialMessageNoSlotDuration,
-    Block0InitialMessageNoConsensusLeaderId,
-    Block0InitialMessageNoPraosActiveSlotsCoeff,
-    Block0UtxoTotalValueTooBig,
-    Block0HasUpdateProposal,
-    Block0HasUpdateVote,
     FeeCalculationError(ValueError),
     PraosActiveSlotsCoeffInvalid(ActiveSlotsCoeffError),
     UtxoInputsTotal(ValueError),
     UtxoOutputsTotal(ValueError),
+    Block0(Block0Error),
     Account(account::LedgerError),
     NotBalanced(Value, Value),
     ZeroOutput(Output<Address>),
@@ -107,6 +115,12 @@ pub enum Error {
 impl From<utxo::Error> for Error {
     fn from(e: utxo::Error) -> Self {
         Error::UtxoError(e)
+    }
+}
+
+impl From<Block0Error> for Error {
+    fn from(e: Block0Error) -> Self {
+        Error::Block0(e)
     }
 }
 
@@ -158,11 +172,12 @@ impl Ledger {
         let init_ents = match content_iter.next() {
             Some(Message::Initial(ref init_ents)) => Ok(init_ents),
             Some(_) => Err(Error::ExpectingInitialMessage),
-            None => Err(Error::Block0InitialMessageMissing),
+            None => Err(Error::Block0(Block0Error::InitialMessageMissing)),
         }?;
 
         let mut regular_ents = crate::message::ConfigParams::new();
         let mut block0_start_time = None;
+        let mut slot_duration = None;
         let mut discrimination = None;
 
         for param in init_ents.iter() {
@@ -173,16 +188,23 @@ impl Ledger {
                 ConfigParam::Discrimination(d) => {
                     discrimination = Some(*d);
                 }
+                ConfigParam::SlotDuration(d) => {
+                    slot_duration = Some(*d);
+                }
                 _ => regular_ents.push(param.clone()),
             }
         }
 
         if block0_start_time.is_none() {
-            return Err(Error::Block0InitialMessageNoBlock0Date);
+            return Err(Error::Block0(Block0Error::InitialMessageNoDate));
         }
 
         if discrimination.is_none() {
-            return Err(Error::Block0InitialMessageNoDiscrimination);
+            return Err(Error::Block0(Block0Error::InitialMessageNoDiscrimination));
+        }
+
+        if slot_duration.is_none() {
+            return Err(Error::Block0(Block0Error::InitialMessageNoSlotDuration));
         }
 
         let static_params = LedgerStaticParameters {
@@ -191,10 +213,24 @@ impl Ledger {
             discrimination: discrimination.unwrap(),
         };
 
-        let settings = setting::Settings::new().apply(&regular_ents)?;
+        let system_time =
+            SystemTime::UNIX_EPOCH + Duration::from_secs(block0_start_time.unwrap().0);
+        let timeline = Timeline::new(system_time);
+        let tf = TimeFrame::new(
+            timeline,
+            SlotDuration::from_secs(slot_duration.unwrap() as u32),
+        );
+        let slot0 = tf.slot0();
+
+        // TODO -- configurable slots per epoch
+        let era = TimeEra::new_era(slot0, Epoch(0), 21600);
+
+        let settings = setting::Settings::new(era).apply(&regular_ents)?;
 
         if settings.bft_leaders.is_empty() {
-            return Err(Error::Block0InitialMessageNoConsensusLeaderId);
+            return Err(Error::Block0(
+                Block0Error::InitialMessageNoConsensusLeaderId,
+            ));
         }
 
         let mut ledger = Ledger::empty(settings, static_params);
@@ -204,17 +240,17 @@ impl Ledger {
         for content in content_iter {
             match content {
                 Message::Initial(_) => {
-                    return Err(Error::Block0InitialMessageMissing);
+                    return Err(Error::Block0(Block0Error::InitialMessageMany));
                 }
                 Message::OldUtxoDeclaration(old) => {
                     ledger.oldutxos = apply_old_declaration(ledger.oldutxos, old)?;
                 }
                 Message::Transaction(authenticated_tx) => {
                     if authenticated_tx.transaction.inputs.len() != 0 {
-                        return Err(Error::Block0TransactionHasInput);
+                        return Err(Error::Block0(Block0Error::TransactionHasInput));
                     }
                     if authenticated_tx.witnesses.len() != 0 {
-                        return Err(Error::Block0TransactionHasWitnesses);
+                        return Err(Error::Block0(Block0Error::TransactionHasWitnesses));
                     }
                     let transaction_id = authenticated_tx.transaction.hash();
                     let (new_utxos, new_accounts) = internal_apply_transaction_output(
@@ -229,20 +265,20 @@ impl Ledger {
                     ledger.accounts = new_accounts;;
                 }
                 Message::UpdateProposal(_) => {
-                    return Err(Error::Block0HasUpdateProposal);
+                    return Err(Error::Block0(Block0Error::HasUpdateProposal));
                 }
                 Message::UpdateVote(_) => {
-                    return Err(Error::Block0HasUpdateVote);
+                    return Err(Error::Block0(Block0Error::HasUpdateVote));
                 }
                 Message::Certificate(authenticated_cert_tx) => {
                     if authenticated_cert_tx.transaction.inputs.len() != 0 {
-                        return Err(Error::Block0TransactionHasInput);
+                        return Err(Error::Block0(Block0Error::TransactionHasInput));
                     }
                     if authenticated_cert_tx.witnesses.len() != 0 {
-                        return Err(Error::Block0TransactionHasWitnesses);
+                        return Err(Error::Block0(Block0Error::TransactionHasWitnesses));
                     }
                     if authenticated_cert_tx.transaction.outputs.len() != 0 {
-                        return Err(Error::Block0TransactionHasOutput);
+                        return Err(Error::Block0(Block0Error::TransactionHasOutput));
                     }
                     let (new_delegation, action) = ledger
                         .delegation
@@ -295,8 +331,10 @@ impl Ledger {
 
         for content in contents {
             match content {
-                Message::Initial(_) => return Err(Error::Block0OnlyMessageReceived),
-                Message::OldUtxoDeclaration(_) => return Err(Error::Block0OnlyMessageReceived),
+                Message::Initial(_) => return Err(Error::Block0(Block0Error::OnlyMessageReceived)),
+                Message::OldUtxoDeclaration(_) => {
+                    return Err(Error::Block0(Block0Error::OnlyMessageReceived))
+                }
                 Message::Transaction(authenticated_tx) => {
                     let (new_ledger_, _fee) =
                         new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
@@ -443,11 +481,12 @@ impl Ledger {
         let account_value = self
             .accounts
             .get_total_value()
-            .map_err(|_| Error::Block0UtxoTotalValueTooBig)?;
+            .map_err(|_| Error::Block0(Block0Error::UtxoTotalValueTooBig))?;
         let all_utxo_values = old_utxo_values
             .chain(new_utxo_values)
             .chain(Some(account_value));
-        Value::sum(all_utxo_values).map_err(|_| Error::Block0UtxoTotalValueTooBig)?;
+        Value::sum(all_utxo_values)
+            .map_err(|_| Error::Block0(Block0Error::UtxoTotalValueTooBig))?;
         Ok(())
     }
 }
@@ -740,6 +779,7 @@ pub mod test {
         let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
         ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
         ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
+        ie.push(ConfigParam::SlotDuration(10));
         ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
             Milli::HALF,
         ));
