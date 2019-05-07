@@ -17,6 +17,7 @@ impl Message {
     pub fn exec(self) {
         let mut hex = String::new();
         utils::io::open_file_read(&self.input)
+            .unwrap()
             .read_to_string(&mut hex)
             .unwrap();
         let bytes = hex::decode(&hex).unwrap();

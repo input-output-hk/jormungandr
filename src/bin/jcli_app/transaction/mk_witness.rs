@@ -8,7 +8,10 @@ use chain_impl_mockchain::{
     transaction::{TransactionId, Witness},
 };
 use jcli_app::{transaction::common, utils::io};
-use std::{io::Read, path::PathBuf};
+use std::{
+    io::{Read, Write},
+    path::PathBuf,
+};
 use structopt::StructOpt;
 
 custom_error! {pub MkWitnessError
@@ -83,7 +86,9 @@ impl std::str::FromStr for WitnessType {
 impl MkWitness {
     fn secret<A: AsymmetricKey>(&self) -> Result<SecretKey<A>, MkWitnessError> {
         let mut bech32_str = String::new();
-        io::open_file_read(&self.secret).read_to_string(&mut bech32_str)?;
+        io::open_file_read(&self.secret)
+            .unwrap()
+            .read_to_string(&mut bech32_str)?;
         Ok(SecretKey::try_from_bech32_str(&bech32_str)?)
     }
 
@@ -117,7 +122,7 @@ impl MkWitness {
     }
 
     fn write_witness(&self, witness: &Witness) -> Result<(), MkWitnessError> {
-        let mut writer = io::open_file_write(&self.output);
+        let mut writer = io::open_file_write(&self.output).unwrap();
         let bytes = witness.serialize_as_vec()?;
 
         let base32 = bytes.to_base32();

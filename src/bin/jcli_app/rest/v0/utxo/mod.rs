@@ -16,7 +16,7 @@ impl Utxo {
         let addr = match self {
             Utxo::Get { addr } => addr,
         };
-        let url = addr.with_segments(&["v0", "utxo"]).into_url();
+        let url = addr.with_segments(&["v0", "utxo"]).unwrap().into_url();
         let utxos: serde_json::Value = reqwest::Client::new()
             .get(url)
             .send()

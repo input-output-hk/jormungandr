@@ -16,7 +16,7 @@ impl Tip {
         let addr = match self {
             Tip::Get { addr } => addr,
         };
-        let url = addr.with_segments(&["v0", "tip"]).into_url();
+        let url = addr.with_segments(&["v0", "tip"]).unwrap().into_url();
         let tip = reqwest::Client::new()
             .get(url)
             .send()

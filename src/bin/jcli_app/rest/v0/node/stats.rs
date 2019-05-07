@@ -16,7 +16,10 @@ impl Stats {
         let addr = match self {
             Stats::Get { addr } => addr,
         };
-        let url = addr.with_segments(&["v0", "node", "stats"]).into_url();
+        let url = addr
+            .with_segments(&["v0", "node", "stats"])
+            .unwrap()
+            .into_url();
         let status: serde_json::Value = reqwest::Client::new()
             .get(url)
             .send()
