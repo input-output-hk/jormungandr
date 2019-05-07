@@ -95,7 +95,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id() {
             &jormungandr_rest_address,
         ),
         "Status(400)",
-        "This assertion is incorrect on purpose to aviod failing build when running test,
+        "This assertion is incorrect on purpose to avoid failing build when running test,
         after #298 is fixed it need to be changed to correct one",
     );
 }
@@ -117,7 +117,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_re
             &jormungandr_rest_address,
         ),
         "Status(400)",
-        "This assertion is incorrect on purpose to aviod failing build when running test,
+        "This assertion is incorrect on purpose to avoid failing build when running test,
         after #298 is fixed it need to be changed to correct one",
     );
 }
@@ -156,7 +156,7 @@ pub fn test_correct_error_is_returned_for_incorrect_host_address() {
     process_assert::assert_process_failed_and_matches_message_with_desc(
         jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_host),
         "thread 'main' panicked at",
-        "This assertion is incorrect on purpose to aviod failing build when running test,
+        "This assertion is incorrect on purpose to avoid failing build when running test,
         after #298 is fixed it need to be changed to correct one",
     );
 }
@@ -172,7 +172,7 @@ pub fn test_correct_error_is_returned_for_incorrect_path() {
     process_assert::assert_process_failed_and_matches_message_with_desc(
         jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_host),
         "thread 'main' panicked at",
-        "This assertion is incorrect on purpose to aviod failing build when running test,
+        "This assertion is incorrect on purpose to avoid failing build when running test,
         after #298 is fixed it need to be changed to correct one",
     );
 }
