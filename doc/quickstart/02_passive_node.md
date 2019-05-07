@@ -35,7 +35,7 @@ peer_2_peer:
   trusted_peers:
     - id: 1
       address: "/ip4/104.24.28.11/tcp/8299"
-  public_access: "/ip4/u.v.x.y/tcp/8299"
+  public_address: "/ip4/u.v.x.y/tcp/8299"
   topics_of_interests:
     messages: low
     blocks: normal
@@ -57,7 +57,7 @@ Fields description:
       bootstrap the p2p topology (and bootstrap our local blockchain);
     - *public_id*: (optional) the public identifier send to the other nodes in the
       p2p network. If not set it will be randomly generated.
-    - *public_access*: the address to listen from and accept connection
+    - *public_address*: the address to listen from and accept connection
       from. This is the public address that will be distributed to other peers
       of the network that may find interest into participating to the blockchain
       dissemination with the node;
