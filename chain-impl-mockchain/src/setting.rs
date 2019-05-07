@@ -5,11 +5,7 @@ use crate::leadership::genesis::ActiveSlotsCoeff;
 use crate::milli::Milli;
 use crate::update::Error;
 use crate::{block::ConsensusVersion, config::ConfigParam, fee::LinearFee, leadership::bft};
-use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
-use chain_core::property;
-use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
 use chain_time::era::TimeEra;
-use std::collections::{BTreeMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::Arc;
 
