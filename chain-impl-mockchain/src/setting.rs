@@ -18,7 +18,7 @@ pub struct Settings {
     pub epoch_stability_depth: u32,
     pub active_slots_coeff: ActiveSlotsCoeff,
     pub max_number_of_transactions_per_block: u32,
-    pub bootstrap_key_slots_percentage: u8, // == d * 100
+    pub bft_slots_ratio: Milli, // aka "d" parameter
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
     /// allow for the creation of accounts without the certificate
     pub allow_account_creation: bool,
@@ -42,7 +42,7 @@ impl Settings {
             epoch_stability_depth: 10, // num of block
             active_slots_coeff: ActiveSlotsCoeff::try_from(Milli::HALF).unwrap(),
             max_number_of_transactions_per_block: 100,
-            bootstrap_key_slots_percentage: SLOTS_PERCENTAGE_RANGE,
+            bft_slots_ratio: Milli::ONE,
             bft_leaders: Arc::new(Vec::new()),
             allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
@@ -78,18 +78,17 @@ impl Settings {
                 ConfigParam::EpochStabilityDepth(d) => {
                     new_state.epoch_stability_depth = *d;
                 }
-                ConfigParam::ConsensusGenesisPraosParamD(_d) => {
-                    // FIXME: implement
-                    panic!()
-                }
                 ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(d) => {
                     new_state.active_slots_coeff = ActiveSlotsCoeff(*d);
                 }
                 ConfigParam::MaxNumberOfTransactionsPerBlock(d) => {
                     new_state.max_number_of_transactions_per_block = *d;
                 }
-                ConfigParam::BootstrapKeySlotsPercentage(d) => {
-                    new_state.bootstrap_key_slots_percentage = *d;
+                ConfigParam::BftSlotsRatio(d) => {
+                    if *d > Milli::ONE {
+                        return Err(Error::BadBftSlotsRatio(*d));
+                    }
+                    new_state.bft_slots_ratio = *d;
                 }
                 ConfigParam::AddBftLeader(d) => {
                     // FIXME: O(n)
