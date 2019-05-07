@@ -271,7 +271,7 @@ mod test {
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
     use chain_crypto::SecretKey;
     use chain_storage::store::BlockStore;
-    use chain_time::*;
+    use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
     use quickcheck::{Arbitrary, StdGen};
     use std::time::SystemTime;
 
