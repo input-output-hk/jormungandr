@@ -103,7 +103,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id() {
             &incorrect_block_id,
             &jormungandr_rest_address,
         ),
-        "value: Error { kind: ClientError(400)",
+        "Status(400)",
         "This assertion is incorrect on purpose to aviod failing build when running test,
         after #298 is fixed it need to be changed to correct one",
     );
@@ -127,7 +127,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_re
             &1,
             &jormungandr_rest_address,
         ),
-        "value: Error { kind: ClientError(400)",
+        "Status(400)",
         "This assertion is incorrect on purpose to aviod failing build when running test,
         after #298 is fixed it need to be changed to correct one",
     );
