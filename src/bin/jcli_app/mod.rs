@@ -1,4 +1,5 @@
 mod address;
+mod auto_completion;
 mod block;
 mod certificate;
 mod debug;
@@ -7,6 +8,7 @@ mod rest;
 mod transaction;
 mod utils;
 
+use std::error::Error;
 use structopt::StructOpt;
 
 /// Jormungandr CLI toolkit
@@ -28,56 +30,21 @@ pub enum JCli {
     /// Certificate generation tool
     Certificate(certificate::Certificate),
     /// Auto completion
-    AutoCompletion(AutoCompletion),
-}
-
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
-pub struct AutoCompletion {
-    /// set the type shell for the auto completion output (bash, zsh...)
-    shell: structopt::clap::Shell,
-
-    /// path to the directory to write the generated auto completion files
-    output: std::path::PathBuf,
+    AutoCompletion(auto_completion::AutoCompletion),
 }
 
 impl JCli {
-    pub fn exec(self) {
+    pub fn exec(self) -> Result<(), Box<Error>> {
         match self {
-            JCli::Key(key) => {
-                if let Err(error) = key.exec() {
-                    report_error(error)
-                }
-            }
+            JCli::Key(key) => key.exec()?,
             JCli::Address(address) => address.exec(),
             JCli::Genesis(genesis) => genesis.exec(),
             JCli::Rest(rest) => rest.exec(),
-            JCli::Transaction(transaction) => {
-                if let Err(error) = transaction.exec() {
-                    report_error(error)
-                }
-            }
+            JCli::Transaction(transaction) => transaction.exec()?,
             JCli::Debug(debug) => debug.exec(),
-            JCli::Certificate(certificate) => {
-                if let Err(error) = certificate.exec() {
-                    report_error(error)
-                }
-            }
-            JCli::AutoCompletion(auto_completion) => {
-                let mut jcli = JCli::clap();
-                jcli.gen_completions("jcli", auto_completion.shell, auto_completion.output);
-            }
-        }
+            JCli::Certificate(certificate) => certificate.exec()?,
+            JCli::AutoCompletion(auto_completion) => auto_completion.exec::<Self>(),
+        };
+        Ok(())
     }
-}
-
-fn report_error<E: std::error::Error>(error: E) {
-    eprintln!("{}", error);
-    let mut source = error.source();
-    while let Some(sub_error) = source {
-        eprintln!("  |-> {}", sub_error);
-        source = sub_error.source();
-    }
-
-    std::process::exit(1)
 }
