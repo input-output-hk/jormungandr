@@ -161,7 +161,7 @@ where
     }
 }
 
-pub fn serialize_to_vec<T>(values: &[T]) -> Result<Vec<Vec<u8>>, tower_grpc::Status>
+pub fn serialize_to_repeated_bytes<T>(values: &[T]) -> Result<Vec<Vec<u8>>, tower_grpc::Status>
 where
     T: property::Serialize,
 {
@@ -213,7 +213,7 @@ where
     T: Node + property::Serialize,
 {
     fn into_message(self) -> Result<gen::node::Gossip, tower_grpc::Status> {
-        let nodes = serialize_to_vec(self.nodes())?;
+        let nodes = serialize_to_repeated_bytes(self.nodes())?;
         Ok(gen::node::Gossip { nodes })
     }
 }
