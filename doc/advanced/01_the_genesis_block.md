@@ -40,7 +40,7 @@ There are multiple _parts_ in the genesis file:
 | `epoch_stability_depth` | number | allowed size of a fork (in number of block) |
 | `consensus_leader_ids` | array | the list of the BFT leader at the beginning of the blockchain |
 | `max_number_of_transactions_per_block` | number | the maximum number of transactions allowed in a block |
-| `bootstrap_key_slots_percentage` | number | placeholder, do not use |
+| `bft_slots_ratio` | number | placeholder, do not use |
 | `allow_account_creation` | boolean | allow creating accounts without publishing certificate |
 | `linear_fee` | object | linear fee settings, set the fee for transaction and certificate publishing |
 
