@@ -195,31 +195,23 @@ impl Ledger {
             }
         }
 
-        if block0_start_time.is_none() {
-            return Err(Error::Block0(Block0Error::InitialMessageNoDate));
-        }
-
-        if discrimination.is_none() {
-            return Err(Error::Block0(Block0Error::InitialMessageNoDiscrimination));
-        }
-
-        if slot_duration.is_none() {
-            return Err(Error::Block0(Block0Error::InitialMessageNoSlotDuration));
-        }
+        // here we make sure those specific parameters are present, otherwise we returns a given error
+        let block0_start_time =
+            block0_start_time.ok_or(Error::Block0(Block0Error::InitialMessageNoDate))?;
+        let discrimination =
+            discrimination.ok_or(Error::Block0(Block0Error::InitialMessageNoDiscrimination))?;
+        let slot_duration =
+            slot_duration.ok_or(Error::Block0(Block0Error::InitialMessageNoSlotDuration))?;
 
         let static_params = LedgerStaticParameters {
             block0_initial_hash,
-            block0_start_time: block0_start_time.unwrap(),
-            discrimination: discrimination.unwrap(),
+            block0_start_time: block0_start_time,
+            discrimination: discrimination,
         };
 
-        let system_time =
-            SystemTime::UNIX_EPOCH + Duration::from_secs(block0_start_time.unwrap().0);
+        let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(block0_start_time.0);
         let timeline = Timeline::new(system_time);
-        let tf = TimeFrame::new(
-            timeline,
-            SlotDuration::from_secs(slot_duration.unwrap() as u32),
-        );
+        let tf = TimeFrame::new(timeline, SlotDuration::from_secs(slot_duration as u32));
         let slot0 = tf.slot0();
 
         // TODO -- configurable slots per epoch
