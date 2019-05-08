@@ -112,6 +112,17 @@ pub fn test_key_to_public_invalid_key() {
 
 #[test]
 #[cfg(feature = "integration-test")]
+pub fn test_key_to_public_invalid_chars_key() {
+    let private_key =
+        "node:: ed2551ssss9_sk1357nu8uaxvdekg6uhqmdd0zcd3tjv3qq0p2029uk6pvfxuks5rzstp5ceq";
+    process_assert::assert_process_failed_and_contains_message(
+        jcli_wrapper::jcli_commands::get_key_to_public_command(&private_key),
+        "invalid character",
+    );
+}
+
+#[test]
+#[cfg(feature = "integration-test")]
 pub fn test_private_key_to_public_key() {
     let private_key = jcli_wrapper::assert_key_generate("Ed25519Extended");
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);

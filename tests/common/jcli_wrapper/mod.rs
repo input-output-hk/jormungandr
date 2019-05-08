@@ -2,9 +2,9 @@
 
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
-pub mod utxo;
-use self::utxo::Utxo;
+
 use super::configuration;
+use super::data::utxo::Utxo;
 use super::file_assert;
 use super::file_utils;
 use super::process_assert;
@@ -55,6 +55,7 @@ pub fn assert_rest_stats(host: &str) -> BTreeMap<String, String> {
     process_assert::assert_process_exited_successfully(output);
     content
 }
+
 pub fn assert_rest_utxo_get(host: &str) -> Vec<Utxo> {
     let output =
         process_utils::run_process_and_get_output(jcli_commands::get_rest_utxo_get_command(&host));
@@ -108,6 +109,39 @@ pub fn assert_post_transaction(transaction_hash: &str, host: &str) -> () {
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
     assert_eq!("Success!", single_line);
+}
+
+pub fn assert_transaction_post_accepted(transaction_hash: &str, host: &str) -> () {
+    let node_stats = self::assert_rest_stats(&host);
+    let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
+
+    self::assert_post_transaction(&transaction_hash, &host);
+    let node_stats = self::assert_rest_stats(&host);
+    let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
+    assert_eq!(
+        before + 1,
+        after,
+        "Transaction was NOT accepted by node:
+     txRecvCnt counter wasn't incremented after post"
+    );
+
+    self::assert_rest_utxo_get(&host);
+}
+
+pub fn assert_transaction_post_failed(transaction_hash: &str, host: &str) -> () {
+    let node_stats = self::assert_rest_stats(&host);
+    let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
+
+    self::assert_post_transaction(&transaction_hash, &host);
+    let node_stats = self::assert_rest_stats(&host);
+    let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
+    assert_eq!(
+        before, after,
+        "Transaction was accepted by node while it should not be
+     txRecvCnt counter was incremented after post"
+    );
+
+    self::assert_rest_utxo_get(&host);
 }
 
 pub fn assert_key_generate_default() -> String {

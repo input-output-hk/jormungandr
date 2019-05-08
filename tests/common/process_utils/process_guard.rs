@@ -3,7 +3,8 @@
 use std::process::Child;
 
 /// Struct ensures child process is killed if leaves given scope
-///
+
+#[derive(Debug)]
 pub struct ProcessKillGuard {
     child: Child,
     description: String,

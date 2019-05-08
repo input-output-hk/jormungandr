@@ -5,7 +5,9 @@ use std::env;
 use std::path::PathBuf;
 
 pub mod genesis_model;
+pub mod jormungandr_config;
 pub mod node_config_model;
+pub mod secret_model;
 
 /// Get jcli executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {
