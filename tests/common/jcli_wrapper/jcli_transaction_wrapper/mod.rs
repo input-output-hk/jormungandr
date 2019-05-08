@@ -141,6 +141,22 @@ impl JCLITransactionWrapper {
         self
     }
 
+    pub fn assert_make_witness_fail<'a>(&'a mut self, witness: &Witness, expected_part: &str) {
+        println!("Runing make transaction witness command...");
+
+        process_assert::assert_process_failed_and_contains_message(
+            self.commands.get_make_witness_command(
+                &witness.block_hash,
+                &witness.transaction_id,
+                &witness.addr_type,
+                &witness.spending_account_counter,
+                &witness.file,
+                &witness.private_key_path,
+            ),
+            &expected_part,
+        );
+    }
+
     pub fn create_witness_from_key(
         &self,
         private_key: &str,

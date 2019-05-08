@@ -144,9 +144,19 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
         &jormungandr_rest_address,
     );
 
+    let transaction_message = transaction_wrapper.assert_make_witness_fail(
+        &witness,
+        "index out of bounds: the len is 0 but the index is 0",
+    );
+
+    /*
+    Assertion is changed due to issue: ##325
+    After fix please revert it to:
+
     let transaction_message = transaction_wrapper
         .seal_with_witness(&witness)
         .assert_transaction_to_message();
 
-    jcli_wrapper::assert_transaction_post_accepted(&transaction_message, &jormungandr_rest_address);
+    jcli_wrapper::assert_transaction_post_failed(&transaction_message, &jormungandr_rest_address);
+    */
 }

@@ -128,6 +128,22 @@ pub fn assert_transaction_post_accepted(transaction_hash: &str, host: &str) -> (
     self::assert_rest_utxo_get(&host);
 }
 
+pub fn assert_transaction_post_failed(transaction_hash: &str, host: &str) -> () {
+    let node_stats = self::assert_rest_stats(&host);
+    let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
+
+    self::assert_post_transaction(&transaction_hash, &host);
+    let node_stats = self::assert_rest_stats(&host);
+    let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
+    assert_eq!(
+        before, after,
+        "Transaction was accepted by node while it should not be 
+     txRecvCnt counter was incremented after post"
+    );
+
+    self::assert_rest_utxo_get(&host);
+}
+
 pub fn assert_key_generate_default() -> String {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_key_generate_command_default(),
