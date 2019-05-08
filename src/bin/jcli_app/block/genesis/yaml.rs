@@ -13,7 +13,6 @@ use chain_impl_mockchain::{
 };
 use jormungandr_utils::serde::{self, SerdeAsString, SerdeLeaderId};
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Genesis {
@@ -82,28 +81,33 @@ struct LegacyUTxO {
     pub value: Value,
 }
 
+type StaticStr = &'static str;
+
+custom_error! {pub Error
+    FirstBlock0MessageNotInit = "First message of block 0 is not initial",
+    InitUtxoHasInput = "Initial UTXO has input",
+    InitConfigParamMissing { name: StaticStr } = "Initial message misses parameter {name}",
+    InitConfigParamDuplicate { name: StaticStr } = "Initial message contains duplicate parameter {name}",
+}
+
 impl Genesis {
-    pub fn from_block(block: &Block) -> Self {
-        let mut messages = block.messages();
+    pub fn from_block(block: &Block) -> Result<Self, Error> {
+        let mut messages = block.messages().peekable();
 
-        let blockchain_configuration = if let Some(Message::Initial(initial)) = messages.next() {
-            BlockchainConfiguration::from_ents(initial)
-        } else {
-            panic!("Expecting the first Message of the block 0 to be `Message::Initial`")
+        let blockchain_configuration = match messages.next() {
+            Some(Message::Initial(initial)) => BlockchainConfiguration::from_ents(initial)?,
+            _ => return Err(Error::FirstBlock0MessageNotInit),
         };
-
-        let mut messages = messages.peekable();
-
-        let initial_funds = get_initial_utxos(&mut messages);
+        let initial_funds = get_initial_utxos(&mut messages)?;
         let legacy_funds = get_legacy_utxos(&mut messages);
         let initial_certs = get_initial_certs(&mut messages);
 
-        Genesis {
+        Ok(Genesis {
             blockchain_configuration,
             initial_funds,
             legacy_funds,
             initial_certs,
-        }
+        })
     }
 
     pub fn to_block(&self) -> Block {
@@ -207,13 +211,13 @@ impl Genesis {
 
 type PeekableMessages<'a> = std::iter::Peekable<<&'a Block as HasMessages<'a>>::Messages>;
 
-fn get_initial_utxos<'a>(messages: &mut PeekableMessages<'a>) -> Vec<InitialUTxO> {
+fn get_initial_utxos<'a>(messages: &mut PeekableMessages<'a>) -> Result<Vec<InitialUTxO>, Error> {
     let mut vec = Vec::new();
 
     while let Some(Message::Transaction(transaction)) = messages.peek() {
         messages.next();
         if !transaction.transaction.inputs.is_empty() {
-            panic!("Expected every transaction to not have any inputs");
+            return Err(Error::InitUtxoHasInput);
         }
 
         for output in transaction.transaction.outputs.iter() {
@@ -226,7 +230,7 @@ fn get_initial_utxos<'a>(messages: &mut PeekableMessages<'a>) -> Vec<InitialUTxO
         }
     }
 
-    vec
+    Ok(vec)
 }
 fn get_legacy_utxos<'a>(messages: &mut PeekableMessages<'a>) -> Vec<LegacyUTxO> {
     let mut vec = Vec::new();
@@ -258,7 +262,7 @@ fn get_initial_certs<'a>(messages: &mut PeekableMessages<'a>) -> Vec<InitialCert
 }
 
 impl BlockchainConfiguration {
-    fn from_ents(ents: &ConfigParams) -> Self {
+    fn from_ents(ents: &ConfigParams) -> Result<Self, Error> {
         use chain_impl_mockchain::config::ConfigParam;
         let mut block0_date = None;
         let mut discrimination = None;
@@ -329,26 +333,26 @@ impl BlockchainConfiguration {
                     kes_update_speed.replace(*v).map(|_| "KESUpdateSpeed")
                 }
             }
-            .map(|param| panic!("Init message contains {} twice", param));
+            .map(|name| Err(Error::InitConfigParamDuplicate { name }))
+            .unwrap_or(Ok(()))?;
         }
 
-        const PREFIX: &'static str = "Init message does not contain";
-        BlockchainConfiguration {
-            block0_date: block0_date.expect(&format!("{} Block0Date", PREFIX)),
-            discrimination: discrimination.expect(&format!("{} Discrimination", PREFIX)),
-            block0_consensus: block0_consensus.expect(&format!("{} Block0Consensus", PREFIX)),
+        Ok(BlockchainConfiguration {
+            block0_date: block0_date.ok_or(param_missing_error("Block0Date"))?,
+            discrimination: discrimination.ok_or(param_missing_error("Discrimination"))?,
+            block0_consensus: block0_consensus.ok_or(param_missing_error("Block0Consensus"))?,
             slots_per_epoch,
-            slot_duration: slot_duration.expect(&format!("{} SlotDuration", PREFIX)),
+            slot_duration: slot_duration.ok_or(param_missing_error("SlotDuration"))?,
             epoch_stability_depth,
             consensus_leader_ids,
             consensus_genesis_praos_active_slot_coeff: consensus_genesis_praos_active_slot_coeff
-                .expect(&format!("{} ActiveSlotCoeff", PREFIX)),
+                .ok_or(param_missing_error("ActiveSlotCoeff"))?,
             max_number_of_transactions_per_block,
             bft_slots_ratio,
             allow_account_creation,
             linear_fee,
-            kes_update_speed: kes_update_speed.expect(&format!("{}, KESUpdateSpeed", PREFIX)),
-        }
+            kes_update_speed: kes_update_speed.ok_or(param_missing_error("KESUpdateSpeed"))?,
+        })
     }
 
     fn to_ents(self) -> ConfigParams {
@@ -406,18 +410,16 @@ impl BlockchainConfiguration {
     }
 }
 
-pub fn documented_example<W>(mut writer: W, now: std::time::SystemTime) -> std::io::Result<()>
-where
-    W: std::io::Write,
-{
-    writeln!(
-        writer,
-        include_str!("DOCUMENTED_EXAMPLE.yaml"),
-        now = now
-            .duration_since(std::time::SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-    )
+fn param_missing_error(name: &'static str) -> Error {
+    Error::InitConfigParamMissing { name }
+}
+
+pub fn documented_example(now: std::time::SystemTime) -> String {
+    let secs = now
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    format!(include_str!("DOCUMENTED_EXAMPLE.yaml"), now = secs)
 }
 
 #[cfg(test)]
@@ -463,7 +465,7 @@ legacy_funds:
             serde_yaml::from_str(genesis_yaml).expect("Failed to deserialize YAML");
 
         let block = genesis.to_block();
-        let new_genesis = Genesis::from_block(&block);
+        let new_genesis = Genesis::from_block(&block).expect("Failed to build genesis");
 
         let new_genesis_yaml =
             serde_yaml::to_string(&new_genesis).expect("Failed to serialize YAML");
