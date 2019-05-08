@@ -142,7 +142,7 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        subscription::process_blocks(inbound, self.channels.block_box.clone());
+        subscription::process_blocks(subscriber, inbound, self.channels.block_box.clone());
 
         let subscription = self
             .global_state

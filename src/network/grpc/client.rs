@@ -66,7 +66,7 @@ fn subscribe(
                 );
                 return Err(());
             }
-            subscription::process_blocks(block_sub, block_box);
+            subscription::process_blocks(node_id, block_sub, block_box);
             subscription::process_gossip(gossip_sub, global_state);
             Ok((node_id, prop_handles))
         })

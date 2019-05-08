@@ -1,4 +1,5 @@
 use crate::blockcfg::{Block, Header, HeaderHash, Message, MessageId};
+use crate::network::p2p_topology::NodeId;
 
 use network_core::error as core_error;
 
@@ -267,13 +268,14 @@ impl Debug for ClientMsg {
 }
 
 /// General Block Message for the block task
+#[derive(Debug)]
 pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
     /// Leadership process expect a new end of epoch
     LeadershipExpectEndOfEpoch,
     /// A untrusted block Header has been received from the network task
-    AnnouncedBlock(Header),
+    AnnouncedBlock(Header, NodeId),
 }
 
 impl Debug for BlockMsg {
@@ -282,16 +284,27 @@ impl Debug for BlockMsg {
         match self {
             LeadershipBlock(block) => f.debug_tuple("LeadershipBlock").field(block).finish(),
             LeadershipExpectEndOfEpoch => f.debug_tuple("LeadershipExpectEndOfEpoch").finish(),
-            AnnouncedBlock(header) => f.debug_tuple("AnnouncedBlock").field(header).finish(),
+            AnnouncedBlock(header, node_id) => f
+                .debug_tuple("AnnouncedBlock")
+                .field(header)
+                .field(node_id)
+                .finish(),
         }
     }
 }
 
-/// Message to propagate to the connected peers.
+/// Propagation requests for the network task.
 #[derive(Clone, Debug)]
-pub enum NetworkPropagateMsg {
+pub enum PropagateMsg {
     Block(Header),
     Message(Message),
+}
+
+/// Messages to the network task.
+#[derive(Clone, Debug)]
+pub enum NetworkMsg {
+    Propagate(PropagateMsg),
+    GetBlocks(NodeId, Vec<Header>),
 }
 
 #[cfg(test)]

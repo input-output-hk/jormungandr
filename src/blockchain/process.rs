@@ -1,5 +1,5 @@
 use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
-use crate::intercom::{BlockMsg, NetworkPropagateMsg};
+use crate::intercom::{BlockMsg, NetworkMsg, PropagateMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::{
     async_msg::MessageBox,
@@ -12,7 +12,7 @@ pub fn handle_input(
     info: &TokioServiceInfo,
     blockchain: &BlockchainR,
     _stats_counter: &StatsCounter,
-    network_propagate: &MessageBox<NetworkPropagateMsg>,
+    network_msg_box: &mut MessageBox<NetworkMsg>,
     input: Input<BlockMsg>,
 ) {
     let bquery = match input {
@@ -59,15 +59,13 @@ pub fn handle_input(
                         "date" => header.date().to_string()
                     );
                     slog_debug!(logger, "Header: {:?}", header);
-                    network_propagate
-                        .clone()
-                        .send(NetworkPropagateMsg::Block(header));
+                    network_msg_box.send(NetworkMsg::Propagate(PropagateMsg::Block(header)));
                 }
             }
         }
-        BlockMsg::AnnouncedBlock(header) => {
+        BlockMsg::AnnouncedBlock(header, node_id) => {
             let blockchain = blockchain.lock_read();
-            match chain::header_triage(&blockchain, header, false).unwrap() {
+            match chain::header_triage(&blockchain, &header, false).unwrap() {
                 BlockHeaderTriage::NotOfInterest { reason } => {
                     slog_info!(logger, "rejecting block announcement: {:?}", reason);
                 }
@@ -84,9 +82,7 @@ pub fn handle_input(
                 }
                 BlockHeaderTriage::ProcessBlockToState => {
                     slog_info!(logger, "Block announcement is interesting, fetch block");
-                    // TODO: signal back to the network that the block is interesting
-                    // (get block/request block)
-                    unimplemented!()
+                    network_msg_box.send(NetworkMsg::GetBlocks(node_id, vec![header]));
                 }
             }
         }

@@ -108,7 +108,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let tpool = Arc::new(RwLock::new(tpool_data));
 
     // initialize the network propagation channel
-    let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+    let (mut network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
 
     let stats_counter = StatsCounter::default();
@@ -126,7 +126,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
-            blockchain::handle_input(info, &blockchain, &stats_counter, &network_msgbox, input);
+            blockchain::handle_input(
+                info,
+                &blockchain,
+                &stats_counter,
+                &mut network_msgbox,
+                input,
+            );
             futures::future::ok(())
         })
     };
