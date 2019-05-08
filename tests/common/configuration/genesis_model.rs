@@ -42,7 +42,10 @@ pub struct Fund {
 pub struct GenesisYaml {
     pub blockchain_configuration: BlockchainConfig,
     pub initial_setting: InitialSetting,
-    pub initial_funds: Vec<Fund>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_funds: Option<Vec<Fund>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legacy_funds: Option<Vec<Fund>>,
 }
 
 impl GenesisYaml {
@@ -71,6 +74,17 @@ impl GenesisYaml {
     }
 
     pub fn new_with_funds(initial_funds: Vec<Fund>) -> GenesisYaml {
+        GenesisYaml::new_with_funds_and_legacy(Some(initial_funds), None)
+    }
+
+    pub fn new_with_legacy_funds(legacy_funds: Vec<Fund>) -> GenesisYaml {
+        GenesisYaml::new_with_funds_and_legacy(None, Some(legacy_funds))
+    }
+
+    pub fn new_with_funds_and_legacy(
+        initial_funds: Option<Vec<Fund>>,
+        legacy_funds: Option<Vec<Fund>>,
+    ) -> GenesisYaml {
         GenesisYaml {
             blockchain_configuration: BlockchainConfig {
                 block0_date: 1554185140,
@@ -97,7 +111,8 @@ impl GenesisYaml {
                     certificate: 0,
                 },
             },
-            initial_funds,
+            initial_funds: initial_funds,
+            legacy_funds: legacy_funds,
         }
     }
 }
