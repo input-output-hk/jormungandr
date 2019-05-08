@@ -1,5 +1,5 @@
-use bech32::{Bech32, ToBase32};
 use chain_addr::{AddressReadable, Discrimination, Kind};
+use chain_crypto::bech32::Bech32 as _;
 use chain_crypto::{AsymmetricKey, Ed25519Extended, PublicKey};
 use jcli_app::utils::key_parser::parse_pub_key;
 use structopt::StructOpt;
@@ -52,10 +52,14 @@ pub struct AccountArgs {
     testing: bool,
 }
 
+custom_error! {pub Error
+    MultisigAddressNotSupported = "multisig addresses are not supported",
+}
+
 impl Address {
-    pub fn exec(self) {
+    pub fn exec(self) -> Result<(), Error> {
         match self {
-            Address::Info(info_args) => address_info(&info_args.address),
+            Address::Info(info_args) => address_info(&info_args.address)?,
             Address::Single(single_args) => {
                 if let Some(delegation) = single_args.delegation {
                     mk_delegation(single_args.key, single_args.testing, delegation)
@@ -65,10 +69,11 @@ impl Address {
             }
             Address::Account(account_args) => mk_account(account_args.key, account_args.testing),
         }
+        Ok(())
     }
 }
 
-fn address_info(address: &AddressReadable) {
+fn address_info(address: &AddressReadable) -> Result<(), Error> {
     let chain_addr::Address(discrimination, kind) = address.to_address();
     match discrimination {
         Discrimination::Production => {
@@ -80,14 +85,15 @@ fn address_info(address: &AddressReadable) {
     }
 
     match kind {
-        Kind::Single(single) => println!("public key: {}", print_pub_key(single)),
-        Kind::Account(account) => println!("account: {}", print_pub_key(account)),
-        Kind::Multisig(_) => unimplemented!(),
+        Kind::Single(single) => println!("public key: {}", single.to_bech32_str()),
+        Kind::Account(account) => println!("account: {}", account.to_bech32_str()),
+        Kind::Multisig(_) => return Err(Error::MultisigAddressNotSupported),
         Kind::Group(pubk, groupk) => {
-            println!("public key: {}", print_pub_key(pubk));
-            println!("group key:  {}", print_pub_key(groupk));
+            println!("public key: {}", pubk.to_bech32_str());
+            println!("group key:  {}", groupk.to_bech32_str());
         }
     }
+    Ok(())
 }
 
 fn mk_single(s: PublicKey<Ed25519Extended>, testing: bool) {
@@ -134,9 +140,4 @@ where
     let discrimination = mk_discrimination(testing);
     let kind = f(s, d);
     mk_address(discrimination, kind);
-}
-
-fn print_pub_key<A: AsymmetricKey>(pk: PublicKey<A>) -> Bech32 {
-    let hrp = A::PUBLIC_BECH32_HRP.to_string();
-    Bech32::new(hrp, pk.to_base32()).unwrap()
 }
