@@ -10,6 +10,7 @@ pub fn open_file_write<P: AsRef<Path>>(path: &Option<P>) -> Box<dyn std::io::Wri
                 .write(true)
                 .read(false)
                 .append(false)
+                .truncate(true)
                 .open(path)
                 .unwrap(),
         )
