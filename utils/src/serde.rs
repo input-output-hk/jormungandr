@@ -340,29 +340,6 @@ pub mod crypto {
     }
 }
 
-pub mod time {
-    use super::*;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-    pub fn serialize<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        time.duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            .serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let duration_since_unix_epoch = u64::deserialize(deserializer)?;
-        Ok(SystemTime::UNIX_EPOCH + Duration::from_secs(duration_since_unix_epoch))
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct SerdeLeaderId(pub LeaderId);
 
