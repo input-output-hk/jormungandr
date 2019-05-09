@@ -1,3 +1,8 @@
+use chain_impl_mockchain::certificate::Certificate as MockchainCertificate;
+use jcli_app::utils::io;
+use jormungandr_utils::certificate;
+use std::fmt::Display;
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -8,11 +13,14 @@ mod new_stake_pool_registration;
 mod sign;
 
 custom_error! {pub Error
-    CannotCreatePoolRegistration { source: new_stake_pool_registration::Error } = "Cannot create new stake pool registration certificate",
-    CannotCreateKeyRegistration { source: new_stake_key_registration::Error } = "Cannot create new stake key registration certificate",
-    CannotCreateDelegation { source: new_stake_delegation::Error } = "Cannot create new stake delegation certificate",
-    CannotSignCertificate { source: sign::Error } = "Cannot sign certificate",
-    CannotGetStakePoolId { source: get_stake_pool_id::Error } = "Cannot get stake pool id from the certificate",
+    CertInvalid { source: certificate::Error } = "invalid certificate",
+    PrivKeyInvaild { source: chain_crypto::bech32::Error } = "invalid private key",
+    Io { source: std::io::Error } = "I/O Error",
+    NotStakePoolRegistration = "invalid certificate, expecting a stake pool registration",
+    InputInvalid { source: std::io::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
+    OutputInvalid { source: std::io::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("invalid output file path '{}'", path.display()) }},
 }
 
 #[derive(StructOpt)]
@@ -77,4 +85,34 @@ impl Certificate {
 
         Ok(())
     }
+}
+
+fn read_cert(input: Option<PathBuf>) -> Result<MockchainCertificate, Error> {
+    let cert_str = read_input(input)?;
+    let cert = certificate::deserialize_from_bech32(cert_str.trim())?;
+    Ok(cert)
+}
+
+fn read_input(input: Option<PathBuf>) -> Result<String, Error> {
+    let reader = io::open_file_read(&input).map_err(|source| Error::InputInvalid {
+        source,
+        path: input.unwrap_or_default(),
+    })?;
+    let mut input_str = String::new();
+    BufReader::new(reader).read_line(&mut input_str)?;
+    Ok(input_str)
+}
+
+fn write_cert(output: Option<PathBuf>, cert: MockchainCertificate) -> Result<(), Error> {
+    let bech32 = certificate::serialize_to_bech32(&cert)?;
+    write_output(output, bech32)
+}
+
+fn write_output(output: Option<PathBuf>, data: impl Display) -> Result<(), Error> {
+    let mut writer = io::open_file_write(&output).map_err(|source| Error::OutputInvalid {
+        source,
+        path: output.unwrap_or_default(),
+    })?;
+    writeln!(writer, "{}", data)?;
+    Ok(())
 }

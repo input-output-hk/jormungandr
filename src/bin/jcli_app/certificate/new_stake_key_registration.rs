@@ -1,18 +1,11 @@
 use chain_crypto::{Ed25519Extended, PublicKey};
 use chain_impl_mockchain::certificate::{
-    self, CertificateContent, StakeKeyRegistration as Registration,
+    Certificate, CertificateContent, StakeKeyRegistration as Registration,
 };
-use jcli_app::utils::io;
+use jcli_app::certificate::{self, Error};
 use jcli_app::utils::key_parser::parse_pub_key;
-use jormungandr_utils::certificate as cert_utils;
-use std::io::Write;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-custom_error! {pub Error
-    Encoding { source: cert_utils::Error } = "Invalid certificate",
-    Io { source: std::io::Error } = "I/O error",
-}
 
 #[derive(StructOpt)]
 pub struct StakeKeyRegistration {
@@ -29,15 +22,10 @@ impl StakeKeyRegistration {
         let content = Registration {
             stake_key_id: self.key.into(),
         };
-
-        let cert = certificate::Certificate {
+        let cert = Certificate {
             content: CertificateContent::StakeKeyRegistration(content),
             signatures: vec![],
         };
-
-        let bech32 = cert_utils::serialize_to_bech32(&cert)?;
-        let mut file = io::open_file_write(&self.output).unwrap();
-        writeln!(file, "{}", bech32)?;
-        Ok(())
+        certificate::write_cert(self.output, cert)
     }
 }
