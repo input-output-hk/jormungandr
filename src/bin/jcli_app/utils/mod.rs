@@ -1,3 +1,4 @@
+pub mod error;
 mod host_addr;
 pub mod io;
 pub mod key_parser;

@@ -1,8 +1,9 @@
 use cardano::util::hex;
 use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::message::Message as MockMessage;
-use jcli_app::utils;
-use std::io::Read;
+use jcli_app::debug::Error;
+use jcli_app::utils::{error::CustomErrorFiller, io};
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -14,14 +15,20 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn exec(self) {
-        let mut hex = String::new();
-        utils::io::open_file_read(&self.input)
-            .unwrap()
-            .read_to_string(&mut hex)
-            .unwrap();
-        let bytes = hex::decode(&hex).unwrap();
-        let message = MockMessage::deserialize(bytes.as_ref()).unwrap();
+    pub fn exec(self) -> Result<(), Error> {
+        let reader = io::open_file_read(&self.input).map_err(|source| Error::InputInvalid {
+            source,
+            path: self.input.unwrap_or_default(),
+        })?;
+        let mut hex_str = String::new();
+        BufReader::new(reader).read_line(&mut hex_str)?;
+        let bytes = hex::decode(hex_str.trim())?;
+        let message =
+            MockMessage::deserialize(bytes.as_ref()).map_err(|source| Error::MessageMalformed {
+                source,
+                filler: CustomErrorFiller,
+            })?;
         println!("{:#?}", message);
+        Ok(())
     }
 }

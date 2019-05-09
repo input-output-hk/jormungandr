@@ -41,7 +41,7 @@ impl JCli {
             JCli::Genesis(genesis) => genesis.exec(),
             JCli::Rest(rest) => rest.exec(),
             JCli::Transaction(transaction) => transaction.exec()?,
-            JCli::Debug(debug) => debug.exec(),
+            JCli::Debug(debug) => debug.exec()?,
             JCli::Certificate(certificate) => certificate.exec()?,
             JCli::AutoCompletion(auto_completion) => auto_completion.exec::<Self>(),
         };
