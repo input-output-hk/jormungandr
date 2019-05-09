@@ -85,7 +85,7 @@ fn handle_event(
             .unwrap(),
     };
 
-    let parent_id = &*b.tip;
+    let parent_id = b.get_tip();
 
     let logger = Logger::root(
         logger.clone(),
@@ -102,8 +102,7 @@ fn handle_event(
         LeaderOutput::Bft(_bft_public_key) => {
             if let Some(bft_secret_key) = &secret.bft_leader {
                 slog_info!(logger, "Node elected for BFT");
-                let block_builder =
-                    prepare_block(&transaction_pool, date, chain_length, *parent_id);
+                let block_builder = prepare_block(&transaction_pool, date, chain_length, parent_id);
 
                 let block = block_builder.make_bft_block(&bft_secret_key.sig_key);
 
@@ -120,8 +119,7 @@ fn handle_event(
         LeaderOutput::GenesisPraos(witness) => {
             if let Some(genesis_leader) = &mut secret.genesis_leader {
                 slog_info!(logger, "Node elected for Genesis Praos");
-                let block_builder =
-                    prepare_block(&transaction_pool, date, chain_length, *parent_id);
+                let block_builder = prepare_block(&transaction_pool, date, chain_length, parent_id);
 
                 let block = block_builder.make_genesis_praos_block(
                     &genesis_leader.node_id,

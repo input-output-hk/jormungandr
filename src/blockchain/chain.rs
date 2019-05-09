@@ -10,6 +10,7 @@ use chain_storage::{error as storage, store::BlockInfo};
 
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash, Ledger, Multiverse},
+    blockchain::{Branch, Tip, TipGetError, TipReplaceError},
     leadership::{Leadership, Leaderships},
     start_up::NodeStorage,
     utils::borrow::Borrow,
@@ -23,7 +24,8 @@ pub struct Blockchain {
 
     pub leaderships: Leaderships,
 
-    pub tip: multiverse::GCRoot,
+    /// the Tip of the blockchain. This is update as the consensus goes
+    pub tip: Tip,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
@@ -108,7 +110,7 @@ impl Blockchain {
                         block.date(),
                         block.chain_length(),
                     )?;
-                    tip = Some(multiverse.add(info.block_hash.clone(), state.clone()));
+                    let gc_root = multiverse.add(info.block_hash.clone(), state.clone());
                     if block_header.date().epoch > epoch {
                         epoch = block_header.date().epoch;
                         let leadership = Leadership::new(block_header.date().epoch, &state);
@@ -119,6 +121,7 @@ impl Blockchain {
                             leadership,
                         );
                     }
+                    tip = Some(Tip::new(Branch::new(gc_root, block_header.chain_length())));
                 }
 
                 (tip.unwrap(), leaderships)
@@ -128,6 +131,7 @@ impl Blockchain {
                 let initial_leadership = Leadership::new(block_0.date().epoch, &state);
                 let tip = multiverse.add(block_0.id(), state);
                 let leaderships = Leaderships::new(&block_0.header, initial_leadership);
+                let tip = Tip::new(Branch::new(tip, block_0.header.chain_length()));
                 (tip, leaderships)
             };
 
@@ -148,11 +152,11 @@ impl Blockchain {
 
     /// return the current tip hash and date
     pub fn get_tip(&self) -> HeaderHash {
-        self.tip.clone()
+        self.tip.hash().unwrap()
     }
 
     pub fn get_block_tip(&self) -> Result<(Block, BlockInfo<HeaderHash>), storage::Error> {
-        self.get_block(&self.tip)
+        self.get_block(&self.get_tip())
     }
 
     pub fn put_block(&mut self, block: &Block) -> Result<(), storage::Error> {
@@ -215,6 +219,7 @@ impl Blockchain {
 custom_error! {pub HandleBlockError
     Storage{source: storage::Error} = "Error in the blockchain storage",
     Ledger{source: ledger::Error} = "Invalid blockchain state",
+    InternalTip { source: TipReplaceError } = "Cannot update the blockchain's TIP",
 }
 
 pub enum HandledBlock {
@@ -319,9 +324,12 @@ fn process_block(
 
     blockchain.put_tip(&block)?;
     let new_chain_length = block.chain_length();
-    let tip = blockchain.multiverse.add(block.id(), state);
+    let branch = Branch::new(
+        blockchain.multiverse.add(block.id(), state),
+        new_chain_length,
+    );
     if new_chain_length > tip_chain_length {
-        blockchain.tip = tip;
+        blockchain.tip.replace_with(branch)?;
     }
 
     Ok(HandledBlock::Acquired {
