@@ -10,15 +10,22 @@ pub struct HostAddr {
 }
 
 impl HostAddr {
-    pub fn with_segments(mut self, segments: &[&str]) -> Self {
-        self.host
-            .path_segments_mut()
-            .expect("Host address can't be used as base")
-            .extend(segments);
-        self
+    pub fn with_segments(mut self, segments: &[&str]) -> Result<Self, Error> {
+        let result = self.host.path_segments_mut().map(|mut host_segments| {
+            host_segments.extend(segments);
+            ()
+        });
+        match result {
+            Ok(_) => Ok(self),
+            Err(_) => Err(Error::HostAddrNotBase { addr: self.host }),
+        }
     }
 
     pub fn into_url(self) -> Url {
         self.host
     }
+}
+
+custom_error! { pub Error
+    HostAddrNotBase { addr: Url } = "Host address '{addr}' isn't valid address base",
 }

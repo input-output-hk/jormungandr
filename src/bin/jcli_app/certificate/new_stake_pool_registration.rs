@@ -7,6 +7,7 @@ use chain_impl_mockchain::{
 use jcli_app::utils::io;
 use jcli_app::utils::key_parser::parse_pub_key;
 use jormungandr_utils::certificate as cert_utils;
+use std::io::Write;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -67,7 +68,7 @@ impl StakePoolRegistration {
         };
 
         let bech32 = cert_utils::serialize_to_bech32(&cert)?;
-        let mut file = io::open_file_write(&self.output);
+        let mut file = io::open_file_write(&self.output).unwrap();
         writeln!(file, "{}", bech32)?;
         Ok(())
     }

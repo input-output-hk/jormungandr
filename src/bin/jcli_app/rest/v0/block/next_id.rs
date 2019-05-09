@@ -27,6 +27,7 @@ impl NextId {
 fn exec_get(block_id: String, addr: HostAddr, count: Option<usize>) {
     let url = addr
         .with_segments(&["v0", "block", &block_id, "next_id"])
+        .unwrap()
         .into_url();
     let mut body = vec![];
     reqwest::Client::new()

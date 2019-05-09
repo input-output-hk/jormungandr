@@ -34,7 +34,7 @@ impl Message {
             }
         };
         let msg_bin = hex::decode(msg_hex.trim()).unwrap();
-        let url = addr.with_segments(&["v0", "message"]).into_url();
+        let url = addr.with_segments(&["v0", "message"]).unwrap().into_url();
         reqwest::Client::new()
             .post(url)
             .header(CONTENT_TYPE, "application/octet-stream")

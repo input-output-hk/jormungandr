@@ -43,7 +43,7 @@ impl AddWitness {
     }
 
     fn witness(&self) -> Result<Witness, AddWitnessError> {
-        let reader = io::open_file_read(&Some(self.witness.clone()));
+        let reader = io::open_file_read(&Some(self.witness.clone())).unwrap();
         let bytes = common::read_bytes(reader, "witness")
             .map_err(|error| AddWitnessError::ReadWitness { error })?;
 

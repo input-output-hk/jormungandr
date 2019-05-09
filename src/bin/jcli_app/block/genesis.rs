@@ -23,7 +23,7 @@ impl Genesis {
 
 fn init_genesis_yaml() {
     let path: Option<&'static str> = None;
-    let out = io::open_file_write(&path);
+    let out = io::open_file_write(&path).unwrap();
 
     yaml::documented_example(out, std::time::SystemTime::now()).unwrap()
 }
@@ -31,12 +31,12 @@ fn init_genesis_yaml() {
 fn encode_block_0(argument: Common) {
     // read yaml file
     let yaml: yaml::Genesis =
-        serde_yaml::from_reader(io::open_file_read(&argument.input_file)).unwrap();
+        serde_yaml::from_reader(io::open_file_read(&argument.input_file).unwrap()).unwrap();
 
     let block = yaml.to_block();
 
     block
-        .serialize(io::open_file_write(&argument.output_file))
+        .serialize(io::open_file_write(&argument.output_file).unwrap())
         .unwrap()
 }
 
@@ -44,7 +44,7 @@ fn decode_block_0(argument: Common) {
     let block = open_block(&argument.input_file);
     let yaml = yaml::Genesis::from_block(&block);
 
-    serde_yaml::to_writer(io::open_file_write(&argument.output_file), &yaml).unwrap();
+    serde_yaml::to_writer(io::open_file_write(&argument.output_file).unwrap(), &yaml).unwrap();
 }
 
 fn print_hash(argument: Input) {
@@ -100,6 +100,6 @@ pub struct Common {
 }
 
 fn open_block<P: AsRef<std::path::Path>>(path: &Option<P>) -> block::Block {
-    let reader = io::open_file_read(path);
+    let reader = io::open_file_read(path).unwrap();
     block::Block::deserialize(reader).unwrap()
 }

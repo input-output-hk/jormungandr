@@ -68,7 +68,7 @@ pub fn test_delegation_address_is_the_same_as_public() {
         jcli_wrapper::assert_address_delegation_default(&public_key, &public_key);
     assert_ne!(
         delegation_address, "",
-        "generated delegation adress is empty"
+        "generated delegation address is empty"
     );
 }
 
@@ -86,7 +86,7 @@ pub fn test_utxo_address_made_of_incorrect_ed25519_extended_key() {
     // Assertion changed due to issue #306. After fix please change it to correct one
     process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_address_single_command_default(&public_key),
-        r"Invalid encoding (not valid bech32): mixed-case strings not allowed",
+        "Failed to parse bech32, invalid data format",
     );
 }
 
@@ -104,7 +104,7 @@ pub fn test_account_address_made_of_incorrect_ed25519_extended_key() {
     // Assertion changed due to issue #306. After fix please change it to correct one
     process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_address_account_command_default(&public_key),
-        r"Invalid encoding (not valid bech32): invalid checksum",
+        "Failed to parse bech32, invalid data format",
     );
 }
 
@@ -125,7 +125,7 @@ pub fn test_delegation_address_made_of_random_string() {
             &public_key,
             &delegation_key,
         ),
-        "Invalid encoding (not valid bech32): missing human-readable separator, \"1\"",
+        "Failed to parse bech32, invalid data format",
     );
 }
 
@@ -151,6 +151,6 @@ pub fn test_delegation_address_made_of_incorrect_public_ed25519_extended_key() {
             &public_key,
             &delegation_key,
         ),
-        r"Invalid encoding (not valid bech32): mixed-case strings not allowed",
+        "Failed to parse bech32, invalid data format",
     );
 }

@@ -80,7 +80,7 @@ impl Info {
     pub fn exec(self) -> Result<(), InfoError> {
         let transaction = self.common.load()?;
 
-        let mut output = io::open_file_write(&self.output);
+        let mut output = io::open_file_write(&self.output).unwrap();
 
         self.display_info(&mut output, &transaction)?;
         self.display_inputs(&mut output, &transaction.inputs())?;

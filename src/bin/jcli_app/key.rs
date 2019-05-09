@@ -7,7 +7,7 @@ use jcli_app::utils::io;
 use rand::{rngs::EntropyRng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::{
-    io::Read as _,
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 use structopt::{clap::arg_enum, StructOpt};
@@ -131,7 +131,7 @@ impl Key {
                         gen_priv_key_bech32::<Curve25519_2HashDH>(args.seed)?
                     }
                 };
-                let mut file = io::open_file_write(&args.output);
+                let mut file = io::open_file_write(&args.output).unwrap();
                 Ok(writeln!(file, "{}", priv_key_bech32)?)
             }
             Key::ToPublic(args) => {
@@ -151,7 +151,7 @@ impl Key {
                     }
                     other => panic!("Unrecognized private key bech32 HRP: {}", other),
                 };
-                let mut file = io::open_file_write(&args.output);
+                let mut file = io::open_file_write(&args.output).unwrap();
                 Ok(writeln!(file, "{}", pub_key_bech32)?)
             }
             Key::ToBytes(args) => {
@@ -172,7 +172,7 @@ impl Key {
                 }
                 use bech32::FromBase32;
                 let bytes: Vec<u8> = Vec::from_base32(bech32.data())?;
-                let mut file = io::open_file_write(&args.output);
+                let mut file = io::open_file_write(&args.output).unwrap();
                 Ok(writeln!(file, "{}", cardano::util::hex::encode(&bytes))?)
             }
             Key::FromBytes(args) => {
@@ -191,7 +191,7 @@ impl Key {
                         get_priv_key_from_bytes::<Curve25519_2HashDH>(&bytes)?
                     }
                 };
-                let mut file = io::open_file_write(&args.output);
+                let mut file = io::open_file_write(&args.output).unwrap();
                 Ok(writeln!(file, "{}", priv_key_bech32)?)
             }
         }
@@ -199,14 +199,14 @@ impl Key {
 }
 
 fn read_hex<P: AsRef<Path>>(path: Option<P>) -> Result<Vec<u8>, Error> {
-    let mut input = io::open_file_read(&path);
+    let mut input = io::open_file_read(&path).unwrap();
     let mut input_str = String::new();
     input.read_to_string(&mut input_str)?;
     Ok(cardano::util::hex::decode(&input_str.trim_end())?)
 }
 
 fn read_bech32<P: AsRef<Path>>(path: Option<P>) -> Result<Bech32, Error> {
-    let mut input = io::open_file_read(&path);
+    let mut input = io::open_file_read(&path).unwrap();
     let mut input_str = String::new();
     input.read_to_string(&mut input_str)?;
 

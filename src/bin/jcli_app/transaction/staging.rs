@@ -100,12 +100,12 @@ impl Staging {
     }
 
     pub fn load<P: AsRef<Path>>(path: &Option<P>) -> Result<Self, StagingError> {
-        let mut file = io::open_file_read(path);
+        let mut file = io::open_file_read(path).unwrap();
         Ok(bincode::deserialize_from(&mut file)?)
     }
 
     pub fn store<P: AsRef<Path>>(&self, path: &Option<P>) -> Result<(), StagingError> {
-        let file = io::open_file_write(path);
+        let file = io::open_file_write(path).unwrap();
         Ok(bincode::serialize_into(file, self)?)
     }
 

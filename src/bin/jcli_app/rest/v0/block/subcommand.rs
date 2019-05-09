@@ -25,7 +25,10 @@ impl Subcommand {
 }
 
 fn exec_get(block_id: String, addr: HostAddr) {
-    let url = addr.with_segments(&["v0", "block", &block_id]).into_url();
+    let url = addr
+        .with_segments(&["v0", "block", &block_id])
+        .unwrap()
+        .into_url();
     let mut body = vec![];
     reqwest::Client::new()
         .get(url)
