@@ -14,7 +14,7 @@ impl Epoch {
 #[derive(Clone)]
 pub struct ClockEpochConfiguration {
     pub slot_duration: Duration,
-    pub slots_per_epoch: u64,
+    pub slots_per_epoch: u32,
 }
 
 impl ClockEpochConfiguration {

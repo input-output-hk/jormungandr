@@ -22,13 +22,12 @@ For example your genesis file may look like:
 
 There are multiple _parts_ in the genesis file:
 
-* `blockchain_configuration`: this is the static setting of the blockchain
-  the data the cannot change, ever.
-* `initial_setting`: this is a list of settings that can be change later
-  utilising the update protocol.
+* `blockchain_configuration`: this is a list of configuration
+  parameters of the blockchain, some of which can be changed later
+  via the update protocol;
 * `initial_utxos`: the list of initial utxos (addresses and credited value);
 * `legacy_utxos`: the list of legacy cardano utxos (base58 encoded addresses
-  and credited values);
+  and credited values).
 
 ### `blockchain_configuration` options
 
@@ -40,13 +39,8 @@ There are multiple _parts_ in the genesis file:
 | `slot_duration` | number | the number of seconds between the creation of 2 blocks |
 | `epoch_stability_depth` | number | allowed size of a fork (in number of block) |
 | `consensus_leader_ids` | array | the list of the BFT leader at the beginning of the blockchain |
-
-### initial settings
-
-| option | format | description |
-|:-------|:-------|:------------|
 | `max_number_of_transactions_per_block` | number | the maximum number of transactions allowed in a block |
-| `bootstrap_key_slots_percentage` | number | placeholder, do not use |
+| `bft_slots_ratio` | number | placeholder, do not use |
 | `allow_account_creation` | boolean | allow creating accounts without publishing certificate |
 | `linear_fee` | object | linear fee settings, set the fee for transaction and certificate publishing |
 

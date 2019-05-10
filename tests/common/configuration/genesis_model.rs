@@ -13,14 +13,11 @@ pub struct BlockchainConfig {
     pub discrimination: String,
     pub block0_consensus: String,
     pub slot_duration: i32,
+    pub slots_per_epoch: u32,
     pub epoch_stability_depth: i32,
     pub consensus_leader_ids: Vec<String>,
-    pub consensus_genesis_praos_param_d: Option<String>,
+    pub bft_slots_ratio: Option<String>,
     pub consensus_genesis_praos_param_f: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct InitialSetting {
     pub allow_account_creation: bool,
     pub linear_fees: LinearFees,
 }
@@ -41,7 +38,6 @@ pub struct Fund {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GenesisYaml {
     pub blockchain_configuration: BlockchainConfig,
-    pub initial_setting: InitialSetting,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub initial_funds: Option<Vec<Fund>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -91,6 +87,7 @@ impl GenesisYaml {
                 discrimination: String::from("test"),
                 block0_consensus: String::from("bft"),
                 slot_duration: 15,
+                slots_per_epoch: 100,
                 epoch_stability_depth: 2600,
                 consensus_leader_ids: vec![
                     String::from(
@@ -100,10 +97,8 @@ impl GenesisYaml {
                         "ed25519e_pk1xuqdxht6f0kkh0lf3ck3gfyvnpk33s09du92w6740mfmxl6hsfpsp8grmk",
                     ),
                 ],
-                consensus_genesis_praos_param_d: Some("0.222".to_owned()),
+                bft_slots_ratio: Some("0.222".to_owned()),
                 consensus_genesis_praos_param_f: Some("0.444".to_owned()),
-            },
-            initial_setting: InitialSetting {
                 allow_account_creation: true,
                 linear_fees: LinearFees {
                     constant: 0,

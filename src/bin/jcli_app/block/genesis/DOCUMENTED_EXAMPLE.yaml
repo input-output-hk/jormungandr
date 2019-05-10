@@ -1,6 +1,4 @@
-# The Blockchain Configuration defines the different settings
-# of the blockchain that cannot be changed once the blockchain
-# is started.
+# The Blockchain Configuration defines the settings of the blockchain.
 blockchain_configuration:
 
   # The block0-date defines the date the blockchain starts
@@ -36,23 +34,13 @@ blockchain_configuration:
     - ed25519e_pk1hj8k4jyhsrva7ndynak25jagf3qcj4usnp54gnzvrejnwrufxpgqytzy6u
 
   # Genesis praos parameter D
-  consensus_genesis_praos_param_d: 0.220
+  bft_slots_ratio: 0.220
 
   # Genesis praos parameter F
   consensus_genesis_praos_param_f: 0.220
 
-
-
-# The Initial settings defines the settings than may change during
-# the life time of the blockchain.
-initial_setting:
-
   # This is hte max number of messages allowed in a given Block
   max_number_of_transactions_per_block: 255
-
-  # This is the `d` parameter when running in BFT/genesis praos
-  # compatibility mode
-  bootstrap_key_slots_percentage: ~
 
   # Allow the creation of accounts from the output of a transaction
   #
