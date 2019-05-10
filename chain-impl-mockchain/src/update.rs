@@ -153,6 +153,7 @@ pub enum Error {
     BadVoter(UpdateProposalId, UpdateVoterId),
     DuplicateVote(UpdateProposalId, UpdateVoterId),
     ReadOnlySetting,
+    BadBftSlotsRatio(crate::milli::Milli),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -203,6 +204,9 @@ impl std::fmt::Display for Error {
                 f,
                 "Received a proposal to modify a chain parameter that can only be set in block 0"
             ),
+            Error::BadBftSlotsRatio(m) => {
+                write!(f, "Cannot set BFT slots ratio to invalid value {}", m)
+            }
         }
     }
 }

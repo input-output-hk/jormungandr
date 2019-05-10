@@ -50,10 +50,9 @@ pub enum ConfigParam {
     SlotsPerEpoch(u32),
     SlotDuration(u8),
     EpochStabilityDepth(u32),
-    ConsensusGenesisPraosParamD(Milli),
     ConsensusGenesisPraosActiveSlotsCoeff(Milli),
     MaxNumberOfTransactionsPerBlock(u32),
-    BootstrapKeySlotsPercentage(u8),
+    BftSlotsRatio(Milli),
     AddBftLeader(LeaderId),
     RemoveBftLeader(LeaderId),
     AllowAccountCreation(bool),
@@ -76,14 +75,12 @@ enum Tag {
     SlotDuration = 5,
     #[strum(to_string = "epoch_stability_depth")]
     EpochStabilityDepth = 6,
-    #[strum(to_string = "genesis-praos-param-d")]
-    ConsensusGenesisPraosParamD = 7,
     #[strum(to_string = "genesis-praos-param-f")]
     ConsensusGenesisPraosActiveSlotsCoeff = 8,
     #[strum(to_string = "max-number-of-transactions-per-block")]
     MaxNumberOfTransactionsPerBlock = 9,
-    #[strum(to_string = "bootstrap-key-slots-percentage")]
-    BootstrapKeySlotsPercentage = 10,
+    #[strum(to_string = "bft-slots-ratio")]
+    BftSlotsRatio = 10,
     #[strum(to_string = "add-bft-leader")]
     AddBftLeader = 11,
     #[strum(to_string = "remove-bft-leader")]
@@ -105,12 +102,11 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::SlotsPerEpoch(_) => Tag::SlotsPerEpoch,
             ConfigParam::SlotDuration(_) => Tag::SlotDuration,
             ConfigParam::EpochStabilityDepth(_) => Tag::EpochStabilityDepth,
-            ConfigParam::ConsensusGenesisPraosParamD(_) => Tag::ConsensusGenesisPraosParamD,
             ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(_) => {
                 Tag::ConsensusGenesisPraosActiveSlotsCoeff
             }
             ConfigParam::MaxNumberOfTransactionsPerBlock(_) => Tag::MaxNumberOfTransactionsPerBlock,
-            ConfigParam::BootstrapKeySlotsPercentage(_) => Tag::BootstrapKeySlotsPercentage,
+            ConfigParam::BftSlotsRatio(_) => Tag::BftSlotsRatio,
             ConfigParam::AddBftLeader(_) => Tag::AddBftLeader,
             ConfigParam::RemoveBftLeader(_) => Tag::RemoveBftLeader,
             ConfigParam::AllowAccountCreation(_) => Tag::AllowAccountCreation,
@@ -141,14 +137,13 @@ impl Readable for ConfigParam {
             Tag::EpochStabilityDepth => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::EpochStabilityDepth)
             }
-            Tag::ConsensusGenesisPraosParamD => ConfigParamVariant::from_payload(bytes)
-                .map(ConfigParam::ConsensusGenesisPraosParamD),
             Tag::ConsensusGenesisPraosActiveSlotsCoeff => ConfigParamVariant::from_payload(bytes)
                 .map(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff),
             Tag::MaxNumberOfTransactionsPerBlock => ConfigParamVariant::from_payload(bytes)
                 .map(ConfigParam::MaxNumberOfTransactionsPerBlock),
-            Tag::BootstrapKeySlotsPercentage => ConfigParamVariant::from_payload(bytes)
-                .map(ConfigParam::BootstrapKeySlotsPercentage),
+            Tag::BftSlotsRatio => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::BftSlotsRatio)
+            }
             Tag::AddBftLeader => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::AddBftLeader)
             }
@@ -179,10 +174,9 @@ impl property::Serialize for ConfigParam {
             ConfigParam::SlotsPerEpoch(data) => data.to_payload(),
             ConfigParam::SlotDuration(data) => data.to_payload(),
             ConfigParam::EpochStabilityDepth(data) => data.to_payload(),
-            ConfigParam::ConsensusGenesisPraosParamD(data) => data.to_payload(),
             ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(data) => data.to_payload(),
             ConfigParam::MaxNumberOfTransactionsPerBlock(data) => data.to_payload(),
-            ConfigParam::BootstrapKeySlotsPercentage(data) => data.to_payload(),
+            ConfigParam::BftSlotsRatio(data) => data.to_payload(),
             ConfigParam::AddBftLeader(data) => data.to_payload(),
             ConfigParam::RemoveBftLeader(data) => data.to_payload(),
             ConfigParam::AllowAccountCreation(data) => data.to_payload(),
@@ -416,21 +410,20 @@ mod test {
 
     impl Arbitrary for ConfigParam {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match u8::arbitrary(g) % 14 {
+            match u8::arbitrary(g) % 13 {
                 0 => ConfigParam::Block0Date(Arbitrary::arbitrary(g)),
                 1 => ConfigParam::Discrimination(Arbitrary::arbitrary(g)),
                 2 => ConfigParam::ConsensusVersion(Arbitrary::arbitrary(g)),
                 3 => ConfigParam::SlotsPerEpoch(Arbitrary::arbitrary(g)),
                 4 => ConfigParam::SlotDuration(Arbitrary::arbitrary(g)),
-                5 => ConfigParam::ConsensusGenesisPraosParamD(Arbitrary::arbitrary(g)),
-                6 => ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(Arbitrary::arbitrary(g)),
-                7 => ConfigParam::MaxNumberOfTransactionsPerBlock(Arbitrary::arbitrary(g)),
-                8 => ConfigParam::BootstrapKeySlotsPercentage(Arbitrary::arbitrary(g)),
-                9 => ConfigParam::AddBftLeader(Arbitrary::arbitrary(g)),
-                10 => ConfigParam::RemoveBftLeader(Arbitrary::arbitrary(g)),
-                11 => ConfigParam::AllowAccountCreation(Arbitrary::arbitrary(g)),
-                12 => ConfigParam::LinearFee(Arbitrary::arbitrary(g)),
-                13 => ConfigParam::ProposalExpiration(Arbitrary::arbitrary(g)),
+                5 => ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(Arbitrary::arbitrary(g)),
+                6 => ConfigParam::MaxNumberOfTransactionsPerBlock(Arbitrary::arbitrary(g)),
+                7 => ConfigParam::BftSlotsRatio(Arbitrary::arbitrary(g)),
+                8 => ConfigParam::AddBftLeader(Arbitrary::arbitrary(g)),
+                9 => ConfigParam::RemoveBftLeader(Arbitrary::arbitrary(g)),
+                10 => ConfigParam::AllowAccountCreation(Arbitrary::arbitrary(g)),
+                11 => ConfigParam::LinearFee(Arbitrary::arbitrary(g)),
+                12 => ConfigParam::ProposalExpiration(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),
             }
         }
