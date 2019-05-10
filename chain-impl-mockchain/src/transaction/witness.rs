@@ -65,7 +65,7 @@ impl WitnessAccountData {
         spending_counter: &account::SpendingCounter,
     ) -> Self {
         let mut v = Vec::with_capacity(65);
-        v[0] = WITNESS_TAG_ACCOUNT;
+        v.push(WITNESS_TAG_ACCOUNT);
         v.extend_from_slice(block0.as_ref());
         v.extend_from_slice(transaction_id.as_ref());
         v.extend_from_slice(&spending_counter.to_bytes());
