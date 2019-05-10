@@ -52,6 +52,8 @@ fn subscribe(
     let mut prop_handles = propagate::PeerHandles::new();
     let block_sub = client.block_subscription(prop_handles.blocks.subscribe());
     let gossip_sub = client.gossip_subscription(prop_handles.gossip.subscribe());
+    // TODO: decide if this is the way to make block requests
+    prop_handles.client = Some(client);
     block_sub
         .join(gossip_sub)
         .map_err(move |err| {

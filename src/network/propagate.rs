@@ -1,13 +1,15 @@
-use super::p2p_topology as p2p;
+use super::{p2p_topology as p2p, BlockConfig};
 use crate::blockcfg::{Header, Message};
 
 use network_core::{
     error::Error,
     gossip::{Gossip, Node},
 };
+use network_grpc::client::Connection;
 
 use futures::prelude::*;
 use futures::sync::mpsc;
+use tokio::{executor::DefaultExecutor, net::TcpStream};
 
 use std::{
     collections::{hash_map, HashMap},
@@ -128,6 +130,10 @@ pub struct PeerHandles {
     pub blocks: PropagationHandle<Header>,
     pub messages: PropagationHandle<Message>,
     pub gossip: PropagationHandle<Gossip<p2p::Node>>,
+
+    // TODO: decide if we want this or send requests via
+    // the bidirectional stream
+    pub(super) client: Option<Connection<BlockConfig, TcpStream, DefaultExecutor>>,
 }
 
 impl PeerHandles {
