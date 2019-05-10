@@ -4,6 +4,7 @@ extern crate quickcheck;
 #[macro_use(custom_error)]
 extern crate custom_error;
 
+pub mod accounting;
 pub mod account;
 pub mod block;
 pub mod certificate;
