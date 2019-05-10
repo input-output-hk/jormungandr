@@ -5,6 +5,7 @@ extern crate quickcheck;
 extern crate custom_error;
 
 pub mod account;
+pub mod accounting;
 pub mod block;
 pub mod certificate;
 pub mod config;
