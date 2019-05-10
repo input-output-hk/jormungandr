@@ -274,23 +274,10 @@ pub enum BlockMsg {
     LeadershipBlock(Block),
     /// Leadership process expect a new end of epoch
     LeadershipExpectEndOfEpoch,
+    /// An untrusted Block has been received from the network task
+    NetworkBlock(Block),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, NodeId),
-}
-
-impl Debug for BlockMsg {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use BlockMsg::*;
-        match self {
-            LeadershipBlock(block) => f.debug_tuple("LeadershipBlock").field(block).finish(),
-            LeadershipExpectEndOfEpoch => f.debug_tuple("LeadershipExpectEndOfEpoch").finish(),
-            AnnouncedBlock(header, node_id) => f
-                .debug_tuple("AnnouncedBlock")
-                .field(header)
-                .field(node_id)
-                .finish(),
-        }
-    }
 }
 
 /// Propagation requests for the network task.

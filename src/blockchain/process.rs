@@ -63,6 +63,40 @@ pub fn handle_input(
                 }
             }
         }
+        BlockMsg::NetworkBlock(block) => {
+            let mut blockchain = blockchain.lock_write();
+            match chain::handle_block(&mut blockchain, block, true).unwrap() {
+                HandledBlock::Rejected { reason } => {
+                    // TODO: drop the network peer that has sent
+                    // an invalid block.
+                    slog_warn!(logger, "rejecting block from the network: {:?}", reason);
+                }
+                HandledBlock::MissingBranchToBlock { to } => {
+                    // This is abnormal because we have received a block
+                    // that is not connected to preceding blocks, which
+                    // should not happen as we solicit blocks in descending
+                    // order.
+                    //
+                    // TODO: drop the network peer that has sent
+                    // the wrong block.
+                    slog_warn!(
+                        logger,
+                        "disconnected block received, missing intermediate blocks to {}",
+                        to
+                    );
+                }
+                HandledBlock::Acquired { header } => {
+                    slog_info!(logger,
+                        "block added successfully to Node's blockchain";
+                        "id" => header.id().to_string(),
+                        "date" => format!("{}.{}", header.date().epoch, header.date().slot_id)
+                    );
+                    slog_debug!(logger, "Header: {:?}", header);
+                    // Propagate the block to other nodes
+                    network_msg_box.send(NetworkMsg::Propagate(PropagateMsg::Block(header)));
+                }
+            }
+        }
         BlockMsg::AnnouncedBlock(header, node_id) => {
             let blockchain = blockchain.lock_read();
             match chain::header_triage(&blockchain, &header, false).unwrap() {
