@@ -102,7 +102,7 @@ pub fn prepare_clock(block0: &Block) -> Result<Clock, Error> {
 
     let initial_epoch = ClockEpochConfiguration {
         slot_duration,
-        slots_per_epoch: slots_per_epoch.unwrap_or(100), // FIXME
+        slots_per_epoch,
     };
 
     info!(

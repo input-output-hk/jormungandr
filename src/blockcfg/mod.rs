@@ -24,11 +24,12 @@ custom_error! {pub Block0Malformed
     NoStartTime = "missing `block0-start' value in the block0",
     NoDiscrimination = "missing `discrimination' value in the block0",
     NoSlotDuration = "missing `slot_duration' value in the block0",
+    NoSlotsPerEpoch = "missing `slots_per_epoch' value in the block0",
 }
 
 pub trait Block0DataSource {
     fn slot_duration(&self) -> Result<Duration, Block0Error>;
-    fn slots_per_epoch(&self) -> Result<Option<u32>, Block0Error>;
+    fn slots_per_epoch(&self) -> Result<u32, Block0Error>;
     fn start_time(&self) -> Result<SystemTime, Block0Error>;
 }
 
@@ -42,13 +43,13 @@ impl Block0DataSource for Block {
         Err(Block0Malformed::NoSlotDuration.into())
     }
 
-    fn slots_per_epoch(&self) -> Result<Option<u32>, Block0Error> {
+    fn slots_per_epoch(&self) -> Result<u32, Block0Error> {
         for config in initial(self)?.iter() {
             if let ConfigParam::SlotsPerEpoch(slots) = config {
-                return Ok(Some(*slots));
+                return Ok(*slots);
             }
         }
-        Ok(None)
+        Err(Block0Malformed::NoSlotsPerEpoch.into())
     }
 
     fn start_time(&self) -> Result<SystemTime, Block0Error> {

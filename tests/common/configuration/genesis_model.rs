@@ -13,6 +13,7 @@ pub struct BlockchainConfig {
     pub discrimination: String,
     pub block0_consensus: String,
     pub slot_duration: i32,
+    pub slots_per_epoch: u32,
     pub epoch_stability_depth: i32,
     pub consensus_leader_ids: Vec<String>,
     pub bft_slots_ratio: Option<String>,
@@ -86,6 +87,7 @@ impl GenesisYaml {
                 discrimination: String::from("test"),
                 block0_consensus: String::from("bft"),
                 slot_duration: 15,
+                slots_per_epoch: 100,
                 epoch_stability_depth: 2600,
                 consensus_leader_ids: vec![
                     String::from(
