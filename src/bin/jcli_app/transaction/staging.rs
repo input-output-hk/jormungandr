@@ -6,7 +6,7 @@ use chain_impl_mockchain::{
     value::Value,
 };
 use jcli_app::utils::io;
-use jormungandr_utils;
+use jormungandr_utils::serde;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -20,37 +20,25 @@ pub enum StagingKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Input {
-    pub index_or_account: u8,
-    #[serde(
-        serialize_with = "jormungandr_utils::serde::value::serialize",
-        deserialize_with = "jormungandr_utils::serde::value::deserialize"
-    )]
-    pub value: Value,
-    pub input_ptr: [u8; INPUT_PTR_SIZE],
+struct Input {
+    index_or_account: u8,
+    #[serde(with = "serde::value")]
+    value: Value,
+    input_ptr: [u8; INPUT_PTR_SIZE],
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Output {
-    #[serde(
-        serialize_with = "jormungandr_utils::serde::address::serialize",
-        deserialize_with = "jormungandr_utils::serde::address::deserialize"
-    )]
-    pub address: Address,
-    #[serde(
-        serialize_with = "jormungandr_utils::serde::value::serialize",
-        deserialize_with = "jormungandr_utils::serde::value::deserialize"
-    )]
-    pub value: Value,
+struct Output {
+    #[serde(with = "serde::address")]
+    address: Address,
+    #[serde(with = "serde::value")]
+    value: Value,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Witness {
-    #[serde(
-        serialize_with = "jormungandr_utils::serde::witness::serialize",
-        deserialize_with = "jormungandr_utils::serde::witness::deserialize"
-    )]
-    pub witness: chain::transaction::Witness,
+struct Witness {
+    #[serde(with = "serde::witness")]
+    witness: chain::transaction::Witness,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,15 +52,11 @@ pub struct Certificate(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Staging {
-    pub kind: StagingKind,
-
-    pub inputs: Vec<Input>,
-
-    pub outputs: Vec<Output>,
-
-    pub witnesses: Vec<Witness>,
-
-    pub extra: Option<Certificate>,
+    kind: StagingKind,
+    inputs: Vec<Input>,
+    outputs: Vec<Output>,
+    witnesses: Vec<Witness>,
+    extra: Option<Certificate>,
 }
 
 custom_error! {pub StagingError
@@ -172,6 +156,14 @@ impl Staging {
         }
 
         Ok(self.extra = Some(Certificate(extra)))
+    }
+
+    pub fn witness_count(&self) -> usize {
+        self.witnesses.len()
+    }
+
+    pub fn staging_kind_name(&self) -> String {
+        self.kind.to_string()
     }
 
     pub fn finalize<FA>(

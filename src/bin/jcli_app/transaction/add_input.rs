@@ -80,8 +80,8 @@ mod tests {
 
         let staging = Staging::load(&Some(&temp_staging_file)).unwrap();
 
-        assert_eq!(staging.inputs.len(), 1, "only one input should be created");
-        let input = &staging.inputs[0];
+        assert_eq!(staging.inputs().len(), 1, "only one input should be created");
+        let input = &staging.inputs()[0];
         assert_eq!(transaction_id.as_ref(), &input.input_ptr, "transaction_id");
         assert_eq!(
             transaction_index, input.index_or_account,

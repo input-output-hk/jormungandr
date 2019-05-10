@@ -175,7 +175,7 @@ impl Info {
         let fee_algo = self.fee.linear_fee();
         let builder = transaction.builder();
 
-        vars.insert("status".to_owned(), transaction.kind.to_string());
+        vars.insert("status".to_owned(), transaction.staging_kind_name());
         vars.insert("id".to_owned(), builder.tx.hash().to_string());
         vars.insert("num_inputs".to_owned(), builder.tx.inputs.len().to_string());
         vars.insert(
@@ -184,7 +184,7 @@ impl Info {
         );
         vars.insert(
             "num_witnesses".to_owned(),
-            transaction.witnesses.len().to_string(),
+            transaction.witness_count().to_string(),
         );
         vars.insert("input".to_owned(), builder.tx.total_input()?.0.to_string());
         vars.insert(
