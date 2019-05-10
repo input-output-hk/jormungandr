@@ -197,10 +197,20 @@ fn handle_network_input(
         NetworkMsg::Propagate(msg) => {
             future::Either::A(handle_propagation_msg(msg, state.clone(), channels.clone()))
         }
-        NetworkMsg::GetBlocks(node_id, headers) => future::Either::B({
-            unimplemented!();
-            future::ok(())
-        }),
+        NetworkMsg::GetBlocks(node_id, block_ids) => future::Either::B(
+            state
+                .propagation_peers
+                .solicit_blocks(node_id, &block_ids)
+                .map(|blocks| {
+                    // TODO: feed blocks to the blockchain task
+                    unimplemented!();
+                    ()
+                })
+                .or_else(move |e| {
+                    warn!("failed to fetch blocks from peer {}: {:?}", node_id, e);
+                    future::ok::<(), ()>(())
+                }),
+        ),
     })
 }
 

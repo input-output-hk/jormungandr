@@ -1,14 +1,15 @@
 use super::{p2p_topology as p2p, BlockConfig};
-use crate::blockcfg::{Header, Message};
+use crate::blockcfg::{Block, Header, HeaderHash, Message};
 
 use network_core::{
-    error::Error,
+    client::block::BlockService,
+    error as core_error,
     gossip::{Gossip, Node},
 };
 use network_grpc::client::Connection;
 
 use futures::prelude::*;
-use futures::sync::mpsc;
+use futures::{future, sync::mpsc};
 use tokio::{executor::DefaultExecutor, net::TcpStream};
 
 use std::{
@@ -53,7 +54,7 @@ pub struct Subscription<T> {
 
 impl<T> Stream for Subscription<T> {
     type Item = T;
-    type Error = Error;
+    type Error = core_error::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         Ok(self.inner.poll().unwrap())
@@ -274,6 +275,38 @@ impl PropagationMap {
             })
         } else {
             Err(gossip)
+        }
+    }
+
+    pub fn solicit_blocks(
+        &self,
+        node_id: p2p::NodeId,
+        hashes: &[HeaderHash],
+    ) -> impl Future<Item = Vec<Block>, Error = core_error::Error> {
+        let mut map = self.mutex.lock().unwrap();
+        let handles = match map.get_mut(&node_id) {
+            Some(handles) => handles,
+            None => {
+                return future::Either::B(future::err(
+                    // FIXME: better error code, if that's the way we want to do this
+                    core_error::Error::new(core_error::Code::NotFound, "peer not available"),
+                ));
+            }
+        };
+        match &mut handles.client {
+            Some(client) => future::Either::A(
+                client
+                    .get_blocks(hashes)
+                    .and_then(|stream| stream.collect()),
+            ),
+            None => {
+                // TODO: connect and request on demand?
+                // FIXME: better error code, if that's the way we want to do this
+                future::Either::B(future::err(core_error::Error::new(
+                    core_error::Code::NotFound,
+                    "peer client connection not available",
+                )))
+            }
         }
     }
 }

@@ -304,7 +304,7 @@ pub enum PropagateMsg {
 #[derive(Clone, Debug)]
 pub enum NetworkMsg {
     Propagate(PropagateMsg),
-    GetBlocks(NodeId, Vec<Header>),
+    GetBlocks(NodeId, Vec<HeaderHash>),
 }
 
 #[cfg(test)]

@@ -82,7 +82,7 @@ pub fn handle_input(
                 }
                 BlockHeaderTriage::ProcessBlockToState => {
                     slog_info!(logger, "Block announcement is interesting, fetch block");
-                    network_msg_box.send(NetworkMsg::GetBlocks(node_id, vec![header]));
+                    network_msg_box.send(NetworkMsg::GetBlocks(node_id, vec![header.id()]));
                 }
             }
         }
