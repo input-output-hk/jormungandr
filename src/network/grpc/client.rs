@@ -22,15 +22,14 @@ use http::uri;
 use tokio::{executor::DefaultExecutor, net::TcpStream, runtime};
 use tower_service::Service as _;
 
-use std::{net::SocketAddr, slice};
+use std::slice;
 
 pub fn connect(
-    addr: SocketAddr,
     state: ConnectionState,
     channels: Channels,
 ) -> impl Future<Item = (p2p::NodeId, propagate::PeerHandles), Error = ()> {
     info!("connecting to subscription peer {}", state.connection);
-    info!("address: {}", addr);
+    let addr = state.connection;
     let peer = grpc_peer::TcpPeer::new(addr);
     let origin = origin_authority(addr);
 

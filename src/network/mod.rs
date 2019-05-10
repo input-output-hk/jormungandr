@@ -158,21 +158,19 @@ pub fn run(config: Configuration, input: MessageQueue<NetworkMsg>, channels: Cha
         let peer = Peer::new(addr, Protocol::Grpc);
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
-        grpc::connect(addr, conn_state, conn_channels.clone()).map(
-            move |(node_id, mut prop_handles)| {
-                debug!("connected to {} at {}", node_id, addr);
-                let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
-                match prop_handles.try_send_gossip(gossip) {
-                    Ok(()) => state.propagation_peers.insert_peer(node_id, prop_handles),
-                    Err(e) => {
-                        info!(
-                            "gossiping to peer {} failed just after connection: {:?}",
-                            node_id, e
-                        );
-                    }
+        grpc::connect(conn_state, conn_channels.clone()).map(move |(node_id, mut prop_handles)| {
+            debug!("connected to {} at {}", node_id, addr);
+            let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
+            match prop_handles.try_send_gossip(gossip) {
+                Ok(()) => state.propagation_peers.insert_peer(node_id, prop_handles),
+                Err(e) => {
+                    info!(
+                        "gossiping to peer {} failed just after connection: {:?}",
+                        node_id, e
+                    );
                 }
-            },
-        )
+            }
+        })
     });
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
@@ -283,8 +281,8 @@ fn connect_and_propagate_with<F>(
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let state = state.clone();
-    let cf = grpc::connect(addr, conn_state, channels.clone()).map(
-        move |(connected_node_id, mut handles)| {
+    let cf =
+        grpc::connect(conn_state, channels.clone()).map(move |(connected_node_id, mut handles)| {
             if connected_node_id == node_id {
                 let res = once_connected(&mut handles);
                 match res {
@@ -307,8 +305,7 @@ fn connect_and_propagate_with<F>(
             state
                 .propagation_peers
                 .insert_peer(connected_node_id, handles);
-        },
-    );
+        });
     tokio::spawn(cf);
 }
 
