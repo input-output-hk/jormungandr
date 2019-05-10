@@ -171,8 +171,9 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
             bft_leader: secret.bft(),
             genesis_leader: secret.genesis(),
         };
-        services.spawn("leadership", move |info| {
-            leadership_task(info, pk, tpool, blockchain, clock, block_task)
+        services.spawn_future("leadership", move |info| {
+            leadership_task(info, pk, tpool, blockchain, clock, block_task);
+            futures::future::ok(())
         });
     }
 
