@@ -13,10 +13,11 @@ impl Arbitrary for Discrimination {
 
 impl Arbitrary for KindType {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        match u8::arbitrary(g) % 3 {
+        match u8::arbitrary(g) % 4 {
             0 => KindType::Single,
             1 => KindType::Group,
             2 => KindType::Account,
+            3 => KindType::Multisig,
             _ => unreachable!(),
         }
     }
@@ -34,6 +35,13 @@ impl Arbitrary for Address {
             KindType::Single => Kind::Single(Arbitrary::arbitrary(g)),
             KindType::Group => Kind::Group(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
             KindType::Account => Kind::Account(Arbitrary::arbitrary(g)),
+            KindType::Multisig => {
+                let mut h = [0u8; 32];
+                for i in h.iter_mut() {
+                    *i = Arbitrary::arbitrary(g)
+                }
+                Kind::Multisig(h)
+            }
         };
         Address(discrimination, kind)
     }
