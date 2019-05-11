@@ -21,6 +21,7 @@ pub mod key;
 pub mod leadership;
 pub mod ledger;
 pub mod multiverse;
+pub mod multisig;
 pub mod setting;
 pub mod stake;
 pub mod transaction;
