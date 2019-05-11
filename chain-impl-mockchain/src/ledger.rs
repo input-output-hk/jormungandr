@@ -9,7 +9,7 @@ use crate::message::Message;
 use crate::stake::{CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
-use crate::{account, certificate, legacy, setting, stake, update, utxo};
+use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property::{self, ChainLength as _, Message as _};
 use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
@@ -45,6 +45,7 @@ pub struct Ledger {
     pub(crate) accounts: account::Ledger,
     pub(crate) settings: setting::Settings,
     pub(crate) updates: update::UpdateState,
+    pub(crate) multisig: multisig::Ledger,
     pub(crate) delegation: DelegationState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
     pub(crate) date: BlockDate,
@@ -86,6 +87,7 @@ pub enum Error {
     OldUtxoInvalidSignature(UtxoPointer, Output<legacy::OldAddress>, Witness),
     OldUtxoInvalidPublicKey(UtxoPointer, Output<legacy::OldAddress>, Witness),
     AccountInvalidSignature(account::Identifier, Witness),
+    MultisigInvalidSignature(multisig::Identifier, Witness),
     TransactionHasNoInput,
     FeeCalculationError(ValueError),
     PraosActiveSlotsCoeffInvalid(ActiveSlotsCoeffError),
@@ -93,9 +95,11 @@ pub enum Error {
     UtxoOutputsTotal(ValueError),
     Block0(Block0Error),
     Account(account::LedgerError),
+    Multisig(multisig::LedgerError),
     NotBalanced(Value, Value),
     ZeroOutput(Output<Address>),
     Delegation(DelegationError),
+    AccountIdentifierInvalid,
     InvalidDiscrimination,
     ExpectingAccountWitness,
     ExpectingUtxoWitness,
@@ -130,6 +134,12 @@ impl From<account::LedgerError> for Error {
     }
 }
 
+impl From<multisig::LedgerError> for Error {
+    fn from(e: multisig::LedgerError) -> Self {
+        Error::Multisig(e)
+    }
+}
+
 impl From<DelegationError> for Error {
     fn from(e: DelegationError) -> Self {
         Error::Delegation(e)
@@ -156,6 +166,7 @@ impl Ledger {
             accounts: account::Ledger::new(),
             settings,
             updates: update::UpdateState::new(),
+            multisig: multisig::Ledger::new(),
             delegation: DelegationState::new(),
             static_params: Arc::new(static_params),
             date: BlockDate::first(),
@@ -245,16 +256,19 @@ impl Ledger {
                         return Err(Error::Block0(Block0Error::TransactionHasWitnesses));
                     }
                     let transaction_id = authenticated_tx.transaction.hash();
-                    let (new_utxos, new_accounts) = internal_apply_transaction_output(
-                        ledger.utxos,
-                        ledger.accounts,
-                        &ledger.static_params,
-                        &ledger_params,
-                        &transaction_id,
-                        &authenticated_tx.transaction.outputs,
-                    )?;
+                    let (new_utxos, new_accounts, new_multisig) =
+                        internal_apply_transaction_output(
+                            ledger.utxos,
+                            ledger.accounts,
+                            ledger.multisig,
+                            &ledger.static_params,
+                            &ledger_params,
+                            &transaction_id,
+                            &authenticated_tx.transaction.outputs,
+                        )?;
                     ledger.utxos = new_utxos;
-                    ledger.accounts = new_accounts;;
+                    ledger.accounts = new_accounts;
+                    ledger.multisig = new_multisig;
                 }
                 Message::UpdateProposal(_) => {
                     return Err(Error::Block0(Block0Error::HasUpdateProposal));
@@ -533,14 +547,17 @@ fn internal_apply_transaction(
                 ledger = input_utxo_verify(ledger, transaction_id, &utxo, witness)?
             }
             InputEnum::AccountInput(account_id, value) => {
-                ledger.accounts = input_account_verify(
+                let (single, multi) = input_account_verify(
                     ledger.accounts,
+                    ledger.multisig,
                     &ledger.static_params.block0_initial_hash,
                     transaction_id,
                     &account_id,
                     value,
                     witness,
-                )?
+                )?;
+                ledger.accounts = single;
+                ledger.multisig = multi;
             }
         }
     }
@@ -555,9 +572,10 @@ fn internal_apply_transaction(
     }
 
     // 4. add the new outputs
-    let (new_utxos, new_accounts) = internal_apply_transaction_output(
+    let (new_utxos, new_accounts, new_multisig) = internal_apply_transaction_output(
         ledger.utxos,
         ledger.accounts,
+        ledger.multisig,
         &ledger.static_params,
         dyn_params,
         transaction_id,
@@ -565,6 +583,7 @@ fn internal_apply_transaction(
     )?;
     ledger.utxos = new_utxos;
     ledger.accounts = new_accounts;
+    ledger.multisig = new_multisig;
 
     Ok(ledger)
 }
@@ -572,11 +591,12 @@ fn internal_apply_transaction(
 fn internal_apply_transaction_output(
     mut utxos: utxo::Ledger<Address>,
     mut accounts: account::Ledger,
+    mut multisig: multisig::Ledger,
     static_params: &LedgerStaticParameters,
     dyn_params: &LedgerParameters,
     transaction_id: &TransactionId,
     outputs: &[Output<Address>],
-) -> Result<(utxo::Ledger<Address>, account::Ledger), Error> {
+) -> Result<(utxo::Ledger<Address>, account::Ledger, multisig::Ledger), Error> {
     let mut new_utxos = Vec::new();
     for (index, output) in outputs.iter().enumerate() {
         // Reject zero-valued outputs.
@@ -604,11 +624,15 @@ fn internal_apply_transaction_output(
                     Err(error) => return Err(error.into()),
                 };
             }
+            Kind::Multisig(identifier) => {
+                let identifier = multisig::Identifier::from(identifier.clone());
+                multisig = multisig.add_value(&identifier, output.value)?;
+            }
         }
     }
 
     utxos = utxos.add(transaction_id, &new_utxos)?;
-    Ok((utxos, accounts))
+    Ok((utxos, accounts, multisig))
 }
 
 fn input_utxo_verify(
@@ -618,7 +642,8 @@ fn input_utxo_verify(
     witness: &Witness,
 ) -> Result<Ledger, Error> {
     match witness {
-        Witness::Account(_) => return Err(Error::ExpectingUtxoWitness),
+        Witness::Account(_) => Err(Error::ExpectingUtxoWitness),
+        Witness::Multisig(_) => Err(Error::ExpectingUtxoWitness),
         Witness::OldUtxo(xpub, signature) => {
             let (old_utxos, associated_output) = ledger
                 .oldutxos
@@ -685,20 +710,27 @@ fn input_utxo_verify(
 
 fn input_account_verify(
     mut ledger: account::Ledger,
+    mut mledger: multisig::Ledger,
     block0_hash: &HeaderHash,
     transaction_id: &TransactionId,
-    account: &account::Identifier,
+    account: &AccountIdentifier,
     value: Value,
     witness: &Witness,
-) -> Result<account::Ledger, Error> {
+) -> Result<(account::Ledger, multisig::Ledger), Error> {
     // .remove_value() check if there's enough value and if not, returns a Err.
-    let (new_ledger, spending_counter) = ledger.remove_value(account, value)?;
-    ledger = new_ledger;
 
     match witness {
         Witness::OldUtxo(_, _) => return Err(Error::ExpectingAccountWitness),
         Witness::Utxo(_) => return Err(Error::ExpectingAccountWitness),
         Witness::Account(sig) => {
+            // refine account to a single account identifier
+            let account = account
+                .to_single_account()
+                .ok_or(Error::AccountIdentifierInvalid)?;
+
+            let (new_ledger, spending_counter) = ledger.remove_value(&account, value)?;
+            ledger = new_ledger;
+
             let tidsc = WitnessAccountData::new(block0_hash, transaction_id, &spending_counter);
             let verified = sig.verify(&account.clone().into(), &tidsc);
             if verified == chain_crypto::Verification::Failed {
@@ -707,7 +739,23 @@ fn input_account_verify(
                     witness.clone(),
                 ));
             };
-            Ok(ledger)
+            Ok((ledger, mledger))
+        }
+        Witness::Multisig(msignature) => {
+            // refine account to a multisig account identifier
+            let account = account.to_multi_account();
+
+            let (new_ledger, declaration, spending_counter) =
+                mledger.remove_value(&account, value)?;
+
+            let data_to_verify =
+                WitnessMultisigData::new(&block0_hash, &transaction_id, &spending_counter);
+            if msignature.verify(declaration, &data_to_verify) != true {
+                return Err(Error::MultisigInvalidSignature(account, witness.clone()));
+            }
+            mledger = new_ledger;
+
+            Ok((ledger, mledger))
         }
     }
 }
