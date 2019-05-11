@@ -79,6 +79,29 @@ impl AsRef<[u8]> for WitnessAccountData {
     }
 }
 
+pub struct WitnessMultisigData(Vec<u8>);
+
+impl WitnessMultisigData {
+    pub fn new(
+        block0: &HeaderHash,
+        transaction_id: &TransactionId,
+        spending_counter: &account::SpendingCounter,
+    ) -> Self {
+        let mut v = Vec::with_capacity(65);
+        v.push(WITNESS_TAG_MULTISIG);
+        v.extend_from_slice(block0.as_ref());
+        v.extend_from_slice(transaction_id.as_ref());
+        v.extend_from_slice(&spending_counter.to_bytes());
+        Self(v)
+    }
+}
+
+impl AsRef<[u8]> for WitnessMultisigData {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl Witness {
     /// Creates new `Witness` value.
     pub fn new_utxo(
@@ -124,6 +147,7 @@ impl Witness {
 const WITNESS_TAG_OLDUTXO: u8 = 0u8;
 const WITNESS_TAG_UTXO: u8 = 1u8;
 const WITNESS_TAG_ACCOUNT: u8 = 2u8;
+const WITNESS_TAG_MULTISIG: u8 = 3u8;
 
 impl property::Serialize for Witness {
     type Error = std::io::Error;
