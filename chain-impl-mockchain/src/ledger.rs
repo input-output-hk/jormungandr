@@ -488,9 +488,14 @@ impl Ledger {
             .accounts
             .get_total_value()
             .map_err(|_| Error::Block0(Block0Error::UtxoTotalValueTooBig))?;
+        let multisig_value = self
+            .multisig
+            .get_total_value()
+            .map_err(|_| Error::Block0(Block0Error::UtxoTotalValueTooBig))?;
         let all_utxo_values = old_utxo_values
             .chain(new_utxo_values)
-            .chain(Some(account_value));
+            .chain(Some(account_value))
+            .chain(Some(multisig_value));
         Value::sum(all_utxo_values)
             .map_err(|_| Error::Block0(Block0Error::UtxoTotalValueTooBig))?;
         Ok(())
