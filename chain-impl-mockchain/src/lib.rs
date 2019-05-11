@@ -20,6 +20,7 @@ pub mod fee;
 pub mod key;
 pub mod leadership;
 pub mod ledger;
+pub mod multisig;
 pub mod multiverse;
 pub mod setting;
 pub mod stake;

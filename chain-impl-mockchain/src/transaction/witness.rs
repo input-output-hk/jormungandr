@@ -5,6 +5,7 @@ use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     AccountSecretKey, AccountSignature, SpendingPublicKey, SpendingSecretKey, SpendingSignature,
 };
+use crate::multisig;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519Bip32, PublicKey, Signature, Verification};
@@ -23,6 +24,7 @@ pub enum Witness {
         PublicKey<Ed25519Bip32>,
         Signature<WitnessUtxoData, Ed25519Bip32>,
     ),
+    Multisig(multisig::Witness),
 }
 
 impl PartialEq for Witness {
@@ -79,6 +81,29 @@ impl AsRef<[u8]> for WitnessAccountData {
     }
 }
 
+pub struct WitnessMultisigData(Vec<u8>);
+
+impl WitnessMultisigData {
+    pub fn new(
+        block0: &HeaderHash,
+        transaction_id: &TransactionId,
+        spending_counter: &account::SpendingCounter,
+    ) -> Self {
+        let mut v = Vec::with_capacity(65);
+        v.push(WITNESS_TAG_MULTISIG);
+        v.extend_from_slice(block0.as_ref());
+        v.extend_from_slice(transaction_id.as_ref());
+        v.extend_from_slice(&spending_counter.to_bytes());
+        Self(v)
+    }
+}
+
+impl AsRef<[u8]> for WitnessMultisigData {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl Witness {
     /// Creates new `Witness` value.
     pub fn new_utxo(
@@ -117,6 +142,7 @@ impl Witness {
                 signature.verify(public_key, &WitnessUtxoData::new(block0, transaction_id))
             }
             Witness::Account(_) => Verification::Failed,
+            Witness::Multisig(_) => Verification::Failed,
         }
     }
 }
@@ -124,13 +150,13 @@ impl Witness {
 const WITNESS_TAG_OLDUTXO: u8 = 0u8;
 const WITNESS_TAG_UTXO: u8 = 1u8;
 const WITNESS_TAG_ACCOUNT: u8 = 2u8;
+const WITNESS_TAG_MULTISIG: u8 = 3u8;
 
 impl property::Serialize for Witness {
     type Error = std::io::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
-        //use chain_core::property::Serialize;
 
         let mut codec = Codec::new(writer);
         match self {
@@ -147,6 +173,10 @@ impl property::Serialize for Witness {
                 codec.put_u8(WITNESS_TAG_ACCOUNT)?;
                 serialize_signature(sig, codec.into_inner())
             }
+            Witness::Multisig(msig) => {
+                codec.put_u8(WITNESS_TAG_MULTISIG)?;
+                msig.serialize(codec.into_inner())
+            }
         }
     }
 }
@@ -161,6 +191,10 @@ impl Readable for Witness {
             }
             WITNESS_TAG_UTXO => deserialize_signature(buf).map(Witness::Utxo),
             WITNESS_TAG_ACCOUNT => deserialize_signature(buf).map(Witness::Account),
+            WITNESS_TAG_MULTISIG => {
+                let msig = multisig::Witness::read(buf)?;
+                Ok(Witness::Multisig(msig))
+            }
             i => Err(ReadError::UnknownTag(i as u32)),
         }
     }

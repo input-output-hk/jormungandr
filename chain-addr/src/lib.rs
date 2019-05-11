@@ -64,6 +64,7 @@ pub enum Kind {
     Single(PublicKey<Ed25519Extended>),
     Group(PublicKey<Ed25519Extended>, PublicKey<Ed25519Extended>),
     Account(PublicKey<Ed25519Extended>),
+    Multisig([u8; 32]),
 }
 
 /// Kind Type of an address
@@ -72,6 +73,7 @@ pub enum KindType {
     Single,
     Group,
     Account,
+    Multisig,
 }
 
 /// Size of a Single address
@@ -83,11 +85,15 @@ pub const ADDR_SIZE_GROUP: usize = 65;
 /// Size of an Account address
 pub const ADDR_SIZE_ACCOUNT: usize = 33;
 
+/// Size of an Multisig Account address
+pub const ADDR_SIZE_MULTISIG: usize = 33;
+
 const ADDR_KIND_LOW_SENTINEL: u8 = 0x2; /* anything under or equal to this is invalid */
 pub const ADDR_KIND_SINGLE: u8 = 0x3;
 pub const ADDR_KIND_GROUP: u8 = 0x4;
 pub const ADDR_KIND_ACCOUNT: u8 = 0x5;
-const ADDR_KIND_SENTINEL: u8 = 0x6; /* anything above or equal to this is invalid */
+pub const ADDR_KIND_MULTISIG: u8 = 0x6;
+const ADDR_KIND_SENTINEL: u8 = 0x7; /* anything above or equal to this is invalid */
 
 impl KindType {
     pub fn to_value(&self) -> u8 {
@@ -95,6 +101,7 @@ impl KindType {
             KindType::Single => ADDR_KIND_SINGLE,
             KindType::Group => ADDR_KIND_GROUP,
             KindType::Account => ADDR_KIND_ACCOUNT,
+            KindType::Multisig => ADDR_KIND_MULTISIG,
         }
     }
 }
@@ -152,6 +159,7 @@ impl From<bech32::Error> for Error {
 impl Address {
     /// Try to convert from_bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        // check the kind is valid and length
         is_valid_data(bytes)?;
 
         let discr = get_discrimination_value(bytes[0]);
@@ -170,6 +178,11 @@ impl Address {
                 let stake_key = PublicKey::from_binary(&bytes[1..])?;
                 Kind::Account(stake_key)
             }
+            ADDR_KIND_MULTISIG => {
+                let mut hash = [0u8; 32];
+                hash.copy_from_slice(&bytes[1..33]);
+                Kind::Multisig(hash)
+            }
             _ => unreachable!(),
         };
         Ok(Address(discr, kind))
@@ -181,6 +194,7 @@ impl Address {
             Kind::Single(_) => ADDR_SIZE_SINGLE,
             Kind::Group(_, _) => ADDR_SIZE_GROUP,
             Kind::Account(_) => ADDR_SIZE_ACCOUNT,
+            Kind::Multisig(_) => ADDR_SIZE_MULTISIG,
         }
     }
 
@@ -190,6 +204,7 @@ impl Address {
             Kind::Single(_) => KindType::Single,
             Kind::Group(_, _) => KindType::Group,
             Kind::Account(_) => KindType::Account,
+            Kind::Multisig(_) => KindType::Multisig,
         }
     }
 
@@ -222,6 +237,7 @@ impl Address {
             Kind::Single(ref pk) => Some(pk),
             Kind::Group(ref pk, _) => Some(pk),
             Kind::Account(ref pk) => Some(pk),
+            Kind::Multisig(_) => None,
         }
     }
 }
@@ -264,6 +280,12 @@ fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType), Error> {
                 return Err(Error::InvalidAddress);
             }
             KindType::Account
+        }
+        ADDR_KIND_MULTISIG => {
+            if bytes.len() != ADDR_SIZE_MULTISIG {
+                return Err(Error::InvalidAddress);
+            }
+            KindType::Multisig
         }
         _ => return Err(Error::InvalidKind),
     };
@@ -355,6 +377,7 @@ impl PropertySerialize for Address {
                 codec.write_all(group.as_ref())?;
             }
             Kind::Account(stake_key) => codec.write_all(stake_key.as_ref())?,
+            Kind::Multisig(hash) => codec.write_all(&hash[..])?,
         };
 
         Ok(())
@@ -408,6 +431,11 @@ impl property::Deserialize for Address {
                 })?;
                 Kind::Account(stake_key)
             }
+            ADDR_KIND_MULTISIG => {
+                let mut bytes = [0u8; 32];
+                codec.read_exact(&mut bytes)?;
+                Kind::Multisig(bytes)
+            }
             _ => unreachable!(),
         };
         Ok(Address(discr, kind))
@@ -446,6 +474,10 @@ impl Readable for Address {
                 let bytes = <[u8; 32]>::read(buf)?;
                 let stake_key = PublicKey::from_binary(&bytes[..]).map_err(chain_crypto_err)?;
                 Kind::Account(stake_key)
+            }
+            ADDR_KIND_MULTISIG => {
+                let bytes = <[u8; 32]>::read(buf)?;
+                Kind::Multisig(bytes)
             }
             n => return Err(ReadError::UnknownTag(n as u32)),
         };

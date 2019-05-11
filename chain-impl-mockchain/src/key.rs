@@ -202,6 +202,12 @@ impl Hash {
     }
 }
 
+impl From<[u8; 32]> for Hash {
+    fn from(a: [u8; 32]) -> Self {
+        Hash::from_bytes(a)
+    }
+}
+
 impl property::Serialize for Hash {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
