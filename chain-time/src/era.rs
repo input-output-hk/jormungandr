@@ -23,7 +23,7 @@ pub struct EpochPosition {
 pub struct TimeEra {
     epoch_start: Epoch,
     slot_start: Slot,
-    pub slots_per_epoch: u32,
+    slots_per_epoch: u32,
 }
 
 impl TimeEra {
@@ -34,6 +34,11 @@ impl TimeEra {
             slot_start,
             slots_per_epoch,
         }
+    }
+
+    /// retrieve the number of slots in an epoch during a given Epoch
+    pub fn slots_per_epoch(&self) -> u32 {
+        self.slots_per_epoch
     }
 
     /// Try to return the epoch/inner-epoch-slot associated.

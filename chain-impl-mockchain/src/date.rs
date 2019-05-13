@@ -25,7 +25,7 @@ impl BlockDate {
 
     /// Get the slot following this one.
     pub fn next(&self, era: &TimeEra) -> BlockDate {
-        let epoch_duration = era.slots_per_epoch;
+        let epoch_duration = era.slots_per_epoch();
         assert!(self.slot_id < epoch_duration);
         if self.slot_id + 1 == epoch_duration {
             BlockDate {
