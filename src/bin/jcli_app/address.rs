@@ -82,6 +82,7 @@ fn address_info(address: &AddressReadable) {
     match kind {
         Kind::Single(single) => println!("public key: {}", print_pub_key(single)),
         Kind::Account(account) => println!("account: {}", print_pub_key(account)),
+        Kind::Multisig(_) => unimplemented!(),
         Kind::Group(pubk, groupk) => {
             println!("public key: {}", print_pub_key(pubk));
             println!("group key:  {}", print_pub_key(groupk));

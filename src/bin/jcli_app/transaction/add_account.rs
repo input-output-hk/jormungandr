@@ -1,6 +1,6 @@
 use chain_addr::{Address, Kind};
 use chain_impl_mockchain::{
-    transaction::{Input, InputEnum},
+    transaction::{AccountIdentifier, Input, InputEnum},
     value::Value,
 };
 use structopt::StructOpt;
@@ -39,9 +39,10 @@ impl AddAccount {
             .map_err(|error| AddAccountError::ReadTransaction { error })?;
 
         let account_identifier = match self.account.kind() {
-            Kind::Account(key) => key.clone().into(),
+            Kind::Account(key) => AccountIdentifier::from_single_account(key.clone().into()),
             Kind::Single(_) => return Err(AddAccountError::InvalidAddressSingle),
             Kind::Group(_, _) => return Err(AddAccountError::InvalidAddressGroup),
+            Kind::Multisig(_) => unimplemented!(),
         };
 
         transaction.add_input(Input::from_enum(InputEnum::AccountInput(
