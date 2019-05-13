@@ -13,6 +13,7 @@ extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate chain_storage_sqlite;
+extern crate chain_time;
 extern crate clap;
 extern crate cryptoxide;
 extern crate futures;
@@ -61,7 +62,6 @@ use crate::{
     blockcfg::Leader,
     blockchain::BlockchainR,
     intercom::BlockMsg,
-    leadership::leadership_task,
     rest::v0::node::stats::StatsCounter,
     settings::start::Settings,
     transaction::TPool,
@@ -92,18 +92,19 @@ fn start() -> Result<(), start_up::Error> {
 
     let bootstrapped_node = bootstrap(initialized_node)?;
 
-    start_services(&bootstrapped_node)
+    start_services(bootstrapped_node)
 }
 
 pub struct BootstrappedNode {
     settings: Settings,
     clock: clock::Clock,
     blockchain: BlockchainR,
+    new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::EpochParameters>,
 }
 
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
 
-fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::Error> {
+fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
     let mut services = Services::new();
 
     let tpool_data: TPool<MessageId, Message> = TPool::new();
@@ -111,6 +112,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
 
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+    let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
 
     let stats_counter = StatsCounter::default();
 
@@ -156,7 +158,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         });
     }
 
-    let leader_secret = if let Some(secret_path) = &bootstrapped_node.settings.leadership {
+    let leader_secret = if let Some(secret_path) = bootstrapped_node.settings.leadership {
         Some(secure::NodeSecret::load_from_file(secret_path.as_path())?)
     } else {
         None
@@ -171,20 +173,27 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
             bft_leader: secret.bft(),
             genesis_leader: secret.genesis(),
         };
+
         services.spawn_future("leadership", move |info| {
-            leadership_task(info, pk, tpool, blockchain, clock, block_task);
-            futures::future::ok(())
+            let process = self::leadership::Process::new(
+                info,
+                tpool,
+                blockchain.lock_read().tip.clone(),
+                block_task,
+            );
+
+            process.start(vec![pk], new_epoch_notifier)
         });
     }
 
     let rest_server = match bootstrapped_node.settings.rest {
-        Some(ref rest) => {
+        Some(rest) => {
             let context = rest::Context {
                 stats_counter,
                 blockchain: bootstrapped_node.blockchain.clone(),
                 transaction_task: Arc::new(Mutex::new(transaction_task)),
             };
-            Some(rest::start_rest_server(rest, context)?)
+            Some(rest::start_rest_server(&rest, context)?)
         }
         None => None,
     };
@@ -217,7 +226,9 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     let settings = initialized_node.settings;
     let storage = initialized_node.storage;
 
-    let blockchain = start_up::load_blockchain(block0, storage)?;
+    let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
+
+    let blockchain = start_up::load_blockchain(block0, storage, new_epoch_announcements)?;
 
     network::bootstrap(&settings.network, blockchain.clone());
 
@@ -225,6 +236,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         settings,
         clock,
         blockchain,
+        new_epoch_notifier,
     })
 }
 

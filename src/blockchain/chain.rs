@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::mpsc;
 
 use chain_core::property::{Block as _, HasHeader as _, HasMessages as _, Header as _};
 use chain_impl_mockchain::{
@@ -7,11 +8,12 @@ use chain_impl_mockchain::{
     ledger, multiverse,
 };
 use chain_storage::{error as storage, store::BlockInfo};
+use chain_time::{SlotDuration, TimeFrame, Timeline};
 
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash, Ledger, Multiverse},
     blockchain::{Branch, Tip, TipGetError, TipReplaceError},
-    leadership::{Leadership, Leaderships},
+    leadership::{EpochParameters, Leadership, Leaderships},
     start_up::NodeStorage,
     utils::borrow::Borrow,
 };
@@ -26,6 +28,10 @@ pub struct Blockchain {
 
     /// the Tip of the blockchain. This is update as the consensus goes
     pub tip: Tip,
+
+    pub time_frame: TimeFrame,
+
+    pub epoch_event: mpsc::Sender<EpochParameters>,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
@@ -77,11 +83,26 @@ pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 custom_error! {pub LoadError
     Storage{source: storage::Error} = "Error in the blockchain storage: {source}",
     Ledger{source: ledger::Error} = "Invalid blockchain state: {source}",
+    Block0 { source: crate::blockcfg::Block0Error } = "Initial setting of the blockchain are invalid",
 }
 
 impl Blockchain {
-    pub fn load(block_0: Block, mut storage: NodeStorage) -> Result<Self, LoadError> {
+    pub fn load(
+        block_0: Block,
+        mut storage: NodeStorage,
+        epoch_event: mpsc::Sender<EpochParameters>,
+    ) -> Result<Self, LoadError> {
+        use blockcfg::Block0DataSource as _;
         let mut multiverse = multiverse::Multiverse::new();
+
+        let start_time = block_0.start_time()?;
+        let slot_duration = block_0.slot_duration()?;
+        let slots_per_epoch = block_0.slots_per_epoch()?;
+
+        let time_frame = TimeFrame::new(
+            Timeline::new(start_time),
+            SlotDuration::from_secs(slot_duration.as_secs() as u32),
+        );
 
         let (tip, leaderships) =
             if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)? {
@@ -132,6 +153,7 @@ impl Blockchain {
                 let tip = multiverse.add(block_0.id(), state);
                 let leaderships = Leaderships::new(&block_0.header, initial_leadership);
                 let tip = Tip::new(Branch::new(tip, block_0.header.chain_length()));
+
                 (tip, leaderships)
             };
 
@@ -143,7 +165,33 @@ impl Blockchain {
             leaderships,
             tip,
             unconnected_blocks: BTreeMap::default(),
+            epoch_event,
+            time_frame,
         })
+    }
+
+    pub fn initial(&mut self) -> Result<(), storage::Error> {
+        let (_block, block_info) = self.get_block_tip()?;
+        let state = self.get_ledger(&block_info.block_hash).unwrap().clone();
+        let slot = self
+            .time_frame
+            .slot_at(&std::time::SystemTime::now())
+            .unwrap();
+        let leadership = Leadership::new(0, &state);
+        let date = leadership.era().from_slot_to_era(slot).unwrap();
+
+        self.epoch_event
+            .try_send(EpochParameters {
+                epoch: date.epoch.0,
+
+                ledger_static_parameters: state.get_static_parameters().clone(),
+                ledger_parameters: state.get_ledger_parameters(),
+
+                time_frame: self.time_frame.clone(),
+                ledger_reference: state,
+            })
+            .unwrap_or_else(|_| ());
+        Ok(())
     }
 
     pub fn get_ledger(&self, hash: &HeaderHash) -> Option<&Ledger> {
@@ -308,6 +356,19 @@ fn process_block(
     };
 
     if block.header.date().epoch > parent_epoch {
+        blockchain
+            .epoch_event
+            .try_send(EpochParameters {
+                epoch: block.header().date().epoch,
+
+                ledger_static_parameters: state.get_static_parameters().clone(),
+                ledger_parameters: state.get_ledger_parameters(),
+
+                time_frame: blockchain.time_frame.clone(),
+                ledger_reference: state.clone(),
+            })
+            .unwrap_or_else(|_| ());
+
         let leadership = Leadership::new(
             block.header.date().epoch,
             blockchain.get_ledger(&block.parent_id()).unwrap(),

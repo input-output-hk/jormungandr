@@ -10,5 +10,6 @@ pub struct EpochParameters {
     pub ledger_static_parameters: LedgerStaticParameters,
     pub ledger_parameters: LedgerParameters,
 
+    pub time_frame: chain_time::TimeFrame,
     pub ledger_reference: Ledger,
 }

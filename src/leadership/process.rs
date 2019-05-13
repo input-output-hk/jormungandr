@@ -1,9 +1,9 @@
 use crate::{
     blockcfg::{
         Block, BlockBuilder, BlockDate, ChainLength, ConsensusVersion, Epoch, HeaderHash, Leader,
-        LeaderOutput, Ledger, LedgerParameters, LedgerStaticParameters,
+        LeaderOutput,
     },
-    blockchain::{Branch, Tip},
+    blockchain::Tip,
     clock,
     intercom::BlockMsg,
     leadership::{EpochParameters, Leadership, Task, TaskParameters},
@@ -13,7 +13,7 @@ use crate::{
 };
 use chain_core::property::{Block as _, BlockDate as _, ChainLength as _};
 use slog::Logger;
-use std::{error::Error as _, sync::Arc};
+use std::sync::Arc;
 use tokio::{
     prelude::*,
     sync::{mpsc, watch},
@@ -53,6 +53,8 @@ impl Process {
     ) -> Self {
         let (epoch_broadcaster, epoch_receiver) = watch::channel(None);
 
+        slog_info!(service_info.logger(), "preparing");
+
         Process {
             service_info,
             transaction_pool,
@@ -68,7 +70,10 @@ impl Process {
         mut self,
         leaders: Vec<Leader>,
         new_epoch_notifier: mpsc::Receiver<EpochParameters>,
-    ) -> impl Future<Item = (), Error = ProcessError> {
+    ) -> impl Future<Item = (), Error = ()> {
+        let error_logger = self.service_info.logger().clone();
+        slog_info!(self.service_info.logger(), "starting");
+
         for leader in leaders {
             self.spawn_leader(leader);
         }
@@ -88,6 +93,9 @@ impl Process {
                     futures::future::ok(())
                 }
             })
+            .map_err(move |error| {
+                slog_crit!(error_logger, "Error in the Leadership Process" ; "reason" => error.to_string())
+            })
     }
 
     /// spawn a new leader [`Task`] in the `Process` runtime.
@@ -97,7 +105,16 @@ impl Process {
         let epoch_receiver = self.epoch_receiver.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let logger = self.service_info.logger().clone();
-        let task = Task::new(logger, leader, blockchain_tip, epoch_receiver);
+        let transaction_pool = self.transaction_pool.clone();
+        let block_message = self.block_message_box.clone();
+        let task = Task::new(
+            logger,
+            leader,
+            blockchain_tip,
+            transaction_pool,
+            epoch_receiver,
+            block_message,
+        );
 
         self.service_info.spawn(task.start())
     }
@@ -112,6 +129,7 @@ impl Process {
             ledger_static_parameters: epoch_parameters.ledger_static_parameters,
             ledger_parameters: epoch_parameters.ledger_parameters,
             leadership: Arc::new(leadership),
+            time_frame: epoch_parameters.time_frame,
         };
 
         self.epoch_broadcaster
@@ -193,7 +211,7 @@ fn handle_event(
             .unwrap(),
     };
 
-    let parent_id = b.get_tip();
+    let parent_id = b.get_tip().unwrap();
 
     let logger = Logger::root(
         logger.clone(),
