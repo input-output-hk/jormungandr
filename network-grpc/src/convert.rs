@@ -7,6 +7,7 @@ use chain_core::{
 use network_core::{
     error as core_error,
     gossip::{Gossip, Node, NodeId},
+    subscription::BlockEvent,
 };
 
 use tower_grpc::{
@@ -120,6 +121,35 @@ where
     }
 }
 
+impl<T> FromProtobuf<gen::node::BlockEvent> for BlockEvent<T>
+where
+    T: property::Block + property::HasHeader,
+    T::Header: mempack::Readable,
+    T::Id: mempack::Readable,
+{
+    fn from_message(msg: gen::node::BlockEvent) -> Result<Self, core_error::Error> {
+        use gen::node::block_event::*;
+
+        let event = match msg.item {
+            Some(Item::Announce(header)) => {
+                let header = parse_bytes(&header.content)?;
+                BlockEvent::Announce(header)
+            }
+            Some(Item::Solicit(ids)) => {
+                let ids = parse_repeated_bytes(&ids.ids)?;
+                BlockEvent::Solicit(ids)
+            }
+            None => {
+                return Err(core_error::Error::new(
+                    core_error::Code::InvalidArgument,
+                    "invalid BlockEvent payload, one of the fields is required",
+                ))
+            }
+        };
+        Ok(event)
+    }
+}
+
 impl<T> FromProtobuf<gen::node::Message> for T
 where
     T: property::Message + mempack::Readable,
@@ -195,6 +225,34 @@ where
     fn into_message(self) -> Result<gen::node::Header, tower_grpc::Status> {
         let content = serialize_to_bytes(&self)?;
         Ok(gen::node::Header { content })
+    }
+}
+
+impl IntoProtobuf<gen::node::UploadBlocksResponse> for () {
+    fn into_message(self) -> Result<gen::node::UploadBlocksResponse, tower_grpc::Status> {
+        Ok(gen::node::UploadBlocksResponse {})
+    }
+}
+
+impl<T> IntoProtobuf<gen::node::BlockEvent> for BlockEvent<T>
+where
+    T: property::Block + property::HasHeader,
+    T::Header: property::Serialize,
+{
+    fn into_message(self) -> Result<gen::node::BlockEvent, tower_grpc::Status> {
+        use gen::node::block_event::*;
+
+        let item = match self {
+            BlockEvent::Announce(header) => {
+                let content = serialize_to_bytes(&header)?;
+                Item::Announce(gen::node::Header { content })
+            }
+            BlockEvent::Solicit(ids) => {
+                let ids = serialize_to_repeated_bytes(&ids)?;
+                Item::Solicit(gen::node::BlockIds { ids })
+            }
+        };
+        Ok(gen::node::BlockEvent { item: Some(item) })
     }
 }
 

@@ -31,6 +31,9 @@ message PullBlocksToTipRequest {
   repeated bytes from = 1;
 }
 
+// Response message for method UploadBlocks.
+message UploadBlocksResponse {}
+
 // Representation of a block.
 message Block {
   // The serialized content of the block.
@@ -56,6 +59,17 @@ message Gossip {
   repeated bytes nodes = 2;
 }
 
+// Element of the subscription stream returned by BlockSubscription.
+message BlockEvent {
+  oneof item {
+    // Announcement of a new block, carrying the block's header.
+    Header announce = 1;
+    // Solicitation to upload identified blocks with a method call
+    // UploadBlocks.
+    BlockIds solicit = 2;
+  }
+}
+
 service Node {
   rpc Tip(TipRequest) returns (TipResponse);
   rpc GetBlocks(BlockIds) returns (stream Block) {
@@ -70,9 +84,13 @@ service Node {
 
   rpc PullBlocksToTip(PullBlocksToTipRequest) returns (stream Block);
 
+  // Uploads blocks to the service in response to a solicitation item
+  // received from the BlockSubscription response stream.
+  rpc UploadBlocks(stream Block) returns (UploadBlocksResponse);
+
   // Establishes a bidirectional stream to exchange information on new
   // blocks created or accepted by the peers.
-  rpc BlockSubscription(stream Header) returns (stream Header);
+  rpc BlockSubscription(stream Header) returns (stream BlockEvent);
 
   // Establishes a bidirectional stream to exchange information on new
   // messages created or accepted by the peers.
