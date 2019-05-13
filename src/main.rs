@@ -74,8 +74,6 @@ pub mod log_wrapper;
 pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
-pub mod clock;
-// pub mod consensus;
 pub mod intercom;
 pub mod leadership;
 pub mod network;
@@ -97,7 +95,6 @@ fn start() -> Result<(), start_up::Error> {
 
 pub struct BootstrappedNode {
     settings: Settings,
-    clock: clock::Clock,
     blockchain: BlockchainR,
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::EpochParameters>,
 }
@@ -127,7 +124,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let block_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
-        // let clock = bootstrapped_node.clock.clone();
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(info, &blockchain, &stats_counter, &network_msgbox, input);
@@ -166,7 +162,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     if let Some(secret) = leader_secret {
         let tpool = tpool.clone();
-        let clock = bootstrapped_node.clock.clone();
         let block_task = block_task.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
         let pk = Leader {
@@ -217,12 +212,10 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 /// * download all the existing blocks
 /// * verify all the downloaded blocks
 /// * network / peer discoveries (?)
-/// * gclock sync ?
 ///
 ///
 fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
     let block0 = initialized_node.block0;
-    let clock = initialized_node.clock;
     let settings = initialized_node.settings;
     let storage = initialized_node.storage;
 
@@ -234,7 +227,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     Ok(BootstrappedNode {
         settings,
-        clock,
         blockchain,
         new_epoch_notifier,
     })
@@ -243,7 +235,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
-    pub clock: clock::Clock,
     pub storage: start_up::NodeStorage,
 }
 
@@ -268,12 +259,9 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         /* add network to fetch block0 */
     )?;
 
-    let clock = prepare_clock(&block0)?;
-
     Ok(InitializedNode {
         settings: node_settings,
         block0: block0,
-        clock: clock,
         storage: storage,
     })
 }
