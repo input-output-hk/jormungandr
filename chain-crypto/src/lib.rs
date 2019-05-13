@@ -8,8 +8,10 @@ extern crate cfg_if;
 extern crate test;
 
 #[cfg(test)]
-#[macro_use]
 extern crate quickcheck;
+#[cfg(test)]
+#[macro_use(quickcheck)]
+extern crate quickcheck_macros;
 
 cfg_if! {
     if #[cfg(test)] {

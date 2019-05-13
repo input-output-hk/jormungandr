@@ -21,6 +21,7 @@ cfg-if = "0.1"
 
 [dev-dependencies]
 quickcheck = "0.8"
+quickcheck_macros = "0.8"
 rand_chacha = "0.1"
 
 [features]

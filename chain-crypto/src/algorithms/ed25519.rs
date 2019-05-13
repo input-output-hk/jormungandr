@@ -120,12 +120,13 @@ mod test {
     use crate::key::{KeyPair, PublicKey};
     use crate::sign::test::{keypair_signing_ko, keypair_signing_ok};
 
-    quickcheck! {
+    #[quickcheck]
         fn sign_ok(input: (KeyPair<Ed25519>, Vec<u8>)) -> bool {
             keypair_signing_ok(input)
         }
+
+    #[quickcheck]
         fn sign_ko(input: (KeyPair<Ed25519>, PublicKey<Ed25519>, Vec<u8>)) -> bool {
             keypair_signing_ko(input)
         }
     }
-}
