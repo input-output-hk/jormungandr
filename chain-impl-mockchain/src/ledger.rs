@@ -226,7 +226,7 @@ impl Ledger {
         let slot0 = tf.slot0();
 
         // TODO -- configurable slots per epoch
-        let era = TimeEra::new_era(slot0, Epoch(0), 21600);
+        let era = TimeEra::new(slot0, Epoch(0), 21600);
 
         let settings = setting::Settings::new(era).apply(&regular_ents)?;
 
