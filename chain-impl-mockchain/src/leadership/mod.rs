@@ -145,6 +145,18 @@ impl Leadership {
         }
     }
 
+    /// get the epoch associated to the `Leadership`
+    #[inline]
+    pub fn epoch(&self) -> Epoch {
+        self.epoch
+    }
+
+    /// get the TimeEra associated to the `Leadership`
+    #[inline]
+    pub fn era(&self) -> &TimeEra {
+        &self.era
+    }
+
     /// Verify whether this header has been produced by a leader that fits with the leadership
     ///
     pub fn verify(&self, block_header: &Header) -> Verification {

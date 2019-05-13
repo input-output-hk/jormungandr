@@ -68,6 +68,7 @@ pub enum Block0Error {
     InitialMessageDuplicatePraosActiveSlotsCoeff,
     InitialMessageNoDate,
     InitialMessageNoSlotDuration,
+    InitialMessageNoSlotsPerEpoch,
     InitialMessageNoDiscrimination,
     InitialMessageNoConsensusVersion,
     InitialMessageNoConsensusLeaderId,
@@ -190,6 +191,7 @@ impl Ledger {
         let mut block0_start_time = None;
         let mut slot_duration = None;
         let mut discrimination = None;
+        let mut slots_per_epoch = None;
 
         for param in init_ents.iter() {
             match param {
@@ -202,6 +204,9 @@ impl Ledger {
                 ConfigParam::SlotDuration(d) => {
                     slot_duration = Some(*d);
                 }
+                ConfigParam::SlotsPerEpoch(n) => {
+                    slots_per_epoch = Some(*n);
+                }
                 _ => regular_ents.push(param.clone()),
             }
         }
@@ -213,6 +218,8 @@ impl Ledger {
             discrimination.ok_or(Error::Block0(Block0Error::InitialMessageNoDiscrimination))?;
         let slot_duration =
             slot_duration.ok_or(Error::Block0(Block0Error::InitialMessageNoSlotDuration))?;
+        let slots_per_epoch =
+            slots_per_epoch.ok_or(Error::Block0(Block0Error::InitialMessageNoSlotsPerEpoch))?;
 
         let static_params = LedgerStaticParameters {
             block0_initial_hash,
@@ -225,8 +232,7 @@ impl Ledger {
         let tf = TimeFrame::new(timeline, SlotDuration::from_secs(slot_duration as u32));
         let slot0 = tf.slot0();
 
-        // TODO -- configurable slots per epoch
-        let era = TimeEra::new_era(slot0, Epoch(0), 21600);
+        let era = TimeEra::new(slot0, Epoch(0), slots_per_epoch);
 
         let settings = setting::Settings::new(era).apply(&regular_ents)?;
 
@@ -828,6 +834,7 @@ pub mod test {
         ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
             Milli::HALF,
         ));
+        ie.push(ConfigParam::SlotsPerEpoch(21600));
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);
