@@ -52,7 +52,7 @@ pub fn handle_input(
                     slog_info!(logger,
                         "block added successfully to Node's blockchain";
                         "id" => header.id().to_string(),
-                        "date" => format!("{}.{}", header.date().epoch, header.date().slot_id)
+                        "date" => header.date().to_string()
                     );
                     slog_debug!(logger, "Header: {:?}", header);
                     network_propagate
