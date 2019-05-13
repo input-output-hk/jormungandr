@@ -5,6 +5,7 @@ pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
 
 use super::configuration;
+use super::configuration::genesis_model::GenesisYaml;
 use super::data::utxo::Utxo;
 use super::file_assert;
 use super::file_utils;
@@ -28,6 +29,21 @@ pub fn assert_genesis_encode(
     println!(
         "Created genesis block in: ({:?}) from genesis yaml ({:?}) ",
         &path_to_output_block, &genesis_yaml_file_path
+    );
+}
+
+pub fn assert_genesis_encode_fails(genesis_yaml: &GenesisYaml, expected_msg: &str) {
+    let input_yaml_file_path = GenesisYaml::serialize(&genesis_yaml);
+    let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
+
+    println!(
+        "output block file: {:?}, genesis_yaml {:?}",
+        path_to_output_block, input_yaml_file_path
+    );
+
+    process_assert::assert_process_failed_and_matches_message(
+        jcli_commands::get_genesis_encode_command(&input_yaml_file_path, &path_to_output_block),
+        expected_msg,
     );
 }
 

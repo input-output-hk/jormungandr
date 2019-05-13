@@ -9,15 +9,24 @@ use super::file_utils;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlockchainConfig {
-    pub block0_date: i32,
-    pub discrimination: String,
-    pub block0_consensus: String,
-    pub slot_duration: i32,
-    pub slots_per_epoch: u32,
-    pub epoch_stability_depth: i32,
-    pub consensus_leader_ids: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block0_date: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub discrimination: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block0_consensus: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slot_duration: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slots_per_epoch: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub epoch_stability_depth: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub consensus_leader_ids: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bft_slots_ratio: Option<String>,
-    pub consensus_genesis_praos_active_slot_coeff: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub consensus_genesis_praos_param_f: Option<String>,
     pub allow_account_creation: bool,
     pub linear_fees: LinearFees,
     pub kes_update_speed: u32,
@@ -84,20 +93,20 @@ impl GenesisYaml {
     ) -> GenesisYaml {
         GenesisYaml {
             blockchain_configuration: BlockchainConfig {
-                block0_date: 1554185140,
-                discrimination: String::from("test"),
-                block0_consensus: String::from("bft"),
-                slot_duration: 15,
-                slots_per_epoch: 100,
-                epoch_stability_depth: 2600,
-                consensus_leader_ids: vec![
+                block0_date: Some(1554185140),
+                discrimination: Some(String::from("test")),
+                block0_consensus: Some(String::from("bft")),
+                slot_duration: Some(15),
+                slots_per_epoch: Some(100),
+                epoch_stability_depth: Some(2600),
+                consensus_leader_ids: Some(vec![
                     String::from(
                         "ed25519e_pk1else5uqslegj6n5rxnrayz2x99cel6m2g492ac6tpv76kns0dwlqpjnh0l",
                     ),
                     String::from(
                         "ed25519e_pk1xuqdxht6f0kkh0lf3ck3gfyvnpk33s09du92w6740mfmxl6hsfpsp8grmk",
                     ),
-                ],
+                ]),
                 bft_slots_ratio: Some("0.222".to_owned()),
                 consensus_genesis_praos_active_slot_coeff: "0.444".to_owned(),
                 allow_account_creation: true,
