@@ -12,5 +12,5 @@ pub fn create_handler(
 }
 
 fn handle_request(settings: State<BlockchainR>) -> impl Responder {
-    settings.lock_read().get_tip().to_string()
+    settings.lock_read().get_tip().unwrap().to_string()
 }

@@ -32,7 +32,7 @@ pub fn handle_input(_info: &ThreadServiceInfo, blockchain: &BlockchainR, input: 
 
 fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<Header, Error> {
     let blockchain = blockchain.lock_read();
-    let tip = blockchain.get_tip();
+    let tip = blockchain.get_tip().unwrap();
     let storage = blockchain.storage.read().unwrap();
     match storage.get_block(&tip) {
         Err(err) => Err(Error::failed(format!(
@@ -173,7 +173,7 @@ fn handle_pull_blocks_to_tip(
     }
     let from = from.remove(0);
 
-    let tip = blockchain.get_tip();
+    let tip = blockchain.get_tip().unwrap();
 
     for x in blockchain
         .storage

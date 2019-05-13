@@ -19,7 +19,7 @@ fn handle_request(blockchain: State<BlockchainR>) -> impl Responder {
     let blockchain = blockchain.lock_read();
     let utxos = blockchain
         .multiverse
-        .get(&blockchain.get_tip())
+        .get(&blockchain.get_tip().unwrap())
         .unwrap()
         .utxos();
     let utxos = utxos.map(Utxo::from).collect::<Vec<_>>();

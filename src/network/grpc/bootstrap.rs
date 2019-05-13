@@ -28,7 +28,7 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
             error!("failed to connect to bootstrap peer: {:?}", e);
         })
         .and_then(|mut client: Connection<BlockConfig, _, _>| {
-            let tip = blockchain.lock_read().get_tip();
+            let tip = blockchain.lock_read().get_tip().unwrap();
             client
                 .pull_blocks_to_tip(&[tip])
                 .map_err(|e| {

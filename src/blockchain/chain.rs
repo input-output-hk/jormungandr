@@ -151,22 +151,24 @@ impl Blockchain {
     }
 
     /// return the current tip hash and date
-    pub fn get_tip(&self) -> HeaderHash {
-        self.tip.hash().unwrap()
+    pub fn get_tip(&self) -> Result<HeaderHash, TipGetError> {
+        self.tip.hash()
     }
 
     pub fn get_block_tip(&self) -> Result<(Block, BlockInfo<HeaderHash>), storage::Error> {
-        self.get_block(&self.get_tip())
+        self.get_block(&self.get_tip().unwrap())
     }
 
     pub fn put_block(&mut self, block: &Block) -> Result<(), storage::Error> {
         self.storage.write().unwrap().put_block(block)
     }
 
-    pub fn put_tip(&mut self, block: &Block) -> Result<(), storage::Error> {
+    pub fn put_tip(&mut self, branch: Branch, block: &Block) -> Result<(), HandleBlockError> {
         let mut storage = self.storage.write().unwrap();
         storage.put_block(block)?;
-        storage.put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block.id())
+        storage.put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block.id())?;
+        self.tip.replace_with(branch)?;
+        Ok(())
     }
 
     pub fn get_block(
@@ -322,14 +324,17 @@ fn process_block(
     // corresponding states, but to prevent a DoS, we may
     // want to store only sufficiently long chains.
 
-    blockchain.put_tip(&block)?;
     let new_chain_length = block.chain_length();
+
     let branch = Branch::new(
         blockchain.multiverse.add(block.id(), state),
         new_chain_length,
     );
+
     if new_chain_length > tip_chain_length {
-        blockchain.tip.replace_with(branch)?;
+        blockchain.put_tip(branch, &block)?;
+    } else {
+        blockchain.put_block(&block)?;
     }
 
     Ok(HandledBlock::Acquired {
