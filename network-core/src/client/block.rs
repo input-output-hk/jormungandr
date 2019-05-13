@@ -1,5 +1,5 @@
 use super::P2pService;
-use crate::error::Error;
+use crate::{error::Error, subscription::BlockEvent};
 
 use chain_core::property::{Block, HasHeader};
 
@@ -66,9 +66,19 @@ pub trait BlockService: P2pService {
         Error = Error,
     >;
 
+    /// The type of asynchronous futures returned by method `upload_blocks`.
+    type UploadBlocksFuture: Future<Item = (), Error = Error>;
+
+    /// Uploads blocks to the service in response to `BlockEvent::Solicit`.
+    ///
+    /// The blocks to send are retrieved asynchronously from the passed stream.
+    fn upload_blocks<S>(&mut self, blocks: S) -> Self::UploadBlocksFuture
+    where
+        S: Stream<Item = Self::Block> + Send + 'static;
+
     /// The type of an asynchronous stream that provides notifications
     /// of blocks created or accepted by the remote node.
-    type BlockSubscription: Stream<Item = <Self::Block as HasHeader>::Header, Error = Error>;
+    type BlockSubscription: Stream<Item = BlockEvent<Self::Block>, Error = Error>;
 
     /// Establishes a bidirectional stream of notifications for blocks
     /// created or accepted by either of the peers.

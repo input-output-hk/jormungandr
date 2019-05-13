@@ -13,6 +13,7 @@ use network_core::{
     client::{block::BlockService, gossip::GossipService, P2pService},
     error as core_error,
     gossip::{self, Gossip, NodeId},
+    subscription::BlockEvent,
 };
 
 use futures::future::Executor;
@@ -105,6 +106,12 @@ type GrpcUnaryFuture<R> = tower_grpc::client::unary::ResponseFuture<
     tower_h2::RecvBody,
 >;
 
+type GrpcClientStreamingFuture<R> = tower_grpc::client::client_streaming::ResponseFuture<
+    R,
+    tower_h2::client::ResponseFuture,
+    tower_h2::RecvBody,
+>;
+
 type GrpcServerStreamingFuture<R> =
     tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
 
@@ -122,6 +129,16 @@ impl<T, R> ResponseFuture<T, R> {
             inner,
             _phantom: PhantomData,
         }
+    }
+}
+
+pub struct ClientStreamingCompletionFuture<R> {
+    inner: GrpcClientStreamingFuture<R>,
+}
+
+impl<R> ClientStreamingCompletionFuture<R> {
+    fn new(inner: GrpcClientStreamingFuture<R>) -> Self {
+        ClientStreamingCompletionFuture { inner }
     }
 }
 
@@ -170,6 +187,19 @@ where
         let res = try_ready!(self.inner.poll().map_err(error_from_grpc));
         let item = T::from_message(res.into_inner())?;
         Ok(Async::Ready(item))
+    }
+}
+
+impl<R> Future for ClientStreamingCompletionFuture<R>
+where
+    R: prost::Message + Default,
+{
+    type Item = ();
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<(), core_error::Error> {
+        try_ready!(self.inner.poll().map_err(error_from_grpc));
+        Ok(Async::Ready(()))
     }
 }
 
@@ -303,8 +333,11 @@ where
     type GetBlocksStream = ResponseStream<P::Block, gen::node::Block>;
     type GetBlocksFuture = ResponseStreamFuture<P::Block, gen::node::Block>;
 
-    type BlockSubscription = ResponseStream<P::Header, gen::node::Header>;
-    type BlockSubscriptionFuture = SubscriptionFuture<P::Header, Self::NodeId, gen::node::Header>;
+    type BlockSubscription = ResponseStream<BlockEvent<P::Block>, gen::node::BlockEvent>;
+    type BlockSubscriptionFuture =
+        SubscriptionFuture<BlockEvent<P::Block>, Self::NodeId, gen::node::BlockEvent>;
+
+    type UploadBlocksFuture = ClientStreamingCompletionFuture<gen::node::UploadBlocksResponse>;
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};
@@ -324,6 +357,16 @@ where
         let req = gen::node::BlockIds { ids };
         let future = self.service.get_blocks(Request::new(req));
         ResponseStreamFuture::new(future)
+    }
+
+    fn upload_blocks<S>(&mut self, blocks: S) -> Self::UploadBlocksFuture
+    where
+        S: Stream<Item = P::Block> + Send + 'static,
+    {
+        let rs = RequestStream::new(blocks);
+        let req = Request::new(rs);
+        let future = self.service.upload_blocks(req);
+        ClientStreamingCompletionFuture::new(future)
     }
 
     fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
