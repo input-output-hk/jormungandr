@@ -5,18 +5,15 @@ use crate::{
     },
     blockchain::Tip,
     intercom::BlockMsg,
-    leadership::Leadership,
+    leadership::{LeaderSchedule, Leadership},
     transaction::TPoolR,
     utils::async_msg::MessageBox,
 };
-use chain_core::property::{BlockDate as _, ChainLength as _};
-use chain_time::{
-    era::{EpochPosition, EpochSlotOffset},
-    timeframe::TimeFrame,
-};
+use chain_core::property::ChainLength as _;
+use chain_time::timeframe::TimeFrame;
 use slog::Logger;
-use std::{sync::Arc, time::SystemTime};
-use tokio::{prelude::*, sync::watch, timer::DelayQueue};
+use std::sync::Arc;
+use tokio::{prelude::*, sync::watch};
 
 custom_error! {pub HandleLeadershipError
     Schedule { source: tokio::timer::Error } = "Error in the leadership schedule",
@@ -37,13 +34,6 @@ pub struct TaskParameters {
     pub time_frame: TimeFrame,
 }
 
-pub struct ScheduledEvent {
-    leader_output: LeaderOutput,
-    date: BlockDate,
-    expected_time: SystemTime,
-    // TODO...
-}
-
 pub struct Task {
     logger: Logger,
     leader: Leader,
@@ -51,90 +41,6 @@ pub struct Task {
     epoch_receiver: watch::Receiver<Option<TaskParameters>>,
     transaction_pool: TPoolR,
     block_message: MessageBox<BlockMsg>,
-}
-
-/// structure to prepare the schedule of a leader
-pub struct LeaderSchedule {
-    events: DelayQueue<ScheduledEvent>,
-}
-
-impl LeaderSchedule {
-    fn new(logger: Logger, leader: &Leader, task_parameters: &TaskParameters) -> Self {
-        // TODO: use parameter's number of slot per epoch
-        let number_of_slots_per_epoch = 100;
-        let now = std::time::SystemTime::now();
-
-        let mut schedule = LeaderSchedule {
-            events: DelayQueue::with_capacity(number_of_slots_per_epoch),
-        };
-
-        let logger = Logger::root(
-            logger,
-            o!(
-                "epoch" => task_parameters.epoch,
-            ),
-        );
-
-        for slot_idx in 0..number_of_slots_per_epoch {
-            schedule.schedule(
-                Logger::root(logger.clone(), o!("epoch_slot" => slot_idx)),
-                now,
-                leader,
-                task_parameters,
-                slot_idx as u32,
-            );
-        }
-
-        schedule
-    }
-
-    #[inline]
-    fn schedule(
-        &mut self,
-        logger: Logger,
-        now: std::time::SystemTime,
-        leader: &Leader,
-        task_parameters: &TaskParameters,
-        slot_idx: u32,
-    ) {
-        let slot = task_parameters
-            .leadership
-            .era()
-            .from_era_to_slot(EpochPosition {
-                epoch: chain_time::Epoch(task_parameters.epoch),
-                slot: EpochSlotOffset(slot_idx),
-            });
-        let slot_system_time = task_parameters
-            .time_frame
-            .slot_to_systemtime(slot)
-            .expect("The slot should always be in the given timeframe here");
-
-        let date = BlockDate::from_epoch_slot_id(task_parameters.epoch, slot_idx);
-
-        if now < slot_system_time {
-            match task_parameters.leadership.is_leader_for_date(leader, date) {
-                Ok(LeaderOutput::None) => slog_debug!(logger, "not a leader at this time"),
-                Ok(leader_output) => {
-                    slog_info!(logger, "scheduling a block leader");
-                    self.events.insert(
-                        ScheduledEvent {
-                            expected_time: slot_system_time.clone(),
-                            leader_output: leader_output,
-                            date: date,
-                        },
-                        slot_system_time
-                            .duration_since(now)
-                            .expect("expect the slot scheduled system time to be in the future"),
-                    );
-                }
-                Err(error) => {
-                    slog_error!(logger, "cannot compute schedule" ; "reason" => format!("{error}", error = error))
-                }
-            }
-        } else {
-            slog_debug!(logger, "ignoring past events...")
-        }
-    }
 }
 
 impl Task {
@@ -274,13 +180,4 @@ fn prepare_block(
     bb.messages(messages);
 
     bb
-}
-
-impl Stream for LeaderSchedule {
-    type Item = tokio::timer::delay_queue::Expired<ScheduledEvent>;
-    type Error = tokio::timer::Error;
-
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        self.events.poll()
-    }
 }
