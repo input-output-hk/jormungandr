@@ -242,7 +242,7 @@ impl Blockchain {
     /// call returns None:
     ///
     /// 1. there is no existing leadership for the given epoch;
-    /// 2. there is no existing ledget state available for the
+    /// 2. there is no existing ledger state available for the
     ///    given block
     pub fn get_leadership_or_build<'a>(
         &'a self,

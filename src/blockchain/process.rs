@@ -81,7 +81,7 @@ pub fn handle_input(
                 BlockHeaderTriage::ProcessBlockToState => {
                     slog_info!(logger, "Block announcement is interesting, fetch block");
                     // TODO: signal back to the network that the block is interesting
-                    // (get block/rquiest block)
+                    // (get block/request block)
                     unimplemented!()
                 }
             }

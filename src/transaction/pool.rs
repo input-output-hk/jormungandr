@@ -53,8 +53,9 @@ impl<TransId: std::hash::Hash + std::cmp::Eq, Trans: Clone> TPool<TransId, Trans
     pub fn gc(&mut self, expired_duration: Duration) -> usize {
         let orig_length = self.content.len();
         let t = SystemTime::now();
-        self.content
-            .retain(|_, (ttime, _)| t.duration_since(*ttime).unwrap() > expired_duration);
+        self.content.retain(|_, (received_time, _)| {
+            t.duration_since(*received_time).unwrap() > expired_duration
+        });
         orig_length - self.content.len()
     }
 }
