@@ -1,7 +1,7 @@
 mod dleq;
 pub mod vrf;
 
-use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
+use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic};
 use crate::vrf::{VRFVerification, VerifiableRandomFunction};
 use rand::{CryptoRng, RngCore};
 
@@ -15,7 +15,6 @@ impl AsymmetricKey for Curve25519_2HashDH {
     const SECRET_BECH32_HRP: &'static str = "vrf_sk";
     const PUBLIC_BECH32_HRP: &'static str = "vrf_pk";
 
-    const SECRET_KEY_SIZE: usize = vrf::SECRET_SIZE;
     const PUBLIC_KEY_SIZE: usize = vrf::PUBLIC_SIZE;
 
     fn generate<T: RngCore + CryptoRng>(rng: T) -> Self::Secret {
@@ -40,6 +39,10 @@ impl AsymmetricKey for Curve25519_2HashDH {
     fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
         vrf::PublicKey::from_bytes(data)
     }
+}
+
+impl SecretKeySizeStatic for Curve25519_2HashDH {
+    const SECRET_KEY_SIZE: usize = vrf::SECRET_SIZE;
 }
 
 impl VerifiableRandomFunction for Curve25519_2HashDH {

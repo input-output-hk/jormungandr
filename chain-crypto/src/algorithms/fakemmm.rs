@@ -41,7 +41,6 @@ impl AsymmetricKey for FakeMMM {
     const SECRET_BECH32_HRP: &'static str = "fakemmm_sk";
     const PUBLIC_BECH32_HRP: &'static str = "fakemmm_pk";
 
-    const SECRET_KEY_SIZE: usize = ed25519::SEED_LENGTH;
     const PUBLIC_KEY_SIZE: usize = ed25519::PUBLIC_KEY_LENGTH;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Priv {

@@ -1,4 +1,4 @@
-use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
+use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 
 use ed25519_bip32 as i;
@@ -33,7 +33,6 @@ impl AsymmetricKey for Ed25519Bip32 {
     const SECRET_BECH32_HRP: &'static str = "xprv";
     const PUBLIC_BECH32_HRP: &'static str = "xpub";
 
-    const SECRET_KEY_SIZE: usize = XPRV_SIZE;
     const PUBLIC_KEY_SIZE: usize = XPUB_SIZE;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
@@ -54,6 +53,10 @@ impl AsymmetricKey for Ed25519Bip32 {
         let xpub = XPub::from_slice(data)?;
         Ok(xpub)
     }
+}
+
+impl SecretKeySizeStatic for Ed25519Bip32 {
+    const SECRET_KEY_SIZE: usize = XPRV_SIZE;
 }
 
 impl From<i::SignatureError> for SignatureError {
@@ -100,11 +103,11 @@ mod test {
     use crate::sign::test::{keypair_signing_ko, keypair_signing_ok};
 
     #[quickcheck]
-        fn sign_ok(input: (KeyPair<Ed25519Bip32>, Vec<u8>)) -> bool {
-            keypair_signing_ok(input)
-        }
-    #[quickcheck]
-        fn sign_ko(input: (KeyPair<Ed25519Bip32>, PublicKey<Ed25519Bip32>, Vec<u8>)) -> bool {
-            keypair_signing_ko(input)
-        }
+    fn sign_ok(input: (KeyPair<Ed25519Bip32>, Vec<u8>)) -> bool {
+        keypair_signing_ok(input)
     }
+    #[quickcheck]
+    fn sign_ko(input: (KeyPair<Ed25519Bip32>, PublicKey<Ed25519Bip32>, Vec<u8>)) -> bool {
+        keypair_signing_ko(input)
+    }
+}
