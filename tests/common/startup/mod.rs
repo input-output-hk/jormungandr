@@ -84,6 +84,23 @@ pub fn start_jormungandr_node_as_leader(config: &mut JormungandrConfig) -> Proce
     );
 
     config.genesis_block_path = genesis_block_path.clone();
+    config.genesis_block_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
+
+    println!("Starting node with configuration : {:?}", &config);
+    let process = start_jormungandr_node_and_wait(&rest_address, command);
+    process
+}
+
+pub fn start_jormungandr_node_as_slave(config: &mut JormungandrConfig) -> ProcessKillGuard {
+    let rest_address = &config.node_config.get_node_address();
+    let config_path = NodeConfig::serialize(&config.node_config);
+    let genesis_block_hash = &config.genesis_block_hash;
+
+    let command = jormungandr_wrapper::get_start_jormungandr_as_slave_node_command(
+        &config_path,
+        &genesis_block_hash,
+    );
+
     println!("Starting node with configuration : {:?}", &config);
     let process = start_jormungandr_node_and_wait(&rest_address, command);
     process

@@ -22,8 +22,16 @@ pub struct Rest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Peer2Peer {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trusted_peers: Option<Vec<Peer>>,
     pub public_address: String,
     pub topics_of_interests: TopicsOfInterests,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Peer {
+    pub id: i32,
+    pub address: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -63,10 +71,11 @@ impl NodeConfig {
                 prefix: String::from("api"),
             },
             peer_2_peer: Peer2Peer {
+                trusted_peers: None,
                 public_address: format!("/ip4/127.0.0.1/tcp/{}", public_address_port.to_string()),
                 topics_of_interests: TopicsOfInterests {
-                    messages: String::from("low"),
-                    blocks: String::from("normal"),
+                    messages: String::from("high"),
+                    blocks: String::from("high"),
                 },
             },
         }
@@ -80,7 +89,7 @@ impl NodeConfig {
 
 fn get_available_port() -> u16 {
     let available_port = loop {
-        let port = rand::thread_rng().gen_range(8000, 9999);
+        let port = rand::thread_rng().gen_range(6000, 9999);
         if port_is_available(port) {
             break port;
         }
