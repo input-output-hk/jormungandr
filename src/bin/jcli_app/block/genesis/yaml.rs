@@ -47,7 +47,8 @@ struct BlockchainConfiguration {
     epoch_stability_depth: Option<u32>,
     #[serde(default)]
     consensus_leader_ids: Vec<SerdeLeaderId>,
-    consensus_genesis_praos_param_f: Option<SerdeAsString<Milli>>,
+    #[serde(with = "serde::as_string")]
+    consensus_genesis_praos_active_slot_coeff: Milli,
     max_number_of_transactions_per_block: Option<u32>,
     bft_slots_ratio: Option<SerdeAsString<Milli>>,
     allow_account_creation: Option<bool>,
@@ -266,7 +267,7 @@ impl BlockchainConfiguration {
         let mut slot_duration = None;
         let mut epoch_stability_depth = None;
         let mut consensus_leader_ids = vec![];
-        let mut consensus_genesis_praos_param_f = None;
+        let mut consensus_genesis_praos_active_slot_coeff = None;
         let mut max_number_of_transactions_per_block = None;
         let mut bft_slots_ratio = None;
         let mut allow_account_creation = None;
@@ -300,9 +301,9 @@ impl BlockchainConfiguration {
                     panic!("block 0 attempts to remove a BFT leader")
                 }
                 ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(param) => {
-                    consensus_genesis_praos_param_f
-                        .replace(SerdeAsString(*param))
-                        .map(|_| "ConsensusGenesisPraosParamF")
+                    consensus_genesis_praos_active_slot_coeff
+                        .replace(*param)
+                        .map(|_| "ConsensusGenesisPraosActiveSlotsCoeff")
                 }
                 ConfigParam::MaxNumberOfTransactionsPerBlock(param) => {
                     max_number_of_transactions_per_block
@@ -336,7 +337,8 @@ impl BlockchainConfiguration {
             slot_duration: slot_duration.expect(&format!("{} SlotDuration", PREFIX)),
             epoch_stability_depth,
             consensus_leader_ids,
-            consensus_genesis_praos_param_f,
+            consensus_genesis_praos_active_slot_coeff: consensus_genesis_praos_active_slot_coeff
+                .expect(&format!("{} ActiveSlotCoeff", PREFIX)),
             max_number_of_transactions_per_block,
             bft_slots_ratio,
             allow_account_creation,
@@ -354,7 +356,7 @@ impl BlockchainConfiguration {
             slot_duration,
             epoch_stability_depth,
             consensus_leader_ids,
-            consensus_genesis_praos_param_f,
+            consensus_genesis_praos_active_slot_coeff,
             max_number_of_transactions_per_block,
             bft_slots_ratio,
             allow_account_creation,
@@ -379,11 +381,9 @@ impl BlockchainConfiguration {
         for leader_id in consensus_leader_ids {
             initial_ents.push(ConfigParam::AddBftLeader(leader_id.0))
         }
-        if let Some(consensus_genesis_praos_param_f) = consensus_genesis_praos_param_f {
-            initial_ents.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
-                consensus_genesis_praos_param_f.0,
-            ))
-        }
+        initial_ents.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
+            consensus_genesis_praos_active_slot_coeff,
+        ));
         if let Some(d) = max_number_of_transactions_per_block {
             initial_ents.push(ConfigParam::MaxNumberOfTransactionsPerBlock(d))
         }
@@ -437,7 +437,7 @@ blockchain_configuration:
   consensus_leader_ids:
     - ed25519e_pk1hj8k4jyhsrva7ndynak25jagf3qcj4usnp54gnzvrejnwrufxpgqytzy6u
     - ed25519e_pk173x5f5xhg66x9yl4x50wnqg9mfwmmt4fma0styptcq4fuyvg3p7q9zxvy7
-  consensus_genesis_praos_param_f: "0.444"
+  consensus_genesis_praos_active_slot_coeff: "0.444"
   max_number_of_transactions_per_block: 255
   bft_slots_ratio: "0.222"
   allow_account_creation: true

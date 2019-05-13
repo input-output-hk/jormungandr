@@ -17,7 +17,7 @@ pub struct BlockchainConfig {
     pub epoch_stability_depth: i32,
     pub consensus_leader_ids: Vec<String>,
     pub bft_slots_ratio: Option<String>,
-    pub consensus_genesis_praos_param_f: Option<String>,
+    pub consensus_genesis_praos_active_slot_coeff: String,
     pub allow_account_creation: bool,
     pub linear_fees: LinearFees,
 }
@@ -98,7 +98,7 @@ impl GenesisYaml {
                     ),
                 ],
                 bft_slots_ratio: Some("0.222".to_owned()),
-                consensus_genesis_praos_param_f: Some("0.444".to_owned()),
+                consensus_genesis_praos_active_slot_coeff: "0.444".to_owned(),
                 allow_account_creation: true,
                 linear_fees: LinearFees {
                     constant: 0,
