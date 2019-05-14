@@ -308,6 +308,28 @@ pub enum BlockHeaderTriage {
     ProcessBlockToState,
 }
 
+pub fn handle_end_of_epoch_event(blockchain: &Blockchain) -> Result<(), HandleBlockError> {
+    let (tip, tip_info) = blockchain.get_block_tip()?;
+    let state = blockchain.get_ledger(&tip_info.block_hash).unwrap();
+
+    // TODO: get the ledger state from 2 epochs ago
+
+    blockchain
+        .epoch_event
+        .clone() // clone it to get mutability
+        .try_send(EpochParameters {
+            epoch: tip.header().date().epoch + 1,
+
+            ledger_static_parameters: state.get_static_parameters().clone(),
+            ledger_parameters: state.get_ledger_parameters(),
+
+            time_frame: blockchain.time_frame.clone(),
+            ledger_reference: state.clone(),
+        })
+        .unwrap_or_else(|_| ());
+    Ok(())
+}
+
 pub fn handle_block(
     blockchain: &mut Blockchain,
     block: Block,
@@ -355,19 +377,6 @@ fn process_block(
     };
 
     if block.header.date().epoch > parent_epoch {
-        blockchain
-            .epoch_event
-            .try_send(EpochParameters {
-                epoch: block.header().date().epoch,
-
-                ledger_static_parameters: state.get_static_parameters().clone(),
-                ledger_parameters: state.get_ledger_parameters(),
-
-                time_frame: blockchain.time_frame.clone(),
-                ledger_reference: state.clone(),
-            })
-            .unwrap_or_else(|_| ());
-
         let leadership = Leadership::new(
             block.header.date().epoch,
             blockchain.get_ledger(&block.parent_id()).unwrap(),

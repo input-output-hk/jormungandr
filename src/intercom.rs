@@ -270,6 +270,8 @@ impl Debug for ClientMsg {
 pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
+    /// Leadership process expect a new end of epoch
+    LeadershipExpectEndOfEpoch,
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header),
 }
@@ -279,6 +281,7 @@ impl Debug for BlockMsg {
         use BlockMsg::*;
         match self {
             LeadershipBlock(block) => f.debug_tuple("LeadershipBlock").field(block).finish(),
+            LeadershipExpectEndOfEpoch => f.debug_tuple("LeadershipExpectEndOfEpoch").finish(),
             AnnouncedBlock(header) => f.debug_tuple("AnnouncedBlock").field(header).finish(),
         }
     }
