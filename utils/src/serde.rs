@@ -7,7 +7,7 @@ use chain_impl_mockchain::leadership::bft::LeaderId;
 use serde::{
     de::{Deserializer, Error as DeserializerError, Visitor},
     ser::{Error as _, Serializer},
-    Deserialize, Serialize
+    Deserialize, Serialize,
 };
 use std::fmt::{self, Display};
 use std::str::FromStr;
@@ -54,7 +54,9 @@ pub mod address {
         D: Deserializer<'de>,
     {
         if deserializer.is_human_readable() {
-            deserializer.deserialize_str(StrParseVisitor::new("address", |s| s.parse().map(|addr: AddressReadable| addr.to_address())))
+            deserializer.deserialize_str(StrParseVisitor::new("address", |s| {
+                s.parse().map(|addr: AddressReadable| addr.to_address())
+            }))
         } else {
             deserializer.deserialize_bytes(AddressVisitor)
         }
@@ -345,14 +347,14 @@ pub mod time {
     use super::*;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-    pub fn serialize<S>(
-        time: &SystemTime,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        time.duration_since(UNIX_EPOCH).unwrap().as_secs().serialize(serializer)
+        time.duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .serialize(serializer)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
@@ -449,10 +451,7 @@ pub mod certificate {
 
 #[derive(Serialize)]
 #[serde(bound = "T: ToString", transparent)]
-pub struct SerdeAsString<T> (
-    #[serde(with = "as_string")]
-    pub T
-);
+pub struct SerdeAsString<T>(#[serde(with = "as_string")] pub T);
 
 impl<'de, E: Display, T: FromStr<Err = E> + SerdeExpected> Deserialize<'de> for SerdeAsString<T> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -467,11 +466,11 @@ impl<T: Clone> Clone for SerdeAsString<T> {
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(bound(deserialize = "T: Bech32 + SerdeExpected", serialize = "T: Bech32"), transparent)]
-pub struct SerdeAsBech32<T>(
-    #[serde(with = "as_bech32")]
-    pub T
-);
+#[serde(
+    bound(deserialize = "T: Bech32 + SerdeExpected", serialize = "T: Bech32"),
+    transparent
+)]
+pub struct SerdeAsBech32<T>(#[serde(with = "as_bech32")] pub T);
 
 impl<T: Clone> Clone for SerdeAsBech32<T> {
     fn clone(&self) -> Self {
@@ -482,16 +481,19 @@ impl<T: Clone> Clone for SerdeAsBech32<T> {
 pub mod as_string {
     use super::*;
 
-    pub fn serialize<S: Serializer, T: ToString>(data: &T, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer, T: ToString>(
+        data: &T,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         data.to_string().serialize(serializer)
     }
 
     pub fn deserialize<'de, D, E, T>(deserializer: D) -> Result<T, D::Error>
-        where
-            D: Deserializer<'de>,
-            E: Display,
-            T: FromStr<Err = E> + SerdeExpected,
-        {
+    where
+        D: Deserializer<'de>,
+        E: Display,
+        T: FromStr<Err = E> + SerdeExpected,
+    {
         let visitor = StrParseVisitor::new(T::EXPECTED, str::parse);
         deserializer.deserialize_str(visitor)
     }
@@ -506,9 +508,10 @@ pub mod as_bech32 {
     }
 
     pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
-        where D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
         T: Bech32 + SerdeExpected,
-        {
+    {
         let visitor = StrParseVisitor::new(T::EXPECTED, Bech32::try_from_bech32_str);
         deserializer.deserialize_str(visitor)
     }
@@ -521,18 +524,20 @@ struct StrParseVisitor<'a, P> {
 }
 
 impl<'a, E, T, P> StrParseVisitor<'a, P>
-    where
-        E: Display,
-        P: FnOnce(&str) -> Result<T, E> {
+where
+    E: Display,
+    P: FnOnce(&str) -> Result<T, E>,
+{
     pub fn new(expected: &'a str, parser: P) -> Self {
         Self { expected, parser }
     }
 }
 
 impl<'a, 'de, E, T, P> Visitor<'de> for StrParseVisitor<'a, P>
-    where
-        E: Display,
-        P: FnOnce(&str) -> Result<T, E> {
+where
+    E: Display,
+    P: FnOnce(&str) -> Result<T, E>,
+{
     type Value = T;
 
     fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
