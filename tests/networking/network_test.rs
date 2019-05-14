@@ -6,7 +6,6 @@ use common::configuration::node_config_model::Peer;
 use common::jcli_wrapper;
 use common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
 use common::startup;
-use std::{thread, time};
 
 #[test]
 pub fn two_nodes_communication() {

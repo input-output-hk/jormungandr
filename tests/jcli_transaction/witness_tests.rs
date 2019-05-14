@@ -116,10 +116,11 @@ pub fn test_make_witness_with_non_existing_private_key_file_fails() {
         .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
         .assert_add_output(&reciever.address, &100)
         .assert_finalize()
-        .assert_make_witness_fails(&witness, "The system cannot find the file specified");
+        .assert_make_witness_fails(&witness, "NotFound");
 }
 
 #[test]
+#[cfg(not(target_os = "linux"))]
 pub fn test_make_witness_with_readonly_private_key_file_fails() {
     let reciever = startup::create_new_utxo_address();
     let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
@@ -137,7 +138,7 @@ pub fn test_make_witness_with_readonly_private_key_file_fails() {
         .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
         .assert_add_output(&reciever.address, &100)
         .assert_finalize()
-        .assert_make_witness_fails(&witness, "Access is denied");
+        .assert_make_witness_fails(&witness, "denied");
 }
 
 #[test]
