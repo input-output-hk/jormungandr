@@ -3,8 +3,9 @@ extern crate chain_core;
 extern crate chain_impl_mockchain;
 extern crate structopt;
 
-use chain_core::property::{Block as _, Deserialize, Serialize};
+use chain_core::property::{Block as _, Deserialize, HasMessages, Serialize};
 use chain_impl_mockchain::block;
+use chain_impl_mockchain::ledger::Ledger;
 use jcli_app::utils::io;
 use structopt::StructOpt;
 
@@ -34,6 +35,8 @@ fn encode_block_0(argument: Common) {
         serde_yaml::from_reader(io::open_file_read(&argument.input_file).unwrap()).unwrap();
 
     let block = yaml.to_block();
+
+    Ledger::new(block.id(), block.messages()).expect("Generated invalid block0");
 
     block
         .serialize(io::open_file_write(&argument.output_file).unwrap())
