@@ -188,7 +188,7 @@ bytes.
 The following parameter types exist:
 
 | tag | name | value type | description |
-|:-------|:-------|:------------|
+|:-------|:-------|:------------|:--------------|
 | 1 | block0-date | u64 | the official start time of the blockchain, in seconds since the Unix epoch |
 | 2 | discrimination | u8 | address discrimination; 1 for production, 2 for testing |
 | 3 | consensus| u16 | consensus version; 1 for BFT, 2 for Genesis Praos |
