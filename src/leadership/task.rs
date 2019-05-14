@@ -127,9 +127,8 @@ fn handle_leadership(
 
     // TODO: need to handle:
     //
-    // * if too early for the leadership, we need to wait
     // * if too late for this leadership, log it and return
-    assert!(epoch_position.epoch.0 == task_parameters.epoch);
+    assert!(epoch_position.epoch.0 <= task_parameters.epoch);
 
     let schedule = LeaderSchedule::new(logger.clone(), leader, &task_parameters);
 

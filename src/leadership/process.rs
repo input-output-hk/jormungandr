@@ -198,19 +198,6 @@ fn handle_epoch(
     let era = task_parameters.leadership.era().clone();
     let time_frame = task_parameters.time_frame.clone();
 
-    let current_slot = time_frame.slot_at(&std::time::SystemTime::now()).expect(
-        "assume we cannot only get one valid timeline and that the slot duration does not change",
-    );
-    let epoch_position = era
-        .from_slot_to_era(current_slot)
-        .expect("assume the current time is already in the era");
-
-    // TODO: need to handle:
-    //
-    // * if too early for the leadership, we need to wait
-    // * if too late for this leadership, log it and return
-    assert!(epoch_position.epoch.0 == task_parameters.epoch);
-
     let last_slot_in_epoch = era.slots_per_epoch() - 1;
 
     let slot = era.from_era_to_slot(EpochPosition {
