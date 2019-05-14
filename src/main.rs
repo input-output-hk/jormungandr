@@ -13,6 +13,7 @@ extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate chain_storage_sqlite;
+extern crate chain_time;
 extern crate clap;
 extern crate cryptoxide;
 extern crate futures;
@@ -61,7 +62,6 @@ use crate::{
     blockcfg::Leader,
     blockchain::BlockchainR,
     intercom::BlockMsg,
-    leadership::leadership_task,
     rest::v0::node::stats::StatsCounter,
     settings::start::Settings,
     transaction::TPool,
@@ -74,8 +74,6 @@ pub mod log_wrapper;
 pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
-pub mod clock;
-// pub mod consensus;
 pub mod intercom;
 pub mod leadership;
 pub mod network;
@@ -92,18 +90,18 @@ fn start() -> Result<(), start_up::Error> {
 
     let bootstrapped_node = bootstrap(initialized_node)?;
 
-    start_services(&bootstrapped_node)
+    start_services(bootstrapped_node)
 }
 
 pub struct BootstrappedNode {
     settings: Settings,
-    clock: clock::Clock,
     blockchain: BlockchainR,
+    new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::EpochParameters>,
 }
 
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
 
-fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::Error> {
+fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
     let mut services = Services::new();
 
     let tpool_data: TPool<MessageId, Message> = TPool::new();
@@ -111,6 +109,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
 
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+    let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
 
     let stats_counter = StatsCounter::default();
 
@@ -125,7 +124,6 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
 
     let block_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
-        // let clock = bootstrapped_node.clock.clone();
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(info, &blockchain, &stats_counter, &network_msgbox, input);
@@ -156,7 +154,7 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
         });
     }
 
-    let leader_secret = if let Some(secret_path) = &bootstrapped_node.settings.leadership {
+    let leader_secret = if let Some(secret_path) = bootstrapped_node.settings.leadership {
         Some(secure::NodeSecret::load_from_file(secret_path.as_path())?)
     } else {
         None
@@ -164,26 +162,33 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
 
     if let Some(secret) = leader_secret {
         let tpool = tpool.clone();
-        let clock = bootstrapped_node.clock.clone();
         let block_task = block_task.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
         let pk = Leader {
             bft_leader: secret.bft(),
             genesis_leader: secret.genesis(),
         };
-        services.spawn("leadership", move |info| {
-            leadership_task(info, pk, tpool, blockchain, clock, block_task)
+
+        services.spawn_future("leadership", move |info| {
+            let process = self::leadership::Process::new(
+                info,
+                tpool,
+                blockchain.lock_read().tip.clone(),
+                block_task,
+            );
+
+            process.start(vec![pk], new_epoch_notifier)
         });
     }
 
     let rest_server = match bootstrapped_node.settings.rest {
-        Some(ref rest) => {
+        Some(rest) => {
             let context = rest::Context {
                 stats_counter,
                 blockchain: bootstrapped_node.blockchain.clone(),
                 transaction_task: Arc::new(Mutex::new(transaction_task)),
             };
-            Some(rest::start_rest_server(rest, context)?)
+            Some(rest::start_rest_server(&rest, context)?)
         }
         None => None,
     };
@@ -207,30 +212,29 @@ fn start_services(bootstrapped_node: &BootstrappedNode) -> Result<(), start_up::
 /// * download all the existing blocks
 /// * verify all the downloaded blocks
 /// * network / peer discoveries (?)
-/// * gclock sync ?
 ///
 ///
 fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
     let block0 = initialized_node.block0;
-    let clock = initialized_node.clock;
     let settings = initialized_node.settings;
     let storage = initialized_node.storage;
 
-    let blockchain = start_up::load_blockchain(block0, storage)?;
+    let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
+
+    let blockchain = start_up::load_blockchain(block0, storage, new_epoch_announcements)?;
 
     network::bootstrap(&settings.network, blockchain.clone());
 
     Ok(BootstrappedNode {
         settings,
-        clock,
         blockchain,
+        new_epoch_notifier,
     })
 }
 
 pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
-    pub clock: clock::Clock,
     pub storage: start_up::NodeStorage,
 }
 
@@ -255,12 +259,9 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         /* add network to fetch block0 */
     )?;
 
-    let clock = prepare_clock(&block0)?;
-
     Ok(InitializedNode {
         settings: node_settings,
         block0: block0,
-        clock: clock,
         storage: storage,
     })
 }

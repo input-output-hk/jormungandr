@@ -2,14 +2,15 @@ mod error;
 
 pub use self::error::{Error, ErrorKind};
 use crate::{
-    blockcfg::{Block, Block0DataSource as _},
+    blockcfg::Block,
     blockchain::{Blockchain, BlockchainR},
-    clock::{Clock, ClockEpochConfiguration},
+    leadership::EpochParameters,
     network,
     settings::{logging::LogSettings, start::Settings, CommandLine},
 };
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
+use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
 
@@ -95,30 +96,12 @@ pub fn prepare_block_0(settings: &Settings, storage: &NodeStorage) -> Result<Blo
     }
 }
 
-pub fn prepare_clock(block0: &Block) -> Result<Clock, Error> {
-    let start_time = block0.start_time()?;
-    let slot_duration = block0.slot_duration()?;
-    let slots_per_epoch = block0.slots_per_epoch()?;
-
-    let initial_epoch = ClockEpochConfiguration {
-        slot_duration,
-        slots_per_epoch,
-    };
-
-    info!(
-        "blockchain started the {} ({})",
-        humantime::format_rfc3339(start_time),
-        humantime::format_duration(
-            start_time
-                .elapsed()
-                .expect("start time must be set in the past")
-        ),
-    );
-
-    Ok(Clock::new(start_time, initial_epoch))
-}
-
-pub fn load_blockchain(block0: Block, storage: NodeStorage) -> Result<BlockchainR, Error> {
-    let blockchain_data = Blockchain::load(block0, storage)?;
+pub fn load_blockchain(
+    block0: Block,
+    storage: NodeStorage,
+    epoch_event: mpsc::Sender<EpochParameters>,
+) -> Result<BlockchainR, Error> {
+    let mut blockchain_data = Blockchain::load(block0, storage, epoch_event)?;
+    blockchain_data.initial()?;
     Ok(blockchain_data.into())
 }

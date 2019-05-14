@@ -33,7 +33,7 @@ cbor_event = "2.1.2"
 cryptoxide = "0.1"
 futures    = "0.1"
 http = "0.1.16"
-tokio      = "0.1"
+tokio      = "^0.1.16"
 structopt = "^0.2"
 generic-array = "^0.9"
 bytes = "0.4"
@@ -48,6 +48,7 @@ chain-storage   = { path = "cardano-deps/chain-storage" }
 chain-storage-sqlite = { path = "cardano-deps/chain-storage-sqlite" }
 chain-addr      = { path = "cardano-deps/chain-addr" }
 chain-crypto    = { path = "cardano-deps/chain-crypto" }
+chain-time      = { path = "cardano-deps/chain-time" }
 network-core    = { path = "cardano-deps/network-core" }
 network-grpc    = { path = "cardano-deps/network-grpc" }
 cardano         = { path = "cardano-deps/cardano", features = [ "generic-serialization" ] }

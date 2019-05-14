@@ -27,6 +27,10 @@ pub fn handle_input(
     let logger = info.logger().clone();
 
     match bquery {
+        BlockMsg::LeadershipExpectEndOfEpoch => {
+            let blockchain = blockchain.lock_read();
+            chain::handle_end_of_epoch_event(&blockchain).unwrap()
+        }
         BlockMsg::LeadershipBlock(block) => {
             let mut blockchain = blockchain.lock_write();
             match chain::handle_block(&mut blockchain, block, true).unwrap() {
@@ -52,7 +56,7 @@ pub fn handle_input(
                     slog_info!(logger,
                         "block added successfully to Node's blockchain";
                         "id" => header.id().to_string(),
-                        "date" => format!("{}.{}", header.date().epoch, header.date().slot_id)
+                        "date" => header.date().to_string()
                     );
                     slog_debug!(logger, "Header: {:?}", header);
                     network_propagate
@@ -81,7 +85,7 @@ pub fn handle_input(
                 BlockHeaderTriage::ProcessBlockToState => {
                     slog_info!(logger, "Block announcement is interesting, fetch block");
                     // TODO: signal back to the network that the block is interesting
-                    // (get block/rquiest block)
+                    // (get block/request block)
                     unimplemented!()
                 }
             }

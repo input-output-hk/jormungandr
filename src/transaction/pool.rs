@@ -1,12 +1,11 @@
-use crate::clock::global::GlobalTime;
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 /// The current transaction pool, containing all the transaction
 /// that are potential for being inserted into a block, and their
 /// received time
 pub struct TPool<TransId, Trans> {
-    pub content: HashMap<TransId, (GlobalTime, Trans)>,
+    pub content: HashMap<TransId, (SystemTime, Trans)>,
 }
 
 impl<TransId: std::hash::Hash + std::cmp::Eq, Trans: Clone> TPool<TransId, Trans> {
@@ -24,7 +23,7 @@ impl<TransId: std::hash::Hash + std::cmp::Eq, Trans: Clone> TPool<TransId, Trans
 
     /// Add a transaction into the pool
     pub fn add(&mut self, id: TransId, trans: Trans) {
-        let t = GlobalTime::now();
+        let t = SystemTime::now();
         // ignore the result
         let _ = self.content.insert(id, (t, trans));
         ()
@@ -53,9 +52,10 @@ impl<TransId: std::hash::Hash + std::cmp::Eq, Trans: Clone> TPool<TransId, Trans
     /// Garbage collect all the necessary transactions
     pub fn gc(&mut self, expired_duration: Duration) -> usize {
         let orig_length = self.content.len();
-        let t = GlobalTime::now();
-        self.content
-            .retain(|_, (ttime, _)| t.differential(*ttime) > expired_duration);
+        let t = SystemTime::now();
+        self.content.retain(|_, (received_time, _)| {
+            t.duration_since(*received_time).unwrap() > expired_duration
+        });
         orig_length - self.content.len()
     }
 }

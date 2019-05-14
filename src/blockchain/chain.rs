@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::mpsc;
 
 use chain_core::property::{Block as _, HasHeader as _, HasMessages as _, Header as _};
 use chain_impl_mockchain::{
@@ -7,10 +8,12 @@ use chain_impl_mockchain::{
     ledger, multiverse,
 };
 use chain_storage::{error as storage, store::BlockInfo};
+use chain_time::{SlotDuration, TimeFrame, Timeline};
 
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash, Ledger, Multiverse},
-    leadership::{Leadership, Leaderships},
+    blockchain::{Branch, Tip, TipGetError, TipReplaceError},
+    leadership::{EpochParameters, Leadership, Leaderships},
     start_up::NodeStorage,
     utils::borrow::Borrow,
 };
@@ -23,7 +26,12 @@ pub struct Blockchain {
 
     pub leaderships: Leaderships,
 
-    pub tip: multiverse::GCRoot,
+    /// the Tip of the blockchain. This is update as the consensus goes
+    pub tip: Tip,
+
+    pub time_frame: TimeFrame,
+
+    pub epoch_event: mpsc::Sender<EpochParameters>,
 
     /// Incoming blocks whose parent does not exist yet. Sorted by
     /// parent hash to allow quick look up of the children of a
@@ -75,11 +83,25 @@ pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 custom_error! {pub LoadError
     Storage{source: storage::Error} = "Error in the blockchain storage: {source}",
     Ledger{source: ledger::Error} = "Invalid blockchain state: {source}",
+    Block0 { source: crate::blockcfg::Block0Error } = "Initial setting of the blockchain are invalid",
 }
 
 impl Blockchain {
-    pub fn load(block_0: Block, mut storage: NodeStorage) -> Result<Self, LoadError> {
+    pub fn load(
+        block_0: Block,
+        mut storage: NodeStorage,
+        epoch_event: mpsc::Sender<EpochParameters>,
+    ) -> Result<Self, LoadError> {
+        use blockcfg::Block0DataSource as _;
         let mut multiverse = multiverse::Multiverse::new();
+
+        let start_time = block_0.start_time()?;
+        let slot_duration = block_0.slot_duration()?;
+
+        let time_frame = TimeFrame::new(
+            Timeline::new(start_time),
+            SlotDuration::from_secs(slot_duration.as_secs() as u32),
+        );
 
         let (tip, leaderships) =
             if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)? {
@@ -108,7 +130,7 @@ impl Blockchain {
                         block.date(),
                         block.chain_length(),
                     )?;
-                    tip = Some(multiverse.add(info.block_hash.clone(), state.clone()));
+                    let gc_root = multiverse.add(info.block_hash.clone(), state.clone());
                     if block_header.date().epoch > epoch {
                         epoch = block_header.date().epoch;
                         let leadership = Leadership::new(block_header.date().epoch, &state);
@@ -119,6 +141,7 @@ impl Blockchain {
                             leadership,
                         );
                     }
+                    tip = Some(Tip::new(Branch::new(gc_root, block_header.chain_length())));
                 }
 
                 (tip.unwrap(), leaderships)
@@ -128,6 +151,8 @@ impl Blockchain {
                 let initial_leadership = Leadership::new(block_0.date().epoch, &state);
                 let tip = multiverse.add(block_0.id(), state);
                 let leaderships = Leaderships::new(&block_0.header, initial_leadership);
+                let tip = Tip::new(Branch::new(tip, block_0.header.chain_length()));
+
                 (tip, leaderships)
             };
 
@@ -139,7 +164,33 @@ impl Blockchain {
             leaderships,
             tip,
             unconnected_blocks: BTreeMap::default(),
+            epoch_event,
+            time_frame,
         })
+    }
+
+    pub fn initial(&mut self) -> Result<(), storage::Error> {
+        let (_block, block_info) = self.get_block_tip()?;
+        let state = self.get_ledger(&block_info.block_hash).unwrap().clone();
+        let slot = self
+            .time_frame
+            .slot_at(&std::time::SystemTime::now())
+            .unwrap();
+        let leadership = Leadership::new(0, &state);
+        let date = leadership.era().from_slot_to_era(slot).unwrap();
+
+        self.epoch_event
+            .try_send(EpochParameters {
+                epoch: date.epoch.0,
+
+                ledger_static_parameters: state.get_static_parameters().clone(),
+                ledger_parameters: state.get_ledger_parameters(),
+
+                time_frame: self.time_frame.clone(),
+                ledger_reference: state,
+            })
+            .unwrap_or_else(|_| ());
+        Ok(())
     }
 
     pub fn get_ledger(&self, hash: &HeaderHash) -> Option<&Ledger> {
@@ -147,22 +198,24 @@ impl Blockchain {
     }
 
     /// return the current tip hash and date
-    pub fn get_tip(&self) -> HeaderHash {
-        self.tip.clone()
+    pub fn get_tip(&self) -> Result<HeaderHash, TipGetError> {
+        self.tip.hash()
     }
 
     pub fn get_block_tip(&self) -> Result<(Block, BlockInfo<HeaderHash>), storage::Error> {
-        self.get_block(&self.tip)
+        self.get_block(&self.get_tip().unwrap())
     }
 
     pub fn put_block(&mut self, block: &Block) -> Result<(), storage::Error> {
         self.storage.write().unwrap().put_block(block)
     }
 
-    pub fn put_tip(&mut self, block: &Block) -> Result<(), storage::Error> {
+    pub fn put_tip(&mut self, branch: Branch, block: &Block) -> Result<(), HandleBlockError> {
         let mut storage = self.storage.write().unwrap();
         storage.put_block(block)?;
-        storage.put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block.id())
+        storage.put_tag(LOCAL_BLOCKCHAIN_TIP_TAG, &block.id())?;
+        self.tip.replace_with(branch)?;
+        Ok(())
     }
 
     pub fn get_block(
@@ -188,7 +241,7 @@ impl Blockchain {
     /// call returns None:
     ///
     /// 1. there is no existing leadership for the given epoch;
-    /// 2. there is no existing ledget state available for the
+    /// 2. there is no existing ledger state available for the
     ///    given block
     pub fn get_leadership_or_build<'a>(
         &'a self,
@@ -215,6 +268,7 @@ impl Blockchain {
 custom_error! {pub HandleBlockError
     Storage{source: storage::Error} = "Error in the blockchain storage",
     Ledger{source: ledger::Error} = "Invalid blockchain state",
+    InternalTip { source: TipReplaceError } = "Cannot update the blockchain's TIP",
 }
 
 pub enum HandledBlock {
@@ -252,6 +306,28 @@ pub enum BlockHeaderTriage {
     MissingParentOrBranch { to: HeaderHash },
     /// process the block to the Ledger State
     ProcessBlockToState,
+}
+
+pub fn handle_end_of_epoch_event(blockchain: &Blockchain) -> Result<(), HandleBlockError> {
+    let (tip, tip_info) = blockchain.get_block_tip()?;
+    let state = blockchain.get_ledger(&tip_info.block_hash).unwrap();
+
+    // TODO: get the ledger state from 2 epochs ago
+
+    blockchain
+        .epoch_event
+        .clone() // clone it to get mutability
+        .try_send(EpochParameters {
+            epoch: tip.header().date().epoch + 1,
+
+            ledger_static_parameters: state.get_static_parameters().clone(),
+            ledger_parameters: state.get_ledger_parameters(),
+
+            time_frame: blockchain.time_frame.clone(),
+            ledger_reference: state.clone(),
+        })
+        .unwrap_or_else(|_| ());
+    Ok(())
 }
 
 pub fn handle_block(
@@ -317,11 +393,17 @@ fn process_block(
     // corresponding states, but to prevent a DoS, we may
     // want to store only sufficiently long chains.
 
-    blockchain.put_tip(&block)?;
     let new_chain_length = block.chain_length();
-    let tip = blockchain.multiverse.add(block.id(), state);
+
+    let branch = Branch::new(
+        blockchain.multiverse.add(block.id(), state),
+        new_chain_length,
+    );
+
     if new_chain_length > tip_chain_length {
-        blockchain.tip = tip;
+        blockchain.put_tip(branch, &block)?;
+    } else {
+        blockchain.put_block(&block)?;
     }
 
     Ok(HandledBlock::Acquired {

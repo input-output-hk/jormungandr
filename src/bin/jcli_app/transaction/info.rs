@@ -19,6 +19,7 @@ custom_error! {pub InfoError
     FormatError { source: FmtError } = "Invalid format",
     ReadTransaction { source: StagingError } = "cannot read the staging transaction",
     ValueError { source: ValueError } = "Invalid values",
+    ExpectedSingleAccount = "Expected a single account (multisig not supported yet)",
 }
 
 #[derive(StructOpt)]
@@ -150,7 +151,10 @@ impl Info {
                 strfmt(&self.format_utxo_input, &vars)?
             }
             InputEnum::AccountInput(account, value) => {
-                let account: chain_crypto::PublicKey<_> = account.into();
+                let account: chain_crypto::PublicKey<_> = account
+                    .to_single_account()
+                    .ok_or(InfoError::ExpectedSingleAccount)?
+                    .into();
                 vars.insert("account".to_owned(), account.to_string());
                 vars.insert("value".to_owned(), value.0.to_string());
                 strfmt(&self.format_account_input, &vars)?

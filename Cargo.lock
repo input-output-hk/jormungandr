@@ -1163,6 +1163,7 @@ dependencies = [
  "chain-impl-mockchain 0.1.0",
  "chain-storage 0.1.0",
  "chain-storage-sqlite 0.1.0",
+ "chain-time 0.1.0",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cryptoxide 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "custom_error 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
