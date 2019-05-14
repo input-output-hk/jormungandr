@@ -23,17 +23,22 @@ pub struct EpochPosition {
 pub struct TimeEra {
     epoch_start: Epoch,
     slot_start: Slot,
-    pub slots_per_epoch: u32,
+    slots_per_epoch: u32,
 }
 
 impl TimeEra {
     /// Set a new era to start on slot_start at epoch_start for a given slots per epoch.
-    pub fn new_era(slot_start: Slot, epoch_start: Epoch, slots_per_epoch: u32) -> Self {
+    pub fn new(slot_start: Slot, epoch_start: Epoch, slots_per_epoch: u32) -> Self {
         TimeEra {
             epoch_start,
             slot_start,
             slots_per_epoch,
         }
+    }
+
+    /// retrieve the number of slots in an epoch during a given Epoch
+    pub fn slots_per_epoch(&self) -> u32 {
+        self.slots_per_epoch
     }
 
     /// Try to return the epoch/inner-epoch-slot associated.
@@ -92,7 +97,7 @@ mod test {
         assert_eq!(slot2, Slot(4));
         assert_eq!(slot3, Slot(20));
 
-        let era = TimeEra::new_era(slot1, Epoch(2), 4);
+        let era = TimeEra::new(slot1, Epoch(2), 4);
 
         let p1 = era.from_slot_to_era(slot1).unwrap();
         let p2 = era.from_slot_to_era(slot2).unwrap();

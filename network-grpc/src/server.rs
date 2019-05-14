@@ -28,6 +28,7 @@ use std::path::Path;
 pub struct Server<T, E>
 where
     T: Node + Clone,
+    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
     <T::ContentService as ContentService>::Message: protocol_bounds::Message,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
@@ -44,6 +45,7 @@ pub struct Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
     T: Node + Clone,
+    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
     <T::ContentService as ContentService>::Message: protocol_bounds::Message,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
@@ -61,6 +63,7 @@ impl<S, T, E> Future for Connection<S, T, E>
 where
     S: AsyncRead + AsyncWrite,
     T: Node + Clone + 'static,
+    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
     <T::ContentService as ContentService>::Message: protocol_bounds::Message,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
@@ -81,6 +84,7 @@ where
 impl<T, E> Server<T, E>
 where
     T: Node + Clone + 'static,
+    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
     <T::ContentService as ContentService>::Message: protocol_bounds::Message,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
@@ -155,6 +159,7 @@ type H2Error<T> = tower_h2::server::Error<gen_server::NodeServer<NodeService<T>>
 impl<T> From<H2Error<T>> for Error
 where
     T: Node + Clone,
+    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
     <T::ContentService as ContentService>::Message: protocol_bounds::Message,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,

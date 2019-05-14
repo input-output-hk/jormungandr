@@ -291,6 +291,7 @@ mod test {
 
     #[test]
     pub fn multiverse() {
+        const NUM_BLOCK_PER_EPOCH: u32 = 1000;
         let mut multiverse = Multiverse::new();
 
         let system_time = SystemTime::UNIX_EPOCH;
@@ -298,7 +299,7 @@ mod test {
         let tf = TimeFrame::new(timeline, SlotDuration::from_secs(10));
 
         let slot0 = tf.slot0();
-        let era = TimeEra::new_era(slot0, Epoch(0), 1000);
+        let era = TimeEra::new(slot0, Epoch(0), NUM_BLOCK_PER_EPOCH);
 
         let mut g = StdGen::new(rand::thread_rng(), 10);
         let leader_key = Arbitrary::arbitrary(&mut g);
@@ -316,6 +317,7 @@ mod test {
         ents.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
             Milli::HALF,
         ));
+        ents.push(ConfigParam::SlotsPerEpoch(NUM_BLOCK_PER_EPOCH));
         genesis_block.message(Message::Initial(ents));
         let genesis_block = genesis_block.make_genesis_block();
         let mut date = genesis_block.date();

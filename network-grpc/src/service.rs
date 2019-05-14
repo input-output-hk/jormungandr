@@ -284,6 +284,10 @@ pub mod protocol_bounds {
     use chain_core::{mempack, property};
     use network_core::gossip;
 
+    pub trait Block: property::Block + mempack::Readable + Send + 'static {}
+
+    impl<T> Block for T where T: property::Block + mempack::Readable + Send + 'static {}
+
     pub trait Header: property::Header + mempack::Readable + Send + 'static {}
 
     impl<T> Header for T where T: property::Header + mempack::Readable + Send + 'static {}
@@ -306,6 +310,7 @@ pub mod protocol_bounds {
 impl<T> gen::node::server::Node for NodeService<T>
 where
     T: Node + Clone,
+    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
     <T::ContentService as ContentService>::Message: protocol_bounds::Message,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
@@ -347,13 +352,17 @@ where
         <<T as Node>::ContentService as ContentService>::GetMessagesFuture,
     >;
     type BlockSubscriptionStream = ResponseStream<
-        gen::node::Header,
+        gen::node::BlockEvent,
         <<T as Node>::BlockService as BlockService>::BlockSubscription,
     >;
     type BlockSubscriptionFuture = SubscriptionFuture<
         Self::BlockSubscriptionStream,
         <T::BlockService as P2pService>::NodeId,
         <T::BlockService as BlockService>::BlockSubscriptionFuture,
+    >;
+    type UploadBlocksFuture = ResponseFuture<
+        gen::node::UploadBlocksResponse,
+        <T::BlockService as BlockService>::UploadBlocksFuture,
     >;
     type MessageSubscriptionStream = ResponseStream<
         gen::node::Message,
@@ -424,6 +433,15 @@ where
             }
         };
         ResponseFuture::new(service.get_messages(&tx_ids))
+    }
+
+    fn upload_blocks(
+        &mut self,
+        req: Request<Streaming<gen::node::Block>>,
+    ) -> Self::UploadBlocksFuture {
+        let service = try_get_service!(self.inner.block_service());
+        let stream = RequestStream::new(req.into_inner());
+        ResponseFuture::new(service.upload_blocks(stream))
     }
 
     fn block_subscription(
