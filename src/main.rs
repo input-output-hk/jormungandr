@@ -61,7 +61,6 @@ use chain_impl_mockchain::message::{Message, MessageId};
 use crate::{
     blockcfg::Leader,
     blockchain::BlockchainR,
-    intercom::BlockMsg,
     rest::v0::node::stats::StatsCounter,
     settings::start::Settings,
     transaction::TPool,
