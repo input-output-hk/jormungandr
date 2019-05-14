@@ -97,7 +97,14 @@ impl VerificationAlgorithm for FakeMMM {
 }
 
 impl KeyEvolvingSignatureAlgorithm for FakeMMM {
-    fn sign_update(key: &mut Self::Secret, msg: &[u8]) -> Sig {
+    fn get_period(_: &Self::Signature) -> usize {
+        0
+    }
+    fn update(_: &mut Self::Secret) -> bool {
+        false
+    }
+
+    fn sign_update(key: &mut Self::Secret, msg: &[u8]) -> Self::Signature {
         let (sk, _) = ed25519::keypair(&key.0);
         Sig(ed25519::signature(msg, &sk))
     }
