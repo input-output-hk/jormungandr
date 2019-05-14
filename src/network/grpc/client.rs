@@ -11,6 +11,7 @@ use crate::{
 use network_core::{
     client::{block::BlockService, gossip::GossipService},
     gossip::Node,
+    subscription::BlockEvent,
 };
 use network_grpc::{
     client::{Connect, Connection},
@@ -22,15 +23,14 @@ use http::uri;
 use tokio::{executor::DefaultExecutor, net::TcpStream, runtime};
 use tower_service::Service as _;
 
-use std::{net::SocketAddr, slice};
+use std::slice;
 
 pub fn connect(
-    addr: SocketAddr,
     state: ConnectionState,
     channels: Channels,
 ) -> impl Future<Item = (p2p::NodeId, propagate::PeerHandles), Error = ()> {
     info!("connecting to subscription peer {}", state.connection);
-    info!("address: {}", addr);
+    let addr = state.connection;
     let peer = grpc_peer::TcpPeer::new(addr);
     let origin = origin_authority(addr);
 
@@ -51,10 +51,16 @@ fn subscribe(
 ) -> impl Future<Item = (p2p::NodeId, propagate::PeerHandles), Error = ()> {
     let block_box = channels.block_box;
     let mut prop_handles = propagate::PeerHandles::new();
-    let block_sub = client.block_subscription(prop_handles.blocks.subscribe());
-    let gossip_sub = client.gossip_subscription(prop_handles.gossip.subscribe());
-    block_sub
-        .join(gossip_sub)
+    let block_sub_outbound = prop_handles.blocks.subscribe().map(|event| match event {
+        BlockEvent::Announce(header) => header,
+        BlockEvent::Solicit(_) => panic!("client connection used to solicit blocks"),
+    });
+    let block_req = client.block_subscription(block_sub_outbound);
+    let gossip_req = client.gossip_subscription(prop_handles.gossip.subscribe());
+    // TODO: decide if this is the way to make block requests
+    prop_handles.client = Some(client);
+    block_req
+        .join(gossip_req)
         .map_err(move |err| {
             error!("Subscription request failed: {:?}", err);
         })
@@ -66,7 +72,15 @@ fn subscribe(
                 );
                 return Err(());
             }
-            subscription::process_blocks(block_sub, block_box);
+            let block_sub = block_sub.map(|event| match event {
+                BlockEvent::Announce(header) => header,
+                BlockEvent::Solicit(_) => {
+                    // TODO: fetch blocks from client request task
+                    // and upload them
+                    unimplemented!()
+                }
+            });
+            subscription::process_block_announcements(node_id, block_sub, block_box);
             subscription::process_gossip(gossip_sub, global_state);
             Ok((node_id, prop_handles))
         })

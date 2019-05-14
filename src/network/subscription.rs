@@ -1,18 +1,25 @@
-use super::{p2p_topology::Node, GlobalStateR};
+use super::{
+    p2p_topology::{Node, NodeId},
+    GlobalStateR,
+};
 use crate::{blockcfg::Header, intercom::BlockMsg, utils::async_msg::MessageBox};
 
 use network_core::{error as core_error, gossip::Gossip};
 
 use futures::prelude::*;
 
-pub fn process_blocks<S>(inbound: S, mut block_box: MessageBox<BlockMsg>) -> tokio::executor::Spawn
+pub fn process_block_announcements<S>(
+    node_id: NodeId,
+    inbound: S,
+    mut block_box: MessageBox<BlockMsg>,
+) -> tokio::executor::Spawn
 where
     S: Stream<Item = Header, Error = core_error::Error> + Send + 'static,
 {
     tokio::spawn(
         inbound
             .for_each(move |header| {
-                block_box.send(BlockMsg::AnnouncedBlock(header));
+                block_box.send(BlockMsg::AnnouncedBlock(header, node_id));
                 Ok(())
             })
             .map_err(|err| {

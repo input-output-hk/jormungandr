@@ -335,7 +335,7 @@ pub fn handle_block(
     block: Block,
     is_tip_candidate: bool,
 ) -> Result<HandledBlock, HandleBlockError> {
-    match header_triage(blockchain, block.header(), is_tip_candidate)? {
+    match header_triage(blockchain, &block.header(), is_tip_candidate)? {
         BlockHeaderTriage::NotOfInterest { reason } => Ok(HandledBlock::Rejected { reason }),
         BlockHeaderTriage::MissingParentOrBranch { to } => {
             // the block is not directly connected to any block
@@ -413,7 +413,7 @@ fn process_block(
 
 pub fn header_triage(
     blockchain: &Blockchain,
-    header: Header,
+    header: &Header,
     is_tip_candidate: bool,
 ) -> Result<BlockHeaderTriage, HandleBlockError> {
     let block_id = header.id();
@@ -429,7 +429,7 @@ pub fn header_triage(
     let (block_tip, _) = blockchain.get_block_tip()?;
 
     if let Some(leadership) = blockchain.get_leadership_or_build(block_date.epoch, &parent_id) {
-        match leadership.verify(&header) {
+        match leadership.verify(header) {
             Verification::Success => {}
             Verification::Failure(err) => {
                 return Ok(BlockHeaderTriage::NotOfInterest {

@@ -1,5 +1,5 @@
 use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
-use crate::intercom::{BlockMsg, NetworkPropagateMsg};
+use crate::intercom::{BlockMsg, NetworkMsg, PropagateMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::{
     async_msg::MessageBox,
@@ -12,7 +12,7 @@ pub fn handle_input(
     info: &TokioServiceInfo,
     blockchain: &BlockchainR,
     _stats_counter: &StatsCounter,
-    network_propagate: &MessageBox<NetworkPropagateMsg>,
+    network_msg_box: &mut MessageBox<NetworkMsg>,
     input: Input<BlockMsg>,
 ) {
     let bquery = match input {
@@ -59,15 +59,47 @@ pub fn handle_input(
                         "date" => header.date().to_string()
                     );
                     slog_debug!(logger, "Header: {:?}", header);
-                    network_propagate
-                        .clone()
-                        .send(NetworkPropagateMsg::Block(header));
+                    network_msg_box.send(NetworkMsg::Propagate(PropagateMsg::Block(header)));
                 }
             }
         }
-        BlockMsg::AnnouncedBlock(header) => {
+        BlockMsg::NetworkBlock(block) => {
+            let mut blockchain = blockchain.lock_write();
+            match chain::handle_block(&mut blockchain, block, true).unwrap() {
+                HandledBlock::Rejected { reason } => {
+                    // TODO: drop the network peer that has sent
+                    // an invalid block.
+                    slog_warn!(logger, "rejecting block from the network: {:?}", reason);
+                }
+                HandledBlock::MissingBranchToBlock { to } => {
+                    // This is abnormal because we have received a block
+                    // that is not connected to preceding blocks, which
+                    // should not happen as we solicit blocks in descending
+                    // order.
+                    //
+                    // TODO: drop the network peer that has sent
+                    // the wrong block.
+                    slog_warn!(
+                        logger,
+                        "disconnected block received, missing intermediate blocks to {}",
+                        to
+                    );
+                }
+                HandledBlock::Acquired { header } => {
+                    slog_info!(logger,
+                        "block added successfully to Node's blockchain";
+                        "id" => header.id().to_string(),
+                        "date" => format!("{}.{}", header.date().epoch, header.date().slot_id)
+                    );
+                    slog_debug!(logger, "Header: {:?}", header);
+                    // Propagate the block to other nodes
+                    network_msg_box.send(NetworkMsg::Propagate(PropagateMsg::Block(header)));
+                }
+            }
+        }
+        BlockMsg::AnnouncedBlock(header, node_id) => {
             let blockchain = blockchain.lock_read();
-            match chain::header_triage(&blockchain, header, false).unwrap() {
+            match chain::header_triage(&blockchain, &header, false).unwrap() {
                 BlockHeaderTriage::NotOfInterest { reason } => {
                     slog_info!(logger, "rejecting block announcement: {:?}", reason);
                 }
@@ -84,9 +116,7 @@ pub fn handle_input(
                 }
                 BlockHeaderTriage::ProcessBlockToState => {
                     slog_info!(logger, "Block announcement is interesting, fetch block");
-                    // TODO: signal back to the network that the block is interesting
-                    // (get block/request block)
-                    unimplemented!()
+                    network_msg_box.send(NetworkMsg::GetBlocks(node_id, vec![header.id()]));
                 }
             }
         }

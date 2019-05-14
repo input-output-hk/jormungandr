@@ -15,7 +15,7 @@ mod subscription;
 
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::BlockchainR;
-use crate::intercom::{BlockMsg, ClientMsg, NetworkPropagateMsg, TransactionMsg};
+use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
@@ -31,7 +31,7 @@ use network_core::{
 };
 
 use futures::prelude::*;
-use futures::stream;
+use futures::{future, stream};
 use tokio::timer::Interval;
 
 use std::{error::Error, iter, net::SocketAddr, sync::Arc, time::Duration};
@@ -122,11 +122,7 @@ impl ConnectionState {
     }
 }
 
-pub fn run(
-    config: Configuration,
-    propagate_input: MessageQueue<NetworkPropagateMsg>,
-    channels: Channels,
-) {
+pub fn run(config: Configuration, input: MessageQueue<NetworkMsg>, channels: Channels) {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
@@ -162,24 +158,22 @@ pub fn run(
         let peer = Peer::new(addr, Protocol::Grpc);
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
-        grpc::connect(addr, conn_state, conn_channels.clone()).map(
-            move |(node_id, mut prop_handles)| {
-                debug!("connected to {} at {}", node_id, addr);
-                let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
-                match prop_handles.try_send_gossip(gossip) {
-                    Ok(()) => state.propagation_peers.insert_peer(node_id, prop_handles),
-                    Err(e) => {
-                        info!(
-                            "gossiping to peer {} failed just after connection: {:?}",
-                            node_id, e
-                        );
-                    }
+        grpc::connect(conn_state, conn_channels.clone()).map(move |(node_id, mut prop_handles)| {
+            debug!("connected to {} at {}", node_id, addr);
+            let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
+            match prop_handles.try_send_gossip(gossip) {
+                Ok(()) => state.propagation_peers.insert_peer(node_id, prop_handles),
+                Err(e) => {
+                    info!(
+                        "gossiping to peer {} failed just after connection: {:?}",
+                        node_id, e
+                    );
                 }
-            },
-        )
+            }
+        })
     });
 
-    let propagate = handle_propagation(propagate_input, global_state.clone(), channels.clone());
+    let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
     // TODO: get gossip propagation interval from configuration
     let gossip = Interval::new_interval(Duration::from_secs(10))
@@ -191,50 +185,78 @@ pub fn run(
             Ok(())
         });
 
-    tokio::run(listener.join4(connections, propagate, gossip).map(|_| ()));
+    tokio::run(listener.join4(connections, handle_cmds, gossip).map(|_| ()));
 }
 
-fn handle_propagation(
-    input: MessageQueue<NetworkPropagateMsg>,
+fn handle_network_input(
+    input: MessageQueue<NetworkMsg>,
     state: GlobalStateR,
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
-    input.for_each(move |msg| {
-        debug!("to propagate: {:?}", &msg);
-        let channels = channels.clone();
-        let state = state.clone();
-        let nodes = state.topology.view().collect::<Vec<_>>();
-        debug!(
-            "will propagate to: {:?}",
-            nodes.iter().map(|node| node.id()).collect::<Vec<_>>()
-        );
-        let res = match msg {
-            NetworkPropagateMsg::Block(ref header) => state
-                .propagation_peers
-                .propagate_block(nodes, header.clone()),
-            NetworkPropagateMsg::Message(ref message) => state
-                .propagation_peers
-                .propagate_message(nodes, message.clone()),
-        };
-        // If any nodes selected for propagation are not in the
-        // active subscriptions map, connect to them and deliver
-        // the item.
-        res.map_err(|unreached_nodes| {
-            for node in unreached_nodes {
-                let msg = msg.clone();
-                connect_and_propagate_with(node, state.clone(), channels.clone(), |handles| {
-                    match msg {
-                        NetworkPropagateMsg::Block(header) => {
-                            handles.try_send_block(header).map_err(|e| e.kind())
+    input.for_each(move |msg| match msg {
+        NetworkMsg::Propagate(msg) => {
+            future::Either::A(handle_propagation_msg(msg, state.clone(), channels.clone()))
+        }
+        NetworkMsg::GetBlocks(node_id, block_ids) => {
+            let mut channels = channels.clone();
+            future::Either::B(
+                state
+                    .propagation_peers
+                    .solicit_blocks(node_id, &block_ids)
+                    .map(move |blocks| {
+                        for block in blocks {
+                            channels.block_box.send(BlockMsg::NetworkBlock(block));
                         }
-                        NetworkPropagateMsg::Message(message) => {
-                            handles.try_send_message(message).map_err(|e| e.kind())
-                        }
-                    }
-                });
-            }
-        })
+                    })
+                    .or_else(move |e| {
+                        warn!("failed to fetch blocks from peer {}: {:?}", node_id, e);
+                        future::ok::<(), ()>(())
+                    }),
+            )
+        }
     })
+}
+
+fn handle_propagation_msg(
+    msg: PropagateMsg,
+    state: GlobalStateR,
+    channels: Channels,
+) -> impl Future<Item = (), Error = ()> {
+    debug!("to propagate: {:?}", &msg);
+    let nodes = state.topology.view().collect::<Vec<_>>();
+    debug!(
+        "will propagate to: {:?}",
+        nodes.iter().map(|node| node.id()).collect::<Vec<_>>()
+    );
+    let res = match msg {
+        PropagateMsg::Block(ref header) => state
+            .propagation_peers
+            .propagate_block(nodes, header.clone()),
+        PropagateMsg::Message(ref message) => state
+            .propagation_peers
+            .propagate_message(nodes, message.clone()),
+    };
+    // If any nodes selected for propagation are not in the
+    // active subscriptions map, connect to them and deliver
+    // the item.
+    future::result(res.map_err(|unreached_nodes| {
+        for node in unreached_nodes {
+            let msg = msg.clone();
+            connect_and_propagate_with(
+                node,
+                state.clone(),
+                channels.clone(),
+                |handles| match msg {
+                    PropagateMsg::Block(header) => {
+                        handles.try_send_block(header).map_err(|e| e.kind())
+                    }
+                    PropagateMsg::Message(message) => {
+                        handles.try_send_message(message).map_err(|e| e.kind())
+                    }
+                },
+            );
+        }
+    }))
 }
 
 fn send_gossip(state: GlobalStateR, channels: Channels) {
@@ -272,8 +294,8 @@ fn connect_and_propagate_with<F>(
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let state = state.clone();
-    let cf = grpc::connect(addr, conn_state, channels.clone()).map(
-        move |(connected_node_id, mut handles)| {
+    let cf =
+        grpc::connect(conn_state, channels.clone()).map(move |(connected_node_id, mut handles)| {
             if connected_node_id == node_id {
                 let res = once_connected(&mut handles);
                 match res {
@@ -296,8 +318,7 @@ fn connect_and_propagate_with<F>(
             state
                 .propagation_peers
                 .insert_peer(connected_node_id, handles);
-        },
-    );
+        });
     tokio::spawn(cf);
 }
 
