@@ -130,12 +130,12 @@ pub mod witness {
 pub mod crypto {
     use super::*;
     use ::bech32::{Bech32 as Bech32Data, FromBase32 as _};
-    use chain_crypto::{AsymmetricKey, Blake2b256, PublicKey, SecretKey, SecretKeySizeStatic};
+    use chain_crypto::{AsymmetricKey, Blake2b256, PublicKey, SecretKey};
 
     pub fn deserialize_secret<'de, D, A>(deserializer: D) -> Result<SecretKey<A>, D::Error>
     where
         D: Deserializer<'de>,
-        A: SecretKeySizeStatic,
+        A: AsymmetricKey,
     {
         let secret_key_visitor = SecretKeyVisitor::new();
         if deserializer.is_human_readable() {
@@ -244,7 +244,7 @@ pub mod crypto {
 
     impl<'de, A> Visitor<'de> for SecretKeyVisitor<A>
     where
-        A: SecretKeySizeStatic,
+        A: AsymmetricKey,
     {
         type Value = SecretKey<A>;
 
@@ -282,10 +282,7 @@ pub mod crypto {
         {
             use chain_crypto::SecretKeyError;
             match Self::Value::from_binary(v) {
-                Err(SecretKeyError::SizeInvalid) => Err(E::custom(format!(
-                    "Invalid size (expected: {}bytes)",
-                    A::SECRET_KEY_SIZE
-                ))),
+                Err(SecretKeyError::SizeInvalid) => Err(E::custom("Invalid size")),
                 Err(SecretKeyError::StructureInvalid) => Err(E::custom("Invalid structure")),
                 Ok(key) => Ok(key),
             }
