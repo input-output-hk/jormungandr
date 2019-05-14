@@ -12,10 +12,14 @@ use tokio::{
 };
 
 /// structure to prepare the schedule of a leader
+///
+/// This object will generate a steam of events at precise times
+/// where the `Leader` is expected to create a block.
 pub struct LeaderSchedule {
     events: DelayQueue<ScheduledEvent>,
 }
 
+/// a scheduled event where the `Leader` is expected to create a block
 pub struct ScheduledEvent {
     pub leader_output: LeaderOutput,
     pub date: BlockDate,
@@ -23,13 +27,18 @@ pub struct ScheduledEvent {
 }
 
 impl LeaderSchedule {
+    /// create a new schedule based on the [`TaskParameters`] and the `Leader`
+    /// settings.
+    ///
+    /// [`TaskParameters`]: ./struct.TaskParameters.html
+    ///
     pub fn new(logger: Logger, leader: &Leader, task_parameters: &TaskParameters) -> Self {
-        // TODO: use parameter's number of slot per epoch
-        let number_of_slots_per_epoch = 100;
+        let era = task_parameters.leadership.era();
+        let number_of_slots_per_epoch = era.slots_per_epoch();
         let now = std::time::SystemTime::now();
 
         let mut schedule = LeaderSchedule {
-            events: DelayQueue::with_capacity(number_of_slots_per_epoch),
+            events: DelayQueue::with_capacity(number_of_slots_per_epoch as usize),
         };
 
         let logger = Logger::root(
