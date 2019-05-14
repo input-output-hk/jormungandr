@@ -161,6 +161,65 @@ The message, w.r.t the cryptographic signature, is generally of the form:
 
 Where HEADER, INPUTS and OUTPUTS comes from the Token Transfer type, and EXTRA is the optional data serialized between the token transfer type, and the witnesses.
 
+## Type 0: Initial blockchain configuration
+
+This message type may only appear in the genesis block (block 0) and
+specifies various configuration parameters of the blockchain. Some of
+these are immutable, while other may be changed via the update
+mechanism (see below). The format of this message is:
+
+    ConfigParams
+
+where `ConfigParams` consists of a 16-bit field denoting the number of
+parameters, followed by those parameters:
+
+    Length | ConfigParam*{Length}
+
+`ConfigParam` has the format:
+
+    TagLen Payload
+
+where `TagLen` is a 16-bit bitfield that has the size of the payload
+(i.e. the value of the parameter) in bytes in the 6 least-significant
+bits, and the type of the parameter in the 12 most-significant
+bits. Note that this means that the payload cannot be longer than 63
+bytes.
+
+The following parameter types exist:
+
+| tag | name | value type | description |
+|:-------|:-------|:------------|
+| 1 | block0-date | u64 | the official start time of the blockchain, in seconds since the Unix epoch |
+| 2 | discrimination | u8 | address discrimination; 1 for production, 2 for testing |
+| 3 | consensus| u16 | consensus version; 1 for BFT, 2 for Genesis Praos |
+| 4 | slots-per-epoch | u32 | number of slots in an epoch |
+| 5 | slot-duration | u8 | slot duration in seconds |
+| 6 | epoch-stability-depth | u32 | the length of the suffix of the chain (in blocks) considered unstable |
+| 8 | genesis-praos-param-f | Milli | determines maximum probability of a stakeholder being elected as leader in a slot |
+| 9 | max-number-of-transactions-per-block | u32 | maximum number of transactions in a block |
+| 10 | bft-slots-ratio | Milli | fraction of blocks to be created by BFT leaders |
+| 11 | add-bft-leader | LeaderId | add a BFT leader |
+| 12 | remove-bft-leader | LeaderId | remove a BFT leader |
+| 13 | allow-account-creation | bool (u8) | 0 to enable account creation, 1 to disable |
+| 14 | linear-fee | LinearFee | coefficients for fee calculations |
+| 15 | proposal-expiration | u32 | number of epochs until an update proposal expires |
+
+`Milli` is a 64-bit entity that encoded a non-negative, fixed-point
+number with a scaling factor of 1000. That is, the number 1.234 is
+represented as the 64-bit unsigned integer 1234.
+
+`LinearFee` has the format:
+
+    Constant | Coefficient | Certificate
+
+all of them 64-bit unsigned integers, specifying how fees are computed
+using the formula:
+
+    Constant + Coefficient * (inputs + outputs) + Certificate * certificates
+
+where `inputs`, `outputs` and `certificates` represent the size of the
+serialization of the corresponding parts of a transaction in bytes.
+
 ## Type 2: Transaction
 
 Transaction is the composition of the TokenTransfer structure followed directly by the witnesses. EXTRA needs to be empty. Effectively:
@@ -201,35 +260,11 @@ where `ProposerId` is a ed25519 extended public key, and `Signature`
 is a signature by the corresponding private key over the string
 `Proposal | ProposerId`.
 
-`Proposal` is a list of setting types and values, terminated by the
-16-bit integer 0xffff:
+`Proposal` has the following format:
 
-    (SettingTag | SettingValue)* 0xffff
+    ConfigParams
 
-`SettingTag` is a 16-bit unsigned integer specifying the type of
-setting, and `SettingValue` is a variable-length encoding of the
-proposed value of the setting. The following setting types are
-defined, with their corresponding values:
-
-* 1: maximum number of transactions per block: 32-bit unsigned integer
-* 2: 'd' parameter, i.e. percentage of slots that must be signed by
-  BFT leaders: 8-bit integer in the range 0-100
-* 3: consensus version: 16-bit unsigned integer
-* 4: BFT leaders: 8-bit unsigned integer count of BFT leaders `N`,
-  followed by `N` ed25519 public keys
-* 5: whether account creation is allowed: a byte `0` for no, or `1`
-  for yes
-* 6: transaction linear fee: 64-bit summand, 64-bit multiplier, and a
-  certificate (TODO)
-* 7: slot duration: 8-bit unsigned integer
-* 8: epoch stability depth: 32-bit unsigned integer
-
-Settings must appear in monotonically increasing order of their tags,
-that is, if tag N < M, then setting N must appear before M, and
-settings cannot be repeated.
-
-TODO: should `SettingValue` contain a length so we can at least parse
-proposals containing unknown settings?
+where `ConfigParams` is defined above.
 
 ## Type 5: Update votes
 

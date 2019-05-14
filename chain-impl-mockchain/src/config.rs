@@ -73,7 +73,7 @@ enum Tag {
     SlotsPerEpoch = 4,
     #[strum(to_string = "slot-duration")]
     SlotDuration = 5,
-    #[strum(to_string = "epoch_stability_depth")]
+    #[strum(to_string = "epoch-stability-depth")]
     EpochStabilityDepth = 6,
     #[strum(to_string = "genesis-praos-param-f")]
     ConsensusGenesisPraosActiveSlotsCoeff = 8,
