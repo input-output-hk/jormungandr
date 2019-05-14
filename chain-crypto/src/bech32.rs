@@ -39,11 +39,11 @@ pub enum Error {
         expected: &'static str,
         actual: String,
     },
-    DataInvalid(Box<StdError + 'static>),
+    DataInvalid(Box<StdError + Send + Sync + 'static>),
 }
 
 impl Error {
-    pub fn data_invalid(cause: impl StdError + 'static) -> Self {
+    pub fn data_invalid(cause: impl StdError + Send + Sync + 'static) -> Self {
         Error::DataInvalid(Box::new(cause))
     }
 }
