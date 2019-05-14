@@ -5,6 +5,7 @@ use network_core::{
     client::block::BlockService,
     error as core_error,
     gossip::{Gossip, Node},
+    subscription::BlockEvent,
 };
 use network_grpc::client::Connection;
 
@@ -128,7 +129,7 @@ enum SubscriptionState<T> {
 /// be subscribed to.
 #[derive(Default)]
 pub struct PeerHandles {
-    pub blocks: PropagationHandle<Header>,
+    pub blocks: PropagationHandle<BlockEvent<Block>>,
     pub messages: PropagationHandle<Message>,
     pub gossip: PropagationHandle<Gossip<p2p::Node>>,
 
@@ -145,7 +146,15 @@ impl PeerHandles {
     }
 
     pub fn try_send_block(&mut self, header: Header) -> Result<(), PropagateError<Header>> {
-        self.blocks.try_send(header)
+        self.blocks
+            .try_send(BlockEvent::Announce(header))
+            .map_err(|e| {
+                let item = match e.item {
+                    BlockEvent::Announce(header) => header,
+                    _ => unreachable!(),
+                };
+                PropagateError { kind: e.kind, item }
+            })
     }
 
     pub fn try_send_message(&mut self, message: Message) -> Result<(), PropagateError<Message>> {
@@ -187,7 +196,7 @@ impl PropagationMap {
         map.insert(id, handles);
     }
 
-    pub fn subscribe_to_blocks(&self, id: p2p::NodeId) -> Subscription<Header> {
+    pub fn subscribe_to_blocks(&self, id: p2p::NodeId) -> Subscription<BlockEvent<Block>> {
         let mut map = self.mutex.lock().unwrap();
         let handles = ensure_propagation_peer(&mut map, id);
         handles.blocks.subscribe()

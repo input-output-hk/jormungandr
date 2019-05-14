@@ -12,6 +12,7 @@ use network_core::{
         gossip::GossipService,
         Node, P2pService,
     },
+    subscription::BlockEvent,
 };
 
 use futures::future::{self, FutureResult};
@@ -79,7 +80,8 @@ impl BlockService for NodeService {
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type BlockSubscription = Subscription<Header>;
+    type UploadBlocksFuture = ReplyFuture<(), core_error::Error>;
+    type BlockSubscription = Subscription<BlockEvent<Block>>;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn tip(&mut self) -> Self::TipFuture {
@@ -134,6 +136,13 @@ impl BlockService for NodeService {
         unimplemented!()
     }
 
+    fn upload_blocks<S>(&mut self, stream: S) -> Self::UploadBlocksFuture
+    where
+        S: Stream<Item = Block, Error = core_error::Error> + Send + 'static,
+    {
+        unimplemented!()
+    }
+
     fn block_subscription<In>(
         &mut self,
         subscriber: Self::NodeId,
@@ -142,7 +151,11 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        subscription::process_blocks(subscriber, inbound, self.channels.block_box.clone());
+        subscription::process_block_announcements(
+            subscriber,
+            inbound,
+            self.channels.block_box.clone(),
+        );
 
         let subscription = self
             .global_state
