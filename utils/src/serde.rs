@@ -6,7 +6,7 @@ use chain_crypto::{bech32::Bech32, Ed25519Extended, PublicKey};
 use chain_impl_mockchain::leadership::bft::LeaderId;
 use serde::{
     de::{Deserializer, Error as DeserializerError, Visitor},
-    ser::{Error as _, Serializer},
+    ser::Serializer,
     Deserialize, Serialize,
 };
 use std::fmt::{self, Display};
@@ -130,12 +130,12 @@ pub mod witness {
 pub mod crypto {
     use super::*;
     use ::bech32::{Bech32 as Bech32Data, FromBase32 as _};
-    use chain_crypto::{AsymmetricKey, Blake2b256, PublicKey, SecretKey};
+    use chain_crypto::{AsymmetricKey, Blake2b256, PublicKey, SecretKey, SecretKeySizeStatic};
 
     pub fn deserialize_secret<'de, D, A>(deserializer: D) -> Result<SecretKey<A>, D::Error>
     where
         D: Deserializer<'de>,
-        A: AsymmetricKey,
+        A: SecretKeySizeStatic,
     {
         let secret_key_visitor = SecretKeyVisitor::new();
         if deserializer.is_human_readable() {
@@ -244,7 +244,7 @@ pub mod crypto {
 
     impl<'de, A> Visitor<'de> for SecretKeyVisitor<A>
     where
-        A: AsymmetricKey,
+        A: SecretKeySizeStatic,
     {
         type Value = SecretKey<A>;
 
