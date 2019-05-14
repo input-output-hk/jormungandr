@@ -97,7 +97,6 @@ impl Blockchain {
 
         let start_time = block_0.start_time()?;
         let slot_duration = block_0.slot_duration()?;
-        let slots_per_epoch = block_0.slots_per_epoch()?;
 
         let time_frame = TimeFrame::new(
             Timeline::new(start_time),
