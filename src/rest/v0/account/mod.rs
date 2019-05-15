@@ -1,9 +1,10 @@
 use crate::blockchain::BlockchainR;
 use actix_web::error::{Error, ErrorBadRequest, ErrorNotFound};
 use actix_web::{App, Json, Path, Responder, State};
-use chain_crypto::{bech32::Bech32, PublicKey};
+use chain_crypto::PublicKey;
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::accounting::account::AccountState;
+use std::str::FromStr;
 
 pub fn create_handler(
     blockchain: BlockchainR,
@@ -17,9 +18,9 @@ pub fn create_handler(
 
 fn handle_request(
     blockchain: State<BlockchainR>,
-    account_id_bech32: Path<String>,
+    account_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
-    let account_id = parse_account_id(&account_id_bech32)?;
+    let account_id = parse_account_id(&account_id_hex)?;
     let blockchain = blockchain.lock_read();
     let state = blockchain
         .multiverse
@@ -31,8 +32,8 @@ fn handle_request(
     Ok(Json(AccountDto::from(state)))
 }
 
-fn parse_account_id(bech32: &str) -> Result<Identifier, Error> {
-    PublicKey::<AccountAlg>::try_from_bech32_str(bech32)
+fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
+    PublicKey::<AccountAlg>::from_str(id_hex)
         .map(Into::into)
         .map_err(|e| ErrorBadRequest(e))
 }
