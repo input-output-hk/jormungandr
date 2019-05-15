@@ -324,6 +324,7 @@ impl BlockchainConfiguration {
                     })
                     .map(|_| "LinearFee"),
                 ConfigParam::ProposalExpiration(_param) => unimplemented!(),
+                ConfigParam::KESUpdateSpeed(_) => unimplemented!(),
             }
             .map(|param| panic!("Init message contains {} twice", param));
         }
