@@ -41,7 +41,7 @@ In Praos/Genesis the header also contains (128 bytes + between 480 to 1184 bytes
 * VRF PubKey: 256 bits (curve25519-dalek)
 * VRF Proof: 768 bits (curve25519-dalek DLEQs)
 * KES Signature (content TBD)
-* MMM+ed25519: Between 480 Bytes <=> 1184 Bytes
+  * MMM+ed25519: Between 480 Bytes <=> 1184 Bytes
 
 Additionally, we introduce the capability to address each header individually
 by using a cryptographic hash function : `H(HEADER)`. The hash include all
