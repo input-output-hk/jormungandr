@@ -1,3 +1,4 @@
+mod account;
 mod block;
 mod message;
 mod node;
@@ -9,6 +10,8 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum V0 {
+    /// Account operations
+    Account(account::Account),
     /// Block operations
     Block(block::Block),
     /// Message sending
@@ -24,6 +27,7 @@ pub enum V0 {
 impl V0 {
     pub fn exec(self) {
         match self {
+            V0::Account(account) => account.exec(),
             V0::Block(block) => block.exec(),
             V0::Message(message) => message.exec(),
             V0::Node(node) => node.exec(),
