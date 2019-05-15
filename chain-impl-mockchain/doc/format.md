@@ -187,23 +187,23 @@ bytes.
 
 The following parameter types exist:
 
-| tag | name | value type | description |
-|:-------|:-------|:------------|:--------------|
-| 1 | discrimination | u8 | address discrimination; 1 for production, 2 for testing |
-| 2 | block0-date | u64 | the official start time of the blockchain, in seconds since the Unix epoch |
-| 3 | consensus| u16 | consensus version; 1 for BFT, 2 for Genesis Praos |
-| 4 | slots-per-epoch | u32 | number of slots in an epoch |
-| 5 | slot-duration | u8 | slot duration in seconds |
-| 6 | epoch-stability-depth | u32 | the length of the suffix of the chain (in blocks) considered unstable |
-| 8 | genesis-praos-param-f | Milli | determines maximum probability of a stakeholder being elected as leader in a slot |
-| 9 | max-number-of-transactions-per-block | u32 | maximum number of transactions in a block |
-| 10 | bft-slots-ratio | Milli | fraction of blocks to be created by BFT leaders |
-| 11 | add-bft-leader | LeaderId | add a BFT leader |
-| 12 | remove-bft-leader | LeaderId | remove a BFT leader |
-| 13 | allow-account-creation | bool (u8) | 0 to enable account creation, 1 to disable |
-| 14 | linear-fee | LinearFee | coefficients for fee calculations |
-| 15 | proposal-expiration | u32 | number of epochs until an update proposal expires |
-| 16 | kes-update-speed | u32 | maximum number of seconds per update for KES keys known by the system after start time |
+| tag  | name                                 | value type | description                                                                            |
+| :--- | :----------------------------------- | :--------- | :------------------------------------------------------------------------------------- |
+| 1    | discrimination                       | u8         | address discrimination; 1 for production, 2 for testing                                |
+| 2    | block0-date                          | u64        | the official start time of the blockchain, in seconds since the Unix epoch             |
+| 3    | consensus                            | u16        | consensus version; 1 for BFT, 2 for Genesis Praos                                      |
+| 4    | slots-per-epoch                      | u32        | number of slots in an epoch                                                            |
+| 5    | slot-duration                        | u8         | slot duration in seconds                                                               |
+| 6    | epoch-stability-depth                | u32        | the length of the suffix of the chain (in blocks) considered unstable                  |
+| 8    | genesis-praos-param-f                | Milli      | determines maximum probability of a stakeholder being elected as leader in a slot      |
+| 9    | max-number-of-transactions-per-block | u32        | maximum number of transactions in a block                                              |
+| 10   | bft-slots-ratio                      | Milli      | fraction of blocks to be created by BFT leaders                                        |
+| 11   | add-bft-leader                       | LeaderId   | add a BFT leader                                                                       |
+| 12   | remove-bft-leader                    | LeaderId   | remove a BFT leader                                                                    |
+| 13   | allow-account-creation               | bool (u8)  | 0 to enable account creation, 1 to disable                                             |
+| 14   | linear-fee                           | LinearFee  | coefficients for fee calculations                                                      |
+| 15   | proposal-expiration                  | u32        | number of epochs until an update proposal expires                                      |
+| 16   | kes-update-speed                     | u32        | maximum number of seconds per update for KES keys known by the system after start time |
 
 `Milli` is a 64-bit entity that encoded a non-negative, fixed-point
 number with a scaling factor of 1000. That is, the number 1.234 is
