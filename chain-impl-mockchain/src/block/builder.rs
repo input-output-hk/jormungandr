@@ -11,7 +11,7 @@ use crate::stake;
 use crate::transaction::{AuthenticatedTransaction, NoExtra};
 use chain_addr::Address;
 use chain_crypto::{
-    Curve25519_2HashDH, Ed25519Extended, SumEd25519_12, SecretKey, VerifiableRandomFunction,
+    Curve25519_2HashDH, Ed25519Extended, SecretKey, SumEd25519_12, VerifiableRandomFunction,
 };
 
 pub struct BlockBuilder {
