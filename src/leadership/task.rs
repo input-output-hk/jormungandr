@@ -12,7 +12,7 @@ use crate::{
 use chain_core::property::ChainLength as _;
 use chain_time::timeframe::TimeFrame;
 use slog::Logger;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tokio::{prelude::*, sync::watch};
 
 custom_error! {pub HandleLeadershipError
@@ -36,7 +36,7 @@ pub struct TaskParameters {
 
 pub struct Task {
     logger: Logger,
-    leader: Leader,
+    leader: Arc<RwLock<Leader>>,
     blockchain_tip: Tip,
     epoch_receiver: watch::Receiver<Option<TaskParameters>>,
     transaction_pool: TPoolR,
@@ -63,7 +63,7 @@ impl Task {
 
         Task {
             logger,
-            leader,
+            leader: Arc::new(RwLock::new(leader)),
             blockchain_tip,
             transaction_pool,
             epoch_receiver,
@@ -74,7 +74,7 @@ impl Task {
     pub fn start(self) -> impl Future<Item = (), Error = ()> {
         let handle_logger = self.logger.clone();
         let crit_logger = self.logger;
-        let mut leader = self.leader;
+        let leader = self.leader;
         let blockchain_tip = self.blockchain_tip;
         let transaction_pool = self.transaction_pool;
         let block_message = self.block_message;
@@ -88,7 +88,7 @@ impl Task {
             .for_each(move |task_parameters| {
                 handle_leadership(
                     block_message.clone(),
-                    &mut leader,
+                    leader.clone(),
                     handle_logger.clone(),
                     blockchain_tip.clone(),
                     transaction_pool.clone(),
@@ -109,7 +109,7 @@ impl Task {
 ///
 fn handle_leadership(
     mut block_message: MessageBox<BlockMsg>,
-    leader: &mut Leader,
+    leader: Arc<RwLock<Leader>>,
     logger: Logger,
     blockchain_tip: Tip,
     transaction_pool: TPoolR,
@@ -130,13 +130,7 @@ fn handle_leadership(
     // * if too late for this leadership, log it and return
     assert!(epoch_position.epoch.0 <= task_parameters.epoch);
 
-    let schedule = LeaderSchedule::new(logger.clone(), leader, &task_parameters);
-
-    let bft_leader = if let Some(ref leader) = &leader.bft_leader {
-        leader.sig_key.clone()
-    } else {
-        unimplemented!()
-    };
+    let schedule = LeaderSchedule::new(logger.clone(), &leader.read().unwrap(), &task_parameters);
 
     schedule
         .map_err(|err| HandleLeadershipError::Schedule { source: err })
@@ -156,9 +150,27 @@ fn handle_leadership(
             );
 
             let block = match scheduled_event.leader_output {
-                LeaderOutput::None => unreachable!(),
-                LeaderOutput::Bft(_) => block.make_bft_block(&bft_leader),
-                LeaderOutput::GenesisPraos(_) => unimplemented!(),
+                LeaderOutput::None => unreachable!("Output::None are supposed to be filtered out"),
+                LeaderOutput::Bft(_) => {
+                    let leader = leader.read().unwrap();
+                    if let Some(ref leader) = &leader.bft_leader {
+                        block.make_bft_block(&leader.sig_key)
+                    } else {
+                        unreachable!("the leader was elected for BFT signing block, we expect it has the signing key")
+                    }
+                }
+                LeaderOutput::GenesisPraos(witness) => {
+                    let mut leader = leader.write().unwrap();
+                    if let Some(genesis_leader) = &mut leader.genesis_leader {
+                        block.make_genesis_praos_block(
+                            &genesis_leader.node_id,
+                            &mut genesis_leader.sig_key,
+                            witness,
+                        )
+                    } else {
+                        unreachable!("the leader was elected for Genesis Praos signing block, we expect it has the signing key")
+                    }
+                }
             };
 
             block_message.send(BlockMsg::LeadershipBlock(block));
