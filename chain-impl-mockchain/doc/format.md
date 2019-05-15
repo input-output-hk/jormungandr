@@ -23,25 +23,30 @@ The header is a small piece of data, containing enough informations for validati
 
 Common (2 * 64 bits + 1 * 32 bits + 2 * 256 bits = 84 bytes):
 
-* Size of Header: 16 bits: Maximum header is thus 64K not including the block content
-* Version of block: 16 bits
-* Size of Content: 32 bits
-* Block Date: Epoch (32 bits) + Slot-id (32 bits)
-* Chain length (number of ancestor blocks; first block has chain length 0): 32 bits
-* Hash of content `H(Content)` (256 bits)
-* Parent Header hash : 256 bits (with the special value of 0 to represent the lack of parent for the first block)
+* Size of Header: 2 bytes (16 bits): Maximum header is thus 64K not including the block content
+* Version of block: 2 bytes (16 bits)
+* Size of Content: 4 bytes (32 bits)
+* Block Date: Epoch (4 bytes, 32 bits) + Slot-id (4 bytes - 32 bits)
+* Chain length (number of ancestor blocks; first block has chain length 0): 4 bytes (32 bits)
+* Hash of content `H(Content)` (32 bytes - 256 bits)
+* Parent Header hash : 32 bytes (256 bits)
+
+We reserved the special value of all 0 for the parent header hash, to
+represent the lack of parent for the block0, but for other blocks it's not
+reserved and could represent, although with negligeable probability, a valid
+block. In any case, it means that there's no special meaning to this value in
+normal context.
 
 In BFT the header also contains (768 bits = 96 bytes):
 
-* BFT Public Key of the leader (256 bits)
-* BFT Signature (512 bits)
+* BFT Public Key of the leader (32 bytes)
+* BFT Signature (64 bytes)
 
-In Praos/Genesis the header also contains (128 bytes + between 480 to 1184 bytes = between 608 to 1312 bytes):
+In Praos/Genesis the header also contains (616 bytes):
 
-* VRF PubKey: 256 bits (curve25519-dalek)
-* VRF Proof: 768 bits (curve25519-dalek DLEQs)
-* KES Signature (content TBD)
-  * MMM+ed25519: Between 480 Bytes <=> 1184 Bytes
+* VRF PubKey: 32 bytes (curve25519-dalek)
+* VRF Proof: 96 bytes (curve25519-dalek DLEQs)
+* KES Signature: 484 bytes (sumed25519-12)
 
 Additionally, we introduce the capability to address each header individually
 by using a cryptographic hash function : `H(HEADER)`. The hash include all
