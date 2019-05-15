@@ -269,3 +269,49 @@ impl Staging {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use chain_impl_mockchain as chain;
+    use chain_impl_mockchain::key::Hash;
+    use std::str::FromStr;
+
+    #[test]
+    pub fn test_initial_stage_is_balancing() {
+        let staging = Staging::new();
+        let expected_kind = StagingKind::Balancing;
+        assert_eq!(
+            staging.kind, expected_kind,
+            "'initial staging kind should be {}",
+            expected_kind
+        );
+    }
+
+    #[test]
+    pub fn test_cannot_add_input_when_stage_is_finalizing() {
+        let hash =
+            Hash::from_str("c355a02d3b5337ad0e5f5940582675229f25bc03e7feebc3aa929738e1fec35e")
+                .unwrap();
+        let incorrect_stage = StagingKind::Finalizing;
+
+        let mut staging = Staging::new();
+        staging.kind = incorrect_stage.clone();
+
+        let mut input_ptr = [0u8; INPUT_PTR_SIZE];
+        input_ptr.clone_from_slice(hash.as_ref());
+
+        let result = staging.add_input(chain::transaction::Input {
+            input_ptr: input_ptr,
+            index_or_account: 0,
+            value: Value(200),
+        });
+
+        assert!(
+            result.is_err(),
+            "add_input message should throw exception when adding inputs while in {:?} stage",
+            &incorrect_stage
+        );
+    }
+}
