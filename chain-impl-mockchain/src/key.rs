@@ -30,9 +30,9 @@ fn chain_crypto_pub_err(e: crypto::PublicKeyError) -> ReadError {
 }
 fn chain_crypto_sig_err(e: crypto::SignatureError) -> ReadError {
     match e {
-        crypto::SignatureError::SizeInvalid => {
-            ReadError::StructureInvalid("signature size invalid".to_string())
-        }
+        crypto::SignatureError::SizeInvalid { expected, got } => ReadError::StructureInvalid(
+            format!("signature size invalid, expected {} got {}", expected, got),
+        ),
         crypto::SignatureError::StructureInvalid => {
             ReadError::StructureInvalid("signature structure invalid".to_string())
         }

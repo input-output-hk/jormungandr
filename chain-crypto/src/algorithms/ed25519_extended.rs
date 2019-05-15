@@ -83,7 +83,10 @@ impl VerificationAlgorithm for Ed25519Extended {
 
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
         if data.len() != ed25519::SIGNATURE_LENGTH {
-            return Err(SignatureError::SizeInvalid);
+            return Err(SignatureError::SizeInvalid {
+                expected: ed25519::SIGNATURE_LENGTH,
+                got: data.len(),
+            });
         }
         let mut buf = [0; ed25519::SIGNATURE_LENGTH];
         buf[0..ed25519::SIGNATURE_LENGTH].clone_from_slice(data);

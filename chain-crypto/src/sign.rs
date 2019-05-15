@@ -21,7 +21,7 @@ impl From<bool> for Verification {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SignatureError {
-    SizeInvalid,
+    SizeInvalid { expected: usize, got: usize }, // expected, got in bytes
     StructureInvalid,
 }
 
@@ -59,7 +59,11 @@ impl<A: VerificationAlgorithm, T> fmt::Display for Signature<T, A> {
 impl fmt::Display for SignatureError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SignatureError::SizeInvalid => write!(f, "Invalid Signature size"),
+            SignatureError::SizeInvalid { expected, got } => write!(
+                f,
+                "Invalid Signature size expecting {} got {}",
+                expected, got
+            ),
             SignatureError::StructureInvalid => write!(f, "Invalid Signature structure"),
         }
     }

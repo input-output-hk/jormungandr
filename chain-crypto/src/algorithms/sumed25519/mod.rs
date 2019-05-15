@@ -60,7 +60,10 @@ impl VerificationAlgorithm for SumEd25519_12 {
 
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
         sum::Signature::from_bytes(DEPTH, data).map_err(|e| match e {
-            sum::Error::InvalidSignatureSize(_) => SignatureError::SizeInvalid,
+            sum::Error::InvalidSignatureSize(_) => SignatureError::SizeInvalid {
+                expected: Self::SIGNATURE_SIZE,
+                got: data.len(),
+            },
             _ => SignatureError::StructureInvalid,
         })
     }
