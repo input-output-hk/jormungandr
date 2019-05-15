@@ -32,9 +32,9 @@ pub enum Certificate {
 pub enum NewArgs {
     /// build a stake pool registration certificate
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
-    /// build a stake pool registration certificate
+    /// build a stake key registration certificate
     StakeKeyRegistration(new_stake_key_registration::StakeKeyRegistration),
-    /// build a stake pool registration certificate
+    /// build a stake delegation certificate
     StakeDelegation(new_stake_delegation::StakeDelegation),
 }
 
