@@ -3,6 +3,7 @@ use crate::hex;
 use rand::{CryptoRng, RngCore};
 use std::fmt;
 use std::hash::Hash;
+use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SecretKeyError {
@@ -14,6 +15,12 @@ pub enum SecretKeyError {
 pub enum PublicKeyError {
     SizeInvalid,
     StructureInvalid,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PublicKeyFromStrError {
+    HexMalformed(hex::DecodeError),
+    KeyInvalid(PublicKeyError),
 }
 
 pub trait AsymmetricKey {
@@ -75,6 +82,16 @@ impl<A: AsymmetricKey> fmt::Display for PublicKey<A> {
         write!(f, "{}", hex::encode(self.0.as_ref()))
     }
 }
+
+impl<A: AsymmetricKey> FromStr for PublicKey<A> {
+    type Err = PublicKeyFromStrError;
+
+    fn from_str(hex: &str) -> Result<Self, Self::Err> {
+        let bytes = hex::decode(hex).map_err(PublicKeyFromStrError::HexMalformed)?;
+        Self::from_binary(&bytes).map_err(PublicKeyFromStrError::KeyInvalid)
+    }
+}
+
 impl fmt::Display for SecretKeyError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -83,6 +100,7 @@ impl fmt::Display for SecretKeyError {
         }
     }
 }
+
 impl fmt::Display for PublicKeyError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -91,8 +109,29 @@ impl fmt::Display for PublicKeyError {
         }
     }
 }
+
+impl fmt::Display for PublicKeyFromStrError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PublicKeyFromStrError::HexMalformed(_) => "hex encoding malformed",
+            PublicKeyFromStrError::KeyInvalid(_) => "invalid public key data",
+        }
+        .fmt(f)
+    }
+}
+
 impl std::error::Error for SecretKeyError {}
+
 impl std::error::Error for PublicKeyError {}
+
+impl std::error::Error for PublicKeyFromStrError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            PublicKeyFromStrError::HexMalformed(e) => Some(e),
+            PublicKeyFromStrError::KeyInvalid(e) => Some(e),
+        }
+    }
+}
 
 impl<A: AsymmetricKey> AsRef<[u8]> for PublicKey<A> {
     fn as_ref(&self) -> &[u8] {
