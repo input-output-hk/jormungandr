@@ -5,7 +5,7 @@ blockchain_configuration:
   # expected value in seconds since UNIX_EPOCH
   block0_date: {now}
 
-  # This is the type of dicrimination of the blockchain
+  # This is the type of discrimination of the blockchain
   # of this blockchain is meant for production then
   # use 'production' instead.
   #
@@ -40,13 +40,13 @@ blockchain_configuration:
   # Determines minimum stake required to try becoming slot leader, must be in range (0,1]
   consensus_genesis_praos_active_slot_coeff: 0.22
 
-  # This is hte max number of messages allowed in a given Block
+  # This is the max number of messages allowed in a given Block
   max_number_of_transactions_per_block: 255
 
   # Allow the creation of accounts from the output of a transaction
   #
   # if set to false, account based wallet will not be created without
-  # publishing a stake certificat.
+  # publishing a stake certificate.
   # if set to true, simply adding the account in the output of a transaction
   # will allow the account to exist in the blockchain.
   allow_account_creation: true
