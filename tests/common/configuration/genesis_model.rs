@@ -20,6 +20,7 @@ pub struct BlockchainConfig {
     pub consensus_genesis_praos_active_slot_coeff: String,
     pub allow_account_creation: bool,
     pub linear_fees: LinearFees,
+    pub kes_update_speed: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -105,6 +106,7 @@ impl GenesisYaml {
                     coefficient: 0,
                     certificate: 0,
                 },
+                kes_update_speed: 12 * 3600,
             },
             initial_funds: initial_funds,
             legacy_funds: legacy_funds,
