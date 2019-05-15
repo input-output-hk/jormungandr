@@ -314,6 +314,7 @@ mod test {
         ents.push(ConfigParam::AddBftLeader(LeaderId::from(leader_pub_key)));
         ents.push(ConfigParam::Block0Date(Block0Date(0)));
         ents.push(ConfigParam::SlotDuration(10));
+        ents.push(ConfigParam::KESUpdateSpeed(12 * 3600));
         ents.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
             Milli::HALF,
         ));

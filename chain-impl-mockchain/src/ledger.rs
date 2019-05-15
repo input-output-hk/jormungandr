@@ -22,6 +22,7 @@ pub struct LedgerStaticParameters {
     pub block0_initial_hash: HeaderHash,
     pub block0_start_time: config::Block0Date,
     pub discrimination: Discrimination,
+    pub kes_update_speed: u32,
 }
 
 // parameters to validate ledger
@@ -73,6 +74,7 @@ pub enum Block0Error {
     InitialMessageNoConsensusVersion,
     InitialMessageNoConsensusLeaderId,
     InitialMessageNoPraosActiveSlotsCoeff,
+    InitialMessageNoKesUpdateSpeed,
     UtxoTotalValueTooBig,
     HasUpdateProposal,
     HasUpdateVote,
@@ -192,6 +194,7 @@ impl Ledger {
         let mut slot_duration = None;
         let mut discrimination = None;
         let mut slots_per_epoch = None;
+        let mut kes_update_speed = None;
 
         for param in init_ents.iter() {
             match param {
@@ -207,6 +210,9 @@ impl Ledger {
                 ConfigParam::SlotsPerEpoch(n) => {
                     slots_per_epoch = Some(*n);
                 }
+                ConfigParam::KESUpdateSpeed(n) => {
+                    kes_update_speed = Some(*n);
+                }
                 _ => regular_ents.push(param.clone()),
             }
         }
@@ -220,11 +226,14 @@ impl Ledger {
             slot_duration.ok_or(Error::Block0(Block0Error::InitialMessageNoSlotDuration))?;
         let slots_per_epoch =
             slots_per_epoch.ok_or(Error::Block0(Block0Error::InitialMessageNoSlotsPerEpoch))?;
+        let kes_update_speed =
+            kes_update_speed.ok_or(Error::Block0(Block0Error::InitialMessageNoKesUpdateSpeed))?;
 
         let static_params = LedgerStaticParameters {
             block0_initial_hash,
             block0_start_time: block0_start_time,
             discrimination: discrimination,
+            kes_update_speed: kes_update_speed,
         };
 
         let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(block0_start_time.0);
@@ -824,13 +833,18 @@ pub mod test {
         };
     }
 
-    #[test]
-    pub fn utxo() {
+    // create an initial fake ledger with the non-optional parameter setup
+    pub fn create_initial_fake_ledger(
+        discrimination: Discrimination,
+        initial_msgs: &[Message],
+    ) -> (HeaderHash, Ledger) {
         let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
-        let discrimination = Discrimination::Test;
+
         let mut ie = config::ConfigParams::new();
-        ie.push(ConfigParam::Discrimination(Discrimination::Test));
+        ie.push(ConfigParam::Discrimination(discrimination));
         ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
+
+        // TODO remove rng: make this creation deterministic
         let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
         ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
         ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
@@ -839,6 +853,21 @@ pub mod test {
             Milli::HALF,
         ));
         ie.push(ConfigParam::SlotsPerEpoch(21600));
+        ie.push(ConfigParam::KESUpdateSpeed(3600 * 12));
+
+        let mut messages = Vec::new();
+        messages.push(Message::Initial(ie));
+        messages.extend_from_slice(initial_msgs);
+
+        let ledger =
+            Ledger::new(block0_hash, &messages).expect("create initial fake ledger failed");
+
+        (block0_hash, ledger)
+    }
+
+    #[test]
+    pub fn utxo() {
+        let discrimination = Discrimination::Test;
 
         let mut rng = rand::thread_rng();
         let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);
@@ -866,8 +895,9 @@ pub mod test {
             value: value,
         };
 
-        let messages = [Message::Initial(ie), Message::Transaction(first_trans)];
-        let ledger = Ledger::new(block0_hash, &messages).unwrap();
+        let messages = [Message::Transaction(first_trans)];
+        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &messages);
+
         let dyn_params = ledger.get_ledger_parameters();
 
         {

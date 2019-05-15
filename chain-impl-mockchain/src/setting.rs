@@ -63,7 +63,9 @@ impl Settings {
 
         for param in changes.iter() {
             match param {
-                ConfigParam::Block0Date(_) | ConfigParam::Discrimination(_) => {
+                ConfigParam::Block0Date(_)
+                | ConfigParam::Discrimination(_)
+                | ConfigParam::KESUpdateSpeed(_) => {
                     return Err(Error::ReadOnlySetting);
                 }
                 ConfigParam::ConsensusVersion(d) => {

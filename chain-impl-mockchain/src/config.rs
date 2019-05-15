@@ -58,15 +58,16 @@ pub enum ConfigParam {
     AllowAccountCreation(bool),
     LinearFee(LinearFee),
     ProposalExpiration(u32),
+    KESUpdateSpeed(u32),
 }
 
 // Discriminants can NEVER be 1024 or higher
 #[derive(AsRefStr, Clone, Copy, Debug, EnumIter, EnumString, FromPrimitive, PartialEq)]
 enum Tag {
-    #[strum(to_string = "block0-date")]
-    Block0Date = 1,
     #[strum(to_string = "discrimination")]
-    Discrimination = 2,
+    Discrimination = 1,
+    #[strum(to_string = "block0-date")]
+    Block0Date = 2,
     #[strum(to_string = "block0-consensus")]
     ConsensusVersion = 3,
     #[strum(to_string = "slots-per-epoch")]
@@ -91,6 +92,8 @@ enum Tag {
     LinearFee = 14,
     #[strum(to_string = "proposal-expiration")]
     ProposalExpiration = 15,
+    #[strum(to_string = "kes-update-speed")]
+    KESUpdateSpeed = 16,
 }
 
 impl<'a> From<&'a ConfigParam> for Tag {
@@ -112,6 +115,7 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::AllowAccountCreation(_) => Tag::AllowAccountCreation,
             ConfigParam::LinearFee(_) => Tag::LinearFee,
             ConfigParam::ProposalExpiration(_) => Tag::ProposalExpiration,
+            ConfigParam::KESUpdateSpeed(_) => Tag::KESUpdateSpeed,
         }
     }
 }
@@ -157,6 +161,9 @@ impl Readable for ConfigParam {
             Tag::ProposalExpiration => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::ProposalExpiration)
             }
+            Tag::KESUpdateSpeed => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::KESUpdateSpeed)
+            }
         }
         .map_err(Into::into)
     }
@@ -182,6 +189,7 @@ impl property::Serialize for ConfigParam {
             ConfigParam::AllowAccountCreation(data) => data.to_payload(),
             ConfigParam::LinearFee(data) => data.to_payload(),
             ConfigParam::ProposalExpiration(data) => data.to_payload(),
+            ConfigParam::KESUpdateSpeed(data) => data.to_payload(),
         };
         let taglen = TagLen::new(tag, bytes.len()).ok_or_else(|| {
             io::Error::new(
