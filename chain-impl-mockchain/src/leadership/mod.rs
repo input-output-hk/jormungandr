@@ -4,7 +4,7 @@ use crate::{
     ledger::Ledger,
     stake::StakePoolId,
 };
-use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey};
+use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, SecretKey, SumEd25519_12};
 use chain_time::era::TimeEra;
 
 pub mod bft;
@@ -50,7 +50,7 @@ pub struct BftLeader {
 
 pub struct GenesisLeader {
     pub node_id: StakePoolId,
-    pub sig_key: SecretKey<FakeMMM>,
+    pub sig_key: SecretKey<SumEd25519_12>,
     pub vrf_key: SecretKey<Curve25519_2HashDH>,
 }
 

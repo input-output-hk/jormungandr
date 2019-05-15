@@ -13,7 +13,7 @@ use chain_core::{
     property,
 };
 use chain_crypto::{
-    self, Curve25519_2HashDH, Ed25519Extended, FakeMMM, Signature, VerifiableRandomFunction,
+    self, Curve25519_2HashDH, Ed25519Extended, Signature, SumEd25519_12, VerifiableRandomFunction,
 };
 
 pub type HeaderHash = Hash;
@@ -54,7 +54,7 @@ pub struct GenesisPraosProof {
 }
 
 #[derive(Debug, Clone)]
-pub struct KESSignature(pub(crate) Signature<HeaderToSign, FakeMMM>);
+pub struct KESSignature(pub(crate) Signature<HeaderToSign, SumEd25519_12>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Proof {
