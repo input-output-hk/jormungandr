@@ -53,6 +53,7 @@ struct BlockchainConfiguration {
     bft_slots_ratio: Option<SerdeAsString<Milli>>,
     allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
+    kes_update_speed: u32,
 }
 
 // FIXME: duplicates LinearFee, can we get rid of this?
@@ -272,6 +273,7 @@ impl BlockchainConfiguration {
         let mut bft_slots_ratio = None;
         let mut allow_account_creation = None;
         let mut linear_fee = None;
+        let mut kes_update_speed = None;
 
         for ent in ents.iter() {
             match ent {
@@ -324,7 +326,9 @@ impl BlockchainConfiguration {
                     })
                     .map(|_| "LinearFee"),
                 ConfigParam::ProposalExpiration(_param) => unimplemented!(),
-                ConfigParam::KESUpdateSpeed(_) => unimplemented!(),
+                ConfigParam::KESUpdateSpeed(v) => {
+                    kes_update_speed.replace(*v).map(|_| "KESUpdateSpeed")
+                }
             }
             .map(|param| panic!("Init message contains {} twice", param));
         }
@@ -344,6 +348,7 @@ impl BlockchainConfiguration {
             bft_slots_ratio,
             allow_account_creation,
             linear_fee,
+            kes_update_speed: kes_update_speed.expect(&format!("{}, KESUpdateSpeed", PREFIX)),
         }
     }
 
@@ -362,6 +367,7 @@ impl BlockchainConfiguration {
             bft_slots_ratio,
             allow_account_creation,
             linear_fee,
+            kes_update_speed,
         } = self;
         let mut initial_ents = ConfigParams::new();
         initial_ents.push(ConfigParam::Block0Date(Block0Date(
@@ -401,6 +407,7 @@ impl BlockchainConfiguration {
                 certificate: d.certificate,
             }))
         }
+        initial_ents.push(ConfigParam::KESUpdateSpeed(kes_update_speed));
         initial_ents
     }
 }
@@ -446,6 +453,7 @@ blockchain_configuration:
     coefficient: 1
     constant: 2
     certificate: 4
+  kes_update_speed: 43200
 initial_funds:
   - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
     value: 10000

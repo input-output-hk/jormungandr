@@ -59,6 +59,9 @@ blockchain_configuration:
     coefficient: 1
     certificate: 4
 
+  # The speed to update the KES Key in seconds
+  kes_update_speed: 43200 # 12hours
+
 # The initial deposits present in the blockchain.
 #
 # It can be UTxO addresses or account (if allow_account_creation is set).
