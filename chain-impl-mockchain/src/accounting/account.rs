@@ -7,6 +7,7 @@
 use crate::value::*;
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
+use std::fmt::{self, Display, Formatter};
 use std::hash::Hash;
 
 /// Possible errors during an account operation
@@ -14,10 +15,24 @@ use std::hash::Hash;
 pub enum LedgerError {
     NonExistent,
     AlreadyExists,
-    MismatchCounter,
     NeedTotalWithdrawal,
     NonZero,
     ValueError(ValueError),
+}
+
+impl Display for LedgerError {
+    fn fmt(&self, formatter: &mut Formatter) -> Result<(), fmt::Error> {
+        match self {
+            LedgerError::NonExistent => "Account does not exist",
+            LedgerError::AlreadyExists => "Account already exists",
+            LedgerError::NeedTotalWithdrawal => {
+                "Operation counter reached its maximum and next operation must be full withdrawal"
+            }
+            LedgerError::NonZero => "Removed account is not empty",
+            LedgerError::ValueError(_) => "Value calculation failed",
+        }
+        .fmt(formatter)
+    }
 }
 
 impl From<ValueError> for LedgerError {
@@ -95,6 +110,10 @@ impl AccountState {
     pub fn get_value(&self) -> Value {
         self.value
     }
+
+    pub fn get_counter(&self) -> u32 {
+        self.counter.into()
+    }
 }
 
 /// Spending counter associated to an account.
@@ -126,6 +145,12 @@ impl From<u32> for SpendingCounter {
     }
 }
 
+impl Into<u32> for SpendingCounter {
+    fn into(self) -> u32 {
+        self.0
+    }
+}
+
 /// The public ledger of all accounts associated with their current state
 #[derive(Clone)]
 pub struct Ledger<ID: Hash + Eq>(Hamt<DefaultHasher, ID, AccountState>);
@@ -150,6 +175,13 @@ impl<ID: Clone + Eq + Hash> Ledger<ID> {
     #[inline]
     pub fn exists(&self, identifier: &ID) -> bool {
         self.0.contains_key(identifier)
+    }
+
+    /// Get account state
+    ///
+    /// If the identifier does not match any account, error out
+    pub fn get_state(&self, account: &ID) -> Result<&AccountState, LedgerError> {
+        self.0.lookup(account).ok_or(LedgerError::NonExistent)
     }
 
     /// Remove an account from this ledger

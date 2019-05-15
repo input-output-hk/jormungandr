@@ -464,6 +464,10 @@ impl Ledger {
         self.static_params.as_ref()
     }
 
+    pub fn accounts(&self) -> &account::Ledger {
+        &self.accounts
+    }
+
     pub fn get_ledger_parameters(&self) -> LedgerParameters {
         LedgerParameters {
             fees: *self.settings.linear_fees,
