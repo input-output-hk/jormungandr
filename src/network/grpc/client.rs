@@ -103,7 +103,7 @@ fn process_block_solicitations(
                 })
             })
             .map_err(|e| {
-                info!("block solicitation failed: {:?}", e);
+                warn!("block solicitation failed: {:?}", e);
             }),
     );
 }
