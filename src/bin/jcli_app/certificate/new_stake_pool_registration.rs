@@ -1,20 +1,13 @@
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
-    certificate::{self, CertificateContent},
+    certificate::{Certificate, CertificateContent},
     leadership::genesis::GenesisPraosLeader,
     stake::{StakeKeyId, StakePoolInfo},
 };
-use jcli_app::utils::io;
+use jcli_app::certificate::{self, Error};
 use jcli_app::utils::key_parser::parse_pub_key;
-use jormungandr_utils::certificate as cert_utils;
-use std::io::Write;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-custom_error! {pub Error
-    Encoding { source: cert_utils::Error } = "Invalid certificate",
-    Io { source: std::io::Error } = "I/O error",
-}
 
 #[derive(Debug, StructOpt)]
 pub struct StakePoolRegistration {
@@ -61,15 +54,10 @@ impl StakePoolRegistration {
                 vrf_public_key: self.vrf_key,
             },
         };
-
-        let cert = certificate::Certificate {
+        let cert = Certificate {
             content: CertificateContent::StakePoolRegistration(content),
             signatures: vec![],
         };
-
-        let bech32 = cert_utils::serialize_to_bech32(&cert)?;
-        let mut file = io::open_file_write(&self.output).unwrap();
-        writeln!(file, "{}", bech32)?;
-        Ok(())
+        certificate::write_cert(self.output, cert)
     }
 }

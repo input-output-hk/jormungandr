@@ -1,5 +1,8 @@
 mod message;
 
+use cardano::util::hex;
+use jcli_app::utils::error::CustomErrorFiller;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -9,8 +12,16 @@ pub enum Debug {
     Message(message::Message),
 }
 
+custom_error! {pub Error
+    Io { source: std::io::Error } = "I/O Error",
+    InputInvalid { source: std::io::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
+    HexMalformed { source: hex::Error } = "hex encoding malformed",
+    MessageMalformed { source: std::io::Error, filler: CustomErrorFiller } = "message malformed",
+}
+
 impl Debug {
-    pub fn exec(self) {
+    pub fn exec(self) -> Result<(), Error> {
         match self {
             Debug::Message(message) => message.exec(),
         }
