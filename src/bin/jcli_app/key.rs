@@ -1,7 +1,7 @@
 use bech32::{u5, Bech32, FromBase32, ToBase32};
 use cardano::util::hex;
 use chain_crypto::{
-    AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, FakeMMM,
+    AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, SumEd25519_12,
 };
 use jcli_app::utils::io;
 use rand::{rngs::EntropyRng, SeedableRng};
@@ -38,7 +38,7 @@ pub enum Key {
 pub struct FromBytesArguments {
     /// Type of a private key
     ///
-    /// value values are: ed25519, ed25510bip32, ed25519extended, curve25519_2hashdh
+    /// value values are: ed25519, ed25510bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
     #[structopt(long = "type")]
     pub key_type: GenPrivKeyType,
 
@@ -68,7 +68,7 @@ pub struct ToBytesArguments {
 pub struct GenerateKeyArguments {
     /// Type of a private key
     ///
-    /// value values are: ed25519, ed25510bip32, ed25519extended, curve25519_2hashdh
+    /// value values are: ed25519, ed25510bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
     #[structopt(long = "type")]
     pub key_type: GenPrivKeyType,
 
@@ -111,7 +111,7 @@ arg_enum! {
         Ed25519,
         Ed25519Bip32,
         Ed25519Extended,
-        FakeMMM,
+        SumEd25519_12,
         Curve25519_2HashDH,
     }
 }
@@ -126,7 +126,9 @@ impl Key {
                     GenPrivKeyType::Ed25519Extended => {
                         gen_priv_key_bech32::<Ed25519Extended>(args.seed)?
                     }
-                    GenPrivKeyType::FakeMMM => gen_priv_key_bech32::<FakeMMM>(args.seed)?,
+                    GenPrivKeyType::SumEd25519_12 => {
+                        gen_priv_key_bech32::<SumEd25519_12>(args.seed)?
+                    }
                     GenPrivKeyType::Curve25519_2HashDH => {
                         gen_priv_key_bech32::<Curve25519_2HashDH>(args.seed)?
                     }
@@ -145,7 +147,9 @@ impl Key {
                     Ed25519Extended::SECRET_BECH32_HRP => {
                         gen_pub_key_bech32::<Ed25519Extended>(bech32.data())?
                     }
-                    FakeMMM::SECRET_BECH32_HRP => gen_pub_key_bech32::<FakeMMM>(bech32.data())?,
+                    SumEd25519_12::SECRET_BECH32_HRP => {
+                        gen_pub_key_bech32::<SumEd25519_12>(bech32.data())?
+                    }
                     Curve25519_2HashDH::SECRET_BECH32_HRP => {
                         gen_pub_key_bech32::<Curve25519_2HashDH>(bech32.data())?
                     }
@@ -161,12 +165,12 @@ impl Key {
                     Ed25519::PUBLIC_BECH32_HRP => {}
                     Ed25519Bip32::PUBLIC_BECH32_HRP => {}
                     Ed25519Extended::PUBLIC_BECH32_HRP => {}
-                    FakeMMM::PUBLIC_BECH32_HRP => {}
+                    SumEd25519_12::PUBLIC_BECH32_HRP => {}
                     Curve25519_2HashDH::PUBLIC_BECH32_HRP => {}
                     Ed25519::SECRET_BECH32_HRP => {}
                     Ed25519Bip32::SECRET_BECH32_HRP => {}
                     Ed25519Extended::SECRET_BECH32_HRP => {}
-                    FakeMMM::SECRET_BECH32_HRP => {}
+                    SumEd25519_12::SECRET_BECH32_HRP => {}
                     Curve25519_2HashDH::SECRET_BECH32_HRP => {}
                     other => panic!("Unrecognized private key bech32 HRP: {}", other),
                 }
@@ -186,7 +190,9 @@ impl Key {
                     GenPrivKeyType::Ed25519Extended => {
                         get_priv_key_from_bytes::<Ed25519Extended>(&bytes)?
                     }
-                    GenPrivKeyType::FakeMMM => get_priv_key_from_bytes::<FakeMMM>(&bytes)?,
+                    GenPrivKeyType::SumEd25519_12 => {
+                        get_priv_key_from_bytes::<SumEd25519_12>(&bytes)?
+                    }
                     GenPrivKeyType::Curve25519_2HashDH => {
                         get_priv_key_from_bytes::<Curve25519_2HashDH>(&bytes)?
                     }

@@ -1,5 +1,5 @@
 use chain_crypto::{
-    Blake2b256, Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey, SecretKey,
+    Blake2b256, Curve25519_2HashDH, Ed25519Extended, PublicKey, SecretKey, SumEd25519_12,
 };
 use chain_impl_mockchain::leadership::{bft, BftLeader, GenesisLeader};
 use serde::Deserialize;
@@ -19,7 +19,7 @@ pub struct GenesisPraos {
     #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_hash")]
     node_id: Blake2b256,
     #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
-    sig_key: SecretKey<FakeMMM>,
+    sig_key: SecretKey<SumEd25519_12>,
     #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
     vrf_key: SecretKey<Curve25519_2HashDH>,
 }
@@ -29,7 +29,7 @@ pub struct GenesisPraos {
 #[derive(Clone, Deserialize)]
 pub struct GenesisPraosPublic {
     #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
-    sig_key: PublicKey<FakeMMM>,
+    sig_key: PublicKey<SumEd25519_12>,
     #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
     vrf_key: PublicKey<Curve25519_2HashDH>,
 }

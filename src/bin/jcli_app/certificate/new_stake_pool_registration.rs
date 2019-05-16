@@ -1,4 +1,4 @@
-use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, FakeMMM, PublicKey};
+use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{self, CertificateContent},
     leadership::genesis::GenesisPraosLeader,
@@ -34,7 +34,7 @@ pub struct StakePoolRegistration {
         name = "KES_KEY",
         parse(try_from_str = "parse_pub_key")
     )]
-    pub kes_key: PublicKey<FakeMMM>,
+    pub kes_key: PublicKey<SumEd25519_12>,
     /// public key of the VRF key
     #[structopt(
         long = "vrf-key",
