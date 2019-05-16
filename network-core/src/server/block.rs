@@ -68,8 +68,8 @@ pub trait BlockService: P2pService {
     /// implementation to produce a server-streamed response.
     type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error>;
 
-    /// The type of asynchronous futures returned by method `upload_blocks`.
-    type UploadBlocksFuture: Future<Item = (), Error = Error>;
+    /// The type of asynchronous futures returned by method `on_uploaded_block`.
+    type OnUploadedBlockFuture: Future<Item = (), Error = Error>;
 
     /// The type of an asynchronous stream that retrieves headers of new
     /// blocks as they are created.
@@ -116,9 +116,8 @@ pub trait BlockService: P2pService {
     /// to the server's tip.
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
 
-    fn upload_blocks<S>(&mut self, stream: S) -> Self::UploadBlocksFuture
-    where
-        S: Stream<Item = Self::Block, Error = Error> + Send + 'static;
+    /// Called when the client connection uploads a block.
+    fn on_uploaded_block(&mut self, block: Self::Block) -> Self::OnUploadedBlockFuture;
 
     /// Establishes a bidirectional subscription for announcing blocks.
     ///
