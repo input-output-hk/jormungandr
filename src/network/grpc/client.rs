@@ -1,11 +1,13 @@
 use super::origin_authority;
 use crate::{
     blockcfg::{Block, HeaderHash},
+    intercom::BlockMsg,
     network::{
         p2p_topology as p2p, propagate, subscription, BlockConfig, Channels, ConnectionState,
         FetchBlockError, GlobalStateR,
     },
     settings::start::network::Peer,
+    utils::async_msg::MessageBox,
 };
 
 use network_core::{
@@ -51,14 +53,8 @@ fn subscribe(
 ) -> impl Future<Item = (p2p::NodeId, propagate::PeerHandles), Error = ()> {
     let block_box = channels.block_box;
     let mut prop_handles = propagate::PeerHandles::new();
-    let block_sub_outbound = prop_handles.blocks.subscribe().map(|event| match event {
-        BlockEvent::Announce(header) => header,
-        BlockEvent::Solicit(_) => panic!("client connection used to solicit blocks"),
-    });
-    let block_req = client.block_subscription(block_sub_outbound);
+    let block_req = client.block_subscription(prop_handles.blocks.subscribe());
     let gossip_req = client.gossip_subscription(prop_handles.gossip.subscribe());
-    // TODO: decide if this is the way to make block requests
-    prop_handles.client = Some(client);
     block_req
         .join(gossip_req)
         .map_err(move |err| {
@@ -80,10 +76,36 @@ fn subscribe(
                     unimplemented!()
                 }
             });
-            subscription::process_block_announcements(node_id, block_sub, block_box);
+            subscription::process_block_announcements(node_id, block_sub, block_box.clone());
             subscription::process_gossip(gossip_sub, global_state);
+            process_block_solicitations(client, &mut prop_handles, block_box);
             Ok((node_id, prop_handles))
         })
+}
+
+fn process_block_solicitations(
+    mut client: Connection<BlockConfig, TcpStream, DefaultExecutor>,
+    prop_handles: &mut propagate::PeerHandles,
+    block_box: MessageBox<BlockMsg>,
+) {
+    tokio::spawn(
+        prop_handles
+            .solicit_blocks
+            .subscribe()
+            .for_each(move |block_ids| {
+                let block_box = block_box.clone();
+                client.get_blocks(&block_ids).and_then(move |blocks| {
+                    let mut block_box = block_box.clone();
+                    blocks.for_each(move |block| {
+                        block_box.send(BlockMsg::NetworkBlock(block));
+                        Ok(())
+                    })
+                })
+            })
+            .map_err(|e| {
+                info!("block solicitation failed: {:?}", e);
+            }),
+    );
 }
 
 // Fetches a block from a network peer in a one-off, blocking call.

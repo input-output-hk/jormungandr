@@ -1,17 +1,14 @@
-use super::{p2p_topology as p2p, BlockConfig};
+use super::p2p_topology as p2p;
 use crate::blockcfg::{Block, Header, HeaderHash, Message};
 
 use network_core::{
-    client::block::BlockService,
     error as core_error,
     gossip::{Gossip, Node},
     subscription::BlockEvent,
 };
-use network_grpc::client::Connection;
 
 use futures::prelude::*;
-use futures::{future, sync::mpsc};
-use tokio::{executor::DefaultExecutor, net::TcpStream};
+use futures::{stream, sync::mpsc};
 
 use std::{
     collections::{hash_map, HashMap},
@@ -61,6 +58,13 @@ impl<T> Stream for Subscription<T> {
         Ok(self.inner.poll().unwrap())
     }
 }
+
+type BlockEventAnnounceStream = stream::Map<Subscription<Header>, fn(Header) -> BlockEvent<Block>>;
+
+type BlockEventSolicitStream =
+    stream::Map<Subscription<Vec<HeaderHash>>, fn(Vec<HeaderHash>) -> BlockEvent<Block>>;
+
+pub type BlockEventSubscription = stream::Select<BlockEventAnnounceStream, BlockEventSolicitStream>;
 
 /// Handle used by the per-peer connection tasks to produce an outbound
 /// subscription stream towards the peer.
@@ -129,13 +133,10 @@ enum SubscriptionState<T> {
 /// be subscribed to.
 #[derive(Default)]
 pub struct PeerHandles {
-    pub blocks: PropagationHandle<BlockEvent<Block>>,
+    pub blocks: PropagationHandle<Header>,
+    pub solicit_blocks: PropagationHandle<Vec<HeaderHash>>,
     pub messages: PropagationHandle<Message>,
     pub gossip: PropagationHandle<Gossip<p2p::Node>>,
-
-    // TODO: decide if we want this or send requests via
-    // the bidirectional stream
-    pub(super) client: Option<Connection<BlockConfig, TcpStream, DefaultExecutor>>,
 }
 
 impl PeerHandles {
@@ -146,15 +147,7 @@ impl PeerHandles {
     }
 
     pub fn try_send_block(&mut self, header: Header) -> Result<(), PropagateError<Header>> {
-        self.blocks
-            .try_send(BlockEvent::Announce(header))
-            .map_err(|e| {
-                let item = match e.item {
-                    BlockEvent::Announce(header) => header,
-                    _ => unreachable!(),
-                };
-                PropagateError { kind: e.kind, item }
-            })
+        self.blocks.try_send(header)
     }
 
     pub fn try_send_message(&mut self, message: Message) -> Result<(), PropagateError<Message>> {
@@ -196,10 +189,14 @@ impl PropagationMap {
         map.insert(id, handles);
     }
 
-    pub fn subscribe_to_blocks(&self, id: p2p::NodeId) -> Subscription<BlockEvent<Block>> {
+    pub fn subscribe_to_blocks(&self, id: p2p::NodeId) -> BlockEventSubscription {
         let mut map = self.mutex.lock().unwrap();
         let handles = ensure_propagation_peer(&mut map, id);
-        handles.blocks.subscribe()
+        let announce_events: BlockEventAnnounceStream =
+            handles.blocks.subscribe().map(BlockEvent::Announce);
+        let solicit_events: BlockEventSolicitStream =
+            handles.solicit_blocks.subscribe().map(BlockEvent::Solicit);
+        announce_events.select(solicit_events)
     }
 
     pub fn subscribe_to_messages(&self, id: p2p::NodeId) -> Subscription<Message> {
@@ -287,34 +284,15 @@ impl PropagationMap {
         }
     }
 
-    pub fn solicit_blocks(
-        &self,
-        node_id: p2p::NodeId,
-        hashes: &[HeaderHash],
-    ) -> impl Future<Item = Vec<Block>, Error = core_error::Error> {
+    pub fn solicit_blocks(&self, node_id: p2p::NodeId, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
-        let handles = match map.get_mut(&node_id) {
-            Some(handles) => handles,
-            None => {
-                return future::Either::B(future::err(
-                    // FIXME: better error code, if that's the way we want to do this
-                    core_error::Error::new(core_error::Code::NotFound, "peer not available"),
-                ));
-            }
-        };
-        match &mut handles.client {
-            Some(client) => future::Either::A(
-                client
-                    .get_blocks(hashes)
-                    .and_then(|stream| stream.collect()),
-            ),
+        match map.get_mut(&node_id) {
+            Some(handles) => handles.solicit_blocks.try_send(hashes).unwrap_or_else(|e| {
+                warn!("block solicitation from {} failed: {:?}", node_id, e);
+            }),
             None => {
                 // TODO: connect and request on demand?
-                // FIXME: better error code, if that's the way we want to do this
-                future::Either::B(future::err(core_error::Error::new(
-                    core_error::Code::NotFound,
-                    "peer client connection not available",
-                )))
+                warn!("peer {} not available to solicit blocks from", node_id);
             }
         }
     }

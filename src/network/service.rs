@@ -1,4 +1,8 @@
-use super::{p2p_topology as p2p, propagate::Subscription, subscription, Channels, GlobalStateR};
+use super::{
+    p2p_topology as p2p,
+    propagate::{BlockEventSubscription, Subscription},
+    subscription, Channels, GlobalStateR,
+};
 
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
 use crate::intercom::{self, stream_reply, unary_reply, ClientMsg, ReplyFuture, ReplyStream};
@@ -12,7 +16,6 @@ use network_core::{
         gossip::GossipService,
         Node, P2pService,
     },
-    subscription::BlockEvent,
 };
 
 use futures::future::{self, FutureResult};
@@ -81,7 +84,7 @@ impl BlockService for NodeService {
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
     type UploadBlocksFuture = ReplyFuture<(), core_error::Error>;
-    type BlockSubscription = Subscription<BlockEvent<Block>>;
+    type BlockSubscription = BlockEventSubscription;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn tip(&mut self) -> Self::TipFuture {
