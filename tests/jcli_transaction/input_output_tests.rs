@@ -73,7 +73,7 @@ pub fn test_add_account_for_utxo_delegation_address_fails() {
 #[test]
 pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
-    let mut config = startup::from_initial_funds(vec![Fund {
+    let mut config = startup::build_configuration_with_funds(vec![Fund {
         address: sender.address.clone(),
         value: 100,
     }]);
@@ -98,7 +98,7 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
 pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
-    let mut config = startup::from_initial_funds(vec![Fund {
+    let mut config = startup::build_configuration_with_funds(vec![Fund {
         address: sender.address.clone(),
         value: 100,
     }]);
@@ -127,7 +127,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
 pub fn test_input_with_no_spending_utxo_is_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
-    let mut config = startup::from_initial_funds(vec![Fund {
+    let mut config = startup::build_configuration_with_funds(vec![Fund {
         address: sender.address.clone(),
         value: 100,
     }]);
@@ -152,7 +152,7 @@ pub fn test_input_with_no_spending_utxo_is_accepted_by_node() {
 pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
-    let mut config = startup::from_initial_funds(vec![Fund {
+    let mut config = startup::build_configuration_with_funds(vec![Fund {
         address: sender.address.clone(),
         value: 100,
     }]);

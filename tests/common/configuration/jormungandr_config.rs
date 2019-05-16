@@ -2,14 +2,18 @@
 
 use common::configuration::genesis_model::GenesisYaml;
 use common::configuration::node_config_model::NodeConfig;
+use common::configuration::secret_model::SecretModel;
 use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct JormungandrConfig {
     pub genesis_block_path: PathBuf,
     pub genesis_block_hash: String,
+    pub node_config_path: PathBuf,
+    pub secret_model_path: PathBuf,
     pub genesis_yaml: GenesisYaml,
     pub node_config: NodeConfig,
+    pub secret_model: SecretModel,
 }
 
 impl JormungandrConfig {
@@ -30,8 +34,11 @@ impl JormungandrConfig {
         JormungandrConfig {
             genesis_block_path: PathBuf::from(""),
             genesis_block_hash: String::from(""),
+            node_config_path: PathBuf::from(""),
+            secret_model_path: PathBuf::from(""),
             genesis_yaml: genesis_yaml,
             node_config: node_config,
+            secret_model: SecretModel::empty(),
         }
     }
 }

@@ -1,109 +1,52 @@
-#![allow(dead_code)]
+#![cfg(feature = "integration-test")]
 
-use super::configuration::genesis_model::GenesisYaml;
-use super::configuration::node_config_model::NodeConfig;
-use super::configuration::secret_model::SecretModel;
+pub mod jormungandr_starter;
+
+use super::configuration::{
+    genesis_model::{Fund, GenesisYaml},
+    jormungandr_config::JormungandrConfig,
+    node_config_model::NodeConfig,
+    secret_model::SecretModel,
+};
 use super::data::address::{Account, AddressDataProvider, Delegation, Utxo};
 use super::data::utxo::Utxo as UtxoData;
 use super::file_utils;
 use super::jcli_wrapper;
-use super::jormungandr_wrapper;
-use super::process_utils;
-use super::process_utils::output_extensions::ProcessOutput;
-use super::process_utils::process_guard::ProcessKillGuard;
-use common::configuration::genesis_model::Fund;
-use common::configuration::jormungandr_config::JormungandrConfig;
+
+use common::process_utils::process_guard::ProcessKillGuard;
 use std::path::PathBuf;
-use std::process::Command;
 
-pub fn from_initial_funds(funds: Vec<Fund>) -> JormungandrConfig {
+pub fn start_jormungandr_node(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
+    jormungandr_starter::start_jormungandr_node(&mut config)
+}
+
+pub fn start_jormungandr_node_as_leader(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
+    jormungandr_starter::start_jormungandr_node_as_leader(&mut config)
+}
+
+pub fn build_configuration_with_funds(funds: Vec<Fund>) -> JormungandrConfig {
     let node_config = NodeConfig::new();
+    let node_config_path = NodeConfig::serialize(&node_config);
+
     let genesis_model = GenesisYaml::new_with_funds(funds);
-    let config = JormungandrConfig::from(genesis_model, node_config);
-    config
-}
+    let path_to_output_block = build_genesis_block(&genesis_model);
 
-fn start_jormungandr_node_and_wait(rest_address: &str, mut command: Command) -> ProcessKillGuard {
-    println!("Starting jormungandr node...");
-    let process = command
-        .spawn()
-        .expect("failed to execute 'start jormungandr node'");
+    let mut config = JormungandrConfig::from(genesis_model, node_config);
 
-    let guard = ProcessKillGuard::new(process, String::from("Jormungandr node"));
-
-    process_utils::run_process_until_response_matches(
-        jcli_wrapper::jcli_commands::get_rest_stats_command(&rest_address),
-        |output| match output.as_single_node_yaml().get("uptime") {
-            Some(uptime) => {
-                uptime
-                    .parse::<i32>()
-                    .expect(&format!("Cannot parse uptime {}", uptime.to_string()))
-                    > 2
-            }
-            None => false,
-        },
-        2,
-        5,
-        "get stats from jormungandr node",
-        "jormungandr node is not up",
-    );
-    println!("Jormungandr node started");
-
-    guard
-}
-
-pub fn start_jormungandr_node(config: &mut JormungandrConfig) -> ProcessKillGuard {
-    let rest_address = &config.node_config.get_node_address();
-    let config_path = NodeConfig::serialize(&config.node_config);
-    let path_to_output_block = build_genesis_block(&config.genesis_yaml);
-
-    let command = jormungandr_wrapper::get_start_jormungandr_node_command(
-        &config_path,
-        &path_to_output_block,
-    );
-
-    config.genesis_block_path = path_to_output_block.clone();
-    println!("Starting node with configuration : {:?}", &config);
-
-    let process = start_jormungandr_node_and_wait(&rest_address, command);
-    process
-}
-
-pub fn start_jormungandr_node_as_leader(config: &mut JormungandrConfig) -> ProcessKillGuard {
-    let rest_address = &config.node_config.get_node_address();
-    let config_path = NodeConfig::serialize(&config.node_config);
-    let genesis_block_path = build_genesis_block(&config.genesis_yaml);
     let secret_key = jcli_wrapper::assert_key_generate_default();
     let secret_model = SecretModel::new(&secret_key);
     let secret_model_path = SecretModel::serialize(&secret_model);
 
-    let command = jormungandr_wrapper::get_start_jormungandr_as_leader_node_command(
-        &config_path,
-        &genesis_block_path,
-        &secret_model_path,
-    );
+    config.secret_model = secret_model;
+    config.secret_model_path = secret_model_path;
+    config.genesis_block_path = path_to_output_block.clone();
+    config.node_config_path = node_config_path;
 
-    config.genesis_block_path = genesis_block_path.clone();
-    config.genesis_block_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
-
-    println!("Starting node with configuration : {:?}", &config);
-    let process = start_jormungandr_node_and_wait(&rest_address, command);
-    process
+    config
 }
 
-pub fn start_jormungandr_node_as_slave(config: &mut JormungandrConfig) -> ProcessKillGuard {
-    let rest_address = &config.node_config.get_node_address();
-    let config_path = NodeConfig::serialize(&config.node_config);
-    let genesis_block_hash = &config.genesis_block_hash;
-
-    let command = jormungandr_wrapper::get_start_jormungandr_as_slave_node_command(
-        &config_path,
-        &genesis_block_hash,
-    );
-
-    println!("Starting node with configuration : {:?}", &config);
-    let process = start_jormungandr_node_and_wait(&rest_address, command);
-    process
+pub fn build_configuration() -> JormungandrConfig {
+    build_configuration_with_funds(vec![])
 }
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {

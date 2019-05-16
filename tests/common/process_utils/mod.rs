@@ -1,12 +1,19 @@
 #![allow(dead_code)]
 
+extern crate custom_error;
 extern crate serde_yaml;
 
 pub mod output_extensions;
 pub mod process_guard;
+
+use self::custom_error::custom_error;
 use self::output_extensions::ProcessOutput;
 use std::process::{Command, Output, Stdio};
 use std::{thread, time};
+
+custom_error! {pub ProcessError
+     ProcessExited{message: String} = "could not start process '{message}'",
+}
 
 /// Runs command, wait for output and returns it output
 ///
@@ -108,7 +115,7 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
     max_attempts: i32,
     command_description: &str,
     error_description: &str,
-) {
+) -> Result<(), ProcessError> {
     let one_second = time::Duration::from_millis(&timeout * 1000);
     let mut attempts = max_attempts.clone();
 
@@ -146,10 +153,13 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
     }
 
     if attempts <= 0 {
-        panic!(
-            "{} (tried to connect {} times with {} s interval)",
-            &error_description, &max_attempts, &timeout
-        );
+        return Err(ProcessError::ProcessExited {
+            message: format!(
+                "{} (tried to connect {} times with {} s interval)",
+                &error_description, &max_attempts, &timeout
+            ),
+        });
     }
     println!("Success: {}", &command_description);
+    Ok(())
 }

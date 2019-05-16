@@ -56,8 +56,8 @@ impl NodeConfig {
     }
 
     pub fn new() -> NodeConfig {
-        let rest_port = get_available_port();
-        let public_address_port = get_available_port();
+        let rest_port = NodeConfig::get_available_port();
+        let public_address_port = NodeConfig::get_available_port();
         let storage_file = file_utils::get_path_in_temp("storage");
 
         NodeConfig {
@@ -81,25 +81,33 @@ impl NodeConfig {
         }
     }
 
+    pub fn regenerate_ports(&mut self) {
+        self.rest.listen = format!("127.0.0.1:{}", NodeConfig::get_available_port().to_string());
+        self.peer_2_peer.public_address = format!(
+            "/ip4/127.0.0.1/tcp/{}",
+            NodeConfig::get_available_port().to_string()
+        );
+    }
+
     pub fn get_node_address(&self) -> String {
         let output = format!("http://{}/{}", self.rest.listen, self.rest.prefix);
         output
     }
-}
 
-fn get_available_port() -> u16 {
-    let available_port = loop {
-        let port = rand::thread_rng().gen_range(6000, 9999);
-        if port_is_available(port) {
-            break port;
+    fn get_available_port() -> u16 {
+        let available_port = loop {
+            let port = rand::thread_rng().gen_range(8000, 9999);
+            if NodeConfig::port_is_available(port) {
+                break port;
+            }
+        };
+        available_port
+    }
+
+    fn port_is_available(port: u16) -> bool {
+        match TcpListener::bind(("127.0.0.1", port)) {
+            Ok(_) => true,
+            Err(_) => false,
         }
-    };
-    available_port
-}
-
-fn port_is_available(port: u16) -> bool {
-    match TcpListener::bind(("127.0.0.1", port)) {
-        Ok(_) => true,
-        Err(_) => false,
     }
 }
