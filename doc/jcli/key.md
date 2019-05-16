@@ -7,7 +7,7 @@ There are multiple type of key for multiple reasons.
 |`Ed25519` | Signing algorithm for Ed25519 algorithm |
 |`Ed25519Bip32`| For HDWallet, this type of keys allow deterministic derivation |
 |`Ed25519Extended`| Compatible with `Ed25519Bip32` but without the derivation |
-|`FakeMMM`| For stake pool, necessary for the KES |
+|`SumEd25519_12`| For stake pool, necessary for the KES |
 |`Curve25519_2HashDH`| For stake pool, necessary for the VRF |
 
 There is a command line parameter to generate this keys:
