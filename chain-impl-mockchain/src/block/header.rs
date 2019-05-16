@@ -13,7 +13,7 @@ use chain_core::{
     property,
 };
 use chain_crypto::{
-    self, Curve25519_2HashDH, Ed25519Extended, FakeMMM, Signature, VerifiableRandomFunction,
+    self, Curve25519_2HashDH, Ed25519Extended, Signature, SumEd25519_12, VerifiableRandomFunction,
 };
 
 pub type HeaderHash = Hash;
@@ -54,7 +54,7 @@ pub struct GenesisPraosProof {
 }
 
 #[derive(Debug, Clone)]
-pub struct KESSignature(pub(crate) Signature<HeaderToSign, FakeMMM>);
+pub struct KESSignature(pub(crate) Signature<HeaderToSign, SumEd25519_12>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Proof {
@@ -295,7 +295,8 @@ impl property::Header for Header {
 mod test {
     use super::*;
     use crate::block::ConsensusVersion;
-    use chain_crypto::AsymmetricKey;
+    use chain_crypto::{AsymmetricKey, SecretKey, SumEd25519_12};
+    use lazy_static::lazy_static;
     use num_traits::FromPrimitive;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
@@ -359,7 +360,11 @@ mod test {
             };
 
             let kes_proof = {
-                let mut sk = Arbitrary::arbitrary(g);
+                lazy_static! {
+                    static ref SK_FIRST: SecretKey<SumEd25519_12> =
+                        { SecretKey::generate(&mut ChaChaRng::from_seed([0; 32])) };
+                }
+                let mut sk = SK_FIRST.clone(); // Arbitrary::arbitrary(g);
                 let signature = Signature::generate_update(&mut sk, &[0u8, 1, 2, 3]);
                 KESSignature(signature)
             };

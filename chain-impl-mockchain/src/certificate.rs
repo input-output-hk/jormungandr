@@ -386,7 +386,8 @@ impl Readable for StakePoolRetirement {
 mod test {
     use super::*;
     use crate::leadership::genesis::GenesisPraosLeader;
-    use chain_crypto::SecretKey;
+    use chain_crypto::{PublicKey, SecretKey, SumEd25519_12};
+    use lazy_static::lazy_static;
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Certificate {
@@ -444,13 +445,19 @@ mod test {
             for byte in seed.iter_mut() {
                 *byte = Arbitrary::arbitrary(g);
             }
+            lazy_static! {
+                static ref PK_KES: PublicKey<SumEd25519_12> = {
+                    let sk = SecretKey::generate(&mut rand_chacha::ChaChaRng::from_seed([0; 32]));
+                    sk.to_public()
+                };
+            }
             let mut rng = rand_chacha::ChaChaRng::from_seed(seed);
             StakePoolInfo {
                 serial: Arbitrary::arbitrary(g),
                 owners: vec![Arbitrary::arbitrary(g)],
                 initial_key: GenesisPraosLeader {
                     vrf_public_key: SecretKey::generate(&mut rng).to_public(),
-                    kes_public_key: SecretKey::generate(&mut rng).to_public(),
+                    kes_public_key: PK_KES.clone(),
                 },
             }
         }

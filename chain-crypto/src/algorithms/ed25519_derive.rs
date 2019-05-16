@@ -62,7 +62,10 @@ impl SecretKeySizeStatic for Ed25519Bip32 {
 impl From<i::SignatureError> for SignatureError {
     fn from(v: i::SignatureError) -> Self {
         match v {
-            i::SignatureError::InvalidLength(_) => SignatureError::SizeInvalid,
+            i::SignatureError::InvalidLength(got) => SignatureError::SizeInvalid {
+                expected: ed25519_bip32::SIGNATURE_SIZE,
+                got: got,
+            },
         }
     }
 }

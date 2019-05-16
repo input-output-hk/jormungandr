@@ -10,14 +10,14 @@ use crate::{
     value::Value,
 };
 use chain_crypto::Verification as SigningVerification;
-use chain_crypto::{Curve25519_2HashDH, FakeMMM, PublicKey, SecretKey};
+use chain_crypto::{Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12};
 pub use vrfeval::{ActiveSlotsCoeff, ActiveSlotsCoeffError, Witness};
 use vrfeval::{Nonce, PercentStake, VrfEvaluator};
 
 /// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenesisPraosLeader {
-    pub kes_public_key: PublicKey<FakeMMM>,
+    pub kes_public_key: PublicKey<SumEd25519_12>,
     pub vrf_public_key: PublicKey<Curve25519_2HashDH>,
 }
 
@@ -154,7 +154,7 @@ mod test {
     use chain_core::property::Transaction as T;
     use chain_core::property::{BlockId, HasTransaction};
     use chain_crypto::{
-        algorithms::{Ed25519, Ed25519Extended, FakeMMM},
+        algorithms::{Ed25519, Ed25519Extended, SumEd25519_12},
         SecretKey,
     };
     use quickcheck::{Arbitrary, StdGen};

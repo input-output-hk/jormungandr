@@ -465,7 +465,7 @@ impl Signature {
             return Err(Error::InvalidSignatureSize(bytes.len()));
         }
         let found_depth = (bytes.len() - minimum_size) / 32;
-        if found_depth == depth.0 {
+        if found_depth != depth.0 {
             return Err(Error::InvalidSignatureSize(bytes.len()));
         }
 
@@ -720,6 +720,9 @@ mod tests {
             if sk.is_updatable() {
                 update(&mut sk).unwrap();
             }
+
+            let sigdata = sig.as_bytes();
+            assert_eq!(signature_size(depth), sigdata.len())
         }
     }
 

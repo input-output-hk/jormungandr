@@ -11,7 +11,7 @@ use crate::stake;
 use crate::transaction::{AuthenticatedTransaction, NoExtra};
 use chain_addr::Address;
 use chain_crypto::{
-    Curve25519_2HashDH, Ed25519Extended, FakeMMM, SecretKey, VerifiableRandomFunction,
+    Curve25519_2HashDH, Ed25519Extended, SecretKey, SumEd25519_12, VerifiableRandomFunction,
 };
 
 pub struct BlockBuilder {
@@ -136,7 +136,7 @@ impl BlockBuilder {
     pub fn make_genesis_praos_block(
         mut self,
         node_id: &stake::StakePoolId,
-        kes_signing_key: &mut SecretKey<FakeMMM>,
+        kes_signing_key: &mut SecretKey<SumEd25519_12>,
         vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput,
     ) -> Block {
         assert_ne!(self.common.chain_length, ChainLength(0));

@@ -23,25 +23,30 @@ The header is a small piece of data, containing enough informations for validati
 
 Common (2 * 64 bits + 1 * 32 bits + 2 * 256 bits = 84 bytes):
 
-* Size of Header: 16 bits: Maximum header is thus 64K not including the block content
-* Version of block: 16 bits
-* Size of Content: 32 bits
-* Block Date: Epoch (32 bits) + Slot-id (32 bits)
-* Chain length (number of ancestor blocks; first block has chain length 0): 32 bits
-* Hash of content `H(Content)` (256 bits)
-* Parent Header hash : 256 bits (with the special value of 0 to represent the lack of parent for the first block)
+* Size of Header: 2 bytes (16 bits): Maximum header is thus 64K not including the block content
+* Version of block: 2 bytes (16 bits)
+* Size of Content: 4 bytes (32 bits)
+* Block Date: Epoch (4 bytes, 32 bits) + Slot-id (4 bytes - 32 bits)
+* Chain length (number of ancestor blocks; first block has chain length 0): 4 bytes (32 bits)
+* Hash of content `H(Content)` (32 bytes - 256 bits)
+* Parent Header hash : 32 bytes (256 bits)
+
+We reserved the special value of all 0 for the parent header hash, to
+represent the lack of parent for the block0, but for other blocks it's not
+reserved and could represent, although with negligeable probability, a valid
+block. In any case, it means that there's no special meaning to this value in
+normal context.
 
 In BFT the header also contains (768 bits = 96 bytes):
 
-* BFT Public Key of the leader (256 bits)
-* BFT Signature (512 bits)
+* BFT Public Key of the leader (32 bytes)
+* BFT Signature (64 bytes)
 
-In Praos/Genesis the header also contains (128 bytes + between 480 to 1184 bytes = between 608 to 1312 bytes):
+In Praos/Genesis the header also contains (616 bytes):
 
-* VRF PubKey: 256 bits (curve25519-dalek)
-* VRF Proof: 768 bits (curve25519-dalek DLEQs)
-* KES Signature (content TBD)
-  * MMM+ed25519: Between 480 Bytes <=> 1184 Bytes
+* VRF PubKey: 32 bytes (curve25519-dalek)
+* VRF Proof: 96 bytes (curve25519-dalek DLEQs)
+* KES Signature: 484 bytes (sumed25519-12)
 
 Additionally, we introduce the capability to address each header individually
 by using a cryptographic hash function : `H(HEADER)`. The hash include all
@@ -187,23 +192,23 @@ bytes.
 
 The following parameter types exist:
 
-| tag | name | value type | description |
-|:-------|:-------|:------------|:--------------|
-| 1 | discrimination | u8 | address discrimination; 1 for production, 2 for testing |
-| 2 | block0-date | u64 | the official start time of the blockchain, in seconds since the Unix epoch |
-| 3 | consensus| u16 | consensus version; 1 for BFT, 2 for Genesis Praos |
-| 4 | slots-per-epoch | u32 | number of slots in an epoch |
-| 5 | slot-duration | u8 | slot duration in seconds |
-| 6 | epoch-stability-depth | u32 | the length of the suffix of the chain (in blocks) considered unstable |
-| 8 | genesis-praos-param-f | Milli | determines maximum probability of a stakeholder being elected as leader in a slot |
-| 9 | max-number-of-transactions-per-block | u32 | maximum number of transactions in a block |
-| 10 | bft-slots-ratio | Milli | fraction of blocks to be created by BFT leaders |
-| 11 | add-bft-leader | LeaderId | add a BFT leader |
-| 12 | remove-bft-leader | LeaderId | remove a BFT leader |
-| 13 | allow-account-creation | bool (u8) | 0 to enable account creation, 1 to disable |
-| 14 | linear-fee | LinearFee | coefficients for fee calculations |
-| 15 | proposal-expiration | u32 | number of epochs until an update proposal expires |
-| 16 | kes-update-speed | u32 | maximum number of seconds per update for KES keys known by the system after start time |
+| tag  | name                                 | value type | description                                                                            |
+| :--- | :----------------------------------- | :--------- | :------------------------------------------------------------------------------------- |
+| 1    | discrimination                       | u8         | address discrimination; 1 for production, 2 for testing                                |
+| 2    | block0-date                          | u64        | the official start time of the blockchain, in seconds since the Unix epoch             |
+| 3    | consensus                            | u16        | consensus version; 1 for BFT, 2 for Genesis Praos                                      |
+| 4    | slots-per-epoch                      | u32        | number of slots in an epoch                                                            |
+| 5    | slot-duration                        | u8         | slot duration in seconds                                                               |
+| 6    | epoch-stability-depth                | u32        | the length of the suffix of the chain (in blocks) considered unstable                  |
+| 8    | genesis-praos-param-f                | Milli      | determines maximum probability of a stakeholder being elected as leader in a slot      |
+| 9    | max-number-of-transactions-per-block | u32        | maximum number of transactions in a block                                              |
+| 10   | bft-slots-ratio                      | Milli      | fraction of blocks to be created by BFT leaders                                        |
+| 11   | add-bft-leader                       | LeaderId   | add a BFT leader                                                                       |
+| 12   | remove-bft-leader                    | LeaderId   | remove a BFT leader                                                                    |
+| 13   | allow-account-creation               | bool (u8)  | 0 to enable account creation, 1 to disable                                             |
+| 14   | linear-fee                           | LinearFee  | coefficients for fee calculations                                                      |
+| 15   | proposal-expiration                  | u32        | number of epochs until an update proposal expires                                      |
+| 16   | kes-update-speed                     | u32        | maximum number of seconds per update for KES keys known by the system after start time |
 
 `Milli` is a 64-bit entity that encoded a non-negative, fixed-point
 number with a scaling factor of 1000. That is, the number 1.234 is
