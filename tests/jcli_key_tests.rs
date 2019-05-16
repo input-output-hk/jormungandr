@@ -35,8 +35,8 @@ pub fn test_curve25519_2hashdh_key_generation() {
 
 #[test]
 #[cfg(feature = "integration-test")]
-pub fn test_fake_mm_key_generation() {
-    let generated_key = jcli_wrapper::assert_key_generate("FakeMMM");
+pub fn test_sumed25519_12_key_generation() {
+    let generated_key = jcli_wrapper::assert_key_generate("SumEd25519_12");
     assert_ne!(generated_key, "", "generated key is empty");
 }
 
