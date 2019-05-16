@@ -6,7 +6,6 @@ use common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
 use common::startup;
 
 #[test]
-#[cfg(feature = "integration-test")]
 pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
@@ -37,7 +36,6 @@ pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
 }
 
 #[test]
-#[cfg(feature = "integration-test")]
 pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let middle_man = startup::create_new_utxo_address();
