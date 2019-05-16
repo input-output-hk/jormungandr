@@ -31,7 +31,7 @@ use network_core::{
 };
 
 use futures::prelude::*;
-use futures::{future, stream};
+use futures::stream;
 use tokio::timer::Interval;
 
 use std::{error::Error, iter, net::SocketAddr, sync::Arc, time::Duration};
@@ -195,33 +195,17 @@ fn handle_network_input(
 ) -> impl Future<Item = (), Error = ()> {
     input.for_each(move |msg| match msg {
         NetworkMsg::Propagate(msg) => {
-            future::Either::A(handle_propagation_msg(msg, state.clone(), channels.clone()))
+            handle_propagation_msg(msg, state.clone(), channels.clone());
+            Ok(())
         }
         NetworkMsg::GetBlocks(node_id, block_ids) => {
-            let mut channels = channels.clone();
-            future::Either::B(
-                state
-                    .propagation_peers
-                    .solicit_blocks(node_id, &block_ids)
-                    .map(move |blocks| {
-                        for block in blocks {
-                            channels.block_box.send(BlockMsg::NetworkBlock(block));
-                        }
-                    })
-                    .or_else(move |e| {
-                        warn!("failed to fetch blocks from peer {}: {:?}", node_id, e);
-                        future::ok::<(), ()>(())
-                    }),
-            )
+            state.propagation_peers.solicit_blocks(node_id, block_ids);
+            Ok(())
         }
     })
 }
 
-fn handle_propagation_msg(
-    msg: PropagateMsg,
-    state: GlobalStateR,
-    channels: Channels,
-) -> impl Future<Item = (), Error = ()> {
+fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
     debug!("to propagate: {:?}", &msg);
     let nodes = state.topology.view().collect::<Vec<_>>();
     debug!(
@@ -239,7 +223,7 @@ fn handle_propagation_msg(
     // If any nodes selected for propagation are not in the
     // active subscriptions map, connect to them and deliver
     // the item.
-    future::result(res.map_err(|unreached_nodes| {
+    if let Err(unreached_nodes) = res {
         for node in unreached_nodes {
             let msg = msg.clone();
             connect_and_propagate_with(
@@ -256,7 +240,7 @@ fn handle_propagation_msg(
                 },
             );
         }
-    }))
+    }
 }
 
 fn send_gossip(state: GlobalStateR, channels: Channels) {
