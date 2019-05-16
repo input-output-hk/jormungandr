@@ -33,6 +33,7 @@ impl<T: Node> NodeService<T> {
     }
 }
 
+#[must_use = "futures do nothing unless polled"]
 pub enum ResponseFuture<T, F> {
     Pending(F),
     Failed(Status),
@@ -59,6 +60,7 @@ impl<T, F> ResponseFuture<T, F> {
     }
 }
 
+#[must_use = "futures do nothing unless polled"]
 pub enum SubscriptionFuture<T, Id, F> {
     Normal {
         inner: ResponseFuture<T, F>,
@@ -176,6 +178,7 @@ where
     }
 }
 
+#[must_use = "streams do nothing unless polled"]
 pub struct ResponseStream<T, S> {
     inner: S,
     _phantom: PhantomData<T>,
@@ -218,6 +221,7 @@ where
     }
 }
 
+#[must_use = "streams do nothing unless polled"]
 pub struct RequestStream<T, S> {
     inner: S,
     _phantom: PhantomData<T>,
