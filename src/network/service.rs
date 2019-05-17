@@ -1,6 +1,8 @@
 use super::{
-    p2p_topology as p2p,
-    propagate::{BlockEventSubscription, Subscription},
+    p2p::{
+        comm::{BlockEventSubscription, Subscription},
+        topology,
+    },
     subscription, Channels, GlobalStateR,
 };
 
@@ -64,9 +66,9 @@ impl From<intercom::Error> for core_error::Error {
 }
 
 impl P2pService for NodeService {
-    type NodeId = p2p::NodeId;
+    type NodeId = topology::NodeId;
 
-    fn node_id(&self) -> p2p::NodeId {
+    fn node_id(&self) -> topology::NodeId {
         self.global_state.node.id()
     }
 }
@@ -162,8 +164,8 @@ impl BlockService for NodeService {
 
         let subscription = self
             .global_state
-            .propagation_peers
-            .subscribe_to_blocks(subscriber);
+            .peers
+            .subscribe_to_block_events(subscriber);
         future::ok(subscription)
     }
 }
@@ -202,8 +204,8 @@ impl ContentService for NodeService {
 }
 
 impl GossipService for NodeService {
-    type Node = p2p::Node;
-    type GossipSubscription = Subscription<Gossip<p2p::Node>>;
+    type Node = topology::Node;
+    type GossipSubscription = Subscription<Gossip<topology::Node>>;
     type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
 
     fn gossip_subscription<In>(
@@ -216,10 +218,7 @@ impl GossipService for NodeService {
     {
         subscription::process_gossip(inbound, self.global_state.clone());
 
-        let subscription = self
-            .global_state
-            .propagation_peers
-            .subscribe_to_gossip(subscriber);
+        let subscription = self.global_state.peers.subscribe_to_gossip(subscriber);
         future::ok(subscription)
     }
 }

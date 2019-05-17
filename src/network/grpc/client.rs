@@ -3,8 +3,8 @@ use crate::{
     blockcfg::{Block, HeaderHash},
     intercom::BlockMsg,
     network::{
-        p2p_topology as p2p, propagate, subscription, BlockConfig, Channels, ConnectionState,
-        FetchBlockError, GlobalStateR,
+        p2p::{comm::PeerComms, topology},
+        subscription, BlockConfig, Channels, ConnectionState, FetchBlockError, GlobalStateR,
     },
     settings::start::network::Peer,
     utils::async_msg::MessageBox,
@@ -30,7 +30,7 @@ use std::slice;
 pub fn connect(
     state: ConnectionState,
     channels: Channels,
-) -> impl Future<Item = (p2p::NodeId, propagate::PeerHandles), Error = ()> {
+) -> impl Future<Item = (topology::NodeId, PeerComms), Error = ()> {
     info!("connecting to subscription peer {}", state.connection);
     let addr = state.connection;
     let peer = grpc_peer::TcpPeer::new(addr);
@@ -50,11 +50,11 @@ fn subscribe(
     mut client: Connection<BlockConfig, TcpStream, DefaultExecutor>,
     global_state: GlobalStateR,
     channels: Channels,
-) -> impl Future<Item = (p2p::NodeId, propagate::PeerHandles), Error = ()> {
+) -> impl Future<Item = (topology::NodeId, PeerComms), Error = ()> {
     let block_box = channels.block_box;
-    let mut prop_handles = propagate::PeerHandles::new();
-    let block_req = client.block_subscription(prop_handles.blocks.subscribe());
-    let gossip_req = client.gossip_subscription(prop_handles.gossip.subscribe());
+    let mut peer_comms = PeerComms::new();
+    let block_req = client.block_subscription(peer_comms.subscribe_to_block_announcements());
+    let gossip_req = client.gossip_subscription(peer_comms.subscribe_to_gossip());
     block_req
         .join(gossip_req)
         .map_err(move |err| {
@@ -78,20 +78,19 @@ fn subscribe(
             });
             subscription::process_block_announcements(node_id, block_sub, block_box.clone());
             subscription::process_gossip(gossip_sub, global_state);
-            process_block_solicitations(client, &mut prop_handles, block_box);
-            Ok((node_id, prop_handles))
+            process_block_solicitations(client, &mut peer_comms, block_box);
+            Ok((node_id, peer_comms))
         })
 }
 
 fn process_block_solicitations(
     mut client: Connection<BlockConfig, TcpStream, DefaultExecutor>,
-    prop_handles: &mut propagate::PeerHandles,
+    peer_comms: &mut PeerComms,
     block_box: MessageBox<BlockMsg>,
 ) {
     tokio::spawn(
-        prop_handles
-            .solicit_blocks
-            .subscribe()
+        peer_comms
+            .subscribe_to_block_solicitations()
             .for_each(move |block_ids| {
                 let block_box = block_box.clone();
                 client.get_blocks(&block_ids).and_then(move |blocks| {

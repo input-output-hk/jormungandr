@@ -1,5 +1,5 @@
 use crate::blockcfg::{Block, Header, HeaderHash, Message, MessageId};
-use crate::network::p2p_topology::NodeId;
+use crate::network::p2p::topology::NodeId;
 
 use network_core::error as core_error;
 
