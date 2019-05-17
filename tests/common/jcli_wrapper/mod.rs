@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+pub mod certificate;
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
 

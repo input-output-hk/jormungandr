@@ -2,6 +2,7 @@
 
 extern crate mktemp;
 
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -51,4 +52,9 @@ pub fn create_file_with_content(path: &PathBuf, content: &str) -> () {
     let mut file = File::create(&path).unwrap();
     file.write_all(content.as_bytes())
         .expect(&format!("cannot write to file {:?}", path));
+}
+
+pub fn read_file(path: &PathBuf) -> String {
+    let contents = fs::read_to_string(path).expect("cannot read file");
+    contents
 }
