@@ -257,6 +257,68 @@ where
     }
 }
 
+#[must_use = "futures do nothing unless polled"]
+pub struct UploadBlocksFuture<T, S>
+where
+    T: Node,
+{
+    stream: RequestStream<<T::BlockService as BlockService>::Block, S>,
+    service: T,
+    processing: Option<<T::BlockService as BlockService>::OnUploadedBlockFuture>,
+}
+
+impl<T, S> UploadBlocksFuture<T, S>
+where
+    T: Node,
+{
+    fn new(service: T, stream: S) -> Self {
+        UploadBlocksFuture {
+            stream: RequestStream::new(stream),
+            service,
+            processing: None,
+        }
+    }
+}
+
+impl<T, S> Future for UploadBlocksFuture<T, S>
+where
+    T: Node,
+    S: Stream<Error = tower_grpc::Status>,
+    <T::BlockService as BlockService>::Block: FromProtobuf<S::Item>,
+{
+    type Item = tower_grpc::Response<gen::node::UploadBlocksResponse>;
+    type Error = tower_grpc::Status;
+
+    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Status> {
+        let service = self.service.block_service().ok_or_else(|| {
+            tower_grpc::Status::new(tower_grpc::Code::Unimplemented, "not implemented")
+        })?;
+        loop {
+            if let Some(ref mut future) = self.processing {
+                try_ready!(future.poll().map_err(error_into_grpc));
+                self.processing = None;
+            }
+            match self.stream.poll() {
+                Ok(Async::NotReady) => return Ok(Async::NotReady),
+                Ok(Async::Ready(None)) => break,
+                Ok(Async::Ready(Some(block))) => {
+                    let future = service.on_uploaded_block(block);
+                    self.processing = Some(future);
+                }
+                Err(_e) => {
+                    // FIXME: add a core service method for error reporting
+                    return Err(tower_grpc::Status::new(
+                        tower_grpc::Code::Aborted,
+                        "upload stream error",
+                    ));
+                }
+            }
+        }
+        let res = gen::node::UploadBlocksResponse {};
+        Ok(Async::Ready(tower_grpc::Response::new(res)))
+    }
+}
+
 macro_rules! try_get_service {
     ($opt_ref:expr) => {
         match $opt_ref {
@@ -355,6 +417,7 @@ where
         Self::GetMessagesStream,
         <<T as Node>::ContentService as ContentService>::GetMessagesFuture,
     >;
+    type UploadBlocksFuture = UploadBlocksFuture<T, Streaming<gen::node::Block>>;
     type BlockSubscriptionStream = ResponseStream<
         gen::node::BlockEvent,
         <<T as Node>::BlockService as BlockService>::BlockSubscription,
@@ -363,10 +426,6 @@ where
         Self::BlockSubscriptionStream,
         <T::BlockService as P2pService>::NodeId,
         <T::BlockService as BlockService>::BlockSubscriptionFuture,
-    >;
-    type UploadBlocksFuture = ResponseFuture<
-        gen::node::UploadBlocksResponse,
-        <T::BlockService as BlockService>::UploadBlocksFuture,
     >;
     type MessageSubscriptionStream = ResponseStream<
         gen::node::Message,
@@ -443,9 +502,7 @@ where
         &mut self,
         req: Request<Streaming<gen::node::Block>>,
     ) -> Self::UploadBlocksFuture {
-        let service = try_get_service!(self.inner.block_service());
-        let stream = RequestStream::new(req.into_inner());
-        ResponseFuture::new(service.upload_blocks(stream))
+        UploadBlocksFuture::new(self.inner.clone(), req.into_inner())
     }
 
     fn block_subscription(
