@@ -290,14 +290,14 @@ where
     type Error = tower_grpc::Status;
 
     fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Status> {
+        let service = self.service.block_service().ok_or_else(|| {
+            tower_grpc::Status::new(tower_grpc::Code::Unimplemented, "not implemented")
+        })?;
         loop {
             if let Some(ref mut future) = self.processing {
                 try_ready!(future.poll().map_err(error_into_grpc));
                 self.processing = None;
             }
-            let service = self.service.block_service().ok_or_else(|| {
-                tower_grpc::Status::new(tower_grpc::Code::Unimplemented, "not implemented")
-            })?;
             match self.stream.poll() {
                 Ok(Async::NotReady) => return Ok(Async::NotReady),
                 Ok(Async::Ready(None)) => break,
