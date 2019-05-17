@@ -5,7 +5,9 @@ use super::{
 };
 
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
-use crate::intercom::{self, stream_reply, unary_reply, ClientMsg, ReplyFuture, ReplyStream};
+use crate::intercom::{
+    self, stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream,
+};
 
 use network_core::{
     error as core_error,
@@ -83,7 +85,7 @@ impl BlockService for NodeService {
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type UploadBlocksFuture = ReplyFuture<(), core_error::Error>;
+    type OnUploadedBlockFuture = FutureResult<(), core_error::Error>;
     type BlockSubscription = BlockEventSubscription;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
@@ -139,11 +141,9 @@ impl BlockService for NodeService {
         unimplemented!()
     }
 
-    fn upload_blocks<S>(&mut self, stream: S) -> Self::UploadBlocksFuture
-    where
-        S: Stream<Item = Block, Error = core_error::Error> + Send + 'static,
-    {
-        unimplemented!()
+    fn on_uploaded_block(&mut self, block: Block) -> Self::OnUploadedBlockFuture {
+        self.channels.block_box.send(BlockMsg::NetworkBlock(block));
+        future::ok(())
     }
 
     fn block_subscription<In>(
