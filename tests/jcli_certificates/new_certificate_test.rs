@@ -10,7 +10,7 @@ pub fn test_create_and_sign_new_stake_delegation() {
     let owner_private_key = jcli_wrapper::assert_key_generate_default();
     let owner_public_key = jcli_wrapper::assert_key_to_public_default(&owner_private_key);
 
-    let kes_private_key = jcli_wrapper::assert_key_generate("FakeMMM");
+    let kes_private_key = jcli_wrapper::assert_key_generate("SumEd25519_12");
     let kes_public_key = jcli_wrapper::assert_key_to_public_default(&kes_private_key);
 
     let vrf_private_key = jcli_wrapper::assert_key_generate("Curve25519_2HashDH");
