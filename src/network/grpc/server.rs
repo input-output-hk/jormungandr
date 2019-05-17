@@ -20,7 +20,7 @@ pub fn run_listen_socket(
 
     match server::listen(&sockaddr) {
         Err(error) => {
-            error!("Error while listening to {}", error ; sockaddr = sockaddr);
+            error!("Error while listening on {}: {}", sockaddr, error);
             unimplemented!()
         }
         Ok(listener_stream) => {
