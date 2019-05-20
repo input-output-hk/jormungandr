@@ -57,28 +57,3 @@ where
         ()
     });
 }
-
-/// Update thread local logger, all logs in the
-/// current thread will go to the logger.
-///
-/// Function receives a function that is used to update
-/// the loggerr, for example, in order to add tags one
-/// can use:
-///
-/// ```rust
-/// thread::spawn(|| {
-///    update_thread_logger(|l| l.new(o!("thread"=>"my thread")));
-/// })
-/// ```
-pub fn update_thread_logger<F>(f: F)
-where
-    F: FnOnce(&slog::Logger) -> slog::Logger,
-{
-    THREAD_LOGGER.with(|ref_logger| {
-        let v = ref_logger.borrow().clone();
-        v.or_else(|| {
-            let logger = get_global_logger();
-            ref_logger.replace(Some(f(&logger)))
-        });
-    });
-}

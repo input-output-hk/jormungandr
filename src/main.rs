@@ -94,6 +94,7 @@ pub struct BootstrappedNode {
     settings: Settings,
     blockchain: BlockchainR,
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::EpochParameters>,
+    logger: Logger,
 }
 
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
@@ -109,12 +110,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
 
     let stats_counter = StatsCounter::default();
+    let logger = &bootstrapped_node.logger;
 
     let transaction_task = {
         let tpool = tpool.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_with_inputs("transaction", move |info, input| {
+        services.spawn_with_inputs("transaction", logger, move |info, input| {
             transaction::handle_input(info, &blockchain, &tpool, &stats_counter, input)
         })
     };
@@ -122,7 +124,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let block_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_future_with_inputs("block", move |info, input| {
+        services.spawn_future_with_inputs("block", logger, move |info, input| {
             blockchain::handle_input(
                 info,
                 &blockchain,
@@ -136,7 +138,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let client_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
-        services.spawn_with_inputs("client-query", move |info, input| {
+        services.spawn_with_inputs("client-query", logger, move |info, input| {
             client::handle_input(info, &blockchain, input)
         })
     };
@@ -152,7 +154,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             block_box: block_msgbox,
         };
 
-        services.spawn("network", move |_info| {
+        services.spawn("network", logger, move |_info| {
             network::run(config, network_queue, channels);
         });
     }
@@ -172,7 +174,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             genesis_leader: secret.genesis(),
         };
 
-        services.spawn_future("leadership", move |info| {
+        services.spawn_future("leadership", logger, move |info| {
             let process = self::leadership::Process::new(
                 info,
                 tpool,
@@ -218,9 +220,12 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 ///
 ///
 fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
-    let block0 = initialized_node.block0;
-    let settings = initialized_node.settings;
-    let storage = initialized_node.storage;
+    let InitializedNode {
+        settings,
+        block0,
+        storage,
+        logger,
+    } = initialized_node;
 
     let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
 
@@ -232,6 +237,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         settings,
         blockchain,
         new_epoch_notifier,
+        logger,
     })
 }
 
