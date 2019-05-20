@@ -794,14 +794,15 @@ impl std::error::Error for Error {}
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::key::{SpendingPublicKey, SpendingSecretKey};
+    use crate::account::SpendingCounter;
+    use crate::key::{AccountSecretKey, SpendingPublicKey, SpendingSecretKey};
     use crate::message::config;
     use crate::milli::Milli;
     use chain_addr::{Address, Discrimination, Kind};
     use chain_crypto::SecretKey;
     use rand::{CryptoRng, RngCore};
 
-    pub fn make_key<R: RngCore + CryptoRng>(
+    pub fn make_utxo_key<R: RngCore + CryptoRng>(
         rng: &mut R,
         discrimination: &Discrimination,
     ) -> (SpendingSecretKey, SpendingPublicKey, Address) {
@@ -809,6 +810,34 @@ pub mod test {
         let pk = sk.to_public();
         let user_address = Address(discrimination.clone(), Kind::Single(pk.clone()));
         (sk, pk, user_address)
+    }
+
+    pub fn make_account_key<R: RngCore + CryptoRng>(
+        rng: &mut R,
+        discrimination: &Discrimination,
+    ) -> (SpendingSecretKey, SpendingPublicKey, Address) {
+        let sk = SpendingSecretKey::generate(rng);
+        let pk = sk.to_public();
+        let user_address = Address(discrimination.clone(), Kind::Account(pk.clone()));
+        (sk, pk, user_address)
+    }
+
+    pub fn make_utxo_delegation_key<R: RngCore + CryptoRng>(
+        rng_single: &mut R,
+        rng_delegation: &mut R,
+        discrimination: &Discrimination,
+    ) -> (SpendingSecretKey, SpendingPublicKey, Address) {
+        let single_sk = SpendingSecretKey::generate(rng_single);
+        let single_pk = single_sk.to_public();
+
+        let delegation_sk = SpendingSecretKey::generate(rng_delegation);
+        let delegation_pk = delegation_sk.to_public();
+
+        let user_address = Address(
+            discrimination.clone(),
+            Kind::Group(single_pk.clone(), delegation_pk.clone()),
+        );
+        (single_sk, single_pk, user_address)
     }
 
     macro_rules! assert_err {
@@ -854,6 +883,7 @@ pub mod test {
         ));
         ie.push(ConfigParam::SlotsPerEpoch(21600));
         ie.push(ConfigParam::KESUpdateSpeed(3600 * 12));
+        ie.push(ConfigParam::AllowAccountCreation(true));
 
         let mut messages = Vec::new();
         messages.push(Message::Initial(ie));
@@ -865,77 +895,299 @@ pub mod test {
         (block0_hash, ledger)
     }
 
+    pub fn create_initial_transaction(output: Output<Address>) -> (Message, Vec<UtxoPointer>) {
+        let mut builder = TransactionBuilder::new();
+        builder.with_output(output).finalize();
+        (builder.as_message(), builder.as_utxos())
+    }
+
     #[test]
-    pub fn utxo() {
+    pub fn utxo_no_enough_signatures() {
         let discrimination = Discrimination::Test;
 
         let mut rng = rand::thread_rng();
-        let (sk1, _pk1, user1_address) = make_key(&mut rng, &discrimination);
-        let (_sk2, _pk2, user2_address) = make_key(&mut rng, &discrimination);
-        let value = Value(42000);
+        let (_, _, user1_address) = make_utxo_key(&mut rng, &discrimination);
+        let (_, _, user2_address) = make_utxo_key(&mut rng, &discrimination);
 
-        let output0 = Output {
+        let (message, utxos) = create_initial_transaction(Output {
             address: user1_address.clone(),
-            value: value,
-        };
+            value: Value(42000),
+        });
 
-        let first_trans = AuthenticatedTransaction {
-            transaction: Transaction {
-                inputs: vec![],
-                outputs: vec![output0],
-                extra: NoExtra,
-            },
-            witnesses: vec![],
-        };
-        let tx0_id = first_trans.transaction.hash();
+        let (_, ledger) = create_initial_fake_ledger(discrimination, &[message]);
 
-        let utxo0 = UtxoPointer {
-            transaction_id: tx0_id,
-            output_index: 0,
-            value: value,
-        };
-
-        let messages = [Message::Transaction(first_trans)];
-        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &messages);
+        let signed_tx = TransactionBuilder::new()
+            .with_input(Input::from_utxo(utxos[0]))
+            .with_output(Output {
+                address: user2_address.clone(),
+                value: Value(1),
+            })
+            .finalize()
+            .seal();
 
         let dyn_params = ledger.get_ledger_parameters();
+        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
+        assert_err!(Error::NotEnoughSignatures(1, 0), r)
+    }
 
-        {
-            let ledger = ledger.clone();
-            let tx = Transaction {
-                inputs: vec![Input::from_utxo(utxo0)],
-                outputs: vec![Output {
-                    address: user2_address.clone(),
-                    value: Value(1),
-                }],
-                extra: NoExtra,
-            };
-            let signed_tx = AuthenticatedTransaction {
-                transaction: tx,
-                witnesses: vec![],
-            };
-            let r = ledger.apply_transaction(&signed_tx, &dyn_params);
-            assert_err!(Error::NotEnoughSignatures(1, 0), r)
+    #[test]
+    pub fn utxo_to_utxo_correct_transaction() {
+        let discrimination = Discrimination::Test;
+
+        let mut rng = rand::thread_rng();
+        let (sk1, _pk1, user1_address) = make_utxo_key(&mut rng, &discrimination);
+        let (_sk2, _pk2, user2_address) = make_utxo_key(&mut rng, &discrimination);
+
+        let (message, utxos) = create_initial_transaction(Output {
+            address: user1_address.clone(),
+            value: Value(42000),
+        });
+        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+
+        let signed_tx = TransactionBuilder::new()
+            .with_input(Input::from_utxo(utxos[0]))
+            .with_output(Output {
+                address: user2_address.clone(),
+                value: Value(1),
+            })
+            .finalize()
+            .with_utxo_witness(&block0_hash, &sk1)
+            .seal();
+
+        let dyn_params = ledger.get_ledger_parameters();
+        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
+        assert!(r.is_ok())
+    }
+
+    #[test]
+    pub fn utxo_to_account_correct_transaction() {
+        let discrimination = Discrimination::Test;
+
+        let mut rng = rand::thread_rng();
+        let (sk1, _pk1, user1_address) = make_utxo_key(&mut rng, &discrimination);
+        let (_sk2, _pk2, user2_address) = make_account_key(&mut rng, &discrimination);
+
+        let (message, utxos) = create_initial_transaction(Output {
+            address: user1_address.clone(),
+            value: Value(42000),
+        });
+
+        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+
+        let signed_tx = TransactionBuilder::new()
+            .with_input(Input::from_utxo(utxos[0]))
+            .with_output(Output {
+                address: user2_address.clone(),
+                value: Value(1),
+            })
+            .finalize()
+            .with_utxo_witness(&block0_hash, &sk1)
+            .seal();
+
+        let dyn_params = ledger.get_ledger_parameters();
+        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
+        assert!(r.is_ok());
+    }
+
+    #[test]
+    pub fn account_to_account_correct_transaction() {
+        let discrimination = Discrimination::Test;
+
+        let mut rng = rand::thread_rng();
+        let (sk1, pk1, user1_address) = make_account_key(&mut rng, &discrimination);
+        let (_sk2, _pk2, user2_address) = make_account_key(&mut rng, &discrimination);
+
+        let (message, _) = create_initial_transaction(Output {
+            address: user1_address.clone(),
+            value: Value(42000),
+        });
+
+        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+
+        let signed_tx = TransactionBuilder::new()
+            .with_input(Input::from_account(
+                AccountIdentifier::from_single_account(account::Identifier::from(pk1)),
+                Value(1),
+            ))
+            .with_output(Output {
+                address: user2_address.clone(),
+                value: Value(1),
+            })
+            .finalize()
+            .with_account_witness(&block0_hash, &SpendingCounter::zero(), &sk1)
+            .seal();
+
+        let dyn_params = ledger.get_ledger_parameters();
+        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
+        assert!(r.is_ok());
+    }
+
+    #[test]
+    pub fn account_to_delegation_correct_transaction() {
+        let discrimination = Discrimination::Test;
+
+        let mut rng = rand::thread_rng();
+        let mut delegation_rng = rand::thread_rng();
+        let (sk1, pk1, user1_address) = make_account_key(&mut rng, &discrimination);
+        let (_sk2, _pk2, user2_address) =
+            make_utxo_delegation_key(&mut rng, &mut delegation_rng, &discrimination);
+
+        let (message, _) = create_initial_transaction(Output {
+            address: user1_address.clone(),
+            value: Value(42000),
+        });
+
+        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+        let signed_tx = TransactionBuilder::new()
+            .with_input(Input::from_account(
+                AccountIdentifier::from_single_account(account::Identifier::from(pk1)),
+                Value(1),
+            ))
+            .with_output(Output {
+                address: user2_address.clone(),
+                value: Value(1),
+            })
+            .finalize()
+            .with_account_witness(&block0_hash, &SpendingCounter::zero(), &sk1)
+            .seal();
+
+        let dyn_params = ledger.get_ledger_parameters();
+        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
+        assert!(r.is_ok());
+    }
+
+    #[test]
+    pub fn delegation_to_account_correct_transaction() {
+        let discrimination = Discrimination::Test;
+
+        let mut rng = rand::thread_rng();
+        let mut delegation_rng = rand::thread_rng();
+        let (sk1, _pk1, user1_address) =
+            make_utxo_delegation_key(&mut rng, &mut delegation_rng, &discrimination);
+        let (_sk2, _pk2, user2_address) = make_account_key(&mut rng, &discrimination);
+
+        let (message, utxos) = create_initial_transaction(Output {
+            address: user1_address.clone(),
+            value: Value(42000),
+        });
+
+        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+
+        let signed_tx = TransactionBuilder::new()
+            .with_input(Input::from_utxo(utxos[0]))
+            .with_output(Output {
+                address: user2_address.clone(),
+                value: Value(1),
+            })
+            .finalize()
+            .with_utxo_witness(&block0_hash, &sk1)
+            .seal();
+
+        let dyn_params = ledger.get_ledger_parameters();
+        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
+        assert!(r.is_ok());
+    }
+    struct TransactionBuilder {
+        inputs: Vec<Input>,
+        outputs: Vec<Output<Address>>,
+        witnesses: Vec<Witness>,
+        transaction_id: Option<TransactionId>,
+        transaction: Option<Transaction<Address, NoExtra>>,
+    }
+
+    impl TransactionBuilder {
+        pub fn new() -> TransactionBuilder {
+            TransactionBuilder {
+                inputs: Vec::new(),
+                outputs: Vec::new(),
+                witnesses: Vec::new(),
+                transaction_id: None,
+                transaction: None,
+            }
         }
 
-        {
-            let ledger = ledger.clone();
-            let tx = Transaction {
-                inputs: vec![Input::from_utxo(utxo0)],
-                outputs: vec![Output {
-                    address: user2_address.clone(),
-                    value: Value(1),
-                }],
+        pub fn with_input<'a>(&'a mut self, input: Input) -> &'a mut TransactionBuilder {
+            self.inputs.push(input);
+            self
+        }
+
+        pub fn with_output<'a>(
+            &'a mut self,
+            output: Output<Address>,
+        ) -> &'a mut TransactionBuilder {
+            self.outputs.push(output);
+            self
+        }
+
+        pub fn with_outputs<'a>(
+            &'a mut self,
+            outputs: Vec<Output<Address>>,
+        ) -> &'a mut TransactionBuilder {
+            self.outputs.extend(outputs.iter().cloned());
+            self
+        }
+
+        pub fn finalize<'a>(&'a mut self) -> &'a mut TransactionBuilder {
+            let transaction = Transaction {
+                inputs: self.inputs.clone(),
+                outputs: self.outputs.clone(),
                 extra: NoExtra,
             };
-            let txid = tx.hash();
-            let w1 = Witness::new_utxo(&block0_hash, &txid, &sk1);
-            let signed_tx = AuthenticatedTransaction {
-                transaction: tx,
-                witnesses: vec![w1],
-            };
-            let r = ledger.apply_transaction(&signed_tx, &dyn_params);
-            assert!(r.is_ok())
+            self.transaction_id = Some(transaction.hash());
+            self.transaction = Some(transaction);
+            self
+        }
+
+        pub fn with_utxo_witness<'a>(
+            &'a mut self,
+            block0: &HeaderHash,
+            secret_key: &SpendingSecretKey,
+        ) -> &'a mut TransactionBuilder {
+            self.witnesses.push(Witness::new_utxo(
+                block0,
+                &self.transaction_id.unwrap(),
+                secret_key,
+            ));
+            self
+        }
+
+        pub fn with_account_witness<'a>(
+            &'a mut self,
+            block0: &HeaderHash,
+            spending_counter: &SpendingCounter,
+            secret_key: &AccountSecretKey,
+        ) -> &'a mut TransactionBuilder {
+            self.witnesses.push(Witness::new_account(
+                block0,
+                &self.transaction_id.unwrap(),
+                spending_counter,
+                secret_key,
+            ));
+            self
+        }
+
+        pub fn as_utxos(&self) -> Vec<UtxoPointer> {
+            let mut utxos = Vec::new();
+            for (i, output) in self.outputs.iter().enumerate() {
+                utxos.push(UtxoPointer {
+                    transaction_id: self.transaction_id.unwrap().clone(),
+                    output_index: i as u8,
+                    value: output.value.clone(),
+                });
+            }
+            utxos
+        }
+
+        pub fn as_message(&self) -> Message {
+            let signed_tx = self.seal();
+            Message::Transaction(signed_tx)
+        }
+
+        pub fn seal(&self) -> AuthenticatedTransaction<Address, NoExtra> {
+            AuthenticatedTransaction {
+                transaction: self.transaction.clone().unwrap(),
+                witnesses: self.witnesses.clone(),
+            }
         }
     }
 }
