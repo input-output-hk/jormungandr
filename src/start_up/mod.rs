@@ -6,32 +6,13 @@ use crate::{
     blockchain::{Blockchain, BlockchainR},
     leadership::EpochParameters,
     network,
-    settings::{logging::LogSettings, start::Settings, CommandLine},
+    settings::start::Settings,
 };
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
-
-/// this function prepare the resources of the application
-///
-/// 1. prepare the default logger
-///
-pub fn prepare_resources() -> Result<(), Error> {
-    // prepare initial logger
-    LogSettings::default().apply();
-
-    Ok(())
-}
-
-pub fn load_command_line() -> Result<CommandLine, Error> {
-    Ok(CommandLine::load())
-}
-
-pub fn load_settings(command_line: &CommandLine) -> Result<Settings, Error> {
-    Ok(Settings::load(command_line)?)
-}
 
 /// prepare the block storage from the given settings
 ///
@@ -52,12 +33,6 @@ pub fn prepare_storage(setting: &Settings) -> Result<NodeStorage, Error> {
             Ok(Box::new(SQLiteBlockStore::new(sqlite)))
         }
     }
-}
-
-/// prepare the logger
-pub fn prepare_logger(settings: &Settings) -> Result<(), Error> {
-    settings.log_settings.apply();
-    Ok(())
 }
 
 /// loading the block 0 is not as trivial as it seems,

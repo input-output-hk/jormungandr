@@ -51,12 +51,6 @@ extern crate structopt;
 #[cfg(feature = "with-bench")]
 extern crate test;
 
-use std::sync::{Arc, Mutex, RwLock};
-
-use futures::Future;
-
-use chain_impl_mockchain::message::{Message, MessageId};
-
 use crate::{
     blockcfg::Leader,
     blockchain::BlockchainR,
@@ -65,6 +59,11 @@ use crate::{
     transaction::TPool,
     utils::{async_msg, task::Services},
 };
+use chain_impl_mockchain::message::{Message, MessageId};
+use futures::Future;
+use settings::{start::RawSettings, CommandLine};
+use slog::Logger;
+use std::sync::{Arc, Mutex, RwLock};
 
 #[macro_use]
 pub mod log_wrapper;
@@ -240,33 +239,28 @@ pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
     pub storage: start_up::NodeStorage,
+    pub logger: Logger,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
-    use start_up::*;
-
-    prepare_resources()?;
-
-    let command_line_arguments = load_command_line()?;
-
-    let node_settings = load_settings(&command_line_arguments)?;
-
-    prepare_logger(&node_settings)?;
-
-    let storage = prepare_storage(&node_settings)?;
+    let command_line = CommandLine::load();
+    let raw_settings = RawSettings::load(command_line)?;
+    let logger = raw_settings.to_logger();
+    let settings = raw_settings.try_into_settings()?;
+    let storage = start_up::prepare_storage(&settings)?;
 
     // TODO: load network module here too (if needed)
 
-    let block0 = prepare_block_0(
-        &node_settings,
-        &storage,
+    let block0 = start_up::prepare_block_0(
+        &settings, &storage,
         /* add network to fetch block0 */
     )?;
 
     Ok(InitializedNode {
-        settings: node_settings,
-        block0: block0,
-        storage: storage,
+        settings,
+        block0,
+        storage,
+        logger,
     })
 }
 

@@ -1,7 +1,5 @@
-use slog::Drain;
+use slog::{Drain, Logger};
 use std::str::FromStr;
-
-use crate::log_wrapper;
 
 #[derive(Debug)]
 pub struct LogSettings {
@@ -15,15 +13,6 @@ pub struct LogSettings {
 pub enum LogFormat {
     Plain,
     Json,
-}
-
-impl Default for LogSettings {
-    fn default() -> Self {
-        LogSettings {
-            verbosity: slog::Level::Info,
-            format: LogFormat::Plain,
-        }
-    }
 }
 
 impl FromStr for LogFormat {
@@ -44,25 +33,19 @@ impl FromStr for LogFormat {
 }
 
 impl LogSettings {
-    /// Configure logger subsystem based on the options that were passed.
-    pub fn apply(&self) {
-        let log = match self.format {
-            // XXX: Some code duplication here as rust compiler dislike
-            // that branches return Drain's of different type.
+    pub fn to_logger(&self) -> Logger {
+        let drain = match self.format {
             LogFormat::Plain => {
                 let decorator = slog_term::TermDecorator::new().build();
                 let drain = slog_term::FullFormat::new(decorator).build().fuse();
-                let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
-                let drain = slog_async::Async::new(drain).build().fuse();
-                slog::Logger::root(drain, o!())
+                slog_async::Async::new(drain).build().fuse()
             }
             LogFormat::Json => {
                 let drain = slog_json::Json::default(std::io::stderr()).fuse();
-                let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
-                let drain = slog_async::Async::new(drain).build().fuse();
-                slog::Logger::root(drain, o!())
+                slog_async::Async::new(drain).build().fuse()
             }
         };
-        log_wrapper::logger::set_global_logger(log);
+        let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
+        slog::Logger::root(drain, o!())
     }
 }

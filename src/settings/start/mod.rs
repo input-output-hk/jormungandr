@@ -1,12 +1,13 @@
 mod config;
 pub mod network;
 
-use self::config::ConfigLogSettings;
 pub use self::config::Rest;
+use self::config::{Config, ConfigLogSettings};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::LogSettings;
 use crate::settings::{command_arguments::*, Block0Info};
+use slog::Logger;
 
 use std::{collections::BTreeMap, fs::File, path::PathBuf};
 
@@ -21,33 +22,63 @@ custom_error! {pub Error
 /// Overall Settings for node
 pub struct Settings {
     pub network: network::Configuration,
-
     pub storage: Option<PathBuf>,
-
     pub block_0: Block0Info,
-
     pub leadership: Option<PathBuf>,
-
-    pub log_settings: LogSettings,
-
     pub rest: Option<Rest>,
 }
 
-impl Settings {
+pub struct RawSettings {
+    command_line: CommandLine,
+    config: Config,
+}
+
+impl RawSettings {
+    pub fn load(command_line: CommandLine) -> Result<Self, Error> {
+        let config_file = File::open(&command_line.start_arguments.node_config)?;
+        let config = serde_yaml::from_reader(config_file)?;
+        Ok(Self {
+            command_line,
+            config,
+        })
+    }
+
+    pub fn to_logger(&self) -> Logger {
+        let level = if self.command_line.verbose == 0 {
+            match self.config.logger {
+                Some(ConfigLogSettings {
+                    verbosity: Some(v),
+                    format: _,
+                }) => v.clone(),
+                _ => 0,
+            }
+        } else {
+            self.command_line.verbose
+        };
+        let verbosity = match level {
+            0 => slog::Level::Info,
+            1 => slog::Level::Debug,
+            _ => slog::Level::Trace,
+        };
+        LogSettings {
+            verbosity,
+            format: self.command_line.log_format.clone(),
+        }
+        .to_logger()
+    }
+
     /// Load the settings
     /// - from the command arguments
     /// - from the config
     ///
     /// This function will print&exit if anything is not as it should be.
-    pub fn load(command_line: &CommandLine) -> Result<Self, Error> {
+    pub fn try_into_settings(self) -> Result<Settings, Error> {
+        let RawSettings {
+            command_line,
+            config,
+        } = self;
         let command_arguments = &command_line.start_arguments;
-        let config: config::Config = {
-            let mut file = File::open(command_arguments.node_config.clone())?;
-            serde_yaml::from_reader(&mut file)?
-        };
-
         let network = generate_network(&command_arguments, &config);
-        let log_settings = generate_log_settings(&command_line, &config);
 
         let storage = match (command_arguments.storage.as_ref(), config.storage) {
             (Some(path), _) => Some(path.clone()),
@@ -83,37 +114,14 @@ impl Settings {
             block_0: block0_info,
             network: network,
             leadership: secret,
-            log_settings: log_settings,
             rest: config.rest,
         })
     }
 }
 
-fn generate_log_settings(command_arguments: &CommandLine, config: &config::Config) -> LogSettings {
-    let level = if command_arguments.verbose == 0 {
-        match config.logger {
-            Some(ConfigLogSettings {
-                verbosity: Some(v),
-                format: _,
-            }) => v.clone(),
-            _ => 0,
-        }
-    } else {
-        command_arguments.verbose
-    };
-    LogSettings {
-        verbosity: match level {
-            0 => slog::Level::Info,
-            1 => slog::Level::Debug,
-            _ => slog::Level::Trace,
-        },
-        format: command_arguments.log_format.clone(),
-    }
-}
-
 fn generate_network(
     _command_arguments: &StartArguments,
-    config: &config::Config,
+    config: &Config,
 ) -> network::Configuration {
     let public_address = config.peer_2_peer.public_address.clone();
     network::Configuration {
