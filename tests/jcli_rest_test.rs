@@ -1,3 +1,5 @@
+#![cfg(feature = "integration-test")]
+
 extern crate assert_cmd;
 extern crate galvanic_test;
 extern crate mktemp;
@@ -10,7 +12,6 @@ use common::process_assert;
 use common::startup;
 
 #[test]
-#[cfg(feature = "integration-test")]
 pub fn test_correct_utxos_are_read_from_node() {
     let sender_private_key = jcli_wrapper::assert_key_generate_default();
     println!("Sender private key generated: {}", &sender_private_key);
