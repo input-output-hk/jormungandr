@@ -5,15 +5,11 @@ use blockcfg::Block;
 
 use chain_core::property::HasHeader;
 use network_core::client::block::BlockService as _;
-use network_grpc::{
-    client::{Connect, Connection},
-    peer::TcpPeer,
-};
+use network_grpc::client::{Connect, Connection, TcpConnector};
 
 use http::uri;
 use tokio::prelude::*;
 use tokio::{executor::DefaultExecutor, runtime::current_thread};
-use tower_service::Service;
 
 use std::fmt::Debug;
 
@@ -21,9 +17,9 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
     info!("connecting to bootstrap peer {}", peer.connection);
     let addr = peer.address();
     let origin = origin_authority(addr);
-    let bootstrap = Connect::new(TcpPeer::new(addr), DefaultExecutor::current())
+    let bootstrap = Connect::new(TcpConnector, DefaultExecutor::current())
         .origin(uri::Scheme::HTTP, origin)
-        .call(())
+        .connect(addr)
         .map_err(|e| {
             error!("failed to connect to bootstrap peer: {:?}", e);
         })

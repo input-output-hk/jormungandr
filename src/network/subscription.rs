@@ -9,8 +9,8 @@ use network_core::{error as core_error, gossip::Gossip};
 use futures::prelude::*;
 
 pub fn process_block_announcements<S>(
-    node_id: NodeId,
     inbound: S,
+    node_id: NodeId,
     mut block_box: MessageBox<BlockMsg>,
 ) -> tokio::executor::Spawn
 where

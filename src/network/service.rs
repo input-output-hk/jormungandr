@@ -157,8 +157,8 @@ impl BlockService for NodeService {
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
         subscription::process_block_announcements(
-            subscriber,
             inbound,
+            subscriber,
             self.channels.block_box.clone(),
         );
 
