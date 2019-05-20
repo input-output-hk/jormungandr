@@ -95,19 +95,7 @@ impl NodeConfig {
     }
 
     fn get_available_port() -> u16 {
-        let available_port = loop {
-            let port = rand::thread_rng().gen_range(8000, 9999);
-            if NodeConfig::port_is_available(port) {
-                break port;
-            }
-        };
-        available_port
-    }
-
-    fn port_is_available(port: u16) -> bool {
-        match TcpListener::bind(("127.0.0.1", port)) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        let tcp_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        tcp_listener.local_addr().unwrap().port()
     }
 }
