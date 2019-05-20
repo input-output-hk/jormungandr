@@ -182,7 +182,7 @@ where
             Ok(Async::Ready(Some(Ok(item)))) => Ok(Async::Ready(Some(item))),
             Ok(Async::Ready(Some(Err(e)))) => {
                 warn!("error while streaming response: {:?}", e);
-                return Err(Error::from(e).into());
+                return Err(e.into());
             }
         }
     }
