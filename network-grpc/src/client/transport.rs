@@ -8,55 +8,30 @@ use tower_grpc::codegen::server::tower::Service;
 use std::{io, net::SocketAddr};
 
 #[cfg(unix)]
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-/// Specifies the connection details of a remote TCP/IP peer.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TcpPeer {
-    addr: SocketAddr,
-}
+/// A `MakeConnection` instance to establish TCP connections.
+pub struct TcpConnector;
 
-impl TcpPeer {
-    pub fn new(addr: SocketAddr) -> Self {
-        TcpPeer { addr }
-    }
-
-    pub fn addr(&self) -> &SocketAddr {
-        &self.addr
-    }
-}
-
-/// Specifies the connection details of a local Unix socket peer.
+/// A `MakeConnection` instance to establish Unix socket connections.
 ///
 /// This type is only available on Unix.
 #[cfg(unix)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct UnixPeer {
-    path: PathBuf,
-}
+pub struct UnixConnector;
 
-#[cfg(unix)]
-impl UnixPeer {
-    pub fn new<P: Into<PathBuf>>(path: P) -> Self {
-        UnixPeer { path: path.into() }
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
-}
-
-impl Service<()> for TcpPeer {
+impl Service<SocketAddr> for TcpConnector {
     type Response = TcpStream;
     type Error = io::Error;
     type Future = TcpConnectFuture;
 
+    #[inline]
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(().into())
     }
 
-    fn call(&mut self, _: ()) -> Self::Future {
-        TcpStream::connect(self.addr()).into()
+    #[inline]
+    fn call(&mut self, addr: SocketAddr) -> Self::Future {
+        TcpStream::connect(&addr).into()
     }
 }
 
@@ -82,12 +57,15 @@ impl Future for TcpConnectFuture {
     fn poll(&mut self) -> Result<Async<TcpStream>, io::Error> {
         let stream = try_ready!(self.inner.poll());
         stream.set_nodelay(true).unwrap_or(());
-        Ok(Async::Ready(stream))
+        Ok(stream.into())
     }
 }
 
 #[cfg(unix)]
-impl Service<()> for UnixPeer {
+impl<P> Service<P> for UnixConnector
+where
+    P: AsRef<Path>,
+{
     type Response = UnixStream;
     type Error = io::Error;
     type Future = unix::ConnectFuture;
@@ -96,7 +74,7 @@ impl Service<()> for UnixPeer {
         Ok(().into())
     }
 
-    fn call(&mut self, _: ()) -> Self::Future {
-        UnixStream::connect(self.path())
+    fn call(&mut self, path: P) -> Self::Future {
+        UnixStream::connect(path)
     }
 }

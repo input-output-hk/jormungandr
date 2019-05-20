@@ -1,4 +1,5 @@
 mod connect;
+mod transport;
 
 use crate::{
     convert::{
@@ -25,6 +26,10 @@ use tower_request_modifier::{self, RequestModifier};
 use std::marker::PhantomData;
 
 pub use connect::{Connect, ConnectError, ConnectFuture};
+
+pub use transport::TcpConnector;
+#[cfg(unix)]
+pub use transport::UnixConnector;
 
 /// Traits setting additional bounds for blockchain entities
 /// that need to be satisfied for the protocol implementation.
