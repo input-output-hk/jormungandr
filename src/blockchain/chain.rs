@@ -127,8 +127,7 @@ impl Blockchain {
                     state = state.apply_block(
                         &parameters,
                         block.messages(),
-                        block.date(),
-                        block.chain_length(),
+                        &block.header.to_content_eval_context(),
                     )?;
                     let gc_root = multiverse.add(info.block_hash.clone(), state.clone());
                     if block_header.date().epoch > epoch {
@@ -371,8 +370,7 @@ fn process_block(
         parent_state.apply_block(
             &current_parameters,
             block.messages(),
-            block.date(),
-            block.chain_length(),
+            &block.header.to_content_eval_context(),
         )?
     };
 
