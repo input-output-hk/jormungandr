@@ -6,7 +6,7 @@ use crate::date::BlockDate;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature, Hash,
 };
-use crate::leadership::bft;
+use crate::leadership::{bft, genesis};
 use crate::stake::StakePoolId;
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
@@ -49,7 +49,7 @@ pub struct BftSignature(pub(crate) Signature<HeaderToSign, Ed25519Extended>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisPraosProof {
     pub(crate) node_id: StakePoolId,
-    pub(crate) vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput,
+    pub(crate) vrf_proof: genesis::Witness,
     pub(crate) kes_proof: KESSignature,
 }
 
@@ -73,6 +73,13 @@ pub enum Proof {
 pub struct Header {
     pub(crate) common: Common,
     pub(crate) proof: Proof,
+}
+
+/// This is the data extracted from a header related to content evaluation
+pub struct HeaderContentEvalContext {
+    pub block_date: BlockDate,
+    pub chain_length: ChainLength,
+    pub nonce: Option<genesis::Nonce>,
 }
 
 impl PartialEq<Self> for BftSignature {
@@ -145,6 +152,18 @@ impl Header {
         match self.proof() {
             Proof::GenesisPraos(proof) => Some(&proof.node_id),
             _ => None,
+        }
+    }
+
+    pub fn to_content_eval_context(&self) -> HeaderContentEvalContext {
+        let nonce = match self.proof {
+            Proof::GenesisPraos(ref p) => Some(genesis::witness_to_nonce(&p.vrf_proof)),
+            _ => None,
+        };
+        HeaderContentEvalContext {
+            block_date: self.common.block_date,
+            chain_length: self.common.chain_length,
+            nonce: nonce,
         }
     }
 }

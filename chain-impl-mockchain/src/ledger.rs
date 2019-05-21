@@ -1,7 +1,9 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderHash};
+use crate::block::{
+    BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext, HeaderHash,
+};
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
@@ -319,8 +321,7 @@ impl Ledger {
         &'a self,
         ledger_params: &LedgerParameters,
         contents: I,
-        date: BlockDate,
-        chain_length: ChainLength,
+        metadata: &HeaderContentEvalContext,
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = &'a Message>,
@@ -329,24 +330,25 @@ impl Ledger {
 
         new_ledger.chain_length = self.chain_length.next();
 
-        if chain_length != new_ledger.chain_length {
+        if metadata.chain_length != new_ledger.chain_length {
             return Err(Error::WrongChainLength {
-                actual: chain_length,
+                actual: metadata.chain_length,
                 expected: new_ledger.chain_length,
             });
         }
 
-        if date <= new_ledger.date {
+        if metadata.block_date <= new_ledger.date {
             return Err(Error::NonMonotonicDate {
-                block_date: date,
+                block_date: metadata.block_date,
                 chain_date: new_ledger.date,
             });
         }
 
-        let (updates, settings) =
-            new_ledger
-                .updates
-                .process_proposals(new_ledger.settings, new_ledger.date, date)?;
+        let (updates, settings) = new_ledger.updates.process_proposals(
+            new_ledger.settings,
+            new_ledger.date,
+            metadata.block_date,
+        )?;
         new_ledger.updates = updates;
         new_ledger.settings = settings;
 
@@ -362,8 +364,11 @@ impl Ledger {
                     new_ledger = new_ledger_;
                 }
                 Message::UpdateProposal(update_proposal) => {
-                    new_ledger =
-                        new_ledger.apply_update_proposal(content.id(), &update_proposal, date)?;
+                    new_ledger = new_ledger.apply_update_proposal(
+                        content.id(),
+                        &update_proposal,
+                        metadata.block_date,
+                    )?;
                 }
                 Message::UpdateVote(vote) => {
                     new_ledger = new_ledger.apply_update_vote(&vote)?;
@@ -376,8 +381,11 @@ impl Ledger {
             }
         }
 
-        new_ledger.date = date;
-
+        new_ledger.date = metadata.block_date;
+        metadata
+            .nonce
+            .as_ref()
+            .map(|n| new_ledger.settings.consensus_nonce.hash_with(n));
         Ok(new_ledger)
     }
 
