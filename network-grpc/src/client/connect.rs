@@ -9,7 +9,6 @@ use futures::try_ready;
 use http::uri::{self, Uri};
 use tower_grpc::BoxBody;
 use tower_h2::client::Background;
-use tower_service::Service;
 use tower_util::{MakeConnection, MakeService};
 
 use std::{error::Error, fmt, mem};
@@ -32,7 +31,7 @@ struct Origin {
 impl<P, A, C, E> Connect<P, A, C, E>
 where
     P: ProtocolConfig,
-    C: MakeConnection<A>,
+    C: MakeConnection<A> + 'static,
     E: Executor<Background<C::Connection, BoxBody>> + Clone,
 {
     pub fn new(make_conn: C, executor: E) -> Self {
@@ -52,23 +51,8 @@ where
         self.node_id = Some(id);
         self
     }
-}
 
-impl<P, A, C, E> Service<A> for Connect<P, A, C, E>
-where
-    P: ProtocolConfig,
-    C: MakeConnection<A> + 'static,
-    E: Executor<Background<C::Connection, BoxBody>> + Clone,
-{
-    type Response = Connection<P, C::Connection, E>;
-    type Error = ConnectError<C::Error>;
-    type Future = ConnectFuture<P, A, C, E>;
-
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        MakeService::poll_ready(&mut self.tower_connect).map_err(|e| e.into())
-    }
-
-    fn call(&mut self, target: A) -> Self::Future {
+    pub fn connect(&mut self, target: A) -> ConnectFuture<P, A, C, E> {
         let origin_uri = match self.origin {
             Some(ref origin) => {
                 match Uri::builder()
