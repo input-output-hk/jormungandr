@@ -1,110 +1,30 @@
 use super::origin_authority;
 use crate::{
     blockcfg::{Block, HeaderHash},
-    intercom::BlockMsg,
-    network::{
-        p2p::{comm::PeerComms, topology},
-        subscription, BlockConfig, Channels, ConnectionState, FetchBlockError, GlobalStateR,
-    },
+    network::{BlockConfig, ConnectionState, FetchBlockError},
     settings::start::network::Peer,
-    utils::async_msg::MessageBox,
 };
 
-use network_core::{
-    client::{block::BlockService, gossip::GossipService},
-    gossip::Node,
-    subscription::BlockEvent,
-};
-use network_grpc::{
-    client::{Connect, Connection},
-    peer as grpc_peer,
-};
+use network_core::{client::block::BlockService, gossip::Node};
+use network_grpc::client::{Connect, ConnectFuture, TcpConnector};
 
 use futures::prelude::*;
 use http::uri;
 use tokio::{executor::DefaultExecutor, net::TcpStream, runtime};
-use tower_service::Service as _;
 
-use std::slice;
+use std::{net::SocketAddr, slice};
+
+pub type Connection = network_grpc::client::Connection<BlockConfig, TcpStream, DefaultExecutor>;
 
 pub fn connect(
-    state: ConnectionState,
-    channels: Channels,
-) -> impl Future<Item = (topology::NodeId, PeerComms), Error = ()> {
-    info!("connecting to subscription peer {}", state.connection);
+    state: &ConnectionState,
+) -> ConnectFuture<BlockConfig, SocketAddr, TcpConnector, DefaultExecutor> {
     let addr = state.connection;
-    let peer = grpc_peer::TcpPeer::new(addr);
     let origin = origin_authority(addr);
-
-    Connect::new(peer, DefaultExecutor::current())
+    Connect::new(TcpConnector, DefaultExecutor::current())
         .origin(uri::Scheme::HTTP, origin)
         .node_id(state.global.node.id().clone())
-        .call(())
-        .map_err(move |err| {
-            error!("Error connecting to peer {}: {:?}", addr, err);
-        })
-        .and_then(move |client| subscribe(client, state.global, channels))
-}
-
-fn subscribe(
-    mut client: Connection<BlockConfig, TcpStream, DefaultExecutor>,
-    global_state: GlobalStateR,
-    channels: Channels,
-) -> impl Future<Item = (topology::NodeId, PeerComms), Error = ()> {
-    let block_box = channels.block_box;
-    let mut peer_comms = PeerComms::new();
-    let block_req = client.block_subscription(peer_comms.subscribe_to_block_announcements());
-    let gossip_req = client.gossip_subscription(peer_comms.subscribe_to_gossip());
-    block_req
-        .join(gossip_req)
-        .map_err(move |err| {
-            error!("Subscription request failed: {:?}", err);
-        })
-        .and_then(move |((block_sub, node_id), (gossip_sub, node_id_1))| {
-            if node_id != node_id_1 {
-                warn!(
-                    "peer subscription IDs do not match: {} != {}",
-                    node_id, node_id_1
-                );
-                return Err(());
-            }
-            let block_sub = block_sub.map(|event| match event {
-                BlockEvent::Announce(header) => header,
-                BlockEvent::Solicit(_) => {
-                    // TODO: fetch blocks from client request task
-                    // and upload them
-                    unimplemented!()
-                }
-            });
-            subscription::process_block_announcements(node_id, block_sub, block_box.clone());
-            subscription::process_gossip(gossip_sub, global_state);
-            process_block_solicitations(client, &mut peer_comms, block_box);
-            Ok((node_id, peer_comms))
-        })
-}
-
-fn process_block_solicitations(
-    mut client: Connection<BlockConfig, TcpStream, DefaultExecutor>,
-    peer_comms: &mut PeerComms,
-    block_box: MessageBox<BlockMsg>,
-) {
-    tokio::spawn(
-        peer_comms
-            .subscribe_to_block_solicitations()
-            .for_each(move |block_ids| {
-                let block_box = block_box.clone();
-                client.get_blocks(&block_ids).and_then(move |blocks| {
-                    let mut block_box = block_box.clone();
-                    blocks.for_each(move |block| {
-                        block_box.send(BlockMsg::NetworkBlock(block));
-                        Ok(())
-                    })
-                })
-            })
-            .map_err(|e| {
-                warn!("block solicitation failed: {:?}", e);
-            }),
-    );
+        .connect(addr)
 }
 
 // Fetches a block from a network peer in a one-off, blocking call.
@@ -113,14 +33,13 @@ pub fn fetch_block(peer: Peer, hash: &HeaderHash) -> Result<Block, FetchBlockErr
     info!("fetching block {} from {}", hash, peer.connection);
     let addr = peer.address();
     let origin = origin_authority(addr);
-    let peer = grpc_peer::TcpPeer::new(addr);
-    let fetch = Connect::new(peer, DefaultExecutor::current())
+    let fetch = Connect::new(TcpConnector, DefaultExecutor::current())
         .origin(uri::Scheme::HTTP, origin)
-        .call(())
+        .connect(addr)
         .map_err(|err| FetchBlockError::Connect {
             source: Box::new(err),
         })
-        .and_then(move |mut client: Connection<BlockConfig, _, _>| {
+        .and_then(move |mut client: Connection| {
             client
                 .get_blocks(slice::from_ref(hash))
                 .map_err(|err| FetchBlockError::GetBlocks { source: err })

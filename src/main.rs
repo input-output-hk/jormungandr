@@ -27,7 +27,6 @@ extern crate network_grpc;
 extern crate poldercast;
 extern crate rand_chacha;
 extern crate tokio;
-extern crate tower_service;
 #[macro_use]
 extern crate custom_error;
 

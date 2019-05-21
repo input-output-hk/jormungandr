@@ -54,7 +54,6 @@ network-grpc    = { path = "cardano-deps/network-grpc" }
 cardano         = { path = "cardano-deps/cardano", features = [ "generic-serialization" ] }
 cardano-storage = { path = "cardano-deps/storage" }
 poldercast = { version = "0.3", features = [ "serde_derive" ] }
-tower-service = "0.2"
 reqwest = "0.9.11"
 custom_error = "1.6"
 num-traits = "0.2"
@@ -80,9 +79,6 @@ assert_fs = "0.11"
 fs_extra = "1.1.0"
 mktemp = "0.4.0"
 lazy_static = "1.3"
-
-[build-dependencies]
-fs_extra = "1.1.0"
 
 [features]
 with-bench = []
