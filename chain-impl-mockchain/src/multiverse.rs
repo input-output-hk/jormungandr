@@ -8,14 +8,12 @@
 
 use crate::block::ChainLength;
 use crate::ledger::Ledger;
-use chain_core::property::{Block as _, BlockId as _, HasMessages as _};
+use chain_core::property::{BlockId as _, HasMessages as _};
 use chain_storage::store::BlockStore;
 use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
 type BlockId = crate::key::Hash;
-
-//type StateLedger = crate::ledger::Ledger;
 
 //
 // The multiverse is characterized by a single origin and multiple state of a given time
@@ -249,8 +247,6 @@ impl Multiverse<Ledger> {
                     &state.get_ledger_parameters(),
                     block.messages(),
                     &header_meta,
-                    block.date(),
-                    block.chain_length(),
                 )
                 .unwrap();
             // FIXME: add the intermediate states to memory?
@@ -286,8 +282,6 @@ mod test {
                 &state.get_ledger_parameters(),
                 block.messages(),
                 &block.header.to_content_eval_context(),
-                block.date(),
-                block.chain_length(),
             )
             .unwrap()
     }
