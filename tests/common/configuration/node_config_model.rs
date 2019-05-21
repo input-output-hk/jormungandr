@@ -1,12 +1,13 @@
 #![allow(dead_code)]
 
+extern crate lazy_static;
 extern crate rand;
 extern crate serde_derive;
-use self::rand::Rng;
+use self::lazy_static::lazy_static;
 use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
-use std::net::TcpListener;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU16, Ordering};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Logger {
@@ -46,6 +47,10 @@ pub struct NodeConfig {
     pub logger: Logger,
     pub rest: Rest,
     pub peer_2_peer: Peer2Peer,
+}
+
+lazy_static! {
+    static ref NEXT_AVAILABLE_PORT_NUMBER: AtomicU16 = AtomicU16::new(8000);
 }
 
 impl NodeConfig {
@@ -95,7 +100,6 @@ impl NodeConfig {
     }
 
     fn get_available_port() -> u16 {
-        let tcp_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
-        tcp_listener.local_addr().unwrap().port()
+        NEXT_AVAILABLE_PORT_NUMBER.fetch_add(1, Ordering::SeqCst)
     }
 }
