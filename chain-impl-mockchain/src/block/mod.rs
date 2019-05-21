@@ -18,7 +18,7 @@ pub use self::builder::BlockBuilder;
 
 pub use self::header::{
     BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, ChainLength, Common,
-    GenesisPraosProof, Header, HeaderHash, KESSignature, Proof,
+    GenesisPraosProof, Header, HeaderContentEvalContext, HeaderHash, KESSignature, Proof,
 };
 pub use self::headerraw::HeaderRaw;
 pub use self::version::*;

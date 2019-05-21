@@ -243,10 +243,12 @@ impl Multiverse<Ledger> {
 
         for hash in blocks_to_apply.iter().rev() {
             let block = store.get_block(&hash).unwrap().0;
+            let header_meta = block.header.to_content_eval_context();
             state = state
                 .apply_block(
                     &state.get_ledger_parameters(),
                     block.messages(),
+                    &header_meta,
                     block.date(),
                     block.chain_length(),
                 )
@@ -283,6 +285,7 @@ mod test {
             .apply_block(
                 &state.get_ledger_parameters(),
                 block.messages(),
+                &block.header.to_content_eval_context(),
                 block.date(),
                 block.chain_length(),
             )

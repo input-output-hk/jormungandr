@@ -1,7 +1,9 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderHash};
+use crate::block::{
+    BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext, HeaderHash,
+};
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
@@ -319,6 +321,7 @@ impl Ledger {
         &'a self,
         ledger_params: &LedgerParameters,
         contents: I,
+        metadata: &HeaderContentEvalContext,
         date: BlockDate,
         chain_length: ChainLength,
     ) -> Result<Self, Error>
@@ -377,7 +380,10 @@ impl Ledger {
         }
 
         new_ledger.date = date;
-
+        metadata
+            .nonce
+            .as_ref()
+            .map(|n| new_ledger.settings.consensus_nonce.hash_with(n));
         Ok(new_ledger)
     }
 

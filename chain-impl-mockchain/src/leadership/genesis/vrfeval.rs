@@ -1,6 +1,7 @@
 /// This contains the current evaluation methods for the VRF and its link to
 /// the stake distribution
 use crate::date::SlotId;
+use crate::key::Hash;
 use crate::milli::Milli;
 use crate::value::Value;
 use chain_crypto::{
@@ -19,6 +20,13 @@ pub struct Nonce([u8; 32]);
 impl Nonce {
     pub fn zero() -> Self {
         Nonce([0u8; 32])
+    }
+
+    pub fn hash_with(&mut self, other: &Self) {
+        let mut buf = [0; 64];
+        buf[0..32].copy_from_slice(&self.0);
+        buf[32..64].copy_from_slice(&other.0);
+        self.0.copy_from_slice(Hash::hash_bytes(&buf).as_ref())
     }
 }
 
@@ -113,6 +121,11 @@ pub struct VrfEvaluator<'a> {
     pub active_slots_coeff: ActiveSlotsCoeff,
 }
 
+pub(crate) fn witness_to_nonce(witness: &Witness) -> Nonce {
+    let r = vrf_verified_get_output::<Curve25519_2HashDH>(&witness);
+    get_nonce(&r)
+}
+
 impl<'a> VrfEvaluator<'a> {
     /// Evaluate if the threshold is above for a given input for the key and the associated stake
     ///
@@ -144,7 +157,7 @@ impl<'a> VrfEvaluator<'a> {
             let r = vrf_verified_get_output::<Curve25519_2HashDH>(witness);
             let t = get_threshold(&input, &r);
             if above_stake_threshold(t, &self.stake, self.active_slots_coeff) {
-                Some(get_nonce(&input, &r))
+                Some(get_nonce(&r))
             } else {
                 None
             }
@@ -178,9 +191,9 @@ fn get_threshold(input: &Input, os: &WitnessOutput) -> Threshold {
     Threshold::from_u256(out.as_ref())
 }
 
-fn get_nonce(input: &Input, os: &WitnessOutput) -> Nonce {
+fn get_nonce(os: &WitnessOutput) -> Nonce {
     let mut nonce = [0u8; 32];
-    let out = os.to_output(&input.0, DOMAIN_NONCE);
+    let out = os.to_output(&[], DOMAIN_NONCE);
     nonce.copy_from_slice(out.as_ref());
     Nonce(nonce)
 }

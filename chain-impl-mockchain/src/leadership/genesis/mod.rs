@@ -11,8 +11,9 @@ use crate::{
 };
 use chain_crypto::Verification as SigningVerification;
 use chain_crypto::{Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12};
-pub use vrfeval::{ActiveSlotsCoeff, ActiveSlotsCoeffError, Witness};
-use vrfeval::{Nonce, PercentStake, VrfEvaluator};
+pub(crate) use vrfeval::witness_to_nonce;
+pub use vrfeval::{ActiveSlotsCoeff, ActiveSlotsCoeffError, Nonce, Witness, WitnessOutput};
+use vrfeval::{PercentStake, VrfEvaluator};
 
 /// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -33,7 +34,7 @@ pub struct GenesisLeaderSelection {
 impl GenesisLeaderSelection {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         GenesisLeaderSelection {
-            epoch_nonce: Nonce::zero(),
+            epoch_nonce: ledger.settings.consensus_nonce.clone(),
             nodes: ledger.delegation.stake_pools.clone(),
             distribution: ledger.get_stake_distribution(),
             epoch,

@@ -4,7 +4,12 @@
 use crate::leadership::genesis::ActiveSlotsCoeff;
 use crate::milli::Milli;
 use crate::update::Error;
-use crate::{block::ConsensusVersion, config::ConfigParam, fee::LinearFee, leadership::bft};
+use crate::{
+    block::ConsensusVersion,
+    config::ConfigParam,
+    fee::LinearFee,
+    leadership::{bft, genesis},
+};
 use chain_time::era::TimeEra;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -13,6 +18,7 @@ use std::sync::Arc;
 pub struct Settings {
     pub era: TimeEra,
     pub consensus_version: ConsensusVersion,
+    pub consensus_nonce: genesis::Nonce,
     pub slots_per_epoch: u32,
     pub slot_duration: u8,
     pub epoch_stability_depth: u32,
@@ -37,6 +43,7 @@ impl Settings {
         Self {
             era: era,
             consensus_version: ConsensusVersion::Bft,
+            consensus_nonce: genesis::Nonce::zero(),
             slots_per_epoch: 1,
             slot_duration: 10,         // 10 sec
             epoch_stability_depth: 10, // num of block
