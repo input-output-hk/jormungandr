@@ -1,13 +1,19 @@
-pub mod accounts;
-pub mod tx_builder;
-
-use super::*;
-use crate::account::SpendingCounter;
-use crate::message::config;
-use crate::milli::Milli;
+use crate::common::accounts;
+use crate::common::tx_builder::TransactionBuilder;
 use chain_addr::{Address, Discrimination};
 use chain_crypto::SecretKey;
-use tx_builder::TransactionBuilder;
+use chain_impl_mockchain::account::Identifier;
+use chain_impl_mockchain::account::SpendingCounter;
+use chain_impl_mockchain::block::header::HeaderHash;
+use chain_impl_mockchain::block::version::ConsensusVersion;
+use chain_impl_mockchain::config::ConfigParam;
+use chain_impl_mockchain::ledger::Error;
+use chain_impl_mockchain::ledger::Ledger;
+use chain_impl_mockchain::message::Message;
+use chain_impl_mockchain::milli::Milli;
+use chain_impl_mockchain::transaction::*;
+use chain_impl_mockchain::value::*;
+use std::vec::Vec;
 
 macro_rules! assert_err {
     ($left: expr, $right: expr) => {
@@ -38,14 +44,16 @@ pub fn create_initial_fake_ledger(
 ) -> (HeaderHash, Ledger) {
     let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
 
-    let mut ie = config::ConfigParams::new();
+    let mut ie = chain_impl_mockchain::message::config::ConfigParams::new();
     ie.push(ConfigParam::Discrimination(discrimination));
     ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
 
     // TODO remove rng: make this creation deterministic
     let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
     ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
-    ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
+    ie.push(ConfigParam::Block0Date(
+        chain_impl_mockchain::config::Block0Date(0),
+    ));
     ie.push(ConfigParam::SlotDuration(10));
     ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
         Milli::HALF,
@@ -174,7 +182,7 @@ pub fn account_to_account_correct_transaction() {
 
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_account(
-            AccountIdentifier::from_single_account(account::Identifier::from(pk1)),
+            AccountIdentifier::from_single_account(Identifier::from(pk1)),
             Value(1),
         ))
         .with_output(Output {
@@ -208,7 +216,7 @@ pub fn account_to_delegation_correct_transaction() {
     let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_account(
-            AccountIdentifier::from_single_account(account::Identifier::from(pk1)),
+            AccountIdentifier::from_single_account(Identifier::from(pk1)),
             Value(1),
         ))
         .with_output(Output {

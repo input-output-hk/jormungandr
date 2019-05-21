@@ -8,9 +8,9 @@ use std::slice;
 
 mod builder;
 //mod cstruct;
-mod header;
+pub mod header;
 mod headerraw;
-mod version;
+pub mod version;
 
 pub use self::version::{AnyBlockVersion, BlockVersion, ConsensusVersion};
 

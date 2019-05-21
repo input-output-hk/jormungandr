@@ -1,6 +1,5 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
-pub mod tests;
 
 use crate::block::{
     BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext, HeaderHash,

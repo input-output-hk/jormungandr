@@ -1,5 +1,5 @@
-use crate::key::{SpendingPublicKey, SpendingSecretKey};
 use chain_addr::{Address, Discrimination, Kind};
+use chain_impl_mockchain::key::{SpendingPublicKey, SpendingSecretKey};
 use rand::{CryptoRng, RngCore};
 
 pub fn make_utxo_key<R: RngCore + CryptoRng>(

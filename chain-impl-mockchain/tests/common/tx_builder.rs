@@ -1,7 +1,12 @@
-use super::*;
-use crate::account::SpendingCounter;
-use crate::key::{AccountSecretKey, SpendingSecretKey};
 use chain_addr::Address;
+use chain_impl_mockchain::account::SpendingCounter;
+use chain_impl_mockchain::block::header::HeaderHash;
+use chain_impl_mockchain::key::{AccountSecretKey, SpendingSecretKey};
+use chain_impl_mockchain::message::Message;
+use chain_impl_mockchain::transaction::transfer::Output;
+use chain_impl_mockchain::transaction::transfer::*;
+use chain_impl_mockchain::transaction::Witness;
+use chain_impl_mockchain::transaction::*;
 
 pub struct TransactionBuilder {
     inputs: Vec<Input>,
