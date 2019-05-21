@@ -18,7 +18,7 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR, logger: &Logger)
     let bootstrap = Connect::new(TcpConnector, DefaultExecutor::current())
         .origin(uri::Scheme::HTTP, origin)
         .connect(addr)
-        .map_err(|e| {
+        .map_err(move |e| {
             slog::error!(logger, "failed to connect to bootstrap peer: {:?}", e);
         })
         .and_then(|mut client: Connection<BlockConfig, _, _>| {
@@ -28,7 +28,7 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR, logger: &Logger)
                 .map_err(|e| {
                     slog::error!(logger, "PullBlocksToTip request failed: {:?}", e);
                 })
-                .and_then(|stream| bootstrap_from_stream(blockchain, stream))
+                .and_then(|stream| bootstrap_from_stream(blockchain, stream, logger.clone()))
         });
 
     match current_thread::block_on_all(bootstrap) {
@@ -43,26 +43,29 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR, logger: &Logger)
 fn bootstrap_from_stream<S>(
     blockchain: BlockchainR,
     stream: S,
+    logger: Logger,
 ) -> impl Future<Item = (), Error = ()>
 where
     S: Stream<Item = Block>,
     S::Error: Debug,
 {
+    let fold_logger = logger.clone();
     stream
-        .fold(blockchain, |blockchain, block| {
+        .fold(blockchain, move |blockchain, block| {
             use crate::blockchain::handle_block;
-            debug!(
+            slog::debug!(
+                fold_logger,
                 "received block from the bootstrap node: {:#?}",
                 block.header()
             );
             let res = handle_block(&mut blockchain.lock_write(), block, true);
             if let Err(e) = res {
-                error!("error processing a bootstrap block: {:?}", e);
+                slog::error!(fold_logger, "error processing a bootstrap block: {:?}", e);
             }
             future::ok(blockchain)
         })
         .map(|_| ())
-        .map_err(|e| {
-            error!("bootstrap block streaming failed: {:?}", e);
+        .map_err(move |e| {
+            slog::error!(logger, "bootstrap block streaming failed: {:?}", e);
         })
 }

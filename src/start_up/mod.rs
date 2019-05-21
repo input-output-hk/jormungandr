@@ -78,7 +78,7 @@ pub fn prepare_block_0(
                     "retrieving block0 from network with hash {}",
                     block0_id
                 );
-                network::fetch_block(&settings.network, &block0_id).map_err(|e| e.into())
+                network::fetch_block(&settings.network, &block0_id, logger).map_err(|e| e.into())
             }
         }
     }

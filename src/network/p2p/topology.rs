@@ -8,7 +8,7 @@ use poldercast::topology::{Cyclon, Module, Rings, Topology, Vicinity};
 use poldercast::Subscription;
 pub use poldercast::{Address, InterestLevel};
 use serde::{Deserialize, Serialize};
-
+use slog::Logger;
 use std::{collections::BTreeMap, fmt, io, net::SocketAddr, sync::RwLock};
 
 pub const NEW_MESSAGES_TOPIC: u32 = 0u32;
@@ -74,6 +74,7 @@ impl fmt::Display for NodeId {
 /// object holding the P2pTopology of the Node
 pub struct P2pTopology {
     lock: RwLock<Topology>,
+    logger: Logger,
 }
 
 impl property::Serialize for Node {
@@ -114,9 +115,10 @@ impl P2pTopology {
     /// create a new P2pTopology for the given Address and Id
     ///
     /// The address is the public
-    pub fn new(node: Node) -> Self {
+    pub fn new(node: Node, logger: Logger) -> Self {
         P2pTopology {
             lock: RwLock::new(Topology::new(node.0)),
+            logger,
         }
     }
 
@@ -124,7 +126,7 @@ impl P2pTopology {
     /// each other and will help improve the node connectivity
     pub fn add_module<M: Module + Send + Sync + 'static>(&self, module: M) {
         let mut topology = self.lock.write().unwrap();
-        info!("adding P2P Topology module: {}", module.name());
+        slog::info!(self.logger, "adding P2P Topology module: {}", module.name());
         topology.add_module(module)
     }
 
@@ -140,7 +142,11 @@ impl P2pTopology {
     /// to contact for event dissemination.
     pub fn view(&self) -> impl Iterator<Item = Node> {
         let topology = self.lock.read().unwrap();
-        debug!("loading P2P local topology view {:?}", topology.view());
+        slog::debug!(
+            self.logger,
+            "loading P2P local topology view {:?}",
+            topology.view()
+        );
         topology.view().into_iter().map(Node)
     }
 
@@ -159,14 +165,18 @@ impl P2pTopology {
 
     fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
         // Poldercast API should be better than this
-        debug!("updating P2P local topology");
+        slog::debug!(self.logger, "updating P2P local topology");
         self.lock.write().unwrap().update(new_nodes)
     }
 
     /// this is the function to utilise in order to select gossips to share
     /// with a given node
     pub fn select_gossips(&self, gossip_recipient: &Node) -> impl Iterator<Item = Node> {
-        debug!("selecting gossips for {}", gossip_recipient.id());
+        slog::debug!(
+            self.logger,
+            "selecting gossips for {}",
+            gossip_recipient.id()
+        );
         let mut topology = self.lock.write().unwrap();
         topology
             .select_gossips(&gossip_recipient.0)

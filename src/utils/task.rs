@@ -252,6 +252,12 @@ impl ThreadServiceInfo {
     pub fn logger(&self) -> &Logger {
         &self.logger
     }
+
+    /// extract the service's logger
+    #[inline]
+    pub fn into_logger(self) -> Logger {
+        self.logger
+    }
 }
 
 impl TokioServiceInfo {

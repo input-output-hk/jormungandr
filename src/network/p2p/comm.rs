@@ -1,15 +1,13 @@
 use super::topology;
 use crate::blockcfg::{Block, Header, HeaderHash, Message};
-
+use futures::prelude::*;
+use futures::{stream, sync::mpsc};
 use network_core::{
     error as core_error,
     gossip::{Gossip, Node},
     subscription::BlockEvent,
 };
-
-use futures::prelude::*;
-use futures::{stream, sync::mpsc};
-
+use slog::Logger;
 use std::{
     collections::{hash_map, HashMap},
     sync::Mutex,
@@ -190,6 +188,7 @@ impl PeerComms {
 /// all network connection tasks.
 pub struct PeerMap {
     mutex: Mutex<HashMap<topology::NodeId, PeerComms>>,
+    logger: Logger,
 }
 
 fn ensure_peer_comms<'a>(
@@ -200,9 +199,10 @@ fn ensure_peer_comms<'a>(
 }
 
 impl PeerMap {
-    pub fn new() -> Self {
+    pub fn new(logger: Logger) -> Self {
         PeerMap {
             mutex: Mutex::new(HashMap::new()),
+            logger,
         }
     }
 
@@ -257,8 +257,13 @@ impl PeerMap {
                     match f(entry.get_mut()) {
                         Ok(()) => false,
                         Err(e) => {
-                            info!("propagation to peer {} failed: {:?}", id, e.kind());
-                            debug!("unsubscribing peer {}", id);
+                            slog::info!(
+                                self.logger,
+                                "propagation to peer {} failed: {:?}",
+                                id,
+                                e.kind()
+                            );
+                            slog::debug!(self.logger, "unsubscribing peer {}", id);
                             entry.remove_entry();
                             true
                         }
@@ -305,12 +310,13 @@ impl PeerMap {
                 handles.try_send_gossip(gossip)
             };
             res.map_err(|e| {
-                info!(
+                slog::info!(
+                    self.logger,
                     "gossip propagation to peer {} failed: {:?}",
                     target,
                     e.kind()
                 );
-                debug!("unsubscribing peer {}", target);
+                slog::debug!(self.logger, "unsubscribing peer {}", target);
                 entry.remove_entry();
                 e.into_item()
             })
@@ -326,11 +332,17 @@ impl PeerMap {
                 .block_solicitations
                 .try_send(hashes)
                 .unwrap_or_else(|e| {
-                    warn!("block solicitation from {} failed: {:?}", node_id, e);
+                    slog::warn!(
+                        self.logger,
+                        "block solicitation from {} failed: {:?}", node_id, e
+                    );
                 }),
             None => {
                 // TODO: connect and request on demand?
-                warn!("peer {} not available to solicit blocks from", node_id);
+                slog::warn!(
+                    self.logger,
+                    "peer {} not available to solicit blocks from", node_id
+                );
             }
         }
     }

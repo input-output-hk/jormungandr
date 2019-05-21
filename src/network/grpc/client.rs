@@ -4,15 +4,13 @@ use crate::{
     network::{BlockConfig, ConnectionState, FetchBlockError},
     settings::start::network::Peer,
 };
-
-use network_core::{client::block::BlockService, gossip::Node};
-use network_grpc::client::{Connect, ConnectFuture, TcpConnector};
-
 use futures::prelude::*;
 use http::uri;
-use tokio::{executor::DefaultExecutor, net::TcpStream, runtime};
-
+use network_core::{client::block::BlockService, gossip::Node};
+use network_grpc::client::{Connect, ConnectFuture, TcpConnector};
+use slog::Logger;
 use std::{net::SocketAddr, slice};
+use tokio::{executor::DefaultExecutor, net::TcpStream, runtime};
 
 pub type Connection = network_grpc::client::Connection<BlockConfig, TcpStream, DefaultExecutor>;
 
@@ -29,8 +27,12 @@ pub fn connect(
 
 // Fetches a block from a network peer in a one-off, blocking call.
 // This function is used during node bootstrap to fetch the genesis block.
-pub fn fetch_block(peer: Peer, hash: &HeaderHash) -> Result<Block, FetchBlockError> {
-    info!("fetching block {} from {}", hash, peer.connection);
+pub fn fetch_block(
+    peer: Peer,
+    hash: &HeaderHash,
+    logger: &Logger,
+) -> Result<Block, FetchBlockError> {
+    slog::info!(logger, "fetching block {} from {}", hash, peer.connection);
     let addr = peer.address();
     let origin = origin_authority(addr);
     let fetch = Connect::new(TcpConnector, DefaultExecutor::current())

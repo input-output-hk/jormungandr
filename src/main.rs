@@ -154,8 +154,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             block_box: block_msgbox,
         };
 
-        services.spawn("network", logger, move |_info| {
-            network::run(config, network_queue, channels);
+        services.spawn("network", logger, move |info| {
+            network::run(config, network_queue, channels, info.into_logger());
         });
     }
 

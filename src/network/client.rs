@@ -10,13 +10,12 @@ use crate::{
     blockcfg::{Block, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
 };
-
+use futures::prelude::*;
 use network_core::{
     client::{block::BlockService, gossip::GossipService, P2pService},
     subscription::BlockEvent,
 };
-
-use futures::prelude::*;
+use slog::Logger;
 
 pub struct Client<S>
 where
@@ -27,14 +26,16 @@ where
     remote_node_id: topology::NodeId,
     block_events: S::BlockSubscription,
     block_solicitations: Subscription<Vec<HeaderHash>>,
+    logger: Logger,
 }
 
-impl<S> Client<S>
-where
-    S: BlockService,
-{
+impl<S: BlockService> Client<S> {
     pub fn remote_node_id(&self) -> topology::NodeId {
         self.remote_node_id
+    }
+
+    pub fn logger(&self) -> &Logger {
+        &self.logger
     }
 }
 
@@ -54,19 +55,21 @@ where
         let mut peer_comms = PeerComms::new();
         let block_req = service.block_subscription(peer_comms.subscribe_to_block_announcements());
         let gossip_req = service.gossip_subscription(peer_comms.subscribe_to_gossip());
+        let err_logger = global_state.logger().clone();
         block_req
             .join(gossip_req)
             .map_err(move |err| {
-                warn!("subscription request failed: {:?}", err);
+                slog::warn!(err_logger, "subscription request failed: {:?}", err);
             })
             .and_then(move |((block_events, node_id), (gossip_sub, node_id_1))| {
                 if node_id != node_id_1 {
-                    warn!(
-                        "peer subscription IDs do not match: {} != {}",
-                        node_id, node_id_1
+                    slog::warn!(
+                        global_state.logger(),
+                        "peer subscription IDs do not match: {} != {}", node_id, node_id_1
                     );
                     return Err(());
                 }
+                let client_logger = global_state.logger().clone();
 
                 // Spin off processing tasks for subscriptions that can be
                 // managed with just the global state.
@@ -83,6 +86,7 @@ where
                     remote_node_id: node_id,
                     block_events,
                     block_solicitations,
+                    logger: client_logger,
                 };
                 Ok((client, peer_comms))
             })
@@ -102,20 +106,24 @@ where
                     .send(BlockMsg::AnnouncedBlock(header, self.remote_node_id));
             }
             BlockEvent::Solicit(block_ids) => {
-                let (reply_handle, stream) =
-                    intercom::stream_reply::<Block, network_core::error::Error>();
+                let (reply_handle, stream) = intercom::stream_reply::<
+                    Block,
+                    network_core::error::Error,
+                >(self.logger.clone());
                 self.channels
                     .client_box
                     .send_to(ClientMsg::GetBlocks(block_ids, reply_handle));
                 let node_id = self.remote_node_id;
+                let done_logger = self.logger.clone();
+                let err_logger = self.logger.clone();
                 tokio::spawn(
                     self.service
                         .upload_blocks(stream)
-                        .map(move |_res| {
-                            debug!("finished uploading blocks to {}", node_id);
+                        .map(move |_| {
+                            slog::debug!(done_logger, "finished uploading blocks to {}", node_id);
                         })
-                        .map_err(|err| {
-                            warn!("UploadBlocks request failed: {:?}", err);
+                        .map_err(move |err| {
+                            slog::warn!(err_logger, "UploadBlocks request failed: {:?}", err);
                         }),
                 );
             }
@@ -131,20 +139,26 @@ where
 {
     fn solicit_blocks(&mut self, block_ids: &[HeaderHash]) {
         let mut block_box = self.channels.block_box.clone();
+        let err_logger = self.logger.clone();
+        let and_then_logger = self.logger.clone();
         tokio::spawn(
             self.service
                 .get_blocks(block_ids)
-                .map_err(|e| {
-                    warn!("solicitation request GetBlocks failed: {:?}", e);
+                .map_err(move |e| {
+                    slog::warn!(err_logger, "solicitation request GetBlocks failed: {:?}", e);
                 })
-                .and_then(|blocks| {
+                .and_then(move |blocks| {
                     blocks
                         .for_each(move |block| {
                             block_box.send(BlockMsg::NetworkBlock(block));
                             Ok(())
                         })
-                        .map_err(|e| {
-                            warn!("solicitation stream response to GetBlocks failed: {:?}", e);
+                        .map_err(move |e| {
+                            slog::warn!(
+                                and_then_logger,
+                                "solicitation stream response to GetBlocks failed: {:?}",
+                                e
+                            );
                         })
                 }),
         );
@@ -164,12 +178,12 @@ where
         loop {
             let mut streams_ready = false;
             let block_event_polled = self.block_events.poll().map_err(|e| {
-                info!("block subscription stream failure: {:?}", e);
+                slog::info!(self.logger, "block subscription stream failure: {:?}", e);
             })?;
             match block_event_polled {
                 Async::NotReady => {}
                 Async::Ready(None) => {
-                    debug!("block subscription stream terminated");
+                    slog::debug!(self.logger, "block subscription stream terminated");
                     return Ok(().into());
                 }
                 Async::Ready(Some(event)) => {
@@ -181,7 +195,7 @@ where
             match block_solicitation_polled {
                 Async::NotReady => {}
                 Async::Ready(None) => {
-                    debug!("outbound block solicitation stream closed");
+                    slog::debug!(self.logger, "outbound block solicitation stream closed");
                     return Ok(().into());
                 }
                 Async::Ready(Some(block_ids)) => {
@@ -201,13 +215,24 @@ pub fn connect(
     channels: Channels,
 ) -> impl Future<Item = (Client<grpc::Connection>, PeerComms), Error = ()> {
     let addr = state.connection;
+    let err_logger = state.logger().clone();
     grpc::connect(&state)
         .map_err(move |err| {
-            warn!("error connecting to peer at {}: {:?}", addr, err);
+            slog::warn!(
+                err_logger,
+                "error connecting to peer at {}: {:?}",
+                addr,
+                err
+            );
         })
         .and_then(move |conn| Client::subscribe(conn, state.global, channels))
         .map(move |(client, comms)| {
-            debug!("connected to peer {} at {}", client.remote_node_id(), addr);
+            slog::debug!(
+                client.logger(),
+                "connected to peer {} at {}",
+                client.remote_node_id(),
+                addr
+            );
             (client, comms)
         })
 }
