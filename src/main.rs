@@ -19,8 +19,6 @@ extern crate cryptoxide;
 extern crate futures;
 extern crate generic_array;
 extern crate http;
-#[macro_use]
-extern crate lazy_static;
 extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
@@ -64,9 +62,6 @@ use futures::Future;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::sync::{Arc, Mutex, RwLock};
-
-#[macro_use]
-pub mod log_wrapper;
 
 pub mod blockcfg;
 pub mod blockchain;
