@@ -2,39 +2,37 @@ use super::super::BlockConfig;
 use super::origin_authority;
 use crate::{blockchain::BlockchainR, settings::start::network::Peer};
 use blockcfg::Block;
-
 use chain_core::property::HasHeader;
+use http::uri;
 use network_core::client::block::BlockService as _;
 use network_grpc::client::{Connect, Connection, TcpConnector};
-
-use http::uri;
+use slog::Logger;
+use std::fmt::Debug;
 use tokio::prelude::*;
 use tokio::{executor::DefaultExecutor, runtime::current_thread};
 
-use std::fmt::Debug;
-
-pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR) {
-    info!("connecting to bootstrap peer {}", peer.connection);
+pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR, logger: &Logger) {
+    slog::info!(logger, "connecting to bootstrap peer {}", peer.connection);
     let addr = peer.address();
     let origin = origin_authority(addr);
     let bootstrap = Connect::new(TcpConnector, DefaultExecutor::current())
         .origin(uri::Scheme::HTTP, origin)
         .connect(addr)
         .map_err(|e| {
-            error!("failed to connect to bootstrap peer: {:?}", e);
+            slog::error!(logger, "failed to connect to bootstrap peer: {:?}", e);
         })
         .and_then(|mut client: Connection<BlockConfig, _, _>| {
             let tip = blockchain.lock_read().get_tip().unwrap();
             client
                 .pull_blocks_to_tip(&[tip])
                 .map_err(|e| {
-                    error!("PullBlocksToTip request failed: {:?}", e);
+                    slog::error!(logger, "PullBlocksToTip request failed: {:?}", e);
                 })
                 .and_then(|stream| bootstrap_from_stream(blockchain, stream))
         });
 
     match current_thread::block_on_all(bootstrap) {
-        Ok(()) => debug!("bootstrap complete"),
+        Ok(()) => slog::debug!(logger, "bootstrap complete"),
         Err(()) => {
             // All specific errors should be logged and mapped to () in
             // future/stream error handling combinators.

@@ -13,6 +13,10 @@ pub mod p2p;
 mod service;
 mod subscription;
 
+use self::p2p::{
+    comm::{PeerComms, PeerMap},
+    topology::{self, P2pTopology},
+};
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
@@ -21,22 +25,15 @@ use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TaskMessageBox,
 };
-
-use self::p2p::{
-    comm::{PeerComms, PeerMap},
-    topology::{self, P2pTopology},
-};
-
+use futures::prelude::*;
+use futures::stream;
 use network_core::{
     error as core_error,
     gossip::{Gossip, Node},
 };
-
-use futures::prelude::*;
-use futures::stream;
-use tokio::timer::Interval;
-
+use slog::Logger;
 use std::{error::Error, iter, net::SocketAddr, sync::Arc, time::Duration};
+use tokio::timer::Interval;
 
 type Connection = SocketAddr;
 
@@ -309,17 +306,17 @@ fn first_trusted_peer_address(config: &Configuration) -> Option<SocketAddr> {
         .next()
 }
 
-pub fn bootstrap(config: &Configuration, blockchain: BlockchainR) {
+pub fn bootstrap(config: &Configuration, blockchain: BlockchainR, logger: &Logger) {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
     match first_trusted_peer_address(config) {
         Some(address) => {
             let peer = Peer::new(address, Protocol::Grpc);
-            grpc::bootstrap_from_peer(peer, blockchain)
+            grpc::bootstrap_from_peer(peer, blockchain, logger)
         }
         None => {
-            warn!("no gRPC peers specified, skipping bootstrap");
+            slog::warn!(logger, "no gRPC peers specified, skipping bootstrap");
         }
     }
 }

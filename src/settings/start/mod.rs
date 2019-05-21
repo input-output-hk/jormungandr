@@ -72,7 +72,7 @@ impl RawSettings {
     /// - from the config
     ///
     /// This function will print&exit if anything is not as it should be.
-    pub fn try_into_settings(self) -> Result<Settings, Error> {
+    pub fn try_into_settings(self, logger: &Logger) -> Result<Settings, Error> {
         let RawSettings {
             command_line,
             config,
@@ -93,7 +93,7 @@ impl RawSettings {
                 (Some(path), _) => Some(path.clone()),
                 (None, Some(path)) => Some(path.clone()),
                 (None, None) => {
-                    warn!("Node started without path to the stored secret keys, just like starting with `--without-leadership'");
+                    slog::warn!(logger, "Node started without path to the stored secret keys, just like starting with `--without-leadership'");
                     None
                 }
             }
