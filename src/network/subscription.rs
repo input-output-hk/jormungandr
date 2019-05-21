@@ -1,5 +1,5 @@
 use super::{
-    p2p_topology::{Node, NodeId},
+    p2p::topology::{Node, NodeId},
     GlobalStateR,
 };
 use crate::{blockcfg::Header, intercom::BlockMsg, utils::async_msg::MessageBox};

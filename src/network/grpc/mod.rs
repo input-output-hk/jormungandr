@@ -2,7 +2,7 @@ mod bootstrap;
 mod client;
 mod server;
 
-use super::{p2p_topology as p2p, BlockConfig};
+use super::{p2p::topology as p2p, BlockConfig};
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash};
 
 use http::{uri, HttpTryFrom};

@@ -8,8 +8,7 @@
 mod grpc;
 // TODO: to be ported
 //mod ntt;
-pub mod p2p_topology;
-mod propagate;
+pub mod p2p;
 mod service;
 mod subscription;
 
@@ -22,8 +21,10 @@ use crate::utils::{
     task::TaskMessageBox,
 };
 
-use self::p2p_topology::{self as p2p, P2pTopology};
-use self::propagate::{PeerHandles, PropagationMap};
+use self::p2p::{
+    comm::{PeerComms, PeerMap},
+    topology::{self, P2pTopology},
+};
 
 use network_core::{
     error as core_error,
@@ -61,8 +62,8 @@ impl Clone for Channels {
 pub struct GlobalState {
     pub config: Configuration,
     pub topology: P2pTopology,
-    pub node: p2p::Node,
-    pub propagation_peers: PropagationMap,
+    pub node: topology::Node,
+    pub peers: PeerMap,
 }
 
 type GlobalStateR = Arc<GlobalState>;
@@ -70,7 +71,7 @@ type GlobalStateR = Arc<GlobalState>;
 impl GlobalState {
     /// the network global state
     pub fn new(config: Configuration) -> Self {
-        let node_id = config.public_id.unwrap_or(p2p_topology::NodeId::generate());
+        let node_id = config.public_id.unwrap_or(topology::NodeId::generate());
         info!("our node id: {}", node_id);
         let node_address = config
             .public_address
@@ -78,15 +79,15 @@ impl GlobalState {
             .expect("only support the full nodes for now")
             .0
             .into();
-        let mut node = p2p_topology::Node::new(node_id, node_address);
+        let mut node = topology::Node::new(node_id, node_address);
 
         // TODO: load the subscriptions from the config
-        node.add_message_subscription(p2p_topology::InterestLevel::High);
-        node.add_block_subscription(p2p_topology::InterestLevel::High);
+        node.add_message_subscription(topology::InterestLevel::High);
+        node.add_block_subscription(topology::InterestLevel::High);
 
         let mut topology = P2pTopology::new(node.clone());
         topology.set_poldercast_modules();
-        topology.add_module(p2p::modules::TrustedPeers::new_with(
+        topology.add_module(topology::modules::TrustedPeers::new_with(
             config.trusted_peers.iter().cloned().map(|trusted_peer| {
                 poldercast::Node::new(trusted_peer.id.0, trusted_peer.address.0)
             }),
@@ -96,7 +97,7 @@ impl GlobalState {
             config,
             topology,
             node,
-            propagation_peers: PropagationMap::new(),
+            peers: PeerMap::new(),
         }
     }
 }
@@ -162,7 +163,7 @@ pub fn run(config: Configuration, input: MessageQueue<NetworkMsg>, channels: Cha
             debug!("connected to {} at {}", node_id, addr);
             let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
             match prop_handles.try_send_gossip(gossip) {
-                Ok(()) => state.propagation_peers.insert_peer(node_id, prop_handles),
+                Ok(()) => state.peers.insert_peer(node_id, prop_handles),
                 Err(e) => {
                     info!(
                         "gossiping to peer {} failed just after connection: {:?}",
@@ -199,7 +200,7 @@ fn handle_network_input(
             Ok(())
         }
         NetworkMsg::GetBlocks(node_id, block_ids) => {
-            state.propagation_peers.solicit_blocks(node_id, block_ids);
+            state.peers.solicit_blocks(node_id, block_ids);
             Ok(())
         }
     })
@@ -213,12 +214,8 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
         nodes.iter().map(|node| node.id()).collect::<Vec<_>>()
     );
     let res = match msg {
-        PropagateMsg::Block(ref header) => state
-            .propagation_peers
-            .propagate_block(nodes, header.clone()),
-        PropagateMsg::Message(ref message) => state
-            .propagation_peers
-            .propagate_message(nodes, message.clone()),
+        PropagateMsg::Block(ref header) => state.peers.propagate_block(nodes, header.clone()),
+        PropagateMsg::Message(ref message) => state.peers.propagate_message(nodes, message.clone()),
     };
     // If any nodes selected for propagation are not in the
     // active subscriptions map, connect to them and deliver
@@ -231,9 +228,9 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
                 state.clone(),
                 channels.clone(),
                 |handles| match msg {
-                    PropagateMsg::Block(header) => {
-                        handles.try_send_block(header).map_err(|e| e.kind())
-                    }
+                    PropagateMsg::Block(header) => handles
+                        .try_send_block_announcement(header)
+                        .map_err(|e| e.kind()),
                     PropagateMsg::Message(message) => {
                         handles.try_send_message(message).map_err(|e| e.kind())
                     }
@@ -247,9 +244,7 @@ fn send_gossip(state: GlobalStateR, channels: Channels) {
     for node in state.topology.view() {
         let gossip = Gossip::from_nodes(state.topology.select_gossips(&node));
         debug!("sending gossip to node {}", node.id());
-        let res = state
-            .propagation_peers
-            .propagate_gossip_to(node.id(), gossip);
+        let res = state.peers.propagate_gossip_to(node.id(), gossip);
         if let Err(gossip) = res {
             connect_and_propagate_with(node, state.clone(), channels.clone(), |handles| {
                 handles.try_send_gossip(gossip).map_err(|e| e.kind())
@@ -259,12 +254,12 @@ fn send_gossip(state: GlobalStateR, channels: Channels) {
 }
 
 fn connect_and_propagate_with<F>(
-    node: p2p::Node,
+    node: topology::Node,
     state: GlobalStateR,
     channels: Channels,
     once_connected: F,
 ) where
-    F: FnOnce(&mut PeerHandles) -> Result<(), propagate::ErrorKind> + Send + 'static,
+    F: FnOnce(&mut PeerComms) -> Result<(), p2p::comm::ErrorKind> + Send + 'static,
 {
     let addr = match node.address() {
         Some(addr) => addr,
@@ -299,9 +294,7 @@ fn connect_and_propagate_with<F>(
                 );
             };
 
-            state
-                .propagation_peers
-                .insert_peer(connected_node_id, handles);
+            state.peers.insert_peer(connected_node_id, handles);
         });
     tokio::spawn(cf);
 }

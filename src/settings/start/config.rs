@@ -1,8 +1,12 @@
-use crate::{network::p2p_topology::NodeId, settings::logging::LogFormat};
+use crate::{
+    network::p2p::topology::{NodeId, NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC},
+    settings::logging::LogFormat,
+};
+
 use poldercast;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
-use std::path::PathBuf;
-use std::{collections::BTreeMap, fmt, net::SocketAddr};
+
+use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -78,7 +82,6 @@ impl Serialize for Topic {
     where
         S: Serializer,
     {
-        use crate::network::p2p_topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC};
         use serde::ser::Error;
         if self.0 == NEW_MESSAGES_TOPIC.into() {
             serializer.serialize_str("messages")
@@ -147,7 +150,6 @@ impl<'de> Deserialize<'de> for Topic {
             where
                 E: serde::de::Error,
             {
-                use crate::network::p2p_topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC};
                 use serde::de::Unexpected;
 
                 match v {

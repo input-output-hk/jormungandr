@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, net::SocketAddr, str, time::Duration};
 
 use crate::{
-    network::p2p_topology::NodeId,
+    network::p2p::topology::NodeId,
     settings::start::config::{Address, InterestLevel, Topic, TrustedPeer},
 };
 

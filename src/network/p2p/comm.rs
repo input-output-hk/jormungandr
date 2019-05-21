@@ -1,4 +1,4 @@
-use super::p2p_topology as p2p;
+use super::topology;
 use crate::blockcfg::{Block, Header, HeaderHash, Message};
 
 use network_core::{
@@ -44,8 +44,7 @@ pub enum ErrorKind {
     Unexpected,
 }
 
-/// Stream used to send propagated items to the outbound half of
-/// a subscription stream.
+/// Stream used as the outbound half of a subscription stream.
 pub struct Subscription<T> {
     inner: mpsc::Receiver<T>,
 }
@@ -66,21 +65,21 @@ type BlockEventSolicitStream =
 
 pub type BlockEventSubscription = stream::Select<BlockEventAnnounceStream, BlockEventSolicitStream>;
 
-/// Handle used by the per-peer connection tasks to produce an outbound
+/// Handle used by the per-peer communication tasks to produce an outbound
 /// subscription stream towards the peer.
-pub struct PropagationHandle<T> {
+pub struct CommHandle<T> {
     state: SubscriptionState<T>,
 }
 
-impl<T> Default for PropagationHandle<T> {
+impl<T> Default for CommHandle<T> {
     fn default() -> Self {
-        PropagationHandle {
+        CommHandle {
             state: SubscriptionState::NotSubscribed,
         }
     }
 }
 
-impl<T> PropagationHandle<T> {
+impl<T> CommHandle<T> {
     /// Returns a stream to use as an outbound half of the
     /// subscription stream.
     ///
@@ -129,25 +128,32 @@ enum SubscriptionState<T> {
     Subscribed(mpsc::Sender<T>),
 }
 
-/// Propagation subscription handles for all stream types that a peer can
-/// be subscribed to.
+/// State of the communication streams that a single peer connection polls
+/// for outbound data and commands.
+///
+/// Dropping a `PeerComms` instance results in the client-side connection to
+/// be closed if it was established, or all outbound subscription streams of a
+/// server-side connection to be closed.
 #[derive(Default)]
-pub struct PeerHandles {
-    pub blocks: PropagationHandle<Header>,
-    pub solicit_blocks: PropagationHandle<Vec<HeaderHash>>,
-    pub messages: PropagationHandle<Message>,
-    pub gossip: PropagationHandle<Gossip<p2p::Node>>,
+pub struct PeerComms {
+    block_announcements: CommHandle<Header>,
+    block_solicitations: CommHandle<Vec<HeaderHash>>,
+    messages: CommHandle<Message>,
+    gossip: CommHandle<Gossip<topology::Node>>,
 }
 
-impl PeerHandles {
-    pub fn new() -> PeerHandles {
-        PeerHandles {
+impl PeerComms {
+    pub fn new() -> PeerComms {
+        PeerComms {
             ..Default::default()
         }
     }
 
-    pub fn try_send_block(&mut self, header: Header) -> Result<(), PropagateError<Header>> {
-        self.blocks.try_send(header)
+    pub fn try_send_block_announcement(
+        &mut self,
+        header: Header,
+    ) -> Result<(), PropagateError<Header>> {
+        self.block_announcements.try_send(header)
     }
 
     pub fn try_send_message(&mut self, message: Message) -> Result<(), PropagateError<Message>> {
@@ -156,64 +162,91 @@ impl PeerHandles {
 
     pub fn try_send_gossip(
         &mut self,
-        gossip: Gossip<p2p::Node>,
-    ) -> Result<(), PropagateError<Gossip<p2p::Node>>> {
+        gossip: Gossip<topology::Node>,
+    ) -> Result<(), PropagateError<Gossip<topology::Node>>> {
         self.gossip.try_send(gossip)
+    }
+
+    pub fn subscribe_to_block_announcements(&mut self) -> Subscription<Header> {
+        self.block_announcements.subscribe()
+    }
+
+    pub fn subscribe_to_block_solicitations(&mut self) -> Subscription<Vec<HeaderHash>> {
+        self.block_solicitations.subscribe()
+    }
+
+    pub fn subscribe_to_messages(&mut self) -> Subscription<Message> {
+        self.messages.subscribe()
+    }
+
+    pub fn subscribe_to_gossip(&mut self) -> Subscription<Gossip<topology::Node>> {
+        self.gossip.subscribe()
     }
 }
 
-/// The map of peer nodes currently subscribed to chain or network updates.
+/// The map of currently connected peer nodes.
 ///
 /// This map object uses internal locking and is shared between
 /// all network connection tasks.
-pub struct PropagationMap {
-    mutex: Mutex<HashMap<p2p::NodeId, PeerHandles>>,
+pub struct PeerMap {
+    mutex: Mutex<HashMap<topology::NodeId, PeerComms>>,
 }
 
-fn ensure_propagation_peer<'a>(
-    map: &'a mut HashMap<p2p::NodeId, PeerHandles>,
-    id: p2p::NodeId,
-) -> &'a mut PeerHandles {
-    map.entry(id).or_insert(PeerHandles::new())
+fn ensure_peer_comms<'a>(
+    map: &'a mut HashMap<topology::NodeId, PeerComms>,
+    id: topology::NodeId,
+) -> &'a mut PeerComms {
+    map.entry(id).or_insert(PeerComms::new())
 }
 
-impl PropagationMap {
+impl PeerMap {
     pub fn new() -> Self {
-        PropagationMap {
+        PeerMap {
             mutex: Mutex::new(HashMap::new()),
         }
     }
 
-    pub fn insert_peer(&self, id: p2p::NodeId, handles: PeerHandles) {
+    pub fn insert_peer(&self, id: topology::NodeId, handles: PeerComms) {
         let mut map = self.mutex.lock().unwrap();
         map.insert(id, handles);
     }
 
-    pub fn subscribe_to_blocks(&self, id: p2p::NodeId) -> BlockEventSubscription {
+    pub fn subscribe_to_block_events(&self, id: topology::NodeId) -> BlockEventSubscription {
         let mut map = self.mutex.lock().unwrap();
-        let handles = ensure_propagation_peer(&mut map, id);
-        let announce_events: BlockEventAnnounceStream =
-            handles.blocks.subscribe().map(BlockEvent::Announce);
-        let solicit_events: BlockEventSolicitStream =
-            handles.solicit_blocks.subscribe().map(BlockEvent::Solicit);
+        let handles = ensure_peer_comms(&mut map, id);
+        let announce_events: BlockEventAnnounceStream = handles
+            .block_announcements
+            .subscribe()
+            .map(BlockEvent::Announce);
+        let solicit_events: BlockEventSolicitStream = handles
+            .block_solicitations
+            .subscribe()
+            .map(BlockEvent::Solicit);
         announce_events.select(solicit_events)
     }
 
-    pub fn subscribe_to_messages(&self, id: p2p::NodeId) -> Subscription<Message> {
+    pub fn subscribe_to_messages(&self, id: topology::NodeId) -> Subscription<Message> {
         let mut map = self.mutex.lock().unwrap();
-        let handles = ensure_propagation_peer(&mut map, id);
+        let handles = ensure_peer_comms(&mut map, id);
         handles.messages.subscribe()
     }
 
-    pub fn subscribe_to_gossip(&self, id: p2p::NodeId) -> Subscription<Gossip<p2p::Node>> {
+    pub fn subscribe_to_gossip(
+        &self,
+        id: topology::NodeId,
+    ) -> Subscription<Gossip<topology::Node>> {
         let mut map = self.mutex.lock().unwrap();
-        let handles = ensure_propagation_peer(&mut map, id);
+        let handles = ensure_peer_comms(&mut map, id);
         handles.gossip.subscribe()
     }
 
-    fn propagate_with<T, F>(&self, nodes: Vec<p2p::Node>, f: F) -> Result<(), Vec<p2p::Node>>
+    fn propagate_with<T, F>(
+        &self,
+        nodes: Vec<topology::Node>,
+        f: F,
+    ) -> Result<(), Vec<topology::Node>>
     where
-        F: Fn(&mut PeerHandles) -> Result<(), PropagateError<T>>,
+        F: Fn(&mut PeerComms) -> Result<(), PropagateError<T>>,
     {
         let mut map = self.mutex.lock().unwrap();
         let unreached_nodes = nodes
@@ -244,25 +277,27 @@ impl PropagationMap {
 
     pub fn propagate_block(
         &self,
-        nodes: Vec<p2p::Node>,
+        nodes: Vec<topology::Node>,
         header: Header,
-    ) -> Result<(), Vec<p2p::Node>> {
-        self.propagate_with(nodes, |handles| handles.try_send_block(header.clone()))
+    ) -> Result<(), Vec<topology::Node>> {
+        self.propagate_with(nodes, |handles| {
+            handles.try_send_block_announcement(header.clone())
+        })
     }
 
     pub fn propagate_message(
         &self,
-        nodes: Vec<p2p::Node>,
+        nodes: Vec<topology::Node>,
         message: Message,
-    ) -> Result<(), Vec<p2p::Node>> {
+    ) -> Result<(), Vec<topology::Node>> {
         self.propagate_with(nodes, |handles| handles.try_send_message(message.clone()))
     }
 
     pub fn propagate_gossip_to(
         &self,
-        target: p2p::NodeId,
-        gossip: Gossip<p2p::Node>,
-    ) -> Result<(), Gossip<p2p::Node>> {
+        target: topology::NodeId,
+        gossip: Gossip<topology::Node>,
+    ) -> Result<(), Gossip<topology::Node>> {
         let mut map = self.mutex.lock().unwrap();
         if let hash_map::Entry::Occupied(mut entry) = map.entry(target) {
             let res = {
@@ -284,12 +319,15 @@ impl PropagationMap {
         }
     }
 
-    pub fn solicit_blocks(&self, node_id: p2p::NodeId, hashes: Vec<HeaderHash>) {
+    pub fn solicit_blocks(&self, node_id: topology::NodeId, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
         match map.get_mut(&node_id) {
-            Some(handles) => handles.solicit_blocks.try_send(hashes).unwrap_or_else(|e| {
-                warn!("block solicitation from {} failed: {:?}", node_id, e);
-            }),
+            Some(comms) => comms
+                .block_solicitations
+                .try_send(hashes)
+                .unwrap_or_else(|e| {
+                    warn!("block solicitation from {} failed: {:?}", node_id, e);
+                }),
             None => {
                 // TODO: connect and request on demand?
                 warn!("peer {} not available to solicit blocks from", node_id);
