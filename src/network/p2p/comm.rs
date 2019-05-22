@@ -257,13 +257,13 @@ impl PeerMap {
                     match f(entry.get_mut()) {
                         Ok(()) => false,
                         Err(e) => {
-                            slog::info!(
+                            info!(
                                 self.logger,
                                 "propagation to peer {} failed: {:?}",
                                 id,
                                 e.kind()
                             );
-                            slog::debug!(self.logger, "unsubscribing peer {}", id);
+                            debug!(self.logger, "unsubscribing peer {}", id);
                             entry.remove_entry();
                             true
                         }
@@ -310,13 +310,13 @@ impl PeerMap {
                 handles.try_send_gossip(gossip)
             };
             res.map_err(|e| {
-                slog::info!(
+                info!(
                     self.logger,
                     "gossip propagation to peer {} failed: {:?}",
                     target,
                     e.kind()
                 );
-                slog::debug!(self.logger, "unsubscribing peer {}", target);
+                debug!(self.logger, "unsubscribing peer {}", target);
                 entry.remove_entry();
                 e.into_item()
             })
@@ -332,14 +332,14 @@ impl PeerMap {
                 .block_solicitations
                 .try_send(hashes)
                 .unwrap_or_else(|e| {
-                    slog::warn!(
+                    warn!(
                         self.logger,
                         "block solicitation from {} failed: {:?}", node_id, e
                     );
                 }),
             None => {
                 // TODO: connect and request on demand?
-                slog::warn!(
+                warn!(
                     self.logger,
                     "peer {} not available to solicit blocks from", node_id
                 );

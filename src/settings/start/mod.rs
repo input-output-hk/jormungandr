@@ -93,7 +93,7 @@ impl RawSettings {
                 (Some(path), _) => Some(path.clone()),
                 (None, Some(path)) => Some(path.clone()),
                 (None, None) => {
-                    slog::warn!(logger, "Node started without path to the stored secret keys, just like starting with `--without-leadership'");
+                    warn!(logger, "Node started without path to the stored secret keys, just like starting with `--without-leadership'");
                     None
                 }
             }

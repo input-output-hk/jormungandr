@@ -12,27 +12,27 @@ use tokio::prelude::*;
 use tokio::{executor::DefaultExecutor, runtime::current_thread};
 
 pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR, logger: &Logger) {
-    slog::info!(logger, "connecting to bootstrap peer {}", peer.connection);
+    info!(logger, "connecting to bootstrap peer {}", peer.connection);
     let addr = peer.address();
     let origin = origin_authority(addr);
     let bootstrap = Connect::new(TcpConnector, DefaultExecutor::current())
         .origin(uri::Scheme::HTTP, origin)
         .connect(addr)
         .map_err(move |e| {
-            slog::error!(logger, "failed to connect to bootstrap peer: {:?}", e);
+            error!(logger, "failed to connect to bootstrap peer: {:?}", e);
         })
         .and_then(|mut client: Connection<BlockConfig, _, _>| {
             let tip = blockchain.lock_read().get_tip().unwrap();
             client
                 .pull_blocks_to_tip(&[tip])
                 .map_err(|e| {
-                    slog::error!(logger, "PullBlocksToTip request failed: {:?}", e);
+                    error!(logger, "PullBlocksToTip request failed: {:?}", e);
                 })
                 .and_then(|stream| bootstrap_from_stream(blockchain, stream, logger.clone()))
         });
 
     match current_thread::block_on_all(bootstrap) {
-        Ok(()) => slog::debug!(logger, "bootstrap complete"),
+        Ok(()) => debug!(logger, "bootstrap complete"),
         Err(()) => {
             // All specific errors should be logged and mapped to () in
             // future/stream error handling combinators.
@@ -53,19 +53,19 @@ where
     stream
         .fold(blockchain, move |blockchain, block| {
             use crate::blockchain::handle_block;
-            slog::debug!(
+            debug!(
                 fold_logger,
                 "received block from the bootstrap node: {:#?}",
                 block.header()
             );
             let res = handle_block(&mut blockchain.lock_write(), block, true);
             if let Err(e) = res {
-                slog::error!(fold_logger, "error processing a bootstrap block: {:?}", e);
+                error!(fold_logger, "error processing a bootstrap block: {:?}", e);
             }
             future::ok(blockchain)
         })
         .map(|_| ())
         .map_err(move |e| {
-            slog::error!(logger, "bootstrap block streaming failed: {:?}", e);
+            error!(logger, "bootstrap block streaming failed: {:?}", e);
         })
 }

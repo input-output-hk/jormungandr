@@ -11,14 +11,14 @@ pub fn run_listen_socket(
 ) -> impl Future<Item = (), Error = ()> {
     let sockaddr = listen.address();
 
-    slog::info!(
+    info!(
         state.logger(),
         "start listening and accepting gRPC connections on {}", sockaddr
     );
 
     match server::listen(&sockaddr) {
         Err(error) => {
-            slog::error!(
+            error!(
                 state.logger(),
                 "Error while listening on {}: {}", sockaddr, error
             );
@@ -35,16 +35,14 @@ pub fn run_listen_socket(
                     // error while receiving an incoming connection
                     // here we might need to log the error and try
                     // to listen again on the sockaddr
-                    slog::error!(
+                    error!(
                         err_logger,
-                        "Error while accepting connection on {}: {:?}",
-                        sockaddr,
-                        err
+                        "Error while accepting connection on {}: {:?}", sockaddr, err
                     );
                 })
                 .fold(server, move |mut server, stream| {
                     // received incoming connection
-                    slog::info!(
+                    info!(
                         fold_logger,
                         "{} connected to {}",
                         stream.peer_addr().unwrap(),
@@ -54,7 +52,7 @@ pub fn run_listen_socket(
                     let conn = server.serve(stream);
                     let conn_logger = fold_logger.clone();
                     tokio::spawn(
-                        conn.map_err(move |e| slog::error!(conn_logger, "server error: {:?}", e)),
+                        conn.map_err(move |e| error!(conn_logger, "server error: {:?}", e)),
                     );
 
                     future::ok(server)

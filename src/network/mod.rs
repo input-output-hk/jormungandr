@@ -71,7 +71,7 @@ impl GlobalState {
     /// the network global state
     pub fn new(config: Configuration, logger: Logger) -> Self {
         let node_id = config.public_id.unwrap_or(topology::NodeId::generate());
-        slog::info!(logger, "our node id: {}", node_id);
+        info!(logger, "our node id: {}", node_id);
         let node_address = config
             .public_address
             .clone()
@@ -173,7 +173,7 @@ pub fn run(
     let conn_channels = channels.clone();
     let conn_logger = logger.clone();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
-        slog::info!(conn_logger, "connecting to initial gossip peer at {}", addr);
+        info!(conn_logger, "connecting to initial gossip peer at {}", addr);
         let peer = Peer::new(addr, Protocol::Grpc);
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
@@ -184,7 +184,7 @@ pub fn run(
             match comms.try_send_gossip(gossip) {
                 Ok(()) => state.peers.insert_peer(node_id, comms),
                 Err(e) => {
-                    slog::warn!(
+                    warn!(
                         client_logger,
                         "gossiping to peer {} at {} failed just after connection: {:?}",
                         node_id,
@@ -202,7 +202,7 @@ pub fn run(
     // TODO: get gossip propagation interval from configuration
     let gossip = Interval::new_interval(Duration::from_secs(10))
         .map_err(move |e| {
-            slog::error!(gossip_err_logger, "interval timer error: {:?}", e);
+            error!(gossip_err_logger, "interval timer error: {:?}", e);
         })
         .for_each(move |_| {
             send_gossip(global_state.clone(), channels.clone());
@@ -230,9 +230,9 @@ fn handle_network_input(
 }
 
 fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
-    slog::debug!(state.logger(), "to propagate: {:?}", &msg);
+    debug!(state.logger(), "to propagate: {:?}", &msg);
     let nodes = state.topology.view().collect::<Vec<_>>();
-    slog::debug!(
+    debug!(
         state.logger(),
         "will propagate to: {:?}",
         nodes.iter().map(|node| node.id()).collect::<Vec<_>>()
@@ -267,7 +267,7 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
 fn send_gossip(state: GlobalStateR, channels: Channels) {
     for node in state.topology.view() {
         let gossip = Gossip::from_nodes(state.topology.select_gossips(&node));
-        slog::debug!(state.logger(), "sending gossip to node {}", node.id());
+        debug!(state.logger(), "sending gossip to node {}", node.id());
         let res = state.peers.propagate_gossip_to(node.id(), gossip);
         if let Err(gossip) = res {
             connect_and_propagate_with(node, state.clone(), channels.clone(), |handles| {
@@ -288,7 +288,7 @@ fn connect_and_propagate_with<F>(
     let addr = match node.address() {
         Some(addr) => addr,
         None => {
-            slog::info!(
+            info!(
                 state.logger(),
                 "ignoring P2P node without an IP address: {:?}", node
             );
@@ -296,7 +296,7 @@ fn connect_and_propagate_with<F>(
         }
     };
     let node_id = node.id();
-    slog::debug!(state.logger(), "connecting to node {} at {}", node_id, addr);
+    debug!(state.logger(), "connecting to node {} at {}", node_id, addr);
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let state = state.clone();
@@ -307,7 +307,7 @@ fn connect_and_propagate_with<F>(
             match res {
                 Ok(()) => (),
                 Err(e) => {
-                    slog::info!(
+                    info!(
                         state.logger(),
                         "propagation to peer {} failed just after connection: {:?}",
                         connected_node_id,
@@ -317,7 +317,7 @@ fn connect_and_propagate_with<F>(
                 }
             }
         } else {
-            slog::info!(
+            info!(
                 state.logger(),
                 "peer at {} responded with different node id: {}", addr, connected_node_id
             );
@@ -346,7 +346,7 @@ pub fn bootstrap(config: &Configuration, blockchain: BlockchainR, logger: &Logge
             grpc::bootstrap_from_peer(peer, blockchain, logger)
         }
         None => {
-            slog::warn!(logger, "no gRPC peers specified, skipping bootstrap");
+            warn!(logger, "no gRPC peers specified, skipping bootstrap");
         }
     }
 }

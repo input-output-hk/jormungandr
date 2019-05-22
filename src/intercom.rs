@@ -116,14 +116,14 @@ where
     fn poll(&mut self) -> Poll<T, E> {
         let item = match self.receiver.poll() {
             Err(oneshot::Canceled) => {
-                slog::warn!(self.logger, "response canceled by the client request task");
+                warn!(self.logger, "response canceled by the client request task");
                 return Err(Error::from(oneshot::Canceled).into());
             }
             Ok(Async::NotReady) => {
                 return Ok(Async::NotReady);
             }
             Ok(Async::Ready(Err(e))) => {
-                slog::warn!(self.logger, "error processing request: {:?}", e);
+                warn!(self.logger, "error processing request: {:?}", e);
                 return Err(Error::from(e).into());
             }
             Ok(Async::Ready(Ok(item))) => item,
@@ -182,7 +182,7 @@ where
             Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
             Ok(Async::Ready(Some(Ok(item)))) => Ok(Async::Ready(Some(item))),
             Ok(Async::Ready(Some(Err(e)))) => {
-                slog::warn!(self.logger, "error while streaming response: {:?}", e);
+                warn!(self.logger, "error while streaming response: {:?}", e);
                 return Err(e.into());
             }
         }

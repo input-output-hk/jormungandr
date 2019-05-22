@@ -50,7 +50,7 @@ impl Process {
     ) -> Self {
         let (epoch_broadcaster, epoch_receiver) = watch::channel(None);
 
-        slog_info!(service_info.logger(), "preparing");
+        info!(service_info.logger(), "preparing");
 
         Process {
             service_info,
@@ -69,7 +69,7 @@ impl Process {
         new_epoch_notifier: mpsc::Receiver<EpochParameters>,
     ) -> impl Future<Item = (), Error = ()> {
         let error_logger = self.service_info.logger().clone();
-        slog_info!(self.service_info.logger(), "starting");
+        info!(self.service_info.logger(), "starting");
 
         self.spawn_end_of_epoch_reminder();
         for leader in leaders {
@@ -92,7 +92,7 @@ impl Process {
                 }
             })
             .map_err(move |error| {
-                slog_crit!(error_logger, "Error in the Leadership Process" ; "reason" => error.to_string())
+                crit!(error_logger, "Error in the Leadership Process" ; "reason" => error.to_string())
             })
     }
 
@@ -169,7 +169,7 @@ impl EndOfEpochReminder {
     }
 
     fn start(self) -> impl Future<Item = (), Error = ()> {
-        slog_info!(self.logger, "starting");
+        info!(self.logger, "starting");
 
         let handle_logger = self.logger.clone();
         let crit_logger = self.logger;
@@ -185,7 +185,7 @@ impl EndOfEpochReminder {
                 handle_epoch(block_message.clone(), handle_logger.clone(), task_parameters)
             })
             .map_err(move |error| {
-                slog_crit!(crit_logger, "critical error in the Leader task" ; "reason" => error.to_string())
+                crit!(crit_logger, "critical error in the Leader task" ; "reason" => error.to_string())
             })
     }
 }
@@ -214,7 +214,7 @@ fn handle_epoch(
         .duration_since(now)
         .expect("time should always be in the future");
 
-    slog_debug!(
+    debug!(
         logger,
         "scheduling end of epoch";
         "epoch" => date.epoch,
@@ -228,7 +228,7 @@ fn handle_epoch(
     )
     .map_err(|error| EndOfEpochReminderError::DelayFailed { source: error })
     .and_then(move |()| {
-        slog_info!(logger, "End of epoch" ; "epoch" => date.epoch);
+        info!(logger, "End of epoch" ; "epoch" => date.epoch);
         block_message.send(BlockMsg::LeadershipExpectEndOfEpoch);
         future::ok(())
     })

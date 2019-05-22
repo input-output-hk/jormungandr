@@ -105,7 +105,7 @@ impl Blockchain {
 
         let (tip, leaderships) =
             if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)? {
-                slog::info!(logger, "restoring state at tip {}", tip_hash);
+                info!(logger, "restoring state at tip {}", tip_hash);
 
                 let mut tip = None;
 
@@ -118,7 +118,7 @@ impl Blockchain {
                 let mut leaderships = Leaderships::new(&block_0.header, initial_leadership);
 
                 // FIXME: should restore from serialized chain state once we have it.
-                slog::info!(logger, "restoring state from block0 {}", block_0_id);
+                info!(logger, "restoring state from block0 {}", block_0_id);
                 for info in storage.iterate_range(&block_0_id, &tip_hash)? {
                     let info = info?;
                     let parameters = state.get_ledger_parameters();

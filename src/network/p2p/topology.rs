@@ -126,7 +126,7 @@ impl P2pTopology {
     /// each other and will help improve the node connectivity
     pub fn add_module<M: Module + Send + Sync + 'static>(&self, module: M) {
         let mut topology = self.lock.write().unwrap();
-        slog::info!(self.logger, "adding P2P Topology module: {}", module.name());
+        info!(self.logger, "adding P2P Topology module: {}", module.name());
         topology.add_module(module)
     }
 
@@ -142,7 +142,7 @@ impl P2pTopology {
     /// to contact for event dissemination.
     pub fn view(&self) -> impl Iterator<Item = Node> {
         let topology = self.lock.read().unwrap();
-        slog::debug!(
+        debug!(
             self.logger,
             "loading P2P local topology view {:?}",
             topology.view()
@@ -165,14 +165,14 @@ impl P2pTopology {
 
     fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
         // Poldercast API should be better than this
-        slog::debug!(self.logger, "updating P2P local topology");
+        debug!(self.logger, "updating P2P local topology");
         self.lock.write().unwrap().update(new_nodes)
     }
 
     /// this is the function to utilise in order to select gossips to share
     /// with a given node
     pub fn select_gossips(&self, gossip_recipient: &Node) -> impl Iterator<Item = Node> {
-        slog::debug!(
+        debug!(
             self.logger,
             "selecting gossips for {}",
             gossip_recipient.id()

@@ -59,11 +59,11 @@ where
         block_req
             .join(gossip_req)
             .map_err(move |err| {
-                slog::warn!(err_logger, "subscription request failed: {:?}", err);
+                warn!(err_logger, "subscription request failed: {:?}", err);
             })
             .and_then(move |((block_events, node_id), (gossip_sub, node_id_1))| {
                 if node_id != node_id_1 {
-                    slog::warn!(
+                    warn!(
                         global_state.logger(),
                         "peer subscription IDs do not match: {} != {}", node_id, node_id_1
                     );
@@ -120,10 +120,10 @@ where
                     self.service
                         .upload_blocks(stream)
                         .map(move |_| {
-                            slog::debug!(done_logger, "finished uploading blocks to {}", node_id);
+                            debug!(done_logger, "finished uploading blocks to {}", node_id);
                         })
                         .map_err(move |err| {
-                            slog::warn!(err_logger, "UploadBlocks request failed: {:?}", err);
+                            warn!(err_logger, "UploadBlocks request failed: {:?}", err);
                         }),
                 );
             }
@@ -145,7 +145,7 @@ where
             self.service
                 .get_blocks(block_ids)
                 .map_err(move |e| {
-                    slog::warn!(err_logger, "solicitation request GetBlocks failed: {:?}", e);
+                    warn!(err_logger, "solicitation request GetBlocks failed: {:?}", e);
                 })
                 .and_then(move |blocks| {
                     blocks
@@ -154,10 +154,9 @@ where
                             Ok(())
                         })
                         .map_err(move |e| {
-                            slog::warn!(
+                            warn!(
                                 and_then_logger,
-                                "solicitation stream response to GetBlocks failed: {:?}",
-                                e
+                                "solicitation stream response to GetBlocks failed: {:?}", e
                             );
                         })
                 }),
@@ -178,12 +177,12 @@ where
         loop {
             let mut streams_ready = false;
             let block_event_polled = self.block_events.poll().map_err(|e| {
-                slog::info!(self.logger, "block subscription stream failure: {:?}", e);
+                info!(self.logger, "block subscription stream failure: {:?}", e);
             })?;
             match block_event_polled {
                 Async::NotReady => {}
                 Async::Ready(None) => {
-                    slog::debug!(self.logger, "block subscription stream terminated");
+                    debug!(self.logger, "block subscription stream terminated");
                     return Ok(().into());
                 }
                 Async::Ready(Some(event)) => {
@@ -195,7 +194,7 @@ where
             match block_solicitation_polled {
                 Async::NotReady => {}
                 Async::Ready(None) => {
-                    slog::debug!(self.logger, "outbound block solicitation stream closed");
+                    debug!(self.logger, "outbound block solicitation stream closed");
                     return Ok(().into());
                 }
                 Async::Ready(Some(block_ids)) => {
@@ -218,16 +217,14 @@ pub fn connect(
     let err_logger = state.logger().clone();
     grpc::connect(&state)
         .map_err(move |err| {
-            slog::warn!(
+            warn!(
                 err_logger,
-                "error connecting to peer at {}: {:?}",
-                addr,
-                err
+                "error connecting to peer at {}: {:?}", addr, err
             );
         })
         .and_then(move |conn| Client::subscribe(conn, state.global, channels))
         .map(move |(client, comms)| {
-            slog::debug!(
+            debug!(
                 client.logger(),
                 "connected to peer {} at {}",
                 client.remote_node_id(),

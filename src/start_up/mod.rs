@@ -20,7 +20,7 @@ pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
 pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<NodeStorage, Error> {
     match &setting.storage {
         None => {
-            slog::info!(logger, "storing blockchain in memory");
+            info!(logger, "storing blockchain in memory");
             Ok(Box::new(MemoryBlockStore::new()))
         }
         Some(dir) => {
@@ -30,7 +30,7 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<NodeStorag
             })?;
             let mut sqlite = dir.clone();
             sqlite.push("blocks.sqlite");
-            slog::info!(logger, "storing blockchain in '{:?}'", sqlite);
+            info!(logger, "storing blockchain in '{:?}'", sqlite);
             Ok(Box::new(SQLiteBlockStore::new(sqlite)))
         }
     }
@@ -52,7 +52,7 @@ pub fn prepare_block_0(
     match &settings.block_0 {
         Block0Info::Path(path) => {
             use chain_core::property::Deserialize as _;
-            slog::debug!(logger, "parsing block0 from file path `{:?}'", path);
+            debug!(logger, "parsing block0 from file path `{:?}'", path);
             let f = std::fs::File::open(path).map_err(|err| Error::IO {
                 source: err,
                 reason: ErrorKind::Block0,
@@ -65,18 +65,16 @@ pub fn prepare_block_0(
         }
         Block0Info::Hash(block0_id) => {
             if storage.block_exists(&block0_id)? {
-                slog::debug!(
+                debug!(
                     logger,
-                    "retrieving block0 from storage with hash {}",
-                    block0_id
+                    "retrieving block0 from storage with hash {}", block0_id
                 );
                 let (block0, _block0_info) = storage.get_block(block0_id)?;
                 Ok(block0)
             } else {
-                slog::debug!(
+                debug!(
                     logger,
-                    "retrieving block0 from network with hash {}",
-                    block0_id
+                    "retrieving block0 from network with hash {}", block0_id
                 );
                 network::fetch_block(&settings.network, &block0_id, logger).map_err(|e| e.into())
             }

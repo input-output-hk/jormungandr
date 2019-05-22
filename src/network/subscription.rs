@@ -23,7 +23,7 @@ where
                 Ok(())
             })
             .map_err(move |err| {
-                slog::info!(logger, "block subscription stream failure: {:?}", err);
+                info!(logger, "block subscription stream failure: {:?}", err);
             }),
     )
 }
@@ -36,12 +36,12 @@ where
     tokio::spawn(
         inbound
             .for_each(move |gossip| {
-                slog::debug!(state.logger(), "received gossip: {:?}", gossip);
+                debug!(state.logger(), "received gossip: {:?}", gossip);
                 state.topology.update(gossip.into_nodes());
                 Ok(())
             })
             .map_err(move |err| {
-                slog::info!(err_logger, "gossip subscription stream failure: {:?}", err);
+                info!(err_logger, "gossip subscription stream failure: {:?}", err);
             }),
     )
 }

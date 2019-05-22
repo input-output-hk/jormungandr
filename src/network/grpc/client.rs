@@ -32,7 +32,7 @@ pub fn fetch_block(
     hash: &HeaderHash,
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
-    slog::info!(logger, "fetching block {} from {}", hash, peer.connection);
+    info!(logger, "fetching block {} from {}", hash, peer.connection);
     let addr = peer.address();
     let origin = origin_authority(addr);
     let fetch = Connect::new(TcpConnector, DefaultExecutor::current())

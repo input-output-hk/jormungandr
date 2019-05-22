@@ -111,7 +111,7 @@ impl Services {
             .name(name.to_owned())
             // .stack_size(2 * 1024 * 1024)
             .spawn(move || {
-                slog::info!(thread_service_info.logger, "starting task: {}", name);
+                info!(thread_service_info.logger, "starting task: {}", name);
                 f(thread_service_info)
             })
             .unwrap_or_else(|err| panic!("Cannot spawn thread {}: {}", name, err));
@@ -142,7 +142,7 @@ impl Services {
             match rx.recv() {
                 Ok(msg) => f(&info, Input::Input(msg)),
                 Err(err) => {
-                    slog::warn!(
+                    warn!(
                         info.logger,
                         "Shutting down service {} (up since {}): {}",
                         name,
