@@ -52,7 +52,7 @@ fn start_jormungandr_node_sync_with_retry(
     let first_attempt = try_to_start_jormungandr_node(rest_address, command);
     match first_attempt {
         Ok(guard) => return guard,
-        _ => (),
+        _ => println!("failed to start jormungandr node. retrying.."),
     };
     config.node_config.regenerate_ports();
     let second_attempt = try_to_start_jormungandr_node(rest_address, command);

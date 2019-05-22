@@ -1,8 +1,14 @@
 #![allow(dead_code)]
 
+extern crate lazy_static;
+extern crate rand;
+
+use self::lazy_static::lazy_static;
+use self::rand::Rng;
 use super::file_utils;
 use std::env;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU16, Ordering};
 
 pub mod genesis_model;
 pub mod jormungandr_config;
@@ -51,4 +57,15 @@ fn get_working_directory() -> PathBuf {
     output_directory.pop();
     output_directory.pop();
     output_directory
+}
+
+lazy_static! {
+    static ref NEXT_AVAILABLE_PORT_NUMBER: AtomicU16 = {
+        let initial_port = rand::thread_rng().gen_range(6000, 60000);
+        AtomicU16::new(initial_port)
+    };
+}
+
+pub fn get_available_port() -> u16 {
+    NEXT_AVAILABLE_PORT_NUMBER.fetch_add(1, Ordering::SeqCst)
 }
