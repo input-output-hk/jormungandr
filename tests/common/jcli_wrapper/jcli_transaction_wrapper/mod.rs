@@ -16,9 +16,9 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct JCLITransactionWrapper {
-    staging_file_path: PathBuf,
+    pub staging_file_path: PathBuf,
     commands: TransactionCommands,
-    genesis_hash: String,
+    pub genesis_hash: String,
 }
 
 impl JCLITransactionWrapper {
@@ -158,6 +158,14 @@ impl JCLITransactionWrapper {
         self
     }
 
+    pub fn assert_add_account_fail(&self, account_addr: &str, amount: &i32, expected_msg: &str) {
+        process_assert::assert_process_failed_and_matches_message(
+            self.commands
+                .get_add_account_command(&account_addr, &amount, &self.staging_file_path),
+            expected_msg,
+        );
+    }
+
     pub fn assert_add_account_from_legacy<'a>(
         &'a mut self,
         fund: &Fund,
@@ -259,6 +267,20 @@ impl JCLITransactionWrapper {
         self
     }
 
+    pub fn assert_make_witness_fails(&self, witness: &Witness, expected_msg: &str) {
+        process_assert::assert_process_failed_and_matches_message(
+            self.commands.get_make_witness_command(
+                &witness.block_hash,
+                &witness.transaction_id,
+                &witness.addr_type,
+                &witness.spending_account_counter,
+                &witness.file,
+                &witness.private_key_path,
+            ),
+            &expected_msg,
+        );
+    }
+
     pub fn create_witness_from_key(&self, private_key: &str, addr_type: &str) -> Witness {
         let transaction_id = self.get_transaction_id();
         let witness = Witness::new(
@@ -278,22 +300,11 @@ impl JCLITransactionWrapper {
 
     pub fn assert_add_witness_fail<'a>(&'a mut self, witness: &Witness, expected_part: &str) -> () {
         println!("Runing add transaction witness command...");
-
-        let output = process_utils::run_process_and_get_output(
+        process_assert::assert_process_failed_and_matches_message(
             self.commands
                 .get_add_witness_command(&witness.file, &self.staging_file_path),
+            expected_part,
         );
-        let actual = output.err_as_single_line();
-
-        assert_eq!(
-            actual.contains(expected_part),
-            true,
-            "message : '{}' does not contain expected part '{}'",
-            &actual,
-            &expected_part
-        );
-
-        process_assert::assert_process_failed(output);
     }
 
     pub fn assert_add_witness<'a>(
@@ -330,6 +341,15 @@ impl JCLITransactionWrapper {
         let content = output.as_single_line();
         process_assert::assert_process_exited_successfully(output);
         content
+    }
+
+    pub fn assert_transaction_to_message_fails(&self, expected_msg: &str) {
+        println!("Runing transaction to message command...");
+        process_assert::assert_process_failed_and_matches_message(
+            self.commands
+                .get_transaction_message_to_command(&self.staging_file_path),
+            expected_msg,
+        );
     }
 
     pub fn get_transaction_id(&self) -> String {

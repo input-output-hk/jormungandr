@@ -6,7 +6,7 @@ use std::process::Child;
 
 #[derive(Debug)]
 pub struct ProcessKillGuard {
-    child: Child,
+    pub child: Child,
     description: String,
 }
 

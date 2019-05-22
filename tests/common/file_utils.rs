@@ -41,7 +41,7 @@ pub fn get_temp_folder() -> PathBuf {
 /// Creates file in temporary folder
 pub fn create_file_in_temp(file_name: &str, content: &str) -> PathBuf {
     let path = get_path_in_temp(&file_name);
-    let mut file = File::create(&path).unwrap();
+    let mut file = std::fs::File::create(&path).unwrap();
     file.write_all(content.as_bytes())
         .expect(&format!("cannot write to file {:?}", path));
     path
@@ -49,7 +49,7 @@ pub fn create_file_in_temp(file_name: &str, content: &str) -> PathBuf {
 
 /// Creates file with content
 pub fn create_file_with_content(path: &PathBuf, content: &str) -> () {
-    let mut file = File::create(&path).unwrap();
+    let mut file = std::fs::File::create(&path).unwrap();
     file.write_all(content.as_bytes())
         .expect(&format!("cannot write to file {:?}", path));
 }
@@ -57,4 +57,13 @@ pub fn create_file_with_content(path: &PathBuf, content: &str) -> () {
 pub fn read_file(path: &PathBuf) -> String {
     let contents = fs::read_to_string(path).expect("cannot read file");
     contents
+}
+
+pub fn make_readonly(path: &PathBuf) {
+    if !path.exists() {
+        std::fs::File::create(&path).unwrap();
+    }
+    let mut perms = fs::metadata(path.as_os_str()).unwrap().permissions();
+    perms.set_readonly(true);
+    fs::set_permissions(path.as_os_str(), perms).expect("cannot set permissions");
 }

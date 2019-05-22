@@ -3,7 +3,7 @@
 use super::configuration::genesis_model::GenesisYaml;
 use super::configuration::node_config_model::NodeConfig;
 use super::configuration::secret_model::SecretModel;
-use super::data::address::{Account, Delegation, Utxo};
+use super::data::address::{Account, AddressDataProvider, Delegation, Utxo};
 use super::data::utxo::Utxo as UtxoData;
 use super::file_utils;
 use super::jcli_wrapper;
@@ -84,6 +84,23 @@ pub fn start_jormungandr_node_as_leader(config: &mut JormungandrConfig) -> Proce
     );
 
     config.genesis_block_path = genesis_block_path.clone();
+    config.genesis_block_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
+
+    println!("Starting node with configuration : {:?}", &config);
+    let process = start_jormungandr_node_and_wait(&rest_address, command);
+    process
+}
+
+pub fn start_jormungandr_node_as_slave(config: &mut JormungandrConfig) -> ProcessKillGuard {
+    let rest_address = &config.node_config.get_node_address();
+    let config_path = NodeConfig::serialize(&config.node_config);
+    let genesis_block_hash = &config.genesis_block_hash;
+
+    let command = jormungandr_wrapper::get_start_jormungandr_as_slave_node_command(
+        &config_path,
+        &genesis_block_hash,
+    );
+
     println!("Starting node with configuration : {:?}", &config);
     let process = start_jormungandr_node_and_wait(&rest_address, command);
     process
@@ -157,10 +174,17 @@ pub fn create_new_delegation_address() -> Delegation {
     utxo_with_delegation
 }
 
-pub fn get_utxo_for_address(utxo_address: &Utxo, jormungandr_rest_address: &str) -> UtxoData {
+pub fn get_utxo_for_address<T: AddressDataProvider>(
+    utxo_address: &T,
+    jormungandr_rest_address: &str,
+) -> UtxoData {
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
     utxos
         .into_iter()
-        .find(|x| x.out_addr == utxo_address.address)
-        .expect(&format!("None utxo record found for {:?}", &utxo_address))
+        .find(|x| x.out_addr == utxo_address.get_address())
+        .expect(&format!(
+            "None utxo record found for {} of type({})",
+            &utxo_address.get_address(),
+            &utxo_address.get_address_type()
+        ))
 }
