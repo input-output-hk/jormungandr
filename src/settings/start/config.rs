@@ -1,6 +1,6 @@
 use crate::{
     network::p2p::topology::{NodeId, NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC},
-    settings::logging::LogFormat,
+    settings::logging::LogOutput,
 };
 
 use poldercast;
@@ -22,7 +22,7 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConfigLogSettings {
     pub verbosity: Option<u8>,
-    pub format: Option<LogFormat>,
+    pub output: Option<LogOutput>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

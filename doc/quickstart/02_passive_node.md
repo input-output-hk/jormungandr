@@ -47,7 +47,7 @@ Fields description:
   blockchain is stored in memory only.
 - *logger*: (optional) logger configuration,
     - *verbosity*: 0 - warning, 1 - info, 2 -debug, 3 and above - trace
-    - *format*: log output format - plain or json.
+    - *output*: log output - stderr or stderr_json.
 - *rest*: (optional) configuration of the rest endpoint.
     - *listen*: listen address
     - *pkcs12*: certificate file (optional)

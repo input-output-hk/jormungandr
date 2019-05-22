@@ -41,7 +41,7 @@ Example of node config:
 storage: "/tmp/storage"
 logger:
   verbosity: 1
-  format: json
+  output: stderr_json
 peer_2_peer:
   trusted_peers:
     - id: 1

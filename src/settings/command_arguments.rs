@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::{blockcfg::HeaderHash, settings::logging::LogFormat};
+use crate::{blockcfg::HeaderHash, settings::logging::LogOutput};
 
 #[derive(StructOpt, Debug)]
 pub struct StartArguments {
@@ -69,9 +69,9 @@ pub struct CommandLine {
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     pub verbose: u8,
 
-    /// Set format of the log emitted. Can be "json" or "plain"
-    #[structopt(long = "log-format", parse(try_from_str), default_value = "plain")]
-    pub log_format: LogFormat,
+    /// Set format of the log emitted. Can be "stderr" or "stderr_json"
+    #[structopt(long = "log-output", parse(try_from_str), default_value = "stderr")]
+    pub log_output: LogOutput,
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,
