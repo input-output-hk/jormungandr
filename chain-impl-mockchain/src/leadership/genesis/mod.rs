@@ -173,14 +173,16 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     pub fn test_phi() {
         let slots_per_epoch = 200000;
+        let active_slots_coeff = 0.1;
 
         let (_genesis_hash, mut ledger) = create_initial_fake_ledger(
             Discrimination::Test,
             &vec![],
             slots_per_epoch,
-            Milli::from_millis(100),
+            Milli::from_millis((active_slots_coeff * 1000.0) as u64),
         );
 
         let mut pools = HashMap::<StakePoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
@@ -219,7 +221,9 @@ mod test {
 
         let mut times_selected_small = 0;
 
-        for _i in 0..200 {
+        let nr_slots = slots_per_epoch;
+
+        for _i in 0..nr_slots {
             let mut any_found = false;
             let mut any_small = false;
             for (pool_id, (pool_vrf_private_key, times_selected, value)) in pools.iter_mut() {
@@ -246,16 +250,25 @@ mod test {
             date = date.next(&era);
         }
 
-        /*
-        println!("empty slots = {}", empty_slots);
         for (pool_id, (_pool_vrf_private_key, times_selected, stake)) in pools.iter_mut() {
             println!(
                 "pool id={} stake={} slots={}",
                 pool_id, stake.0, times_selected
             );
         }
-        println!("slots small = {}", times_selected_small);
-        */
+        println!("empty slots = {}", empty_slots);
+        println!("small stake slots = {}", times_selected_small);
+        let times_selected_big = pools[&big_pool_id].1;
+        println!("big stake slots = {}", times_selected_big);
+
+        // Check that we got approximately the correct number of active slots.
+        assert!(empty_slots > (nr_slots as f64 * (1.0 - active_slots_coeff - 0.01)) as u32);
+        assert!(empty_slots < (nr_slots as f64 * (1.0 - active_slots_coeff + 0.01)) as u32);
+
+        // Check that splitting a stake doesn't have a big effect on
+        // the chance of becoming slot leader.
+        assert!((times_selected_big as f64 / times_selected_small as f64) > 0.98);
+        assert!((times_selected_big as f64 / times_selected_small as f64) < 1.02);
     }
 
 }
