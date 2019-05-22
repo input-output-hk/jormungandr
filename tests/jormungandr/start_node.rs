@@ -1,6 +1,5 @@
 #![cfg(feature = "integration-test")]
 
-mod common;
 use common::configuration::node_config_model::Peer;
 use common::startup;
 
