@@ -23,7 +23,11 @@ impl SecretModel {
         node_config_file_path
     }
 
-    pub fn new(signing_key: &str) -> SecretModel {
+    pub fn empty() -> Self {
+        SecretModel::new("")
+    }
+
+    pub fn new(signing_key: &str) -> Self {
         SecretModel {
             bft: BFT {
                 signing_key: signing_key.to_string(),

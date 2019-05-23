@@ -1,7 +1,6 @@
 #![cfg(feature = "integration-test")]
 
 use common::configuration::genesis_model::Fund;
-use common::configuration::jormungandr_config::JormungandrConfig;
 use common::configuration::node_config_model::Peer;
 use common::jcli_wrapper;
 use common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
@@ -12,20 +11,22 @@ pub fn two_nodes_communication() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
 
-    let mut leader_config = startup::from_initial_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: 100,
-    }]);
+    let mut leader_config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: 100,
+        }])
+        .build();
 
     let _leader_jormungandr = startup::start_jormungandr_node_as_leader(&mut leader_config);
 
-    let mut trusted_node_config = JormungandrConfig::new();
-    trusted_node_config.node_config.peer_2_peer.trusted_peers = Some(vec![Peer {
-        id: 1,
-        address: leader_config.node_config.peer_2_peer.public_address.clone(),
-    }]);
-
-    trusted_node_config.genesis_block_hash = leader_config.genesis_block_hash.clone();
+    let mut trusted_node_config = startup::ConfigurationBuilder::new()
+        .with_trusted_peers(vec![Peer {
+            id: 1,
+            address: leader_config.node_config.peer_2_peer.public_address.clone(),
+        }])
+        .with_block_hash(leader_config.genesis_block_hash.clone())
+        .build();
 
     let _trusted_jormungandr = startup::start_jormungandr_node_as_slave(&mut trusted_node_config);
     let leader_jormungandr_rest_address = leader_config.get_node_address();
