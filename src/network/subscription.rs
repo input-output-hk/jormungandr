@@ -28,15 +28,15 @@ where
     )
 }
 
-pub fn process_gossip<S>(inbound: S, state: GlobalStateR) -> tokio::executor::Spawn
+pub fn process_gossip<S>(inbound: S, state: GlobalStateR, logger: Logger) -> tokio::executor::Spawn
 where
     S: Stream<Item = Gossip<Node>, Error = core_error::Error> + Send + 'static,
 {
-    let err_logger = state.logger().clone();
+    let err_logger = logger.clone();
     tokio::spawn(
         inbound
             .for_each(move |gossip| {
-                debug!(state.logger(), "received gossip: {:?}", gossip);
+                debug!(logger, "received gossip: {:?}", gossip);
                 state.topology.update(gossip.into_nodes());
                 Ok(())
             })

@@ -27,18 +27,20 @@ use slog::Logger;
 pub struct NodeService {
     channels: Channels,
     global_state: GlobalStateR,
+    logger: Logger,
 }
 
 impl NodeService {
     pub fn new(channels: Channels, global_state: GlobalStateR) -> Self {
         NodeService {
             channels,
+            logger: global_state.logger().new(o!(::log::KEY_TASK => "server")),
             global_state,
         }
     }
 
     pub fn logger(&self) -> &Logger {
-        &self.global_state.logger()
+        &self.logger
     }
 }
 
@@ -219,7 +221,7 @@ impl GossipService for NodeService {
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        subscription::process_gossip(inbound, self.global_state.clone());
+        subscription::process_gossip(inbound, self.global_state.clone(), self.logger().clone());
 
         let subscription = self.global_state.peers.subscribe_to_gossip(subscriber);
         future::ok(subscription)

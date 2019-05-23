@@ -123,8 +123,8 @@ impl ConnectionState {
     fn new(global: GlobalStateR, peer: &Peer) -> Self {
         ConnectionState {
             timeout: peer.timeout,
-            connection: peer.connection,
-            logger: global.logger().clone(),
+            connection: peer.connection.clone(),
+            logger: global.logger().new(o!("peer_addr" => peer.connection)),
             global,
         }
     }
@@ -171,25 +171,21 @@ pub fn run(
         .collect::<Vec<_>>();
     let state = global_state.clone();
     let conn_channels = channels.clone();
-    let conn_logger = logger.clone();
     let connections = stream::iter_ok(addrs).for_each(move |addr| {
-        info!(conn_logger, "connecting to initial gossip peer at {}", addr);
         let peer = Peer::new(addr, Protocol::Grpc);
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
-        let client_logger = conn_logger.clone();
+        info!(conn_state.logger(), "connecting to initial gossip peer");
         client::connect(conn_state, conn_channels.clone()).map(move |(client, mut comms)| {
+            // TODO
             let node_id = client.remote_node_id();
             let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
             match comms.try_send_gossip(gossip) {
                 Ok(()) => state.peers.insert_peer(node_id, comms),
                 Err(e) => {
                     warn!(
-                        client_logger,
-                        "gossiping to peer {} at {} failed just after connection: {:?}",
-                        node_id,
-                        addr,
-                        e
+                        client.logger(),
+                        "gossiping to peer failed just after connection: {:?}", e
                     );
                 }
             }
@@ -296,10 +292,9 @@ fn connect_and_propagate_with<F>(
         }
     };
     let node_id = node.id();
-    debug!(state.logger(), "connecting to node {} at {}", node_id, addr);
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
-    let state = state.clone();
+    debug!(conn_state.logger(), "connecting to node {}", node_id);
     let cf = client::connect(conn_state, channels.clone()).map(move |(client, mut comms)| {
         let connected_node_id = client.remote_node_id();
         if connected_node_id == node_id {
@@ -308,18 +303,16 @@ fn connect_and_propagate_with<F>(
                 Ok(()) => (),
                 Err(e) => {
                     info!(
-                        state.logger(),
-                        "propagation to peer {} failed just after connection: {:?}",
-                        connected_node_id,
-                        e
+                        client.logger(),
+                        "propagation to peer failed just after connection: {:?}", e
                     );
                     return;
                 }
             }
         } else {
             info!(
-                state.logger(),
-                "peer at {} responded with different node id: {}", addr, connected_node_id
+                client.logger(),
+                "peer responded with different node id: {}", connected_node_id
             );
         };
 

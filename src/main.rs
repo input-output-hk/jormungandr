@@ -67,6 +67,7 @@ pub mod blockchain;
 pub mod client;
 pub mod intercom;
 pub mod leadership;
+pub mod log;
 pub mod network;
 pub mod rest;
 pub mod secure;
@@ -220,12 +221,14 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         storage,
         logger,
     } = initialized_node;
+    let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
     let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
 
-    let blockchain = start_up::load_blockchain(block0, storage, new_epoch_announcements, &logger)?;
+    let blockchain =
+        start_up::load_blockchain(block0, storage, new_epoch_announcements, &bootstrap_logger)?;
 
-    network::bootstrap(&settings.network, blockchain.clone(), &logger);
+    network::bootstrap(&settings.network, blockchain.clone(), &bootstrap_logger);
 
     Ok(BootstrappedNode {
         settings,
@@ -246,14 +249,17 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
     let raw_settings = RawSettings::load(command_line)?;
     let logger = raw_settings.to_logger();
-    let settings = raw_settings.try_into_settings(&logger)?;
-    let storage = start_up::prepare_storage(&settings, &logger)?;
+
+    let init_logger = logger.new(o!(log::KEY_TASK => "init"));
+    let settings = raw_settings.try_into_settings(&init_logger)?;
+    let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
 
     let block0 = start_up::prepare_block_0(
-        &settings, &storage, &logger,
-        /* add network to fetch block0 */
+        &settings,
+        &storage,
+        &init_logger, /* add network to fetch block0 */
     )?;
 
     Ok(InitializedNode {

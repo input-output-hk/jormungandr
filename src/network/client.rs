@@ -4,7 +4,7 @@ use super::{
         comm::{PeerComms, Subscription},
         topology,
     },
-    subscription, Channels, ConnectionState, GlobalStateR,
+    subscription, Channels, ConnectionState,
 };
 use crate::{
     blockcfg::{Block, HeaderHash},
@@ -49,13 +49,13 @@ where
 {
     fn subscribe(
         mut service: S,
-        global_state: GlobalStateR,
+        state: ConnectionState,
         channels: Channels,
     ) -> impl Future<Item = (Self, PeerComms), Error = ()> {
         let mut peer_comms = PeerComms::new();
         let block_req = service.block_subscription(peer_comms.subscribe_to_block_announcements());
         let gossip_req = service.gossip_subscription(peer_comms.subscribe_to_gossip());
-        let err_logger = global_state.logger().clone();
+        let err_logger = state.logger().clone();
         block_req
             .join(gossip_req)
             .map_err(move |err| {
@@ -64,16 +64,16 @@ where
             .and_then(move |((block_events, node_id), (gossip_sub, node_id_1))| {
                 if node_id != node_id_1 {
                     warn!(
-                        global_state.logger(),
+                        state.logger(),
                         "peer subscription IDs do not match: {} != {}", node_id, node_id_1
                     );
                     return Err(());
                 }
-                let client_logger = global_state.logger().clone();
+                let client_logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
 
                 // Spin off processing tasks for subscriptions that can be
                 // managed with just the global state.
-                subscription::process_gossip(gossip_sub, global_state);
+                subscription::process_gossip(gossip_sub, state.global, client_logger.clone());
 
                 // Plug the block solicitations to be handled
                 // via client requests.
@@ -213,23 +213,14 @@ pub fn connect(
     state: ConnectionState,
     channels: Channels,
 ) -> impl Future<Item = (Client<grpc::Connection>, PeerComms), Error = ()> {
-    let addr = state.connection;
     let err_logger = state.logger().clone();
     grpc::connect(&state)
         .map_err(move |err| {
-            warn!(
-                err_logger,
-                "error connecting to peer at {}: {:?}", addr, err
-            );
+            warn!(err_logger, "error connecting to peer: {:?}", err);
         })
-        .and_then(move |conn| Client::subscribe(conn, state.global, channels))
+        .and_then(move |conn| Client::subscribe(conn, state, channels))
         .map(move |(client, comms)| {
-            debug!(
-                client.logger(),
-                "connected to peer {} at {}",
-                client.remote_node_id(),
-                addr
-            );
+            debug!(client.logger(), "connected to peer",);
             (client, comms)
         })
 }

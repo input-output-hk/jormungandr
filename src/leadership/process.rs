@@ -163,7 +163,7 @@ impl EndOfEpochReminder {
     ) -> Self {
         EndOfEpochReminder {
             epoch_receiver,
-            logger: slog::Logger::root(logger, o!("task" => "End Of Epoch Reminder")),
+            logger: slog::Logger::root(logger, o!(::log::KEY_TASK => "End Of Epoch Reminder")),
             block_message_box,
         }
     }

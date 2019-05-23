@@ -104,17 +104,17 @@ impl Services {
         let thread_service_info = ThreadServiceInfo {
             name: name,
             up_time: now,
-            logger: logger.new(o!("task" => name)).into_erased(),
+            logger: logger.new(o!(::log::KEY_TASK => name)).into_erased(),
         };
 
         let handler = thread::Builder::new()
             .name(name.to_owned())
             // .stack_size(2 * 1024 * 1024)
             .spawn(move || {
-                info!(thread_service_info.logger, "starting task: {}", name);
+                info!(thread_service_info.logger, "starting task");
                 f(thread_service_info)
             })
-            .unwrap_or_else(|err| panic!("Cannot spawn thread {}: {}", name, err));
+            .unwrap_or_else(|err| panic!("Cannot spawn thread: {}", err));
 
         let task = Service::new_handler(name, handler, now);
         self.services.push(task);
@@ -182,7 +182,7 @@ impl Services {
         let future_service_info = TokioServiceInfo {
             name: name,
             up_time: now,
-            logger: logger.new(o!("task" => name)).into_erased(),
+            logger: logger.new(o!(::log::KEY_TASK => name)).into_erased(),
             executor: executor,
         };
 
