@@ -1,4 +1,5 @@
 use crate::blockcfg::{Block, Header, HeaderHash, Message, MessageId};
+use crate::fragment;
 use crate::network::p2p::topology::NodeId;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
@@ -216,7 +217,7 @@ where
 #[derive(Debug)]
 pub enum TransactionMsg {
     ProposeTransaction(Vec<MessageId>, ReplyHandle<Vec<bool>>),
-    SendTransaction(Vec<Message>),
+    SendTransaction(fragment::Origin, Vec<Message>),
     GetTransactions(Vec<MessageId>, ReplyStreamHandle<Message>),
 }
 

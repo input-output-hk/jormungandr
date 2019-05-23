@@ -1,10 +1,10 @@
 use crate::{
     blockcfg::{BlockDate, Epoch},
     blockchain::Tip,
+    fragment::Pool,
     intercom::BlockMsg,
     leadership::{EpochParameters, Leadership, Task, TaskParameters},
     secure::enclave::{Enclave, LeaderId},
-    transaction::TPoolR,
     utils::{async_msg::MessageBox, task::TokioServiceInfo},
 };
 use chain_core::property::BlockDate as _;
@@ -30,7 +30,7 @@ custom_error! { pub ProcessError
 pub struct Process {
     service_info: TokioServiceInfo,
 
-    transaction_pool: TPoolR,
+    fragment_pool: Pool,
     blockchain_tip: Tip,
 
     block_message_box: MessageBox<BlockMsg>,
@@ -45,7 +45,7 @@ impl Process {
     /// [`Process`]: ./struct.Process.html
     pub fn new(
         service_info: TokioServiceInfo,
-        transaction_pool: TPoolR,
+        fragment_pool: Pool,
         blockchain_tip: Tip,
         block_message_box: MessageBox<BlockMsg>,
     ) -> Self {
@@ -55,7 +55,7 @@ impl Process {
 
         Process {
             service_info,
-            transaction_pool,
+            fragment_pool,
             blockchain_tip,
             block_message_box,
             epoch_broadcaster,
@@ -104,14 +104,14 @@ impl Process {
         let epoch_receiver = self.epoch_receiver.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let logger = self.service_info.logger().clone();
-        let transaction_pool = self.transaction_pool.clone();
+        let fragment_pool = self.fragment_pool.clone();
         let block_message = self.block_message_box.clone();
         let task = Task::new(
             logger,
             leader,
             enclave,
             blockchain_tip,
-            transaction_pool,
+            fragment_pool,
             epoch_receiver,
             block_message,
         );

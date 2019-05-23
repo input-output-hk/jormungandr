@@ -42,7 +42,7 @@ pub enum BlockConfig {}
 /// all the different channels the network may need to talk to
 pub struct Channels {
     pub client_box: TaskMessageBox<ClientMsg>,
-    pub transaction_box: TaskMessageBox<TransactionMsg>,
+    pub transaction_box: MessageBox<TransactionMsg>,
     pub block_box: MessageBox<BlockMsg>,
 }
 

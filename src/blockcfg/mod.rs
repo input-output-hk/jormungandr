@@ -11,6 +11,7 @@ pub use chain_impl_mockchain::{
     ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
     message::{ConfigParams, Message, MessageId},
     multiverse::Multiverse,
+    value::{Value, ValueError},
 };
 use std::time::{Duration, SystemTime};
 

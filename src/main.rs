@@ -16,9 +16,11 @@ extern crate chain_storage_sqlite;
 extern crate chain_time;
 extern crate clap;
 extern crate cryptoxide;
+#[macro_use(try_ready)]
 extern crate futures;
 extern crate generic_array;
 extern crate http;
+extern crate jormungandr_utils;
 extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
@@ -54,18 +56,17 @@ use crate::{
     rest::v0::node::stats::StatsCounter,
     secure::enclave::Enclave,
     settings::start::Settings,
-    transaction::TPool,
     utils::{async_msg, task::Services},
 };
-use chain_impl_mockchain::message::{Message, MessageId};
 use futures::Future;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
+pub mod fragment;
 pub mod intercom;
 pub mod leadership;
 pub mod log;
@@ -75,7 +76,6 @@ pub mod secure;
 pub mod settings;
 pub mod start_up;
 pub mod state;
-pub mod transaction;
 pub mod utils;
 
 fn start() -> Result<(), start_up::Error> {
@@ -93,34 +93,38 @@ pub struct BootstrappedNode {
     logger: Logger,
 }
 
+const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
-    let mut services = Services::new();
-
-    let tpool_data: TPool<MessageId, Message> = TPool::new();
-    let tpool = Arc::new(RwLock::new(tpool_data));
+    let mut services = Services::new(bootstrapped_node.logger.clone());
 
     // initialize the network propagation channel
     let (mut network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+    let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
 
     let stats_counter = StatsCounter::default();
-    let logger = &bootstrapped_node.logger;
 
-    let transaction_task = {
-        let tpool = tpool.clone();
-        let blockchain = bootstrapped_node.blockchain.clone();
-        let stats_counter = stats_counter.clone();
-        services.spawn_with_inputs("transaction", logger, move |info, input| {
-            transaction::handle_input(info, &blockchain, &tpool, &stats_counter, input)
-        })
+    let (fragment_pool, pool_logs) = {
+        use std::time::Duration;
+        let process = fragment::Process::new(
+            Duration::from_secs(3600),
+            Duration::from_secs(3600 * 2),
+            Duration::from_secs(3600 / 15),
+        );
+
+        let pool = process.pool().clone();
+        let logs = process.logs().clone();
+
+        services.spawn_future("fragment", move |info| process.start(info, fragment_queue));
+        (pool, logs)
     };
 
     let block_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_future_with_inputs("block", logger, move |info, input| {
+        services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(
                 info,
                 &blockchain,
@@ -134,23 +138,23 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let client_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
-        services.spawn_with_inputs("client-query", logger, move |info, input| {
+        services.spawn_with_inputs("client-query", move |info, input| {
             client::handle_input(info, &blockchain, input)
         })
     };
 
     {
         let client_msgbox = client_task.clone();
-        let transaction_msgbox = transaction_task.clone();
+        let fragment_msgbox = fragment_msgbox.clone();
         let block_msgbox = block_task.clone();
         let config = bootstrapped_node.settings.network.clone();
         let channels = network::Channels {
             client_box: client_msgbox,
-            transaction_box: transaction_msgbox,
+            transaction_box: fragment_msgbox,
             block_box: block_msgbox,
         };
 
-        services.spawn("network", logger, move |info| {
+        services.spawn("network", move |info| {
             network::run(config, network_queue, channels, info.into_logger());
         });
     }
@@ -171,16 +175,16 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let enclave = Enclave::from_vec(leader_secrets);
 
     {
-        let tpool = tpool.clone();
+        let fragment_pool = fragment_pool.clone();
         let block_task = block_task.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
 
         let enclave = enclave.clone();
 
-        services.spawn_future("leadership", logger, move |info| {
+        services.spawn_future("leadership", move |info| {
             let process = self::leadership::Process::new(
                 info,
-                tpool,
+                fragment_pool,
                 blockchain.lock_read().tip.clone(),
                 block_task,
             );
@@ -194,7 +198,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             let context = rest::Context {
                 stats_counter,
                 blockchain: bootstrapped_node.blockchain.clone(),
-                transaction_task: Arc::new(Mutex::new(transaction_task)),
+                transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
             };
             Some(rest::start_rest_server(&rest, context)?)
         }

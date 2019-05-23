@@ -23,6 +23,7 @@ const TASK_STACK_SIZE: usize = 2 * 1024 * 1024;
 
 /// hold onto the different services created
 pub struct Services {
+    logger: Logger,
     services: Vec<Service>,
 }
 
@@ -85,8 +86,9 @@ enum Inner {
 
 impl Services {
     /// create a new set of services
-    pub fn new() -> Self {
+    pub fn new(logger: Logger) -> Self {
         Services {
+            logger: logger,
             services: Vec::new(),
         }
     }
@@ -95,7 +97,7 @@ impl Services {
     /// given function does not return. As soon as the function return
     /// the service stop
     ///
-    pub fn spawn<F>(&mut self, name: &'static str, logger: &Logger, f: F)
+    pub fn spawn<F>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(ThreadServiceInfo) -> (),
         F: Send + 'static,
@@ -104,7 +106,7 @@ impl Services {
         let thread_service_info = ThreadServiceInfo {
             name: name,
             up_time: now,
-            logger: logger.new(o!(::log::KEY_TASK => name)).into_erased(),
+            logger: self.logger.new(o!(::log::KEY_TASK => name)).into_erased(),
         };
 
         let handler = thread::Builder::new()
@@ -125,12 +127,7 @@ impl Services {
     /// the service will stop once there is no more input to read: the function
     /// will be called one last time with `Input::Shutdown` and then will return
     ///
-    pub fn spawn_with_inputs<F, Msg>(
-        &mut self,
-        name: &'static str,
-        logger: &Logger,
-        mut f: F,
-    ) -> TaskMessageBox<Msg>
+    pub fn spawn_with_inputs<F, Msg>(&mut self, name: &'static str, mut f: F) -> TaskMessageBox<Msg>
     where
         F: FnMut(&ThreadServiceInfo, Input<Msg>) -> (),
         F: Send + 'static,
@@ -138,7 +135,7 @@ impl Services {
     {
         let (tx, rx) = mpsc::channel::<Msg>();
 
-        self.spawn(name, logger, move |info| loop {
+        self.spawn(name, move |info| loop {
             match rx.recv() {
                 Ok(msg) => f(&info, Input::Input(msg)),
                 Err(err) => {
@@ -162,7 +159,7 @@ impl Services {
     ///
     /// * utilising one thread only;
     /// * 2MiB stack size max
-    pub fn spawn_future<F, T>(&mut self, name: &'static str, logger: &Logger, f: F)
+    pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
         T: Future<Item = (), Error = ()> + Send + 'static,
@@ -182,7 +179,7 @@ impl Services {
         let future_service_info = TokioServiceInfo {
             name: name,
             up_time: now,
-            logger: logger.new(o!(::log::KEY_TASK => name)).into_erased(),
+            logger: self.logger.new(o!(::log::KEY_TASK => name)).into_erased(),
             executor: executor,
         };
 
@@ -201,7 +198,6 @@ impl Services {
     pub fn spawn_future_with_inputs<F, Msg, T>(
         &mut self,
         name: &'static str,
-        logger: &Logger,
         mut f: F,
     ) -> MessageBox<Msg>
     where
@@ -212,7 +208,7 @@ impl Services {
         <T as futures::IntoFuture>::Future: Send,
     {
         let (msg_box, msg_queue) = async_msg::channel(MESSAGE_QUEUE_LEN);
-        self.spawn_future(name, logger, move |future_service_info| {
+        self.spawn_future(name, move |future_service_info| {
             msg_queue
                 .map(Input::Input)
                 .chain(stream::once(Ok(Input::Shutdown)))
