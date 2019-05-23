@@ -359,31 +359,6 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
 }
 
 #[test]
-pub fn test_input_with_no_spending_utxo_is_accepted_by_node() {
-    let sender = startup::create_new_utxo_address();
-    let reciever = startup::create_new_utxo_address();
-    let mut config = startup::from_initial_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: 100,
-    }]);
-
-    let jormungandr_rest_address = config.get_node_address();
-    let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
-    let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
-        &utxo,
-        &100,
-        &reciever,
-        &50,
-        &sender,
-        &block0_hash,
-    )
-    .assert_transaction_to_message();
-    jcli_wrapper::assert_transaction_post_accepted(&transaction_message, &jormungandr_rest_address);
-}
-
-#[test]
 pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
@@ -428,6 +403,31 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
         &utxo.out_value,
         &sender,
         &utxo.out_value,
+        &sender,
+        &block0_hash,
+    )
+    .assert_transaction_to_message();
+    jcli_wrapper::assert_transaction_post_accepted(&transaction_message, &jormungandr_rest_address);
+}
+
+#[test]
+pub fn test_input_with_no_spending_utxo_is_accepted_by_node() {
+    let sender = startup::create_new_utxo_address();
+    let reciever = startup::create_new_utxo_address();
+    let mut config = startup::from_initial_funds(vec![Fund {
+        address: sender.address.clone(),
+        value: 100,
+    }]);
+
+    let jormungandr_rest_address = config.get_node_address();
+    let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
+    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
+    let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
+    let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
+        &utxo,
+        &100,
+        &reciever,
+        &50,
         &sender,
         &block0_hash,
     )
