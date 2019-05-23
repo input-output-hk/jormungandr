@@ -823,7 +823,7 @@ mod bench {
         let seed = Seed::zero();
         b.iter(|| {
             let _ = keygen(depth, &seed);
-        })
+        });
     }
 
     fn update_with_depth(depth: Depth, nb_update: usize, b: &mut test::Bencher) {
@@ -867,10 +867,6 @@ mod bench {
             keygen_with_depth(Depth(4), b)
         }
         #[bench]
-        fn keygen_depth8(b: &mut test::Bencher) {
-            keygen_with_depth(Depth(8), b)
-        }
-        #[bench]
         fn keygen_depth9(b: &mut test::Bencher) {
             keygen_with_depth(Depth(9), b)
         }
@@ -878,11 +874,37 @@ mod bench {
     */
 
     #[bench]
-    fn keygen_depth25(b: &mut test::Bencher) {
-        keygen_with_depth(Depth(14), b)
+    fn keygen_depth7(b: &mut test::Bencher) {
+        keygen_with_depth(Depth(7), b)
     }
 
     #[bench]
+    fn keygen_depth8(b: &mut test::Bencher) {
+        keygen_with_depth(Depth(8), b)
+    }
+
+    #[bench]
+    #[ignore]
+    fn keygen_depth12(b: &mut test::Bencher) {
+        keygen_with_depth(Depth(12), b)
+    }
+
+    #[bench]
+    fn sign_depth12(b: &mut test::Bencher) {
+        let (sk, _) = keygen(Depth(12), &Seed::zero());
+        let msg = [0u8; 256];
+        b.iter(|| sign(&sk, &msg))
+    }
+
+    #[bench]
+    fn verify_depth12(b: &mut test::Bencher) {
+        let (sk, pk) = keygen(Depth(12), &Seed::zero());
+        let msg = [0u8; 256];
+        let signature = sign(&sk, &msg);
+        b.iter(|| verify(&pk, &msg, &signature))
+    }
+    #[bench]
+
     fn update2_depth2(b: &mut test::Bencher) {
         update_with_depth(Depth(2), 2, b)
     }
@@ -895,7 +917,14 @@ mod bench {
     fn update16_depth8(b: &mut test::Bencher) {
         update_with_depth(Depth(8), 16, b)
     }
+
     #[bench]
+    fn update32_depth12(b: &mut test::Bencher) {
+        update_with_depth(Depth(12), 32, b)
+    }
+
+    #[bench]
+    #[ignore]
     fn update128_depth16(b: &mut test::Bencher) {
         update_with_depth_skip(Depth(16), 2 ^ 16 - 1, b)
     }

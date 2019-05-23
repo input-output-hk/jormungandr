@@ -13,6 +13,8 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
+extern crate rand_core;
+
 cfg_if! {
     if #[cfg(test)] {
         mod testing;
@@ -22,6 +24,7 @@ cfg_if! {
 }
 
 pub mod algorithms;
+pub mod asymlock;
 pub mod bech32;
 pub mod hash;
 mod hex;
