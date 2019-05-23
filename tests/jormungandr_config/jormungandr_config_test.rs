@@ -13,20 +13,6 @@ pub fn test_jormungandr_without_initial_funds_starts_sucessfully() {
 }
 
 #[test]
-pub fn test_jormungandr_with_empty_consenus_leaders_list_fails_to_start() {
-    let mut config = JormungandrConfig::new();
-    config
-        .genesis_yaml
-        .blockchain_configuration
-        .consensus_leader_ids = Some(vec![]);
-
-    startup::assert_jormungandr_node_fail_to_start(
-        &mut config,
-        r"Invalid blockchain state: Block0\(InitialMessageNoConsensusLeaderId\)",
-    );
-}
-
-#[test]
 pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
     let mut config = JormungandrConfig::new();
     config.node_config.peer_2_peer.trusted_peers = None;
