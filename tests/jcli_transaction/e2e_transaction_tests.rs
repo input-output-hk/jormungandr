@@ -9,17 +9,20 @@ use common::startup;
 pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
-    let mut config = startup::build_configuration_with_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: 100,
-    }]);
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: 100,
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
     let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
 
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(&block0_hash);
+    let mut transaction_wrapper =
+        JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
     transaction_wrapper
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&reciever.address, &utxo.out_value)
@@ -40,10 +43,13 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let middle_man = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
-    let mut config = startup::build_configuration_with_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: 100,
-    }]);
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: 100,
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
@@ -83,17 +89,18 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
 
-    let mut config = startup::build_configuration_with_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: 100,
-    }]);
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: 100,
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
     let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&block0_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&reciever.address, &utxo.out_value)
         .assert_finalize()
@@ -108,17 +115,19 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
     let sender = startup::create_new_delegation_address();
     let reciever = startup::create_new_delegation_address();
     let transfer_amount = 100;
-    let mut config = startup::from_initial_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: transfer_amount.clone(),
-    }]);
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: transfer_amount.clone(),
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
     let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&block0_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&reciever.address, &transfer_amount)
         .assert_finalize()
@@ -133,17 +142,19 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
     let sender = startup::create_new_delegation_address();
     let reciever = startup::create_new_account_address();
     let transfer_amount = 100;
-    let mut config = startup::from_initial_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: transfer_amount.clone(),
-    }]);
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: transfer_amount.clone(),
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
     let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&block0_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&reciever.address, &transfer_amount)
         .assert_finalize()
@@ -158,17 +169,19 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
     let sender = startup::create_new_delegation_address();
     let reciever = startup::create_new_utxo_address();
     let transfer_amount = 100;
-    let mut config = startup::from_initial_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: transfer_amount.clone(),
-    }]);
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: transfer_amount.clone(),
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
     let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&block0_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&reciever.address, &transfer_amount)
         .assert_finalize()
@@ -183,17 +196,18 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_account_address();
 
-    let mut config = startup::build_configuration_with_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: 100,
-    }]);
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: 100,
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
     let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&block0_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&reciever.address, &utxo.out_value)
         .assert_finalize()
@@ -208,16 +222,18 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
     let sender = startup::create_new_account_address();
     let reciever = startup::create_new_account_address();
     let transfer_amount = 100;
-    let mut config = startup::build_configuration_with_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: transfer_amount.clone(),
-    }]);
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: transfer_amount.clone(),
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&block0_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_account(&sender.address, &transfer_amount)
         .assert_add_output(&reciever.address, &transfer_amount)
         .assert_finalize()
@@ -232,16 +248,18 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
     let sender = startup::create_new_account_address();
     let reciever = startup::create_new_delegation_address();
     let transfer_amount = 100;
-    let mut config = startup::from_initial_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: transfer_amount.clone(),
-    }]);
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: transfer_amount.clone(),
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&block0_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_account(&sender.address, &transfer_amount)
         .assert_add_output(&reciever.address, &transfer_amount)
         .assert_finalize()
@@ -256,17 +274,19 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_delegation_address();
     let transfer_amount = 100;
-    let mut config = startup::from_initial_funds(vec![Fund {
-        address: sender.address.clone(),
-        value: transfer_amount.clone(),
-    }]);
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: transfer_amount.clone(),
+        }])
+        .build();
 
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
     let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&block0_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&reciever.address, &transfer_amount)
         .assert_finalize()

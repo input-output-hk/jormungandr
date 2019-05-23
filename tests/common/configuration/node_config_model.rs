@@ -24,7 +24,7 @@ pub struct Peer2Peer {
     pub topics_of_interests: TopicsOfInterests,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Peer {
     pub id: i32,
     pub address: String,

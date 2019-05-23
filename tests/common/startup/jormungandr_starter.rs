@@ -100,3 +100,16 @@ pub fn start_jormungandr_node_as_leader(mut config: &mut JormungandrConfig) -> P
     let process = start_jormungandr_node_sync_with_retry(&rest_address, &mut command, &mut config);
     process
 }
+
+pub fn start_jormungandr_node_as_slave(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
+    let rest_address = &config.node_config.get_node_address();
+
+    let mut command = jormungandr_wrapper::get_start_jormungandr_as_slave_node_command(
+        &config.node_config_path,
+        &config.genesis_block_hash,
+    );
+
+    println!("Starting node with configuration : {:?}", &config);
+    let process = start_jormungandr_node_sync_with_retry(&rest_address, &mut command, &mut config);
+    process
+}

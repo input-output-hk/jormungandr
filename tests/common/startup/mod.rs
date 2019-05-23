@@ -1,20 +1,21 @@
 #![cfg(feature = "integration-test")]
 
+mod configuration_builder;
 pub mod jormungandr_starter;
 
-use super::configuration::{
-    genesis_model::{Fund, GenesisYaml},
-    jormungandr_config::JormungandrConfig,
-    node_config_model::NodeConfig,
-    secret_model::SecretModel,
-};
-use super::data::address::{Account, AddressDataProvider, Delegation, Utxo};
-use super::data::utxo::Utxo as UtxoData;
-use super::file_utils;
-use super::jcli_wrapper;
+use common::configuration::{genesis_model::GenesisYaml, jormungandr_config::JormungandrConfig};
 
+use common::data::{
+    address::{Account, AddressDataProvider, Delegation, Utxo},
+    utxo::Utxo as UtxoData,
+};
+use common::file_utils;
+use common::jcli_wrapper;
 use common::process_utils::process_guard::ProcessKillGuard;
+
 use std::path::PathBuf;
+
+pub use self::configuration_builder::ConfigurationBuilder;
 
 pub fn start_jormungandr_node(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
     jormungandr_starter::start_jormungandr_node(&mut config)
@@ -24,29 +25,8 @@ pub fn start_jormungandr_node_as_leader(mut config: &mut JormungandrConfig) -> P
     jormungandr_starter::start_jormungandr_node_as_leader(&mut config)
 }
 
-pub fn build_configuration_with_funds(funds: Vec<Fund>) -> JormungandrConfig {
-    let node_config = NodeConfig::new();
-    let node_config_path = NodeConfig::serialize(&node_config);
-
-    let genesis_model = GenesisYaml::new_with_funds(funds);
-    let path_to_output_block = build_genesis_block(&genesis_model);
-
-    let mut config = JormungandrConfig::from(genesis_model, node_config);
-
-    let secret_key = jcli_wrapper::assert_key_generate_default();
-    let secret_model = SecretModel::new(&secret_key);
-    let secret_model_path = SecretModel::serialize(&secret_model);
-
-    config.secret_model = secret_model;
-    config.secret_model_path = secret_model_path;
-    config.genesis_block_path = path_to_output_block.clone();
-    config.node_config_path = node_config_path;
-
-    config
-}
-
-pub fn build_configuration() -> JormungandrConfig {
-    build_configuration_with_funds(vec![])
+pub fn start_jormungandr_node_as_slave(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
+    jormungandr_starter::start_jormungandr_node_as_slave(&mut config)
 }
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {

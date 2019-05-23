@@ -21,16 +21,11 @@ impl JormungandrConfig {
         self.node_config.get_node_address()
     }
 
-    pub fn new() -> JormungandrConfig {
-        JormungandrConfig {
-            genesis_block_path: PathBuf::from(""),
-            genesis_block_hash: String::from(""),
-            genesis_yaml: GenesisYaml::new(),
-            node_config: NodeConfig::new(),
-        }
+    pub fn new() -> Self {
+        JormungandrConfig::from(GenesisYaml::new(), NodeConfig::new())
     }
 
-    pub fn from(genesis_yaml: GenesisYaml, node_config: NodeConfig) -> JormungandrConfig {
+    pub fn from(genesis_yaml: GenesisYaml, node_config: NodeConfig) -> Self {
         JormungandrConfig {
             genesis_block_path: PathBuf::from(""),
             genesis_block_hash: String::from(""),
