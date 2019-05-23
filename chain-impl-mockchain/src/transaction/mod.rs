@@ -1,7 +1,7 @@
-pub mod transaction;
-pub mod transfer;
-pub mod utxo;
-pub mod witness;
+mod transaction;
+mod transfer;
+mod utxo;
+mod witness;
 
 use chain_addr::Address;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
