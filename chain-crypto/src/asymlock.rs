@@ -63,7 +63,9 @@ pub fn encrypt<R: RngCore + CryptoRng>(
 /// Decrypt data in the asymmetric lock. this is the dual of 'encrypt'.
 /// The data should in the form:
 ///
+/// ```text
 ///     EPHEMERAL_PUBLIC_KEY || ENCRYPTED-DATA || POLY1305-TAG
+/// ```
 ///
 /// # Return
 ///
