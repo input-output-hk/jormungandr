@@ -878,7 +878,6 @@ mod bench {
         keygen_with_depth(Depth(7), b)
     }
 
-
     #[bench]
     fn keygen_depth8(b: &mut test::Bencher) {
         keygen_with_depth(Depth(8), b)
@@ -893,20 +892,16 @@ mod bench {
     #[bench]
     fn sign_depth12(b: &mut test::Bencher) {
         let (sk, _) = keygen(Depth(12), &Seed::zero());
-        let msg = [0u8;256];
-        b.iter(|| {
-            sign(&sk, &msg)
-        })
+        let msg = [0u8; 256];
+        b.iter(|| sign(&sk, &msg))
     }
 
     #[bench]
     fn verify_depth12(b: &mut test::Bencher) {
         let (sk, pk) = keygen(Depth(12), &Seed::zero());
-        let msg = [0u8;256];
+        let msg = [0u8; 256];
         let signature = sign(&sk, &msg);
-        b.iter(|| {
-            verify(&pk, &msg, &signature)
-        })
+        b.iter(|| verify(&pk, &msg, &signature))
     }
     #[bench]
 
