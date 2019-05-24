@@ -356,7 +356,7 @@ impl Ledger {
             match content {
                 Message::Initial(_) => return Err(Error::Block0(Block0Error::OnlyMessageReceived)),
                 Message::OldUtxoDeclaration(_) => {
-                    return Err(Error::Block0(Block0Error::OnlyMessageReceived))
+                    return Err(Error::Block0(Block0Error::OnlyMessageReceived));
                 }
                 Message::Transaction(authenticated_tx) => {
                     let (new_ledger_, _fee) =
@@ -874,6 +874,8 @@ pub mod test {
     pub fn create_initial_fake_ledger(
         discrimination: Discrimination,
         initial_msgs: &[Message],
+        slots_per_epoch: u32,
+        active_slots_coeff: Milli,
     ) -> (HeaderHash, Ledger) {
         let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
 
@@ -887,9 +889,9 @@ pub mod test {
         ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
         ie.push(ConfigParam::SlotDuration(10));
         ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
-            Milli::HALF,
+            active_slots_coeff,
         ));
-        ie.push(ConfigParam::SlotsPerEpoch(21600));
+        ie.push(ConfigParam::SlotsPerEpoch(slots_per_epoch));
         ie.push(ConfigParam::KESUpdateSpeed(3600 * 12));
         ie.push(ConfigParam::AllowAccountCreation(true));
 
@@ -922,7 +924,8 @@ pub mod test {
             value: Value(42000),
         });
 
-        let (_, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+        let (_, ledger) =
+            create_initial_fake_ledger(discrimination, &[message], 21600, Milli::HALF);
 
         let signed_tx = TransactionBuilder::new()
             .with_input(Input::from_utxo(utxos[0]))
@@ -950,7 +953,8 @@ pub mod test {
             address: user1_address.clone(),
             value: Value(42000),
         });
-        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+        let (block0_hash, ledger) =
+            create_initial_fake_ledger(discrimination, &[message], 21600, Milli::HALF);
 
         let signed_tx = TransactionBuilder::new()
             .with_input(Input::from_utxo(utxos[0]))
@@ -980,7 +984,8 @@ pub mod test {
             value: Value(42000),
         });
 
-        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+        let (block0_hash, ledger) =
+            create_initial_fake_ledger(discrimination, &[message], 21600, Milli::HALF);
 
         let signed_tx = TransactionBuilder::new()
             .with_input(Input::from_utxo(utxos[0]))
@@ -1010,7 +1015,8 @@ pub mod test {
             value: Value(42000),
         });
 
-        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+        let (block0_hash, ledger) =
+            create_initial_fake_ledger(discrimination, &[message], 21600, Milli::HALF);
 
         let signed_tx = TransactionBuilder::new()
             .with_input(Input::from_account(
@@ -1045,7 +1051,8 @@ pub mod test {
             value: Value(42000),
         });
 
-        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+        let (block0_hash, ledger) =
+            create_initial_fake_ledger(discrimination, &[message], 21600, Milli::HALF);
         let signed_tx = TransactionBuilder::new()
             .with_input(Input::from_account(
                 AccountIdentifier::from_single_account(account::Identifier::from(pk1)),
@@ -1079,7 +1086,8 @@ pub mod test {
             value: Value(42000),
         });
 
-        let (block0_hash, ledger) = create_initial_fake_ledger(discrimination, &[message]);
+        let (block0_hash, ledger) =
+            create_initial_fake_ledger(discrimination, &[message], 21600, Milli::HALF);
 
         let signed_tx = TransactionBuilder::new()
             .with_input(Input::from_utxo(utxos[0]))

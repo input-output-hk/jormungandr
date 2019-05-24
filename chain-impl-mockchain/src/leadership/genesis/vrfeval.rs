@@ -172,7 +172,7 @@ fn above_stake_threshold(
     stake: &PercentStake,
     active_slots_coeff: ActiveSlotsCoeff,
 ) -> bool {
-    threshold >= phi(active_slots_coeff, stake)
+    threshold < phi(active_slots_coeff, stake)
 }
 
 fn phi(active_slots_coeff: ActiveSlotsCoeff, rs: &PercentStake) -> Threshold {
