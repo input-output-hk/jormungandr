@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime};
 /// The slots are not comparable to others slots made on a
 /// different time frame
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Slot(pub u64);
+pub struct Slot(pub(crate) u64);
 
 impl From<Slot> for u64 {
     fn from(s: Slot) -> u64 {

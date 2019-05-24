@@ -145,10 +145,6 @@ mod test {
     use crate::stake::PoolStakeDistribution;
     use crate::stake::StakePoolInfo;
     use chain_addr::Discrimination;
-    use chain_time::{
-        era::{Epoch, TimeEra},
-        timeframe::Slot,
-    };
     use std::collections::HashMap;
 
     fn make_pool(ledger: &mut Ledger) -> (StakePoolId, SecretKey<Curve25519_2HashDH>) {
@@ -213,9 +209,7 @@ mod test {
             );
         }
 
-        let era = TimeEra::new(Slot(0), Epoch(0), slots_per_epoch);
-
-        let mut date = BlockDate::first();
+        let mut date = ledger.date;
 
         let mut empty_slots = 0;
 
@@ -247,7 +241,7 @@ mod test {
             if any_small {
                 times_selected_small += 1;
             }
-            date = date.next(&era);
+            date = date.next(&ledger.settings.era);
         }
 
         for (pool_id, (_pool_vrf_private_key, times_selected, stake)) in pools.iter_mut() {
