@@ -9,6 +9,7 @@ use common::data::{
     address::{Account, AddressDataProvider, Delegation, Utxo},
     utxo::Utxo as UtxoData,
 };
+
 use common::file_utils;
 use common::jcli_wrapper;
 use common::process_utils::process_guard::ProcessKillGuard;
@@ -29,48 +30,18 @@ pub fn start_jormungandr_node_as_slave(mut config: &mut JormungandrConfig) -> Pr
     jormungandr_starter::start_jormungandr_node_as_slave(&mut config)
 }
 
-pub fn start_jormungandr_node_as_passive(config: &mut JormungandrConfig) -> ProcessKillGuard {
-    let rest_address = &config.node_config.get_node_address();
-    let config_path = NodeConfig::serialize(&config.node_config);
-    let genesis_block_path = build_genesis_block(&config.genesis_yaml);
-    let secret_key = jcli_wrapper::assert_key_generate_default();
-    let secret_model = SecretModel::new(&secret_key);
-    let secret_model_path = SecretModel::serialize(&secret_model);
-
-    let genesis_block_hash = jcli_wrapper::assert_genesis_hash(&genesis_block_path);
-
-    let command = jormungandr_wrapper::get_start_jormungandr_as_passive_node_command(
-        &config_path,
-        &genesis_block_hash,
-        &secret_model_path,
-    );
-
-    config.genesis_block_path = genesis_block_path.clone();
-    println!("Starting passive node with configuration : {:?}", &config);
-    let process = start_jormungandr_node_and_wait(&rest_address, command);
-    process
+pub fn assert_start_jormungandr_node_as_passive_fail(
+    mut config: &mut JormungandrConfig,
+    expected_message_part: &str,
+) {
+    jormungandr_starter::assert_start_jormungandr_node_as_passive_fail(
+        &mut config,
+        expected_message_part,
+    )
 }
 
-pub fn assert_start_jormungandr_node_as_passive_fail(
-    config: &mut JormungandrConfig,
-    expected_msg: &str,
-) {
-    let config_path = NodeConfig::serialize(&config.node_config);
-    let genesis_block_path = build_genesis_block(&config.genesis_yaml);
-    let secret_key = jcli_wrapper::assert_key_generate_default();
-    let secret_model = SecretModel::new(&secret_key);
-    let secret_model_path = SecretModel::serialize(&secret_model);
-
-    let genesis_block_hash = jcli_wrapper::assert_genesis_hash(&genesis_block_path);
-
-    let command = jormungandr_wrapper::get_start_jormungandr_as_passive_node_command(
-        &config_path,
-        &genesis_block_hash,
-        &secret_model_path,
-    );
-
-    config.genesis_block_path = genesis_block_path.clone();
-    process_assert::assert_process_failed_and_matches_message(command, &expected_msg);
+pub fn start_jormungandr_node_as_passive(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
+    jormungandr_starter::start_jormungandr_node_as_passive(&mut config)
 }
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {

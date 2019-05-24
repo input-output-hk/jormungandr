@@ -4,7 +4,7 @@ extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
 use std::path::PathBuf;
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Logger {
     pub verbosity: i32,
     pub format: String,
@@ -80,7 +80,8 @@ impl NodeConfig {
     }
 
     pub fn regenerate_ports(&mut self) {
-        self.rest.listen = format!("127.0.0.1:{}", super::get_available_port().to_string());
+        self.rest.as_mut().unwrap().listen =
+            format!("127.0.0.1:{}", super::get_available_port().to_string()).to_string();
         self.peer_2_peer.public_address = format!(
             "/ip4/127.0.0.1/tcp/{}",
             super::get_available_port().to_string()
