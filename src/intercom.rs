@@ -1,11 +1,9 @@
 use crate::blockcfg::{Block, Header, HeaderHash, Message, MessageId};
 use crate::network::p2p::topology::NodeId;
-
-use network_core::error as core_error;
-
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
-
+use network_core::error as core_error;
+use slog::Logger;
 use std::{
     error,
     fmt::{self, Debug, Display},
@@ -104,6 +102,7 @@ impl<T> ReplyHandle<T> {
 
 pub struct ReplyFuture<T, E> {
     receiver: oneshot::Receiver<Result<T, Error>>,
+    logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
@@ -117,14 +116,14 @@ where
     fn poll(&mut self) -> Poll<T, E> {
         let item = match self.receiver.poll() {
             Err(oneshot::Canceled) => {
-                warn!("response canceled by the client request task");
+                warn!(self.logger, "response canceled by the client request task");
                 return Err(Error::from(oneshot::Canceled).into());
             }
             Ok(Async::NotReady) => {
                 return Ok(Async::NotReady);
             }
             Ok(Async::Ready(Err(e))) => {
-                warn!("error processing request: {:?}", e);
+                warn!(self.logger, "error processing request: {:?}", e);
                 return Err(Error::from(e).into());
             }
             Ok(Async::Ready(Ok(item))) => item,
@@ -134,10 +133,11 @@ where
     }
 }
 
-pub fn unary_reply<T, E>() -> (ReplyHandle<T>, ReplyFuture<T, E>) {
+pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>) {
     let (sender, receiver) = oneshot::channel();
     let future = ReplyFuture {
         receiver,
+        logger,
         _phantom_error: PhantomData,
     };
     (ReplyHandle { sender }, future)
@@ -164,6 +164,7 @@ impl<T> ReplyStreamHandle<T> {
 
 pub struct ReplyStream<T, E> {
     receiver: mpsc::UnboundedReceiver<Result<T, Error>>,
+    logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
@@ -181,17 +182,18 @@ where
             Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
             Ok(Async::Ready(Some(Ok(item)))) => Ok(Async::Ready(Some(item))),
             Ok(Async::Ready(Some(Err(e)))) => {
-                warn!("error while streaming response: {:?}", e);
+                warn!(self.logger, "error while streaming response: {:?}", e);
                 return Err(e.into());
             }
         }
     }
 }
 
-pub fn stream_reply<T, E>() -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
+pub fn stream_reply<T, E>(logger: Logger) -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
     let (sender, receiver) = mpsc::unbounded();
     let stream = ReplyStream {
         receiver,
+        logger,
         _phantom_error: PhantomData,
     };
     (ReplyStreamHandle { sender }, stream)

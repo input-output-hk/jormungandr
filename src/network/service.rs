@@ -5,12 +5,12 @@ use super::{
     },
     subscription, Channels, GlobalStateR,
 };
-
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
 use crate::intercom::{
     self, stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream,
 };
-
+use futures::future::{self, FutureResult};
+use futures::prelude::*;
 use network_core::{
     error as core_error,
     gossip::{Gossip, Node as _},
@@ -21,22 +21,26 @@ use network_core::{
         Node, P2pService,
     },
 };
-
-use futures::future::{self, FutureResult};
-use futures::prelude::*;
+use slog::Logger;
 
 #[derive(Clone)]
 pub struct NodeService {
     channels: Channels,
     global_state: GlobalStateR,
+    logger: Logger,
 }
 
 impl NodeService {
     pub fn new(channels: Channels, global_state: GlobalStateR) -> Self {
         NodeService {
             channels,
+            logger: global_state.logger().new(o!(::log::KEY_TASK => "server")),
             global_state,
         }
+    }
+
+    pub fn logger(&self) -> &Logger {
+        &self.logger
     }
 }
 
@@ -92,7 +96,7 @@ impl BlockService for NodeService {
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn tip(&mut self) -> Self::TipFuture {
-        let (handle, future) = unary_reply();
+        let (handle, future) = unary_reply(self.logger().clone());
         self.channels
             .client_box
             .send_to(ClientMsg::GetBlockTip(handle));
@@ -100,7 +104,7 @@ impl BlockService for NodeService {
     }
 
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture {
-        let (handle, stream) = stream_reply();
+        let (handle, stream) = stream_reply(self.logger().clone());
         self.channels
             .client_box
             .send_to(ClientMsg::PullBlocksToTip(from.into(), handle));
@@ -108,7 +112,7 @@ impl BlockService for NodeService {
     }
 
     fn get_blocks(&mut self, ids: &[Self::BlockId]) -> Self::GetBlocksFuture {
-        let (handle, stream) = stream_reply();
+        let (handle, stream) = stream_reply(self.logger().clone());
         self.channels
             .client_box
             .send_to(ClientMsg::GetBlocks(ids.into(), handle));
@@ -116,7 +120,7 @@ impl BlockService for NodeService {
     }
 
     fn get_headers(&mut self, ids: &[Self::BlockId]) -> Self::GetHeadersFuture {
-        let (handle, stream) = stream_reply();
+        let (handle, stream) = stream_reply(self.logger().clone());
         self.channels
             .client_box
             .send_to(ClientMsg::GetHeaders(ids.into(), handle));
@@ -160,6 +164,7 @@ impl BlockService for NodeService {
             inbound,
             subscriber,
             self.channels.block_box.clone(),
+            self.logger().clone(),
         );
 
         let subscription = self
@@ -216,7 +221,7 @@ impl GossipService for NodeService {
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        subscription::process_gossip(inbound, self.global_state.clone());
+        subscription::process_gossip(inbound, self.global_state.clone(), self.logger().clone());
 
         let subscription = self.global_state.peers.subscribe_to_gossip(subscriber);
         future::ok(subscription)

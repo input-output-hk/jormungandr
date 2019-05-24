@@ -5,10 +5,7 @@
 //! modules utilized in jormungandr.
 //!
 
-use crate::{
-    log_wrapper::logger::{get_global_logger, update_thread_logger},
-    utils::async_msg::{self, MessageBox},
-};
+use crate::utils::async_msg::{self, MessageBox};
 use slog::Logger;
 use std::{
     sync::mpsc::{self, Sender},
@@ -98,7 +95,7 @@ impl Services {
     /// given function does not return. As soon as the function return
     /// the service stop
     ///
-    pub fn spawn<F>(&mut self, name: &'static str, f: F)
+    pub fn spawn<F>(&mut self, name: &'static str, logger: &Logger, f: F)
     where
         F: FnOnce(ThreadServiceInfo) -> (),
         F: Send + 'static,
@@ -107,20 +104,17 @@ impl Services {
         let thread_service_info = ThreadServiceInfo {
             name: name,
             up_time: now,
-            logger: get_global_logger().new(o!("task" => name.to_owned())),
+            logger: logger.new(o!(::log::KEY_TASK => name)).into_erased(),
         };
 
         let handler = thread::Builder::new()
             .name(name.to_owned())
             // .stack_size(2 * 1024 * 1024)
             .spawn(move || {
-                info!("starting task: {}", name);
-                // TODO: remove the thread logger and utilise the
-                //       normal slog function for now
-                update_thread_logger(|logger| logger.new(o!("task"=> name.to_string())));
+                info!(thread_service_info.logger, "starting task");
                 f(thread_service_info)
             })
-            .unwrap_or_else(|err| panic!("Cannot spawn thread {}: {}", name, err));
+            .unwrap_or_else(|err| panic!("Cannot spawn thread: {}", err));
 
         let task = Service::new_handler(name, handler, now);
         self.services.push(task);
@@ -131,7 +125,12 @@ impl Services {
     /// the service will stop once there is no more input to read: the function
     /// will be called one last time with `Input::Shutdown` and then will return
     ///
-    pub fn spawn_with_inputs<F, Msg>(&mut self, name: &'static str, mut f: F) -> TaskMessageBox<Msg>
+    pub fn spawn_with_inputs<F, Msg>(
+        &mut self,
+        name: &'static str,
+        logger: &Logger,
+        mut f: F,
+    ) -> TaskMessageBox<Msg>
     where
         F: FnMut(&ThreadServiceInfo, Input<Msg>) -> (),
         F: Send + 'static,
@@ -139,11 +138,12 @@ impl Services {
     {
         let (tx, rx) = mpsc::channel::<Msg>();
 
-        self.spawn(name, move |info| loop {
+        self.spawn(name, logger, move |info| loop {
             match rx.recv() {
                 Ok(msg) => f(&info, Input::Input(msg)),
                 Err(err) => {
                     warn!(
+                        info.logger,
                         "Shutting down service {} (up since {}): {}",
                         name,
                         humantime::format_duration(info.up_time()),
@@ -162,7 +162,7 @@ impl Services {
     ///
     /// * utilising one thread only;
     /// * 2MiB stack size max
-    pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
+    pub fn spawn_future<F, T>(&mut self, name: &'static str, logger: &Logger, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
         T: Future<Item = (), Error = ()> + Send + 'static,
@@ -182,7 +182,7 @@ impl Services {
         let future_service_info = TokioServiceInfo {
             name: name,
             up_time: now,
-            logger: get_global_logger().new(o!("task" => name.to_owned())),
+            logger: logger.new(o!(::log::KEY_TASK => name)).into_erased(),
             executor: executor,
         };
 
@@ -201,6 +201,7 @@ impl Services {
     pub fn spawn_future_with_inputs<F, Msg, T>(
         &mut self,
         name: &'static str,
+        logger: &Logger,
         mut f: F,
     ) -> MessageBox<Msg>
     where
@@ -211,7 +212,7 @@ impl Services {
         <T as futures::IntoFuture>::Future: Send,
     {
         let (msg_box, msg_queue) = async_msg::channel(MESSAGE_QUEUE_LEN);
-        self.spawn_future(name, move |future_service_info| {
+        self.spawn_future(name, logger, move |future_service_info| {
             msg_queue
                 .map(Input::Input)
                 .chain(stream::once(Ok(Input::Shutdown)))
@@ -250,6 +251,12 @@ impl ThreadServiceInfo {
     #[inline]
     pub fn logger(&self) -> &Logger {
         &self.logger
+    }
+
+    /// extract the service's logger
+    #[inline]
+    pub fn into_logger(self) -> Logger {
+        self.logger
     }
 }
 

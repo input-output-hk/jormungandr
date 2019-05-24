@@ -86,9 +86,9 @@ impl LeaderSchedule {
 
         if now < slot_system_time {
             match task_parameters.leadership.is_leader_for_date(leader, date) {
-                Ok(LeaderOutput::None) => slog_debug!(logger, "not a leader at this time"),
+                Ok(LeaderOutput::None) => debug!(logger, "not a leader at this time"),
                 Ok(leader_output) => {
-                    slog_info!(logger, "scheduling a block leader");
+                    info!(logger, "scheduling a block leader");
                     self.events.insert(
                         ScheduledEvent {
                             expected_time: slot_system_time.clone(),
@@ -101,11 +101,11 @@ impl LeaderSchedule {
                     );
                 }
                 Err(error) => {
-                    slog_error!(logger, "cannot compute schedule" ; "reason" => format!("{error}", error = error))
+                    error!(logger, "cannot compute schedule" ; "reason" => format!("{error}", error = error))
                 }
             }
         } else {
-            slog_debug!(logger, "ignoring past events...")
+            debug!(logger, "ignoring past events...")
         }
     }
 }

@@ -1,15 +1,3 @@
-use std::collections::BTreeMap;
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use tokio::sync::mpsc;
-
-use chain_core::property::{Block as _, HasHeader as _, HasMessages as _, Header as _};
-use chain_impl_mockchain::{
-    leadership::{self, Verification},
-    ledger, multiverse,
-};
-use chain_storage::{error as storage, store::BlockInfo};
-use chain_time::{SlotDuration, TimeFrame, Timeline};
-
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash, Ledger, Multiverse},
     blockchain::{Branch, Tip, TipGetError, TipReplaceError},
@@ -17,6 +5,17 @@ use crate::{
     start_up::NodeStorage,
     utils::borrow::Borrow,
 };
+use chain_core::property::{Block as _, HasHeader as _, HasMessages as _, Header as _};
+use chain_impl_mockchain::{
+    leadership::{self, Verification},
+    ledger, multiverse,
+};
+use chain_storage::{error as storage, store::BlockInfo};
+use chain_time::{SlotDuration, TimeFrame, Timeline};
+use slog::Logger;
+use std::collections::BTreeMap;
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::mpsc;
 
 pub struct Blockchain {
     /// the storage for the overall blockchains (blocks)
@@ -91,6 +90,7 @@ impl Blockchain {
         block_0: Block,
         mut storage: NodeStorage,
         epoch_event: mpsc::Sender<EpochParameters>,
+        logger: &Logger,
     ) -> Result<Self, LoadError> {
         use blockcfg::Block0DataSource as _;
         let mut multiverse = multiverse::Multiverse::new();
@@ -105,7 +105,7 @@ impl Blockchain {
 
         let (tip, leaderships) =
             if let Some(tip_hash) = storage.get_tag(LOCAL_BLOCKCHAIN_TIP_TAG)? {
-                info!("restoring state at tip {}", tip_hash);
+                info!(logger, "restoring state at tip {}", tip_hash);
 
                 let mut tip = None;
 
@@ -118,7 +118,7 @@ impl Blockchain {
                 let mut leaderships = Leaderships::new(&block_0.header, initial_leadership);
 
                 // FIXME: should restore from serialized chain state once we have it.
-                info!("restoring state from block0 {}", block_0_id);
+                info!(logger, "restoring state from block0 {}", block_0_id);
                 for info in storage.iterate_range(&block_0_id, &tip_hash)? {
                     let info = info?;
                     let parameters = state.get_ledger_parameters();

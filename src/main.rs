@@ -19,8 +19,6 @@ extern crate cryptoxide;
 extern crate futures;
 extern crate generic_array;
 extern crate http;
-#[macro_use]
-extern crate lazy_static;
 extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
@@ -40,8 +38,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_yaml;
-#[allow(unused_imports)]
-#[macro_use(o, slog_trace, slog_debug, slog_info, slog_warn, slog_error, slog_crit)]
+#[macro_use(o, debug, info, warn, error, crit)]
 extern crate slog;
 extern crate slog_async;
 extern crate slog_json;
@@ -51,12 +48,6 @@ extern crate structopt;
 #[cfg(feature = "with-bench")]
 extern crate test;
 
-use std::sync::{Arc, Mutex, RwLock};
-
-use futures::Future;
-
-use chain_impl_mockchain::message::{Message, MessageId};
-
 use crate::{
     blockcfg::Leader,
     blockchain::BlockchainR,
@@ -65,15 +56,18 @@ use crate::{
     transaction::TPool,
     utils::{async_msg, task::Services},
 };
-
-#[macro_use]
-pub mod log_wrapper;
+use chain_impl_mockchain::message::{Message, MessageId};
+use futures::Future;
+use settings::{start::RawSettings, CommandLine};
+use slog::Logger;
+use std::sync::{Arc, Mutex, RwLock};
 
 pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
 pub mod intercom;
 pub mod leadership;
+pub mod log;
 pub mod network;
 pub mod rest;
 pub mod secure;
@@ -95,6 +89,7 @@ pub struct BootstrappedNode {
     settings: Settings,
     blockchain: BlockchainR,
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::EpochParameters>,
+    logger: Logger,
 }
 
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
@@ -110,12 +105,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
 
     let stats_counter = StatsCounter::default();
+    let logger = &bootstrapped_node.logger;
 
     let transaction_task = {
         let tpool = tpool.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_with_inputs("transaction", move |info, input| {
+        services.spawn_with_inputs("transaction", logger, move |info, input| {
             transaction::handle_input(info, &blockchain, &tpool, &stats_counter, input)
         })
     };
@@ -123,7 +119,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let block_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
-        services.spawn_future_with_inputs("block", move |info, input| {
+        services.spawn_future_with_inputs("block", logger, move |info, input| {
             blockchain::handle_input(
                 info,
                 &blockchain,
@@ -137,7 +133,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let client_task = {
         let blockchain = bootstrapped_node.blockchain.clone();
-        services.spawn_with_inputs("client-query", move |info, input| {
+        services.spawn_with_inputs("client-query", logger, move |info, input| {
             client::handle_input(info, &blockchain, input)
         })
     };
@@ -153,8 +149,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             block_box: block_msgbox,
         };
 
-        services.spawn("network", move |_info| {
-            network::run(config, network_queue, channels);
+        services.spawn("network", logger, move |info| {
+            network::run(config, network_queue, channels, info.into_logger());
         });
     }
 
@@ -173,7 +169,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             genesis_leader: secret.genesis(),
         };
 
-        services.spawn_future("leadership", move |info| {
+        services.spawn_future("leadership", logger, move |info| {
             let process = self::leadership::Process::new(
                 info,
                 tpool,
@@ -219,20 +215,26 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 ///
 ///
 fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
-    let block0 = initialized_node.block0;
-    let settings = initialized_node.settings;
-    let storage = initialized_node.storage;
+    let InitializedNode {
+        settings,
+        block0,
+        storage,
+        logger,
+    } = initialized_node;
+    let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
     let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
 
-    let blockchain = start_up::load_blockchain(block0, storage, new_epoch_announcements)?;
+    let blockchain =
+        start_up::load_blockchain(block0, storage, new_epoch_announcements, &bootstrap_logger)?;
 
-    network::bootstrap(&settings.network, blockchain.clone());
+    network::bootstrap(&settings.network, blockchain.clone(), &bootstrap_logger);
 
     Ok(BootstrappedNode {
         settings,
         blockchain,
         new_epoch_notifier,
+        logger,
     })
 }
 
@@ -240,33 +242,31 @@ pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
     pub storage: start_up::NodeStorage,
+    pub logger: Logger,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
-    use start_up::*;
+    let command_line = CommandLine::load();
+    let raw_settings = RawSettings::load(command_line)?;
+    let logger = raw_settings.to_logger();
 
-    prepare_resources()?;
-
-    let command_line_arguments = load_command_line()?;
-
-    let node_settings = load_settings(&command_line_arguments)?;
-
-    prepare_logger(&node_settings)?;
-
-    let storage = prepare_storage(&node_settings)?;
+    let init_logger = logger.new(o!(log::KEY_TASK => "init"));
+    let settings = raw_settings.try_into_settings(&init_logger)?;
+    let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
 
-    let block0 = prepare_block_0(
-        &node_settings,
+    let block0 = start_up::prepare_block_0(
+        &settings,
         &storage,
-        /* add network to fetch block0 */
+        &init_logger, /* add network to fetch block0 */
     )?;
 
     Ok(InitializedNode {
-        settings: node_settings,
-        block0: block0,
-        storage: storage,
+        settings,
+        block0,
+        storage,
+        logger,
     })
 }
 

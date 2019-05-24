@@ -56,7 +56,7 @@ impl Task {
         let logger = Logger::root(
             logger,
             o!(
-                "task" => "Leader Task",
+                ::log::KEY_TASK => "Leader Task",
                 // TODO: add some general context information here (leader alias?)
             ),
         );
@@ -99,7 +99,7 @@ impl Task {
                 })
             })
             .map_err(move |error| {
-                slog_crit!(crit_logger, "critical error in the Leader task" ; "reason" => error.to_string())
+                crit!(crit_logger, "critical error in the Leader task" ; "reason" => error.to_string())
             })
     }
 }
@@ -137,7 +137,7 @@ fn handle_leadership(
         .for_each(move |scheduled_event| {
             let scheduled_event = scheduled_event.into_inner();
 
-            slog_info!(logger, "Leader scheduled event" ;
+            info!(logger, "Leader scheduled event" ;
                 "scheduled at_time" => format!("{:?}", scheduled_event.expected_time),
                 "scheduled_at_date" => format!("{}", scheduled_event.date),
             );
