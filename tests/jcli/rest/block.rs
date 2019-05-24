@@ -7,7 +7,7 @@ use common::startup;
 
 #[test]
 pub fn test_non_empty_hash_is_returned_for_block0() {
-    let mut config = JormungandrConfig::new();
+    let mut config = startup::ConfigurationBuilder::new().build();
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
 
@@ -23,7 +23,7 @@ pub fn test_non_empty_hash_is_returned_for_block0() {
 pub fn test_correct_error_is_returned_for_incorrect_block_id() {
     let incorrect_block_id = "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa";
 
-    let mut config = JormungandrConfig::new();
+    let mut config = startup::ConfigurationBuilder::new().build();
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
 
@@ -43,7 +43,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id() {
 pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_request() {
     let incorrect_block_id = "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa";
 
-    let mut config = JormungandrConfig::new();
+    let mut config = startup::ConfigurationBuilder::new().build();
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
 
@@ -62,7 +62,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_re
 #[test]
 #[cfg(feature = "integration-test")]
 pub fn test_next_id_is_empty_for_tip_block() {
-    let mut config = JormungandrConfig::new();
+    let mut config = startup::ConfigurationBuilder::new().build();
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
 

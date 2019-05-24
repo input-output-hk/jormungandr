@@ -35,7 +35,9 @@ pub fn test_correct_utxos_are_read_from_node() {
         },
     ];
 
-    let mut config = startup::from_initial_funds(funds.clone());
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(funds.clone())
+        .build();
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
     let content = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);

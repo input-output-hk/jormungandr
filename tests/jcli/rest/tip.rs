@@ -8,7 +8,7 @@ use common::startup;
 
 #[test]
 pub fn test_correct_id_is_returned_for_block_tip_if_only_genesis_block_exists() {
-    let mut config = JormungandrConfig::new();
+    let mut config = startup::ConfigurationBuilder::new().build();
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
     let block_id = jcli_wrapper::assert_rest_get_block_tip(&jormungandr_rest_address);
