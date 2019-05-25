@@ -7,6 +7,8 @@ use self::custom_error::custom_error;
 use common::configuration::jormungandr_config::JormungandrConfig;
 use common::jcli_wrapper;
 use common::jormungandr_wrapper;
+
+use common::process_assert;
 use common::process_utils;
 use common::process_utils::{
     output_extensions::ProcessOutput, process_guard::ProcessKillGuard, ProcessError,
@@ -112,4 +114,31 @@ pub fn start_jormungandr_node_as_slave(mut config: &mut JormungandrConfig) -> Pr
     println!("Starting node with configuration : {:?}", &config);
     let process = start_jormungandr_node_sync_with_retry(&rest_address, &mut command, &mut config);
     process
+}
+
+pub fn start_jormungandr_node_as_passive(config: &mut JormungandrConfig) -> ProcessKillGuard {
+    let rest_address = &config.node_config.get_node_address();
+
+    let mut command = jormungandr_wrapper::get_start_jormungandr_as_passive_node_command(
+        &config.node_config_path,
+        &config.genesis_block_hash,
+        &config.secret_model_path,
+    );
+
+    println!("Starting node with configuration : {:?}", &config);
+    let process = start_jormungandr_node_sync_with_retry(&rest_address, &mut command, config);
+    process
+}
+
+pub fn assert_start_jormungandr_node_as_passive_fail(
+    config: &mut JormungandrConfig,
+    expected_msg: &str,
+) {
+    let command = jormungandr_wrapper::get_start_jormungandr_as_passive_node_command(
+        &config.node_config_path,
+        &config.genesis_block_hash,
+        &config.secret_model_path,
+    );
+
+    process_assert::assert_process_failed_and_matches_message(command, &expected_msg);
 }

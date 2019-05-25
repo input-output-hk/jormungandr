@@ -4,7 +4,7 @@ extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
 use std::path::PathBuf;
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Logger {
     pub verbosity: i32,
     pub format: String,
@@ -38,9 +38,11 @@ pub struct TopicsOfInterests {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NodeConfig {
-    pub storage: String,
-    pub logger: Logger,
-    pub rest: Rest,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logger: Option<Logger>,
+    pub rest: Option<Rest>,
     pub peer_2_peer: Peer2Peer,
 }
 
@@ -57,15 +59,15 @@ impl NodeConfig {
         let storage_file = file_utils::get_path_in_temp("storage");
 
         NodeConfig {
-            storage: String::from(storage_file.as_os_str().to_str().unwrap()),
-            logger: Logger {
+            storage: Some(String::from(storage_file.as_os_str().to_str().unwrap())),
+            logger: Some(Logger {
                 verbosity: 1,
                 format: String::from("json"),
-            },
-            rest: Rest {
+            }),
+            rest: Some(Rest {
                 listen: format!("127.0.0.1:{}", rest_port.to_string()),
                 prefix: String::from("api"),
-            },
+            }),
             peer_2_peer: Peer2Peer {
                 trusted_peers: None,
                 public_address: format!("/ip4/127.0.0.1/tcp/{}", public_address_port.to_string()),
@@ -78,7 +80,8 @@ impl NodeConfig {
     }
 
     pub fn regenerate_ports(&mut self) {
-        self.rest.listen = format!("127.0.0.1:{}", super::get_available_port().to_string());
+        self.rest.as_mut().unwrap().listen =
+            format!("127.0.0.1:{}", super::get_available_port().to_string()).to_string();
         self.peer_2_peer.public_address = format!(
             "/ip4/127.0.0.1/tcp/{}",
             super::get_available_port().to_string()
@@ -86,7 +89,8 @@ impl NodeConfig {
     }
 
     pub fn get_node_address(&self) -> String {
-        let output = format!("http://{}/{}", self.rest.listen, self.rest.prefix);
+        let rest = self.rest.as_ref();
+        let output = format!("http://{}/{}", rest.unwrap().listen, rest.unwrap().prefix);
         output
     }
 }

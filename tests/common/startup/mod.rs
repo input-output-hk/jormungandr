@@ -9,6 +9,7 @@ use common::data::{
     address::{Account, AddressDataProvider, Delegation, Utxo},
     utxo::Utxo as UtxoData,
 };
+
 use common::file_utils;
 use common::jcli_wrapper;
 use common::process_utils::process_guard::ProcessKillGuard;
@@ -27,6 +28,20 @@ pub fn start_jormungandr_node_as_leader(mut config: &mut JormungandrConfig) -> P
 
 pub fn start_jormungandr_node_as_slave(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
     jormungandr_starter::start_jormungandr_node_as_slave(&mut config)
+}
+
+pub fn assert_start_jormungandr_node_as_passive_fail(
+    mut config: &mut JormungandrConfig,
+    expected_message_part: &str,
+) {
+    jormungandr_starter::assert_start_jormungandr_node_as_passive_fail(
+        &mut config,
+        expected_message_part,
+    )
+}
+
+pub fn start_jormungandr_node_as_passive(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
+    jormungandr_starter::start_jormungandr_node_as_passive(&mut config)
 }
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
@@ -110,4 +125,8 @@ pub fn get_utxo_for_address<T: AddressDataProvider>(
             &utxo_address.get_address(),
             &utxo_address.get_address_type()
         ))
+}
+
+pub fn assert_node_is_up(address: &str) {
+    jcli_wrapper::assert_rest_stats(&address);
 }
