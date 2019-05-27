@@ -103,7 +103,8 @@ where
             BlockEvent::Announce(header) => {
                 self.channels
                     .block_box
-                    .send(BlockMsg::AnnouncedBlock(header, self.remote_node_id));
+                    .send(BlockMsg::AnnouncedBlock(header, self.remote_node_id))
+                    .unwrap();
             }
             BlockEvent::Solicit(block_ids) => {
                 let (reply_handle, stream) = intercom::stream_reply::<
@@ -150,7 +151,7 @@ where
                 .and_then(move |blocks| {
                     blocks
                         .for_each(move |block| {
-                            block_box.send(BlockMsg::NetworkBlock(block));
+                            block_box.send(BlockMsg::NetworkBlock(block)).unwrap();
                             Ok(())
                         })
                         .map_err(move |e| {

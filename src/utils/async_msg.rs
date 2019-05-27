@@ -2,7 +2,7 @@
 //! asynchronous reading.
 
 use futures::prelude::*;
-use futures::sync::mpsc::{self, Receiver, Sender};
+use futures::sync::mpsc::{self, Receiver, Sender, TrySendError};
 
 /// The output end of an in-memory FIFO channel.
 pub struct MessageBox<Msg>(Sender<Msg>);
@@ -31,8 +31,8 @@ impl<Msg> MessageBox<Msg> {
     /// If the channel is full or the receiving MessageQueue has been dropped,
     /// the sending thread panics.
     ///
-    pub fn send(&mut self, a: Msg) {
-        self.0.try_send(a).unwrap()
+    pub fn send(&mut self, a: Msg) -> Result<(), TrySendError<Msg>> {
+        self.0.try_send(a)
     }
 }
 

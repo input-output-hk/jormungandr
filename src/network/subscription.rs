@@ -19,7 +19,9 @@ where
     tokio::spawn(
         inbound
             .for_each(move |header| {
-                block_box.send(BlockMsg::AnnouncedBlock(header, node_id));
+                block_box
+                    .send(BlockMsg::AnnouncedBlock(header, node_id))
+                    .unwrap();
                 Ok(())
             })
             .map_err(move |err| {
