@@ -154,18 +154,19 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    let leader_secrets: Vec<Leader> = bootstrapped_node
+    let leader_secrets: Result<Vec<Leader>, start_up::Error> = bootstrapped_node
         .settings
         .leadership
         .iter()
         .map(|secret_path| {
-            let secret = secure::NodeSecret::load_from_file(secret_path.as_path()).unwrap();
-            Leader {
+            let secret = secure::NodeSecret::load_from_file(secret_path.as_path())?;
+            Ok(Leader {
                 bft_leader: secret.bft(),
                 genesis_leader: secret.genesis(),
-            }
+            })
         })
         .collect();
+    let leader_secrets = leader_secrets?;
 
     if !leader_secrets.is_empty() {
         let tpool = tpool.clone();
