@@ -1,7 +1,6 @@
 #![cfg(feature = "integration-test")]
 
 mod configuration_builder;
-pub mod jormungandr_starter;
 
 use common::configuration::{genesis_model::GenesisYaml, jormungandr_config::JormungandrConfig};
 
@@ -11,38 +10,35 @@ use common::data::{
 };
 
 use common::file_utils;
+use common::jormungandr::{process::JormungandrProcess, starter};
+use std::path::PathBuf;
+
 use common::jcli_wrapper;
 use common::jcli_wrapper::Discrimination;
-use common::process_utils::process_guard::ProcessKillGuard;
-
-use std::path::PathBuf;
 
 pub use self::configuration_builder::ConfigurationBuilder;
 
-pub fn start_jormungandr_node(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
-    jormungandr_starter::start_jormungandr_node(&mut config)
+pub fn start_jormungandr_node(mut config: &mut JormungandrConfig) -> JormungandrProcess {
+    starter::start_jormungandr_node(&mut config)
 }
 
-pub fn start_jormungandr_node_as_leader(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
-    jormungandr_starter::start_jormungandr_node_as_leader(&mut config)
+pub fn start_jormungandr_node_as_leader(mut config: &mut JormungandrConfig) -> JormungandrProcess {
+    starter::start_jormungandr_node_as_leader(&mut config)
 }
 
-pub fn start_jormungandr_node_as_slave(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
-    jormungandr_starter::start_jormungandr_node_as_slave(&mut config)
+pub fn start_jormungandr_node_as_slave(mut config: &mut JormungandrConfig) -> JormungandrProcess {
+    starter::start_jormungandr_node_as_slave(&mut config)
 }
 
 pub fn assert_start_jormungandr_node_as_passive_fail(
     mut config: &mut JormungandrConfig,
     expected_message_part: &str,
 ) {
-    jormungandr_starter::assert_start_jormungandr_node_as_passive_fail(
-        &mut config,
-        expected_message_part,
-    )
+    starter::assert_start_jormungandr_node_as_passive_fail(&mut config, expected_message_part)
 }
 
-pub fn start_jormungandr_node_as_passive(mut config: &mut JormungandrConfig) -> ProcessKillGuard {
-    jormungandr_starter::start_jormungandr_node_as_passive(&mut config)
+pub fn start_jormungandr_node_as_passive(mut config: &mut JormungandrConfig) -> JormungandrProcess {
+    starter::start_jormungandr_node_as_passive(&mut config)
 }
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
