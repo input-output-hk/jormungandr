@@ -154,20 +154,23 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    let leader_secret = if let Some(secret_path) = bootstrapped_node.settings.leadership {
-        Some(secure::NodeSecret::load_from_file(secret_path.as_path())?)
-    } else {
-        None
-    };
+    let leader_secrets: Vec<Leader> = bootstrapped_node
+        .settings
+        .leadership
+        .iter()
+        .map(|secret_path| {
+            let secret = secure::NodeSecret::load_from_file(secret_path.as_path()).unwrap();
+            Leader {
+                bft_leader: secret.bft(),
+                genesis_leader: secret.genesis(),
+            }
+        })
+        .collect();
 
-    if let Some(secret) = leader_secret {
+    if !leader_secrets.is_empty() {
         let tpool = tpool.clone();
         let block_task = block_task.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
-        let pk = Leader {
-            bft_leader: secret.bft(),
-            genesis_leader: secret.genesis(),
-        };
 
         services.spawn_future("leadership", logger, move |info| {
             let process = self::leadership::Process::new(
@@ -177,7 +180,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 block_task,
             );
 
-            process.start(vec![pk], new_epoch_notifier)
+            process.start(leader_secrets, new_epoch_notifier)
         });
     }
 

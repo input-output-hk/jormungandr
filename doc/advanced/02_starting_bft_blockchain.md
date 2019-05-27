@@ -80,3 +80,6 @@ $ jormungandr --genesis-block block-0.bin \
     --config example.config \
     --secret node_secret.yaml
 ```
+
+It's possible to use the flag `--secret` multiple times to run a node
+with multiple leaders.

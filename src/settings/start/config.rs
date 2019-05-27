@@ -10,7 +10,7 @@ use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    pub secret_file: Option<PathBuf>,
+    pub secret_files: Option<Vec<PathBuf>>,
     pub legacy_peers: Option<Vec<SocketAddr>>,
     pub grpc_peers: Option<Vec<SocketAddr>>,
     pub storage: Option<PathBuf>,
