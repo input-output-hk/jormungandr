@@ -34,10 +34,6 @@ pub struct StartArguments {
     #[structopt(long = "grpc-connect", parse(try_from_str))]
     pub grpc_connect: Vec<SocketAddr>,
 
-    /// Work without the leadership task.
-    #[structopt(long = "without-leadership")]
-    pub without_leadership: bool,
-
     /// Path to the blockchain pool storage directory
     #[structopt(long = "storage", parse(from_os_str))]
     pub storage: Option<PathBuf>,
@@ -46,9 +42,10 @@ pub struct StartArguments {
     #[structopt(long = "config", parse(from_os_str))]
     pub node_config: PathBuf,
 
-    /// Set the secret node config (in YAML format)
+    /// Set the secret node config (in YAML format). Can be given
+    /// multiple times.
     #[structopt(long = "secret", parse(from_os_str))]
-    pub secret: Option<PathBuf>,
+    pub secret: Vec<PathBuf>,
 
     /// Path to the genesis block (the block0) of the blockchain
     #[structopt(long = "genesis-block", parse(try_from_str))]

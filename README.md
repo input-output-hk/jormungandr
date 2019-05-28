@@ -86,8 +86,7 @@ If you are not a leader node, then you can start the jormundandr with:
 
 ```
 jormungandr --genesis-block block-0.bin \
-  --config example.config \
-  --without-leadership
+  --config example.config
 ```
 
 # documentations

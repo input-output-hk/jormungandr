@@ -24,7 +24,7 @@ pub struct Settings {
     pub network: network::Configuration,
     pub storage: Option<PathBuf>,
     pub block_0: Block0Info,
-    pub leadership: Option<PathBuf>,
+    pub leadership: Vec<PathBuf>,
     pub rest: Option<Rest>,
 }
 
@@ -86,17 +86,16 @@ impl RawSettings {
             (None, None) => None,
         };
 
-        let secret = if command_arguments.without_leadership {
-            None
-        } else {
-            match (command_arguments.secret.as_ref(), config.secret_file) {
-                (Some(path), _) => Some(path.clone()),
-                (None, Some(path)) => Some(path.clone()),
-                (None, None) => {
-                    warn!(logger, "Node started without path to the stored secret keys, just like starting with `--without-leadership'");
-                    None
-                }
-            }
+        let mut leadership = command_arguments.secret.clone();
+        if let Some(secret_files) = config.secret_files {
+            leadership.extend(secret_files);
+        }
+
+        if leadership.is_empty() {
+            warn!(
+                logger,
+                "Node started without path to the stored secret keys"
+            );
         };
 
         let block0_info = match (
@@ -113,7 +112,7 @@ impl RawSettings {
             storage: storage,
             block_0: block0_info,
             network: network,
-            leadership: secret,
+            leadership,
             rest: config.rest,
         })
     }
