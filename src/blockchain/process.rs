@@ -59,7 +59,7 @@ pub fn handle_input(
                     );
                     debug!(logger, "Header: {:?}", header);
                     network_msg_box
-                        .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                        .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                         .unwrap_or_else(|err| {
                             error!(logger, "cannot propagate block to network: {}", err)
                         });
@@ -96,7 +96,7 @@ pub fn handle_input(
                     debug!(logger, "Header: {:?}", header);
                     // Propagate the block to other nodes
                     network_msg_box
-                        .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                        .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                         .unwrap_or_else(|err| {
                             error!(logger, "cannot propagate block to network: {}", err)
                         });
@@ -122,7 +122,7 @@ pub fn handle_input(
                 BlockHeaderTriage::ProcessBlockToState => {
                     info!(logger, "Block announcement is interesting, fetch block");
                     network_msg_box
-                        .send(NetworkMsg::GetBlocks(node_id, vec![header.id()]))
+                        .try_send(NetworkMsg::GetBlocks(node_id, vec![header.id()]))
                         .unwrap_or_else(|err| {
                             error!(logger, "cannot propagate block to network: {}", err)
                         });

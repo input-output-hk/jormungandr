@@ -173,7 +173,7 @@ fn handle_leadership(
                 }
             };
 
-            block_message.send(BlockMsg::LeadershipBlock(block)).unwrap();
+            block_message.try_send(BlockMsg::LeadershipBlock(block)).unwrap();
 
             future::ok(())
         })

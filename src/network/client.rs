@@ -103,7 +103,7 @@ where
             BlockEvent::Announce(header) => {
                 self.channels
                     .block_box
-                    .send(BlockMsg::AnnouncedBlock(header, self.remote_node_id))
+                    .try_send(BlockMsg::AnnouncedBlock(header, self.remote_node_id))
                     .unwrap();
             }
             BlockEvent::Solicit(block_ids) => {
@@ -151,7 +151,7 @@ where
                 .and_then(move |blocks| {
                     blocks
                         .for_each(move |block| {
-                            block_box.send(BlockMsg::NetworkBlock(block)).unwrap();
+                            block_box.try_send(BlockMsg::NetworkBlock(block)).unwrap();
                             Ok(())
                         })
                         .map_err(move |e| {
