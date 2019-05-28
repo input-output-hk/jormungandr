@@ -51,10 +51,10 @@ pub struct Configuration {
     /// is set with an address value.
     pub public_address: Option<Address>,
 
-    /// Local address to listen to, if different from public address.
+    /// Local socket address to listen to, if different from public address.
     /// The IP address can be given as 0.0.0.0 or :: to bind to all
     /// network interfaces.
-    pub listen_address: Option<Address>,
+    pub listen: Option<SocketAddr>,
 
     /// list of trusted addresses
     pub trusted_peers: Vec<TrustedPeer>,
@@ -100,10 +100,11 @@ impl Configuration {
     /// Returns the listener configuration, if the options defining it
     /// were set.
     pub fn listen(&self) -> Option<Listen> {
-        self.listen_address
-            .as_ref()
-            .or(self.public_address.as_ref())
-            .and_then(|address| address.to_socketaddr())
+        self.listen
+            .or(self
+                .public_address
+                .as_ref()
+                .and_then(|address| address.to_socketaddr()))
             .map(|addr| Listen::new(addr, self.protocol))
     }
 }
