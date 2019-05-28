@@ -33,7 +33,8 @@ impl LeaderSchedule {
     /// [`TaskParameters`]: ./struct.TaskParameters.html
     ///
     pub fn new(logger: Logger, leader: &Leader, task_parameters: &TaskParameters) -> Self {
-        let era = task_parameters.leadership.era();
+        let leadership = &task_parameters.leadership;
+        let era = leadership.era();
         let number_of_slots_per_epoch = era.slots_per_epoch();
         let now = std::time::SystemTime::now();
 
@@ -44,7 +45,7 @@ impl LeaderSchedule {
         let logger = Logger::root(
             logger,
             o!(
-                "epoch" => task_parameters.epoch,
+                "epoch" => leadership.epoch(),
             ),
         );
 
@@ -70,11 +71,12 @@ impl LeaderSchedule {
         task_parameters: &TaskParameters,
         slot_idx: u32,
     ) {
+        let leadership = &task_parameters.leadership;
         let slot = task_parameters
             .leadership
             .era()
             .from_era_to_slot(EpochPosition {
-                epoch: chain_time::Epoch(task_parameters.epoch),
+                epoch: chain_time::Epoch(leadership.epoch()),
                 slot: EpochSlotOffset(slot_idx),
             });
         let slot_system_time = task_parameters
@@ -82,7 +84,7 @@ impl LeaderSchedule {
             .slot_to_systemtime(slot)
             .expect("The slot should always be in the given timeframe here");
 
-        let date = BlockDate::from_epoch_slot_id(task_parameters.epoch, slot_idx);
+        let date = BlockDate::from_epoch_slot_id(leadership.epoch(), slot_idx);
 
         if now < slot_system_time {
             match task_parameters.leadership.is_leader_for_date(leader, date) {
