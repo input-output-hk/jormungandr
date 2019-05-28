@@ -10,6 +10,12 @@ pub fn test_ed25519_key_generation() {
 }
 
 #[test]
+pub fn test_ed25519_uppercase_key_generation() {
+    let generated_key = jcli_wrapper::assert_key_generate("ED25519EXTENDED");
+    assert_ne!(generated_key, "", "generated key is empty");
+}
+
+#[test]
 pub fn test_ed25510bip32_key_generation() {
     let generated_key = jcli_wrapper::assert_key_generate("Ed25519Bip32");
     assert_ne!(generated_key, "", "generated key is empty");

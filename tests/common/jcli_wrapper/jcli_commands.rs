@@ -115,13 +115,12 @@ pub fn get_rest_utxo_get_command(host: &str) -> Command {
 }
 
 /// Get adress single command.
-pub fn get_address_single_command_default(public_key: &str) -> Command {
+pub fn get_address_single_command(public_key: &str, is_testing: bool) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
-    command
-        .arg("address")
-        .arg("single")
-        .arg(&public_key)
-        .arg("--testing");
+    command.arg("address").arg("single").arg(&public_key);
+    if is_testing {
+        command.arg("--testing");
+    }
     println!("Run address info command: {:?}", &command);
     command
 }
@@ -135,26 +134,38 @@ pub fn get_address_info_command_default(address: &str) -> Command {
 }
 
 /// Get adress single command.
-pub fn get_address_account_command_default(public_key: &str) -> Command {
+pub fn get_address_account_command(public_key: &str, is_testing: bool) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
-    command
-        .arg("address")
-        .arg("account")
-        .arg(&public_key)
-        .arg("--testing");
+    command.arg("address").arg("account").arg(&public_key);
+    if is_testing {
+        command.arg("--testing");
+    }
     println!("Run address info command: {:?}", &command);
     command
 }
 
 /// Get adress single command.
-pub fn get_address_delegation_command_default(public_key: &str, delegation_key: &str) -> Command {
+pub fn get_genesis_init_command() -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command.arg("genesis").arg("init");
+    command
+}
+
+/// Get adress single command.
+pub fn get_address_delegation_command(
+    public_key: &str,
+    delegation_key: &str,
+    is_testing: bool,
+) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
         .arg("address")
         .arg("single")
         .arg(&public_key)
-        .arg(&delegation_key)
-        .arg("--testing");
+        .arg(&delegation_key);
+    if is_testing {
+        command.arg("--testing");
+    }
     println!("Run address info command: {:?}", &command);
     command
 }

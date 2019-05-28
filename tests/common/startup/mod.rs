@@ -67,7 +67,7 @@ pub fn build_genesis_block(genesis_yaml: &GenesisYaml) -> PathBuf {
 pub fn create_new_utxo_address() -> Utxo {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_single_default(&public_key);
+    let address = jcli_wrapper::assert_address_single_for_testing(&public_key);
     let utxo = Utxo {
         private_key,
         public_key,
@@ -80,7 +80,7 @@ pub fn create_new_utxo_address() -> Utxo {
 pub fn create_new_account_address() -> Account {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_account_default(&public_key);
+    let address = jcli_wrapper::assert_address_account_for_testing(&public_key);
     let account = Account {
         private_key,
         public_key,
@@ -93,11 +93,12 @@ pub fn create_new_account_address() -> Account {
 pub fn create_new_delegation_address() -> Delegation {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_single_default(&public_key);
+    let address = jcli_wrapper::assert_address_single_for_testing(&public_key);
 
     let private_delegation_key = jcli_wrapper::assert_key_generate_default();
     let public_delegation_key = jcli_wrapper::assert_key_to_public_default(&private_delegation_key);
-    let delegation_address = jcli_wrapper::assert_address_single_default(&public_delegation_key);
+    let delegation_address =
+        jcli_wrapper::assert_address_single_for_testing(&public_delegation_key);
 
     let utxo_with_delegation = Delegation {
         private_key,

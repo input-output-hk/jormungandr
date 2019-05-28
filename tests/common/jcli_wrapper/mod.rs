@@ -64,6 +64,13 @@ pub fn assert_genesis_hash(path_to_output_block: &PathBuf) -> String {
     hash
 }
 
+pub fn assert_genesis_hash_fails(path_to_output_block: &PathBuf, expected_msg: &str) {
+    process_assert::assert_process_failed_and_contains_message(
+        jcli_commands::get_genesis_hash_command(&path_to_output_block),
+        expected_msg,
+    );
+}
+
 pub fn assert_rest_stats(host: &str) -> BTreeMap<String, String> {
     let output =
         process_utils::run_process_and_get_output(jcli_commands::get_rest_stats_command(&host));
@@ -92,27 +99,69 @@ pub fn assert_get_address_info(adress: &str) -> BTreeMap<String, String> {
     content
 }
 
-pub fn assert_address_single_default(public_key: &str) -> String {
+pub fn assert_get_address_info_fails(adress: &str, expected_msg: &str) {
+    process_assert::assert_process_failed_and_contains_message(
+        jcli_commands::get_address_info_command_default(&adress),
+        expected_msg,
+    );
+}
+
+pub fn assert_genesis_init() -> String {
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_genesis_init_command());
+    let content = output.as_lossy_string();
+    process_assert::assert_process_exited_successfully(output);
+    content
+}
+
+pub fn assert_address_single_for_testing(public_key: &str) -> String {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_single_command_default(&public_key),
+        jcli_commands::get_address_single_command(&public_key, true),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
     single_line
 }
 
-pub fn assert_address_delegation_default(public_key: &str, delegation_key: &str) -> String {
+pub fn assert_address_delegation_for_testing(public_key: &str, delegation_key: &str) -> String {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_delegation_command_default(&public_key, &delegation_key),
+        jcli_commands::get_address_delegation_command(&public_key, &delegation_key, true),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
     single_line
 }
 
-pub fn assert_address_account_default(public_key: &str) -> String {
+pub fn assert_address_account_for_testing(public_key: &str) -> String {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_account_command_default(&public_key),
+        jcli_commands::get_address_account_command(&public_key, true),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_address_single_for_prod(public_key: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_address_single_command(&public_key, false),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_address_delegation_for_prod(public_key: &str, delegation_key: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_address_delegation_command(&public_key, &delegation_key, false),
+    );
+    let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_address_account_for_prod(public_key: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_address_account_command(&public_key, false),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
@@ -213,6 +262,28 @@ pub fn assert_key_from_bytes(path_to_input_file: &PathBuf, key_type: &str) -> St
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
     single_line
+}
+
+pub fn assert_key_from_bytes_fails(
+    path_to_input_file: &PathBuf,
+    key_type: &str,
+    expected_msg: &str,
+) {
+    process_assert::assert_process_failed_and_matches_message(
+        jcli_commands::get_key_from_bytes_command(&path_to_input_file, &key_type),
+        expected_msg,
+    );
+}
+
+pub fn assert_key_to_bytes_fails(
+    input_file: &PathBuf,
+    path_to_output_file: &PathBuf,
+    expected_msg: &str,
+) {
+    process_assert::assert_process_failed_and_matches_message(
+        jcli_commands::get_key_to_bytes_command(&input_file, &path_to_output_file),
+        expected_msg,
+    );
 }
 
 pub fn assert_rest_get_block_tip(host: &str) -> String {

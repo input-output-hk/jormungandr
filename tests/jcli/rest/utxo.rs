@@ -18,10 +18,10 @@ pub fn test_correct_utxos_are_read_from_node() {
     let reciever_public_key = jcli_wrapper::assert_key_to_public_default(&reciever_private_key);
     println!("Reciever public key generated: {}", &reciever_public_key);
 
-    let sender_address = jcli_wrapper::assert_address_single_default(&sender_public_key);
+    let sender_address = jcli_wrapper::assert_address_single_for_testing(&sender_public_key);
     println!("Sender address generated: {}", &sender_address);
 
-    let reciever_address = jcli_wrapper::assert_address_single_default(&reciever_public_key);
+    let reciever_address = jcli_wrapper::assert_address_single_for_testing(&reciever_public_key);
     println!("Reciever address generated: {}", &reciever_address);
 
     let funds = vec![

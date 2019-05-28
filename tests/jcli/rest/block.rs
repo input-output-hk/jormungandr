@@ -1,6 +1,5 @@
 #![cfg(feature = "integration-test")]
 
-use common::configuration::jormungandr_config::JormungandrConfig;
 use common::jcli_wrapper;
 use common::process_assert;
 use common::startup;
