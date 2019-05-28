@@ -47,7 +47,7 @@ pub struct Configuration {
     pub public_id: Option<NodeId>,
 
     /// Optional public IP address to advertise.
-    /// Also used as the binding address unless the `listen_address` field
+    /// Also used as the binding address unless the `listen` field
     /// is set with an address value.
     pub public_address: Option<Address>,
 
