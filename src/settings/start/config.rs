@@ -34,9 +34,17 @@ pub struct Rest {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct P2pConfig {
-    /// the address to which other peers may connect to
-    pub public_address: Option<Address>,
+    /// The P2P node identifier
     pub public_id: Option<NodeId>,
+
+    /// The public address to which other peers may connect to
+    pub public_address: Option<Address>,
+
+    /// The socket address to listen on, if different from the public address.
+    /// The IP address can be specified as 0.0.0.0 or :: to listen on
+    /// all network interfaces.
+    pub listen_address: Option<Address>,
+
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Option<Vec<TrustedPeer>>,

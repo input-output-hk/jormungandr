@@ -123,8 +123,10 @@ fn generate_network(
     config: &Config,
 ) -> network::Configuration {
     let public_address = config.peer_2_peer.public_address.clone();
+    let listen_address = config.peer_2_peer.listen_address.clone();
     network::Configuration {
-        public_address: public_address,
+        public_address,
+        listen_address,
         public_id: config.peer_2_peer.public_id.clone(),
         trusted_peers: config.peer_2_peer.trusted_peers.clone().unwrap_or(vec![]),
         protocol: Protocol::Grpc,
