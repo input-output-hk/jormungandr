@@ -229,7 +229,9 @@ fn handle_epoch(
     .map_err(|error| EndOfEpochReminderError::DelayFailed { source: error })
     .and_then(move |()| {
         info!(logger, "End of epoch" ; "epoch" => date.epoch);
-        block_message.send(BlockMsg::LeadershipExpectEndOfEpoch);
+        block_message
+            .send(BlockMsg::LeadershipExpectEndOfEpoch)
+            .unwrap();
         future::ok(())
     })
 }

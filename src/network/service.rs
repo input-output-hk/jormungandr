@@ -148,7 +148,10 @@ impl BlockService for NodeService {
     }
 
     fn on_uploaded_block(&mut self, block: Block) -> Self::OnUploadedBlockFuture {
-        self.channels.block_box.send(BlockMsg::NetworkBlock(block));
+        self.channels
+            .block_box
+            .send(BlockMsg::NetworkBlock(block))
+            .unwrap();
         future::ok(())
     }
 
