@@ -52,7 +52,7 @@ network-core    = { path = "cardano-deps/network-core" }
 network-grpc    = { path = "cardano-deps/network-grpc" }
 cardano         = { path = "cardano-deps/cardano", features = [ "generic-serialization" ] }
 cardano-storage = { path = "cardano-deps/storage" }
-poldercast = { version = "0.3", features = [ "serde_derive" ] }
+poldercast = { version = "0.3.1", features = [ "serde_derive" ] }
 reqwest = "0.9.11"
 custom_error = "1.6"
 num-traits = "0.2"
