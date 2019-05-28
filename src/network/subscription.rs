@@ -20,7 +20,7 @@ where
         inbound
             .for_each(move |header| {
                 block_box
-                    .send(BlockMsg::AnnouncedBlock(header, node_id))
+                    .try_send(BlockMsg::AnnouncedBlock(header, node_id))
                     .unwrap();
                 Ok(())
             })

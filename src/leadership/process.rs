@@ -230,7 +230,7 @@ fn handle_epoch(
     .and_then(move |()| {
         info!(logger, "End of epoch" ; "epoch" => date.epoch);
         block_message
-            .send(BlockMsg::LeadershipExpectEndOfEpoch)
+            .try_send(BlockMsg::LeadershipExpectEndOfEpoch)
             .unwrap();
         future::ok(())
     })

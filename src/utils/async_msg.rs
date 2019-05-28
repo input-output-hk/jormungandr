@@ -26,12 +26,11 @@ impl<Msg> MessageBox<Msg> {
     /// A call to this function never blocks
     /// the current thread.
     ///
-    /// # Panics
+    /// # Errors
     ///
     /// If the channel is full or the receiving MessageQueue has been dropped,
-    /// the sending thread panics.
-    ///
-    pub fn send(&mut self, a: Msg) -> Result<(), TrySendError<Msg>> {
+    /// an error is returned in `Err`.
+    pub fn try_send(&mut self, a: Msg) -> Result<(), TrySendError<Msg>> {
         self.0.try_send(a)
     }
 }
