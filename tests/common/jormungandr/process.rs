@@ -19,7 +19,7 @@ impl JormungandrProcess {
     }
 
     pub fn assert_no_erros_in_log(&self) {
-        let error_lines = self.logger.get_lines_with_error();
+        let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
 
         assert_eq!(
             error_lines.len(),
