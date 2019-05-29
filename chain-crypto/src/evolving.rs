@@ -9,7 +9,7 @@ pub enum EvolvingStatus {
 
 pub trait KeyEvolvingAlgorithm: AsymmetricKey {
     /// Get the period associated with this signature
-    fn get_period(key: &Self::Secret) -> usize;
+    fn get_period(key: &Self::Secret) -> u32;
 
     /// Update the secret key to the next period
     ///
@@ -23,7 +23,7 @@ impl<A: KeyEvolvingAlgorithm> SecretKey<A> {
         A::update(&mut key.0)
     }
     /// Get the period associated with the current instance of the key
-    pub fn get_period(key: &Self) -> usize {
+    pub fn get_period(key: &Self) -> u32 {
         A::get_period(&key.0)
     }
 }

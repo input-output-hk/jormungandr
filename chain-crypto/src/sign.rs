@@ -1,5 +1,5 @@
 use crate::bech32::{self, Bech32};
-use crate::{hex, kes, key};
+use crate::{hex, key};
 use std::fmt;
 use std::marker::PhantomData;
 

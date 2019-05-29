@@ -89,8 +89,8 @@ impl SigningAlgorithm for SumEd25519_12 {
 }
 
 impl KeyEvolvingAlgorithm for SumEd25519_12 {
-    fn get_period(sec: &Self::Secret) -> usize {
-        sec.t()
+    fn get_period(sec: &Self::Secret) -> u32 {
+        sec.t() as u32
     }
     fn update(key: &mut Self::Secret) -> EvolvingStatus {
         if sum::update(key).is_ok() {
@@ -102,7 +102,7 @@ impl KeyEvolvingAlgorithm for SumEd25519_12 {
 }
 
 impl KeyEvolvingSignatureAlgorithm for SumEd25519_12 {
-    fn get_period(sig: &Self::Signature) -> usize {
-        sig.t()
+    fn get_period(sig: &Self::Signature) -> u32 {
+        sig.t() as u32
     }
 }
