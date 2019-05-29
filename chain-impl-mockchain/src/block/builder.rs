@@ -5,7 +5,7 @@ use crate::block::{
     BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion,
     ChainLength, Common, GenesisPraosProof, Header, KESSignature, Message, Proof,
 };
-use crate::key::{make_signature, make_signature_update};
+use crate::key::make_signature;
 use crate::leadership;
 use crate::stake;
 use crate::transaction::{AuthenticatedTransaction, NoExtra};
@@ -136,7 +136,7 @@ impl BlockBuilder {
     pub fn make_genesis_praos_block(
         mut self,
         node_id: &stake::StakePoolId,
-        kes_signing_key: &mut SecretKey<SumEd25519_12>,
+        kes_signing_key: &SecretKey<SumEd25519_12>,
         vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput,
     ) -> Block {
         assert_ne!(self.common.chain_length, ChainLength(0));
@@ -146,7 +146,7 @@ impl BlockBuilder {
             node_id: node_id.clone(),
             vrf_proof: vrf_proof,
             // ! SECURITY FIXME ! : also include id and vrf proof.
-            kes_proof: KESSignature(make_signature_update(kes_signing_key, &self.common)),
+            kes_proof: KESSignature(make_signature(kes_signing_key, &self.common)),
         };
         self.make_block(Proof::GenesisPraos(genesis_praos_proof))
     }

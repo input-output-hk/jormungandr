@@ -4,9 +4,7 @@
 use chain_core::mempack::{read_mut_slice, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto as crypto;
-use chain_crypto::{
-    AsymmetricKey, KeyEvolvingSignatureAlgorithm, SigningAlgorithm, VerificationAlgorithm,
-};
+use chain_crypto::{AsymmetricKey, SigningAlgorithm, VerificationAlgorithm};
 
 use std::str::FromStr;
 
@@ -86,18 +84,6 @@ where
 {
     let bytes = data.serialize_as_vec().unwrap();
     crypto::Signature::generate(spending_key, &bytes).coerce()
-}
-
-pub fn make_signature_update<T, A>(
-    spending_key: &mut crypto::SecretKey<A>,
-    data: &T,
-) -> crypto::Signature<T, A>
-where
-    A: KeyEvolvingSignatureAlgorithm,
-    T: property::Serialize,
-{
-    let bytes = data.serialize_as_vec().unwrap();
-    crypto::Signature::generate_update(spending_key, &bytes)
 }
 
 pub fn verify_signature<T, A>(

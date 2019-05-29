@@ -383,9 +383,9 @@ mod test {
                     static ref SK_FIRST: SecretKey<SumEd25519_12> =
                         { SecretKey::generate(&mut ChaChaRng::from_seed([0; 32])) };
                 }
-                let mut sk = SK_FIRST.clone(); // Arbitrary::arbitrary(g);
-                let signature = Signature::generate_update(&mut sk, &[0u8, 1, 2, 3]);
-                KESSignature(signature)
+                let sk = SK_FIRST.clone(); // Arbitrary::arbitrary(g);
+                let signature = Signature::generate(&sk, &[0u8, 1, 2, 3]);
+                KESSignature(signature.coerce())
             };
             GenesisPraosProof {
                 node_id: node_id,
