@@ -1,10 +1,13 @@
 use crate::{
-    blockcfg::{BlockBuilder, BlockDate, ChainLength, HeaderHash},
+    blockcfg::{
+        BlockBuilder, BlockDate, ChainLength, HeaderContentEvalContext, HeaderHash, Leader,
+        LeaderOutput, Ledger,
+    },
     blockchain::Tip,
+    fragment::Pool,
     intercom::BlockMsg,
     leadership::{LeaderSchedule, Leadership},
     secure::enclave::{Enclave, LeaderId},
-    transaction::TPoolR,
     utils::async_msg::MessageBox,
 };
 use chain_core::property::ChainLength as _;
@@ -34,7 +37,7 @@ pub struct Task {
     enclave: Enclave,
     blockchain_tip: Tip,
     epoch_receiver: watch::Receiver<Option<TaskParameters>>,
-    transaction_pool: TPoolR,
+    fragment_pool: Pool,
     block_message: MessageBox<BlockMsg>,
 }
 
@@ -45,7 +48,7 @@ impl Task {
         leader: LeaderId,
         enclave: Enclave,
         blockchain_tip: Tip,
-        transaction_pool: TPoolR,
+        fragment_pool: Pool,
         epoch_receiver: watch::Receiver<Option<TaskParameters>>,
         block_message: MessageBox<BlockMsg>,
     ) -> Self {
@@ -62,7 +65,7 @@ impl Task {
             leader: leader,
             enclave: enclave,
             blockchain_tip,
-            transaction_pool,
+            fragment_pool,
             epoch_receiver,
             block_message,
         }
@@ -74,7 +77,7 @@ impl Task {
         let leader = self.leader;
         let enclave = self.enclave;
         let blockchain_tip = self.blockchain_tip;
-        let transaction_pool = self.transaction_pool;
+        let fragment_pool = self.fragment_pool;
         let block_message = self.block_message;
 
         self.epoch_receiver
@@ -90,7 +93,7 @@ impl Task {
                     enclave.clone(),
                     handle_logger.clone(),
                     blockchain_tip.clone(),
-                    transaction_pool.clone(),
+                    fragment_pool.clone(),
                     task_parameters,
                 )
                 .map_err(|error| {
@@ -112,7 +115,7 @@ fn handle_leadership(
     enclave: Enclave,
     logger: Logger,
     blockchain_tip: Tip,
-    transaction_pool: TPoolR,
+    mut fragment_pool: Pool,
     task_parameters: TaskParameters,
 ) -> impl Future<Item = (), Error = HandleLeadershipError> {
     let schedule = LeaderSchedule::new(logger.clone(), &leader_id, &enclave, &task_parameters);
@@ -128,7 +131,9 @@ fn handle_leadership(
             );
 
             let block = prepare_block(
-                &transaction_pool,
+                &mut fragment_pool,
+                blockchain_tip.ledger().unwrap().clone(),
+                &task_parameters.leadership,
                 scheduled_event.leader_output.date,
                 blockchain_tip.chain_length().unwrap().next(),
                 blockchain_tip.hash().unwrap(),
@@ -145,16 +150,30 @@ fn handle_leadership(
 }
 
 fn prepare_block(
-    transaction_pool: &TPoolR,
+    fragment_pool: &mut Pool,
+    ledger: Ledger,
+    leadership: &Leadership,
     date: BlockDate,
     chain_length: ChainLength,
     parent_id: HeaderHash,
 ) -> BlockBuilder {
-    let mut bb = BlockBuilder::new();
+    use crate::fragment::selection::{FragmentSelectionAlgorithm as _, OldestFirst};
+
+    let selection_algorithm = OldestFirst::new(250 /* TODO!! */);
+    let metadata = HeaderContentEvalContext {
+        block_date: date,
+        chain_length,
+        nonce: None,
+    };
+    let ledger_params = leadership.ledger_parameters().clone();
+
+    let mut bb = fragment_pool
+        .select(ledger, metadata, ledger_params, selection_algorithm)
+        .wait()
+        .unwrap()
+        .finalize();
 
     bb.date(date).parent(parent_id).chain_length(chain_length);
-    let messages = transaction_pool.write().unwrap().collect(250 /* TODO!! */);
-    bb.messages(messages);
 
     bb
 }

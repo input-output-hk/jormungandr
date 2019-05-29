@@ -140,7 +140,11 @@ impl Blockchain {
                             leadership,
                         );
                     }
-                    tip = Some(Tip::new(Branch::new(gc_root, block_header.chain_length())));
+                    tip = Some(Tip::new(Branch::new(
+                        gc_root,
+                        block_header.chain_length(),
+                        state.clone(),
+                    )));
                 }
 
                 (tip.unwrap(), leaderships)
@@ -148,9 +152,9 @@ impl Blockchain {
                 let state = Ledger::new(block_0.id(), block_0.messages())?;
                 storage.put_block(&block_0)?;
                 let initial_leadership = Leadership::new(block_0.date().epoch, &state);
-                let tip = multiverse.add(block_0.id(), state);
+                let tip = multiverse.add(block_0.id(), state.clone());
                 let leaderships = Leaderships::new(&block_0.header, initial_leadership);
-                let tip = Tip::new(Branch::new(tip, block_0.header.chain_length()));
+                let tip = Tip::new(Branch::new(tip, block_0.header.chain_length(), state));
 
                 (tip, leaderships)
             };
@@ -394,8 +398,9 @@ fn process_block(
     let new_chain_length = block.chain_length();
 
     let branch = Branch::new(
-        blockchain.multiverse.add(block.id(), state),
+        blockchain.multiverse.add(block.id(), state.clone()),
         new_chain_length,
+        state,
     );
 
     if new_chain_length > tip_chain_length {

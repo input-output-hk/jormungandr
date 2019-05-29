@@ -1,5 +1,6 @@
+use crate::fragment;
 use crate::intercom::TransactionMsg;
-use crate::utils::task::TaskMessageBox;
+use crate::utils::async_msg::MessageBox;
 use actix_web::error::ErrorBadRequest;
 use actix_web::{App, Error as ActixError, HttpMessage, HttpRequest, Responder};
 use bytes::IntoBuf;
@@ -8,7 +9,7 @@ use chain_impl_mockchain::message::Message;
 use futures::Future;
 use std::sync::{Arc, Mutex};
 
-pub type Task = Arc<Mutex<TaskMessageBox<TransactionMsg>>>;
+pub type Task = Arc<Mutex<MessageBox<TransactionMsg>>>;
 
 pub fn create_handler(
     transaction_task: Task,
@@ -31,8 +32,8 @@ fn handle_request(
             println!("{}", e);
             ErrorBadRequest(e)
         })?;
-        let msg = TransactionMsg::SendTransaction(vec![msg]);
-        sender.lock().unwrap().send_to(msg);
+        let msg = TransactionMsg::SendTransaction(fragment::Origin::Rest, vec![msg]);
+        sender.lock().unwrap().try_send(msg).unwrap();
         Ok("")
     })
 }

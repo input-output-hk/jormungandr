@@ -1,4 +1,4 @@
-use crate::blockcfg::{ChainLength, HeaderHash};
+use crate::blockcfg::{ChainLength, HeaderHash, Ledger};
 use chain_impl_mockchain::multiverse::GCRoot;
 use std::sync::Arc;
 
@@ -28,15 +28,22 @@ pub struct Branch {
     /// This is a useful parameter to make choices regarding
     /// competitive branch (for the consensus, the choice of the **tip**).
     chain_length: ChainLength,
+
+    /// keep the ledger setting in the branch, this will allow to have quick
+    /// access to the ledger state for this given branch and continue the
+    /// branch or extract some other information regarding the healthy state
+    /// of that branch
+    ledger: Ledger,
 }
 
 impl Branch {
     /// create a new branch from the given GCRoot
     #[inline]
-    pub fn new(reference: GCRoot, chain_length: ChainLength) -> Self {
+    pub fn new(reference: GCRoot, chain_length: ChainLength, ledger: Ledger) -> Self {
         Branch {
             reference: Arc::new(reference),
             chain_length,
+            ledger,
         }
     }
 
@@ -50,5 +57,11 @@ impl Branch {
     #[inline]
     pub fn chain_length(&self) -> &ChainLength {
         &self.chain_length
+    }
+
+    /// get the ledger state associated to this branch latest hash
+    #[inline]
+    pub fn ledger(&self) -> &Ledger {
+        &self.ledger
     }
 }

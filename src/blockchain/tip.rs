@@ -1,5 +1,5 @@
 use crate::{
-    blockcfg::{ChainLength, HeaderHash},
+    blockcfg::{ChainLength, HeaderHash, Ledger},
     blockchain::Branch,
 };
 use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -67,6 +67,18 @@ impl Tip {
     #[inline]
     pub fn chain_length(&self) -> Result<ChainLength, TipGetError> {
         Ok(self.branch.read()?.chain_length().clone())
+    }
+
+    /// get the ledger of the Tip
+    ///
+    /// # Error
+    ///
+    /// This function might return an error if the underlying lock is
+    /// poisoned.
+    ///
+    #[inline]
+    pub fn ledger(&self) -> Result<Ledger, TipGetError> {
+        Ok(self.branch.read()?.ledger().clone())
     }
 }
 
