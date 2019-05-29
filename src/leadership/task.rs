@@ -1,15 +1,16 @@
 use crate::{
-    blockcfg::{BlockBuilder, BlockDate, ChainLength, HeaderHash, Leader, LeaderOutput},
+    blockcfg::{BlockBuilder, BlockDate, ChainLength, HeaderHash},
     blockchain::Tip,
     intercom::BlockMsg,
     leadership::{LeaderSchedule, Leadership},
+    secure::enclave::{Enclave, LeaderId},
     transaction::TPoolR,
     utils::async_msg::MessageBox,
 };
 use chain_core::property::ChainLength as _;
 use chain_time::timeframe::TimeFrame;
 use slog::Logger;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tokio::{prelude::*, sync::watch};
 
 custom_error! {pub HandleLeadershipError
@@ -29,7 +30,8 @@ pub struct TaskParameters {
 
 pub struct Task {
     logger: Logger,
-    leader: Arc<RwLock<Leader>>,
+    leader: LeaderId,
+    enclave: Enclave,
     blockchain_tip: Tip,
     epoch_receiver: watch::Receiver<Option<TaskParameters>>,
     transaction_pool: TPoolR,
@@ -40,7 +42,8 @@ impl Task {
     #[inline]
     pub fn new(
         logger: Logger,
-        leader: Leader,
+        leader: LeaderId,
+        enclave: Enclave,
         blockchain_tip: Tip,
         transaction_pool: TPoolR,
         epoch_receiver: watch::Receiver<Option<TaskParameters>>,
@@ -56,7 +59,8 @@ impl Task {
 
         Task {
             logger,
-            leader: Arc::new(RwLock::new(leader)),
+            leader: leader,
+            enclave: enclave,
             blockchain_tip,
             transaction_pool,
             epoch_receiver,
@@ -68,6 +72,7 @@ impl Task {
         let handle_logger = self.logger.clone();
         let crit_logger = self.logger;
         let leader = self.leader;
+        let enclave = self.enclave;
         let blockchain_tip = self.blockchain_tip;
         let transaction_pool = self.transaction_pool;
         let block_message = self.block_message;
@@ -81,7 +86,8 @@ impl Task {
             .for_each(move |task_parameters| {
                 handle_leadership(
                     block_message.clone(),
-                    leader.clone(),
+                    leader,
+                    enclave.clone(),
                     handle_logger.clone(),
                     blockchain_tip.clone(),
                     transaction_pool.clone(),
@@ -102,13 +108,14 @@ impl Task {
 ///
 fn handle_leadership(
     mut block_message: MessageBox<BlockMsg>,
-    leader: Arc<RwLock<Leader>>,
+    leader_id: LeaderId,
+    enclave: Enclave,
     logger: Logger,
     blockchain_tip: Tip,
     transaction_pool: TPoolR,
     task_parameters: TaskParameters,
 ) -> impl Future<Item = (), Error = HandleLeadershipError> {
-    let schedule = LeaderSchedule::new(logger.clone(), &leader.read().unwrap(), &task_parameters);
+    let schedule = LeaderSchedule::new(logger.clone(), &leader_id, &enclave, &task_parameters);
 
     schedule
         .map_err(|err| HandleLeadershipError::Schedule { source: err })
@@ -117,41 +124,21 @@ fn handle_leadership(
 
             info!(logger, "Leader scheduled event" ;
                 "scheduled at_time" => format!("{:?}", scheduled_event.expected_time),
-                "scheduled_at_date" => format!("{}", scheduled_event.date),
+                "scheduled_at_date" => format!("{}", scheduled_event.leader_output.date),
             );
 
             let block = prepare_block(
                 &transaction_pool,
-                scheduled_event.date,
+                scheduled_event.leader_output.date,
                 blockchain_tip.chain_length().unwrap().next(),
                 blockchain_tip.hash().unwrap(),
             );
 
-            let block = match scheduled_event.leader_output {
-                LeaderOutput::None => unreachable!("Output::None are supposed to be filtered out"),
-                LeaderOutput::Bft(_) => {
-                    let leader = leader.read().unwrap();
-                    if let Some(ref leader) = &leader.bft_leader {
-                        block.make_bft_block(&leader.sig_key)
-                    } else {
-                        unreachable!("the leader was elected for BFT signing block, we expect it has the signing key")
-                    }
-                }
-                LeaderOutput::GenesisPraos(witness) => {
-                    let mut leader = leader.write().unwrap();
-                    if let Some(genesis_leader) = &mut leader.genesis_leader {
-                        block.make_genesis_praos_block(
-                            &genesis_leader.node_id,
-                            &mut genesis_leader.sig_key,
-                            witness,
-                        )
-                    } else {
-                        unreachable!("the leader was elected for Genesis Praos signing block, we expect it has the signing key")
-                    }
-                }
-            };
+            let block = enclave.create_block(block, scheduled_event.leader_output);
 
-            block_message.try_send(BlockMsg::LeadershipBlock(block)).unwrap();
+            block_message
+                .try_send(BlockMsg::LeadershipBlock(block))
+                .unwrap();
 
             future::ok(())
         })

@@ -52,6 +52,7 @@ use crate::{
     blockcfg::Leader,
     blockchain::BlockchainR,
     rest::v0::node::stats::StatsCounter,
+    secure::enclave::Enclave,
     settings::start::Settings,
     transaction::TPool,
     utils::{async_msg, task::Services},
@@ -167,11 +168,14 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         })
         .collect();
     let leader_secrets = leader_secrets?;
+    let enclave = Enclave::from_vec(leader_secrets);
 
-    if !leader_secrets.is_empty() {
+    {
         let tpool = tpool.clone();
         let block_task = block_task.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
+
+        let enclave = enclave.clone();
 
         services.spawn_future("leadership", logger, move |info| {
             let process = self::leadership::Process::new(
@@ -181,7 +185,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 block_task,
             );
 
-            process.start(leader_secrets, new_epoch_notifier)
+            process.start(enclave, new_epoch_notifier)
         });
     }
 
