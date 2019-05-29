@@ -77,33 +77,14 @@ This is a general high level list of what information will need to be exchanged:
 We model everything so that we don't need any network state machine. Everything
 is stateless for
 
-* `GetLatest: () -> (Header, ChainLength)`:
-  * Return the latest block known by the peer (also known as at the tip of the
-    blockchain).
+* `Tip: () -> Header`:
+  * Return the header of the latest block known by the peer
+    (also known as at the tip of the blockchain).
   * **DD?** : Block vs hash: block is large but contain extra useful metadata
     (slotid, prevhash), whereas hash is small.
-* `GetChainHashes: (Hash, Offset, Count) -> [Hash]`:
-  * Fetch Count block hashes going backwards in the chain, starting at the
-    Offset’ ancestor of Hash.
-    Note that this function is pure since it does backward rather than forward
-    iteration. Due to the offset, it allows random access into the chain.
-  * Pseudo-code implementation:
-    ```
-    GetChainHashes(hash, offset, count):
-      h = hash;
-      // Note: the actual implementation won’t do a linear search, but will
-      // use a storage index to seek to the specified offset
-      for (i = 0; i < offset; i++)
-        h = load_block(h).parent_hash
-        if h == genesis: return
-      for (i = 0; i < count; i++)
-        blk = load_block(h)
-        send_hash(h)
-        h = blk.parent_hash
-        if h == genesis: return
-    ```
 * `GetHeaders: ([Hash]) -> [Header]`:
-  * Fetch the headers (metadata summaries) of the blocks identified by hashes.
+  * Fetch the headers (cryptographically verifiable metadata summaries)
+    of the blocks identified by hashes.
 * `GetBlocks: ([Hash]) -> [Block]`:
   * Like GetHeaders, but returns full blocks.
 * `PullBlocksToTip: ([Hash]) -> Stream<Block>`:
@@ -111,23 +92,32 @@ is stateless for
     the remote's current tip.
   * This is an easy way to pull blockchain state from a single peer,
     for clients that don't have a need to fiddle with batched
-    `GetChainHashes`/`GetBlocks` requests and traffic distribution among
+    `GetBlocks` requests and traffic distribution among
     multiple peers.
-* `AnnounceBlock: Header`
-  * Announce a new block to the peer by the block's hash.
-  * Used for submission of a new locally minted block,
-    and relay of block gossip on the network.
-* `AnnounceTransactions: [Hash]`
-  * Announce new transactions to the peer by their hashes as unique keys.
-  * Used for submission of a new locally accepted transaction,
-    and relay of transactions gossip on the network.
-* `GetTransactions: [Hash] -> [Transaction]`
-  * Fetch one or multiple transactions identified by the hashes.
+* `BlockSubscription: (Stream<Header>) -> Stream<Announce(Header)|Solicit([Hash])>`
+  * Establish a bidirectional subscription to send and receive announcements
+    of new blocks and (in the client role) receive solicitations to upload
+    blocks.
+  * The client does not need to stream solicitations upwards, as it can
+    request blocks directly with the `GetBlocks` method.
+  * Used for announcing new locally minted blocks, and for relaying
+    block gossip on the network.
+* `UploadBlocks: (Stream<Block>)`
+  * Upload blocks in response to a solicitation received via a
+    `BlockSubscription` stream.
+* `GetMessages: [Hash] -> [Message]`
+  * Fetch one or multiple messages (block content items, such as transactions)
+    identified by the hashes.
+* `MessageSubscription: (Stream<Message>) -> Stream<Message>`
+  * Establish a bidirectional subscription to send and receive new
+    content for the block under construction.
+  * Used for submission of new messages submitted to the node by
+    application clients, and for relaying of message gossip on the network.
 * P2P Messages: see P2P messages section.
 
-The protobuf files describing these commands are available in the
-`network-proto` directory of the [rust-cardano][rust-cardano-gh]
-project repository. **TODO:** to be updated.
+The protobuf files describing these methods are available in the
+`proto` directory of `network-grpc` crate in the
+[rust-cardano][rust-cardano-gh] project repository.
 
 [rust-cardano-gh]: https://github.com/input-output-hk/rust-cardano/
 
@@ -213,8 +203,9 @@ We chose to use GRPC/Protobuf as initial technology choice:
 * **Language/Architecture Independent**: works on everything
 * _Protobuf file acts as documentation and are relatively easy to version_
 
-Connections can be left open (specially for clients behind NAT), although we
-can cycle connection with a simple RCU like system.
+Connections and bidirectional subscription channels can be left open
+(especially for clients behind NAT), although we
+can cycle connections with a simple RCU-like system.
 
 # Node-to-Client communication
 
