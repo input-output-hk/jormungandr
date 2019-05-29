@@ -153,6 +153,19 @@ impl Leadership {
         self.epoch
     }
 
+    /// Create a Block date given a leadership and a relative epoch slot
+    ///
+    /// # Panics
+    ///
+    /// If the slot index is not valid given the leadership, out of bound date
+    pub fn date_at_slot(&self, slot_id: u32) -> BlockDate {
+        assert!(slot_id < self.era.slots_per_epoch());
+        BlockDate {
+            epoch: self.epoch(),
+            slot_id: slot_id,
+        }
+    }
+
     /// get the TimeEra associated to the `Leadership`
     #[inline]
     pub fn era(&self) -> &TimeEra {
