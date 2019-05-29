@@ -1,11 +1,11 @@
 #![cfg(feature = "integration-test")]
 
-use common::configuration::genesis_model::GenesisYaml;
-
 use common::configuration::genesis_model::Fund;
+use common::configuration::genesis_model::GenesisYaml;
 use common::configuration::jormungandr_config::JormungandrConfig;
 use common::file_utils;
 use common::jcli_wrapper;
+use common::jcli_wrapper::Discrimination;
 use common::startup;
 
 #[test]
@@ -47,7 +47,7 @@ pub fn test_genesis_for_production_is_successfully_built() {
 pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_build() {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let test_address = jcli_wrapper::assert_address_single_for_testing(&public_key);
+    let test_address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
 
     let mut config = JormungandrConfig::new();
     config.genesis_yaml.initial_funds = Some(vec![Fund {

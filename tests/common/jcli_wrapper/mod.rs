@@ -15,6 +15,12 @@ use super::process_utils::output_extensions::ProcessOutput;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+#[derive(PartialEq)]
+pub enum Discrimination {
+    Production,
+    Test,
+}
+
 pub fn assert_genesis_encode(
     genesis_yaml_file_path: &PathBuf,
     path_to_output_block: &PathBuf,
@@ -51,7 +57,6 @@ pub fn assert_genesis_hash(path_to_output_block: &PathBuf) -> String {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_genesis_hash_command(&path_to_output_block),
     );
-
     let hash = output.as_single_line();
 
     process_assert::assert_process_exited_successfully(output);
@@ -114,54 +119,31 @@ pub fn assert_genesis_init() -> String {
     content
 }
 
-pub fn assert_address_single_for_testing(public_key: &str) -> String {
+pub fn assert_address_single(public_key: &str, discrimination: Discrimination) -> String {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_single_command(&public_key, true),
+        jcli_commands::get_address_single_command(&public_key, discrimination),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
     single_line
 }
 
-pub fn assert_address_delegation_for_testing(public_key: &str, delegation_key: &str) -> String {
+pub fn assert_address_delegation(
+    public_key: &str,
+    delegation_key: &str,
+    discrimination: Discrimination,
+) -> String {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_delegation_command(&public_key, &delegation_key, true),
+        jcli_commands::get_address_delegation_command(&public_key, &delegation_key, discrimination),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
     single_line
 }
 
-pub fn assert_address_account_for_testing(public_key: &str) -> String {
+pub fn assert_address_account(public_key: &str, discrimination: Discrimination) -> String {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_account_command(&public_key, true),
-    );
-    let single_line = output.as_single_line();
-    process_assert::assert_process_exited_successfully(output);
-    single_line
-}
-
-pub fn assert_address_single_for_prod(public_key: &str) -> String {
-    let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_single_command(&public_key, false),
-    );
-    let single_line = output.as_single_line();
-    process_assert::assert_process_exited_successfully(output);
-    single_line
-}
-
-pub fn assert_address_delegation_for_prod(public_key: &str, delegation_key: &str) -> String {
-    let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_delegation_command(&public_key, &delegation_key, false),
-    );
-    let single_line = output.as_single_line();
-    process_assert::assert_process_exited_successfully(output);
-    single_line
-}
-
-pub fn assert_address_account_for_prod(public_key: &str) -> String {
-    let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_address_account_command(&public_key, false),
+        jcli_commands::get_address_account_command(&public_key, discrimination),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);

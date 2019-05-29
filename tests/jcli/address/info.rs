@@ -1,6 +1,7 @@
 #![cfg(feature = "integration-test")]
 
 use common::jcli_wrapper;
+use common::jcli_wrapper::Discrimination;
 
 #[test]
 pub fn test_info_unknown_address_public_key() {
@@ -12,7 +13,7 @@ pub fn test_info_unknown_address_public_key() {
 pub fn test_info_account_address() {
     let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let account_address = jcli_wrapper::assert_address_account_for_testing(&public_key);
+    let account_address = jcli_wrapper::assert_address_account(&public_key, Discrimination::Test);
     let info = jcli_wrapper::assert_get_address_info(&account_address);
     assert_eq!(
         info.get("discrimination").unwrap(),
@@ -26,7 +27,8 @@ pub fn test_info_account_address() {
 pub fn test_info_account_address_for_prod() {
     let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let account_address = jcli_wrapper::assert_address_account_for_prod(&public_key);
+    let account_address =
+        jcli_wrapper::assert_address_account(&public_key, Discrimination::Production);
     let info = jcli_wrapper::assert_get_address_info(&account_address);
     assert_eq!(
         info.get("discrimination").unwrap(),
@@ -44,7 +46,7 @@ pub fn test_info_delegation_address() {
     let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
     let delegation_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     let account_address =
-        jcli_wrapper::assert_address_delegation_for_testing(&public_key, &delegation_key);
+        jcli_wrapper::assert_address_delegation(&public_key, &delegation_key, Discrimination::Test);
     let info = jcli_wrapper::assert_get_address_info(&account_address);
     assert_eq!(
         info.get("discrimination").unwrap(),

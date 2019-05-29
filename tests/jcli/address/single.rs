@@ -1,6 +1,7 @@
 #![cfg(feature = "integration-test")]
 
 use common::jcli_wrapper;
+use common::jcli_wrapper::Discrimination;
 use common::process_assert;
 
 #[test]
@@ -11,7 +12,7 @@ pub fn test_utxo_address_made_of_ed25519_extended_key() {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
-    let utxo_address = jcli_wrapper::assert_address_single_for_testing(&public_key);
+    let utxo_address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
     assert_ne!(utxo_address, "", "generated utxo address is empty");
 }
 
@@ -31,7 +32,7 @@ pub fn test_delegation_address_made_of_ed25519_extended_seed_key() {
     println!("delegation key: {}", &delegation_key);
 
     let delegation_address =
-        jcli_wrapper::assert_address_delegation_for_testing(&public_key, &delegation_key);
+        jcli_wrapper::assert_address_delegation(&public_key, &delegation_key, Discrimination::Test);
     assert_ne!(
         delegation_address, "",
         "generated delegation adress is empty"
@@ -49,7 +50,7 @@ pub fn test_delegation_address_is_the_same_as_public() {
     println!("public key: {}", &public_key);
 
     let delegation_address =
-        jcli_wrapper::assert_address_delegation_for_testing(&public_key, &public_key);
+        jcli_wrapper::assert_address_delegation(&public_key, &public_key, Discrimination::Test);
     assert_ne!(
         delegation_address, "",
         "generated delegation address is empty"
@@ -66,8 +67,11 @@ pub fn test_delegation_address_for_prod_discrimination() {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
-    let delegation_address =
-        jcli_wrapper::assert_address_delegation_for_prod(&public_key, &public_key);
+    let delegation_address = jcli_wrapper::assert_address_delegation(
+        &public_key,
+        &public_key,
+        Discrimination::Production,
+    );
     assert_ne!(
         delegation_address, "",
         "generated delegation address is empty"
@@ -84,8 +88,11 @@ pub fn test_single_address_for_prod_discrimination() {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
-    let delegation_address =
-        jcli_wrapper::assert_address_delegation_for_prod(&public_key, &public_key);
+    let delegation_address = jcli_wrapper::assert_address_delegation(
+        &public_key,
+        &public_key,
+        Discrimination::Production,
+    );
     assert_ne!(delegation_address, "", "generated single address is empty");
 }
 
@@ -99,8 +106,11 @@ pub fn test_account_address_for_prod_discrimination() {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
-    let delegation_address =
-        jcli_wrapper::assert_address_delegation_for_prod(&public_key, &public_key);
+    let delegation_address = jcli_wrapper::assert_address_delegation(
+        &public_key,
+        &public_key,
+        Discrimination::Production,
+    );
     assert_ne!(delegation_address, "", "generated account address is empty");
 }
 #[test]
@@ -115,7 +125,7 @@ pub fn test_utxo_address_made_of_incorrect_ed25519_extended_key() {
 
     // Assertion changed due to issue #306. After fix please change it to correct one
     process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_address_single_command(&public_key, true),
+        jcli_wrapper::jcli_commands::get_address_single_command(&public_key, Discrimination::Test),
         "Failed to parse bech32, invalid data format",
     );
 }
@@ -135,7 +145,7 @@ pub fn test_delegation_address_made_of_random_string() {
         jcli_wrapper::jcli_commands::get_address_delegation_command(
             &public_key,
             &delegation_key,
-            true,
+            Discrimination::Test,
         ),
         "Failed to parse bech32, invalid data format",
     );
@@ -161,7 +171,7 @@ pub fn test_delegation_address_made_of_incorrect_public_ed25519_extended_key() {
         jcli_wrapper::jcli_commands::get_address_delegation_command(
             &public_key,
             &delegation_key,
-            true,
+            Discrimination::Test,
         ),
         "Failed to parse bech32, invalid data format",
     );

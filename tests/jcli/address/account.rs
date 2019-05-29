@@ -1,8 +1,8 @@
 #![cfg(feature = "integration-test")]
 
 use common::jcli_wrapper;
+use common::jcli_wrapper::Discrimination;
 use common::process_assert;
-
 #[test]
 pub fn test_account_address_made_of_incorrect_ed25519_extended_key() {
     let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
@@ -15,7 +15,7 @@ pub fn test_account_address_made_of_incorrect_ed25519_extended_key() {
 
     // Assertion changed due to issue #306. After fix please change it to correct one
     process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_address_account_command(&public_key, true),
+        jcli_wrapper::jcli_commands::get_address_account_command(&public_key, Discrimination::Test),
         "Failed to parse bech32, invalid data format",
     );
 }
@@ -28,6 +28,6 @@ pub fn test_account_address_made_of_ed25519_extended_key() {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     println!("public key: {}", &public_key);
 
-    let account_address = jcli_wrapper::assert_address_account_for_testing(&public_key);
+    let account_address = jcli_wrapper::assert_address_account(&public_key, Discrimination::Test);
     assert_ne!(account_address, "", "generated account address is empty");
 }
