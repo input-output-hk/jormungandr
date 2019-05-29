@@ -128,6 +128,33 @@ jobs:
           paths:
             - release/*
 
+  build_release_all_features:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - run:
+          name: Install systemd dev tools
+          command: apt update && apt install -y libsystemd-dev
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Build in release profile
+          command: cargo build --release --features systemd --frozen
+      - persist_to_workspace:
+          root: target
+          paths:
+            - release/*
+
   test_release:
     docker:
       - image: rust:latest
@@ -149,6 +176,34 @@ jobs:
       - run:
           name: Test
           command: cargo test --release --frozen --verbose
+
+  test_integration_release_all_features:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - run:
+          name: Install and start syslog
+          command: apt update && apt install -y rsyslog && /etc/init.d/rsyslog start
+      - run:
+          name: Install systemd dev tools
+          command: apt install -y libsystemd-dev
+      - checkout
+      - attach_workspace:
+          at: target
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Test
+          command: cargo test --release --features "integration-test systemd" --frozen --verbose
 
   test_integration_release:
     docker:
@@ -230,6 +285,10 @@ workflows:
           requires:
             - rustfmt
             - cargo_fetch
+      - build_release_all_features:
+          requires:
+            - rustfmt
+            - cargo_fetch
       - test_debug:
           requires:
             - build_debug
@@ -242,6 +301,9 @@ workflows:
       - test_integration_release:
           requires:
             - build_release
+      - test_integration_release_all_features:
+          requires:
+            - build_release_all_features
       - test_nightly:
           requires:
             - rustfmt
