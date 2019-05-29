@@ -1,8 +1,5 @@
 use crate::{
-    blockcfg::{
-        BlockBuilder, BlockDate, ChainLength, Epoch, HeaderHash, Leader, LeaderOutput,
-        LedgerParameters, LedgerStaticParameters,
-    },
+    blockcfg::{BlockBuilder, BlockDate, ChainLength, HeaderHash, Leader, LeaderOutput},
     blockchain::Tip,
     intercom::BlockMsg,
     leadership::{LeaderSchedule, Leadership},
@@ -26,10 +23,6 @@ custom_error! {pub TaskError
 
 #[derive(Clone)]
 pub struct TaskParameters {
-    pub epoch: Epoch,
-    pub ledger_static_parameters: LedgerStaticParameters,
-    pub ledger_parameters: LedgerParameters,
-
     pub leadership: Arc<Leadership>,
     pub time_frame: TimeFrame,
 }
@@ -115,21 +108,6 @@ fn handle_leadership(
     transaction_pool: TPoolR,
     task_parameters: TaskParameters,
 ) -> impl Future<Item = (), Error = HandleLeadershipError> {
-    let era = task_parameters.leadership.era().clone();
-    let time_frame = task_parameters.time_frame.clone();
-
-    let current_slot = time_frame.slot_at(&std::time::SystemTime::now()).expect(
-        "assume we cannot only get one valid timeline and that the slot duration does not change",
-    );
-    let epoch_position = era
-        .from_slot_to_era(current_slot)
-        .expect("assume the current time is already in the era");
-
-    // TODO: need to handle:
-    //
-    // * if too late for this leadership, log it and return
-    assert!(epoch_position.epoch.0 <= task_parameters.epoch);
-
     let schedule = LeaderSchedule::new(logger.clone(), &leader.read().unwrap(), &task_parameters);
 
     schedule

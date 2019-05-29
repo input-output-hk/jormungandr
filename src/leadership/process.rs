@@ -132,9 +132,6 @@ impl Process {
             Leadership::new(epoch_parameters.epoch, &epoch_parameters.ledger_reference);
 
         let task_parameters = TaskParameters {
-            epoch: epoch_parameters.epoch,
-            ledger_static_parameters: epoch_parameters.ledger_static_parameters,
-            ledger_parameters: epoch_parameters.ledger_parameters,
             leadership: Arc::new(leadership),
             time_frame: epoch_parameters.time_frame,
         };
@@ -199,16 +196,17 @@ fn handle_epoch(
     let time_frame = task_parameters.time_frame.clone();
 
     let last_slot_in_epoch = era.slots_per_epoch() - 1;
+    let leadership = &task_parameters.leadership;
 
     let slot = era.from_era_to_slot(EpochPosition {
-        epoch: chain_time::Epoch(task_parameters.epoch),
+        epoch: chain_time::Epoch(leadership.epoch()),
         slot: EpochSlotOffset(last_slot_in_epoch),
     });
     let slot_system_time = time_frame
         .slot_to_systemtime(slot)
         .expect("The slot should always be in the given timeframe here");
 
-    let date = BlockDate::from_epoch_slot_id(task_parameters.epoch, last_slot_in_epoch);
+    let date = BlockDate::from_epoch_slot_id(leadership.epoch(), last_slot_in_epoch);
     let now = std::time::SystemTime::now();
     let duration = slot_system_time
         .duration_since(now)
