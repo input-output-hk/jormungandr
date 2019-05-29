@@ -20,11 +20,7 @@ pub fn test_key_from_and_to_bytes() {
 #[test]
 pub fn test_to_bytes_for_non_existent_input_file() {
     let byte_key_file = file_utils::get_path_in_temp("byte_file");
-    jcli_wrapper::assert_key_from_bytes_fails(
-        &byte_key_file,
-        "ed25519Extended",
-        "The system cannot find the file specified",
-    );
+    jcli_wrapper::assert_key_from_bytes_fails(&byte_key_file, "ed25519Extended", "file");
 }
 
 #[test]

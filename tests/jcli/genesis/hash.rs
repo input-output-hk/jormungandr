@@ -16,8 +16,5 @@ pub fn test_correct_hash_is_returned_for_correct_block() {
 #[test]
 pub fn test_correct_error_is_returned_for_non_existent_genesis_block() {
     let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
-    jcli_wrapper::assert_genesis_hash_fails(
-        &path_to_output_block,
-        "The system cannot find the file specified",
-    );
+    jcli_wrapper::assert_genesis_hash_fails(&path_to_output_block, "file");
 }
