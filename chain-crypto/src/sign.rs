@@ -101,15 +101,6 @@ impl<A: SigningAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
     }
 }
 
-impl<A: kes::KeyEvolvingSignatureAlgorithm, T> Signature<T, A> {
-    pub fn generate_update(key: &mut key::SecretKey<A>, msg: &[u8]) -> Self {
-        Signature {
-            signdata: A::sign_update(&mut key.0, msg),
-            phantom: std::marker::PhantomData,
-        }
-    }
-}
-
 impl<T, A: VerificationAlgorithm> Clone for Signature<T, A> {
     fn clone(&self) -> Self {
         Signature {
