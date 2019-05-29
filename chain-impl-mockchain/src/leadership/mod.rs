@@ -79,6 +79,7 @@ pub struct Leadership {
     era: TimeEra,
     // Consensus specific metadata required for verifying/evaluating leaders
     inner: LeadershipConsensus,
+    // Ledger evaluation parameters fixed for a given epoch
     ledger_parameters: LedgerParameters,
 }
 
