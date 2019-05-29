@@ -5,9 +5,9 @@ mod sum;
 mod sumrec;
 
 use crate::evolving::{EvolvingStatus, KeyEvolvingAlgorithm};
-use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
 use crate::kes::KeyEvolvingSignatureAlgorithm;
-use crate::sign::{Verification, VerificationAlgorithm, SignatureError, SigningAlgorithm};
+use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
+use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 use rand::{CryptoRng, RngCore};
 
 // MMM sum scheme instanciated over the Ed25519 signature system
