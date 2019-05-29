@@ -19,6 +19,7 @@ Note:
 
 * on windows, you'll need to add the `/userProfile/.cargo/bin` into the Path;
 * on linux and OSX: add `${HOME}/.cargo/bin` to your `${PATH}`
+* on linux with systemd: to enable logging to journald replace step 5. with `cargo install --features systemd`
 
 This will install 2 tools:
 

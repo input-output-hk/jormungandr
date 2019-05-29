@@ -64,13 +64,13 @@ pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
 pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
     let mut config = startup::ConfigurationBuilder::new()
         .with_logger(Logger {
-            format: String::from("xml"),
+            output: String::from("xml"),
             verbosity: 1,
         })
         .build();
     startup::assert_start_jormungandr_node_as_passive_fail(
         &mut config,
-        r"Error while parsing the node configuration file: logger\.format: unknown variant",
+        r"Error while parsing the node configuration file: logger\.output: unknown variant",
     );
 }
 

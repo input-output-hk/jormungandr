@@ -95,6 +95,9 @@ jobs:
             - cargo-v3-{{ checksum "Cargo.toml" }}
             - cargo-v3-
       - run:
+          name: Install and start syslog
+          command: apt update && apt install -y rsyslog && /etc/init.d/rsyslog start
+      - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
@@ -161,6 +164,9 @@ jobs:
             - cargo-v3-{{ checksum "Cargo.toml" }}
             - cargo-v3-
       - run:
+          name: Install and start syslog
+          command: apt update && apt install -y rsyslog && /etc/init.d/rsyslog start
+      - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
@@ -200,6 +206,9 @@ jobs:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
             - cargo-v3-{{ checksum "Cargo.toml" }}
             - cargo-v3-
+      - run:
+          name: Install and start syslog
+          command: apt update && apt install -y rsyslog && /etc/init.d/rsyslog start
       - run:
           name: Print version information
           command: rustc --version; cargo --version

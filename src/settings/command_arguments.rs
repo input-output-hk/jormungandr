@@ -69,7 +69,8 @@ pub struct CommandLine {
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     pub verbose: u8,
 
-    /// Set format of the log emitted. Can be "stderr" or "stderr_json"
+    /// Set format of the log emitted. Can be "stderr", "stderr_json", "syslog" (unix only)
+    /// or "journald" (linux with systemd only, must be enabled during compilation)
     #[structopt(long = "log-output", parse(try_from_str), default_value = "stderr")]
     pub log_output: LogOutput,
 

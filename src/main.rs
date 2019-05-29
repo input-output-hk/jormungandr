@@ -41,7 +41,11 @@ extern crate serde_yaml;
 #[macro_use(o, debug, info, warn, error, crit)]
 extern crate slog;
 extern crate slog_async;
+#[cfg(feature = "systemd")]
+extern crate slog_journald;
 extern crate slog_json;
+#[cfg(unix)]
+extern crate slog_syslog;
 extern crate slog_term;
 extern crate structopt;
 #[cfg(test)]
@@ -252,7 +256,7 @@ pub struct InitializedNode {
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
     let raw_settings = RawSettings::load(command_line)?;
-    let logger = raw_settings.to_logger();
+    let logger = raw_settings.to_logger()?;
 
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     let settings = raw_settings.try_into_settings(&init_logger)?;

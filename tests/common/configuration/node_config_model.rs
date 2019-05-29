@@ -7,7 +7,7 @@ use std::path::PathBuf;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Logger {
     pub verbosity: i32,
-    pub format: String,
+    pub output: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -62,7 +62,7 @@ impl NodeConfig {
             storage: Some(String::from(storage_file.as_os_str().to_str().unwrap())),
             logger: Some(Logger {
                 verbosity: 1,
-                format: String::from("json"),
+                output: String::from("json"),
             }),
             rest: Some(Rest {
                 listen: format!("127.0.0.1:{}", rest_port.to_string()),
