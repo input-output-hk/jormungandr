@@ -5,7 +5,7 @@ pub use self::config::Rest;
 use self::config::{Config, ConfigLogSettings};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
-use crate::settings::logging::LogSettings;
+use crate::settings::logging::{self, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
 use slog::Logger;
 
@@ -43,7 +43,7 @@ impl RawSettings {
         })
     }
 
-    pub fn to_logger(&self) -> Logger {
+    pub fn to_logger(&self) -> Result<Logger, logging::Error> {
         let level = if self.command_line.verbose == 0 {
             match self.config.logger {
                 Some(ConfigLogSettings {

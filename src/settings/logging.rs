@@ -33,7 +33,7 @@ impl FromStr for LogFormat {
 }
 
 impl LogSettings {
-    pub fn to_logger(&self) -> Logger {
+    pub fn to_logger(&self) -> Result<Logger, Error> {
         let drain = match self.format {
             LogFormat::Plain => {
                 let decorator = slog_term::TermDecorator::new().build();
@@ -46,6 +46,10 @@ impl LogSettings {
             }
         };
         let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
-        slog::Logger::root(drain, o!())
+        Ok(slog::Logger::root(drain, o!()))
     }
+}
+
+custom_error! {pub Error
+    ImpossibleError {} = @{{ unreachable!(); "" }} // Custom_error requires at least 1 variant
 }
