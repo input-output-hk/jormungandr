@@ -5,6 +5,8 @@ use chain_impl_mockchain::leadership::{bft, BftLeader, GenesisLeader};
 use serde::Deserialize;
 use std::path::Path;
 
+pub mod enclave;
+
 /// hold the node's bft secret setting
 #[derive(Clone, Deserialize)]
 pub struct Bft {

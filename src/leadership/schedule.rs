@@ -1,8 +1,7 @@
 use crate::{
-    blockcfg::{BlockDate, Leader, LeaderOutput},
     leadership::TaskParameters,
+    secure::enclave::{Enclave, LeaderEvent, LeaderId},
 };
-use chain_core::property::BlockDate as _;
 use chain_time::era::{EpochPosition, EpochSlotOffset};
 use slog::Logger;
 use std::time::SystemTime;
@@ -21,8 +20,7 @@ pub struct LeaderSchedule {
 
 /// a scheduled event where the `Leader` is expected to create a block
 pub struct ScheduledEvent {
-    pub leader_output: LeaderOutput,
-    pub date: BlockDate,
+    pub leader_output: LeaderEvent,
     pub expected_time: SystemTime,
 }
 
@@ -32,7 +30,12 @@ impl LeaderSchedule {
     ///
     /// [`TaskParameters`]: ./struct.TaskParameters.html
     ///
-    pub fn new(logger: Logger, leader: &Leader, task_parameters: &TaskParameters) -> Self {
+    pub fn new(
+        logger: Logger,
+        leader_id: &LeaderId,
+        enclave: &Enclave,
+        task_parameters: &TaskParameters,
+    ) -> Self {
         let leadership = &task_parameters.leadership;
         let era = leadership.era();
         let number_of_slots_per_epoch = era.slots_per_epoch();
@@ -53,7 +56,8 @@ impl LeaderSchedule {
             schedule.schedule(
                 Logger::root(logger.clone(), o!("epoch_slot" => slot_idx)),
                 now,
-                leader,
+                leader_id,
+                enclave,
                 task_parameters,
                 slot_idx as u32,
             );
@@ -67,7 +71,8 @@ impl LeaderSchedule {
         &mut self,
         logger: Logger,
         now: std::time::SystemTime,
-        leader: &Leader,
+        leader_id: &LeaderId,
+        enclave: &Enclave,
         task_parameters: &TaskParameters,
         slot_idx: u32,
     ) {
@@ -84,26 +89,20 @@ impl LeaderSchedule {
             .slot_to_systemtime(slot)
             .expect("The slot should always be in the given timeframe here");
 
-        let date = BlockDate::from_epoch_slot_id(leadership.epoch(), slot_idx);
-
         if now < slot_system_time {
-            match task_parameters.leadership.is_leader_for_date(leader, date) {
-                Ok(LeaderOutput::None) => debug!(logger, "not a leader at this time"),
-                Ok(leader_output) => {
+            match enclave.leadership_evaluate1(leadership, leader_id, slot_idx) {
+                None => debug!(logger, "not a leader at this time"),
+                Some(leader_output) => {
                     info!(logger, "scheduling a block leader");
                     self.events.insert(
                         ScheduledEvent {
                             expected_time: slot_system_time.clone(),
                             leader_output: leader_output,
-                            date: date,
                         },
                         slot_system_time
                             .duration_since(now)
                             .expect("expect the slot scheduled system time to be in the future"),
                     );
-                }
-                Err(error) => {
-                    error!(logger, "cannot compute schedule" ; "reason" => format!("{error}", error = error))
                 }
             }
         } else {

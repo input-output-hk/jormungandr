@@ -1,8 +1,9 @@
 use crate::{
-    blockcfg::{BlockDate, Epoch, Leader},
+    blockcfg::{BlockDate, Epoch},
     blockchain::Tip,
     intercom::BlockMsg,
     leadership::{EpochParameters, Leadership, Task, TaskParameters},
+    secure::enclave::{Enclave, LeaderId},
     transaction::TPoolR,
     utils::{async_msg::MessageBox, task::TokioServiceInfo},
 };
@@ -65,15 +66,15 @@ impl Process {
     /// start the `Leadership` process and the associated leader tasks
     pub fn start(
         mut self,
-        leaders: Vec<Leader>,
+        enclave: Enclave,
         new_epoch_notifier: mpsc::Receiver<EpochParameters>,
     ) -> impl Future<Item = (), Error = ()> {
         let error_logger = self.service_info.logger().clone();
         info!(self.service_info.logger(), "starting");
 
         self.spawn_end_of_epoch_reminder();
-        for leader in leaders {
-            self.spawn_leader(leader);
+        for id in enclave.get_leaderids() {
+            self.spawn_leader(id, enclave.clone());
         }
 
         new_epoch_notifier
@@ -99,7 +100,7 @@ impl Process {
     /// spawn a new leader [`Task`] in the `Process` runtime.
     ///
     /// [`Task`]: ./struct.Task.html
-    fn spawn_leader(&mut self, leader: Leader) {
+    fn spawn_leader(&mut self, leader: LeaderId, enclave: Enclave) {
         let epoch_receiver = self.epoch_receiver.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let logger = self.service_info.logger().clone();
@@ -108,6 +109,7 @@ impl Process {
         let task = Task::new(
             logger,
             leader,
+            enclave,
             blockchain_tip,
             transaction_pool,
             epoch_receiver,
