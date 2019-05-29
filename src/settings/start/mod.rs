@@ -122,11 +122,12 @@ fn generate_network(
     _command_arguments: &StartArguments,
     config: &Config,
 ) -> network::Configuration {
-    let public_address = config.peer_2_peer.public_address.clone();
+    let p2p = &config.peer_2_peer;
     network::Configuration {
-        public_address: public_address,
-        public_id: config.peer_2_peer.public_id.clone(),
-        trusted_peers: config.peer_2_peer.trusted_peers.clone().unwrap_or(vec![]),
+        public_id: p2p.public_id.clone(),
+        public_address: p2p.public_address.clone(),
+        listen: p2p.listen.clone(),
+        trusted_peers: p2p.trusted_peers.clone().unwrap_or(vec![]),
         protocol: Protocol::Grpc,
         subscriptions: config
             .peer_2_peer

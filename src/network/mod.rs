@@ -20,7 +20,7 @@ use self::p2p::{
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::BlockchainR;
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
-use crate::settings::start::network::{Configuration, Listen, Peer, Protocol};
+use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TaskMessageBox,
@@ -146,16 +146,10 @@ pub fn run(
     let global_state = Arc::new(GlobalState::new(config, logger.clone()));
 
     // open the port for listening/accepting other peers to connect too
-    let listener = if let Some(public_address) = global_state
-        .config
-        .public_address
-        .as_ref()
-        .and_then(move |addr| addr.to_socketaddr())
-    {
-        let protocol = global_state.config.protocol;
-        match protocol {
+    let listen = global_state.config.listen();
+    let listener = if let Some(listen) = listen {
+        match listen.protocol {
             Protocol::Grpc => {
-                let listen = Listen::new(public_address, protocol);
                 grpc::run_listen_socket(listen, global_state.clone(), channels.clone())
             }
             Protocol::Ntt => unimplemented!(),

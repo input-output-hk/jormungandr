@@ -42,11 +42,19 @@ const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 /// The network static configuration settings
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Configuration {
-    /// optional address to listen from
+    /// Optional Node identifier. If not specified, a random identifier
+    /// is generated.
+    pub public_id: Option<NodeId>,
+
+    /// Optional public IP address to advertise.
+    /// Also used as the binding address unless the `listen` field
+    /// is set with an address value.
     pub public_address: Option<Address>,
 
-    /// optional Node I
-    pub public_id: Option<NodeId>,
+    /// Local socket address to listen to, if different from public address.
+    /// The IP address can be given as 0.0.0.0 or :: to bind to all
+    /// network interfaces.
+    pub listen: Option<SocketAddr>,
 
     /// list of trusted addresses
     pub trusted_peers: Vec<TrustedPeer>,
@@ -85,5 +93,18 @@ impl Listen {
 
     pub fn address(&self) -> SocketAddr {
         self.connection
+    }
+}
+
+impl Configuration {
+    /// Returns the listener configuration, if the options defining it
+    /// were set.
+    pub fn listen(&self) -> Option<Listen> {
+        self.listen
+            .or(self
+                .public_address
+                .as_ref()
+                .and_then(|address| address.to_socketaddr()))
+            .map(|addr| Listen::new(addr, self.protocol))
     }
 }
