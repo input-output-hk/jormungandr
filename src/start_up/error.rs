@@ -1,4 +1,7 @@
-use crate::{blockcfg, blockchain, network, secure, settings};
+use crate::{
+    blockcfg, blockchain, network, secure,
+    settings::{self, logging},
+};
 use chain_storage::error::Error as StorageError;
 use std::io;
 
@@ -8,7 +11,7 @@ custom_error! {pub ErrorKind
 }
 
 custom_error! {pub Error
-    LoggingInitializationError = "Unable to initialize the logger",
+    LoggingInitializationError { source: logging::Error } = "Unable to initialize the logger",
     ConfigurationError{source: settings::Error} = "Error in the overall configuration of the node",
     IO{source: io::Error, reason: ErrorKind} = "I/O Error with {reason}",
     ParseError{ source: io::Error, reason: ErrorKind} = "Parsing error on {reason}",
@@ -23,20 +26,14 @@ impl Error {
     #[inline]
     pub fn code(&self) -> i32 {
         match self {
-            Error::LoggingInitializationError => 1,
-            Error::ConfigurationError { source: _ } => 2,
-            Error::IO {
-                source: _,
-                reason: _,
-            } => 3,
-            Error::ParseError {
-                source: _,
-                reason: _,
-            } => 4,
-            Error::StorageError { source: _ } => 5,
-            Error::Blockchain { source: _ } => 6,
-            Error::Block0 { source: _ } => 7,
-            Error::NodeSecrets { source: _ } => 8,
+            Error::LoggingInitializationError { .. } => 1,
+            Error::ConfigurationError { .. } => 2,
+            Error::IO { .. } => 3,
+            Error::ParseError { .. } => 4,
+            Error::StorageError { .. } => 5,
+            Error::Blockchain { .. } => 6,
+            Error::Block0 { .. } => 7,
+            Error::NodeSecrets { .. } => 8,
             Error::FetchBlock0 { .. } => 9,
         }
     }
