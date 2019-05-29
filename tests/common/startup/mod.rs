@@ -12,6 +12,7 @@ use common::data::{
 
 use common::file_utils;
 use common::jcli_wrapper;
+use common::jcli_wrapper::Discrimination;
 use common::process_utils::process_guard::ProcessKillGuard;
 
 use std::path::PathBuf;
@@ -67,7 +68,7 @@ pub fn build_genesis_block(genesis_yaml: &GenesisYaml) -> PathBuf {
 pub fn create_new_utxo_address() -> Utxo {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_single_default(&public_key);
+    let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
     let utxo = Utxo {
         private_key,
         public_key,
@@ -80,7 +81,7 @@ pub fn create_new_utxo_address() -> Utxo {
 pub fn create_new_account_address() -> Account {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_account_default(&public_key);
+    let address = jcli_wrapper::assert_address_account(&public_key, Discrimination::Test);
     let account = Account {
         private_key,
         public_key,
@@ -93,11 +94,12 @@ pub fn create_new_account_address() -> Account {
 pub fn create_new_delegation_address() -> Delegation {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_single_default(&public_key);
+    let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
 
     let private_delegation_key = jcli_wrapper::assert_key_generate_default();
     let public_delegation_key = jcli_wrapper::assert_key_to_public_default(&private_delegation_key);
-    let delegation_address = jcli_wrapper::assert_address_single_default(&public_delegation_key);
+    let delegation_address =
+        jcli_wrapper::assert_address_single(&public_delegation_key, Discrimination::Test);
 
     let utxo_with_delegation = Delegation {
         private_key,

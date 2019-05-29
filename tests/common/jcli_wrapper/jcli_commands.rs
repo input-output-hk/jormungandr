@@ -2,8 +2,10 @@
 
 use super::configuration;
 use super::file_utils;
-use std::path::PathBuf;
+use super::Discrimination;
 use std::process::Command;
+
+use std::path::PathBuf;
 
 /// Get genesis encode command.
 ///
@@ -115,14 +117,11 @@ pub fn get_rest_utxo_get_command(host: &str) -> Command {
 }
 
 /// Get adress single command.
-pub fn get_address_single_command_default(public_key: &str) -> Command {
+pub fn get_address_single_command(public_key: &str, discrimination: Discrimination) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
-    command
-        .arg("address")
-        .arg("single")
-        .arg(&public_key)
-        .arg("--testing");
-    println!("Run address info command: {:?}", &command);
+    command.arg("address").arg("single").arg(&public_key);
+    add_discrimination(&mut command, discrimination);
+    println!("Run address single command: {:?}", &command);
     command
 }
 
@@ -135,26 +134,40 @@ pub fn get_address_info_command_default(address: &str) -> Command {
 }
 
 /// Get adress single command.
-pub fn get_address_account_command_default(public_key: &str) -> Command {
+pub fn get_address_account_command(public_key: &str, discrimination: Discrimination) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command.arg("address").arg("account").arg(&public_key);
+    add_discrimination(&mut command, discrimination);
+    println!("Run address acccount command: {:?}", &command);
     command
-        .arg("address")
-        .arg("account")
-        .arg(&public_key)
-        .arg("--testing");
-    println!("Run address info command: {:?}", &command);
+}
+
+fn add_discrimination(command: &mut Command, discrimination: Discrimination) {
+    if discrimination == Discrimination::Test {
+        command.arg("--testing");
+    }
+}
+
+/// Get adress single command.
+pub fn get_genesis_init_command() -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command.arg("genesis").arg("init");
     command
 }
 
 /// Get adress single command.
-pub fn get_address_delegation_command_default(public_key: &str, delegation_key: &str) -> Command {
+pub fn get_address_delegation_command(
+    public_key: &str,
+    delegation_key: &str,
+    discrimination: Discrimination,
+) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command
         .arg("address")
         .arg("single")
         .arg(&public_key)
-        .arg(&delegation_key)
-        .arg("--testing");
+        .arg(&delegation_key);
+    add_discrimination(&mut command, discrimination);
     println!("Run address info command: {:?}", &command);
     command
 }
