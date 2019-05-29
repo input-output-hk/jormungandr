@@ -1,7 +1,7 @@
 use crate::{
     block::{AnyBlockVersion, BlockDate, BlockVersion, ConsensusVersion, Header},
     date::Epoch,
-    ledger::Ledger,
+    ledger::{Ledger, LedgerParameters},
     stake::StakePoolId,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, SecretKey, SumEd25519_12};
@@ -75,6 +75,7 @@ pub struct Leadership {
     epoch: Epoch,
     era: TimeEra,
     inner: LeadershipConsensus,
+    ledger_parameters: LedgerParameters,
 }
 
 impl LeadershipConsensus {
@@ -142,6 +143,7 @@ impl Leadership {
             epoch: epoch,
             era: ledger.settings.era.clone(),
             inner,
+            ledger_parameters: ledger.get_ledger_parameters(),
         }
     }
 
@@ -155,6 +157,12 @@ impl Leadership {
     #[inline]
     pub fn era(&self) -> &TimeEra {
         &self.era
+    }
+
+    /// access the ledger parameter for the current leadership
+    #[inline]
+    pub fn ledger_parameters(&self) -> &LedgerParameters {
+        &self.ledger_parameters
     }
 
     /// Verify whether this header has been produced by a leader that fits with the leadership
