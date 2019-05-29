@@ -353,32 +353,7 @@ impl Ledger {
         new_ledger.settings = settings;
 
         for content in contents {
-            match content {
-                Message::Initial(_) => return Err(Error::Block0(Block0Error::OnlyMessageReceived)),
-                Message::OldUtxoDeclaration(_) => {
-                    return Err(Error::Block0(Block0Error::OnlyMessageReceived));
-                }
-                Message::Transaction(authenticated_tx) => {
-                    let (new_ledger_, _fee) =
-                        new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
-                    new_ledger = new_ledger_;
-                }
-                Message::UpdateProposal(update_proposal) => {
-                    new_ledger = new_ledger.apply_update_proposal(
-                        content.id(),
-                        &update_proposal,
-                        metadata.block_date,
-                    )?;
-                }
-                Message::UpdateVote(vote) => {
-                    new_ledger = new_ledger.apply_update_vote(&vote)?;
-                }
-                Message::Certificate(authenticated_cert_tx) => {
-                    let (new_ledger_, _fee) =
-                        new_ledger.apply_certificate(authenticated_cert_tx, &ledger_params)?;
-                    new_ledger = new_ledger_;
-                }
-            }
+            new_ledger = new_ledger.apply_fragment(ledger_params, content, metadata)?;
         }
 
         new_ledger.date = metadata.block_date;
@@ -386,6 +361,49 @@ impl Ledger {
             .nonce
             .as_ref()
             .map(|n| new_ledger.settings.consensus_nonce.hash_with(n));
+        Ok(new_ledger)
+    }
+
+    /// Try to apply a message to the State, and return the new State if successful
+    ///
+    /// this does not _advance_ the state to the new _state_ but apply a simple fragment
+    /// of block to the current context.
+    ///
+    pub fn apply_fragment(
+        &self,
+        ledger_params: &LedgerParameters,
+        content: &Message,
+        metadata: &HeaderContentEvalContext,
+    ) -> Result<Self, Error> {
+        let mut new_ledger = self.clone();
+
+        match content {
+            Message::Initial(_) => return Err(Error::Block0(Block0Error::OnlyMessageReceived)),
+            Message::OldUtxoDeclaration(_) => {
+                return Err(Error::Block0(Block0Error::OnlyMessageReceived));
+            }
+            Message::Transaction(authenticated_tx) => {
+                let (new_ledger_, _fee) =
+                    new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
+                new_ledger = new_ledger_;
+            }
+            Message::UpdateProposal(update_proposal) => {
+                new_ledger = new_ledger.apply_update_proposal(
+                    content.id(),
+                    &update_proposal,
+                    metadata.block_date,
+                )?;
+            }
+            Message::UpdateVote(vote) => {
+                new_ledger = new_ledger.apply_update_vote(&vote)?;
+            }
+            Message::Certificate(authenticated_cert_tx) => {
+                let (new_ledger_, _fee) =
+                    new_ledger.apply_certificate(authenticated_cert_tx, &ledger_params)?;
+                new_ledger = new_ledger_;
+            }
+        }
+
         Ok(new_ledger)
     }
 
