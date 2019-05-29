@@ -71,10 +71,15 @@ enum LeadershipConsensus {
     GenesisPraos(genesis::GenesisLeaderSelection),
 }
 
+/// Leadership represent a given epoch and their associated leader or metadata.
 pub struct Leadership {
+    // Specific epoch where the leadership apply
     epoch: Epoch,
+    // Give the closest parameters associated with date keeping given a leadership
     era: TimeEra,
+    // Consensus specific metadata required for verifying/evaluating leaders
     inner: LeadershipConsensus,
+    // Ledger evaluation parameters fixed for a given epoch
     ledger_parameters: LedgerParameters,
 }
 
@@ -151,6 +156,19 @@ impl Leadership {
     #[inline]
     pub fn epoch(&self) -> Epoch {
         self.epoch
+    }
+
+    /// Create a Block date given a leadership and a relative epoch slot
+    ///
+    /// # Panics
+    ///
+    /// If the slot index is not valid given the leadership, out of bound date
+    pub fn date_at_slot(&self, slot_id: u32) -> BlockDate {
+        assert!(slot_id < self.era.slots_per_epoch());
+        BlockDate {
+            epoch: self.epoch(),
+            slot_id: slot_id,
+        }
     }
 
     /// get the TimeEra associated to the `Leadership`
