@@ -4,6 +4,7 @@ mod sum;
 #[cfg(test)]
 mod sumrec;
 
+use crate::evolving::{EvolvingStatus, KeyEvolvingAlgorithm};
 use crate::kes::KeyEvolvingSignatureAlgorithm;
 use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
@@ -87,16 +88,21 @@ impl SigningAlgorithm for SumEd25519_12 {
     }
 }
 
+impl KeyEvolvingAlgorithm for SumEd25519_12 {
+    fn get_period(sec: &Self::Secret) -> u32 {
+        sec.t() as u32
+    }
+    fn update(key: &mut Self::Secret) -> EvolvingStatus {
+        if sum::update(key).is_ok() {
+            EvolvingStatus::Success
+        } else {
+            EvolvingStatus::Failed
+        }
+    }
+}
+
 impl KeyEvolvingSignatureAlgorithm for SumEd25519_12 {
-    fn get_period(sig: &Self::Signature) -> usize {
-        sig.t()
-    }
-    fn update(key: &mut Self::Secret) -> bool {
-        sum::update(key).is_ok()
-    }
-    fn sign_update(key: &mut Self::Secret, msg: &[u8]) -> Self::Signature {
-        let sig = sum::sign(key, msg);
-        let _ = sum::update(key);
-        sig
+    fn get_period(sig: &Self::Signature) -> u32 {
+        sig.t() as u32
     }
 }

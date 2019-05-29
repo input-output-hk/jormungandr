@@ -1,5 +1,5 @@
 use crate::bech32::{self, Bech32};
-use crate::{hex, kes, key};
+use crate::{hex, key};
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -97,15 +97,6 @@ impl<A: SigningAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
         Signature {
             signdata: <A as SigningAlgorithm>::sign(&secretkey.0, object.as_ref()),
             phantom: PhantomData,
-        }
-    }
-}
-
-impl<A: kes::KeyEvolvingSignatureAlgorithm, T> Signature<T, A> {
-    pub fn generate_update(key: &mut key::SecretKey<A>, msg: &[u8]) -> Self {
-        Signature {
-            signdata: A::sign_update(&mut key.0, msg),
-            phantom: std::marker::PhantomData,
         }
     }
 }
