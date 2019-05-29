@@ -1,6 +1,10 @@
 use crate::fragment::{FragmentId, Log, Status};
 use std::time::Duration;
-use tokio::{prelude::*, sync::lock::Lock, timer};
+use tokio::{
+    prelude::*,
+    sync::lock::{Lock, LockGuard},
+    timer,
+};
 
 #[derive(Clone)]
 pub struct Logs(Lock<internal::Logs>);
@@ -58,9 +62,14 @@ impl Logs {
         future::poll_fn(move || Ok(lock.poll_lock()))
             .and_then(|guard| future::ok(guard.logs().cloned().collect()))
     }
+
+    pub(super) fn inner(&self) -> impl Future<Item = LockGuard<internal::Logs>, Error = ()> {
+        let mut lock = self.0.clone();
+        future::poll_fn(move || Ok(lock.poll_lock()))
+    }
 }
 
-mod internal {
+pub(super) mod internal {
     use crate::fragment::{FragmentId, Log, Status};
     use std::{
         collections::HashMap,

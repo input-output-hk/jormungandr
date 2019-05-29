@@ -1,5 +1,8 @@
 use crate::{
-    blockcfg::{BlockBuilder, BlockDate, ChainLength, HeaderHash},
+    blockcfg::{
+        BlockBuilder, BlockDate, ChainLength, HeaderContentEvalContext, HeaderHash, Leader,
+        LeaderOutput, Ledger,
+    },
     blockchain::Tip,
     fragment::Pool,
     intercom::BlockMsg,
@@ -112,7 +115,7 @@ fn handle_leadership(
     enclave: Enclave,
     logger: Logger,
     blockchain_tip: Tip,
-    fragment_pool: Pool,
+    mut fragment_pool: Pool,
     task_parameters: TaskParameters,
 ) -> impl Future<Item = (), Error = HandleLeadershipError> {
     let schedule = LeaderSchedule::new(logger.clone(), &leader_id, &enclave, &task_parameters);
@@ -128,7 +131,9 @@ fn handle_leadership(
             );
 
             let block = prepare_block(
-                &fragment_pool,
+                &mut fragment_pool,
+                blockchain_tip.ledger().unwrap().clone(),
+                &task_parameters.leadership,
                 scheduled_event.leader_output.date,
                 blockchain_tip.chain_length().unwrap().next(),
                 blockchain_tip.hash().unwrap(),
@@ -145,16 +150,30 @@ fn handle_leadership(
 }
 
 fn prepare_block(
-    fragment_pool: &Pool,
+    fragment_pool: &mut Pool,
+    ledger: Ledger,
+    leadership: &Leadership,
     date: BlockDate,
     chain_length: ChainLength,
     parent_id: HeaderHash,
 ) -> BlockBuilder {
-    let mut bb = BlockBuilder::new();
+    use crate::fragment::selection::{FragmentSelectionAlgorithm as _, OldestFirst};
+
+    let selection_algorithm = OldestFirst::new(250 /* TODO!! */);
+    let metadata = HeaderContentEvalContext {
+        block_date: date,
+        chain_length,
+        nonce: None,
+    };
+    let ledger_params = leadership.ledger_parameters().clone();
+
+    let mut bb = fragment_pool
+        .select(ledger, metadata, ledger_params, selection_algorithm)
+        .wait()
+        .unwrap()
+        .finalize();
 
     bb.date(date).parent(parent_id).chain_length(chain_length);
-    // let messages = transaction_pool.write().unwrap().collect(250 /* TODO!! */);
-    // bb.messages(messages);
 
     bb
 }

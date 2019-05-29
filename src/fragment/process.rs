@@ -1,6 +1,7 @@
 use crate::{
     fragment::{Logs, Pool},
     intercom::TransactionMsg,
+    rest::v0::node::stats::StatsCounter,
     utils::{async_msg::MessageQueue, task::TokioServiceInfo},
 };
 use slog::Logger;
@@ -43,6 +44,7 @@ impl Process {
     pub fn start(
         self,
         service_info: TokioServiceInfo,
+        stats_counter: StatsCounter,
         input: MessageQueue<TransactionMsg>,
     ) -> impl Future<Item = (), Error = ()> {
         service_info.spawn(self.start_pool_garbage_collector(service_info.logger().clone()));
@@ -75,9 +77,15 @@ impl Process {
                     // put them in another pool.
 
                     let mut pool_copy = pool_copy.clone();
+                    let stats_counter = stats_counter.clone();
 
                     A(B(stream::iter_ok(txs).for_each(move |tx| {
-                        pool_copy.insert(origin, tx).map(|_| ())
+                        let stats_counter = stats_counter.clone();
+                        pool_copy.insert(origin, tx).map(move |inserted| {
+                            if inserted {
+                                stats_counter.add_tx_recv_cnt(1)
+                            }
+                        })
                     })))
                 }
                 TransactionMsg::GetTransactions(_txids, _handler) => {

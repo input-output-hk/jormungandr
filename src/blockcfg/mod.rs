@@ -3,8 +3,8 @@ pub use network_core::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
     block::{
-        Block, BlockBuilder, BlockDate, ChainLength, ConsensusVersion, Epoch, Header, HeaderHash,
-        SlotId,
+        Block, BlockBuilder, BlockDate, ChainLength, ConsensusVersion, Epoch, Header,
+        HeaderContentEvalContext, HeaderHash, SlotId,
     },
     config::{self, Block0Date, ConfigParam},
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},

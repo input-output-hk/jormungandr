@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "with-bench", feature(test))]
+
 extern crate actix_net;
 extern crate actix_web;
 extern crate bech32;
@@ -107,17 +108,24 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let stats_counter = StatsCounter::default();
 
     let (fragment_pool, pool_logs) = {
+        let stats_counter = stats_counter.clone();
         use std::time::Duration;
+        // TODO: get the TTL and from the settings
         let process = fragment::Process::new(
+            // TTL of a fragment in the MemPool: 1h
             Duration::from_secs(3600),
+            // TTL of a MemPool log: 2h
             Duration::from_secs(3600 * 2),
-            Duration::from_secs(3600 / 15),
+            // Interval between GC pauses: 15min
+            Duration::from_secs(3600 / 4),
         );
 
         let pool = process.pool().clone();
         let logs = process.logs().clone();
 
-        services.spawn_future("fragment", move |info| process.start(info, fragment_queue));
+        services.spawn_future("fragment", move |info| {
+            process.start(info, stats_counter, fragment_queue)
+        });
         (pool, logs)
     };
 
