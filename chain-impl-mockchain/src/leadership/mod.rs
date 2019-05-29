@@ -71,9 +71,13 @@ enum LeadershipConsensus {
     GenesisPraos(genesis::GenesisLeaderSelection),
 }
 
+/// Leadership represent a given epoch and their associated leader or metadata.
 pub struct Leadership {
+    // Specific epoch where the leadership apply
     epoch: Epoch,
+    // Give the closest parameters associated with date keeping given a leadership
     era: TimeEra,
+    // Consensus specific metadata required for verifying/evaluating leaders
     inner: LeadershipConsensus,
     ledger_parameters: LedgerParameters,
 }
