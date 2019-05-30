@@ -76,7 +76,6 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_new_transaction<'a>(&'a mut self) -> &'a mut JCLITransactionWrapper {
-        println!("Running transaction new command...");
         self.generate_new_random_staging_file_path();
         let output = process_utils::run_process_and_get_output(
             self.commands
@@ -98,7 +97,6 @@ impl JCLITransactionWrapper {
         tx_index: &i32,
         amount: &i32,
     ) -> &'a mut JCLITransactionWrapper {
-        println!("Running transaction add input command...");
         let output =
             process_utils::run_process_and_get_output(self.commands.get_add_input_command(
                 &tx_id,
@@ -117,7 +115,6 @@ impl JCLITransactionWrapper {
         amount: &str,
         expected_part: &str,
     ) -> () {
-        println!("Running transaction add input command...");
         process_assert::assert_process_failed_and_contains_message(
             self.commands.get_add_input_command(
                 &tx_id,
@@ -149,7 +146,6 @@ impl JCLITransactionWrapper {
         account_addr: &str,
         amount: &i32,
     ) -> &'a mut JCLITransactionWrapper {
-        println!("Running transaction add account command...");
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_add_account_command(&account_addr, &amount, &self.staging_file_path),
@@ -178,8 +174,6 @@ impl JCLITransactionWrapper {
         addr: &str,
         amount: &i32,
     ) -> &'a mut JCLITransactionWrapper {
-        println!("Runing add transaction output command...");
-
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_add_output_command(&addr, &amount, &self.staging_file_path),
@@ -189,8 +183,6 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_finalize<'a>(&'a mut self) -> &'a mut JCLITransactionWrapper {
-        println!("Runing finalize transaction command...");
-
         let output = process_utils::run_process_and_get_output(
             self.commands.get_finalize_command(&self.staging_file_path),
         );
@@ -199,8 +191,6 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_finalize_fail(&self, expected_part: &str) -> () {
-        println!("Runing finalize transaction command...");
-
         let output = process_utils::run_process_and_get_output(
             self.commands.get_finalize_command(&self.staging_file_path),
         );
@@ -252,8 +242,6 @@ impl JCLITransactionWrapper {
         &'a mut self,
         witness: &Witness,
     ) -> &'a mut JCLITransactionWrapper {
-        println!("Runing make transaction witness command...");
-
         let output =
             process_utils::run_process_and_get_output(self.commands.get_make_witness_command(
                 &witness.block_hash,
@@ -299,7 +287,6 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_add_witness_fail<'a>(&'a mut self, witness: &Witness, expected_part: &str) -> () {
-        println!("Runing add transaction witness command...");
         process_assert::assert_process_failed_and_matches_message(
             self.commands
                 .get_add_witness_command(&witness.file, &self.staging_file_path),
@@ -311,8 +298,6 @@ impl JCLITransactionWrapper {
         &'a mut self,
         witness: &Witness,
     ) -> &'a mut JCLITransactionWrapper {
-        println!("Runing add transaction witness command...");
-
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_add_witness_command(&witness.file, &self.staging_file_path),
@@ -322,8 +307,6 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_seal<'a>(&'a mut self) -> &'a mut JCLITransactionWrapper {
-        println!("Runing seal transaction witness command...");
-
         let output = process_utils::run_process_and_get_output(
             self.commands.get_seal_command(&self.staging_file_path),
         );
@@ -332,8 +315,6 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_transaction_to_message(&self) -> String {
-        println!("Runing transaction to message command...");
-
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_transaction_message_to_command(&self.staging_file_path),
@@ -344,7 +325,6 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_transaction_to_message_fails(&self, expected_msg: &str) {
-        println!("Runing transaction to message command...");
         process_assert::assert_process_failed_and_matches_message(
             self.commands
                 .get_transaction_message_to_command(&self.staging_file_path),
@@ -353,8 +333,6 @@ impl JCLITransactionWrapper {
     }
 
     pub fn get_transaction_id(&self) -> String {
-        println!("Runing get transaction id command...");
-
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_transaction_id_command(&self.staging_file_path),

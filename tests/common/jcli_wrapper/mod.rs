@@ -28,25 +28,13 @@ pub fn assert_genesis_encode(
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_genesis_encode_command(&genesis_yaml_file_path, &path_to_output_block),
     );
-
     process_assert::assert_process_exited_successfully(output);
     file_assert::assert_file_exists_and_not_empty(path_to_output_block);
-
-    println!(
-        "Created genesis block in: ({:?}) from genesis yaml ({:?}) ",
-        &path_to_output_block, &genesis_yaml_file_path
-    );
 }
 
 pub fn assert_genesis_encode_fails(genesis_yaml: &GenesisYaml, expected_msg: &str) {
     let input_yaml_file_path = GenesisYaml::serialize(&genesis_yaml);
     let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
-
-    println!(
-        "output block file: {:?}, genesis_yaml {:?}",
-        path_to_output_block, input_yaml_file_path
-    );
-
     process_assert::assert_process_failed_and_matches_message(
         jcli_commands::get_genesis_encode_command(&input_yaml_file_path, &path_to_output_block),
         expected_msg,
@@ -58,14 +46,7 @@ pub fn assert_genesis_hash(path_to_output_block: &PathBuf) -> String {
         jcli_commands::get_genesis_hash_command(&path_to_output_block),
     );
     let hash = output.as_single_line();
-
     process_assert::assert_process_exited_successfully(output);
-
-    println!(
-        "Get genesis block hash ({}) from genesis block ({:?}) ",
-        hash, path_to_output_block,
-    );
-
     hash
 }
 
@@ -80,7 +61,6 @@ pub fn assert_rest_stats(host: &str) -> BTreeMap<String, String> {
     let output =
         process_utils::run_process_and_get_output(jcli_commands::get_rest_stats_command(&host));
     let content = output.as_single_node_yaml();
-    println!("Returned node info: {:?}", &content);
     process_assert::assert_process_exited_successfully(output);
     content
 }
@@ -89,7 +69,6 @@ pub fn assert_rest_utxo_get(host: &str) -> Vec<Utxo> {
     let output =
         process_utils::run_process_and_get_output(jcli_commands::get_rest_utxo_get_command(&host));
     let content = output.as_lossy_string();
-    println!("Returned utxos: {:?}", &content);
     process_assert::assert_process_exited_successfully(output);
     let utxos: Vec<Utxo> = serde_yaml::from_str(&content).unwrap();
     utxos
@@ -272,6 +251,15 @@ pub fn assert_rest_get_block_tip(host: &str) -> String {
     let output =
         process_utils::run_process_and_get_output(jcli_commands::get_rest_block_tip_command(&host));
     let single_line = output.as_single_line();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
+pub fn assert_rest_account_get_stats(address: &str, host: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_rest_account_stats_command(&address, &host),
+    );
+    let single_line = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output);
     single_line
 }

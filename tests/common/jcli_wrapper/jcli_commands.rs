@@ -59,6 +59,20 @@ pub fn get_rest_stats_command(host: &str) -> Command {
     command
 }
 
+/// Get rest stat command.
+pub fn get_rest_account_stats_command(address: &str, host: &str) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("account")
+        .arg("get")
+        .arg(&address)
+        .arg("-h")
+        .arg(&host);
+    command
+}
+
 /// Get rest block tip command.
 pub fn get_rest_block_tip_command(host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
@@ -121,7 +135,6 @@ pub fn get_address_single_command(public_key: &str, discrimination: Discriminati
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command.arg("address").arg("single").arg(&public_key);
     add_discrimination(&mut command, discrimination);
-    println!("Run address single command: {:?}", &command);
     command
 }
 
@@ -129,7 +142,6 @@ pub fn get_address_single_command(public_key: &str, discrimination: Discriminati
 pub fn get_address_info_command_default(address: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command.arg("address").arg("info").arg(&address);
-    println!("Run address info command: {:?}", &command);
     command
 }
 
@@ -138,7 +150,6 @@ pub fn get_address_account_command(public_key: &str, discrimination: Discriminat
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command.arg("address").arg("account").arg(&public_key);
     add_discrimination(&mut command, discrimination);
-    println!("Run address acccount command: {:?}", &command);
     command
 }
 

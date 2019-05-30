@@ -50,6 +50,7 @@ pub struct MkWitness {
 
     /// value is mandatory is `--type=account' It is the counter for
     /// every time the account is being utilized.
+    #[structopt(long = "account-spending-counter")]
     pub account_spending_counter: Option<u32>,
 
     /// the file path to the file to read the signing key from.
@@ -89,7 +90,7 @@ impl MkWitness {
         io::open_file_read(&self.secret)
             .unwrap()
             .read_to_string(&mut bech32_str)?;
-        Ok(SecretKey::try_from_bech32_str(&bech32_str)?)
+        Ok(SecretKey::try_from_bech32_str(&bech32_str.trim_end())?)
     }
 
     pub fn exec(self) -> Result<(), MkWitnessError> {

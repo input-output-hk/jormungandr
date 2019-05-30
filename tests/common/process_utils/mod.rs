@@ -31,8 +31,13 @@ pub fn run_process_and_get_output(mut command: Command) -> Output {
         .wait_with_output()
         .expect("failed to execute process");
 
-    println!("Standard Output: {}", content.as_lossy_string());
-    println!("Standard Error: {}", content.err_as_lossy_string());
+    if content.as_lossy_string() != "" {
+        println!("Output: {}", content.as_lossy_string());
+    }
+    if content.err_as_lossy_string() != "" {
+        println!("Error: {}", content.err_as_lossy_string());
+    }
+    println!();
     content
 }
 

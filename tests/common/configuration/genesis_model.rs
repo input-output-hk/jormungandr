@@ -96,7 +96,7 @@ impl GenesisYaml {
                 block0_date: Some(1554185140),
                 discrimination: Some(String::from("test")),
                 block0_consensus: Some(String::from("bft")),
-                slot_duration: Some(15),
+                slot_duration: Some(1),
                 slots_per_epoch: Some(100),
                 epoch_stability_depth: Some(2600),
                 consensus_leader_ids: Some(vec![
@@ -109,7 +109,7 @@ impl GenesisYaml {
                 ]),
                 bft_slots_ratio: Some("0.222".to_owned()),
                 consensus_genesis_praos_active_slot_coeff: Some("0.444".to_owned()),
-                allow_account_creation: true,
+                allow_account_creation: false,
                 linear_fees: LinearFees {
                     constant: 0,
                     coefficient: 0,

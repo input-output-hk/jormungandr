@@ -42,8 +42,6 @@ pub fn run_and_assert_process_exited_successfully(mut command: Command, descript
 
 /// Asserts process has non-zero exit code and finished with an error
 pub fn assert_process_failed(output: Output) {
-    println!("Running transaction new command...");
-
     assert_eq!(
         output.status.success(),
         false,
@@ -54,8 +52,6 @@ pub fn assert_process_failed(output: Output) {
 
 /// Asserts process has correct exit code and finished without an error
 pub fn assert_process_exited_successfully(output: Output) {
-    println!("Asserting process exited sucessfully...");
-
     assert!(
         output.status.success(),
         "non-zero exit code {}",
