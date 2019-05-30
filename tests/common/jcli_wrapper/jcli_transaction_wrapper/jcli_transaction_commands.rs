@@ -105,6 +105,7 @@ impl TransactionCommands {
             .arg(&addr_type)
             .arg(&tx_id)
             .arg(witness_file.as_os_str())
+            .arg("--account-spending-counter")
             .arg(spending_account_counter.to_string())
             .arg(witness_key.as_os_str());
         command
