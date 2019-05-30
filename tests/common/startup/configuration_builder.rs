@@ -52,12 +52,15 @@ impl ConfigurationBuilder {
         node_config.logger = self.logger.clone();
         let node_config_path = NodeConfig::serialize(&node_config);
 
-        let genesis_model = GenesisYaml::new_with_funds(self.funds.clone());
+        let secret_key = jcli_wrapper::assert_key_generate_default();
+        let public_key = jcli_wrapper::assert_key_to_public_default(&secret_key);
+
+        let mut genesis_model = GenesisYaml::new_with_funds(self.funds.clone());
+        genesis_model.blockchain_configuration.consensus_leader_ids = Some(vec![public_key]);
         let path_to_output_block = super::build_genesis_block(&genesis_model);
 
         let mut config = JormungandrConfig::from(genesis_model, node_config);
 
-        let secret_key = jcli_wrapper::assert_key_generate_default();
         let secret_model = SecretModel::new(&secret_key);
         let secret_model_path = SecretModel::serialize(&secret_model);
 
