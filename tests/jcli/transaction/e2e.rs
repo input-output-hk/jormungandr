@@ -139,6 +139,8 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
 
     jcli_wrapper::assert_transaction_post_accepted(&transaction_message, &jormungandr_rest_address);
 
+    std::thread::sleep(std::time::Duration::from_secs(2));
+
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
     let transaction_id = transaction_builder.get_transaction_id();
 
@@ -191,6 +193,8 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         .assert_transaction_to_message();
 
     jcli_wrapper::assert_transaction_post_accepted(&transaction_message, &jormungandr_rest_address);
+    std::thread::sleep(std::time::Duration::from_secs(2));
+
     jcli_wrapper::assert_rest_account_get_stats(&sender.address, &jormungandr_rest_address);
 }
 
