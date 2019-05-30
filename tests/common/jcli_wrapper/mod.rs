@@ -276,6 +276,15 @@ pub fn assert_rest_get_block_tip(host: &str) -> String {
     single_line
 }
 
+pub fn assert_rest_account_get_stats(address: &str, host: &str) -> String {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_rest_account_stats_command(&address, &host),
+    );
+    let single_line = output.as_lossy_string();
+    process_assert::assert_process_exited_successfully(output);
+    single_line
+}
+
 pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_rest_get_block_command(&block_id, &host),

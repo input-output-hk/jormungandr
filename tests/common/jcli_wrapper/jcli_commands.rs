@@ -59,6 +59,20 @@ pub fn get_rest_stats_command(host: &str) -> Command {
     command
 }
 
+/// Get rest stat command.
+pub fn get_rest_account_stats_command(address: &str, host: &str) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("account")
+        .arg("get")
+        .arg(&address)
+        .arg("-h")
+        .arg(&host);
+    command
+}
+
 /// Get rest block tip command.
 pub fn get_rest_block_tip_command(host: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());

@@ -113,6 +113,88 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
 }
 
 #[test]
+pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
+    let sender = startup::create_new_utxo_address();
+    let reciever = startup::create_new_utxo_address();
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: 100,
+        }])
+        .build();
+
+    let jormungandr_rest_address = config.get_node_address();
+    let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
+    let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
+
+    let mut transaction_builder =
+        JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+    let transaction_message = transaction_builder
+        .assert_add_input_from_utxo(&utxo)
+        .assert_add_output(&reciever.address, &utxo.out_value)
+        .assert_finalize()
+        .seal_with_witness_deafult(&sender.private_key, "utxo")
+        .assert_transaction_to_message();
+
+    jcli_wrapper::assert_transaction_post_accepted(&transaction_message, &jormungandr_rest_address);
+
+    let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
+    let transaction_id = transaction_builder.get_transaction_id();
+
+    assert_eq!(utxos.len(), 1);
+
+    let utxo = &utxos[0];
+    assert_eq!(
+        utxo.out_addr, reciever.address,
+        "after sucessful transaction out_addr for utxo should be equal to reciever address"
+    );
+    assert_eq!(
+        utxo.out_value, 100,
+        "out value should be equal to output of first transaction"
+    );
+    assert_eq!(
+        utxo.in_idx, 0,
+        "since only one transaction was made, idx should be equal to 1"
+    );
+    assert_eq!(
+        utxo.in_txid, transaction_id,
+        "transaction hash should be equal to new transaction"
+    );
+}
+
+#[test]
+pub fn test_account_is_created_if_transaction_out_is_account() {
+    let sender = startup::create_new_utxo_address();
+    let reciever = startup::create_new_account_address();
+    let transfer_amount = 100;
+
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: transfer_amount.clone(),
+        }])
+        .build();
+    config
+        .genesis_yaml
+        .blockchain_configuration
+        .allow_account_creation = true;
+    let jormungandr_rest_address = config.get_node_address();
+    let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
+    let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
+
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
+        .assert_add_input_from_utxo(&utxo)
+        .assert_add_output(&reciever.address, &transfer_amount)
+        .assert_finalize()
+        .seal_with_witness_deafult(&sender.private_key, "utxo")
+        .assert_transaction_to_message();
+
+    jcli_wrapper::assert_transaction_post_accepted(&transaction_message, &jormungandr_rest_address);
+    jcli_wrapper::assert_rest_account_get_stats(&sender.address, &jormungandr_rest_address);
+}
+
+#[test]
 pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
     let sender = startup::create_new_delegation_address();
     let reciever = startup::create_new_delegation_address();
