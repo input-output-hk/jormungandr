@@ -25,8 +25,9 @@ serde_json = "1.0.38"
 serde_yaml = "0.8"
 slog = "^2.4"
 slog-async = "2.3.0"
-slog-term = "2.4.0"
+slog-journald = { version = "2.0.0", optional = true }
 slog-json = "2.3.0"
+slog-term = "2.4.0"
 humantime = "1.2"
 bincode = "1.0.1"
 cbor_event = "2.1.2"
@@ -70,6 +71,11 @@ version = "2.32"
 default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
 
+[target.'cfg(unix)'.dependencies]
+# Crates.io version does not work on NetBsd due to dependency on outdated `nix` crate
+# TODO switch to crates.io when fixed version is released
+slog-syslog = { git = "https://github.com/slog-rs/syslog", rev = "336da50ed86058bfa87d9b497f5921fb7f95ea42" }
+
 [dev-dependencies]
 quickcheck = "0.8"
 galvanic-test = "0.2.0"
@@ -82,3 +88,4 @@ custom_error = "1.6"
 [features]
 with-bench = []
 integration-test = []
+systemd = ["slog-journald"]

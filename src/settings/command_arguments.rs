@@ -2,7 +2,10 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::{blockcfg::HeaderHash, settings::logging::LogFormat};
+use crate::{
+    blockcfg::HeaderHash,
+    settings::logging::{LogFormat, LogOutput},
+};
 
 #[derive(StructOpt, Debug)]
 pub struct StartArguments {
@@ -72,6 +75,11 @@ pub struct CommandLine {
     /// Set format of the log emitted. Can be "json" or "plain"
     #[structopt(long = "log-format", parse(try_from_str), default_value = "plain")]
     pub log_format: LogFormat,
+
+    /// Set format of the log emitted. Can be "stderr", "syslog" (unix only) or "journald"
+    /// (linux with systemd only, must be enabled during compilation)
+    #[structopt(long = "log-output", parse(try_from_str), default_value = "stderr")]
+    pub log_output: LogOutput,
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,
