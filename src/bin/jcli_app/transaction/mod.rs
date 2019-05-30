@@ -1,4 +1,5 @@
 mod add_account;
+mod add_certificate;
 mod add_input;
 mod add_output;
 mod add_witness;
@@ -29,6 +30,10 @@ pub enum Transaction {
     AddOutput(add_output::AddOutput),
     /// add output to the finalized transaction
     AddWitness(add_witness::AddWitness),
+    /// set a certificate to the Transaction. If there is already
+    /// an extra certificate in the transaction it will be replaced
+    /// with the new one.
+    AddCertificate(add_certificate::AddCertificate),
     /// Lock a transaction and start adding witnesses
     Finalize(finalize::Finalize),
     /// Finalize the transaction
@@ -50,6 +55,7 @@ custom_error! {pub TransactionError
     AddAccountError { source: add_account::AddAccountError } = "Cannot add input account to the transaction",
     AddOutputError { source: add_output::AddOutputError } = "Cannot add output to the transaction",
     AddWitnessError { source: add_witness::AddWitnessError } = "Cannot add witness to the transaction",
+    AddCertificateError { source: add_certificate::AddCertificateError } = "Cannot add certificate to the transaction",
     InfoError { source: info::InfoError } = "{source}",
     TransactionError { source: common::CommonError } = "Invalid transaction",
     FinalizeError { source: finalize::FinalizeError } = "cannot finalize transaction",
@@ -65,6 +71,7 @@ impl Transaction {
             Transaction::AddAccount(add_account) => add_account.exec()?,
             Transaction::AddOutput(add_output) => add_output.exec()?,
             Transaction::AddWitness(add_witness) => add_witness.exec()?,
+            Transaction::AddCertificate(add_certificate) => add_certificate.exec()?,
             Transaction::Finalize(finalize) => finalize.exec()?,
             Transaction::Seal(seal) => seal.exec()?,
             Transaction::Id(common) => display_id(common)?,
