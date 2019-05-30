@@ -90,7 +90,7 @@ impl MkWitness {
         io::open_file_read(&self.secret)
             .unwrap()
             .read_to_string(&mut bech32_str)?;
-        Ok(SecretKey::try_from_bech32_str(&bech32_str)?)
+        Ok(SecretKey::try_from_bech32_str(&bech32_str.trim_end())?)
     }
 
     pub fn exec(self) -> Result<(), MkWitnessError> {
