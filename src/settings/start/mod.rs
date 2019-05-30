@@ -47,9 +47,8 @@ impl RawSettings {
         let level = if self.command_line.verbose == 0 {
             match self.config.logger {
                 Some(ConfigLogSettings {
-                    verbosity: Some(v),
-                    format: _,
-                }) => v.clone(),
+                    verbosity: Some(v), ..
+                }) => v,
                 _ => 0,
             }
         } else {
@@ -63,6 +62,7 @@ impl RawSettings {
         LogSettings {
             verbosity,
             format: self.command_line.log_format.clone(),
+            output: self.command_line.log_output.clone(),
         }
         .to_logger()
     }
