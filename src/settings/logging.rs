@@ -21,6 +21,10 @@ pub enum LogFormat {
 /// Output of the logger.
 pub enum LogOutput {
     Stderr,
+    #[cfg(unix)]
+    Syslog,
+    #[cfg(feature = "systemd")]
+    Journald,
 }
 
 impl FromStr for LogFormat {
@@ -41,6 +45,10 @@ impl FromStr for LogOutput {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match &*s.trim().to_lowercase() {
             "stderr" => Ok(LogOutput::Stderr),
+            #[cfg(unix)]
+            "syslog" => Ok(LogOutput::Syslog),
+            #[cfg(feature = "systemd")]
+            "journald" => Ok(LogOutput::Journald),
             other => Err(format!("unknown log output '{}'", other)),
         }
     }
