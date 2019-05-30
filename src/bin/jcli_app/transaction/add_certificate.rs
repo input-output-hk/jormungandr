@@ -1,8 +1,6 @@
-use chain_impl_mockchain::{
-    certificate::{Certificate},
-};
+use chain_impl_mockchain::certificate::Certificate;
 use jcli_app::transaction::{common, staging::StagingError};
-use jormungandr_utils::{certificate};
+use jormungandr_utils::certificate;
 use structopt::StructOpt;
 
 custom_error! {pub AddCertificateError
@@ -16,7 +14,10 @@ pub struct AddCertificate {
     pub common: common::CommonTransaction,
 
     /// the value
-    #[structopt(name = "VALUE", parse(try_from_str = "certificate::deserialize_from_bech32"))]
+    #[structopt(
+        name = "VALUE",
+        parse(try_from_str = "certificate::deserialize_from_bech32")
+    )]
     pub certificate: Certificate,
 }
 
