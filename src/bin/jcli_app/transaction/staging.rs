@@ -53,7 +53,16 @@ pub struct Witness {
     pub witness: chain::transaction::Witness,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Certificate(
+    #[serde(
+        serialize_with = "jormungandr_utils::serde::certificate::serialize",
+        deserialize_with = "jormungandr_utils::serde::certificate::deserialize"
+    )]
+    chain::certificate::Certificate,
+);
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Staging {
     pub kind: StagingKind,
 
@@ -62,6 +71,8 @@ pub struct Staging {
     pub outputs: Vec<Output>,
 
     pub witnesses: Vec<Witness>,
+
+    pub extra: Option<Certificate>,
 }
 
 custom_error! {pub StagingError
@@ -70,6 +81,7 @@ custom_error! {pub StagingError
     CannotAddOutput { kind: StagingKind } = "cannot add output in the {kind} transaction",
     CannotAddWitness { kind: StagingKind } = "cannot add witness in the {kind} transaction",
     CannotAddWitnessTooManyWitnesses = "cannot add anymore witnesses",
+    CannotAddExtra { kind: StagingKind } = "cannot add certificate in the {kind} transaction",
     CannotFinalize { kind: StagingKind } = "cannot finalize {kind} transaction",
     CannotSeal { kind: StagingKind } = "cannot seal {kind} transaction",
     CannotSealNotEnoughWitnesses = "cannot seal, not enough witnesses",
@@ -96,6 +108,7 @@ impl Staging {
             inputs: Vec::new(),
             outputs: Vec::new(),
             witnesses: Vec::new(),
+            extra: None,
         }
     }
 
@@ -148,6 +161,17 @@ impl Staging {
         }
 
         Ok(self.witnesses.push(Witness { witness }))
+    }
+
+    pub fn set_extra(
+        &mut self,
+        extra: chain::certificate::Certificate,
+    ) -> Result<(), StagingError> {
+        if self.kind != StagingKind::Finalizing {
+            return Err(StagingError::CannotAddExtra { kind: self.kind });
+        }
+
+        Ok(self.extra = Some(Certificate(extra)))
     }
 
     pub fn finalize<FA>(
@@ -215,7 +239,9 @@ impl Staging {
             chain::txbuilder::GeneratedTransaction::Type1(auth) => {
                 Ok(chain::message::Message::Transaction(auth))
             }
-            _ => unreachable!(),
+            chain::txbuilder::GeneratedTransaction::Type2(auth) => {
+                Ok(chain::message::Message::Certificate(auth))
+            }
         }
     }
 
@@ -229,6 +255,17 @@ impl Staging {
         }
     }
 
+    fn transaction_with_extra(
+        &self,
+        certificate: &Certificate,
+    ) -> chain::transaction::Transaction<Address, chain::certificate::Certificate> {
+        chain::transaction::Transaction {
+            inputs: self.inputs(),
+            outputs: self.outputs(),
+            extra: certificate.0.clone(),
+        }
+    }
+
     pub fn builder(
         &self,
     ) -> chain::txbuilder::TransactionBuilder<Address, chain::transaction::NoExtra> {
@@ -236,8 +273,13 @@ impl Staging {
     }
 
     pub fn finalizer(&self) -> Result<chain::txbuilder::TransactionFinalizer, StagingError> {
-        let transaction = self.transaction();
-        let mut finalizer = chain::txbuilder::TransactionFinalizer::new_trans(transaction);
+        let mut finalizer = if let Some(certificate) = &self.extra {
+            let transaction = self.transaction_with_extra(certificate);
+            chain::txbuilder::TransactionFinalizer::new_cert(transaction)
+        } else {
+            let transaction = self.transaction();
+            chain::txbuilder::TransactionFinalizer::new_trans(transaction)
+        };
 
         for (index, witness) in self.witnesses.iter().enumerate() {
             finalizer
