@@ -176,11 +176,8 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
             address: sender.address.clone(),
             value: transfer_amount.clone(),
         }])
+        .with_allow_account_creation(true)
         .build();
-    config
-        .genesis_yaml
-        .blockchain_configuration
-        .allow_account_creation = true;
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
     let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);

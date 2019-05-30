@@ -11,6 +11,7 @@ use common::configuration::{
 
 pub struct ConfigurationBuilder {
     funds: Vec<Fund>,
+    with_account: bool,
     trusted_peers: Option<Vec<Peer>>,
     block0_hash: Option<String>,
     logger: Option<Logger>,
@@ -20,10 +21,16 @@ impl ConfigurationBuilder {
     pub fn new() -> Self {
         ConfigurationBuilder {
             funds: vec![],
+            with_account: false,
             trusted_peers: None,
             block0_hash: None,
             logger: None,
         }
+    }
+
+    pub fn with_allow_account_creation<'a>(&'a mut self, b: bool) -> &'a mut Self {
+        self.with_account = b;
+        self
     }
 
     pub fn with_funds<'a>(&'a mut self, funds: Vec<Fund>) -> &'a mut Self {
@@ -57,6 +64,9 @@ impl ConfigurationBuilder {
 
         let mut genesis_model = GenesisYaml::new_with_funds(self.funds.clone());
         genesis_model.blockchain_configuration.consensus_leader_ids = Some(vec![public_key]);
+        genesis_model
+            .blockchain_configuration
+            .allow_account_creation = self.with_account;
         let path_to_output_block = super::build_genesis_block(&genesis_model);
 
         let mut config = JormungandrConfig::from(genesis_model, node_config);
