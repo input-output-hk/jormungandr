@@ -314,6 +314,7 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
             address: sender.address.clone(),
             value: transfer_amount.clone(),
         }])
+        .with_allow_account_creation(true)
         .build();
 
     let jormungandr_rest_address = config.get_node_address();
@@ -340,6 +341,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
             address: sender.address.clone(),
             value: transfer_amount.clone(),
         }])
+        .with_allow_account_creation(true)
         .build();
 
     let jormungandr_rest_address = config.get_node_address();
