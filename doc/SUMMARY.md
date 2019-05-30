@@ -7,7 +7,10 @@
     - [Starting a passive node](./quickstart/02_passive_node.md)
     - [REST API](./quickstart/03_rest_api.md)
 
-- [Starting a stake pool](./stake_pool/introduction.md)
+- [staking and stake pool](./stake_pool/introduction.md)
+    - [registering your stake](./stake_pool/registering_stake.md)
+    - [delegating your stake](./stake_pool/delegating_stake.md)
+    - [registering stake pool](./stake_pool/registering_stake_pool.md)
 
 - [jcli](./jcli/introduction.md)
     - [Cryptographic keys](./jcli/key.md)
