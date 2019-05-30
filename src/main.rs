@@ -207,6 +207,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 stats_counter,
                 blockchain: bootstrapped_node.blockchain.clone(),
                 transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
+                logs: pool_logs,
             };
             Some(rest::start_rest_server(&rest, context)?)
         }
