@@ -13,7 +13,7 @@ pub fn test_jormungandr_node_starts_successfully() {
 pub fn test_jormungandr_leader_node_starts_successfully() {
     let mut config = startup::ConfigurationBuilder::new().build();
     let jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
-    jormungandr.assert_no_erros_in_log();
+    jormungandr.assert_no_errors_in_log();
 }
 
 #[test]

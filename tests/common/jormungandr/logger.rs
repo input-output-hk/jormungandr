@@ -2,7 +2,6 @@ extern crate serde;
 extern crate serde_json;
 
 use self::serde::{Deserialize, Serialize};
-use self::serde_json::Result;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -40,12 +39,7 @@ impl JormungandrLogger {
 
     fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
         let file = File::open(self.log_file_path.clone()).unwrap();
-        let mut data: Vec<String> = Vec::new();
         let reader = BufReader::new(file);
-
-        for (_index, line) in reader.lines().enumerate() {
-            data.push(line.unwrap());
-        }
-        data.into_iter()
+        reader.lines().map(|line| line.unwrap())
     }
 }
