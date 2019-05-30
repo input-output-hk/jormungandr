@@ -263,7 +263,6 @@ fn get_initial_certs<'a>(messages: &mut PeekableMessages<'a>) -> Vec<InitialCert
 
 impl BlockchainConfiguration {
     fn from_ents(ents: &ConfigParams) -> Result<Self, Error> {
-        use chain_impl_mockchain::config::ConfigParam;
         let mut block0_date = None;
         let mut discrimination = None;
         let mut block0_consensus = None;
