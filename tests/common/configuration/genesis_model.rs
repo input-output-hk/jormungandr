@@ -1,9 +1,20 @@
 #![allow(dead_code)]
 
+extern crate chain_addr;
+extern crate chain_crypto;
+extern crate rand;
+extern crate rand_chacha;
 extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::vec::Vec;
+
+use self::chain_addr::{Address, Discrimination};
+use self::chain_addr::{AddressReadable, Kind};
+use self::chain_crypto::bech32::Bech32;
+use self::chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
+use self::rand::SeedableRng;
+use self::rand_chacha::ChaChaRng;
 
 use super::file_utils;
 
@@ -62,17 +73,27 @@ impl GenesisYaml {
     }
 
     pub fn new() -> GenesisYaml {
+        let sk1: SecretKey<Ed25519Extended> =
+            SecretKey::generate(&mut ChaChaRng::from_seed([1; 32]));
+        let pk1: PublicKey<Ed25519> = sk1.to_public();
+        let initial_funds_address1 = Address(Discrimination::Test, Kind::Single(pk1));
+        let initial_funds_address1 =
+            AddressReadable::from_address(&initial_funds_address1).to_string();
+
+        let sk2: SecretKey<Ed25519Extended> =
+            SecretKey::generate(&mut ChaChaRng::from_seed([2; 32]));
+        let pk2: PublicKey<Ed25519> = sk2.to_public();
+        let initial_funds_address2 = Address(Discrimination::Test, Kind::Single(pk2));
+        let initial_funds_address2 =
+            AddressReadable::from_address(&initial_funds_address2).to_string();
+
         let initial_funds = vec![
             Fund {
-                address: String::from(
-                    "ta1sdz0t7tqv4etykkajvng6mscxzvzcragdq9pzd8s0x9w93n38h7gxry6rqf",
-                ),
+                address: String::from(initial_funds_address1),
                 value: 100,
             },
             Fund {
-                address: String::from(
-                    "ta1sd5luh6nuw6a34y5ayhhaekk6225w5667x29n9qg0nvat7k7kennj35d456",
-                ),
+                address: String::from(initial_funds_address2),
                 value: 100,
             },
         ];
@@ -91,6 +112,12 @@ impl GenesisYaml {
         initial_funds: Option<Vec<Fund>>,
         legacy_funds: Option<Vec<Fund>>,
     ) -> GenesisYaml {
+        let leader_1: KeyPair<Ed25519Extended> =
+            KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
+        let leader_2: KeyPair<Ed25519Extended> =
+            KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
+        let leader_1_pk = leader_1.public_key().to_bech32_str();
+        let leader_2_pk = leader_2.public_key().to_bech32_str();
         GenesisYaml {
             blockchain_configuration: BlockchainConfig {
                 block0_date: Some(1554185140),
@@ -100,12 +127,8 @@ impl GenesisYaml {
                 slots_per_epoch: Some(100),
                 epoch_stability_depth: Some(2600),
                 consensus_leader_ids: Some(vec![
-                    String::from(
-                        "ed25519e_pk1else5uqslegj6n5rxnrayz2x99cel6m2g492ac6tpv76kns0dwlqpjnh0l",
-                    ),
-                    String::from(
-                        "ed25519e_pk1xuqdxht6f0kkh0lf3ck3gfyvnpk33s09du92w6740mfmxl6hsfpsp8grmk",
-                    ),
+                    String::from(leader_1_pk),
+                    String::from(leader_2_pk),
                 ]),
                 bft_slots_ratio: Some("0.222".to_owned()),
                 consensus_genesis_praos_active_slot_coeff: Some("0.444".to_owned()),
