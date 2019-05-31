@@ -11,17 +11,12 @@ use std::collections::BTreeMap;
 
 use imhamt::{Hamt, HamtIter, InsertError, RemoveError, ReplaceError, UpdateError};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-/// UTXO Ledger Error
-pub enum Error {
-    /// The transaction ID already exists
-    AlreadyExists,
-    /// The transaction ID was not found
-    TransactionNotFound,
-    /// UTXO Index not found in a specific transaction,
-    /// for example if the index never existed (out of bounds) or
-    /// that the specific UTXO was already spent
-    IndexNotFound,
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub Error
+        AlreadyExists = "Transaction ID Already exits",
+        TransactionNotFound = "Transaction is not found",
+        IndexNotFound = "Index not found",
 }
 
 impl From<InsertError> for Error {

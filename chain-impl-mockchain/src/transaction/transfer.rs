@@ -177,3 +177,19 @@ impl<Address: Readable> Readable for Output<Address> {
         Ok(Output { address, value })
     }
 }
+
+impl std::fmt::Display for Output<chain_addr::Address> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}.{}",
+            chain_addr::AddressReadable::from_address(&self.address).to_string(),
+            self.value
+        )
+    }
+}
+impl std::fmt::Display for Output<cardano::address::Addr> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}.{}", self.address, self.value)
+    }
+}

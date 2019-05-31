@@ -13,32 +13,21 @@ pub struct Ledger {
     declarations: Hamt<DefaultHasher, Identifier, Declaration>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LedgerError {
-    ParticipantOutOfBound,
-    AlreadyExist,
-    DoesntExist,
-    DeclarationError(DeclarationError),
-    AccountError(account::LedgerError),
-    IdentifierMismatch,
-    ThresholdNotMet,
-}
-
-impl From<account::LedgerError> for LedgerError {
-    fn from(a: account::LedgerError) -> Self {
-        LedgerError::AccountError(a)
-    }
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub LedgerError
+        ParticipantOutOfBound = "Too many participant in the multisig account",
+        AlreadyExist = "Multisig account already exists",
+        DoesntExist = "Multisig account does not exist",
+        DeclarationError { source: DeclarationError } = "Multisig declaration error or invalid",
+        AccountError { source: account::LedgerError } = "Multisig account error or invalid",
+        IdentifierMismatch = "Multisig identifier mismatched",
+        ThresholdNotMet = "Multisig account's threshold not met",
 }
 
 impl From<InsertError> for LedgerError {
     fn from(_: InsertError) -> Self {
         LedgerError::AlreadyExist
-    }
-}
-
-impl From<DeclarationError> for LedgerError {
-    fn from(e: DeclarationError) -> Self {
-        LedgerError::DeclarationError(e)
     }
 }
 

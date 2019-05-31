@@ -88,3 +88,9 @@ impl property::Serialize for Value {
         codec.put_u64(self.0)
     }
 }
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}

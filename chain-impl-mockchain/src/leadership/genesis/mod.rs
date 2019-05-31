@@ -31,6 +31,11 @@ pub struct GenesisLeaderSelection {
     active_slots_coeff: ActiveSlotsCoeff,
 }
 
+custom_error! {GenesisError
+    InvalidEpoch { expected: Epoch, actual: Epoch } = "Wrong epoch, expected epoch {expected} but received block at epoch {actual}",
+    TotalStakeIsZero = "Total stake is null",
+}
+
 impl GenesisLeaderSelection {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         GenesisLeaderSelection {
@@ -49,8 +54,13 @@ impl GenesisLeaderSelection {
         date: BlockDate,
     ) -> Result<Option<Witness>, Error> {
         if date.epoch != self.epoch {
-            // TODO: add more error details: invalid Date
-            return Err(Error::new(ErrorKind::Failure));
+            return Err(Error::new_(
+                ErrorKind::Failure,
+                GenesisError::InvalidEpoch {
+                    actual: date.epoch,
+                    expected: self.epoch,
+                },
+            ));
         }
 
         let stake_snapshot = &self.distribution;
@@ -62,8 +72,10 @@ impl GenesisLeaderSelection {
                 let total_stake: Value = stake_snapshot.total_stake();
 
                 if total_stake == Value::zero() {
-                    // TODO: give more info about the error here...
-                    return Err(Error::new(ErrorKind::Failure));
+                    return Err(Error::new_(
+                        ErrorKind::Failure,
+                        GenesisError::TotalStakeIsZero,
+                    ));
                 }
 
                 let percent_stake = PercentStake {
@@ -83,8 +95,13 @@ impl GenesisLeaderSelection {
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {
         if block_header.block_date().epoch != self.epoch {
-            // TODO: add more error details: invalid Date
-            return Verification::Failure(Error::new(ErrorKind::Failure));
+            return Verification::Failure(Error::new_(
+                ErrorKind::Failure,
+                GenesisError::InvalidEpoch {
+                    expected: self.epoch,
+                    actual: block_header.block_date().epoch,
+                },
+            ));
         }
 
         let stake_snapshot = &self.distribution;

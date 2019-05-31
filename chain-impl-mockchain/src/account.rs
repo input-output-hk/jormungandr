@@ -27,3 +27,9 @@ pub type Secret = key::AccountSecretKey;
 
 /// The public ledger of all accounts associated with their current state
 pub type Ledger = account::Ledger<Identifier>;
+
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}

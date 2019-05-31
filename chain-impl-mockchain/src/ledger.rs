@@ -55,112 +55,69 @@ pub struct Ledger {
     pub(crate) chain_length: ChainLength,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Block0Error {
-    OnlyMessageReceived,
-    TransactionHasInput,
-    TransactionHasOutput,
-    TransactionHasWitnesses,
-    InitialMessageMissing,
-    InitialMessageMany,
-    InitialMessageDuplicateBlock0Date,
-    InitialMessageDuplicateDiscrimination,
-    InitialMessageDuplicateConsensusVersion,
-    InitialMessageDuplicateSlotDuration,
-    InitialMessageDuplicateEpochStabilityDepth,
-    InitialMessageDuplicatePraosActiveSlotsCoeff,
-    InitialMessageNoDate,
-    InitialMessageNoSlotDuration,
-    InitialMessageNoSlotsPerEpoch,
-    InitialMessageNoDiscrimination,
-    InitialMessageNoConsensusVersion,
-    InitialMessageNoConsensusLeaderId,
-    InitialMessageNoPraosActiveSlotsCoeff,
-    InitialMessageNoKesUpdateSpeed,
-    UtxoTotalValueTooBig,
-    HasUpdateProposal,
-    HasUpdateVote,
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub Block0Error
+        OnlyMessageReceived = "Old UTxOs and Initial Message are not valid in a normal block",
+        TransactionHasInput = "Transaction should not have inputs in a block0",
+        TransactionHasOutput = "Transaction should not have outputs in a block0",
+        TransactionHasWitnesses = "Transaction should not have witnesses in a block0",
+        InitialMessageMissing = "The initial message is missing.",
+        InitialMessageMany = "Only one initial message is required",
+        InitialMessageDuplicateBlock0Date = "Block0 Date is duplicated in the initial message",
+        InitialMessageDuplicateDiscrimination = "Address discrimination setting is duplicated in the initial fragment",
+        InitialMessageDuplicateConsensusVersion = "Consensus version is duplicated in the initial fragment",
+        InitialMessageDuplicateSlotDuration = "Slot Duration is duplicated in the initial fragment",
+        InitialMessageDuplicateEpochStabilityDepth = "Epoch stability depth is duplicated in the initial fragment",
+        InitialMessageDuplicatePraosActiveSlotsCoeff = "Praos active slot coefficient setting is duplicated in the initial fragment",
+        InitialMessageNoDate = "Missing block0 date in the initial fragment",
+        InitialMessageNoSlotDuration = "Missing slot duration in the initial fragment",
+        InitialMessageNoSlotsPerEpoch = "Missing slots per epoch in the initial fragment",
+        InitialMessageNoDiscrimination = "Missing address discrimination in the initial fragment",
+        InitialMessageNoConsensusVersion = "Missing consensus version in the initial fragment",
+        InitialMessageNoConsensusLeaderId = "Missing consensus leader id list in the initial fragment",
+        InitialMessageNoPraosActiveSlotsCoeff = "Missing praos active slot coefficient in the initial fragment",
+        InitialMessageNoKesUpdateSpeed = "Missing KES Update speed in the initial fragment",
+        UtxoTotalValueTooBig = "Total initial value is too big",
+        HasUpdateProposal = "Update proposal fragments are not valid in the block0",
+        HasUpdateVote = "Update vote fragments are not valid in the block0",
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Error {
-    Config(config::Error),
-    NotEnoughSignatures(usize, usize),
-    UtxoValueNotMatching(Value, Value),
-    UtxoError(utxo::Error),
-    UtxoInvalidSignature(UtxoPointer, Output<Address>, Witness),
-    OldUtxoInvalidSignature(UtxoPointer, Output<legacy::OldAddress>, Witness),
-    OldUtxoInvalidPublicKey(UtxoPointer, Output<legacy::OldAddress>, Witness),
-    AccountInvalidSignature(account::Identifier, Witness),
-    MultisigInvalidSignature(multisig::Identifier, Witness),
-    TransactionHasNoInput,
-    FeeCalculationError(ValueError),
-    PraosActiveSlotsCoeffInvalid(ActiveSlotsCoeffError),
-    UtxoInputsTotal(ValueError),
-    UtxoOutputsTotal(ValueError),
-    Block0(Block0Error),
-    Account(account::LedgerError),
-    Multisig(multisig::LedgerError),
-    NotBalanced(Value, Value),
-    ZeroOutput(Output<Address>),
-    Delegation(DelegationError),
-    AccountIdentifierInvalid,
-    InvalidDiscrimination,
-    ExpectingAccountWitness,
-    ExpectingUtxoWitness,
-    ExpectingInitialMessage,
-    CertificateInvalidSignature,
-    Update(update::Error),
-    WrongChainLength {
-        actual: ChainLength,
-        expected: ChainLength,
-    },
-    NonMonotonicDate {
-        block_date: BlockDate,
-        chain_date: BlockDate,
-    },
-}
+pub type OutputOldAddress = Output<legacy::OldAddress>;
+pub type OutputAddress = Output<Address>;
 
-impl From<utxo::Error> for Error {
-    fn from(e: utxo::Error) -> Self {
-        Error::UtxoError(e)
-    }
-}
-
-impl From<Block0Error> for Error {
-    fn from(e: Block0Error) -> Self {
-        Error::Block0(e)
-    }
-}
-
-impl From<account::LedgerError> for Error {
-    fn from(e: account::LedgerError) -> Self {
-        Error::Account(e)
-    }
-}
-
-impl From<multisig::LedgerError> for Error {
-    fn from(e: multisig::LedgerError) -> Self {
-        Error::Multisig(e)
-    }
-}
-
-impl From<DelegationError> for Error {
-    fn from(e: DelegationError) -> Self {
-        Error::Delegation(e)
-    }
-}
-
-impl From<config::Error> for Error {
-    fn from(e: config::Error) -> Self {
-        Error::Config(e)
-    }
-}
-
-impl From<update::Error> for Error {
-    fn from(e: update::Error) -> Self {
-        Error::Update(e)
-    }
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub Error
+        Config { source: config::Error } = "Invalid settings",
+        NotEnoughSignatures { actual: usize, expected: usize } = "Not enough signatures, expected {expected} signatures but received {actual}",
+        UtxoValueNotMatching { expected: Value, value: Value } = "The UTxO value ({expected}) in the transaction does not match the actually state value: {value}",
+        UtxoError { source: utxo::Error } = "Invalid UTxO",
+        UtxoInvalidSignature { utxo: UtxoPointer, output: OutputAddress, witness: Witness } = "Transaction with invalid signature",
+        OldUtxoInvalidSignature { utxo: UtxoPointer, output: OutputOldAddress, witness: Witness } = "Old Transaction with invalid signature",
+        OldUtxoInvalidPublicKey { utxo: UtxoPointer, output: OutputOldAddress, witness: Witness } = "Old Transaction with invalid public key",
+        AccountInvalidSignature { account: account::Identifier, witness: Witness } = "Account with invalid signature",
+        MultisigInvalidSignature { multisig: multisig::Identifier, witness: Witness } = "Multisig with invalid signature",
+        TransactionHasNoInput = "Transaction has no inputs",
+        FeeCalculationError { error: ValueError } = "Error while computing the fees: {error}",
+        PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
+        UtxoInputsTotal { error: ValueError } = "Error while computing the transaction's total input: {error}",
+        UtxoOutputsTotal { error: ValueError } = "Error while computing the transaction's total output: {error}",
+        Block0 { source: Block0Error } = "Invalid Block0",
+        Account { source: account::LedgerError } = "Error or Invalid account",
+        Multisig { source: multisig::LedgerError } = "Error or Invalid multisig",
+        NotBalanced { inputs: Value, outputs: Value } = "Inputs, outputs and fees are not balanced, transaction with {inputs} input and {outputs} output",
+        ZeroOutput { output: Output<Address> } = "Empty output",
+        Delegation { source: DelegationError } = "Error or Invalid delegation ",
+        AccountIdentifierInvalid = "Invalid account identifier",
+        InvalidDiscrimination = "Invalid discrimination",
+        ExpectingAccountWitness = "Expected an account witness",
+        ExpectingUtxoWitness = "Expected a UTxO witness",
+        ExpectingInitialMessage = "Expected an Initial Fragment",
+        CertificateInvalidSignature = "Invalid certificate's signature",
+        Update { source: update::Error } = "Error or Invalid update",
+        WrongChainLength { actual: ChainLength, expected: ChainLength } = "Wrong chain length, expected {expected} but received {actual}",
+        NonMonotonicDate { block_date: BlockDate, chain_date: BlockDate } = "Non Monotonic date, chain date is at {chain_date} but the block is at {block_date}",
 }
 
 impl Ledger {
@@ -188,7 +145,9 @@ impl Ledger {
         let init_ents = match content_iter.next() {
             Some(Message::Initial(ref init_ents)) => Ok(init_ents),
             Some(_) => Err(Error::ExpectingInitialMessage),
-            None => Err(Error::Block0(Block0Error::InitialMessageMissing)),
+            None => Err(Error::Block0 {
+                source: Block0Error::InitialMessageMissing,
+            }),
         }?;
 
         let mut regular_ents = crate::message::ConfigParams::new();
@@ -220,16 +179,21 @@ impl Ledger {
         }
 
         // here we make sure those specific parameters are present, otherwise we returns a given error
-        let block0_start_time =
-            block0_start_time.ok_or(Error::Block0(Block0Error::InitialMessageNoDate))?;
-        let discrimination =
-            discrimination.ok_or(Error::Block0(Block0Error::InitialMessageNoDiscrimination))?;
-        let slot_duration =
-            slot_duration.ok_or(Error::Block0(Block0Error::InitialMessageNoSlotDuration))?;
-        let slots_per_epoch =
-            slots_per_epoch.ok_or(Error::Block0(Block0Error::InitialMessageNoSlotsPerEpoch))?;
-        let kes_update_speed =
-            kes_update_speed.ok_or(Error::Block0(Block0Error::InitialMessageNoKesUpdateSpeed))?;
+        let block0_start_time = block0_start_time.ok_or(Error::Block0 {
+            source: Block0Error::InitialMessageNoDate,
+        })?;
+        let discrimination = discrimination.ok_or(Error::Block0 {
+            source: Block0Error::InitialMessageNoDiscrimination,
+        })?;
+        let slot_duration = slot_duration.ok_or(Error::Block0 {
+            source: Block0Error::InitialMessageNoSlotDuration,
+        })?;
+        let slots_per_epoch = slots_per_epoch.ok_or(Error::Block0 {
+            source: Block0Error::InitialMessageNoSlotsPerEpoch,
+        })?;
+        let kes_update_speed = kes_update_speed.ok_or(Error::Block0 {
+            source: Block0Error::InitialMessageNoKesUpdateSpeed,
+        })?;
 
         let static_params = LedgerStaticParameters {
             block0_initial_hash,
@@ -248,9 +212,9 @@ impl Ledger {
         let settings = setting::Settings::new(era).apply(&regular_ents)?;
 
         if settings.bft_leaders.is_empty() {
-            return Err(Error::Block0(
-                Block0Error::InitialMessageNoConsensusLeaderId,
-            ));
+            return Err(Error::Block0 {
+                source: Block0Error::InitialMessageNoConsensusLeaderId,
+            });
         }
 
         let mut ledger = Ledger::empty(settings, static_params);
@@ -260,17 +224,23 @@ impl Ledger {
         for content in content_iter {
             match content {
                 Message::Initial(_) => {
-                    return Err(Error::Block0(Block0Error::InitialMessageMany));
+                    return Err(Error::Block0 {
+                        source: Block0Error::InitialMessageMany,
+                    });
                 }
                 Message::OldUtxoDeclaration(old) => {
                     ledger.oldutxos = apply_old_declaration(ledger.oldutxos, old)?;
                 }
                 Message::Transaction(authenticated_tx) => {
                     if authenticated_tx.transaction.inputs.len() != 0 {
-                        return Err(Error::Block0(Block0Error::TransactionHasInput));
+                        return Err(Error::Block0 {
+                            source: Block0Error::TransactionHasInput,
+                        });
                     }
                     if authenticated_tx.witnesses.len() != 0 {
-                        return Err(Error::Block0(Block0Error::TransactionHasWitnesses));
+                        return Err(Error::Block0 {
+                            source: Block0Error::TransactionHasWitnesses,
+                        });
                     }
                     let transaction_id = authenticated_tx.transaction.hash();
                     let (new_utxos, new_accounts, new_multisig) =
@@ -288,20 +258,30 @@ impl Ledger {
                     ledger.multisig = new_multisig;
                 }
                 Message::UpdateProposal(_) => {
-                    return Err(Error::Block0(Block0Error::HasUpdateProposal));
+                    return Err(Error::Block0 {
+                        source: Block0Error::HasUpdateProposal,
+                    });
                 }
                 Message::UpdateVote(_) => {
-                    return Err(Error::Block0(Block0Error::HasUpdateVote));
+                    return Err(Error::Block0 {
+                        source: Block0Error::HasUpdateVote,
+                    });
                 }
                 Message::Certificate(authenticated_cert_tx) => {
                     if authenticated_cert_tx.transaction.inputs.len() != 0 {
-                        return Err(Error::Block0(Block0Error::TransactionHasInput));
+                        return Err(Error::Block0 {
+                            source: Block0Error::TransactionHasInput,
+                        });
                     }
                     if authenticated_cert_tx.witnesses.len() != 0 {
-                        return Err(Error::Block0(Block0Error::TransactionHasWitnesses));
+                        return Err(Error::Block0 {
+                            source: Block0Error::TransactionHasWitnesses,
+                        });
                     }
                     if authenticated_cert_tx.transaction.outputs.len() != 0 {
-                        return Err(Error::Block0(Block0Error::TransactionHasOutput));
+                        return Err(Error::Block0 {
+                            source: Block0Error::TransactionHasOutput,
+                        });
                     }
                     let (new_delegation, action) = ledger
                         .delegation
@@ -378,9 +358,15 @@ impl Ledger {
         let mut new_ledger = self.clone();
 
         match content {
-            Message::Initial(_) => return Err(Error::Block0(Block0Error::OnlyMessageReceived)),
+            Message::Initial(_) => {
+                return Err(Error::Block0 {
+                    source: Block0Error::OnlyMessageReceived,
+                })
+            }
             Message::OldUtxoDeclaration(_) => {
-                return Err(Error::Block0(Block0Error::OnlyMessageReceived));
+                return Err(Error::Block0 {
+                    source: Block0Error::OnlyMessageReceived,
+                });
             }
             Message::Transaction(authenticated_tx) => {
                 let (new_ledger_, _fee) =
@@ -421,7 +407,9 @@ impl Ledger {
             .fees
             .calculate(&signed_tx.transaction)
             .map(Ok)
-            .unwrap_or(Err(Error::FeeCalculationError(ValueError::Overflow)))?;
+            .unwrap_or(Err(Error::FeeCalculationError {
+                error: ValueError::Overflow,
+            }))?;
         self = internal_apply_transaction(
             self,
             dyn_params,
@@ -529,20 +517,19 @@ impl Ledger {
     fn validate_utxo_total_value(&self) -> Result<(), Error> {
         let old_utxo_values = self.oldutxos.iter().map(|entry| entry.output.value);
         let new_utxo_values = self.utxos.iter().map(|entry| entry.output.value);
-        let account_value = self
-            .accounts
-            .get_total_value()
-            .map_err(|_| Error::Block0(Block0Error::UtxoTotalValueTooBig))?;
-        let multisig_value = self
-            .multisig
-            .get_total_value()
-            .map_err(|_| Error::Block0(Block0Error::UtxoTotalValueTooBig))?;
+        let account_value = self.accounts.get_total_value().map_err(|_| Error::Block0 {
+            source: Block0Error::UtxoTotalValueTooBig,
+        })?;
+        let multisig_value = self.multisig.get_total_value().map_err(|_| Error::Block0 {
+            source: Block0Error::UtxoTotalValueTooBig,
+        })?;
         let all_utxo_values = old_utxo_values
             .chain(new_utxo_values)
             .chain(Some(account_value))
             .chain(Some(multisig_value));
-        Value::sum(all_utxo_values)
-            .map_err(|_| Error::Block0(Block0Error::UtxoTotalValueTooBig))?;
+        Value::sum(all_utxo_values).map_err(|_| Error::Block0 {
+            source: Block0Error::UtxoTotalValueTooBig,
+        })?;
         Ok(())
     }
 }
@@ -586,7 +573,10 @@ fn internal_apply_transaction(
     // 1. verify that number of signatures matches number of
     // transactions
     if inputs.len() != witnesses.len() {
-        return Err(Error::NotEnoughSignatures(inputs.len(), witnesses.len()));
+        return Err(Error::NotEnoughSignatures {
+            expected: inputs.len(),
+            actual: witnesses.len(),
+        });
     }
 
     // 2. validate inputs of transaction by gathering what we know of it,
@@ -613,12 +603,15 @@ fn internal_apply_transaction(
     }
 
     // 3. verify that transaction sum is zero.
-    let total_input =
-        Value::sum(inputs.iter().map(|i| i.value)).map_err(|e| Error::UtxoInputsTotal(e))?;
+    let total_input = Value::sum(inputs.iter().map(|i| i.value))
+        .map_err(|e| Error::UtxoInputsTotal { error: e })?;
     let total_output = Value::sum(inputs.iter().map(|i| i.value).chain(std::iter::once(fee)))
-        .map_err(|e| Error::UtxoOutputsTotal(e))?;
+        .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
     if total_input != total_output {
-        return Err(Error::NotBalanced(total_input, total_output));
+        return Err(Error::NotBalanced {
+            inputs: total_input,
+            outputs: total_output,
+        });
     }
 
     // 4. add the new outputs
@@ -651,7 +644,9 @@ fn internal_apply_transaction_output(
     for (index, output) in outputs.iter().enumerate() {
         // Reject zero-valued outputs.
         if output.value == Value::zero() {
-            return Err(Error::ZeroOutput(output.clone()));
+            return Err(Error::ZeroOutput {
+                output: output.clone(),
+            });
         }
 
         if output.address.discrimination() != static_params.discrimination {
@@ -701,29 +696,29 @@ fn input_utxo_verify(
 
             ledger.oldutxos = old_utxos;
             if utxo.value != associated_output.value {
-                return Err(Error::UtxoValueNotMatching(
-                    utxo.value,
-                    associated_output.value,
-                ));
+                return Err(Error::UtxoValueNotMatching {
+                    expected: utxo.value,
+                    value: associated_output.value,
+                });
             };
 
             if legacy::oldaddress_from_xpub(&associated_output.address, xpub) {
-                return Err(Error::OldUtxoInvalidPublicKey(
-                    utxo.clone(),
-                    associated_output.clone(),
-                    witness.clone(),
-                ));
+                return Err(Error::OldUtxoInvalidPublicKey {
+                    utxo: utxo.clone(),
+                    output: associated_output.clone(),
+                    witness: witness.clone(),
+                });
             };
 
             let data_to_verify =
                 WitnessUtxoData::new(&ledger.static_params.block0_initial_hash, &transaction_id);
             let verified = signature.verify(&xpub, &data_to_verify);
             if verified == chain_crypto::Verification::Failed {
-                return Err(Error::OldUtxoInvalidSignature(
-                    utxo.clone(),
-                    associated_output.clone(),
-                    witness.clone(),
-                ));
+                return Err(Error::OldUtxoInvalidSignature {
+                    utxo: utxo.clone(),
+                    output: associated_output.clone(),
+                    witness: witness.clone(),
+                });
             };
 
             Ok(ledger)
@@ -734,10 +729,10 @@ fn input_utxo_verify(
                 .remove(&utxo.transaction_id, utxo.output_index)?;
             ledger.utxos = new_utxos;
             if utxo.value != associated_output.value {
-                return Err(Error::UtxoValueNotMatching(
-                    utxo.value,
-                    associated_output.value,
-                ));
+                return Err(Error::UtxoValueNotMatching {
+                    expected: utxo.value,
+                    value: associated_output.value,
+                });
             }
 
             let data_to_verify =
@@ -747,11 +742,11 @@ fn input_utxo_verify(
                 &data_to_verify,
             );
             if verified == chain_crypto::Verification::Failed {
-                return Err(Error::UtxoInvalidSignature(
-                    utxo.clone(),
-                    associated_output.clone(),
-                    witness.clone(),
-                ));
+                return Err(Error::UtxoInvalidSignature {
+                    utxo: utxo.clone(),
+                    output: associated_output.clone(),
+                    witness: witness.clone(),
+                });
             };
             Ok(ledger)
         }
@@ -784,10 +779,10 @@ fn input_account_verify(
             let tidsc = WitnessAccountData::new(block0_hash, transaction_id, &spending_counter);
             let verified = sig.verify(&account.clone().into(), &tidsc);
             if verified == chain_crypto::Verification::Failed {
-                return Err(Error::AccountInvalidSignature(
-                    account.clone(),
-                    witness.clone(),
-                ));
+                return Err(Error::AccountInvalidSignature {
+                    account: account.clone(),
+                    witness: witness.clone(),
+                });
             };
             Ok((ledger, mledger))
         }
@@ -801,7 +796,10 @@ fn input_account_verify(
             let data_to_verify =
                 WitnessMultisigData::new(&block0_hash, &transaction_id, &spending_counter);
             if msignature.verify(declaration, &data_to_verify) != true {
-                return Err(Error::MultisigInvalidSignature(account, witness.clone()));
+                return Err(Error::MultisigInvalidSignature {
+                    multisig: account,
+                    witness: witness.clone(),
+                });
             }
             mledger = new_ledger;
 
@@ -809,13 +807,6 @@ fn input_account_verify(
         }
     }
 }
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-impl std::error::Error for Error {}
 
 #[cfg(test)]
 pub mod test {
@@ -956,7 +947,13 @@ pub mod test {
 
         let dyn_params = ledger.get_ledger_parameters();
         let r = ledger.apply_transaction(&signed_tx, &dyn_params);
-        assert_err!(Error::NotEnoughSignatures(1, 0), r)
+        assert_err!(
+            Error::NotEnoughSignatures {
+                expected: 1,
+                actual: 0
+            },
+            r
+        )
     }
 
     #[test]

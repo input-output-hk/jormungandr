@@ -93,6 +93,9 @@ impl LeadershipConsensus {
             LeadershipConsensus::Bft(_) if block_version == BlockVersion::Ed25519Signed => {
                 Verification::Success
             }
+            LeadershipConsensus::GenesisPraos(_) if block_version == BlockVersion::KesVrfproof => {
+                Verification::Success
+            }
             _ => Verification::Failure(Error::new(ErrorKind::IncompatibleBlockVersion)),
         }
     }
@@ -232,10 +235,13 @@ impl Error {
         }
     }
 
-    pub fn new_(kind: ErrorKind, cause: Box<dyn std::error::Error>) -> Self {
+    pub fn new_<E>(kind: ErrorKind, cause: E) -> Self
+    where
+        E: std::error::Error + 'static,
+    {
         Error {
             kind: kind,
-            cause: Some(cause),
+            cause: Some(Box::new(cause)),
         }
     }
 }
