@@ -10,5 +10,6 @@ chain-core      = { path = "../cardano-deps/chain-core" }
 chain-addr      = { path = "../cardano-deps/chain-addr" }
 chain-crypto    = { path = "../cardano-deps/chain-crypto" }
 chain-impl-mockchain = { path = "../cardano-deps/chain-impl-mockchain" }
+humantime = "1.2"
 serde = "1.0"
 custom_error = "1.6"

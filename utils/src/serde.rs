@@ -423,6 +423,22 @@ pub mod certificate {
     }
 }
 
+pub mod system_time {
+    use super::*;
+    use std::time::SystemTime;
+
+    pub fn serialize<S>(timestamp: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+        humantime::format_rfc3339_nanos(*timestamp).to_string().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<SystemTime, D::Error>
+    {
+        let visitor = StrParseVisitor::new("RFC3339 timestamp", humantime::parse_rfc3339_weak);
+        deserializer.deserialize_str(visitor)
+    }
+}
+
 #[derive(Serialize)]
 #[serde(bound = "T: ToString", transparent)]
 pub struct SerdeAsString<T>(#[serde(with = "as_string")] pub T);
@@ -490,6 +506,7 @@ pub mod as_bech32 {
         deserializer.deserialize_str(visitor)
     }
 }
+
 
 #[derive(Default)]
 struct StrParseVisitor<'a, P> {

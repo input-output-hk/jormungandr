@@ -36,7 +36,9 @@ pub enum Status {
 pub struct Log {
     #[serde(with = "serde::as_string")]
     pub fragment_id: FragmentId,
+    #[serde(with = "serde::system_time")]
     pub last_updated_at: SystemTime,
+    #[serde(with = "serde::system_time")]
     pub received_at: SystemTime,
     pub received_from: Origin,
     pub status: Status,
