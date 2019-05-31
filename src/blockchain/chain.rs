@@ -290,14 +290,10 @@ pub enum HandledBlock {
     Acquired { header: Header },
 }
 
-#[derive(Debug)]
-pub enum RejectionReason {
-    /// the block is already present in the blockchain
-    AlreadyPresent,
-    /// the block is beyond the stability depth, we reject it
-    BeyondStabilityDepth,
-    /// the block was rejected because of invalid consensus
-    Consensus(leadership::Error),
+custom_error! {pub RejectionReason
+    AlreadyPresent = "Block already present in the blockchain",
+    BeyondStabilityDepth = "the block is beyond the stability depth, we reject it",
+    Consensus { error: leadership::Error } = "{error}",
 }
 
 pub enum BlockHeaderTriage {
@@ -436,7 +432,7 @@ pub fn header_triage(
             Verification::Success => {}
             Verification::Failure(err) => {
                 return Ok(BlockHeaderTriage::NotOfInterest {
-                    reason: RejectionReason::Consensus(err),
+                    reason: RejectionReason::Consensus { error: err },
                 });
             }
         }

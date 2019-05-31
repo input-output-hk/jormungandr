@@ -35,7 +35,10 @@ pub fn handle_input(
             let mut blockchain = blockchain.lock_write();
             match chain::handle_block(&mut blockchain, block, true).unwrap() {
                 HandledBlock::Rejected { reason } => {
-                    warn!(logger, "rejecting node's created block: {:?}", reason);
+                    warn!(logger,
+                        "rejecting node's created block" ;
+                        "reason" => reason.to_string(),
+                    );
                 }
                 HandledBlock::MissingBranchToBlock { to } => {
                     // this is an error because we are in a situation
