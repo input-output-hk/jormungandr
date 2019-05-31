@@ -34,6 +34,7 @@ POOL_KES_PK=$(echo ${POOL_KES_SK} | $CLI key to-public)
 
 # note we use the faucet as the owner to this pool
 STAKE_KEY=${FAUCET_SK}
+STAKE_KEY_PUB=${FAUCET_PK}
 
 echo $STAKE_KEY > stake_key.sk
 echo $POOL_VRF_SK > stake_pool.vrf.sk
@@ -48,6 +49,13 @@ cat stake_pool.cert | $CLI certificate sign stake_key.sk > stake_pool.signcert
 
 STAKE_POOL_ID=$(cat stake_pool.signcert | $CLI certificate get-stake-pool-id)
 STAKE_POOL_CERT=$(cat stake_pool.signcert)
+
+$CLI certificate new stake-delegation \
+    ${STAKE_POOL_ID} \
+    ${STAKE_KEY_PUB} > stake_delegation.cert
+cat stake_delegation.cert | $CLI certificate sign stake_key.sk > stake_delegation.signcert
+STAKE_DELEGATION_CERT=$(cat stake_delegation.signcert)
+
 
 cat << EOF > genesis.yaml
 blockchain_configuration:
@@ -68,7 +76,8 @@ blockchain_configuration:
   bft_slots_ratio: 0
   kes_update_speed: 43200 # 12hours
 initial_certs:
-  - $STAKE_POOL_CERT
+  - ${STAKE_POOL_CERT}
+  - ${STAKE_DELEGATION_CERT}
 initial_funds:
   - address: ${FAUCET_ADDR}
     value: ${FAUCET_AMOUNT}
