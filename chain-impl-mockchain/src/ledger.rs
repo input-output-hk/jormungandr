@@ -243,11 +243,12 @@ impl Ledger {
                         });
                     }
                     let transaction_id = authenticated_tx.transaction.hash();
-                    let (new_utxos, new_accounts, new_multisig) =
+                    let (new_utxos, new_accounts, new_multisig, new_delegation) =
                         internal_apply_transaction_output(
                             ledger.utxos,
                             ledger.accounts,
                             ledger.multisig,
+                            ledger.delegation,
                             &ledger.static_params,
                             &ledger_params,
                             &transaction_id,
@@ -256,6 +257,7 @@ impl Ledger {
                     ledger.utxos = new_utxos;
                     ledger.accounts = new_accounts;
                     ledger.multisig = new_multisig;
+                    ledger.delegation = new_delegation;
                 }
                 Message::UpdateProposal(_) => {
                     return Err(Error::Block0 {
@@ -615,18 +617,21 @@ fn internal_apply_transaction(
     }
 
     // 4. add the new outputs
-    let (new_utxos, new_accounts, new_multisig) = internal_apply_transaction_output(
-        ledger.utxos,
-        ledger.accounts,
-        ledger.multisig,
-        &ledger.static_params,
-        dyn_params,
-        transaction_id,
-        outputs,
-    )?;
+    let (new_utxos, new_accounts, new_multisig, new_delegation) =
+        internal_apply_transaction_output(
+            ledger.utxos,
+            ledger.accounts,
+            ledger.multisig,
+            ledger.delegation,
+            &ledger.static_params,
+            dyn_params,
+            transaction_id,
+            outputs,
+        )?;
     ledger.utxos = new_utxos;
     ledger.accounts = new_accounts;
     ledger.multisig = new_multisig;
+    ledger.delegation = new_delegation;
 
     Ok(ledger)
 }
@@ -635,11 +640,20 @@ fn internal_apply_transaction_output(
     mut utxos: utxo::Ledger<Address>,
     mut accounts: account::Ledger,
     mut multisig: multisig::Ledger,
+    mut delegation: DelegationState,
     static_params: &LedgerStaticParameters,
     dyn_params: &LedgerParameters,
     transaction_id: &TransactionId,
     outputs: &[Output<Address>],
-) -> Result<(utxo::Ledger<Address>, account::Ledger, multisig::Ledger), Error> {
+) -> Result<
+    (
+        utxo::Ledger<Address>,
+        account::Ledger,
+        multisig::Ledger,
+        DelegationState,
+    ),
+    Error,
+> {
     let mut new_utxos = Vec::new();
     for (index, output) in outputs.iter().enumerate() {
         // Reject zero-valued outputs.
@@ -664,6 +678,8 @@ fn internal_apply_transaction_output(
                     Err(account::LedgerError::NonExistent) if dyn_params.allow_account_creation => {
                         // if the account was not existent and that we allow creating
                         // account out of the blue, then fallback on adding the account
+                        delegation = delegation
+                            .register_stake_key(stake::StakeKeyId(account.clone().into()))?;
                         accounts.add_account(&account, output.value)?
                     }
                     Err(error) => return Err(error.into()),
@@ -677,7 +693,7 @@ fn internal_apply_transaction_output(
     }
 
     utxos = utxos.add(transaction_id, &new_utxos)?;
-    Ok((utxos, accounts, multisig))
+    Ok((utxos, accounts, multisig, delegation))
 }
 
 fn input_utxo_verify(
