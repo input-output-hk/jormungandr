@@ -145,19 +145,22 @@ mod test {
     use crate::stake::PoolStakeDistribution;
     use crate::stake::StakePoolInfo;
     use chain_addr::Discrimination;
+    use chain_crypto::KeyPair;
     use std::collections::HashMap;
 
     fn make_pool(ledger: &mut Ledger) -> (StakePoolId, SecretKey<Curve25519_2HashDH>) {
         let mut rng = rand::thread_rng();
 
         let pool_vrf_private_key = SecretKey::generate(&mut rng);
+        let pool_kes : KeyPair<SumEd25519_12> = KeyPair::generate(&mut rng);
+        let (_, pool_kes_public_key) = pool_kes.into_keys();
 
         let pool_info = StakePoolInfo {
             serial: 1234,
             owners: vec![],
             initial_key: GenesisPraosLeader {
                 vrf_public_key: pool_vrf_private_key.to_public(),
-                kes_public_key: SecretKey::generate(&mut rng).to_public(),
+                kes_public_key: pool_kes_public_key,
             },
         };
 

@@ -17,7 +17,7 @@ mod test {
     use crate::accounting::account::SpendingCounter;
     use crate::transaction::TransactionId;
     use crate::{account, key};
-    use chain_crypto::{PublicKey, SecretKey, Signature};
+    use chain_crypto::{PublicKey, SecretKey};
     use rand::{CryptoRng, RngCore};
 
     fn make_keypair<R: RngCore + CryptoRng>(
@@ -70,21 +70,9 @@ mod test {
         // test participant 1 and 3
         {
             let mut witness_builder = WitnessBuilder::new();
-            witness_builder.append(
-                TreeIndex::D1(i1),
-                pk1.clone(),
-                Signature::generate(&sk1, &msg).coerce(),
-            );
-            witness_builder.append(
-                TreeIndex::D1(i2),
-                pk2.clone(),
-                Signature::generate(&sk2, &msg).coerce(),
-            );
-            witness_builder.append(
-                TreeIndex::D1(i3),
-                pk3.clone(),
-                Signature::generate(&sk3, &msg).coerce(),
-            );
+            witness_builder.append(TreeIndex::D1(i1), pk1.clone(), sk1.sign(&msg).coerce());
+            witness_builder.append(TreeIndex::D1(i2), pk2.clone(), sk2.sign(&msg).coerce());
+            witness_builder.append(TreeIndex::D1(i3), pk3.clone(), sk3.sign(&msg).coerce());
             let witness = witness_builder.finalize();
 
             assert_eq!(
@@ -97,16 +85,8 @@ mod test {
         // test participant 3 and 2
         {
             let mut witness_builder = WitnessBuilder::new();
-            witness_builder.append(
-                TreeIndex::D1(i3),
-                pk3.clone(),
-                Signature::generate(&sk3, &msg).coerce(),
-            );
-            witness_builder.append(
-                TreeIndex::D1(i2),
-                pk2.clone(),
-                Signature::generate(&sk2, &msg).coerce(),
-            );
+            witness_builder.append(TreeIndex::D1(i3), pk3.clone(), sk3.sign(&msg).coerce());
+            witness_builder.append(TreeIndex::D1(i2), pk2.clone(), sk2.sign(&msg).coerce());
             let witness = witness_builder.finalize();
 
             assert_eq!(
@@ -122,13 +102,9 @@ mod test {
             witness_builder.append(
                 TreeIndex::D1(i2), // should be i1 to work
                 pk1.clone(),
-                Signature::generate(&sk1, &msg).coerce(),
+                sk1.sign(&msg).coerce(),
             );
-            witness_builder.append(
-                TreeIndex::D1(i3),
-                pk3.clone(),
-                Signature::generate(&sk3, &msg).coerce(),
-            );
+            witness_builder.append(TreeIndex::D1(i3), pk3.clone(), sk3.sign(&msg).coerce());
             let witness = witness_builder.finalize();
 
             assert_eq!(
@@ -141,11 +117,7 @@ mod test {
         // test threshold not met
         {
             let mut witness_builder = WitnessBuilder::new();
-            witness_builder.append(
-                TreeIndex::D1(i1),
-                pk1.clone(),
-                Signature::generate(&sk1, &msg).coerce(),
-            );
+            witness_builder.append(TreeIndex::D1(i1), pk1.clone(), sk1.sign(&msg).coerce());
             let witness = witness_builder.finalize();
 
             assert_eq!(

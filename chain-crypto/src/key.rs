@@ -66,7 +66,7 @@ impl<A: AsymmetricKey> KeyPair<A> {
     pub fn into_keys(self) -> (SecretKey<A>, PublicKey<A::PubAlg>) {
         (self.0, self.1)
     }
-    pub fn generate<T: RngCore + CryptoRng>(rng: T) -> Self {
+    pub fn generate<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         let sk = A::generate(rng);
         let pk = A::compute_public(&sk);
         KeyPair(SecretKey(sk), PublicKey(pk))

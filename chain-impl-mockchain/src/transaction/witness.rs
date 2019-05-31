@@ -3,7 +3,7 @@ use crate::account;
 use crate::block::HeaderHash;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
-    AccountSecretKey, AccountSignature, SpendingPublicKey, SpendingSecretKey, SpendingSignature,
+    AccountSecretKey, SpendingPublicKey, SpendingSecretKey, SpendingSignature,
 };
 use crate::multisig;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -111,10 +111,7 @@ impl Witness {
         transaction_id: &TransactionId,
         secret_key: &SpendingSecretKey,
     ) -> Self {
-        Witness::Utxo(SpendingSignature::generate(
-            secret_key,
-            &WitnessUtxoData::new(block0, transaction_id),
-        ))
+        Witness::Utxo(secret_key.sign(&WitnessUtxoData::new(block0, transaction_id)))
     }
 
     pub fn new_account(
@@ -123,10 +120,11 @@ impl Witness {
         spending_counter: &account::SpendingCounter,
         secret_key: &AccountSecretKey,
     ) -> Self {
-        Witness::Account(AccountSignature::generate(
-            secret_key,
-            &WitnessAccountData::new(block0, transaction_id, spending_counter),
-        ))
+        Witness::Account(secret_key.sign(&WitnessAccountData::new(
+            block0,
+            transaction_id,
+            spending_counter,
+        )))
     }
 
     // Verify the given `TransactionId` using the witness.

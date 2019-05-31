@@ -2,7 +2,7 @@ use crate::key::{deserialize_public_key, serialize_public_key, Hash};
 use crate::leadership::genesis::GenesisPraosLeader;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
+use chain_crypto::{Ed25519, PublicKey};
 
 /// Information related to a stake key
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,17 +34,11 @@ impl StakePoolInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StakeKeyId(pub(crate) PublicKey<Ed25519Extended>);
+pub struct StakeKeyId(pub(crate) PublicKey<Ed25519>);
 
-impl From<PublicKey<Ed25519Extended>> for StakeKeyId {
-    fn from(key: PublicKey<Ed25519Extended>) -> Self {
+impl From<PublicKey<Ed25519>> for StakeKeyId {
+    fn from(key: PublicKey<Ed25519>) -> Self {
         StakeKeyId(key)
-    }
-}
-
-impl From<&SecretKey<Ed25519Extended>> for StakeKeyId {
-    fn from(key: &SecretKey<Ed25519Extended>) -> Self {
-        StakeKeyId(key.to_public())
     }
 }
 
@@ -150,11 +144,13 @@ impl std::fmt::Display for StakePoolId {
 #[cfg(test)]
 mod test {
     use super::*;
+    use chain_crypto::KeyPair;
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for StakeKeyId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            StakeKeyId::from(&Arbitrary::arbitrary(g))
+            let kp: KeyPair<Ed25519> = Arbitrary::arbitrary(g);
+            StakeKeyId::from(kp.into_keys().1)
         }
     }
 

@@ -1,10 +1,10 @@
 use crate::accounting::account;
 use crate::key;
-use chain_crypto::{Ed25519Extended, PublicKey};
+use chain_crypto::{Ed25519, PublicKey};
 
 pub use account::{LedgerError, SpendingCounter};
 
-pub type AccountAlg = Ed25519Extended;
+pub type AccountAlg = Ed25519;
 
 /// Account Identifier (also used as Public Key)
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
