@@ -1,5 +1,8 @@
 use chain_addr::{Address, Discrimination};
+use chain_addr::{AddressReadable, Kind};
 use chain_core::property::HasMessages;
+use chain_crypto::bech32::Bech32;
+use chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder, ConsensusVersion},
     certificate::Certificate,
@@ -12,6 +15,8 @@ use chain_impl_mockchain::{
     value::Value,
 };
 use jormungandr_utils::serde::{self, SerdeAsString, SerdeLeaderId};
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -418,17 +423,27 @@ pub fn documented_example(now: std::time::SystemTime) -> String {
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    format!(include_str!("DOCUMENTED_EXAMPLE.yaml"), now = secs)
+    let sk: SecretKey<Ed25519Extended> = SecretKey::generate(&mut ChaChaRng::from_seed([0; 32]));
+    let pk: PublicKey<Ed25519> = sk.to_public();
+    let leader_1: KeyPair<Ed25519Extended> = KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
+    let leader_2: KeyPair<Ed25519Extended> = KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
+
+    let initial_funds_address = Address(Discrimination::Test, Kind::Single(pk));
+    let initial_funds_address = AddressReadable::from_address(&initial_funds_address).to_string();
+    let leader_1_pk = leader_1.public_key().to_bech32_str();
+    let leader_2_pk = leader_2.public_key().to_bech32_str();
+    format!(
+        include_str!("DOCUMENTED_EXAMPLE.yaml"),
+        now = secs,
+        leader_1 = leader_1_pk,
+        leader_2 = leader_2_pk,
+        initial_funds_address = initial_funds_address
+    )
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use chain_addr::{AddressReadable, Kind};
-    use chain_crypto::bech32::Bech32;
-    use chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
-    use rand::SeedableRng;
-    use rand_chacha::ChaChaRng;
     use serde_yaml;
 
     #[test]
