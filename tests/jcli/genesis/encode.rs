@@ -29,7 +29,7 @@ pub fn test_genesis_with_empty_consenus_leaders_list_fails_to_build() {
         .consensus_leader_ids = Some(vec![]);
     jcli_wrapper::assert_genesis_encode_fails(
         &config.genesis_yaml,
-        r"Block0\(InitialMessageNoConsensusLeaderId\)",
+        r"Missing consensus leader id list in the initial fragment",
     );
 }
 
@@ -55,7 +55,7 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
         address: test_address.clone(),
     }]);
     config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
-    jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "InvalidDiscrimination");
+    jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "Invalid discrimination");
 }
 
 #[test]
