@@ -322,9 +322,9 @@ impl AddressReadable {
     }
 }
 
-impl ToString for AddressReadable {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl std::fmt::Display for AddressReadable {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
