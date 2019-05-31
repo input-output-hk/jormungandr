@@ -12,7 +12,24 @@ pub struct AutoCompletion {
 }
 
 impl AutoCompletion {
-    pub fn exec<S: StructOpt>(self) {
-        S::clap().gen_completions("jcli", self.shell, self.output)
+    pub fn exec<S: StructOpt>(self) -> Result<(), Error> {
+        validate_output(&self.output)?;
+        S::clap().gen_completions("jcli", self.shell, self.output);
+        Ok(())
     }
+}
+
+fn validate_output(output: &PathBuf) -> Result<(), Error> {
+    if !output.exists() {
+        return Err(Error::OutputNotExist);
+    }
+    if !output.is_dir() {
+        return Err(Error::OutputNotDir);
+    }
+    Ok(())
+}
+
+custom_error! {pub Error
+    OutputNotExist = "output directory does not exist",
+    OutputNotDir = "output is not a directory",
 }

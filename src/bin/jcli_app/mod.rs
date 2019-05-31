@@ -43,7 +43,7 @@ impl JCli {
             JCli::Transaction(transaction) => transaction.exec()?,
             JCli::Debug(debug) => debug.exec()?,
             JCli::Certificate(certificate) => certificate.exec()?,
-            JCli::AutoCompletion(auto_completion) => auto_completion.exec::<Self>(),
+            JCli::AutoCompletion(auto_completion) => auto_completion.exec::<Self>()?,
         };
         Ok(())
     }
