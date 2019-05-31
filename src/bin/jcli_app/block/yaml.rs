@@ -424,11 +424,21 @@ pub fn documented_example(now: std::time::SystemTime) -> String {
 #[cfg(test)]
 mod test {
     use super::*;
+    use chain_addr::{AddressReadable, Kind};
+    use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
+    use rand::SeedableRng;
+    use rand_chacha::ChaChaRng;
     use serde_yaml;
 
     #[test]
     fn conversion_to_and_from_message_preserves_data() {
-        let genesis_yaml = r#"
+        let sk: SecretKey<Ed25519Extended> =
+            SecretKey::generate(&mut ChaChaRng::from_seed([0; 32]));
+        let pk: PublicKey<Ed25519> = sk.to_public();
+        let initial_funds_address = Address(Discrimination::Test, Kind::Single(pk));
+        let initial_funds_address =
+            AddressReadable::from_address(&initial_funds_address).to_string();
+        let genesis_yaml = format!(r#"
 ---
 blockchain_configuration:
   block0_date: 123456789
@@ -450,7 +460,7 @@ blockchain_configuration:
     certificate: 4
   kes_update_speed: 43200
 initial_funds:
-  - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
+  - address: {}
     value: 10000
 initial_certs:
   - cert1qsqqqqqqqqqqqqqqqqqqqqqqqr2sr5860cvq6vuc05tlwl9lwrs5vw7wq8fjm9fw6mucy0cdd84n0c6ljv2p03s8tc8nukzcrx87zkp3hflm2ymglghs4sn60xgryu57pznzff92ldaymh34u36z6fvdqnzl8my8ucttn09sehq8pdgrle35k3spqpq2s44c5mudrr2c3d0pelf75tjk4ezmsqfxhvjlawxvmcnluc0tcl7kfh4hveatrfuu5fzg74hxpucf0sh6v4l7hhkpneaa02lmp6j8q5jqgzt4
@@ -458,10 +468,9 @@ legacy_funds:
   - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
     value: 123
   - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
-    value: 456
-            "#.trim();
+    value: 456"#, initial_funds_address);
         let genesis: Genesis =
-            serde_yaml::from_str(genesis_yaml).expect("Failed to deserialize YAML");
+            serde_yaml::from_str(genesis_yaml.as_str()).expect("Failed to deserialize YAML");
 
         let block = genesis.to_block();
         let new_genesis = Genesis::from_block(&block).expect("Failed to build genesis");
