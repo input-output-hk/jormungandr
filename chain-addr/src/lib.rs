@@ -14,10 +14,13 @@
 //!     DISCRIMINATION_BIT || SINGLE_KIND_TYPE (7 bits) || SPENDING_KEY
 //!
 //! Group key:
-//!     DISCRIMINATION_BIT || GROUP_KIND_TYPE (7 bits)|| SPENDING_KEY || STAKING_KEY
+//!     DISCRIMINATION_BIT || GROUP_KIND_TYPE (7 bits) || SPENDING_KEY || STAKING_KEY
 //!
 //! Account key:
 //!     DISCRIMINATION_BIT || ACCOUNT_KIND_TYPE (7 bits) || STAKE_KEY
+//!
+//! Multisig key:
+//!     DISCRIMINATION_BIT || MULTISIG_KING_TYPE (7 bits) || MULTISIG_MERKLE_ROOT_PUBLIC_KEY
 //!
 //! Address human format is bech32 encoded
 //!
@@ -32,7 +35,7 @@ extern crate cfg_if;
 use bech32::{Bech32, FromBase32, ToBase32};
 use std::string::ToString;
 
-use chain_crypto::{Ed25519Extended, PublicKey, PublicKeyError};
+use chain_crypto::{Ed25519, PublicKey, PublicKeyError};
 
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property::{self, Serialize as PropertySerialize};
@@ -61,9 +64,9 @@ pub enum Discrimination {
 /// * Account address : an ed25519 stake public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
-    Single(PublicKey<Ed25519Extended>),
-    Group(PublicKey<Ed25519Extended>, PublicKey<Ed25519Extended>),
-    Account(PublicKey<Ed25519Extended>),
+    Single(PublicKey<Ed25519>),
+    Group(PublicKey<Ed25519>, PublicKey<Ed25519>),
+    Account(PublicKey<Ed25519>),
     Multisig([u8; 32]),
 }
 
@@ -232,7 +235,7 @@ impl Address {
         unsafe { String::from_utf8_unchecked(out) }
     }
 
-    pub fn public_key<'a>(&'a self) -> Option<&'a PublicKey<Ed25519Extended>> {
+    pub fn public_key<'a>(&'a self) -> Option<&'a PublicKey<Ed25519>> {
         match self.1 {
             Kind::Single(ref pk) => Some(pk),
             Kind::Group(ref pk, _) => Some(pk),
@@ -567,17 +570,17 @@ mod test {
 
     #[test]
     fn unit_tests() {
-        let fake_spendingkey: PublicKey<Ed25519Extended> = PublicKey::from_binary(&[
+        let fake_spendingkey: PublicKey<Ed25519> = PublicKey::from_binary(&[
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         ])
         .unwrap();
-        let fake_groupkey: PublicKey<Ed25519Extended> = PublicKey::from_binary(&[
+        let fake_groupkey: PublicKey<Ed25519> = PublicKey::from_binary(&[
             41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
             63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
         ])
         .unwrap();
-        let fake_accountkey: PublicKey<Ed25519Extended> = PublicKey::from_binary(&[
+        let fake_accountkey: PublicKey<Ed25519> = PublicKey::from_binary(&[
             41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
             63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
         ])

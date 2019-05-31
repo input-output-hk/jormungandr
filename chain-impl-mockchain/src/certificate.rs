@@ -2,7 +2,7 @@ use crate::key::SpendingSecretKey;
 use crate::stake::{StakeKeyId, StakePoolId, StakePoolInfo};
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Verification};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
@@ -78,7 +78,7 @@ impl Certificate {
 /// Abstracts extracting public stake key identifiers
 /// from a certificate.
 pub(crate) trait HasPublicKeys<'a> {
-    type PublicKeys: 'a + ExactSizeIterator<Item = &'a PublicKey<Ed25519Extended>>;
+    type PublicKeys: 'a + ExactSizeIterator<Item = &'a PublicKey<Ed25519>>;
     fn public_keys(self) -> Self::PublicKeys;
 }
 
@@ -209,7 +209,7 @@ impl StakeKeyRegistration {
 }
 
 impl<'a> HasPublicKeys<'a> for &'a StakeKeyRegistration {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
 
     fn public_keys(self) -> Self::PublicKeys {
         iter::once(&self.stake_key_id.0)
@@ -247,7 +247,7 @@ impl StakeKeyDeregistration {
 }
 
 impl<'a> HasPublicKeys<'a> for &'a StakeKeyDeregistration {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
 
     fn public_keys(self) -> Self::PublicKeys {
         iter::once(&self.stake_key_id.0)
@@ -288,7 +288,7 @@ impl StakeDelegation {
 }
 
 impl<'a> HasPublicKeys<'a> for &'a StakeDelegation {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
 
     fn public_keys(self) -> Self::PublicKeys {
         iter::once(&self.stake_key_id.0)
@@ -325,10 +325,8 @@ impl StakePoolInfo {
 }
 
 impl<'a> HasPublicKeys<'a> for &'a StakePoolInfo {
-    type PublicKeys = iter::Map<
-        slice::Iter<'a, StakeKeyId>,
-        fn(&'a StakeKeyId) -> &'a PublicKey<Ed25519Extended>,
-    >;
+    type PublicKeys =
+        iter::Map<slice::Iter<'a, StakeKeyId>, fn(&'a StakeKeyId) -> &'a PublicKey<Ed25519>>;
 
     fn public_keys(self) -> Self::PublicKeys {
         self.owners.iter().map(|x| &x.0)
@@ -352,10 +350,8 @@ impl StakePoolRetirement {
 }
 
 impl<'a> HasPublicKeys<'a> for &'a StakePoolRetirement {
-    type PublicKeys = iter::Map<
-        slice::Iter<'a, StakeKeyId>,
-        fn(&'a StakeKeyId) -> &'a PublicKey<Ed25519Extended>,
-    >;
+    type PublicKeys =
+        iter::Map<slice::Iter<'a, StakeKeyId>, fn(&'a StakeKeyId) -> &'a PublicKey<Ed25519>>;
 
     fn public_keys(self) -> Self::PublicKeys {
         self.pool_info.owners.iter().map(|x| &x.0)
@@ -386,7 +382,7 @@ impl Readable for StakePoolRetirement {
 mod test {
     use super::*;
     use crate::leadership::genesis::GenesisPraosLeader;
-    use chain_crypto::{PublicKey, SecretKey, SumEd25519_12};
+    use chain_crypto::{Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12};
     use lazy_static::lazy_static;
     use quickcheck::{Arbitrary, Gen};
 
@@ -447,16 +443,18 @@ mod test {
             }
             lazy_static! {
                 static ref PK_KES: PublicKey<SumEd25519_12> = {
-                    let sk = SecretKey::generate(&mut rand_chacha::ChaChaRng::from_seed([0; 32]));
+                    let sk: SecretKey<SumEd25519_12> =
+                        SecretKey::generate(&mut rand_chacha::ChaChaRng::from_seed([0; 32]));
                     sk.to_public()
                 };
             }
             let mut rng = rand_chacha::ChaChaRng::from_seed(seed);
+            let vrf_sk: SecretKey<Curve25519_2HashDH> = SecretKey::generate(&mut rng);
             StakePoolInfo {
                 serial: Arbitrary::arbitrary(g),
                 owners: vec![Arbitrary::arbitrary(g)],
                 initial_key: GenesisPraosLeader {
-                    vrf_public_key: SecretKey::generate(&mut rng).to_public(),
+                    vrf_public_key: vrf_sk.to_public(),
                     kes_public_key: PK_KES.clone(),
                 },
             }

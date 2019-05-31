@@ -3,7 +3,7 @@ use crate::key::{
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, PublicKey, Verification};
+use chain_crypto::{Ed25519, PublicKey, Verification};
 
 use std::collections::BTreeMap;
 
@@ -129,7 +129,7 @@ impl WitnessBuilder {
 /// * the witnesses and declaration together can re-create
 pub fn verify_identifier_threshold(
     declaration: &Declaration,
-    witnesses: &[(Index, PublicKey<Ed25519Extended>)],
+    witnesses: &[(Index, PublicKey<Ed25519>)],
 ) -> Result<(), LedgerError> {
     if witnesses.len() < declaration.threshold() {
         return Err(LedgerError::ThresholdNotMet);

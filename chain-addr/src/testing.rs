@@ -1,4 +1,5 @@
 use crate::{Address, AddressReadable, Discrimination, Kind, KindType};
+use chain_crypto::{Ed25519, KeyPair, PublicKey};
 use quickcheck::{Arbitrary, Gen};
 
 impl Arbitrary for Discrimination {
@@ -28,13 +29,19 @@ impl Arbitrary for AddressReadable {
         AddressReadable::from_address(&Arbitrary::arbitrary(g))
     }
 }
+
+fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey<Ed25519> {
+    let kp: KeyPair<Ed25519> = Arbitrary::arbitrary(g);
+    kp.into_keys().1
+}
+
 impl Arbitrary for Address {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let discrimination = Arbitrary::arbitrary(g);
         let kind = match KindType::arbitrary(g) {
-            KindType::Single => Kind::Single(Arbitrary::arbitrary(g)),
-            KindType::Group => Kind::Group(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-            KindType::Account => Kind::Account(Arbitrary::arbitrary(g)),
+            KindType::Single => Kind::Single(arbitrary_public_key(g)),
+            KindType::Group => Kind::Group(arbitrary_public_key(g), arbitrary_public_key(g)),
+            KindType::Account => Kind::Account(arbitrary_public_key(g)),
             KindType::Multisig => {
                 let mut h = [0u8; 32];
                 for i in h.iter_mut() {

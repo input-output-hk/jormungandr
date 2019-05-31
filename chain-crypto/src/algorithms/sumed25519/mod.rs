@@ -6,7 +6,7 @@ mod sumrec;
 
 use crate::evolving::{EvolvingStatus, KeyEvolvingAlgorithm};
 use crate::kes::KeyEvolvingSignatureAlgorithm;
-use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError};
+use crate::key::{AsymmetricKey, AsymmetricPublicKey, PublicKeyError, SecretKeyError};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 use rand::{CryptoRng, RngCore};
 
@@ -16,15 +16,23 @@ pub struct SumEd25519_12;
 
 const DEPTH: common::Depth = common::Depth(12);
 
+impl AsymmetricPublicKey for SumEd25519_12 {
+    type Public = sum::PublicKey;
+    const PUBLIC_BECH32_HRP: &'static str = "kes25519-12-pk";
+    const PUBLIC_KEY_SIZE: usize = 32;
+    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
+        sum::PublicKey::from_bytes(data).map_err(|e| match e {
+            sum::Error::InvalidPublicKeySize(_) => PublicKeyError::SizeInvalid,
+            _ => PublicKeyError::StructureInvalid,
+        })
+    }
+}
+
 impl AsymmetricKey for SumEd25519_12 {
     type Secret = sum::SecretKey;
-    type Public = sum::PublicKey;
+    type PubAlg = SumEd25519_12;
 
     const SECRET_BECH32_HRP: &'static str = "kes25519-12-sk";
-    const PUBLIC_BECH32_HRP: &'static str = "kes25519-12-pk";
-
-    const PUBLIC_KEY_SIZE: usize = 32;
-
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; common::Seed::SIZE];
         rng.fill_bytes(&mut priv_bytes);
@@ -35,7 +43,7 @@ impl AsymmetricKey for SumEd25519_12 {
         sk
     }
 
-    fn compute_public(key: &Self::Secret) -> Self::Public {
+    fn compute_public(key: &Self::Secret) -> sum::PublicKey {
         key.compute_public()
     }
 
@@ -43,12 +51,6 @@ impl AsymmetricKey for SumEd25519_12 {
         sum::SecretKey::from_bytes(DEPTH, data).map_err(|e| match e {
             sum::Error::InvalidSecretKeySize(_) => SecretKeyError::SizeInvalid,
             _ => SecretKeyError::StructureInvalid,
-        })
-    }
-    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
-        sum::PublicKey::from_bytes(data).map_err(|e| match e {
-            sum::Error::InvalidPublicKeySize(_) => PublicKeyError::SizeInvalid,
-            _ => PublicKeyError::StructureInvalid,
         })
     }
 }
@@ -83,7 +85,7 @@ impl VerificationAlgorithm for SumEd25519_12 {
 }
 
 impl SigningAlgorithm for SumEd25519_12 {
-    fn sign(key: &Self::Secret, msg: &[u8]) -> Self::Signature {
+    fn sign(key: &Self::Secret, msg: &[u8]) -> sum::Signature {
         sum::sign(key, msg)
     }
 }

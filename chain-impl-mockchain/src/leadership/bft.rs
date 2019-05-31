@@ -6,19 +6,19 @@ use crate::{
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, PublicKey, SecretKey};
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
 use std::sync::Arc;
 
-/// cryptographic signature algorithm used for the BFT leadership
-/// protocol.
-#[allow(non_camel_case_types)]
-pub type SIGNING_ALGORITHM = Ed25519Extended;
+pub type BftVerificationAlg = Ed25519;
 
 /// BFT Leader signing key
-pub type SigningKey = SecretKey<SIGNING_ALGORITHM>;
+///
+/// Both Ed25519Extended and Ed25519 are valid here, but there's
+/// no way to express this without an enum
+pub type SigningKey = SecretKey<Ed25519Extended>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LeaderId(pub(crate) PublicKey<SIGNING_ALGORITHM>);
+pub struct LeaderId(pub(crate) PublicKey<BftVerificationAlg>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BftRoundRobinIndex(u64);
@@ -76,7 +76,7 @@ impl BftLeaderSelection {
 }
 
 impl LeaderId {
-    pub fn as_public_key(&self) -> &PublicKey<SIGNING_ALGORITHM> {
+    pub fn as_public_key(&self) -> &PublicKey<BftVerificationAlg> {
         &self.0
     }
 }
@@ -99,8 +99,8 @@ impl AsRef<[u8]> for LeaderId {
         self.0.as_ref()
     }
 }
-impl From<PublicKey<SIGNING_ALGORITHM>> for LeaderId {
-    fn from(v: PublicKey<SIGNING_ALGORITHM>) -> Self {
+impl From<PublicKey<BftVerificationAlg>> for LeaderId {
+    fn from(v: PublicKey<BftVerificationAlg>) -> Self {
         LeaderId(v)
     }
 }
@@ -112,14 +112,12 @@ pub mod test {
 
     impl Arbitrary for LeaderId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            use rand_chacha::ChaChaRng;
-            use rand_core::SeedableRng;
             let mut seed = [0; 32];
             for byte in seed.iter_mut() {
                 *byte = Arbitrary::arbitrary(g);
             }
-            let mut rng = ChaChaRng::from_seed(seed);
-            LeaderId(SecretKey::generate(&mut rng).to_public())
+            let sk: SecretKey<Ed25519> = Arbitrary::arbitrary(g);
+            LeaderId(sk.to_public())
         }
     }
 }

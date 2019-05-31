@@ -1,4 +1,6 @@
-use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic};
+use crate::key::{
+    AsymmetricKey, AsymmetricPublicKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic,
+};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 
 use ed25519_bip32 as i;
@@ -26,14 +28,21 @@ impl From<i::PublicKeyError> for PublicKeyError {
     }
 }
 
+impl AsymmetricPublicKey for Ed25519Bip32 {
+    type Public = XPub;
+    const PUBLIC_BECH32_HRP: &'static str = "xpub";
+    const PUBLIC_KEY_SIZE: usize = XPUB_SIZE;
+    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
+        let xpub = XPub::from_slice(data)?;
+        Ok(xpub)
+    }
+}
+
 impl AsymmetricKey for Ed25519Bip32 {
     type Secret = XPrv;
-    type Public = XPub;
+    type PubAlg = Ed25519Bip32;
 
     const SECRET_BECH32_HRP: &'static str = "xprv";
-    const PUBLIC_BECH32_HRP: &'static str = "xpub";
-
-    const PUBLIC_KEY_SIZE: usize = XPUB_SIZE;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; XPRV_SIZE];
@@ -41,17 +50,13 @@ impl AsymmetricKey for Ed25519Bip32 {
         XPrv::normalize_bytes(priv_bytes)
     }
 
-    fn compute_public(key: &Self::Secret) -> Self::Public {
+    fn compute_public(key: &Self::Secret) -> <Self as AsymmetricPublicKey>::Public {
         key.public()
     }
 
     fn secret_from_binary(data: &[u8]) -> Result<Self::Secret, SecretKeyError> {
         let xprv = XPrv::from_slice_verified(data)?;
         Ok(xprv)
-    }
-    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
-        let xpub = XPub::from_slice(data)?;
-        Ok(xpub)
     }
 }
 
@@ -93,7 +98,7 @@ impl VerificationAlgorithm for Ed25519Bip32 {
 }
 
 impl SigningAlgorithm for Ed25519Bip32 {
-    fn sign(key: &Self::Secret, msg: &[u8]) -> Self::Signature {
+    fn sign(key: &Self::Secret, msg: &[u8]) -> XSig {
         key.sign(msg)
     }
 }
@@ -102,7 +107,7 @@ impl SigningAlgorithm for Ed25519Bip32 {
 mod test {
     use super::*;
 
-    use crate::key::{KeyPair, PublicKey};
+    use crate::key::KeyPair;
     use crate::sign::test::{keypair_signing_ko, keypair_signing_ok};
 
     #[quickcheck]
@@ -110,7 +115,7 @@ mod test {
         keypair_signing_ok(input)
     }
     #[quickcheck]
-    fn sign_ko(input: (KeyPair<Ed25519Bip32>, PublicKey<Ed25519Bip32>, Vec<u8>)) -> bool {
+    fn sign_ko(input: (KeyPair<Ed25519Bip32>, KeyPair<Ed25519Bip32>, Vec<u8>)) -> bool {
         keypair_signing_ko(input)
     }
 }

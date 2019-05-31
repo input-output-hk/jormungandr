@@ -25,7 +25,7 @@ pub enum SignatureError {
     StructureInvalid,
 }
 
-pub trait VerificationAlgorithm: key::AsymmetricKey {
+pub trait VerificationAlgorithm: key::AsymmetricPublicKey {
     type Signature: AsRef<[u8]> + Clone;
 
     const SIGNATURE_SIZE: usize;
@@ -37,8 +37,11 @@ pub trait VerificationAlgorithm: key::AsymmetricKey {
     fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError>;
 }
 
-pub trait SigningAlgorithm: VerificationAlgorithm {
-    fn sign(key: &Self::Secret, msg: &[u8]) -> Self::Signature;
+pub trait SigningAlgorithm: key::AsymmetricKey
+where
+    Self::PubAlg: VerificationAlgorithm,
+{
+    fn sign(key: &Self::Secret, msg: &[u8]) -> <Self::PubAlg as VerificationAlgorithm>::Signature;
 }
 
 pub struct Signature<T, A: VerificationAlgorithm> {
@@ -92,10 +95,25 @@ impl<A: VerificationAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
     }
 }
 
-impl<A: SigningAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
-    pub fn generate(secretkey: &key::SecretKey<A>, object: &T) -> Signature<T, A> {
+/*
+impl<A: SigningAlgorithm, T: AsRef<[u8]>> Signature<T, A::Public>
+    where <A as key::AsymmetricKey>::Public: VerificationAlgorithm,
+{
+    pub fn generate(secretkey: &key::SecretKey<A>, object: &T) -> Signature<T, A::Public> {
         Signature {
             signdata: <A as SigningAlgorithm>::sign(&secretkey.0, object.as_ref()),
+            phantom: PhantomData,
+        }
+    }
+}
+*/
+impl<A: SigningAlgorithm> key::SecretKey<A>
+where
+    <A as key::AsymmetricKey>::PubAlg: VerificationAlgorithm,
+{
+    pub fn sign<T: AsRef<[u8]>>(&self, object: &T) -> Signature<T, A::PubAlg> {
+        Signature {
+            signdata: <A as SigningAlgorithm>::sign(&self.0, object.as_ref()),
             phantom: PhantomData,
         }
     }
@@ -132,30 +150,36 @@ impl<T, A: VerificationAlgorithm> Bech32 for Signature<T, A> {
 #[cfg(test)]
 pub(crate) mod test {
     use super::*;
-    use crate::key::{AsymmetricKey, KeyPair, PublicKey};
+    use crate::key::{AsymmetricKey, KeyPair};
 
     pub(crate) fn keypair_signing_ok<A: AsymmetricKey + SigningAlgorithm>(
         input: (KeyPair<A>, Vec<u8>),
-    ) -> bool {
+    ) -> bool
+    where
+        <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
+    {
         let (sk, pk) = input.0.into_keys();
         let data = input.1;
 
-        let signature = Signature::generate(&sk, &data);
+        let signature = sk.sign(&data);
         signature.verify(&pk, &data) == Verification::Success
     }
 
     pub(crate) fn keypair_signing_ko<A: AsymmetricKey + SigningAlgorithm>(
-        input: (KeyPair<A>, PublicKey<A>, Vec<u8>),
-    ) -> bool {
+        input: (KeyPair<A>, KeyPair<A>, Vec<u8>),
+    ) -> bool
+    where
+        <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
+    {
         let (sk, pk) = input.0.into_keys();
-        let pk_random = input.1;
+        let pk_random = input.1.public_key();
         let data = input.2;
 
-        if pk == pk_random {
+        if &pk == pk_random {
             return true;
         }
 
-        let signature = Signature::generate(&sk, &data);
+        let signature = sk.sign(&data);
         signature.verify(&pk_random, &data) == Verification::Failed
     }
 }

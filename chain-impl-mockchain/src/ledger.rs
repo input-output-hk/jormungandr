@@ -816,7 +816,7 @@ pub mod test {
     use crate::message::config;
     use crate::milli::Milli;
     use chain_addr::{Address, Discrimination, Kind};
-    use chain_crypto::SecretKey;
+    use chain_crypto::{Ed25519Extended, SecretKey};
     use rand::{CryptoRng, RngCore};
 
     pub fn make_utxo_key<R: RngCore + CryptoRng>(
@@ -893,7 +893,9 @@ pub mod test {
         ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
 
         // TODO remove rng: make this creation deterministic
-        let leader_pub_key = SecretKey::generate(rand::thread_rng()).to_public();
+        let leader_key: SecretKey<Ed25519Extended> = SecretKey::generate(rand::thread_rng());
+        let leader_pub_key = leader_key.to_public();
+
         ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
         ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
         ie.push(ConfigParam::SlotDuration(10));

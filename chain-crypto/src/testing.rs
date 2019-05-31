@@ -4,8 +4,10 @@ use quickcheck::{Arbitrary, Gen};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 
-pub fn arbitrary_public_key<A: AsymmetricKey, G: Gen>(g: &mut G) -> PublicKey<A> {
-    arbitrary_secret_key(g).to_public()
+#[allow(dead_code)]
+pub fn arbitrary_public_key<A: AsymmetricKey, G: Gen>(g: &mut G) -> PublicKey<A::PubAlg> {
+    let sk: SecretKey<A> = arbitrary_secret_key(g);
+    sk.to_public()
 }
 
 pub fn arbitrary_secret_key<A, G>(g: &mut G) -> SecretKey<A>
@@ -17,15 +19,6 @@ where
     SecretKey::generate(rng)
 }
 
-impl<A> Arbitrary for PublicKey<A>
-where
-    A: AsymmetricKey + 'static,
-    A::Public: Send,
-{
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        arbitrary_public_key(g)
-    }
-}
 impl<A> Arbitrary for SecretKey<A>
 where
     A: AsymmetricKey + 'static,
@@ -39,7 +32,7 @@ impl<A> Arbitrary for KeyPair<A>
 where
     A: AsymmetricKey + 'static,
     A::Secret: Send,
-    A::Public: Send,
+    <A::PubAlg as AsymmetricPublicKey>::Public: Send,
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let secret_key = SecretKey::arbitrary(g);

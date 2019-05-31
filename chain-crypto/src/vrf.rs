@@ -7,7 +7,7 @@ pub enum VRFVerification {
     Failed,
 }
 
-pub trait VerifiableRandomFunction: key::AsymmetricKey {
+pub trait VerifiableRandomFunction: key::AsymmetricPublicKey + key::AsymmetricKey {
     type VerifiedRandomOutput;
     type RandomOutput;
     type Input: ?Sized;

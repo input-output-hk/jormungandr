@@ -3,7 +3,7 @@ use crate::date::BlockDate;
 use crate::{leadership::bft, message::config::ConfigParams, setting::Settings};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Extended, PublicKey, SecretKey, Verification};
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Verification};
 use std::collections::{BTreeMap, HashSet};
 use std::iter;
 
@@ -251,7 +251,7 @@ pub struct UpdateProposalWithProposer {
 }
 
 impl<'a> HasPublicKeys<'a> for &'a UpdateProposalWithProposer {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
     fn public_keys(self) -> Self::PublicKeys {
         std::iter::once(&self.proposer_id.0)
     }
@@ -331,7 +331,7 @@ pub struct UpdateVote {
 }
 
 impl<'a> HasPublicKeys<'a> for &'a UpdateVote {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519Extended>>;
+    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
     fn public_keys(self) -> Self::PublicKeys {
         std::iter::once(&self.voter_id.0)
     }

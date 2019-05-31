@@ -4,17 +4,17 @@
 use chain_core::mempack::{read_mut_slice, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto as crypto;
-use chain_crypto::{AsymmetricKey, SigningAlgorithm, VerificationAlgorithm};
+use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, SigningAlgorithm, VerificationAlgorithm};
 
 use std::str::FromStr;
 
-pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519Extended>;
+pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519>;
 pub type SpendingSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
-pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519Extended>;
+pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519>;
 
-pub type AccountPublicKey = crypto::PublicKey<crypto::Ed25519Extended>;
+pub type AccountPublicKey = crypto::PublicKey<crypto::Ed25519>;
 pub type AccountSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
-pub type AccountSignature<T> = crypto::Signature<T, crypto::Ed25519Extended>;
+pub type AccountSignature<T> = crypto::Signature<T, crypto::Ed25519>;
 
 fn chain_crypto_pub_err(e: crypto::PublicKeyError) -> ReadError {
     match e {
@@ -38,7 +38,7 @@ fn chain_crypto_sig_err(e: crypto::SignatureError) -> ReadError {
 }
 
 #[inline]
-pub fn serialize_public_key<A: AsymmetricKey, W: std::io::Write>(
+pub fn serialize_public_key<A: AsymmetricPublicKey, W: std::io::Write>(
     key: &crypto::PublicKey<A>,
     mut writer: W,
 ) -> Result<(), std::io::Error> {
@@ -56,7 +56,7 @@ pub fn deserialize_public_key<'a, A>(
     buf: &mut ReadBuf<'a>,
 ) -> Result<crypto::PublicKey<A>, ReadError>
 where
-    A: AsymmetricKey,
+    A: AsymmetricPublicKey,
 {
     let mut bytes = vec![0u8; A::PUBLIC_KEY_SIZE];
     read_mut_slice(buf, &mut bytes[..])?;
@@ -77,13 +77,14 @@ where
 pub fn make_signature<T, A>(
     spending_key: &crypto::SecretKey<A>,
     data: &T,
-) -> crypto::Signature<T, A>
+) -> crypto::Signature<T, A::PubAlg>
 where
     A: SigningAlgorithm,
+    <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
     T: property::Serialize,
 {
     let bytes = data.serialize_as_vec().unwrap();
-    crypto::Signature::generate(spending_key, &bytes).coerce()
+    spending_key.sign(&bytes).coerce()
 }
 
 pub fn verify_signature<T, A>(
@@ -114,23 +115,27 @@ where
 }
 
 /// A serializable type T with a signature.
-pub struct Signed<T, A: SigningAlgorithm> {
+pub struct Signed<T, A: VerificationAlgorithm> {
     pub data: T,
     pub sig: crypto::Signature<T, A>,
 }
 
-impl<T: property::Serialize, A: SigningAlgorithm> Signed<T, A> {
-    pub fn new(secret_key: &crypto::SecretKey<A>, data: T) -> Self {
-        let bytes = data.serialize_as_vec().unwrap();
-        let signature = crypto::Signature::generate(secret_key, &bytes).coerce();
-        Signed {
-            data: data,
-            sig: signature,
-        }
+pub fn signed_new<T: property::Serialize, A: SigningAlgorithm>(
+    secret_key: &crypto::SecretKey<A>,
+    data: T,
+) -> Signed<T, A::PubAlg>
+where
+    A::PubAlg: VerificationAlgorithm,
+{
+    let bytes = data.serialize_as_vec().unwrap();
+    let signature = secret_key.sign(&bytes).coerce();
+    Signed {
+        data: data,
+        sig: signature,
     }
 }
 
-impl<T: property::Serialize, A: SigningAlgorithm> property::Serialize for Signed<T, A>
+impl<T: property::Serialize, A: VerificationAlgorithm> property::Serialize for Signed<T, A>
 where
     std::io::Error: From<T::Error>,
 {
@@ -142,7 +147,7 @@ where
     }
 }
 
-impl<T: Readable, A: SigningAlgorithm> Readable for Signed<T, A> {
+impl<T: Readable, A: VerificationAlgorithm> Readable for Signed<T, A> {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(Signed {
             data: T::read(buf)?,
@@ -151,13 +156,13 @@ impl<T: Readable, A: SigningAlgorithm> Readable for Signed<T, A> {
     }
 }
 
-impl<T: PartialEq, A: SigningAlgorithm> PartialEq<Self> for Signed<T, A> {
+impl<T: PartialEq, A: VerificationAlgorithm> PartialEq<Self> for Signed<T, A> {
     fn eq(&self, other: &Self) -> bool {
         self.data.eq(&other.data) && self.sig.as_ref() == other.sig.as_ref()
     }
 }
-impl<T: PartialEq, A: SigningAlgorithm> Eq for Signed<T, A> {}
-impl<T: std::fmt::Debug, A: SigningAlgorithm> std::fmt::Debug for Signed<T, A> {
+impl<T: PartialEq, A: VerificationAlgorithm> Eq for Signed<T, A> {}
+impl<T: std::fmt::Debug, A: VerificationAlgorithm> std::fmt::Debug for Signed<T, A> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -167,7 +172,7 @@ impl<T: std::fmt::Debug, A: SigningAlgorithm> std::fmt::Debug for Signed<T, A> {
         )
     }
 }
-impl<T: Clone, A: SigningAlgorithm> Clone for Signed<T, A> {
+impl<T: Clone, A: VerificationAlgorithm> Clone for Signed<T, A> {
     fn clone(&self) -> Self {
         Signed {
             data: self.data.clone(),
@@ -262,20 +267,4 @@ pub mod test {
         }
     }
 
-    impl<T, A> Arbitrary for Signed<T, A>
-    where
-        T: Arbitrary,
-        A: 'static + SigningAlgorithm,
-        chain_crypto::Signature<T, A>: Arbitrary + SigningAlgorithm,
-    {
-        fn arbitrary<G>(g: &mut G) -> Self
-        where
-            G: Gen,
-        {
-            Signed {
-                sig: Arbitrary::arbitrary(g),
-                data: Arbitrary::arbitrary(g),
-            }
-        }
-    }
 }

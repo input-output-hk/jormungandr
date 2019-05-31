@@ -1,27 +1,35 @@
 mod dleq;
 pub mod vrf;
 
-use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic};
+use crate::key::{
+    AsymmetricKey, AsymmetricPublicKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic,
+};
 use crate::vrf::{VRFVerification, VerifiableRandomFunction};
 use rand::{CryptoRng, RngCore};
 
 /// VRF
 pub struct Curve25519_2HashDH;
 
+impl AsymmetricPublicKey for Curve25519_2HashDH {
+    type Public = vrf::PublicKey;
+    const PUBLIC_BECH32_HRP: &'static str = "vrf_pk";
+    const PUBLIC_KEY_SIZE: usize = vrf::PUBLIC_SIZE;
+    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
+        vrf::PublicKey::from_bytes(data)
+    }
+}
+
 impl AsymmetricKey for Curve25519_2HashDH {
     type Secret = vrf::SecretKey;
-    type Public = vrf::PublicKey;
+    type PubAlg = Curve25519_2HashDH;
 
     const SECRET_BECH32_HRP: &'static str = "vrf_sk";
-    const PUBLIC_BECH32_HRP: &'static str = "vrf_pk";
-
-    const PUBLIC_KEY_SIZE: usize = vrf::PUBLIC_SIZE;
 
     fn generate<T: RngCore + CryptoRng>(rng: T) -> Self::Secret {
         Self::Secret::random(rng)
     }
 
-    fn compute_public(key: &Self::Secret) -> Self::Public {
+    fn compute_public(key: &Self::Secret) -> <Self::PubAlg as AsymmetricPublicKey>::Public {
         key.public()
     }
 
@@ -35,9 +43,6 @@ impl AsymmetricKey for Curve25519_2HashDH {
             None => Err(SecretKeyError::StructureInvalid),
             Some(k) => Ok(k),
         }
-    }
-    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
-        vrf::PublicKey::from_bytes(data)
     }
 }
 
