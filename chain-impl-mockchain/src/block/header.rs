@@ -261,16 +261,13 @@ impl Readable for Header {
             }
             AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => {
                 let node_id = StakePoolId::read(buf)?;
-                dbg!(&node_id);
                 let vrf_proof = {
                     let bytes = <[u8;<Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE]>::read(buf)?;
 
                     <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput::from_bytes_unverified(&bytes)
                         .ok_or(ReadError::StructureInvalid("VRF Proof".to_string()))
                 }?;
-                dbg!(&vrf_proof);
                 let kes_proof = deserialize_signature(buf).map(KESSignature)?;
-                dbg!(&kes_proof);
 
                 Proof::GenesisPraos(GenesisPraosProof {
                     node_id: node_id,

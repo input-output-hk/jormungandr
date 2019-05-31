@@ -949,7 +949,7 @@ pub mod test {
         let r = ledger.apply_transaction(&signed_tx, &dyn_params);
         assert_err!(
             Error::NotEnoughSignatures {
-                expcted: 1,
+                expected: 1,
                 actual: 0
             },
             r
