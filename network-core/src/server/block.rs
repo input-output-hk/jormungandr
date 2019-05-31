@@ -29,14 +29,22 @@ pub trait BlockService: P2pService {
     type TipFuture: Future<Item = Self::Header, Error = Error> + Send + 'static;
 
     /// The type of an asynchronous stream that provides blocks in
-    /// response to `pull_blocks_to_*` methods.
+    /// response to `pull_blocks*` methods.
     type PullBlocksStream: Stream<Item = Self::Block, Error = Error> + Send + 'static;
 
-    /// The type of asynchronous futures returned by `pull_blocks_to_*` methods.
+    /// The type of asynchronous futures returned by `pull_blocks` method.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
     type PullBlocksFuture: Future<Item = Self::PullBlocksStream, Error = Error> + Send + 'static;
+
+    /// The type of asynchronous futures returned by `pull_blocks_to_tip` method.
+    ///
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a server-streamed response.
+    type PullBlocksToTipFuture: Future<Item = Self::PullBlocksStream, Error = Error>
+        + Send
+        + 'static;
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to `get_blocks` method.
@@ -49,10 +57,10 @@ pub trait BlockService: P2pService {
     type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = Error> + Send + 'static;
 
     /// The type of an asynchronous stream that provides block headers in
-    /// response to `pull_headers_to_*` methods.
+    /// response to `pull_headers*` methods.
     type PullHeadersStream: Stream<Item = Self::Header, Error = Error> + Send + 'static;
 
-    /// The type of asynchronous futures returned by `pull_headers_to*` methods.
+    /// The type of asynchronous futures returned by `pull_headers` method.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
@@ -96,19 +104,16 @@ pub trait BlockService: P2pService {
 
     /// Get blocks, walking forward in a range between either of the given
     /// starting points, and the ending point.
-    fn pull_blocks_to(
-        &mut self,
-        from: &[Self::BlockId],
-        to: &Self::BlockId,
-    ) -> Self::PullBlocksFuture;
+    fn pull_blocks(&mut self, from: &[Self::BlockId], to: &Self::BlockId)
+        -> Self::PullBlocksFuture;
 
     /// Stream blocks from either of the given starting points
     /// to the server's tip.
-    fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture;
+    fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksToTipFuture;
 
     /// Get block headers, walking forward in a range between any of the given
     /// starting points, and the ending point.
-    fn pull_headers_to(
+    fn pull_headers(
         &mut self,
         from: &[Self::BlockId],
         to: &Self::BlockId,
