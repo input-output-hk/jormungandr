@@ -14,10 +14,13 @@
 //!     DISCRIMINATION_BIT || SINGLE_KIND_TYPE (7 bits) || SPENDING_KEY
 //!
 //! Group key:
-//!     DISCRIMINATION_BIT || GROUP_KIND_TYPE (7 bits)|| SPENDING_KEY || STAKING_KEY
+//!     DISCRIMINATION_BIT || GROUP_KIND_TYPE (7 bits) || SPENDING_KEY || STAKING_KEY
 //!
 //! Account key:
 //!     DISCRIMINATION_BIT || ACCOUNT_KIND_TYPE (7 bits) || STAKE_KEY
+//!
+//! Multisig key:
+//!     DISCRIMINATION_BIT || MULTISIG_KING_TYPE (7 bits) || MULTISIG_MERKLE_ROOT_PUBLIC_KEY
 //!
 //! Address human format is bech32 encoded
 //!
