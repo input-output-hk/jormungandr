@@ -1,6 +1,6 @@
 use chain_addr::{AddressReadable, Discrimination, Kind};
 use chain_crypto::bech32::Bech32 as _;
-use chain_crypto::{AsymmetricKey, Ed25519Extended, PublicKey};
+use chain_crypto::{AsymmetricPublicKey, Ed25519, PublicKey};
 use jcli_app::utils::key_parser::parse_pub_key;
 use structopt::StructOpt;
 
@@ -30,11 +30,11 @@ pub struct InfoArgs {
 pub struct SingleArgs {
     /// A public key in bech32 encoding with the key type prefix
     #[structopt(name = "PUBLIC_KEY", parse(try_from_str = "parse_pub_key"))]
-    key: PublicKey<Ed25519Extended>,
+    key: PublicKey<Ed25519>,
 
     /// A public key in bech32 encoding with the key type prefix
     #[structopt(name = "DELEGATION_KEY", parse(try_from_str = "parse_pub_key"))]
-    delegation: Option<PublicKey<Ed25519Extended>>,
+    delegation: Option<PublicKey<Ed25519>>,
 
     /// set the discrimination type to testing (default is production)
     #[structopt(long = "testing")]
@@ -45,7 +45,7 @@ pub struct SingleArgs {
 pub struct AccountArgs {
     /// A public key in bech32 encoding with the key type prefix
     #[structopt(name = "PUBLIC_KEY", parse(try_from_str = "parse_pub_key"))]
-    key: PublicKey<Ed25519Extended>,
+    key: PublicKey<Ed25519>,
 
     /// set the discrimination type to testing (default is production)
     #[structopt(long = "testing")]
@@ -96,15 +96,15 @@ fn address_info(address: &AddressReadable) -> Result<(), Error> {
     Ok(())
 }
 
-fn mk_single(s: PublicKey<Ed25519Extended>, testing: bool) {
+fn mk_single(s: PublicKey<Ed25519>, testing: bool) {
     mk_address_1(s, testing, Kind::Single)
 }
 
-fn mk_delegation(s: PublicKey<Ed25519Extended>, testing: bool, d: PublicKey<Ed25519Extended>) {
+fn mk_delegation(s: PublicKey<Ed25519>, testing: bool, d: PublicKey<Ed25519>) {
     mk_address_2(s, d, testing, Kind::Group)
 }
 
-fn mk_account(s: PublicKey<Ed25519Extended>, testing: bool) {
+fn mk_account(s: PublicKey<Ed25519>, testing: bool) {
     mk_address_1(s, testing, Kind::Account)
 }
 
@@ -124,7 +124,7 @@ fn mk_address(discrimination: Discrimination, kind: Kind) {
 fn mk_address_1<A, F>(s: PublicKey<A>, testing: bool, f: F)
 where
     F: FnOnce(PublicKey<A>) -> Kind,
-    A: AsymmetricKey,
+    A: AsymmetricPublicKey,
 {
     let discrimination = mk_discrimination(testing);
     let kind = f(s);
@@ -134,8 +134,8 @@ where
 fn mk_address_2<A1, A2, F>(s: PublicKey<A1>, d: PublicKey<A2>, testing: bool, f: F)
 where
     F: FnOnce(PublicKey<A1>, PublicKey<A2>) -> Kind,
-    A1: AsymmetricKey,
-    A2: AsymmetricKey,
+    A1: AsymmetricPublicKey,
+    A2: AsymmetricPublicKey,
 {
     let discrimination = mk_discrimination(testing);
     let kind = f(s, d);

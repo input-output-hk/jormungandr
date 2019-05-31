@@ -1,6 +1,4 @@
-use chain_crypto::{
-    Blake2b256, Curve25519_2HashDH, Ed25519Extended, PublicKey, SecretKey, SumEd25519_12,
-};
+use chain_crypto::{Blake2b256, Curve25519_2HashDH, Ed25519, PublicKey, SecretKey, SumEd25519_12};
 use chain_impl_mockchain::leadership::{bft, BftLeader, GenesisLeader};
 use serde::Deserialize;
 use std::path::Path;
@@ -39,7 +37,7 @@ pub struct GenesisPraosPublic {
 #[derive(Clone, Deserialize)]
 pub struct OwnerKey(
     #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
-    PublicKey<Ed25519Extended>,
+    PublicKey<Ed25519>,
 );
 
 #[derive(Clone, Deserialize)]
@@ -59,7 +57,7 @@ pub struct NodeSecret {
 /// Node Secret's Public parts
 #[derive(Clone)]
 pub struct NodePublic {
-    pub block_publickey: PublicKey<Ed25519Extended>,
+    pub block_publickey: PublicKey<Ed25519>,
 }
 
 custom_error! {pub NodeSecretFromFileError

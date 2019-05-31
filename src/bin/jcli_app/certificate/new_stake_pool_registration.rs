@@ -1,4 +1,4 @@
-use chain_crypto::{Curve25519_2HashDH, Ed25519Extended, PublicKey, SumEd25519_12};
+use chain_crypto::{Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{Certificate, CertificateContent},
     leadership::genesis::GenesisPraosLeader,
@@ -20,7 +20,7 @@ pub struct StakePoolRegistration {
         name = "PUBLIC_KEY",
         parse(try_from_str = "parse_pub_key")
     )]
-    pub owners: Vec<PublicKey<Ed25519Extended>>,
+    pub owners: Vec<PublicKey<Ed25519>>,
     /// Public key of the block signing key
     #[structopt(
         long = "kes-key",

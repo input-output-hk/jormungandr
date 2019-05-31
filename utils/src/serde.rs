@@ -2,7 +2,7 @@
 //! to serialize and deserialize most of the objects
 //!
 
-use chain_crypto::{bech32::Bech32, Ed25519Extended, PublicKey};
+use chain_crypto::{bech32::Bech32, Ed25519, PublicKey};
 use chain_impl_mockchain::leadership::bft::LeaderId;
 use serde::{
     de::{Deserializer, Error as DeserializerError, Visitor},
@@ -130,7 +130,7 @@ pub mod witness {
 pub mod crypto {
     use super::*;
     use ::bech32::{Bech32 as Bech32Data, FromBase32 as _};
-    use chain_crypto::{AsymmetricKey, Blake2b256, PublicKey, SecretKey};
+    use chain_crypto::{AsymmetricPublicKey, AsymmetricKey, Blake2b256, PublicKey, SecretKey};
 
     pub fn deserialize_secret<'de, D, A>(deserializer: D) -> Result<SecretKey<A>, D::Error>
     where
@@ -148,7 +148,7 @@ pub mod crypto {
     pub fn deserialize_public<'de, D, A>(deserializer: D) -> Result<PublicKey<A>, D::Error>
     where
         D: Deserializer<'de>,
-        A: AsymmetricKey,
+        A: AsymmetricPublicKey,
     {
         let public_key_visitor = PublicKeyVisitor::new();
         if deserializer.is_human_readable() {
@@ -187,7 +187,7 @@ pub mod crypto {
     struct SecretKeyVisitor<A: AsymmetricKey> {
         _marker: std::marker::PhantomData<A>,
     }
-    struct PublicKeyVisitor<A: AsymmetricKey> {
+    struct PublicKeyVisitor<A: AsymmetricPublicKey> {
         _marker: std::marker::PhantomData<A>,
     }
     impl<A: AsymmetricKey> SecretKeyVisitor<A> {
@@ -197,7 +197,7 @@ pub mod crypto {
             }
         }
     }
-    impl<A: AsymmetricKey> PublicKeyVisitor<A> {
+    impl<A: AsymmetricPublicKey> PublicKeyVisitor<A> {
         fn new() -> Self {
             PublicKeyVisitor {
                 _marker: std::marker::PhantomData,
@@ -291,7 +291,7 @@ pub mod crypto {
 
     impl<'de, A> Visitor<'de> for PublicKeyVisitor<A>
     where
-        A: AsymmetricKey,
+        A: AsymmetricPublicKey,
     {
         type Value = PublicKey<A>;
 
@@ -351,7 +351,7 @@ impl Serialize for SerdeLeaderId {
 
 impl<'de> Deserialize<'de> for SerdeLeaderId {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        as_bech32::deserialize::<D, PublicKey<Ed25519Extended>>(deserializer)
+        as_bech32::deserialize::<D, PublicKey<Ed25519>>(deserializer)
             .map(|key| SerdeLeaderId(key.into()))
     }
 }
@@ -532,8 +532,8 @@ impl SerdeExpected for chain_impl_mockchain::milli::Milli {
     const EXPECTED: &'static str = "floating point number in decimal form";
 }
 
-impl SerdeExpected for chain_crypto::PublicKey<chain_crypto::Ed25519Extended> {
-    const EXPECTED: &'static str = "extended ED25519 public key";
+impl SerdeExpected for chain_crypto::PublicKey<chain_crypto::Ed25519> {
+    const EXPECTED: &'static str = "ED25519 public key";
 }
 
 impl SerdeExpected for chain_addr::Discrimination {

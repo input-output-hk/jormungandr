@@ -31,8 +31,8 @@ blockchain_configuration:
   # A list of Ed25519 Extended PublicKey that represents the
   # BFT leaders encoded as bech32. The order in the list matters.
   consensus_leader_ids:
-    - ed25519e_pk1hj8k4jyhsrva7ndynak25jagf3qcj4usnp54gnzvrejnwrufxpgqytzy6u
-
+    - {leader_1}
+    - {leader_2}
   # Genesis praos parameter D
   bft_slots_ratio: 0.220
 
@@ -68,7 +68,7 @@ blockchain_configuration:
 initial_funds:
   # this is the personal address of the developers, have a good heart and
   # leave a good initial deposit for them
-  - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
+  - address: {initial_funds_address}
     value: 10000
 
 # The initial certificates.

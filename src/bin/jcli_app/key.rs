@@ -1,7 +1,8 @@
 use bech32::{u5, Bech32, FromBase32, ToBase32};
 use cardano::util::hex;
 use chain_crypto::{
-    AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended, SumEd25519_12,
+    AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended,
+    SumEd25519_12,
 };
 use jcli_app::utils::io;
 use rand::{rngs::EntropyRng, SeedableRng};
@@ -183,7 +184,6 @@ impl ToBytes {
         match bech32.hrp() {
             Ed25519::PUBLIC_BECH32_HRP
             | Ed25519Bip32::PUBLIC_BECH32_HRP
-            | Ed25519Extended::PUBLIC_BECH32_HRP
             | SumEd25519_12::PUBLIC_BECH32_HRP
             | Curve25519_2HashDH::PUBLIC_BECH32_HRP
             | Ed25519::SECRET_BECH32_HRP
@@ -261,7 +261,7 @@ fn gen_pub_key<K: AsymmetricKey>(priv_key_bech32: &[u5]) -> Result<Bech32, Error
     let priv_key_bytes = Vec::<u8>::from_base32(priv_key_bech32)?;
     let priv_key = K::secret_from_binary(&priv_key_bytes)?;
     let pub_key = K::compute_public(&priv_key);
-    let hrp = K::PUBLIC_BECH32_HRP.to_string();
+    let hrp = <K::PubAlg as AsymmetricPublicKey>::PUBLIC_BECH32_HRP.to_string();
     Ok(Bech32::new(hrp, pub_key.to_base32())?)
 }
 
