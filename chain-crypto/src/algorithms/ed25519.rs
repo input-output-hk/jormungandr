@@ -1,4 +1,6 @@
-use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic};
+use crate::key::{
+    AsymmetricKey, AsymmetricPublicKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic,
+};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 use cryptoxide::ed25519;
 use rand::{CryptoRng, RngCore};
@@ -43,14 +45,27 @@ impl AsRef<[u8]> for Sig {
     }
 }
 
-impl AsymmetricKey for Ed25519 {
-    type Secret = Priv;
+impl AsymmetricPublicKey for Ed25519 {
     type Public = Pub;
 
-    const SECRET_BECH32_HRP: &'static str = "ed25519_sk";
     const PUBLIC_BECH32_HRP: &'static str = "ed25519_pk";
-
     const PUBLIC_KEY_SIZE: usize = ed25519::PUBLIC_KEY_LENGTH;
+
+    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
+        if data.len() != ed25519::PUBLIC_KEY_LENGTH {
+            return Err(PublicKeyError::SizeInvalid);
+        }
+        let mut buf = [0; ed25519::PUBLIC_KEY_LENGTH];
+        buf[0..ed25519::PUBLIC_KEY_LENGTH].clone_from_slice(data);
+        Ok(Pub(buf))
+    }
+}
+
+impl AsymmetricKey for Ed25519 {
+    type Secret = Priv;
+    type PubAlg = Ed25519;
+
+    const SECRET_BECH32_HRP: &'static str = "ed25519_sk";
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; ed25519::SEED_LENGTH];
@@ -58,7 +73,7 @@ impl AsymmetricKey for Ed25519 {
         Priv(priv_bytes)
     }
 
-    fn compute_public(key: &Self::Secret) -> Self::Public {
+    fn compute_public(key: &Self::Secret) -> <Self::PubAlg as AsymmetricPublicKey>::Public {
         let (_, pk) = ed25519::keypair(&key.0);
         Pub(pk)
     }
@@ -70,14 +85,6 @@ impl AsymmetricKey for Ed25519 {
         let mut buf = [0; ed25519::SEED_LENGTH];
         buf[0..ed25519::SEED_LENGTH].clone_from_slice(data);
         Ok(Priv(buf))
-    }
-    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
-        if data.len() != ed25519::PUBLIC_KEY_LENGTH {
-            return Err(PublicKeyError::SizeInvalid);
-        }
-        let mut buf = [0; ed25519::PUBLIC_KEY_LENGTH];
-        buf[0..ed25519::PUBLIC_KEY_LENGTH].clone_from_slice(data);
-        Ok(Pub(buf))
     }
 }
 
@@ -123,7 +130,7 @@ impl SigningAlgorithm for Ed25519 {
 mod test {
     use super::*;
 
-    use crate::key::{KeyPair, PublicKey};
+    use crate::key::KeyPair;
     use crate::sign::test::{keypair_signing_ko, keypair_signing_ok};
 
     #[quickcheck]
@@ -132,7 +139,7 @@ mod test {
     }
 
     #[quickcheck]
-    fn sign_ko(input: (KeyPair<Ed25519>, PublicKey<Ed25519>, Vec<u8>)) -> bool {
+    fn sign_ko(input: (KeyPair<Ed25519>, KeyPair<Ed25519>, Vec<u8>)) -> bool {
         keypair_signing_ko(input)
     }
 }

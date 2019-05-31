@@ -37,7 +37,7 @@ mod vrf;
 pub use evolving::{EvolvingStatus, KeyEvolvingAlgorithm};
 pub use kes::KeyEvolvingSignatureAlgorithm;
 pub use key::{
-    AsymmetricKey, KeyPair, PublicKey, PublicKeyError, SecretKey, SecretKeyError,
+    AsymmetricKey, AsymmetricPublicKey, KeyPair, PublicKey, PublicKeyError, SecretKey, SecretKeyError,
     SecretKeySizeStatic,
 };
 pub use sign::{Signature, SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};

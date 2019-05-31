@@ -23,21 +23,27 @@ pub enum PublicKeyFromStrError {
     KeyInvalid(PublicKeyError),
 }
 
-pub trait AsymmetricKey {
-    type Secret: AsRef<[u8]> + Clone;
+pub trait AsymmetricPublicKey {
     type Public: AsRef<[u8]> + Clone + PartialEq + Eq + Hash;
-
-    const SECRET_BECH32_HRP: &'static str;
     const PUBLIC_BECH32_HRP: &'static str;
-
     const PUBLIC_KEY_SIZE: usize;
 
-    fn generate<T: RngCore + CryptoRng>(rng: T) -> Self::Secret;
-
-    fn compute_public(secret: &Self::Secret) -> Self::Public;
-
-    fn secret_from_binary(data: &[u8]) -> Result<Self::Secret, SecretKeyError>;
     fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError>;
+}
+
+pub trait AsymmetricKey {
+    // The name of the public key Algorithm to represent the public key
+    // where PubAlg::Public is the public key type.
+    type PubAlg: AsymmetricPublicKey;
+
+    // the secret key type
+    type Secret: AsRef<[u8]> + Clone;
+
+    const SECRET_BECH32_HRP: &'static str;
+
+    fn generate<T: RngCore + CryptoRng>(rng: T) -> Self::Secret;
+    fn compute_public(secret: &Self::Secret) -> <Self::PubAlg as AsymmetricPublicKey>::Public;
+    fn secret_from_binary(data: &[u8]) -> Result<Self::Secret, SecretKeyError>;
 }
 
 pub trait SecretKeySizeStatic: AsymmetricKey {
@@ -46,19 +52,24 @@ pub trait SecretKeySizeStatic: AsymmetricKey {
 
 pub struct SecretKey<A: AsymmetricKey>(pub(crate) A::Secret);
 
-pub struct PublicKey<A: AsymmetricKey>(pub(crate) A::Public);
+pub struct PublicKey<A: AsymmetricPublicKey>(pub(crate) A::Public);
 
-pub struct KeyPair<A: AsymmetricKey>(SecretKey<A>, PublicKey<A>);
+pub struct KeyPair<A: AsymmetricKey>(SecretKey<A>, PublicKey<A::PubAlg>);
 
 impl<A: AsymmetricKey> KeyPair<A> {
     pub fn private_key(&self) -> &SecretKey<A> {
         &self.0
     }
-    pub fn public_key(&self) -> &PublicKey<A> {
+    pub fn public_key(&self) -> &PublicKey<A::PubAlg> {
         &self.1
     }
-    pub fn into_keys(self) -> (SecretKey<A>, PublicKey<A>) {
+    pub fn into_keys(self) -> (SecretKey<A>, PublicKey<A::PubAlg>) {
         (self.0, self.1)
+    }
+    pub fn generate<T: RngCore + CryptoRng>(rng: T) -> Self {
+        let sk = A::generate(rng);
+        let pk = A::compute_public(&sk);
+        KeyPair(SecretKey(sk), PublicKey(pk))
     }
 }
 impl<A: AsymmetricKey> std::fmt::Debug for KeyPair<A> {
@@ -72,18 +83,18 @@ impl<A: AsymmetricKey> std::fmt::Display for KeyPair<A> {
     }
 }
 
-impl<A: AsymmetricKey> fmt::Debug for PublicKey<A> {
+impl<A: AsymmetricPublicKey> fmt::Debug for PublicKey<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0.as_ref()))
     }
 }
-impl<A: AsymmetricKey> fmt::Display for PublicKey<A> {
+impl<A: AsymmetricPublicKey> fmt::Display for PublicKey<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0.as_ref()))
     }
 }
 
-impl<A: AsymmetricKey> FromStr for PublicKey<A> {
+impl<A: AsymmetricPublicKey> FromStr for PublicKey<A> {
     type Err = PublicKeyFromStrError;
 
     fn from_str(hex: &str) -> Result<Self, Self::Err> {
@@ -133,7 +144,7 @@ impl std::error::Error for PublicKeyFromStrError {
     }
 }
 
-impl<A: AsymmetricKey> AsRef<[u8]> for PublicKey<A> {
+impl<A: AsymmetricPublicKey> AsRef<[u8]> for PublicKey<A> {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
@@ -150,7 +161,7 @@ impl<A: AsymmetricKey> SecretKey<A> {
     pub fn generate<T: RngCore + CryptoRng>(rng: T) -> Self {
         SecretKey(A::generate(rng))
     }
-    pub fn to_public(&self) -> PublicKey<A> {
+    pub fn to_public(&self) -> PublicKey<A::PubAlg> {
         PublicKey(<A as AsymmetricKey>::compute_public(&self.0))
     }
     pub fn from_binary(data: &[u8]) -> Result<Self, SecretKeyError> {
@@ -158,9 +169,11 @@ impl<A: AsymmetricKey> SecretKey<A> {
     }
 }
 
-impl<A: AsymmetricKey> PublicKey<A> {
+impl<A: AsymmetricPublicKey> PublicKey<A> {
     pub fn from_binary(data: &[u8]) -> Result<Self, PublicKeyError> {
-        Ok(PublicKey(<A as AsymmetricKey>::public_from_binary(data)?))
+        Ok(PublicKey(<A as AsymmetricPublicKey>::public_from_binary(
+            data,
+        )?))
     }
 }
 
@@ -169,7 +182,7 @@ impl<A: AsymmetricKey> Clone for SecretKey<A> {
         SecretKey(self.0.clone())
     }
 }
-impl<A: AsymmetricKey> Clone for PublicKey<A> {
+impl<A: AsymmetricPublicKey> Clone for PublicKey<A> {
     fn clone(&self) -> Self {
         PublicKey(self.0.clone())
     }
@@ -180,27 +193,27 @@ impl<A: AsymmetricKey> Clone for KeyPair<A> {
     }
 }
 
-impl<A: AsymmetricKey> std::cmp::PartialEq<Self> for PublicKey<A> {
+impl<A: AsymmetricPublicKey> std::cmp::PartialEq<Self> for PublicKey<A> {
     fn eq(&self, other: &Self) -> bool {
         self.0.as_ref().eq(other.0.as_ref())
     }
 }
 
-impl<A: AsymmetricKey> std::cmp::Eq for PublicKey<A> {}
+impl<A: AsymmetricPublicKey> std::cmp::Eq for PublicKey<A> {}
 
-impl<A: AsymmetricKey> std::cmp::PartialOrd<Self> for PublicKey<A> {
+impl<A: AsymmetricPublicKey> std::cmp::PartialOrd<Self> for PublicKey<A> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.as_ref().partial_cmp(other.0.as_ref())
     }
 }
 
-impl<A: AsymmetricKey> std::cmp::Ord for PublicKey<A> {
+impl<A: AsymmetricPublicKey> std::cmp::Ord for PublicKey<A> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.as_ref().cmp(other.0.as_ref())
     }
 }
 
-impl<A: AsymmetricKey> Hash for PublicKey<A> {
+impl<A: AsymmetricPublicKey> Hash for PublicKey<A> {
     fn hash<H>(&self, state: &mut H)
     where
         H: std::hash::Hasher,
@@ -209,7 +222,7 @@ impl<A: AsymmetricKey> Hash for PublicKey<A> {
     }
 }
 
-impl<A: AsymmetricKey> Bech32 for PublicKey<A> {
+impl<A: AsymmetricPublicKey> Bech32 for PublicKey<A> {
     const BECH32_HRP: &'static str = A::PUBLIC_BECH32_HRP;
 
     fn try_from_bech32_str(bech32_str: &str) -> Result<Self, bech32::Error> {

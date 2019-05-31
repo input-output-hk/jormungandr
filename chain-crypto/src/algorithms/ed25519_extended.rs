@@ -1,5 +1,5 @@
-use crate::key::{AsymmetricKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic};
-use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
+use crate::key::{AsymmetricKey, AsymmetricPublicKey, SecretKeyError, SecretKeySizeStatic};
+use crate::sign::SigningAlgorithm;
 
 use super::ed25519 as ei;
 
@@ -30,12 +30,9 @@ impl ExtendedPriv {
 
 impl AsymmetricKey for Ed25519Extended {
     type Secret = ExtendedPriv;
-    type Public = ei::Pub;
+    type PubAlg = ei::Ed25519;
 
     const SECRET_BECH32_HRP: &'static str = "ed25519e_sk";
-    const PUBLIC_BECH32_HRP: &'static str = "ed25519e_pk";
-
-    const PUBLIC_KEY_SIZE: usize = ed25519::PUBLIC_KEY_LENGTH;
 
     fn generate<T: RngCore + CryptoRng>(mut rng: T) -> Self::Secret {
         let mut priv_bytes = [0u8; XPRV_SIZE];
@@ -47,7 +44,7 @@ impl AsymmetricKey for Ed25519Extended {
         ExtendedPriv(out)
     }
 
-    fn compute_public(key: &Self::Secret) -> Self::Public {
+    fn compute_public(key: &Self::Secret) -> <Self::PubAlg as AsymmetricPublicKey>::Public {
         let pk = ed25519::to_public(&key.0);
         ei::Pub(pk)
     }
@@ -61,45 +58,10 @@ impl AsymmetricKey for Ed25519Extended {
         // TODO structure check
         Ok(ExtendedPriv(buf))
     }
-    fn public_from_binary(data: &[u8]) -> Result<Self::Public, PublicKeyError> {
-        if data.len() != ed25519::PUBLIC_KEY_LENGTH {
-            return Err(PublicKeyError::SizeInvalid);
-        }
-        let mut buf = [0; ed25519::PUBLIC_KEY_LENGTH];
-        buf[0..ed25519::PUBLIC_KEY_LENGTH].clone_from_slice(data);
-        Ok(ei::Pub(buf))
-    }
 }
 
 impl SecretKeySizeStatic for Ed25519Extended {
     const SECRET_KEY_SIZE: usize = ed25519::PRIVATE_KEY_LENGTH;
-}
-
-impl VerificationAlgorithm for Ed25519Extended {
-    type Signature = ei::Sig;
-
-    const SIGNATURE_SIZE: usize = ed25519::SIGNATURE_LENGTH;
-    const SIGNATURE_BECH32_HRP: &'static str = "ed25519e_sig";
-
-    fn signature_from_bytes(data: &[u8]) -> Result<Self::Signature, SignatureError> {
-        if data.len() != ed25519::SIGNATURE_LENGTH {
-            return Err(SignatureError::SizeInvalid {
-                expected: ed25519::SIGNATURE_LENGTH,
-                got: data.len(),
-            });
-        }
-        let mut buf = [0; ed25519::SIGNATURE_LENGTH];
-        buf[0..ed25519::SIGNATURE_LENGTH].clone_from_slice(data);
-        Ok(ei::Sig(buf))
-    }
-
-    fn verify_bytes(
-        pubkey: &Self::Public,
-        signature: &Self::Signature,
-        msg: &[u8],
-    ) -> Verification {
-        ed25519::verify(msg, &pubkey.0, signature.as_ref()).into()
-    }
 }
 
 impl SigningAlgorithm for Ed25519Extended {
@@ -112,7 +74,7 @@ impl SigningAlgorithm for Ed25519Extended {
 mod test {
     use super::*;
 
-    use crate::key::{KeyPair, PublicKey};
+    use crate::key::KeyPair;
     use crate::sign::test::{keypair_signing_ko, keypair_signing_ok};
 
     #[quickcheck]
@@ -121,13 +83,7 @@ mod test {
     }
 
     #[quickcheck]
-    fn sign_ko(
-        input: (
-            KeyPair<Ed25519Extended>,
-            PublicKey<Ed25519Extended>,
-            Vec<u8>,
-        ),
-    ) -> bool {
+    fn sign_ko(input: (KeyPair<Ed25519Extended>, KeyPair<Ed25519Extended>, Vec<u8>)) -> bool {
         keypair_signing_ko(input)
     }
 }
