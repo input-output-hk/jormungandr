@@ -1,7 +1,9 @@
 mod dleq;
 pub mod vrf;
 
-use crate::key::{AsymmetricKey, AsymmetricPublicKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic};
+use crate::key::{
+    AsymmetricKey, AsymmetricPublicKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic,
+};
 use crate::vrf::{VRFVerification, VerifiableRandomFunction};
 use rand::{CryptoRng, RngCore};
 

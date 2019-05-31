@@ -152,7 +152,7 @@ mod test {
         let mut rng = rand::thread_rng();
 
         let pool_vrf_private_key = SecretKey::generate(&mut rng);
-        let pool_kes : KeyPair<SumEd25519_12> = KeyPair::generate(&mut rng);
+        let pool_kes: KeyPair<SumEd25519_12> = KeyPair::generate(&mut rng);
         let (_, pool_kes_public_key) = pool_kes.into_keys();
 
         let pool_info = StakePoolInfo {

@@ -267,7 +267,7 @@ mod test {
     use crate::milli::Milli;
     use chain_addr::Discrimination;
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
-    use chain_crypto::{SecretKey, Ed25519};
+    use chain_crypto::{Ed25519, SecretKey};
     use chain_storage::store::BlockStore;
     use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
     use quickcheck::{Arbitrary, StdGen};
@@ -303,7 +303,7 @@ mod test {
 
         let mut store = chain_storage::memory::MemoryBlockStore::new();
 
-        let random_sk : SecretKey<Ed25519> = SecretKey::generate(rand::thread_rng());
+        let random_sk: SecretKey<Ed25519> = SecretKey::generate(rand::thread_rng());
 
         let mut genesis_block = BlockBuilder::new();
         let mut ents = ConfigParams::new();

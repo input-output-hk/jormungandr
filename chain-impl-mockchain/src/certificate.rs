@@ -443,7 +443,8 @@ mod test {
             }
             lazy_static! {
                 static ref PK_KES: PublicKey<SumEd25519_12> = {
-                    let sk : SecretKey<SumEd25519_12> = SecretKey::generate(&mut rand_chacha::ChaChaRng::from_seed([0; 32]));
+                    let sk: SecretKey<SumEd25519_12> =
+                        SecretKey::generate(&mut rand_chacha::ChaChaRng::from_seed([0; 32]));
                     sk.to_public()
                 };
             }

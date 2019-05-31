@@ -120,8 +120,12 @@ pub struct Signed<T, A: VerificationAlgorithm> {
     pub sig: crypto::Signature<T, A>,
 }
 
-pub fn signed_new<T: property::Serialize, A: SigningAlgorithm>(secret_key: &crypto::SecretKey<A>, data: T) -> Signed<T, A::PubAlg>
-    where A::PubAlg: VerificationAlgorithm
+pub fn signed_new<T: property::Serialize, A: SigningAlgorithm>(
+    secret_key: &crypto::SecretKey<A>,
+    data: T,
+) -> Signed<T, A::PubAlg>
+where
+    A::PubAlg: VerificationAlgorithm,
 {
     let bytes = data.serialize_as_vec().unwrap();
     let signature = secret_key.sign(&bytes).coerce();
