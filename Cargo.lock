@@ -1229,6 +1229,7 @@ dependencies = [
  "chain-crypto 0.1.0",
  "chain-impl-mockchain 0.1.0",
  "custom_error 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
