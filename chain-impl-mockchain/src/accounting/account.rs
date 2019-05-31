@@ -7,38 +7,16 @@
 use crate::value::*;
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
-use std::fmt::{self, Display, Formatter};
 use std::hash::Hash;
 
-/// Possible errors during an account operation
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LedgerError {
-    NonExistent,
-    AlreadyExists,
-    NeedTotalWithdrawal,
-    NonZero,
-    ValueError(ValueError),
-}
-
-impl Display for LedgerError {
-    fn fmt(&self, formatter: &mut Formatter) -> Result<(), fmt::Error> {
-        match self {
-            LedgerError::NonExistent => "Account does not exist",
-            LedgerError::AlreadyExists => "Account already exists",
-            LedgerError::NeedTotalWithdrawal => {
-                "Operation counter reached its maximum and next operation must be full withdrawal"
-            }
-            LedgerError::NonZero => "Removed account is not empty",
-            LedgerError::ValueError(_) => "Value calculation failed",
-        }
-        .fmt(formatter)
-    }
-}
-
-impl From<ValueError> for LedgerError {
-    fn from(e: ValueError) -> Self {
-        LedgerError::ValueError(e)
-    }
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub LedgerError
+        NonExistent = "Account does not exist",
+        AlreadyExists = "Account already exists",
+        NeedTotalWithdrawal = "Operation counter reached its maximum and next operation must be full withdrawal",
+        NonZero = "Removed account is not empty",
+        ValueError{ source: ValueError } = "Value calculation failed",
 }
 
 impl From<UpdateError<LedgerError>> for LedgerError {

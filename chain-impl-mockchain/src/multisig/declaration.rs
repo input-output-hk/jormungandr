@@ -20,12 +20,19 @@ impl From<[u8; 32]> for Identifier {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DeclarationError {
-    ThresholdInvalid,
-    HasNotEnoughOwners,
-    HasTooManyOwners,
-    SubNotImplemented,
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub DeclarationError
+        ThresholdInvalid = "Invalid threshold",
+        HasNotEnoughOwners = "Not enough owners",
+        HasTooManyOwners = "Too many owners",
+        SubNotImplemented = "Sub not implemented",
+}
+
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
 }
 
 /// Declaration of a multisig account parameters which is:

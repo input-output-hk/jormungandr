@@ -41,6 +41,17 @@ impl PartialEq for Witness {
 }
 impl Eq for Witness {}
 
+impl std::fmt::Display for Witness {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Witness::Utxo(_) => write!(f, "UTxO Witness"),
+            Witness::Account(_) => write!(f, "Account Witness"),
+            Witness::OldUtxo(_, _) => write!(f, "Old UTxO Witness"),
+            Witness::Multisig(_) => write!(f, "Multisig Witness"),
+        }
+    }
+}
+
 pub struct WitnessUtxoData(Vec<u8>);
 
 impl WitnessUtxoData {
