@@ -425,7 +425,8 @@ pub fn documented_example(now: std::time::SystemTime) -> String {
 mod test {
     use super::*;
     use chain_addr::{AddressReadable, Kind};
-    use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
+    use chain_crypto::bech32::Bech32;
+    use chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
     use serde_yaml;
@@ -435,9 +436,19 @@ mod test {
         let sk: SecretKey<Ed25519Extended> =
             SecretKey::generate(&mut ChaChaRng::from_seed([0; 32]));
         let pk: PublicKey<Ed25519> = sk.to_public();
+
+        let leader_1: KeyPair<Ed25519Extended> =
+            KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
+        let leader_2: KeyPair<Ed25519Extended> =
+            KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
+
         let initial_funds_address = Address(Discrimination::Test, Kind::Single(pk));
         let initial_funds_address =
             AddressReadable::from_address(&initial_funds_address).to_string();
+
+        let leader_1_pk = leader_1.public_key().to_bech32_str();
+        let leader_2_pk = leader_2.public_key().to_bech32_str();
+
         let genesis_yaml = format!(r#"
 ---
 blockchain_configuration:
@@ -448,8 +459,8 @@ blockchain_configuration:
   slot_duration: 15
   epoch_stability_depth: 10
   consensus_leader_ids:
-    - ed25519e_pk1hj8k4jyhsrva7ndynak25jagf3qcj4usnp54gnzvrejnwrufxpgqytzy6u
-    - ed25519e_pk173x5f5xhg66x9yl4x50wnqg9mfwmmt4fma0styptcq4fuyvg3p7q9zxvy7
+    - {}
+    - {}
   consensus_genesis_praos_active_slot_coeff: "0.444"
   max_number_of_transactions_per_block: 255
   bft_slots_ratio: "0.222"
@@ -468,7 +479,7 @@ legacy_funds:
   - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
     value: 123
   - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
-    value: 456"#, initial_funds_address);
+    value: 456"#, leader_1_pk, leader_2_pk, initial_funds_address);
         let genesis: Genesis =
             serde_yaml::from_str(genesis_yaml.as_str()).expect("Failed to deserialize YAML");
 
@@ -478,7 +489,8 @@ legacy_funds:
         let new_genesis_yaml =
             serde_yaml::to_string(&new_genesis).expect("Failed to serialize YAML");
         assert_eq!(
-            genesis_yaml, new_genesis_yaml,
+            genesis_yaml.trim(),
+            new_genesis_yaml,
             "\nGenesis YAML has changed after conversions:\n{}\n",
             new_genesis_yaml
         );
