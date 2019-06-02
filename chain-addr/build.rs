@@ -1,8 +1,3 @@
-use std::env;
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
-
 fn main() {
     let production_prefix = option_env!("PRODUCTION_ADDRESS_PREFIX").unwrap_or("ca");
     let test_prefix = option_env!("TEST_ADDRESS_PREFIX").unwrap_or("ta");
