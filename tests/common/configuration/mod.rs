@@ -33,8 +33,9 @@ pub fn get_jormungandr_app() -> PathBuf {
 
 /// Get jcli executable from current environment
 pub fn get_jcli_app() -> PathBuf {
+    const JOR_CLI_NAME: &'static str = env!("JOR_CLI_NAME");
     let mut path = get_working_directory();
-    path.push("jcli");
+    path.push(JOR_CLI_NAME);
     if cfg!(windows) {
         path.set_extension("exe");
     }
