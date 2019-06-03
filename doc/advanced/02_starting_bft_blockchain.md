@@ -17,7 +17,7 @@ They all share the public key and add them in the genesis.yaml file.
 It is the source of truth, the file that will generate the first block
 of the blockchain: the **Block 0**.
 
-Then, ony by one after the other, each Node will be allowed to create a block.
+Then, only by one after the other, each Node will be allowed to create a block.
 Utilising a Round Robin algorithm.
 
 ## Example of genesis file
@@ -48,7 +48,7 @@ initial_funds:
 In order to start your blockchain in BFT mode you need to be sure that:
 
 * `block_version` is set to `1`;
-* `bft_leaders` is non empty;
+* `consensus_leader_ids` is non empty;
 
 more information regarding the [genesis file here](./01_the_genesis_block.md).
 
@@ -83,3 +83,39 @@ $ jormungandr --genesis-block block-0.bin \
 
 It's possible to use the flag `--secret` multiple times to run a node
 with multiple leaders.
+
+## Step by step to start the BFT node
+
+1. Generate initial config `jcli genesis init > genesis.yaml`
+2. Generate secret key, e.g. ` jcli key generate --type=Ed25519Extended > key.prv` 
+3. Put secret key in a file, e.g. `node_secret.yaml` as follows:
+
+```yaml
+bft:
+ signing_key: ed25519e_sk1kppercsk06k03yk4qgea....
+```
+
+4. Generate public key out of previously generated key ` cat key.prv |  jcli key to-public` 
+5. Put generated public key as in `genesis.yaml` under `consensus_leader_ids:`
+6. Generate block = `jcli genesis encode --input genesis.yaml --output block-0.bin`
+7. Create config file and store it on your HD as `node.config` e.g. ->
+
+```yaml
+---
+logger:
+ verbosity: 4
+ format: json
+rest:
+ listen: "127.0.0.1:8607"
+ prefix: api
+peer_2_peer:
+ public_address: /ip4/127.0.0.1/tcp/8606
+ topics_of_interests:
+ messages: low
+ blocks: normal
+```
+
+8. Start Jörmungandr node : 
+```
+jormungandr --genesis-block block-0.bin --config node.config --secret node_secret.yaml
+```
