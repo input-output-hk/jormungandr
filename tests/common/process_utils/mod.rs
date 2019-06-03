@@ -4,7 +4,6 @@ extern crate custom_error;
 extern crate serde_yaml;
 
 pub mod output_extensions;
-pub mod process_guard;
 
 use self::custom_error::custom_error;
 use self::output_extensions::ProcessOutput;

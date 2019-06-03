@@ -55,7 +55,7 @@ impl Task {
         let logger = Logger::root(
             logger,
             o!(
-                ::log::KEY_TASK => "Leader Task",
+                ::log::KEY_SUB_TASK => "Leader Task",
                 // TODO: add some general context information here (leader alias?)
             ),
         );

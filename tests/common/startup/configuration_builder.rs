@@ -1,6 +1,5 @@
 #![cfg(feature = "integration-test")]
 
-use common::jcli_wrapper;
 
 use common::configuration::{
     genesis_model::{Fund, GenesisYaml},
@@ -8,7 +7,8 @@ use common::configuration::{
     node_config_model::{Logger, NodeConfig, Peer},
     secret_model::SecretModel,
 };
-
+use common::file_utils;
+use common::jcli_wrapper;
 pub struct ConfigurationBuilder {
     funds: Vec<Fund>,
     with_account: bool,
@@ -78,6 +78,7 @@ impl ConfigurationBuilder {
         config.secret_model_path = secret_model_path;
         config.genesis_block_path = path_to_output_block.clone();
         config.node_config_path = node_config_path;
+        config.log_file_path = file_utils::get_path_in_temp("log_file.log");
 
         config.genesis_block_hash = match self.block0_hash {
             Some(ref value) => value.clone(),
