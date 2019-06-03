@@ -28,3 +28,10 @@ jcli auto-completion bash ${HOME}/.bash_completion.d
 
 Supported shells are: bash, fish, zsh, powershell and elvish.
 
+**Note:** 
+Make sure `${HOME}/.bash_completion.d` directory previously exists on your HD.
+In order to use auto completion you still need to:
+```
+source ${HOME}/.bash_completion.d/jcli.bash
+```
+You can also put it in your `${HOME}/.bashrc`.
