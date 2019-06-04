@@ -6,20 +6,20 @@ Documentation available [here](https://input-output-hk.github.io/jormungandr)
 
 ## How to install from sources
 
-We do support multiple versions of the rust compiler, however we recommend
-to utilise the most recent stable version of the rust compiler.
+Currently the minimum supported version of the rust compiler is 1.35, however we recommend to utilise the most recent stable version of the rust compiler.
 
 1. [install rustup](https://www.rust-lang.org/tools/install)
 2. run `rustup install stable`
 3. run `rustup default stable`
-4. make sure you have cloned the submodule too: `git submodule update --init --recursive`
-5. install: `cargo install`
+4. clone this repository: `git clone https://github.com/input-output-hk/jormungandr`
+5. make sure you have cloned the submodule too: `git submodule update --init --recursive`
+6. install: `cargo install --path .`
 
 Note:
 
 * on windows, you'll need to add the `/userProfile/.cargo/bin` into the Path;
 * on linux and OSX: add `${HOME}/.cargo/bin` to your `${PATH}`
-* on linux with systemd: to enable logging to journald replace step 5. with `cargo install --features systemd`
+* on linux with systemd: to enable logging to journald replace step 5. with `cargo install --path . --features systemd`
 
 This will install 2 tools:
 
@@ -38,7 +38,7 @@ configure your node.
 
 Example of node config:
 
-```
+```YAML
 storage: "/tmp/storage"
 logger:
   verbosity: 1
@@ -60,33 +60,37 @@ Fields description:
   - *storage*: (optional) path to the storage. If omitted, the
     blockchain is stored in memory only.
   - *logger*: (optional) logger configuration,
-     - *verbosity*: 0 - warning, 1 - info, 2 -debug, 3 and above - trace
-     - *format*: log output format - plain or json.
-     - *output*: log output - stderr, syslog (unix only) or journald (linux with systemd only, must be enabled during compilation)
+    - *verbosity*: 
+      - 0: warning
+      - 1: info
+      - 2: debug
+      - 3 and above: trace
+    - *format*: log output format - plain or json.
+    - *output*: log output - stderr, syslog (unix only) or journald (linux with systemd only, must be enabled during compilation)
   - *rest*: (optional) configuration of the rest endpoint.
-     - *listen*: listen address
-     - *pkcs12*: certificate file (optional)
-     - *prefix*: (optional) api prefix
+    - *listen*: listen address
+    - *pkcs12*: certificate file (optional)
+    - *prefix*: (optional) api prefix
   - *peer_2_peer*: the P2P network settings
-     - *trusted_peers*: (optional) the list of nodes to connect to in order to
-       bootstrap the p2p topology (and bootstrap our local blockchain);
-     - *public_id*: (optional) the public identifier send to the other nodes in the
-       p2p network. If not set it will be randomly generated.
-     - *public_access*: the address to listen from and accept connection
-       from. This is the public address that will be distributed to other peers
-       of the network that may find interest into participating to the blockchain
-       dissemination with the node;
-     - *topics_of_interests*: the different topics we are interested to hear about:
-       - *messages*: notify other peers this node is interested about Transactions
-         typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
-       - *blocks*: notify other peers this node is interested about new Blocs.
-         typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`;
+    - *trusted_peers*: (optional) the list of nodes to connect to in order to
+      bootstrap the p2p topology (and bootstrap our local blockchain);
+    - *public_id*: (optional) the public identifier send to the other nodes in the
+      p2p network. If not set it will be randomly generated.
+    - *public_access*: the address to listen from and accept connection
+      from. This is the public address that will be distributed to other peers
+      of the network that may find interest into participating to the blockchain
+      dissemination with the node;
+    - *topics_of_interests*: the different topics we are interested to hear about:
+      - *messages*: notify other peers this node is interested about Transactions
+        typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
+      - *blocks*: notify other peers this node is interested about new Blocs.
+        typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`;
 
 ### Starting the node
 
 If you are not a leader node, then you can start the jormundandr with:
 
-```
+```sh
 jormungandr --genesis-block block-0.bin \
   --config example.config
 ```
@@ -103,7 +107,7 @@ Documentation is available as markdown [here](doc/SUMMARY.md)
 
 Building:
 
-```
+```sh
 cargo build --bin jcli
 ```
 
@@ -111,7 +115,7 @@ cargo build --bin jcli
 
 Running:
 
-```
+```sh
 cargo test --features integration-test
 ```
 
