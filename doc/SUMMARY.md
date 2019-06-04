@@ -17,6 +17,7 @@
     - [Address](./jcli/address.md)
     - [Transaction](./jcli/transaction.md)
     - [Certificate](./jcli/certificate.md)
+    - [Genesis](./jcli/genesis.md)
     - [REST](./jcli/rest.md)
 
 - [Advanced](./advanced/introduction.md)
