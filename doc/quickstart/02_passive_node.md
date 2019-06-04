@@ -24,6 +24,12 @@ trust in order to initialise the Peer To Peer network. More details in
 
 Your node configuration file may look like the following:
 
+**Note**
+
+This config shouldn't work as it is, the ip address and port for the trusted peer should be those of an already running node. 
+Also, the public_address ('u.x.v.t') should be a valid address (you can use an internal one, eg: 127.0.0.1).
+Furthermore, you need to have permission to write in the path specified by the storage config.
+
 ```yaml
 storage: "/mnt/cardano/storage"
 
@@ -72,4 +78,18 @@ Fields description:
 
 ```
 jormungandr --config config.yaml --genesis-block-hash 'abcdef987654321....'
+```
+
+The 'abcdef987654321....' part refers to the hash of the genesis, that should be given to you from one of the peers in the network you are connecting to. 
+
+In case you have the genesis file (for example, because you are creating the network) you can get this hash with jcli.
+
+```sh
+cat block-0 | jcli genesis hash
+```
+
+or, in case you only have the yaml file
+
+```sh
+cat genesis.yaml | jcli genesis encode | jcli genesis hash
 ```
