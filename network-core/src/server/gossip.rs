@@ -21,7 +21,9 @@ pub trait GossipService: P2pService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type GossipSubscriptionFuture: Future<Item = Self::GossipSubscription, Error = Error>;
+    type GossipSubscriptionFuture: Future<Item = Self::GossipSubscription, Error = Error>
+        + Send
+        + 'static;
 
     /// Establishes a bidirectional subscription for node gossip messages.
     ///

@@ -26,7 +26,7 @@ pub trait BlockService: P2pService {
     ///
     /// The future resolves to the block identifier and the block date
     /// of the current chain tip as known by the serving node.
-    type TipFuture: Future<Item = Self::Header, Error = Error>;
+    type TipFuture: Future<Item = Self::Header, Error = Error> + Send + 'static;
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to `pull_blocks_to_*` methods.
@@ -36,7 +36,7 @@ pub trait BlockService: P2pService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type PullBlocksFuture: Future<Item = Self::PullBlocksStream, Error = Error>;
+    type PullBlocksFuture: Future<Item = Self::PullBlocksStream, Error = Error> + Send + 'static;
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to `get_blocks` method.
@@ -46,7 +46,7 @@ pub trait BlockService: P2pService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = Error>;
+    type GetBlocksFuture: Future<Item = Self::GetBlocksStream, Error = Error> + Send + 'static;
 
     /// The type of an asynchronous stream that provides block headers in
     /// response to `pull_headers_to_*` methods.
@@ -56,7 +56,7 @@ pub trait BlockService: P2pService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type PullHeadersFuture: Future<Item = Self::PullHeadersStream, Error = Error>;
+    type PullHeadersFuture: Future<Item = Self::PullHeadersStream, Error = Error> + Send + 'static;
 
     /// The type of an asynchronous stream that provides block headers in
     /// response to `get_headers` methods.
@@ -66,10 +66,10 @@ pub trait BlockService: P2pService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error>;
+    type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `on_uploaded_block`.
-    type OnUploadedBlockFuture: Future<Item = (), Error = Error>;
+    type OnUploadedBlockFuture: Future<Item = (), Error = Error> + Send + 'static;
 
     /// The type of an asynchronous stream that retrieves headers of new
     /// blocks as they are created.
@@ -79,7 +79,9 @@ pub trait BlockService: P2pService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = Error>;
+    type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = Error>
+        + Send
+        + 'static;
 
     /// Request the current blockchain tip.
     /// The returned future resolves to the tip of the blockchain

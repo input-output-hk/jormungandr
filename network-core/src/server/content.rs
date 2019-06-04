@@ -25,7 +25,7 @@ pub trait ContentService: P2pService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type GetMessagesFuture: Future<Item = Self::GetMessagesStream, Error = Error>;
+    type GetMessagesFuture: Future<Item = Self::GetMessagesStream, Error = Error> + Send + 'static;
 
     /// The type of an asynchronous stream that provides transactions announced
     /// by the peer via the bidirectional subscription.
@@ -35,7 +35,9 @@ pub trait ContentService: P2pService {
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type MessageSubscriptionFuture: Future<Item = Self::MessageSubscription, Error = Error>;
+    type MessageSubscriptionFuture: Future<Item = Self::MessageSubscription, Error = Error>
+        + Send
+        + 'static;
 
     /// Get all transactions by their id.
     fn get_messages(&mut self, ids: &[Self::MessageId]) -> Self::GetMessagesFuture;
