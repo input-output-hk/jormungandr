@@ -43,7 +43,7 @@ pub trait Node {
 /// distinguish subscription streams.
 pub trait P2pService {
     /// Network node identifier.
-    type NodeId: NodeId;
+    type NodeId: NodeId + Send + 'static;
 
     /// Returns the identifier of this node.
     fn node_id(&self) -> Self::NodeId;
