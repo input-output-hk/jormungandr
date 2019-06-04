@@ -1,4 +1,4 @@
-use jcli_app::utils::HostAddr;
+use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -8,6 +8,8 @@ pub enum Account {
     Get {
         #[structopt(flatten)]
         addr: HostAddr,
+        #[structopt(flatten)]
+        debug: DebugFlag,
         /// ID of an account, bech32-encoded
         account_id: String,
     },
@@ -15,21 +17,21 @@ pub enum Account {
 
 impl Account {
     pub fn exec(self) {
-        let (addr, account_id) = match self {
-            Account::Get { addr, account_id } => (addr, account_id),
+        let (addr, debug, account_id) = match self {
+            Account::Get {
+                addr,
+                debug,
+                account_id,
+            } => (addr, debug, account_id),
         };
         let url = addr
             .with_segments(&["v0", "account", &account_id])
             .unwrap()
             .into_url();
-        let state: serde_json::Value = reqwest::Client::new()
-            .get(url)
-            .send()
-            .unwrap()
-            .error_for_status()
-            .unwrap()
-            .json()
-            .unwrap();
+        let builder = reqwest::Client::new().get(url);
+        let response = RestApiSender::new(builder, &debug).send().unwrap();
+        response.response().error_for_status_ref().unwrap();
+        let state: serde_json::Value = response.body().json().unwrap();
         let state_yaml = serde_yaml::to_string(&state).unwrap();
         println!("{}", state_yaml);
     }

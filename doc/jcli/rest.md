@@ -8,6 +8,8 @@ Many CLI commands have common arguments:
 
 - `-h <addr>` or `--host <addr>` - Node API address. Must always have `http://` or
 `https://` prefix. E.g. `-h http://127.0.0.1`, `--host https://node.com:8443/cardano/api`
+- `--debug` - Print additional debug information to stderr.
+The output format is intentionally undocumented and unstable
 
 ## Node stats
 
@@ -20,6 +22,7 @@ jcli rest v0 node stats get <options>
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
 
 
 YAML printed on success
@@ -42,6 +45,7 @@ jcli rest v0 utxo get <options>
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
 
 
 YAML printed on success
@@ -65,6 +69,7 @@ jcli rest v0 message post <options>
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
 - -f --file <file_path> - File containing hex-encoded transaction.
 If not provided, transaction will be read from stdin.
 
@@ -80,6 +85,7 @@ jcli rest v0 message logs <options>
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -130,6 +136,7 @@ jcli rest v0 tip get <options>
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
 
 ## Get block
 
@@ -144,6 +151,7 @@ jcli rest v0 block <block_id> get <options>
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
 
 ## Get next block ID
 
@@ -159,6 +167,7 @@ jcli rest v0 block <block_id> next-id get <options>
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
 - -c --count <count> - Maximum number of IDs, must be between 1 and 100, default 1
 
 ## Get account state
@@ -173,6 +182,7 @@ jcli rest v0 account get <account-id> <options>
 
 The options are
 - -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
 
 YAML printed on success
 

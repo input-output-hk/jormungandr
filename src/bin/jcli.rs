@@ -5,6 +5,7 @@ extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate jormungandr_utils;
+extern crate mime;
 extern crate num_traits;
 extern crate rand;
 extern crate rand_chacha;
