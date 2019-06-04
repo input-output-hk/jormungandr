@@ -3,13 +3,13 @@ use crate::gen::node::client as gen_client;
 
 use network_core::gossip;
 
-use futures::future::Executor;
 use futures::prelude::*;
 use futures::try_ready;
 use http::uri::{self, Uri};
 use tower_grpc::BoxBody;
-use tower_h2::client::Background;
-use tower_util::{MakeConnection, MakeService};
+use tower_http_util::connection::HttpMakeConnection;
+use tower_hyper::client::ConnectExecutor;
+use tower_util::MakeService;
 
 use std::{error::Error, fmt, mem};
 
@@ -18,7 +18,7 @@ pub struct Connect<P, A, C, E>
 where
     P: ProtocolConfig,
 {
-    tower_connect: tower_h2::client::Connect<A, C, E, BoxBody>,
+    tower_connect: tower_hyper::client::Connect<A, BoxBody, C, E>,
     origin: Option<Origin>,
     node_id: Option<<P::Node as gossip::Node>::Id>,
 }
@@ -31,12 +31,17 @@ struct Origin {
 impl<P, A, C, E> Connect<P, A, C, E>
 where
     P: ProtocolConfig,
-    C: MakeConnection<A> + 'static,
-    E: Executor<Background<C::Connection, BoxBody>> + Clone,
+    C: HttpMakeConnection<A> + 'static,
+    C::Connection: Send + 'static,
+    E: ConnectExecutor<C::Connection, BoxBody> + Clone,
 {
-    pub fn new(make_conn: C, executor: E) -> Self {
+    pub fn new(connector: C, executor: E) -> Self {
+        let mut settings = tower_hyper::client::Builder::new();
+        settings.http2_only(true);
+        let tower_connect =
+            tower_hyper::client::Connect::with_executor(connector, settings, executor);
         Connect {
-            tower_connect: tower_h2::client::Connect::new(make_conn, Default::default(), executor),
+            tower_connect,
             origin: None,
             node_id: None,
         }
@@ -88,7 +93,7 @@ where
 pub struct ConnectFuture<P, A, C, E>
 where
     P: ProtocolConfig,
-    C: MakeConnection<A>,
+    C: HttpMakeConnection<A>,
 {
     state: State<P, A, C, E>,
 }
@@ -96,10 +101,10 @@ where
 enum State<P, A, C, E>
 where
     P: ProtocolConfig,
-    C: MakeConnection<A>,
+    C: HttpMakeConnection<A>,
 {
     Connecting {
-        inner: tower_h2::client::ConnectFuture<A, C, E, BoxBody>,
+        inner: tower_hyper::client::ConnectFuture<A, BoxBody, C, E>,
         origin_uri: Uri,
         node_id: Option<<P::Node as gossip::Node>::Id>,
     },
@@ -110,7 +115,7 @@ where
 impl<P, A, C, E> ConnectFuture<P, A, C, E>
 where
     P: ProtocolConfig,
-    C: MakeConnection<A>,
+    C: HttpMakeConnection<A>,
 {
     fn error(err: ConnectError<C::Error>) -> Self {
         ConnectFuture {
@@ -122,10 +127,11 @@ where
 impl<P, A, C, E> Future for ConnectFuture<P, A, C, E>
 where
     P: ProtocolConfig,
-    C: MakeConnection<A>,
-    E: Executor<Background<C::Connection, BoxBody>> + Clone,
+    C: HttpMakeConnection<A>,
+    C::Connection: Send + 'static,
+    E: ConnectExecutor<C::Connection, BoxBody>,
 {
-    type Item = Connection<P, C::Connection, E>;
+    type Item = Connection<P>;
     type Error = ConnectError<C::Error>;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let conn_ready = if let State::Connecting { inner, .. } = &mut self.state {
@@ -161,7 +167,7 @@ pub struct ConnectError<T>(ErrorKind<T>);
 
 #[derive(Debug)]
 enum ErrorKind<T> {
-    Http(tower_h2::client::ConnectError<T>),
+    Http(tower_hyper::client::ConnectError<T>),
     OriginMissing,
     InvalidOrigin(http::Error),
 }
@@ -189,8 +195,8 @@ where
     }
 }
 
-impl<T> From<tower_h2::client::ConnectError<T>> for ConnectError<T> {
-    fn from(err: tower_h2::client::ConnectError<T>) -> Self {
+impl<T> From<tower_hyper::client::ConnectError<T>> for ConnectError<T> {
+    fn from(err: tower_hyper::client::ConnectError<T>) -> Self {
         ConnectError(ErrorKind::Http(err))
     }
 }
