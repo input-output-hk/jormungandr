@@ -15,7 +15,7 @@ pub trait GossipService: P2pService {
 
     /// The type of an asynchronous stream that retrieves node gossip
     /// messages from a peer.
-    type GossipSubscription: Stream<Item = Gossip<Self::Node>, Error = Error>;
+    type GossipSubscription: Stream<Item = Gossip<Self::Node>, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `gossip_subscription`.
     ///

@@ -30,7 +30,7 @@ pub trait BlockService: P2pService {
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to `pull_blocks_to_*` methods.
-    type PullBlocksStream: Stream<Item = Self::Block, Error = Error>;
+    type PullBlocksStream: Stream<Item = Self::Block, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by `pull_blocks_to_*` methods.
     ///
@@ -40,7 +40,7 @@ pub trait BlockService: P2pService {
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to `get_blocks` method.
-    type GetBlocksStream: Stream<Item = Self::Block, Error = Error>;
+    type GetBlocksStream: Stream<Item = Self::Block, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by `get_blocks` methods.
     ///
@@ -50,7 +50,7 @@ pub trait BlockService: P2pService {
 
     /// The type of an asynchronous stream that provides block headers in
     /// response to `pull_headers_to_*` methods.
-    type PullHeadersStream: Stream<Item = Self::Header, Error = Error>;
+    type PullHeadersStream: Stream<Item = Self::Header, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by `pull_headers_to*` methods.
     ///
@@ -60,7 +60,7 @@ pub trait BlockService: P2pService {
 
     /// The type of an asynchronous stream that provides block headers in
     /// response to `get_headers` methods.
-    type GetHeadersStream: Stream<Item = Self::Header, Error = Error>;
+    type GetHeadersStream: Stream<Item = Self::Header, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by `get_headers` methods.
     ///
@@ -73,7 +73,7 @@ pub trait BlockService: P2pService {
 
     /// The type of an asynchronous stream that retrieves headers of new
     /// blocks as they are created.
-    type BlockSubscription: Stream<Item = BlockEvent<Self::Block>, Error = Error>;
+    type BlockSubscription: Stream<Item = BlockEvent<Self::Block>, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `block_subscription`.
     ///

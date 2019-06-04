@@ -25,7 +25,7 @@ pub trait ContentService: P2pService {
 
     /// The type of an asynchronous stream that provides message contents in
     /// response to `get_messages`.
-    type GetMessagesStream: Stream<Item = Self::Message, Error = Error>;
+    type GetMessagesStream: Stream<Item = Self::Message, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by `get_messages`.
     ///
@@ -35,7 +35,7 @@ pub trait ContentService: P2pService {
 
     /// The type of an asynchronous stream that provides transactions announced
     /// by the peer via the bidirectional subscription.
-    type MessageSubscription: Stream<Item = Self::Message, Error = Error>;
+    type MessageSubscription: Stream<Item = Self::Message, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `message_subscription`.
     ///
