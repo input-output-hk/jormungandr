@@ -1,6 +1,6 @@
 use cardano::util::hex;
 use chain_crypto::Blake2b256;
-use jcli_app::utils::HostAddr;
+use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -10,6 +10,8 @@ pub enum NextId {
     Get {
         #[structopt(flatten)]
         addr: HostAddr,
+        #[structopt(flatten)]
+        debug: DebugFlag,
         /// Maximum number of IDs, must be between 1 and 100, default 1
         #[structopt(short, long)]
         count: Option<usize>,
@@ -19,26 +21,20 @@ pub enum NextId {
 impl NextId {
     pub fn exec(self, block_id: String) {
         match self {
-            NextId::Get { addr, count } => exec_get(block_id, addr, count),
+            NextId::Get { addr, debug, count } => exec_get(block_id, addr, debug, count),
         }
     }
 }
 
-fn exec_get(block_id: String, addr: HostAddr, count: Option<usize>) {
+fn exec_get(block_id: String, addr: HostAddr, debug: DebugFlag, count: Option<usize>) {
     let url = addr
         .with_segments(&["v0", "block", &block_id, "next_id"])
         .unwrap()
         .into_url();
-    let mut body = vec![];
-    reqwest::Client::new()
-        .get(url)
-        .query(&[("count", count)])
-        .send()
-        .unwrap()
-        .error_for_status()
-        .unwrap()
-        .copy_to(&mut body)
-        .unwrap();
+    let builder = reqwest::Client::new().get(url).query(&[("count", count)]);
+    let response = RestApiSender::new(builder, &debug).send().unwrap();
+    response.response().error_for_status_ref().unwrap();
+    let body = response.body().binary();
     for block_id in body.chunks(Blake2b256::HASH_SIZE) {
         println!("{}", hex::encode(block_id));
     }

@@ -1,4 +1,4 @@
-use jcli_app::utils::HostAddr;
+use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -8,26 +8,24 @@ pub enum Stats {
     Get {
         #[structopt(flatten)]
         addr: HostAddr,
+        #[structopt(flatten)]
+        debug: DebugFlag,
     },
 }
 
 impl Stats {
     pub fn exec(self) {
-        let addr = match self {
-            Stats::Get { addr } => addr,
+        let (addr, debug) = match self {
+            Stats::Get { addr, debug } => (addr, debug),
         };
         let url = addr
             .with_segments(&["v0", "node", "stats"])
             .unwrap()
             .into_url();
-        let status: serde_json::Value = reqwest::Client::new()
-            .get(url)
-            .send()
-            .unwrap()
-            .error_for_status()
-            .unwrap()
-            .json()
-            .unwrap();
+        let builder = reqwest::Client::new().get(url);
+        let response = RestApiSender::new(builder, &debug).send().unwrap();
+        response.response().error_for_status_ref().unwrap();
+        let status: serde_json::Value = response.body().json().unwrap();
         let status_yaml = serde_yaml::to_string(&status).unwrap();
         println!("{}", status_yaml);
     }
