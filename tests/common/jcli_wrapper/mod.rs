@@ -6,6 +6,7 @@ pub mod jcli_transaction_wrapper;
 
 use super::configuration;
 use super::configuration::genesis_model::GenesisYaml;
+use super::data::message_log::Fragment;
 use super::data::utxo::Utxo;
 use super::file_assert;
 use super::file_utils;
@@ -280,4 +281,13 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
     single_line
+}
+
+pub fn assert_rest_message_logs(host: &str) -> Vec<Fragment> {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_rest_message_log_command(&host),
+    );
+    let content = output.as_lossy_string();
+    let fragments: Vec<Fragment> = serde_yaml::from_str(&content).unwrap();
+    fragments
 }

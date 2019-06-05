@@ -73,7 +73,6 @@ pub fn run_process_until_exited_successfully(
     command_description: &str,
     error_description: &str,
 ) {
-    let one_second = time::Duration::from_millis(&timeout * 1000);
     let mut attempts = max_attempts.clone();
 
     loop {
@@ -100,7 +99,7 @@ pub fn run_process_until_exited_successfully(
         );
 
         attempts = attempts - 1;
-        thread::sleep(one_second);
+        self::sleep(timeout);
     }
 
     if attempts <= 0 {
@@ -166,4 +165,9 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
     }
     println!("Success: {}", &command_description);
     Ok(())
+}
+
+pub fn sleep(seconds: u64) {
+    let ten_millis = time::Duration::from_millis(1000 * &seconds);
+    thread::sleep(ten_millis);
 }

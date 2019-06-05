@@ -89,4 +89,5 @@ custom_error = "1.6"
 [features]
 with-bench = []
 integration-test = []
+soak-test = []
 systemd = ["slog-journald"]
