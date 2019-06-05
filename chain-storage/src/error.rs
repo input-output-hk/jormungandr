@@ -4,6 +4,7 @@ use std::{error, fmt};
 pub enum Error {
     BlockNotFound, // FIXME: add BlockId
     CannotIterate,
+    BackendError,
 }
 
 impl fmt::Display for Error {
@@ -11,6 +12,7 @@ impl fmt::Display for Error {
         match self {
             Error::BlockNotFound => write!(f, "block not found"),
             Error::CannotIterate => write!(f, "cannot iterate between the 2 given blocks"),
+            Error::BackendError => write!(f, "miscellaneous storage error"),
         }
     }
 }
