@@ -8,7 +8,10 @@ sudo: required
 
 env:
   global:
+    - RUSTFLAGS="-C lto"
     - CRATE_NAME=jormungandr
+    - PRODUCTION_ADDRESS_PREFIX=ca
+    - TEST_ADDRESS_PREFIX=ta
 
 matrix:
   include:

@@ -3,9 +3,11 @@
 
 environment:
   global:
+    RUSTFLAGS: ""
     RUST_VERSION: stable
-
     CRATE_NAME: jormungandr
+    PRODUCTION_ADDRESS_PREFIX: ca
+    TEST_ADDRESS_PREFIX: ta
 
   # TODO These are all the build jobs. Adjust as necessary. Comment out what you
   # don't need
@@ -40,14 +42,12 @@ install:
 test_script:
   # we don't run the "test phase" when doing deploys
   - if [%APPVEYOR_REPO_TAG%]==[false] (
-      cargo build --target %TARGET% --release &&
       cargo test --target %TARGET% --features=integration-test --release
     )
 
 before_deploy:
   # TODO Update this to build the artifacts that matter to you
-  - cargo rustc --target %TARGET% --release --bin jormungandr -- -C lto
-  - cargo rustc --target %TARGET% --release --bin jcli -- -C lto
+  - cargo build --target %TARGET% --release
   - ps: ci\before_deploy.ps1
 
 deploy:

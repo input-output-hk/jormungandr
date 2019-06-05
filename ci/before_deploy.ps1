@@ -10,6 +10,7 @@ Set-Location $STAGE
 
 $ZIP = "$SRC_DIR\$($Env:CRATE_NAME)-$($Env:APPVEYOR_REPO_TAG_NAME)-$($Env:TARGET).zip"
 
+# once `cargo --out-dir` reaches stable, remove the next two lines.
 Copy-Item "$SRC_DIR\target\$($Env:TARGET)\release\jormungandr.exe" '.\'
 Copy-Item "$SRC_DIR\target\$($Env:TARGET)\release\jcli.exe" '.\'
 
