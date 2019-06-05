@@ -43,7 +43,6 @@ impl CertificateCommands {
         kes_key: &str,
         serial_id: &str,
         vrf_key: &str,
-        owner_public_key: &str,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command
@@ -55,9 +54,7 @@ impl CertificateCommands {
             .arg("--vrf-key")
             .arg(&vrf_key)
             .arg("--serial")
-            .arg(&serial_id)
-            .arg("--owner")
-            .arg(&owner_public_key);
+            .arg(&serial_id);
         command
     }
 
