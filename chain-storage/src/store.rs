@@ -525,9 +525,7 @@ pub mod test {
 
         println!(
             "fetched {} intermediate blocks ({} per test), total distance {}",
-            blocks_fetched,
-            blocks_per_test,
-            total_distance
+            blocks_fetched, blocks_per_test, total_distance
         );
 
         assert!(blocks_per_test < 35.0);
