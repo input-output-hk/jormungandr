@@ -300,7 +300,7 @@ fn compute_fast_link(depth: u64) -> u64 {
     }
 }
 
-//#[cfg(test)]
+#[cfg(any(feature = "test-api", test))]
 pub mod test {
     use super::*;
     use chain_core::packer::*;
