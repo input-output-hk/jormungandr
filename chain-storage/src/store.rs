@@ -470,10 +470,10 @@ pub mod testing {
     pub fn test_put_get<Store: BlockStore<Block = Block>>(store: &mut Store) {
         assert!(store.get_tag("tip").unwrap().is_none());
 
-        assert_eq!(
-            store.put_tag("tip", &BlockId::zero()),
-            Err(Error::BlockNotFound)
-        );
+        match store.put_tag("tip", &BlockId::zero()) {
+            Err(Error::BlockNotFound) => {}
+            err => panic!(err)
+        }
 
         let genesis_block = Block::genesis();
         store.put_block(&genesis_block).unwrap();

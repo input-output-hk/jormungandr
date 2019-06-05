@@ -138,7 +138,7 @@ where
             })
             .map_err(|err| match err {
                 rusqlite::Error::QueryReturnedNoRows => Error::BlockNotFound,
-                _ => Error::BackendError,
+                err => Error::BackendError(Box::new(err)),
             })?;
 
         let info = self.get_block_info(block_hash)?;
@@ -178,7 +178,7 @@ where
             })
             .map_err(|err| match err {
                 rusqlite::Error::QueryReturnedNoRows => Error::BlockNotFound,
-                _ => Error::BackendError,
+                err => Error::BackendError(Box::new(err)),
             })
     }
 
@@ -199,7 +199,7 @@ where
             {
                 Err(Error::BlockNotFound)
             }
-            Err(_err) => Err(Error::BackendError),
+            Err(err) => Err(Error::BackendError(Box::new(err))),
         }
     }
 
@@ -214,7 +214,7 @@ where
         {
             Ok(s) => Ok(Some(s)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(_err) => Err(Error::BackendError),
+            Err(err) => Err(Error::BackendError(Box::new(err))),
         }
     }
 
