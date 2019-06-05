@@ -54,9 +54,13 @@ where
     }
 
     fn put_tag(&mut self, tag_name: &str, block_hash: &B::Id) -> Result<(), Error> {
-        assert!(self.blocks.get(block_hash).is_some()); // FIXME: return error
-        self.tags.insert(tag_name.to_string(), block_hash.clone());
-        Ok(())
+        match self.blocks.get(block_hash) {
+            None => Err(Error::BlockNotFound),
+            Some(_) => {
+                self.tags.insert(tag_name.to_string(), block_hash.clone());
+                Ok(())
+            }
+        }
     }
 
     fn get_tag(&self, tag_name: &str) -> Result<Option<B::Id>, Error> {
