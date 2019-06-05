@@ -521,12 +521,16 @@ pub mod test {
             assert_eq!(ancestor.chain_length().0 + distance, block.chain_length().0);
         }
 
+        let blocks_per_test = blocks_fetched as f64 / nr_tests as f64;
+
         println!(
             "fetched {} intermediate blocks ({} per test), total distance {}",
             blocks_fetched,
-            blocks_fetched as f64 / nr_tests as f64,
+            blocks_per_test,
             total_distance
         );
+
+        assert!(blocks_per_test < 35.0);
     }
 
     pub fn test_iterate_range<Store: BlockStore<Block = Block>>(store: &mut Store) {
