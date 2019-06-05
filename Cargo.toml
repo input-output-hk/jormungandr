@@ -60,6 +60,7 @@ custom_error = "1.6"
 num-traits = "0.2"
 jormungandr-utils = { path = "./utils" }
 strfmt = "0.1"
+gtmpl = "0.5.6"
 mktemp = "0.4.0"
 
 [dependencies.actix-web]

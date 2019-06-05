@@ -4,6 +4,7 @@ extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
+extern crate gtmpl;
 extern crate jormungandr_utils;
 extern crate mime;
 extern crate num_traits;
