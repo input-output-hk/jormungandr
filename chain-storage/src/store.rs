@@ -301,7 +301,7 @@ fn compute_fast_link(depth: u64) -> u64 {
 }
 
 #[cfg(any(feature = "test-api", test))]
-pub mod test {
+pub mod testing {
     use super::*;
     use chain_core::packer::*;
     use chain_core::property::{Block as _, BlockDate as _, BlockId as _};

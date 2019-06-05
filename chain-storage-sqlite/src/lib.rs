@@ -226,23 +226,23 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use chain_storage::store::test::Block;
+    use chain_storage::store::testing::Block;
 
     #[test]
     pub fn put_get() {
         let mut store = SQLiteBlockStore::<Block>::new(":memory:");
-        chain_storage::store::test::test_put_get(&mut store);
+        chain_storage::store::testing::test_put_get(&mut store);
     }
 
     #[test]
     pub fn nth_ancestor() {
         let mut store = SQLiteBlockStore::<Block>::new(":memory:");
-        chain_storage::store::test::test_nth_ancestor(&mut store);
+        chain_storage::store::testing::test_nth_ancestor(&mut store);
     }
 
     #[test]
     pub fn iterate_range() {
         let mut store = SQLiteBlockStore::<Block>::new(":memory:");
-        chain_storage::store::test::test_iterate_range(&mut store);
+        chain_storage::store::testing::test_iterate_range(&mut store);
     }
 }

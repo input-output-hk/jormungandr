@@ -79,23 +79,23 @@ where
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::store::test::Block;
+    use crate::store::testing::Block;
 
     #[test]
     pub fn put_get() {
         let mut store = MemoryBlockStore::<Block>::new();
-        crate::store::test::test_put_get(&mut store);
+        crate::store::testing::test_put_get(&mut store);
     }
 
     #[test]
     pub fn nth_ancestor() {
         let mut store = MemoryBlockStore::<Block>::new();
-        crate::store::test::test_nth_ancestor(&mut store);
+        crate::store::testing::test_nth_ancestor(&mut store);
     }
 
     #[test]
     pub fn iterate_range() {
         let mut store = MemoryBlockStore::<Block>::new();
-        crate::store::test::test_iterate_range(&mut store);
+        crate::store::testing::test_iterate_range(&mut store);
     }
 }
