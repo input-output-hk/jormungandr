@@ -23,7 +23,6 @@ pub fn test_create_and_sign_new_stake_delegation() {
         &kes_public_key,
         &serial_id,
         &vrf_public_key,
-        &owner_public_key,
     );
 
     let input_file = file_utils::create_file_in_temp("certificate", &certificate);

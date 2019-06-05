@@ -4,16 +4,25 @@ extern crate rand;
 extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
 use common::file_utils;
+use std::option::Option;
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SecretModel {
-    pub bft: BFT,
+    pub bft: Option<BFT>,
+    pub genesis: Option<Genesis>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BFT {
     pub signing_key: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Genesis {
+    pub sig_key: String,
+    pub vrf_key: String,
+    pub node_id: String,
 }
 
 impl SecretModel {
@@ -24,14 +33,29 @@ impl SecretModel {
     }
 
     pub fn empty() -> Self {
-        SecretModel::new("")
+        SecretModel {
+            bft: None,
+            genesis: None,
+        }
     }
 
-    pub fn new(signing_key: &str) -> Self {
+    pub fn new_bft(signing_key: &str) -> Self {
         SecretModel {
-            bft: BFT {
+            bft: Some(BFT {
                 signing_key: signing_key.to_string(),
-            },
+            }),
+            genesis: None,
+        }
+    }
+
+    pub fn new_genesis(signing_key: &str, vrf_key: &str, node_id: &str) -> Self {
+        SecretModel {
+            genesis: Some(Genesis {
+                sig_key: signing_key.to_string(),
+                vrf_key: vrf_key.to_string(),
+                node_id: node_id.to_string(),
+            }),
+            bft: None,
         }
     }
 }

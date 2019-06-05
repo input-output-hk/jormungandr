@@ -55,7 +55,15 @@ pub fn create_file_with_content(path: &PathBuf, content: &str) -> () {
 
 pub fn read_file(path: &PathBuf) -> String {
     let contents = fs::read_to_string(path).expect("cannot read file");
-    contents
+    trim_new_line_at_end(contents)
+}
+
+fn trim_new_line_at_end(mut content: String) -> String {
+    if content.ends_with("\n") {
+        let len = content.len();
+        content.truncate(len - 1);
+    }
+    content
 }
 
 pub fn make_readonly(path: &PathBuf) {

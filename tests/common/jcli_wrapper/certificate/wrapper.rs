@@ -46,16 +46,11 @@ impl JCLICertificateWrapper {
         kes_key: &str,
         serial_id: &str,
         vrf_key: &str,
-        owner_public_key: &str,
     ) -> String {
         println!("Running new stake pool registration...");
         let output = process_utils::run_process_and_get_output(
-            self.commands.get_stake_pool_registration_command(
-                &kes_key,
-                &serial_id,
-                &vrf_key,
-                &owner_public_key,
-            ),
+            self.commands
+                .get_stake_pool_registration_command(&kes_key, &serial_id, &vrf_key),
         );
         let certification = output.as_single_line();
         process_assert::assert_process_exited_successfully(output);

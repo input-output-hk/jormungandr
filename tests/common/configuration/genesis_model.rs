@@ -63,6 +63,8 @@ pub struct GenesisYaml {
     pub initial_funds: Option<Vec<Fund>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub legacy_funds: Option<Vec<Fund>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub initial_certs: Vec<String>,
 }
 
 impl GenesisYaml {
@@ -141,6 +143,7 @@ impl GenesisYaml {
                 kes_update_speed: 12 * 3600,
             },
             initial_funds: initial_funds,
+            initial_certs: vec![],
             legacy_funds: legacy_funds,
         }
     }
