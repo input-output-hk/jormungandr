@@ -224,7 +224,7 @@ where
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use chain_storage::store::testing::Block;
 

@@ -77,7 +77,7 @@ where
 }
 
 #[cfg(test)]
-pub mod test {
+mod tests {
     use super::*;
     use crate::store::testing::Block;
 
