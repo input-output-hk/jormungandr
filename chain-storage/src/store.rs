@@ -300,14 +300,14 @@ fn compute_fast_link(depth: u64) -> u64 {
     }
 }
 
-#[cfg(test)]
+//#[cfg(test)]
 pub mod test {
     use super::*;
     use chain_core::packer::*;
     use chain_core::property::{Block as _, BlockDate as _, BlockId as _};
-    use std::sync::atomic::{AtomicU64, Ordering};
     use rand::Rng;
     use std::collections::HashMap;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Copy)]
     pub struct BlockId(pub u64);
@@ -338,8 +338,9 @@ pub mod test {
     impl chain_core::property::Deserialize for BlockId {
         type Error = std::io::Error;
 
-        fn deserialize<R: std::io::BufRead>(_reader: R) -> Result<Self, Self::Error> {
-            panic!()
+        fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+            let mut codec = Codec::new(reader);
+            Ok(Self(codec.get_u64()?))
         }
     }
 
@@ -503,8 +504,15 @@ pub mod test {
             let distance = rng.gen_range(0, block.chain_length().0);
             total_distance += distance;
 
-            let ancestor_info = store.get_path_to_nth_ancestor(&block.id(), distance,
-                                                               Box::new(|_| { blocks_fetched += 1; })).unwrap();
+            let ancestor_info = store
+                .get_path_to_nth_ancestor(
+                    &block.id(),
+                    distance,
+                    Box::new(|_| {
+                        blocks_fetched += 1;
+                    }),
+                )
+                .unwrap();
 
             assert_eq!(ancestor_info.depth + distance, block.chain_length().0);
 
@@ -513,7 +521,12 @@ pub mod test {
             assert_eq!(ancestor.chain_length().0 + distance, block.chain_length().0);
         }
 
-        println!("fetched {} intermediate blocks ({} per test), total distance {}", blocks_fetched, blocks_fetched as f64 / nr_tests as f64, total_distance);
+        println!(
+            "fetched {} intermediate blocks ({} per test), total distance {}",
+            blocks_fetched,
+            blocks_fetched as f64 / nr_tests as f64,
+            total_distance
+        );
     }
 
     pub fn test_iterate_range<Store: BlockStore<Block = Block>>(store: &mut Store) {
@@ -545,7 +558,7 @@ pub mod test {
                         cur = blocks_by_id[&cur].parent_id();
                     }
                 }
-                Err(_) => panic!()
+                Err(_) => panic!(),
             }
         }
     }

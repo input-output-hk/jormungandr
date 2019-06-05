@@ -222,3 +222,27 @@ where
         self as &BlockStore<Block = Self::Block>
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use chain_storage::store::test::Block;
+
+    #[test]
+    pub fn put_get() {
+        let mut store = SQLiteBlockStore::<Block>::new(":memory:");
+        chain_storage::store::test::test_put_get(&mut store);
+    }
+
+    #[test]
+    pub fn nth_ancestor() {
+        let mut store = SQLiteBlockStore::<Block>::new(":memory:");
+        chain_storage::store::test::test_nth_ancestor(&mut store);
+    }
+
+    #[test]
+    pub fn iterate_range() {
+        let mut store = SQLiteBlockStore::<Block>::new(":memory:");
+        chain_storage::store::test::test_iterate_range(&mut store);
+    }
+}

@@ -11,8 +11,9 @@ edition = "2018"
 
 [dependencies]
 chain-core = { path = "../chain-core" }
+rand = "0.6"
 
 [dev-dependencies]
-rand = "0.6"
+#rand = "0.6"
 
 [features]
