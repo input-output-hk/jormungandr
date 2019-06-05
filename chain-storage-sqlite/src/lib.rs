@@ -183,7 +183,8 @@ where
     }
 
     fn put_tag(&mut self, tag_name: &str, block_hash: &B::Id) -> Result<(), Error> {
-        self.pool
+        match self
+            .pool
             .get()
             .unwrap()
             .prepare_cached("insert or replace into Tags (name, hash) values(?, ?)")
@@ -191,9 +192,15 @@ where
             .execute(&[
                 Value::Text(tag_name.to_string()),
                 Value::Blob(block_hash.serialize_as_vec().unwrap()),
-            ])
-            .unwrap();
-        Ok(())
+            ]) {
+            Ok(_) => Ok(()),
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == rusqlite::ErrorCode::ConstraintViolation =>
+            {
+                Err(Error::BlockNotFound)
+            }
+            Err(err) => panic!(err),
+        }
     }
 
     fn get_tag(&self, tag_name: &str) -> Result<Option<B::Id>, Error> {
