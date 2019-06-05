@@ -24,9 +24,7 @@ pub fn test_create_and_sign_new_stake_delegation() {
     );
 
     let input_file = file_utils::create_file_in_temp("certificate", &certificate);
-    let output_file = file_utils::get_path_in_temp("pool_id");
-
-    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(&input_file, &output_file);
+    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(&input_file);
     let certificate =
         certificate_wrapper.assert_new_stake_delegation(&stake_pool_id, &owner_public_key);
 

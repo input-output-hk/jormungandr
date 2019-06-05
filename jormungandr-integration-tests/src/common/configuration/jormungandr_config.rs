@@ -5,7 +5,7 @@ use crate::common::configuration::node_config_model::NodeConfig;
 use crate::common::configuration::secret_model::SecretModel;
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JormungandrConfig {
     pub genesis_block_path: PathBuf,
     pub genesis_block_hash: String,
