@@ -9,6 +9,7 @@ pub struct BlockInfo<Id: BlockId> {
     /// hash has depth 1, its children have depth 2, and so on. Note
     /// that there is no block with depth 0 because there is no block
     /// with the zero hash.
+    // FIXME: rename to chain_length
     pub depth: u64,
 
     /// One or more ancestors of this block. Must include at least the
