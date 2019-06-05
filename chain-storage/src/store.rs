@@ -472,7 +472,7 @@ pub mod testing {
 
         match store.put_tag("tip", &BlockId::zero()) {
             Err(Error::BlockNotFound) => {}
-            err => panic!(err)
+            err => panic!(err),
         }
 
         let genesis_block = Block::genesis();
