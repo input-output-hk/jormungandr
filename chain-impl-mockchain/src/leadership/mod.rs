@@ -9,7 +9,6 @@ use chain_time::era::TimeEra;
 
 pub mod bft;
 pub mod genesis;
-pub mod none;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
@@ -66,7 +65,6 @@ pub enum LeaderOutput {
 }
 
 enum LeadershipConsensus {
-    None(none::NoLeadership),
     Bft(bft::BftLeaderSelection),
     GenesisPraos(genesis::GenesisLeaderSelection),
 }
@@ -87,9 +85,6 @@ impl LeadershipConsensus {
     #[inline]
     fn verify_version(&self, block_version: AnyBlockVersion) -> Verification {
         match self {
-            LeadershipConsensus::None(_) if block_version == BlockVersion::Genesis => {
-                Verification::Success
-            }
             LeadershipConsensus::Bft(_) if block_version == BlockVersion::Ed25519Signed => {
                 Verification::Success
             }
@@ -103,7 +98,6 @@ impl LeadershipConsensus {
     #[inline]
     fn verify_leader(&self, block_header: &Header) -> Verification {
         match self {
-            LeadershipConsensus::None(none) => none.verify(block_header),
             LeadershipConsensus::Bft(bft) => bft.verify(block_header),
             LeadershipConsensus::GenesisPraos(genesis_praos) => genesis_praos.verify(block_header),
         }
@@ -112,7 +106,6 @@ impl LeadershipConsensus {
     #[inline]
     fn is_leader(&self, leader: &Leader, date: BlockDate) -> Result<LeaderOutput, Error> {
         match self {
-            LeadershipConsensus::None(_none) => Ok(LeaderOutput::None),
             LeadershipConsensus::Bft(bft) => match leader.bft_leader {
                 Some(ref bft_leader) => {
                     let bft_leader_id = bft.get_leader_at(date)?;
