@@ -7,6 +7,7 @@ the initial utxo, the start time, the slot duration time, etc...
 Example of a BFT genesis file with an initial address UTxO and an account UTxO.
 More info regarding [starting a BFT blockchain here](./02_starting_bft_blockchain.md)
 and [regarding addresses there](../jcli/address.md).
+You could also find information regarding the [jcli genesis tooling](../jcli/genesis.md).
 
 You can generate a documented pre-generated genesis file:
 
