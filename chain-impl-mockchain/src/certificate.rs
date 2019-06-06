@@ -219,44 +219,6 @@ impl Readable for StakeKeyRegistration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakeKeyDeregistration {
-    pub stake_key_id: StakeKeyId,
-}
-
-impl StakeKeyDeregistration {
-    pub fn make_certificate(&self, stake_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
-        use crate::key::make_signature;
-        SignatureRaw(make_signature(stake_private_key, &self).as_ref().to_vec())
-    }
-}
-
-impl<'a> HasPublicKeys<'a> for &'a StakeKeyDeregistration {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
-
-    fn public_keys(self) -> Self::PublicKeys {
-        iter::once(&self.stake_key_id.0)
-    }
-}
-
-impl property::Serialize for StakeKeyDeregistration {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        use chain_core::packer::*;
-        let mut codec = Codec::new(writer);
-        self.stake_key_id.serialize(&mut codec)?;
-        Ok(())
-    }
-}
-
-impl Readable for StakeKeyDeregistration {
-    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        Ok(StakeKeyDeregistration {
-            stake_key_id: StakeKeyId::read(buf)?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeDelegation {
     pub stake_key_id: StakeKeyId,
     pub pool_id: StakePoolId,
