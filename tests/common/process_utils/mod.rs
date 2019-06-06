@@ -168,6 +168,6 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
 }
 
 pub fn sleep(seconds: u64) {
-    let ten_millis = time::Duration::from_millis(1000 * &seconds);
-    thread::sleep(ten_millis);
+    let duration = time::Duration::from_secs(seconds);
+    thread::sleep(duration);
 }

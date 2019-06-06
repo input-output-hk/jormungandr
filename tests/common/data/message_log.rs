@@ -11,13 +11,24 @@ pub struct Fragment {
 
 impl Fragment {
     pub fn is_in_block(&self) -> bool {
-        if self.status.is_string() {
+        if self.is_status_a_string() {
             return false;
         }
         match self.status.get("InABlock") {
             Some(_) => true,
             None => false,
         }
+    }
+
+    pub fn is_pending(&self) -> bool {
+        if !self.is_status_a_string() {
+            return false;
+        }
+        self.status.as_str().unwrap() == "Pending"
+    }
+
+    fn is_status_a_string(&self) -> bool {
+        self.status.is_string()
     }
 }
 

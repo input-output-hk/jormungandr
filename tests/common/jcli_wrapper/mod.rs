@@ -291,3 +291,25 @@ pub fn assert_rest_message_logs(host: &str) -> Vec<Fragment> {
     let fragments: Vec<Fragment> = serde_yaml::from_str(&content).unwrap();
     fragments
 }
+
+pub fn assert_transaction_in_block(transaction_message: &str, transaction_id: &str, host: &str) {
+    self::assert_transaction_post_accepted(&transaction_message, &host);
+    process_utils::run_process_until_response_matches(
+        jcli_commands::get_rest_message_log_command(&host),
+        |output| {
+            let content = output.as_lossy_string();
+            let fragments: Vec<Fragment> = serde_yaml::from_str(&content).unwrap();
+            match fragments.iter().find(|x| x.fragment_id == transaction_id) {
+                Some(x) => !x.is_pending(),
+                None => false,
+            }
+        },
+        1,
+        5,
+        &format!(
+            "Waiting for transaction {} to be inBlock or rejected",
+            &transaction_id
+        ),
+        "transaction is pending for too long",
+    );
+}
