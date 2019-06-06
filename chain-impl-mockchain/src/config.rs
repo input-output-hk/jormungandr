@@ -55,7 +55,6 @@ pub enum ConfigParam {
     BftSlotsRatio(Milli),
     AddBftLeader(LeaderId),
     RemoveBftLeader(LeaderId),
-    AllowAccountCreation(bool),
     LinearFee(LinearFee),
     ProposalExpiration(u32),
     KESUpdateSpeed(u32),
@@ -86,8 +85,6 @@ enum Tag {
     AddBftLeader = 11,
     #[strum(to_string = "remove-bft-leader")]
     RemoveBftLeader = 12,
-    #[strum(to_string = "allow-account-creation")]
-    AllowAccountCreation = 13,
     #[strum(to_string = "linear-fee")]
     LinearFee = 14,
     #[strum(to_string = "proposal-expiration")]
@@ -112,7 +109,6 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::BftSlotsRatio(_) => Tag::BftSlotsRatio,
             ConfigParam::AddBftLeader(_) => Tag::AddBftLeader,
             ConfigParam::RemoveBftLeader(_) => Tag::RemoveBftLeader,
-            ConfigParam::AllowAccountCreation(_) => Tag::AllowAccountCreation,
             ConfigParam::LinearFee(_) => Tag::LinearFee,
             ConfigParam::ProposalExpiration(_) => Tag::ProposalExpiration,
             ConfigParam::KESUpdateSpeed(_) => Tag::KESUpdateSpeed,
@@ -154,9 +150,6 @@ impl Readable for ConfigParam {
             Tag::RemoveBftLeader => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::RemoveBftLeader)
             }
-            Tag::AllowAccountCreation => {
-                ConfigParamVariant::from_payload(bytes).map(ConfigParam::AllowAccountCreation)
-            }
             Tag::LinearFee => ConfigParamVariant::from_payload(bytes).map(ConfigParam::LinearFee),
             Tag::ProposalExpiration => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::ProposalExpiration)
@@ -186,7 +179,6 @@ impl property::Serialize for ConfigParam {
             ConfigParam::BftSlotsRatio(data) => data.to_payload(),
             ConfigParam::AddBftLeader(data) => data.to_payload(),
             ConfigParam::RemoveBftLeader(data) => data.to_payload(),
-            ConfigParam::AllowAccountCreation(data) => data.to_payload(),
             ConfigParam::LinearFee(data) => data.to_payload(),
             ConfigParam::ProposalExpiration(data) => data.to_payload(),
             ConfigParam::KESUpdateSpeed(data) => data.to_payload(),
@@ -418,7 +410,7 @@ mod test {
 
     impl Arbitrary for ConfigParam {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match u8::arbitrary(g) % 13 {
+            match u8::arbitrary(g) % 12 {
                 0 => ConfigParam::Block0Date(Arbitrary::arbitrary(g)),
                 1 => ConfigParam::Discrimination(Arbitrary::arbitrary(g)),
                 2 => ConfigParam::ConsensusVersion(Arbitrary::arbitrary(g)),
@@ -429,9 +421,8 @@ mod test {
                 7 => ConfigParam::BftSlotsRatio(Arbitrary::arbitrary(g)),
                 8 => ConfigParam::AddBftLeader(Arbitrary::arbitrary(g)),
                 9 => ConfigParam::RemoveBftLeader(Arbitrary::arbitrary(g)),
-                10 => ConfigParam::AllowAccountCreation(Arbitrary::arbitrary(g)),
-                11 => ConfigParam::LinearFee(Arbitrary::arbitrary(g)),
-                12 => ConfigParam::ProposalExpiration(Arbitrary::arbitrary(g)),
+                10 => ConfigParam::LinearFee(Arbitrary::arbitrary(g)),
+                11 => ConfigParam::ProposalExpiration(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),
             }
         }

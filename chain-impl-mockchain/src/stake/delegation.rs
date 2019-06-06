@@ -17,15 +17,8 @@ pub struct DelegationState {
     pub(crate) stake_pools: PoolTable,
 }
 
-pub enum CertificateApplyOutput {
-    None,
-    CreateAccount(StakeKeyId),
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DelegationError {
-    StakeKeyAlreadyRegistered,
-    StakeKeyRegistrationSigIsInvalid,
     StakeDelegationSigIsInvalid,
     StakeDelegationStakeKeyIsInvalid(StakeKeyId),
     StakeDelegationPoolKeyIsInvalid(StakePoolId),
@@ -38,14 +31,6 @@ pub enum DelegationError {
 impl std::fmt::Display for DelegationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            DelegationError::StakeKeyAlreadyRegistered => write!(
-                f,
-                "Stake key already registered"
-            ),
-            DelegationError::StakeKeyRegistrationSigIsInvalid => write!(
-                f,
-                "Block has a stake key registration certificate with an invalid signature"
-            ),
             DelegationError::StakeDelegationSigIsInvalid => write!(
                 f,
                 "Block has a stake delegation certificate with an invalid signature"
@@ -102,16 +87,6 @@ impl DelegationState {
             .map_or_else(|| false, |_| true)
     }
 
-    pub fn register_stake_key(&self, stake_key_id: StakeKeyId) -> Result<Self, DelegationError> {
-        Ok(DelegationState {
-            stake_keys: self
-                .stake_keys
-                .insert(stake_key_id, StakeKeyInfo { pool: None })
-                .map_err(|_| DelegationError::StakeKeyAlreadyRegistered)?,
-            stake_pools: self.stake_pools.clone(),
-        })
-    }
-
     //pub fn get_stake_pools(&self) -> &HashMap<GenesisPraosId, StakePoolInfo> {
     //    &self.stake_pools
     //}
@@ -166,12 +141,8 @@ impl DelegationState {
         })
     }
 
-    pub(crate) fn apply(
-        &self,
-        certificate: &Certificate,
-    ) -> Result<(Self, CertificateApplyOutput), DelegationError> {
+    pub(crate) fn apply(&self, certificate: &Certificate) -> Result<Self, DelegationError> {
         let mut new_state = self.clone();
-        let mut output = CertificateApplyOutput::None;
 
         match certificate.content {
             CertificateContent::StakeDelegation(ref reg) => {
@@ -184,10 +155,6 @@ impl DelegationState {
                 new_state =
                     new_state.delegate_stake(reg.stake_key_id.clone(), reg.pool_id.clone())?
             }
-            CertificateContent::StakeKeyRegistration(ref reg) => {
-                new_state = new_state.register_stake_key(reg.stake_key_id.clone())?;
-                output = CertificateApplyOutput::CreateAccount(reg.stake_key_id.clone());
-            }
             CertificateContent::StakePoolRegistration(ref reg) => {
                 new_state = new_state.register_stake_pool(reg.clone())?
             }
@@ -196,6 +163,6 @@ impl DelegationState {
             }
         }
 
-        Ok((new_state, output))
+        Ok(new_state)
     }
 }
