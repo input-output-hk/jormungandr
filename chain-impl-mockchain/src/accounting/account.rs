@@ -4,6 +4,7 @@
 //! which contains a non negative value representing your balance with the
 //! identifier of this account as key.
 
+use crate::stake::StakePoolId;
 use crate::value::*;
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
@@ -39,6 +40,7 @@ impl From<InsertError> for LedgerError {
 #[derive(Clone)]
 pub struct AccountState<Extra> {
     counter: SpendingCounter,
+    delegation: Option<StakePoolId>,
     value: Value,
     extra: Extra,
 }
@@ -48,6 +50,7 @@ impl<Extra: Clone> AccountState<Extra> {
     pub fn new(v: Value, e: Extra) -> Self {
         Self {
             counter: SpendingCounter(0),
+            delegation: None,
             value: v,
             extra: e,
         }
@@ -61,6 +64,18 @@ impl<Extra: Clone> AccountState<Extra> {
         let mut st = self.clone();
         st.value = new_value;
         Ok(st)
+    }
+
+    /// Set delegation
+    pub fn set_delegation(&self, delegation: Option<StakePoolId>) -> Self {
+        let mut st = self.clone();
+        st.delegation = delegation;
+        st
+    }
+
+    /// Get referencet to delegation setting
+    pub fn delegation(&self) -> &Option<StakePoolId> {
+        &self.delegation
     }
 
     /// Subtract a value from an account state, and return the new state.
@@ -82,6 +97,7 @@ impl<Extra: Clone> AccountState<Extra> {
             }
             Some(new_counter) => Ok(Some(Self {
                 counter: new_counter,
+                delegation: self.delegation.clone(),
                 value: new_value,
                 extra: self.extra.clone(),
             })),
@@ -153,6 +169,18 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
     ) -> Result<Self, LedgerError> {
         self.0
             .insert(identifier.clone(), AccountState::new(initial_value, extra))
+            .map(Ledger)
+            .map_err(|e| e.into())
+    }
+
+    /// Set the delegation of an account in this ledger
+    pub fn set_delegation(
+        &self,
+        identifier: &ID,
+        delegation: Option<StakePoolId>,
+    ) -> Result<Self, LedgerError> {
+        self.0
+            .update(identifier, |st| Ok(Some(st.set_delegation(delegation))))
             .map(Ledger)
             .map_err(|e| e.into())
     }
