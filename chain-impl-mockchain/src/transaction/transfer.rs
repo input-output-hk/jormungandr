@@ -25,6 +25,7 @@ pub enum InputType {
 }
 
 /// This is either an single account or a multisig account depending on the witness type
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AccountIdentifier([u8; INPUT_PTR_SIZE]);
 
 impl AccountIdentifier {
@@ -46,6 +47,12 @@ impl AccountIdentifier {
         let mut buf = [0u8; INPUT_PTR_SIZE];
         buf.copy_from_slice(identifier.as_ref());
         AccountIdentifier(buf)
+    }
+}
+
+impl From<[u8; INPUT_PTR_SIZE]> for AccountIdentifier {
+    fn from(v: [u8; INPUT_PTR_SIZE]) -> Self {
+        AccountIdentifier(v)
     }
 }
 
