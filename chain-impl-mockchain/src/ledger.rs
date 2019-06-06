@@ -1168,6 +1168,7 @@ pub mod test {
             self
         }
 
+        #[allow(dead_code)]
         pub fn with_outputs<'a>(
             &'a mut self,
             outputs: Vec<Output<Address>>,
