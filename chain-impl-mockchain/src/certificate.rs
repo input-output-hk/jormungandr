@@ -43,10 +43,6 @@ impl Certificate {
                 let signature = v.make_certificate(secret_key);
                 self.signatures.push(signature);
             }
-            CertificateContent::StakeKeyDeregistration(v) => {
-                let signature = v.make_certificate(secret_key);
-                self.signatures.push(signature);
-            }
             CertificateContent::StakeDelegation(v) => {
                 let signature = v.make_certificate(secret_key);
                 self.signatures.push(signature);
@@ -65,9 +61,6 @@ impl Certificate {
     pub fn verify(&self) -> Verification {
         match &self.content {
             CertificateContent::StakeKeyRegistration(v) => verify_certificate(v, &self.signatures),
-            CertificateContent::StakeKeyDeregistration(v) => {
-                verify_certificate(v, &self.signatures)
-            }
             CertificateContent::StakeDelegation(v) => verify_certificate(v, &self.signatures),
             CertificateContent::StakePoolRegistration(v) => verify_certificate(v, &self.signatures),
             CertificateContent::StakePoolRetirement(v) => verify_certificate(v, &self.signatures),
@@ -115,7 +108,6 @@ where
 #[derive(Debug, Clone)]
 pub enum CertificateContent {
     StakeKeyRegistration(StakeKeyRegistration),
-    StakeKeyDeregistration(StakeKeyDeregistration),
     StakeDelegation(StakeDelegation),
     StakePoolRegistration(StakePoolInfo),
     StakePoolRetirement(StakePoolRetirement),
@@ -123,11 +115,10 @@ pub enum CertificateContent {
 
 #[derive(FromPrimitive)]
 enum CertificateTag {
-    StakeKeyRegistration = 1,
-    StakeKeyDeregistration = 2,
-    StakeDelegation = 3,
-    StakePoolRegistration = 4,
-    StakePoolRetirement = 5,
+    StakeDelegation = 1,
+    StakePoolRegistration = 2,
+    StakePoolRetirement = 3,
+    StakeKeyRegistration = 4,
 }
 
 impl property::Serialize for Certificate {
@@ -138,10 +129,6 @@ impl property::Serialize for Certificate {
         match &self.content {
             CertificateContent::StakeKeyRegistration(s) => {
                 codec.put_u8(CertificateTag::StakeKeyRegistration as u8)?;
-                s.serialize(&mut codec)
-            }
-            CertificateContent::StakeKeyDeregistration(s) => {
-                codec.put_u8(CertificateTag::StakeKeyDeregistration as u8)?;
                 s.serialize(&mut codec)
             }
             CertificateContent::StakeDelegation(s) => {
@@ -171,9 +158,6 @@ impl Readable for Certificate {
         let content = match CertificateTag::from_u8(tag) {
             Some(CertificateTag::StakeKeyRegistration) => {
                 CertificateContent::StakeKeyRegistration(StakeKeyRegistration::read(buf)?)
-            }
-            Some(CertificateTag::StakeKeyDeregistration) => {
-                CertificateContent::StakeKeyDeregistration(StakeKeyDeregistration::read(buf)?)
             }
             Some(CertificateTag::StakePoolRegistration) => {
                 CertificateContent::StakePoolRegistration(StakePoolInfo::read(buf)?)
@@ -388,12 +372,11 @@ mod test {
 
     impl Arbitrary for Certificate {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let content = match g.next_u32() % 5 {
-                0 => CertificateContent::StakeKeyRegistration(Arbitrary::arbitrary(g)),
-                1 => CertificateContent::StakeKeyDeregistration(Arbitrary::arbitrary(g)),
-                2 => CertificateContent::StakeDelegation(Arbitrary::arbitrary(g)),
-                3 => CertificateContent::StakePoolRegistration(Arbitrary::arbitrary(g)),
-                _ => CertificateContent::StakePoolRetirement(Arbitrary::arbitrary(g)),
+            let content = match g.next_u32() % 4 {
+                0 => CertificateContent::StakeDelegation(Arbitrary::arbitrary(g)),
+                1 => CertificateContent::StakePoolRegistration(Arbitrary::arbitrary(g)),
+                2 => CertificateContent::StakePoolRetirement(Arbitrary::arbitrary(g)),
+                _ => CertificateContent::StakeKeyRegistration(Arbitrary::arbitrary(g)),
             };
             let signatures = Arbitrary::arbitrary(g);
             Certificate {
@@ -412,14 +395,6 @@ mod test {
     impl Arbitrary for StakeKeyRegistration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             StakeKeyRegistration {
-                stake_key_id: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-
-    impl Arbitrary for StakeKeyDeregistration {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            StakeKeyDeregistration {
                 stake_key_id: Arbitrary::arbitrary(g),
             }
         }

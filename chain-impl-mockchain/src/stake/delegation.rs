@@ -26,8 +26,6 @@ pub enum CertificateApplyOutput {
 pub enum DelegationError {
     StakeKeyAlreadyRegistered,
     StakeKeyRegistrationSigIsInvalid,
-    StakeKeyDeregistrationSigIsInvalid,
-    StakeKeyDeregistrationDoesNotExist,
     StakeDelegationSigIsInvalid,
     StakeDelegationStakeKeyIsInvalid(StakeKeyId),
     StakeDelegationPoolKeyIsInvalid(StakePoolId),
@@ -47,14 +45,6 @@ impl std::fmt::Display for DelegationError {
             DelegationError::StakeKeyRegistrationSigIsInvalid => write!(
                 f,
                 "Block has a stake key registration certificate with an invalid signature"
-            ),
-            DelegationError::StakeKeyDeregistrationSigIsInvalid => write!(
-                f,
-                "Block has a stake key deregistration certificate with an invalid signature"
-            ),
-            DelegationError::StakeKeyDeregistrationDoesNotExist => write!(
-                f,
-                "The Stake Key cannot be deregistered as it does not exist"
             ),
             DelegationError::StakeDelegationSigIsInvalid => write!(
                 f,
@@ -118,16 +108,6 @@ impl DelegationState {
                 .stake_keys
                 .insert(stake_key_id, StakeKeyInfo { pool: None })
                 .map_err(|_| DelegationError::StakeKeyAlreadyRegistered)?,
-            stake_pools: self.stake_pools.clone(),
-        })
-    }
-
-    pub fn deregister_stake_key(&self, stake_key_id: &StakeKeyId) -> Result<Self, DelegationError> {
-        Ok(DelegationState {
-            stake_keys: self
-                .stake_keys
-                .remove(&stake_key_id)
-                .map_err(|_| DelegationError::StakeKeyDeregistrationDoesNotExist)?,
             stake_pools: self.stake_pools.clone(),
         })
     }
@@ -207,10 +187,6 @@ impl DelegationState {
             CertificateContent::StakeKeyRegistration(ref reg) => {
                 new_state = new_state.register_stake_key(reg.stake_key_id.clone())?;
                 output = CertificateApplyOutput::CreateAccount(reg.stake_key_id.clone());
-            }
-            CertificateContent::StakeKeyDeregistration(ref reg) => {
-                new_state = new_state.deregister_stake_key(&reg.stake_key_id)?;
-                // don't delete account
             }
             CertificateContent::StakePoolRegistration(ref reg) => {
                 new_state = new_state.register_stake_pool(reg.clone())?
