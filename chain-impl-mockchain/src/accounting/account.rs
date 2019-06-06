@@ -37,17 +37,19 @@ impl From<InsertError> for LedgerError {
 }
 
 #[derive(Clone)]
-pub struct AccountState {
+pub struct AccountState<Extra> {
     counter: SpendingCounter,
     value: Value,
+    extra: Extra,
 }
 
-impl AccountState {
+impl<Extra: Clone> AccountState<Extra> {
     /// Create a new account state with a specific start value
-    pub fn new(v: Value) -> Self {
+    pub fn new(v: Value, e: Extra) -> Self {
         Self {
             counter: SpendingCounter(0),
             value: v,
+            extra: e,
         }
     }
 
@@ -81,6 +83,7 @@ impl AccountState {
             Some(new_counter) => Ok(Some(Self {
                 counter: new_counter,
                 value: new_value,
+                extra: self.extra.clone(),
             })),
         }
     }
@@ -131,9 +134,9 @@ impl Into<u32> for SpendingCounter {
 
 /// The public ledger of all accounts associated with their current state
 #[derive(Clone)]
-pub struct Ledger<ID: Hash + Eq>(Hamt<DefaultHasher, ID, AccountState>);
+pub struct Ledger<ID: Hash + Eq, Extra>(Hamt<DefaultHasher, ID, AccountState<Extra>>);
 
-impl<ID: Clone + Eq + Hash> Ledger<ID> {
+impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
     /// Create a new empty account ledger
     pub fn new() -> Self {
         Ledger(Hamt::new())
@@ -142,9 +145,14 @@ impl<ID: Clone + Eq + Hash> Ledger<ID> {
     /// Add a new account into this ledger.
     ///
     /// If the identifier is already present, error out.
-    pub fn add_account(&self, identifier: &ID, initial_value: Value) -> Result<Self, LedgerError> {
+    pub fn add_account(
+        &self,
+        identifier: &ID,
+        initial_value: Value,
+        extra: Extra,
+    ) -> Result<Self, LedgerError> {
         self.0
-            .insert(identifier.clone(), AccountState::new(initial_value))
+            .insert(identifier.clone(), AccountState::new(initial_value, extra))
             .map(Ledger)
             .map_err(|e| e.into())
     }
@@ -158,7 +166,7 @@ impl<ID: Clone + Eq + Hash> Ledger<ID> {
     /// Get account state
     ///
     /// If the identifier does not match any account, error out
-    pub fn get_state(&self, account: &ID) -> Result<&AccountState, LedgerError> {
+    pub fn get_state(&self, account: &ID) -> Result<&AccountState<Extra>, LedgerError> {
         self.0.lookup(account).ok_or(LedgerError::NonExistent)
     }
 

@@ -9,7 +9,7 @@ use crate::value::{Value, ValueError};
 pub struct Ledger {
     // TODO : investigate about merging the declarations and the accounts in
     // one with an extension on the account::Ledger
-    accounts: account::Ledger<Identifier>,
+    accounts: account::Ledger<Identifier, ()>,
     declarations: Hamt<DefaultHasher, Identifier, Declaration>,
 }
 
@@ -57,7 +57,7 @@ impl Ledger {
         let new_decls = self
             .declarations
             .insert(identifier.clone(), declaration.clone())?;
-        let new_accts = self.accounts.add_account(&identifier, Value::zero())?;
+        let new_accts = self.accounts.add_account(&identifier, Value::zero(), ())?;
         Ok(Self {
             accounts: new_accts,
             declarations: new_decls,

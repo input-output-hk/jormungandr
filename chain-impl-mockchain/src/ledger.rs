@@ -470,7 +470,7 @@ impl Ledger {
             CertificateApplyOutput::CreateAccount(stake_key_id) => {
                 let account = stake_key_id.0.clone().into();
                 if !self.accounts.exists(&account) {
-                    self.accounts = self.accounts.add_account(&account, Value::zero())?;
+                    self.accounts = self.accounts.add_account(&account, Value::zero(), ())?;
                 } else {
                     // it is possible the account already exists, in this case
                     // we don't need to do anything
@@ -680,7 +680,7 @@ fn internal_apply_transaction_output(
                         // account out of the blue, then fallback on adding the account
                         delegation = delegation
                             .register_stake_key(stake::StakeKeyId(account.clone().into()))?;
-                        accounts.add_account(&account, output.value)?
+                        accounts.add_account(&account, output.value, ())?
                     }
                     Err(error) => return Err(error.into()),
                 };
