@@ -1,10 +1,8 @@
 use chain_addr::Address;
 use chain_impl_mockchain::{transaction::Output, value::Value};
-use jcli_app::transaction::{common, staging::StagingError};
+use jcli_app::transaction::{common, Error};
 use jormungandr_utils::structopt;
 use structopt::StructOpt;
-
-pub type AddOutputError = StagingError;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -22,7 +20,7 @@ pub struct AddOutput {
 }
 
 impl AddOutput {
-    pub fn exec(self) -> Result<(), AddOutputError> {
+    pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
 
         transaction.add_output(Output {

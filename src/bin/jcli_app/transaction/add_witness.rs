@@ -1,20 +1,9 @@
-use chain_core::mempack::{ReadBuf, ReadError, Readable as _};
+use bech32::{Bech32, FromBase32 as _};
+use chain_core::mempack::{ReadBuf, Readable as _};
 use chain_impl_mockchain::transaction::Witness;
-use jcli_app::{
-    transaction::{common, staging::StagingError},
-    utils::io,
-};
+use jcli_app::transaction::{common, Error};
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-custom_error! {pub AddWitnessError
-    ReadTransaction { error: StagingError } = "cannot read the transaction: {error}",
-    WriteTransaction { error: StagingError } = "cannot save changes of the transaction: {error}",
-    ReadWitness { error: common::CommonError } = "cannot read witness: {error}",
-    AddWitness { source: StagingError } = "cannot add witness",
-    DeserializeWitness { source: ReadError } = "Invalid witness",
-    ExceedsInput { len: usize } = "Already all needed witnesses ({len})",
-}
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -26,27 +15,53 @@ pub struct AddWitness {
 }
 
 impl AddWitness {
-    pub fn exec(self) -> Result<(), AddWitnessError> {
-        let mut transaction = self
-            .common
-            .load()
-            .map_err(|error| AddWitnessError::ReadTransaction { error })?;
+    pub fn exec(self) -> Result<(), Error> {
+        let mut transaction = self.common.load()?;
 
         let witness = self.witness()?;
 
         transaction.add_witness(witness)?;
 
-        Ok(self
-            .common
-            .store(&transaction)
-            .map_err(|error| AddWitnessError::WriteTransaction { error })?)
+        self.common.store(&transaction)?;
+        Ok(())
     }
 
-    fn witness(&self) -> Result<Witness, AddWitnessError> {
-        let reader = io::open_file_read(&Some(self.witness.clone())).unwrap();
-        let bytes = common::read_bytes(reader, "witness")
-            .map_err(|error| AddWitnessError::ReadWitness { error })?;
+    fn witness(&self) -> Result<Witness, Error> {
+        const HRP: &'static str = "witness";
 
-        Ok(Witness::read(&mut ReadBuf::from(&bytes))?)
+        let bech32_str = common::read_line(&Some(&self.witness)).map_err(|source| {
+            Error::WitnessFileReadFailed {
+                source,
+                path: self.witness.clone(),
+            }
+        })?;
+
+        let bech32: Bech32 =
+            bech32_str
+                .trim()
+                .parse()
+                .map_err(|source| Error::WitnessFileBech32Malformed {
+                    source,
+                    path: self.witness.clone(),
+                })?;
+        if bech32.hrp() != HRP {
+            return Err(Error::WitnessFileBech32HrpInvalid {
+                expected: HRP,
+                actual: bech32.hrp().to_string(),
+                path: self.witness.clone(),
+            });
+        }
+        let bytes = Vec::from_base32(bech32.data()).map_err(|source| {
+            Error::WitnessFileBech32Malformed {
+                source,
+                path: self.witness.clone(),
+            }
+        })?;
+        Witness::read(&mut ReadBuf::from(&bytes)).map_err(|source| {
+            Error::WitnessFileDeserializationFailed {
+                source,
+                path: self.witness.clone(),
+            }
+        })
     }
 }

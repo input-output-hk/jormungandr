@@ -1,26 +1,12 @@
 use chain_addr::{Address, AddressReadable};
-use chain_impl_mockchain::{
-    transaction::{Balance, Input, InputEnum, InputType, Output},
-    value::ValueError,
-};
+use chain_impl_mockchain::transaction::{Balance, Input, InputEnum, InputType, Output};
 use jcli_app::{
-    transaction::{
-        common,
-        staging::{Staging, StagingError},
-    },
+    transaction::{common, staging::Staging, Error},
     utils::io,
 };
 use std::{collections::HashMap, io::Write, path::PathBuf};
-use strfmt::{strfmt, FmtError};
+use strfmt::strfmt;
 use structopt::StructOpt;
-
-custom_error! {pub InfoError
-    Io { source: std::io::Error } = "I/O Error",
-    FormatError { source: FmtError } = "Invalid format",
-    ReadTransaction { source: StagingError } = "cannot read the staging transaction",
-    ValueError { source: ValueError } = "Invalid values",
-    ExpectedSingleAccount = "Expected a single account (multisig not supported yet)",
-}
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -78,10 +64,14 @@ pub struct Info {
 }
 
 impl Info {
-    pub fn exec(self) -> Result<(), InfoError> {
+    pub fn exec(self) -> Result<(), Error> {
         let transaction = self.common.load()?;
 
-        let mut output = io::open_file_write(&self.output).unwrap();
+        let mut output =
+            io::open_file_write(&self.output).map_err(|source| Error::InfoFileWriteFailed {
+                source,
+                path: self.output.clone().unwrap_or_default(),
+            })?;
 
         self.display_info(&mut output, &transaction)?;
         self.display_inputs(&mut output, &transaction.inputs())?;
@@ -92,18 +82,18 @@ impl Info {
         Ok(())
     }
 
-    fn display_outputs<W: Write>(
+    fn display_outputs(
         &self,
-        mut writer: W,
+        mut writer: impl Write,
         outputs: &[Output<Address>],
-    ) -> Result<(), InfoError> {
+    ) -> Result<(), Error> {
         for output in outputs {
             self.display_output(&mut writer, output)?;
         }
         Ok(())
     }
 
-    fn display_inputs<W: Write>(&self, mut writer: W, inputs: &[Input]) -> Result<(), InfoError> {
+    fn display_inputs(&self, mut writer: impl Write, inputs: &[Input]) -> Result<(), Error> {
         for input in inputs {
             match input.get_type() {
                 InputType::Account => {
@@ -122,11 +112,7 @@ impl Info {
         Ok(())
     }
 
-    fn display_output<W: Write>(
-        &self,
-        mut writer: W,
-        output: &Output<Address>,
-    ) -> Result<(), InfoError> {
+    fn display_output(&self, writer: impl Write, output: &Output<Address>) -> Result<(), Error> {
         let mut vars = HashMap::new();
 
         vars.insert(
@@ -134,42 +120,31 @@ impl Info {
             AddressReadable::from_address(&output.address).to_string(),
         );
         vars.insert("value".to_owned(), output.value.0.to_string());
-
-        let formatted = strfmt(&self.format_output, &vars)?;
-        write!(writer, "{}", formatted)?;
-        Ok(())
+        self.write_info(writer, &self.format_output, vars)
     }
 
-    fn display_input<W: Write>(&self, mut writer: W, input: InputEnum) -> Result<(), InfoError> {
+    fn display_input(&self, writer: impl Write, input: InputEnum) -> Result<(), Error> {
         let mut vars = HashMap::new();
-
-        let formatted = match input {
+        match input {
             InputEnum::UtxoInput(utxo_ptr) => {
                 vars.insert("txid".to_owned(), utxo_ptr.transaction_id.to_string());
                 vars.insert("index".to_owned(), utxo_ptr.output_index.to_string());
                 vars.insert("value".to_owned(), utxo_ptr.value.0.to_string());
-                strfmt(&self.format_utxo_input, &vars)?
+                self.write_info(writer, &self.format_utxo_input, vars)
             }
             InputEnum::AccountInput(account, value) => {
                 let account: chain_crypto::PublicKey<_> = account
                     .to_single_account()
-                    .ok_or(InfoError::ExpectedSingleAccount)?
+                    .ok_or(Error::InfoExpectedSingleAccount)?
                     .into();
                 vars.insert("account".to_owned(), account.to_string());
                 vars.insert("value".to_owned(), value.0.to_string());
-                strfmt(&self.format_account_input, &vars)?
+                self.write_info(writer, &self.format_account_input, vars)
             }
-        };
-
-        write!(writer, "{}", formatted)?;
-        Ok(())
+        }
     }
 
-    fn display_info<W: Write>(
-        &self,
-        mut writer: W,
-        transaction: &Staging,
-    ) -> Result<(), InfoError> {
+    fn display_info(&self, writer: impl Write, transaction: &Staging) -> Result<(), Error> {
         let mut vars = HashMap::new();
 
         let fee_algo = self.fee.linear_fee();
@@ -203,10 +178,22 @@ impl Info {
                 Balance::Zero => "0".to_string(),
             },
         );
+        self.write_info(writer, &self.format, vars)
+    }
 
-        let formatted = strfmt(&self.format, &vars)?;
-
-        write!(writer, "{}", formatted)?;
-        Ok(())
+    fn write_info(
+        &self,
+        mut writer: impl Write,
+        format: &str,
+        info: HashMap<String, String>,
+    ) -> Result<(), Error> {
+        let formatted = strfmt(format, &info).map_err(|source| Error::InfoOutputFormatInvalid {
+            source,
+            format: format.to_string(),
+        })?;
+        write!(writer, "{}", formatted).map_err(|source| Error::InfoFileWriteFailed {
+            source,
+            path: self.output.clone().unwrap_or_default(),
+        })
     }
 }

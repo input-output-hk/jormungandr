@@ -1,18 +1,11 @@
 use chain_impl_mockchain::fee::LinearFee;
-use jcli_app::transaction::staging::{Staging, StagingError};
-use std::{io::Read, path::PathBuf};
+use jcli_app::transaction::{staging::Staging, Error};
+use jcli_app::utils::io;
+use std::{
+    io::BufRead,
+    path::{Path, PathBuf},
+};
 use structopt::StructOpt;
-
-type StaticStr = &'static str;
-
-custom_error! {pub CommonError
-    Io { source: std::io::Error } = "I/O Error",
-    Bech32Parse { source: bech32::Error } = "Invalid Bech32",
-    CannotParse { source: chain_core::mempack::ReadError } = "Invalid formatted transaction",
-    HrpInvalid { expected: StaticStr, actual: String } = "Invalid transaction HRP: it reads `{actual}' but was expecting `{expected}'",
-    TooManyWitnesses = "Authenticated Transaction has too many witnesses compared to number of inputs",
-    NotATransactionMessage = "Not a block message for transaction",
-}
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -44,27 +37,23 @@ impl CommonFees {
 }
 
 impl CommonTransaction {
-    pub fn load(&self) -> Result<Staging, StagingError> {
+    pub fn load(&self) -> Result<Staging, Error> {
         Staging::load(&self.staging_file)
     }
 
-    pub fn store(&self, staging: &Staging) -> Result<(), StagingError> {
+    pub fn store(&self, staging: &Staging) -> Result<(), Error> {
         staging.store(&self.staging_file)
     }
 }
 
-pub fn read_bytes<R: Read>(mut reader: R, hrp: &'static str) -> Result<Vec<u8>, CommonError> {
-    use bech32::{Bech32, FromBase32 as _};
+pub fn path_to_path_buf<P: AsRef<Path>>(path: &Option<P>) -> PathBuf {
+    path.as_ref()
+        .map(|path| path.as_ref().to_path_buf())
+        .unwrap_or_default()
+}
 
-    let mut bech32_encoded_transaction = String::new();
-    reader.read_to_string(&mut bech32_encoded_transaction)?;
-
-    let bech32_encoded_transaction: Bech32 = bech32_encoded_transaction.trim_end().parse()?;
-    if bech32_encoded_transaction.hrp() != hrp {
-        return Err(CommonError::HrpInvalid {
-            expected: hrp,
-            actual: bech32_encoded_transaction.hrp().to_string(),
-        });
-    }
-    Ok(Vec::from_base32(bech32_encoded_transaction.data())?)
+pub fn read_line<P: AsRef<Path>>(path: &Option<P>) -> Result<String, std::io::Error> {
+    let mut line = String::new();
+    io::open_file_read(path)?.read_line(&mut line)?;
+    Ok(line)
 }

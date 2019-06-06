@@ -1,33 +1,16 @@
 use bech32::{Bech32, ToBase32 as _};
 use chain_core::property::Serialize as _;
-use chain_crypto::bech32::{self as bech32_crypto, Bech32 as _};
-use chain_crypto::{AsymmetricKey, SecretKey, SecretKeyError};
+use chain_crypto::bech32::Bech32 as _;
+use chain_crypto::{AsymmetricKey, SecretKey};
 use chain_impl_mockchain::{
     account::SpendingCounter,
     block::HeaderHash,
     transaction::{TransactionId, Witness},
 };
-use jcli_app::{transaction::common, utils::io};
-use std::{
-    io::{Read, Write},
-    path::PathBuf,
-};
+use jcli_app::transaction::{common, Error};
+use jcli_app::utils::{error::CustomErrorFiller, io};
+use std::{io::Write, path::PathBuf};
 use structopt::StructOpt;
-
-custom_error! {pub MkWitnessError
-    Bech32 { source: bech32::Error } = "Invalid Bech32",
-    Bech32Crypto { source: bech32_crypto::Error } = "Invalid Bech32",
-    ReadTransaction { error: common::CommonError } = "cannot read the transaction: {error}",
-    WriteTransaction { error: common::CommonError } = "cannot save changes of the transaction: {error}",
-    Io { source: std::io::Error} = "cannot read or write data",
-    SecretKey { source: SecretKeyError } = "Invalid secret key",
-    MissingSpendingCounter = "parameter `--account-spending-counter' is mandatory when creating a witness for an account"
-}
-
-custom_error! {pub ParseWitnessTypeError
-    Invalid = "Invalid witness type, expected `utxo', `legacy-utxo' or `account'"
-
-}
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -63,50 +46,45 @@ pub enum WitnessType {
     OldUTxO,
     Account,
 }
-impl std::fmt::Display for WitnessType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            WitnessType::UTxO => write!(f, "utxo"),
-            WitnessType::OldUTxO => write!(f, "legacy-utxo"),
-            WitnessType::Account => write!(f, "account"),
-        }
-    }
-}
+
 impl std::str::FromStr for WitnessType {
-    type Err = ParseWitnessTypeError;
+    type Err = &'static str;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "utxo" => Ok(WitnessType::UTxO),
             "legacy-utxo" => Ok(WitnessType::OldUTxO),
             "account" => Ok(WitnessType::Account),
-            _ => Err(ParseWitnessTypeError::Invalid),
+            _ => Err("Invalid witness type, expected `utxo', `legacy-utxo' or `account'"),
         }
     }
 }
 
 impl MkWitness {
-    fn secret<A: AsymmetricKey>(&self) -> Result<SecretKey<A>, MkWitnessError> {
-        let mut bech32_str = String::new();
-        io::open_file_read(&self.secret)
-            .unwrap()
-            .read_to_string(&mut bech32_str)?;
-        Ok(SecretKey::try_from_bech32_str(&bech32_str.trim_end())?)
+    fn secret<A: AsymmetricKey>(&self) -> Result<SecretKey<A>, Error> {
+        let bech32_str =
+            common::read_line(&self.secret).map_err(|source| Error::SecretFileReadFailed {
+                source,
+                path: common::path_to_path_buf(&self.secret),
+            })?;
+        SecretKey::try_from_bech32_str(&bech32_str).map_err(|source| Error::SecretFileMalformed {
+            source,
+            path: common::path_to_path_buf(&self.secret),
+        })
     }
 
-    pub fn exec(self) -> Result<(), MkWitnessError> {
+    pub fn exec(self) -> Result<(), Error> {
         let witness = match self.witness_type {
             WitnessType::UTxO => {
                 let secret_key = self.secret()?;
                 Witness::new_utxo(&self.genesis_block_hash, &self.transaction_id, &secret_key)
             }
-            WitnessType::OldUTxO => {
-                // let secret_key = self.secret()?;
-                unimplemented!()
-            }
+            // TODO unimplemented!()
+            WitnessType::OldUTxO => return Err(Error::MakeWitnessLegacyUtxoUnsupported)?,
             WitnessType::Account => {
                 let account_spending_counter = self
                     .account_spending_counter
-                    .ok_or(MkWitnessError::MissingSpendingCounter)
+                    .ok_or(Error::MakeWitnessAccountCounterMissing)
                     .map(SpendingCounter::from)?;
 
                 let secret_key = self.secret()?;
@@ -122,13 +100,25 @@ impl MkWitness {
         self.write_witness(&witness)
     }
 
-    fn write_witness(&self, witness: &Witness) -> Result<(), MkWitnessError> {
-        let mut writer = io::open_file_write(&self.output).unwrap();
-        let bytes = witness.serialize_as_vec()?;
+    fn write_witness(&self, witness: &Witness) -> Result<(), Error> {
+        let mut writer =
+            io::open_file_write(&self.output).map_err(|source| Error::WitnessFileWriteFailed {
+                source,
+                path: self.output.clone().unwrap_or_default(),
+            })?;
+        let bytes =
+            witness
+                .serialize_as_vec()
+                .map_err(|source| Error::WitnessFileSerializationFailed {
+                    source,
+                    filler: CustomErrorFiller,
+                })?;
 
         let base32 = bytes.to_base32();
         let bech32 = Bech32::new("witness".to_owned(), base32)?;
-        writeln!(writer, "{}", bech32)?;
-        Ok(())
+        writeln!(writer, "{}", bech32).map_err(|source| Error::WitnessFileWriteFailed {
+            source,
+            path: self.output.clone().unwrap_or_default(),
+        })
     }
 }
