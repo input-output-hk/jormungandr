@@ -104,6 +104,11 @@ impl<Extra: Clone> AccountState<Extra> {
         }
     }
 
+    pub fn value(&self) -> Value {
+        self.value
+    }
+
+    // deprecated use value()
     pub fn get_value(&self) -> Value {
         self.value
     }
