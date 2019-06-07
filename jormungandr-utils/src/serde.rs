@@ -130,7 +130,7 @@ pub mod witness {
 pub mod crypto {
     use super::*;
     use ::bech32::{Bech32 as Bech32Data, FromBase32 as _};
-    use chain_crypto::{AsymmetricPublicKey, AsymmetricKey, Blake2b256, PublicKey, SecretKey};
+    use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, Blake2b256, PublicKey, SecretKey};
 
     pub fn deserialize_secret<'de, D, A>(deserializer: D) -> Result<SecretKey<A>, D::Error>
     where
@@ -428,12 +428,15 @@ pub mod system_time {
     use std::time::SystemTime;
 
     pub fn serialize<S>(timestamp: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
-        humantime::format_rfc3339_nanos(*timestamp).to_string().serialize(serializer)
+    where
+        S: Serializer,
+    {
+        humantime::format_rfc3339_nanos(*timestamp)
+            .to_string()
+            .serialize(serializer)
     }
 
-    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<SystemTime, D::Error>
-    {
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<SystemTime, D::Error> {
         let visitor = StrParseVisitor::new("RFC3339 timestamp", humantime::parse_rfc3339_weak);
         deserializer.deserialize_str(visitor)
     }
@@ -506,7 +509,6 @@ pub mod as_bech32 {
         deserializer.deserialize_str(visitor)
     }
 }
-
 
 #[derive(Default)]
 struct StrParseVisitor<'a, P> {
