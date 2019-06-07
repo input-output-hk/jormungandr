@@ -39,7 +39,6 @@ blockchain_configuration:
     constant: 0
     coefficient: 0
     certificate: 0
-  block_version: 1
 initial_funds:
   - address: ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
     value: 10000
@@ -47,7 +46,6 @@ initial_funds:
 
 In order to start your blockchain in BFT mode you need to be sure that:
 
-* `block_version` is set to `1`;
 * `consensus_leader_ids` is non empty;
 
 more information regarding the [genesis file here](./01_the_genesis_block.md).
