@@ -1,5 +1,5 @@
 use cardano::util::hex;
-use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
+use jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use std::fs;
 use std::io::{stdin, BufRead};
 use std::path::PathBuf;
@@ -28,6 +28,8 @@ pub enum Message {
         addr: HostAddr,
         #[structopt(flatten)]
         debug: DebugFlag,
+        #[structopt(flatten)]
+        output_format: OutputFormat,
     },
 }
 
@@ -35,12 +37,16 @@ impl Message {
     pub fn exec(self) {
         match self {
             Message::Post { addr, debug, file } => post_message(file, addr, debug),
-            Message::Logs { addr, debug } => get_logs(addr, debug),
+            Message::Logs {
+                addr,
+                debug,
+                output_format,
+            } => get_logs(addr, debug, output_format),
         }
     }
 }
 
-fn get_logs(addr: HostAddr, debug: DebugFlag) {
+fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) {
     let url = addr
         .with_segments(&["v0", "fragment", "logs"])
         .unwrap()
@@ -48,9 +54,9 @@ fn get_logs(addr: HostAddr, debug: DebugFlag) {
     let builder = reqwest::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send().unwrap();
     response.response().error_for_status_ref().unwrap();
-    let logs: serde_json::Value = response.body().json().unwrap();
-    let logs_yaml = serde_yaml::to_string(&logs).unwrap();
-    println!("{}", logs_yaml);
+    let status = response.body().json_value().unwrap();
+    let formatted = output_format.format_json(status).unwrap();
+    println!("{}", formatted);
 }
 
 fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) {

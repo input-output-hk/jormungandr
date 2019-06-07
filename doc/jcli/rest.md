@@ -10,6 +10,9 @@ Many CLI commands have common arguments:
 `https://` prefix. E.g. `-h http://127.0.0.1`, `--host https://node.com:8443/cardano/api`
 - `--debug` - Print additional debug information to stderr.
 The output format is intentionally undocumented and unstable
+- `--output-format <format>` - Format of output data. Possible values: json, yaml, default yaml.
+Any other value is treated as a custom format using values from output data structure.
+Syntax is Go text template: https://golang.org/pkg/text/template/.
 
 ## Node stats
 
@@ -23,6 +26,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
 
 
 YAML printed on success
@@ -46,6 +50,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
 
 
 YAML printed on success
@@ -86,6 +91,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -183,6 +189,7 @@ jcli rest v0 account get <account-id> <options>
 The options are
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
 
 YAML printed on success
 

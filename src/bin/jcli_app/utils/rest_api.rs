@@ -113,6 +113,10 @@ impl RestApiResponseBody {
         }
     }
 
+    pub fn json_value(&self) -> Result<serde_json::Value, serde_json::Error> {
+        self.json()
+    }
+
     pub fn is_empty(&self) -> bool {
         match self {
             RestApiResponseBody::Text(text) => text.is_empty(),
