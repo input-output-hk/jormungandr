@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use super::configuration;
-use super::file_utils;
 use super::Discrimination;
+use common::file_utils;
 use std::process::Command;
 
 use std::path::PathBuf;
@@ -262,5 +262,17 @@ pub fn get_key_from_bytes_command(input_file: &PathBuf, key_type: &str) -> Comma
         .arg(input_file.as_os_str())
         .arg("--type")
         .arg(&key_type);
+    command
+}
+
+pub fn get_rest_message_log_command(host: &str) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("message")
+        .arg("logs")
+        .arg("--host")
+        .arg(&host);
     command
 }

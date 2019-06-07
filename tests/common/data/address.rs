@@ -1,16 +1,16 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Utxo {
     pub private_key: String,
     pub public_key: String,
     pub address: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Account {
     pub private_key: String,
     pub public_key: String,
     pub address: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Delegation {
     pub private_key: String,
     pub public_key: String,
