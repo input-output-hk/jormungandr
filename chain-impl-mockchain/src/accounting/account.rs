@@ -6,7 +6,7 @@
 
 use crate::stake::StakePoolId;
 use crate::value::*;
-use imhamt::{Hamt, InsertError, UpdateError};
+use imhamt::{Hamt, HamtIter, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 
@@ -153,6 +153,16 @@ impl Into<u32> for SpendingCounter {
     }
 }
 
+pub struct Iter<'a, ID, Extra>(HamtIter<'a, ID, AccountState<Extra>>);
+
+impl<'a, ID, Extra> Iterator for Iter<'a, ID, Extra> {
+    type Item = (&'a ID, &'a AccountState<Extra>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
 /// The public ledger of all accounts associated with their current state
 #[derive(Clone)]
 pub struct Ledger<ID: Hash + Eq, Extra>(Hamt<DefaultHasher, ID, AccountState<Extra>>);
@@ -254,5 +264,9 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
             .iter()
             .map(|(_, account_state)| account_state.get_value());
         Value::sum(values)
+    }
+
+    pub fn iter<'a>(&'a self) -> Iter<'a, ID, Extra> {
+        Iter(self.0.iter())
     }
 }
