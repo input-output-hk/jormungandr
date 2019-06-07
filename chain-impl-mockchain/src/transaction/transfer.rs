@@ -50,9 +50,21 @@ impl AccountIdentifier {
     }
 }
 
+impl AsRef<[u8]> for AccountIdentifier {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 impl From<[u8; INPUT_PTR_SIZE]> for AccountIdentifier {
     fn from(v: [u8; INPUT_PTR_SIZE]) -> Self {
         AccountIdentifier(v)
+    }
+}
+
+impl From<AccountIdentifier> for [u8; INPUT_PTR_SIZE] {
+    fn from(v: AccountIdentifier) -> Self {
+        v.0
     }
 }
 
@@ -198,5 +210,21 @@ impl std::fmt::Display for Output<chain_addr::Address> {
 impl std::fmt::Display for Output<cardano::address::Addr> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}.{}", self.address, self.value)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for AccountIdentifier {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut b = [0u8; 32];
+            for v in b.iter_mut() {
+                *v = Arbitrary::arbitrary(g)
+            }
+            b.into()
+        }
     }
 }
