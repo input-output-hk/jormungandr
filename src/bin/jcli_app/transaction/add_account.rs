@@ -5,16 +5,8 @@ use chain_impl_mockchain::{
 };
 use structopt::StructOpt;
 
-use jcli_app::transaction::{common, staging::StagingError};
+use jcli_app::transaction::{common, Error};
 use jormungandr_utils::structopt;
-
-custom_error! {pub AddAccountError
-    ReadTransaction { error: StagingError } = "cannot read the transaction: {error}",
-    WriteTransaction { error: StagingError } = "cannot save changes of the transaction: {error}",
-    AddInput { source: StagingError } = "cannot add account",
-    InvalidAddressSingle = "Invalid input account, this is a UTxO address.",
-    InvalidAddressGroup = "Invalid input account, this is a UTxO address with delegation.",
-}
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -32,27 +24,20 @@ pub struct AddAccount {
 }
 
 impl AddAccount {
-    pub fn exec(self) -> Result<(), AddAccountError> {
-        let mut transaction = self
-            .common
-            .load()
-            .map_err(|error| AddAccountError::ReadTransaction { error })?;
+    pub fn exec(self) -> Result<(), Error> {
+        let mut transaction = self.common.load()?;
 
-        let account_identifier = match self.account.kind() {
+        let account_id = match self.account.kind() {
             Kind::Account(key) => AccountIdentifier::from_single_account(key.clone().into()),
-            Kind::Single(_) => return Err(AddAccountError::InvalidAddressSingle),
-            Kind::Group(_, _) => return Err(AddAccountError::InvalidAddressGroup),
-            Kind::Multisig(_) => unimplemented!(),
+            Kind::Single(_) => return Err(Error::AccountAddressSingle),
+            Kind::Group(_, _) => return Err(Error::AccountAddressGroup),
+            Kind::Multisig(_) => return Err(Error::AccountAddressMultisig),
         };
 
         transaction.add_input(Input::from_enum(InputEnum::AccountInput(
-            account_identifier,
-            self.value,
+            account_id, self.value,
         )))?;
 
-        Ok(self
-            .common
-            .store(&transaction)
-            .map_err(|error| AddAccountError::WriteTransaction { error })?)
+        self.common.store(&transaction)
     }
 }

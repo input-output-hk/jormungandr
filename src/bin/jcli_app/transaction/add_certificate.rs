@@ -1,11 +1,7 @@
 use chain_impl_mockchain::certificate::Certificate;
-use jcli_app::transaction::{common, staging::StagingError};
+use jcli_app::transaction::{common, Error};
 use jormungandr_utils::certificate;
 use structopt::StructOpt;
-
-custom_error! {pub AddCertificateError
-    StagingError { source: StagingError } = "Add certificate operation failed",
-}
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -22,11 +18,9 @@ pub struct AddCertificate {
 }
 
 impl AddCertificate {
-    pub fn exec(self) -> Result<(), AddCertificateError> {
+    pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
-
         transaction.set_extra(self.certificate)?;
-
-        Ok(self.common.store(&transaction)?)
+        self.common.store(&transaction)
     }
 }

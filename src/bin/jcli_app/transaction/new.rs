@@ -1,9 +1,6 @@
 use structopt::StructOpt;
 
-use jcli_app::transaction::{
-    common,
-    staging::{Staging, StagingError},
-};
+use jcli_app::transaction::{common, staging::Staging, Error};
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -12,14 +9,10 @@ pub struct New {
     pub common: common::CommonTransaction,
 }
 
-custom_error! {pub NewError
-    WriteTransaction { source: StagingError } = "cannot create new transaction"
-}
-
 impl New {
-    pub fn exec(self) -> Result<(), NewError> {
+    pub fn exec(self) -> Result<(), Error> {
         let staging = Staging::new();
-        Ok(self.common.store(&staging)?)
+        self.common.store(&staging)
     }
 }
 

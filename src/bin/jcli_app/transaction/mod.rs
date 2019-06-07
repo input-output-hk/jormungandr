@@ -11,8 +11,12 @@ mod new;
 mod seal;
 mod staging;
 
+use self::staging::StagingKind;
 use cardano::util::hex;
 use chain_core::property::Serialize as _;
+use chain_impl_mockchain as chain;
+use jcli_app::utils::error::CustomErrorFiller;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -49,53 +53,101 @@ pub enum Transaction {
     ToMessage(common::CommonTransaction),
 }
 
-custom_error! {pub TransactionError
-    NewError { source: new::NewError } = "Cannot create new transaction",
-    AddInputError { error: add_input::AddInputError } = "{error}",
-    AddAccountError { source: add_account::AddAccountError } = "Cannot add input account to the transaction",
-    AddOutputError { source: add_output::AddOutputError } = "Cannot add output to the transaction",
-    AddWitnessError { source: add_witness::AddWitnessError } = "Cannot add witness to the transaction",
-    AddCertificateError { source: add_certificate::AddCertificateError } = "Cannot add certificate to the transaction",
-    InfoError { source: info::InfoError } = "{source}",
-    TransactionError { source: common::CommonError } = "Invalid transaction",
-    FinalizeError { source: finalize::FinalizeError } = "cannot finalize transaction",
-    SealError { source: seal::SealError } = "cannot seal transaction",
-    MakeWitness { source: mk_witness::MkWitnessError } = "Cannot make witness",
+type StaticStr = &'static str;
+
+custom_error! { pub Error
+    StagingFileOpenFailed { source: std::io::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not open staging transaction file '{}'", path.display()) }},
+    StagingFileReadFailed { source: bincode::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not read staging transaction file '{}'", path.display()) }},
+    StagingFileWriteFailed { source: bincode::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not write staging transaction file '{}'", path.display()) }},
+    SecretFileReadFailed { source: std::io::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not read secret file '{}'", path.display()) }},
+    SecretFileMalformed { source: chain_crypto::bech32::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not decode secret file '{}'", path.display()) }},
+    WitnessFileReadFailed { source: std::io::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not read witness file '{}'", path.display()) }},
+    WitnessFileWriteFailed { source: std::io::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not write witness file '{}'", path.display()) }},
+    WitnessFileBech32Malformed { source: bech32::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not parse Bech32 in witness file '{}'", path.display()) }},
+    WitnessFileBech32HrpInvalid { actual: String, expected: StaticStr, path: PathBuf }
+        = @{{ format_args!("invalid Bech32 prefix in witness file, expected '{}', found '{}' in '{}'",
+            expected, actual, path.display()) }},
+    WitnessFileBech32EncodingFailed { source: bech32::Error } = "failed to encode witness as bech32",
+    WitnessFileDeserializationFailed { source: chain_core::mempack::ReadError, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not parse data in witness file '{}'", path.display()) }},
+    WitnessFileSerializationFailed { source: std::io::Error, filler: CustomErrorFiller }
+        = "could not serialize witness data",
+    InfoFileWriteFailed { source: std::io::Error, path: PathBuf }
+        = @{{ let _ = source; format_args!("could not write info file '{}'", path.display()) }},
+
+    TxKindToAddExtraInvalid { kind: StagingKind } = "adding certificate to {kind} transaction is not valid",
+    TxKindToAddInputInvalid { kind: StagingKind } = "adding input to {kind} transaction is not valid",
+    TxKindToAddOutputInvalid { kind: StagingKind } = "adding output to {kind} transaction is not valid",
+    TxKindToAddWitnessInvalid { kind: StagingKind } = "adding witness to {kind} transaction is not valid",
+    TxKindToSealInvalid { kind: StagingKind } = "sealing {kind} transaction is not valid",
+    TxKindToFinalizeInvalid { kind: StagingKind } = "finalizing {kind} transaction is not valid",
+    TxKindToGetMessageInvalid { kind: StagingKind } = "cannot get message from transaction in {kind} state",
+
+    TooManyWitnessesToAddWitness { actual: usize, max: usize }
+        = "too many witnesses in transaction to add another: {actual}, maximum is {max}",
+    WitnessCountToSealInvalid { actual: usize, expected: usize }
+        = "invalid number of witnesses in transaction to seal: {actual}, should be {expected}",
+    AccountAddressSingle = "invalid input account, this is a UTxO address",
+    AccountAddressGroup = "invalid input account, this is a UTxO address with delegation",
+    AccountAddressMultisig = "invalid input account, this is a multisig account address",
+    AddingWitnessToFinalizedTxFailed { source: chain::txbuilder::BuildError, filler: CustomErrorFiller }
+        = "could not add witness to finalized transaction",
+    GeneratedTxBuildingFailed { source: chain::txbuilder::BuildError, filler: CustomErrorFiller }
+        = "generated transaction building failed",
+    TxFinalizationFailed { source: chain::txbuilder::Error }
+        = "transaction finalization failed",
+    GeneratedTxTypeUnexpected = "unexpected generated transaction type",
+    MessageSerializationFailed { source: std::io::Error, filler: CustomErrorFiller }
+        = "serialization of message to bytes failed",
+    InfoOutputFormatInvalid { source: strfmt::FmtError, format: String } = "invalid info output format '{format}'",
+    InfoCalculationFailed { source: chain::value::ValueError } = "calculation of info failed",
+    InfoExpectedSingleAccount = "expected a single account, multisig is not supported yet",
+    MakeWitnessLegacyUtxoUnsupported = "making legacy UTxO witness unsupported",
+    MakeWitnessAccountCounterMissing = "making account witness requires passing spending counter",
 }
 
 impl Transaction {
-    pub fn exec(self) -> Result<(), TransactionError> {
+    pub fn exec(self) -> Result<(), Error> {
         match self {
-            Transaction::New(new) => new.exec()?,
-            Transaction::AddInput(add_input) => add_input.exec()?,
-            Transaction::AddAccount(add_account) => add_account.exec()?,
-            Transaction::AddOutput(add_output) => add_output.exec()?,
-            Transaction::AddWitness(add_witness) => add_witness.exec()?,
-            Transaction::AddCertificate(add_certificate) => add_certificate.exec()?,
-            Transaction::Finalize(finalize) => finalize.exec()?,
-            Transaction::Seal(seal) => seal.exec()?,
-            Transaction::Id(common) => display_id(common)?,
-            Transaction::Info(info) => info.exec()?,
-            Transaction::MakeWitness(mk_witness) => mk_witness.exec()?,
-            Transaction::ToMessage(common) => display_message(common)?,
+            Transaction::New(new) => new.exec(),
+            Transaction::AddInput(add_input) => add_input.exec(),
+            Transaction::AddAccount(add_account) => add_account.exec(),
+            Transaction::AddOutput(add_output) => add_output.exec(),
+            Transaction::AddWitness(add_witness) => add_witness.exec(),
+            Transaction::AddCertificate(add_certificate) => add_certificate.exec(),
+            Transaction::Finalize(finalize) => finalize.exec(),
+            Transaction::Seal(seal) => seal.exec(),
+            Transaction::Id(common) => display_id(common),
+            Transaction::Info(info) => info.exec(),
+            Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
+            Transaction::ToMessage(common) => display_message(common),
         }
-
-        Ok(())
     }
 }
 
-fn display_id(common: common::CommonTransaction) -> Result<(), TransactionError> {
+fn display_id(common: common::CommonTransaction) -> Result<(), Error> {
     let id = common.load()?.transaction().hash();
-
     println!("{}", id);
     Ok(())
 }
 
-fn display_message(common: common::CommonTransaction) -> Result<(), TransactionError> {
+fn display_message(common: common::CommonTransaction) -> Result<(), Error> {
     let message = common.load()?.message()?;
-
-    let bytes: Vec<u8> = message.serialize_as_vec().unwrap();
-
+    let bytes: Vec<u8> =
+        message
+            .serialize_as_vec()
+            .map_err(|source| Error::MessageSerializationFailed {
+                source,
+                filler: CustomErrorFiller,
+            })?;
     println!("{}", hex::encode(&bytes));
     Ok(())
 }
