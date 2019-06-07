@@ -93,7 +93,7 @@ impl LeaderSchedule {
             match enclave.leadership_evaluate1(leadership, leader_id, slot_idx) {
                 None => debug!(logger, "not a leader at this time"),
                 Some(leader_output) => {
-                    info!(logger, "scheduling a block leader");
+                    debug!(logger, "scheduling a block leader");
                     self.events.insert(
                         ScheduledEvent {
                             expected_time: slot_system_time.clone(),
