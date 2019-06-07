@@ -21,18 +21,37 @@ pub trait BlockService: P2pService {
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to method `pull_blocks_to_tip`.
-    type PullBlocksToTipStream: Stream<Item = Self::Block, Error = Error>;
+    type PullBlocksStream: Stream<Item = Self::Block, Error = Error>;
 
     /// The type of asynchronous futures returned by method `pull_blocks_to_tip`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type PullBlocksToTipFuture: Future<Item = Self::PullBlocksToTipStream, Error = Error>;
+    type PullBlocksToTipFuture: Future<Item = Self::PullBlocksStream, Error = Error>;
 
     fn pull_blocks_to_tip(
         &mut self,
         from: &[<Self::Block as Block>::Id],
     ) -> Self::PullBlocksToTipFuture;
+
+    /// The type of an asynchronous stream that provides block headers in
+    /// response to method `pull_headers`.
+    type PullHeadersStream: Stream<Item = <Self::Block as HasHeader>::Header, Error = Error>;
+
+    /// The type of asynchronous futures returned by method `pull_headers`.
+    ///
+    /// The future resolves to a stream that will be used by the protocol
+    /// implementation to produce a server-streamed response.
+    type PullHeadersFuture: Future<Item = Self::PullHeadersStream, Error = Error>;
+
+    /// Requests headers of blocks in the blockchain's chronological order,
+    /// in the range between one of the given starting points, and
+    /// the given ending point.
+    fn pull_headers(
+        &mut self,
+        from: &[<Self::Block as Block>::Id],
+        to: &<Self::Block as Block>::Id,
+    ) -> Self::PullHeadersFuture;
 
     /// The type of an asynchronous stream that provides blocks in
     /// response to method `get_blocks`.

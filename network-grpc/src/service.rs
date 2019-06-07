@@ -1,7 +1,7 @@
 use crate::{
     convert::{
-        decode_node_id, deserialize_repeated_bytes, encode_node_id, error_from_grpc,
-        error_into_grpc, FromProtobuf, IntoProtobuf,
+        decode_node_id, deserialize_bytes, deserialize_repeated_bytes, encode_node_id,
+        error_from_grpc, error_into_grpc, FromProtobuf, IntoProtobuf,
     },
     gen,
 };
@@ -401,13 +401,21 @@ where
         Self::GetHeadersStream,
         <<T as Node>::BlockService as BlockService>::GetHeadersFuture,
     >;
+    type PullHeadersStream = ResponseStream<
+        gen::node::Header,
+        <<T as Node>::BlockService as BlockService>::PullHeadersStream,
+    >;
+    type PullHeadersFuture = ResponseFuture<
+        Self::PullHeadersStream,
+        <<T as Node>::BlockService as BlockService>::PullHeadersFuture,
+    >;
     type PullBlocksToTipStream = ResponseStream<
         gen::node::Block,
         <<T as Node>::BlockService as BlockService>::PullBlocksStream,
     >;
     type PullBlocksToTipFuture = ResponseFuture<
         Self::PullBlocksToTipStream,
-        <<T as Node>::BlockService as BlockService>::PullBlocksFuture,
+        <<T as Node>::BlockService as BlockService>::PullBlocksToTipFuture,
     >;
     type GetMessagesStream = ResponseStream<
         gen::node::Message,
@@ -471,6 +479,26 @@ where
             }
         };
         ResponseFuture::new(service.get_headers(&block_ids))
+    }
+
+    fn pull_headers(
+        &mut self,
+        req: Request<gen::node::PullHeadersRequest>,
+    ) -> Self::PullHeadersFuture {
+        let service = try_get_service!(self.inner.block_service());
+        let from = match deserialize_repeated_bytes(&req.get_ref().from) {
+            Ok(block_ids) => block_ids,
+            Err(e) => {
+                return ResponseFuture::error(error_into_grpc(e));
+            }
+        };
+        let to = match deserialize_bytes(&req.get_ref().to) {
+            Ok(block_id) => block_id,
+            Err(e) => {
+                return ResponseFuture::error(error_into_grpc(e));
+            }
+        };
+        ResponseFuture::new(service.pull_headers(&from, &to))
     }
 
     fn pull_blocks_to_tip(

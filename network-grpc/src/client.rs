@@ -3,8 +3,8 @@ mod transport;
 
 use crate::{
     convert::{
-        decode_node_id, encode_node_id, error_from_grpc, serialize_to_repeated_bytes, FromProtobuf,
-        IntoProtobuf,
+        decode_node_id, encode_node_id, error_from_grpc, serialize_to_bytes,
+        serialize_to_repeated_bytes, FromProtobuf, IntoProtobuf,
     },
     gen::{self, node::client as gen_client},
 };
@@ -331,8 +331,11 @@ where
     type Block = P::Block;
     type TipFuture = ResponseFuture<P::Header, gen::node::TipResponse>;
 
-    type PullBlocksToTipStream = ResponseStream<P::Block, gen::node::Block>;
+    type PullBlocksStream = ResponseStream<P::Block, gen::node::Block>;
     type PullBlocksToTipFuture = ResponseStreamFuture<P::Block, gen::node::Block>;
+
+    type PullHeadersStream = ResponseStream<P::Header, gen::node::Header>;
+    type PullHeadersFuture = ResponseStreamFuture<P::Header, gen::node::Header>;
 
     type GetBlocksStream = ResponseStream<P::Block, gen::node::Block>;
     type GetBlocksFuture = ResponseStreamFuture<P::Block, gen::node::Block>;
@@ -353,6 +356,14 @@ where
         let from = serialize_to_repeated_bytes(from).unwrap();
         let req = gen::node::PullBlocksToTipRequest { from };
         let future = self.service.pull_blocks_to_tip(Request::new(req));
+        ResponseStreamFuture::new(future)
+    }
+
+    fn pull_headers(&mut self, from: &[P::BlockId], to: &P::BlockId) -> Self::PullHeadersFuture {
+        let from = serialize_to_repeated_bytes(from).unwrap();
+        let to = serialize_to_bytes(to).unwrap();
+        let req = gen::node::PullHeadersRequest { from, to };
+        let future = self.service.pull_headers(Request::new(req));
         ResponseStreamFuture::new(future)
     }
 
