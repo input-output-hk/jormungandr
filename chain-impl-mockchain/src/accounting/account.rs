@@ -45,7 +45,7 @@ pub struct AccountState<Extra> {
     extra: Extra,
 }
 
-impl<Extra: Clone> AccountState<Extra> {
+impl<Extra> AccountState<Extra> {
     /// Create a new account state with a specific start value
     pub fn new(v: Value, e: Extra) -> Self {
         Self {
@@ -56,6 +56,26 @@ impl<Extra: Clone> AccountState<Extra> {
         }
     }
 
+    /// Get referencet to delegation setting
+    pub fn delegation(&self) -> &Option<StakePoolId> {
+        &self.delegation
+    }
+
+    pub fn value(&self) -> Value {
+        self.value
+    }
+
+    // deprecated use value()
+    pub fn get_value(&self) -> Value {
+        self.value
+    }
+
+    pub fn get_counter(&self) -> u32 {
+        self.counter.into()
+    }
+}
+
+impl<Extra: Clone> AccountState<Extra> {
     /// Add a value to an account state
     ///
     /// Only error if value is overflowing
@@ -64,18 +84,6 @@ impl<Extra: Clone> AccountState<Extra> {
         let mut st = self.clone();
         st.value = new_value;
         Ok(st)
-    }
-
-    /// Set delegation
-    pub fn set_delegation(&self, delegation: Option<StakePoolId>) -> Self {
-        let mut st = self.clone();
-        st.delegation = delegation;
-        st
-    }
-
-    /// Get referencet to delegation setting
-    pub fn delegation(&self) -> &Option<StakePoolId> {
-        &self.delegation
     }
 
     /// Subtract a value from an account state, and return the new state.
@@ -104,18 +112,13 @@ impl<Extra: Clone> AccountState<Extra> {
         }
     }
 
-    pub fn value(&self) -> Value {
-        self.value
+    /// Set delegation
+    pub fn set_delegation(&self, delegation: Option<StakePoolId>) -> Self {
+        let mut st = self.clone();
+        st.delegation = delegation;
+        st
     }
 
-    // deprecated use value()
-    pub fn get_value(&self) -> Value {
-        self.value
-    }
-
-    pub fn get_counter(&self) -> u32 {
-        self.counter.into()
-    }
 }
 
 /// Spending counter associated to an account.
