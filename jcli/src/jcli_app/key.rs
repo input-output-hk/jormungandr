@@ -82,13 +82,8 @@ pub struct Generate {
     /// will be generated (32 bytes in hexadecimal). This seed will be fed to
     /// ChaChaRNG and allow pseudo random key generation. Do not use if you
     /// are not sure.
-    #[structopt(
-        long = "seed",
-        short = "s",
-        name = "SEED",
-        parse(try_from_str = "hex::decode")
-    )]
-    seed: Option<Vec<u8>>,
+    #[structopt(long = "seed", short = "s", name = "SEED", parse(try_from_str))]
+    seed: Option<Seed>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -239,16 +234,9 @@ fn read_line<P: AsRef<Path>>(path: Option<P>) -> Result<String, Error> {
     Ok(line)
 }
 
-fn gen_priv_key<K: AsymmetricKey>(seed: Option<Vec<u8>>) -> Result<Bech32, Error> {
+fn gen_priv_key<K: AsymmetricKey>(seed: Option<Seed>) -> Result<Bech32, Error> {
     let rng = if let Some(seed) = seed {
-        if seed.len() != 32 {
-            return Err(Error::InvalidSeed {
-                seed_len: seed.len(),
-            });
-        }
-        let mut seed_bytes = [0; 32];
-        seed_bytes.copy_from_slice(&seed);
-        ChaChaRng::from_seed(seed_bytes)
+        ChaChaRng::from_seed(seed.0)
     } else {
         ChaChaRng::from_rng(EntropyRng::new())?
     };
@@ -269,4 +257,21 @@ fn bytes_to_priv_key<K: AsymmetricKey>(bytes: &[u8]) -> Result<String, Error> {
     use chain_crypto::bech32::Bech32 as _;
     let secret: chain_crypto::SecretKey<K> = chain_crypto::SecretKey::from_binary(bytes)?;
     Ok(secret.to_bech32_str())
+}
+
+#[derive(Debug)]
+struct Seed([u8; 32]);
+impl std::str::FromStr for Seed {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let vec = hex::decode(s)?;
+        if vec.len() != 32 {
+            return Err(Error::InvalidSeed {
+                seed_len: vec.len(),
+            });
+        }
+        let mut bytes = [0; 32];
+        bytes.copy_from_slice(&vec);
+        Ok(Seed(bytes))
+    }
 }
