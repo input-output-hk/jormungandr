@@ -65,7 +65,7 @@ follow the instruction in [JCLI's address guide](../jcli/address.md). Utilise th
 registered previously as group address:
 
 ```
-jcli address single $(wallet_key.pub) $(stake_key.pub)
+jcli address single $(cat wallet_key.pub) $(cat stake_key.pub)
 ta1sjx4j3jwel94g0cgwzq9au7h6m8f5q3qnyh0gfnryl3xan6qnmjse3k2uv062mzj34eacjnxthxqv8fvdcn6f4xhxwa7ms729ak3gsl4qrq2mm
 ```
 
@@ -92,4 +92,27 @@ initial_funds:
   # address delegating to stake key (K)
   - address: ta1sjx4j3jwel94g0cgwzq9au7h6m8f5q3qnyh0gfnryl3xan6qnmjse3k2uv062mzj34eacjnxthxqv8fvdcn6f4xhxwa7ms729ak3gsl4qrq2mm
     value: 1000000
+```
+
+### Starting the node
+
+Now, for starting the node and be able to generate new blocks, you have to put your pool's private keys and id in a file and start the node with the `--secret filename` parameter.
+
+---
+
+For example, if you follow the examples of the [registering stake pool guide](../stake_pool/registering_stake_pool.md) 
+
+You could create a file called poolsecret.yaml with the following content.
+
+```yaml
+genesis:
+  sig_key: Content of stake_pool_kes.prv file
+  vrf_key: Content of stake_pool_vrf.prv file
+  node_id: Content of stake_pool.id file
+```
+
+And you could start the node with this command 
+
+```sh
+jormungandr --genesis-block block-0.bin --config config.yaml --secret poolsecret.yaml
 ```
