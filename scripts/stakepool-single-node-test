@@ -59,7 +59,7 @@ STAKE_DELEGATION_CERT=$(cat stake_delegation.signcert)
 
 cat << EOF > genesis.yaml
 blockchain_configuration:
-  block0_date: 1550822014
+  block0_date: $(date +%s)
   discrimination: test
   slots_per_epoch: 5000
   slot_duration: 10
