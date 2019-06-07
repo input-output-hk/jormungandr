@@ -1,7 +1,6 @@
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 
-
 use super::role::{StakeKeyId, StakePoolId, StakePoolInfo};
 use crate::transaction::AccountIdentifier;
 /// All registered Stake Node
