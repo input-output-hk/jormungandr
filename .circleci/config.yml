@@ -125,7 +125,7 @@ jobs:
           name: Test
           command: cargo test --release --frozen --verbose
 
-  test_nightly:
+  build_nightly:
     docker:
       - image: rustlang/rust:nightly
     working_directory: /mnt/crate
@@ -142,7 +142,33 @@ jobs:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build and test with nightly Rust
+          name: Build in debug profile
+          command: cargo build --frozen
+      - persist_to_workspace:
+          root: target
+          paths:
+            - debug/*
+
+  test_nightly:
+    docker:
+      - image: rustlang/rust:nightly
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - attach_workspace:
+          at: target
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version
+      - run:
+          name: Test
           command: cargo test --frozen --verbose
 
 workflows:
@@ -165,7 +191,10 @@ workflows:
       - test_release:
           requires:
             - build_release
-      - test_nightly:
+      - build_nightly:
           requires:
             - rustfmt
             - cargo_fetch
+      - test_nightly:
+          requires:
+            - build_nightly
