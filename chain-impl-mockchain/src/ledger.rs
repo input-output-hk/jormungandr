@@ -107,6 +107,7 @@ custom_error! {
         Multisig { source: multisig::LedgerError } = "Error or Invalid multisig",
         NotBalanced { inputs: Value, outputs: Value } = "Inputs, outputs and fees are not balanced, transaction with {inputs} input and {outputs} output",
         ZeroOutput { output: Output<Address> } = "Empty output",
+        OutputGroupInvalid { output: Output<Address> } = "Output group invalid",
         Delegation { source: DelegationError } = "Error or Invalid delegation ",
         AccountIdentifierInvalid = "Invalid account identifier",
         InvalidDiscrimination = "Invalid discrimination",
@@ -282,10 +283,8 @@ impl Ledger {
                             source: Block0Error::TransactionHasOutput,
                         });
                     }
-                    let new_delegation = ledger
-                        .delegation
-                        .apply(&authenticated_cert_tx.transaction.extra)?;
-                    ledger.delegation = new_delegation;
+                    ledger = ledger
+                        .apply_certificate_content(&authenticated_cert_tx.transaction.extra)?;
                 }
             }
         }
@@ -442,6 +441,40 @@ impl Ledger {
         Ok(self)
     }
 
+    fn apply_certificate_content(
+        mut self,
+        certificate: &certificate::Certificate,
+    ) -> Result<Self, Error> {
+        match certificate.content {
+            certificate::CertificateContent::StakeDelegation(ref reg) => {
+                if !self.delegation.stake_pool_exists(&reg.pool_id) {
+                    return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(
+                        reg.pool_id.clone(),
+                    )
+                    .into());
+                }
+
+                if let Some(account_key) = reg.stake_key_id.to_single_account() {
+                    self.accounts = self
+                        .accounts
+                        .set_delegation(&account_key, Some(reg.pool_id.clone()))?;
+                } else {
+                    return Err(DelegationError::StakeDelegationAccountIsInvalid(
+                        reg.stake_key_id.clone(),
+                    )
+                    .into());
+                }
+            }
+            certificate::CertificateContent::StakePoolRegistration(ref reg) => {
+                self.delegation = self.delegation.register_stake_pool(reg.clone())?
+            }
+            certificate::CertificateContent::StakePoolRetirement(ref reg) => {
+                self.delegation = self.delegation.deregister_stake_pool(&reg.pool_id)?
+            }
+        }
+        Ok(self)
+    }
+
     pub fn apply_certificate(
         mut self,
         auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
@@ -452,14 +485,14 @@ impl Ledger {
             return Err(Error::CertificateInvalidSignature);
         };
         let (new_ledger, fee) = self.apply_transaction(auth_cert, dyn_params)?;
-        self = new_ledger;
-        let new_delegation = self.delegation.apply(&auth_cert.transaction.extra)?;
-        self.delegation = new_delegation;
+
+        self = new_ledger.apply_certificate_content(&auth_cert.transaction.extra)?;
+
         Ok((self, fee))
     }
 
     pub fn get_stake_distribution(&self) -> StakeDistribution {
-        stake::get_distribution(&self.delegation, &self.utxos)
+        stake::get_distribution(&self.accounts, &self.delegation, &self.utxos)
     }
 
     /// access the ledger static parameters
@@ -594,16 +627,15 @@ fn internal_apply_transaction(
     }
 
     // 4. add the new outputs
-    let (new_utxos, new_accounts, new_multisig) =
-        internal_apply_transaction_output(
-            ledger.utxos,
-            ledger.accounts,
-            ledger.multisig,
-            &ledger.static_params,
-            dyn_params,
-            transaction_id,
-            outputs,
-        )?;
+    let (new_utxos, new_accounts, new_multisig) = internal_apply_transaction_output(
+        ledger.utxos,
+        ledger.accounts,
+        ledger.multisig,
+        &ledger.static_params,
+        dyn_params,
+        transaction_id,
+        outputs,
+    )?;
     ledger.utxos = new_utxos;
     ledger.accounts = new_accounts;
     ledger.multisig = new_multisig;
@@ -633,7 +665,15 @@ fn internal_apply_transaction_output(
             return Err(Error::InvalidDiscrimination);
         }
         match output.address.kind() {
-            Kind::Single(_) | Kind::Group(_, _) => {
+            Kind::Single(_) => {
+                new_utxos.push((index as u8, output.clone()));
+            }
+            Kind::Group(_, account_id) => {
+                let account_id = account_id.clone().into();
+                // TODO: probably faster to just call add_account and check for already exists error
+                if !accounts.exists(&account_id) {
+                    accounts = accounts.add_account(&account_id, Value::zero(), ())?;
+                }
                 new_utxos.push((index as u8, output.clone()));
             }
             Kind::Account(identifier) => {

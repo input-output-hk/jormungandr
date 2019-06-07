@@ -1,19 +1,15 @@
-use crate::certificate::{Certificate, CertificateContent};
-use imhamt::{Hamt, UpdateError};
+use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 
-use super::role::{StakeKeyId, StakeKeyInfo, StakePoolId, StakePoolInfo};
 
+use super::role::{StakeKeyId, StakePoolId, StakePoolInfo};
+use crate::transaction::AccountIdentifier;
 /// All registered Stake Node
 pub type PoolTable = Hamt<DefaultHasher, StakePoolId, StakePoolInfo>;
-
-/// All Registered Stake Keys
-pub type KeyTable = Hamt<DefaultHasher, StakeKeyId, StakeKeyInfo>;
 
 /// A structure that keeps track of stake keys and stake pools.
 #[derive(Clone)]
 pub struct DelegationState {
-    pub(super) stake_keys: KeyTable,
     pub(crate) stake_pools: PoolTable,
 }
 
@@ -22,6 +18,7 @@ pub enum DelegationError {
     StakeDelegationSigIsInvalid,
     StakeDelegationStakeKeyIsInvalid(StakeKeyId),
     StakeDelegationPoolKeyIsInvalid(StakePoolId),
+    StakeDelegationAccountIsInvalid(AccountIdentifier),
     StakePoolRegistrationPoolSigIsInvalid,
     StakePoolAlreadyExists(StakePoolId),
     StakePoolRetirementSigIsInvalid,
@@ -44,6 +41,11 @@ impl std::fmt::Display for DelegationError {
                 f,
                 "Block has a stake delegation certificate that delegates to a pool '{:?} that does not exist",
                 pool_id
+            ),
+            DelegationError::StakeDelegationAccountIsInvalid(account_id) => write!(
+                f,
+                "Block has a stake delegation certificate that delegates from an account '{:?} that does not exist",
+                account_id
             ),
             DelegationError::StakePoolRegistrationPoolSigIsInvalid => write!(
                 f,
@@ -72,19 +74,8 @@ impl std::error::Error for DelegationError {}
 impl DelegationState {
     pub fn new() -> Self {
         DelegationState {
-            stake_keys: Hamt::new(),
             stake_pools: Hamt::new(),
         }
-    }
-
-    pub fn nr_stake_keys(&self) -> usize {
-        self.stake_keys.size()
-    }
-
-    pub fn stake_key_exists(&self, stake_key_id: &StakeKeyId) -> bool {
-        self.stake_keys
-            .lookup(stake_key_id)
-            .map_or_else(|| false, |_| true)
     }
 
     //pub fn get_stake_pools(&self) -> &HashMap<GenesisPraosId, StakePoolInfo> {
@@ -105,7 +96,6 @@ impl DelegationState {
             .map_err(|_| DelegationError::StakePoolAlreadyExists(id))?;
         Ok(DelegationState {
             stake_pools: new_pools,
-            stake_keys: self.stake_keys.clone(),
         })
     }
 
@@ -115,54 +105,6 @@ impl DelegationState {
                 .stake_pools
                 .remove(pool_id)
                 .map_err(|_| DelegationError::StakePoolDoesNotExist(pool_id.clone()))?,
-            stake_keys: self.stake_keys.clone(),
         })
-    }
-
-    pub fn delegate_stake(
-        &self,
-        stake_key_id: StakeKeyId,
-        pool_id: StakePoolId,
-    ) -> Result<Self, DelegationError> {
-        let new_keys = self
-            .stake_keys
-            .update(&stake_key_id, |ki| {
-                let mut kinfo = ki.clone();
-                kinfo.pool = Some(pool_id);
-                Ok(Some(kinfo))
-            })
-            // error mapping is wrong...
-            .map_err(|_: UpdateError<()>| {
-                DelegationError::StakeDelegationStakeKeyIsInvalid(stake_key_id.clone())
-            })?;
-        Ok(DelegationState {
-            stake_keys: new_keys,
-            stake_pools: self.stake_pools.clone(),
-        })
-    }
-
-    pub(crate) fn apply(&self, certificate: &Certificate) -> Result<Self, DelegationError> {
-        let mut new_state = self.clone();
-
-        match certificate.content {
-            CertificateContent::StakeDelegation(ref reg) => {
-                if !self.stake_pool_exists(&reg.pool_id) {
-                    return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(
-                        reg.pool_id.clone(),
-                    ));
-                }
-
-                new_state =
-                    new_state.delegate_stake(reg.stake_key_id.clone(), reg.pool_id.clone())?
-            }
-            CertificateContent::StakePoolRegistration(ref reg) => {
-                new_state = new_state.register_stake_pool(reg.clone())?
-            }
-            CertificateContent::StakePoolRetirement(ref reg) => {
-                new_state = new_state.deregister_stake_pool(&reg.pool_id)?
-            }
-        }
-
-        Ok(new_state)
     }
 }

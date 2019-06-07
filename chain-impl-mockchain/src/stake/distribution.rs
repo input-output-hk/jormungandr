@@ -1,108 +1,132 @@
+
+use crate::account;
 use crate::{stake::StakePoolId, utxo, value::Value};
 use chain_addr::{Address, Kind};
 use std::collections::HashMap;
 
 use super::delegation::DelegationState;
-use super::role::StakeKeyId;
 
-/// For each stake pool, the total stake value, and the value for the
-/// stake pool members.
+/// Stake distribution at a given time.
+///
+/// Mainly containing the value associated with each pool,
+/// but in future could also contains:
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakeDistribution(pub HashMap<StakePoolId, PoolStakeDistribution>);
+pub struct StakeDistribution {
+    // single address values
+    pub unassigned: Value,
+    // group or account that doesn't have a valid stake pool assigned
+    pub dangling: Value,
+    /// For each stake pool, the total stake value, and the value for the
+    /// stake pool members.
+    pub to_pools: HashMap<StakePoolId, PoolStakeDistribution>,
+}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PoolStakeDistribution {
     pub total_stake: Value,
-    /// Stake per member. Non-zero stakes only.
-    pub member_stake: HashMap<StakeKeyId, Value>,
 }
 
 impl StakeDistribution {
     pub fn empty() -> Self {
-        StakeDistribution(HashMap::new())
+        StakeDistribution {
+            unassigned: Value::zero(),
+            dangling: Value::zero(),
+            to_pools: HashMap::new(),
+        }
     }
 
     /// Return the number of stake pools with non-zero stake.
     pub fn eligible_stake_pools(&self) -> usize {
-        self.0.len()
+        self.to_pools.len()
     }
 
     /// Return the total stake held by the eligible stake pools.
     pub fn total_stake(&self) -> Value {
-        self.0
+        self.to_pools
             .iter()
             .map(|(_, pool)| pool.total_stake)
             .fold(Value::zero(), |sum, x| (sum + x).unwrap())
     }
 
     pub fn get_stake_for(&self, poolid: &StakePoolId) -> Option<Value> {
-        self.0.get(poolid).map(|psd| psd.total_stake)
+        self.to_pools.get(poolid).map(|psd| psd.total_stake)
     }
 
     pub fn get_distribution(&self, stake_pool_id: &StakePoolId) -> Option<&PoolStakeDistribution> {
-        self.0.get(stake_pool_id)
-    }
-
-    /// Place the stake pools on the interval [0, total_stake) (sorted
-    /// by ID), then return the ID of the one containing 'point'
-    /// (which must be in the interval). This is used to randomly
-    /// select a leader, taking stake into account.
-    pub fn select_pool(&self, mut point: u64) -> Option<StakePoolId> {
-        let mut pools_sorted: Vec<_> = self
-            .0
-            .iter()
-            .map(|(pool_id, pool)| (pool_id, pool.total_stake))
-            .collect();
-
-        pools_sorted.sort();
-
-        for (pool_id, pool_stake) in pools_sorted {
-            if point < pool_stake.0 {
-                return Some(pool_id.clone());
-            }
-            point -= pool_stake.0
-        }
-
-        None
+        self.to_pools.get(stake_pool_id)
     }
 }
 
+pub fn distribution_add(p: &mut PoolStakeDistribution, v: Value) {
+    p.total_stake = (p.total_stake + v).expect("internal error: total amount of stake overflow")
+}
+
+/// Calculate the Stake Distribution where the source of stake is coming from utxos and accounts,
+/// and where the main targets is to calculate each value associated with *known* stake pools.
+///
+/// Everything that is linked to a stake pool that doesn't exist, will be added to dangling stake,
+/// whereas all the utxo / accounts that doesn't have any delegation setup, will be counted towards
+/// the unassigned stake.
 pub fn get_distribution(
+    accounts: &account::Ledger,
     dstate: &DelegationState,
     utxos: &utxo::Ledger<Address>,
 ) -> StakeDistribution {
-    let mut dist = HashMap::new();
+    use std::iter::FromIterator;
+
+    let p0 = PoolStakeDistribution {
+        total_stake: Value::zero(),
+    };
+    let mut dist = HashMap::from_iter(dstate.stake_pools.iter().map(|(id, _)| (id.clone(), p0)));
+    let mut unassigned = Value::zero();
+    let mut dangling = Value::zero();
+
+    for (_, account_state) in accounts.iter() {
+        match account_state.delegation() {
+            None => unassigned = (unassigned + account_state.value()).unwrap(),
+            Some(pool_id) => {
+                // if the pool exists, we add value to this pool distribution,
+                // otherwise it get added to the dangling pool
+                dist.get_mut(pool_id).map_or_else(
+                    || dangling = (dangling + account_state.value()).unwrap(),
+                    |v| distribution_add(v, account_state.value()),
+                )
+            }
+        }
+    }
 
     for output in utxos.values() {
         // We're only interested in "group" addresses
         // (i.e. containing a spending key and a stake key).
-        if let Kind::Group(_spending_key, stake_key) = output.address.kind() {
-            // Grmbl.
-            let stake_key = stake_key.clone().into();
-
-            // Do we have a stake key for this spending key?
-            if let Some(stake_key_info) = dstate.stake_keys.lookup(&stake_key) {
-                // Is this stake key a member of a stake pool?
-                if let Some(pool_id) = &stake_key_info.pool {
-                    let stake_pool_dist =
-                        dist.entry(pool_id.clone())
-                            .or_insert_with(|| PoolStakeDistribution {
-                                total_stake: Value(0),
-                                member_stake: HashMap::new(),
-                            });
-                    // note: unwrap should be safe, the system should have a total less than overflow
-                    stake_pool_dist.total_stake =
-                        (stake_pool_dist.total_stake + output.value).unwrap();
-
-                    let member_dist = stake_pool_dist
-                        .member_stake
-                        .entry(stake_key.clone())
-                        .or_insert_with(|| Value::zero());
-                    *member_dist = (*member_dist + output.value).unwrap();
+        match output.address.kind() {
+            Kind::Account(_) | Kind::Multisig(_) => {
+                // single or multisig account are not present in utxos
+                panic!("internal error: accounts in utxo")
+            }
+            Kind::Group(_spending_key, account_key) => {
+                // is there an account linked to this
+                match accounts.get_state(&account_key.clone().into()) {
+                    Err(_) => panic!("internal error: group's account should always be created"),
+                    Ok(st) => {
+                        // Is this stake key a member of a stake pool?
+                        if let Some(pool_id) = &st.delegation() {
+                            dist.get_mut(pool_id).map_or_else(
+                                || dangling = (dangling + output.value).unwrap(),
+                                |v| distribution_add(v, output.value),
+                            );
+                        }
+                    }
                 }
+            }
+            Kind::Single(_) => {
+                unassigned = (unassigned + output.value).unwrap();
             }
         }
     }
 
-    StakeDistribution(dist)
+    StakeDistribution {
+        unassigned: unassigned,
+        dangling: dangling,
+        to_pools: dist,
+    }
 }

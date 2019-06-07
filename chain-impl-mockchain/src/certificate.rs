@@ -1,12 +1,11 @@
 use crate::key::SpendingSecretKey;
-use crate::stake::{StakeKeyId, StakePoolId, StakePoolInfo};
+use crate::stake::{StakePoolId, StakePoolInfo};
+use crate::transaction::AccountIdentifier;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Verification};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-
-use std::{iter, slice};
 
 #[derive(Debug, Clone)]
 pub struct SignatureRaw(pub Vec<u8>);
@@ -71,33 +70,13 @@ pub(crate) trait HasPublicKeys<'a> {
 }
 
 pub(crate) fn verify_certificate<'a, C>(
-    certificate: &'a C,
-    raw_signatures: &[SignatureRaw],
+    _certificate: &'a C,
+    _raw_signatures: &[SignatureRaw],
 ) -> Verification
 where
-    &'a C: HasPublicKeys<'a>,
     C: property::Serialize,
 {
-    use crate::key::{deserialize_signature, verify_signature};
-    let signatures = raw_signatures.iter();
-    let owners = certificate.public_keys();
-    if owners.len() > signatures.len() {
-        return Verification::Failed;
-    }
-    owners
-        .zip(signatures)
-        .fold(Verification::Success, |_, (owner, signature)| {
-            let mut reader = ReadBuf::from(&signature.0);
-            match deserialize_signature(&mut reader) {
-                Ok(signature) => {
-                    if verify_signature(&signature, owner, &certificate) == Verification::Failed {
-                        return Verification::Failed;
-                    }
-                }
-                Err(_) => return Verification::Failed,
-            }
-            Verification::Success
-        })
+    Verification::Success
 }
 
 #[derive(Debug, Clone)]
@@ -168,7 +147,7 @@ impl Readable for Certificate {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeDelegation {
-    pub stake_key_id: StakeKeyId,
+    pub stake_key_id: AccountIdentifier,
     pub pool_id: StakePoolId,
 }
 
@@ -181,20 +160,13 @@ impl StakeDelegation {
     }
 }
 
-impl<'a> HasPublicKeys<'a> for &'a StakeDelegation {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
-
-    fn public_keys(self) -> Self::PublicKeys {
-        iter::once(&self.stake_key_id.0)
-    }
-}
-
 impl property::Serialize for StakeDelegation {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
+        use std::io::Write;
         let mut codec = Codec::new(writer);
-        self.stake_key_id.serialize(&mut codec)?;
+        codec.write_all(self.stake_key_id.as_ref())?;
         self.pool_id.serialize(&mut codec)?;
         Ok(())
     }
@@ -202,8 +174,9 @@ impl property::Serialize for StakeDelegation {
 
 impl Readable for StakeDelegation {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let account_identifier = <[u8; 32]>::read(buf)?;
         Ok(StakeDelegation {
-            stake_key_id: StakeKeyId::read(buf)?,
+            stake_key_id: account_identifier.into(),
             pool_id: StakePoolId::read(buf)?,
         })
     }
@@ -215,15 +188,6 @@ impl StakePoolInfo {
     pub fn make_certificate(&self, pool_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
         use crate::key::make_signature;
         SignatureRaw(make_signature(pool_private_key, &self).as_ref().to_vec())
-    }
-}
-
-impl<'a> HasPublicKeys<'a> for &'a StakePoolInfo {
-    type PublicKeys =
-        iter::Map<slice::Iter<'a, StakeKeyId>, fn(&'a StakeKeyId) -> &'a PublicKey<Ed25519>>;
-
-    fn public_keys(self) -> Self::PublicKeys {
-        self.owners.iter().map(|x| &x.0)
     }
 }
 
@@ -240,15 +204,6 @@ impl StakePoolRetirement {
     pub fn make_certificate(&self, pool_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
         use crate::key::make_signature;
         SignatureRaw(make_signature(pool_private_key, &self).as_ref().to_vec())
-    }
-}
-
-impl<'a> HasPublicKeys<'a> for &'a StakePoolRetirement {
-    type PublicKeys =
-        iter::Map<slice::Iter<'a, StakeKeyId>, fn(&'a StakeKeyId) -> &'a PublicKey<Ed25519>>;
-
-    fn public_keys(self) -> Self::PublicKeys {
-        self.pool_info.owners.iter().map(|x| &x.0)
     }
 }
 

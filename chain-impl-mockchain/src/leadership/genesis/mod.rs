@@ -220,11 +220,10 @@ mod test {
         let mut selection = GenesisLeaderSelection::new(0, &ledger);
 
         for (pool_id, (_, _, value)) in &pools {
-            selection.distribution.0.insert(
+            selection.distribution.to_pools.insert(
                 pool_id.clone(),
                 PoolStakeDistribution {
                     total_stake: *value,
-                    member_stake: HashMap::new(),
                 },
             );
         }
