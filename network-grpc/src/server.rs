@@ -7,14 +7,14 @@ use network_core::server::{
     block::BlockService, content::ContentService, gossip::GossipService, Node,
 };
 
-use futures::future::Executor;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
+use tower_grpc::codegen::server::grpc::Never as NeverError;
 
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 
-use std::{error, fmt, net::SocketAddr};
+use std::net::SocketAddr;
 
 #[cfg(unix)]
 use std::path::Path;
@@ -25,7 +25,7 @@ use std::path::Path;
 /// Node service. The application instantiates a `Server` wrapping a
 /// blockchain service implementation satisfying the abstract network
 /// service trait `Node`.
-pub struct Server<T, E>
+pub struct Server<T>
 where
     T: Node + Clone,
     <T::BlockService as BlockService>::Block: protocol_bounds::Block,
@@ -33,83 +33,53 @@ where
     <T::ContentService as ContentService>::Message: protocol_bounds::Message,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
-    h2: tower_h2::Server<
+    inner: tower_hyper::Server<
         gen_server::NodeServer<NodeService<T>>,
-        E,
         gen_server::node::ResponseBody<NodeService<T>>,
     >,
 }
+
+/// The error type for gRPC server operations.
+pub type Error = tower_hyper::server::Error<NeverError>;
 
 /// Connection of a client peer to the gRPC server.
-pub struct Connection<S, T, E>
-where
-    S: AsyncRead + AsyncWrite,
-    T: Node + Clone,
-    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
-    <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
-    <T::GossipService as GossipService>::Node: protocol_bounds::Node,
-{
-    h2: tower_h2::server::Connection<
-        S,
-        gen_server::NodeServer<NodeService<T>>,
-        E,
-        gen_server::node::ResponseBody<NodeService<T>>,
-        (),
-    >,
+pub struct Connection {
+    inner: tower_hyper::server::Serve<NeverError>,
 }
 
-impl<S, T, E> Future for Connection<S, T, E>
-where
-    S: AsyncRead + AsyncWrite,
-    T: Node + Clone + 'static,
-    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
-    <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
-    <T::GossipService as GossipService>::Node: protocol_bounds::Node,
-    E: Executor<
-        tower_h2::server::Background<
-            gen_server::node::ResponseFuture<NodeService<T>>,
-            gen_server::node::ResponseBody<NodeService<T>>,
-        >,
-    >,
-{
+impl Future for Connection {
     type Item = ();
     type Error = Error;
+
+    #[inline]
     fn poll(&mut self) -> Poll<(), Error> {
-        self.h2.poll().map_err(|e| e.into())
+        self.inner.poll()
     }
 }
 
-impl<T, E> Server<T, E>
+impl<T> Server<T>
 where
-    T: Node + Clone + 'static,
+    T: Node + Clone + Send + 'static,
     <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
     <T::ContentService as ContentService>::Message: protocol_bounds::Message,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
-    E: Executor<
-            tower_h2::server::Background<
-                gen_server::node::ResponseFuture<NodeService<T>>,
-                gen_server::node::ResponseBody<NodeService<T>>,
-            >,
-        > + Clone,
 {
     /// Creates a server instance around the node service implementation.
-    pub fn new(node: T, executor: E) -> Self {
+    pub fn new(node: T) -> Self {
         let grpc_service = gen_server::NodeServer::new(NodeService::new(node));
-        let h2 = tower_h2::Server::new(grpc_service, Default::default(), executor);
-        Server { h2 }
+        let inner = tower_hyper::Server::new(grpc_service);
+        Server { inner }
     }
 
     /// Initializes a client peer connection based on an accepted connection
     /// socket. The socket can be obtained from a stream returned by `listen`.
-    pub fn serve<S>(&mut self, sock: S) -> Connection<S, T, E>
+    pub fn serve<S>(&mut self, sock: S) -> Connection
     where
-        S: AsyncRead + AsyncWrite,
+        S: AsyncRead + AsyncWrite + Send + 'static,
     {
         Connection {
-            h2: self.h2.serve(sock),
+            inner: self.inner.serve(sock),
         }
     }
 }
@@ -139,63 +109,4 @@ pub fn listen_unix<P: AsRef<Path>>(
 ) -> Result<impl Stream<Item = UnixStream, Error = tokio::io::Error>, tokio::io::Error> {
     let listener = UnixListener::bind(path)?;
     Ok(listener.incoming())
-}
-
-/// The error type for gRPC server operations.
-#[derive(Debug)]
-pub enum Error {
-    Http2Handshake(h2::Error),
-    Http2Protocol(h2::Error),
-    NewService,
-    Service,
-    Execute,
-}
-
-type H2Error<T> = tower_h2::server::Error<gen_server::NodeServer<NodeService<T>>>;
-
-// Incorporating tower_h2::server::Error would be too cumbersome due to the
-// type parameter baggage, see https://github.com/tower-rs/tower-h2/issues/50
-// So we match it into our own variants.
-impl<T> From<H2Error<T>> for Error
-where
-    T: Node + Clone,
-    <T::BlockService as BlockService>::Block: protocol_bounds::Block,
-    <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
-    <T::GossipService as GossipService>::Node: protocol_bounds::Node,
-{
-    fn from(err: H2Error<T>) -> Self {
-        use tower_h2::server::Error::*;
-        match err {
-            Handshake(e) => Error::Http2Handshake(e),
-            Protocol(e) => Error::Http2Protocol(e),
-            NewService(_) => Error::NewService,
-            Service(_) => Error::Service,
-            Execute => Error::Execute,
-        }
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Http2Handshake(_) => write!(f, "HTTP/2 handshake error"),
-            Error::Http2Protocol(_) => write!(f, "HTTP/2 protocol error"),
-            Error::NewService => write!(f, "service creation error"),
-            Error::Service => write!(f, "error returned by service"),
-            Error::Execute => write!(f, "task execution error"),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Error::Http2Handshake(e) => Some(e),
-            Error::Http2Protocol(e) => Some(e),
-            Error::NewService => None,
-            Error::Service => None,
-            Error::Execute => None,
-        }
-    }
 }

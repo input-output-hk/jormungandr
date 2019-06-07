@@ -17,10 +17,8 @@ use network_core::{
     subscription::BlockEvent,
 };
 
-use futures::future::Executor;
 use tokio::prelude::*;
 use tower_grpc::{BoxBody, Code, Request, Status, Streaming};
-use tower_h2::client::Background;
 use tower_request_modifier::{self, RequestModifier};
 
 use std::marker::PhantomData;
@@ -96,32 +94,35 @@ pub trait ProtocolConfig {
 ///
 /// This type encapsulates the gRPC protocol client that can
 /// make connections and perform requests towards other blockchain nodes.
-pub struct Connection<P, T, E>
+pub struct Connection<P>
 where
     P: ProtocolConfig,
 {
-    service:
-        gen_client::Node<RequestModifier<tower_h2::client::Connection<T, E, BoxBody>, BoxBody>>,
+    service: gen_client::Node<RequestModifier<tower_hyper::client::Connection<BoxBody>, BoxBody>>,
     node_id: Option<<P::Node as gossip::Node>::Id>,
 }
 
 type GrpcUnaryFuture<R> = tower_grpc::client::unary::ResponseFuture<
     R,
-    tower_h2::client::ResponseFuture,
-    tower_h2::RecvBody,
+    tower_hyper::client::ResponseFuture<hyper::client::conn::ResponseFuture>,
+    tower_hyper::Body,
 >;
 
 type GrpcClientStreamingFuture<R> = tower_grpc::client::client_streaming::ResponseFuture<
     R,
-    tower_h2::client::ResponseFuture,
-    tower_h2::RecvBody,
+    tower_hyper::client::ResponseFuture<hyper::client::conn::ResponseFuture>,
+    tower_hyper::Body,
 >;
 
-type GrpcServerStreamingFuture<R> =
-    tower_grpc::client::server_streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
+type GrpcServerStreamingFuture<R> = tower_grpc::client::server_streaming::ResponseFuture<
+    R,
+    tower_hyper::client::ResponseFuture<hyper::client::conn::ResponseFuture>,
+>;
 
-type GrpcBidiStreamingFuture<R> =
-    tower_grpc::client::streaming::ResponseFuture<R, tower_h2::client::ResponseFuture>;
+type GrpcBidiStreamingFuture<R> = tower_grpc::client::streaming::ResponseFuture<
+    R,
+    tower_hyper::client::ResponseFuture<hyper::client::conn::ResponseFuture>,
+>;
 
 pub struct ResponseFuture<T, R> {
     inner: GrpcUnaryFuture<R>,
@@ -176,7 +177,7 @@ impl<T, Id, R> SubscriptionFuture<T, Id, R> {
 }
 
 pub struct ResponseStream<T, R> {
-    inner: Streaming<R, tower_h2::RecvBody>,
+    inner: Streaming<R, tower_hyper::Body>,
     _phantom: PhantomData<T>,
 }
 
@@ -294,7 +295,7 @@ where
     }
 }
 
-impl<P, T, E> Connection<P, T, E>
+impl<P> Connection<P>
 where
     P: ProtocolConfig,
 {
@@ -316,18 +317,16 @@ where
     }
 }
 
-impl<P, T, E> P2pService for Connection<P, T, E>
+impl<P> P2pService for Connection<P>
 where
     P: ProtocolConfig,
 {
     type NodeId = <P::Node as gossip::Node>::Id;
 }
 
-impl<P, T, E> BlockService for Connection<P, T, E>
+impl<P> BlockService for Connection<P>
 where
     P: ProtocolConfig,
-    T: AsyncRead + AsyncWrite,
-    E: Executor<Background<T, BoxBody>> + Clone,
 {
     type Block = P::Block;
     type TipFuture = ResponseFuture<P::Header, gen::node::TipResponse>;
@@ -384,11 +383,9 @@ where
     }
 }
 
-impl<P, T, E> GossipService for Connection<P, T, E>
+impl<P> GossipService for Connection<P>
 where
     P: ProtocolConfig,
-    T: AsyncRead + AsyncWrite,
-    E: Executor<Background<T, BoxBody>> + Clone,
 {
     type Node = P::Node;
     type GossipSubscription = ResponseStream<Gossip<P::Node>, gen::node::Gossip>;

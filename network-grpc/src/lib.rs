@@ -3,7 +3,6 @@ extern crate chain_core;
 extern crate futures;
 extern crate prost;
 extern crate tower_grpc;
-extern crate tower_h2;
 
 // Generated protobuf/gRPC code.
 #[allow(dead_code)]
