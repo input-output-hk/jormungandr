@@ -10,7 +10,7 @@ main() {
         return
     fi
 
-    cross test --target $TARGET --features=integration-test --release
+    cross test --target $TARGET --release
 }
 
 # we don't run the "test phase" when doing deploys

@@ -112,14 +112,6 @@ Building:
 cargo build --bin jcli
 ```
 
-# Integration tests
-
-Running:
-
-```sh
-cargo test --features integration-test
-```
-
 # License
 
 This project is licensed under either of the following licenses:
