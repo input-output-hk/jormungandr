@@ -469,7 +469,6 @@ blockchain_configuration:
   consensus_genesis_praos_active_slot_coeff: "0.444"
   max_number_of_transactions_per_block: 255
   bft_slots_ratio: "0.222"
-  allow_account_creation: true
   linear_fee:
     coefficient: 1
     constant: 2
