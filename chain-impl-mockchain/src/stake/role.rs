@@ -98,6 +98,12 @@ impl Readable for StakePoolInfo {
     }
 }
 
+impl From<StakePoolId> for [u8; 32] {
+    fn from(h: StakePoolId) -> [u8; 32] {
+        h.0.into()
+    }
+}
+
 impl From<Hash> for StakePoolId {
     fn from(hash: Hash) -> Self {
         StakePoolId(hash)
