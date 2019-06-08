@@ -42,13 +42,15 @@ fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
 struct AccountDto {
     value: u64,
     counter: u32,
+    delegation: Option<[u8; 32]>,
 }
 
-impl<'a> From<&'a AccountState> for AccountDto {
-    fn from(state: &'a AccountState) -> Self {
+impl<'a, E> From<&'a AccountState<E>> for AccountDto {
+    fn from(state: &'a AccountState<E>) -> Self {
         AccountDto {
             value: state.get_value().as_ref().clone(),
             counter: state.get_counter().into(),
+            delegation: state.delegation().clone().map(|x| x.into()),
         }
     }
 }

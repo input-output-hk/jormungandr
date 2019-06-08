@@ -8,7 +8,6 @@ use structopt::StructOpt;
 
 mod get_stake_pool_id;
 mod new_stake_delegation;
-mod new_stake_key_registration;
 mod new_stake_pool_registration;
 mod sign;
 
@@ -40,18 +39,8 @@ pub enum Certificate {
 pub enum NewArgs {
     /// build a stake pool registration certificate
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
-    /// build a stake key registration certificate
-    StakeKeyRegistration(new_stake_key_registration::StakeKeyRegistration),
     /// build a stake delegation certificate
     StakeDelegation(new_stake_delegation::StakeDelegation),
-}
-
-#[derive(StructOpt)]
-pub struct StakeKeyDeregistrationArgs {
-    #[structopt(name = "PUBLIC_KEY")]
-    pub key: String,
-    #[structopt(name = "SIGNING_KEY")]
-    pub private_key: PathBuf,
 }
 
 #[derive(StructOpt)]
@@ -68,7 +57,6 @@ impl NewArgs {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             NewArgs::StakePoolRegistration(args) => args.exec()?,
-            NewArgs::StakeKeyRegistration(args) => args.exec()?,
             NewArgs::StakeDelegation(args) => args.exec()?,
         }
         Ok(())

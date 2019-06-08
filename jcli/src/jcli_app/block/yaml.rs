@@ -54,7 +54,6 @@ struct BlockchainConfiguration {
     consensus_genesis_praos_active_slot_coeff: Milli,
     max_number_of_transactions_per_block: Option<u32>,
     bft_slots_ratio: Option<SerdeAsString<Milli>>,
-    allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
     kes_update_speed: u32,
 }
@@ -278,7 +277,6 @@ impl BlockchainConfiguration {
         let mut consensus_genesis_praos_active_slot_coeff = None;
         let mut max_number_of_transactions_per_block = None;
         let mut bft_slots_ratio = None;
-        let mut allow_account_creation = None;
         let mut linear_fee = None;
         let mut kes_update_speed = None;
 
@@ -322,9 +320,6 @@ impl BlockchainConfiguration {
                 ConfigParam::BftSlotsRatio(param) => bft_slots_ratio
                     .replace(SerdeAsString(*param))
                     .map(|_| "BftSlotsRatio"),
-                ConfigParam::AllowAccountCreation(param) => allow_account_creation
-                    .replace(*param)
-                    .map(|_| "AllowAccountCreation"),
                 ConfigParam::LinearFee(param) => linear_fee
                     .replace(InitialLinearFee {
                         constant: param.constant,
@@ -353,7 +348,6 @@ impl BlockchainConfiguration {
                 .ok_or(param_missing_error("ActiveSlotCoeff"))?,
             max_number_of_transactions_per_block,
             bft_slots_ratio,
-            allow_account_creation,
             linear_fee,
             kes_update_speed: kes_update_speed.ok_or(param_missing_error("KESUpdateSpeed"))?,
         })
@@ -372,7 +366,6 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff,
             max_number_of_transactions_per_block,
             bft_slots_ratio,
-            allow_account_creation,
             linear_fee,
             kes_update_speed,
         } = self;
@@ -398,9 +391,6 @@ impl BlockchainConfiguration {
         }
         if let Some(d) = bft_slots_ratio {
             initial_ents.push(ConfigParam::BftSlotsRatio(d.0))
-        }
-        if let Some(d) = allow_account_creation {
-            initial_ents.push(ConfigParam::AllowAccountCreation(d))
         }
         if let Some(d) = linear_fee {
             initial_ents.push(ConfigParam::LinearFee(LinearFee {
