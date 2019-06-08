@@ -1,7 +1,7 @@
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 
-use super::role::{StakeKeyId, StakePoolId, StakePoolInfo};
+use super::role::{StakePoolId, StakePoolInfo};
 use crate::transaction::AccountIdentifier;
 /// All registered Stake Node
 pub type PoolTable = Hamt<DefaultHasher, StakePoolId, StakePoolInfo>;
@@ -15,7 +15,6 @@ pub struct DelegationState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DelegationError {
     StakeDelegationSigIsInvalid,
-    StakeDelegationStakeKeyIsInvalid(StakeKeyId),
     StakeDelegationPoolKeyIsInvalid(StakePoolId),
     StakeDelegationAccountIsInvalid(AccountIdentifier),
     StakePoolRegistrationPoolSigIsInvalid,
@@ -30,11 +29,6 @@ impl std::fmt::Display for DelegationError {
             DelegationError::StakeDelegationSigIsInvalid => write!(
                 f,
                 "Block has a stake delegation certificate with an invalid signature"
-            ),
-            DelegationError::StakeDelegationStakeKeyIsInvalid(stake_key_id) => write!(
-                f,
-                "Block has a stake delegation certificate that delegates from a stake key '{:?} that does not exist",
-                stake_key_id
             ),
             DelegationError::StakeDelegationPoolKeyIsInvalid(pool_id) => write!(
                 f,
