@@ -4,12 +4,6 @@ use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519, PublicKey};
 
-/// Information related to a stake key
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakeKeyInfo {
-    pub(crate) pool: Option<StakePoolId>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct StakePoolId(Hash);
 
