@@ -3,7 +3,7 @@ use chain_impl_mockchain::{
     account,
     certificate::{Certificate, CertificateContent},
     leadership::genesis::GenesisPraosLeader,
-    stake::{StakePoolInfo},
+    stake::StakePoolInfo,
 };
 use jcli_app::certificate::{self, Error};
 use jcli_app::utils::key_parser::parse_pub_key;
