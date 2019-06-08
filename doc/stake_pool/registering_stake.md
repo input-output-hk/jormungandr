@@ -25,23 +25,3 @@ $ cat stake_key.prv | jcli key to-public > stake_key.pub
 ```
 
 The file `stake_key.pub` will contain your public key.
-
-## Creating your Stake Key registration certificate
-
-To create your stake key certificate:
-
-```
-$ jcli certificate new stake-key-registration  $(cat stake_key.pub) stake_key.cert
-```
-
-The `stake_key.cert` now contains your stake_key certificate. You just need to
-sign it with your private key:
-
-```
-$ cat stake_key.cert| jcli certificate sign stake_key.prv | tee stake_key.cert
-cert1q8rv4ccl54k99rtnm39...ysq
-```
-
-The output can now be added in the `transaction` and submitted to a node.
-
-[`jcli key`]: ../jcli/key.md
