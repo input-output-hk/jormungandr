@@ -118,7 +118,6 @@ impl<Extra: Clone> AccountState<Extra> {
         st.delegation = delegation;
         st
     }
-
 }
 
 /// Spending counter associated to an account.
