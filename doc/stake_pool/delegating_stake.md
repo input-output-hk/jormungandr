@@ -1,6 +1,6 @@
 # delegating your stake
 
-Now that you have created and submitted your [`stake key`] you can chose
+Now that you have created your [`stake key`] you can choose
 to delegate your staking power to a stake pool.
 
 ## how to create the delegation certificate

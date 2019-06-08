@@ -1,8 +1,9 @@
 use chain_crypto::{Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
+    account,
     certificate::{Certificate, CertificateContent},
     leadership::genesis::GenesisPraosLeader,
-    stake::{StakeKeyId, StakePoolInfo},
+    stake::StakePoolInfo,
 };
 use jcli_app::certificate::{self, Error};
 use jcli_app::utils::key_parser::parse_pub_key;
@@ -47,7 +48,7 @@ impl StakePoolRegistration {
             owners: self
                 .owners
                 .into_iter()
-                .map(|key| StakeKeyId::from(key))
+                .map(|key| account::Identifier::from(key))
                 .collect(),
             initial_key: GenesisPraosLeader {
                 kes_public_key: self.kes_key,

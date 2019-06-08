@@ -24,8 +24,6 @@ impl Sign {
         let private_key = SecretKey::<Ed25519Extended>::try_from_bech32_str(key_str.trim())?;
 
         let signature = match &cert.content {
-            CertificateContent::StakeKeyRegistration(s) => s.make_certificate(&private_key),
-            CertificateContent::StakeKeyDeregistration(s) => s.make_certificate(&private_key),
             CertificateContent::StakeDelegation(s) => s.make_certificate(&private_key),
             CertificateContent::StakePoolRegistration(s) => s.make_certificate(&private_key),
             CertificateContent::StakePoolRetirement(s) => s.make_certificate(&private_key),

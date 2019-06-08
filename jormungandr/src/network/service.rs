@@ -15,10 +15,7 @@ use network_core::{
     error as core_error,
     gossip::{Gossip, Node as _},
     server::{
-        block::BlockService,
-        content::{ContentService, ProposeTransactionsResponse},
-        gossip::GossipService,
-        Node, P2pService,
+        block::BlockService, content::ContentService, gossip::GossipService, Node, P2pService,
     },
 };
 use slog::Logger;
@@ -181,19 +178,10 @@ impl BlockService for NodeService {
 impl ContentService for NodeService {
     type Message = Message;
     type MessageId = MessageId;
-    type ProposeTransactionsFuture =
-        ReplyFuture<ProposeTransactionsResponse<MessageId>, core_error::Error>;
     type GetMessagesStream = ReplyStream<Self::Message, core_error::Error>;
     type GetMessagesFuture = ReplyFuture<Self::GetMessagesStream, core_error::Error>;
     type MessageSubscription = Subscription<Message>;
     type MessageSubscriptionFuture = FutureResult<Self::MessageSubscription, core_error::Error>;
-
-    fn propose_transactions(
-        &mut self,
-        _ids: &[Self::MessageId],
-    ) -> Self::ProposeTransactionsFuture {
-        unimplemented!()
-    }
 
     fn get_messages(&mut self, _ids: &[Self::MessageId]) -> Self::GetMessagesFuture {
         unimplemented!()

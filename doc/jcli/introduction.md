@@ -1,7 +1,7 @@
 # jcli
 
-This is the rust node command line helpers. It is mostly meant
-for developers and stake pool operators. It allows offline operations:
+This is the node command line helper. It is mostly meant for developers and
+stake pool operators. It allows offline operations:
 
 * generating cryptographic materials for the wallets and stake pools;
 * creating addresses, transactions and certificates;

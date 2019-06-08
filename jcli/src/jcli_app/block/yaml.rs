@@ -54,7 +54,6 @@ struct BlockchainConfiguration {
     consensus_genesis_praos_active_slot_coeff: Milli,
     max_number_of_transactions_per_block: Option<u32>,
     bft_slots_ratio: Option<SerdeAsString<Milli>>,
-    allow_account_creation: Option<bool>,
     linear_fee: Option<InitialLinearFee>,
     kes_update_speed: u32,
 }
@@ -278,7 +277,6 @@ impl BlockchainConfiguration {
         let mut consensus_genesis_praos_active_slot_coeff = None;
         let mut max_number_of_transactions_per_block = None;
         let mut bft_slots_ratio = None;
-        let mut allow_account_creation = None;
         let mut linear_fee = None;
         let mut kes_update_speed = None;
 
@@ -322,9 +320,6 @@ impl BlockchainConfiguration {
                 ConfigParam::BftSlotsRatio(param) => bft_slots_ratio
                     .replace(SerdeAsString(*param))
                     .map(|_| "BftSlotsRatio"),
-                ConfigParam::AllowAccountCreation(param) => allow_account_creation
-                    .replace(*param)
-                    .map(|_| "AllowAccountCreation"),
                 ConfigParam::LinearFee(param) => linear_fee
                     .replace(InitialLinearFee {
                         constant: param.constant,
@@ -353,7 +348,6 @@ impl BlockchainConfiguration {
                 .ok_or(param_missing_error("ActiveSlotCoeff"))?,
             max_number_of_transactions_per_block,
             bft_slots_ratio,
-            allow_account_creation,
             linear_fee,
             kes_update_speed: kes_update_speed.ok_or(param_missing_error("KESUpdateSpeed"))?,
         })
@@ -372,7 +366,6 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff,
             max_number_of_transactions_per_block,
             bft_slots_ratio,
-            allow_account_creation,
             linear_fee,
             kes_update_speed,
         } = self;
@@ -398,9 +391,6 @@ impl BlockchainConfiguration {
         }
         if let Some(d) = bft_slots_ratio {
             initial_ents.push(ConfigParam::BftSlotsRatio(d.0))
-        }
-        if let Some(d) = allow_account_creation {
-            initial_ents.push(ConfigParam::AllowAccountCreation(d))
         }
         if let Some(d) = linear_fee {
             initial_ents.push(ConfigParam::LinearFee(LinearFee {
@@ -479,7 +469,6 @@ blockchain_configuration:
   consensus_genesis_praos_active_slot_coeff: "0.444"
   max_number_of_transactions_per_block: 255
   bft_slots_ratio: "0.222"
-  allow_account_creation: true
   linear_fee:
     coefficient: 1
     constant: 2
@@ -489,7 +478,7 @@ initial_funds:
   - address: {}
     value: 10000
 initial_certs:
-  - cert1qsqqqqqqqqqqqqqqqqqqqqqqqr2sr5860cvq6vuc05tlwl9lwrs5vw7wq8fjm9fw6mucy0cdd84n0c6ljv2p03s8tc8nukzcrx87zkp3hflm2ymglghs4sn60xgryu57pznzff92ldaymh34u36z6fvdqnzl8my8ucttn09sehq8pdgrle35k3spqpq2s44c5mudrr2c3d0pelf75tjk4ezmsqfxhvjlawxvmcnluc0tcl7kfh4hveatrfuu5fzg74hxpucf0sh6v4l7hhkpneaa02lmp6j8q5jqgzt4
+  - cert1qgqqqqqqqqqqqqqqqqqqq0p5avfqqmgurpe7s9k7933q0wj420jl5xqvx8lywcu5jcr7fwqa9qmdn93q4nm7c4fsay3mzeqgq3c0slnut9kns08yn2qn80famup7nvgtfuyszqzqrd4lxlt5ylplfu76p8f6ks0ggprzatp2c8rn6ev3hn9dgr38tzful4h0udlwa0536vyrrug7af9ujmrr869afs0yw9gj5x7z24l8sps3zzcmv
 legacy_funds:
   - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
     value: 123

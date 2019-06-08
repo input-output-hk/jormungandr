@@ -7,6 +7,9 @@
     - [Starting a passive node](./quickstart/02_passive_node.md)
     - [REST API](./quickstart/03_rest_api.md)
 
+- [General Concepts](./concepts/introduction.md)
+    - [Blockchain concepts](./concepts/blockchain.md)
+    - [Node organisation](./concepts/node.md)
 - [staking and stake pool](./stake_pool/introduction.md)
     - [registering your stake](./stake_pool/registering_stake.md)
     - [delegating your stake](./stake_pool/delegating_stake.md)
