@@ -1,10 +1,10 @@
-use bech32::{Bech32, FromBase32, ToBase32};
-//use chain_crypto::bech32::Bech32;
+use bech32::{Bech32, FromBase32};
 use cardano::util::hex;
-use chain_addr::{Address, Kind, KindType};
-use chain_crypto::{AsymmetricPublicKey, Ed25519, PublicKey};
+use chain_addr::{Address, Kind};
+use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::account;
 
+#[derive(Debug)]
 pub struct AccountId {
     arg: String,
     account: account::Identifier,
