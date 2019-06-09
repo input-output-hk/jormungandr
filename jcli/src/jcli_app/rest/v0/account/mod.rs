@@ -1,4 +1,4 @@
-use jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender};
+use jcli_app::utils::{AccountId, DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -12,8 +12,9 @@ pub enum Account {
         debug: DebugFlag,
         #[structopt(flatten)]
         output_format: OutputFormat,
-        /// ID of an account, bech32-encoded
-        account_id: String,
+        /// An Account ID either in the form of an address of kind account, or an account public key
+        #[structopt(parse(try_from_str = "AccountId::try_from_str"))]
+        account_id: AccountId,
     },
 }
 
@@ -26,7 +27,7 @@ impl Account {
             account_id,
         } = self;
         let url = addr
-            .with_segments(&["v0", "account", &account_id])
+            .with_segments(&["v0", "account", &account_id.to_url_arg()])
             .unwrap()
             .into_url();
         let builder = reqwest::Client::new().get(url);
