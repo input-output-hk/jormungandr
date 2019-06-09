@@ -1,3 +1,4 @@
+mod account_id;
 mod debug_flag;
 mod host_addr;
 mod rest_api;
@@ -7,6 +8,7 @@ pub mod io;
 pub mod key_parser;
 pub mod output_format;
 
+pub use self::account_id::AccountId;
 pub use self::debug_flag::DebugFlag;
 pub use self::host_addr::HostAddr;
 pub use self::output_format::OutputFormat;
