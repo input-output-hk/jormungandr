@@ -1,7 +1,6 @@
 use super::super::{service::NodeService, Channels, GlobalStateR};
 use crate::settings::start::network::Listen;
 use network_grpc::server::{self, Server};
-use tokio::executor::DefaultExecutor;
 use tokio::prelude::*;
 
 pub fn run_listen_socket(
@@ -28,7 +27,7 @@ pub fn run_listen_socket(
             let fold_logger = state.logger().clone();
             let err_logger = state.logger().clone();
             let node_server = NodeService::new(channels, state);
-            let server = Server::new(node_server, DefaultExecutor::current());
+            let server = Server::new(node_server);
 
             listener_stream
                 .map_err(move |err| {

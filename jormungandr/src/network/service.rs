@@ -82,6 +82,7 @@ impl BlockService for NodeService {
     type Header = Header;
     type PullBlocksStream = ReplyStream<Block, core_error::Error>;
     type PullBlocksFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
+    type PullBlocksToTipFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
     type GetBlocksStream = ReplyStream<Block, core_error::Error>;
     type GetBlocksFuture = FutureResult<Self::GetBlocksStream, core_error::Error>;
     type PullHeadersStream = ReplyStream<Header, core_error::Error>;
@@ -124,7 +125,7 @@ impl BlockService for NodeService {
         future::ok(stream)
     }
 
-    fn pull_blocks_to(
+    fn pull_blocks(
         &mut self,
         _from: &[Self::BlockId],
         _to: &Self::BlockId,
@@ -132,7 +133,7 @@ impl BlockService for NodeService {
         unimplemented!()
     }
 
-    fn pull_headers_to(
+    fn pull_headers(
         &mut self,
         _from: &[Self::BlockId],
         _to: &Self::BlockId,
