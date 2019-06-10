@@ -28,8 +28,8 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
 
     let stake_pool_signcert_file = jcli_certificate.assert_new_signed_stake_pool_cert(
         &pool_kes.public_key,
-        &pool_vrf.public_key,
         "1010101010",
+        &pool_vrf.public_key,
         &stake_key_file,
     );
     let stake_pool_signcert = file_utils::read_file(&stake_pool_signcert_file);

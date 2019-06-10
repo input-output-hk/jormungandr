@@ -1612,8 +1612,8 @@ dependencies = [
  "network-core 0.1.0-dev",
  "prost 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=0f15ae28f2a765e0cc38fe3d7e02a13aab7bdbd2)",
- "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=0f15ae28f2a765e0cc38fe3d7e02a13aab7bdbd2)",
+ "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=137e970e4b563c4e06d41d31d04cabbfd1005f85)",
+ "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=137e970e4b563c4e06d41d31d04cabbfd1005f85)",
  "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
  "tower-request-modifier 0.1.0 (git+https://github.com/tower-rs/tower-http)",
  "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2927,17 +2927,17 @@ dependencies = [
 [[package]]
 name = "tower-grpc"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower-grpc?rev=0f15ae28f2a765e0cc38fe3d7e02a13aab7bdbd2#0f15ae28f2a765e0cc38fe3d7e02a13aab7bdbd2"
+source = "git+https://github.com/tower-rs/tower-grpc?rev=137e970e4b563c4e06d41d31d04cabbfd1005f85#137e970e4b563c4e06d41d31d04cabbfd1005f85"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "h2 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http-body 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "percent-encoding 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "tower-http 0.1.0 (git+https://github.com/tower-rs/tower-http)",
  "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-util 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2945,7 +2945,7 @@ dependencies = [
 [[package]]
 name = "tower-grpc-build"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower-grpc?rev=0f15ae28f2a765e0cc38fe3d7e02a13aab7bdbd2#0f15ae28f2a765e0cc38fe3d7e02a13aab7bdbd2"
+source = "git+https://github.com/tower-rs/tower-grpc?rev=137e970e4b563c4e06d41d31d04cabbfd1005f85#137e970e4b563c4e06d41d31d04cabbfd1005f85"
 dependencies = [
  "codegen 0.1.1 (git+https://github.com/carllerche/codegen)",
  "heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3693,8 +3693,8 @@ dependencies = [
 "checksum tower 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-buffer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5c98a7784e6c8ba106bc98d44ed1dbb9c018a8e0322e5e894d365f9020967128"
 "checksum tower-discover 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "73a7632286f78164d65d18fd0e570307acde9362489aa5c8c53e6315cc2bde47"
-"checksum tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=0f15ae28f2a765e0cc38fe3d7e02a13aab7bdbd2)" = "<none>"
-"checksum tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=0f15ae28f2a765e0cc38fe3d7e02a13aab7bdbd2)" = "<none>"
+"checksum tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=137e970e4b563c4e06d41d31d04cabbfd1005f85)" = "<none>"
+"checksum tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc?rev=137e970e4b563c4e06d41d31d04cabbfd1005f85)" = "<none>"
 "checksum tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)" = "<none>"
 "checksum tower-http 0.1.0 (git+https://github.com/tower-rs/tower-http)" = "<none>"
 "checksum tower-http-util 0.1.0 (git+https://github.com/tower-rs/tower-http)" = "<none>"
