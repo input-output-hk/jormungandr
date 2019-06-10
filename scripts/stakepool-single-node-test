@@ -4,15 +4,25 @@
 
 CLI=jcli
 NODE=jormungandr
+COLORS=1
+REST_PREFIX="api"
+REST_DEST="127.0.0.1:8443"
 
 FAUCET_AMOUNT=1000000000
 ADDRTYPE="--testing"
 
 ### COLORS
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-BLUE="\033[0;33m"
-WHITE="\033[0m"
+if [ ${COLORS} -eq 1 ]; then
+    GREEN=`printf "\033[0;32m"`
+    RED=`printf "\033[0;31m"`
+    BLUE=`printf "\033[0;33m"`
+    WHITE=`printf "\033[0m"`
+else
+    GREEN=""
+    RED=""
+    BLUE=""
+    WHITE=""
+fi
 
 ### MAKE EVERYTHING
 
@@ -93,8 +103,8 @@ cat << EOF > config.yaml
 storage: "${PWD}/jormungandr-storage-test/"
 
 rest:
-  listen: "127.0.0.1:8443"
-  prefix: "api"
+  listen: "${REST_DEST}"
+  prefix: "${REST_PREFIX}"
 
 peer_2_peer:
   trusted_peers: []
@@ -116,4 +126,6 @@ echo "  * amount: ${GREEN}${FAUCET_AMOUNT}${WHITE}"
 echo "pool id: ${GREEN}${STAKE_POOL_ID}${WHITE}"
 
 echo "To start the node:"
-echo "$NODE --genesis-block block-0.bin --config config.yaml --secret poolsecret1.yaml"
+echo "  $NODE --genesis-block block-0.bin --config config.yaml --secret poolsecret1.yaml"
+echo "To connect using CLI REST:"
+echo "  $JCLI rest v0 <CMD> --host \"http://${REST_DEST}/${REST_PREFIX}\""
