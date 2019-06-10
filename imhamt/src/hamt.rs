@@ -93,6 +93,11 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V: Clone> Hamt<H, K, V> {
 }
 
 impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
+    /// Update the element at the key K.
+    ///
+    /// If the closure F in parameter returns None, then the key is deleted.
+    ///
+    /// If the key is not present then UpdateError::KeyNotFound is returned
     pub fn update<F, U>(&self, k: &K, f: F) -> Result<Self, UpdateError<U>>
     where
         F: FnOnce(&V) -> Result<Option<V>, U>,
@@ -108,6 +113,10 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
         }
     }
 
+    /// Update or insert the element at the key K
+    ///
+    /// If the element is not present, then V is added, otherwise the closure F is apply
+    /// to the found element. If the closure returns None, then the key is deleted
     pub fn insert_or_update<F, U>(&self, k: K, v: V, f: F) -> Result<Self, InsertOrUpdateError<U>>
     where
         F: FnOnce(&V) -> Result<Option<V>, U>,
@@ -121,6 +130,7 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
 }
 
 impl<H: Hasher + Default, K: Hash + Eq, V> Hamt<H, K, V> {
+    /// Try to get the element related to key K
     pub fn lookup(&self, k: &K) -> Option<&V> {
         let h = HashedKey::compute(self.hasher, &k);
         let mut n = &self.root;

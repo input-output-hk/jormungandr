@@ -26,8 +26,6 @@ pub struct Settings {
     pub max_number_of_transactions_per_block: u32,
     pub bft_slots_ratio: Milli, // aka "d" parameter
     pub bft_leaders: Arc<Vec<bft::LeaderId>>,
-    /// allow for the creation of accounts without the certificate
-    pub allow_account_creation: bool,
     pub linear_fees: Arc<LinearFee>,
     /// The number of epochs that a proposal remains valid. To be
     /// precise, if a proposal is made at date (epoch_p, slot), then
@@ -51,14 +49,9 @@ impl Settings {
             max_number_of_transactions_per_block: 100,
             bft_slots_ratio: Milli::ONE,
             bft_leaders: Arc::new(Vec::new()),
-            allow_account_creation: false,
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
             proposal_expiration: 100,
         }
-    }
-
-    pub fn allow_account_creation(&self) -> bool {
-        self.allow_account_creation
     }
 
     pub fn linear_fees(&self) -> LinearFee {
@@ -114,9 +107,6 @@ impl Settings {
                             .cloned()
                             .collect(),
                     );
-                }
-                ConfigParam::AllowAccountCreation(d) => {
-                    new_state.allow_account_creation = *d;
                 }
                 ConfigParam::LinearFee(d) => {
                     new_state.linear_fees = Arc::new(*d);

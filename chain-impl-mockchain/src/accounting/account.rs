@@ -4,8 +4,9 @@
 //! which contains a non negative value representing your balance with the
 //! identifier of this account as key.
 
+use crate::stake::StakePoolId;
 use crate::value::*;
-use imhamt::{Hamt, InsertError, UpdateError};
+use imhamt::{Hamt, HamtIter, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 
@@ -37,20 +38,44 @@ impl From<InsertError> for LedgerError {
 }
 
 #[derive(Clone)]
-pub struct AccountState {
+pub struct AccountState<Extra> {
     counter: SpendingCounter,
+    delegation: Option<StakePoolId>,
     value: Value,
+    extra: Extra,
 }
 
-impl AccountState {
+impl<Extra> AccountState<Extra> {
     /// Create a new account state with a specific start value
-    pub fn new(v: Value) -> Self {
+    pub fn new(v: Value, e: Extra) -> Self {
         Self {
             counter: SpendingCounter(0),
+            delegation: None,
             value: v,
+            extra: e,
         }
     }
 
+    /// Get referencet to delegation setting
+    pub fn delegation(&self) -> &Option<StakePoolId> {
+        &self.delegation
+    }
+
+    pub fn value(&self) -> Value {
+        self.value
+    }
+
+    // deprecated use value()
+    pub fn get_value(&self) -> Value {
+        self.value
+    }
+
+    pub fn get_counter(&self) -> u32 {
+        self.counter.into()
+    }
+}
+
+impl<Extra: Clone> AccountState<Extra> {
     /// Add a value to an account state
     ///
     /// Only error if value is overflowing
@@ -80,17 +105,18 @@ impl AccountState {
             }
             Some(new_counter) => Ok(Some(Self {
                 counter: new_counter,
+                delegation: self.delegation.clone(),
                 value: new_value,
+                extra: self.extra.clone(),
             })),
         }
     }
 
-    pub fn get_value(&self) -> Value {
-        self.value
-    }
-
-    pub fn get_counter(&self) -> u32 {
-        self.counter.into()
+    /// Set delegation
+    pub fn set_delegation(&self, delegation: Option<StakePoolId>) -> Self {
+        let mut st = self.clone();
+        st.delegation = delegation;
+        st
     }
 }
 
@@ -129,11 +155,21 @@ impl Into<u32> for SpendingCounter {
     }
 }
 
+pub struct Iter<'a, ID, Extra>(HamtIter<'a, ID, AccountState<Extra>>);
+
+impl<'a, ID, Extra> Iterator for Iter<'a, ID, Extra> {
+    type Item = (&'a ID, &'a AccountState<Extra>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
 /// The public ledger of all accounts associated with their current state
 #[derive(Clone)]
-pub struct Ledger<ID: Hash + Eq>(Hamt<DefaultHasher, ID, AccountState>);
+pub struct Ledger<ID: Hash + Eq, Extra>(Hamt<DefaultHasher, ID, AccountState<Extra>>);
 
-impl<ID: Clone + Eq + Hash> Ledger<ID> {
+impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
     /// Create a new empty account ledger
     pub fn new() -> Self {
         Ledger(Hamt::new())
@@ -142,9 +178,26 @@ impl<ID: Clone + Eq + Hash> Ledger<ID> {
     /// Add a new account into this ledger.
     ///
     /// If the identifier is already present, error out.
-    pub fn add_account(&self, identifier: &ID, initial_value: Value) -> Result<Self, LedgerError> {
+    pub fn add_account(
+        &self,
+        identifier: &ID,
+        initial_value: Value,
+        extra: Extra,
+    ) -> Result<Self, LedgerError> {
         self.0
-            .insert(identifier.clone(), AccountState::new(initial_value))
+            .insert(identifier.clone(), AccountState::new(initial_value, extra))
+            .map(Ledger)
+            .map_err(|e| e.into())
+    }
+
+    /// Set the delegation of an account in this ledger
+    pub fn set_delegation(
+        &self,
+        identifier: &ID,
+        delegation: Option<StakePoolId>,
+    ) -> Result<Self, LedgerError> {
+        self.0
+            .update(identifier, |st| Ok(Some(st.set_delegation(delegation))))
             .map(Ledger)
             .map_err(|e| e.into())
     }
@@ -158,7 +211,7 @@ impl<ID: Clone + Eq + Hash> Ledger<ID> {
     /// Get account state
     ///
     /// If the identifier does not match any account, error out
-    pub fn get_state(&self, account: &ID) -> Result<&AccountState, LedgerError> {
+    pub fn get_state(&self, account: &ID) -> Result<&AccountState<Extra>, LedgerError> {
         self.0.lookup(account).ok_or(LedgerError::NonExistent)
     }
 
@@ -213,5 +266,9 @@ impl<ID: Clone + Eq + Hash> Ledger<ID> {
             .iter()
             .map(|(_, account_state)| account_state.get_value());
         Value::sum(values)
+    }
+
+    pub fn iter<'a>(&'a self) -> Iter<'a, ID, Extra> {
+        Iter(self.0.iter())
     }
 }

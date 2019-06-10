@@ -199,6 +199,12 @@ impl From<[u8; 32]> for Hash {
     }
 }
 
+impl From<Hash> for [u8; 32] {
+    fn from(h: Hash) -> Self {
+        h.0.into()
+    }
+}
+
 impl property::Serialize for Hash {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {

@@ -35,6 +35,14 @@ fn arbitrary_public_key<G: Gen>(g: &mut G) -> PublicKey<Ed25519> {
     kp.into_keys().1
 }
 
+fn arbitrary_32bytes<G: Gen>(g: &mut G) -> [u8; 32] {
+    let mut h = [0u8; 32];
+    for i in h.iter_mut() {
+        *i = Arbitrary::arbitrary(g)
+    }
+    h
+}
+
 impl Arbitrary for Address {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let discrimination = Arbitrary::arbitrary(g);
@@ -43,10 +51,7 @@ impl Arbitrary for Address {
             KindType::Group => Kind::Group(arbitrary_public_key(g), arbitrary_public_key(g)),
             KindType::Account => Kind::Account(arbitrary_public_key(g)),
             KindType::Multisig => {
-                let mut h = [0u8; 32];
-                for i in h.iter_mut() {
-                    *i = Arbitrary::arbitrary(g)
-                }
+                let h = arbitrary_32bytes(g);
                 Kind::Multisig(h)
             }
         };

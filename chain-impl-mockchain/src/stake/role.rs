@@ -1,14 +1,9 @@
+use crate::account;
 use crate::key::{deserialize_public_key, serialize_public_key, Hash};
 use crate::leadership::genesis::GenesisPraosLeader;
+
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519, PublicKey};
-
-/// Information related to a stake key
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StakeKeyInfo {
-    pub(crate) pool: Option<StakePoolId>,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct StakePoolId(Hash);
@@ -16,7 +11,7 @@ pub struct StakePoolId(Hash);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolInfo {
     pub serial: u128,
-    pub owners: Vec<StakeKeyId>,
+    pub owners: Vec<account::Identifier>,
     pub initial_key: GenesisPraosLeader,
 }
 
@@ -25,33 +20,11 @@ impl StakePoolInfo {
         let mut v = Vec::new();
         v.extend_from_slice(&self.serial.to_be_bytes());
         for o in &self.owners {
-            v.extend_from_slice(o.0.as_ref())
+            v.extend_from_slice(o.as_ref().as_ref())
         }
         v.extend_from_slice(self.initial_key.kes_public_key.as_ref());
         v.extend_from_slice(self.initial_key.vrf_public_key.as_ref());
         StakePoolId(Hash::hash_bytes(&v))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StakeKeyId(pub(crate) PublicKey<Ed25519>);
-
-impl From<PublicKey<Ed25519>> for StakeKeyId {
-    fn from(key: PublicKey<Ed25519>) -> Self {
-        StakeKeyId(key)
-    }
-}
-
-impl property::Serialize for StakeKeyId {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        serialize_public_key(&self.0, writer)
-    }
-}
-
-impl Readable for StakeKeyId {
-    fn read<'a>(reader: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        deserialize_public_key(reader).map(StakeKeyId)
     }
 }
 
@@ -99,7 +72,7 @@ impl property::Serialize for StakePoolInfo {
         codec.put_u128(self.serial)?;
         codec.put_u8(self.owners.len() as u8)?;
         for o in &self.owners {
-            serialize_public_key(&o.0, &mut codec)?;
+            serialize_public_key(o.as_ref(), &mut codec)?;
         }
         self.initial_key.serialize(&mut codec)?;
         Ok(())
@@ -112,8 +85,8 @@ impl Readable for StakePoolInfo {
         let owner_nb = buf.get_u8()? as usize;
         let mut owners = Vec::with_capacity(owner_nb);
         for _ in 0..owner_nb {
-            let pub_key = deserialize_public_key(buf)?;
-            owners.push(StakeKeyId(pub_key))
+            let pub_key = account::Identifier::read(buf)?;
+            owners.push(pub_key)
         }
         let initial_key = GenesisPraosLeader::read(buf)?;
 
@@ -122,6 +95,12 @@ impl Readable for StakePoolInfo {
             owners,
             initial_key,
         })
+    }
+}
+
+impl From<StakePoolId> for [u8; 32] {
+    fn from(h: StakePoolId) -> [u8; 32] {
+        h.0.into()
     }
 }
 
@@ -144,15 +123,7 @@ impl std::fmt::Display for StakePoolId {
 #[cfg(test)]
 mod test {
     use super::*;
-    use chain_crypto::KeyPair;
     use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for StakeKeyId {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let kp: KeyPair<Ed25519> = Arbitrary::arbitrary(g);
-            StakeKeyId::from(kp.into_keys().1)
-        }
-    }
 
     impl Arbitrary for StakePoolId {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {

@@ -8,7 +8,7 @@ use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::message::Message;
-use crate::stake::{CertificateApplyOutput, DelegationError, DelegationState, StakeDistribution};
+use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo};
@@ -31,7 +31,6 @@ pub struct LedgerStaticParameters {
 #[derive(Clone)]
 pub struct LedgerParameters {
     pub fees: LinearFee,
-    pub allow_account_creation: bool,
 }
 
 /// Overall ledger structure.
@@ -108,6 +107,7 @@ custom_error! {
         Multisig { source: multisig::LedgerError } = "Error or Invalid multisig",
         NotBalanced { inputs: Value, outputs: Value } = "Inputs, outputs and fees are not balanced, transaction with {inputs} input and {outputs} output",
         ZeroOutput { output: Output<Address> } = "Empty output",
+        OutputGroupInvalid { output: Output<Address> } = "Output group invalid",
         Delegation { source: DelegationError } = "Error or Invalid delegation ",
         AccountIdentifierInvalid = "Invalid account identifier",
         InvalidDiscrimination = "Invalid discrimination",
@@ -243,12 +243,11 @@ impl Ledger {
                         });
                     }
                     let transaction_id = authenticated_tx.transaction.hash();
-                    let (new_utxos, new_accounts, new_multisig, new_delegation) =
+                    let (new_utxos, new_accounts, new_multisig) =
                         internal_apply_transaction_output(
                             ledger.utxos,
                             ledger.accounts,
                             ledger.multisig,
-                            ledger.delegation,
                             &ledger.static_params,
                             &ledger_params,
                             &transaction_id,
@@ -257,7 +256,6 @@ impl Ledger {
                     ledger.utxos = new_utxos;
                     ledger.accounts = new_accounts;
                     ledger.multisig = new_multisig;
-                    ledger.delegation = new_delegation;
                 }
                 Message::UpdateProposal(_) => {
                     return Err(Error::Block0 {
@@ -285,11 +283,8 @@ impl Ledger {
                             source: Block0Error::TransactionHasOutput,
                         });
                     }
-                    let (new_delegation, action) = ledger
-                        .delegation
-                        .apply(&authenticated_cert_tx.transaction.extra)?;
-                    ledger.delegation = new_delegation;
-                    ledger.apply_delegation_action(action)?;
+                    ledger = ledger
+                        .apply_certificate_content(&authenticated_cert_tx.transaction.extra)?;
                 }
             }
         }
@@ -446,6 +441,40 @@ impl Ledger {
         Ok(self)
     }
 
+    fn apply_certificate_content(
+        mut self,
+        certificate: &certificate::Certificate,
+    ) -> Result<Self, Error> {
+        match certificate.content {
+            certificate::CertificateContent::StakeDelegation(ref reg) => {
+                if !self.delegation.stake_pool_exists(&reg.pool_id) {
+                    return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(
+                        reg.pool_id.clone(),
+                    )
+                    .into());
+                }
+
+                if let Some(account_key) = reg.stake_key_id.to_single_account() {
+                    self.accounts = self
+                        .accounts
+                        .set_delegation(&account_key, Some(reg.pool_id.clone()))?;
+                } else {
+                    return Err(DelegationError::StakeDelegationAccountIsInvalid(
+                        reg.stake_key_id.clone(),
+                    )
+                    .into());
+                }
+            }
+            certificate::CertificateContent::StakePoolRegistration(ref reg) => {
+                self.delegation = self.delegation.register_stake_pool(reg.clone())?
+            }
+            certificate::CertificateContent::StakePoolRetirement(ref reg) => {
+                self.delegation = self.delegation.deregister_stake_pool(&reg.pool_id)?
+            }
+        }
+        Ok(self)
+    }
+
     pub fn apply_certificate(
         mut self,
         auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
@@ -456,32 +485,14 @@ impl Ledger {
             return Err(Error::CertificateInvalidSignature);
         };
         let (new_ledger, fee) = self.apply_transaction(auth_cert, dyn_params)?;
-        self = new_ledger;
-        let (new_delegation, action) = self.delegation.apply(&auth_cert.transaction.extra)?;
-        self.delegation = new_delegation;
-        self.apply_delegation_action(action)?;
+
+        self = new_ledger.apply_certificate_content(&auth_cert.transaction.extra)?;
+
         Ok((self, fee))
     }
 
-    #[inline]
-    fn apply_delegation_action(&mut self, actions: CertificateApplyOutput) -> Result<(), Error> {
-        match actions {
-            CertificateApplyOutput::None => {}
-            CertificateApplyOutput::CreateAccount(stake_key_id) => {
-                let account = stake_key_id.0.clone().into();
-                if !self.accounts.exists(&account) {
-                    self.accounts = self.accounts.add_account(&account, Value::zero())?;
-                } else {
-                    // it is possible the account already exists, in this case
-                    // we don't need to do anything
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub fn get_stake_distribution(&self) -> StakeDistribution {
-        stake::get_distribution(&self.delegation, &self.utxos)
+        stake::get_distribution(&self.accounts, &self.delegation, &self.utxos)
     }
 
     /// access the ledger static parameters
@@ -496,7 +507,6 @@ impl Ledger {
     pub fn get_ledger_parameters(&self) -> LedgerParameters {
         LedgerParameters {
             fees: *self.settings.linear_fees,
-            allow_account_creation: self.settings.allow_account_creation,
         }
     }
 
@@ -617,21 +627,18 @@ fn internal_apply_transaction(
     }
 
     // 4. add the new outputs
-    let (new_utxos, new_accounts, new_multisig, new_delegation) =
-        internal_apply_transaction_output(
-            ledger.utxos,
-            ledger.accounts,
-            ledger.multisig,
-            ledger.delegation,
-            &ledger.static_params,
-            dyn_params,
-            transaction_id,
-            outputs,
-        )?;
+    let (new_utxos, new_accounts, new_multisig) = internal_apply_transaction_output(
+        ledger.utxos,
+        ledger.accounts,
+        ledger.multisig,
+        &ledger.static_params,
+        dyn_params,
+        transaction_id,
+        outputs,
+    )?;
     ledger.utxos = new_utxos;
     ledger.accounts = new_accounts;
     ledger.multisig = new_multisig;
-    ledger.delegation = new_delegation;
 
     Ok(ledger)
 }
@@ -640,20 +647,11 @@ fn internal_apply_transaction_output(
     mut utxos: utxo::Ledger<Address>,
     mut accounts: account::Ledger,
     mut multisig: multisig::Ledger,
-    mut delegation: DelegationState,
     static_params: &LedgerStaticParameters,
-    dyn_params: &LedgerParameters,
+    _dyn_params: &LedgerParameters,
     transaction_id: &TransactionId,
     outputs: &[Output<Address>],
-) -> Result<
-    (
-        utxo::Ledger<Address>,
-        account::Ledger,
-        multisig::Ledger,
-        DelegationState,
-    ),
-    Error,
-> {
+) -> Result<(utxo::Ledger<Address>, account::Ledger, multisig::Ledger), Error> {
     let mut new_utxos = Vec::new();
     for (index, output) in outputs.iter().enumerate() {
         // Reject zero-valued outputs.
@@ -667,7 +665,15 @@ fn internal_apply_transaction_output(
             return Err(Error::InvalidDiscrimination);
         }
         match output.address.kind() {
-            Kind::Single(_) | Kind::Group(_, _) => {
+            Kind::Single(_) => {
+                new_utxos.push((index as u8, output.clone()));
+            }
+            Kind::Group(_, account_id) => {
+                let account_id = account_id.clone().into();
+                // TODO: probably faster to just call add_account and check for already exists error
+                if !accounts.exists(&account_id) {
+                    accounts = accounts.add_account(&account_id, Value::zero(), ())?;
+                }
                 new_utxos.push((index as u8, output.clone()));
             }
             Kind::Account(identifier) => {
@@ -675,12 +681,8 @@ fn internal_apply_transaction_output(
                 let account = identifier.clone().into();
                 accounts = match accounts.add_value(&account, output.value) {
                     Ok(accounts) => accounts,
-                    Err(account::LedgerError::NonExistent) if dyn_params.allow_account_creation => {
-                        // if the account was not existent and that we allow creating
-                        // account out of the blue, then fallback on adding the account
-                        delegation = delegation
-                            .register_stake_key(stake::StakeKeyId(account.clone().into()))?;
-                        accounts.add_account(&account, output.value)?
+                    Err(account::LedgerError::NonExistent) => {
+                        accounts.add_account(&account, output.value, ())?
                     }
                     Err(error) => return Err(error.into()),
                 };
@@ -693,7 +695,7 @@ fn internal_apply_transaction_output(
     }
 
     utxos = utxos.add(transaction_id, &new_utxos)?;
-    Ok((utxos, accounts, multisig, delegation))
+    Ok((utxos, accounts, multisig))
 }
 
 fn input_utxo_verify(
@@ -920,7 +922,6 @@ pub mod test {
         ));
         ie.push(ConfigParam::SlotsPerEpoch(slots_per_epoch));
         ie.push(ConfigParam::KESUpdateSpeed(3600 * 12));
-        ie.push(ConfigParam::AllowAccountCreation(true));
 
         let mut messages = Vec::new();
         messages.push(Message::Initial(ie));
