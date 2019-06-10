@@ -1,0 +1,83 @@
+#!/bin/sh
+
+### CONFIGURATION
+
+CLI=jcli
+NODE=jormungandr
+
+FAUCET_AMOUNT=1000000000
+ADDRTYPE="--testing"
+REST_PORT="8443"
+
+### MAKE EVERYTHING
+
+# faucet
+FAUCET_SK=$($CLI key generate --type=Ed25519Extended)
+FAUCET_PK=$(echo ${FAUCET_SK} | $CLI key to-public)
+FAUCET_ADDR=$($CLI address single ${ADDRTYPE} ${FAUCET_PK})
+
+# leader
+
+LEADER_SK=$($CLI key generate --type=Ed25519Extended)
+LEADER_PK=$(echo ${LEADER_SK} | $CLI key to-public)
+
+cat << EOF > genesis.yaml
+blockchain_configuration:
+  block0_date: $(date +%s)
+  discrimination: test
+  slots_per_epoch: 5000
+  slot_duration: 10
+  epoch_stability_depth: 10
+  allow_account_creation: true
+  consensus_genesis_praos_active_slot_coeff: 0.1
+  consensus_leader_ids:
+    - ${LEADER_PK}
+  linear_fees:
+    constant: 10
+    coefficient: 0
+    certificate: 0
+  block0_consensus: bft
+  bft_slots_ratio: 0.22
+  kes_update_speed: 43200 # 12hours
+initial_funds:
+  - address: ${FAUCET_ADDR}
+    value: ${FAUCET_AMOUNT}
+EOF
+
+cat << EOF > secret.yaml
+bft:
+  signing_key: ${LEADER_SK}
+EOF
+
+cat << EOF > config.yaml
+rest:
+  listen: "127.0.0.1:${REST_PORT}"
+  prefix: "api"
+peer_2_peer:
+  trusted_peers: []
+  public_address: "/ip4/127.0.0.1/tcp/8299"
+  topics_of_interests:
+    messages: low
+    blocks: normal
+EOF
+
+$CLI genesis encode --input genesis.yaml --output block-0.bin
+
+### PRINT
+
+echo "faucet account: ${FAUCET_ADDR}"
+echo "  * public: ${FAUCET_PK}"
+echo "  * secret: ${FAUCET_SK}"
+echo "  * amount: ${FAUCET_AMOUNT}"
+echo  "--------"
+echo "To start the node as leader :"
+echo "$NODE --genesis-block block-0.bin --config config.yaml --secret secret.yaml"
+echo  "--------"
+echo "To start the node as standard node (without ability to create blocks) :"
+echo "$NODE --genesis-block block-0.bin --config config.yaml --secret secret.yaml"
+echo  "--------"
+echo "To interact with node :"
+echo "$CLI rest v0 node stats -h http://127.0.0.1:${REST_PORT}/api"
+echo  "--------"
+
+
