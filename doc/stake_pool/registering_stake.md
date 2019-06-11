@@ -12,7 +12,7 @@ protocol (via delegating or owning a stake pool).
 This is the key pair that will identify you as a stake owner in the
 blockchain. It is preferable to use a key pair that is different from
 your wallet (for security reason). See the [`jcli key`] documentation
-to generate a new key pair of type `Ed25519Extended`. For example:
+to generate a new key pair of type `Ed25519` or `Ed25519Extended`. For example:
 
 ```
 $ jcli key generate --type=Ed25519Extended > stake_key.prv
