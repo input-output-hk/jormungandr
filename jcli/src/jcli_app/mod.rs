@@ -31,6 +31,8 @@ pub enum JCli {
     Certificate(certificate::Certificate),
     /// Auto completion
     AutoCompletion(auto_completion::AutoCompletion),
+    /// Utilities that perform specialized tasks
+    Utils(utils::Utils),
 }
 
 impl JCli {
@@ -44,6 +46,7 @@ impl JCli {
             JCli::Debug(debug) => debug.exec()?,
             JCli::Certificate(certificate) => certificate.exec()?,
             JCli::AutoCompletion(auto_completion) => auto_completion.exec::<Self>()?,
+            JCli::Utils(utils) => utils.exec()?,
         };
         Ok(())
     }
