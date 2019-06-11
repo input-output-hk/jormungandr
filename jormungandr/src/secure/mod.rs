@@ -1,5 +1,5 @@
 use chain_crypto::{Blake2b256, Curve25519_2HashDH, Ed25519, PublicKey, SecretKey, SumEd25519_12};
-use chain_impl_mockchain::leadership::{bft, BftLeader, GenesisLeader};
+use chain_impl_mockchain::leadership::{BftLeader, GenesisLeader};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -9,7 +9,7 @@ pub mod enclave;
 #[derive(Clone, Deserialize)]
 pub struct Bft {
     #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
-    signing_key: bft::SigningKey,
+    signing_key: SecretKey<Ed25519>,
 }
 
 /// the genesis praos setting
