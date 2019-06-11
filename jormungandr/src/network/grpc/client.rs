@@ -10,9 +10,9 @@ use network_core::{client::block::BlockService, gossip::Node};
 use network_grpc::client::{Connect, ConnectFuture, TcpConnector};
 use slog::Logger;
 use std::{net::SocketAddr, slice};
-use tokio::{executor::DefaultExecutor, net::TcpStream, runtime};
+use tokio::{executor::DefaultExecutor, runtime};
 
-pub type Connection = network_grpc::client::Connection<BlockConfig, TcpStream, DefaultExecutor>;
+pub type Connection = network_grpc::client::Connection<BlockConfig>;
 
 pub fn connect(
     state: &ConnectionState,
