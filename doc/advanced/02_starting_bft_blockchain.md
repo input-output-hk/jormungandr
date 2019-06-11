@@ -10,7 +10,7 @@ the right to create blocks.
 ## How does it work
 
 It is fairly simple. A given number of Nodes (`N`) will generate
-a key pairs of type `Ed25519Extended` (see
+a key pairs of type `Ed25519` (see
 [JCLI's Keys](./../jcli/key.md)).
 
 They all share the public key and add them in the genesis.yaml file.
@@ -68,7 +68,7 @@ Write you private key in a file on your HD:
 ```
 $ cat node_secret.yaml
 bft:
-  signing_key: ed25519e_sk1hpvne...
+  signing_key: ed25519_sk1hpvne...
 ```
 
 Configure your Node (config.yml) and run the following command:
@@ -85,15 +85,15 @@ with multiple leaders.
 ## Step by step to start the BFT node
 
 1. Generate initial config `jcli genesis init > genesis.yaml`
-2. Generate secret key, e.g. ` jcli key generate --type=Ed25519Extended > key.prv` 
+2. Generate secret key, e.g. ` jcli key generate --type=Ed25519 > key.prv`
 3. Put secret key in a file, e.g. `node_secret.yaml` as follows:
 
 ```yaml
 bft:
- signing_key: ed25519e_sk1kppercsk06k03yk4qgea....
+ signing_key: ed25519_sk1kppercsk06k03yk4qgea....
 ```
 
-4. Generate public key out of previously generated key ` cat key.prv |  jcli key to-public` 
+4. Generate public key out of previously generated key ` cat key.prv |  jcli key to-public`
 5. Put generated public key as in `genesis.yaml` under `consensus_leader_ids:`
 6. Generate block = `jcli genesis encode --input genesis.yaml --output block-0.bin`
 7. Create config file and store it on your HD as `node.config` e.g. ->
@@ -113,7 +113,7 @@ peer_2_peer:
  blocks: normal
 ```
 
-8. Start Jörmungandr node : 
+8. Start Jörmungandr node :
 ```
 jormungandr --genesis-block block-0.bin --config node.config --secret node_secret.yaml
 ```
