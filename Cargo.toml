@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "ed25519-bip32",
     "imhamt",
     "chain-core",
     "chain-addr",
