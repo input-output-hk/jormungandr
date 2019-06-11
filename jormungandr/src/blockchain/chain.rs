@@ -307,7 +307,10 @@ pub enum BlockHeaderTriage {
     ProcessBlockToState,
 }
 
-pub fn handle_end_of_epoch_event(blockchain: &Blockchain) -> Result<(), HandleBlockError> {
+pub fn handle_end_of_epoch_event(
+    blockchain: &Blockchain,
+    epoch: Epoch,
+) -> Result<(), HandleBlockError> {
     let (tip, tip_info) = blockchain.get_block_tip()?;
     let state = blockchain.get_ledger(&tip_info.block_hash).unwrap();
 
@@ -317,7 +320,7 @@ pub fn handle_end_of_epoch_event(blockchain: &Blockchain) -> Result<(), HandleBl
         .epoch_event
         .clone() // clone it to get mutability
         .try_send(EpochParameters {
-            epoch: tip.header().date().epoch + 1,
+            epoch: epoch + 1,
 
             ledger_static_parameters: state.get_static_parameters().clone(),
             ledger_parameters: state.get_ledger_parameters(),

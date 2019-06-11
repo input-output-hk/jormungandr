@@ -27,9 +27,9 @@ pub fn handle_input(
     let logger = info.logger().clone();
 
     match bquery {
-        BlockMsg::LeadershipExpectEndOfEpoch => {
+        BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
             let blockchain = blockchain.lock_read();
-            chain::handle_end_of_epoch_event(&blockchain).unwrap()
+            chain::handle_end_of_epoch_event(&blockchain, epoch).unwrap()
         }
         BlockMsg::LeadershipBlock(block) => {
             let mut blockchain = blockchain.lock_write();
