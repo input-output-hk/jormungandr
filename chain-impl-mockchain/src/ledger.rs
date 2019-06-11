@@ -976,7 +976,8 @@ pub mod test {
     }
 
     #[test]
-    pub fn utxo_to_utxo_correct_transaction() {
+    pub fn utxo_to_utxo_correct_transaction() -> Result<(), Error> {
+        const VALUE: u64 = 42_000;
         let discrimination = Discrimination::Test;
 
         let mut rng = rand::thread_rng();
@@ -985,7 +986,7 @@ pub mod test {
 
         let (message, utxos) = create_initial_transaction(Output {
             address: user1_address.clone(),
-            value: Value(42000),
+            value: Value(VALUE),
         });
         let (block0_hash, ledger) =
             create_initial_fake_ledger(discrimination, &[message], 21600, Milli::HALF);
@@ -994,19 +995,20 @@ pub mod test {
             .with_input(Input::from_utxo(utxos[0]))
             .with_output(Output {
                 address: user2_address.clone(),
-                value: Value(1),
+                value: Value(VALUE),
             })
             .finalize()
             .with_utxo_witness(&block0_hash, &sk1)
             .seal();
 
         let dyn_params = ledger.get_ledger_parameters();
-        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
-        assert!(r.is_ok())
+        let _r = ledger.apply_transaction(&signed_tx, &dyn_params)?;
+        Ok(())
     }
 
     #[test]
-    pub fn utxo_to_account_correct_transaction() {
+    pub fn utxo_to_account_correct_transaction() -> Result<(), Error> {
+        const VALUE: u64 = 42_000;
         let discrimination = Discrimination::Test;
 
         let mut rng = rand::thread_rng();
@@ -1015,7 +1017,7 @@ pub mod test {
 
         let (message, utxos) = create_initial_transaction(Output {
             address: user1_address.clone(),
-            value: Value(42000),
+            value: Value(VALUE),
         });
 
         let (block0_hash, ledger) =
@@ -1025,15 +1027,15 @@ pub mod test {
             .with_input(Input::from_utxo(utxos[0]))
             .with_output(Output {
                 address: user2_address.clone(),
-                value: Value(1),
+                value: Value(VALUE),
             })
             .finalize()
             .with_utxo_witness(&block0_hash, &sk1)
             .seal();
 
         let dyn_params = ledger.get_ledger_parameters();
-        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
-        assert!(r.is_ok());
+        let _r = ledger.apply_transaction(&signed_tx, &dyn_params)?;
+        Ok(())
     }
 
     #[test]
@@ -1106,7 +1108,8 @@ pub mod test {
     }
 
     #[test]
-    pub fn delegation_to_account_correct_transaction() {
+    pub fn delegation_to_account_correct_transaction() -> Result<(), Error> {
+        const VALUE: u64 = 42_000;
         let discrimination = Discrimination::Test;
 
         let mut rng = rand::thread_rng();
@@ -1117,7 +1120,7 @@ pub mod test {
 
         let (message, utxos) = create_initial_transaction(Output {
             address: user1_address.clone(),
-            value: Value(42000),
+            value: Value(VALUE),
         });
 
         let (block0_hash, ledger) =
@@ -1127,15 +1130,15 @@ pub mod test {
             .with_input(Input::from_utxo(utxos[0]))
             .with_output(Output {
                 address: user2_address.clone(),
-                value: Value(1),
+                value: Value(VALUE),
             })
             .finalize()
             .with_utxo_witness(&block0_hash, &sk1)
             .seal();
 
         let dyn_params = ledger.get_ledger_parameters();
-        let r = ledger.apply_transaction(&signed_tx, &dyn_params);
-        assert!(r.is_ok());
+        let _r = ledger.apply_transaction(&signed_tx, &dyn_params)?;
+        Ok(())
     }
     struct TransactionBuilder {
         inputs: Vec<Input>,
