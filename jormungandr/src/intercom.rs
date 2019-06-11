@@ -1,4 +1,4 @@
-use crate::blockcfg::{Block, Header, HeaderHash, Message, MessageId};
+use crate::blockcfg::{Block, Epoch, Header, HeaderHash, Message, MessageId};
 use crate::fragment;
 use crate::network::p2p::topology::NodeId;
 use futures::prelude::*;
@@ -276,7 +276,7 @@ pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
     /// Leadership process expect a new end of epoch
-    LeadershipExpectEndOfEpoch,
+    LeadershipExpectEndOfEpoch(Epoch),
     /// An untrusted Block has been received from the network task
     NetworkBlock(Block),
     /// A untrusted block Header has been received from the network task
