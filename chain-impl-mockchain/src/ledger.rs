@@ -617,7 +617,7 @@ fn internal_apply_transaction(
     // 3. verify that transaction sum is zero.
     let total_input = Value::sum(inputs.iter().map(|i| i.value))
         .map_err(|e| Error::UtxoInputsTotal { error: e })?;
-    let total_output = Value::sum(inputs.iter().map(|i| i.value).chain(std::iter::once(fee)))
+    let total_output = Value::sum(outputs.iter().map(|i| i.value).chain(std::iter::once(fee)))
         .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
     if total_input != total_output {
         return Err(Error::NotBalanced {
