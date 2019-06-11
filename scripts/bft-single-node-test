@@ -4,17 +4,34 @@
 
 CLI=jcli
 NODE=jormungandr
+COLORS=1
 
 FAUCET_AMOUNT=1000000000
 ADDRTYPE="--testing"
 REST_PORT="8443"
+REST_HOST="127.0.0.1"
+
+### COLORS
+if [  ${COLORS} -eq 1 ]; then
+    GREEN=""
+    RED=""
+    BLUE=""
+    WHITE=""
+else
+    GREEN=`printf "\033[0;32m"`
+    RED=`printf "\033[0;31m"`
+    BLUE=`printf "\033[0;33m"`
+    WHITE=`printf "\033[0m"`
+fi
+
+
 
 ### MAKE EVERYTHING
 
 # faucet
 FAUCET_SK=$($CLI key generate --type=Ed25519Extended)
 FAUCET_PK=$(echo ${FAUCET_SK} | $CLI key to-public)
-FAUCET_ADDR=$($CLI address single ${ADDRTYPE} ${FAUCET_PK})
+FAUCET_ADDR=$($CLI address account ${ADDRTYPE} ${FAUCET_PK})
 
 # leader
 
@@ -28,7 +45,6 @@ blockchain_configuration:
   slots_per_epoch: 5000
   slot_duration: 10
   epoch_stability_depth: 10
-  allow_account_creation: true
   consensus_genesis_praos_active_slot_coeff: 0.1
   consensus_leader_ids:
     - ${LEADER_PK}
@@ -51,11 +67,11 @@ EOF
 
 cat << EOF > config.yaml
 rest:
-  listen: "127.0.0.1:${REST_PORT}"
+  listen: "${REST_HOST}:${REST_PORT}"
   prefix: "api"
 peer_2_peer:
   trusted_peers: []
-  public_address: "/ip4/127.0.0.1/tcp/8299"
+  public_address: "/ip4/${REST_HOST}/tcp/8299"
   topics_of_interests:
     messages: low
     blocks: normal
@@ -65,19 +81,19 @@ $CLI genesis encode --input genesis.yaml --output block-0.bin
 
 ### PRINT
 
-echo "faucet account: ${FAUCET_ADDR}"
-echo "  * public: ${FAUCET_PK}"
-echo "  * secret: ${FAUCET_SK}"
-echo "  * amount: ${FAUCET_AMOUNT}"
+echo "faucet account: ${GREEN}${FAUCET_ADDR}${WHITE}"
+echo "  * public: ${BLUE}${FAUCET_PK}${WHITE}"
+echo "  * secret: ${RED}${FAUCET_SK}${WHITE}"
+echo "  * amount: ${GREEN}${FAUCET_AMOUNT}${WHITE}"
 echo  "--------"
 echo "To start the node as leader :"
 echo "$NODE --genesis-block block-0.bin --config config.yaml --secret secret.yaml"
 echo  "--------"
 echo "To start the node as standard node (without ability to create blocks) :"
-echo "$NODE --genesis-block block-0.bin --config config.yaml --secret secret.yaml"
+echo "$NODE --genesis-block block-0.bin --config config.yaml"
 echo  "--------"
 echo "To interact with node :"
-echo "$CLI rest v0 node stats -h http://127.0.0.1:${REST_PORT}/api"
+echo "$CLI rest v0 node stats -h http://${REST_HOST}:${REST_PORT}/api"
 echo  "--------"
 
 
