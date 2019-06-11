@@ -11,7 +11,7 @@ use crate::stake;
 use crate::transaction::{AuthenticatedTransaction, NoExtra};
 use chain_addr::Address;
 use chain_crypto::{
-    Curve25519_2HashDH, Ed25519Extended, SecretKey, SumEd25519_12, VerifiableRandomFunction,
+    Curve25519_2HashDH, Ed25519, SecretKey, SumEd25519_12, VerifiableRandomFunction,
 };
 
 pub struct BlockBuilder {
@@ -121,7 +121,7 @@ impl BlockBuilder {
     }
 
     /// create a BFT Block. this block will be signed with the given private key
-    pub fn make_bft_block(mut self, bft_signing_key: &SecretKey<Ed25519Extended>) -> Block {
+    pub fn make_bft_block(mut self, bft_signing_key: &SecretKey<Ed25519>) -> Block {
         assert_ne!(self.common.chain_length, ChainLength(0));
         self.finalize_common(BlockVersion::Ed25519Signed);
         let bft_proof = BftProof {
