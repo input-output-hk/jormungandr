@@ -65,7 +65,6 @@ impl cbor_event::de::Deserialize for AddrType {
     }
 }
 
-
 type HDAddressPayload = Vec<u8>;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
