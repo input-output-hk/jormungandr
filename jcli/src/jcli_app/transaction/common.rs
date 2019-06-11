@@ -55,5 +55,5 @@ pub fn path_to_path_buf<P: AsRef<Path>>(path: &Option<P>) -> PathBuf {
 pub fn read_line<P: AsRef<Path>>(path: &Option<P>) -> Result<String, std::io::Error> {
     let mut line = String::new();
     io::open_file_read(path)?.read_line(&mut line)?;
-    Ok(line)
+    Ok(line.trim_end().to_string())
 }
