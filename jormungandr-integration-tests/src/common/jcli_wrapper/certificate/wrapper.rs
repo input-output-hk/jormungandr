@@ -87,26 +87,6 @@ impl JCLICertificateWrapper {
         certification
     }
 
-    pub fn assert_new_signed_stake_key_registration(
-        &self,
-        stake_public_key: &str,
-        stake_key_file: &PathBuf,
-    ) -> PathBuf {
-        let stake_key_delegation_cert = self.assert_new_stake_key_registration(&stake_public_key);
-        let stake_key_delegation_cert_file = file_utils::create_file_in_temp(
-            "stake_key_delegation.cert",
-            &stake_key_delegation_cert,
-        );
-        let stake_key_delegation_signcert_file =
-            file_utils::get_path_in_temp("stake_pool.signcert");
-        self.assert_sign(
-            &stake_key_file,
-            &stake_key_delegation_cert_file,
-            &stake_key_delegation_signcert_file,
-        );
-        stake_key_delegation_signcert_file
-    }
-
     pub fn assert_new_signed_stake_pool_cert(
         &self,
         pool_kes_pk: &str,

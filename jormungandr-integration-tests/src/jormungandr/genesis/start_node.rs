@@ -68,6 +68,7 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
 }
 
 #[test]
+#[ignore] // due to bug https://github.com/input-output-hk/jormungandr/issues/403
 pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     // stake key
     let stake_key = startup::create_new_key_pair("Ed25519Extended");
@@ -87,10 +88,6 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key);
 
     let jcli_certificate = JCLICertificateWrapper::new();
-
-    let stake_delegation_key_signcert_file =
-        jcli_certificate.assert_new_signed_stake_key_registration(&stake_key_pub, &stake_key_file);
-    let stake_delegation_key_signcert = file_utils::read_file(&stake_delegation_key_signcert_file);
 
     let stake_pool_signcert_file = jcli_certificate.assert_new_signed_stake_pool_cert(
         &pool_kes.public_key,
@@ -114,9 +111,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_consensus_leaders_ids(vec![leader.public_key.clone()])
         .with_kes_update_speed(43200)
-        .with_allow_account_creation(true)
         .with_initial_certs(vec![
-            stake_delegation_key_signcert.clone(),
             stake_pool_signcert.clone(),
             stake_delegation_signcert.clone(),
         ])
