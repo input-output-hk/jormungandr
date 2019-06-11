@@ -80,6 +80,6 @@ pub fn test_key_with_seed_with_unknown_symbol_generation() {
             "Ed25519Extended",
             &incorrect_seed,
         ),
-        "Unknown symbol",
+        "invalid Hexadecimal",
     );
 }
