@@ -522,6 +522,14 @@ impl Ledger {
         self.chain_length
     }
 
+    pub fn settings(&mut self) -> &mut setting::Settings {
+        &mut self.settings
+    }
+
+    pub fn delegation(&mut self) -> &mut DelegationState {
+        &mut self.delegation
+    }
+
     pub fn date(&self) -> BlockDate {
         self.date
     }
@@ -825,11 +833,3 @@ fn input_account_verify(
         }
     }
 }
-
-}
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-impl std::error::Error for Error {}
