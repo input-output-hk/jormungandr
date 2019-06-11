@@ -210,9 +210,17 @@ fn handle_epoch(
 
     let date = BlockDate::from_epoch_slot_id(leadership.epoch(), last_slot_in_epoch);
     let now = std::time::SystemTime::now();
-    let duration = slot_system_time
-        .duration_since(now)
-        .expect("time should always be in the future");
+    let duration = if now > slot_system_time {
+        // report an error but still return a null Duration so we can
+        // try to recover from the error
+
+        warn!(logger, "the system is experiencing delays in end of epoch notification, this may cause cascading issues");
+        std::time::Duration::from_secs(0)
+    } else {
+        slot_system_time
+            .duration_since(now)
+            .expect("time should always be in the future")
+    };
 
     debug!(
         logger,
