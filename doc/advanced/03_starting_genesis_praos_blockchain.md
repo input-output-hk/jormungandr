@@ -36,19 +36,16 @@ created.
 
 Remember that in this array the **order** matters:
 
-1. in order to create a stake pool, you need a stake key, so it needs to be registered
-   first;
-2. in order to delegate your stake, you need a stake pool to already exists **and** you
-   stake key declaration to be set
+In order to delegate your stake, you need a stake pool to already exist, so the stake pool registration certificate should go first.
 
 ### The stake key declaration
 
-To create a stake key registration certificate: simply follow the
+To create a stake key simply follow the
 [registering stake key guide](../stake_pool/registering_stake.md).
 
 ### Stake pool registration
 
-Now that you have a stake owner declared in the block0 you can register a stake pool.
+Now you can register a stake pool.
 Follow the instruction in [registering stake pool guide](../stake_pool/registering_stake_pool.md).
 
 The _owner key_ (the key you sign the stake pool registration certificate) is the secret
@@ -56,7 +53,7 @@ key associated to a previously registered stake key.
 
 ### Delegating stake
 
-Now that there is both your stake key registered and there are stake pools available
+Now that there is both your stake key and there are stake pools available
 in the block0 you need to delegate to one of the stake pool. Follow the instruction
 in [delegating stake](../stake_pool/delegating_stake.md).
 
@@ -76,9 +73,6 @@ For example, the most minimal setting you may have is:
 
 ```yaml
 initial_certs:
-  # register a stake key (K)
-  - cert1q8rv4ccl54k99rtnm39xvhwvqcwjcm385n2dwvamahpu5tmdz3pl2qgqgp6lh9x0mngzy5krzw6fgkhkcvkjj3e64qveny82fgzlyfqf62hsfdup8us3h4rayn66wlt97u6e4syu07grm9sghxy3zdjm0quu8eqrdfpysq
-
   # register a stake pool (P), owner of the stake pool is the stake key (K)
   - cert1qsqqqqqqqqqqqqqqqqqqq0p5avfqp9tzusr26chayeddkkmdlap6tl23ceca8unsghc22tap8clhrzslkehdycufa4ywvqvs4u36zctw4ydtg7xagprfgz0vuujh3lgtxgfszqzqj4xk4sxxyg392p5nqz8s7ev5wna7eqz7ycsuas05mrupmdsfk0fqqudanew6c0nckf5tsp0lgnk8e8j0dpnxvjk2usn52vs8umr3qrccegxaz
 
