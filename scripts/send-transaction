@@ -1,0 +1,94 @@
+#!/bin/sh
+
+### CONFIGURATION
+
+CLI=jcli
+NODE=jormungandr
+COLORS=1
+
+### COLORS
+if [  ${COLORS} -eq 1 ]; then
+    GREEN=""
+    RED=""
+    BLUE=""
+    WHITE=""
+else
+    GREEN=`printf "\033[0;32m"`
+    RED=`printf "\033[0;31m"`
+    BLUE=`printf "\033[0;33m"`
+    WHITE=`printf "\033[0m"`
+fi
+
+
+
+### DEFAULT VALUES
+
+BLOCK0_FILE="block-0.bin"
+JORMUNGANDR_REST_API="http://127.0.0.1:8443/api"
+
+### PARSE ARGUMENTS
+
+
+if [ $# -eq 0 ]
+  then
+    echo "USAGE: send_transaction_from_faucet <FAUCET_PRIVATE_KEY> <FAUCET_ADDRESS> <AMOUNT>"
+    echo "    <FAUCET_PRIVATE_KEY>: faucet private key,"
+    echo "    <FAUCET_ADDRESS>: faucet address"
+    echo "    <RECEIVER_ADDRESS>: reciever address, by default new utxo address will be created"
+    echo "    Script is using some constant values:"
+    echo "           path to block0 file, by default '$DEFAULT_BLOCK0_FILE'"
+    echo "           path to jormungandr rest api, by default '$DEFAULT_JORMUNGANDR_REST_API'"
+    exit -1
+fi
+
+# SET INPUT_ADDRESS
+INPUT_ADDRESS_PRIVATE_KEY=$1
+FAUCET_ADDRESS=$2
+AMOUNT=$3
+
+# SET RECEIVER_ADDR
+RECEIVER_SK=$($CLI key generate --type=Ed25519Extended)
+RECEIVER_PK=$(echo ${RECEIVER_SK} | $CLI key to-public)
+RECEIVER_ADDR=$($CLI address account --testing ${RECEIVER_PK})
+
+### MAKE EVERYTHING
+
+
+STAGING_FILE="staging.txt"
+
+$CLI transaction new --staging $STAGING_FILE
+
+$CLI transaction add-account $FAUCET_ADDRESS $AMOUNT --staging $STAGING_FILE
+
+$CLI transaction add-output $RECEIVER_ADDR $AMOUNT --staging $STAGING_FILE
+
+$CLI transaction finalize --staging $STAGING_FILE
+
+TRANSACTION_ID=$($CLI transaction id --staging $STAGING_FILE)
+GENESIS_BLOCK_HASH=$($CLI genesis hash --input  $BLOCK0_FILE)
+
+
+### WITNESS_SECRET 
+echo $INPUT_ADDRESS_PRIVATE_KEY > witness.secret.tmp
+#Workaround for https://github.com/input-output-hk/jormungandr/issues/448
+tr -d ' \r\n' <witness.secret.tmp >witness.secret
+rm witness.secret.tmp 
+WITNESS_SECRET_FILE="witness.secret"
+
+ACCOUNT_SPENDING_COUNTER=$( $CLI  rest v0 account get  $FAUCET_ADDRESS -h $JORMUNGANDR_REST_API  | grep -oP '(?<=counter: ).*')
+
+WITNESS_OUTPUT_FILE="witness.out"
+$CLI transaction make-witness  $TRANSACTION_ID  --genesis-block-hash $GENESIS_BLOCK_HASH --type "account" --account-spending-counter $ACCOUNT_SPENDING_COUNTER $WITNESS_OUTPUT_FILE $WITNESS_SECRET_FILE
+
+$CLI transaction add-witness $WITNESS_OUTPUT_FILE  --staging $STAGING_FILE
+
+$CLI transaction seal --staging $STAGING_FILE
+
+$CLI transaction to-message --staging $STAGING_FILE  | $CLI rest v0 message post -h $JORMUNGANDR_REST_API
+
+
+echo "Private key of receiver (to revert transaction for testing purposes): $RECEIVER_SK"
+echo "To see if transaction is in block use:"
+echo "$CLI rest v0 message logs -h $JORMUNGANDR_REST_API"
+echo "To check new account balance :"
+echo "$CLI  rest v0 account get  $RECEIVER_ADDR -h $JORMUNGANDR_REST_API"
