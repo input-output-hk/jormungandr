@@ -202,7 +202,7 @@ impl Address {
     }
 
     /// Return the Kind type of a given address
-    fn to_kind_type(&self) -> KindType {
+    pub fn to_kind_type(&self) -> KindType {
         match self.1 {
             Kind::Single(_) => KindType::Single,
             Kind::Group(_, _) => KindType::Group,
