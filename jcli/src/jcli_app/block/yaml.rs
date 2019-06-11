@@ -415,8 +415,8 @@ pub fn documented_example(now: std::time::SystemTime) -> String {
         .as_secs();
     let sk: SecretKey<Ed25519Extended> = SecretKey::generate(&mut ChaChaRng::from_seed([0; 32]));
     let pk: PublicKey<Ed25519> = sk.to_public();
-    let leader_1: KeyPair<Ed25519Extended> = KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
-    let leader_2: KeyPair<Ed25519Extended> = KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
+    let leader_1: KeyPair<Ed25519> = KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
+    let leader_2: KeyPair<Ed25519> = KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
 
     let initial_funds_address = Address(Discrimination::Test, Kind::Single(pk));
     let initial_funds_address = AddressReadable::from_address(&initial_funds_address).to_string();
@@ -442,10 +442,8 @@ mod test {
             SecretKey::generate(&mut ChaChaRng::from_seed([0; 32]));
         let pk: PublicKey<Ed25519> = sk.to_public();
 
-        let leader_1: KeyPair<Ed25519Extended> =
-            KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
-        let leader_2: KeyPair<Ed25519Extended> =
-            KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
+        let leader_1: KeyPair<Ed25519> = KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
+        let leader_2: KeyPair<Ed25519> = KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
 
         let initial_funds_address = Address(Discrimination::Test, Kind::Single(pk));
         let initial_funds_address =

@@ -202,8 +202,8 @@ pub fn get_post_transaction_command(transaction_hash: &str, host: &str) -> Comma
 
 /// Get key generate command
 pub fn get_key_generate_command_default() -> Command {
-    let deafult_extended_key_type = "Ed25519Extended";
-    let command = get_key_generate_command(&deafult_extended_key_type);
+    let default_key_type = "Ed25519Extended";
+    let command = get_key_generate_command(&default_key_type);
     command
 }
 

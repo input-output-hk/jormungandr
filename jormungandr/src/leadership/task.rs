@@ -1,7 +1,6 @@
 use crate::{
     blockcfg::{
-        BlockBuilder, BlockDate, ChainLength, HeaderContentEvalContext, HeaderHash, Leader,
-        LeaderOutput, Ledger,
+        BlockBuilder, BlockDate, ChainLength, HeaderContentEvalContext, HeaderHash, Ledger,
     },
     blockchain::Tip,
     fragment::Pool,

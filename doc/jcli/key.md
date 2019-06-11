@@ -1,14 +1,15 @@
 # cryptographic keys
 
-There are multiple type of key for multiple reasons.
+There are multiple type of key for multiple use cases.
 
 | type | usage |
 |:----:|:------|
 |`Ed25519` | Signing algorithm for Ed25519 algorithm |
-|`Ed25519Bip32`| For HDWallet, this type of keys allow deterministic derivation |
-|`Ed25519Extended`| Compatible with `Ed25519Bip32` but without the derivation |
+|`Ed25519Bip32`| Related to the HDWallet, Ed25519 Extended with chain code for derivation derivation |
+|`Ed25519Extended`| Related to `Ed25519Bip32` without the chain code |
 |`SumEd25519_12`| For stake pool, necessary for the KES |
 |`Curve25519_2HashDH`| For stake pool, necessary for the VRF |
+
 
 There is a command line parameter to generate this keys:
 

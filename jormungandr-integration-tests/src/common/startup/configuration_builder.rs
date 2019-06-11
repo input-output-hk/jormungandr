@@ -104,7 +104,7 @@ impl ConfigurationBuilder {
         node_config.logger = self.logger.clone();
         let node_config_path = NodeConfig::serialize(&node_config);
 
-        let secret_key = jcli_wrapper::assert_key_generate_default();
+        let secret_key = jcli_wrapper::assert_key_generate("ed25519");
         let public_key = jcli_wrapper::assert_key_to_public_default(&secret_key);
 
         let mut genesis_model = GenesisYaml::new_with_funds(self.funds.clone());
