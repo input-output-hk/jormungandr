@@ -6,16 +6,10 @@ use crate::{
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
+use chain_crypto::{Ed25519, PublicKey};
 use std::sync::Arc;
 
 pub type BftVerificationAlg = Ed25519;
-
-/// BFT Leader signing key
-///
-/// Both Ed25519Extended and Ed25519 are valid here, but there's
-/// no way to express this without an enum
-pub type SigningKey = SecretKey<Ed25519Extended>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeaderId(pub(crate) PublicKey<BftVerificationAlg>);
@@ -108,6 +102,7 @@ impl From<PublicKey<BftVerificationAlg>> for LeaderId {
 #[cfg(test)]
 pub mod test {
     use super::*;
+    use chain_crypto::SecretKey;
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for LeaderId {
