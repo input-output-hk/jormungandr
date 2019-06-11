@@ -72,7 +72,7 @@ jcli transaction add-output  ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk
 ## Add fee and change address
 
 We want to get the change in the same address that we are sending from (the *associated address* of the utxo). We also specify how to compute the fees.
-You can leave out the `-fee-constant 5 --fee-coefficient 2` part if those are both 0.
+You can leave out the `--fee-constant 5 --fee-coefficient 2` part if those are both 0.
 
 ```sh
 jcli transaction finalize  ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu --fee-constant 5 --fee-coefficient 2 --staging tx
