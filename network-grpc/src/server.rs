@@ -10,6 +10,7 @@ use network_core::server::{
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 use tower_grpc::codegen::server::grpc::Never as NeverError;
+use tower_hyper::server::Http;
 
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
@@ -37,6 +38,7 @@ where
         gen_server::NodeServer<NodeService<T>>,
         gen_server::node::ResponseBody<NodeService<T>>,
     >,
+    http: Http,
 }
 
 /// The error type for gRPC server operations.
@@ -69,7 +71,9 @@ where
     pub fn new(node: T) -> Self {
         let grpc_service = gen_server::NodeServer::new(NodeService::new(node));
         let inner = tower_hyper::Server::new(grpc_service);
-        Server { inner }
+        let mut http = Http::new();
+        http.http2_only(true);
+        Server { inner, http }
     }
 
     /// Initializes a client peer connection based on an accepted connection
@@ -79,7 +83,7 @@ where
         S: AsyncRead + AsyncWrite + Send + 'static,
     {
         Connection {
-            inner: self.inner.serve(sock),
+            inner: self.inner.serve_with(sock, self.http.clone()),
         }
     }
 }
