@@ -4,8 +4,8 @@ use chain_crypto::*;
 use chain_impl_mockchain::leadership::genesis::*;
 use chain_impl_mockchain::milli::Milli;
 
+use chain_impl_mockchain::ledger::Ledger;
 use chain_impl_mockchain::stake::PoolStakeDistribution;
-
 use chain_impl_mockchain::stake::StakePoolId;
 use chain_impl_mockchain::stake::StakePoolInfo;
 use chain_impl_mockchain::value::*;
