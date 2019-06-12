@@ -1,23 +1,18 @@
 use super::super::BlockConfig;
-use super::origin_authority;
+use super::connect;
 use crate::{blockchain::BlockchainR, settings::start::network::Peer};
 use blockcfg::Block;
 use chain_core::property::HasHeader;
-use http::uri;
 use network_core::client::block::BlockService as _;
-use network_grpc::client::{Connect, Connection, TcpConnector};
+use network_grpc::client::Connection;
 use slog::Logger;
 use std::fmt::Debug;
 use tokio::prelude::*;
-use tokio::{executor::DefaultExecutor, runtime::current_thread};
+use tokio::runtime::current_thread;
 
 pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR, logger: &Logger) {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
-    let addr = peer.address();
-    let origin = origin_authority(addr);
-    let bootstrap = Connect::new(TcpConnector, DefaultExecutor::current())
-        .origin(uri::Scheme::HTTP, origin)
-        .connect(addr)
+    let bootstrap = connect(peer.address(), None)
         .map_err(move |e| {
             error!(logger, "failed to connect to bootstrap peer: {:?}", e);
         })

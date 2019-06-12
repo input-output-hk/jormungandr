@@ -13,6 +13,7 @@ use crate::{
 use futures::prelude::*;
 use network_core::{
     client::{block::BlockService, gossip::GossipService, P2pService},
+    gossip::Node,
     subscription::BlockEvent,
 };
 use slog::Logger;
@@ -215,7 +216,7 @@ pub fn connect(
     channels: Channels,
 ) -> impl Future<Item = (Client<grpc::Connection>, PeerComms), Error = ()> {
     let err_logger = state.logger().clone();
-    grpc::connect(&state)
+    grpc::connect(state.connection, Some(state.global.as_ref().node.id()))
         .map_err(move |err| {
             warn!(err_logger, "error connecting to peer: {:?}", err);
         })
