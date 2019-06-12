@@ -26,7 +26,6 @@ RUN mkdir -p ${ENV_PREFIX} && \
     cd ${ENV_PREFIX} && \
     git clone --recurse-submodules https://github.com/input-output-hk/jormungandr src && \
     cd src && \
-    git checkout -b last-minutes-updates && \
     cargo build --release && \
     cargo install --force --path jormungandr && \
     cargo install --force --path jcli && \
