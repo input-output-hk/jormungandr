@@ -6,19 +6,21 @@ use network_core::gossip;
 use futures::prelude::*;
 use futures::try_ready;
 use http::uri::{self, Uri};
+use http_connection::HttpConnection;
+use hyper::client::connect::Connect as HyperConnect;
 use tower_grpc::BoxBody;
-use tower_http_util::connection::HttpMakeConnection;
 use tower_hyper::client::ConnectExecutor;
+use tower_hyper::util::{Connector, Destination};
 use tower_util::MakeService;
 
 use std::{error::Error, fmt, mem};
 
 /// Builder-like API for establishing a protocol client connection.
-pub struct Connect<P, A, C, E>
+pub struct Connect<P, C, E>
 where
     P: ProtocolConfig,
 {
-    tower_connect: tower_hyper::client::Connect<A, BoxBody, C, E>,
+    tower_connect: tower_hyper::client::Connect<Destination, BoxBody, Connector<C>, E>,
     origin: Option<Origin>,
     node_id: Option<<P::Node as gossip::Node>::Id>,
 }
@@ -28,14 +30,14 @@ struct Origin {
     authority: uri::Authority,
 }
 
-impl<P, A, C, E> Connect<P, A, C, E>
+impl<P, C, E> Connect<P, C, E>
 where
     P: ProtocolConfig,
-    C: HttpMakeConnection<A> + 'static,
-    C::Connection: Send + 'static,
-    E: ConnectExecutor<C::Connection, BoxBody> + Clone,
+    C: HyperConnect,
+    C::Transport: HttpConnection,
 {
     pub fn new(connector: C, executor: E) -> Self {
+        let connector = Connector::new(connector);
         let mut settings = tower_hyper::client::Builder::new();
         settings.http2_only(true);
         let tower_connect =
@@ -46,7 +48,12 @@ where
             node_id: None,
         }
     }
+}
 
+impl<P, C, E> Connect<P, C, E>
+where
+    P: ProtocolConfig,
+{
     pub fn origin(&mut self, scheme: uri::Scheme, authority: uri::Authority) -> &mut Self {
         self.origin = Some(Origin { scheme, authority });
         self
@@ -56,25 +63,52 @@ where
         self.node_id = Some(id);
         self
     }
+}
 
-    pub fn connect(&mut self, target: A) -> ConnectFuture<P, A, C, E> {
-        let origin_uri = match self.origin {
+impl<P, C, E> Connect<P, C, E>
+where
+    P: ProtocolConfig,
+    C: HyperConnect,
+{
+    fn origin_uri(&self, target: &Destination) -> Result<Uri, ConnectError<C::Error>> {
+        let mut builder = Uri::builder();
+        match self.origin {
             Some(ref origin) => {
-                match Uri::builder()
+                builder
                     .scheme(origin.scheme.clone())
-                    .authority(origin.authority.clone())
-                    .path_and_query("")
-                    .build()
-                {
-                    Ok(uri) => uri,
-                    Err(e) => {
-                        return ConnectFuture::error(ConnectError(ErrorKind::InvalidOrigin(e)));
+                    .authority(origin.authority.clone());
+            }
+            None => {
+                builder.scheme(target.scheme());
+                let host = target.host();
+                match target.port() {
+                    None => {
+                        builder.authority(host);
+                    }
+                    Some(port) => {
+                        builder.authority(format!("{}:{}", host, port).as_str());
                     }
                 }
             }
-            None => {
-                return ConnectFuture::error(ConnectError(ErrorKind::OriginMissing));
-            }
+        };
+        builder.path_and_query("");
+        builder
+            .build()
+            .map_err(|e| ConnectError(ErrorKind::InvalidOrigin(e)))
+    }
+}
+
+impl<P, C, E> Connect<P, C, E>
+where
+    P: ProtocolConfig,
+    C: HyperConnect + 'static,
+    C::Transport: HttpConnection,
+    E: ConnectExecutor<C::Transport, BoxBody> + Clone,
+{
+    pub fn connect(&mut self, target: Destination) -> ConnectFuture<P, C, E> {
+        let origin_uri = match self.origin_uri(&target) {
+            Ok(uri) => uri,
+            Err(e) => return ConnectFuture::error(e),
         };
         let node_id = self.node_id.clone();
         let inner = self.tower_connect.make_service(target);
@@ -90,21 +124,23 @@ where
 
 /// Completes with a protocol client Connection when it has been
 /// set up.
-pub struct ConnectFuture<P, A, C, E>
+pub struct ConnectFuture<P, C, E>
 where
     P: ProtocolConfig,
-    C: HttpMakeConnection<A>,
+    C: HyperConnect,
+    C::Transport: HttpConnection,
 {
-    state: State<P, A, C, E>,
+    state: State<P, C, E>,
 }
 
-enum State<P, A, C, E>
+enum State<P, C, E>
 where
     P: ProtocolConfig,
-    C: HttpMakeConnection<A>,
+    C: HyperConnect,
+    C::Transport: HttpConnection,
 {
     Connecting {
-        inner: tower_hyper::client::ConnectFuture<A, BoxBody, C, E>,
+        inner: tower_hyper::client::ConnectFuture<Destination, BoxBody, Connector<C>, E>,
         origin_uri: Uri,
         node_id: Option<<P::Node as gossip::Node>::Id>,
     },
@@ -112,10 +148,11 @@ where
     Finished,
 }
 
-impl<P, A, C, E> ConnectFuture<P, A, C, E>
+impl<P, C, E> ConnectFuture<P, C, E>
 where
     P: ProtocolConfig,
-    C: HttpMakeConnection<A>,
+    C: HyperConnect,
+    C::Transport: HttpConnection,
 {
     fn error(err: ConnectError<C::Error>) -> Self {
         ConnectFuture {
@@ -124,12 +161,12 @@ where
     }
 }
 
-impl<P, A, C, E> Future for ConnectFuture<P, A, C, E>
+impl<P, C, E> Future for ConnectFuture<P, C, E>
 where
     P: ProtocolConfig,
-    C: HttpMakeConnection<A>,
-    C::Connection: Send + 'static,
-    E: ConnectExecutor<C::Connection, BoxBody>,
+    C: HyperConnect,
+    C::Transport: HttpConnection,
+    E: ConnectExecutor<C::Transport, BoxBody>,
 {
     type Item = Connection<P>;
     type Error = ConnectError<C::Error>;
@@ -168,7 +205,6 @@ pub struct ConnectError<T>(ErrorKind<T>);
 #[derive(Debug)]
 enum ErrorKind<T> {
     Http(tower_hyper::client::ConnectError<T>),
-    OriginMissing,
     InvalidOrigin(http::Error),
 }
 
@@ -176,7 +212,6 @@ impl<T> fmt::Display for ConnectError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
             ErrorKind::Http(_) => write!(f, "HTTP/2.0 connection error"),
-            ErrorKind::OriginMissing => write!(f, "request origin not specified"),
             ErrorKind::InvalidOrigin(_) => write!(f, "invalid request origin"),
         }
     }
@@ -189,7 +224,6 @@ where
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self.0 {
             ErrorKind::Http(ref e) => Some(e),
-            ErrorKind::OriginMissing => None,
             ErrorKind::InvalidOrigin(ref e) => Some(e),
         }
     }

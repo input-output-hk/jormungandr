@@ -16,11 +16,11 @@ network-core = { path = "../network-core" }
 bytes = "0.4"
 futures = "0.1"
 http = "0.1.16"
+http-connection = "0.1"
 hyper = "0.12"
 prost = "0.5"
 tokio = "0.1"
 tower-grpc = "0.1"
-tower-http-util = "0.1"
 tower-service = "0.2"
 tower-util = "0.1"
 
