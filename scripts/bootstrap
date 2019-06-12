@@ -38,7 +38,7 @@ done
 
 [ -n "${REST_PORT}" ] && [ "${REST_PORT}" -eq "${REST_PORT}" ] 2>/dev/null
 if [ $? -ne 0 ]; then
-    echo "${REST_PORT} is not valid number"
+    echo "error: ${REST_PORT} is not valid number"
     exit 1
 fi
 
@@ -59,7 +59,6 @@ fi
 
 
 echo "########################################################"
-echo "           Creating configuration with"
 echo ""
 echo "* Consensus: ${RED}${CONSENSUS}${WHITE}"
 echo "* REST Port: ${RED}${REST_PORT}${WHITE}"
@@ -160,6 +159,10 @@ peer_2_peer:
 EOF
 
 $CLI genesis encode --input genesis.yaml --output block-0.bin
+if [ $? -ne 0 ]; then
+    echo "error: building the genesis block"
+    exit 1
+fi
 
 ### PRINT
 
