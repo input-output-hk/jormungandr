@@ -29,3 +29,27 @@ cert1q8rv4ccl54k99rtnm39...zr0
 The output can now be added in the `transaction` and submitted to a node.
 
 [`stake key`]: ./registering_stake.md
+
+## submitting to a node
+
+To `jcli transaction add-certificate` command can be used to add a certificate to a transaction in _finalized_ state.
+
+For example:
+
+Note that in order to finalize a transaction, it should have both inputs and outputs.
+
+```sh
+
+...
+
+jcli transaction finalize CHANGE_ADDRESS --fee-constant 5 --fee-coefficient 2 --fee-certificate 2 --staging tx
+
+jcli transaction add-certificate $(cat stake_delegation.cert) --staging tx
+
+...
+
+```
+
+The `--fee-certificate` flag indicates the cost of adding a certificate, used for computing the fees, it can be omitted if it is zero.
+
+See [here](../jcli/transaction.md) for more documentation on transaction creation.
