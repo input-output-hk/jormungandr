@@ -8,7 +8,6 @@ use crate::common::file_utils;
 use crate::common::jcli_wrapper;
 pub struct ConfigurationBuilder {
     funds: Vec<Fund>,
-    with_account: bool,
     trusted_peers: Option<Vec<Peer>>,
     block0_hash: Option<String>,
     block0_consensus: Option<String>,
@@ -26,7 +25,6 @@ impl ConfigurationBuilder {
             funds: vec![],
             certs: vec![],
             consensus_leader_ids: vec![],
-            with_account: false,
             trusted_peers: None,
             block0_hash: None,
             block0_consensus: Some("bft".to_string()),
@@ -52,11 +50,6 @@ impl ConfigurationBuilder {
 
     pub fn with_initial_certs<'a>(&'a mut self, certs: Vec<String>) -> &'a mut Self {
         self.certs = certs;
-        self
-    }
-
-    pub fn with_allow_account_creation<'a>(&'a mut self, b: bool) -> &'a mut Self {
-        self.with_account = b;
         self
     }
 
@@ -112,9 +105,6 @@ impl ConfigurationBuilder {
         let mut leaders_ids = vec![public_key];
         leaders_ids.append(&mut self.consensus_leader_ids.clone());
         genesis_model.blockchain_configuration.consensus_leader_ids = Some(leaders_ids.clone());
-        genesis_model
-            .blockchain_configuration
-            .allow_account_creation = self.with_account;
         genesis_model.blockchain_configuration.block0_consensus = self.block0_consensus.clone();
         genesis_model.blockchain_configuration.bft_slots_ratio = self.bft_slots_ratio.clone();
         genesis_model.blockchain_configuration.kes_update_speed = self.kes_update_speed.clone();

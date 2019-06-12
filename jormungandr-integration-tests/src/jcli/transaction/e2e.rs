@@ -178,7 +178,6 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
             address: sender.address.clone(),
             value: transfer_amount.clone(),
         }])
-        .with_allow_account_creation(true)
         .build();
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
@@ -315,7 +314,6 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
             address: sender.address.clone(),
             value: transfer_amount.clone(),
         }])
-        .with_allow_account_creation(true)
         .build();
 
     let jormungandr_rest_address = config.get_node_address();
@@ -342,7 +340,6 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
             address: sender.address.clone(),
             value: transfer_amount.clone(),
         }])
-        .with_allow_account_creation(true)
         .build();
 
     let jormungandr_rest_address = config.get_node_address();

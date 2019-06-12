@@ -38,7 +38,6 @@ pub struct BlockchainConfig {
     pub bft_slots_ratio: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub consensus_genesis_praos_active_slot_coeff: Option<String>,
-    pub allow_account_creation: bool,
     pub linear_fees: LinearFees,
     pub kes_update_speed: u32,
 }
@@ -134,7 +133,6 @@ impl GenesisYaml {
                 ]),
                 bft_slots_ratio: Some("0.222".to_owned()),
                 consensus_genesis_praos_active_slot_coeff: Some("0.444".to_owned()),
-                allow_account_creation: false,
                 linear_fees: LinearFees {
                     constant: 0,
                     coefficient: 0,
