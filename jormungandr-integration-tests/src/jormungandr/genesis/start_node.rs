@@ -48,7 +48,6 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_consensus_leaders_ids(vec![leader.public_key.clone()])
         .with_kes_update_speed(43200)
-        .with_allow_account_creation(true)
         .with_initial_certs(vec![
             stake_pool_signcert.clone(),
             stake_delegation_signcert.clone(),
