@@ -15,10 +15,11 @@ pub mod jormungandr_config;
 pub mod node_config_model;
 pub mod secret_model;
 
-/// Get jcli executable from current environment
+/// Get jormungandr executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {
+    const JORMUNGANDR_NAME: &'static str = env!("JORMUNGANDR_NAME");
     let mut path = get_working_directory();
-    path.push("jormungandr");
+    path.push(JORMUNGANDR_NAME);
     if cfg!(windows) {
         path.set_extension("exe");
     }
