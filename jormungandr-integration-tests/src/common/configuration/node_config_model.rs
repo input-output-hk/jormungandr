@@ -10,13 +10,13 @@ pub struct Logger {
     pub format: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Rest {
     pub listen: String,
     pub prefix: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Peer2Peer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trusted_peers: Option<Vec<Peer>>,
@@ -36,7 +36,7 @@ pub struct TopicsOfInterests {
     pub blocks: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NodeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<String>,

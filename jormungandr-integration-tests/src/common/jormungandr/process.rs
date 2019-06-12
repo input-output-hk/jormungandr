@@ -1,4 +1,5 @@
 use super::logger::JormungandrLogger;
+use crate::common::configuration::jormungandr_config::JormungandrConfig;
 use std::path::PathBuf;
 use std::process::Child;
 
@@ -6,15 +7,31 @@ use std::process::Child;
 pub struct JormungandrProcess {
     pub child: Child,
     pub logger: JormungandrLogger,
+    pub config: JormungandrConfig,
     description: String,
 }
 
 impl JormungandrProcess {
-    pub fn new(child: Child, description: String, log_file_path: PathBuf) -> Self {
+    pub fn from_config(child: Child, config: JormungandrConfig) -> Self {
+        JormungandrProcess::new(
+            child,
+            String::from("Jormungandr node"),
+            config.log_file_path.clone(),
+            config,
+        )
+    }
+
+    pub fn new(
+        child: Child,
+        description: String,
+        log_file_path: PathBuf,
+        config: JormungandrConfig,
+    ) -> Self {
         JormungandrProcess {
             child: child,
             description: description,
             logger: JormungandrLogger::new(log_file_path.clone()),
+            config: config,
         }
     }
 

@@ -7,18 +7,18 @@ use crate::common::file_utils;
 use std::option::Option;
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SecretModel {
     pub bft: Option<BFT>,
     pub genesis: Option<Genesis>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BFT {
     pub signing_key: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Genesis {
     pub sig_key: String,
     pub vrf_key: String,

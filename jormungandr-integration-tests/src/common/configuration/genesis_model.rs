@@ -18,7 +18,7 @@ use self::rand_chacha::ChaChaRng;
 
 use super::file_utils;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BlockchainConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub block0_date: Option<i32>,
@@ -43,7 +43,7 @@ pub struct BlockchainConfig {
     pub kes_update_speed: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LinearFees {
     pub constant: i32,
     pub coefficient: i32,
@@ -56,7 +56,7 @@ pub struct Fund {
     pub address: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenesisYaml {
     pub blockchain_configuration: BlockchainConfig,
     #[serde(skip_serializing_if = "Option::is_none")]

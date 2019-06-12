@@ -4,6 +4,7 @@ use crate::common::configuration::genesis_model::GenesisYaml;
 
 use crate::common::data::{
     address::{Account, AddressDataProvider, Delegation, Utxo},
+    keys::KeyPair,
     utxo::Utxo as UtxoData,
 };
 
@@ -81,6 +82,33 @@ pub fn create_new_delegation_address() -> Delegation {
         &utxo_with_delegation
     );
     utxo_with_delegation
+}
+
+pub fn create_new_delegation_address_for(delegation_address: &str) -> Delegation {
+    let private_key = jcli_wrapper::assert_key_generate_default();
+    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
+    let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
+
+    let utxo_with_delegation = Delegation {
+        private_key: private_key,
+        public_key: public_key,
+        address: address,
+        delegation_address: delegation_address.to_string(),
+    };
+    println!(
+        "New utxo with delegation generated: {:?}",
+        &utxo_with_delegation
+    );
+    utxo_with_delegation
+}
+
+pub fn create_new_key_pair(key_type: &str) -> KeyPair {
+    let private_key = jcli_wrapper::assert_key_generate(&key_type);
+    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
+    KeyPair {
+        private_key,
+        public_key,
+    }
 }
 
 pub fn get_utxo_for_address<T: AddressDataProvider>(
