@@ -1,28 +1,38 @@
-use super::origin_authority;
 use crate::{
     blockcfg::{Block, HeaderHash},
-    network::{BlockConfig, ConnectionState, FetchBlockError},
+    network::p2p::topology::NodeId,
+    network::{BlockConfig, FetchBlockError},
     settings::start::network::Peer,
 };
 use futures::prelude::*;
-use http::uri;
-use network_core::{client::block::BlockService, gossip::Node};
-use network_grpc::client::{Connect, ConnectFuture, TcpConnector};
+use http::{HttpTryFrom, Uri};
+use hyper::client::connect::{Destination, HttpConnector};
+use network_core::client::block::BlockService;
+use network_grpc::client::{Connect, ConnectFuture};
 use slog::Logger;
-use std::{net::SocketAddr, slice};
+use std::net::SocketAddr;
+use std::slice;
 use tokio::{executor::DefaultExecutor, runtime};
 
 pub type Connection = network_grpc::client::Connection<BlockConfig>;
 
 pub fn connect(
-    state: &ConnectionState,
-) -> ConnectFuture<BlockConfig, SocketAddr, TcpConnector, DefaultExecutor> {
-    let addr = state.connection;
-    let origin = origin_authority(addr);
-    Connect::new(TcpConnector, DefaultExecutor::current())
-        .origin(uri::Scheme::HTTP, origin)
-        .node_id(state.global.node.id().clone())
-        .connect(addr)
+    addr: SocketAddr,
+    node_id: Option<NodeId>,
+) -> ConnectFuture<BlockConfig, HttpConnector, DefaultExecutor> {
+    let uri = destination_uri(addr);
+    let mut connector = HttpConnector::new(1);
+    connector.set_nodelay(true);
+    let mut builder = Connect::new(connector, DefaultExecutor::current());
+    if let Some(id) = node_id {
+        builder.node_id(id);
+    }
+    builder.connect(Destination::try_from_uri(uri).unwrap())
+}
+
+fn destination_uri(addr: SocketAddr) -> Uri {
+    let uri = format!("http://{}:{}", addr.ip(), addr.port());
+    HttpTryFrom::try_from(&uri).unwrap()
 }
 
 // Fetches a block from a network peer in a one-off, blocking call.
@@ -33,11 +43,7 @@ pub fn fetch_block(
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     info!(logger, "fetching block {} from {}", hash, peer.connection);
-    let addr = peer.address();
-    let origin = origin_authority(addr);
-    let fetch = Connect::new(TcpConnector, DefaultExecutor::current())
-        .origin(uri::Scheme::HTTP, origin)
-        .connect(addr)
+    let fetch = connect(peer.address(), None)
         .map_err(|err| FetchBlockError::Connect {
             source: Box::new(err),
         })

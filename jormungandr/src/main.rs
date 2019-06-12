@@ -21,6 +21,7 @@ extern crate cryptoxide;
 extern crate futures;
 extern crate generic_array;
 extern crate http;
+extern crate hyper;
 extern crate jormungandr_utils;
 extern crate native_tls;
 extern crate network_core;
