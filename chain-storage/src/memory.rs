@@ -54,9 +54,13 @@ where
     }
 
     fn put_tag(&mut self, tag_name: &str, block_hash: &B::Id) -> Result<(), Error> {
-        assert!(self.blocks.get(block_hash).is_some()); // FIXME: return error
-        self.tags.insert(tag_name.to_string(), block_hash.clone());
-        Ok(())
+        match self.blocks.get(block_hash) {
+            None => Err(Error::BlockNotFound),
+            Some(_) => {
+                self.tags.insert(tag_name.to_string(), block_hash.clone());
+                Ok(())
+            }
+        }
     }
 
     fn get_tag(&self, tag_name: &str) -> Result<Option<B::Id>, Error> {
@@ -69,5 +73,29 @@ where
 
     fn as_trait(&self) -> &BlockStore<Block = Self::Block> {
         self as &BlockStore<Block = Self::Block>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::store::testing::Block;
+
+    #[test]
+    pub fn put_get() {
+        let mut store = MemoryBlockStore::<Block>::new();
+        crate::store::testing::test_put_get(&mut store);
+    }
+
+    #[test]
+    pub fn nth_ancestor() {
+        let mut store = MemoryBlockStore::<Block>::new();
+        crate::store::testing::test_nth_ancestor(&mut store);
+    }
+
+    #[test]
+    pub fn iterate_range() {
+        let mut store = MemoryBlockStore::<Block>::new();
+        crate::store::testing::test_iterate_range(&mut store);
     }
 }

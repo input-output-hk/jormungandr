@@ -9,6 +9,7 @@ pub struct BlockInfo<Id: BlockId> {
     /// hash has depth 1, its children have depth 2, and so on. Note
     /// that there is no block with depth 0 because there is no block
     /// with the zero hash.
+    // FIXME: rename to chain_length
     pub depth: u64,
 
     /// One or more ancestors of this block. Must include at least the
@@ -297,4 +298,271 @@ fn compute_fast_link(depth: u64) -> u64 {
     } else {
         0
     }
+}
+
+#[cfg(any(feature = "test-api", test))]
+pub mod testing {
+    use super::*;
+    use chain_core::packer::*;
+    use chain_core::property::{Block as _, BlockDate as _, BlockId as _};
+    use rand::Rng;
+    use std::collections::HashMap;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Copy)]
+    pub struct BlockId(pub u64);
+
+    static GLOBAL_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+    impl BlockId {
+        pub fn generate() -> Self {
+            Self(GLOBAL_ID_COUNTER.fetch_add(1, Ordering::SeqCst))
+        }
+    }
+
+    impl chain_core::property::BlockId for BlockId {
+        fn zero() -> Self {
+            Self(0)
+        }
+    }
+
+    impl chain_core::property::Serialize for BlockId {
+        type Error = std::io::Error;
+
+        fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+            let mut codec = Codec::new(writer);
+            codec.put_u64(self.0)
+        }
+    }
+
+    impl chain_core::property::Deserialize for BlockId {
+        type Error = std::io::Error;
+
+        fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+            let mut codec = Codec::new(reader);
+            Ok(Self(codec.get_u64()?))
+        }
+    }
+
+    #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Copy)]
+    pub struct BlockDate(u32, u32);
+
+    impl chain_core::property::BlockDate for BlockDate {
+        fn from_epoch_slot_id(epoch: u32, slot_id: u32) -> Self {
+            Self(epoch, slot_id)
+        }
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    pub struct Block {
+        id: BlockId,
+        parent: BlockId,
+        date: BlockDate,
+        chain_length: ChainLength,
+    }
+
+    impl Block {
+        pub fn genesis() -> Self {
+            Self {
+                id: BlockId::generate(),
+                parent: BlockId::zero(),
+                date: BlockDate::from_epoch_slot_id(0, 0),
+                chain_length: ChainLength(1),
+            }
+        }
+
+        pub fn make_child(&self) -> Self {
+            Self {
+                id: BlockId::generate(),
+                parent: self.id,
+                date: BlockDate::from_epoch_slot_id(self.date.0, self.date.1 + 1),
+                chain_length: ChainLength(self.chain_length.0 + 1),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Copy)]
+    pub struct ChainLength(pub u64);
+
+    impl chain_core::property::ChainLength for ChainLength {
+        fn next(&self) -> Self {
+            Self(self.0 + 1)
+        }
+    }
+
+    impl chain_core::property::Block for Block {
+        type Id = BlockId;
+        type Date = BlockDate;
+        type ChainLength = ChainLength;
+        type Version = u8;
+
+        fn id(&self) -> Self::Id {
+            self.id
+        }
+
+        fn parent_id(&self) -> Self::Id {
+            self.parent
+        }
+
+        fn date(&self) -> Self::Date {
+            self.date
+        }
+
+        fn version(&self) -> Self::Version {
+            0
+        }
+
+        fn chain_length(&self) -> Self::ChainLength {
+            self.chain_length
+        }
+    }
+
+    impl chain_core::property::Serialize for Block {
+        type Error = std::io::Error;
+
+        fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
+            let mut codec = Codec::new(writer);
+            codec.put_u64(self.id.0)?;
+            codec.put_u64(self.parent.0)?;
+            codec.put_u32(self.date.0)?;
+            codec.put_u32(self.date.1)?;
+            codec.put_u64(self.chain_length.0)?;
+            Ok(())
+        }
+    }
+
+    impl chain_core::property::Deserialize for Block {
+        type Error = std::io::Error;
+
+        fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
+            let mut codec = Codec::new(reader);
+            Ok(Self {
+                id: BlockId(codec.get_u64()?),
+                parent: BlockId(codec.get_u64()?),
+                date: BlockDate(codec.get_u32()?, codec.get_u32()?),
+                chain_length: ChainLength(codec.get_u64()?),
+            })
+        }
+    }
+
+    pub fn generate_chain<Store: BlockStore<Block = Block>>(store: &mut Store) -> Vec<Block> {
+        let mut blocks = vec![];
+
+        let genesis_block = Block::genesis();
+        store.put_block(&genesis_block).unwrap();
+        blocks.push(genesis_block);
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..10 {
+            let mut parent_block = blocks[rng.gen_range(0, blocks.len())].clone();
+            for _ in 0..rng.gen_range(1, 10000) {
+                let block = parent_block.make_child();
+                store.put_block(&block).unwrap();
+                parent_block = block.clone();
+                blocks.push(block);
+            }
+        }
+
+        blocks
+    }
+
+    pub fn test_put_get<Store: BlockStore<Block = Block>>(store: &mut Store) {
+        assert!(store.get_tag("tip").unwrap().is_none());
+
+        match store.put_tag("tip", &BlockId::zero()) {
+            Err(Error::BlockNotFound) => {}
+            err => panic!(err),
+        }
+
+        let genesis_block = Block::genesis();
+        store.put_block(&genesis_block).unwrap();
+        let (genesis_block_restored, block_info) = store.get_block(&genesis_block.id()).unwrap();
+        assert_eq!(genesis_block, genesis_block_restored);
+        assert_eq!(block_info.block_hash, genesis_block.id());
+        assert_eq!(block_info.depth, genesis_block.chain_length().0);
+        assert_eq!(block_info.back_links.len(), 1);
+        assert_eq!(block_info.parent_id(), BlockId::zero());
+
+        store.put_tag("tip", &genesis_block.id()).unwrap();
+        assert_eq!(store.get_tag("tip").unwrap().unwrap(), genesis_block.id());
+    }
+
+    pub fn test_nth_ancestor<Store: BlockStore<Block = Block>>(store: &mut Store) {
+        let blocks = generate_chain(store);
+
+        let mut rng = rand::thread_rng();
+
+        let mut blocks_fetched = 0;
+        let mut total_distance = 0;
+        let nr_tests = 1000;
+
+        for _ in 0..nr_tests {
+            let block = &blocks[rng.gen_range(0, blocks.len())];
+            assert_eq!(&store.get_block(&block.id()).unwrap().0, block);
+
+            let distance = rng.gen_range(0, block.chain_length().0);
+            total_distance += distance;
+
+            let ancestor_info = store
+                .get_path_to_nth_ancestor(
+                    &block.id(),
+                    distance,
+                    Box::new(|_| {
+                        blocks_fetched += 1;
+                    }),
+                )
+                .unwrap();
+
+            assert_eq!(ancestor_info.depth + distance, block.chain_length().0);
+
+            let ancestor = store.get_block(&ancestor_info.block_hash).unwrap().0;
+
+            assert_eq!(ancestor.chain_length().0 + distance, block.chain_length().0);
+        }
+
+        let blocks_per_test = blocks_fetched as f64 / nr_tests as f64;
+
+        println!(
+            "fetched {} intermediate blocks ({} per test), total distance {}",
+            blocks_fetched, blocks_per_test, total_distance
+        );
+
+        assert!(blocks_per_test < 35.0);
+    }
+
+    pub fn test_iterate_range<Store: BlockStore<Block = Block>>(store: &mut Store) {
+        let blocks = generate_chain(store);
+
+        let blocks_by_id: HashMap<BlockId, &Block> = blocks.iter().map(|b| (b.id(), b)).collect();
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..1000 {
+            let from = &blocks[rng.gen_range(0, blocks.len())];
+            let to = &blocks[rng.gen_range(0, blocks.len())];
+
+            match store.iterate_range(&from.id(), &to.id()) {
+                Ok(iter) => {
+                    let mut prev = from.id();
+                    for block_info in iter {
+                        let block_info = block_info.unwrap();
+                        assert_eq!(block_info.parent_id(), prev);
+                        prev = block_info.block_hash;
+                    }
+                    assert_eq!(prev, to.id());
+                }
+                Err(Error::CannotIterate) => {
+                    // Check that 'from' really isn't an ancestor of 'to'.
+                    let mut cur = to.id();
+                    while cur != BlockId::zero() {
+                        assert_ne!(cur, from.id());
+                        cur = blocks_by_id[&cur].parent_id();
+                    }
+                }
+                Err(_) => panic!(),
+            }
+        }
+    }
+
 }

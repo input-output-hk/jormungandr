@@ -23,3 +23,4 @@ features = ["bundled"]
 cardano = { path = "../cardano" }
 cardano-storage = { path = "../storage" }
 exe-common = { path = "../exe-common" }
+chain-storage = { path = "../chain-storage", features=["test-api"] }

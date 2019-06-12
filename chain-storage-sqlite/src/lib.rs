@@ -138,7 +138,7 @@ where
             })
             .map_err(|err| match err {
                 rusqlite::Error::QueryReturnedNoRows => Error::BlockNotFound,
-                _ => panic!(err),
+                err => Error::BackendError(Box::new(err)),
             })?;
 
         let info = self.get_block_info(block_hash)?;
@@ -178,12 +178,13 @@ where
             })
             .map_err(|err| match err {
                 rusqlite::Error::QueryReturnedNoRows => Error::BlockNotFound,
-                _ => panic!(err),
+                err => Error::BackendError(Box::new(err)),
             })
     }
 
     fn put_tag(&mut self, tag_name: &str, block_hash: &B::Id) -> Result<(), Error> {
-        self.pool
+        match self
+            .pool
             .get()
             .unwrap()
             .prepare_cached("insert or replace into Tags (name, hash) values(?, ?)")
@@ -191,9 +192,15 @@ where
             .execute(&[
                 Value::Text(tag_name.to_string()),
                 Value::Blob(block_hash.serialize_as_vec().unwrap()),
-            ])
-            .unwrap();
-        Ok(())
+            ]) {
+            Ok(_) => Ok(()),
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == rusqlite::ErrorCode::ConstraintViolation =>
+            {
+                Err(Error::BlockNotFound)
+            }
+            Err(err) => Err(Error::BackendError(Box::new(err))),
+        }
     }
 
     fn get_tag(&self, tag_name: &str) -> Result<Option<B::Id>, Error> {
@@ -207,11 +214,35 @@ where
         {
             Ok(s) => Ok(Some(s)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(err) => panic!(err),
+            Err(err) => Err(Error::BackendError(Box::new(err))),
         }
     }
 
     fn as_trait(&self) -> &BlockStore<Block = Self::Block> {
         self as &BlockStore<Block = Self::Block>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chain_storage::store::testing::Block;
+
+    #[test]
+    pub fn put_get() {
+        let mut store = SQLiteBlockStore::<Block>::new(":memory:");
+        chain_storage::store::testing::test_put_get(&mut store);
+    }
+
+    #[test]
+    pub fn nth_ancestor() {
+        let mut store = SQLiteBlockStore::<Block>::new(":memory:");
+        chain_storage::store::testing::test_nth_ancestor(&mut store);
+    }
+
+    #[test]
+    pub fn iterate_range() {
+        let mut store = SQLiteBlockStore::<Block>::new(":memory:");
+        chain_storage::store::testing::test_iterate_range(&mut store);
     }
 }
