@@ -9,7 +9,10 @@
 
 - [Quickstart](./quickstart/introduction.md)
     - [Command lines tools](./quickstart/01_command_line.md)
-    - [Starting a passive node](./quickstart/02_passive_node.md)
+    - [Node types](./quickstart/02_node_types.md)
+        - [Starting a passive node](./quickstart/node_types/01_passive_node.md)
+        - [Generating blocks in an existing network](./quickstart/node_types/02_generating_blocks.md)
+        - [Creating your own network](./advanced/introduction.md)
     - [REST API](./quickstart/03_rest_api.md)
 
 - [Configuration](./configuration/introduction.md)
