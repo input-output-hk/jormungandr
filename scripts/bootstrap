@@ -22,15 +22,16 @@ SECRET_PATH="."
 CONFIG_PATH="."
 ADD_STARTUP_SCRIPT=0
 
-while getopts 'bc:d:ghk:p:x' c
+while getopts 'bc:d:ghk:p:xC' c
 do
     case $c in
         b) CONSENSUS="bft" ;;
         g) CONSENSUS="genesis" ;;
-        p) REST_PORT="$OPTARG" ;;
-        k) SECRET_PATH="$OPTARG" ;;
-        c) CONFIG_PATH="$OPTARG" ;;
+        p) REST_PORT="${OPTARG}" ;;
+        k) SECRET_PATH="${OPTARG}" ;;
+        c) CONFIG_PATH="${OPTARG}" ;;
         x) ADD_STARTUP_SCRIPT=1 ;;
+	C) COLORS=0 ;;
         h)
             echo "usage: $0"
             echo "    [-p <REST_PORT>] [-b] [g]"
@@ -42,6 +43,7 @@ do
             echo "  -x               Add startup script"
             echo "  -k <SECRET-PATH> The path to write secret files"
             echo "  -c <CONFIG-PATH> The path to write config files"
+	    echo "  -C               Disable ansi shell colours in stdout"
             exit 0
             ;;
     esac
@@ -216,4 +218,4 @@ echo "  $CLI rest v0 <CMD> --host \"http://${REST_DEST}/${REST_PREFIX}\""
 echo "For example:"
 echo "  $CLI rest v0 node stats -h \"http://${REST_HOST}:${REST_PORT}/${REST_PREFIX}\""
 
-find "./${TMPDIR}/" -depth 1 -exec rm {} \; && rmdir $TMPDIR
+find "./${TMPDIR}/" -maxdepth 1 -type f -exec rm {} \; && rmdir $TMPDIR
