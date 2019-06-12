@@ -43,18 +43,10 @@ blockchain_configuration:
   # This is the max number of messages allowed in a given Block
   max_number_of_transactions_per_block: 255
 
-  # Allow the creation of accounts from the output of a transaction
-  #
-  # if set to false, account based wallet will not be created without
-  # publishing a stake certificate.
-  # if set to true, simply adding the account in the output of a transaction
-  # will allow the account to exist in the blockchain.
-  allow_account_creation: true
-
   # The fee calculations settings
   #
   # fee(num_bytes, has_certificate) = constant + num_bytes * coefficient + has_certificate * certificate
-  linear_fee:
+  linear_fees:
     constant: 2
     coefficient: 1
     certificate: 4
