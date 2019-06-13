@@ -86,6 +86,30 @@ impl TransactionCommands {
         command
     }
 
+    pub fn get_finalize_with_fee_command(
+        &self,
+        address: &str,
+        fee_constant: &i32,
+        fee_coefficient: &i32,
+        fee_certificate: &i32,
+        staging_file: &PathBuf,
+    ) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("transaction")
+            .arg("finalize")
+            .arg(address)
+            .arg("--fee-certificate")
+            .arg(fee_certificate.to_string())
+            .arg("--fee-coefficient")
+            .arg(fee_coefficient.to_string())
+            .arg("--fee-constant")
+            .arg(fee_constant.to_string())
+            .arg("--staging")
+            .arg(staging_file.as_os_str());
+        command
+    }
+
     pub fn get_make_witness_command(
         &self,
         block0_hash: &str,
@@ -153,6 +177,16 @@ impl TransactionCommands {
             .arg("info")
             .arg("--format")
             .arg("{id}")
+            .arg("--staging")
+            .arg(staging_file.as_os_str());
+        command
+    }
+
+    pub fn get_transaction_info_command(&self, staging_file: &PathBuf) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("transaction")
+            .arg("info")
             .arg("--staging")
             .arg(staging_file.as_os_str());
         command

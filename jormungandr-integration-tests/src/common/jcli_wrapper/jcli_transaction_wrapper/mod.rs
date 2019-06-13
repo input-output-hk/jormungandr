@@ -3,7 +3,7 @@
 pub mod jcli_transaction_commands;
 
 use self::jcli_transaction_commands::TransactionCommands;
-use crate::common::configuration::genesis_model::Fund;
+use crate::common::configuration::genesis_model::{Fund, LinearFees};
 use crate::common::data::address::AddressDataProvider;
 use crate::common::data::utxo::Utxo as UtxoData;
 use crate::common::data::witness::Witness;
@@ -12,6 +12,7 @@ use crate::common::jcli_wrapper;
 use crate::common::process_assert;
 use crate::common::process_utils;
 use crate::common::process_utils::output_extensions::ProcessOutput;
+
 use std::path::PathBuf;
 
 #[derive(Debug)]
@@ -190,6 +191,23 @@ impl JCLITransactionWrapper {
         self
     }
 
+    pub fn assert_finalize_with_fee<'a>(
+        &'a mut self,
+        address: &str,
+        linear_fee: &LinearFees,
+    ) -> &'a mut JCLITransactionWrapper {
+        let output =
+            process_utils::run_process_and_get_output(self.commands.get_finalize_with_fee_command(
+                &address,
+                &linear_fee.constant,
+                &linear_fee.coefficient,
+                &linear_fee.certificate,
+                &self.staging_file_path,
+            ));
+        process_assert::assert_process_exited_successfully(output);
+        self
+    }
+
     pub fn assert_finalize_fail(&self, expected_part: &str) -> () {
         let output = process_utils::run_process_and_get_output(
             self.commands.get_finalize_command(&self.staging_file_path),
@@ -336,6 +354,16 @@ impl JCLITransactionWrapper {
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_transaction_id_command(&self.staging_file_path),
+        );
+        let content = output.as_single_line();
+        let mut split = content.split_whitespace();
+        split.next().unwrap().to_string()
+    }
+
+    pub fn get_transaction_info(&self) -> String {
+        let output = process_utils::run_process_and_get_output(
+            self.commands
+                .get_transaction_info_command(&self.staging_file_path),
         );
         let content = output.as_single_line();
         let mut split = content.split_whitespace();
