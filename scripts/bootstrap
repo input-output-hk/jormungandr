@@ -31,7 +31,7 @@ do
         k) SECRET_PATH="${OPTARG}" ;;
         c) CONFIG_PATH="${OPTARG}" ;;
         x) ADD_STARTUP_SCRIPT=1 ;;
-	C) COLORS=0 ;;
+        C) COLORS=0 ;;
         h)
             echo "usage: $0"
             echo "    [-p <REST_PORT>] [-b] [g]"
@@ -43,7 +43,7 @@ do
             echo "  -x               Add startup script"
             echo "  -k <SECRET-PATH> The path to write secret files"
             echo "  -c <CONFIG-PATH> The path to write config files"
-	    echo "  -C               Disable ansi shell colours in stdout"
+            echo "  -C               Disable ansi shell colours in stdout"
             exit 0
             ;;
     esac
