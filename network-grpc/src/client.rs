@@ -310,6 +310,18 @@ where
         }
         req
     }
+
+    pub fn poll_ready(&mut self) -> Poll<(), core_error::Error> {
+        self.service.poll_ready().map_err(error_from_grpc)
+    }
+
+    pub fn ready(self) -> impl Future<Item = Self, Error = core_error::Error> {
+        let node_id = self.node_id;
+        self.service
+            .ready()
+            .map(move |service| Connection { service, node_id })
+            .map_err(error_from_grpc)
+    }
 }
 
 impl<P> P2pService for Connection<P>
