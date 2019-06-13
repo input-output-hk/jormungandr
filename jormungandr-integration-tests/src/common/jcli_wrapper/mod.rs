@@ -6,6 +6,7 @@ pub mod jcli_transaction_wrapper;
 
 use super::configuration;
 use super::configuration::genesis_model::GenesisYaml;
+use super::data::account_state::AccountState;
 use super::data::message_log::Fragment;
 use super::data::utxo::Utxo;
 use super::file_assert;
@@ -256,13 +257,14 @@ pub fn assert_rest_get_block_tip(host: &str) -> String {
     single_line
 }
 
-pub fn assert_rest_account_get_stats(address: &str, host: &str) -> String {
+pub fn assert_rest_account_get_stats(address: &str, host: &str) -> AccountState {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_rest_account_stats_command(&address, &host),
     );
-    let single_line = output.as_lossy_string();
+    let content = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output);
-    single_line
+    let account_state: AccountState = serde_yaml::from_str(&content).unwrap();
+    account_state
 }
 
 pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
