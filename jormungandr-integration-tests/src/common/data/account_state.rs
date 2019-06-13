@@ -3,6 +3,6 @@ use self::serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AccountState {
-    pub value: i32,
-    pub counter: i32,
+    pub value: u32,
+    pub counter: u32,
 }

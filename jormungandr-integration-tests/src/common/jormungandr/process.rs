@@ -29,20 +29,6 @@ impl JormungandrProcess {
     ) -> Self {
         JormungandrProcess {
             child: child,
-            description: String::from("Jormungandr node"),
-            logger: JormungandrLogger::new(config.log_file_path.clone()),
-            config: config,
-        }
-    }
-
-    pub fn new(
-        child: Child,
-        description: String,
-        log_file_path: PathBuf,
-        config: JormungandrConfig,
-    ) -> Self {
-        JormungandrProcess {
-            child: child,
             description: description,
             logger: JormungandrLogger::new(log_file_path.clone()),
             config: config,

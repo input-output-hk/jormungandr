@@ -196,7 +196,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
     let account_state =
         jcli_wrapper::assert_rest_account_get_stats(&reciever.address, &jormungandr_rest_address);
     assert_eq!(
-        account_state.value, transfer_amount,
+        account_state.value, transfer_amount as u32,
         "Account did not receive correct amount of funds"
     );
 
@@ -515,4 +515,48 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
         "Inputs, outputs and fees are not balanced, transaction with 100 input and 50 output",
     );
 }
+
+#[test]
+pub fn test_transaction_with_non_zero_linear_fees() {
+    let sender = startup::create_new_utxo_address();
+    let reciever = startup::create_new_utxo_address();
+    let mut config = startup::ConfigurationBuilder::new()
+        .with_funds(vec![Fund {
+            address: sender.address.clone(),
+            value: 100,
+        }])
+        .with_linear_fees(LinearFees {
+            constant: 10,
+            coefficient: 1,
+            certificate: 0,
+        })
+        .build();
+
+    let jormungandr_rest_address = config.get_node_address();
+    let _jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
+    let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
+    let mut transaction_builder =
+        JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+    transaction_builder
+        .assert_add_input_from_utxo(&utxo)
+        .assert_add_output(&reciever.address, &50)
+        .assert_finalize_with_fee(
+            &sender.address,
+            &LinearFees {
+                constant: 10,
+                coefficient: 1,
+                certificate: 0,
+            },
+        )
+        .seal_with_witness_deafult(&sender.private_key, "utxo");
+    let transaction_message = transaction_builder.assert_transaction_to_message();
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
+
+    let utxo = startup::get_utxo_for_address(&reciever, &jormungandr_rest_address);
+    assert_eq!(utxo.out_value, 50, "Wrong funds amount on receiver account");
+    let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
+    assert_eq!(
+        utxo.out_value, 37,
+        "Wrong remaining funds amount on sender account"
+    );
 }

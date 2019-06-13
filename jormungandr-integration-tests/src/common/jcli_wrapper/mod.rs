@@ -9,7 +9,6 @@ pub mod jcli_transaction_wrapper;
 use super::configuration;
 use super::configuration::genesis_model::GenesisYaml;
 use super::data::account_state::AccountState;
-use super::data::message_log::Fragment;
 use super::data::utxo::Utxo;
 use super::file_assert;
 use super::file_utils;
@@ -296,13 +295,13 @@ pub fn assert_rest_message_logs(host: &str) -> Vec<FragmentLog> {
 }
 
 pub fn assert_transaction_in_block(transaction_message: &str, host: &str) {
-    self::assert_transaction_post_accepted(&transaction_message, &host);
+    self::assert_post_transaction(&transaction_message, &host);
     self::wait_until_transaction_processed(&host);
     self::assert_transaction_log_shows_in_block(&host);
 }
 
 pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_msg: &str) {
-    self::assert_transaction_post_accepted(&transaction_message, &host);
+    self::assert_post_transaction(&transaction_message, &host);
     self::wait_until_transaction_processed(&host);
     self::assert_transaction_log_shows_rejected(&host, &expected_msg);
 }
@@ -312,11 +311,9 @@ pub fn wait_until_transaction_processed(host: &str) {
         jcli_commands::get_rest_message_log_command(&host),
         |output| {
             let content = output.as_lossy_string();
-            let fragments: Vec<FragmentLog> = serde_yaml::from_str(&content).unwrap();
-            match fragments
-                .iter()
-                .find(|x| x.fragment_id().to_string() == transaction_id)
-            {
+            let fragments: Vec<FragmentLog> =
+                serde_yaml::from_str(&content).expect("Cannot parse fragment logs");
+            match fragments.last() {
                 Some(x) => !x.is_pending(),
                 None => false,
             }
@@ -331,9 +328,9 @@ pub fn wait_until_transaction_processed(host: &str) {
 pub fn assert_transaction_log_shows_in_block(host: &str) {
     let fragments = self::assert_get_rest_message_log(&host);
     let fragment = fragments.last();
-    match fragments.last() {
+    match fragment {
         Some(x) => assert!(
-            x.is_in_block(),
+            x.is_in_a_block(),
             "Fragment should be in block, actual: {:?}",
             &fragment
         ),
@@ -347,14 +344,17 @@ pub fn assert_transaction_log_shows_in_block(host: &str) {
 pub fn assert_transaction_log_shows_rejected(host: &str, expected_msg: &str) {
     let fragments = self::assert_get_rest_message_log(&host);
     let fragment = fragments.last();
-    match fragments.last() {
+    match fragment {
         Some(x) => {
             assert!(
                 x.is_rejected(),
                 "Fragment should be rejected, actual: {:?}",
                 &fragment
             );
-            assert!(x.get_reject_message().contains(&expected_msg));
+            match x.status() {
+                FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
+                _ => panic!("Non expected state for for rejected log"),
+            }
         }
         None => panic!(
             "cannot find any fragment in rest message log, output: {:?}",
@@ -363,11 +363,13 @@ pub fn assert_transaction_log_shows_rejected(host: &str, expected_msg: &str) {
     }
 }
 
-pub fn assert_get_rest_message_log(host: &str) -> Vec<Fragment> {
+pub fn assert_get_rest_message_log(host: &str) -> Vec<FragmentLog> {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_rest_message_log_command(&host),
     );
     let content = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output);
-    serde_yaml::from_str(&content).unwrap()
+    let fragments: Vec<FragmentLog> =
+        serde_yaml::from_str(&content).expect("Failed to parse fragment log");
+    fragments
 }
