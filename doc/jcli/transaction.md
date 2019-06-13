@@ -32,7 +32,11 @@ content information of a transaction:
 
 # Examples
 
-Let's say we have the following utxo
+The following example focuses on using an utxo as input, the few differences when transfering from an account will be pointed out when necessary.
+
+Let's use the following utxo as input and transfer 50 lovelaces to the destination address
+
+## Input utxo
 
 | Field                     | Value        |
 | ------------------------- |:------------:|
@@ -41,9 +45,9 @@ Let's say we have the following utxo
 | associated address        |  ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu    | 
 | associated value          | 100             |
 
-And we want to transfer 50 lovelaces to the following address
+## Destination address
 
-ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6
+**addressca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6**
 
 ## Create a staging area
 
@@ -59,6 +63,14 @@ For the input, we need to reference the uxto with the **UTXO's transaction ID** 
 
 ```sh
 jcli transaction add-input  55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c 0 100 --staging tx
+```
+
+### Account input
+
+If the input is an account, the command is slightly different
+
+```sh
+jcli transaction add-account account_address account_funds --staging tx
 ```
 
 ## Add output
@@ -108,7 +120,18 @@ The genesis' hash is needed for ensuring that the transaction cannot be re-used 
 The following command takes the private key in the *key.prv* file and creates a witness in a file named *witness* in the current directory. 
 
 ```sh
-jcli transaction make-witness --genesis-block-hash abcdef987654321... --type utxo txid --staging tx witness key.prv
+jcli transaction make-witness --genesis-block-hash abcdef987654321... --type utxo txid witness key.prv
+```
+
+---
+#### Account input
+
+When using an account as input, the command takes `account` as the type and an additional parameter: `--account-spending-counter`, that should be increased every time the account is used as input.
+
+e.g.
+
+```sh
+jcli transaction make-witness --genesis-block-hash abcdef987654321... --type account --account-spending-counter 0 witness key.prv
 ```
 
 ### Add witness
