@@ -1,5 +1,7 @@
 use super::transaction::TransactionId;
 use super::utxo::UtxoPointer;
+use crate::account::Identifier;
+use crate::key::SpendingPublicKey;
 use crate::value::*;
 use crate::{account, multisig};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -90,6 +92,13 @@ impl Input {
             value: utxo_pointer.value,
             input_ptr: input_ptr,
         }
+    }
+
+    pub fn from_account_pk(public_key: SpendingPublicKey, value: Value) -> Self {
+        Input::from_account(
+            AccountIdentifier::from_single_account(Identifier::from(public_key)),
+            value,
+        )
     }
 
     pub fn from_account(id: AccountIdentifier, value: Value) -> Self {
@@ -187,6 +196,12 @@ impl Readable for Input {
 pub struct Output<Address> {
     pub address: Address,
     pub value: Value,
+}
+
+impl<Address: Readable> Output<Address> {
+    pub fn from(address: Address, value: Value) -> Self {
+        Output { address, value }
+    }
 }
 
 impl<Address: Readable> Readable for Output<Address> {
