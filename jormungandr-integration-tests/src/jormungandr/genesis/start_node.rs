@@ -3,9 +3,6 @@ use crate::common::file_utils;
 use crate::common::jcli_wrapper::certificate::wrapper::JCLICertificateWrapper;
 use crate::common::startup;
 
-use crate::common::jcli_wrapper;
-use crate::common::jcli_wrapper::Discrimination;
-
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
     //faucet
@@ -67,7 +64,7 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
 }
 
 #[test]
-#[ignore] // due to bug https://github.com/input-output-hk/jormungandr/issues/403
+#[ignore] // due to bug https://github.com/input-output-hk/jormungandr/issues/465
 pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     // stake key
     let stake_key = startup::create_new_key_pair("Ed25519Extended");
