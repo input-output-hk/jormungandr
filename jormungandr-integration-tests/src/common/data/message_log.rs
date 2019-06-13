@@ -20,6 +20,26 @@ impl Fragment {
         }
     }
 
+    pub fn is_rejected(&self) -> bool {
+        if self.is_status_a_string() {
+            return false;
+        }
+        match self.status.get("Rejected") {
+            Some(_) => true,
+            None => false,
+        }
+    }
+
+    pub fn get_reject_message(&self) -> String {
+        if !self.is_rejected() {
+            panic!("Cannot get rejected message from non rejected fragment");
+        }
+        match self.status.get("Rejected").unwrap().get("reason") {
+            Some(x) => x.as_str().unwrap().to_string(),
+            None => panic!("empty reasn"),
+        }
+    }
+
     pub fn is_pending(&self) -> bool {
         if !self.is_status_a_string() {
             return false;
