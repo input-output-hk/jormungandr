@@ -72,14 +72,16 @@ pub struct CommandLine {
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     pub verbose: u8,
 
-    /// Set format of the log emitted. Can be "json" or "plain"
-    #[structopt(long = "log-format", parse(try_from_str), default_value = "plain")]
-    pub log_format: LogFormat,
+    /// Set format of the log emitted. Can be "json" or "plain".
+    /// If not configured anywhere, defaults to "plain".
+    #[structopt(long = "log-format", parse(try_from_str))]
+    pub log_format: Option<LogFormat>,
 
     /// Set format of the log emitted. Can be "stderr", "syslog" (unix only) or "journald"
-    /// (linux with systemd only, must be enabled during compilation)
-    #[structopt(long = "log-output", parse(try_from_str), default_value = "stderr")]
-    pub log_output: LogOutput,
+    /// (linux with systemd only, must be enabled during compilation).
+    /// If not configured anywhere, defaults to "stderr".
+    #[structopt(long = "log-output", parse(try_from_str))]
+    pub log_output: Option<LogOutput>,
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,
