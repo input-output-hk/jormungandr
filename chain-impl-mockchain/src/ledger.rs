@@ -97,6 +97,9 @@ custom_error! {
         OldUtxoInvalidPublicKey { utxo: UtxoPointer, output: OutputOldAddress, witness: Witness } = "Old Transaction with invalid public key",
         AccountInvalidSignature { account: account::Identifier, witness: Witness } = "Account with invalid signature",
         MultisigInvalidSignature { multisig: multisig::Identifier, witness: Witness } = "Multisig with invalid signature",
+        TransactionHasTooManyInputs = "Transaction has more than 255 inputs",
+        TransactionHasTooManyOutputs = "Transaction has more than 255 outputs",
+        TransactionHasTooManyWitnesses = "Transaction has more than 255 witnesses",
         FeeCalculationError { error: ValueError } = "Error while computing the fees: {error}",
         PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
         UtxoInputsTotal { error: ValueError } = "Error while computing the transaction's total input: {error}",
@@ -581,9 +584,17 @@ fn internal_apply_transaction(
     witnesses: &[Witness],
     fee: Value,
 ) -> Result<Ledger, Error> {
-    assert!(inputs.len() < 255);
-    assert!(outputs.len() < 255);
-    assert!(witnesses.len() < 255);
+    if inputs.len() >= 255 {
+        return Err(Error::TransactionHasTooManyInputs);
+    }
+
+    if outputs.len() >= 256 {
+        return Err(Error::TransactionHasTooManyOutputs);
+    }
+
+    if witnesses.len() >= 255 {
+        return Err(Error::TransactionHasTooManyWitnesses);
+    }
 
     // 1. verify that number of signatures matches number of
     // transactions
