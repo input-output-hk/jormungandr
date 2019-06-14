@@ -4,16 +4,41 @@
 use chain_core::mempack::{read_mut_slice, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto as crypto;
-use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, SigningAlgorithm, VerificationAlgorithm};
+use chain_crypto::{AsymmetricKey, SecretKey, AsymmetricPublicKey, SigningAlgorithm, VerificationAlgorithm};
+use rand::{CryptoRng, RngCore};
 
 use std::str::FromStr;
 
+#[derive(Clone)]
+pub enum EitherEd25519SecretKey {
+    Extended(crypto::SecretKey<crypto::Ed25519Extended>),
+    Normal(crypto::SecretKey<crypto::Ed25519>),
+}
+
+impl EitherEd25519SecretKey {
+    pub fn generate<R: RngCore + CryptoRng>(rng: R) -> Self {
+        EitherEd25519SecretKey::Extended(SecretKey::generate(rng))
+    }
+
+    pub fn to_public(&self) -> crypto::PublicKey<crypto::Ed25519> {
+        match self {
+            EitherEd25519SecretKey::Extended(sk) => sk.to_public(),
+            EitherEd25519SecretKey::Normal(sk) => sk.to_public(),
+        }
+    }
+
+    pub fn sign<T: AsRef<[u8]>>(&self, dat: &T) -> crypto::Signature<T, crypto::Ed25519> {
+        match self {
+            EitherEd25519SecretKey::Extended(sk) => sk.sign(dat),
+            EitherEd25519SecretKey::Normal(sk) => sk.sign(dat),
+        }
+    }
+}
+
 pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519>;
-pub type SpendingSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
 pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519>;
 
 pub type AccountPublicKey = crypto::PublicKey<crypto::Ed25519>;
-pub type AccountSecretKey = crypto::SecretKey<crypto::Ed25519Extended>;
 pub type AccountSignature<T> = crypto::Signature<T, crypto::Ed25519>;
 
 fn chain_crypto_pub_err(e: crypto::PublicKeyError) -> ReadError {

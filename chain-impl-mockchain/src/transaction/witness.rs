@@ -3,7 +3,7 @@ use crate::account;
 use crate::block::HeaderHash;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
-    AccountSecretKey, SpendingPublicKey, SpendingSecretKey, SpendingSignature,
+    EitherEd25519SecretKey, SpendingPublicKey, SpendingSignature,
 };
 use crate::multisig;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -120,22 +120,22 @@ impl Witness {
     pub fn new_utxo(
         block0: &HeaderHash,
         transaction_id: &TransactionId,
-        secret_key: &SpendingSecretKey,
+        secret_key: &EitherEd25519SecretKey,
     ) -> Self {
-        Witness::Utxo(secret_key.sign(&WitnessUtxoData::new(block0, transaction_id)))
+        let wud = WitnessUtxoData::new(block0, transaction_id);
+        let sig = secret_key.sign(&wud);
+        Witness::Utxo(sig)
     }
 
     pub fn new_account(
         block0: &HeaderHash,
         transaction_id: &TransactionId,
         spending_counter: &account::SpendingCounter,
-        secret_key: &AccountSecretKey,
+        secret_key: &EitherEd25519SecretKey,
     ) -> Self {
-        Witness::Account(secret_key.sign(&WitnessAccountData::new(
-            block0,
-            transaction_id,
-            spending_counter,
-        )))
+        let wud = WitnessAccountData::new(block0, transaction_id, spending_counter);
+        let sig = secret_key.sign(&wud);
+        Witness::Account(sig)
     }
 
     // Verify the given `TransactionId` using the witness.
@@ -213,9 +213,10 @@ impl Readable for Witness {
 pub mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
+    use chain_crypto::SecretKey;
 
     #[derive(Clone)]
-    pub struct TransactionSigningKey(pub SpendingSecretKey);
+    pub struct TransactionSigningKey(pub EitherEd25519SecretKey);
 
     impl std::fmt::Debug for TransactionSigningKey {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -232,7 +233,7 @@ pub mod test {
                 *byte = Arbitrary::arbitrary(g);
             }
             let mut rng = ChaChaRng::from_seed(seed);
-            TransactionSigningKey(SpendingSecretKey::generate(&mut rng))
+            TransactionSigningKey(EitherEd25519SecretKey::Extended(SecretKey::generate(&mut rng)))
         }
     }
 

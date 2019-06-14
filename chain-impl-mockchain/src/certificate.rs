@@ -1,9 +1,9 @@
-use crate::key::SpendingSecretKey;
+use crate::key::EitherEd25519SecretKey;
 use crate::stake::{StakePoolId, StakePoolInfo};
 use crate::transaction::AccountIdentifier;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Verification};
+use chain_crypto::{Ed25519, PublicKey, Verification};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
@@ -36,7 +36,7 @@ pub struct Certificate {
 }
 
 impl Certificate {
-    pub fn sign(&mut self, secret_key: &SpendingSecretKey) -> () {
+    pub fn sign(&mut self, secret_key: &EitherEd25519SecretKey) -> () {
         match &self.content {
             CertificateContent::StakeDelegation(v) => {
                 let signature = v.make_certificate(secret_key);
@@ -152,11 +152,14 @@ pub struct StakeDelegation {
 }
 
 impl StakeDelegation {
-    pub fn make_certificate(&self, stake_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
+    pub fn make_certificate(&self, stake_private_key: &EitherEd25519SecretKey) -> SignatureRaw {
         // FIXME: "It must be signed by sks_source, and that key must
         // be included in the witness." - why?
         use crate::key::make_signature;
-        SignatureRaw(make_signature(stake_private_key, &self).as_ref().to_vec())
+        match stake_private_key {
+            EitherEd25519SecretKey::Extended(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+            EitherEd25519SecretKey::Normal(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+        }
     }
 }
 
@@ -185,9 +188,12 @@ impl Readable for StakeDelegation {
 impl StakePoolInfo {
     /// Create a certificate for this stake pool registration, signed
     /// by the pool's staking key and the owners.
-    pub fn make_certificate(&self, pool_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
+    pub fn make_certificate(&self, pool_private_key: &EitherEd25519SecretKey) -> SignatureRaw {
         use crate::key::make_signature;
-        SignatureRaw(make_signature(pool_private_key, &self).as_ref().to_vec())
+        match pool_private_key {
+            EitherEd25519SecretKey::Extended(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+            EitherEd25519SecretKey::Normal(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+        }
     }
 }
 
@@ -201,9 +207,12 @@ pub struct StakePoolRetirement {
 impl StakePoolRetirement {
     /// Create a certificate for this stake pool retirement, signed
     /// by the pool's staking key.
-    pub fn make_certificate(&self, pool_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
+    pub fn make_certificate(&self, pool_private_key: &EitherEd25519SecretKey) -> SignatureRaw {
         use crate::key::make_signature;
-        SignatureRaw(make_signature(pool_private_key, &self).as_ref().to_vec())
+        match pool_private_key {
+            EitherEd25519SecretKey::Extended(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+            EitherEd25519SecretKey::Normal(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+        }
     }
 }
 
