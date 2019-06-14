@@ -1,0 +1,93 @@
+#!/bin/sh
+# figure out if this actually POSIX shell and not Bash
+
+### CONFIGURATION
+
+
+### TEMPLATE
+FAUCET_SK="####FAUCET_SK####"
+BLOCK0_HASH="####BLOCK0_HASH####"
+REST_URL="####REST_URL####"
+CLI="####CLI####"
+COLORS=####COLORS####
+FEE_CONSTANT=####FEE_CONSTANT####
+FEE_CERTIFICATE=####FEE_CERTIFICATE####
+FEE_COEFFICIENT=####FEE_COEFFICIENT####
+ADDRTYPE="####ADDRTYPE####"
+
+### COLORS
+if [ ${COLORS} -eq 1 ]; then
+    GREEN=`printf "\033[0;32m"`
+    RED=`printf "\033[0;31m"`
+    BLUE=`printf "\033[0;33m"`
+    WHITE=`printf "\033[0m"`
+else
+    GREEN=""
+    RED=""
+    BLUE=""
+    WHITE=""
+fi
+
+if [ $# -ne 2 ]; then
+    echo "usage: $0 <ADDRESS> <AMOUNT>"
+    echo "    <ADDRESS>   Address to send amount of coins to"
+    echo "    <AMOUNT>    Amount in lovelace"
+    exit 1
+fi
+
+DESTINATION_ADDRESS="$1"
+DESTINATION_AMOUNT="$2"
+
+STAGING_FILE="staging.$$.transaction"
+
+#CLI transaction
+if [ -f "${STAGING_FILE}" ]; then
+    echo "error: staging already exist. restart"
+    exit 2
+fi
+
+set -e
+
+FAUCET_PK=$(echo ${FAUCET_SK} | $CLI key to-public)
+FAUCET_ADDR=$($CLI address account ${ADDRTYPE} ${FAUCET_PK})
+
+echo "## Sending ${RED}${DESTINATION_AMOUNT}${WHITE} to ${BLUE}${DESTINATION_ADDRESS}${WHITE}"
+$CLI address info "${DESTINATION_ADDRESS}"
+
+# TODO we should do this in one call to increase the atomicity, but otherwise
+FAUCET_COUNTER=$( $CLI rest v0 account get "${FAUCET_ADDR}" -h "${REST_URL}" | grep '^counter:' | sed -e 's/counter: //' )
+
+# the faucet account is going to pay for the fee ... so calculate how much
+ACCOUNT_AMOUNT=$((${DESTINATION_AMOUNT} + ${FEE_CONSTANT}))
+
+# Create the transaction
+# FROM: FAUCET for AMOUNT+FEES
+# TO: DESTINATION ADDRESS for AMOUNT
+$CLI transaction new --staging ${STAGING_FILE}
+$CLI transaction add-account "${FAUCET_ADDR}" "${ACCOUNT_AMOUNT}" --staging "${STAGING_FILE}"
+$CLI transaction add-output "${DESTINATION_ADDRESS}" "${DESTINATION_AMOUNT}" --staging "${STAGING_FILE}"
+$CLI transaction finalize --staging ${STAGING_FILE}
+
+TRANSACTION_ID=$($CLI transaction id --staging ${STAGING_FILE})
+
+# Create the witness for the 1 input (add-account) and add it
+WITNESS_SECRET_FILE="witness.secret.$$"
+WITNESS_OUTPUT_FILE="witness.out.$$"
+
+printf "${FAUCET_SK}" > ${WITNESS_SECRET_FILE}
+
+$CLI transaction make-witness ${TRANSACTION_ID} \
+    --genesis-block-hash ${BLOCK0_HASH} \
+    --type "account" --account-spending-counter "${FAUCET_COUNTER}" \
+    ${WITNESS_OUTPUT_FILE} ${WITNESS_SECRET_FILE}
+$CLI transaction add-witness ${WITNESS_OUTPUT_FILE} --staging "${STAGING_FILE}"
+
+rm ${WITNESS_SECRET_FILE} ${WITNESS_OUTPUT_FILE}
+
+# Finalize the transaction and send it
+$CLI transaction seal --staging "${STAGING_FILE}"
+$CLI transaction to-message --staging "${STAGING_FILE}" | $CLI rest v0 message post -h "${REST_URL}"
+
+rm ${STAGING_FILE}
+
+exit 0

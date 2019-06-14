@@ -13,6 +13,9 @@ COLORS=1
 REST_PREFIX="api"
 REST_HOST="127.0.0.1"
 REST_PORT="8443"
+FEE_CONSTANT=10
+FEE_CERTIFICATE=0
+FEE_COEFFICIENT=0
 
 FAUCET_AMOUNT=1000000000
 ADDRTYPE="--testing"
@@ -56,6 +59,7 @@ if [ $? -ne 0 ]; then
 fi
 
 REST_DEST="${REST_HOST}:${REST_PORT}"
+REST_URL="http://${REST_DEST}/${REST_PREFIX}"
 
 ### COLORS
 if [ ${COLORS} -eq 1 ]; then
@@ -155,9 +159,9 @@ blockchain_configuration:
   consensus_leader_ids:
     - ${LEADER_PK}
   linear_fees:
-    constant: 10
-    coefficient: 0
-    certificate: 0
+    constant: ${FEE_CONSTANT}
+    coefficient: ${FEE_COEFFICIENT}
+    certificate: ${FEE_CERTIFICATE}
   block0_consensus: ${CONSENSUS}
   bft_slots_ratio: 0
   kes_update_speed: 43200 # 12hours
@@ -214,8 +218,29 @@ if [ $ADD_STARTUP_SCRIPT -eq 1 ]; then
 fi
 echo "  $NODE --genesis-block ${CONFIG_PATH}/block-0.bin --config ${CONFIG_PATH}/config.yaml --secret ${SECRET_PATH}/pool-secret1.yaml"
 echo "To connect using CLI REST:"
-echo "  $CLI rest v0 <CMD> --host \"http://${REST_DEST}/${REST_PREFIX}\""
+echo "  $CLI rest v0 <CMD> --host \"${REST_URL}\""
 echo "For example:"
-echo "  $CLI rest v0 node stats -h \"http://${REST_HOST}:${REST_PORT}/${REST_PREFIX}\""
+echo "  $CLI rest v0 node stats -h \"${REST_URL}\""
 
 find "./${TMPDIR}/" -maxdepth 1 -type f -exec rm {} \; && rmdir $TMPDIR
+
+SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+
+if [ ! -f "$SCRIPTPATH/faucet-send-money.shtempl" ]; then
+    echo "warning: cannot find faucet-send-money template: skipping !"
+else
+    BLOCK0_HASH=$($CLI genesis hash --input ${CONFIG_PATH}/block-0.bin)
+
+    sed -e "s/####FAUCET_SK####/${FAUCET_SK}/" \
+        -e "s/####BLOCK0_HASH####/${BLOCK0_HASH}/" \
+        -e "s;####REST_URL####;${REST_URL};" \
+        -e "s/####CLI####/${CLI}/" \
+        -e "s/####COLORS####/${COLORS}/" \
+        -e "s/####FEE_CONSTANT####/${FEE_CONSTANT}/" \
+        -e "s/####FEE_CERTIFICATE####/${FEE_CERTIFICATE}/" \
+        -e "s/####FEE_COEFFICIENT####/${FEE_COEFFICIENT}/" \
+        -e "s/####ADDRTYPE####/${ADDRTYPE}/" \
+        < "$SCRIPTPATH/faucet-send-money.shtempl" > faucet-send-money.sh
+    exit 0
+fi
+
