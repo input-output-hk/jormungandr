@@ -134,12 +134,6 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
         fee_algorithm: F,
         policy: OutputPolicy,
     ) -> Result<(Balance, tx::Transaction<Address, Extra>), Error> {
-        if self.tx.inputs.len() == 0 {
-            return Err(Error::TxInvalidNoInput);
-        }
-        if self.tx.outputs.len() == 0 {
-            return Err(Error::TxInvalidNoOutput);
-        }
         // calculate initial fee, maybe we can fit it without any
         // additional calculations.
         let fee = fee_algorithm

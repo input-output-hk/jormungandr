@@ -97,7 +97,6 @@ custom_error! {
         OldUtxoInvalidPublicKey { utxo: UtxoPointer, output: OutputOldAddress, witness: Witness } = "Old Transaction with invalid public key",
         AccountInvalidSignature { account: account::Identifier, witness: Witness } = "Account with invalid signature",
         MultisigInvalidSignature { multisig: multisig::Identifier, witness: Witness } = "Multisig with invalid signature",
-        TransactionHasNoInput = "Transaction has no inputs",
         FeeCalculationError { error: ValueError } = "Error while computing the fees: {error}",
         PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
         UtxoInputsTotal { error: ValueError } = "Error while computing the transaction's total input: {error}",
@@ -585,10 +584,6 @@ fn internal_apply_transaction(
     assert!(inputs.len() < 255);
     assert!(outputs.len() < 255);
     assert!(witnesses.len() < 255);
-
-    if inputs.len() == 0 {
-        return Err(Error::TransactionHasNoInput);
-    }
 
     // 1. verify that number of signatures matches number of
     // transactions
