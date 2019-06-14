@@ -1,6 +1,5 @@
 use std::io::{stdin, stdout, BufRead, BufReader, Error, Write};
 use std::path::Path;
-use std::path::PathBuf;
 
 extern crate mktemp;
 
