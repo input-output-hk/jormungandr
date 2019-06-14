@@ -584,15 +584,15 @@ fn internal_apply_transaction(
     witnesses: &[Witness],
     fee: Value,
 ) -> Result<Ledger, Error> {
-    if inputs.len() >= 255 {
+    if inputs.len() > 256 {
         return Err(Error::TransactionHasTooManyInputs);
     }
 
-    if outputs.len() >= 256 {
+    if outputs.len() > 254 {
         return Err(Error::TransactionHasTooManyOutputs);
     }
 
-    if witnesses.len() >= 255 {
+    if witnesses.len() > 256 {
         return Err(Error::TransactionHasTooManyWitnesses);
     }
 

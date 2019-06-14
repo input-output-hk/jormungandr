@@ -1,4 +1,5 @@
-use chain_addr::Address;
+use super::address::AddressData;
+use chain_addr::{Address, Kind};
 use chain_impl_mockchain::account::SpendingCounter;
 use chain_impl_mockchain::block::HeaderHash;
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
@@ -15,7 +16,7 @@ pub struct TransactionBuilder {
 }
 
 impl TransactionBuilder {
-    pub fn new() -> TransactionBuilder {
+    pub fn new() -> Self {
         TransactionBuilder {
             inputs: Vec::new(),
             outputs: Vec::new(),
@@ -25,25 +26,22 @@ impl TransactionBuilder {
         }
     }
 
-    pub fn with_input<'a>(&'a mut self, input: Input) -> &'a mut TransactionBuilder {
+    pub fn with_input<'a>(&'a mut self, input: Input) -> &'a mut Self {
         self.inputs.push(input);
         self
     }
 
-    pub fn with_output<'a>(&'a mut self, output: Output<Address>) -> &'a mut TransactionBuilder {
+    pub fn with_output<'a>(&'a mut self, output: Output<Address>) -> &'a mut Self {
         self.outputs.push(output);
         self
     }
 
-    pub fn with_outputs<'a>(
-        &'a mut self,
-        outputs: Vec<Output<Address>>,
-    ) -> &'a mut TransactionBuilder {
+    pub fn with_outputs<'a>(&'a mut self, outputs: Vec<Output<Address>>) -> &'a mut Self {
         self.outputs.extend(outputs.iter().cloned());
         self
     }
 
-    pub fn finalize<'a>(&'a mut self) -> &'a mut TransactionBuilder {
+    pub fn finalize<'a>(&'a mut self) -> &'a mut Self {
         let transaction = Transaction {
             inputs: self.inputs.clone(),
             outputs: self.outputs.clone(),
@@ -54,11 +52,26 @@ impl TransactionBuilder {
         self
     }
 
+    pub fn with_witness<'a>(
+        &'a mut self,
+        block0: &HeaderHash,
+        addres_data: &AddressData,
+    ) -> &'a mut Self {
+        match addres_data.address.kind() {
+            Kind::Account(_) => self.with_account_witness(
+                block0,
+                &addres_data.spending_counter.unwrap(),
+                &addres_data.private_key,
+            ),
+            _ => self.with_utxo_witness(block0, &addres_data.private_key),
+        }
+    }
+
     pub fn with_utxo_witness<'a>(
         &'a mut self,
         block0: &HeaderHash,
         secret_key: &EitherEd25519SecretKey,
-    ) -> &'a mut TransactionBuilder {
+    ) -> &'a mut Self {
         self.witnesses.push(Witness::new_utxo(
             block0,
             &self.transaction_id.unwrap(),

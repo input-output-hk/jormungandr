@@ -69,12 +69,12 @@ impl ConfigBuilder {
 // create an initial fake ledger with the non-optional parameter setup
 pub fn create_initial_fake_ledger(
     initial_msgs: &[Message],
-    config_Params: ConfigParams,
+    config_params: ConfigParams,
 ) -> (HeaderHash, Ledger) {
     let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
 
     let mut messages = Vec::new();
-    messages.push(Message::Initial(config_Params));
+    messages.push(Message::Initial(config_params));
     messages.extend_from_slice(initial_msgs);
     let ledger = Ledger::new(block0_hash, &messages).expect("create initial fake ledger failed");
     (block0_hash, ledger)
