@@ -53,7 +53,9 @@ Fields description:
 - *logger*: (optional) logger configuration,
     - *verbosity*: 0 - warning, 1 - info, 2 -debug, 3 and above - trace
     - *format*: log output format - plain or json.
-     - *output*: log output - stderr, syslog (unix only) or journald (linux with systemd only, must be enabled during compilation)
+    - *output*: log output - stderr, gelf (graylog) syslog (unix only) or journald (linux with systemd only, must be enabled during compilation)
+    - *backend*: for gelf output: hostname:port of a graylog server.
+    - *logs_id*: for gelf output: unique id that identify the node as source of the logs.
 - *rest*: (optional) configuration of the rest endpoint.
     - *listen*: listen address
     - *pkcs12*: certificate file (optional)
