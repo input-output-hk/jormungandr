@@ -9,12 +9,10 @@ use crate::{
 };
 
 use chain_core::property;
-use network_core::{
-    client::{block::BlockService, gossip::GossipService, P2pService},
-    error as core_error,
-    gossip::{self, Gossip, NodeId},
-    subscription::BlockEvent,
-};
+use network_core::client::{Client, block::BlockService, gossip::GossipService, P2pService};
+use network_core::error as core_error;
+use network_core::gossip::{self, Gossip, NodeId};
+use network_core::subscription::BlockEvent;
 
 use tokio::prelude::*;
 use tower_grpc::{BoxBody, Code, Request, Status, Streaming};
@@ -310,20 +308,14 @@ where
         }
         req
     }
+}
 
-    /// Poll whether this client connection is ready to send another request.
-    pub fn poll_ready(&mut self) -> Poll<(), core_error::Error> {
+impl<P> Client for Connection<P>
+where
+    P: ProtocolConfig,
+{
+    fn poll_ready(&mut self) -> Poll<(), core_error::Error> {
         self.service.poll_ready().map_err(error_from_grpc)
-    }
-
-    /// Get a `Future` of when this client connection is ready to send
-    /// another request.
-    pub fn ready(self) -> impl Future<Item = Self, Error = core_error::Error> {
-        let node_id = self.node_id;
-        self.service
-            .ready()
-            .map(move |service| Connection { service, node_id })
-            .map_err(error_from_grpc)
     }
 }
 
