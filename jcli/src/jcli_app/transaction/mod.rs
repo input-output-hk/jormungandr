@@ -134,7 +134,7 @@ impl Transaction {
 }
 
 fn display_id(common: common::CommonTransaction) -> Result<(), Error> {
-    let id = common.load()?.transaction().hash();
+    let id = common.load()?.id();
     println!("{}", id);
     Ok(())
 }

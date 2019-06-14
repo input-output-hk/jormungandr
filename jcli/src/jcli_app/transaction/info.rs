@@ -151,7 +151,7 @@ impl Info {
         let builder = transaction.builder();
 
         vars.insert("status".to_owned(), transaction.staging_kind_name());
-        vars.insert("id".to_owned(), builder.tx.hash().to_string());
+        vars.insert("id".to_owned(), transaction.id().to_string());
         vars.insert("num_inputs".to_owned(), builder.tx.inputs.len().to_string());
         vars.insert(
             "num_outputs".to_owned(),
