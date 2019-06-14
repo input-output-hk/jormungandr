@@ -3,7 +3,7 @@ use chain_impl_mockchain::{
     self as chain,
     fee::FeeAlgorithm,
     message::Message,
-    transaction::{NoExtra, Transaction},
+    transaction::{NoExtra, Transaction, TransactionId},
     value::Value,
 };
 use jcli_app::transaction::{common, Error};
@@ -256,6 +256,14 @@ impl Staging {
         &self,
     ) -> chain::txbuilder::TransactionBuilder<Address, chain::transaction::NoExtra> {
         chain::txbuilder::TransactionBuilder::from(self.transaction())
+    }
+
+    pub fn id(&self) -> TransactionId {
+        if let Some(extra) = &self.extra {
+            self.transaction_with_extra(&extra).hash()
+        } else {
+            self.transaction().hash()
+        }
     }
 
     pub fn finalizer(&self) -> Result<chain::txbuilder::TransactionFinalizer, Error> {
