@@ -311,10 +311,13 @@ where
         req
     }
 
+    /// Poll whether this client connection is ready to send another request.
     pub fn poll_ready(&mut self) -> Poll<(), core_error::Error> {
         self.service.poll_ready().map_err(error_from_grpc)
     }
 
+    /// Get a `Future` of when this client connection is ready to send
+    /// another request.
     pub fn ready(self) -> impl Future<Item = Self, Error = core_error::Error> {
         let node_id = self.node_id;
         self.service
