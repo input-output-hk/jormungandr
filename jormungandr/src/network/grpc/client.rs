@@ -7,7 +7,7 @@ use crate::{
 use futures::prelude::*;
 use http::{HttpTryFrom, Uri};
 use hyper::client::connect::{Destination, HttpConnector};
-use network_core::client::block::BlockService;
+use network_core::client::{block::BlockService, Client as _};
 use network_grpc::client::{Connect, ConnectFuture};
 use slog::Logger;
 use std::net::SocketAddr;
@@ -21,7 +21,7 @@ pub fn connect(
     node_id: Option<NodeId>,
 ) -> ConnectFuture<BlockConfig, HttpConnector, DefaultExecutor> {
     let uri = destination_uri(addr);
-    let mut connector = HttpConnector::new(1);
+    let mut connector = HttpConnector::new(2);
     connector.set_nodelay(true);
     let mut builder = Connect::new(connector, DefaultExecutor::current());
     if let Some(id) = node_id {
@@ -47,7 +47,12 @@ pub fn fetch_block(
         .map_err(|err| FetchBlockError::Connect {
             source: Box::new(err),
         })
-        .and_then(move |mut client: Connection| {
+        .and_then(move |client: Connection| {
+            client.ready().map_err(|err| FetchBlockError::Connect {
+                source: Box::new(err),
+            })
+        })
+        .and_then(move |mut client| {
             client
                 .get_blocks(slice::from_ref(hash))
                 .map_err(|err| FetchBlockError::GetBlocks { source: err })

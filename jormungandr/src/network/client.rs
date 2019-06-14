@@ -12,7 +12,7 @@ use crate::{
 };
 use futures::prelude::*;
 use network_core::{
-    client::{block::BlockService, gossip::GossipService, P2pService},
+    client::{self as core_client, block::BlockService, gossip::GossipService, p2p::P2pService},
     gossip::Node,
     subscription::BlockEvent,
 };
@@ -42,6 +42,7 @@ impl<S: BlockService> Client<S> {
 
 impl<S> Client<S>
 where
+    S: core_client::Client,
     S: P2pService<NodeId = topology::NodeId>,
     S: BlockService<Block = Block>,
     S: GossipService<Node = topology::Node>,
@@ -49,48 +50,68 @@ where
     S::GossipSubscription: Send + 'static,
 {
     fn subscribe(
-        mut service: S,
+        service: S,
         state: ConnectionState,
         channels: Channels,
     ) -> impl Future<Item = (Self, PeerComms), Error = ()> {
         let mut peer_comms = PeerComms::new();
-        let block_req = service.block_subscription(peer_comms.subscribe_to_block_announcements());
-        let gossip_req = service.gossip_subscription(peer_comms.subscribe_to_gossip());
         let err_logger = state.logger().clone();
-        block_req
-            .join(gossip_req)
+        service
+            .ready()
+            .and_then(move |mut service| {
+                let block_req =
+                    service.block_subscription(peer_comms.subscribe_to_block_announcements());
+                service
+                    .ready()
+                    .map(move |service| (service, peer_comms, block_req))
+            })
+            .and_then(move |(mut service, mut peer_comms, block_req)| {
+                let gossip_req = service.gossip_subscription(peer_comms.subscribe_to_gossip());
+                block_req
+                    .join(gossip_req)
+                    .map(move |(block_res, gossip_res)| {
+                        (service, peer_comms, block_res, gossip_res)
+                    })
+            })
             .map_err(move |err| {
                 warn!(err_logger, "subscription request failed: {:?}", err);
             })
-            .and_then(move |((block_events, node_id), (gossip_sub, node_id_1))| {
-                if node_id != node_id_1 {
-                    warn!(
-                        state.logger(),
-                        "peer subscription IDs do not match: {} != {}", node_id, node_id_1
-                    );
-                    return Err(());
-                }
-                let client_logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
-
-                // Spin off processing tasks for subscriptions that can be
-                // managed with just the global state.
-                subscription::process_gossip(gossip_sub, state.global, client_logger.clone());
-
-                // Plug the block solicitations to be handled
-                // via client requests.
-                let block_solicitations = peer_comms.subscribe_to_block_solicitations();
-
-                // Resolve with the client instance and communication handles.
-                let client = Client {
+            .and_then(
+                move |(
                     service,
-                    channels,
-                    remote_node_id: node_id,
-                    block_events,
-                    block_solicitations,
-                    logger: client_logger,
-                };
-                Ok((client, peer_comms))
-            })
+                    mut peer_comms,
+                    (block_events, node_id),
+                    (gossip_sub, node_id_1),
+                )| {
+                    if node_id != node_id_1 {
+                        warn!(
+                            state.logger(),
+                            "peer subscription IDs do not match: {} != {}", node_id, node_id_1
+                        );
+                        return Err(());
+                    }
+                    let client_logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
+
+                    // Spin off processing tasks for subscriptions that can be
+                    // managed with just the global state.
+                    subscription::process_gossip(gossip_sub, state.global, client_logger.clone());
+
+                    // Plug the block solicitations to be handled
+                    // via client requests.
+                    let block_solicitations = peer_comms.subscribe_to_block_solicitations();
+
+                    // Resolve with the client instance and communication handles.
+                    let client = Client {
+                        service,
+                        channels,
+                        remote_node_id: node_id,
+                        block_events,
+                        block_solicitations,
+                        logger: client_logger,
+                    };
+                    Ok((client, peer_comms))
+                },
+            )
     }
 }
 
