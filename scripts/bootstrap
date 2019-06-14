@@ -4,6 +4,13 @@
 #
 # See help (-h) for synopsis
 #
+# Disclaimer:
+#
+#  The following use of shell script is for demonstration and understanding
+#  only, it should *NOT* be used at scale or for any sort of serious
+#  deployment, and is solely used for learning how the node and blockchain
+#  works, and how to interact with everything.
+#
 
 ### CONFIGURATION
 
