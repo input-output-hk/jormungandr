@@ -1,4 +1,4 @@
-use super::P2pService;
+use super::p2p::P2pService;
 use crate::{error::Error, subscription::BlockEvent};
 
 use chain_core::property::{Block, HasHeader};

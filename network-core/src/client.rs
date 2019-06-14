@@ -2,8 +2,9 @@
 
 pub mod block;
 pub mod gossip;
+pub mod p2p;
 
-use crate::{error::Error, gossip::NodeId};
+use crate::error::Error;
 
 use futures::prelude::*;
 use futures::try_ready;
@@ -44,11 +45,4 @@ impl<C: Client> Future for ClientReady<C> {
         try_ready!(client.poll_ready());
         Ok(Async::Ready(self.client.take().unwrap()))
     }
-}
-
-/// Base trait for the client services that use node identifiers to
-/// distinguish subscription streams.
-pub trait P2pService {
-    /// Network node identifier.
-    type NodeId: NodeId;
 }
