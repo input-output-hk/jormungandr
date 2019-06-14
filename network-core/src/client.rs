@@ -32,7 +32,9 @@ pub struct ClientReady<C> {
 
 impl<C> ClientReady<C> {
     fn new(client: C) -> Self {
-        ClientReady { client: Some(client) }
+        ClientReady {
+            client: Some(client),
+        }
     }
 }
 
