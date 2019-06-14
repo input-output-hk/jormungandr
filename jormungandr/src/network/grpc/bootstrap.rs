@@ -3,7 +3,7 @@ use super::connect;
 use crate::{blockchain::BlockchainR, settings::start::network::Peer};
 use blockcfg::Block;
 use chain_core::property::HasHeader;
-use network_core::client::block::BlockService as _;
+use network_core::client::{block::BlockService, Client as _};
 use network_grpc::client::Connection;
 use slog::Logger;
 use std::fmt::Debug;
@@ -13,10 +13,15 @@ use tokio::runtime::current_thread;
 pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR, logger: &Logger) {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
     let bootstrap = connect(peer.address(), None)
-        .map_err(move |e| {
+        .map_err(|e| {
             error!(logger, "failed to connect to bootstrap peer: {:?}", e);
         })
-        .and_then(|mut client: Connection<BlockConfig>| {
+        .and_then(|client: Connection<BlockConfig>| {
+            client.ready().map_err(|e| {
+                error!(logger, "bootstrap peer disconnected: {:?}", e);
+            })
+        })
+        .and_then(|mut client| {
             let tip = blockchain.lock_read().get_tip().unwrap();
             client
                 .pull_blocks_to_tip(&[tip])
