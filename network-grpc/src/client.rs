@@ -9,12 +9,13 @@ use crate::{
 };
 
 use chain_core::property;
-use network_core::{
-    client::{block::BlockService, gossip::GossipService, P2pService},
-    error as core_error,
-    gossip::{self, Gossip, NodeId},
-    subscription::BlockEvent,
-};
+use network_core::client::block::BlockService;
+use network_core::client::gossip::GossipService;
+use network_core::client::p2p::P2pService;
+use network_core::client::Client;
+use network_core::error as core_error;
+use network_core::gossip::{self, Gossip, NodeId};
+use network_core::subscription::BlockEvent;
 
 use tokio::prelude::*;
 use tower_grpc::{BoxBody, Code, Request, Status, Streaming};
@@ -309,6 +310,15 @@ where
             // eventually be permissive node implementations.
         }
         req
+    }
+}
+
+impl<P> Client for Connection<P>
+where
+    P: ProtocolConfig,
+{
+    fn poll_ready(&mut self) -> Poll<(), core_error::Error> {
+        self.service.poll_ready().map_err(error_from_grpc)
     }
 }
 
