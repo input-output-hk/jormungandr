@@ -25,6 +25,21 @@ impl TransactionCommands {
         command
     }
 
+    pub fn get_add_certificate_command(
+        &self,
+        certificate: &str,
+        staging_file: &PathBuf,
+    ) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("transaction")
+            .arg("add-certificate")
+            .arg(&certificate)
+            .arg("--staging")
+            .arg(staging_file.as_os_str());
+        command
+    }
+
     pub fn get_add_input_command(
         &self,
         tx_id: &str,
@@ -107,6 +122,21 @@ impl TransactionCommands {
             .arg(linear_fees.constant.to_string())
             .arg("--staging")
             .arg(staging_file.as_ref().as_os_str());
+        command
+    }
+
+    pub fn get_finalize_with_spending_address_command(
+        &self,
+        spending_address: &str,
+        staging_file: &PathBuf,
+    ) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("transaction")
+            .arg("finalize")
+            .arg(&spending_address)
+            .arg("--staging")
+            .arg(staging_file.as_os_str());
         command
     }
 
