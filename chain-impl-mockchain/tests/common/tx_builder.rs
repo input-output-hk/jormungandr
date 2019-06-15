@@ -1,7 +1,7 @@
 use chain_addr::Address;
 use chain_impl_mockchain::account::SpendingCounter;
 use chain_impl_mockchain::block::HeaderHash;
-use chain_impl_mockchain::key::{AccountSecretKey, SpendingSecretKey};
+use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::message::Message;
 use chain_impl_mockchain::transaction::Witness;
 use chain_impl_mockchain::transaction::*;
@@ -57,7 +57,7 @@ impl TransactionBuilder {
     pub fn with_utxo_witness<'a>(
         &'a mut self,
         block0: &HeaderHash,
-        secret_key: &SpendingSecretKey,
+        secret_key: &EitherEd25519SecretKey,
     ) -> &'a mut TransactionBuilder {
         self.witnesses.push(Witness::new_utxo(
             block0,
@@ -71,7 +71,7 @@ impl TransactionBuilder {
         &'a mut self,
         block0: &HeaderHash,
         spending_counter: &SpendingCounter,
-        secret_key: &AccountSecretKey,
+        secret_key: &EitherEd25519SecretKey,
     ) -> &'a mut TransactionBuilder {
         self.witnesses.push(Witness::new_account(
             block0,
