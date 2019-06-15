@@ -44,7 +44,7 @@ pub enum Key {
 pub struct FromBytes {
     /// Type of a private key
     ///
-    /// value values are: ed25519, ed25510bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
+    /// supported values are: ed25519, ed25519bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
     #[structopt(long = "type")]
     key_type: GenPrivKeyType,
 
@@ -71,7 +71,7 @@ pub struct ToBytes {
 pub struct Generate {
     /// Type of a private key
     ///
-    /// value values are: ed25519, ed25510bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
+    /// supported values are: ed25519, ed25519bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
     #[structopt(long = "type")]
     key_type: GenPrivKeyType,
 
