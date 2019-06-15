@@ -1,5 +1,5 @@
 use chain_impl_mockchain::certificate::Certificate as MockchainCertificate;
-use jcli_app::utils::io;
+use jcli_app::utils::{io, key_parser};
 use jormungandr_utils::certificate;
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
@@ -13,7 +13,7 @@ mod sign;
 
 custom_error! {pub Error
     CertInvalid { source: certificate::Error } = "invalid certificate",
-    PrivKeyInvaild { source: chain_crypto::bech32::Error } = "invalid private key",
+    KeyInvalid { source: key_parser::Error } = "invalid private key",
     Io { source: std::io::Error } = "I/O Error",
     NotStakePoolRegistration = "invalid certificate, expecting a stake pool registration",
     InputInvalid { source: std::io::Error, path: PathBuf }

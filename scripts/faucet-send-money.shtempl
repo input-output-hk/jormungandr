@@ -28,11 +28,16 @@ else
     WHITE=""
 fi
 
-if [ $# -ne 2 ]; then
-    echo "usage: $0 <ADDRESS> <AMOUNT>"
+if [ $# -lt 2 ]; then
+    echo "usage: $0 <ADDRESS> <AMOUNT> [SOURCE-SK]"
     echo "    <ADDRESS>   Address to send amount of coins to"
     echo "    <AMOUNT>    Amount in lovelace"
+    echo "    [SOURCE]    Source Secret key (if not present, use the faucet)"
     exit 1
+fi
+
+if [ $# -eq 3 ]; then
+    FAUCET_SK=$3
 fi
 
 DESTINATION_ADDRESS="$1"

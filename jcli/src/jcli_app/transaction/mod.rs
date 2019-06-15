@@ -16,6 +16,7 @@ use cardano::util::hex;
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
 use jcli_app::utils::error::CustomErrorFiller;
+use jcli_app::utils::key_parser;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -62,10 +63,14 @@ custom_error! { pub Error
         = @{{ let _ = source; format_args!("could not read staging transaction file '{}'", path.display()) }},
     StagingFileWriteFailed { source: bincode::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not write staging transaction file '{}'", path.display()) }},
+    SecretFileFailed { source: key_parser::Error }
+        = @{{ format_args!("could not process secret file '{}'", source) }},
+        /*
     SecretFileReadFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not read secret file '{}'", path.display()) }},
     SecretFileMalformed { source: chain_crypto::bech32::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not decode secret file '{}'", path.display()) }},
+        */
     WitnessFileReadFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not read witness file '{}'", path.display()) }},
     WitnessFileWriteFailed { source: std::io::Error, path: PathBuf }
@@ -113,6 +118,14 @@ custom_error! { pub Error
     MakeWitnessLegacyUtxoUnsupported = "making legacy UTxO witness unsupported",
     MakeWitnessAccountCounterMissing = "making account witness requires passing spending counter",
 }
+
+/*
+impl From<key_parser::Error> for Error {
+    fn from(kp: key_parser::Error) -> Self {
+        Error::SecretFileFailed { source: kp }
+    }
+}
+*/
 
 impl Transaction {
     pub fn exec(self) -> Result<(), Error> {

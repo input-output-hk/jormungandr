@@ -6,7 +6,7 @@ use chain_impl_mockchain::{
     transaction::{NoExtra, Transaction, TransactionId},
     value::Value,
 };
-use jcli_app::transaction::{common, Error};
+use jcli_app::transaction::Error;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
 use jormungandr_utils::serde;
@@ -86,22 +86,22 @@ impl Staging {
     pub fn load<P: AsRef<Path>>(path: &Option<P>) -> Result<Self, Error> {
         let file = io::open_file_read(path).map_err(|source| Error::StagingFileOpenFailed {
             source,
-            path: common::path_to_path_buf(path),
+            path: io::path_to_path_buf(path),
         })?;
         bincode::deserialize_from(file).map_err(|source| Error::StagingFileReadFailed {
             source,
-            path: common::path_to_path_buf(path),
+            path: io::path_to_path_buf(path),
         })
     }
 
     pub fn store<P: AsRef<Path>>(&self, path: &Option<P>) -> Result<(), Error> {
         let file = io::open_file_write(path).map_err(|source| Error::StagingFileOpenFailed {
             source,
-            path: common::path_to_path_buf(path),
+            path: io::path_to_path_buf(path),
         })?;
         bincode::serialize_into(file, self).map_err(|source| Error::StagingFileWriteFailed {
             source,
-            path: common::path_to_path_buf(path),
+            path: io::path_to_path_buf(path),
         })
     }
 
@@ -145,7 +145,7 @@ impl Staging {
 
     pub fn set_extra(&mut self, extra: chain::certificate::Certificate) -> Result<(), Error> {
         match self.kind {
-            StagingKind::Finalizing => Ok(self.extra = Some(Certificate(extra))),
+            StagingKind::Balancing => Ok(self.extra = Some(Certificate(extra))),
             kind => Err(Error::TxKindToAddExtraInvalid { kind }),
         }
     }
