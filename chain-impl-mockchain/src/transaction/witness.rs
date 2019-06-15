@@ -212,8 +212,8 @@ impl Readable for Witness {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use quickcheck::{Arbitrary, Gen};
     use chain_crypto::SecretKey;
+    use quickcheck::{Arbitrary, Gen};
 
     #[derive(Clone)]
     pub struct TransactionSigningKey(pub EitherEd25519SecretKey);
@@ -233,7 +233,9 @@ pub mod test {
                 *byte = Arbitrary::arbitrary(g);
             }
             let mut rng = ChaChaRng::from_seed(seed);
-            TransactionSigningKey(EitherEd25519SecretKey::Extended(SecretKey::generate(&mut rng)))
+            TransactionSigningKey(EitherEd25519SecretKey::Extended(SecretKey::generate(
+                &mut rng,
+            )))
         }
     }
 

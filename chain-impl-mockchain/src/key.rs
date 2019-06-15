@@ -4,7 +4,9 @@
 use chain_core::mempack::{read_mut_slice, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto as crypto;
-use chain_crypto::{AsymmetricKey, SecretKey, AsymmetricPublicKey, SigningAlgorithm, VerificationAlgorithm};
+use chain_crypto::{
+    AsymmetricKey, AsymmetricPublicKey, SecretKey, SigningAlgorithm, VerificationAlgorithm,
+};
 use rand::{CryptoRng, RngCore};
 
 use std::str::FromStr;

@@ -157,8 +157,12 @@ impl StakeDelegation {
         // be included in the witness." - why?
         use crate::key::make_signature;
         match stake_private_key {
-            EitherEd25519SecretKey::Extended(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
-            EitherEd25519SecretKey::Normal(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+            EitherEd25519SecretKey::Extended(sk) => {
+                SignatureRaw(make_signature(sk, &self).as_ref().to_vec())
+            }
+            EitherEd25519SecretKey::Normal(sk) => {
+                SignatureRaw(make_signature(sk, &self).as_ref().to_vec())
+            }
         }
     }
 }
@@ -191,8 +195,12 @@ impl StakePoolInfo {
     pub fn make_certificate(&self, pool_private_key: &EitherEd25519SecretKey) -> SignatureRaw {
         use crate::key::make_signature;
         match pool_private_key {
-            EitherEd25519SecretKey::Extended(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
-            EitherEd25519SecretKey::Normal(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+            EitherEd25519SecretKey::Extended(sk) => {
+                SignatureRaw(make_signature(sk, &self).as_ref().to_vec())
+            }
+            EitherEd25519SecretKey::Normal(sk) => {
+                SignatureRaw(make_signature(sk, &self).as_ref().to_vec())
+            }
         }
     }
 }
@@ -210,8 +218,12 @@ impl StakePoolRetirement {
     pub fn make_certificate(&self, pool_private_key: &EitherEd25519SecretKey) -> SignatureRaw {
         use crate::key::make_signature;
         match pool_private_key {
-            EitherEd25519SecretKey::Extended(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
-            EitherEd25519SecretKey::Normal(sk) => SignatureRaw(make_signature(sk, &self).as_ref().to_vec()),
+            EitherEd25519SecretKey::Extended(sk) => {
+                SignatureRaw(make_signature(sk, &self).as_ref().to_vec())
+            }
+            EitherEd25519SecretKey::Normal(sk) => {
+                SignatureRaw(make_signature(sk, &self).as_ref().to_vec())
+            }
         }
     }
 }
