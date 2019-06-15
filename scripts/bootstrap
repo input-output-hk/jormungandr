@@ -25,6 +25,8 @@ REST_PORT="8443"
 FEE_CONSTANT=10
 FEE_CERTIFICATE=0
 FEE_COEFFICIENT=0
+SLOT_DURATION=10
+
 FAUCET_AMOUNT=1000000000
 ADDRTYPE="--testing"
 
@@ -33,7 +35,7 @@ SECRET_PATH="."
 CONFIG_PATH="."
 ADD_STARTUP_SCRIPT=0
 
-while getopts 'bc:d:ghk:p:xCod' c
+while getopts 'bc:d:ghk:p:s:xCod' c
 do
     case $c in
         b) CONSENSUS="bft" ;;
@@ -42,6 +44,7 @@ do
         k) SECRET_PATH="${OPTARG}" ;;
         c) CONFIG_PATH="${OPTARG}" ;;
         x) ADD_STARTUP_SCRIPT=1 ;;
+        s) SLOT_DURATION="${OPTARG}" ;;
         C) COLORS=0 ;;
         o) CLEAN=1 ;;
         d) DPATH="${OPTARG}" ;;
@@ -49,6 +52,7 @@ do
             echo "usage: $0"
             echo "    [-p <REST_PORT>] [-b] [g]"
             echo "    [-k <SECRET-PATH>] [-c <CONFIG-PATH>]"
+            echo "    [-s <SLOT-DURATION>]"
             echo ""
             echo "  -p <REST_PORT>   REST PORT for the service to listen on"
             echo "  -b               Use BFT consensus mode"
@@ -57,6 +61,7 @@ do
             echo "  -k <SECRET-PATH> The path to write secret files"
             echo "  -c <CONFIG-PATH> The path to write config files"
             echo "  -d <DATA-PATH>   The path to write sqlite files"
+            echo "  -s <SLOT-DURATION> Duration of a slot in seconds"
             echo "  -C               Disable ansi shell colours in stdout"
             echo "  -o               Overwrite existing sqlite files"
             exit 0
@@ -116,6 +121,7 @@ echo "########################################################"
 echo ""
 echo "* Consensus: ${RED}${CONSENSUS}${WHITE}"
 echo "* REST Port: ${RED}${REST_PORT}${WHITE}"
+echo "* Slot duration: ${RED}${SLOT_DURATION}${WHITE}"
 echo ""
 echo "########################################################"
 echo ""
@@ -179,7 +185,7 @@ blockchain_configuration:
   block0_date: $(date +%s)
   discrimination: test
   slots_per_epoch: 5000
-  slot_duration: 10
+  slot_duration: ${SLOT_DURATION}
   epoch_stability_depth: 10
   consensus_genesis_praos_active_slot_coeff: 0.1
   consensus_leader_ids:

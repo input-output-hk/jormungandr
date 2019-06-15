@@ -5,7 +5,7 @@ pub use self::config::Rest;
 use self::config::{Config, ConfigLogSettings};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
-use crate::settings::logging::{self, LogSettings};
+use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
 use slog::Logger;
 
@@ -44,27 +44,41 @@ impl RawSettings {
     }
 
     pub fn to_logger(&self) -> Result<Logger, logging::Error> {
-        let level = if self.command_line.verbose == 0 {
-            match self.config.logger {
-                Some(ConfigLogSettings {
-                    verbosity: Some(v), ..
-                }) => v,
-                _ => 0,
-            }
-        } else {
-            self.command_line.verbose
+        LogSettings {
+            verbosity: self.logger_verbosity(),
+            format: self.logger_format(),
+            output: self.logger_output(),
+        }
+        .to_logger()
+    }
+
+    fn logger_verbosity(&self) -> slog::Level {
+        let cmd_level = match self.command_line.verbose {
+            0 => None,
+            level => Some(level),
         };
-        let verbosity = match level {
+        let config_logger = self.config.logger.as_ref();
+        let config_level = config_logger.and_then(|logger| logger.verbosity.clone());
+        let level = cmd_level.or(config_level).unwrap_or(0);
+        match level {
             0 => slog::Level::Info,
             1 => slog::Level::Debug,
             _ => slog::Level::Trace,
-        };
-        LogSettings {
-            verbosity,
-            format: self.command_line.log_format.clone(),
-            output: self.command_line.log_output.clone(),
         }
-        .to_logger()
+    }
+
+    fn logger_format(&self) -> LogFormat {
+        let cmd_format = self.command_line.log_format.clone();
+        let config_logger = self.config.logger.as_ref();
+        let config_format = config_logger.and_then(|logger| logger.format.clone());
+        cmd_format.or(config_format).unwrap_or(LogFormat::Plain)
+    }
+
+    fn logger_output(&self) -> LogOutput {
+        let cmd_output = self.command_line.log_output.clone();
+        let config_logger = self.config.logger.as_ref();
+        let config_output = config_logger.and_then(|logger| logger.output.clone());
+        cmd_output.or(config_output).unwrap_or(LogOutput::Stderr)
     }
 
     /// Load the settings
