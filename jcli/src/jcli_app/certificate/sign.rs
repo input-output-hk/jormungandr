@@ -1,6 +1,6 @@
-use chain_crypto::{bech32::Bech32, Ed25519Extended, SecretKey};
 use chain_impl_mockchain::certificate::CertificateContent;
 use jcli_app::certificate::{self, Error};
+use jcli_app::utils::key_parser::parse_ed25519_secret_key;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -21,7 +21,7 @@ impl Sign {
     pub fn exec(self) -> Result<(), Error> {
         let mut cert = certificate::read_cert(self.input)?;
         let key_str = certificate::read_input(Some(self.signing_key))?;
-        let private_key = SecretKey::<Ed25519Extended>::try_from_bech32_str(key_str.trim())?;
+        let private_key = parse_ed25519_secret_key(key_str.trim())?;
 
         let signature = match &cert.content {
             CertificateContent::StakeDelegation(s) => s.make_certificate(&private_key),

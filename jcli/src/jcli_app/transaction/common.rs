@@ -1,10 +1,6 @@
 use chain_impl_mockchain::fee::LinearFee;
 use jcli_app::transaction::{staging::Staging, Error};
-use jcli_app::utils::io;
-use std::{
-    io::BufRead,
-    path::{Path, PathBuf},
-};
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -44,16 +40,4 @@ impl CommonTransaction {
     pub fn store(&self, staging: &Staging) -> Result<(), Error> {
         staging.store(&self.staging_file)
     }
-}
-
-pub fn path_to_path_buf<P: AsRef<Path>>(path: &Option<P>) -> PathBuf {
-    path.as_ref()
-        .map(|path| path.as_ref().to_path_buf())
-        .unwrap_or_default()
-}
-
-pub fn read_line<P: AsRef<Path>>(path: &Option<P>) -> Result<String, std::io::Error> {
-    let mut line = String::new();
-    io::open_file_read(path)?.read_line(&mut line)?;
-    Ok(line.trim_end().to_string())
 }

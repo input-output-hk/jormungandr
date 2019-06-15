@@ -2,6 +2,7 @@ use bech32::{Bech32, FromBase32 as _};
 use chain_core::mempack::{ReadBuf, Readable as _};
 use chain_impl_mockchain::transaction::Witness;
 use jcli_app::transaction::{common, Error};
+use jcli_app::utils::io;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -29,12 +30,11 @@ impl AddWitness {
     fn witness(&self) -> Result<Witness, Error> {
         const HRP: &'static str = "witness";
 
-        let bech32_str = common::read_line(&Some(&self.witness)).map_err(|source| {
-            Error::WitnessFileReadFailed {
+        let bech32_str =
+            io::read_line(&Some(&self.witness)).map_err(|source| Error::WitnessFileReadFailed {
                 source,
                 path: self.witness.clone(),
-            }
-        })?;
+            })?;
 
         let bech32: Bech32 =
             bech32_str

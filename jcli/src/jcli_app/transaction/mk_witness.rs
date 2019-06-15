@@ -1,14 +1,17 @@
 use bech32::{Bech32, ToBase32 as _};
 use chain_core::property::Serialize as _;
-use chain_crypto::bech32::Bech32 as _;
-use chain_crypto::{AsymmetricKey, SecretKey};
+use chain_crypto::{AsymmetricKey, Ed25519Bip32, SecretKey};
 use chain_impl_mockchain::{
     account::SpendingCounter,
     block::HeaderHash,
     transaction::{TransactionId, Witness},
 };
-use jcli_app::transaction::{common, Error};
-use jcli_app::utils::{error::CustomErrorFiller, io};
+use jcli_app::transaction::Error;
+use jcli_app::utils::{
+    error::CustomErrorFiller,
+    io,
+    key_parser::{read_ed25519_secret_key_from_file, read_secret_key_from_file},
+};
 use std::{io::Write, path::PathBuf};
 use structopt::StructOpt;
 
@@ -62,32 +65,29 @@ impl std::str::FromStr for WitnessType {
 
 impl MkWitness {
     fn secret<A: AsymmetricKey>(&self) -> Result<SecretKey<A>, Error> {
-        let bech32_str =
-            common::read_line(&self.secret).map_err(|source| Error::SecretFileReadFailed {
-                source,
-                path: common::path_to_path_buf(&self.secret),
-            })?;
-        SecretKey::try_from_bech32_str(&bech32_str).map_err(|source| Error::SecretFileMalformed {
-            source,
-            path: common::path_to_path_buf(&self.secret),
-        })
+        let sk = read_secret_key_from_file(&self.secret)?;
+        Ok(sk)
     }
 
     pub fn exec(self) -> Result<(), Error> {
         let witness = match self.witness_type {
             WitnessType::UTxO => {
-                let secret_key = self.secret()?;
+                let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
                 Witness::new_utxo(&self.genesis_block_hash, &self.transaction_id, &secret_key)
             }
-            // TODO unimplemented!()
-            WitnessType::OldUTxO => return Err(Error::MakeWitnessLegacyUtxoUnsupported)?,
+            WitnessType::OldUTxO => {
+                // TODO unimplemented!()
+                let _secret_key: SecretKey<Ed25519Bip32> = self.secret()?;
+                Err(Error::MakeWitnessLegacyUtxoUnsupported)?;
+                unimplemented!()
+            }
             WitnessType::Account => {
                 let account_spending_counter = self
                     .account_spending_counter
                     .ok_or(Error::MakeWitnessAccountCounterMissing)
                     .map(SpendingCounter::from)?;
 
-                let secret_key = self.secret()?;
+                let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
                 Witness::new_account(
                     &self.genesis_block_hash,
                     &self.transaction_id,
