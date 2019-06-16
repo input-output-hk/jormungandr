@@ -17,8 +17,7 @@ will utilise the **Hash** to retrieve it from the other peers. It will also
 allows the Node to verify the integrity of the downloaded **genesis block**.
 
 The **trusted peers** are the nodes in the public network that your Node will
-trust in order to initialise the Peer To Peer network. More details in
-**TODO: add chapter about Jormungandr P2P**.
+trust in order to initialise the Peer To Peer network.
 
 # The node configuration
 
