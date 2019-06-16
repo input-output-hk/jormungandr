@@ -17,6 +17,8 @@
 CLI=jcli
 NODE=jormungandr
 COLORS=1
+CLEAN=0
+DPATH="${PWD}"
 REST_PREFIX="api"
 REST_HOST="127.0.0.1"
 REST_PORT="8443"
@@ -33,7 +35,7 @@ SECRET_PATH="."
 CONFIG_PATH="."
 ADD_STARTUP_SCRIPT=0
 
-while getopts 'bc:d:ghk:p:s:xC' c
+while getopts 'bc:d:ghk:p:s:xCod' c
 do
     case $c in
         b) CONSENSUS="bft" ;;
@@ -44,6 +46,8 @@ do
         x) ADD_STARTUP_SCRIPT=1 ;;
         s) SLOT_DURATION="${OPTARG}" ;;
         C) COLORS=0 ;;
+        o) CLEAN=1 ;;
+        d) DPATH="${OPTARG}" ;;
         h)
             echo "usage: $0"
             echo "    [-p <REST_PORT>] [-b] [g]"
@@ -56,16 +60,32 @@ do
             echo "  -x               Add startup script"
             echo "  -k <SECRET-PATH> The path to write secret files"
             echo "  -c <CONFIG-PATH> The path to write config files"
+            echo "  -d <DATA-PATH>   The path to write sqlite files"
             echo "  -s <SLOT-DURATION> Duration of a slot in seconds"
             echo "  -C               Disable ansi shell colours in stdout"
+            echo "  -o               Overwrite existing sqlite files"
             exit 0
             ;;
     esac
 done
 
+STORAGE="${DPATH}/jormungandr-storage-test"
+
 [ -n "${REST_PORT}" ] && [ "${REST_PORT}" -eq "${REST_PORT}" ] 2>/dev/null
 if [ $? -ne 0 ]; then
     echo "error: ${REST_PORT} is not valid number"
+    exit 1
+fi
+
+if [ ${CLEAN} -eq 0 ] && [ -f ${STORAGE}/blocks.sqlite ]; then
+    echo "error: directory ${STORAGE} contains blocks.sqlite already, use -o to overwrite"
+    exit 1
+elif [ ${CLEAN} -eq 1 ] && [ -f ${STORAGE}/blocks.sqlite ]; then
+    find ${STORAGE} -type f -exec rm {} \;
+fi
+
+if [ ! -d ${DPATH} ] || [ ! -w ${DPATH} ]; then
+    echo "error: path to store (${DPATH}) sqlite files does not exist or your user does not have write permission"
     exit 1
 fi
 
@@ -195,7 +215,7 @@ bft:
 EOF
 
 cat << EOF > ${CONFIG_PATH}/config.yaml
-storage: "${PWD}/jormungandr-storage-test/"
+storage: "${STORAGE}/"
 
 rest:
   listen: "${REST_DEST}"
@@ -215,15 +235,18 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+BLOCK0_HASH=$($CLI genesis hash --input ${CONFIG_PATH}/block-0.bin)
+
 ### PRINT
 
 echo "faucet account: ${GREEN}${FAUCET_ADDR}${WHITE}"
 echo "  * public: ${BLUE}${FAUCET_PK}${WHITE}"
 echo "  * secret: ${RED}${FAUCET_SK}${WHITE}"
 echo "  * amount: ${GREEN}${FAUCET_AMOUNT}${WHITE}"
-
+echo
 echo "pool id: ${GREEN}${STAKE_POOL_ID}${WHITE}"
-
+echo "block-0 hash: ${BLUE}${BLOCK0_HASH}${BLUE}"
+echo
 echo "To start the node:"
 if [ $ADD_STARTUP_SCRIPT -eq 1 ]; then
     echo "$NODE --genesis-block ${CONFIG_PATH}/block-0.bin --config ${CONFIG_PATH}/config.yaml --secret ${SECRET_PATH}/pool-secret1.yaml" > startup_script.sh
@@ -241,7 +264,6 @@ SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 if [ ! -f "$SCRIPTPATH/faucet-send-money.shtempl" ] || [ ! -f "$SCRIPTPATH/faucet-send-certificate.shtempl" ]; then
     echo "warning: cannot find faucet-send-money or faucet-send-certificate template: skipping !"
 else
-    BLOCK0_HASH=$($CLI genesis hash --input ${CONFIG_PATH}/block-0.bin)
 
     function process_file {
       FROM=${1}
