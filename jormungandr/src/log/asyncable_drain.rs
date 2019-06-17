@@ -9,11 +9,13 @@ where
     fn async(self) -> Async;
 }
 
+const EVENT_BUFFER_SIZE: usize = 1024;
+
 impl<D: Drain + Send + 'static> AsyncableDrain for D
 where
     D::Err: Debug,
 {
     fn async(self) -> Async {
-        Async::default(self.fuse())
+        Async::new(self.fuse()).chan_size(EVENT_BUFFER_SIZE).build()
     }
 }
