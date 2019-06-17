@@ -29,10 +29,13 @@ else
 fi
 
 usage() {
-    echo "usage: $0 <CERTIFICATE PATH>"
+    echo "usage: $0 <CERTIFICATE-PATH> [ACCOUNT-SOURCE-SK]"
+    echo ""
+    echo "    <CERT-PATH> Path to a readable certificate file"
+    echo "    [SOURCE]    Source Secret key (if not present, use the faucet)"
 }
 
-if [ ${#} -ne 1 ]; then
+if [ ${#} -lt 1 ]; then
     usage ${0}
     exit 1
 fi
@@ -43,6 +46,10 @@ if [ ! -r ${CERTIFICATE_PATH} ]; then
     echo "certificate file does not exist or is not readable"
     usage ${0}
     exit 1
+fi
+
+if [ $# -eq 2 ]; then
+    FAUCET_SK=$2
 fi
 
 STAGING_FILE="staging.$$.transaction"
