@@ -265,7 +265,7 @@ if [ ! -f "$SCRIPTPATH/faucet-send-money.shtempl" ] || [ ! -f "$SCRIPTPATH/fauce
     echo "warning: cannot find faucet-send-money or faucet-send-certificate template: skipping !"
 else
 
-    function process_file {
+    process_file() {
       FROM=${1}
       TO=${2}
 
@@ -285,4 +285,3 @@ else
     process_file "$SCRIPTPATH/faucet-send-certificate.shtempl" faucet-send-certificate.sh
     exit 0
 fi
-
