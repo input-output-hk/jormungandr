@@ -245,7 +245,7 @@ echo "  * secret: ${RED}${FAUCET_SK}${WHITE}"
 echo "  * amount: ${GREEN}${FAUCET_AMOUNT}${WHITE}"
 echo
 echo "pool id: ${GREEN}${STAKE_POOL_ID}${WHITE}"
-echo "block-0 hash: ${BLUE}${BLOCK0_HASH}${BLUE}"
+echo "block-0 hash: ${BLUE}${BLOCK0_HASH}${WHITE}"
 echo
 echo "To start the node:"
 if [ $ADD_STARTUP_SCRIPT -eq 1 ]; then
