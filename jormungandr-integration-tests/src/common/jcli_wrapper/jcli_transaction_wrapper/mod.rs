@@ -107,6 +107,14 @@ impl JCLITransactionWrapper {
         self
     }
 
+    pub fn assert_add_certificate_fails<'a>(&'a mut self, certificate: &str, expected_msg: &str) {
+        process_assert::assert_process_failed_and_contains_message(
+            self.commands
+                .get_add_certificate_command(&certificate, &self.staging_file_path),
+            expected_msg,
+        );
+    }
+
     pub fn assert_add_input<'a>(
         &'a mut self,
         tx_id: &Hash,
