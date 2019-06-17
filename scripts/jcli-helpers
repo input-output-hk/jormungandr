@@ -1,0 +1,51 @@
+#!/bin/sh
+
+CLI=jcli
+
+jcli-stake-delegate-new() {
+    if [ $# -ne 2 ]; then
+        echo "usage: jcli-stake-delegate <ACCOUNT-SK> <STAKE-POOL-ID>"
+        return 1
+    fi
+
+    ACCOUNT_SK=$1 
+    STAKE_POOL_ID=$2
+    
+    ACCOUNT_PK=$(echo ${ACCOUNT_SK} | $CLI key to-public)
+    ACCOUNT_ADDR=$($CLI address account --testing $ACCOUNT_PK)
+
+    SK_TMP=stake_key.sk.$$
+
+    echo ${ACCOUNT_SK} > ${SK_TMP}
+    CERT=$($CLI certificate new stake-delegation ${STAKE_POOL_ID} ${ACCOUNT_PK} | $CLI certificate sign ${SK_TMP})
+    rm ${SK_TMP}
+
+    echo $CERT
+}
+
+jcli-generate-account() {
+    SK=$($CLI key generate --type=Ed25519)
+    PK=$(echo ${SK} | $CLI key to-public)
+    ADDR=$($CLI address account --testing $PK)
+
+    echo "new account parameter:"
+    echo "* SK: $SK"
+    echo "* PK: $PK"
+    echo "* ADDR: $ADDR"
+}
+
+jcli-generate-account-export-suffix() {
+    if [ $# -ne 1 ]; then
+        echo "usage: jcli-generate-account-export-suffix <SUFFIX>"
+        return 1
+    fi
+
+    # the suffix to export with
+    N=$1
+
+    SK=$($CLI key generate --type=Ed25519)
+    PK=$(echo ${SK} | jcli key to-public)
+    ADDR=$(jcli address account --testing $PK)
+
+    echo "export SK${N}=${SK}; export PK${N}=${PK}; export ADDR${N}=${ADDR}"
+}
