@@ -7,6 +7,10 @@
     - [Starting a passive node](./quickstart/02_passive_node.md)
     - [REST API](./quickstart/03_rest_api.md)
 
+- How to
+    - [Start a self node](./howto/how-to-start-self-node.md)
+    - [Send money from faucet](./howto/how-to-send-money-from-faucet.md)
+
 - [General Concepts](./concepts/introduction.md)
     - [Blockchain concepts](./concepts/blockchain.md)
     - [Node organisation](./concepts/node.md)
