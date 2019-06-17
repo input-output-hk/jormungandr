@@ -28,7 +28,7 @@ else
     WHITE=""
 fi
 
-function usage {
+usage() {
     echo "usage: $0 <CERTIFICATE PATH>"
 }
 
