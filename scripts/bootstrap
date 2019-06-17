@@ -35,7 +35,7 @@ SECRET_PATH="."
 CONFIG_PATH="."
 ADD_STARTUP_SCRIPT=0
 
-while getopts 'bc:d:ghk:p:s:xCod' c
+while getopts 'bc:ghk:p:s:xCod' c
 do
     case $c in
         b) CONSENSUS="bft" ;;
