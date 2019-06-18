@@ -94,7 +94,7 @@ impl Input {
         }
     }
 
-    pub fn from_account_pk(public_key: SpendingPublicKey, value: Value) -> Self {
+    pub fn from_account_public_key(public_key: SpendingPublicKey, value: Value) -> Self {
         Input::from_account(
             AccountIdentifier::from_single_account(Identifier::from(public_key)),
             value,
@@ -199,7 +199,7 @@ pub struct Output<Address> {
 }
 
 impl<Address: Readable> Output<Address> {
-    pub fn from_address_and_value(address: Address, value: Value) -> Self {
+    pub fn from_address(address: Address, value: Value) -> Self {
         Output { address, value }
     }
 }

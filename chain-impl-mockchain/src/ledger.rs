@@ -102,9 +102,9 @@ custom_error! {
         OldUtxoInvalidPublicKey { utxo: UtxoPointer, output: OutputOldAddress, witness: Witness } = "Old Transaction with invalid public key",
         AccountInvalidSignature { account: account::Identifier, witness: Witness } = "Account with invalid signature",
         MultisigInvalidSignature { multisig: multisig::Identifier, witness: Witness } = "Multisig with invalid signature",
-        TransactionHasTooManyInputs {expected: usize, current: usize } = "Transaction has more than {expected} inputs ({current})",
-        TransactionHasTooManyOutputs {expected: usize, current: usize } = "Transaction has more than {expected} outputs ({current})",
-        TransactionHasTooManyWitnesses {expected: usize, current: usize } = "Transaction has more than {expected} witnesses ({current})",
+        TransactionHasTooManyInputs {expected: usize, actual: usize } = "Transaction has more than {expected} inputs ({actual})",
+        TransactionHasTooManyOutputs {expected: usize, actual: usize } = "Transaction has more than {expected} outputs ({actual})",
+        TransactionHasTooManyWitnesses {expected: usize, actual: usize } = "Transaction has more than {expected} witnesses ({actual})",
         FeeCalculationError { error: ValueError } = "Error while computing the fees: {error}",
         PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
         UtxoInputsTotal { error: ValueError } = "Error while computing the transaction's total input: {error}",
@@ -592,21 +592,21 @@ fn internal_apply_transaction(
     if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
         return Err(Error::TransactionHasTooManyInputs {
             expected: MAX_TRANSACTION_INPUTS_COUNT,
-            current: inputs.len(),
+            actual: inputs.len(),
         });
     }
 
     if outputs.len() > MAX_TRANSACTION_OUTPUTS_COUNT {
         return Err(Error::TransactionHasTooManyOutputs {
             expected: MAX_TRANSACTION_OUTPUTS_COUNT,
-            current: outputs.len(),
+            actual: outputs.len(),
         });
     }
 
     if witnesses.len() > MAX_TRANSACTION_WITNESSES_COUNT {
         return Err(Error::TransactionHasTooManyWitnesses {
             expected: MAX_TRANSACTION_WITNESSES_COUNT,
-            current: witnesses.len(),
+            actual: witnesses.len(),
         });
     }
 

@@ -35,7 +35,7 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn finalize(&self) -> TransactionAuthenticator {
+    pub fn authenticate(&self) -> TransactionAuthenticator {
         let transaction = Transaction {
             inputs: self.inputs.clone(),
             outputs: self.outputs.clone(),
