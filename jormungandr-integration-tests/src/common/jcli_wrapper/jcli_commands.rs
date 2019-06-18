@@ -5,7 +5,7 @@ use super::Discrimination;
 use crate::common::file_utils;
 use std::process::Command;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Get genesis encode command.
 ///
@@ -14,8 +14,8 @@ use std::path::PathBuf;
 /// * `genesis_yaml_fle_path` - Path to genesis yaml file
 /// * `path_to_output_block` - Path to output block file
 ///
-pub fn get_genesis_encode_command(
-    genesis_yaml_file_path: &PathBuf,
+pub fn get_genesis_encode_command<P: AsRef<Path>>(
+    genesis_yaml_file_path: &P,
     path_to_output_block: &PathBuf,
 ) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
@@ -23,9 +23,24 @@ pub fn get_genesis_encode_command(
         .arg("genesis")
         .arg("encode")
         .arg("--input")
-        .arg(genesis_yaml_file_path.as_os_str())
+        .arg(genesis_yaml_file_path.as_ref().as_os_str())
         .arg("--output")
         .arg(path_to_output_block.as_os_str());
+    command
+}
+
+pub fn get_genesis_decode_command<P: AsRef<Path>>(
+    input_block_file_path: &P,
+    genesis_yaml_output_file_path: &P,
+) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("genesis")
+        .arg("decode")
+        .arg("--input")
+        .arg(input_block_file_path.as_ref().as_os_str())
+        .arg("--output")
+        .arg(genesis_yaml_output_file_path.as_ref().as_os_str());
     command
 }
 

@@ -15,7 +15,7 @@ use super::process_assert;
 use super::process_utils;
 use super::process_utils::output_extensions::ProcessOutput;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(PartialEq)]
 pub enum Discrimination {
@@ -41,6 +41,30 @@ pub fn assert_genesis_encode_fails(genesis_yaml: &GenesisYaml, expected_msg: &st
         jcli_commands::get_genesis_encode_command(&input_yaml_file_path, &path_to_output_block),
         expected_msg,
     );
+}
+
+pub fn assert_genesis_encode_from_file_fails<P: AsRef<Path>>(
+    input_yaml_file_path: &P,
+    expected_msg: &str,
+) {
+    let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
+    process_assert::assert_process_failed_and_matches_message(
+        jcli_commands::get_genesis_encode_command(input_yaml_file_path, &path_to_output_block),
+        expected_msg,
+    );
+}
+
+pub fn assert_genesis_decode<P: AsRef<Path>>(
+    input_block_file_path: &P,
+    genesis_yaml_output_file_path: &P,
+) -> () {
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_genesis_decode_command(
+            &input_block_file_path,
+            &genesis_yaml_output_file_path,
+        ));
+    process_assert::assert_process_exited_successfully(output);
+    file_assert::assert_file_exists_and_not_empty(genesis_yaml_output_file_path);
 }
 
 pub fn assert_genesis_hash(path_to_output_block: &PathBuf) -> String {
@@ -314,5 +338,6 @@ pub fn assert_transaction_in_block(transaction_message: &str, transaction_id: &s
             &transaction_id
         ),
         "transaction is pending for too long",
-    );
+    )
+    .expect("unable to assert that pending transaction in block");
 }

@@ -4,7 +4,7 @@ extern crate mktemp;
 
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Gets path in temp directory (does not create it)
 ///
@@ -53,7 +53,7 @@ pub fn create_file_with_content(path: &PathBuf, content: &str) -> () {
         .expect(&format!("cannot write to file {:?}", path));
 }
 
-pub fn read_file(path: &PathBuf) -> String {
+pub fn read_file<P: AsRef<Path>>(path: &P) -> String {
     let contents = fs::read_to_string(path).expect("cannot read file");
     trim_new_line_at_end(contents)
 }

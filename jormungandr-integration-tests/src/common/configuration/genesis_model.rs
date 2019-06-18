@@ -6,7 +6,7 @@ extern crate rand;
 extern crate rand_chacha;
 extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::vec::Vec;
 
 use self::chain_addr::{Address, Discrimination};
@@ -18,7 +18,7 @@ use self::rand_chacha::ChaChaRng;
 
 use super::file_utils;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BlockchainConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub block0_date: Option<i32>,
@@ -42,20 +42,20 @@ pub struct BlockchainConfig {
     pub kes_update_speed: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LinearFees {
     pub constant: i32,
     pub coefficient: i32,
     pub certificate: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Fund {
     pub value: i32,
     pub address: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct GenesisYaml {
     pub blockchain_configuration: BlockchainConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -71,6 +71,12 @@ impl GenesisYaml {
         let content = serde_yaml::to_string(&genesis_yaml).unwrap();
         let input_yaml_file_path = file_utils::create_file_in_temp("genesis.yaml", &content);
         input_yaml_file_path
+    }
+
+    pub fn deserialize<P: AsRef<Path>>(input_file: &P) -> Self {
+        let content = file_utils::read_file(input_file);
+        let model: GenesisYaml = serde_yaml::from_str(&content).unwrap();
+        model
     }
 
     pub fn new() -> GenesisYaml {
