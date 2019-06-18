@@ -1,10 +1,8 @@
 use crate::transaction::TransactionId;
 use crate::value::Value;
 
-use cardano::address::{AddrType, ExtendedAddr, SpendingData};
-use cardano::hdwallet::XPub;
+pub use cardano_legacy_address::Addr as OldAddress;
 
-pub use cardano::address::Addr as OldAddress;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_core::property::Serialize;
@@ -16,18 +14,7 @@ pub struct UtxoDeclaration {
 }
 
 pub fn oldaddress_from_xpub(address: &OldAddress, xpub: &PublicKey<Ed25519Bip32>) -> bool {
-    match XPub::from_slice(xpub.as_ref()) {
-        Err(_) => false,
-        Ok(xpub_old) => {
-            let a = address.deconstruct();
-            let ea = ExtendedAddr::new(
-                AddrType::ATPubKey,
-                SpendingData::PubKeyASD(xpub_old),
-                a.attributes.clone(),
-            );
-            ea == a
-        }
-    }
+    address.identical_with_pubkey_raw(xpub.as_ref())
 }
 
 impl UtxoDeclaration {
@@ -39,7 +26,7 @@ impl UtxoDeclaration {
 
 impl Readable for UtxoDeclaration {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        use cardano::util::try_from_slice::TryFromSlice;
+        use std::convert::TryFrom;
 
         let nb_entries = buf.get_u8()? as usize;
         if nb_entries >= 0xff {
@@ -50,7 +37,7 @@ impl Readable for UtxoDeclaration {
         for _ in 0..nb_entries {
             let value = Value::read(buf)?;
             let addr_size = buf.get_u16()? as usize;
-            let addr = OldAddress::try_from_slice(buf.get_slice(addr_size)?).unwrap();
+            let addr = OldAddress::try_from(buf.get_slice(addr_size)?).unwrap();
             addrs.push((addr, value))
         }
 
@@ -81,10 +68,8 @@ impl property::Serialize for UtxoDeclaration {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cardano::address::ExtendedAddr;
-    use cardano::config::NetworkMagic;
-    use cardano::hdwallet::XPub;
-    use cardano::hdwallet::XPUB_SIZE;
+    use cardano_legacy_address::ExtendedAddr;
+    use ed25519_bip32::{XPub, XPUB_SIZE};
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for UtxoDeclaration {
@@ -100,9 +85,12 @@ mod test {
                     for o in buf.iter_mut() {
                         *o = u8::arbitrary(g)
                     }
-                    XPub::from_slice(&buf).unwrap()
+                    match XPub::from_slice(&buf) {
+                        Ok(xpub) => xpub,
+                        Err(_) => panic!("xpub not built correctly"),
+                    }
                 };
-                let ea = ExtendedAddr::new_simple(xpub, NetworkMagic::NoMagic);
+                let ea = ExtendedAddr::new_simple(&xpub, None);
                 let addr = ea.to_address();
 
                 addrs.push((addr, value))

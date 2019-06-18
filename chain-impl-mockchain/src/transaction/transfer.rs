@@ -2,6 +2,7 @@ use super::transaction::TransactionId;
 use super::utxo::UtxoPointer;
 use crate::account::Identifier;
 use crate::key::SpendingPublicKey;
+use crate::legacy::OldAddress;
 use crate::value::*;
 use crate::{account, multisig};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -222,7 +223,7 @@ impl std::fmt::Display for Output<chain_addr::Address> {
         )
     }
 }
-impl std::fmt::Display for Output<cardano::address::Addr> {
+impl std::fmt::Display for Output<OldAddress> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}.{}", self.address, self.value)
     }
