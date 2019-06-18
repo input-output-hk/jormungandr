@@ -1,5 +1,5 @@
 use crate::common::configuration::{
-    genesis_model::{Fund, GenesisYaml},
+    genesis_model::{Fund, GenesisYaml, Initial},
     jormungandr_config::JormungandrConfig,
     node_config_model::{Logger, NodeConfig, Peer},
     secret_model::SecretModel,
@@ -112,7 +112,8 @@ impl ConfigurationBuilder {
             .blockchain_configuration
             .consensus_genesis_praos_active_slot_coeff =
             self.consensus_genesis_praos_active_slot_coeff.clone();
-        genesis_model.initial_certs = self.certs.clone();
+        let certs = self.certs.iter().cloned().map(Initial::Cert);
+        genesis_model.initial.extend(certs);
         let path_to_output_block = super::build_genesis_block(&genesis_model);
 
         let mut config = JormungandrConfig::from(genesis_model, node_config);
