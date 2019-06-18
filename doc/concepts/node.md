@@ -3,8 +3,9 @@
 
 ## Secure Enclave
 
-The secure enclave is the component containing the secret cryptographic material, and
-offering safe and secret high level interfaces to the rest of the node.
+The secure enclave is the component containing the secret cryptographic
+material, and offering safe and secret high level interfaces to the rest of
+the node.
 
 ## Network
 
@@ -16,8 +17,9 @@ The node's network is 3 components:
 
 ### Intercommunication API (GRPC)
 
-This interface is a binary, efficient interface using the protobuf format and GRPC standard.
-The protobuf files of types and interfaces are available in the source code.
+This interface is a binary, efficient interface using the protobuf format and
+GRPC standard. The protobuf files of types and interfaces are available in
+the source code.
 
 The interface is responsible to communicate with other node in the network:
 
