@@ -278,10 +278,14 @@ else
           -e "s/####FEE_CERTIFICATE####/${FEE_CERTIFICATE}/" \
           -e "s/####FEE_COEFFICIENT####/${FEE_COEFFICIENT}/" \
           -e "s/####ADDRTYPE####/${ADDRTYPE}/" \
+          -e "s/####STAKE_POOL_ID####/${STAKE_POOL_ID}/" \
           < ${FROM} > ${TO}
+
+      chmod +x ${TO}
     }
 
     process_file "$SCRIPTPATH/faucet-send-money.shtempl" faucet-send-money.sh
     process_file "$SCRIPTPATH/faucet-send-certificate.shtempl" faucet-send-certificate.sh
+    process_file "$SCRIPTPATH/create-account-and-delegate.shtempl" create-account-and-delegate.sh
     exit 0
 fi
