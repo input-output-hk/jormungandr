@@ -1,4 +1,3 @@
-use crate::fragment;
 use crate::intercom::TransactionMsg;
 use crate::utils::async_msg::MessageBox;
 use actix_web::error::ErrorBadRequest;
@@ -7,6 +6,7 @@ use bytes::IntoBuf;
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::message::Message;
 use futures::Future;
+use jormungandr_lib::interfaces::FragmentOrigin;
 use std::sync::{Arc, Mutex};
 
 pub type Task = Arc<Mutex<MessageBox<TransactionMsg>>>;
@@ -32,7 +32,7 @@ fn handle_request(
             println!("{}", e);
             ErrorBadRequest(e)
         })?;
-        let msg = TransactionMsg::SendTransaction(fragment::Origin::Rest, vec![msg]);
+        let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![msg]);
         sender.lock().unwrap().try_send(msg).unwrap();
         Ok("")
     })
