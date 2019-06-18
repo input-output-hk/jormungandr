@@ -255,7 +255,7 @@ echo "  $NODE --genesis-block ${CONFIG_PATH}/block-0.bin --config ${CONFIG_PATH}
 echo "To connect using CLI REST:"
 echo "  $CLI rest v0 <CMD> --host \"${REST_URL}\""
 echo "For example:"
-echo "  $CLI rest v0 node stats -h \"${REST_URL}\""
+echo "  $CLI rest v0 node stats get -h \"${REST_URL}\""
 
 find "./${TMPDIR}/" -maxdepth 1 -type f -exec rm {} \; && rmdir $TMPDIR
 
