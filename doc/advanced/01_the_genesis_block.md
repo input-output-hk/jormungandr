@@ -26,11 +26,9 @@ There are multiple _parts_ in the genesis file:
 * `blockchain_configuration`: this is a list of configuration
   parameters of the blockchain, some of which can be changed later
   via the update protocol;
-* `initial_utxos`: the list of initial utxos (addresses and credited value);
-* `legacy_utxos`: the list of legacy cardano utxos (base58 encoded addresses
-  and credited values).
+* `initial`: list of steps to create initial state of ledger
 
-### `blockchain_configuration` options
+## `blockchain_configuration` options
 
 | option | format | description |
 |:-------|:-------|:------------|
@@ -48,22 +46,35 @@ There are multiple _parts_ in the genesis file:
 _for more information about the BFT leaders in the genesis file, see
 [Starting a BFT Blockchain](./02_starting_bft_blockchain.md)_
 
-### The initial Funds
+## `initial` options
 
-This is a list of the initial token present in the blockchain. It can be:
+Each entry can be one of 3 variants:
 
-* classic UTxO: a [single address](../jcli/address.md#address-for-utxo) and a value
-* an account (if `allow_account_creation` is set to true): an
-  [account address](../jcli/address.md#address-for-account) and a value
-
-### The legacy Funds
-
-This is a list of legacy cardano addresses and associated credited value.
+| variant | format | description |
+|:-------|:-------|:------------|
+| `fund` | object | initial deposits present in the blockchain |
+| `cert` | string | initial certificate |
+| `legacy_fund` | object| same as `fund`, but with legacy Cardano address format |
 
 Example:
 
 ```yaml
-legacy_funds:
-  - address: Ae2tdPwUPEZCEhYAUVU7evPfQCJjyuwM6n81x6hSjU9TBMSy2YwZEVydssL
-    value: 2000
+initial:
+  - fund:
+      address: <address>
+      value: 10000
+  - cert: <certificate>
+  - legacy_fund:
+      address: <legacy address>
+      value: 123
+  - fund:
+      address: <another address>
+      value: 1001
 ```
+
+### `fund` and `legacy_fund` format
+
+| variant | format | description |
+|:-------|:-------|:------------|
+| `address` | string | can be a [single address](../jcli/address.md#address-for-utxo) or an [account address](../jcli/address.md#address-for-account) (if `allow_account_creation` is set to true) |
+| `value` | number | assigned value |

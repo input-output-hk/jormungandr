@@ -197,12 +197,12 @@ blockchain_configuration:
   block0_consensus: ${CONSENSUS}
   bft_slots_ratio: 0
   kes_update_speed: 43200 # 12hours
-initial_certs:
-  - ${STAKE_POOL_CERT}
-  - ${STAKE_DELEGATION_CERT}
-initial_funds:
-  - address: ${FAUCET_ADDR}
-    value: ${FAUCET_AMOUNT}
+initial:
+  - fund:
+      address: ${FAUCET_ADDR}
+      value: ${FAUCET_AMOUNT}
+  - cert: ${STAKE_POOL_CERT}
+  - cert: ${STAKE_DELEGATION_CERT}
 EOF
 
 cat << EOF > ${SECRET_PATH}/pool-secret1.yaml
@@ -272,7 +272,7 @@ else
       sed -e "s/####FAUCET_SK####/${FAUCET_SK}/" \
           -e "s/####BLOCK0_HASH####/${BLOCK0_HASH}/" \
           -e "s;####REST_URL####;${REST_URL};" \
-          -e "s/####CLI####/${CLI}/" \
+          -e "s;####CLI####;${CLI};" \
           -e "s/####COLORS####/${COLORS}/" \
           -e "s/####FEE_CONSTANT####/${FEE_CONSTANT}/" \
           -e "s/####FEE_CERTIFICATE####/${FEE_CERTIFICATE}/" \
