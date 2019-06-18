@@ -14,8 +14,9 @@ extern crate cryptoxide;
 
 extern crate ed25519_bip32;
 
+mod address;
 mod base58;
 mod cbor;
 mod crc32;
 
-pub mod address;
+pub use address::{Addr, ExtendedAddr};
