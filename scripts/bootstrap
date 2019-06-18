@@ -278,6 +278,7 @@ else
           -e "s/####FEE_CERTIFICATE####/${FEE_CERTIFICATE}/" \
           -e "s/####FEE_COEFFICIENT####/${FEE_COEFFICIENT}/" \
           -e "s/####ADDRTYPE####/${ADDRTYPE}/" \
+          -e "s/####STAKE_POOL_ID####/${STAKE_POOL_ID}/" \
           < ${FROM} > ${TO}
 
       chmod +x ${TO}
