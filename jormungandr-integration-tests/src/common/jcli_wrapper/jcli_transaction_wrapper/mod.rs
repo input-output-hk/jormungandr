@@ -182,6 +182,14 @@ impl JCLITransactionWrapper {
         self
     }
 
+    pub fn assert_add_output_fail<'a>(&'a mut self, addr: &str, amount: &i32, expected_msg: &str) {
+        process_assert::assert_process_failed_and_matches_message(
+            self.commands
+                .get_add_output_command(&addr, &amount, &self.staging_file_path),
+            expected_msg,
+        );
+    }
+
     pub fn assert_finalize<'a>(&'a mut self) -> &'a mut JCLITransactionWrapper {
         let output = process_utils::run_process_and_get_output(
             self.commands.get_finalize_command(&self.staging_file_path),
@@ -312,6 +320,13 @@ impl JCLITransactionWrapper {
         );
         process_assert::assert_process_exited_successfully(output);
         self
+    }
+
+    pub fn assert_seal_fail<'a>(&'a mut self, expected_msg: &str) {
+        process_assert::assert_process_failed_and_matches_message(
+            self.commands.get_seal_command(&self.staging_file_path),
+            expected_msg,
+        );
     }
 
     pub fn assert_transaction_to_message(&self) -> String {
