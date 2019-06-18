@@ -181,6 +181,21 @@ impl Addr {
         let mut raw = Deserializer::from(std::io::Cursor::new(&self.0));
         cbor_event::de::Deserialize::deserialize(&mut raw).unwrap() // unwrap should never fail from addr to extended addr
     }
+
+    /// Check if the Addr can be reconstructed with a specific xpub
+    pub fn identical_with_pubkey(&self, xpub: &XPub) -> bool {
+        let ea = self.deconstruct();
+        let newea = ExtendedAddr::new(xpub, ea.attributes);
+        self == &newea.to_address()
+    }
+
+    /// mostly helper of the previous function, so not to have to expose the xpub construction
+    pub fn identical_with_pubkey_raw(&self, xpub: &[u8]) -> bool {
+        match XPub::from_slice(xpub) {
+            Ok(xpub) => self.identical_with_pubkey(&xpub),
+            _ => false,
+        }
+    }
 }
 
 impl AsRef<[u8]> for Addr {
