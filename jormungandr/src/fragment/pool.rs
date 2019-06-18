@@ -3,7 +3,7 @@ use crate::{
     fragment::{selection::FragmentSelectionAlgorithm, Fragment, Logs},
 };
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
-use std::time::{Duration};
+use std::time::Duration;
 use tokio::{prelude::*, sync::lock::Lock, timer};
 
 #[derive(Clone)]

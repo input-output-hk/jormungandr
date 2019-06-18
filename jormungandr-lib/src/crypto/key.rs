@@ -303,7 +303,6 @@ impl<A: AsymmetricPublicKey> Eq for Identifier<A> {}
 
 /* ---------------- Comparison --------------------------------------------- */
 
-
 impl<A: AsymmetricPublicKey> PartialOrd<Identifier<A>> for Identifier<A> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.partial_cmp(&other.0)

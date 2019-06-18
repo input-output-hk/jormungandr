@@ -1,10 +1,10 @@
-use crate::{
-    blockcfg::{BlockBuilder, HeaderContentEvalContext, Ledger, LedgerParameters},
-    fragment::{FragmentId},
-};
-use jormungandr_lib::interfaces::{FragmentStatus};
 use super::logs::internal::Logs;
 use super::pool::internal::Pool;
+use crate::{
+    blockcfg::{BlockBuilder, HeaderContentEvalContext, Ledger, LedgerParameters},
+    fragment::FragmentId,
+};
+use jormungandr_lib::interfaces::FragmentStatus;
 
 pub enum SelectionOutput {
     Commit { fragment_id: FragmentId },

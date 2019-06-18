@@ -1,4 +1,4 @@
-use crate::fragment::{FragmentId};
+use crate::fragment::FragmentId;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
 use std::time::Duration;
 use tokio::{
@@ -28,10 +28,9 @@ impl Logs {
         fragment_ids: Vec<FragmentId>,
     ) -> impl Future<Item = Vec<bool>, Error = ()> {
         let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock()))
-            .and_then(move |guard| future::ok(guard.exists(
-                fragment_ids.into_iter().map(|fids| fids.into())
-            )))
+        future::poll_fn(move || Ok(lock.poll_lock())).and_then(move |guard| {
+            future::ok(guard.exists(fragment_ids.into_iter().map(|fids| fids.into())))
+        })
     }
 
     pub fn modify(
@@ -73,7 +72,10 @@ impl Logs {
 }
 
 pub(super) mod internal {
-    use jormungandr_lib::{crypto::hash::Hash, interfaces::{FragmentLog, FragmentStatus}};
+    use jormungandr_lib::{
+        crypto::hash::Hash,
+        interfaces::{FragmentLog, FragmentStatus},
+    };
     use std::{
         collections::HashMap,
         time::{Duration, Instant},
@@ -99,7 +101,8 @@ pub(super) mod internal {
         }
 
         pub fn exists<I>(&self, fragment_ids: I) -> Vec<bool>
-        where I: IntoIterator<Item = Hash>
+        where
+            I: IntoIterator<Item = Hash>,
         {
             fragment_ids
                 .into_iter()
