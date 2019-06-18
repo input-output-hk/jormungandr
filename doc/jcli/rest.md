@@ -195,6 +195,14 @@ YAML printed on success
 
 ```yaml
 ---
-value: 257357,    # current balance of account in lovelace
-counter: 4,       # number of transactions performed using this account
+counter: 1
+delegation: c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356
+value: 990
 ```
+
+* `value` is the current balance of the account;
+* `counter` is the number of transactions performed using this account
+  this is useful to know when signing new transactions;
+* `delegation` is the Stake Pool Identifier the account is delegating to.
+  it is possible this value is not set if there is no delegation certificate
+  sent associated to this account.
