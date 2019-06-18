@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use jormungandr_lib::interfaces::FragmentLog;
+use jormungandr_lib::interfaces::{AccountState, FragmentLog};
 
 pub mod certificate;
 pub mod jcli_commands;
@@ -257,13 +257,14 @@ pub fn assert_rest_get_block_tip(host: &str) -> String {
     single_line
 }
 
-pub fn assert_rest_account_get_stats(address: &str, host: &str) -> String {
+pub fn assert_rest_account_get_stats(address: &str, host: &str) -> AccountState {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_rest_account_stats_command(&address, &host),
     );
     let single_line = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output);
-    single_line
+
+    serde_yaml::from_str(&single_line).unwrap()
 }
 
 pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {

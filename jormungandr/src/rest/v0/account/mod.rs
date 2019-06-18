@@ -3,7 +3,7 @@ use actix_web::error::{Error, ErrorBadRequest, ErrorNotFound};
 use actix_web::{App, Json, Path, Responder, State};
 use chain_crypto::PublicKey;
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
-use chain_impl_mockchain::accounting::account::AccountState;
+use jormungandr_lib::interfaces::AccountState;
 use std::str::FromStr;
 
 pub fn create_handler(
@@ -29,28 +29,11 @@ fn handle_request(
         .accounts()
         .get_state(&account_id)
         .map_err(|e| ErrorNotFound(e))?;
-    Ok(Json(AccountDto::from(state)))
+    Ok(Json(AccountState::from(state)))
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
     PublicKey::<AccountAlg>::from_str(id_hex)
         .map(Into::into)
         .map_err(|e| ErrorBadRequest(e))
-}
-
-#[derive(Serialize)]
-struct AccountDto {
-    value: u64,
-    counter: u32,
-    delegation: Option<[u8; 32]>,
-}
-
-impl<'a, E> From<&'a AccountState<E>> for AccountDto {
-    fn from(state: &'a AccountState<E>) -> Self {
-        AccountDto {
-            value: state.get_value().as_ref().clone(),
-            counter: state.get_counter().into(),
-            delegation: state.delegation().clone().map(|x| x.into()),
-        }
-    }
 }
