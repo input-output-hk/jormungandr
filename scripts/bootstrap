@@ -279,6 +279,8 @@ else
           -e "s/####FEE_COEFFICIENT####/${FEE_COEFFICIENT}/" \
           -e "s/####ADDRTYPE####/${ADDRTYPE}/" \
           < ${FROM} > ${TO}
+
+      chmod +x ${TO}
     }
 
     process_file "$SCRIPTPATH/faucet-send-money.shtempl" faucet-send-money.sh
