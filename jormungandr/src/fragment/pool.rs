@@ -1,8 +1,9 @@
 use crate::{
     blockcfg::{HeaderContentEvalContext, Ledger, LedgerParameters},
-    fragment::{selection::FragmentSelectionAlgorithm, Fragment, Log, Logs, Origin, Status},
+    fragment::{selection::FragmentSelectionAlgorithm, Fragment, Logs},
 };
-use std::time::{Duration, SystemTime};
+use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
+use std::time::{Duration};
 use tokio::{prelude::*, sync::lock::Lock, timer};
 
 #[derive(Clone)]
@@ -25,7 +26,7 @@ impl Pool {
 
     pub fn insert(
         &mut self,
-        origin: Origin,
+        origin: FragmentOrigin,
         fragment: Fragment,
     ) -> impl Future<Item = bool, Error = ()> {
         use chain_core::property::Message as _;
@@ -44,13 +45,7 @@ impl Pool {
                         move |mut guard| {
                             guard.insert(fragment);
 
-                            let log = Log {
-                                fragment_id: id,
-                                last_updated_at: SystemTime::now(),
-                                received_at: SystemTime::now(),
-                                received_from: origin,
-                                status: Status::Pending,
-                            };
+                            let log = FragmentLog::new(id.into(), origin);
                             logs.insert(log).map(|()| true)
                         },
                     ))

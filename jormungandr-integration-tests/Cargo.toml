@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 chain-crypto    = { path = "../cardano-deps/chain-crypto" }
 chain-addr      = { path = "../cardano-deps/chain-addr" }
+jormungandr-lib = { path = "../jormungandr-lib" }
 rand = "0.6"
 rand_chacha = "0.1"
 regex = "1.1.2"

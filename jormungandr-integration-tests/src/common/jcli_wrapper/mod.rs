@@ -1,12 +1,13 @@
 #![allow(dead_code)]
 
+use jormungandr_lib::interfaces::FragmentLog;
+
 pub mod certificate;
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
 
 use super::configuration;
 use super::configuration::genesis_model::GenesisYaml;
-use super::data::message_log::Fragment;
 use super::data::utxo::Utxo;
 use super::file_assert;
 use super::file_utils;
@@ -283,13 +284,12 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
     single_line
 }
 
-pub fn assert_rest_message_logs(host: &str) -> Vec<Fragment> {
+pub fn assert_rest_message_logs(host: &str) -> Vec<FragmentLog> {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_rest_message_log_command(&host),
     );
     let content = output.as_lossy_string();
-    let fragments: Vec<Fragment> = serde_yaml::from_str(&content).unwrap();
-    fragments
+    serde_yaml::from_str(&content).unwrap()
 }
 
 pub fn assert_transaction_in_block(transaction_message: &str, transaction_id: &str, host: &str) {
@@ -298,8 +298,11 @@ pub fn assert_transaction_in_block(transaction_message: &str, transaction_id: &s
         jcli_commands::get_rest_message_log_command(&host),
         |output| {
             let content = output.as_lossy_string();
-            let fragments: Vec<Fragment> = serde_yaml::from_str(&content).unwrap();
-            match fragments.iter().find(|x| x.fragment_id == transaction_id) {
+            let fragments: Vec<FragmentLog> = serde_yaml::from_str(&content).unwrap();
+            match fragments
+                .iter()
+                .find(|x| x.fragment_id().to_string() == transaction_id)
+            {
                 Some(x) => !x.is_pending(),
                 None => false,
             }

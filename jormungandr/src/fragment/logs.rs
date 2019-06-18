@@ -1,4 +1,5 @@
-use crate::fragment::{FragmentId, Log, Status};
+use crate::fragment::{FragmentId};
+use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
 use std::time::Duration;
 use tokio::{
     prelude::*,
@@ -14,7 +15,7 @@ impl Logs {
         Logs(Lock::new(internal::Logs::new(ttl)))
     }
 
-    pub fn insert(&mut self, log: Log) -> impl Future<Item = (), Error = ()> {
+    pub fn insert(&mut self, log: FragmentLog) -> impl Future<Item = (), Error = ()> {
         let mut lock = self.0.clone();
         future::poll_fn(move || Ok(lock.poll_lock())).and_then(move |mut guard| {
             guard.insert(log);
@@ -28,17 +29,19 @@ impl Logs {
     ) -> impl Future<Item = Vec<bool>, Error = ()> {
         let mut lock = self.0.clone();
         future::poll_fn(move || Ok(lock.poll_lock()))
-            .and_then(move |guard| future::ok(guard.exists(fragment_ids)))
+            .and_then(move |guard| future::ok(guard.exists(
+                fragment_ids.into_iter().map(|fids| fids.into())
+            )))
     }
 
     pub fn modify(
         &mut self,
         fragment_id: FragmentId,
-        status: Status,
+        status: FragmentStatus,
     ) -> impl Future<Item = (), Error = ()> {
         let mut lock = self.0.clone();
         future::poll_fn(move || Ok(lock.poll_lock())).and_then(move |mut guard| {
-            guard.modify(&fragment_id, status);
+            guard.modify(&fragment_id.into(), status);
             future::ok(())
         })
     }
@@ -46,7 +49,7 @@ impl Logs {
     pub fn remove(&mut self, fragment_id: FragmentId) -> impl Future<Item = (), Error = ()> {
         let mut lock = self.0.clone();
         future::poll_fn(move || Ok(lock.poll_lock())).and_then(move |mut guard| {
-            guard.remove(&fragment_id);
+            guard.remove(&fragment_id.into());
             future::ok(())
         })
     }
@@ -57,7 +60,7 @@ impl Logs {
             .and_then(move |mut guard| future::poll_fn(move || guard.poll_purge()))
     }
 
-    pub fn logs(&self) -> impl Future<Item = Vec<Log>, Error = ()> {
+    pub fn logs(&self) -> impl Future<Item = Vec<FragmentLog>, Error = ()> {
         let mut lock = self.0.clone();
         future::poll_fn(move || Ok(lock.poll_lock()))
             .and_then(|guard| future::ok(guard.logs().cloned().collect()))
@@ -70,10 +73,10 @@ impl Logs {
 }
 
 pub(super) mod internal {
-    use crate::fragment::{FragmentId, Log, Status};
+    use jormungandr_lib::{crypto::hash::Hash, interfaces::{FragmentLog, FragmentStatus}};
     use std::{
         collections::HashMap,
-        time::{Duration, Instant, SystemTime},
+        time::{Duration, Instant},
     };
     use tokio::{
         prelude::*,
@@ -81,8 +84,8 @@ pub(super) mod internal {
     };
 
     pub struct Logs {
-        entries: HashMap<FragmentId, (Log, delay_queue::Key)>,
-        expirations: DelayQueue<FragmentId>,
+        entries: HashMap<Hash, (FragmentLog, delay_queue::Key)>,
+        expirations: DelayQueue<Hash>,
         ttl: Duration,
     }
 
@@ -95,24 +98,25 @@ pub(super) mod internal {
             }
         }
 
-        pub fn exists(&self, fragment_ids: Vec<FragmentId>) -> Vec<bool> {
+        pub fn exists<I>(&self, fragment_ids: I) -> Vec<bool>
+        where I: IntoIterator<Item = Hash>
+        {
             fragment_ids
                 .into_iter()
                 .map(|id| self.entries.contains_key(&id))
                 .collect()
         }
 
-        pub fn insert(&mut self, log: Log) {
-            let fragment_id = log.fragment_id.clone();
+        pub fn insert(&mut self, log: FragmentLog) {
+            let fragment_id = log.fragment_id().clone();
             let delay = self.expirations.insert(fragment_id.clone(), self.ttl);
 
             self.entries.insert(fragment_id, (log, delay));
         }
 
-        pub fn modify(&mut self, fragment_id: &FragmentId, status: Status) {
+        pub fn modify(&mut self, fragment_id: &Hash, status: FragmentStatus) {
             if let Some((ref mut log, ref key)) = self.entries.get_mut(fragment_id) {
-                log.status = status;
-                log.last_updated_at = SystemTime::now();
+                log.modify(status);
 
                 self.expirations.reset_at(key, Instant::now() + self.ttl);
             } else {
@@ -120,7 +124,7 @@ pub(super) mod internal {
             }
         }
 
-        pub fn remove(&mut self, fragment_id: &FragmentId) {
+        pub fn remove(&mut self, fragment_id: &Hash) {
             if let Some((_, cache_key)) = self.entries.remove(fragment_id) {
                 self.expirations.remove(&cache_key);
             }
@@ -134,7 +138,7 @@ pub(super) mod internal {
             Ok(Async::Ready(()))
         }
 
-        pub fn logs<'a>(&'a self) -> impl Iterator<Item = &'a Log> {
+        pub fn logs<'a>(&'a self) -> impl Iterator<Item = &'a FragmentLog> {
             self.entries.values().map(|(v, _)| v)
         }
     }
