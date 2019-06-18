@@ -40,8 +40,10 @@ There are multiple _parts_ in the genesis file:
 | `consensus_leader_ids` | array | the list of the BFT leader at the beginning of the blockchain |
 | `max_number_of_transactions_per_block` | number | the maximum number of transactions allowed in a block |
 | `bft_slots_ratio` | number | placeholder, do not use |
-| `allow_account_creation` | boolean | allow creating accounts without publishing certificate |
-| `linear_fee` | object | linear fee settings, set the fee for transaction and certificate publishing |
+| `linear_fees` | object | linear fee settings, set the fee for transaction and certificate publishing |
+| `consensus_genesis_praos_active_slot_coeff` | number | genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1] |
+| `kes_update_speed` | number | the speed to update the KES Key in seconds |
+| `slots_per_epoch` | number | number of slots in each epoch |
 
 _for more information about the BFT leaders in the genesis file, see
 [Starting a BFT Blockchain](./02_starting_bft_blockchain.md)_
@@ -76,5 +78,7 @@ initial:
 
 | variant | format | description |
 |:-------|:-------|:------------|
-| `address` | string | can be a [single address](../jcli/address.md#address-for-utxo) or an [account address](../jcli/address.md#address-for-account) (if `allow_account_creation` is set to true) |
+| `address` | string | can be a [single address](../jcli/address.md#address-for-utxo) or an [account address](../jcli/address.md#address-for-account) |
 | `value` | number | assigned value |
+
+`legacy_fund` differs only in address format, which is legacy Cardano
