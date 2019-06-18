@@ -29,6 +29,7 @@ custom_error = "1.6"
 
 [dev-dependencies]
 quickcheck = "0.8"
+quickcheck_macros = "0.8.0"
 chain-core = { path = "../chain-core", features=["property-test-api"]}
 chain-crypto = { path = "../chain-crypto", features=["property-test-api"]}
 chain-addr = { path = "../chain-addr", features=["property-test-api"]}

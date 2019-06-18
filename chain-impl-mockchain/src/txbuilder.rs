@@ -43,7 +43,7 @@ pub enum OutputPolicy {
     Forget,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// Transaction builder is an object to construct
 /// a transaction with iterative steps (inputs, outputs)
 pub struct TransactionBuilder<Address, Extra> {
@@ -279,6 +279,198 @@ impl TransactionFinalizer {
                     transaction: t,
                     witnesses: get_full_witnesses(witnesses)?,
                 }))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fee::LinearFee;
+    use crate::transaction::{Input, NoExtra, INPUT_PTR_SIZE};
+    use chain_addr::Address;
+    use quickcheck::{Arbitrary, Gen, TestResult};
+    use quickcheck_macros::quickcheck;
+    use rand::distributions::uniform::{SampleUniform, Uniform};
+    use rand::Rng;
+    use std::iter;
+
+    #[quickcheck]
+    fn tx_builder_never_creates_unbalanced_tx(
+        inputs: ArbitraryInputs,
+        outputs: ArbitraryOutputs,
+        fee: LinearFee,
+    ) -> TestResult {
+        let builder = build_builder(&inputs, &outputs);
+        let fee_value = fee.calculate(&builder.tx).unwrap();
+
+        let result = builder.finalize(fee, OutputPolicy::Forget);
+
+        let expected_balance_res = expected_balance(&inputs, &outputs, fee_value);
+        match (expected_balance_res, result) {
+            (Ok(expected_balance), Ok((builder_balance, tx))) => {
+                let result = validate_builder_balance(expected_balance, builder_balance);
+                if result.is_failure() {
+                    return result;
+                }
+                validate_tx_balance(expected_balance, fee_value, tx)
+            }
+            (Ok(_), Err(_)) => TestResult::error("Builder should not fail"),
+            (Err(_), Ok(_)) => TestResult::error("Builder should fail"),
+            (Err(_), Err(_)) => TestResult::passed(),
+        }
+    }
+
+    fn build_builder(
+        inputs: &ArbitraryInputs,
+        outputs: &ArbitraryOutputs,
+    ) -> TransactionBuilder<Address, NoExtra> {
+        let mut builder = TransactionBuilder::new();
+        for input in &inputs.0 {
+            builder.add_input(input)
+        }
+        for (address, value) in outputs.0.iter().cloned() {
+            builder.add_output(address, value)
+        }
+        builder
+    }
+
+    fn expected_balance(
+        inputs: &ArbitraryInputs,
+        outputs: &ArbitraryOutputs,
+        fee: Value,
+    ) -> Result<Value, ValueError> {
+        let input_sum = Value::sum(inputs.0.iter().map(|input| input.value)).unwrap();
+        let output_sum = Value::sum(outputs.0.iter().map(|output| output.1)).unwrap();
+        (input_sum - output_sum).and_then(|balance| balance - fee)
+    }
+
+    fn validate_builder_balance(expected: Value, balance: Balance) -> TestResult {
+        let actual = match balance {
+            Balance::Positive(value) => value,
+            Balance::Zero => Value::zero(),
+            Balance::Negative(_) => return TestResult::error("Negative balance in builder"),
+        };
+        if actual != expected {
+            TestResult::error(format!(
+                "Builder balance value is {}, but should be {}",
+                actual, expected
+            ))
+        } else {
+            TestResult::passed()
+        }
+    }
+
+    fn validate_tx_balance(
+        expected: Value,
+        fee: Value,
+        tx: tx::Transaction<Address, NoExtra>,
+    ) -> TestResult {
+        let actual = match tx.balance(fee) {
+            Ok(Balance::Positive(value)) => value,
+            Ok(Balance::Zero) => Value::zero(),
+            Ok(Balance::Negative(_)) => return TestResult::error("Negative balance in tx"),
+            Err(_) => return TestResult::error("Failed to calculate tx balance"),
+        };
+        if actual != expected {
+            TestResult::error(format!(
+                "Tx balance value is {}, but should be {}",
+                actual, expected
+            ))
+        } else {
+            TestResult::passed()
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct ArbitraryInputs(Vec<Input>);
+
+    impl Arbitrary for ArbitraryInputs {
+        fn arbitrary<G: Gen>(gen: &mut G) -> Self {
+            let value = u64::arbitrary(gen);
+            let count = arbitrary_range(gen, 0..=255);
+            let inputs = split_value(gen, value, count)
+                .into_iter()
+                .map(|value| arbitrary_input(gen, value))
+                .collect();
+            ArbitraryInputs(inputs)
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct ArbitraryOutputs(Vec<(Address, Value)>);
+
+    impl Arbitrary for ArbitraryOutputs {
+        fn arbitrary<G: Gen>(gen: &mut G) -> Self {
+            let value = u64::arbitrary(gen);
+            let count = arbitrary_range(gen, 0..=255);
+            let outputs = split_value(gen, value, count)
+                .into_iter()
+                .map(|value| (Address::arbitrary(gen), Value(value)))
+                .collect();
+            ArbitraryOutputs(outputs)
+        }
+    }
+
+    fn arbitrary_input(gen: &mut impl Gen, value: u64) -> Input {
+        let mut input_ptr = [0; INPUT_PTR_SIZE];
+        gen.fill_bytes(&mut input_ptr);
+        Input {
+            index_or_account: u8::arbitrary(gen),
+            value: Value(value),
+            input_ptr,
+        }
+    }
+
+    fn split_value(gen: &mut impl Gen, value: u64, parts: u16) -> Vec<u64> {
+        let mut in_values: Vec<_> = iter::once(0)
+            .chain(iter::repeat_with(|| arbitrary_range(gen, 0..=value)))
+            .take(parts as usize)
+            .chain(iter::once(value))
+            .collect();
+        in_values.sort();
+        in_values.windows(2).map(|pair| pair[1] - pair[0]).collect()
+    }
+
+    fn arbitrary_range<T: SampleUniform>(gen: &mut impl Gen, range: impl Into<Uniform<T>>) -> T {
+        gen.sample(range.into())
+    }
+
+    #[quickcheck]
+    fn split_value_splits_whole_value(split_value: ArbitrarySplitValue) -> () {
+        assert_eq!(
+            split_value.parts,
+            split_value.split.len(),
+            "Invalid split length"
+        );
+        assert_eq!(
+            split_value.value,
+            split_value.split.iter().sum(),
+            "Invalid split sum"
+        );
+    }
+
+    #[derive(Clone, Debug)]
+    struct ArbitrarySplitValue {
+        value: u64,
+        parts: usize,
+        split: Vec<u64>,
+    }
+
+    impl Arbitrary for ArbitrarySplitValue {
+        fn arbitrary<G: Gen>(gen: &mut G) -> Self {
+            let value = u64::arbitrary(gen);
+            let parts = u16::arbitrary(gen);
+            let split = split_value(gen, value, parts);
+            let value = match parts {
+                0 => 0,
+                _ => value,
+            };
+            ArbitrarySplitValue {
+                value,
+                parts: parts as usize,
+                split,
             }
         }
     }

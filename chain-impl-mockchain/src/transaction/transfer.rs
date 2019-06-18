@@ -6,7 +6,7 @@ use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::PublicKey;
 
-const INPUT_PTR_SIZE: usize = 32;
+pub const INPUT_PTR_SIZE: usize = 32;
 
 /// Generalized input which have a specific input value, and
 /// either contains an account reference or a TransactionId+index
