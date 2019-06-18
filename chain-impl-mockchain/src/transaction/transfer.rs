@@ -199,7 +199,7 @@ pub struct Output<Address> {
 }
 
 impl<Address: Readable> Output<Address> {
-    pub fn from(address: Address, value: Value) -> Self {
+    pub fn from_address_and_value(address: Address, value: Value) -> Self {
         Output { address, value }
     }
 }

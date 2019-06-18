@@ -33,6 +33,11 @@ pub struct LedgerParameters {
     pub fees: LinearFee,
 }
 
+//Limits for input/output transactions and witnesses
+const MAX_TRANSACTION_INPUTS_COUNT: usize = 256;
+const MAX_TRANSACTION_OUTPUTS_COUNT: usize = 254;
+const MAX_TRANSACTION_WITNESSES_COUNT: usize = 256;
+
 /// Overall ledger structure.
 ///
 /// This represent a given state related to utxo/old utxo/accounts/... at a given
@@ -97,9 +102,9 @@ custom_error! {
         OldUtxoInvalidPublicKey { utxo: UtxoPointer, output: OutputOldAddress, witness: Witness } = "Old Transaction with invalid public key",
         AccountInvalidSignature { account: account::Identifier, witness: Witness } = "Account with invalid signature",
         MultisigInvalidSignature { multisig: multisig::Identifier, witness: Witness } = "Multisig with invalid signature",
-        TransactionHasTooManyInputs = "Transaction has more than 255 inputs",
-        TransactionHasTooManyOutputs = "Transaction has more than 255 outputs",
-        TransactionHasTooManyWitnesses = "Transaction has more than 255 witnesses",
+        TransactionHasTooManyInputs {expected: usize, current: usize } = "Transaction has more than {expected} inputs ({current})",
+        TransactionHasTooManyOutputs {expected: usize, current: usize } = "Transaction has more than {expected} outputs ({current})",
+        TransactionHasTooManyWitnesses {expected: usize, current: usize } = "Transaction has more than {expected} witnesses ({current})",
         FeeCalculationError { error: ValueError } = "Error while computing the fees: {error}",
         PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
         UtxoInputsTotal { error: ValueError } = "Error while computing the transaction's total input: {error}",
@@ -584,16 +589,25 @@ fn internal_apply_transaction(
     witnesses: &[Witness],
     fee: Value,
 ) -> Result<Ledger, Error> {
-    if inputs.len() > 256 {
-        return Err(Error::TransactionHasTooManyInputs);
+    if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
+        return Err(Error::TransactionHasTooManyInputs {
+            expected: MAX_TRANSACTION_INPUTS_COUNT,
+            current: inputs.len(),
+        });
     }
 
-    if outputs.len() > 254 {
-        return Err(Error::TransactionHasTooManyOutputs);
+    if outputs.len() > MAX_TRANSACTION_OUTPUTS_COUNT {
+        return Err(Error::TransactionHasTooManyOutputs {
+            expected: MAX_TRANSACTION_OUTPUTS_COUNT,
+            current: outputs.len(),
+        });
     }
 
-    if witnesses.len() > 256 {
-        return Err(Error::TransactionHasTooManyWitnesses);
+    if witnesses.len() > MAX_TRANSACTION_WITNESSES_COUNT {
+        return Err(Error::TransactionHasTooManyWitnesses {
+            expected: MAX_TRANSACTION_WITNESSES_COUNT,
+            current: witnesses.len(),
+        });
     }
 
     // 1. verify that number of signatures matches number of

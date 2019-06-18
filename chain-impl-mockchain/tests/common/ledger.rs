@@ -82,6 +82,6 @@ pub fn create_initial_fake_ledger(
 
 pub fn create_initial_transaction(output: Output<Address>) -> (Message, Vec<UtxoPointer>) {
     let mut builder = TransactionBuilder::new();
-    builder.with_output(output).finalize();
-    (builder.as_message(), builder.as_utxos())
+    let authenticator = builder.with_output(output).finalize();
+    (authenticator.as_message(), authenticator.as_utxos())
 }

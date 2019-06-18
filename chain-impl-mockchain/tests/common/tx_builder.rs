@@ -10,9 +10,6 @@ use chain_impl_mockchain::transaction::*;
 pub struct TransactionBuilder {
     inputs: Vec<Input>,
     outputs: Vec<Output<Address>>,
-    witnesses: Vec<Witness>,
-    transaction_id: Option<TransactionId>,
-    transaction: Option<Transaction<Address, NoExtra>>,
 }
 
 impl TransactionBuilder {
@@ -20,9 +17,6 @@ impl TransactionBuilder {
         TransactionBuilder {
             inputs: Vec::new(),
             outputs: Vec::new(),
-            witnesses: Vec::new(),
-            transaction_id: None,
-            transaction: None,
         }
     }
 
@@ -41,15 +35,27 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn finalize<'a>(&'a mut self) -> &'a mut Self {
+    pub fn finalize(&self) -> TransactionAuthenticator {
         let transaction = Transaction {
             inputs: self.inputs.clone(),
             outputs: self.outputs.clone(),
             extra: NoExtra,
         };
-        self.transaction_id = Some(transaction.hash());
-        self.transaction = Some(transaction);
-        self
+        TransactionAuthenticator::new(transaction)
+    }
+}
+
+pub struct TransactionAuthenticator {
+    witnesses: Vec<Witness>,
+    transaction: Transaction<Address, NoExtra>,
+}
+
+impl TransactionAuthenticator {
+    pub fn new(transaction: Transaction<Address, NoExtra>) -> Self {
+        TransactionAuthenticator {
+            witnesses: Vec::new(),
+            transaction: transaction,
+        }
     }
 
     pub fn with_witness<'a>(
@@ -74,7 +80,7 @@ impl TransactionBuilder {
     ) -> &'a mut Self {
         self.witnesses.push(Witness::new_utxo(
             block0,
-            &self.transaction_id.unwrap(),
+            &self.transaction.hash(),
             secret_key,
         ));
         self
@@ -85,10 +91,10 @@ impl TransactionBuilder {
         block0: &HeaderHash,
         spending_counter: &SpendingCounter,
         secret_key: &EitherEd25519SecretKey,
-    ) -> &'a mut TransactionBuilder {
+    ) -> &'a mut Self {
         self.witnesses.push(Witness::new_account(
             block0,
-            &self.transaction_id.unwrap(),
+            &self.transaction.hash(),
             spending_counter,
             secret_key,
         ));
@@ -97,9 +103,9 @@ impl TransactionBuilder {
 
     pub fn as_utxos(&self) -> Vec<UtxoPointer> {
         let mut utxos = Vec::new();
-        for (i, output) in self.outputs.iter().enumerate() {
+        for (i, output) in self.transaction.outputs.iter().enumerate() {
             utxos.push(UtxoPointer {
-                transaction_id: self.transaction_id.unwrap().clone(),
+                transaction_id: self.transaction.hash().clone(),
                 output_index: i as u8,
                 value: output.value.clone(),
             });
@@ -114,7 +120,7 @@ impl TransactionBuilder {
 
     pub fn seal(&self) -> AuthenticatedTransaction<Address, NoExtra> {
         AuthenticatedTransaction {
-            transaction: self.transaction.clone().unwrap(),
+            transaction: self.transaction.clone(),
             witnesses: self.witnesses.clone(),
         }
     }
