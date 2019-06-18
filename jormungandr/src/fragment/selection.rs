@@ -75,12 +75,15 @@ impl FragmentSelectionAlgorithm for OldestFirst {
 
                     total += 1;
                 }
-                Err(error) => logs.modify(
-                    &id.into(),
-                    FragmentStatus::Rejected {
-                        reason: error.to_string(),
-                    },
-                ),
+                Err(error) => {
+                    use std::error::Error as _;
+                    let error = if let Some(source) = error.source() {
+                        format!("{}: {}", error, source)
+                    } else {
+                        error.to_string()
+                    };
+                    logs.modify(&id.into(), FragmentStatus::Rejected { reason: error })
+                }
             }
         }
     }
