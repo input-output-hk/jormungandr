@@ -20,6 +20,7 @@ use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Genesis {
     /// the initial configuration of the blockchain
     ///
@@ -35,6 +36,7 @@ pub struct Genesis {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BlockchainConfiguration {
     block0_date: u64,
     #[serde(with = "serde::as_string")]
@@ -56,6 +58,7 @@ struct BlockchainConfiguration {
 
 // FIXME: duplicates LinearFee, can we get rid of this?
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct InitialLinearFee {
     coefficient: u64,
     constant: u64,
@@ -63,7 +66,7 @@ struct InitialLinearFee {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 enum Initial {
     Fund(InitialUTxO),
     Cert(InitialCertificate),
@@ -71,10 +74,11 @@ enum Initial {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(transparent)]
+#[serde(transparent, deny_unknown_fields)]
 struct InitialCertificate(#[serde(with = "serde::certificate")] Certificate);
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct InitialUTxO {
     #[serde(with = "serde::address")]
     pub address: Address,
@@ -83,6 +87,7 @@ struct InitialUTxO {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LegacyUTxO {
     pub address: OldAddress,
     #[serde(with = "serde::value")]
