@@ -1,5 +1,5 @@
-use hex;
 use chain_crypto::Blake2b256;
+use hex;
 use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 
