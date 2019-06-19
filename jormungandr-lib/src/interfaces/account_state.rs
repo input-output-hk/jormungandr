@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 /// This type is different from the [`UTxOInfo`] which represents another
 /// kind of mean to manipulate assets in the blockchain.
 ///
+/// [`UTxOInfo`]: ./struct.UTxOInfo.html
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AccountState {
     delegation: Option<Hash>,
