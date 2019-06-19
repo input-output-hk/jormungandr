@@ -77,3 +77,9 @@ duration of an epoch.
 Leader are an abstration related to the specific actor that have the ability
 to create block; In OBFT mode, the leader just the owner of a cryptographic
 key, whereas in GenesisPraos mode, the leader is a stake pool.
+
+## UTxO
+<explain concept here>
+
+## Accounts
+<explain concept here>
