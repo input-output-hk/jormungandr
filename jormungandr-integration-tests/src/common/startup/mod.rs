@@ -5,11 +5,11 @@ use crate::common::configuration::genesis_model::GenesisYaml;
 use crate::common::data::{
     address::{Account, AddressDataProvider, Delegation, Utxo},
     keys::KeyPair,
-    utxo::Utxo as UtxoData,
 };
 
 use crate::common::file_utils;
 use crate::common::jormungandr::starter;
+use jormungandr_lib::interfaces::UTxOInfo;
 use std::path::PathBuf;
 
 use crate::common::jcli_wrapper;
@@ -114,11 +114,11 @@ pub fn create_new_key_pair(key_type: &str) -> KeyPair {
 pub fn get_utxo_for_address<T: AddressDataProvider>(
     utxo_address: &T,
     jormungandr_rest_address: &str,
-) -> UtxoData {
+) -> UTxOInfo {
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
     utxos
         .into_iter()
-        .find(|x| x.out_addr == utxo_address.get_address())
+        .find(|x| x.address().to_string() == utxo_address.get_address())
         .expect(&format!(
             "None utxo record found for {} of type({})",
             &utxo_address.get_address(),
