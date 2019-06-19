@@ -4,6 +4,7 @@ use crate::common::startup;
 const FAKE_INPUT_TRANSACTION_ID: &str =
     "19c9852ca0a68f15d0f7de5d1a26acd67a3a3251640c6066bdb91d22e2000193";
 const FAKE_GENESIS_HASH: &str = "19c9852ca0a68f15d0f7de5d1a26acd67a3a3251640c6066bdb91d22e2000193";
+const FAKE_ACCOUNT_ADDRESS: &str = "ta1s5fzaewqt7yq89vma8atryks9vyvfacr5hq8wm64vhn36f62lyvrzuxm7dm";
 
 #[test]
 pub fn test_unbalanced_output_utxo_transation_is_not_finalized() {
