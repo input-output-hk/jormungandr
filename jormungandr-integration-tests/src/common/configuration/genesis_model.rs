@@ -44,9 +44,9 @@ pub struct BlockchainConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LinearFees {
-    pub constant: i32,
-    pub coefficient: i32,
-    pub certificate: i32,
+    pub constant: u32,
+    pub coefficient: u32,
+    pub certificate: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
