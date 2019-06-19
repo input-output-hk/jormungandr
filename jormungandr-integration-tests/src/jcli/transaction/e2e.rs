@@ -196,7 +196,8 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
     let account_state =
         jcli_wrapper::assert_rest_account_get_stats(&reciever.address, &jormungandr_rest_address);
     assert_eq!(
-        account_state.value, transfer_amount as u32,
+        account_state.value().to_string(),
+        transfer_amount.to_string(),
         "Account did not receive correct amount of funds"
     );
 

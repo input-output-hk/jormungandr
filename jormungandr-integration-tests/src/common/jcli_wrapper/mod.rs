@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use jormungandr_lib::interfaces::{AccountState, FragmentLog};
+use jormungandr_lib::interfaces::{AccountState, FragmentLog, FragmentStatus};
 
 pub mod certificate;
 pub mod jcli_commands;
@@ -8,7 +8,6 @@ pub mod jcli_transaction_wrapper;
 
 use super::configuration;
 use super::configuration::genesis_model::GenesisYaml;
-use super::data::account_state::AccountState;
 use super::data::utxo::Utxo;
 use super::file_assert;
 use super::file_utils;
@@ -265,7 +264,7 @@ pub fn assert_rest_account_get_stats(address: &str, host: &str) -> AccountState 
     let content = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output);
 
-    serde_yaml::from_str(&single_line).unwrap()
+    serde_yaml::from_str(&content).unwrap()
 }
 
 pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
