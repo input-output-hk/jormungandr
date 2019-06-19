@@ -55,15 +55,18 @@ pub struct Fund {
     pub address: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Initial {
+    Fund(Fund),
+    Cert(String),
+    LegacyFund(Fund),
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenesisYaml {
     pub blockchain_configuration: BlockchainConfig,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub initial_funds: Option<Vec<Fund>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub legacy_funds: Option<Vec<Fund>>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub initial_certs: Vec<String>,
+    pub initial: Vec<Initial>,
 }
 
 impl GenesisYaml {
@@ -119,6 +122,8 @@ impl GenesisYaml {
             KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
         let leader_1_pk = leader_1.public_key().to_bech32_str();
         let leader_2_pk = leader_2.public_key().to_bech32_str();
+        let funds = initial_funds.into_iter().flatten().map(Initial::Fund);
+        let legacy = legacy_funds.into_iter().flatten().map(Initial::LegacyFund);
         GenesisYaml {
             blockchain_configuration: BlockchainConfig {
                 block0_date: Some(1554185140),
@@ -140,9 +145,7 @@ impl GenesisYaml {
                 },
                 kes_update_speed: 12 * 3600,
             },
-            initial_funds: initial_funds,
-            initial_certs: vec![],
-            legacy_funds: legacy_funds,
+            initial: funds.chain(legacy).collect(),
         }
     }
 }
