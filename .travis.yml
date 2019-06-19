@@ -5,31 +5,21 @@ matrix:
     - rust: stable
       os: linux
       env: CHECK_RUSTFMT="true"
-#    - rust: stable
-#      os: windows
-#      env: CARDANO_C="false" CARDANO_WASM="false" RUN_TEST="true"
     - rust: stable
       os: osx
-      env: CARDANO_C="false" CARDANO_WASM="false" RUN_TEST="true"
+      env: RUN_TEST="true"
     - rust: stable
       os: linux
-      env: CARDANO_C="true" CARDANO_WASM="false" RUN_TEST="true"
+      env: RUN_TEST="true"
     - rust: nightly
       os: linux
-      env: CARDANO_C="true" CARDANO_WASM="false" RUN_TEST="true"
-    - rust: nightly
-      env:  TARGET="wasm32-unknown-unknown" CARDANO_C="false" CARDANO_WASM="true" RUN_TEST="false"
-      os: linux
+      env: RUN_TEST="true"
   allow_failures:
 #    - rust: stable
 #      os: windows
 #      env: CARDANO_C="false" CARDANO_WASM="false" RUN_TEST="true"
 
 before_script:
-  - |
-    if [ "${CARDANO_WASM}" = "true" ]; then
-       rustup target add ${TARGET} --toolchain nightly
-    fi
   - |
     if [ "${CHECK_RUSTFMT}" = "true" ]; then
        rustup component add rustfmt-preview
@@ -40,8 +30,3 @@ script:
        cargo fmt -- --check
     fi
   - if [ "${RUN_TEST}" = "true" ]; then cargo build --verbose --all && cargo test --verbose --all; fi
-  - if [ "${CARDANO_C}" = "true" ]; then ./cardano-c/test.sh; fi
-  - |
-    if [ "${CARDANO_WASM}" = "true" ]; then
-       cargo  +nightly build --target ${TARGET} --release --verbose --package cardano
-    fi
