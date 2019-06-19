@@ -41,7 +41,9 @@ pub fn test_100_transaction_is_processed() {
 
     process_utils::sleep(1);
     let message_logs = jcli_wrapper::assert_rest_message_logs(&jormungandr_rest_address);
-    message_logs.iter().for_each(|el| assert!(el.is_in_block()));
+    message_logs
+        .iter()
+        .for_each(|el| assert!(el.is_in_a_block()));
 }
 
 #[cfg(feature = "soak-test")]

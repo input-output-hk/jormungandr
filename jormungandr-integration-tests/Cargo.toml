@@ -26,3 +26,6 @@ custom_error = "1.6"
 [dev-dependencies]
 jormungandr = { path = "../jormungandr" }
 jcli = { path = "../jcli" }
+
+[features]
+soak-test = []
