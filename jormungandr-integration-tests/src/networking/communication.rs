@@ -5,6 +5,7 @@ use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrappe
 use crate::common::startup;
 
 #[test]
+#[ignore]
 pub fn two_nodes_communication() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
