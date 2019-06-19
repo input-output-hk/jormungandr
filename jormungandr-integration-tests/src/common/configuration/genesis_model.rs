@@ -123,7 +123,7 @@ impl GenesisYaml {
         let leader_1_pk = leader_1.public_key().to_bech32_str();
         let leader_2_pk = leader_2.public_key().to_bech32_str();
         let funds = initial_funds.into_iter().flatten().map(Initial::Fund);
-        let legacy = legacy_funds.into_iter().flatten().map(Initial::LegacyFund);
+        let legacy = vec![]; // legacy_funds.into_iter().flatten().map(Initial::LegacyFund);
         GenesisYaml {
             blockchain_configuration: BlockchainConfig {
                 block0_date: Some(1554185140),
