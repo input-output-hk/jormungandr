@@ -8,4 +8,6 @@ members = [
   "jormungandr-integration-tests",
 ]
 
-exclude = [ "cardano-deps" ]
+exclude = [
+    "chain-deps",
+]

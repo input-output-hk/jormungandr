@@ -89,7 +89,7 @@ struct InitialUTxO {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct LegacyUTxO {
-    pub address: OldAddress,
+    //pub address: OldAddress,
     #[serde(with = "serde::value")]
     pub value: Value,
 }
@@ -319,8 +319,8 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
     let inits_iter = utxo_decl
         .addrs
         .iter()
-        .map(|(address, value)| LegacyUTxO {
-            address: address.clone(),
+        .map(|(_address, value)| LegacyUTxO {
+            //address: address.clone(),
             value: value.clone(),
         })
         .map(Initial::LegacyFund);
@@ -369,7 +369,7 @@ impl<'a> From<&'a InitialCertificate> for Message {
 impl<'a> From<&'a LegacyUTxO> for Message {
     fn from(utxo: &'a LegacyUTxO) -> Message {
         Message::OldUtxoDeclaration(UtxoDeclaration {
-            addrs: vec![(utxo.address.clone(), utxo.value)],
+            addrs: vec![], // vec![(utxo.address.clone(), utxo.value)],
         })
     }
 }
@@ -440,15 +440,9 @@ blockchain_configuration:
   kes_update_speed: 43200
 initial:
   - cert: cert1qgqqqqqqqqqqqqqqqqqqq0p5avfqqmgurpe7s9k7933q0wj420jl5xqvx8lywcu5jcr7fwqa9qmdn93q4nm7c4fsay3mzeqgq3c0slnut9kns08yn2qn80famup7nvgtfuyszqzqrd4lxlt5ylplfu76p8f6ks0ggprzatp2c8rn6ev3hn9dgr38tzful4h0udlwa0536vyrrug7af9ujmrr869afs0yw9gj5x7z24l8sps3zzcmv
-  - legacy_fund:
-      address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
-      value: 123
   - fund:
       address: {}
-      value: 10000
-  - legacy_fund:
-      address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
-      value: 456"#, leader_1_pk, leader_2_pk, initial_funds_address);
+      value: 10000"#, leader_1_pk, leader_2_pk, initial_funds_address);
         let genesis: Genesis =
             serde_yaml::from_str(genesis_yaml.as_str()).expect("Failed to deserialize YAML");
 

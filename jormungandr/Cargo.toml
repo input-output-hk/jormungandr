@@ -45,17 +45,15 @@ native-tls = "0.2.2"
 regex = "1.1.2"
 bech32 = "0.6"
 hex             = { path = "../hex" }
-chain-core      = { path = "../cardano-deps/chain-core" }
-chain-impl-mockchain = { path = "../cardano-deps/chain-impl-mockchain" }
-chain-storage   = { path = "../cardano-deps/chain-storage" }
-chain-storage-sqlite = { path = "../cardano-deps/chain-storage-sqlite" }
-chain-addr      = { path = "../cardano-deps/chain-addr" }
-chain-crypto    = { path = "../cardano-deps/chain-crypto" }
-chain-time      = { path = "../cardano-deps/chain-time" }
-network-core    = { path = "../cardano-deps/network-core" }
-network-grpc    = { path = "../cardano-deps/network-grpc" }
-cardano         = { path = "../cardano-deps/cardano", features = [ "generic-serialization" ] }
-cardano-storage = { path = "../cardano-deps/storage" }
+chain-core      = { path = "../chain-deps/chain-core" }
+chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
+chain-storage   = { path = "../chain-deps/chain-storage" }
+chain-storage-sqlite = { path = "../chain-deps/chain-storage-sqlite" }
+chain-addr      = { path = "../chain-deps/chain-addr" }
+chain-crypto    = { path = "../chain-deps/chain-crypto" }
+chain-time      = { path = "../chain-deps/chain-time" }
+network-core    = { path = "../chain-deps/network-core" }
+network-grpc    = { path = "../chain-deps/network-grpc" }
 poldercast = { version = "0.3.1", features = [ "serde_derive" ] }
 reqwest = "0.9.11"
 custom_error = "1.6"
