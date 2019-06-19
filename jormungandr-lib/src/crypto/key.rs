@@ -80,6 +80,11 @@ impl<A: AsymmetricKey> KeyPair<A> {
 }
 
 impl<A: AsymmetricPublicKey> Identifier<A> {
+    #[inline]
+    pub fn into_public_key(self) -> PublicKey<A> {
+        self.0
+    }
+
     /// encode the `Identifier` into a bech32 string.
     ///
     /// This is a human readable encoding that allows to check input validation.
