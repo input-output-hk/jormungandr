@@ -21,8 +21,8 @@ impl AccountState {
     }
 
     #[inline]
-    pub fn counter(&self) -> &u32 {
-        &self.counter
+    pub fn counter(&self) -> u32 {
+        self.counter
     }
 }
 
