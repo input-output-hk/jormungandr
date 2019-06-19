@@ -2,6 +2,11 @@ use crate::{crypto::hash::Hash, interfaces::Value};
 use chain_impl_mockchain::accounting::account;
 use serde::{Deserialize, Serialize};
 
+/// represent the current state of an account in the ledger
+///
+/// This type is different from the [`UTxOInfo`] which represents another
+/// kind of mean to manipulate assets in the blockchain.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AccountState {
     delegation: Option<Hash>,
@@ -10,16 +15,24 @@ pub struct AccountState {
 }
 
 impl AccountState {
+    /// retrieve the identifier to the stake pool this account is delegating its
+    /// stake to.
+    ///
+    /// `None` means this account is not delegating its stake.
     #[inline]
     pub fn delegation(&self) -> &Option<Hash> {
         &self.delegation
     }
 
+    /// the current fund associated to this account
     #[inline]
     pub fn value(&self) -> &Value {
         &self.value
     }
 
+    /// the transaction counter. This is used as part of the parameter when adding
+    /// a new account input to a transaction.
+    ///
     #[inline]
     pub fn counter(&self) -> u32 {
         self.counter
