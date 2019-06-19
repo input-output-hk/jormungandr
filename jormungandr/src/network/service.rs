@@ -89,6 +89,7 @@ impl BlockService for NodeService {
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
+    type PushHeadersFuture = FutureResult<(), core_error::Error>;
     type OnUploadedBlockFuture = FutureResult<(), core_error::Error>;
     type BlockSubscription = BlockEventSubscription;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
@@ -143,6 +144,14 @@ impl BlockService for NodeService {
 
     fn pull_headers_to_tip(&mut self, _from: &[Self::BlockId]) -> Self::PullHeadersFuture {
         unimplemented!()
+    }
+
+    fn push_headers<In>(&mut self, headers: In) -> Self::PushHeadersFuture
+    where
+        In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
+    {
+        unimplemented!();
+        future::ok(())
     }
 
     fn on_uploaded_block(&mut self, block: Block) -> Self::OnUploadedBlockFuture {

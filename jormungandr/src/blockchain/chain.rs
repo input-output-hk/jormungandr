@@ -267,6 +267,21 @@ impl Blockchain {
             .and_then(|mut iter| iter.next())
             .map(|leadership| leadership.1.into())
     }
+
+    /// Retrieves a list of checkpoint block hashes to pass to another
+    /// peer for recovery of missing chain blocks. The checkpoints
+    /// traverse back in the history with exponentially receding offsets.
+    pub fn get_checkpoints(&self) -> Result<Vec<HeaderHash>, StorageError> {
+        let tip = self.get_tip().unwrap();
+        let storage = self.storage.read().unwrap();
+        let tip_info = storage.get_block_info(&tip)?;
+        let mut checkpoints = Vec::new();
+        assert!(tip_info.depth > 0);
+        store::for_path_to_nth_ancestor(&*storage, &tip, tip_info.depth - 1, |block_info| {
+            checkpoints.push(block_info.block_hash.clone());
+        })?;
+        Ok(checkpoints)
+    }
 }
 
 custom_error! {pub HandleBlockError

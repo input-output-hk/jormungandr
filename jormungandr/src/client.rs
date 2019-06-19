@@ -17,7 +17,9 @@ pub fn handle_input(_info: &ThreadServiceInfo, blockchain: &BlockchainR, input: 
             handle_get_headers(&blockchain, ids, handler)
         }),
         ClientMsg::GetHeadersRange(checkpoints, to, handler) => {
-            handler.reply(handle_get_headers_range(&blockchain, checkpoints, to))
+            do_stream_reply(handler, |handler| {
+                handle_get_headers_range(&blockchain, checkpoints, to, handler)
+            })
         }
         ClientMsg::GetBlocks(ids, handler) => do_stream_reply(handler, |handler| {
             handle_get_blocks(&blockchain, ids, handler)
@@ -50,7 +52,8 @@ fn handle_get_headers_range(
     blockchain: &BlockchainR,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
-) -> Result<Vec<Header>, Error> {
+    reply: &mut ReplyStreamHandle<Header>,
+) -> Result<(), Error> {
     let blockchain = blockchain.lock_read();
 
     /* Filter out the checkpoints that don't exist and sort them by
@@ -73,25 +76,24 @@ fn handle_get_headers_range(
         // FIXME: handle checkpoint == genesis
 
         /* Send headers up to the maximum. */
-        let mut headers = vec![];
+        let mut header_count = 0usize;
         let storage = blockchain.storage.read().unwrap();
         for x in store::iterate_range(&*storage, &from, &to)? {
             match x {
                 Err(err) => return Err(Error::from(err)),
                 Ok(info) => {
                     let (block, _) = storage.get_block(&info.block_hash)?;
-                    headers.push(block.header());
-                    if headers.len() >= MAX_HEADERS {
+                    reply.send(block.header());
+                    header_count += 1;
+                    if header_count >= MAX_HEADERS {
                         break;
                     }
                 }
             };
         }
-
-        Ok(headers)
-    } else {
-        Ok(vec![])
     }
+
+    Ok(())
 }
 
 fn handle_get_blocks_range(

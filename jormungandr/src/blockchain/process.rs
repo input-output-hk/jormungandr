@@ -116,21 +116,28 @@ pub fn handle_input(
                     info!(logger, "rejecting block announcement: {:?}", reason);
                 }
                 BlockHeaderTriage::MissingParentOrBranch { to } => {
-                    // blocks are missing between the received header and the
+                    // Blocks are missing between the received header and the
                     // common ancestor.
-                    //
-                    // TODO reply to the network to ask for more blocks
                     info!(
                         logger,
                         "received a loose block ({}), missing parent(s) block(s)", to
                     );
+                    let from = blockchain.get_checkpoints().unwrap();
+                    network_msg_box
+                        .try_send(NetworkMsg::PullHeaders { node_id, from, to })
+                        .unwrap_or_else(|err| {
+                            error!(
+                                logger,
+                                "cannot send PullHeaders request to network: {}", err
+                            )
+                        });
                 }
                 BlockHeaderTriage::ProcessBlockToState => {
                     info!(logger, "Block announcement is interesting, fetch block");
                     network_msg_box
                         .try_send(NetworkMsg::GetBlocks(node_id, vec![header.id()]))
                         .unwrap_or_else(|err| {
-                            error!(logger, "cannot propagate block to network: {}", err)
+                            error!(logger, "cannot send GetBlocks request to network: {}", err)
                         });
                 }
             }
