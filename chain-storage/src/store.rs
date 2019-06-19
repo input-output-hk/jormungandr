@@ -246,13 +246,13 @@ where
     }
 }
 
-// Like `BlockStore::get_nth_ancestor`, but calls the closure 'callback' with
-// each intermediate block encountered while travelling from
-// 'block_hash' to its n'th ancestor.
-//
-// The travelling algorithm uses back links to skip over parts of the chain,
-// so the callback will not be invoked for all blocks linearly.
-fn for_path_to_nth_ancestor<S, F>(
+/// Like `BlockStore::get_nth_ancestor`, but calls the closure 'callback' with
+/// each intermediate block encountered while travelling from
+/// 'block_hash' to its n'th ancestor.
+///
+/// The travelling algorithm uses back links to skip over parts of the chain,
+/// so the callback will not be invoked for all blocks in the linear sequence.
+pub fn for_path_to_nth_ancestor<S, F>(
     store: &S,
     block_hash: &<S::Block as Block>::Id,
     distance: u64,
