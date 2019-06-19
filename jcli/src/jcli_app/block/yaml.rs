@@ -89,7 +89,7 @@ struct InitialUTxO {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct LegacyUTxO {
-    pub address: OldAddress,
+    //pub address: OldAddress,
     #[serde(with = "serde::value")]
     pub value: Value,
 }
@@ -319,8 +319,8 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
     let inits_iter = utxo_decl
         .addrs
         .iter()
-        .map(|(address, value)| LegacyUTxO {
-            address: address.clone(),
+        .map(|(_address, value)| LegacyUTxO {
+            //address: address.clone(),
             value: value.clone(),
         })
         .map(Initial::LegacyFund);
@@ -369,7 +369,7 @@ impl<'a> From<&'a InitialCertificate> for Message {
 impl<'a> From<&'a LegacyUTxO> for Message {
     fn from(utxo: &'a LegacyUTxO) -> Message {
         Message::OldUtxoDeclaration(UtxoDeclaration {
-            addrs: vec![(utxo.address.clone(), utxo.value)],
+            addrs: vec![], // vec![(utxo.address.clone(), utxo.value)],
         })
     }
 }
