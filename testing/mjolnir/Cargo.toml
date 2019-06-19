@@ -19,6 +19,7 @@ chain-addr = { path = "../../cardano-deps/chain-addr" }
 chain-core = { path = "../../cardano-deps/chain-core" }
 chain-crypto = { path = "../../cardano-deps/chain-crypto" }
 chain-impl-mockchain = { path = "../../cardano-deps/chain-impl-mockchain" }
+hex = { path = "../../hex" }
 serde = "^1.0.59"
 serde_derive = "^1.0.59"
 

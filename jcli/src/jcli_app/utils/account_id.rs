@@ -1,5 +1,5 @@
 use bech32::{Bech32, FromBase32};
-use cardano::util::hex;
+use hex;
 use chain_addr::{Address, Kind};
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::account;

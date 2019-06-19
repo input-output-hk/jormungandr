@@ -20,6 +20,7 @@ extern crate cryptoxide;
 #[macro_use(try_ready)]
 extern crate futures;
 extern crate generic_array;
+extern crate hex;
 extern crate http;
 extern crate hyper;
 extern crate jormungandr_lib;

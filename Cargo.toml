@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "hex",
   "jormungandr-utils",
   "jormungandr-lib",
   "jormungandr",

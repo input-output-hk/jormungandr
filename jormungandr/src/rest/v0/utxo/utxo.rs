@@ -30,7 +30,7 @@ impl serde::ser::Serialize for TxId {
         S: serde::ser::Serializer,
     {
         if serializer.is_human_readable() {
-            let hex = cardano::util::hex::encode(self.0.as_ref());
+            let hex = hex::encode(self.0.as_ref());
             serializer.serialize_str(&hex)
         } else {
             serializer.serialize_bytes(self.0.as_ref())

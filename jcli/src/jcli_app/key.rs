@@ -1,5 +1,5 @@
 use bech32::{u5, Bech32, FromBase32, ToBase32};
-use cardano::util::hex;
+use hex;
 use chain_crypto::{
     AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended,
     SumEd25519_12,
@@ -16,7 +16,7 @@ use structopt::{clap::arg_enum, StructOpt};
 custom_error! { pub Error
     Io { source: std::io::Error } = "I/O error",
     Bech32 { source: bech32::Error } = "invalid Bech32",
-    Hex { source: cardano::util::hex::Error } = "invalid Hexadecimal",
+    Hex { source: hex::Error } = "invalid Hexadecimal",
     SecretKey { source: chain_crypto::SecretKeyError } = "invalid secret key",
     Rand { source: rand::Error } = "error while using random source",
     InvalidSeed { seed_len: usize } = "invalid seed length, expected 32 bytes but received {seed_len}",
@@ -192,7 +192,7 @@ impl ToBytes {
         }?;
         let bytes = Vec::<u8>::from_base32(bech32.data())?;
         let mut output = self.output_file.open()?;
-        writeln!(output, "{}", cardano::util::hex::encode(&bytes))?;
+        writeln!(output, "{}", hex::encode(&bytes))?;
         Ok(())
     }
 }
@@ -215,7 +215,7 @@ impl FromBytes {
 }
 
 fn read_hex<P: AsRef<Path>>(path: Option<P>) -> Result<Vec<u8>, Error> {
-    cardano::util::hex::decode(read_line(path)?.trim()).map_err(Into::into)
+    hex::decode(read_line(path)?.trim()).map_err(Into::into)
 }
 
 fn read_bech32<P: AsRef<Path>>(path: Option<P>) -> Result<Bech32, Error> {

@@ -1,4 +1,4 @@
-use cardano::util::hex;
+use hex;
 use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::message::Message as MockMessage;
 use jcli_app::debug::Error;

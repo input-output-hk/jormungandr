@@ -43,6 +43,7 @@ actix-net = "0.2.6"
 native-tls = "0.2.2"
 regex = "1.1.2"
 bech32 = "0.6"
+hex             = { path = "../hex" }
 chain-core      = { path = "../cardano-deps/chain-core" }
 chain-impl-mockchain = { path = "../cardano-deps/chain-impl-mockchain" }
 chain-storage   = { path = "../cardano-deps/chain-storage" }
