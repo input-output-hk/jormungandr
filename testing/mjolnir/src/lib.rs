@@ -6,7 +6,7 @@ extern crate serde_derive;
 mod utils;
 
 use bech32::{Bech32, FromBase32};
-use cardano::util::hex;
+use hex;
 use cfg_if::cfg_if;
 use chain_addr as addr;
 use chain_core::{
@@ -67,7 +67,7 @@ impl PrivateKey {
 
     /// Read private key from hex representation.
     pub fn from_hex(input: &str) -> Result<PrivateKey, JsValue> {
-        use cardano::util::hex::decode;
+        use hex::decode;
         decode(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .and_then(|bytes| {
@@ -93,13 +93,13 @@ pub struct PublicKey(key::SpendingPublicKey);
 impl PublicKey {
     /// Show public key as hex string.
     pub fn to_hex(&self) -> String {
-        use cardano::util::hex::encode;
+        use hex::encode;
         encode(self.0.as_ref())
     }
 
     /// Read public key from hex string.
     pub fn from_hex(input: &str) -> Result<PublicKey, JsValue> {
-        use cardano::util::hex::decode;
+        use hex::decode;
         decode(input)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
             .and_then(|bytes| {
