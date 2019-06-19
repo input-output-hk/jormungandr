@@ -1,3 +1,5 @@
+#![cfg(feature = "soak-test")]
+
 use crate::common::configuration::genesis_model::Fund;
 use crate::common::configuration::jormungandr_config::JormungandrConfig;
 use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
@@ -7,7 +9,6 @@ use crate::common::jcli_wrapper;
 use crate::common::process_utils;
 
 #[test]
-#[cfg(feature = "soak-test")]
 pub fn test_100_transaction_is_processed() {
     let mut sender = startup::create_new_utxo_address();
     let mut reciever = startup::create_new_utxo_address();
@@ -46,13 +47,11 @@ pub fn test_100_transaction_is_processed() {
         .for_each(|el| assert!(el.is_in_a_block()));
 }
 
-#[cfg(feature = "soak-test")]
 fn assert_transaction_in_block(transaction_builder: JCLITransactionWrapper, host: &str) {
     let transaction_message = transaction_builder.assert_transaction_to_message();
     let transaction_id = transaction_builder.get_transaction_id();
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &transaction_id, &host);
 }
-#[cfg(feature = "soak-test")]
 fn assert_funds_transfered_to(address: &str, host: &str) {
     let utxos = jcli_wrapper::assert_rest_utxo_get(&host);
     assert_eq!(utxos.len(), 1, "Only one utxo expected");
