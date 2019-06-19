@@ -130,7 +130,7 @@ pub fn get_rest_utxo_get_command(host: &str) -> Command {
     command
 }
 
-/// Get adress single command.
+/// Get address single command.
 pub fn get_address_single_command(public_key: &str, discrimination: Discrimination) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command.arg("address").arg("single").arg(&public_key);
@@ -138,14 +138,14 @@ pub fn get_address_single_command(public_key: &str, discrimination: Discriminati
     command
 }
 
-/// Get adress single command.
+/// Get address single command.
 pub fn get_address_info_command_default(address: &str) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command.arg("address").arg("info").arg(&address);
     command
 }
 
-/// Get adress single command.
+/// Get address single command.
 pub fn get_address_account_command(public_key: &str, discrimination: Discrimination) -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command.arg("address").arg("account").arg(&public_key);
@@ -159,14 +159,14 @@ fn add_discrimination(command: &mut Command, discrimination: Discrimination) {
     }
 }
 
-/// Get adress single command.
+/// Get address single command.
 pub fn get_genesis_init_command() -> Command {
     let mut command = Command::new(configuration::get_jcli_app().as_os_str());
     command.arg("genesis").arg("init");
     command
 }
 
-/// Get adress single command.
+/// Get address single command.
 pub fn get_address_delegation_command(
     public_key: &str,
     delegation_key: &str,
