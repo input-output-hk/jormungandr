@@ -14,3 +14,29 @@ pub fn test_unbalanced_output_utxo_transation_is_not_finalized() {
         .assert_add_output(&reciever.address, &150)
         .assert_finalize_fail("not enough input for making transaction");
 }
+
+#[test]
+pub fn test_finalize_empty_transaction() {
+    JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH).assert_finalize();
+}
+
+#[test]
+pub fn test_finalize_transaction_with_single_input() {
+    JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH)
+        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
+        .assert_finalize();
+}
+
+#[test]
+pub fn test_finalize_transaction_with_single_account() {
+    JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH)
+        .assert_add_account(&FAKE_ACCOUNT_ADDRESS, &100)
+        .assert_finalize();
+}
+
+#[test]
+pub fn test_finalize_transaction_with_single_output() {
+    JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH)
+        .assert_add_output(&FAKE_ACCOUNT_ADDRESS, &100)
+        .assert_finalize_fail("not enough input for making transaction");
+}

@@ -114,7 +114,7 @@ pub fn test_make_witness_with_non_existing_private_key_file_fails() {
         .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
         .assert_add_output(&reciever.address, &100)
         .assert_finalize()
-        .assert_make_witness_fails(&witness, "NotFound");
+        .assert_make_witness_fails(&witness, "could not open secret key file 'a'");
 }
 
 #[test]
@@ -177,4 +177,82 @@ pub fn test_make_witness_with_wrong_transaction_id_hash_fails() {
         .assert_add_output(&reciever.address, &100)
         .assert_finalize()
         .assert_make_witness_fails(&witness, "invalid hex encoding for hash value");
+}
+
+#[test]
+pub fn test_make_witness_for_utxo() {
+    let reciever = startup::create_new_utxo_address();
+    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let private_key = jcli_wrapper::assert_key_generate_default();
+
+    let witness = Witness::new(
+        FAKE_GENESIS_HASH,
+        FAKE_INPUT_TRANSACTION_ID,
+        "utxo",
+        &private_key,
+        &0,
+    );
+    transaction_wrapper
+        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
+        .assert_add_output(&reciever.address, &100)
+        .assert_finalize()
+        .assert_make_witness(&witness);
+}
+
+#[test]
+pub fn test_make_witness_for_account() {
+    let reciever = startup::create_new_utxo_address();
+    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let private_key = jcli_wrapper::assert_key_generate_default();
+
+    let witness = Witness::new(
+        FAKE_GENESIS_HASH,
+        FAKE_INPUT_TRANSACTION_ID,
+        "account",
+        &private_key,
+        &0,
+    );
+    transaction_wrapper
+        .assert_add_account(&FAKE_ACCOUNT_ADDRESS, &100)
+        .assert_add_output(&reciever.address, &100)
+        .assert_finalize()
+        .assert_make_witness(&witness);
+}
+
+#[test]
+pub fn test_make_witness_for_legacy_utxo() {
+    let reciever = startup::create_new_utxo_address();
+    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let private_key = jcli_wrapper::assert_key_generate("Ed25519Bip32");
+
+    let witness = Witness::new(
+        FAKE_GENESIS_HASH,
+        FAKE_INPUT_TRANSACTION_ID,
+        "legacy-utxo",
+        &private_key,
+        &0,
+    );
+    transaction_wrapper
+        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
+        .assert_add_output(&reciever.address, &100)
+        .assert_finalize()
+        .assert_make_witness_fails(&witness, "making legacy UTxO witness unsupported");
+}
+
+#[test]
+pub fn test_cannot_seal_transaction_with_too_many_witnesses() {
+    let reciever = startup::create_new_utxo_address();
+
+    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let witness_1 = transaction_wrapper.create_witness_default("utxo");
+    let witness_2 = transaction_wrapper.create_witness_default("utxo");
+
+    transaction_wrapper
+        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
+        .assert_add_output(&reciever.address, &100)
+        .assert_finalize()
+        .assert_make_witness(&witness_1)
+        .assert_make_witness(&witness_2)
+        .assert_add_witness(&witness_1)
+        .assert_add_witness_fail(&witness_2, "too many witnesses in transaction");
 }
