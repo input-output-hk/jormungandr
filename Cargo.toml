@@ -9,6 +9,5 @@ members = [
 ]
 
 exclude = [
-    "cardano-deps",
     "chain-deps",
 ]

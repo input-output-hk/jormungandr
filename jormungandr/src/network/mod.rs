@@ -7,8 +7,6 @@
 
 mod client;
 mod grpc;
-// TODO: to be ported
-//mod ntt;
 pub mod p2p;
 mod service;
 mod subscription;
