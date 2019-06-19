@@ -48,7 +48,7 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
 
     let mut config = JormungandrConfig::new();
     config.genesis_yaml.initial = vec![Initial::Fund(Fund {
-        value: 100,
+        value: 100.into(),
         address: test_address.clone(),
     })];
     config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());

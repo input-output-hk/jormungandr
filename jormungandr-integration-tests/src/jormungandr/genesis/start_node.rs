@@ -51,7 +51,7 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
         ])
         .with_funds(vec![Fund {
             address: faucet.address.clone(),
-            value: 100,
+            value: 100.into(),
         }])
         .build();
 
@@ -113,7 +113,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         ])
         .with_funds(vec![Fund {
             address: faucet.address.clone(),
-            value: 100,
+            value: 100.into(),
         }])
         .build();
 

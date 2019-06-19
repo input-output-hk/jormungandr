@@ -6,6 +6,7 @@ extern crate rand;
 extern crate rand_chacha;
 extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
+use jormungandr_lib::interfaces::Value;
 use std::path::PathBuf;
 use std::vec::Vec;
 
@@ -51,7 +52,7 @@ pub struct LinearFees {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Fund {
-    pub value: i32,
+    pub value: Value,
     pub address: String,
 }
 
@@ -94,11 +95,11 @@ impl GenesisYaml {
         let initial_funds = vec![
             Fund {
                 address: String::from(initial_funds_address1),
-                value: 100,
+                value: 100.into(),
             },
             Fund {
                 address: String::from(initial_funds_address2),
-                value: 100,
+                value: 100.into(),
             },
         ];
         GenesisYaml::new_with_funds(initial_funds)

@@ -28,7 +28,7 @@ impl TransactionCommands {
     pub fn get_add_input_command(
         &self,
         tx_id: &str,
-        tx_index: &i32,
+        tx_index: u8,
         amount: &str,
         staging_file: &PathBuf,
     ) -> Command {
@@ -47,7 +47,7 @@ impl TransactionCommands {
     pub fn get_add_account_command(
         &self,
         account_addr: &str,
-        amount: &i32,
+        amount: &str,
         staging_file: &PathBuf,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
@@ -55,7 +55,7 @@ impl TransactionCommands {
             .arg("transaction")
             .arg("add-account")
             .arg(account_addr.to_string())
-            .arg(amount.to_string())
+            .arg(amount)
             .arg("--staging")
             .arg(staging_file.as_os_str());
         command
@@ -64,7 +64,7 @@ impl TransactionCommands {
     pub fn get_add_output_command(
         &self,
         addr: &str,
-        amount: &i32,
+        amount: &str,
         staging_file: &PathBuf,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
@@ -72,7 +72,7 @@ impl TransactionCommands {
             .arg("transaction")
             .arg("add-output")
             .arg(&addr)
-            .arg(amount.to_string())
+            .arg(amount)
             .arg("--staging")
             .arg(staging_file.as_os_str());
         command

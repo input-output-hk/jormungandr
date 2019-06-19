@@ -56,6 +56,12 @@ impl From<Value> for value::Value {
     }
 }
 
+impl From<u64> for Value {
+    fn from(v: u64) -> Self {
+        Value(value::Value(v))
+    }
+}
+
 /* ------------------- Serde ----------------------------------------------- */
 
 impl Serialize for Value {
