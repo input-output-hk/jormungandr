@@ -1,8 +1,6 @@
-mod utxo;
-
-use self::utxo::Utxo;
 use actix_web::{App, Json, Responder, State};
 use blockchain::BlockchainR;
+use jormungandr_lib::interfaces::UTxOInfo;
 
 pub fn create_handler(
     blockchain: BlockchainR,
@@ -22,6 +20,6 @@ fn handle_request(blockchain: State<BlockchainR>) -> impl Responder {
         .get(&blockchain.get_tip().unwrap())
         .unwrap()
         .utxos();
-    let utxos = utxos.map(Utxo::from).collect::<Vec<_>>();
+    let utxos = utxos.map(UTxOInfo::from).collect::<Vec<_>>();
     Json(utxos)
 }
