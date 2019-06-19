@@ -1,5 +1,7 @@
 # Node organisation
 
+## Node Files
+<mention files that the node needs to start: genesis, config.yaml> 
 
 ## Secure Enclave
 
@@ -48,3 +50,6 @@ to be able to do maintenance tasks on the process:
 * Load/Retire cryptographic material
 
 TODO: Detail the ACL/Security measure
+
+## Logging Considerations
+<include some logging considerations>
