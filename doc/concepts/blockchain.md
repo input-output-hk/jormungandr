@@ -55,12 +55,12 @@ The node currently support the following consensus protocol:
 
 Ouroboros BFT is a simple Byzantine Fault Tolerant (BFT) protocol where the
 block makers is a known list of leaders that successively create a block and
-broadcast it on the network
+broadcast it on the network.
 
 Ouroboros Genesis Praos is a proof of stake (PoS) protocol where the block
-makers is a lottery where each stake pool has a chance proportional to their
-stake to be elected to create a block. Each lottery draw is private to each
-stake pool, so that the overall network doesn't know in advance who can
+maker is made of a lottery where each stake pool has a chance proportional to
+their stake to be elected to create a block. Each lottery draw is private to
+each stake pool, so that the overall network doesn't know in advance who can
 or cannot create blocks.
 
 ## Leadership
@@ -77,3 +77,48 @@ duration of an epoch.
 Leader are an abstration related to the specific actor that have the ability
 to create block; In OBFT mode, the leader just the owner of a cryptographic
 key, whereas in GenesisPraos mode, the leader is a stake pool.
+
+## Transaction
+
+Transaction forms the cornerstone of the blockchain, and is one type of fragment
+and also the most frequent one.
+
+Transaction is composed of inputs and outputs; On one side, the inputs represent
+coins being spent, and on the other side the outputs represent coins being received.
+
+```
+    Inputs         Alice (80$)        Bob (20$)
+                        \             /
+                         \           /
+                          -----------
+                                120$
+                             --------- 
+                            /         \
+    Outputs            Charlie (50$)  Dan (50$)
+```
+
+Transaction have fees that are defined by the blockchain settings and the following invariant hold:
+
+\\[ \sum Inputs = \sum Outputs + fees \\]
+
+Transaction need to be authorized by each of the inputs in the transaction by their respective witness.
+In the most basic case, a witness is a cryptographic signature, but depending on the type of input can
+the type of witness vary.
+
+## Accounting
+
+The blockchain has two methods of accounting which are interoperable:
+
+* Unspent Transaction Output (UTXO)
+* Accounts
+
+UTXO behaves like cash/notes, and work like fixed denomination ticket that are
+cumulated. This is the accounting model found in Bitcoin. A UTXO is uniquely
+reference by its transaction ID and its index.
+
+Accounts behaves like a bank account, and are simpler to use since exact amount
+can be used. This is the accounting model found in Ethereum. An account is
+uniquely identified by its public key.
+
+Each inputs could refer arbitrarily to an account or a UTXO, and similarly
+each outputs could refer to an account or represent a new UTXO.

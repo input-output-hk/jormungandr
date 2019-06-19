@@ -9,6 +9,7 @@
 
 - [General Concepts](./concepts/introduction.md)
     - [Blockchain concepts](./concepts/blockchain.md)
+    - [Stake](./concepts/stake.md)
     - [Node organisation](./concepts/node.md)
 
 - [Configuration](./configuration/introduction.md)
@@ -16,7 +17,6 @@
     - [Node network](./configuration/network.md)
 
 - [staking and stake pool](./stake_pool/introduction.md)
-    - [registering your stake](./stake_pool/registering_stake.md)
     - [delegating your stake](./stake_pool/delegating_stake.md)
     - [registering stake pool](./stake_pool/registering_stake_pool.md)
 
