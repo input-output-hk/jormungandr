@@ -36,8 +36,6 @@ To `jcli transaction add-certificate` command can be used to add a certificate t
 
 For example:
 
-Note that in order to finalize a transaction, it should have both inputs and outputs.
-
 ```sh
 
 ...
