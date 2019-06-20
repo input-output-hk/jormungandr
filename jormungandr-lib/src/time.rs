@@ -12,8 +12,23 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{convert::TryFrom, fmt, str, time};
 
 /// time in seconds since [UNIX Epoch]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SecondsSinceUnixEpoch(u64);
+///
+/// This type is meant to be easily converted between [`SystemTime`]
+///
+/// # Example
+///
+/// ```
+/// # use jormungandr_lib::time::{SystemTime, SecondsSinceUnixEpoch};
+///
+/// let time = SystemTime::from(SecondsSinceUnixEpoch::MAX);
+///
+/// println!("max allowed time: {}", time);
+/// // max allowed time: 4147-08-20T07:32:15+00:00
+/// ```
+///
+/// [`SystemTime`]: ./struct.SystemTime.html
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub struct SecondsSinceUnixEpoch(pub(crate) u64);
 
 /// time in seconds and nanoseconds since [UNIX Epoch]
 ///
@@ -76,7 +91,10 @@ pub struct LocalDateTime(DateTime<Local>);
 pub struct Duration(time::Duration);
 
 impl SecondsSinceUnixEpoch {
-    pub const MAX: Self = SecondsSinceUnixEpoch(u64::max_value() / 2);
+    /// maximum authorized Time in seconds since unix epoch
+    ///
+    /// This value will take you up to the year 4147.
+    pub const MAX: Self = SecondsSinceUnixEpoch(0x000_000F_FFFF_FFFF);
 }
 
 impl SystemTime {
@@ -231,7 +249,6 @@ impl From<SecondsSinceUnixEpoch> for SystemTime {
         // here we can safely unwrap as we are adding from UNIX_EPOCH (0)
         // and SecondsSinceUnixEpoch is always a positive integer
         // and seconds will always be within bounds
-        dbg!(time::UNIX_EPOCH);
         time::UNIX_EPOCH
             .checked_add(time::Duration::from_secs(seconds.0))
             .unwrap()
@@ -252,29 +269,38 @@ impl From<SystemTime> for SecondsSinceUnixEpoch {
 
 /* ------------------- Serde ----------------------------------------------- */
 
-impl Serialize for SecondsSinceUnixEpoch {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.serialize(serializer)
-    }
-}
-
 impl<'de> Deserialize<'de> for SecondsSinceUnixEpoch {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        use serde::de::Error as _;
+        use serde::de::{self, Visitor};
+        struct SecondsSinceUnixEpochVisitor;
+        impl<'de> Visitor<'de> for SecondsSinceUnixEpochVisitor {
+            type Value = SecondsSinceUnixEpoch;
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(
+                    formatter,
+                    "Seconds since unix epoch up to '{}' ({})",
+                    SecondsSinceUnixEpoch::MAX,
+                    SystemTime::from(SecondsSinceUnixEpoch::MAX),
+                )
+            }
 
-        let time = u64::deserialize(deserializer).map(SecondsSinceUnixEpoch)?;
+            fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                let seconds = SecondsSinceUnixEpoch(v);
 
-        if time > SecondsSinceUnixEpoch::MAX {
-            Err(D::Error::custom("Time value is way too far in the future"))
-        } else {
-            Ok(time)
+                if seconds > SecondsSinceUnixEpoch::MAX {
+                    Err(E::custom("Time value is way too far in the future"))
+                } else {
+                    Ok(seconds)
+                }
+            }
         }
+        deserializer.deserialize_u64(SecondsSinceUnixEpochVisitor)
     }
 }
 
@@ -296,11 +322,24 @@ impl<'de> Deserialize<'de> for SystemTime {
     where
         D: Deserializer<'de>,
     {
-        if deserializer.is_human_readable() {
-            use std::str::FromStr as _;
+        use serde::de::{self, Visitor};
+        struct SystemTimeVisitor;
+        impl<'de> Visitor<'de> for SystemTimeVisitor {
+            type Value = SystemTime;
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("SystemTime in ISO8601 format")
+            }
 
-            let s = String::deserialize(deserializer)?;
-            SystemTime::from_str(&s).map_err(<D::Error as serde::de::Error>::custom)
+            fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                s.parse().map_err(E::custom)
+            }
+        }
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_str(SystemTimeVisitor)
         } else {
             time::SystemTime::deserialize(deserializer).map(SystemTime)
         }
@@ -325,11 +364,24 @@ impl<'de> Deserialize<'de> for Duration {
     where
         D: Deserializer<'de>,
     {
-        if deserializer.is_human_readable() {
-            use std::str::FromStr as _;
+        use serde::de::{self, Visitor};
+        struct DurationVisitor;
+        impl<'de> Visitor<'de> for DurationVisitor {
+            type Value = Duration;
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("duration in the form of '10days 7h 2m 45s'")
+            }
 
-            let s = String::deserialize(deserializer)?;
-            Duration::from_str(&s).map_err(<D::Error as serde::de::Error>::custom)
+            fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                s.parse().map_err(E::custom)
+            }
+        }
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_str(DurationVisitor)
         } else {
             time::Duration::deserialize(deserializer).map(Duration)
         }
@@ -344,7 +396,7 @@ impl Serialize for LocalDateTime {
         if serializer.is_human_readable() {
             self.to_string().serialize(serializer)
         } else {
-            unimplemented!()
+            unimplemented!("non human readable format not supported for LocalDateTime")
         }
     }
 }
@@ -354,14 +406,27 @@ impl<'de> Deserialize<'de> for LocalDateTime {
     where
         D: Deserializer<'de>,
     {
-        if deserializer.is_human_readable() {
-            use std::str::FromStr as _;
+        use serde::de::{self, Visitor};
+        struct LocalDateTimeVisitor;
+        impl<'de> Visitor<'de> for LocalDateTimeVisitor {
+            type Value = LocalDateTime;
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("local date time, in RFC2822 format")
+            }
 
-            let s = String::deserialize(deserializer)?;
-            LocalDateTime::from_str(&s).map_err(<D::Error as serde::de::Error>::custom)
-        } else {
-            unimplemented!()
+            fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                s.parse().map_err(E::custom)
+            }
         }
+
+        assert!(
+            deserializer.is_human_readable(),
+            "LocalDateTime only supported for human readable format"
+        );
+        deserializer.deserialize_str(LocalDateTimeVisitor)
     }
 }
 
