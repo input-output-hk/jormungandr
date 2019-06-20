@@ -12,6 +12,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{convert::TryFrom, fmt, str, time};
 
 /// time in seconds since [UNIX Epoch]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SecondsSinceUnixEpoch(u64);
+
+/// time in seconds and nanoseconds since [UNIX Epoch]
 ///
 /// The human readable formatting is [ISO8601] compliant.
 ///
@@ -70,6 +74,10 @@ pub struct LocalDateTime(DateTime<Local>);
 /// [UNIX Epoch]: https://en.wikipedia.org/wiki/Unix_time
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Duration(time::Duration);
+
+impl SecondsSinceUnixEpoch {
+    pub const MAX: Self = SecondsSinceUnixEpoch(u64::max_value() / 2);
+}
 
 impl SystemTime {
     /// get the current time in seconds since [UNIX Epoch]
@@ -156,6 +164,19 @@ impl str::FromStr for LocalDateTime {
     }
 }
 
+impl fmt::Display for SecondsSinceUnixEpoch {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl str::FromStr for SecondsSinceUnixEpoch {
+    type Err = std::num::ParseIntError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse().map(SecondsSinceUnixEpoch)
+    }
+}
+
 /* --------------------- AsRef --------------------------------------------- */
 
 impl AsRef<time::Duration> for Duration {
@@ -187,13 +208,75 @@ impl TryFrom<SystemTime> for LocalDateTime {
     }
 }
 
+impl From<time::SystemTime> for SystemTime {
+    fn from(system_time: time::SystemTime) -> Self {
+        SystemTime(system_time)
+    }
+}
+
+impl From<SystemTime> for time::SystemTime {
+    fn from(system_time: SystemTime) -> Self {
+        system_time.0
+    }
+}
+
 impl From<time::Duration> for Duration {
     fn from(duration: time::Duration) -> Self {
         Duration(duration)
     }
 }
 
+impl From<SecondsSinceUnixEpoch> for SystemTime {
+    fn from(seconds: SecondsSinceUnixEpoch) -> SystemTime {
+        // here we can safely unwrap as we are adding from UNIX_EPOCH (0)
+        // and SecondsSinceUnixEpoch is always a positive integer
+        // and seconds will always be within bounds
+        dbg!(time::UNIX_EPOCH);
+        time::UNIX_EPOCH
+            .checked_add(time::Duration::from_secs(seconds.0))
+            .unwrap()
+            .into()
+    }
+}
+
+impl From<SystemTime> for SecondsSinceUnixEpoch {
+    fn from(system_time: SystemTime) -> SecondsSinceUnixEpoch {
+        // duration since UNIX EPOCH will never go beyond boundaries
+        system_time
+            .0
+            .duration_since(time::UNIX_EPOCH)
+            .map(|d| SecondsSinceUnixEpoch(d.as_secs()))
+            .unwrap()
+    }
+}
+
 /* ------------------- Serde ----------------------------------------------- */
+
+impl Serialize for SecondsSinceUnixEpoch {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for SecondsSinceUnixEpoch {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error as _;
+
+        let time = u64::deserialize(deserializer).map(SecondsSinceUnixEpoch)?;
+
+        if time > SecondsSinceUnixEpoch::MAX {
+            Err(D::Error::custom("Time value is way too far in the future"))
+        } else {
+            Ok(time)
+        }
+    }
+}
 
 impl Serialize for SystemTime {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -316,6 +399,12 @@ mod test {
         }
     }
 
+    impl Arbitrary for SecondsSinceUnixEpoch {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            SecondsSinceUnixEpoch(u64::arbitrary(g) % SecondsSinceUnixEpoch::MAX.0)
+        }
+    }
+
     quickcheck! {
         fn system_time_display_parse(time: SystemTime) -> bool {
             let s = time.to_string();
@@ -376,6 +465,19 @@ mod test {
             duration == duration_dec
         }
 
+        fn seconds_since_unix_epoch_serde_human_readable_encode_decode(seconds: SecondsSinceUnixEpoch) -> bool {
+            let s = serde_yaml::to_string(&seconds).unwrap();
+            let seconds_dec: SecondsSinceUnixEpoch = serde_yaml::from_str(&s).unwrap();
+
+            seconds == seconds_dec
+        }
+
+        fn seconds_since_unix_epoch_serde_binary_readable_encode_decode(seconds: SecondsSinceUnixEpoch) -> bool {
+            let s = bincode::serialize(&seconds).unwrap();
+            let seconds_dec: SecondsSinceUnixEpoch = bincode::deserialize(&s).unwrap();
+
+            seconds == seconds_dec
+        }
     }
 
     #[test]
@@ -428,4 +530,29 @@ mod test {
         )
     }
 
+    #[test]
+    fn check_conversions_seconds_since_epoch_between_system_time_boundaries() {
+        let seconds_since_epoch = SecondsSinceUnixEpoch::MAX;
+
+        let system_time = SystemTime::from(seconds_since_epoch);
+
+        let seconds_since_epoch_2 = SecondsSinceUnixEpoch::from(system_time);
+
+        assert_eq!(seconds_since_epoch, seconds_since_epoch_2);
+    }
+
+    #[test]
+    fn seconds_since_unix_epoch_serde_human_readable() {
+        let duration = SecondsSinceUnixEpoch(9982716);
+
+        assert_eq!(serde_yaml::to_string(&duration).unwrap(), "---\n9982716")
+    }
+
+    #[test]
+    #[should_panic]
+    fn out_of_bound_seconds_since_unix_epoch_serde_human_readable_fail() {
+        let invalid_yaml = format!("---\n{}", SecondsSinceUnixEpoch::MAX.0 + 1);
+
+        let _: SecondsSinceUnixEpoch = serde_yaml::from_str(&invalid_yaml).unwrap();
+    }
 }
