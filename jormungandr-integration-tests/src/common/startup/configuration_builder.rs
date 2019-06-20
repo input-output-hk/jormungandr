@@ -1,5 +1,5 @@
 use crate::common::configuration::{
-    genesis_model::{Fund, GenesisYaml},
+    genesis_model::{Fund, GenesisYaml, Initial, LinearFees},
     jormungandr_config::JormungandrConfig,
     node_config_model::{Logger, NodeConfig, Peer},
     secret_model::SecretModel,
@@ -15,6 +15,7 @@ pub struct ConfigurationBuilder {
     bft_slots_ratio: Option<String>,
     consensus_genesis_praos_active_slot_coeff: Option<String>,
     kes_update_speed: u32,
+    linear_fees: LinearFees,
     certs: Vec<String>,
     consensus_leader_ids: Vec<String>,
 }
@@ -29,6 +30,11 @@ impl ConfigurationBuilder {
             block0_hash: None,
             block0_consensus: Some("bft".to_string()),
             logger: None,
+            linear_fees: LinearFees {
+                constant: 0,
+                coefficient: 0,
+                certificate: 0,
+            },
             bft_slots_ratio: Some("0.222".to_owned()),
             consensus_genesis_praos_active_slot_coeff: Some("0.1".to_owned()),
             kes_update_speed: 12 * 3600,
@@ -37,6 +43,11 @@ impl ConfigurationBuilder {
 
     pub fn with_kes_update_speed<'a>(&'a mut self, kes_update_speed: u32) -> &'a mut Self {
         self.kes_update_speed = kes_update_speed;
+        self
+    }
+
+    pub fn with_linear_fees<'a>(&'a mut self, linear_fees: LinearFees) -> &'a mut Self {
+        self.linear_fees = linear_fees;
         self
     }
 
@@ -112,7 +123,9 @@ impl ConfigurationBuilder {
             .blockchain_configuration
             .consensus_genesis_praos_active_slot_coeff =
             self.consensus_genesis_praos_active_slot_coeff.clone();
-        genesis_model.initial_certs = self.certs.clone();
+        genesis_model.blockchain_configuration.linear_fees = self.linear_fees.clone();
+        let certs = self.certs.iter().cloned().map(Initial::Cert);
+        genesis_model.initial.extend(certs);
         let path_to_output_block = super::build_genesis_block(&genesis_model);
 
         let mut config = JormungandrConfig::from(genesis_model, node_config);

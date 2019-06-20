@@ -29,7 +29,9 @@ RUN mkdir -p ${ENV_PREFIX} && \
     cargo build --release && \
     cargo install --force --path jormungandr && \
     cargo install --force --path jcli && \
-    cp scripts/bootstrap $HOME/.cargo/bin/jormungandr $HOME/.cargo/bin/jcli ${ENV_PREFIX}/bin && \
+    cp scripts/bootstrap \
+        scripts/faucet-send-money.shtempl scripts/faucet-send-certificate.shtempl scripts/create-account-and-delegate.shtempl scripts/jcli-helpers \
+        $HOME/.cargo/bin/jormungandr $HOME/.cargo/bin/jcli ${ENV_PREFIX}/bin && \
     rm -rf $HOME/.cargo $HOME/.rustup ${ENV_PREFIX}/src
 
 RUN export PATH=$ENV_PREFIX/bin:$PATH && \ 

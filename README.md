@@ -2,19 +2,20 @@
 
 > Just because you call something a blockchain, that doesn't mean you aren't subject to normal engineering laws.
 
-Documentation available [here](https://input-output-hk.github.io/jormungandr)
+User guide documentation available [here](https://input-output-hk.github.io/jormungandr)
 
 ## How to install from sources
 
-Currently the minimum supported version of the rust compiler is 1.35, however we recommend to utilise the most recent stable version of the rust compiler.
+Currently the minimum supported version of the rust compiler is 1.35, however
+we recommend to use the most recent stable version of the rust compiler.
 
 1. [install rustup](https://www.rust-lang.org/tools/install)
-2. run `rustup install stable`
-3. run `rustup default stable`
-4. clone this repository: `git clone https://github.com/input-output-hk/jormungandr`
-5. make sure you have cloned the submodule too: `git submodule update --init --recursive`
+2. Run `rustup install stable`
+3. Run `rustup default stable`
+4. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
+5. Enter the repository directory: `cd jormungandr`
 6. install **jormungandr**: `cargo install --path jormungandr`
-6. install **jcli**: `cargo install --path jcli`
+7. install **jcli**: `cargo install --path jcli`
 
 Note:
 
@@ -24,93 +25,74 @@ Note:
 
 This will install 2 tools:
 
-* `jormungandr`: the cardano node;
-* `jcli`: a command line tool to help you use and setup the cardano node;
+* `jormungandr`: the node part of the blockchain;
+* `jcli`: a command line helper tool to help you use and setup the node;
+
+## How to install from binaries
+
+Our binaries releases are available [here](https://github.com/input-output-hk/jormungandr/releases)
+for many operating systems and architecture, but in due time, jormungandr will
+be available through package managers.
 
 ## How To Use
 
-In order to use jormungandr you need to configure your blockchain and
-configure your node.
+A functional node needs 2 configurations:
 
-* the Genesis File is the source of truth, the configuration of the blockchain;
-* the Node Configuration file is the configuration of the node (logging, peer addresses...);
+1. Its own system configuration: Where to store data, network configuration, logging.
+2. The blockchain genesis configuration which contains the initial trusted setup of the blockchain:
+   coin configuration, consensus settings, initial state.
 
-### Node Configuration
+In normal use, the blockchain genesis configuration is given to you or
+automatically fetched from the network.
 
-Example of node config:
+More documentation on the node configuration can be found [here](https://input-output-hk.github.io/jormungandr/configuration/introduction.html),
+and for the blockchain genesis configuration [here](https://input-output-hk.github.io/jormungandr/advanced/introduction.html)
 
-```YAML
-storage: "/tmp/storage"
-logger:
-  verbosity: 1
-  format: json
-peer_2_peer:
-  trusted_peers:
-    - id: 1
-      address: "/ip4/104.24.28.11/tcp/8299"
-    - id: 2
-      address: "/ip4/104.24.29.11/tcp/8299"
-  public_address: "/ip4/127.0.0.1/tcp/8080"
-  topics_of_interests:
-    messages: low
-    blocks: normal
-```
+## Quick-Start for private mode
 
-Fields description:
+Follow instructions on installation, then to start a private and minimal
+test setup:
 
-  - *storage*: (optional) path to the storage. If omitted, the
-    blockchain is stored in memory only.
-  - *logger*: (optional) logger configuration,
-    - *verbosity*: 
-      - 0: warning
-      - 1: info
-      - 2: debug
-      - 3 and above: trace
-    - *format*: log output format - plain or json.
-    - *output*: log output - stderr, syslog (unix only) or journald (linux with systemd only, must be enabled during compilation)
-  - *rest*: (optional) configuration of the rest endpoint.
-    - *listen*: listen address
-    - *pkcs12*: certificate file (optional)
-    - *prefix*: (optional) api prefix
-  - *peer_2_peer*: the P2P network settings
-    - *trusted_peers*: (optional) the list of nodes to connect to in order to
-      bootstrap the p2p topology (and bootstrap our local blockchain);
-    - *public_id*: (optional) the public identifier send to the other nodes in the
-      p2p network. If not set it will be randomly generated.
-    - *public_address*: the address to listen from and accept connection
-      from. This is the public address that will be distributed to other peers
-      of the network that may find interest into participating to the blockchain
-      dissemination with the node;
-    - *topics_of_interests*: the different topics we are interested to hear about:
-      - *messages*: notify other peers this node is interested about Transactions
-        typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
-      - *blocks*: notify other peers this node is interested about new Blocs.
-        typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`;
+1. In terminal, create an empty directory somewhere and enter this directory
+2. `PATH/TO/SOURCE/REPOSITORY/scripts/bootstrap <options>`
+3. execute the instruction to start printed at the end
 
-### Starting the node
+For a BFT setup, use the following recommended options:
 
-If you are not a leader node, then you can start the jormundandr with:
+    bootstrap -b
 
-```sh
-jormungandr --genesis-block block-0.bin \
-  --config example.config
-```
+For a Genesis-praos setup, use the following recommended options:
 
-# documentations
+    bootstrap -g -s 2
 
-Documentation is available as markdown [here](doc/SUMMARY.md)
+For help on the options:
 
-* [internal design](./doc/internal_design.md) of jormungandr
+    bootstrap -h
 
-# Extra tooling
+The bootstrap script creates a simple setup with a faucet with 10 millions
+coins, a BFT leader, and a stake pool.
 
-## CLI
+The bootstrap script also create 2 shell scripts parametrized to this specific
+run of bootstrap:
 
-Building:
+* `faucet-send-money`
+* `faucet-send-certificate`
 
-```sh
-cargo build --bin jcli
-```
+Both scripts can be used to do simple limited operation through the jcli debugging tools.
+
+## Quick-Start in public mode
+
+:warning: This is not currently functional :warning:
+
+To start a new node from scratch on a given blockchain, you need to know the
+block0 hash of this blockchain for trust purpose and internet peers to connect
+to. The simplest way to start such a node is:
+
+    jormungandr --block0-hash <HASH> --trusted-peers <IPs>
+
+# Documentation
+
+Documentation is available in the markdown format [here](doc/SUMMARY.md)
 
 # License
 
@@ -120,5 +102,3 @@ This project is licensed under either of the following licenses:
    http://www.apache.org/licenses/LICENSE-2.0)
  * MIT license ([LICENSE-MIT](LICENSE-MIT) or
    http://opensource.org/licenses/MIT)
-
-Please choose the licence you want to use.

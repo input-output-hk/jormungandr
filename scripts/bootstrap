@@ -197,12 +197,12 @@ blockchain_configuration:
   block0_consensus: ${CONSENSUS}
   bft_slots_ratio: 0
   kes_update_speed: 43200 # 12hours
-initial_certs:
-  - ${STAKE_POOL_CERT}
-  - ${STAKE_DELEGATION_CERT}
-initial_funds:
-  - address: ${FAUCET_ADDR}
-    value: ${FAUCET_AMOUNT}
+initial:
+  - fund:
+      address: ${FAUCET_ADDR}
+      value: ${FAUCET_AMOUNT}
+  - cert: ${STAKE_POOL_CERT}
+  - cert: ${STAKE_DELEGATION_CERT}
 EOF
 
 cat << EOF > ${SECRET_PATH}/pool-secret1.yaml
@@ -255,7 +255,7 @@ echo "  $NODE --genesis-block ${CONFIG_PATH}/block-0.bin --config ${CONFIG_PATH}
 echo "To connect using CLI REST:"
 echo "  $CLI rest v0 <CMD> --host \"${REST_URL}\""
 echo "For example:"
-echo "  $CLI rest v0 node stats -h \"${REST_URL}\""
+echo "  $CLI rest v0 node stats get -h \"${REST_URL}\""
 
 find "./${TMPDIR}/" -maxdepth 1 -type f -exec rm {} \; && rmdir $TMPDIR
 
@@ -272,16 +272,20 @@ else
       sed -e "s/####FAUCET_SK####/${FAUCET_SK}/" \
           -e "s/####BLOCK0_HASH####/${BLOCK0_HASH}/" \
           -e "s;####REST_URL####;${REST_URL};" \
-          -e "s/####CLI####/${CLI}/" \
+          -e "s;####CLI####;${CLI};" \
           -e "s/####COLORS####/${COLORS}/" \
           -e "s/####FEE_CONSTANT####/${FEE_CONSTANT}/" \
           -e "s/####FEE_CERTIFICATE####/${FEE_CERTIFICATE}/" \
           -e "s/####FEE_COEFFICIENT####/${FEE_COEFFICIENT}/" \
           -e "s/####ADDRTYPE####/${ADDRTYPE}/" \
+          -e "s/####STAKE_POOL_ID####/${STAKE_POOL_ID}/" \
           < ${FROM} > ${TO}
+
+      chmod +x ${TO}
     }
 
     process_file "$SCRIPTPATH/faucet-send-money.shtempl" faucet-send-money.sh
     process_file "$SCRIPTPATH/faucet-send-certificate.shtempl" faucet-send-certificate.sh
+    process_file "$SCRIPTPATH/create-account-and-delegate.shtempl" create-account-and-delegate.sh
     exit 0
 fi

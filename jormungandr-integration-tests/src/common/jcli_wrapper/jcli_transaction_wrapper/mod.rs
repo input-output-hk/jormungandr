@@ -3,15 +3,18 @@
 pub mod jcli_transaction_commands;
 
 use self::jcli_transaction_commands::TransactionCommands;
-use crate::common::configuration::genesis_model::Fund;
+use crate::common::configuration::genesis_model::{Fund, LinearFees};
 use crate::common::data::address::AddressDataProvider;
-use crate::common::data::utxo::Utxo as UtxoData;
 use crate::common::data::witness::Witness;
 use crate::common::file_utils;
 use crate::common::jcli_wrapper;
 use crate::common::process_assert;
 use crate::common::process_utils;
 use crate::common::process_utils::output_extensions::ProcessOutput;
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{UTxOInfo, Value},
+};
 use std::path::PathBuf;
 
 #[derive(Debug)]
@@ -41,37 +44,41 @@ impl JCLITransactionWrapper {
     }
 
     pub fn build_transaction_from_utxo<T: AddressDataProvider, U: AddressDataProvider>(
-        utxo: &UtxoData,
-        input_amount: &i32,
-        reciever: &T,
-        output_amount: &i32,
+        utxo: &UTxOInfo,
+        input_amount: &Value,
+        receiver: &T,
+        output_amount: &Value,
         sender: &U,
         genesis_hash: &str,
     ) -> JCLITransactionWrapper {
         let mut transaction_builder = JCLITransactionWrapper::new_transaction(genesis_hash);
         transaction_builder
-            .assert_add_input(&utxo.in_txid, &utxo.in_idx, &input_amount)
-            .assert_add_output(&reciever.get_address(), &output_amount)
+            .assert_add_input(
+                &utxo.transaction_id(),
+                utxo.index_in_transaction(),
+                input_amount,
+            )
+            .assert_add_output(&receiver.get_address(), output_amount)
             .assert_finalize()
-            .seal_with_witness_deafult(&sender.get_private_key(), &reciever.get_address_type());
+            .seal_with_witness_default(&sender.get_private_key(), &receiver.get_address_type());
         transaction_builder
     }
 
     pub fn build_transaction<T: AddressDataProvider, U: AddressDataProvider>(
-        transaction_id: &str,
-        transaction_index: &i32,
-        input_amount: &i32,
-        reciever: &T,
-        output_amount: &i32,
+        transaction_id: &Hash,
+        transaction_index: u8,
+        input_amount: &Value,
+        receiver: &T,
+        output_amount: &Value,
         sender: &U,
         genesis_hash: &str,
     ) -> JCLITransactionWrapper {
         let mut transaction_builder = JCLITransactionWrapper::new_transaction(genesis_hash);
         transaction_builder
-            .assert_add_input(&transaction_id, &transaction_index, &input_amount)
-            .assert_add_output(&reciever.get_address(), &output_amount)
+            .assert_add_input(transaction_id, transaction_index, input_amount)
+            .assert_add_output(&receiver.get_address(), &output_amount)
             .assert_finalize()
-            .seal_with_witness_deafult(&sender.get_private_key(), &reciever.get_address_type());
+            .seal_with_witness_default(&sender.get_private_key(), &receiver.get_address_type());
         transaction_builder
     }
 
@@ -93,14 +100,14 @@ impl JCLITransactionWrapper {
 
     pub fn assert_add_input<'a>(
         &'a mut self,
-        tx_id: &str,
-        tx_index: &i32,
-        amount: &i32,
+        tx_id: &Hash,
+        tx_index: u8,
+        amount: &Value,
     ) -> &'a mut JCLITransactionWrapper {
         let output =
             process_utils::run_process_and_get_output(self.commands.get_add_input_command(
-                &tx_id,
-                &tx_index,
+                &tx_id.to_hex(),
+                tx_index,
                 &amount.to_string(),
                 &self.staging_file_path,
             ));
@@ -110,16 +117,16 @@ impl JCLITransactionWrapper {
 
     pub fn assert_add_input_fail<'a>(
         &'a mut self,
-        tx_id: &str,
-        tx_index: &i32,
+        tx_id: &Hash,
+        tx_index: u8,
         amount: &str,
         expected_part: &str,
     ) -> () {
         process_assert::assert_process_failed_and_contains_message(
             self.commands.get_add_input_command(
-                &tx_id,
-                &tx_index,
-                &amount,
+                &tx_id.to_hex(),
+                tx_index,
+                amount,
                 &self.staging_file_path,
             ),
             expected_part,
@@ -128,36 +135,45 @@ impl JCLITransactionWrapper {
 
     pub fn assert_add_input_from_utxo_with_value<'a>(
         &'a mut self,
-        utxo: &UtxoData,
-        amount: &i32,
+        utxo: &UTxOInfo,
+        amount: &Value,
     ) -> &'a mut JCLITransactionWrapper {
-        self.assert_add_input(&utxo.in_txid, &utxo.in_idx, &amount)
+        self.assert_add_input(&utxo.transaction_id(), utxo.index_in_transaction(), &amount)
     }
 
     pub fn assert_add_input_from_utxo<'a>(
         &'a mut self,
-        utxo: &UtxoData,
+        utxo: &UTxOInfo,
     ) -> &'a mut JCLITransactionWrapper {
-        self.assert_add_input(&utxo.in_txid, &utxo.in_idx, &utxo.out_value)
+        self.assert_add_input(
+            &utxo.transaction_id(),
+            utxo.index_in_transaction(),
+            utxo.associated_fund(),
+        )
     }
 
     pub fn assert_add_account<'a>(
         &'a mut self,
         account_addr: &str,
-        amount: &i32,
+        amount: &Value,
     ) -> &'a mut JCLITransactionWrapper {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_add_account_command(&account_addr, &amount, &self.staging_file_path),
-        );
+        let output =
+            process_utils::run_process_and_get_output(self.commands.get_add_account_command(
+                &account_addr,
+                &amount.to_string(),
+                &self.staging_file_path,
+            ));
         process_assert::assert_process_exited_successfully(output);
         self
     }
 
-    pub fn assert_add_account_fail(&self, account_addr: &str, amount: &i32, expected_msg: &str) {
+    pub fn assert_add_account_fail(&self, account_addr: &str, amount: &Value, expected_msg: &str) {
         process_assert::assert_process_failed_and_matches_message(
-            self.commands
-                .get_add_account_command(&account_addr, &amount, &self.staging_file_path),
+            self.commands.get_add_account_command(
+                &account_addr,
+                &amount.to_string(),
+                &self.staging_file_path,
+            ),
             expected_msg,
         );
     }
@@ -172,12 +188,14 @@ impl JCLITransactionWrapper {
     pub fn assert_add_output<'a>(
         &'a mut self,
         addr: &str,
-        amount: &i32,
+        amount: &Value,
     ) -> &'a mut JCLITransactionWrapper {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_add_output_command(&addr, &amount, &self.staging_file_path),
-        );
+        let output =
+            process_utils::run_process_and_get_output(self.commands.get_add_output_command(
+                &addr,
+                &amount.to_string(),
+                &self.staging_file_path,
+            ));
         process_assert::assert_process_exited_successfully(output);
         self
     }
@@ -186,6 +204,21 @@ impl JCLITransactionWrapper {
         let output = process_utils::run_process_and_get_output(
             self.commands.get_finalize_command(&self.staging_file_path),
         );
+        process_assert::assert_process_exited_successfully(output);
+        self
+    }
+
+    pub fn assert_finalize_with_fee<'a>(
+        &'a mut self,
+        address: &str,
+        linear_fee: &LinearFees,
+    ) -> &'a mut JCLITransactionWrapper {
+        let output =
+            process_utils::run_process_and_get_output(self.commands.get_finalize_with_fee_command(
+                &address,
+                &linear_fee,
+                &self.staging_file_path,
+            ));
         process_assert::assert_process_exited_successfully(output);
         self
     }
@@ -218,7 +251,7 @@ impl JCLITransactionWrapper {
         self
     }
 
-    pub fn seal_with_witness_deafult<'a>(
+    pub fn seal_with_witness_default<'a>(
         &'a mut self,
         private_key: &str,
         transaction_type: &str,
@@ -336,6 +369,16 @@ impl JCLITransactionWrapper {
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_transaction_id_command(&self.staging_file_path),
+        );
+        let content = output.as_single_line();
+        let mut split = content.split_whitespace();
+        split.next().unwrap().to_string()
+    }
+
+    pub fn get_transaction_info(&self, format: &str) -> String {
+        let output = process_utils::run_process_and_get_output(
+            self.commands
+                .get_transaction_info_command(&format, &self.staging_file_path),
         );
         let content = output.as_single_line();
         let mut split = content.split_whitespace();

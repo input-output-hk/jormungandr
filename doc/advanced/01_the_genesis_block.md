@@ -18,7 +18,7 @@ jcli genesis init
 For example your genesis file may look like:
 
 ```yaml
-{{#include ../../src/bin/jcli_app/block/DOCUMENTED_EXAMPLE.yaml}}
+{{#include ../../jcli/src/jcli_app/block/DOCUMENTED_EXAMPLE.yaml}}
 ```
 
 There are multiple _parts_ in the genesis file:
@@ -26,11 +26,9 @@ There are multiple _parts_ in the genesis file:
 * `blockchain_configuration`: this is a list of configuration
   parameters of the blockchain, some of which can be changed later
   via the update protocol;
-* `initial_utxos`: the list of initial utxos (addresses and credited value);
-* `legacy_utxos`: the list of legacy cardano utxos (base58 encoded addresses
-  and credited values).
+* `initial`: list of steps to create initial state of ledger
 
-### `blockchain_configuration` options
+## `blockchain_configuration` options
 
 | option | format | description |
 |:-------|:-------|:------------|
@@ -42,28 +40,45 @@ There are multiple _parts_ in the genesis file:
 | `consensus_leader_ids` | array | the list of the BFT leader at the beginning of the blockchain |
 | `max_number_of_transactions_per_block` | number | the maximum number of transactions allowed in a block |
 | `bft_slots_ratio` | number | placeholder, do not use |
-| `allow_account_creation` | boolean | allow creating accounts without publishing certificate |
-| `linear_fee` | object | linear fee settings, set the fee for transaction and certificate publishing |
+| `linear_fees` | object | linear fee settings, set the fee for transaction and certificate publishing |
+| `consensus_genesis_praos_active_slot_coeff` | number | genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1] |
+| `kes_update_speed` | number | the speed to update the KES Key in seconds |
+| `slots_per_epoch` | number | number of slots in each epoch |
 
 _for more information about the BFT leaders in the genesis file, see
 [Starting a BFT Blockchain](./02_starting_bft_blockchain.md)_
 
-### The initial Funds
+## `initial` options
 
-This is a list of the initial token present in the blockchain. It can be:
+Each entry can be one of 3 variants:
 
-* classic UTxO: a [single address](../jcli/address.md#address-for-utxo) and a value
-* an account (if `allow_account_creation` is set to true): an
-  [account address](../jcli/address.md#address-for-account) and a value
-
-### The legacy Funds
-
-This is a list of legacy cardano addresses and associated credited value.
+| variant | format | description |
+|:-------|:-------|:------------|
+| `fund` | object | initial deposits present in the blockchain |
+| `cert` | string | initial certificate |
+| `legacy_fund` | object| same as `fund`, but with legacy Cardano address format |
 
 Example:
 
 ```yaml
-legacy_funds:
-  - address: Ae2tdPwUPEZCEhYAUVU7evPfQCJjyuwM6n81x6hSjU9TBMSy2YwZEVydssL
-    value: 2000
+initial:
+  - fund:
+      address: <address>
+      value: 10000
+  - cert: <certificate>
+  - legacy_fund:
+      address: <legacy address>
+      value: 123
+  - fund:
+      address: <another address>
+      value: 1001
 ```
+
+### `fund` and `legacy_fund` format
+
+| variant | format | description |
+|:-------|:-------|:------------|
+| `address` | string | can be a [single address](../jcli/address.md#address-for-utxo) or an [account address](../jcli/address.md#address-for-account) |
+| `value` | number | assigned value |
+
+`legacy_fund` differs only in address format, which is legacy Cardano

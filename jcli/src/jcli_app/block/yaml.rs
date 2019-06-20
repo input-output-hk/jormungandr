@@ -8,10 +8,10 @@ use chain_impl_mockchain::{
     certificate::Certificate,
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
-    legacy::{self, OldAddress},
+    legacy::{OldAddress, UtxoDeclaration},
     message::{ConfigParams, Message},
     milli::Milli,
-    transaction,
+    transaction::{AuthenticatedTransaction, NoExtra, Output, Transaction},
     value::Value,
 };
 use jormungandr_utils::serde::{self, SerdeAsString, SerdeLeaderId};
@@ -20,6 +20,7 @@ use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Genesis {
     /// the initial configuration of the blockchain
     ///
@@ -31,14 +32,11 @@ pub struct Genesis {
     /// mechanism.
     blockchain_configuration: BlockchainConfiguration,
     #[serde(default)]
-    initial_funds: Vec<InitialUTxO>,
-    #[serde(default)]
-    initial_certs: Vec<InitialCertificate>,
-    #[serde(default)]
-    legacy_funds: Vec<LegacyUTxO>,
+    initial: Vec<Initial>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BlockchainConfiguration {
     block0_date: u64,
     #[serde(with = "serde::as_string")]
@@ -60,17 +58,27 @@ struct BlockchainConfiguration {
 
 // FIXME: duplicates LinearFee, can we get rid of this?
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct InitialLinearFee {
     coefficient: u64,
     constant: u64,
     certificate: u64,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+enum Initial {
+    Fund(InitialUTxO),
+    Cert(InitialCertificate),
+    LegacyFund(LegacyUTxO),
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(transparent)]
+#[serde(transparent, deny_unknown_fields)]
 struct InitialCertificate(#[serde(with = "serde::certificate")] Certificate);
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct InitialUTxO {
     #[serde(with = "serde::address")]
     pub address: Address,
@@ -79,8 +87,9 @@ struct InitialUTxO {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LegacyUTxO {
-    pub address: OldAddress,
+    //pub address: OldAddress,
     #[serde(with = "serde::value")]
     pub value: Value,
 }
@@ -88,181 +97,36 @@ struct LegacyUTxO {
 type StaticStr = &'static str;
 
 custom_error! {pub Error
-    FirstBlock0MessageNotInit = "First message of block 0 is not initial",
-    InitUtxoHasInput = "Initial UTXO has input",
-    InitConfigParamMissing { name: StaticStr } = "Initial message misses parameter {name}",
-    InitConfigParamDuplicate { name: StaticStr } = "Initial message contains duplicate parameter {name}",
+    FirstBlock0MessageNotInit = "first message of block 0 is not initial",
+    Block0MessageUnexpected  = "non-first message of block 0 has unexpected type",
+    InitUtxoHasInput = "initial UTXO has input",
+    InitConfigParamMissing { name: StaticStr } = "initial message misses parameter {name}",
+    InitConfigParamDuplicate { name: StaticStr } = "initial message contains duplicate parameter {name}",
 }
 
 impl Genesis {
     pub fn from_block(block: &Block) -> Result<Self, Error> {
-        let mut messages = block.messages().peekable();
+        let mut messages = block.messages();
 
         let blockchain_configuration = match messages.next() {
-            Some(Message::Initial(initial)) => BlockchainConfiguration::from_ents(initial)?,
-            _ => return Err(Error::FirstBlock0MessageNotInit),
-        };
-        let initial_funds = get_initial_utxos(&mut messages)?;
-        let legacy_funds = get_legacy_utxos(&mut messages);
-        let initial_certs = get_initial_certs(&mut messages);
+            Some(Message::Initial(initial)) => BlockchainConfiguration::from_ents(initial),
+            _ => Err(Error::FirstBlock0MessageNotInit),
+        }?;
 
         Ok(Genesis {
             blockchain_configuration,
-            initial_funds,
-            legacy_funds,
-            initial_certs,
+            initial: try_initials_vec_from_messages(messages)?,
         })
     }
 
     pub fn to_block(&self) -> Block {
         let mut builder = BlockBuilder::new();
-
         builder.message(Message::Initial(
             self.blockchain_configuration.clone().to_ents(),
         ));
-
-        builder.messages(
-            self.to_initial_messages(
-                self.blockchain_configuration
-                    .max_number_of_transactions_per_block
-                    .unwrap_or(255) as usize,
-            ),
-        );
-        builder.messages(
-            self.to_legacy_messages(
-                self.blockchain_configuration
-                    .max_number_of_transactions_per_block
-                    .unwrap_or(255) as usize,
-            ),
-        );
-        builder.messages(self.to_certificate_messages());
+        builder.messages(self.initial.iter().map(Message::from));
         builder.make_genesis_block()
     }
-
-    fn to_initial_messages(&self, max_output_per_message: usize) -> Vec<Message> {
-        let mut messages = Vec::new();
-        let mut utxo_iter = self.initial_funds.iter();
-
-        while let Some(utxo) = utxo_iter.next() {
-            let mut outputs = Vec::with_capacity(max_output_per_message);
-            outputs.push(transaction::Output {
-                address: utxo.address.clone(),
-                value: utxo.value,
-            });
-
-            while let Some(utxo) = utxo_iter.next() {
-                outputs.push(transaction::Output {
-                    address: utxo.address.clone(),
-                    value: utxo.value,
-                });
-                if outputs.len() == max_output_per_message {
-                    break;
-                }
-            }
-
-            let transaction = transaction::AuthenticatedTransaction {
-                transaction: transaction::Transaction {
-                    inputs: Vec::new(),
-                    outputs: outputs,
-                    extra: transaction::NoExtra,
-                },
-                witnesses: Vec::new(),
-            };
-            messages.push(Message::Transaction(transaction));
-        }
-
-        messages
-    }
-
-    fn to_certificate_messages(&self) -> Vec<Message> {
-        self.initial_certs
-            .iter()
-            .map(|cert| transaction::AuthenticatedTransaction {
-                transaction: transaction::Transaction {
-                    inputs: vec![],
-                    outputs: vec![],
-                    extra: cert.0.clone(),
-                },
-                witnesses: vec![],
-            })
-            .map(Message::Certificate)
-            .collect()
-    }
-
-    fn to_legacy_messages(&self, max_output_per_message: usize) -> Vec<Message> {
-        let mut messages = Vec::new();
-        let mut utxo_iter = self.legacy_funds.iter();
-
-        while let Some(utxo) = utxo_iter.next() {
-            let mut outputs = Vec::with_capacity(max_output_per_message);
-            outputs.push((utxo.address.clone(), utxo.value));
-
-            while let Some(utxo) = utxo_iter.next() {
-                outputs.push((utxo.address.clone(), utxo.value));
-                if outputs.len() == max_output_per_message {
-                    break;
-                }
-            }
-
-            let declaration = legacy::UtxoDeclaration { addrs: outputs };
-
-            messages.push(Message::OldUtxoDeclaration(declaration));
-        }
-
-        messages
-    }
-}
-
-type PeekableMessages<'a> = std::iter::Peekable<<&'a Block as HasMessages<'a>>::Messages>;
-
-fn get_initial_utxos<'a>(messages: &mut PeekableMessages<'a>) -> Result<Vec<InitialUTxO>, Error> {
-    let mut vec = Vec::new();
-
-    while let Some(Message::Transaction(transaction)) = messages.peek() {
-        messages.next();
-        if !transaction.transaction.inputs.is_empty() {
-            return Err(Error::InitUtxoHasInput);
-        }
-
-        for output in transaction.transaction.outputs.iter() {
-            let initial_utxo = InitialUTxO {
-                address: output.address.clone(),
-                value: output.value,
-            };
-
-            vec.push(initial_utxo);
-        }
-    }
-
-    Ok(vec)
-}
-fn get_legacy_utxos<'a>(messages: &mut PeekableMessages<'a>) -> Vec<LegacyUTxO> {
-    let mut vec = Vec::new();
-
-    while let Some(Message::OldUtxoDeclaration(old_decls)) = messages.peek() {
-        messages.next();
-        for (address, value) in old_decls.addrs.iter() {
-            let legacy_utxo = LegacyUTxO {
-                address: address.clone(),
-                value: value.clone(),
-            };
-
-            vec.push(legacy_utxo);
-        }
-    }
-
-    vec
-}
-fn get_initial_certs<'a>(messages: &mut PeekableMessages<'a>) -> Vec<InitialCertificate> {
-    let mut vec = Vec::new();
-
-    while let Some(Message::Certificate(transaction)) = messages.peek() {
-        messages.next();
-        let cert = transaction.transaction.extra.clone();
-        vec.push(InitialCertificate(cert));
-    }
-
-    vec
 }
 
 impl BlockchainConfiguration {
@@ -408,6 +272,108 @@ fn param_missing_error(name: &'static str) -> Error {
     Error::InitConfigParamMissing { name }
 }
 
+fn try_initials_vec_from_messages<'a>(
+    mut messages: impl Iterator<Item = &'a Message>,
+) -> Result<Vec<Initial>, Error> {
+    let mut inits = Vec::new();
+    for message in messages {
+        match message {
+            Message::Transaction(tx) => try_extend_inits_with_tx(&mut inits, tx)?,
+            Message::Certificate(tx) => extend_inits_with_cert(&mut inits, tx),
+            Message::OldUtxoDeclaration(utxo) => extend_inits_with_legacy_utxo(&mut inits, utxo),
+            _ => return Err(Error::Block0MessageUnexpected),
+        }
+    }
+    Ok(inits)
+}
+
+fn try_extend_inits_with_tx(
+    initials: &mut Vec<Initial>,
+    tx: &AuthenticatedTransaction<Address, NoExtra>,
+) -> Result<(), Error> {
+    if !tx.transaction.inputs.is_empty() {
+        return Err(Error::InitUtxoHasInput);
+    }
+    let inits_iter = tx
+        .transaction
+        .outputs
+        .iter()
+        .map(|output| InitialUTxO {
+            address: output.address.clone(),
+            value: output.value,
+        })
+        .map(Initial::Fund);
+    initials.extend(inits_iter);
+    Ok(())
+}
+
+fn extend_inits_with_cert(
+    initials: &mut Vec<Initial>,
+    tx: &AuthenticatedTransaction<Address, Certificate>,
+) {
+    let cert = InitialCertificate(tx.transaction.extra.clone());
+    initials.push(Initial::Cert(cert))
+}
+
+fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDeclaration) {
+    let inits_iter = utxo_decl
+        .addrs
+        .iter()
+        .map(|(_address, value)| LegacyUTxO {
+            //address: address.clone(),
+            value: value.clone(),
+        })
+        .map(Initial::LegacyFund);
+    initials.extend(inits_iter)
+}
+
+impl<'a> From<&'a Initial> for Message {
+    fn from(initial: &'a Initial) -> Message {
+        match initial {
+            Initial::Fund(utxo) => utxo.into(),
+            Initial::Cert(cert) => cert.into(),
+            Initial::LegacyFund(utxo) => utxo.into(),
+        }
+    }
+}
+
+impl<'a> From<&'a InitialUTxO> for Message {
+    fn from(utxo: &'a InitialUTxO) -> Message {
+        Message::Transaction(AuthenticatedTransaction {
+            transaction: Transaction {
+                inputs: vec![],
+                outputs: vec![Output {
+                    address: utxo.address.clone(),
+                    value: utxo.value,
+                }],
+                extra: NoExtra,
+            },
+            witnesses: vec![],
+        })
+    }
+}
+
+impl<'a> From<&'a InitialCertificate> for Message {
+    fn from(utxo: &'a InitialCertificate) -> Message {
+        Message::Certificate(AuthenticatedTransaction {
+            transaction: Transaction {
+                inputs: vec![],
+                outputs: vec![],
+                extra: utxo.0.clone(),
+            },
+            witnesses: vec![],
+        })
+    }
+}
+
+impl<'a> From<&'a LegacyUTxO> for Message {
+    fn from(utxo: &'a LegacyUTxO) -> Message {
+        Message::OldUtxoDeclaration(UtxoDeclaration {
+            addrs: vec![], // vec![(utxo.address.clone(), utxo.value)],
+        })
+    }
+}
+
 pub fn documented_example(now: std::time::SystemTime) -> String {
     let secs = now
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
@@ -472,16 +438,11 @@ blockchain_configuration:
     constant: 2
     certificate: 4
   kes_update_speed: 43200
-initial_funds:
-  - address: {}
-    value: 10000
-initial_certs:
-  - cert1qgqqqqqqqqqqqqqqqqqqq0p5avfqqmgurpe7s9k7933q0wj420jl5xqvx8lywcu5jcr7fwqa9qmdn93q4nm7c4fsay3mzeqgq3c0slnut9kns08yn2qn80famup7nvgtfuyszqzqrd4lxlt5ylplfu76p8f6ks0ggprzatp2c8rn6ev3hn9dgr38tzful4h0udlwa0536vyrrug7af9ujmrr869afs0yw9gj5x7z24l8sps3zzcmv
-legacy_funds:
-  - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
-    value: 123
-  - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
-    value: 456"#, leader_1_pk, leader_2_pk, initial_funds_address);
+initial:
+  - cert: cert1qgqqqqqqqqqqqqqqqqqqq0p5avfqqmgurpe7s9k7933q0wj420jl5xqvx8lywcu5jcr7fwqa9qmdn93q4nm7c4fsay3mzeqgq3c0slnut9kns08yn2qn80famup7nvgtfuyszqzqrd4lxlt5ylplfu76p8f6ks0ggprzatp2c8rn6ev3hn9dgr38tzful4h0udlwa0536vyrrug7af9ujmrr869afs0yw9gj5x7z24l8sps3zzcmv
+  - fund:
+      address: {}
+      value: 10000"#, leader_1_pk, leader_2_pk, initial_funds_address);
         let genesis: Genesis =
             serde_yaml::from_str(genesis_yaml.as_str()).expect("Failed to deserialize YAML");
 

@@ -1,8 +1,8 @@
 use crate::blockcfg::{Block, Epoch, Header, HeaderHash, Message, MessageId};
-use crate::fragment;
 use crate::network::p2p::topology::NodeId;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
+use jormungandr_lib::interfaces::FragmentOrigin;
 use network_core::error as core_error;
 use slog::Logger;
 use std::{
@@ -218,7 +218,7 @@ where
 #[derive(Debug)]
 pub enum TransactionMsg {
     ProposeTransaction(Vec<MessageId>, ReplyHandle<Vec<bool>>),
-    SendTransaction(fragment::Origin, Vec<Message>),
+    SendTransaction(FragmentOrigin, Vec<Message>),
     GetTransactions(Vec<MessageId>, ReplyStreamHandle<Message>),
 }
 

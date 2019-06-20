@@ -5,8 +5,9 @@ authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
 edition = "2018"
 
 [dependencies]
-chain-crypto    = { path = "../cardano-deps/chain-crypto" }
-chain-addr      = { path = "../cardano-deps/chain-addr" }
+chain-crypto    = { path = "../chain-deps/chain-crypto" }
+chain-addr      = { path = "../chain-deps/chain-addr" }
+jormungandr-lib = { path = "../jormungandr-lib" }
 rand = "0.6"
 rand_chacha = "0.1"
 regex = "1.1.2"
@@ -25,3 +26,6 @@ custom_error = "1.6"
 [dev-dependencies]
 jormungandr = { path = "../jormungandr" }
 jcli = { path = "../jcli" }
+
+[features]
+soak-test = []

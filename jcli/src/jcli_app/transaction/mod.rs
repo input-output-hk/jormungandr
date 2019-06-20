@@ -12,9 +12,9 @@ mod seal;
 mod staging;
 
 use self::staging::StagingKind;
-use cardano::util::hex;
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
+use hex;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::key_parser;
 use std::path::PathBuf;

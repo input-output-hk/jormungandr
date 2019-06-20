@@ -1,5 +1,8 @@
 #![cfg(test)]
 
+#[macro_use(lazy_static)]
+extern crate lazy_static;
+
 pub mod common;
 pub mod jcli;
 pub mod jormungandr;

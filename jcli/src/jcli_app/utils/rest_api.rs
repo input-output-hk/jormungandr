@@ -1,4 +1,4 @@
-use cardano::util::hex;
+use hex;
 use jcli_app::utils::DebugFlag;
 use reqwest::{Error, RequestBuilder, Response};
 use std::{fmt, io::Write};

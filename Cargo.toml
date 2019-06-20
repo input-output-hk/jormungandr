@@ -1,9 +1,13 @@
 [workspace]
 members = [
+  "hex",
   "jormungandr-utils",
+  "jormungandr-lib",
   "jormungandr",
   "jcli",
   "jormungandr-integration-tests",
 ]
 
-exclude = [ "cardano-deps" ]
+exclude = [
+    "chain-deps",
+]

@@ -1,10 +1,10 @@
-use crate::{
-    blockcfg::{BlockBuilder, HeaderContentEvalContext, Ledger, LedgerParameters},
-    fragment::{FragmentId, Status},
-};
-
 use super::logs::internal::Logs;
 use super::pool::internal::Pool;
+use crate::{
+    blockcfg::{BlockBuilder, HeaderContentEvalContext, Ledger, LedgerParameters},
+    fragment::FragmentId,
+};
+use jormungandr_lib::interfaces::FragmentStatus;
 
 pub enum SelectionOutput {
     Commit { fragment_id: FragmentId },
@@ -67,20 +67,23 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     self.builder.message(fragment);
 
                     logs.modify(
-                        &id,
-                        Status::InABlock {
-                            date: metadata.block_date,
+                        &id.into(),
+                        FragmentStatus::InABlock {
+                            date: metadata.block_date.into(),
                         },
                     );
 
                     total += 1;
                 }
-                Err(error) => logs.modify(
-                    &id,
-                    Status::Rejected {
-                        reason: error.to_string(),
-                    },
-                ),
+                Err(error) => {
+                    use std::error::Error as _;
+                    let error = if let Some(source) = error.source() {
+                        format!("{}: {}", error, source)
+                    } else {
+                        error.to_string()
+                    };
+                    logs.modify(&id.into(), FragmentStatus::Rejected { reason: error })
+                }
             }
         }
     }

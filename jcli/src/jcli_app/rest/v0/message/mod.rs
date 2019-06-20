@@ -1,4 +1,4 @@
-use cardano::util::hex;
+use hex;
 use jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use std::fs;
 use std::io::{stdin, BufRead};

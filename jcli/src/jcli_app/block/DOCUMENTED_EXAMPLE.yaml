@@ -54,21 +54,19 @@ blockchain_configuration:
   # The speed to update the KES Key in seconds
   kes_update_speed: 43200 # 12hours
 
-# The initial deposits present in the blockchain.
-#
-# It can be UTxO addresses or account (if allow_account_creation is set).
-initial_funds:
-  # this is the personal address of the developers, have a good heart and
-  # leave a good initial deposit for them
-  - address: {initial_funds_address}
-    value: 10000
+# Initial state of the ledger. Each item is applied in order of this list
+initial:
+  # Initial deposits present in the blockchain
+  - fund:
+      # UTxO addresses or account
+      address: {initial_funds_address}
+      value: 10000
 
-# The initial certificates.
-initial_certs:
-  - cert1qgqqqqqqqqqqqqqqqqqqq0p5avfqqmgurpe7s9k7933q0wj420jl5xqvx8lywcu5jcr7fwqa9qmdn93q4nm7c4fsay3mzeqgq3c0slnut9kns08yn2qn80famup7nvgtfuyszqzqrd4lxlt5ylplfu76p8f6ks0ggprzatp2c8rn6ev3hn9dgr38tzful4h0udlwa0536vyrrug7af9ujmrr869afs0yw9gj5x7z24l8sps3zzcmv
+  # Initial certificate
+  - cert: cert1qgqqqqqqqqqqqqqqqqqqq0p5avfqqmgurpe7s9k7933q0wj420jl5xqvx8lywcu5jcr7fwqa9qmdn93q4nm7c4fsay3mzeqgq3c0slnut9kns08yn2qn80famup7nvgtfuyszqzqrd4lxlt5ylplfu76p8f6ks0ggprzatp2c8rn6ev3hn9dgr38tzful4h0udlwa0536vyrrug7af9ujmrr869afs0yw9gj5x7z24l8sps3zzcmv
 
-# the initial deposits present in the blockchain but utilising the
-# legacy cardano address format
-legacy_funds:
-  - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
-    value: 123
+  # Initial deposits present in the blockchain
+  # - legacy_fund:
+  #     # Legacy Cardano address
+  #     address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
+  #     value: 123

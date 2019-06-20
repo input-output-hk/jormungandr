@@ -25,14 +25,14 @@ pub fn test_correct_utxos_are_read_from_node() {
         jcli_wrapper::assert_address_single(&reciever_public_key, Discrimination::Test);
     println!("Reciever address generated: {}", &reciever_address);
 
-    let funds = vec![
+    let mut funds = vec![
         Fund {
             address: reciever_address.clone(),
-            value: 100,
+            value: 100.into(),
         },
         Fund {
             address: sender_address.clone(),
-            value: 100,
+            value: 100.into(),
         },
     ];
 
@@ -41,11 +41,19 @@ pub fn test_correct_utxos_are_read_from_node() {
         .build();
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
-    let content = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
+    let mut content = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
 
+    funds.sort_by_key(|fund| fund.address.clone());
+    content.sort_by_key(|utxo| utxo.address().to_string());
     assert_eq!(content.len(), funds.len());
-    assert_eq!(funds[0].address, content[0].out_addr);
-    assert_eq!(funds[0].value.to_string(), content[0].out_value.to_string());
-    assert_eq!(funds[1].address, content[1].out_addr);
-    assert_eq!(funds[1].value.to_string(), content[1].out_value.to_string());
+    assert_eq!(funds[0].address, content[0].address().to_string());
+    assert_eq!(
+        funds[0].value.to_string(),
+        content[0].associated_fund().to_string()
+    );
+    assert_eq!(funds[1].address, content[1].address().to_string());
+    assert_eq!(
+        funds[1].value.to_string(),
+        content[1].associated_fund().to_string()
+    );
 }

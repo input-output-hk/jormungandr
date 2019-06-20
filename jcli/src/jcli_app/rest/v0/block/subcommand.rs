@@ -1,5 +1,5 @@
 use super::next_id::NextId;
-use cardano::util::hex;
+use hex;
 use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 

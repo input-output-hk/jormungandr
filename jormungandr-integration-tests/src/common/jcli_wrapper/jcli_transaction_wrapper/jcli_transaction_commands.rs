@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
 use crate::common::configuration;
+use crate::common::configuration::genesis_model::LinearFees;
 
 #[derive(Debug)]
 pub struct TransactionCommands {}
@@ -26,7 +28,7 @@ impl TransactionCommands {
     pub fn get_add_input_command(
         &self,
         tx_id: &str,
-        tx_index: &i32,
+        tx_index: u8,
         amount: &str,
         staging_file: &PathBuf,
     ) -> Command {
@@ -45,7 +47,7 @@ impl TransactionCommands {
     pub fn get_add_account_command(
         &self,
         account_addr: &str,
-        amount: &i32,
+        amount: &str,
         staging_file: &PathBuf,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
@@ -53,7 +55,7 @@ impl TransactionCommands {
             .arg("transaction")
             .arg("add-account")
             .arg(account_addr.to_string())
-            .arg(amount.to_string())
+            .arg(amount)
             .arg("--staging")
             .arg(staging_file.as_os_str());
         command
@@ -62,7 +64,7 @@ impl TransactionCommands {
     pub fn get_add_output_command(
         &self,
         addr: &str,
-        amount: &i32,
+        amount: &str,
         staging_file: &PathBuf,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
@@ -70,7 +72,7 @@ impl TransactionCommands {
             .arg("transaction")
             .arg("add-output")
             .arg(&addr)
-            .arg(amount.to_string())
+            .arg(amount)
             .arg("--staging")
             .arg(staging_file.as_os_str());
         command
@@ -83,6 +85,28 @@ impl TransactionCommands {
             .arg("finalize")
             .arg("--staging")
             .arg(staging_file.as_os_str());
+        command
+    }
+
+    pub fn get_finalize_with_fee_command<P: AsRef<Path>>(
+        &self,
+        address: &str,
+        linear_fees: &LinearFees,
+        staging_file: &P,
+    ) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("transaction")
+            .arg("finalize")
+            .arg(address)
+            .arg("--fee-certificate")
+            .arg(linear_fees.certificate.to_string())
+            .arg("--fee-coefficient")
+            .arg(linear_fees.coefficient.to_string())
+            .arg("--fee-constant")
+            .arg(linear_fees.constant.to_string())
+            .arg("--staging")
+            .arg(staging_file.as_ref().as_os_str());
         command
     }
 
@@ -155,6 +179,22 @@ impl TransactionCommands {
             .arg("{id}")
             .arg("--staging")
             .arg(staging_file.as_os_str());
+        command
+    }
+
+    pub fn get_transaction_info_command<P: AsRef<Path>>(
+        &self,
+        format: &str,
+        staging_file: &P,
+    ) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("transaction")
+            .arg("info")
+            .arg("--format")
+            .arg(format)
+            .arg("--staging")
+            .arg(staging_file.as_ref().as_os_str());
         command
     }
 }

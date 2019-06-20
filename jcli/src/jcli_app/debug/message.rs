@@ -1,6 +1,6 @@
-use cardano::util::hex;
 use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::message::Message as MockMessage;
+use hex;
 use jcli_app::debug::Error;
 use jcli_app::utils::{error::CustomErrorFiller, io};
 use std::io::{BufRead, BufReader};

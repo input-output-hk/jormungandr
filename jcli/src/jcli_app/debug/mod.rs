@@ -1,6 +1,6 @@
 mod message;
 
-use cardano::util::hex;
+use hex;
 use jcli_app::utils::error::CustomErrorFiller;
 use std::path::PathBuf;
 use structopt::StructOpt;

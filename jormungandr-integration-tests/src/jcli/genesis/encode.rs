@@ -1,5 +1,4 @@
-use crate::common::configuration::genesis_model::Fund;
-use crate::common::configuration::genesis_model::GenesisYaml;
+use crate::common::configuration::genesis_model::{Fund, GenesisYaml, Initial};
 use crate::common::configuration::jormungandr_config::JormungandrConfig;
 use crate::common::file_utils;
 use crate::common::jcli_wrapper;
@@ -34,7 +33,7 @@ pub fn test_genesis_with_empty_consenus_leaders_list_fails_to_build() {
 #[test]
 pub fn test_genesis_for_production_is_successfully_built() {
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.initial_funds = None;
+    config.genesis_yaml.initial.clear();
     config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
     let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
@@ -48,10 +47,10 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
     let test_address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
 
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.initial_funds = Some(vec![Fund {
-        value: 100,
+    config.genesis_yaml.initial = vec![Initial::Fund(Fund {
+        value: 100.into(),
         address: test_address.clone(),
-    }]);
+    })];
     config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
     jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "Invalid discrimination");
 }
@@ -69,7 +68,7 @@ pub fn test_genesis_for_prod_with_wrong_discrimination_fail_to_build() {
 #[test]
 pub fn test_genesis_without_initial_funds_is_built_successfully() {
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.initial_funds = None;
+    config.genesis_yaml.initial.clear();
     let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);

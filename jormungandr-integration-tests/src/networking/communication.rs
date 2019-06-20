@@ -5,6 +5,7 @@ use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrappe
 use crate::common::startup;
 
 #[test]
+#[ignore]
 pub fn two_nodes_communication() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
@@ -12,7 +13,7 @@ pub fn two_nodes_communication() {
     let mut leader_config = startup::ConfigurationBuilder::new()
         .with_funds(vec![Fund {
             address: sender.address.clone(),
-            value: 100,
+            value: 100.into(),
         }])
         .build();
 
@@ -33,9 +34,9 @@ pub fn two_nodes_communication() {
     let utxo = startup::get_utxo_for_address(&sender, &trusted_jormungandr_rest_address);
     let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
-        &utxo.out_value,
+        &utxo.associated_fund(),
         &sender,
-        &utxo.out_value,
+        &utxo.associated_fund(),
         &reciever,
         &trusted_node_config.genesis_block_hash,
     )
