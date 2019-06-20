@@ -28,6 +28,12 @@ This will install 2 tools:
 * `jormungandr`: the node part of the blockchain;
 * `jcli`: a command line helper tool to help you use and setup the node;
 
+## How to install from binaries
+
+Our binaries releases are available [here](https://github.com/input-output-hk/jormungandr/releases)
+for many operating systems and architecture, but in due time, jormungandr will
+be available through package managers.
+
 ## How To Use
 
 A functional node needs 2 configurations:
@@ -42,14 +48,47 @@ automatically fetched from the network.
 More documentation on the node configuration can be found [here](https://input-output-hk.github.io/jormungandr/configuration/introduction.html),
 and for the blockchain genesis configuration [here](https://input-output-hk.github.io/jormungandr/advanced/introduction.html)
 
-### Starting the node
+## Quick-Start for private mode
 
-If you are not a leader node, then you can start the jormundandr with:
+Follow instructions on installation, then to start a private and minimal
+test setup:
 
-```sh
-jormungandr --genesis-block block-0.bin \
-  --config example.config
-```
+1. In terminal, create an empty directory somewhere and enter this directory
+2. `PATH/TO/SOURCE/REPOSITORY/scripts/bootstrap <options>`
+3. execute the instruction to start printed at the end
+
+For a BFT setup, use the following recommended options:
+
+    bootstrap -b
+
+For a Genesis-praos setup, use the following recommended options:
+
+    bootstrap -g -s 2
+
+For help on the options:
+
+    bootstrap -h
+
+The bootstrap script creates a simple setup with a faucet with 10 millions
+coins, a BFT leader, and a stake pool.
+
+The bootstrap script also create 2 shell scripts parametrized to this specific
+run of bootstrap:
+
+* `faucet-send-money`
+* `faucet-send-certificate`
+
+Both scripts can be used to do simple limited operation through the jcli debugging tools.
+
+## Quick-Start in public mode
+
+:warning: This is not currently functional :warning:
+
+To start a new node from scratch on a given blockchain, you need to know the
+block0 hash of this blockchain for trust purpose and internet peers to connect
+to. The simplest way to start such a node is:
+
+    jormungandr --block0-hash <HASH> --trusted-peers <IPs>
 
 # Documentation
 
