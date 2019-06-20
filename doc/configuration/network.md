@@ -1,13 +1,6 @@
 
 There's 2 differents network interfaces which are covered by their respective section:
 
-```
-rest:
-   ...
-peer_2_peer:
-   ...
-```
-
 ## REST interface configuration
 
 - *listen*: listen address
