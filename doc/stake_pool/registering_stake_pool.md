@@ -5,9 +5,9 @@ There are multiple components to be aware of when running a stake pool:
 * your `NodeId`: it is the identifier within the blockchain protocol (wallet
   will delegate to your stake pool via this `NodeId`);
 * your [**VRF**] key pairs: this is the cryptographic material we will use to participate
-  to the leader election;
+  to the leader election; VRF stands for....
 * your [**KES**] key pairs: this is the cryptographic material we will use to sign the
-  block with.
+  block with. KES stands for...
 
 So in order to start your stake pool you will need to generate these objects.
 
