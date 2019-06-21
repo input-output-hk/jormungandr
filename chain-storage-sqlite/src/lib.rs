@@ -217,10 +217,6 @@ where
             Err(err) => Err(Error::BackendError(Box::new(err))),
         }
     }
-
-    fn as_trait(&self) -> &BlockStore<Block = Self::Block> {
-        self as &BlockStore<Block = Self::Block>
-    }
 }
 
 #[cfg(test)]
