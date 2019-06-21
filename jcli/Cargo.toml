@@ -15,6 +15,14 @@ description = """
 Midgard Serpent
 """
 
+[[bin]]
+name = "jcli"
+path = "src/main.rs"
+
+[lib]
+name = "libjcli"
+path = "src/lib.rs"
+
 [dependencies]
 dirs = "1.0"
 rand = "0.6"

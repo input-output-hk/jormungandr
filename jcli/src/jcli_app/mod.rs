@@ -1,11 +1,11 @@
 mod address;
 mod auto_completion;
-mod block;
+pub mod block;
 mod certificate;
 mod debug;
 mod key;
 mod rest;
-mod transaction;
+pub mod transaction;
 mod utils;
 
 use std::error::Error;

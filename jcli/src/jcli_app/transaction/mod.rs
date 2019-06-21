@@ -1,15 +1,15 @@
-mod add_account;
-mod add_certificate;
-mod add_input;
-mod add_output;
-mod add_witness;
-mod common;
-mod finalize;
-mod info;
-mod mk_witness;
-mod new;
-mod seal;
-mod staging;
+pub mod add_account;
+pub mod add_certificate;
+pub mod add_input;
+pub mod add_output;
+pub mod add_witness;
+pub mod common;
+pub mod finalize;
+pub mod info;
+pub mod mk_witness;
+pub mod new;
+pub mod seal;
+pub mod staging;
 
 use self::staging::StagingKind;
 use chain_core::property::Serialize as _;

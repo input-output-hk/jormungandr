@@ -1,5 +1,5 @@
 use std::io::{stdin, stdout, BufRead, BufReader, Error, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 extern crate mktemp;
 
@@ -36,21 +36,6 @@ pub fn open_file_read<P: AsRef<Path>>(path: &Option<P>) -> Result<impl BufRead, 
         }
         None => Ok(Box::new(BufReader::new(stdin())) as Box<dyn BufRead>),
     }
-}
-
-/// get path to unique file in temp folder
-pub fn get_path_in_temp<T: Into<String>>(file_path: T) -> Result<PathBuf, std::io::Error> {
-    let mut path = get_temp_folder().unwrap();
-    path.push(file_path.into());
-    Ok(path)
-}
-
-/// get os temp folder
-pub fn get_temp_folder() -> Result<PathBuf, std::io::Error> {
-    let temp_dir = mktemp::Temp::new_dir().unwrap();
-    let path = temp_dir.to_path_buf();
-    temp_dir.release();
-    Ok(path)
 }
 
 pub fn path_to_path_buf<P: AsRef<Path>>(path: &Option<P>) -> PathBuf {

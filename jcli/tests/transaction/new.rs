@@ -1,6 +1,7 @@
 use crate::common::io;
-use jcli_app::common::CommonTransaction;
-use jcli_app::transaction::*;
+extern crate libjcli;
+
+use libjcli::jcli_app::transaction::{common::CommonTransaction, new::New};
 
 #[test]
 pub fn test_staging_file_is_created() {

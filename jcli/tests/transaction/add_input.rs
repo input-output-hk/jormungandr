@@ -1,13 +1,16 @@
-extern crate mktemp;
-use crate::common::io;
-
 extern crate chain_impl_mockchain;
-use self::chain_impl_mockchain::key::Hash;
-extern crate jcli;
+extern crate libjcli;
+extern crate mktemp;
 
-use jcli::transaction::common::CommonTransaction;
-use jcli::transaction::staging::Staging;
-use jcli::transaction::*;
+use self::chain_impl_mockchain::{
+    key::Hash,
+    transaction::{TransactionId, TransactionIndex},
+    value::Value,
+};
+use crate::common::io;
+use libjcli::jcli_app::transaction::{
+    add_input::AddInput, common::CommonTransaction, staging::Staging,
+};
 use std::str::FromStr;
 
 #[test]

@@ -1,32 +1,13 @@
-extern crate bech32;
-extern crate chain_addr;
-extern crate chain_core;
-extern crate chain_crypto;
-extern crate chain_impl_mockchain;
-extern crate gtmpl;
-extern crate hex;
-extern crate jormungandr_lib;
-extern crate jormungandr_utils;
-extern crate mime;
-extern crate num_traits;
-extern crate rand;
-extern crate rand_chacha;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
+extern crate libjcli;
 extern crate structopt;
 #[macro_use(custom_error)]
 extern crate custom_error;
-extern crate strfmt;
-
-mod jcli_app;
 
 use std::error::Error;
 use structopt::StructOpt;
 
 fn main() {
-    jcli_app::JCli::from_args()
+    libjcli::jcli_app::JCli::from_args()
         .exec()
         .unwrap_or_else(report_error)
 }
