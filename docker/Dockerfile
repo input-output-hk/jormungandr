@@ -39,8 +39,7 @@ WORKDIR ${ENV_PREFIX}/bin
 
 RUN mkdir -p ${ENV_PREFIX}/cfg && \
     mkdir -p ${ENV_PREFIX}/secret && \
-    sh ./bootstrap -p ${REST_PORT} -x -c ${ENV_PREFIX}/cfg -k ${ENV_PREFIX}/secret && \
-    chmod +x ./startup_script.sh
+    sh ./bootstrap -p ${REST_PORT} -x -c ${ENV_PREFIX}/cfg -k ${ENV_PREFIX}/secret
 
 # expose rest API port
 EXPOSE ${REST_PORT}
@@ -48,4 +47,4 @@ EXPOSE ${REST_PORT}
 # expose gRPC port
 EXPOSE 8299 
 
-CMD [ "/bin/bash", "-c", "startup_script.sh" ]
+CMD [ "sh", "startup_script.sh" ]
