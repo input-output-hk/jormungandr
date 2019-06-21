@@ -114,6 +114,8 @@ impl<'de> Deserialize<'de> for BFTSlotsRatio {
             {
                 if v == 1 {
                     Ok(BFTSlotsRatio(Milli::ONE))
+                } else if v == 0 {
+                    Ok(BFTSlotsRatio(Milli::ZERO))
                 } else {
                     Err(E::custom(format!(
                         "value out of bound, can only accept within range of {} and {}",
@@ -210,7 +212,17 @@ mod test {
     }
 
     #[test]
-    fn deserialize_from_number() {
+    fn deserialize_from_number_0() {
+        const VALUE: Milli = Milli::ZERO;
+        let example = format!("---\n{}", 0);
+
+        let decoded: BFTSlotsRatio = serde_yaml::from_str(&example).unwrap();
+
+        assert_eq!(decoded.0, VALUE)
+    }
+
+    #[test]
+    fn deserialize_from_number_1() {
         const VALUE: Milli = Milli::ONE;
         let example = format!("---\n{}", 1);
 
