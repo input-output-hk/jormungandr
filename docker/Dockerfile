@@ -34,8 +34,9 @@ RUN mkdir -p ${ENV_PREFIX} && \
         $HOME/.cargo/bin/jormungandr $HOME/.cargo/bin/jcli ${ENV_PREFIX}/bin && \
     rm -rf $HOME/.cargo $HOME/.rustup ${ENV_PREFIX}/src
 
-RUN export PATH=$ENV_PREFIX/bin:$PATH && \ 
-    mkdir -p ${ENV_PREFIX}/cfg && \
+ENV PATH=${ENV_PREFIX}/bin:${PATH}
+
+RUN mkdir -p ${ENV_PREFIX}/cfg && \
     mkdir -p ${ENV_PREFIX}/secret && \
     cd ${ENV_PREFIX}/bin && \
     sh ./bootstrap -p ${REST_PORT} -x -c ${ENV_PREFIX}/cfg -k ${ENV_PREFIX}/secret
