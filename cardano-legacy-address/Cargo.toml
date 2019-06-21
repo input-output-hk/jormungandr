@@ -10,6 +10,7 @@ description = """
 Support for the useful part of legacy cardano address.
 """
 keywords = [ "Cardano", "Wallet", "Crypto" ]
+edition = "2018"
 
 [build-dependencies]
 
