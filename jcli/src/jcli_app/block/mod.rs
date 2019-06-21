@@ -9,7 +9,9 @@ use chain_impl_mockchain::{
     ledger::{self, Ledger},
 };
 use jcli_app::utils::{error::CustomErrorFiller, io};
-use jormungandr_lib::interfaces::{block0_configuration_documented_example, Block0Configuration, Block0ConfigurationError};
+use jormungandr_lib::interfaces::{
+    block0_configuration_documented_example, Block0Configuration, Block0ConfigurationError,
+};
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;

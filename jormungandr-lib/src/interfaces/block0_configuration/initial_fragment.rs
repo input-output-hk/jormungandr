@@ -81,7 +81,6 @@ custom_error! {pub Error
     InitUtxoHasInput = "initial UTXO has input",
 }
 
-
 pub fn try_initials_vec_from_messages<'a>(
     messages: impl Iterator<Item = &'a Message>,
 ) -> Result<Vec<Initial>, Error> {

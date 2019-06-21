@@ -108,4 +108,3 @@ pub fn block0_configuration_documented_example() -> String {
         initial_funds_address = initial_funds_address
     )
 }
-
