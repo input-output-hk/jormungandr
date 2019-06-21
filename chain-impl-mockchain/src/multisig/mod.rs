@@ -18,7 +18,7 @@ mod test {
     use crate::transaction::TransactionId;
     use crate::{account, key};
     use chain_crypto::{PublicKey, SecretKey};
-    use rand::{CryptoRng, RngCore};
+    use rand_core::{CryptoRng, RngCore};
 
     fn make_keypair<R: RngCore + CryptoRng>(
         rng: &mut R,

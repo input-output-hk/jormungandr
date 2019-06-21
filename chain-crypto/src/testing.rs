@@ -1,7 +1,7 @@
 use super::*;
 
 use quickcheck::{Arbitrary, Gen};
-use rand::SeedableRng;
+use rand_core::SeedableRng;
 use rand_chacha::ChaChaRng;
 
 #[allow(dead_code)]

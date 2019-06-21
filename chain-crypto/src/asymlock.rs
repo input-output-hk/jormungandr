@@ -107,6 +107,7 @@ pub fn decrypt(
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand;
 
     #[test]
     pub fn it_works() {

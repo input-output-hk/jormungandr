@@ -4,7 +4,7 @@ use crate::sign::SigningAlgorithm;
 use super::ed25519 as ei;
 
 use cryptoxide::ed25519;
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 use ed25519_bip32::{XPrv, XPRV_SIZE};
 

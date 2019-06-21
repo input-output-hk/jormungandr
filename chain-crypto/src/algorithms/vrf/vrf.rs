@@ -7,7 +7,7 @@ use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 pub use curve25519_dalek::scalar::Scalar;
-use rand::{CryptoRng, Rng};
+use rand_core::{CryptoRng, RngCore};
 use sha2::Digest;
 use sha2::Sha512;
 use std::hash::{Hash, Hasher};
@@ -64,7 +64,7 @@ pub const PUBLIC_SIZE: usize = 32;
 
 impl SecretKey {
     /// Create a new random secret key
-    pub fn random<T: Rng + CryptoRng>(mut rng: T) -> Self {
+    pub fn random<T: RngCore + CryptoRng>(mut rng: T) -> Self {
         let sk = Scalar::random(&mut rng);
         let pk = RISTRETTO_BASEPOINT_POINT * sk;
         SecretKey {
@@ -125,7 +125,7 @@ impl SecretKey {
         proof
     }
 
-    pub fn proove_simple<T: Rng + CryptoRng>(
+    pub fn proove_simple<T: RngCore + CryptoRng>(
         &self,
         rng: &mut T,
         m_point: Point,
@@ -144,7 +144,7 @@ impl SecretKey {
         self.proove(r, m_point, output)
     }
 
-    pub fn evaluate_simple<T: Rng + CryptoRng>(
+    pub fn evaluate_simple<T: RngCore + CryptoRng>(
         &self,
         rng: &mut T,
         input: &[u8],
@@ -257,7 +257,7 @@ fn make_message_hash_point(data: &[u8]) -> Point {
 #[cfg(test)]
 mod tests {
     use super::SecretKey;
-    use rand::rngs::OsRng;
+    use rand_os::OsRng;
 
     #[test]
     fn it_works() {

@@ -5,7 +5,7 @@ use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAl
 
 use ed25519_bip32 as i;
 use ed25519_bip32::{XPrv, XPub, XPRV_SIZE, XPUB_SIZE};
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 /// Ed25519 BIP32 Signature algorithm
 pub struct Ed25519Bip32;

@@ -5,7 +5,7 @@ use crate::key::{
     AsymmetricKey, AsymmetricPublicKey, PublicKeyError, SecretKeyError, SecretKeySizeStatic,
 };
 use crate::vrf::{VRFVerification, VerifiableRandomFunction};
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 /// VRF
 pub struct Curve25519_2HashDH;

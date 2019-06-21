@@ -8,7 +8,7 @@ use chain_crypto::{
     vrf_evaluate_and_prove, vrf_verified_get_output, vrf_verify, Curve25519_2HashDH, PublicKey,
     SecretKey, VRFVerification, VerifiableRandomFunction,
 };
-use rand::rngs::OsRng;
+use rand_os::OsRng;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
