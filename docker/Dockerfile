@@ -35,15 +35,17 @@ RUN mkdir -p ${ENV_PREFIX} && \
     rm -rf $HOME/.cargo $HOME/.rustup ${ENV_PREFIX}/src
 
 ENV PATH=${ENV_PREFIX}/bin:${PATH}
+WORKDIR ${ENV_PREFIX}/bin
 
 RUN mkdir -p ${ENV_PREFIX}/cfg && \
     mkdir -p ${ENV_PREFIX}/secret && \
-    cd ${ENV_PREFIX}/bin && \
     sh ./bootstrap -p ${REST_PORT} -x -c ${ENV_PREFIX}/cfg -k ${ENV_PREFIX}/secret && \
-    chmod u+x ${ENV_PREFIX}/bin/startup_script.sh
+    chmod +x ./startup_script.sh
 
+# expose rest API port
 EXPOSE ${REST_PORT}
 
-WORKDIR ${ENV_PREFIX}/bin
+# expose gRPC port
+EXPOSE 8299 
 
 CMD [ "/bin/bash", "-c", "startup_script.sh" ]
