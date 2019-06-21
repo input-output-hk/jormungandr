@@ -9,11 +9,10 @@ use chain_impl_mockchain::{
     ledger::{self, Ledger},
 };
 use jcli_app::utils::{error::CustomErrorFiller, io};
+use jormungandr_lib::interfaces::{block0_configuration_documented_example, Block0Configuration, Block0ConfigurationError};
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-mod yaml;
 
 custom_error! {pub Error
     InputInvalid { source: std::io::Error, path: PathBuf }
@@ -25,7 +24,7 @@ custom_error! {pub Error
     GeneratedBlock0Invalid { source: ledger::Error } = "generated block is not a valid genesis block",
     BlockSerializationFailed { source: std::io::Error, filler: CustomErrorFiller } = "failed to serialize block",
     GenesisSerializationFailed { source: serde_yaml::Error, filler: CustomErrorFiller } = "failed to serialize genesis",
-    BuildingGenesisFromBlock0Failed { source: self::yaml::Error } = "failed to build genesis from block 0",
+    BuildingGenesisFromBlock0Failed { source: Block0ConfigurationError } = "failed to build genesis from block 0",
 }
 
 impl Genesis {
@@ -40,13 +39,13 @@ impl Genesis {
 }
 
 fn init_genesis_yaml() -> Result<(), Error> {
-    println!("{}", yaml::documented_example(std::time::SystemTime::now()));
+    println!("{}", block0_configuration_documented_example());
     Ok(())
 }
 
 fn encode_block_0(common: Common) -> Result<(), Error> {
     let reader = common.input.open()?;
-    let genesis: yaml::Genesis =
+    let genesis: Block0Configuration =
         serde_yaml::from_reader(reader).map_err(|source| Error::GenesisFileCorrupted {
             source,
             filler: CustomErrorFiller,
@@ -63,7 +62,7 @@ fn encode_block_0(common: Common) -> Result<(), Error> {
 
 fn decode_block_0(common: Common) -> Result<(), Error> {
     let block = common.input.load_block()?;
-    let yaml = yaml::Genesis::from_block(&block)?;
+    let yaml = Block0Configuration::from_block(&block)?;
     serde_yaml::to_writer(common.open_output()?, &yaml).map_err(|source| {
         Error::GenesisSerializationFailed {
             source,

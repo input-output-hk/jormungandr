@@ -3,14 +3,18 @@ blockchain_configuration:
 
   # The block0-date defines the date the blockchain starts
   # expected value in seconds since UNIX_EPOCH
-  block0_date: {now}
+  #
+  # By default the value will be the current date and time. Or you can
+  # add a specific time by entering the number of seconds since UNIX
+  # Epoch
+  block0_date: {default_block0_date}
 
   # This is the type of discrimination of the blockchain
   # of this blockchain is meant for production then
   # use 'production' instead.
   #
   # otherwise leave as this
-  discrimination: test
+  discrimination: {discrimination}
 
   # The initial consensus version:
   #
@@ -18,41 +22,49 @@ blockchain_configuration:
   # * Genesis Praos consensus: genesis
   block0_consensus: bft
 
-  # Number of slots in each epoch
-  slots_per_epoch: 5
+  # Number of slots in each epoch.
+  #
+  # default value is {default_slots_per_epoch}
+  slots_per_epoch: {default_slots_per_epoch}
 
   # The slot duration, in seconds, is the time between the creation
   # of 2 blocks
-  slot_duration: 15
+  #
+  # default value is {default_slot_duration}
+  slot_duration: {default_slot_duration}
 
-  # The number of blocks (*10) per epoch
-  epoch_stability_depth: 10
-
-  # A list of Ed25519 Extended PublicKey that represents the
+  # A list of Ed25519 PublicKey that represents the
   # BFT leaders encoded as bech32. The order in the list matters.
   consensus_leader_ids:
     - {leader_1}
     - {leader_2}
+
   # Genesis praos parameter D
-  bft_slots_ratio: 0.220
+  #
+  # default value: {default_bft_slots_ratio}
+  bft_slots_ratio: {default_bft_slots_ratio}
 
   # Genesis praos active slot coefficient
   # Determines minimum stake required to try becoming slot leader, must be in range (0,1]
-  consensus_genesis_praos_active_slot_coeff: 0.22
-
-  # This is the max number of messages allowed in a given Block
-  max_number_of_transactions_per_block: 255
+  #
+  # default value: {default_consensus_genesis_praos_active_slot_coeff}
+  consensus_genesis_praos_active_slot_coeff: {default_consensus_genesis_praos_active_slot_coeff}
 
   # The fee calculations settings
   #
-  # fee(num_bytes, has_certificate) = constant + num_bytes * coefficient + has_certificate * certificate
+  # total fees: constant + (num_inputs + num_outputs) * coefficient [+ certificate]
   linear_fees:
+    # this is the minimum value to pay for every transaction
     constant: 2
+    # the additional fee to pay for every inputs and outputs
     coefficient: 1
+    # the additional fee to pay if the transaction embeds a certificate
     certificate: 4
 
   # The speed to update the KES Key in seconds
-  kes_update_speed: 43200 # 12hours
+  #
+  # default value: {default_kes_update_speed}
+  kes_update_speed: {default_kes_update_speed}
 
 # Initial state of the ledger. Each item is applied in order of this list
 initial:
@@ -67,6 +79,6 @@ initial:
 
   # Initial deposits present in the blockchain
   # - legacy_fund:
-  #     # Legacy Cardano address
-  #     address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
-  #     value: 123
+      # Legacy Cardano address
+      # address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
+      # value: 123

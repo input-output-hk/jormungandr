@@ -18,7 +18,7 @@ jcli genesis init
 For example your genesis file may look like:
 
 ```yaml
-{{#include ../../jcli/src/jcli_app/block/DOCUMENTED_EXAMPLE.yaml}}
+{{#include ../../jormungandr-lib/src/interfaces/block0_configuration/DOCUMENTED_EXAMPLE.yaml}}
 ```
 
 There are multiple _parts_ in the genesis file:

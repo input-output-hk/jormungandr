@@ -10,8 +10,11 @@ serde = { version = "1.0", features = ["derive"] }
 custom_error = "1.6"
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
+chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
+cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 rand_core = "0.3"
+rand_chacha = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "1.2"
 
@@ -19,5 +22,6 @@ humantime = "1.2"
 rand = "0.6"
 quickcheck = "0.8"
 chain-crypto    = { path = "../chain-deps/chain-crypto", features = [ "property-test-api" ] }
+ed25519-bip32 = "0.1"
 serde_yaml = "0.8"
 bincode = "1.1"
