@@ -11,13 +11,6 @@ pub fn test_genesis_block_is_built_from_corect_yaml() {
 }
 
 #[test]
-pub fn test_genesis_without_block0_date_fails_to_build() {
-    let mut config = JormungandrConfig::new();
-    config.genesis_yaml.blockchain_configuration.block0_date = None;
-    jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "missing field `block0_date`")
-}
-
-#[test]
 pub fn test_genesis_with_empty_consenus_leaders_list_fails_to_build() {
     let mut config = JormungandrConfig::new();
     config
