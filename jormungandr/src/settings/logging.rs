@@ -1,6 +1,7 @@
 use crate::log::{AsyncableDrain, JsonDrain};
 use slog::{Drain, Logger};
 use slog_async::Async;
+#[cfg(feature = "gelf")]
 use slog_gelf::Gelf;
 #[cfg(feature = "systemd")]
 use slog_journald::JournaldDrain;
@@ -31,6 +32,7 @@ pub enum LogFormat {
 /// Output of the logger.
 pub enum LogOutput {
     Stderr,
+    #[cfg(feature = "gelf")]
     Gelf,
     #[cfg(unix)]
     Syslog,
@@ -56,6 +58,7 @@ impl FromStr for LogOutput {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match &*s.trim().to_lowercase() {
             "stderr" => Ok(LogOutput::Stderr),
+            #[cfg(feature = "gelf")]
             "gelf" => Ok(LogOutput::Gelf),
             #[cfg(unix)]
             "syslog" => Ok(LogOutput::Syslog),
@@ -86,6 +89,7 @@ impl LogOutput {
     ) -> Result<Async, Error> {
         match self {
             LogOutput::Stderr => Ok(format.decorate_stderr()),
+            #[cfg(feature = "gelf")]
             LogOutput::Gelf => match backend {
                 Some(graylog_host_port) => {
                     match logs_id {

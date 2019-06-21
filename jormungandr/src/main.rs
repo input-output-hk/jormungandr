@@ -45,6 +45,7 @@ extern crate serde_yaml;
 #[macro_use(b, o, record_static, debug, info, warn, error, crit)]
 extern crate slog;
 extern crate slog_async;
+#[cfg(feature = "gelf")]
 extern crate slog_gelf;
 #[cfg(feature = "systemd")]
 extern crate slog_journald;
