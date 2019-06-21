@@ -2,31 +2,11 @@ language: rust
 cache: cargo
 matrix:
   include:
-    - rust: stable
-      os: linux
-      env: CHECK_RUSTFMT="true"
+#    - rust: stable
+#      os: windows
     - rust: stable
       os: osx
-      env: RUN_TEST="true"
-    - rust: stable
-      os: linux
-      env: RUN_TEST="true"
-    - rust: nightly
-      os: linux
-      env: RUN_TEST="true"
   allow_failures:
 #    - rust: stable
 #      os: windows
-#      env: CARDANO_C="false" CARDANO_WASM="false" RUN_TEST="true"
 
-before_script:
-  - |
-    if [ "${CHECK_RUSTFMT}" = "true" ]; then
-       rustup component add rustfmt-preview
-    fi
-script:
-  - |
-    if [ "${CHECK_RUSTFMT}" = "true" ]; then
-       cargo fmt -- --check
-    fi
-  - if [ "${RUN_TEST}" = "true" ]; then cargo build --verbose --all && cargo test --verbose --all; fi
