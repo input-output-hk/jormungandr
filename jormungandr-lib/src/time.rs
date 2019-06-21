@@ -95,6 +95,10 @@ impl SecondsSinceUnixEpoch {
     ///
     /// This value will take you up to the year 4147.
     pub const MAX: Self = SecondsSinceUnixEpoch(0x000_000F_FFFF_FFFF);
+
+    pub fn now() -> Self {
+        SystemTime::now().into()
+    }
 }
 
 impl SystemTime {
@@ -123,6 +127,14 @@ impl Duration {
     #[inline]
     pub fn new(secs: u64, nanos: u32) -> Self {
         Duration(time::Duration::new(secs, nanos))
+    }
+}
+
+/* --------------------- Default ------------------------------------------- */
+
+impl Default for SecondsSinceUnixEpoch {
+    fn default() -> SecondsSinceUnixEpoch {
+        SecondsSinceUnixEpoch::now()
     }
 }
 
