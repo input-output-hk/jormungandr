@@ -10,7 +10,8 @@ use chain_impl_mockchain::{
     leadership::{self, Verification},
     ledger, multiverse,
 };
-use chain_storage::{error as storage, store::BlockInfo};
+use chain_storage::error::Error as StorageError;
+use chain_storage::store::{self, BlockInfo};
 use chain_time::{SlotDuration, TimeFrame, Timeline};
 use slog::Logger;
 use std::collections::BTreeMap;
@@ -80,7 +81,7 @@ impl From<Blockchain> for BlockchainR {
 pub const LOCAL_BLOCKCHAIN_TIP_TAG: &'static str = "tip";
 
 custom_error! {pub LoadError
-    Storage{source: storage::Error} = "Error in the blockchain storage: {source}",
+    Storage{source: StorageError} = "Error in the blockchain storage: {source}",
     Ledger{source: ledger::Error} = "Invalid blockchain state: {source}",
     Block0 { source: crate::blockcfg::Block0Error } = "Initial setting of the blockchain are invalid",
 }
@@ -119,7 +120,7 @@ impl Blockchain {
 
                 // FIXME: should restore from serialized chain state once we have it.
                 info!(logger, "restoring state from block0 {}", block_0_id);
-                for info in storage.iterate_range(&block_0_id, &tip_hash)? {
+                for info in store::iterate_range(&storage, &block_0_id, &tip_hash)? {
                     let info = info?;
                     let parameters = state.get_ledger_parameters();
                     let block = &storage.get_block(&info.block_hash)?.0;
@@ -172,7 +173,7 @@ impl Blockchain {
         })
     }
 
-    pub fn initial(&mut self) -> Result<(), storage::Error> {
+    pub fn initial(&mut self) -> Result<(), StorageError> {
         let (_block, block_info) = self.get_block_tip()?;
         let state = self.get_ledger(&block_info.block_hash).unwrap().clone();
         let slot = self
@@ -205,11 +206,11 @@ impl Blockchain {
         self.tip.hash()
     }
 
-    pub fn get_block_tip(&self) -> Result<(Block, BlockInfo<HeaderHash>), storage::Error> {
+    pub fn get_block_tip(&self) -> Result<(Block, BlockInfo<HeaderHash>), StorageError> {
         self.get_block(&self.get_tip().unwrap())
     }
 
-    pub fn put_block(&mut self, block: &Block) -> Result<(), storage::Error> {
+    pub fn put_block(&mut self, block: &Block) -> Result<(), StorageError> {
         self.storage.write().unwrap().put_block(block)
     }
 
@@ -224,11 +225,11 @@ impl Blockchain {
     pub fn get_block(
         &self,
         hash: &HeaderHash,
-    ) -> Result<(Block, BlockInfo<HeaderHash>), storage::Error> {
+    ) -> Result<(Block, BlockInfo<HeaderHash>), StorageError> {
         self.storage.read().unwrap().get_block(hash)
     }
 
-    fn block_exists(&self, block_hash: &HeaderHash) -> Result<bool, storage::Error> {
+    fn block_exists(&self, block_hash: &HeaderHash) -> Result<bool, StorageError> {
         // TODO: we assume as an invariant that if a block exists on
         // disk, its ancestors exist on disk as well. Need to make
         // sure that this invariant is preserved everywhere
@@ -269,7 +270,7 @@ impl Blockchain {
 }
 
 custom_error! {pub HandleBlockError
-    Storage{source: storage::Error} = "Error in the blockchain storage",
+    Storage{source: StorageError} = "Error in the blockchain storage",
     Ledger{source: ledger::Error} = "Invalid blockchain state",
     InternalTip { source: TipReplaceError } = "Cannot update the blockchain's TIP",
 }
