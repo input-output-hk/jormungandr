@@ -9,8 +9,8 @@
 //! to binary makes an `Addr`
 //!
 
-use base58;
-use cbor;
+use crate::base58;
+use crate::cbor;
 use cbor_event::{self, de::Deserializer, se::Serializer};
 use cryptoxide::blake2b::Blake2b;
 use cryptoxide::digest::Digest;
