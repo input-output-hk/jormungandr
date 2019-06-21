@@ -19,6 +19,15 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
+  lockfile:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run:
+          name: Check that the Cargo.lock file is up-to-date.
+          command: cargo generate-lockfile --locked
   rustfmt:
     docker:
       - image: rust:latest
