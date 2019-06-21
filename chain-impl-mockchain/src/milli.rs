@@ -11,7 +11,7 @@ impl Milli {
     pub const HALF: Milli = Milli(MILLI_MULTIPLIER / 2);
     pub const ONE: Milli = Milli(MILLI_MULTIPLIER);
 
-    pub fn from_millis(value: u64) -> Self {
+    pub const fn from_millis(value: u64) -> Self {
         Milli(value)
     }
 
