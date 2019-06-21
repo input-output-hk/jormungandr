@@ -6,6 +6,7 @@ LABEL description="Jormungandr latest"
 
 ARG PREFIX=/app
 ARG REST_PORT=8448
+ARG GRPC_PORT=8299
 
 ENV ENV_PREFIX=${PREFIX}
 
@@ -45,6 +46,6 @@ RUN mkdir -p ${ENV_PREFIX}/cfg && \
 EXPOSE ${REST_PORT}
 
 # expose gRPC port
-EXPOSE 8299 
+EXPOSE ${GRPC_PORT} 
 
 CMD [ "sh", "startup_script.sh" ]
