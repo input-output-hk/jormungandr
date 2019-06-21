@@ -39,8 +39,11 @@ ENV PATH=${ENV_PREFIX}/bin:${PATH}
 RUN mkdir -p ${ENV_PREFIX}/cfg && \
     mkdir -p ${ENV_PREFIX}/secret && \
     cd ${ENV_PREFIX}/bin && \
-    sh ./bootstrap -p ${REST_PORT} -x -c ${ENV_PREFIX}/cfg -k ${ENV_PREFIX}/secret
+    sh ./bootstrap -p ${REST_PORT} -x -c ${ENV_PREFIX}/cfg -k ${ENV_PREFIX}/secret && \
+    chmod u+x ${ENV_PREFIX}/bin/startup_script.sh
 
 EXPOSE ${REST_PORT}
 
-ENTRYPOINT sh ${ENV_PREFIX}/bin/startup_script.sh
+WORKDIR ${ENV_PREFIX}/bin
+
+CMD [ "/bin/bash", "-c", "startup_script.sh" ]
