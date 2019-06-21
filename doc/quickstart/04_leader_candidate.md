@@ -1,4 +1,6 @@
-# Gathering data
+# How to start a node as a leader candidate
+
+## Gathering data
 
 Like in the passive node case, two things are needed to connect to an existing network
 
@@ -10,17 +12,17 @@ The node configuration could be the same as that for [running a passive node](./
 
 There are some differences depending if you are connecting to a network running a genesis or bft consensus protocol.
 
-## Connecting to a genesis blockchain
+### Connecting to a genesis blockchain
 
-### Registering a stake pool
+#### Registering a stake pool
 
 In order to be able to generate blocks in an existing genesis network, a [registered stake pool](../../stake_pool/registering_stake_pool) is needed.
 
-### Creating the secrets file
+#### Creating the secrets file
 
 Put the node id and private keys in a yaml file in the following way:  
 
-#### Example
+##### Example
 
 filename: _node_secret.yaml_
 
@@ -31,7 +33,7 @@ genesis:
   node_id: Content of stake_pool.id file
 ```
 
-### Starting the node 
+#### Starting the node 
 
 ```sh
 jormungandr --genesis-block-hash asdf1234... --config config.yaml --secret node_secret.yaml
@@ -39,11 +41,11 @@ jormungandr --genesis-block-hash asdf1234... --config config.yaml --secret node_
 
 _The 'asdf1234...' part should be the actual block0 hash of the network_
 
-## Connecting to a BFT blockchain
+### Connecting to a BFT blockchain
 
 In order to generate blocks, the node should be registered as a slot leader in the network and started in the following way.
 
-# The secret file
+## The secret file
 
 Put secret key in a yaml file, e.g. `node_secret.yaml` as follows:
 
@@ -54,7 +56,7 @@ bft:
 
 where signing_key is a private key associated to the public id of a slot leader.
 
-## Starting the node
+### Starting the node
 
 ```sh
 jormungandr --genesis-block asdf1234... --config node.config --secret node_secret.yaml
