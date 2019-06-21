@@ -25,6 +25,7 @@ message MessageIds {
 }
 
 // Request message for method PullHeaders.
+// This message can also be send by the service as a BlockEvent variant.
 message PullHeadersRequest {
   // The identifiers of blocks to consider as the
   // starting point, in order of appearance.
@@ -39,6 +40,9 @@ message PullBlocksToTipRequest {
   // starting point, in order of appearance.
   repeated bytes from = 1;
 }
+
+// Response message for method PushHeaders.
+message PushHeadersResponse {}
 
 // Response message for method UploadBlocks.
 message UploadBlocksResponse {}
@@ -73,9 +77,12 @@ message BlockEvent {
   oneof item {
     // Announcement of a new block, carrying the block's header.
     Header announce = 1;
-    // Solicitation to upload identified blocks with a method call
-    // UploadBlocks.
+    // Solicitation to upload identified blocks with an UploadBlocks
+    // method call.
     BlockIds solicit = 2;
+    // Solicitation to push the chain of block headers with a PushHeaders
+    // method call.
+    PullHeadersRequest missing = 3;
   }
 }
 
@@ -101,7 +108,12 @@ service Node {
 
   rpc PullBlocksToTip(PullBlocksToTipRequest) returns (stream Block);
 
-  // Uploads blocks to the service in response to a solicitation item
+  // Sends headers of blocks to the service in response to a `missing`
+  // item received from the BlockSubscription response stream.
+  // The headers are streamed the in chronological order of the chain.
+  rpc PushHeaders(stream Header) returns (PushHeadersResponse);
+
+  // Uploads blocks to the service in response to a `solicit` item
   // received from the BlockSubscription response stream.
   rpc UploadBlocks(stream Block) returns (UploadBlocksResponse);
 
