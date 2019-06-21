@@ -54,7 +54,7 @@ pub fn test_genesis_for_prod_with_wrong_discrimination_fail_to_build() {
     config.genesis_yaml.blockchain_configuration.discrimination = Some("prod".to_string());
     jcli_wrapper::assert_genesis_encode_fails(
         &config.genesis_yaml,
-        " Invalid Address Discrimination",
+        "blockchain_configuration.discrimination: unknown variant `prod`, expected `test` or `production`",
     );
 }
 
