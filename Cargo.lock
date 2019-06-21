@@ -1200,7 +1200,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "jcli"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "actix-net 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 0.7.19 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1228,7 +1228,7 @@ dependencies = [
  "hex 0.1.0",
  "http 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "jormungandr-utils 0.2.0",
+ "jormungandr-utils 0.2.2",
  "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1259,7 +1259,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "actix-net 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 0.7.19 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1288,8 +1288,8 @@ dependencies = [
  "http 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.29 (registry+https://github.com/rust-lang/crates.io-index)",
- "jormungandr-lib 0.1.0",
- "jormungandr-utils 0.2.0",
+ "jormungandr-lib 0.2.2",
+ "jormungandr-utils 0.2.2",
  "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-integration-tests"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "assert_cmd 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "assert_fs 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1329,9 +1329,9 @@ dependencies = [
  "chain-crypto 0.1.0",
  "custom_error 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "galvanic-test 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "jcli 0.2.1",
- "jormungandr 0.2.1",
- "jormungandr-lib 0.1.0",
+ "jcli 0.2.2",
+ "jormungandr 0.2.2",
+ "jormungandr-lib 0.2.2",
  "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "quickcheck 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1346,7 +1346,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-lib"
-version = "0.1.0"
+version = "0.2.2"
 dependencies = [
  "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1365,7 +1365,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-utils"
-version = "0.2.0"
+version = "0.2.2"
 dependencies = [
  "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "chain-addr 0.1.0",
