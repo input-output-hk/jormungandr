@@ -263,6 +263,27 @@ pub enum ParseExtendedAddrError {
     EncodingError(cbor_event::Error),
     Base58Error(base58::Error),
 }
+
+impl fmt::Display for ParseExtendedAddrError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ParseExtendedAddrError::*;
+        match self {
+            EncodingError(_error) => f.write_str("encoding error"),
+            Base58Error(_error) => f.write_str("base58 error"),
+        }
+    }
+}
+
+impl std::error::Error for ParseExtendedAddrError {
+    fn source<'a>(&'a self) -> Option<&'a (dyn std::error::Error + 'static)> {
+        use ParseExtendedAddrError::*;
+        match self {
+            EncodingError(ref error) => Some(error),
+            Base58Error(ref error) => Some(error),
+        }
+    }
+}
+
 impl ::std::str::FromStr for ExtendedAddr {
     type Err = ParseExtendedAddrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
