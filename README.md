@@ -10,12 +10,18 @@ Currently the minimum supported version of the rust compiler is 1.35, however
 we recommend to use the most recent stable version of the rust compiler.
 
 1. [install rustup](https://www.rust-lang.org/tools/install)
+2. Run `source $HOME/.cargo/env` after installing rustup
 2. Run `rustup install stable`
 3. Run `rustup default stable`
 4. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
 5. Enter the repository directory: `cd jormungandr`
-6. install **jormungandr**: `cargo install --path jormungandr`
-7. install **jcli**: `cargo install --path jcli`
+6. Install necessary packages:
+   * `sudo apt update`
+   * `sudo apt install gcc`
+   * `sudo apt-get install pkg-config`
+   * `sudo apt-get install libssl-dev`
+7. install **jormungandr**: `cargo install --path jormungandr`
+8. install **jcli**: `cargo install --path jcli`
 
 Note:
 
