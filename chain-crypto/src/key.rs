@@ -1,6 +1,6 @@
 use crate::bech32::{self, Bech32};
 use crate::hex;
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 use std::fmt;
 use std::hash::Hash;
 use std::str::FromStr;

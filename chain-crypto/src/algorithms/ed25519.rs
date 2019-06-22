@@ -3,7 +3,7 @@ use crate::key::{
 };
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
 use cryptoxide::ed25519;
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 use ed25519_bip32::XPub;
 

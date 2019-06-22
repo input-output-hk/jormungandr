@@ -76,6 +76,7 @@ where
 mod tests {
     use super::*;
     use crate::store::testing::Block;
+    use rand_os::OsRng;
 
     #[test]
     pub fn put_get() {
@@ -85,13 +86,15 @@ mod tests {
 
     #[test]
     pub fn nth_ancestor() {
+        let mut rng = OsRng::new().unwrap();
         let mut store = MemoryBlockStore::<Block>::new();
-        crate::store::testing::test_nth_ancestor(&mut store);
+        crate::store::testing::test_nth_ancestor(&mut rng, &mut store);
     }
 
     #[test]
     pub fn iterate_range() {
+        let mut rng = OsRng::new().unwrap();
         let mut store = MemoryBlockStore::<Block>::new();
-        crate::store::testing::test_iterate_range(&mut store);
+        crate::store::testing::test_iterate_range(&mut rng, &mut store);
     }
 }

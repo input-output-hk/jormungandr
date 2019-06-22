@@ -1,5 +1,5 @@
 use crate::key;
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VRFVerification {

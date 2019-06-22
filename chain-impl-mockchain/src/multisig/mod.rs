@@ -18,7 +18,7 @@ mod test {
     use crate::transaction::TransactionId;
     use crate::{account, key};
     use chain_crypto::{PublicKey, SecretKey};
-    use rand::{CryptoRng, RngCore};
+    use rand_core::{CryptoRng, RngCore};
 
     fn make_keypair<R: RngCore + CryptoRng>(
         rng: &mut R,
@@ -48,7 +48,7 @@ mod test {
 
     #[test]
     fn multisig_works_depth1() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand_os::OsRng::new().unwrap();
         let (sk1, pk1, o1, i1) = make_participant(&mut rng, 0);
         let (sk2, pk2, o2, i2) = make_participant(&mut rng, 1);
         let (sk3, pk3, o3, i3) = make_participant(&mut rng, 2);

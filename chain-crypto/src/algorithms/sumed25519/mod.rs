@@ -8,7 +8,7 @@ use crate::evolving::{EvolvingStatus, KeyEvolvingAlgorithm};
 use crate::kes::KeyEvolvingSignatureAlgorithm;
 use crate::key::{AsymmetricKey, AsymmetricPublicKey, PublicKeyError, SecretKeyError};
 use crate::sign::{SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 // MMM sum scheme instanciated over the Ed25519 signature system
 // and a specific depth of 12

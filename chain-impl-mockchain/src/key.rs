@@ -7,7 +7,7 @@ use chain_crypto as crypto;
 use chain_crypto::{
     AsymmetricKey, AsymmetricPublicKey, SecretKey, SigningAlgorithm, VerificationAlgorithm,
 };
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 use std::str::FromStr;
 

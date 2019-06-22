@@ -7,7 +7,7 @@ use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 pub use curve25519_dalek::scalar::Scalar;
-use rand::{CryptoRng, Rng};
+use rand_core::{CryptoRng, RngCore};
 use sha2::Digest;
 use sha2::Sha512;
 use std::hash::{Hash, Hasher};
@@ -64,7 +64,7 @@ pub const PUBLIC_SIZE: usize = 32;
 
 impl SecretKey {
     /// Create a new random secret key
-    pub fn random<T: Rng + CryptoRng>(mut rng: T) -> Self {
+    pub fn random<T: RngCore + CryptoRng>(mut rng: T) -> Self {
         let sk = Scalar::random(&mut rng);
         let pk = RISTRETTO_BASEPOINT_POINT * sk;
         SecretKey {
@@ -125,7 +125,7 @@ impl SecretKey {
         proof
     }
 
-    pub fn proove_simple<T: Rng + CryptoRng>(
+    pub fn proove_simple<T: RngCore + CryptoRng>(
         &self,
         rng: &mut T,
         m_point: Point,
@@ -144,7 +144,7 @@ impl SecretKey {
         self.proove(r, m_point, output)
     }
 
-    pub fn evaluate_simple<T: Rng + CryptoRng>(
+    pub fn evaluate_simple<T: RngCore + CryptoRng>(
         &self,
         rng: &mut T,
         input: &[u8],
@@ -257,7 +257,7 @@ fn make_message_hash_point(data: &[u8]) -> Point {
 #[cfg(test)]
 mod tests {
     use super::SecretKey;
-    use rand::rngs::OsRng;
+    use rand_os::{rand_core::RngCore, OsRng};
 
     #[test]
     fn it_works() {
@@ -270,11 +270,11 @@ mod tests {
 
         let mut b1 = [0u8; 10];
         for i in b1.iter_mut() {
-            *i = rand::random()
+            *i = csprng.next_u32() as u8;
         }
         let mut b2 = [0u8; 10];
         for i in b2.iter_mut() {
-            *i = rand::random()
+            *i = csprng.next_u32() as u8;
         }
 
         let proof = sk.evaluate_simple(&mut csprng, &b1[..]);
@@ -293,7 +293,7 @@ mod tests {
 #[cfg(feature = "with-bench")]
 mod bench {
     use super::{PublicKey, SecretKey};
-    use rand::OsRng;
+    use rand_os::OsRng;
     use test::Bencher;
 
     fn common() -> (OsRng, SecretKey, PublicKey, [u8; 10], [u8; 10]) {
@@ -306,11 +306,11 @@ mod bench {
 
         let mut b1 = [0u8; 10];
         for i in b1.iter_mut() {
-            *i = rand::random()
+            *i = csprng.next_u32() as u8;
         }
         let mut b2 = [0u8; 10];
         for i in b2.iter_mut() {
-            *i = rand::random()
+            *i = csprng.next_u32() as u8;
         }
 
         (csprng, sk, pk, b1, b2)
