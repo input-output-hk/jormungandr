@@ -19,7 +19,7 @@ cfg_if! {
     if #[cfg(test)] {
         mod testing;
     } else if #[cfg(feature = "property-test-api")] {
-        mod testing;
+        pub mod testing;
     }
 }
 
