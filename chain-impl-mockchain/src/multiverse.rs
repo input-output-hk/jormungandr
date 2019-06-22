@@ -297,11 +297,10 @@ mod test {
         let slot0 = tf.slot0();
         let era = TimeEra::new(slot0, Epoch(0), NUM_BLOCK_PER_EPOCH);
 
-        let leader_key : SecretKey<Ed25519> = SecretKey::generate(rand_os::OsRng::new().unwrap());
+        let leader_key: SecretKey<Ed25519> = SecretKey::generate(rand_os::OsRng::new().unwrap());
         let leader_pub_key = leader_key.to_public();
 
         let mut store = chain_storage::memory::MemoryBlockStore::new();
-
 
         let mut genesis_block = BlockBuilder::new();
         let mut ents = ConfigParams::new();

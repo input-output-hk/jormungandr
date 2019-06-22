@@ -75,8 +75,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand_os::OsRng;
     use crate::store::testing::Block;
+    use rand_os::OsRng;
 
     #[test]
     pub fn put_get() {

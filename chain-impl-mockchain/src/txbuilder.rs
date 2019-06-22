@@ -432,7 +432,7 @@ mod tests {
     }
 
     fn arbitrary_range(gen: &mut impl Gen, range: u64) -> u64 {
-        u64::arbitrary(gen) % (range+1)
+        u64::arbitrary(gen) % (range + 1)
     }
 
     #[quickcheck]

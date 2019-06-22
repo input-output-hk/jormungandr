@@ -50,7 +50,8 @@ impl ConfigBuilder {
         ie.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
 
         // TODO remove rng: make this creation deterministic
-        let leader_prv_key: SecretKey<Ed25519Extended> = SecretKey::generate(rand_os::OsRng::new().unwrap());
+        let leader_prv_key: SecretKey<Ed25519Extended> =
+            SecretKey::generate(rand_os::OsRng::new().unwrap());
         let leader_pub_key = leader_prv_key.to_public();
         ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
         ie.push(ConfigParam::Block0Date(

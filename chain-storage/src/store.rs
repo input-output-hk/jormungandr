@@ -507,7 +507,10 @@ pub mod testing {
         &v[s % v.len()]
     }
 
-    pub fn generate_chain<R: RngCore, Store: BlockStore<Block = Block>>(rng: &mut R, store: &mut Store) -> Vec<Block> {
+    pub fn generate_chain<R: RngCore, Store: BlockStore<Block = Block>>(
+        rng: &mut R,
+        store: &mut Store,
+    ) -> Vec<Block> {
         let mut blocks = vec![];
 
         let genesis_block = Block::genesis();
@@ -549,7 +552,10 @@ pub mod testing {
         assert_eq!(store.get_tag("tip").unwrap().unwrap(), genesis_block.id());
     }
 
-    pub fn test_nth_ancestor<R: RngCore, Store: BlockStore<Block = Block>>(rng: &mut R, store: &mut Store) {
+    pub fn test_nth_ancestor<R: RngCore, Store: BlockStore<Block = Block>>(
+        rng: &mut R,
+        store: &mut Store,
+    ) {
         let blocks = generate_chain(rng, store);
 
         let mut blocks_fetched = 0;
@@ -585,7 +591,10 @@ pub mod testing {
         assert!(blocks_per_test < 35.0);
     }
 
-    pub fn test_iterate_range<R: RngCore, Store: BlockStore<Block = Block>>(rng: &mut R, store: &mut Store) {
+    pub fn test_iterate_range<R: RngCore, Store: BlockStore<Block = Block>>(
+        rng: &mut R,
+        store: &mut Store,
+    ) {
         let blocks = generate_chain(rng, store);
 
         let blocks_by_id: HashMap<BlockId, &Block> = blocks.iter().map(|b| (b.id(), b)).collect();
