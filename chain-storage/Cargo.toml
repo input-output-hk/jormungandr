@@ -11,10 +11,11 @@ edition = "2018"
 
 [dependencies]
 chain-core = { path = "../chain-core" }
-rand = { version = "0.6", optional = true }
+rand_core = { version = "0.3", optional = true }
 
 [dev-dependencies]
-rand = { version = "0.6" }
+rand_core = { version = "0.3" }
+rand_os = { version = "0.1" }
 
 [features]
-test-api = ["rand"]
+test-api = ["rand_core"]

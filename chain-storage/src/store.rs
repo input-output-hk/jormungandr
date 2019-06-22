@@ -361,7 +361,7 @@ pub mod testing {
     use super::*;
     use chain_core::packer::*;
     use chain_core::property::{Block as _, BlockDate as _, BlockId as _};
-    use rand::Rng;
+    use rand_core::RngCore;
     use std::collections::HashMap;
     use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -501,18 +501,23 @@ pub mod testing {
         }
     }
 
-    pub fn generate_chain<Store: BlockStore<Block = Block>>(store: &mut Store) -> Vec<Block> {
+    pub fn pick_from_vector<'a, A, R: RngCore>(rng: &mut R, v: &'a Vec<A>) -> &'a A {
+        let s = rng.next_u32() as usize;
+        // this doesn't need to be uniform
+        &v[s % v.len()]
+    }
+
+    pub fn generate_chain<R: RngCore, Store: BlockStore<Block = Block>>(rng: &mut R, store: &mut Store) -> Vec<Block> {
         let mut blocks = vec![];
 
         let genesis_block = Block::genesis();
         store.put_block(&genesis_block).unwrap();
         blocks.push(genesis_block);
 
-        let mut rng = rand::thread_rng();
-
         for _ in 0..10 {
-            let mut parent_block = blocks[rng.gen_range(0, blocks.len())].clone();
-            for _ in 0..rng.gen_range(1, 10000) {
+            let mut parent_block = pick_from_vector(rng, &blocks).clone();
+            let r = 1 + (rng.next_u32() % 9999);
+            for _ in 0..r {
                 let block = parent_block.make_child();
                 store.put_block(&block).unwrap();
                 parent_block = block.clone();
@@ -544,20 +549,18 @@ pub mod testing {
         assert_eq!(store.get_tag("tip").unwrap().unwrap(), genesis_block.id());
     }
 
-    pub fn test_nth_ancestor<Store: BlockStore<Block = Block>>(store: &mut Store) {
-        let blocks = generate_chain(store);
-
-        let mut rng = rand::thread_rng();
+    pub fn test_nth_ancestor<R: RngCore, Store: BlockStore<Block = Block>>(rng: &mut R, store: &mut Store) {
+        let blocks = generate_chain(rng, store);
 
         let mut blocks_fetched = 0;
         let mut total_distance = 0;
         let nr_tests = 1000;
 
         for _ in 0..nr_tests {
-            let block = &blocks[rng.gen_range(0, blocks.len())];
+            let block = pick_from_vector(rng, &blocks);
             assert_eq!(&store.get_block(&block.id()).unwrap().0, block);
 
-            let distance = rng.gen_range(0, block.chain_length().0);
+            let distance = rng.next_u64() % block.chain_length().0;
             total_distance += distance;
 
             let ancestor_info = for_path_to_nth_ancestor(store, &block.id(), distance, |_| {
@@ -582,16 +585,14 @@ pub mod testing {
         assert!(blocks_per_test < 35.0);
     }
 
-    pub fn test_iterate_range<Store: BlockStore<Block = Block>>(store: &mut Store) {
-        let blocks = generate_chain(store);
+    pub fn test_iterate_range<R: RngCore, Store: BlockStore<Block = Block>>(rng: &mut R, store: &mut Store) {
+        let blocks = generate_chain(rng, store);
 
         let blocks_by_id: HashMap<BlockId, &Block> = blocks.iter().map(|b| (b.id(), b)).collect();
 
-        let mut rng = rand::thread_rng();
-
         for _ in 0..1000 {
-            let from = &blocks[rng.gen_range(0, blocks.len())];
-            let to = &blocks[rng.gen_range(0, blocks.len())];
+            let from = pick_from_vector(rng, &blocks);
+            let to = pick_from_vector(rng, &blocks);
 
             match iterate_range(store, &from.id(), &to.id()) {
                 Ok(iter) => {
