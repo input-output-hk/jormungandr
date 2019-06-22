@@ -12,7 +12,7 @@ use chain_impl_mockchain::value::*;
 use std::collections::HashMap;
 
 fn make_pool(ledger: &mut Ledger) -> (StakePoolId, SecretKey<Curve25519_2HashDH>) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand_os::OsRng::new().unwrap();
 
     let pool_vrf_private_key = SecretKey::generate(&mut rng);
     let pool_kes: KeyPair<SumEd25519_12> = KeyPair::generate(&mut rng);

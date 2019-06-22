@@ -270,7 +270,6 @@ mod test {
     use chain_crypto::{Ed25519, SecretKey};
     use chain_storage::store::BlockStore;
     use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
-    use quickcheck::{Arbitrary, StdGen};
     use std::time::SystemTime;
 
     fn apply_block(state: &Ledger, block: &Block) -> Ledger {
@@ -298,18 +297,16 @@ mod test {
         let slot0 = tf.slot0();
         let era = TimeEra::new(slot0, Epoch(0), NUM_BLOCK_PER_EPOCH);
 
-        let mut g = StdGen::new(rand::thread_rng(), 10);
-        let leader_key = Arbitrary::arbitrary(&mut g);
+        let leader_key : SecretKey<Ed25519> = SecretKey::generate(rand_os::OsRng::new().unwrap());
+        let leader_pub_key = leader_key.to_public();
 
         let mut store = chain_storage::memory::MemoryBlockStore::new();
 
-        let random_sk: SecretKey<Ed25519> = SecretKey::generate(rand::thread_rng());
 
         let mut genesis_block = BlockBuilder::new();
         let mut ents = ConfigParams::new();
         ents.push(ConfigParam::Discrimination(Discrimination::Test));
         ents.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
-        let leader_pub_key = random_sk.to_public();
         ents.push(ConfigParam::AddBftLeader(LeaderId::from(leader_pub_key)));
         ents.push(ConfigParam::Block0Date(Block0Date(0)));
         ents.push(ConfigParam::SlotDuration(10));

@@ -292,8 +292,6 @@ mod tests {
     use chain_addr::Address;
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
-    use rand::distributions::uniform::{SampleUniform, Uniform};
-    use rand::Rng;
     use std::iter;
 
     #[quickcheck]
@@ -389,8 +387,8 @@ mod tests {
     impl Arbitrary for ArbitraryInputs {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             let value = u64::arbitrary(gen);
-            let count = arbitrary_range(gen, 0..=255);
-            let inputs = split_value(gen, value, count)
+            let count = u8::arbitrary(gen);
+            let inputs = split_value(gen, value, count as u16)
                 .into_iter()
                 .map(|value| arbitrary_input(gen, value))
                 .collect();
@@ -404,8 +402,8 @@ mod tests {
     impl Arbitrary for ArbitraryOutputs {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             let value = u64::arbitrary(gen);
-            let count = arbitrary_range(gen, 0..=255);
-            let outputs = split_value(gen, value, count)
+            let count = u8::arbitrary(gen);
+            let outputs = split_value(gen, value, count as u16)
                 .into_iter()
                 .map(|value| (Address::arbitrary(gen), Value(value)))
                 .collect();
@@ -425,7 +423,7 @@ mod tests {
 
     fn split_value(gen: &mut impl Gen, value: u64, parts: u16) -> Vec<u64> {
         let mut in_values: Vec<_> = iter::once(0)
-            .chain(iter::repeat_with(|| arbitrary_range(gen, 0..=value)))
+            .chain(iter::repeat_with(|| arbitrary_range(gen, value)))
             .take(parts as usize)
             .chain(iter::once(value))
             .collect();
@@ -433,8 +431,8 @@ mod tests {
         in_values.windows(2).map(|pair| pair[1] - pair[0]).collect()
     }
 
-    fn arbitrary_range<T: SampleUniform>(gen: &mut impl Gen, range: impl Into<Uniform<T>>) -> T {
-        gen.sample(range.into())
+    fn arbitrary_range(gen: &mut impl Gen, range: u64) -> u64 {
+        u64::arbitrary(gen) % (range+1)
     }
 
     #[quickcheck]

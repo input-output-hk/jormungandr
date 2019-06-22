@@ -53,6 +53,6 @@ impl AddressData {
     }
 
     fn generate_random_secret_key() -> EitherEd25519SecretKey {
-        EitherEd25519SecretKey::generate(rand::thread_rng())
+        EitherEd25519SecretKey::generate(rand_os::OsRng::new().unwrap())
     }
 }
