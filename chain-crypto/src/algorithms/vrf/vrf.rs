@@ -293,7 +293,7 @@ mod tests {
 #[cfg(feature = "with-bench")]
 mod bench {
     use super::{PublicKey, SecretKey};
-    use rand::OsRng;
+    use rand_os::OsRng;
     use test::Bencher;
 
     fn common() -> (OsRng, SecretKey, PublicKey, [u8; 10], [u8; 10]) {
@@ -306,11 +306,11 @@ mod bench {
 
         let mut b1 = [0u8; 10];
         for i in b1.iter_mut() {
-            *i = rand::random()
+            *i = csprng.next_u32() as u8;
         }
         let mut b2 = [0u8; 10];
         for i in b2.iter_mut() {
-            *i = rand::random()
+            *i = csprng.next_u32() as u8;
         }
 
         (csprng, sk, pk, b1, b2)
