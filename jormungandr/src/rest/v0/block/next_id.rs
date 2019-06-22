@@ -1,4 +1,7 @@
 use super::parse_block_hash;
+
+use chain_storage::store;
+
 use actix_web::error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError};
 use actix_web::{Path, Query, State};
 use blockchain::BlockchainR;
@@ -16,8 +19,7 @@ pub fn handle_request(
     // FIXME: don't hog the blockchain lock.
     let blockchain = blockchain.lock_read();
     let storage = blockchain.storage.read().unwrap();
-    storage
-        .iterate_range(&block_id, &blockchain.get_tip().unwrap())
+    store::iterate_range(&*storage, &block_id, &blockchain.get_tip().unwrap())
         .map_err(|e| ErrorBadRequest(e))?
         .take(query_params.get_count())
         .try_fold(Bytes::new(), |mut bytes, res| {

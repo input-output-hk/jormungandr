@@ -3,6 +3,7 @@ use crate::blockchain::BlockchainR;
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
 use crate::utils::task::{Input, ThreadServiceInfo};
 use chain_core::property::{Block as _, HasHeader as _};
+use chain_storage::store;
 
 pub fn handle_input(_info: &ThreadServiceInfo, blockchain: &BlockchainR, input: Input<ClientMsg>) {
     let cquery = match input {
@@ -73,20 +74,12 @@ fn handle_get_headers_range(
 
         /* Send headers up to the maximum. */
         let mut headers = vec![];
-        for x in blockchain
-            .storage
-            .read()
-            .unwrap()
-            .iterate_range(&from, &to)?
-        {
+        let storage = blockchain.storage.read().unwrap();
+        for x in store::iterate_range(&*storage, &from, &to)? {
             match x {
                 Err(err) => return Err(Error::from(err)),
                 Ok(info) => {
-                    let (block, _) = blockchain
-                        .storage
-                        .read()
-                        .unwrap()
-                        .get_block(&info.block_hash)?;
+                    let (block, _) = storage.get_block(&info.block_hash)?;
                     headers.push(block.header());
                     if headers.len() >= MAX_HEADERS {
                         break;
@@ -107,21 +100,15 @@ fn handle_get_blocks_range(
     to: HeaderHash,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
+    // FIXME: remove double locking
     let blockchain = blockchain.lock_read();
+    let storage = blockchain.storage.read().unwrap();
 
     // FIXME: include the from block
-    for x in blockchain
-        .storage
-        .read()
-        .unwrap()
-        .iterate_range(&from, &to)?
-    {
+
+    for x in store::iterate_range(&*storage, &from, &to)? {
         let info = x?;
-        let (blk, _) = blockchain
-            .storage
-            .read()
-            .unwrap()
-            .get_block(&info.block_hash)?;
+        let (blk, _) = storage.get_block(&info.block_hash)?;
         reply.send(blk);
     }
 
@@ -175,12 +162,8 @@ fn handle_pull_blocks_to_tip(
 
     let tip = blockchain.get_tip().unwrap();
 
-    for x in blockchain
-        .storage
-        .read()
-        .unwrap()
-        .iterate_range(&from, &tip)?
-    {
+    let storage = blockchain.storage.read().unwrap();
+    for x in store::iterate_range(&*storage, &from, &tip)? {
         let info = x?;
         let (blk, _) = blockchain
             .storage
