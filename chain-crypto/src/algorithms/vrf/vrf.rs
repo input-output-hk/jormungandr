@@ -257,7 +257,7 @@ fn make_message_hash_point(data: &[u8]) -> Point {
 #[cfg(test)]
 mod tests {
     use super::SecretKey;
-    use rand_os::OsRng;
+    use rand_os::{rand_core::RngCore, OsRng};
 
     #[test]
     fn it_works() {
@@ -270,11 +270,11 @@ mod tests {
 
         let mut b1 = [0u8; 10];
         for i in b1.iter_mut() {
-            *i = rand::random()
+            *i = csprng.next_u32() as u8;
         }
         let mut b2 = [0u8; 10];
         for i in b2.iter_mut() {
-            *i = rand::random()
+            *i = csprng.next_u32() as u8;
         }
 
         let proof = sk.evaluate_simple(&mut csprng, &b1[..]);

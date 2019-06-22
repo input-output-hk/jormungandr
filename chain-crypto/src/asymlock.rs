@@ -107,11 +107,11 @@ pub fn decrypt(
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand;
+    use rand_os::OsRng;
 
     #[test]
     pub fn it_works() {
-        let mut r = rand::thread_rng();
+        let mut r = OsRng::new().unwrap();
 
         // create a random keypair
         let sk_receiver = Scalar::random(&mut r);
