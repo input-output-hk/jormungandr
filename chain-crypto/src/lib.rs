@@ -35,6 +35,8 @@ mod key;
 mod sign;
 mod vrf;
 
+pub mod role;
+
 pub use evolving::{EvolvingStatus, KeyEvolvingAlgorithm};
 pub use kes::KeyEvolvingSignatureAlgorithm;
 pub use key::{
