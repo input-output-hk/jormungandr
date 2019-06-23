@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr-lib"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>", "Vincent Hanquez <vincent.hanquez@iohk.io>"]
 edition = "2018"
 
