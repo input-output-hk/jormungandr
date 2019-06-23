@@ -75,17 +75,7 @@ impl BlockVersion {
 }
 
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    Display,
-    EnumString,
-    IntoStaticStr,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
+    Debug, Clone, Copy, Display, EnumString, IntoStaticStr, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 pub enum ConsensusVersion {
     #[strum(to_string = "bft")]
