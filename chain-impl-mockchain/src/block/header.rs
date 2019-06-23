@@ -313,7 +313,6 @@ mod test {
     use crate::block::ConsensusVersion;
     use chain_crypto::{AsymmetricKey, SecretKey, SumEd25519_12};
     use lazy_static::lazy_static;
-    use num_traits::FromPrimitive;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {

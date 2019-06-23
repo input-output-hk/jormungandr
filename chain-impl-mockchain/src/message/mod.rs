@@ -5,8 +5,6 @@ use crate::legacy;
 use chain_addr::Address;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 
 pub use config::ConfigParams;
 pub use raw::{MessageId, MessageRaw};
@@ -29,7 +27,7 @@ pub enum Message {
 }
 
 /// Tag enumeration of all known message
-#[derive(Debug, Clone, Copy, FromPrimitive, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum MessageTag {
     Initial = 0,
     OldUtxoDeclaration = 1,
@@ -37,6 +35,20 @@ pub(super) enum MessageTag {
     Certificate = 3,
     UpdateProposal = 4,
     UpdateVote = 5,
+}
+
+impl MessageTag {
+    pub fn from_u8(v: u8) -> Option<Self> {
+        match v {
+            0 => Some(MessageTag::Initial),
+            1 => Some(MessageTag::OldUtxoDeclaration),
+            2 => Some(MessageTag::Transaction),
+            3 => Some(MessageTag::Certificate),
+            4 => Some(MessageTag::UpdateProposal),
+            5 => Some(MessageTag::UpdateVote),
+            _ => None,
+        }
+    }
 }
 
 impl Message {

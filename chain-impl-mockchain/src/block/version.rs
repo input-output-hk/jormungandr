@@ -1,8 +1,3 @@
-use lazy_static::lazy_static;
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
-use std::collections::BTreeMap;
-use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,7 +48,7 @@ impl From<BlockVersion> for AnyBlockVersion {
     }
 }
 
-#[derive(Debug, Clone, Copy, EnumIter, FromPrimitive, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, EnumIter, PartialEq, Eq)]
 pub enum BlockVersion {
     Genesis = 0,
     Ed25519Signed = 1,
@@ -61,6 +56,15 @@ pub enum BlockVersion {
 }
 
 impl BlockVersion {
+    pub fn from_u16(v: u16) -> Option<Self> {
+        match v {
+            0 => Some(BlockVersion::Genesis),
+            1 => Some(BlockVersion::Ed25519Signed),
+            2 => Some(BlockVersion::KesVrfproof),
+            _ => None,
+        }
+    }
+
     pub fn get_consensus(self) -> Option<ConsensusVersion> {
         match self {
             BlockVersion::Genesis => None,
@@ -76,7 +80,6 @@ impl BlockVersion {
     Copy,
     Display,
     EnumString,
-    FromPrimitive,
     IntoStaticStr,
     PartialEq,
     Eq,
@@ -92,21 +95,17 @@ pub enum ConsensusVersion {
 }
 
 impl ConsensusVersion {
-    pub fn supported_block_versions(self) -> &'static [BlockVersion] {
-        lazy_static! {
-            static ref MAPPING: BTreeMap<u16, Vec<BlockVersion>> = {
-                let mut map = BTreeMap::<_, Vec<_>>::new();
-                for block_version in BlockVersion::iter() {
-                    if let Some(consensus) = block_version.get_consensus() {
-                        map.entry(consensus as u16).or_default().push(block_version)
-                    }
-                }
-                map
-            };
+    pub fn from_u16(v: u16) -> Option<Self> {
+        match v {
+            1 => Some(ConsensusVersion::Bft),
+            2 => Some(ConsensusVersion::GenesisPraos),
+            _ => None,
         }
-        MAPPING
-            .get(&(self as u16))
-            .map(AsRef::as_ref)
-            .unwrap_or_default()
+    }
+    pub fn supported_block_versions(self) -> &'static [BlockVersion] {
+        match self {
+            ConsensusVersion::Bft => &[BlockVersion::Ed25519Signed],
+            ConsensusVersion::GenesisPraos => &[BlockVersion::KesVrfproof],
+        }
     }
 }

@@ -4,8 +4,6 @@ use crate::transaction::AccountIdentifier;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519, PublicKey, Verification};
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 
 #[derive(Debug, Clone)]
 pub struct SignatureRaw(pub Vec<u8>);
@@ -86,11 +84,21 @@ pub enum CertificateContent {
     StakePoolRetirement(StakePoolRetirement),
 }
 
-#[derive(FromPrimitive)]
 enum CertificateTag {
     StakeDelegation = 1,
     StakePoolRegistration = 2,
     StakePoolRetirement = 3,
+}
+
+impl CertificateTag {
+    pub fn from_u8(v: u8) -> Option<Self> {
+        match v {
+            1 => Some(CertificateTag::StakeDelegation),
+            2 => Some(CertificateTag::StakePoolRegistration),
+            3 => Some(CertificateTag::StakePoolRetirement),
+            _ => None,
+        }
+    }
 }
 
 impl property::Serialize for Certificate {
