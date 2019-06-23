@@ -14,7 +14,7 @@ use imhamt::{Hamt, HamtIter, InsertError, RemoveError, ReplaceError, UpdateError
 custom_error! {
     #[derive(Clone, PartialEq, Eq)]
     pub Error
-        AlreadyExists = "Transaction ID Already exits",
+        AlreadyExists = "Transaction ID Already exist",
         TransactionNotFound = "Transaction is not found",
         IndexNotFound = "Index not found",
 }
