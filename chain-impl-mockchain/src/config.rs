@@ -6,8 +6,6 @@ use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::packer::Codec;
 use chain_core::property;
 use chain_crypto::PublicKey;
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 use std::fmt::{self, Display, Formatter};
 use std::io::{self, Write};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
@@ -61,7 +59,7 @@ pub enum ConfigParam {
 }
 
 // Discriminants can NEVER be 1024 or higher
-#[derive(AsRefStr, Clone, Copy, Debug, EnumIter, EnumString, FromPrimitive, PartialEq)]
+#[derive(AsRefStr, Clone, Copy, Debug, EnumIter, EnumString, PartialEq)]
 enum Tag {
     #[strum(to_string = "discrimination")]
     Discrimination = 1,
@@ -91,6 +89,28 @@ enum Tag {
     ProposalExpiration = 15,
     #[strum(to_string = "kes-update-speed")]
     KESUpdateSpeed = 16,
+}
+
+impl Tag {
+    pub fn from_u16(v: u16) -> Option<Self> {
+        match v {
+            1 => Some(Tag::Discrimination),
+            2 => Some(Tag::Block0Date),
+            3 => Some(Tag::ConsensusVersion),
+            4 => Some(Tag::SlotsPerEpoch),
+            5 => Some(Tag::SlotDuration),
+            6 => Some(Tag::EpochStabilityDepth),
+            8 => Some(Tag::ConsensusGenesisPraosActiveSlotsCoeff),
+            9 => Some(Tag::MaxNumberOfTransactionsPerBlock),
+            10 => Some(Tag::BftSlotsRatio),
+            11 => Some(Tag::AddBftLeader),
+            12 => Some(Tag::RemoveBftLeader),
+            14 => Some(Tag::LinearFee),
+            15 => Some(Tag::ProposalExpiration),
+            16 => Some(Tag::KESUpdateSpeed),
+            _ => None,
+        }
+    }
 }
 
 impl<'a> From<&'a ConfigParam> for Tag {
@@ -374,7 +394,7 @@ impl TagLen {
     }
 
     pub fn get_tag(self) -> Result<Tag, Error> {
-        FromPrimitive::from_u16(self.0 >> 6).ok_or(Error::InvalidTag)
+        Tag::from_u16(self.0 >> 6).ok_or(Error::InvalidTag)
     }
 }
 
