@@ -39,10 +39,10 @@ impl From<InsertError> for LedgerError {
 
 #[derive(Clone)]
 pub struct AccountState<Extra> {
-    counter: SpendingCounter,
-    delegation: Option<StakePoolId>,
-    value: Value,
-    extra: Extra,
+    pub counter: SpendingCounter,
+    pub delegation: Option<StakePoolId>,
+    pub value: Value,
+    pub extra: Extra,
 }
 
 impl<Extra> AccountState<Extra> {
@@ -149,9 +149,9 @@ impl From<u32> for SpendingCounter {
     }
 }
 
-impl Into<u32> for SpendingCounter {
-    fn into(self) -> u32 {
-        self.0
+impl From<SpendingCounter> for u32 {
+    fn from(v: SpendingCounter) -> u32 {
+        v.0
     }
 }
 

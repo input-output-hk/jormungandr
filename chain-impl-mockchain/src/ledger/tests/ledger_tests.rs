@@ -8,6 +8,7 @@ use chain_addr::Discrimination;
 use crate::ledger::Error::{NotEnoughSignatures, TransactionHasTooManyOutputs};
 use crate::transaction::*;
 use crate::value::*;
+use crate::ledger::Entry;
 
 macro_rules! assert_err {
     ($left: expr, $right: expr) => {
@@ -217,4 +218,67 @@ pub fn transaction_with_more_than_253_outputs() {
         },
         ledger.apply_transaction(&signed_tx, &fees)
     )
+}
+
+#[test]
+pub fn iterate() {
+    let faucet = AddressData::utxo(Discrimination::Test);
+
+    let (message, _utxos) = ledger::create_initial_transaction(Output::from_address(
+        faucet.address.clone(),
+        Value(42000),
+    ));
+    let (_block0_hash, ledger) =
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
+
+    // FIXME: generate arbitrary ledger
+
+    for item in ledger.iter() {
+        match item {
+            Entry::Globals(globals) => {
+                println!(
+                    "Globals date={} length={} block0_hash={} start_time={:?} discr={} kes_update_speed={}",
+                    globals.date,
+                    globals.chain_length,
+                    globals.static_params.block0_initial_hash,
+                    globals.static_params.block0_start_time,
+                    globals.static_params.discrimination,
+                    globals.static_params.kes_update_speed,
+                );
+            }
+            Entry::Utxo(entry) => {
+                println!(
+                    "Utxo {} {} {}",
+                    entry.transaction_id, entry.output_index, entry.output
+                );
+            }
+            Entry::OldUtxo(entry) => {
+                println!(
+                    "OldUtxo {} {} {}",
+                    entry.transaction_id, entry.output_index, entry.output
+                );
+            }
+            Entry::Account((id, state)) => {
+                println!(
+                    "Account {} {} {:?} {}",
+                    id,
+                    u32::from(state.counter),
+                    state.delegation,
+                    state.value,
+                );
+            }
+            Entry::UpdateProposal((id, state)) => {
+                println!(
+                    "UpdateProposal {} {:?} {} {:?}",
+                    id, state.proposal, state.proposal_date, state.votes
+                );
+            }
+            Entry::StakePool((id, info)) => {
+                println!(
+                    "StakePool {} {} {:?} {:?}",
+                    id, info.serial, info.owners, info.initial_key,
+                );
+            }
+        }
+    }
 }

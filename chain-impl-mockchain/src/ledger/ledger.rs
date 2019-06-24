@@ -853,3 +853,118 @@ fn input_account_verify(
         }
     }
 }
+
+pub enum Entry<'a> {
+    Globals(Globals),
+    Utxo(utxo::Entry<'a, Address>),
+    OldUtxo(utxo::Entry<'a, legacy::OldAddress>),
+    Account(
+        (
+            &'a account::Identifier,
+            &'a crate::accounting::account::AccountState<()>,
+        ),
+    ),
+    //Setting(),
+    UpdateProposal(
+        (
+            &'a crate::update::UpdateProposalId,
+            &'a crate::update::UpdateProposalState,
+        ),
+    ),
+    //Multisig
+    StakePool(
+        (
+            &'a crate::stake::StakePoolId,
+            &'a crate::stake::StakePoolInfo,
+        ),
+    ),
+}
+
+pub struct Globals {
+    pub date: BlockDate,
+    pub chain_length: ChainLength,
+    pub static_params: LedgerStaticParameters,
+}
+
+enum IterState<'a> {
+    Initial,
+    Utxo(utxo::Iter<'a, Address>),
+    OldUtxo(utxo::Iter<'a, legacy::OldAddress>),
+    Accounts(crate::accounting::account::Iter<'a, account::Identifier, ()>),
+    UpdateProposals(
+        std::collections::btree_map::Iter<
+            'a,
+            crate::update::UpdateProposalId,
+            crate::update::UpdateProposalState,
+        >,
+    ),
+    StakePools(imhamt::HamtIter<'a, crate::stake::StakePoolId, crate::stake::StakePoolInfo>),
+    Done,
+}
+
+pub struct LedgerIterator<'a> {
+    ledger: &'a Ledger,
+    state: IterState<'a>,
+}
+
+impl<'a> Iterator for LedgerIterator<'a> {
+    type Item = Entry<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.state {
+            IterState::Initial => {
+                self.state = IterState::Utxo(self.ledger.utxos.iter());
+                Some(Entry::Globals(Globals {
+                    date: self.ledger.date,
+                    chain_length: self.ledger.chain_length,
+                    static_params: (*self.ledger.static_params).clone(),
+                }))
+            }
+            IterState::Utxo(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::OldUtxo(self.ledger.oldutxos.iter());
+                    self.next()
+                }
+                Some(x) => Some(Entry::Utxo(x)),
+            },
+            IterState::OldUtxo(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::Accounts(self.ledger.accounts.iter());
+                    self.next()
+                }
+                Some(x) => Some(Entry::OldUtxo(x)),
+            },
+            IterState::Accounts(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::UpdateProposals(self.ledger.updates.proposals.iter());
+                    self.next()
+                }
+                Some(x) => Some(Entry::Account(x)),
+            },
+            IterState::UpdateProposals(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::StakePools(self.ledger.delegation.stake_pools.iter());
+                    self.next()
+                }
+                Some(x) => Some(Entry::UpdateProposal(x)),
+            },
+            IterState::StakePools(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::Done;
+                    self.next()
+                }
+                Some(x) => Some(Entry::StakePool(x)),
+            },
+            IterState::Done => None,
+        }
+    }
+}
+
+impl Ledger {
+    pub fn iter<'a>(&'a self) -> LedgerIterator<'a> {
+        LedgerIterator {
+            ledger: self,
+            state: IterState::Initial,
+        }
+    }
+}
