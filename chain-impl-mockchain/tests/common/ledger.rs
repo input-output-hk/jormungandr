@@ -3,6 +3,7 @@ use chain_crypto::*;
 use chain_impl_mockchain::block::ConsensusVersion;
 use chain_impl_mockchain::block::HeaderHash;
 use chain_impl_mockchain::config::ConfigParam;
+use chain_impl_mockchain::ledger::Error;
 use chain_impl_mockchain::ledger::Ledger;
 use chain_impl_mockchain::message::config::ConfigParams;
 use chain_impl_mockchain::message::Message;
@@ -27,6 +28,11 @@ impl ConfigBuilder {
             active_slots_coeff: Milli::HALF,
             discrimination: Discrimination::Test,
         }
+    }
+
+    pub fn with_discrimination<'a>(&'a mut self, discrimination: Discrimination) -> &'a mut Self {
+        self.discrimination = discrimination;
+        self
     }
 
     pub fn with_slot_duration<'a>(&'a mut self, slot_duration: u8) -> &'a mut Self {
@@ -71,14 +77,17 @@ impl ConfigBuilder {
 pub fn create_initial_fake_ledger(
     initial_msgs: &[Message],
     config_params: ConfigParams,
-) -> (HeaderHash, Ledger) {
+) -> Result<(HeaderHash, Ledger), Error> {
     let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
 
     let mut messages = Vec::new();
     messages.push(Message::Initial(config_params));
     messages.extend_from_slice(initial_msgs);
-    let ledger = Ledger::new(block0_hash, &messages).expect("create initial fake ledger failed");
-    (block0_hash, ledger)
+    let ledger_init_result = Ledger::new(block0_hash, &messages);
+    match ledger_init_result {
+        Ok(ledger) => Ok((block0_hash, ledger)),
+        Err(error) => Err(error),
+    }
 }
 
 pub fn create_initial_transaction(output: Output<Address>) -> (Message, Vec<UtxoPointer>) {
