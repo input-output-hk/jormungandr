@@ -871,7 +871,18 @@ pub enum Entry<'a> {
             &'a crate::update::UpdateProposalState,
         ),
     ),
-    //Multisig
+    MultisigAccount(
+        (
+            &'a crate::multisig::Identifier,
+            &'a crate::accounting::account::AccountState<()>,
+        ),
+    ),
+    MultisigDeclaration(
+        (
+            &'a crate::multisig::Identifier,
+            &'a crate::multisig::Declaration,
+        ),
+    ),
     StakePool(
         (
             &'a crate::stake::StakePoolId,
@@ -899,6 +910,8 @@ enum IterState<'a> {
             crate::update::UpdateProposalState,
         >,
     ),
+    MultisigAccounts(crate::accounting::account::Iter<'a, crate::multisig::Identifier, ()>),
+    MultisigDeclarations(imhamt::HamtIter<'a, crate::multisig::Identifier, crate::multisig::Declaration>),
     StakePools(imhamt::HamtIter<'a, crate::stake::StakePoolId, crate::stake::StakePoolInfo>),
     Done,
 }
@@ -952,10 +965,24 @@ impl<'a> Iterator for LedgerIterator<'a> {
             }
             IterState::UpdateProposals(iter) => match iter.next() {
                 None => {
-                    self.state = IterState::StakePools(self.ledger.delegation.stake_pools.iter());
+                    self.state = IterState::MultisigAccounts(self.ledger.multisig.iter_accounts());
                     self.next()
                 }
                 Some(x) => Some(Entry::UpdateProposal(x)),
+            },
+            IterState::MultisigAccounts(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::MultisigDeclarations(self.ledger.multisig.iter_declarations());
+                    self.next()
+                }
+                Some(x) => Some(Entry::MultisigAccount(x)),
+            },
+            IterState::MultisigDeclarations(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::StakePools(self.ledger.delegation.stake_pools.iter());
+                    self.next()
+                }
+                Some(x) => Some(Entry::MultisigDeclaration(x)),
             },
             IterState::StakePools(iter) => match iter.next() {
                 None => {

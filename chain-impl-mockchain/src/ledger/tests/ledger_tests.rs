@@ -280,6 +280,23 @@ pub fn iterate() {
                     id, state.proposal, state.proposal_date, state.votes
                 );
             }
+            Entry::MultisigAccount((id, state)) => {
+                println!(
+                    "MultisigAccount {} {} {:?} {}",
+                    id,
+                    u32::from(state.counter),
+                    state.delegation,
+                    state.value,
+                );
+            }
+            Entry::MultisigDeclaration((id, decl)) => {
+                println!(
+                    "MultisigDeclaration {} {} {}",
+                    id,
+                    decl.threshold(),
+                    decl.total(),
+                );
+            }
             Entry::StakePool((id, info)) => {
                 println!(
                     "StakePool {} {} {:?} {:?}",

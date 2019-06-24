@@ -1,8 +1,8 @@
-use imhamt::{Hamt, InsertError, RemoveError};
+use imhamt::{Hamt, InsertError, RemoveError, HamtIter};
 use std::collections::hash_map::DefaultHasher;
 
 use super::declaration::{Declaration, DeclarationError, Identifier};
-use crate::accounting::account::{self, SpendingCounter};
+use crate::accounting::account::{self, SpendingCounter, Iter};
 use crate::value::{Value, ValueError};
 
 #[derive(Clone)]
@@ -80,6 +80,14 @@ impl Ledger {
             accounts: new_accounts,
             declarations: self.declarations.clone(),
         })
+    }
+
+    pub fn iter_accounts<'a>(&'a self) -> Iter<'a, Identifier, ()> {
+        self.accounts.iter()
+    }
+
+    pub fn iter_declarations<'a>(&'a self) -> HamtIter<'a, Identifier, Declaration> {
+        self.declarations.iter()
     }
 
     /// If the account doesn't exist, or that the value would become negative, errors out.
