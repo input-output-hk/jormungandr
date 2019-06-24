@@ -121,6 +121,4 @@ impl LogFormat {
 
 custom_error! {pub Error
     SyslogAccessFailed { source: io::Error } = "syslog access failed",
-    MissingGelfBackend = "Please specify a backend (host:port of graylog server) for the GELF logger output",
-    MissingGelfSource = "Please specify a logs_id for your logs when using GELF logger output",
 }
