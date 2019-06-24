@@ -44,7 +44,7 @@ $ADD_STARTUP_SCRIPT=0
 $STORAGE_PATH = $WORKDIR -replace "\\", "/"
 $STORAGE_PATH = $STORAGE_PATH + "/" + $DATA_PATH + "/"
 
-$BLOCK0_DATE=[int][double]::Parse((Get-Date -UFormat %s))
+$BLOCK0_DATE=[int][double]::Parse((Get-Date(Get-Date).ToUniversalTime() -UFormat %s))
 
 
 ###  GET OR UPDATE THE BINARIES
