@@ -45,7 +45,7 @@ impl From<RemoveError> for Error {
 
 /// Hold all the individual outputs that remain unspent
 #[derive(Clone)]
-pub struct TransactionUnspents<OutAddress>(BTreeMap<TransactionIndex, Output<OutAddress>>);
+struct TransactionUnspents<OutAddress>(BTreeMap<TransactionIndex, Output<OutAddress>>);
 
 impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
     pub fn from_outputs(outs: &[(TransactionIndex, Output<OutAddress>)]) -> Self {
