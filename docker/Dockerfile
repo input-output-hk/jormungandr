@@ -16,8 +16,8 @@ RUN apk add --no-cache curl jq
 
 # download the release
 RUN if [ "${VERSION}" = "latest" ] ; then tag_name="$(curl --silent https://api.github.com/repos/input-output-hk/jormungandr/releases/latest | jq -r .tag_name)" ; else tag_name="v${VERSION}" ; fi && \
+    mkdir -p ${ENV_PREFIX}/src && \
     mkdir -p ${ENV_PREFIX}/bin && \
-    mkdir ${ENV_PREFIX}/src && \
     cd ${ENV_PREFIX}/bin && \
     curl -L "https://github.com/input-output-hk/jormungandr/releases/download/${tag_name}/jormungandr-${tag_name}-x86_64-unknown-linux-musl.tar.gz" | tar xz && \
     cd ${ENV_PREFIX}/src && \
