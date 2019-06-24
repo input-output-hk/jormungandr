@@ -46,40 +46,43 @@ peer_2_peer:
     blocks: normal
 ```
 
-Fields description:
+Description of the fields:
 
-- *storage*: (optional) path to the storage. If omitted, the
+- `storage`: (optional) Path to the storage. If omitted, the
   blockchain is stored in memory only.
-- *logger*: (optional) logger configuration,
-    - *verbosity*: 0 - warning, 1 - info, 2 -debug, 3 and above - trace
-    - *format*: log output format - plain or json.
-    - *output*: log output destination. Possible values are:
-      - `stderr`: the standard error stream
+- `logger`: (optional) Logging configuration:
+    - `verbosity`: 0 - warning, 1 - info, 2 - debug, 3 and above - trace
+    - `format`: Log output format, `plain` or `json`.
+    - `output`: Log output destination. Possible values are:
+      - `stderr`: standard error
       - `syslog`: syslog (only available on Unix systems)
       - `journald`: journald service (only available on Linux with systemd,
-        if jormungandr is built with the `systemd` feature)
-      - *gelf*: fields for GELF (Graylog) network logging protocol
+        (if jormungandr is built with the `systemd` feature)
+      - `gelf`: Configuration fields for GELF (Graylog) network logging protocol
         (if jormungandr is built with the `gelf` feature):
-        - *backend*: hostname:port of a graylog server.
-        - *log_id*: unique identifier of the log source of the logs.
-- *rest*: (optional) configuration of the rest endpoint.
-    - *listen*: listen address
-    - *pkcs12*: certificate file (optional)
-    - *prefix*: (optional) api prefix
-- *peer_2_peer*: the P2P network settings
-    - *trusted_peers*: (optional) the list of nodes to connect to in order to
-      bootstrap the p2p topology (and bootstrap our local blockchain);
-    - *public_id*: (optional) the public identifier send to the other nodes in the
-      p2p network. If not set it will be randomly generated.
-    - *public_address*: the address to listen from and accept connection
-      from. This is the public address that will be distributed to other peers
-      of the network that may find interest into participating to the blockchain
-      dissemination with the node;
-    - *topics_of_interests*: the different topics we are interested to hear about:
-      - *messages*: notify other peers this node is interested about Transactions
-        typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
-      - *blocks*: notify other peers this node is interested about new Blocs.
-        typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`;
+        - `backend`: _hostname_:_port_ of a GELF server
+        - `log_id`: identifier of the source of the log, for the `host` field
+                    in the messages.
+- `rest`: (optional) Configuration of the REST endpoint.
+    - `listen`: _address_:_port_ to listen for requests
+    - `pkcs12`: (optional) Certificate file
+    - `prefix`: (optional) API prefix
+- `peer_2_peer`: P2P network settings
+    - `trusted_peers`: (optional) the list of nodes to connect to in order to
+      bootstrap the P2P topology (and bootstrap our local blockchain);
+    - `public_id`: (optional) the public identifier sent to the other nodes
+      in the P2P network. If not set it will be randomly generated.
+    - `public_address`: [multiaddr][multiaddr] string specifying address of the
+      P2P service. This is the public address that will be distributed to other
+      peers of the network that may find interest in participating to the
+      blockchain dissemination with the node.
+    - `topics_of_interests`: The dissemination topics this node is interested to hear about:
+      - `messages`: Transactions and other ledger entries.
+        Typical setting for a non-mining node: `low`. For a stakepool: `high`;
+      - `blocks`: Notifications about new blocks.
+        Typical setting for a non-mining node: `normal`. For a stakepool: `high`;
+
+[multiaddr]: https://github.com/multiformats/multiaddr
 
 # Starting the node
 
