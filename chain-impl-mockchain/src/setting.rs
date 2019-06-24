@@ -2,6 +2,7 @@
 //!
 
 use crate::leadership::genesis::ActiveSlotsCoeff;
+use crate::message::config::ConfigParams;
 use crate::milli::Milli;
 use crate::update::Error;
 use crate::{
@@ -58,7 +59,7 @@ impl Settings {
         *self.linear_fees
     }
 
-    pub fn apply(&self, changes: &crate::message::config::ConfigParams) -> Result<Self, Error> {
+    pub fn apply(&self, changes: &ConfigParams) -> Result<Self, Error> {
         let mut new_state = self.clone();
 
         for param in changes.iter() {
@@ -118,5 +119,33 @@ impl Settings {
         }
 
         Ok(new_state)
+    }
+
+    pub fn to_config_params(&self) -> ConfigParams {
+        let mut params = ConfigParams::new();
+
+        params.push(ConfigParam::ConsensusVersion(self.consensus_version));
+        params.push(ConfigParam::SlotsPerEpoch(self.slots_per_epoch));
+        params.push(ConfigParam::SlotDuration(self.slot_duration));
+        params.push(ConfigParam::EpochStabilityDepth(self.epoch_stability_depth));
+        params.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
+            self.active_slots_coeff.0,
+        ));
+        params.push(ConfigParam::MaxNumberOfTransactionsPerBlock(
+            self.max_number_of_transactions_per_block,
+        ));
+        params.push(ConfigParam::BftSlotsRatio(self.bft_slots_ratio));
+        for bft_leader in self.bft_leaders.iter() {
+            params.push(ConfigParam::AddBftLeader(bft_leader.clone()));
+        }
+        params.push(ConfigParam::LinearFee(*self.linear_fees));
+        params.push(ConfigParam::ProposalExpiration(self.proposal_expiration));
+
+        debug_assert_eq!(
+            self,
+            &Settings::new(self.era.clone()).apply(&params).unwrap()
+        );
+
+        params
     }
 }

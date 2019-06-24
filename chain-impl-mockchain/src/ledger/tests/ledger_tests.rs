@@ -267,6 +267,13 @@ pub fn iterate() {
                     state.value,
                 );
             }
+            Entry::ConfigParam(param) => {
+                println!(
+                    "ConfigParam {:?} {:?}",
+                    chain_impl_mockchain::config::Tag::from(&param),
+                    param,
+                );
+            }
             Entry::UpdateProposal((id, state)) => {
                 println!(
                     "UpdateProposal {} {:?} {} {:?}",

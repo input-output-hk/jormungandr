@@ -864,7 +864,7 @@ pub enum Entry<'a> {
             &'a crate::accounting::account::AccountState<()>,
         ),
     ),
-    //Setting(),
+    ConfigParam(ConfigParam),
     UpdateProposal(
         (
             &'a crate::update::UpdateProposalId,
@@ -891,6 +891,7 @@ enum IterState<'a> {
     Utxo(utxo::Iter<'a, Address>),
     OldUtxo(utxo::Iter<'a, legacy::OldAddress>),
     Accounts(crate::accounting::account::Iter<'a, account::Identifier, ()>),
+    ConfigParams(Vec<ConfigParam>),
     UpdateProposals(
         std::collections::btree_map::Iter<
             'a,
@@ -936,11 +937,19 @@ impl<'a> Iterator for LedgerIterator<'a> {
             },
             IterState::Accounts(iter) => match iter.next() {
                 None => {
-                    self.state = IterState::UpdateProposals(self.ledger.updates.proposals.iter());
+                    self.state = IterState::ConfigParams(self.ledger.settings.to_config_params().0);
                     self.next()
                 }
                 Some(x) => Some(Entry::Account(x)),
             },
+            IterState::ConfigParams(params) => {
+                if let Some(param) = params.pop() {
+                    Some(Entry::ConfigParam(param))
+                } else {
+                    self.state = IterState::UpdateProposals(self.ledger.updates.proposals.iter());
+                    self.next()
+                }
+            }
             IterState::UpdateProposals(iter) => match iter.next() {
                 None => {
                     self.state = IterState::StakePools(self.ledger.delegation.stake_pools.iter());
