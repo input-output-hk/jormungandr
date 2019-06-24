@@ -44,14 +44,10 @@ impl RawSettings {
     }
 
     pub fn to_logger(&self) -> Result<Logger, logging::Error> {
-        let backend = self.config.logger.as_ref().and_then(|l| l.backend.clone());
-        let logs_id = self.config.logger.as_ref().and_then(|l| l.logs_id.clone());
         LogSettings {
             verbosity: self.logger_verbosity(),
             format: self.logger_format(),
             output: self.logger_output(),
-            backend,
-            logs_id,
         }
         .to_logger()
     }

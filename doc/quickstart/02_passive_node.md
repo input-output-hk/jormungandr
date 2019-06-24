@@ -53,9 +53,15 @@ Fields description:
 - *logger*: (optional) logger configuration,
     - *verbosity*: 0 - warning, 1 - info, 2 -debug, 3 and above - trace
     - *format*: log output format - plain or json.
-    - *output*: log output - stderr, gelf (graylog) syslog (unix only) or journald (linux with systemd only, must be enabled during compilation)
-    - *backend*: for gelf output: hostname:port of a graylog server.
-    - *logs_id*: for gelf output: unique id that identify the node as source of the logs.
+    - *output*: log output destination. Possible values are:
+      - `stderr`: the standard error stream
+      - `syslog`: syslog (only available on Unix systems)
+      - `journald`: journald service (only available on Linux with systemd,
+        if jormungandr is built with the `systemd` feature)
+      - *gelf*: fields for GELF (Graylog) network logging protocol
+        (if jormungandr is built with the `gelf` feature):
+        - *backend*: hostname:port of a graylog server.
+        - *log_id*: unique identifier of the log source of the logs.
 - *rest*: (optional) configuration of the rest endpoint.
     - *listen*: listen address
     - *pkcs12*: certificate file (optional)
