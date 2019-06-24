@@ -1,8 +1,8 @@
-use imhamt::{Hamt, InsertError, RemoveError, HamtIter};
+use imhamt::{Hamt, HamtIter, InsertError, RemoveError};
 use std::collections::hash_map::DefaultHasher;
 
 use super::declaration::{Declaration, DeclarationError, Identifier};
-use crate::accounting::account::{self, SpendingCounter, Iter};
+use crate::accounting::account::{self, Iter, SpendingCounter};
 use crate::value::{Value, ValueError};
 
 #[derive(Clone)]

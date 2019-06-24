@@ -911,7 +911,9 @@ enum IterState<'a> {
         >,
     ),
     MultisigAccounts(crate::accounting::account::Iter<'a, crate::multisig::Identifier, ()>),
-    MultisigDeclarations(imhamt::HamtIter<'a, crate::multisig::Identifier, crate::multisig::Declaration>),
+    MultisigDeclarations(
+        imhamt::HamtIter<'a, crate::multisig::Identifier, crate::multisig::Declaration>,
+    ),
     StakePools(imhamt::HamtIter<'a, crate::stake::StakePoolId, crate::stake::StakePoolInfo>),
     Done,
 }
@@ -972,7 +974,8 @@ impl<'a> Iterator for LedgerIterator<'a> {
             },
             IterState::MultisigAccounts(iter) => match iter.next() {
                 None => {
-                    self.state = IterState::MultisigDeclarations(self.ledger.multisig.iter_declarations());
+                    self.state =
+                        IterState::MultisigDeclarations(self.ledger.multisig.iter_declarations());
                     self.next()
                 }
                 Some(x) => Some(Entry::MultisigAccount(x)),
