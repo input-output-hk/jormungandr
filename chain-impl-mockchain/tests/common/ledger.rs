@@ -95,3 +95,9 @@ pub fn create_initial_transaction(output: Output<Address>) -> (Message, Vec<Utxo
     let authenticator = builder.with_output(output).authenticate();
     (authenticator.as_message(), authenticator.as_utxos())
 }
+
+pub fn create_initial_transactions(outputs: Vec<Output<Address>>) -> (Message, Vec<UtxoPointer>) {
+    let mut builder = TransactionBuilder::new();
+    let authenticator = builder.with_outputs(outputs).authenticate();
+    (authenticator.as_message(), authenticator.as_utxos())
+}

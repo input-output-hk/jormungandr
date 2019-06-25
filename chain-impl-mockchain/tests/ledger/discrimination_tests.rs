@@ -1,26 +1,13 @@
 use crate::common::address::AddressData;
+use crate::common::arbitrary::address::ArbitraryAddressKind;
 use crate::common::ledger;
 use crate::common::ledger::ConfigBuilder;
 use crate::common::tx_builder::TransactionBuilder;
-use chain_addr::{Discrimination, Kind, KindType};
+use chain_addr::Discrimination;
 use chain_impl_mockchain::transaction::*;
 use chain_impl_mockchain::value::*;
-use quickcheck::{Arbitrary, Gen, TestResult};
+use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
-
-#[derive(Clone, Debug)]
-pub struct ArbitraryAddressKind(KindType);
-
-impl Arbitrary for ArbitraryAddressKind {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        match u8::arbitrary(g) % 3 {
-            0 => ArbitraryAddressKind(KindType::Single),
-            1 => ArbitraryAddressKind(KindType::Group),
-            2 => ArbitraryAddressKind(KindType::Account),
-            _ => unreachable!(),
-        }
-    }
-}
 
 #[quickcheck]
 pub fn ledger_verifies_faucet_discrimination(
@@ -58,15 +45,6 @@ pub fn ledger_verifies_faucet_discrimination(
     };
 }
 
-fn from_address_or_utxo(faucet: &AddressData, value: Value, utxo: UtxoPointer) -> Input {
-    match faucet.address.kind() {
-        Kind::Account { .. } => {
-            Input::from_account_public_key(faucet.public_key.clone(), value.clone())
-        }
-        _ => Input::from_utxo(utxo),
-    }
-}
-
 #[quickcheck]
 pub fn ledger_verifies_transaction_discrimination(
     arbitrary_input_disc: Discrimination,
@@ -91,7 +69,7 @@ pub fn ledger_verifies_transaction_discrimination(
         .build();
     let (block0_hash, ledger) = ledger::create_initial_fake_ledger(&[message], config).unwrap();
     let signed_tx = TransactionBuilder::new()
-        .with_input(from_address_or_utxo(&faucet, value, utxos[0]))
+        .with_input(faucet.as_input(value, utxos[0]))
         .with_output(Output::from_address(receiver.address.clone(), value))
         .authenticate()
         .with_witness(&block0_hash, &faucet)

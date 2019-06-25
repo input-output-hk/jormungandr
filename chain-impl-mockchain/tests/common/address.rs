@@ -1,12 +1,28 @@
 use chain_addr::{Address, Discrimination, Kind, KindType};
-use chain_impl_mockchain::account::SpendingCounter;
-use chain_impl_mockchain::key::{EitherEd25519SecretKey, SpendingPublicKey};
+use chain_impl_mockchain::{
+    account::SpendingCounter,
+    key::{EitherEd25519SecretKey, SpendingPublicKey},
+    transaction::{Input, Output, UtxoPointer},
+    value::Value,
+};
+use std::fmt::{Debug, Formatter, Result};
 
+#[derive(Clone)]
 pub struct AddressData {
     pub private_key: EitherEd25519SecretKey,
     pub public_key: SpendingPublicKey,
     pub spending_counter: Option<SpendingCounter>,
     pub address: Address,
+}
+
+impl Debug for AddressData {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(
+            f,
+            "[{:?},{:?},{:?}]",
+            self.public_key, self.spending_counter, self.address
+        )
+    }
 }
 
 impl AddressData {
@@ -22,6 +38,19 @@ impl AddressData {
             address,
             spending_counter,
         }
+    }
+
+    pub fn as_input(&self, value: Value, utxo: UtxoPointer) -> Input {
+        match self.address.kind() {
+            Kind::Account { .. } => {
+                Input::from_account_public_key(self.public_key.clone(), value.clone())
+            }
+            _ => Input::from_utxo(utxo),
+        }
+    }
+
+    pub fn as_output(&self, value: Value) -> Output<Address> {
+        Output::from_address(self.address.clone(), value)
     }
 
     pub fn from_discrimination_and_kind_type(
