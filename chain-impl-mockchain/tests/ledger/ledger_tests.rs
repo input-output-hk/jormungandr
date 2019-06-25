@@ -38,7 +38,8 @@ pub fn utxo_no_enough_signatures() {
         faucet.address.clone(),
         Value(42000),
     ));
-    let (_, ledger) = ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build());
+    let (_, ledger) =
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
 
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_utxo(utxos[0]))
@@ -65,8 +66,9 @@ pub fn utxo_to_utxo_correct_transaction() {
         faucet.address.clone(),
         Value(42000),
     ));
+
     let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build());
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
 
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_utxo(utxos[0]))
@@ -90,7 +92,7 @@ pub fn utxo_to_account_correct_transaction() {
     ));
 
     let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build());
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
 
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_utxo(utxos[0]))
@@ -114,7 +116,7 @@ pub fn account_to_account_correct_transaction() {
     ));
 
     let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build());
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
 
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_account_public_key(
@@ -141,7 +143,8 @@ pub fn account_to_delegation_correct_transaction() {
     ));
 
     let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build());
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
+
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_account_public_key(
             faucet.public_key.clone(),
@@ -167,7 +170,7 @@ pub fn delegation_to_account_correct_transaction() {
     ));
 
     let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build());
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
 
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_utxo(utxos[0]))
@@ -195,7 +198,7 @@ pub fn transaction_with_more_than_253_outputs() {
     ));
 
     let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build());
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
 
     let signed_tx = TransactionBuilder::new()
         .with_input(Input::from_utxo(utxos[0]))

@@ -46,7 +46,7 @@ pub fn test_phi() {
         .build();
 
     let (_genesis_hash, mut ledger) =
-        ledger_mock::create_initial_fake_ledger(&vec![], config_params);
+        ledger_mock::create_initial_fake_ledger(&vec![], config_params).unwrap();
 
     let mut pools = HashMap::<StakePoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
 
