@@ -54,24 +54,28 @@ Each entry can be one of 3 variants:
 
 | variant | format | description |
 |:-------|:-------|:------------|
-| `fund` | object | initial deposits present in the blockchain |
+| `fund` | sequence | initial deposits present in the blockchain (up to 255 outputs per entry) |
 | `cert` | string | initial certificate |
-| `legacy_fund` | object| same as `fund`, but with legacy Cardano address format |
+| `legacy_fund` | sequence | same as `fund`, but with legacy Cardano address format |
 
 Example:
 
 ```yaml
 initial:
   - fund:
-      address: <address>
-      value: 10000
+      - address: <address>
+        value: 10000
+      - address: <address2>
+        value: 20000
+      - address: <address3>
+        value: 30000
   - cert: <certificate>
   - legacy_fund:
-      address: <legacy address>
-      value: 123
+      - address: <legacy address>
+        value: 123
   - fund:
-      address: <another address>
-      value: 1001
+      - address: <another address>
+        value: 1001
 ```
 
 ### `fund` and `legacy_fund` format

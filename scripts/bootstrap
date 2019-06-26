@@ -199,8 +199,8 @@ blockchain_configuration:
   kes_update_speed: 43200 # 12hours
 initial:
   - fund:
-      address: ${FAUCET_ADDR}
-      value: ${FAUCET_AMOUNT}
+      - address: ${FAUCET_ADDR}
+        value: ${FAUCET_AMOUNT}
   - cert: ${STAKE_POOL_CERT}
   - cert: ${STAKE_DELEGATION_CERT}
 EOF
