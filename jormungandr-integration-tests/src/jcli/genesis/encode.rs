@@ -40,10 +40,10 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
     let test_address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
 
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.initial = vec![Initial::Fund(Fund {
+    config.genesis_yaml.initial = vec![Initial::Fund(vec![Fund {
         value: 100.into(),
         address: test_address.clone(),
-    })];
+    }])];
     config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
     jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "Invalid discrimination");
 }

@@ -59,9 +59,9 @@ pub struct Fund {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Initial {
-    Fund(Fund),
+    Fund(Vec<Fund>),
     Cert(String),
-    LegacyFund(Fund),
+    LegacyFund(Vec<Fund>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -102,20 +102,20 @@ impl GenesisYaml {
                 value: 100.into(),
             },
         ];
-        GenesisYaml::new_with_funds(initial_funds)
+        GenesisYaml::new_with_funds(&initial_funds)
     }
 
-    pub fn new_with_funds(initial_funds: Vec<Fund>) -> GenesisYaml {
-        GenesisYaml::new_with_funds_and_legacy(Some(initial_funds), None)
+    pub fn new_with_funds(initial_funds: &[Fund]) -> GenesisYaml {
+        GenesisYaml::new_with_funds_and_legacy(initial_funds, &[])
     }
 
-    pub fn new_with_legacy_funds(legacy_funds: Vec<Fund>) -> GenesisYaml {
-        GenesisYaml::new_with_funds_and_legacy(None, Some(legacy_funds))
+    pub fn new_with_legacy_funds(legacy_funds: &[Fund]) -> GenesisYaml {
+        GenesisYaml::new_with_funds_and_legacy(&[], legacy_funds)
     }
 
     pub fn new_with_funds_and_legacy(
-        initial_funds: Option<Vec<Fund>>,
-        legacy_funds: Option<Vec<Fund>>,
+        initial_funds: &[Fund],
+        legacy_funds: &[Fund],
     ) -> GenesisYaml {
         let leader_1: KeyPair<Ed25519Extended> =
             KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
@@ -123,8 +123,8 @@ impl GenesisYaml {
             KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
         let leader_1_pk = leader_1.public_key().to_bech32_str();
         let leader_2_pk = leader_2.public_key().to_bech32_str();
-        let funds = initial_funds.into_iter().flatten().map(Initial::Fund);
-        let legacy = vec![]; // legacy_funds.into_iter().flatten().map(Initial::LegacyFund);
+        let funds = Initial::Fund(initial_funds.iter().cloned().collect());
+        let legacy = Initial::LegacyFund(legacy_funds.iter().cloned().collect());
         GenesisYaml {
             blockchain_configuration: BlockchainConfig {
                 block0_date: Some(1554185140),
@@ -146,7 +146,7 @@ impl GenesisYaml {
                 },
                 kes_update_speed: 12 * 3600,
             },
-            initial: funds.chain(legacy).collect(),
+            initial: vec![funds, legacy],
         }
     }
 }
