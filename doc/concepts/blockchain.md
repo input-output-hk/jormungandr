@@ -63,6 +63,10 @@ their stake to be elected to create a block. Each lottery draw is private to
 each stake pool, so that the overall network doesn't know in advance who can
 or cannot create blocks.
 
+In Genesis-Praos slot time duration is constant, however the frequency of 
+creating blocks is not stable, since the creation of blocks is a probability 
+that is linked to the stake and active slot coefficient.
+
 ## Leadership
 
 The leadership represent in abstract term, who are the overall leaders of the
