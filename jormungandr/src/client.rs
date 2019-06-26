@@ -68,7 +68,11 @@ fn handle_get_headers_range(
         )
         .collect::<Vec<_>>();
 
-    if !checkpoints.is_empty() {
+    if checkpoints.is_empty() {
+        return Err(Error::not_found(
+            "none of the starting points are found in the blockchain",
+        ));
+    } else {
         /* Start at the newest checkpoint. */
         checkpoints.sort_unstable();
         let from = checkpoints.last().unwrap().1;

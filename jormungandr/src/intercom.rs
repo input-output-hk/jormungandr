@@ -29,6 +29,16 @@ impl Error {
         }
     }
 
+    pub fn not_found<T>(cause: T) -> Self
+    where
+        T: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Error {
+            code: core_error::Code::NotFound,
+            cause: cause.into(),
+        }
+    }
+
     pub fn unimplemented<S: Into<String>>(message: S) -> Self {
         Error {
             code: core_error::Code::Unimplemented,
