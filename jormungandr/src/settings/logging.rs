@@ -15,8 +15,6 @@ pub struct LogSettings {
     pub verbosity: slog::Level,
     pub format: LogFormat,
     pub output: LogOutput,
-    pub backend: Option<String>,
-    pub logs_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -32,12 +30,15 @@ pub enum LogFormat {
 /// Output of the logger.
 pub enum LogOutput {
     Stderr,
-    #[cfg(feature = "gelf")]
-    Gelf,
     #[cfg(unix)]
     Syslog,
     #[cfg(feature = "systemd")]
     Journald,
+    #[cfg(feature = "gelf")]
+    Gelf {
+        backend: String,
+        log_id: String,
+    },
 }
 
 impl FromStr for LogFormat {
@@ -56,10 +57,8 @@ impl FromStr for LogOutput {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &*s.trim().to_lowercase() {
+        match s.trim().to_lowercase().as_str() {
             "stderr" => Ok(LogOutput::Stderr),
-            #[cfg(feature = "gelf")]
-            "gelf" => Ok(LogOutput::Gelf),
             #[cfg(unix)]
             "syslog" => Ok(LogOutput::Syslog),
             #[cfg(feature = "systemd")]
@@ -71,45 +70,32 @@ impl FromStr for LogOutput {
 
 impl LogSettings {
     pub fn to_logger(&self) -> Result<Logger, Error> {
-        let drain = self
-            .output
-            .to_logger(&self.format, &self.backend, &self.logs_id)?
-            .fuse();
+        let drain = self.output.to_logger(&self.format)?.fuse();
         let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
         Ok(slog::Logger::root(drain, o!()))
     }
 }
 
 impl LogOutput {
-    fn to_logger(
-        &self,
-        format: &LogFormat,
-        backend: &Option<String>,
-        logs_id: &Option<String>,
-    ) -> Result<Async, Error> {
+    fn to_logger(&self, format: &LogFormat) -> Result<Async, Error> {
         match self {
             LogOutput::Stderr => Ok(format.decorate_stderr()),
-            #[cfg(feature = "gelf")]
-            LogOutput::Gelf => match backend {
-                Some(graylog_host_port) => {
-                    match logs_id {
-                        Some(graylog_source) => {
-                            let gelf_drain = LogFormat::Plain
-                                .decorate(Gelf::new(graylog_source, graylog_host_port).unwrap());
-                            // We also log to stderr otherwise users see no logs.
-                            // TODO: remove when multiple output is properly supported.
-                            let stderr_drain = format.decorate_stderr();
-                            Ok(slog::Duplicate(gelf_drain, stderr_drain).async())
-                        }
-                        _ => Err(Error::MissingGelfSource),
-                    }
-                }
-                _ => Err(Error::MissingGelfBackend),
-            },
             #[cfg(unix)]
             LogOutput::Syslog => Ok(format.decorate(slog_syslog::unix_3164(Facility::LOG_USER)?)),
             #[cfg(feature = "systemd")]
             LogOutput::Journald => Ok(format.decorate(JournaldDrain)),
+            #[cfg(feature = "gelf")]
+            LogOutput::Gelf {
+                backend: graylog_host_port,
+                log_id: graylog_source,
+            } => {
+                let gelf_drain = LogFormat::Plain
+                    .decorate(Gelf::new(graylog_source, graylog_host_port).unwrap());
+                // We also log to stderr otherwise users see no logs.
+                // TODO: remove when multiple output is properly supported.
+                let stderr_drain = format.decorate_stderr();
+                Ok(slog::Duplicate(gelf_drain, stderr_drain).async())
+            }
         }
     }
 }
@@ -135,6 +121,4 @@ impl LogFormat {
 
 custom_error! {pub Error
     SyslogAccessFailed { source: io::Error } = "syslog access failed",
-    MissingGelfBackend = "Please specify a backend (host:port of graylog server) for the GELF logger output",
-    MissingGelfSource = "Please specify a logs_id for your logs when using GELF logger output",
 }

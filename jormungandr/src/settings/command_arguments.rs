@@ -77,7 +77,7 @@ pub struct CommandLine {
     #[structopt(long = "log-format", parse(try_from_str))]
     pub log_format: Option<LogFormat>,
 
-    /// Set format of the log emitted. Can be "stderr", "gelf", "syslog" (unix only) or "journald"
+    /// Set format of the log emitted. Can be "stderr", syslog" (unix only) or "journald"
     /// (linux with systemd only, must be enabled during compilation).
     /// If not configured anywhere, defaults to "stderr".
     #[structopt(long = "log-output", parse(try_from_str))]
