@@ -1,11 +1,16 @@
 use super::address::AddressData;
 use chain_addr::{Address, Kind};
-use crate::account::SpendingCounter;
-use crate::block::HeaderHash;
-use crate::key::EitherEd25519SecretKey;
-use crate::message::Message;
-use crate::transaction::Witness;
-use crate::transaction::*;
+use chain_impl_mockchain::{
+    account::SpendingCounter,
+    block::HeaderHash,
+    fee::LinearFee,
+    key::EitherEd25519SecretKey,
+    message::Message,
+    transaction::{
+        AuthenticatedTransaction, Input, NoExtra, Output, Transaction, UtxoPointer, Witness,
+    },
+    txbuilder::{OutputPolicy, TransactionBuilder as Builder},
+};
 
 pub struct TransactionBuilder {
     inputs: Vec<Input>,
@@ -42,6 +47,42 @@ impl TransactionBuilder {
             extra: NoExtra,
         };
         TransactionAuthenticator::new(transaction)
+    }
+
+    pub fn authenticate_with_policy(
+        &mut self,
+        output_policy: OutputPolicy,
+    ) -> TransactionAuthenticator {
+        let transaction = Transaction {
+            inputs: self.inputs.clone(),
+            outputs: self.outputs.clone(),
+            extra: NoExtra,
+        };
+        let tx_builder = Builder::from(transaction);
+        let fee_algorithm = LinearFee::new(0, 0, 0);
+        let (_, tx) = tx_builder.finalize(fee_algorithm, output_policy).unwrap();
+
+        self.inputs = tx
+            .inputs
+            .clone()
+            .into_iter()
+            .map(|input| Input {
+                index_or_account: input.index_or_account,
+                value: input.value,
+                input_ptr: input.input_ptr,
+            })
+            .collect();
+        self.outputs = tx
+            .outputs
+            .clone()
+            .into_iter()
+            .map(|output| Output {
+                address: output.address,
+                value: output.value,
+            })
+            .collect();
+
+        TransactionAuthenticator::new(tx)
     }
 }
 
