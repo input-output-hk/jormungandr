@@ -113,10 +113,7 @@ impl GenesisYaml {
         GenesisYaml::new_with_funds_and_legacy(&[], legacy_funds)
     }
 
-    pub fn new_with_funds_and_legacy(
-        initial_funds: &[Fund],
-        legacy_funds: &[Fund],
-    ) -> GenesisYaml {
+    pub fn new_with_funds_and_legacy(initial_funds: &[Fund], legacy_funds: &[Fund]) -> GenesisYaml {
         let leader_1: KeyPair<Ed25519Extended> =
             KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
         let leader_2: KeyPair<Ed25519Extended> =
