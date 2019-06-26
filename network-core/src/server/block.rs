@@ -114,8 +114,11 @@ pub trait BlockService: P2pService {
     /// to the server's tip.
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksToTipFuture;
 
-    /// Get block headers, walking the chain forward in a range between any
-    /// of the given starting points, and the ending point.
+    /// Get block headers, walking the chain forward in a range between the
+    /// latest among the given starting points, and the given ending point.
+    /// If none of the starting points are found in the chain, or if the
+    /// ending point is not found, the future will fail with a `NotFound`
+    /// error.
     fn pull_headers(
         &mut self,
         from: &[Self::BlockId],
@@ -127,7 +130,10 @@ pub trait BlockService: P2pService {
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
 
     /// The outbound counterpart of `pull_headers`, called in response to a
-    /// `BlockEvent::Missing` solicitation.
+    /// `BlockEvent::Missing` solicitation. A client may report that
+    /// the solicitation does not refer to blocks found in the local blockchain
+    /// by making the `push_headers` call and failing the outbound stream with
+    /// a `NotFound` error.
     fn push_headers<In>(&mut self, headers: In) -> Self::PushHeadersFuture
     where
         In: Stream<Item = Self::Header, Error = Error> + Send + 'static;
