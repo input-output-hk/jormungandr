@@ -17,7 +17,7 @@ use network_core::error as core_error;
 use network_core::gossip::{self, Gossip, NodeId};
 use network_core::subscription::BlockEvent;
 
-use tokio::prelude::*;
+use futures::prelude::*;
 use tower_grpc::{BoxBody, Code, Request, Status, Streaming};
 use tower_request_modifier::{self, RequestModifier};
 

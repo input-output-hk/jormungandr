@@ -7,14 +7,16 @@ use network_core::server::{
     block::BlockService, content::ContentService, gossip::GossipService, Node,
 };
 
-use tokio::net::{TcpListener, TcpStream};
-use tokio::prelude::*;
+use futures::prelude::*;
+use tokio_io::{AsyncRead, AsyncWrite};
+use tokio_tcp::{TcpListener, TcpStream};
 use tower_grpc::codegen::server::grpc::Never as NeverError;
 use tower_hyper::server::Http;
 
 #[cfg(unix)]
-use tokio::net::{UnixListener, UnixStream};
+use tokio_uds::{UnixListener, UnixStream};
 
+use std::io;
 use std::net::SocketAddr;
 
 #[cfg(unix)]
@@ -95,7 +97,7 @@ where
 /// necessary for the HTTP/2 protocol.
 pub fn listen(
     addr: &SocketAddr,
-) -> Result<impl Stream<Item = TcpStream, Error = tokio::io::Error>, tokio::io::Error> {
+) -> Result<impl Stream<Item = TcpStream, Error = io::Error>, io::Error> {
     let listener = TcpListener::bind(&addr)?;
     let stream = listener.incoming().and_then(|sock| {
         sock.set_nodelay(true)?;
@@ -110,7 +112,7 @@ pub fn listen(
 #[cfg(unix)]
 pub fn listen_unix<P: AsRef<Path>>(
     path: P,
-) -> Result<impl Stream<Item = UnixStream, Error = tokio::io::Error>, tokio::io::Error> {
+) -> Result<impl Stream<Item = UnixStream, Error = io::Error>, io::Error> {
     let listener = UnixListener::bind(path)?;
     Ok(listener.incoming())
 }
