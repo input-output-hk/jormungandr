@@ -5,9 +5,12 @@ use crate::testing::ledger;
 use crate::testing::ledger::ConfigBuilder;
 use crate::testing::tx_builder::TransactionBuilder;
 use chain_addr::Discrimination;
-use crate::ledger::Error::{NotEnoughSignatures, TransactionHasTooManyOutputs};
-use crate::transaction::*;
-use crate::value::*;
+use chain_impl_mockchain::ledger::{
+    Error::{NotEnoughSignatures, TransactionHasTooManyOutputs},
+    Ledger,
+};
+use chain_impl_mockchain::transaction::*;
+use chain_impl_mockchain::value::*;
 use crate::ledger::{Entry, Ledger};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
@@ -53,12 +56,33 @@ pub fn ledger_accepts_correct_transaction(
         .with_witness(&block0_hash, &faucet)
         .seal();
 
-    let fees = ledger.get_ledger_parameters();
+    let total_funds_before = calculate_total_funds_in_ledger(&ledger);
 
-    match ledger.apply_transaction(&signed_tx, &fees) {
-        Ok(_) => TestResult::passed(),
+    let fees = ledger.get_ledger_parameters();
+    let result = ledger.apply_transaction(&signed_tx, &fees);
+
+    match result {
         Err(err) => TestResult::error(format!("Error from ledger: {}", err)),
+        Ok((ledger, _)) => {
+            let total_funds_after = calculate_total_funds_in_ledger(&ledger);
+            match total_funds_before == total_funds_after {
+                false => TestResult::error(format!(
+                    "Total funds in ledger before and after transaction is not equal {} <> {} ",
+                    total_funds_before, total_funds_after
+                )),
+                true => TestResult::passed(),
+            }
+        }
     }
+}
+
+fn calculate_total_funds_in_ledger(ledger: &Ledger) -> u64 {
+    ledger.utxos().map(|x| x.output.value.0).sum::<u64>()
+        + ledger
+            .accounts()
+            .iter()
+            .map(|(_, x)| x.value().0)
+            .sum::<u64>()
 }
 
 #[test]
