@@ -54,6 +54,7 @@ Description of the fields:
     - `verbosity`: 0 - warning, 1 - info, 2 - debug, 3 and above - trace
     - `format`: Log output format, `plain` or `json`.
     - `output`: Log output destination. Possible values are:
+      - `stdout`: standard output
       - `stderr`: standard error
       - `syslog`: syslog (only available on Unix systems)
       - `journald`: journald service (only available on Linux with systemd,

@@ -7,6 +7,7 @@ use slog_gelf::Gelf;
 use slog_journald::JournaldDrain;
 #[cfg(unix)]
 use slog_syslog::Facility;
+use slog_term::TermDecorator;
 use std::error;
 use std::fmt::{self, Display};
 use std::io;
@@ -41,6 +42,7 @@ impl Display for LogFormat {
 #[serde(rename_all = "lowercase")]
 /// Output of the logger.
 pub enum LogOutput {
+    Stdout,
     Stderr,
     #[cfg(unix)]
     Syslog,
@@ -70,6 +72,7 @@ impl FromStr for LogOutput {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.trim().to_lowercase().as_str() {
+            "stdout" => Ok(LogOutput::Stdout),
             "stderr" => Ok(LogOutput::Stderr),
             #[cfg(unix)]
             "syslog" => Ok(LogOutput::Syslog),
@@ -91,6 +94,7 @@ impl LogSettings {
 impl LogOutput {
     fn to_logger(&self, format: &LogFormat) -> Result<Async, Error> {
         match self {
+            LogOutput::Stdout => Ok(format.decorate_stdout()),
             LogOutput::Stderr => Ok(format.decorate_stderr()),
             #[cfg(unix)]
             LogOutput::Syslog => {
@@ -129,6 +133,13 @@ impl LogOutput {
     }
 }
 
+fn term_drain_with_decorator<D>(d: D) -> slog_term::FullFormat<D>
+where
+    D: slog_term::Decorator + Send + 'static,
+{
+    slog_term::FullFormat::new(d).build()
+}
+
 impl LogFormat {
     fn require_plain(&self) -> Result<(), Error> {
         match self {
@@ -137,9 +148,20 @@ impl LogFormat {
         }
     }
 
+    fn decorate_stdout(&self) -> Async {
+        match self {
+            LogFormat::Plain => {
+                term_drain_with_decorator(TermDecorator::new().stdout().build()).async()
+            }
+            LogFormat::Json => slog_json::Json::default(io::stdout()).async(),
+        }
+    }
+
     fn decorate_stderr(&self) -> Async {
         match self {
-            LogFormat::Plain => slog_term::term_full().async(),
+            LogFormat::Plain => {
+                term_drain_with_decorator(TermDecorator::new().stderr().build()).async()
+            }
             LogFormat::Json => slog_json::Json::default(io::stderr()).async(),
         }
     }
