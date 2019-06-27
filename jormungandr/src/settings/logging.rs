@@ -7,6 +7,7 @@ use slog_gelf::Gelf;
 use slog_journald::JournaldDrain;
 #[cfg(unix)]
 use slog_syslog::Facility;
+use std::error;
 use std::fmt::{self, Display};
 use std::io;
 use std::str::FromStr;
@@ -94,7 +95,10 @@ impl LogOutput {
             #[cfg(unix)]
             LogOutput::Syslog => {
                 format.require_plain()?;
-                Ok(slog_syslog::unix_3164(Facility::LOG_USER)?.async())
+                match slog_syslog::unix_3164(Facility::LOG_USER) {
+                    Ok(drain) => Ok(drain.async()),
+                    Err(e) => Err(Error::SyslogAccessFailed(e)),
+                }
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
@@ -114,7 +118,8 @@ impl LogOutput {
                 match format {
                     LogFormat::Plain | LogFormat::Json => {}
                 };
-                let gelf_drain = Gelf::new(graylog_source, graylog_host_port).unwrap();
+                let gelf_drain = Gelf::new(graylog_source, graylog_host_port)
+                    .map_err(Error::GelfConnectionFailed)?;
                 // We also log to stderr otherwise users see no logs.
                 // TODO: remove when multiple output is properly supported.
                 let stderr_drain = format.decorate_stderr();
@@ -140,7 +145,41 @@ impl LogFormat {
     }
 }
 
-custom_error! {pub Error
-    SyslogAccessFailed { source: io::Error } = "syslog access failed",
-    PlainFormatRequired { specified: LogFormat } = "log format `{specified}` is not supported for this output",
+#[derive(Debug)]
+pub enum Error {
+    PlainFormatRequired {
+        specified: LogFormat,
+    },
+    #[cfg(unix)]
+    SyslogAccessFailed(io::Error),
+    #[cfg(feature = "gelf")]
+    GelfConnectionFailed(io::Error),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::PlainFormatRequired { specified } => write!(
+                f,
+                "log format `{}` is not supported for this output",
+                specified
+            ),
+            #[cfg(unix)]
+            Error::SyslogAccessFailed(_) => write!(f, "syslog access failed"),
+            #[cfg(feature = "gelf")]
+            Error::GelfConnectionFailed(_) => write!(f, "GELF connection failed"),
+        }
+    }
+}
+
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Error::PlainFormatRequired { .. } => None,
+            #[cfg(unix)]
+            Error::SyslogAccessFailed(err) => Some(err),
+            #[cfg(feature = "gelf")]
+            Error::GelfConnectionFailed(err) => Some(err),
+        }
+    }
 }
