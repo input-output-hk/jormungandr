@@ -1,4 +1,4 @@
-use crate::log::{AsyncableDrain, JsonDrain};
+use crate::log::AsyncableDrain;
 use slog::{Drain, Logger};
 use slog_async::Async;
 #[cfg(feature = "gelf")]
@@ -7,6 +7,7 @@ use slog_gelf::Gelf;
 use slog_journald::JournaldDrain;
 #[cfg(unix)]
 use slog_syslog::Facility;
+use std::fmt::{self, Display};
 use std::io;
 use std::str::FromStr;
 
@@ -17,12 +18,22 @@ pub struct LogSettings {
     pub output: LogOutput,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 /// Format of the logger.
 pub enum LogFormat {
     Plain,
     Json,
+}
+
+impl Display for LogFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            LogFormat::Plain => "plain",
+            LogFormat::Json => "json",
+        };
+        f.write_str(s)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -81,16 +92,29 @@ impl LogOutput {
         match self {
             LogOutput::Stderr => Ok(format.decorate_stderr()),
             #[cfg(unix)]
-            LogOutput::Syslog => Ok(format.decorate(slog_syslog::unix_3164(Facility::LOG_USER)?)),
+            LogOutput::Syslog => {
+                format.require_plain()?;
+                Ok(slog_syslog::unix_3164(Facility::LOG_USER)?.async())
+            }
             #[cfg(feature = "systemd")]
-            LogOutput::Journald => Ok(format.decorate(JournaldDrain)),
+            LogOutput::Journald => {
+                format.require_plain()?;
+                Ok(JournaldDrain.async())
+            }
             #[cfg(feature = "gelf")]
             LogOutput::Gelf {
                 backend: graylog_host_port,
                 log_id: graylog_source,
             } => {
-                let gelf_drain = LogFormat::Plain
-                    .decorate(Gelf::new(graylog_source, graylog_host_port).unwrap());
+                // Both currently recognized formats can be understood to apply:
+                // GELF formats payloads in JSON so 'json' is redundant,
+                // and plain messages are worked into JSON just the same.
+                // Match them irrefutably so that any new format will need to
+                // be addressed here when added.
+                match format {
+                    LogFormat::Plain | LogFormat::Json => {}
+                };
+                let gelf_drain = Gelf::new(graylog_source, graylog_host_port).unwrap();
                 // We also log to stderr otherwise users see no logs.
                 // TODO: remove when multiple output is properly supported.
                 let stderr_drain = format.decorate_stderr();
@@ -101,24 +125,22 @@ impl LogOutput {
 }
 
 impl LogFormat {
+    fn require_plain(&self) -> Result<(), Error> {
+        match self {
+            LogFormat::Plain => Ok(()),
+            _ => Err(Error::PlainFormatRequired { specified: *self }),
+        }
+    }
+
     fn decorate_stderr(&self) -> Async {
         match self {
             LogFormat::Plain => slog_term::term_full().async(),
             LogFormat::Json => slog_json::Json::default(io::stderr()).async(),
         }
     }
-
-    fn decorate<D: AsyncableDrain>(&self, drain: D) -> Async
-    where
-        <D as Drain>::Err: std::fmt::Debug,
-    {
-        match self {
-            LogFormat::Plain => drain.async(),
-            LogFormat::Json => JsonDrain::new(drain).async(),
-        }
-    }
 }
 
 custom_error! {pub Error
     SyslogAccessFailed { source: io::Error } = "syslog access failed",
+    PlainFormatRequired { specified: LogFormat } = "log format `{specified}` is not supported for this output",
 }
