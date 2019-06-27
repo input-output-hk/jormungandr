@@ -10,9 +10,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Initial {
-    Fund(InitialUTxO),
+    Fund(Vec<InitialUTxO>),
     Cert(Certificate),
-    LegacyFund(LegacyUTxO),
+    LegacyFund(Vec<LegacyUTxO>),
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,16 +103,11 @@ fn try_extend_inits_with_tx(
     if !tx.transaction.inputs.is_empty() {
         return Err(Error::InitUtxoHasInput);
     }
-    let inits_iter = tx
-        .transaction
-        .outputs
-        .iter()
-        .map(|output| InitialUTxO {
-            address: output.address.clone().into(),
-            value: output.value.into(),
-        })
-        .map(Initial::Fund);
-    initials.extend(inits_iter);
+    let inits_iter = tx.transaction.outputs.iter().map(|output| InitialUTxO {
+        address: output.address.clone().into(),
+        value: output.value.into(),
+    });
+    initials.push(Initial::Fund(inits_iter.collect()));
     Ok(())
 }
 
@@ -125,41 +120,48 @@ fn extend_inits_with_cert(
 }
 
 fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDeclaration) {
-    let inits_iter = utxo_decl
-        .addrs
-        .iter()
-        .map(|(address, value)| LegacyUTxO {
-            address: address.clone().into(),
-            value: value.clone().into(),
-        })
-        .map(Initial::LegacyFund);
-    initials.extend(inits_iter)
+    let inits_iter = utxo_decl.addrs.iter().map(|(address, value)| LegacyUTxO {
+        address: address.clone().into(),
+        value: value.clone().into(),
+    });
+    initials.push(Initial::LegacyFund(inits_iter.collect()))
 }
 
 impl<'a> From<&'a Initial> for Message {
     fn from(initial: &'a Initial) -> Message {
         match initial {
-            Initial::Fund(utxo) => utxo.into(),
+            Initial::Fund(utxo) => pack_utxo_in_message(&utxo),
             Initial::Cert(cert) => cert.into(),
-            Initial::LegacyFund(utxo) => utxo.into(),
+            Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(&utxo),
         }
     }
 }
 
-impl<'a> From<&'a InitialUTxO> for Message {
-    fn from(utxo: &'a InitialUTxO) -> Message {
-        Message::Transaction(AuthenticatedTransaction {
-            transaction: Transaction {
-                inputs: vec![],
-                outputs: vec![Output {
-                    address: utxo.address.clone().into(),
-                    value: utxo.value.into(),
-                }],
-                extra: NoExtra,
-            },
-            witnesses: vec![],
+fn pack_utxo_in_message(v: &[InitialUTxO]) -> Message {
+    let outputs = v
+        .iter()
+        .map(|utxo| Output {
+            address: utxo.address.clone().into(),
+            value: utxo.value.into(),
         })
-    }
+        .collect();
+
+    Message::Transaction(AuthenticatedTransaction {
+        transaction: Transaction {
+            inputs: vec![],
+            outputs: outputs,
+            extra: NoExtra,
+        },
+        witnesses: vec![],
+    })
+}
+
+fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Message {
+    let addrs = v
+        .iter()
+        .map(|utxo| (utxo.address.clone().into(), utxo.value.into()))
+        .collect();
+    Message::OldUtxoDeclaration(UtxoDeclaration { addrs: addrs })
 }
 
 impl<'a> From<&'a Certificate> for Message {
@@ -171,14 +173,6 @@ impl<'a> From<&'a Certificate> for Message {
                 extra: utxo.0.clone(),
             },
             witnesses: vec![],
-        })
-    }
-}
-
-impl<'a> From<&'a LegacyUTxO> for Message {
-    fn from(utxo: &'a LegacyUTxO) -> Message {
-        Message::OldUtxoDeclaration(UtxoDeclaration {
-            addrs: vec![(utxo.address.clone().into(), utxo.value.into())],
         })
     }
 }
@@ -252,8 +246,8 @@ blockchain_configuration:
 initial:
   - cert: cert1qgqqqqqqqqqqqqqqqqqqq0p5avfqqmgurpe7s9k7933q0wj420jl5xqvx8lywcu5jcr7fwqa9qmdn93q4nm7c4fsay3mzeqgq3c0slnut9kns08yn2qn80famup7nvgtfuyszqzqrd4lxlt5ylplfu76p8f6ks0ggprzatp2c8rn6ev3hn9dgr38tzful4h0udlwa0536vyrrug7af9ujmrr869afs0yw9gj5x7z24l8sps3zzcmv
   - fund:
-      address: {}
-      value: 10000"#, leader_1_pk, leader_2_pk, initial_funds_address);
+      - address: {}
+        value: 10000"#, leader_1_pk, leader_2_pk, initial_funds_address);
         let genesis: Genesis =
             serde_yaml::from_str(genesis_yaml.as_str()).expect("Failed to deserialize YAML");
 

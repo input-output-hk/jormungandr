@@ -111,7 +111,7 @@ impl ConfigurationBuilder {
         let secret_key = jcli_wrapper::assert_key_generate("ed25519");
         let public_key = jcli_wrapper::assert_key_to_public_default(&secret_key);
 
-        let mut genesis_model = GenesisYaml::new_with_funds(self.funds.clone());
+        let mut genesis_model = GenesisYaml::new_with_funds(&self.funds);
 
         let mut leaders_ids = vec![public_key];
         leaders_ids.append(&mut self.consensus_leader_ids.clone());

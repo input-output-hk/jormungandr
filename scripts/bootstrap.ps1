@@ -237,8 +237,8 @@ if([System.IO.File]::Exists($MYCLI)){
   kes_update_speed: 43200 # 12hours
 initial:
   - fund:
-      address: $FAUCET_ADDR
-      value: $FAUCET_AMOUNT
+      - address: $FAUCET_ADDR
+        value: $FAUCET_AMOUNT
   - cert: $STAKEPOOLCERTSIGN
   - cert: $STAKEDELEGATIONSIGN" | Out-File $WORKDIR"\"$CONFIG_PATH\genesis.yaml -Encoding Oem
 		write-host "genesis file generated: done" -ForegroundColor DarkGreen
