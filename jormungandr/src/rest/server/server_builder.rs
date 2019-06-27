@@ -11,17 +11,13 @@ use actix_web::{
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 pub struct ServerBuilder {
-    pkcs12: Option<PathBuf>,
-    address: SocketAddr,
     prefix: Arc<String>,
     handlers: Vec<Box<Fn() -> Box<HttpHandler<Task = Box<HttpHandlerTask>>> + Send + Sync>>,
 }
 
 impl ServerBuilder {
-    pub fn new(pkcs12: Option<PathBuf>, address: SocketAddr, prefix: impl Into<String>) -> Self {
+    pub fn new(prefix: impl Into<String>) -> Self {
         Self {
-            pkcs12,
-            address,
             prefix: Arc::new(prefix.into()),
             handlers: vec![],
         }
@@ -46,10 +42,10 @@ impl ServerBuilder {
         self
     }
 
-    pub fn build(self) -> ServerResult<Server> {
+    pub fn build(self, pkcs12: Option<PathBuf>, address: SocketAddr) -> ServerResult<Server> {
         let handlers = Arc::new(self.handlers);
         let multi_handler = move || handlers.iter().map(|handler| handler()).collect::<Vec<_>>();
-        Server::start(self.pkcs12, self.address, multi_handler)
+        Server::start(pkcs12, address, multi_handler)
     }
 }
 

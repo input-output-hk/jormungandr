@@ -32,11 +32,9 @@ pub struct Server {
 
 impl Server {
     pub fn builder(
-        pkcs12: Option<PathBuf>,
-        address: SocketAddr,
         prefix: impl Into<String>,
     ) -> ServerBuilder {
-        ServerBuilder::new(pkcs12, address, prefix)
+        ServerBuilder::new(prefix)
     }
 
     pub fn start<F, H>(

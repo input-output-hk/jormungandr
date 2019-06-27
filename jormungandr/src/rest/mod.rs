@@ -24,7 +24,8 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, Conf
         .as_ref()
         .map(|prefix| prefix.as_str())
         .unwrap_or("");
-    Server::builder(config.pkcs12.clone(), config.listen.clone(), prefix)
+
+    Server::builder(prefix)
         .add_handler(v0::account::create_handler(context.blockchain.clone()))
         .add_handler(v0::block::create_handler(context.blockchain.clone()))
         .add_handler(v0::node::stats::create_handler(context.stats_counter))
@@ -34,6 +35,6 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, Conf
             context.logs,
         ))))
         .add_handler(v0::utxo::create_handler(context.blockchain))
-        .build()
+        .build(config.pkcs12.clone(), config.listen.clone())
         .map_err(|e| e.into())
 }
