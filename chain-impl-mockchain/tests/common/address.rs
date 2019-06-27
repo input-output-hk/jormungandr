@@ -5,8 +5,12 @@ use chain_impl_mockchain::{
     transaction::{Input, Output, UtxoPointer},
     value::Value,
 };
-use std::fmt::{Debug, Formatter, Result};
+use std::fmt::{self, Debug};
 
+///
+/// Struct is responsible for adding some code which makes converting into transaction input/output easily.
+/// Also it held all needed information (private key, public key) which can construct witness for transaction.
+///
 #[derive(Clone)]
 pub struct AddressData {
     pub private_key: EitherEd25519SecretKey,
@@ -16,12 +20,12 @@ pub struct AddressData {
 }
 
 impl Debug for AddressData {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(
-            f,
-            "[{:?},{:?},{:?}]",
-            self.public_key, self.spending_counter, self.address
-        )
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("AddressData")
+            .field("public_key", &self.public_key)
+            .field("spending_counter", &self.spending_counter)
+            .field("address", &self.address)
+            .finish()
     }
 }
 
@@ -40,16 +44,18 @@ impl AddressData {
         }
     }
 
-    pub fn as_input(&self, value: Value, utxo: UtxoPointer) -> Input {
+    pub fn make_input(&self, value: Value, utxo: UtxoPointer) -> Input {
         match self.address.kind() {
             Kind::Account { .. } => {
                 Input::from_account_public_key(self.public_key.clone(), value.clone())
             }
-            _ => Input::from_utxo(utxo),
+            Kind::Single { .. } | Kind::Group { .. } | Kind::Multisig { .. } => {
+                Input::from_utxo(utxo)
+            }
         }
     }
 
-    pub fn as_output(&self, value: Value) -> Output<Address> {
+    pub fn make_output(&self, value: Value) -> Output<Address> {
         Output::from_address(self.address.clone(), value)
     }
 

@@ -58,3 +58,18 @@ impl Arbitrary for Address {
         Address(discrimination, kind)
     }
 }
+
+impl Arbitrary for Kind {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        match u8::arbitrary(g) % 4 {
+            0 => Kind::Single(arbitrary_public_key(g)),
+            1 => Kind::Group(arbitrary_public_key(g), arbitrary_public_key(g)),
+            2 => Kind::Account(arbitrary_public_key(g)),
+            3 => {
+                let h = arbitrary_32bytes(g);
+                Kind::Multisig(h)
+            }
+            _ => unreachable!(),
+        }
+    }
+}

@@ -30,5 +30,13 @@ pub mod update;
 pub mod utxo;
 pub mod value;
 
-#[cfg(test)]
-mod tests {}
+#[macro_use]
+extern crate cfg_if;
+
+cfg_if! {
+   if #[cfg(test)] {
+        pub mod testing;
+    } else if #[cfg(feature = "property-test-api")] {
+        pub mod testing;
+    }
+}

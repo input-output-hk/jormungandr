@@ -54,7 +54,6 @@ impl<Extra: Readable> Readable for AuthenticatedTransaction<Address, Extra> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::value::Value;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
@@ -63,12 +62,6 @@ mod test {
         }
         fn signed_transaction_encode_decode(transaction: AuthenticatedTransaction<Address, NoExtra>) -> TestResult {
             chain_core::property::testing::serialization_bijection_r(transaction)
-        }
-    }
-
-    impl Arbitrary for Value {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Value(Arbitrary::arbitrary(g))
         }
     }
 
@@ -85,15 +78,6 @@ mod test {
     impl Arbitrary for Input {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Input::from_utxo(Arbitrary::arbitrary(g))
-        }
-    }
-
-    impl Arbitrary for Output<Address> {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Output {
-                address: Arbitrary::arbitrary(g),
-                value: Arbitrary::arbitrary(g),
-            }
         }
     }
 
