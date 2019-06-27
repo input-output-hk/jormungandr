@@ -1,4 +1,6 @@
-use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
+use crate::blockchain::chain::{
+    self, BlockHeaderTriage, BlockchainR, HandleBlockError, HandledBlock,
+};
 use crate::intercom::{BlockMsg, NetworkMsg, PropagateMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::{
@@ -14,12 +16,12 @@ pub fn handle_input(
     _stats_counter: &StatsCounter,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     input: Input<BlockMsg>,
-) {
+) -> Result<(), HandleBlockError> {
     let bquery = match input {
         Input::Shutdown => {
             // TODO: is there some work to do here to clean up the
             //       the state and make sure all state is saved properly
-            return;
+            return Ok(());
         }
         Input::Input(msg) => msg,
     };
@@ -29,11 +31,11 @@ pub fn handle_input(
     match bquery {
         BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
             let blockchain = blockchain.lock_read();
-            chain::handle_end_of_epoch_event(&blockchain, epoch).unwrap()
+            chain::handle_end_of_epoch_event(&blockchain, epoch)?;
         }
         BlockMsg::LeadershipBlock(block) => {
             let mut blockchain = blockchain.lock_write();
-            match chain::handle_block(&mut blockchain, block, true).unwrap() {
+            match chain::handle_block(&mut blockchain, block, true)? {
                 HandledBlock::Rejected { reason } => {
                     warn!(logger,
                         "rejecting node's created block" ;
@@ -132,5 +134,7 @@ pub fn handle_input(
                 }
             }
         }
-    }
+    };
+
+    Ok(())
 }
