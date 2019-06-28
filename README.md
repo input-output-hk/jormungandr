@@ -12,20 +12,26 @@ we recommend to use the most recent stable version of the rust compiler.
 1. [Install rustup](https://www.rust-lang.org/tools/install)
 2. Run `rustup install stable`
 3. Run `rustup default stable`
-4. Make sure the C compiler toolchain is installed and, on Unix (e.g. macOS),
-  the compiler and linker executable `cc` is found in `PATH`.
-5. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
-6. Enter the repository directory: `cd jormungandr`
-7. install **jormungandr**: `cargo install --path jormungandr`
-8. install **jcli**: `cargo install --path jcli`
+4. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
+5. Enter the repository directory: `cd jormungandr`
+6. install **jormungandr**: `cargo install --path jormungandr`
+7. install **jcli**: `cargo install --path jcli`
 
 Note:
 
 * On Windows, you'll need to add the `%USERPROFILE%\.cargo\bin` into the
   environment variable `PATH`.
 * On Linux and macOS: add `${HOME}/.cargo/bin` into your `PATH`.
-* On Linux with systemd: to enable logging to journald replace step 7
+* Make sure the C compiler toolchain is installed and, on Unix (e.g. macOS),
+  the compiler and linker executable `cc` is found in `PATH`.
+* On Linux with systemd: to enable logging to journald replace step 6
   with `cargo install --path . --features systemd`.
+* On Linux environments without glibc, such as NixOS or Alpine, the protobuf
+  compiler `protoc` needs to be installed and found in `PATH` or otherwise
+  specified in the environment variable `PROTOC`. For distribution or container
+  builds in general, it's a good practice to install protoc from the
+  official distribution package if available, otherwise the version bundled
+  with crate `prost-build` will be used.
 
 This will install 2 tools:
 
