@@ -37,7 +37,7 @@ impl From<InsertError> for LedgerError {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct AccountState<Extra> {
     pub counter: SpendingCounter,
     pub delegation: Option<StakePoolId>,
@@ -166,7 +166,7 @@ impl<'a, ID, Extra> Iterator for Iter<'a, ID, Extra> {
 }
 
 /// The public ledger of all accounts associated with their current state
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Ledger<ID: Hash + Eq, Extra>(Hamt<DefaultHasher, ID, AccountState<Extra>>);
 
 impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {

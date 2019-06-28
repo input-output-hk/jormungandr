@@ -44,7 +44,7 @@ impl From<RemoveError> for Error {
 }
 
 /// Hold all the individual outputs that remain unspent
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 struct TransactionUnspents<OutAddress>(BTreeMap<TransactionIndex, Output<OutAddress>>);
 
 impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
@@ -73,7 +73,7 @@ impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
 }
 
 /// Ledger of UTXO
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Ledger<OutAddress>(Hamt<DefaultHasher, TransactionId, TransactionUnspents<OutAddress>>);
 
 pub struct Iter<'a, V> {

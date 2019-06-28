@@ -306,5 +306,8 @@ pub fn iterate() {
         }
     }
 
-    let _ledger2: Result<chain_impl_mockchain::ledger::Ledger, _> = ledger.iter().collect();
+    let ledger2: Result<chain_impl_mockchain::ledger::Ledger, _> = ledger.iter().collect();
+    let ledger2 = ledger2.unwrap();
+
+    assert!(ledger == ledger2);
 }

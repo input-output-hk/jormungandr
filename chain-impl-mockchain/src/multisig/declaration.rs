@@ -39,7 +39,7 @@ impl std::fmt::Display for Identifier {
 ///
 /// * a threshold that need to be between 1 and the size of owners
 /// * a bunch of owners which is either a hash of a key, or a sub declaration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     pub(crate) threshold: u8, // between 1 and len(owners)
     pub(crate) owners: Vec<DeclElement>,
@@ -55,7 +55,7 @@ impl Declaration {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeclElement {
     Sub(Declaration),
     Owner(key::Hash),

@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 // static parameters, effectively this is constant in the parameter of the blockchain
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct LedgerStaticParameters {
     pub block0_initial_hash: HeaderHash,
     pub block0_start_time: config::Block0Date,
@@ -45,7 +45,7 @@ const MAX_TRANSACTION_WITNESSES_COUNT: usize = 256;
 ///
 /// The ledger can be easily and cheaply cloned despite containing reference
 /// to a lot of data (millions of utxos, thousands of accounts, ..)
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Ledger {
     pub(crate) utxos: utxo::Ledger<Address>,
     pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
