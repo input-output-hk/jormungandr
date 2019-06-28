@@ -1,29 +1,26 @@
-use blockchain::BlockchainR;
 use jormungandr_lib::interfaces::*;
 
 use actix_web::error::{Error, ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::{Error as ActixError, HttpMessage, HttpRequest};
-use actix_web::{Json, Path, Responder, State, Query};
+use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Deserialize, Serialize};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
-use chain_impl_mockchain::message::Message;
 use chain_impl_mockchain::key::Hash;
+use chain_impl_mockchain::message::Message;
+
 use chain_storage::store;
 
 use bytes::{Bytes, IntoBuf};
 use futures::Future;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
 
-use crate::fragment::Logs;
 use crate::intercom::TransactionMsg;
-use crate::utils::async_msg::MessageBox;
-use crate::stats_counter::StatsCounter;
 
+pub type Context = crate::rest::Context;
 
-pub fn get_utxos(blockchain: State<BlockchainR>) -> impl Responder {
-    let blockchain = blockchain.lock_read();
+pub fn get_utxos(context: State<Context>) -> impl Responder {
+    let blockchain = context.blockchain.lock_read();
     let utxos = blockchain
         .multiverse
         .get(&blockchain.get_tip().unwrap())
@@ -34,11 +31,11 @@ pub fn get_utxos(blockchain: State<BlockchainR>) -> impl Responder {
 }
 
 pub fn get_account_state(
-    blockchain: State<BlockchainR>,
+    context: State<Context>,
     account_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
     let account_id = parse_account_id(&account_id_hex)?;
-    let blockchain = blockchain.lock_read();
+    let blockchain = context.blockchain.lock_read();
     let state = blockchain
         .multiverse
         .get(&blockchain.get_tip().unwrap())
@@ -55,17 +52,17 @@ fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
         .map_err(|e| ErrorBadRequest(e))
 }
 
-pub fn get_message_logs(logs: State<Arc<Mutex<Logs>>>) -> impl Responder {
-    let logs = logs.lock().unwrap();
+pub fn get_message_logs(context: State<Context>) -> impl Responder {
+    let logs = context.logs.lock().unwrap();
     let logs = logs.logs().wait().unwrap();
     Json(logs)
 }
 
 pub fn post_message(
-    request: &HttpRequest<Arc<Mutex<MessageBox<TransactionMsg>>>>,
+    request: &HttpRequest<Context>,
 ) -> impl Future<Item = impl Responder + 'static, Error = impl Into<ActixError> + 'static> + 'static
 {
-    let sender = request.state().clone();
+    let sender = request.state().transaction_task.clone();
     request.body().map(move |message| -> Result<_, ActixError> {
         let msg = Message::deserialize(message.into_buf()).map_err(|e| {
             println!("{}", e);
@@ -77,11 +74,17 @@ pub fn post_message(
     })
 }
 
-pub fn get_tip(settings: State<BlockchainR>) -> impl Responder {
-    settings.lock_read().get_tip().unwrap().to_string()
+pub fn get_tip(settings: State<Context>) -> impl Responder {
+    settings
+        .blockchain
+        .lock_read()
+        .get_tip()
+        .unwrap()
+        .to_string()
 }
 
-pub fn get_stats_counter(stats: State<StatsCounter>) -> impl Responder {
+pub fn get_stats_counter(context: State<Context>) -> impl Responder {
+    let stats = &context.stats_counter;
     Json(json!({
         "txRecvCnt": stats.get_tx_recv_cnt(),
         "blockRecvCnt": stats.get_block_recv_cnt(),
@@ -90,11 +93,11 @@ pub fn get_stats_counter(stats: State<StatsCounter>) -> impl Responder {
 }
 
 pub fn get_block_id(
-    blockchain: State<BlockchainR>,
+    context: State<Context>,
     block_id_hex: Path<String>,
 ) -> Result<Bytes, ActixError> {
     let block_id = parse_block_hash(&block_id_hex)?;
-    let blockchain = blockchain.lock_read();
+    let blockchain = context.blockchain.lock_read();
     let block = blockchain
         .storage
         .read()
@@ -114,7 +117,7 @@ fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
 
 
 pub fn get_block_next_id(
-    blockchain: State<BlockchainR>,
+    context: State<Context>,
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> Result<Bytes, ActixError> {
@@ -123,7 +126,7 @@ pub fn get_block_next_id(
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
     // FIXME: don't hog the blockchain lock.
-    let blockchain = blockchain.lock_read();
+    let blockchain = context.blockchain.lock_read();
     let storage = blockchain.storage.read().unwrap();
     store::iterate_range(&*storage, &block_id, &blockchain.get_tip().unwrap())
         .map_err(|e| ErrorBadRequest(e))?

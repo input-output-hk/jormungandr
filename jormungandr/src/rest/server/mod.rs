@@ -2,10 +2,8 @@
 //! to be run as a background service.
 
 mod error;
-mod server_builder;
 
 pub use self::error::Error;
-pub use self::server_builder::ServerBuilder;
 
 use actix_net::server::Server as ActixServer;
 use actix_web::{
@@ -37,7 +35,7 @@ impl Server {
         handler: F,
     ) -> ServerResult<Self>
     where
-        F: Fn() -> H + Send + Clone + 'static,
+        F: Fn() -> H + Clone + Send + 'static,
         H: IntoHttpHandler + 'static,
     {
         let tls = load_tls_acceptor(pkcs12)?;
@@ -66,7 +64,7 @@ impl Server {
     }
 }
 
-fn load_tls_acceptor(pkcs12_opt: Option<PathBuf>) -> ServerResult<Option<TlsAcceptor>> {
+pub fn load_tls_acceptor(pkcs12_opt: Option<PathBuf>) -> ServerResult<Option<TlsAcceptor>> {
     let pkcs12_path = match pkcs12_opt {
         Some(pkcs12) => pkcs12,
         None => return Ok(None),
@@ -83,7 +81,7 @@ fn start_server_curr_actix_system<F, H>(
     handler: F,
 ) -> ServerResult<Server>
 where
-    F: Fn() -> H + Send + Clone + 'static,
+    F: Fn() -> H + Clone + Send + 'static,
     H: IntoHttpHandler + 'static,
 {
     let server = server::new(handler)
