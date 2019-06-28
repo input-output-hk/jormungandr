@@ -9,11 +9,11 @@ User guide documentation available [here](https://input-output-hk.github.io/jorm
 Currently the minimum supported version of the rust compiler is 1.35, however
 we recommend to use the most recent stable version of the rust compiler.
 
-1. [install rustup](https://www.rust-lang.org/tools/install)
+1. [Install rustup](https://www.rust-lang.org/tools/install)
 2. Run `rustup install stable`
 3. Run `rustup default stable`
 4. Make sure the C compiler toolchain is installed and, on Unix (e.g. macOS),
-  the compiler and linker executable `cc` is in `PATH`.
+  the compiler and linker executable `cc` is found in `PATH`.
 5. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
 6. Enter the repository directory: `cd jormungandr`
 7. install **jormungandr**: `cargo install --path jormungandr`
@@ -21,9 +21,11 @@ we recommend to use the most recent stable version of the rust compiler.
 
 Note:
 
-* on windows, you'll need to add the `/userProfile/.cargo/bin` into the Path;
-* on linux and OSX: add `${HOME}/.cargo/bin` to your `${PATH}`
-* on linux with systemd: to enable logging to journald replace step 5. with `cargo install --path . --features systemd`
+* On Windows, you'll need to add the `%USERPROFILE%\.cargo\bin` into the
+  environment variable `PATH`.
+* On Linux and macOS: add `${HOME}/.cargo/bin` into your `PATH`.
+* On Linux with systemd: to enable logging to journald replace step 7
+  with `cargo install --path . --features systemd`.
 
 This will install 2 tools:
 
