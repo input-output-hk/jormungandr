@@ -14,12 +14,12 @@ pub fn handle_input(
     _stats_counter: &StatsCounter,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     input: Input<BlockMsg>,
-) {
+) -> Result<(), ()> {
     let bquery = match input {
         Input::Shutdown => {
             // TODO: is there some work to do here to clean up the
             //       the state and make sure all state is saved properly
-            return;
+            return Ok(());
         }
         Input::Input(msg) => msg,
     };
@@ -29,11 +29,14 @@ pub fn handle_input(
     match bquery {
         BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
             let blockchain = blockchain.lock_read();
-            chain::handle_end_of_epoch_event(&blockchain, epoch).unwrap()
+            chain::handle_end_of_epoch_event(&blockchain, epoch)
+                .map_err(|e| crit!(logger, "end of epoch processing failed: {:?}", e))?;
         }
         BlockMsg::LeadershipBlock(block) => {
             let mut blockchain = blockchain.lock_write();
-            match chain::handle_block(&mut blockchain, block, true).unwrap() {
+            match chain::handle_block(&mut blockchain, block, true)
+                .map_err(|e| crit!(logger, "block processing failed: {:?}", e))?
+            {
                 HandledBlock::Rejected { reason } => {
                     warn!(logger,
                         "rejecting node's created block" ;
@@ -132,5 +135,7 @@ pub fn handle_input(
                 }
             }
         }
-    }
+    };
+
+    Ok(())
 }

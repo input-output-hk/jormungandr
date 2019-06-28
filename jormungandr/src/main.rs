@@ -146,8 +146,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 &stats_counter,
                 &mut network_msgbox,
                 input,
-            );
-            futures::future::ok(())
+            )
         })
     };
 
