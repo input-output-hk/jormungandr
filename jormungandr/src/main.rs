@@ -66,7 +66,7 @@ use crate::{
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
-use futures::{future, Future};
+use futures::Future;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::sync::{Arc, Mutex};
@@ -140,15 +140,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let blockchain = bootstrapped_node.blockchain.clone();
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
-            let res = blockchain::handle_input(
+            blockchain::handle_input(
                 info,
                 &blockchain,
                 &stats_counter,
                 &mut network_msgbox,
                 input,
             )
-            .map_err(|e| crit!(info.logger(), "block input processing failed: {:?}", e));
-            future::result(res)
         })
     };
 

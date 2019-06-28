@@ -1,6 +1,4 @@
-use crate::blockchain::chain::{
-    self, BlockHeaderTriage, BlockchainR, HandleBlockError, HandledBlock,
-};
+use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
 use crate::intercom::{BlockMsg, NetworkMsg, PropagateMsg};
 use crate::rest::v0::node::stats::StatsCounter;
 use crate::utils::{
@@ -16,7 +14,7 @@ pub fn handle_input(
     _stats_counter: &StatsCounter,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     input: Input<BlockMsg>,
-) -> Result<(), HandleBlockError> {
+) -> Result<(), ()> {
     let bquery = match input {
         Input::Shutdown => {
             // TODO: is there some work to do here to clean up the
@@ -31,11 +29,14 @@ pub fn handle_input(
     match bquery {
         BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
             let blockchain = blockchain.lock_read();
-            chain::handle_end_of_epoch_event(&blockchain, epoch)?;
+            chain::handle_end_of_epoch_event(&blockchain, epoch)
+                .map_err(|e| crit!(logger, "end of epoch processing failed: {:?}", e))?;
         }
         BlockMsg::LeadershipBlock(block) => {
             let mut blockchain = blockchain.lock_write();
-            match chain::handle_block(&mut blockchain, block, true)? {
+            match chain::handle_block(&mut blockchain, block, true)
+                .map_err(|e| crit!(logger, "block processing failed: {:?}", e))?
+            {
                 HandledBlock::Rejected { reason } => {
                     warn!(logger,
                         "rejecting node's created block" ;
