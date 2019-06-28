@@ -4,6 +4,7 @@ mod server;
 
 pub mod v0;
 
+use self::server::ServerBuilder;
 pub use self::server::{Error, Server};
 
 use crate::blockchain::BlockchainR;
@@ -25,7 +26,7 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, Conf
         .map(|prefix| prefix.as_str())
         .unwrap_or("");
 
-    Server::builder(prefix)
+    ServerBuilder::new(prefix)
         .add_handler(v0::account::create_handler(context.blockchain.clone()))
         .add_handler(v0::block::create_handler(context.blockchain.clone()))
         .add_handler(v0::node::stats::create_handler(context.stats_counter))
