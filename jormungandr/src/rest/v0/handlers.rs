@@ -115,7 +115,6 @@ fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
     Ok(Hash::from(hash))
 }
 
-
 pub fn get_block_next_id(
     context: State<Context>,
     block_id_hex: Path<String>,

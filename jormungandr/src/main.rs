@@ -83,8 +83,8 @@ pub mod secure;
 pub mod settings;
 pub mod start_up;
 pub mod state;
-pub mod utils;
 mod stats_counter;
+pub mod utils;
 
 use stats_counter::StatsCounter;
 
