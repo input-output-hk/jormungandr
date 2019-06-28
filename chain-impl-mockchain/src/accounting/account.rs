@@ -272,3 +272,11 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
         Iter(self.0.iter())
     }
 }
+
+impl<ID: Clone + Eq + Hash, Extra: Clone> std::iter::FromIterator<(ID, AccountState<Extra>)>
+    for Ledger<ID, Extra>
+{
+    fn from_iter<I: IntoIterator<Item = (ID, AccountState<Extra>)>>(iter: I) -> Self {
+        Ledger(Hamt::from_iter(iter))
+    }
+}

@@ -305,4 +305,6 @@ pub fn iterate() {
             }
         }
     }
+
+    let _ledger2: Result<chain_impl_mockchain::ledger::Ledger, _> = ledger.iter().collect();
 }

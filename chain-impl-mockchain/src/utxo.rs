@@ -243,3 +243,20 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
         }
     }
 }
+
+impl<OutAddress: Clone>
+    std::iter::FromIterator<(TransactionId, Vec<(TransactionIndex, Output<OutAddress>)>)>
+    for Ledger<OutAddress>
+{
+    fn from_iter<
+        I: IntoIterator<Item = (TransactionId, Vec<(TransactionIndex, Output<OutAddress>)>)>,
+    >(
+        iter: I,
+    ) -> Self {
+        let mut ledger = Ledger::new();
+        for (tid, outputs) in iter {
+            ledger = ledger.add(&tid, &outputs).unwrap();
+        }
+        ledger
+    }
+}

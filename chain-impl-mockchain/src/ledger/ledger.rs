@@ -126,10 +126,15 @@ custom_error! {
         Update { source: update::Error } = "Error or Invalid update",
         WrongChainLength { actual: ChainLength, expected: ChainLength } = "Wrong chain length, expected {expected} but received {actual}",
         NonMonotonicDate { block_date: BlockDate, chain_date: BlockDate } = "Non Monotonic date, chain date is at {chain_date} but the block is at {block_date}",
+        IncompleteLedger = "Ledger cannot be reconstructed from serialized state because of missing entries",
 }
 
 impl Ledger {
-    fn empty(settings: setting::Settings, static_params: LedgerStaticParameters, era: TimeEra) -> Self {
+    fn empty(
+        settings: setting::Settings,
+        static_params: LedgerStaticParameters,
+        era: TimeEra,
+    ) -> Self {
         Ledger {
             utxos: utxo::Ledger::new(),
             oldutxos: utxo::Ledger::new(),
@@ -1013,5 +1018,79 @@ impl Ledger {
             ledger: self,
             state: IterState::Initial,
         }
+    }
+}
+
+impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
+    fn from_iter<I: IntoIterator<Item = Entry<'a>>>(iter: I) -> Self {
+        let mut utxos = std::collections::HashMap::new();
+        let mut oldutxos = std::collections::HashMap::new();
+        let mut accounts = vec![];
+        let mut config_params = crate::message::ConfigParams::new();
+        let mut updates = update::UpdateState::new();
+        let mut multisig_accounts = vec![];
+        let mut multisig_declarations = vec![];
+        let delegation = DelegationState::new();
+        let mut globals = None;
+
+        for entry in iter {
+            match entry {
+                Entry::Globals(globals2) => {
+                    globals = Some(globals2);
+                    // FIXME: check duplicate
+                }
+                Entry::Utxo(entry) => {
+                    utxos
+                        .entry(entry.transaction_id)
+                        .or_insert(vec![])
+                        .push((entry.output_index, entry.output.clone()));
+                }
+                Entry::OldUtxo(entry) => {
+                    oldutxos
+                        .entry(entry.transaction_id)
+                        .or_insert(vec![])
+                        .push((entry.output_index, entry.output.clone()));
+                }
+                Entry::Account((account_id, account_state)) => {
+                    accounts.push((account_id.clone(), account_state.clone()));
+                }
+                Entry::ConfigParam(param) => {
+                    config_params.push(param.clone());
+                }
+                Entry::UpdateProposal((proposal_id, proposal_state)) => {
+                    updates
+                        .proposals
+                        .insert(proposal_id.clone(), proposal_state.clone());
+                }
+                Entry::MultisigAccount((account_id, account_state)) => {
+                    multisig_accounts.push((account_id.clone(), account_state.clone()));
+                }
+                Entry::MultisigDeclaration((id, decl)) => {
+                    multisig_declarations.push((id.clone(), decl.clone()));
+                }
+                Entry::StakePool((pool_id, pool_state)) => {
+                    delegation
+                        .stake_pools
+                        .insert(pool_id.clone(), pool_state.clone())
+                        .unwrap();
+                }
+            }
+        }
+
+        let globals = globals.ok_or(Error::IncompleteLedger)?;
+
+        Ok(Ledger {
+            utxos: utxos.into_iter().collect(),
+            oldutxos: oldutxos.into_iter().collect(),
+            accounts: accounts.into_iter().collect(),
+            settings: setting::Settings::new().apply(&config_params)?,
+            updates,
+            multisig: multisig::Ledger::restore(multisig_accounts, multisig_declarations),
+            delegation,
+            static_params: Arc::new(globals.static_params),
+            date: globals.date,
+            chain_length: globals.chain_length,
+            era: globals.era,
+        })
     }
 }

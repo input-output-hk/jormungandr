@@ -46,6 +46,16 @@ impl Ledger {
         }
     }
 
+    pub fn restore(
+        accounts: Vec<(Identifier, account::AccountState<()>)>,
+        declarations: Vec<(Identifier, Declaration)>,
+    ) -> Self {
+        Ledger {
+            accounts: accounts.into_iter().collect(),
+            declarations: declarations.into_iter().collect(),
+        }
+    }
+
     /// Add a new multisig declaration into the ledger.
     ///
     /// If the identifier is already present, error out.

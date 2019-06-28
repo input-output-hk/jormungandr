@@ -138,10 +138,7 @@ impl Settings {
         params.push(ConfigParam::LinearFee(*self.linear_fees));
         params.push(ConfigParam::ProposalExpiration(self.proposal_expiration));
 
-        debug_assert_eq!(
-            self,
-            &Settings::new().apply(&params).unwrap()
-        );
+        debug_assert_eq!(self, &Settings::new().apply(&params).unwrap());
 
         params
     }
