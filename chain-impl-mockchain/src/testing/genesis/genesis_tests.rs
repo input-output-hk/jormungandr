@@ -1,14 +1,16 @@
-use crate::common::ledger as ledger_mock;
+#![cfg(test)]
+
+use crate::testing::common::ledger as ledger_mock;
 use chain_crypto::KeyPair;
 use chain_crypto::*;
-use chain_impl_mockchain::leadership::genesis::*;
-use chain_impl_mockchain::milli::Milli;
+use crate::leadership::genesis::*;
+use crate::milli::Milli;
 
-use chain_impl_mockchain::ledger::Ledger;
-use chain_impl_mockchain::stake::PoolStakeDistribution;
-use chain_impl_mockchain::stake::StakePoolId;
-use chain_impl_mockchain::stake::StakePoolInfo;
-use chain_impl_mockchain::value::*;
+use crate::ledger::Ledger;
+use crate::stake::PoolStakeDistribution;
+use crate::stake::StakePoolId;
+use crate::stake::StakePoolInfo;
+use crate::value::*;
 use std::collections::HashMap;
 
 fn make_pool(ledger: &mut Ledger) -> (StakePoolId, SecretKey<Curve25519_2HashDH>) {

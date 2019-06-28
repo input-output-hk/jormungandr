@@ -1,7 +1,11 @@
+use chain_addr::Address;
 use crate::transaction::Output;
 use crate::value::Value;
-use chain_addr::Address;
 use quickcheck::{Arbitrary, Gen};
+
+pub mod common;
+pub mod genesis;
+pub mod ledger;
 
 impl Arbitrary for Value {
     fn arbitrary<G: Gen>(gen: &mut G) -> Self {

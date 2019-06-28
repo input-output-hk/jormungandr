@@ -1,12 +1,14 @@
-use crate::common::{
+#![cfg(test)]
+
+use crate::testing::common::{
     address::AddressData,
     arbitrary::KindTypeWithoutMultisig,
     ledger::{self, ConfigBuilder},
     tx_builder::TransactionBuilder,
 };
-use chain_addr::{Discrimination, KindType};
-use chain_impl_mockchain::transaction::*;
-use chain_impl_mockchain::value::*;
+use chain_addr::Discrimination;
+use crate::transaction::*;
+use crate::value::*;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 

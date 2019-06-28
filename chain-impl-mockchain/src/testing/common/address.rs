@@ -1,5 +1,5 @@
 use chain_addr::{Address, Discrimination, Kind, KindType};
-use chain_impl_mockchain::{
+use crate::{
     account::SpendingCounter,
     key::{EitherEd25519SecretKey, SpendingPublicKey},
     transaction::{Input, Output, UtxoPointer},

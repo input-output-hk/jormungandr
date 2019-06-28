@@ -1,21 +1,21 @@
-use super::KindWithoutMultisig;
-use chain_addr::{Address, Discrimination};
-use chain_impl_mockchain::transaction::Output;
+use chain_addr::{Address, Discrimination, Kind};
+use crate::transaction::Output;
 use quickcheck::{Arbitrary, Gen};
+use std::iter;
 
 #[derive(Clone, Debug)]
 pub struct OutputsWithoutMultisig(pub Vec<Output<Address>>);
 
 impl Arbitrary for OutputsWithoutMultisig {
     fn arbitrary<G: Gen>(gen: &mut G) -> Self {
-        let count = u8::arbitrary(gen);
-        let mut outputs = vec![];
-        for _ in 0..count {
-            let mut output = Output::arbitrary(gen);
-            output.address.1 = KindWithoutMultisig::arbitrary(gen).0;
-            outputs.push(output);
-        }
-        OutputsWithoutMultisig(outputs)
+        let n = usize::arbitrary(gen);
+        OutputsWithoutMultisig(iter::from_fn(|| Some(Output::arbitrary(gen)))
+            .filter(|x| match x.address.1 {
+                    Kind::Multisig { .. } => false,
+                    _ => true,
+                })
+            .take(n)
+            .collect())
     }
 }
 

@@ -1,11 +1,13 @@
-use crate::common::address::AddressData;
-use crate::common::ledger;
-use crate::common::ledger::ConfigBuilder;
-use crate::common::tx_builder::TransactionBuilder;
+#![cfg(test)]
+
+use crate::testing::common::address::AddressData;
+use crate::testing::common::ledger;
+use crate::testing::common::ledger::ConfigBuilder;
+use crate::testing::common::tx_builder::TransactionBuilder;
 use chain_addr::Discrimination;
-use chain_impl_mockchain::ledger::Error::{NotEnoughSignatures, TransactionHasTooManyOutputs};
-use chain_impl_mockchain::transaction::*;
-use chain_impl_mockchain::value::*;
+use crate::ledger::Error::{NotEnoughSignatures, TransactionHasTooManyOutputs};
+use crate::transaction::*;
+use crate::value::*;
 
 macro_rules! assert_err {
     ($left: expr, $right: expr) => {
