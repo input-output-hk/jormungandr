@@ -61,7 +61,6 @@ extern crate test;
 use crate::{
     blockcfg::Leader,
     blockchain::BlockchainR,
-    rest::v0::node::stats::StatsCounter,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -85,6 +84,9 @@ pub mod settings;
 pub mod start_up;
 pub mod state;
 pub mod utils;
+mod stats_counter;
+
+use stats_counter::StatsCounter;
 
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;

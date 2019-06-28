@@ -10,10 +10,11 @@ pub use self::server::{Error, Server};
 use crate::blockchain::BlockchainR;
 use crate::fragment::Logs;
 use crate::settings::start::{Error as ConfigError, Rest};
+use crate::stats_counter::StatsCounter;
 use std::sync::{Arc, Mutex};
 
 pub struct Context {
-    pub stats_counter: v0::node::stats::StatsCounter,
+    pub stats_counter: StatsCounter,
     pub blockchain: BlockchainR,
     pub transaction_task: v0::message::post::Task,
     pub logs: Logs,

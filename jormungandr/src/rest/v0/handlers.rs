@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 use crate::fragment::Logs;
 use crate::intercom::TransactionMsg;
 use crate::utils::async_msg::MessageBox;
-use crate::rest::v0::node::stats::StatsCounter;
+use crate::stats_counter::StatsCounter;
 
 
 pub fn get_utxos(blockchain: State<BlockchainR>) -> impl Responder {

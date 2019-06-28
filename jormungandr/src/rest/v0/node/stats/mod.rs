@@ -1,6 +1,4 @@
-mod stats_counter;
-
-pub use self::stats_counter::StatsCounter;
+use crate::stats_counter::StatsCounter;
 
 use actix_web::App;
 use crate::rest::v0::handlers;
