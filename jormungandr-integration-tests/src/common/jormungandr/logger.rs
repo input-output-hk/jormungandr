@@ -37,9 +37,22 @@ impl JormungandrLogger {
         entry.level == "ERROR"
     }
 
-    fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
+    pub fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
         let file = File::open(self.log_file_path.clone()).unwrap();
         let reader = BufReader::new(file);
         reader.lines().map(|line| line.unwrap())
+    }
+
+    pub fn contains_any_errors(&self) -> bool {
+        self.get_lines_with_error().next().is_some()
+    }
+
+    pub fn print_logs_if_contain_error(&self) {
+        if self.contains_any_errors() {
+            println!(
+                "Error lines: {:?}",
+                self.get_lines_with_error().collect::<Vec<String>>()
+            );
+        }
     }
 }
