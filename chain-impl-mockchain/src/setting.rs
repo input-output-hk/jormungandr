@@ -11,13 +11,11 @@ use crate::{
     fee::LinearFee,
     leadership::{bft, genesis},
 };
-use chain_time::era::TimeEra;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Settings {
-    pub era: TimeEra,
     pub consensus_version: ConsensusVersion,
     pub consensus_nonce: genesis::Nonce,
     pub slots_per_epoch: u32,
@@ -38,9 +36,8 @@ pub struct Settings {
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
 
 impl Settings {
-    pub fn new(era: TimeEra) -> Self {
+    pub fn new() -> Self {
         Self {
-            era: era,
             consensus_version: ConsensusVersion::Bft,
             consensus_nonce: genesis::Nonce::zero(),
             slots_per_epoch: 1,
@@ -143,7 +140,7 @@ impl Settings {
 
         debug_assert_eq!(
             self,
-            &Settings::new(self.era.clone()).apply(&params).unwrap()
+            &Settings::new().apply(&params).unwrap()
         );
 
         params

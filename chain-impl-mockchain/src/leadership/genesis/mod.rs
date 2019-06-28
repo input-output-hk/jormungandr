@@ -266,7 +266,7 @@ mod tests {
             if any_small {
                 times_selected_small += 1;
             }
-            date = date.next(&ledger.settings().era);
+            date = date.next(&ledger.era());
         }
 
         for (pool_id, (_pool_vrf_private_key, times_selected, stake)) in pools.iter_mut() {

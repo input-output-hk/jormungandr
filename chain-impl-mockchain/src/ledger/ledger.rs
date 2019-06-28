@@ -57,6 +57,7 @@ pub struct Ledger {
     pub(crate) static_params: Arc<LedgerStaticParameters>,
     pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
+    pub(crate) era: TimeEra,
 }
 
 custom_error! {
@@ -128,7 +129,7 @@ custom_error! {
 }
 
 impl Ledger {
-    fn empty(settings: setting::Settings, static_params: LedgerStaticParameters) -> Self {
+    fn empty(settings: setting::Settings, static_params: LedgerStaticParameters, era: TimeEra) -> Self {
         Ledger {
             utxos: utxo::Ledger::new(),
             oldutxos: utxo::Ledger::new(),
@@ -140,6 +141,7 @@ impl Ledger {
             static_params: Arc::new(static_params),
             date: BlockDate::first(),
             chain_length: ChainLength(0),
+            era,
         }
     }
 
@@ -216,7 +218,7 @@ impl Ledger {
 
         let era = TimeEra::new(slot0, Epoch(0), slots_per_epoch);
 
-        let settings = setting::Settings::new(era).apply(&regular_ents)?;
+        let settings = setting::Settings::new().apply(&regular_ents)?;
 
         if settings.bft_leaders.is_empty() {
             return Err(Error::Block0 {
@@ -224,7 +226,7 @@ impl Ledger {
             });
         }
 
-        let mut ledger = Ledger::empty(settings, static_params);
+        let mut ledger = Ledger::empty(settings, static_params, era);
 
         let ledger_params = ledger.get_ledger_parameters();
 
@@ -539,6 +541,10 @@ impl Ledger {
 
     pub fn date(&self) -> BlockDate {
         self.date
+    }
+
+    pub fn era(&self) -> &TimeEra {
+        &self.era
     }
 
     fn validate_utxo_total_value(&self) -> Result<(), Error> {

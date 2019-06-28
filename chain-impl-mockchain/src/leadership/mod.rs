@@ -142,7 +142,7 @@ impl Leadership {
         };
         Leadership {
             epoch: epoch,
-            era: ledger.settings.era.clone(),
+            era: ledger.era.clone(),
             inner,
             ledger_parameters: ledger.get_ledger_parameters(),
         }

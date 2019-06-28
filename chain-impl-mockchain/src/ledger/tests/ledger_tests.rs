@@ -270,7 +270,7 @@ pub fn iterate() {
             Entry::ConfigParam(param) => {
                 println!(
                     "ConfigParam {:?} {:?}",
-                    chain_impl_mockchain::config::Tag::from(&param),
+                    crate::config::Tag::from(&param),
                     param,
                 );
             }
