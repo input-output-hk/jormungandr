@@ -901,6 +901,7 @@ pub struct Globals {
     pub date: BlockDate,
     pub chain_length: ChainLength,
     pub static_params: LedgerStaticParameters,
+    pub era: TimeEra,
 }
 
 enum IterState<'a> {
@@ -940,6 +941,7 @@ impl<'a> Iterator for LedgerIterator<'a> {
                     date: self.ledger.date,
                     chain_length: self.ledger.chain_length,
                     static_params: (*self.ledger.static_params).clone(),
+                    era: self.ledger.era.clone(),
                 }))
             }
             IterState::Utxo(iter) => match iter.next() {
