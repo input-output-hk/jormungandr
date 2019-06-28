@@ -1,17 +1,17 @@
 use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
-use chain_impl_mockchain::block::ConsensusVersion;
-use chain_impl_mockchain::block::HeaderHash;
-use chain_impl_mockchain::config::ConfigParam;
-use chain_impl_mockchain::ledger::Error;
-use chain_impl_mockchain::ledger::Ledger;
-use chain_impl_mockchain::message::config::ConfigParams;
-use chain_impl_mockchain::message::Message;
-use chain_impl_mockchain::milli::Milli;
-use chain_impl_mockchain::transaction::*;
+use crate::block::ConsensusVersion;
+use crate::block::HeaderHash;
+use crate::config::ConfigParam;
+use crate::ledger::Error;
+use crate::ledger::Ledger;
+use crate::message::config::ConfigParams;
+use crate::message::Message;
+use crate::milli::Milli;
+use crate::transaction::*;
 use std::vec::Vec;
 
-use crate::common::tx_builder::TransactionBuilder;
+use crate::testing::tx_builder::TransactionBuilder;
 
 pub struct ConfigBuilder {
     slot_duration: u8,
@@ -61,7 +61,7 @@ impl ConfigBuilder {
         let leader_pub_key = leader_prv_key.to_public();
         ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
         ie.push(ConfigParam::Block0Date(
-            chain_impl_mockchain::config::Block0Date(0),
+            crate::config::Block0Date(0),
         ));
         ie.push(ConfigParam::SlotDuration(self.slot_duration));
         ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
@@ -93,5 +93,11 @@ pub fn create_initial_fake_ledger(
 pub fn create_initial_transaction(output: Output<Address>) -> (Message, Vec<UtxoPointer>) {
     let mut builder = TransactionBuilder::new();
     let authenticator = builder.with_output(output).authenticate();
+    (authenticator.as_message(), authenticator.as_utxos())
+}
+
+pub fn create_initial_transactions(outputs: &Vec<Output<Address>>) -> (Message, Vec<UtxoPointer>) {
+    let mut builder = TransactionBuilder::new();
+    let authenticator = builder.with_outputs(outputs.to_vec()).authenticate();
     (authenticator.as_message(), authenticator.as_utxos())
 }

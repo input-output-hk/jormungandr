@@ -1,11 +1,11 @@
 use super::address::AddressData;
 use chain_addr::{Address, Kind};
-use chain_impl_mockchain::account::SpendingCounter;
-use chain_impl_mockchain::block::HeaderHash;
-use chain_impl_mockchain::key::EitherEd25519SecretKey;
-use chain_impl_mockchain::message::Message;
-use chain_impl_mockchain::transaction::Witness;
-use chain_impl_mockchain::transaction::*;
+use crate::account::SpendingCounter;
+use crate::block::HeaderHash;
+use crate::key::EitherEd25519SecretKey;
+use crate::message::Message;
+use crate::transaction::Witness;
+use crate::transaction::*;
 
 pub struct TransactionBuilder {
     inputs: Vec<Input>,
