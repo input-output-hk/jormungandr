@@ -34,7 +34,6 @@ storage: "/mnt/cardano/storage"
 
 rest:
   listen: "127.0.0.1:8443"
-  prefix: "api"
 
 peer_2_peer:
   trusted_peers:
@@ -66,7 +65,6 @@ Description of the fields:
 - `rest`: (optional) Configuration of the REST endpoint.
     - `listen`: _address_:_port_ to listen for requests
     - `pkcs12`: (optional) Certificate file
-    - `prefix`: (optional) API prefix
 - `peer_2_peer`: P2P network settings
     - `trusted_peers`: (optional) the list of nodes to connect to in order to
       bootstrap the P2P topology (and bootstrap our local blockchain);

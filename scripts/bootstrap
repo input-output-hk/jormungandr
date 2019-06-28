@@ -19,7 +19,6 @@ NODE=jormungandr
 COLORS=1
 CLEAN=0
 DPATH="${PWD}"
-REST_PREFIX="api"
 REST_HOST="127.0.0.1"
 REST_PORT="8443"
 FEE_CONSTANT=10
@@ -90,7 +89,7 @@ if [ ! -d ${DPATH} ] || [ ! -w ${DPATH} ]; then
 fi
 
 REST_DEST="${REST_HOST}:${REST_PORT}"
-REST_URL="http://${REST_DEST}/${REST_PREFIX}"
+REST_URL="http://${REST_DEST}/api"
 
 ### COLORS
 if [ ${COLORS} -eq 1 ]; then
@@ -219,7 +218,6 @@ storage: "${STORAGE}/"
 
 rest:
   listen: "${REST_DEST}"
-  prefix: "${REST_PREFIX}"
 
 peer_2_peer:
   trusted_peers: []

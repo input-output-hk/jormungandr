@@ -13,7 +13,6 @@ pub struct Logger {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Rest {
     pub listen: String,
-    pub prefix: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -66,7 +65,6 @@ impl NodeConfig {
             }),
             rest: Some(Rest {
                 listen: format!("127.0.0.1:{}", rest_port.to_string()),
-                prefix: String::from("api"),
             }),
             peer_2_peer: Peer2Peer {
                 trusted_peers: None,
@@ -90,7 +88,7 @@ impl NodeConfig {
 
     pub fn get_node_address(&self) -> String {
         let rest = self.rest.as_ref();
-        let output = format!("http://{}/{}", rest.unwrap().listen, rest.unwrap().prefix);
+        let output = format!("http://{}/api", rest.unwrap().listen);
         output
     }
 }
