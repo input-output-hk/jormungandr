@@ -2,7 +2,8 @@ mod stats_counter;
 
 pub use self::stats_counter::StatsCounter;
 
-use actix_web::{App, Json, Responder, State};
+use actix_web::App;
+use crate::rest::v0::handlers;
 
 pub fn create_handler(
     stats_counter: StatsCounter,
@@ -11,14 +12,6 @@ pub fn create_handler(
         let app_prefix = format!("{}/v0/node/stats", prefix);
         App::with_state(stats_counter.clone())
             .prefix(app_prefix)
-            .resource("", |r| r.get().with(handle_request))
+            .resource("", |r| r.get().with(handlers::get_stats_counter))
     }
-}
-
-fn handle_request(stats: State<StatsCounter>) -> impl Responder {
-    Json(json!({
-        "txRecvCnt": stats.get_tx_recv_cnt(),
-        "blockRecvCnt": stats.get_block_recv_cnt(),
-        "uptime": stats.get_uptime_sec(),
-    }))
 }

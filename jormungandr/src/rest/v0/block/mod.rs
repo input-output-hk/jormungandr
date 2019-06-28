@@ -1,12 +1,7 @@
-pub mod next_id;
-
-use actix_web::error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError};
-use actix_web::{App, Path, State};
+use actix_web::App;
 use blockchain::BlockchainR;
-use bytes::Bytes;
-use chain_core::property::Serialize;
-use chain_crypto::Blake2b256;
-use chain_impl_mockchain::key::Hash;
+
+use crate::rest::v0::handlers;
 
 pub fn create_handler(
     blockchain: BlockchainR,
@@ -14,36 +9,14 @@ pub fn create_handler(
     move |prefix: &str| {
         App::with_state(blockchain.clone())
             .prefix(format!("{}/v0/block", prefix))
-            .resource("/{block_id}", |r| r.get().with(handle_request))
+            .resource("/{block_id}", |r| r.get().with(handlers::get_block_id))
             .resource("/{block_id}/next_id", |r| {
-                r.get().with(next_id::handle_request)
+                r.get().with(handlers::get_block_next_id)
             })
     }
 }
 
-fn handle_request(
-    blockchain: State<BlockchainR>,
-    block_id_hex: Path<String>,
-) -> Result<Bytes, ActixError> {
-    let block_id = parse_block_hash(&block_id_hex)?;
-    let blockchain = blockchain.lock_read();
-    let block = blockchain
-        .storage
-        .read()
-        .unwrap()
-        .get_block(&block_id)
-        .map_err(|e| ErrorBadRequest(e))?
-        .0
-        .serialize_as_vec()
-        .map_err(|e| ErrorInternalServerError(e))?;
-    Ok(Bytes::from(block))
-}
-
-fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
-    let hash: Blake2b256 = hex.parse().map_err(|e| ErrorBadRequest(e))?;
-    Ok(Hash::from(hash))
-}
-
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,3 +49,5 @@ mod tests {
         }
     }
 }
+
+*/

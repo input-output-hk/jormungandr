@@ -1,5 +1,7 @@
 use crate::blockchain::BlockchainR;
-use actix_web::{App, Responder, State};
+use actix_web::App;
+
+use crate::rest::v0::handlers;
 
 pub fn create_handler(
     blockchain: BlockchainR,
@@ -7,10 +9,6 @@ pub fn create_handler(
     move |prefix: &str| {
         App::with_state(blockchain.clone())
             .prefix(format!("{}/v0/tip", prefix))
-            .resource("", |r| r.get().with(handle_request))
+            .resource("", |r| r.get().with(handlers::get_tip))
     }
-}
-
-fn handle_request(settings: State<BlockchainR>) -> impl Responder {
-    settings.lock_read().get_tip().unwrap().to_string()
 }

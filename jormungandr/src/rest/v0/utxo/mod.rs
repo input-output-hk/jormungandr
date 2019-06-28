@@ -1,6 +1,7 @@
-use actix_web::{App, Json, Responder, State};
+use actix_web::App;
 use blockchain::BlockchainR;
-use jormungandr_lib::interfaces::UTxOInfo;
+
+use crate::rest::v0::handlers;
 
 pub fn create_handler(
     blockchain: BlockchainR,
@@ -9,17 +10,6 @@ pub fn create_handler(
         let app_prefix = format!("{}/v0/utxo", prefix);
         App::with_state(blockchain.clone())
             .prefix(app_prefix)
-            .resource("", |r| r.get().with(handle_request))
+            .resource("", |r| r.get().with(handlers::get_utxos))
     }
-}
-
-fn handle_request(blockchain: State<BlockchainR>) -> impl Responder {
-    let blockchain = blockchain.lock_read();
-    let utxos = blockchain
-        .multiverse
-        .get(&blockchain.get_tip().unwrap())
-        .unwrap()
-        .utxos();
-    let utxos = utxos.map(UTxOInfo::from).collect::<Vec<_>>();
-    Json(utxos)
 }
