@@ -1,7 +1,7 @@
 use crate::{
     fragment::{Logs, Pool},
     intercom::TransactionMsg,
-    rest::v0::node::stats::StatsCounter,
+    stats_counter::StatsCounter,
     utils::{async_msg::MessageQueue, task::TokioServiceInfo},
 };
 use slog::Logger;

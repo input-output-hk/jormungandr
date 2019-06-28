@@ -7,7 +7,6 @@ In the node configuration, you have set something like:
 
 rest:
   listen: "127.0.0.1:8443"
-  prefix: "api"
 
 #...
 ```

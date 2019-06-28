@@ -12,7 +12,6 @@ peer_2_peer:
 
 - *listen*: listen address
 - *pkcs12*: certificate file (optional)
-- *prefix*: (optional) api prefix
 
 ## P2P configuration
 

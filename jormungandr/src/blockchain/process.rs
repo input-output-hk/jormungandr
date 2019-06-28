@@ -1,6 +1,6 @@
 use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
 use crate::intercom::{BlockMsg, NetworkMsg, PropagateMsg};
-use crate::rest::v0::node::stats::StatsCounter;
+use crate::stats_counter::StatsCounter;
 use crate::utils::{
     async_msg::MessageBox,
     task::{Input, TokioServiceInfo},

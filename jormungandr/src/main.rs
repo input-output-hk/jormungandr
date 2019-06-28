@@ -61,7 +61,6 @@ extern crate test;
 use crate::{
     blockcfg::Leader,
     blockchain::BlockchainR,
-    rest::v0::node::stats::StatsCounter,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -84,7 +83,10 @@ pub mod secure;
 pub mod settings;
 pub mod start_up;
 pub mod state;
+mod stats_counter;
 pub mod utils;
+
+use stats_counter::StatsCounter;
 
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
@@ -213,7 +215,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 stats_counter,
                 blockchain: bootstrapped_node.blockchain.clone(),
                 transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
-                logs: pool_logs,
+                logs: Arc::new(Mutex::new(pool_logs)),
             };
             Some(rest::start_rest_server(&rest, context)?)
         }

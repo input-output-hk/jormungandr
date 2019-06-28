@@ -19,11 +19,10 @@ $MYNODE=$WORKDIR + "/"+ $NODE
 write-host "WorkDir: $WORKDIR"
 write-host "PS Version: " + $PSVersionTable.PSVersion
 
-$REST_PREFIX="api"
 $REST_HOST="127.0.0.1"
 $REST_PORT=8443
 $REST_DEST=$REST_HOST+":"+$REST_PORT
-$REST_URL="http://"+$REST_DEST+"/"+$REST_PREFIX
+$REST_URL="http://"+$REST_DEST+"/api"
 
 $FEE_CONSTANT=10
 $FEE_CERTIFICATE=0
@@ -250,7 +249,6 @@ logger:
   output: stderr
 rest:
   listen: ""127.0.0.1:48443""
-  prefix: ""api""
 peer_2_peer:
   trusted_peers: []
   public_address: ""/ip4/127.0.0.1/tcp/8299""
