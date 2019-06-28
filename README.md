@@ -9,7 +9,7 @@ User guide documentation available [here](https://input-output-hk.github.io/jorm
 Currently the minimum supported version of the rust compiler is 1.35, however
 we recommend to use the most recent stable version of the rust compiler.
 
-1. [install rustup](https://www.rust-lang.org/tools/install)
+1. [Install rustup](https://www.rust-lang.org/tools/install)
 2. Run `rustup install stable`
 3. Run `rustup default stable`
 4. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
@@ -19,9 +19,24 @@ we recommend to use the most recent stable version of the rust compiler.
 
 Note:
 
-* on windows, you'll need to add the `/userProfile/.cargo/bin` into the Path;
-* on linux and OSX: add `${HOME}/.cargo/bin` to your `${PATH}`
-* on linux with systemd: to enable logging to journald replace step 5. with `cargo install --path . --features systemd`
+* On Windows, you'll need to add the `%USERPROFILE%\.cargo\bin` into the
+  environment variable `PATH`.
+* On Linux and macOS: add `${HOME}/.cargo/bin` into your `PATH`.
+* Make sure the C compiler toolchain is installed and, on Unix (e.g. macOS),
+  the compiler and linker executable `cc` is found in `PATH`.
+* On Linux with systemd: to enable logging to journald replace step 6
+  with `cargo install --path . --features systemd`.
+* The build requires the [Protocol Buffers][protobuf] compiler:
+  - On Linux environments without glibc such as Alpine, the protobuf compiler
+    `protoc` needs to be installed and found in `PATH` or otherwise
+    specified in the environment variable `PROTOC`.
+  - NixOS users should rely on [shell.nix](shell.nix) provided in this source
+    tree to pull the dependencies and set up the environment for the build.
+  - For distribution or container builds in general, it's a good practice to
+    install `protoc` from the official distribution package if available,
+    otherwise the version bundled with crate `prost-build` will be used.
+
+[protobuf]: https://developers.google.com/protocol-buffers/
 
 This will install 2 tools:
 
