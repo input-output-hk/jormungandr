@@ -1,4 +1,4 @@
-use crate::testing::common::{address::AddressData, arbitrary::kind_type::KindTypeWithoutMultisig};
+use crate::testing::{address::AddressData, arbitrary::kind_type::KindTypeWithoutMultisig};
 use chain_addr::Discrimination;
 use quickcheck::{Arbitrary, Gen};
 use std::iter;

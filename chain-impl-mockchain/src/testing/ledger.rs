@@ -11,7 +11,7 @@ use crate::milli::Milli;
 use crate::transaction::*;
 use std::vec::Vec;
 
-use crate::testing::common::tx_builder::TransactionBuilder;
+use crate::testing::tx_builder::TransactionBuilder;
 
 pub struct ConfigBuilder {
     slot_duration: u8,

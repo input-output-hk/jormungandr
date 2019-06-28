@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::testing::common::{
+use crate::testing::{
     arbitrary::OutputsWithoutMultisig,
     ledger::{self, ConfigBuilder},
 };

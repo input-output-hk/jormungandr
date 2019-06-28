@@ -1,9 +1,9 @@
 #![cfg(test)]
 
-use crate::testing::common::address::AddressData;
-use crate::testing::common::ledger;
-use crate::testing::common::ledger::ConfigBuilder;
-use crate::testing::common::tx_builder::TransactionBuilder;
+use crate::testing::address::AddressData;
+use crate::testing::ledger;
+use crate::testing::ledger::ConfigBuilder;
+use crate::testing::tx_builder::TransactionBuilder;
 use chain_addr::Discrimination;
 use crate::ledger::Error::{NotEnoughSignatures, TransactionHasTooManyOutputs};
 use crate::transaction::*;
