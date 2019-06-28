@@ -26,12 +26,17 @@ Note:
   the compiler and linker executable `cc` is found in `PATH`.
 * On Linux with systemd: to enable logging to journald replace step 6
   with `cargo install --path . --features systemd`.
-* On Linux environments without glibc, such as NixOS or Alpine, the protobuf
-  compiler `protoc` needs to be installed and found in `PATH` or otherwise
-  specified in the environment variable `PROTOC`. For distribution or container
-  builds in general, it's a good practice to install protoc from the
-  official distribution package if available, otherwise the version bundled
-  with crate `prost-build` will be used.
+* The build requires the [Protocol Buffers][protobuf] compiler:
+  - On Linux environments without glibc such as Alpine, the protobuf compiler
+    `protoc` needs to be installed and found in `PATH` or otherwise
+    specified in the environment variable `PROTOC`.
+  - NixOS users should rely on [shell.nix](shell.nix) provided in this source
+    tree to pull the dependencies and set up the environment for the build.
+  - For distribution or container builds in general, it's a good practice to
+    install `protoc` from the official distribution package if available,
+    otherwise the version bundled with crate `prost-build` will be used.
+
+[protobuf]: https://developers.google.com/protocol-buffers/
 
 This will install 2 tools:
 
