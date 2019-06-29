@@ -40,6 +40,7 @@ RUN if [ "${ENV_BUILD}" = "true" ]; then \
     rustup install stable && \
     rustup default stable && \
     cd ${ENV_PREFIX}/src && \
+    git submodule update --init --recursive && \
     cargo build --release && \
     cargo install --force --path jormungandr && \
     cargo install --force --path jcli && \
