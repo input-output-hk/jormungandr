@@ -180,6 +180,7 @@ impl<'a> From<&'a Certificate> for Message {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::interfaces::ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     impl Arbitrary for Initial {
@@ -187,8 +188,8 @@ mod test {
         where
             G: Gen,
         {
-            const MAX_NUMBER_ENTRIES_PER_INITIAL: usize = 8;
-            let number_entries = usize::arbitrary(g) % MAX_NUMBER_ENTRIES_PER_INITIAL;
+            let number_entries =
+                usize::arbitrary(g) % ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
             match u8::arbitrary(g) % 2 {
                 0 => Initial::Fund(
                     std::iter::repeat_with(|| Arbitrary::arbitrary(g))

@@ -1,11 +1,11 @@
+use crate::interfaces::{
+    DEFAULT_KES_SPEED_UPDATE, MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS,
+    MINIMUM_KES_SPEED_UPDATE_IN_SECONDS,
+};
 use crate::time::Duration;
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr as _};
-
-const DEFAULT_KES_SPEED_UPDATE: u32 = 12 * 3600;
-const MINIMUM_KES_SPEED_UPDATE_IN_SECONDS: u32 = 60;
-const MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS: u32 = 365 * 24 * 3600;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct KESUpdateSpeed(pub(crate) u32);

@@ -1,5 +1,6 @@
 mod active_slot_coefficient;
 mod bft_slots_ratio;
+mod default_values;
 mod initial_config;
 mod initial_fragment;
 mod kes_update_speed;
@@ -9,6 +10,7 @@ mod slots_duration;
 
 pub use self::active_slot_coefficient::ActiveSlotCoefficient;
 pub use self::bft_slots_ratio::BFTSlotsRatio;
+pub use self::default_values::*;
 pub use self::initial_config::BlockchainConfiguration;
 pub use self::initial_fragment::{Certificate, Initial, InitialUTxO, LegacyUTxO};
 pub use self::kes_update_speed::KESUpdateSpeed;
@@ -112,6 +114,7 @@ pub fn block0_configuration_documented_example() -> String {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::interfaces::ARBITRARY_MAX_NUMBER_INITIAL_FRAGMENTS;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     impl Arbitrary for Block0Configuration {
@@ -120,7 +123,7 @@ mod test {
             G: Gen,
         {
             const MAX_NUMBER_INITIALS: usize = 64;
-            let number_initial = usize::arbitrary(g) % MAX_NUMBER_INITIALS;
+            let number_initial = usize::arbitrary(g) % ARBITRARY_MAX_NUMBER_INITIAL_FRAGMENTS;
             Block0Configuration {
                 blockchain_configuration: Arbitrary::arbitrary(g),
                 initial: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
