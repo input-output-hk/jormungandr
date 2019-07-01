@@ -1,9 +1,8 @@
-use chain_impl_mockchain::{
-    transaction::{Input, InputEnum, TransactionId, TransactionIndex, UtxoPointer},
-    value::Value,
+use chain_impl_mockchain::transaction::{
+    Input, InputEnum, TransactionId, TransactionIndex, UtxoPointer,
 };
 use jcli_app::transaction::{common, Error};
-use jormungandr_utils::structopt;
+use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -21,8 +20,8 @@ pub struct AddInput {
     pub index: TransactionIndex,
 
     /// the value
-    #[structopt(name = "VALUE", parse(try_from_str = "structopt::try_parse_value"))]
-    pub value: Value,
+    #[structopt(name = "VALUE")]
+    pub value: interfaces::Value,
 }
 
 impl AddInput {
@@ -32,7 +31,7 @@ impl AddInput {
         transaction.add_input(Input::from_enum(InputEnum::UtxoInput(UtxoPointer {
             transaction_id: self.transaction_id,
             output_index: self.index,
-            value: self.value,
+            value: self.value.into(),
         })))?;
 
         self.common.store(&transaction)?;
@@ -46,7 +45,7 @@ mod tests {
     use self::common::CommonTransaction;
     use super::*;
     use crate::jcli_app::transaction::staging::Staging;
-    use chain_impl_mockchain::key::Hash;
+    use chain_impl_mockchain::{key::Hash, value::Value};
     use std::str::FromStr;
 
     #[test]
@@ -71,7 +70,7 @@ mod tests {
             },
             transaction_id: transaction_id,
             index: transaction_index,
-            value: value,
+            value: value.into(),
         };
         add_input
             .exec()

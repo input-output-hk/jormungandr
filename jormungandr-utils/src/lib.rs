@@ -2,4 +2,3 @@
 extern crate custom_error;
 
 pub mod serde;
-pub mod structopt;

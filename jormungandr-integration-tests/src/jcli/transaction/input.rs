@@ -27,7 +27,7 @@ pub fn test_cannot_create_input_with_too_big_utxo_amount() {
         &FAKE_INPUT_TRANSACTION_ID,
         0,
         "100000000000000000000",
-        "error: Invalid value for '<value>': Invalid value",
+        "error: Invalid value for '<value>': number too large to fit in target type",
     );
 }
 

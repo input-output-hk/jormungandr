@@ -1,7 +1,6 @@
-use chain_addr::Address;
 use chain_impl_mockchain::txbuilder::OutputPolicy;
 use jcli_app::transaction::{common, Error};
-use jormungandr_utils::structopt;
+use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -14,8 +13,7 @@ pub struct Finalize {
     pub fee: common::CommonFees,
 
     /// Set the change in the given address
-    #[structopt(parse(try_from_str = "structopt::try_parse_address"))]
-    pub change: Option<Address>,
+    pub change: Option<interfaces::Address>,
 }
 
 impl Finalize {
@@ -25,7 +23,7 @@ impl Finalize {
         let fee_algo = self.fee.linear_fee();
         let output_policy = match self.change {
             None => OutputPolicy::Forget,
-            Some(change) => OutputPolicy::One(change),
+            Some(change) => OutputPolicy::One(change.into()),
         };
 
         let _balance = transaction.finalize(fee_algo, output_policy)?;
