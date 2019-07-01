@@ -4,6 +4,7 @@ use chain_impl_mockchain::{
     fee::FeeAlgorithm,
     message::Message,
     transaction::{NoExtra, Transaction, TransactionId},
+    txbuilder,
     value::Value,
 };
 use jcli_app::transaction::Error;
@@ -158,21 +159,7 @@ impl Staging {
         self.kind.to_string()
     }
 
-    pub fn finalize<FA>(
-        &mut self,
-        fee_algorithm: FA,
-        output_policy: chain::txbuilder::OutputPolicy,
-    ) -> Result<chain::transaction::Balance, Error>
-    where
-        FA: FeeAlgorithm<Transaction<Address, NoExtra>>,
-    {
-        if self.kind != StagingKind::Balancing {
-            return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
-        }
-        let builder = self.builder();
-
-        let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
-
+    fn update_tx<Extra>(&mut self, tx: Transaction<Address, Extra>) {
         self.inputs = tx
             .inputs
             .into_iter()
@@ -190,6 +177,39 @@ impl Staging {
                 value: output.value,
             })
             .collect();
+    }
+
+    pub fn finalize<FA>(
+        &mut self,
+        fee_algorithm: FA,
+        output_policy: chain::txbuilder::OutputPolicy,
+    ) -> Result<chain::transaction::Balance, Error>
+    where
+        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
+            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+    {
+        if self.kind != StagingKind::Balancing {
+            return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
+        }
+
+        let balance = if let Some(certificate) = self.extra.clone() {
+            let tx = self.transaction_with_extra(&certificate);
+            let mut builder = txbuilder::TransactionBuilder::from(tx);
+
+            let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
+
+            self.update_tx(tx);
+
+            balance
+        } else {
+            let tx = self.transaction();
+            let mut builder = txbuilder::TransactionBuilder::from(tx);
+            let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
+
+            self.update_tx(tx);
+
+            balance
+        };
 
         self.kind = StagingKind::Finalizing;
 
@@ -263,6 +283,38 @@ impl Staging {
             self.transaction_with_extra(&extra).hash()
         } else {
             self.transaction().hash()
+        }
+    }
+
+    pub fn fees<FA>(&self, fee_algorithm: FA) -> Result<Value, Error>
+    where
+        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
+            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+    {
+        if let Some(certificate) = &self.extra {
+            let tx = self.transaction_with_extra(certificate);
+            let builder = txbuilder::TransactionBuilder::from(tx);
+            Ok(builder.estimate_fee(fee_algorithm)?)
+        } else {
+            let tx = self.transaction();
+            let builder = txbuilder::TransactionBuilder::from(tx);
+            Ok(builder.estimate_fee(fee_algorithm)?)
+        }
+    }
+
+    pub fn balance<FA>(&self, fee_algorithm: FA) -> Result<chain::transaction::Balance, Error>
+    where
+        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
+            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+    {
+        if let Some(certificate) = &self.extra {
+            let tx = self.transaction_with_extra(certificate);
+            let builder = txbuilder::TransactionBuilder::from(tx);
+            Ok(builder.get_balance(fee_algorithm)?)
+        } else {
+            let tx = self.transaction();
+            let builder = txbuilder::TransactionBuilder::from(tx);
+            Ok(builder.get_balance(fee_algorithm)?)
         }
     }
 
