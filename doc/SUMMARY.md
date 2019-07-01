@@ -11,6 +11,7 @@
     - [Command lines tools](./quickstart/01_command_line.md)
     - [Starting a passive node](./quickstart/02_passive_node.md)
     - [REST API](./quickstart/03_rest_api.md)
+    - [Starting as a leader candidate](./quickstart/04_leader_candidate.md)
 
 - [Configuration](./configuration/introduction.md)
     - [Logging](./configuration/logging.md)

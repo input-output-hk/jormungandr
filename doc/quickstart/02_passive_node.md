@@ -1,7 +1,3 @@
-The passive Node is the most common type of Node on the network. It
-is a Node without cryptographic materials or any mean to create blocks.
-This type of nodes are mostly used for wallets, explorers or relays.
-
 In order to start the node, you first need to gather the blockchain
 information you need to connect to.
 
