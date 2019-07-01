@@ -14,7 +14,7 @@ pub struct GetStakePoolId {
 
 impl GetStakePoolId {
     pub fn exec(self) -> Result<(), Error> {
-        let cert : Certificate = certificate::read_cert(self.input)?.into();
+        let cert: Certificate = certificate::read_cert(self.input)?.into();
         match cert.content {
             CertificateContent::StakePoolRegistration(stake_pool_info) => {
                 certificate::write_output(self.output, stake_pool_info.to_id())

@@ -3,7 +3,7 @@ use chain_impl_mockchain::{
     self as chain,
     fee::FeeAlgorithm,
     message::Message,
-    transaction::{NoExtra, Transaction, TransactionId, Output},
+    transaction::{NoExtra, Output, Transaction, TransactionId},
     txbuilder,
     value::Value,
 };
@@ -328,11 +328,7 @@ impl Staging {
     }
 
     pub fn outputs(&self) -> Vec<Output<Address>> {
-        self.outputs
-            .iter()
-            .cloned()
-            .map(Output::from)
-            .collect()
+        self.outputs.iter().cloned().map(Output::from).collect()
     }
 }
 

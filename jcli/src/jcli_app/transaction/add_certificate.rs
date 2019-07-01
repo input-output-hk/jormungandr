@@ -9,10 +9,7 @@ pub struct AddCertificate {
     pub common: common::CommonTransaction,
 
     /// the value
-    #[structopt(
-        name = "VALUE",
-        parse(try_from_str),
-    )]
+    #[structopt(name = "VALUE", parse(try_from_str))]
     pub certificate: Certificate,
 }
 
