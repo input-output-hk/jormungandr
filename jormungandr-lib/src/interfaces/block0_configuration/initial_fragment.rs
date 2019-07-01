@@ -7,7 +7,7 @@ use chain_impl_mockchain::{
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Initial {
     Fund(Vec<InitialUTxO>),
@@ -15,21 +15,21 @@ pub enum Initial {
     LegacyFund(Vec<LegacyUTxO>),
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InitialUTxO {
     pub address: Address,
     pub value: Value,
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LegacyUTxO {
     pub address: OldAddress,
     pub value: Value,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Certificate(certificate::Certificate);
 
 /* ------------------- Serde ----------------------------------------------- */
@@ -177,92 +177,79 @@ impl<'a> From<&'a Certificate> for Message {
     }
 }
 
-/*
-
-pub fn documented_example(now: std::time::SystemTime) -> String {
-    let secs = now
-        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let sk: SecretKey<Ed25519Extended> = SecretKey::generate(&mut ChaChaRng::from_seed([0; 32]));
-    let pk: PublicKey<Ed25519> = sk.to_public();
-    let leader_1: KeyPair<Ed25519> = KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
-    let leader_2: KeyPair<Ed25519> = KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
-
-    let initial_funds_address = Address(Discrimination::Test, Kind::Single(pk));
-    let initial_funds_address = AddressReadable::from_address(&initial_funds_address).to_string();
-    let leader_1_pk = leader_1.public_key().to_bech32_str();
-    let leader_2_pk = leader_2.public_key().to_bech32_str();
-    format!(
-        include_str!("DOCUMENTED_EXAMPLE.yaml"),
-        now = secs,
-        leader_1 = leader_1_pk,
-        leader_2 = leader_2_pk,
-        initial_funds_address = initial_funds_address
-    )
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde_yaml;
+    use crate::interfaces::ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
+    use quickcheck::{Arbitrary, Gen, TestResult};
 
-    #[test]
-    fn conversion_to_and_from_message_preserves_data() {
-        let sk: SecretKey<Ed25519Extended> =
-            SecretKey::generate(&mut ChaChaRng::from_seed([0; 32]));
-        let pk: PublicKey<Ed25519> = sk.to_public();
+    impl Arbitrary for Initial {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            let number_entries =
+                usize::arbitrary(g) % ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
+            match u8::arbitrary(g) % 2 {
+                0 => Initial::Fund(
+                    std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                        .take(number_entries)
+                        .collect(),
+                ),
+                1 => Initial::LegacyFund(
+                    std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                        .take(number_entries)
+                        .collect(),
+                ),
+                _ => unreachable!(),
+            }
+        }
+    }
 
-        let leader_1: KeyPair<Ed25519> = KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
-        let leader_2: KeyPair<Ed25519> = KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
+    impl Arbitrary for InitialUTxO {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            InitialUTxO {
+                address: Arbitrary::arbitrary(g),
+                value: Arbitrary::arbitrary(g),
+            }
+        }
+    }
 
-        let initial_funds_address = Address(Discrimination::Test, Kind::Single(pk));
-        let initial_funds_address =
-            AddressReadable::from_address(&initial_funds_address).to_string();
+    impl Arbitrary for LegacyUTxO {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            LegacyUTxO {
+                address: Arbitrary::arbitrary(g),
+                value: Arbitrary::arbitrary(g),
+            }
+        }
+    }
 
-        let leader_1_pk = leader_1.public_key().to_bech32_str();
-        let leader_2_pk = leader_2.public_key().to_bech32_str();
+    quickcheck! {
+        fn initial_utxo_serde_human_readable_encode_decode(utxo: InitialUTxO) -> TestResult {
+            let s = serde_yaml::to_string(&utxo).unwrap();
+            let utxo_dec: InitialUTxO = serde_yaml::from_str(&s).unwrap();
 
-        let genesis_yaml = format!(r#"
----
-blockchain_configuration:
-  block0_date: 123456789
-  discrimination: test
-  block0_consensus: bft
-  slots_per_epoch: 5
-  slot_duration: 15
-  epoch_stability_depth: 10
-  consensus_leader_ids:
-    - {}
-    - {}
-  consensus_genesis_praos_active_slot_coeff: "0.444"
-  max_number_of_transactions_per_block: 255
-  bft_slots_ratio: "0.222"
-  linear_fees:
-    coefficient: 1
-    constant: 2
-    certificate: 4
-  kes_update_speed: 43200
-initial:
-  - cert: cert1qgqqqqqqqqqqqqqqqqqqq0p5avfqqmgurpe7s9k7933q0wj420jl5xqvx8lywcu5jcr7fwqa9qmdn93q4nm7c4fsay3mzeqgq3c0slnut9kns08yn2qn80famup7nvgtfuyszqzqrd4lxlt5ylplfu76p8f6ks0ggprzatp2c8rn6ev3hn9dgr38tzful4h0udlwa0536vyrrug7af9ujmrr869afs0yw9gj5x7z24l8sps3zzcmv
-  - fund:
-      - address: {}
-        value: 10000"#, leader_1_pk, leader_2_pk, initial_funds_address);
-        let genesis: Genesis =
-            serde_yaml::from_str(genesis_yaml.as_str()).expect("Failed to deserialize YAML");
+            TestResult::from_bool(utxo == utxo_dec)
+        }
 
-        let block = genesis.to_block();
-        let new_genesis = Genesis::from_block(&block).expect("Failed to build genesis");
+        fn legacy_utxo_serde_human_readable_encode_decode(utxo: LegacyUTxO) -> TestResult {
+            let s = serde_yaml::to_string(&utxo).unwrap();
+            let utxo_dec: LegacyUTxO = serde_yaml::from_str(&s).unwrap();
 
-        let new_genesis_yaml =
-            serde_yaml::to_string(&new_genesis).expect("Failed to serialize YAML");
-        assert_eq!(
-            genesis_yaml.trim(),
-            new_genesis_yaml,
-            "\nGenesis YAML has changed after conversions:\n{}\n",
-            new_genesis_yaml
-        );
+            TestResult::from_bool(utxo == utxo_dec)
+        }
+
+        fn initial_serde_human_readable_encode_decode(initial: Initial) -> TestResult {
+            let s = serde_yaml::to_string(&initial).unwrap();
+            let initial_dec: Initial = serde_yaml::from_str(&s).unwrap();
+
+            TestResult::from_bool(initial == initial_dec)
+        }
     }
 }
-
-*/

@@ -1,10 +1,10 @@
+use crate::interfaces::{
+    DEFAULT_NUMBER_OF_SLOTS_PER_EPOCH, MAXIMUM_NUMBER_OF_SLOTS_PER_EPOCH,
+    MINIMUM_NUMBER_OF_SLOTS_PER_EPOCH,
+};
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{convert::TryFrom, fmt};
-
-const DEFAULT_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 720;
-const MINIMUM_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 1;
-const MAXIMUM_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 1_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct NumberOfSlotsPerEpoch(pub(crate) u32);

@@ -1,10 +1,9 @@
+use crate::interfaces::{
+    DEFAULT_BFT_SLOTS_RATIO, MAXIMUM_BFT_SLOTS_RATIO, MINIMUM_BFT_SLOTS_RATIO,
+};
 use chain_impl_mockchain::{config::ConfigParam, milli::Milli};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{convert::TryFrom, fmt, str::FromStr as _};
-
-const DEFAULT_BFT_SLOTS_RATIO: u64 = 0_220;
-const MINIMUM_BFT_SLOTS_RATIO: u64 = 0_000;
-const MAXIMUM_BFT_SLOTS_RATIO: u64 = 1_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BFTSlotsRatio(pub(crate) Milli);

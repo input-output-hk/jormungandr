@@ -1,5 +1,6 @@
 mod active_slot_coefficient;
 mod bft_slots_ratio;
+mod default_values;
 mod initial_config;
 mod initial_fragment;
 mod kes_update_speed;
@@ -9,6 +10,7 @@ mod slots_duration;
 
 pub use self::active_slot_coefficient::ActiveSlotCoefficient;
 pub use self::bft_slots_ratio::BFTSlotsRatio;
+pub use self::default_values::*;
 pub use self::initial_config::BlockchainConfiguration;
 pub use self::initial_fragment::{Certificate, Initial, InitialUTxO, LegacyUTxO};
 pub use self::kes_update_speed::KESUpdateSpeed;
@@ -23,7 +25,7 @@ use chain_impl_mockchain::{
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom as _;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Block0Configuration {
     /// the initial configuration of the blockchain
@@ -107,4 +109,49 @@ pub fn block0_configuration_documented_example() -> String {
         leader_2 = leader_2_pk,
         initial_funds_address = initial_funds_address
     )
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::interfaces::ARBITRARY_MAX_NUMBER_INITIAL_FRAGMENTS;
+    use quickcheck::{Arbitrary, Gen, TestResult};
+
+    impl Arbitrary for Block0Configuration {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            const MAX_NUMBER_INITIALS: usize = 64;
+            let number_initial = usize::arbitrary(g) % ARBITRARY_MAX_NUMBER_INITIAL_FRAGMENTS;
+            Block0Configuration {
+                blockchain_configuration: Arbitrary::arbitrary(g),
+                initial: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(number_initial)
+                    .collect(),
+            }
+        }
+    }
+
+    #[test]
+    fn documented_example_decodes() {
+        let _: Block0Configuration =
+            serde_yaml::from_str(&block0_configuration_documented_example()).unwrap();
+    }
+
+    quickcheck! {
+        fn block0_configuration_serde_human_readable_encode_decode(block0_configuration: Block0Configuration) -> TestResult {
+            let s = serde_yaml::to_string(&block0_configuration).unwrap();
+            let block0_configuration_dec: Block0Configuration = serde_yaml::from_str(&s).unwrap();
+
+            TestResult::from_bool(block0_configuration == block0_configuration_dec)
+        }
+
+        fn block0_configuration_to_block_from_block(block0_configuration: Block0Configuration) -> TestResult {
+            let block = block0_configuration.to_block();
+            let block0_configuration_dec = Block0Configuration::from_block(&block).unwrap();
+
+            TestResult::from_bool(block0_configuration == block0_configuration_dec)
+        }
+    }
 }

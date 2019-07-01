@@ -1,11 +1,10 @@
-use crate::time::Duration;
+use crate::{
+    interfaces::{DEFAULT_SLOT_DURATION, MAXIMUM_SLOT_DURATION, MINIMUM_SLOT_DURATION},
+    time::Duration,
+};
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr as _};
-
-const DEFAULT_SLOT_DURATION: u8 = 5;
-const MINIMUM_SLOT_DURATION: u8 = 1;
-const MAXIMUM_SLOT_DURATION: u8 = u8::max_value();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct SlotDuration(pub(crate) u8);

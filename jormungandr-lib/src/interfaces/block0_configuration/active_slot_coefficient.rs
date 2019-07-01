@@ -1,10 +1,10 @@
+use crate::interfaces::{
+    DEFAULT_ACTIVE_SLOT_COEFFICIENT, MAXIMUM_ACTIVE_SLOT_COEFFICIENT,
+    MINIMUM_ACTIVE_SLOT_COEFFICIENT,
+};
 use chain_impl_mockchain::{config::ConfigParam, milli::Milli};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{convert::TryFrom, fmt, str::FromStr as _};
-
-const DEFAULT_ACTIVE_SLOT_COEFFICIENT: u64 = 0_100;
-const MINIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 0_001;
-const MAXIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 1_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ActiveSlotCoefficient(pub(crate) Milli);

@@ -412,6 +412,7 @@ name = "chain-impl-mockchain"
 version = "0.1.0"
 dependencies = [
  "cardano-legacy-address 0.1.1",
+ "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "chain-addr 0.1.0",
  "chain-core 0.1.0",
  "chain-crypto 0.1.0",
