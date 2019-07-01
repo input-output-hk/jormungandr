@@ -16,6 +16,7 @@ FEE_COEFFICIENT=####FEE_COEFFICIENT####
 ADDRTYPE="####ADDRTYPE####"
 STAKE_POOL_ID="####STAKE_POOL_ID####"
 SLOT_DURATION="####SLOT_DURATION####"
+TIMEOUT_NO_OF_BLOCKS=30
 
 ### COLORS
 if [ ${COLORS} -eq 1 ]; then
@@ -41,17 +42,17 @@ function getTip {
 }
 
 function waitNewBlockCreated {
-    echo "  ##Waiting for new block to be created (timeout = $(( 50*$SLOT_DURATION ))s)..."
-    COUNTER=0
+    COUNTER=${TIMEOUT_NO_OF_BLOCKS}
+    echo "  ##Waiting for new block to be created (timeout = $COUNTER blocks = $(( $COUNTER*$SLOT_DURATION ))s)"
     initialTip=$(getTip)
     actualTip=$(getTip)
 
     while [[ ${actualTip} = ${initialTip} ]]; do
-        sleep 1
+        sleep ${SLOT_DURATION}
         actualTip=$(getTip)
-        let COUNTER=COUNTER+1
-        if [[ ${COUNTER} -gt 120 ]]; then
-            echo "  ##ERROR: Waited $(( 50*$SLOT_DURATION ))s seconds (50 * $SLOT_DURATION) and no new block created"
+        let COUNTER=COUNTER-1
+        if [[ ${COUNTER} -lt 1 ]]; then
+            echo "  ##ERROR: Waited $(( $COUNTER*$SLOT_DURATION ))s secs ($COUNTER*$SLOT_DURATION) and no new block created"
             exit 1
         fi
     done
