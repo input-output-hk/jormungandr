@@ -21,11 +21,12 @@ mod tests {
 
     use self::common::CommonTransaction;
     use super::*;
-    use jcli_app::utils::io;
 
     #[test]
     pub fn test_staging_file_is_created() {
-        let temp_staging_file = io::get_path_in_temp("staging_file.tx").unwrap();
+        let tempfile = mktemp::Temp::new_file().unwrap();
+
+        let temp_staging_file = tempfile.to_path_buf();
 
         let new = New {
             common: CommonTransaction {
