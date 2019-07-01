@@ -130,6 +130,12 @@ mod test {
         }
     }
 
+    #[test]
+    fn documented_example_decodes() {
+        let _: Block0Configuration =
+            serde_yaml::from_str(&block0_configuration_documented_example()).unwrap();
+    }
+
     quickcheck! {
         fn block0_configuration_serde_human_readable_encode_decode(block0_configuration: Block0Configuration) -> TestResult {
             let s = serde_yaml::to_string(&block0_configuration).unwrap();
