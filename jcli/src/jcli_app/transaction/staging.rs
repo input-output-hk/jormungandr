@@ -1,4 +1,4 @@
-use chain_addr::Address;
+use chain_addr::Address as StdAddress;
 use chain_impl_mockchain::{
     self as chain,
     fee::FeeAlgorithm,
@@ -10,7 +10,7 @@ use chain_impl_mockchain::{
 use jcli_app::transaction::Error;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
-use jormungandr_lib::interfaces::{Certificate, Value};
+use jormungandr_lib::interfaces::{Address, Certificate, Value};
 use jormungandr_utils::serde;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -33,7 +33,6 @@ struct Input {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Output {
-    #[serde(with = "serde::address")]
     address: Address,
     value: Value,
 }
@@ -108,13 +107,13 @@ impl Staging {
         }))
     }
 
-    pub fn add_output(&mut self, output: chain::transaction::Output<Address>) -> Result<(), Error> {
+    pub fn add_output(&mut self, output: chain::transaction::Output<StdAddress>) -> Result<(), Error> {
         if self.kind != StagingKind::Balancing {
             return Err(Error::TxKindToAddOutputInvalid { kind: self.kind });
         }
 
         Ok(self.outputs.push(Output {
-            address: output.address,
+            address: output.address.into(),
             value: output.value.into(),
         }))
     }
@@ -149,7 +148,7 @@ impl Staging {
         self.kind.to_string()
     }
 
-    fn update_tx<Extra>(&mut self, tx: Transaction<Address, Extra>) {
+    fn update_tx<Extra>(&mut self, tx: Transaction<StdAddress, Extra>) {
         self.inputs = tx
             .inputs
             .into_iter()
@@ -163,7 +162,7 @@ impl Staging {
             .outputs
             .into_iter()
             .map(|output| Output {
-                address: output.address,
+                address: output.address.into(),
                 value: output.value.into(),
             })
             .collect();
@@ -175,8 +174,8 @@ impl Staging {
         output_policy: chain::txbuilder::OutputPolicy,
     ) -> Result<chain::transaction::Balance, Error>
     where
-        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
-            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+        FA: FeeAlgorithm<Transaction<StdAddress, NoExtra>>
+            + FeeAlgorithm<Transaction<StdAddress, chain::certificate::Certificate>>,
     {
         if self.kind != StagingKind::Balancing {
             return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
@@ -243,7 +242,7 @@ impl Staging {
 
     pub fn transaction(
         &self,
-    ) -> chain::transaction::Transaction<Address, chain::transaction::NoExtra> {
+    ) -> chain::transaction::Transaction<StdAddress, chain::transaction::NoExtra> {
         chain::transaction::Transaction {
             inputs: self.inputs(),
             outputs: self.outputs(),
@@ -254,7 +253,7 @@ impl Staging {
     fn transaction_with_extra(
         &self,
         certificate: &Certificate,
-    ) -> chain::transaction::Transaction<Address, chain::certificate::Certificate> {
+    ) -> chain::transaction::Transaction<StdAddress, chain::certificate::Certificate> {
         chain::transaction::Transaction {
             inputs: self.inputs(),
             outputs: self.outputs(),
@@ -264,7 +263,7 @@ impl Staging {
 
     pub fn builder(
         &self,
-    ) -> chain::txbuilder::TransactionBuilder<Address, chain::transaction::NoExtra> {
+    ) -> chain::txbuilder::TransactionBuilder<StdAddress, chain::transaction::NoExtra> {
         chain::txbuilder::TransactionBuilder::from(self.transaction())
     }
 
@@ -278,8 +277,8 @@ impl Staging {
 
     pub fn fees<FA>(&self, fee_algorithm: FA) -> Result<StdValue, Error>
     where
-        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
-            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+        FA: FeeAlgorithm<Transaction<StdAddress, NoExtra>>
+            + FeeAlgorithm<Transaction<StdAddress, chain::certificate::Certificate>>,
     {
         if let Some(certificate) = &self.extra {
             let tx = self.transaction_with_extra(certificate);
@@ -294,8 +293,8 @@ impl Staging {
 
     pub fn balance<FA>(&self, fee_algorithm: FA) -> Result<chain::transaction::Balance, Error>
     where
-        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
-            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+        FA: FeeAlgorithm<Transaction<StdAddress, NoExtra>>
+            + FeeAlgorithm<Transaction<StdAddress, chain::certificate::Certificate>>,
     {
         if let Some(certificate) = &self.extra {
             let tx = self.transaction_with_extra(certificate);
@@ -340,11 +339,11 @@ impl Staging {
             .collect()
     }
 
-    pub fn outputs(&self) -> Vec<chain::transaction::Output<Address>> {
+    pub fn outputs(&self) -> Vec<chain::transaction::Output<StdAddress>> {
         self.outputs
             .iter()
             .map(|output| chain::transaction::Output {
-                address: output.address.clone(),
+                address: output.address.clone().into(),
                 value: output.value.into(),
             })
             .collect()

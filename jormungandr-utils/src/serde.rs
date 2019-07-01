@@ -12,59 +12,6 @@ use serde::{
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
-pub mod address {
-    use super::*;
-    use chain_addr::{Address, AddressReadable};
-
-    pub fn serialize<S>(address: &Address, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if serializer.is_human_readable() {
-            let address = AddressReadable::from_address(address);
-            serializer.serialize_str(address.as_string())
-        } else {
-            let bytes = address.to_bytes();
-            serializer.serialize_bytes(&bytes)
-        }
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        if deserializer.is_human_readable() {
-            deserializer.deserialize_str(StrParseVisitor::new("address", |s| {
-                s.parse().map(|addr: AddressReadable| addr.to_address())
-            }))
-        } else {
-            deserializer.deserialize_bytes(AddressVisitor)
-        }
-    }
-
-    struct AddressVisitor;
-
-    impl<'de> Visitor<'de> for AddressVisitor {
-        type Value = Address;
-
-        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            write!(fmt, "Expecting an Address",)
-        }
-
-        fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
-        where
-            E: DeserializerError,
-        {
-            use chain_core::mempack::{ReadBuf, Readable};
-            let mut buf = ReadBuf::from(v);
-            match Self::Value::read(&mut buf) {
-                Err(err) => Err(E::custom(err)),
-                Ok(address) => Ok(address),
-            }
-        }
-    }
-}
-
 pub mod witness {
     use super::*;
     use chain_core::{
