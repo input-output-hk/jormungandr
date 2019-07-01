@@ -166,13 +166,10 @@ impl Info {
             "output".to_owned(),
             builder.tx.total_output()?.0.to_string(),
         );
-        vars.insert(
-            "fee".to_owned(),
-            builder.estimate_fee(&fee_algo)?.0.to_string(),
-        );
+        vars.insert("fee".to_owned(), transaction.fees(&fee_algo)?.0.to_string());
         vars.insert(
             "balance".to_owned(),
-            match builder.get_balance(fee_algo)? {
+            match transaction.balance(fee_algo)? {
                 Balance::Negative(value) => format!("-{}", value.0),
                 Balance::Positive(value) => format!("+{}", value.0),
                 Balance::Zero => "0".to_string(),
