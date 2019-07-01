@@ -23,7 +23,7 @@ use chain_impl_mockchain::{
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom as _;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Block0Configuration {
     /// the initial configuration of the blockchain
