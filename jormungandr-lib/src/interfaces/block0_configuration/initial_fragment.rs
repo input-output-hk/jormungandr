@@ -1,11 +1,11 @@
-use crate::interfaces::{Address, OldAddress, Value};
+use crate::interfaces::{Address, Certificate, OldAddress, Value};
 use chain_impl_mockchain::{
     certificate,
     legacy::UtxoDeclaration,
     message::Message,
     transaction::{AuthenticatedTransaction, NoExtra, Output, Transaction},
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -27,52 +27,6 @@ pub struct InitialUTxO {
 pub struct LegacyUTxO {
     pub address: OldAddress,
     pub value: Value,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Certificate(certificate::Certificate);
-
-/* ------------------- Serde ----------------------------------------------- */
-
-impl Serialize for Certificate {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use bech32::{Bech32, ToBase32 as _};
-        use chain_core::property::Serialize as _;
-        use serde::ser::Error as _;
-
-        let bytes = self.0.serialize_as_vec().map_err(S::Error::custom)?;
-        let bech32 =
-            Bech32::new("cert".to_string(), bytes.to_base32()).map_err(S::Error::custom)?;
-
-        format!("{}", bech32).serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Certificate {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        use bech32::{Bech32, FromBase32 as _};
-        use chain_core::mempack::{ReadBuf, Readable as _};
-        use serde::de::Error as _;
-
-        let bech32_str = String::deserialize(deserializer)?;
-        let bech32: Bech32 = bech32_str.parse().map_err(D::Error::custom)?;
-        if bech32.hrp() != "cert" {
-            return Err(D::Error::custom(format!(
-                "Expecting certificate in bech32, with HRP 'cert'"
-            )));
-        }
-        let bytes: Vec<u8> = Vec::from_base32(bech32.data()).map_err(D::Error::custom)?;
-        let mut buf = ReadBuf::from(&bytes);
-        certificate::Certificate::read(&mut buf)
-            .map_err(D::Error::custom)
-            .map(Certificate)
-    }
 }
 
 custom_error! {pub Error
@@ -115,7 +69,7 @@ fn extend_inits_with_cert(
     initials: &mut Vec<Initial>,
     tx: &AuthenticatedTransaction<chain_addr::Address, certificate::Certificate>,
 ) {
-    let cert = Certificate(tx.transaction.extra.clone());
+    let cert = Certificate::from(tx.transaction.extra.clone());
     initials.push(Initial::Cert(cert))
 }
 
@@ -170,7 +124,7 @@ impl<'a> From<&'a Certificate> for Message {
             transaction: Transaction {
                 inputs: vec![],
                 outputs: vec![],
-                extra: utxo.0.clone(),
+                extra: utxo.clone().into(),
             },
             witnesses: vec![],
         })

@@ -12,7 +12,7 @@ pub use self::active_slot_coefficient::ActiveSlotCoefficient;
 pub use self::bft_slots_ratio::BFTSlotsRatio;
 pub use self::default_values::*;
 pub use self::initial_config::BlockchainConfiguration;
-pub use self::initial_fragment::{Certificate, Initial, InitialUTxO, LegacyUTxO};
+pub use self::initial_fragment::{Initial, InitialUTxO, LegacyUTxO};
 pub use self::kes_update_speed::KESUpdateSpeed;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
