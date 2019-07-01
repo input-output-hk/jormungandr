@@ -3,7 +3,6 @@
 
 ### CONFIGURATION
 
-set -ex
 
 ### TEMPLATE
 FAUCET_SK="####FAUCET_SK####"
@@ -34,11 +33,36 @@ if [ ${#} -ne 0 ]; then
     exit 1
 fi
 
+### HELPERS
+
+function getTip {
+    echo $($CLI rest v0 tip get -h "${REST_URL}")
+}
+
+function waitNewBlockCreated {
+    echo "  ##Waiting for new block to be created (timeout = 120s)..."
+    COUNTER=0
+    initialTip=$(getTip)
+    actualTip=$(getTip)
+
+    while [[ ${actualTip} = ${initialTip} ]]; do
+        sleep 1
+        actualTip=$(getTip)
+        let COUNTER=COUNTER+1
+        if [[ ${COUNTER} -gt 120 ]]; then
+            echo "  ##ERROR: Waited 120 seconds and no new block created"
+            exit 1
+        fi
+    done
+    echo "New block was created - $(getTip)"
+}
+
 ##
 # 1. create an account
 ##
 
 # create the account secret, public and address
+echo " ##Create new Account Address"
 ACCOUNT_SK=$($CLI key generate --type=ed25519extended)
 ACCOUNT_SK_FILE="account.prv"
 echo ${ACCOUNT_SK} > ${ACCOUNT_SK_FILE}
@@ -47,16 +71,18 @@ ACCOUNT_ADDR=$(echo ${ACCOUNT_PK} | xargs $CLI address account ${ADDRTYPE})
 ACCOUNT_COUNTER=0
 
 # send money to this address
+echo " ##Send 1000 Lovelaces from the Faucet Address to the newly created Account Address"
+
 ./faucet-send-money.sh ${ACCOUNT_ADDR} 1000
 
-sleep 12
+waitNewBlockCreated
 
 ##
 # 2. create a new certificate to delegate our new address's stake
 #    to a stake pool
 ##
 
-echo "creating certificate"
+echo " ##Create the delegation certificate for the newly created Account Address"
 
 CERTIFICATE_FILE="account_delegation_certificate"
 SIGNED_CERTIFICATE_FILE="account_delegation_certificate.signed"
@@ -77,6 +103,7 @@ $CLI certificate sign \
 # we know the account has no transaction in the past, so the counter is 0
 # and has remained 0
 
+echo " ##Create the delegation transaction for the newly created Account Address"
 TRANSACTION_FILE=transaction
 SIGNED_TRANSACTION_FILE=transaction.signed
 WITNESS_FILE=transaction.witness
@@ -104,6 +131,15 @@ $CLI transaction seal --staging=${TRANSACTION_FILE}
 
 $CLI transaction to-message --staging ${TRANSACTION_FILE} | $CLI rest v0 message post -h "${REST_URL}"
 
-echo "Now check the proper setting at posted:"
-echo "jcli rest v0 account get ${ACCOUNT_PK} -h \"${REST_URL}\""
+waitNewBlockCreated
+
+##
+# 4. check results
+##
+
+echo " ##Check the node logs (to confirm that the transaction was included into a node)"
+$CLI rest v0 message logs -h "${REST_URL}"
+
+echo " ##Check the account's delegation status"
+$CLI rest v0 account get ${ACCOUNT_PK} -h ${REST_URL}
 exit 0
