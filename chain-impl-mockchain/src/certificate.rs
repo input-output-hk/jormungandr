@@ -5,7 +5,7 @@ use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519, PublicKey, Verification};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignatureRaw(pub Vec<u8>);
 
 impl property::Serialize for SignatureRaw {
@@ -27,7 +27,7 @@ impl Readable for SignatureRaw {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Certificate {
     pub content: CertificateContent,
     pub signatures: Vec<SignatureRaw>,
@@ -77,7 +77,7 @@ where
     Verification::Success
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CertificateContent {
     StakeDelegation(StakeDelegation),
     StakePoolRegistration(StakePoolInfo),
