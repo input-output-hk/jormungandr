@@ -12,26 +12,6 @@ use serde::{
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
-pub mod value {
-    use super::*;
-    use chain_impl_mockchain::value::Value;
-    use serde::de::Deserialize as _;
-
-    pub fn serialize<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        value.0.serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        u64::deserialize(deserializer).map(Value)
-    }
-}
-
 pub mod address {
     use super::*;
     use chain_addr::{Address, AddressReadable};

@@ -5,12 +5,12 @@ use chain_impl_mockchain::{
     message::Message,
     transaction::{NoExtra, Transaction, TransactionId},
     txbuilder,
-    value::Value,
+    value::Value as StdValue,
 };
 use jcli_app::transaction::Error;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
-use jormungandr_lib::interfaces::Certificate;
+use jormungandr_lib::interfaces::{Certificate, Value};
 use jormungandr_utils::serde;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -27,7 +27,6 @@ pub enum StagingKind {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Input {
     index_or_account: u8,
-    #[serde(with = "serde::value")]
     value: Value,
     input_ptr: [u8; INPUT_PTR_SIZE],
 }
@@ -36,7 +35,6 @@ struct Input {
 struct Output {
     #[serde(with = "serde::address")]
     address: Address,
-    #[serde(with = "serde::value")]
     value: Value,
 }
 
@@ -105,7 +103,7 @@ impl Staging {
 
         Ok(self.inputs.push(Input {
             index_or_account: input.index_or_account,
-            value: input.value,
+            value: input.value.into(),
             input_ptr: input.input_ptr,
         }))
     }
@@ -117,7 +115,7 @@ impl Staging {
 
         Ok(self.outputs.push(Output {
             address: output.address,
-            value: output.value,
+            value: output.value.into(),
         }))
     }
 
@@ -157,7 +155,7 @@ impl Staging {
             .into_iter()
             .map(|input| Input {
                 index_or_account: input.index_or_account,
-                value: input.value,
+                value: input.value.into(),
                 input_ptr: input.input_ptr,
             })
             .collect();
@@ -166,7 +164,7 @@ impl Staging {
             .into_iter()
             .map(|output| Output {
                 address: output.address,
-                value: output.value,
+                value: output.value.into(),
             })
             .collect();
     }
@@ -278,7 +276,7 @@ impl Staging {
         }
     }
 
-    pub fn fees<FA>(&self, fee_algorithm: FA) -> Result<Value, Error>
+    pub fn fees<FA>(&self, fee_algorithm: FA) -> Result<StdValue, Error>
     where
         FA: FeeAlgorithm<Transaction<Address, NoExtra>>
             + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
@@ -336,7 +334,7 @@ impl Staging {
             .iter()
             .map(|input| chain::transaction::Input {
                 index_or_account: input.index_or_account,
-                value: input.value,
+                value: input.value.into(),
                 input_ptr: input.input_ptr,
             })
             .collect()
@@ -347,7 +345,7 @@ impl Staging {
             .iter()
             .map(|output| chain::transaction::Output {
                 address: output.address.clone(),
-                value: output.value,
+                value: output.value.into(),
             })
             .collect()
     }
@@ -388,7 +386,7 @@ mod tests {
         let result = staging.add_input(chain::transaction::Input {
             input_ptr: input_ptr,
             index_or_account: 0,
-            value: Value(200),
+            value: StdValue(200),
         });
 
         assert!(
