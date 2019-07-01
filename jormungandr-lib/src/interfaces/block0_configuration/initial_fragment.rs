@@ -176,3 +176,79 @@ impl<'a> From<&'a Certificate> for Message {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen, TestResult};
+
+    impl Arbitrary for Initial {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            const MAX_NUMBER_ENTRIES_PER_INITIAL: usize = 8;
+            let number_entries = usize::arbitrary(g) % MAX_NUMBER_ENTRIES_PER_INITIAL;
+            match u8::arbitrary(g) % 2 {
+                0 => Initial::Fund(
+                    std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                        .take(number_entries)
+                        .collect(),
+                ),
+                1 => Initial::LegacyFund(
+                    std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                        .take(number_entries)
+                        .collect(),
+                ),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    impl Arbitrary for InitialUTxO {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            InitialUTxO {
+                address: Arbitrary::arbitrary(g),
+                value: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for LegacyUTxO {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            LegacyUTxO {
+                address: Arbitrary::arbitrary(g),
+                value: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    quickcheck! {
+        fn initial_utxo_serde_human_readable_encode_decode(utxo: InitialUTxO) -> TestResult {
+            let s = serde_yaml::to_string(&utxo).unwrap();
+            let utxo_dec: InitialUTxO = serde_yaml::from_str(&s).unwrap();
+
+            TestResult::from_bool(utxo == utxo_dec)
+        }
+
+        fn legacy_utxo_serde_human_readable_encode_decode(utxo: LegacyUTxO) -> TestResult {
+            let s = serde_yaml::to_string(&utxo).unwrap();
+            let utxo_dec: LegacyUTxO = serde_yaml::from_str(&s).unwrap();
+
+            TestResult::from_bool(utxo == utxo_dec)
+        }
+
+        fn initial_serde_human_readable_encode_decode(initial: Initial) -> TestResult {
+            let s = serde_yaml::to_string(&initial).unwrap();
+            let initial_dec: Initial = serde_yaml::from_str(&s).unwrap();
+
+            TestResult::from_bool(initial == initial_dec)
+        }
+    }
+}
