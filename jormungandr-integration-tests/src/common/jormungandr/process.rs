@@ -50,6 +50,7 @@ impl JormungandrProcess {
 
 impl Drop for JormungandrProcess {
     fn drop(&mut self) {
+        self.logger.print_logs_if_contain_error();
         match self.child.kill() {
             Err(e) => println!("Could not kill {}: {}", self.description, e),
             Ok(_) => println!("Successfully killed {}", self.description),

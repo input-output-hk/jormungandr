@@ -15,10 +15,6 @@ pub fn test_jormungandr_leader_node_starts_successfully() {
 }
 
 #[test]
-#[ignore]
-/// This test is wrong, it should extract the block0 created from the
-/// first `leader_config` and only create a node configuration file
-/// in the second passive node
 pub fn test_jormungandr_passive_node_starts_successfully() {
     let mut leader_config = startup::ConfigurationBuilder::new().build();
     let _jormungandr_leader = startup::start_jormungandr_node_as_leader(&mut leader_config);
@@ -28,6 +24,7 @@ pub fn test_jormungandr_passive_node_starts_successfully() {
             id: 1,
             address: leader_config.node_config.peer_2_peer.public_address.clone(),
         }])
+        .with_block_hash(leader_config.genesis_block_hash)
         .build();
 
     let _jormungandr = startup::start_jormungandr_node_as_passive(&mut passive_config);
