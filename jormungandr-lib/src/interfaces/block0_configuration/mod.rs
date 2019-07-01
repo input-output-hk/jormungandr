@@ -108,3 +108,41 @@ pub fn block0_configuration_documented_example() -> String {
         initial_funds_address = initial_funds_address
     )
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen, TestResult};
+
+    impl Arbitrary for Block0Configuration {
+        fn arbitrary<G>(g: &mut G) -> Self
+        where
+            G: Gen,
+        {
+            const MAX_NUMBER_INITIALS: usize = 64;
+            let number_initial = usize::arbitrary(g) % MAX_NUMBER_INITIALS;
+            Block0Configuration {
+                blockchain_configuration: Arbitrary::arbitrary(g),
+                initial: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(number_initial)
+                    .collect(),
+            }
+        }
+    }
+
+    quickcheck! {
+        fn block0_configuration_serde_human_readable_encode_decode(block0_configuration: Block0Configuration) -> TestResult {
+            let s = serde_yaml::to_string(&block0_configuration).unwrap();
+            let block0_configuration_dec: Block0Configuration = serde_yaml::from_str(&s).unwrap();
+
+            TestResult::from_bool(block0_configuration == block0_configuration_dec)
+        }
+
+        fn block0_configuration_to_block_from_block(block0_configuration: Block0Configuration) -> TestResult {
+            let block = block0_configuration.to_block();
+            let block0_configuration_dec = Block0Configuration::from_block(&block).unwrap();
+
+            TestResult::from_bool(block0_configuration == block0_configuration_dec)
+        }
+    }
+}
