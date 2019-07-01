@@ -10,6 +10,7 @@ use chain_impl_mockchain::{
 use jcli_app::transaction::Error;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
+use jormungandr_lib::interfaces::Certificate;
 use jormungandr_utils::serde;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -44,15 +45,6 @@ struct Witness {
     #[serde(with = "serde::witness")]
     witness: chain::transaction::Witness,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Certificate(
-    #[serde(
-        serialize_with = "jormungandr_utils::serde::certificate::serialize",
-        deserialize_with = "jormungandr_utils::serde::certificate::deserialize"
-    )]
-    chain::certificate::Certificate,
-);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Staging {
@@ -146,7 +138,7 @@ impl Staging {
 
     pub fn set_extra(&mut self, extra: chain::certificate::Certificate) -> Result<(), Error> {
         match self.kind {
-            StagingKind::Balancing => Ok(self.extra = Some(Certificate(extra))),
+            StagingKind::Balancing => Ok(self.extra = Some(Certificate::from(extra))),
             kind => Err(Error::TxKindToAddExtraInvalid { kind }),
         }
     }
@@ -268,7 +260,7 @@ impl Staging {
         chain::transaction::Transaction {
             inputs: self.inputs(),
             outputs: self.outputs(),
-            extra: certificate.0.clone(),
+            extra: certificate.clone().into(),
         }
     }
 

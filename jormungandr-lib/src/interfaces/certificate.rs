@@ -1,7 +1,7 @@
 use chain_impl_mockchain::certificate;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Certificate(certificate::Certificate);
 
 /* ---------------- Conversion --------------------------------------------- */

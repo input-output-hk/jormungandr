@@ -10,9 +10,9 @@ mod value;
 
 pub use self::account_state::AccountState;
 pub use self::address::Address;
-pub use self::certificate::Certificate;
 pub use self::block0_configuration::*;
 pub use self::blockdate::BlockDate;
+pub use self::certificate::Certificate;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::old_address::OldAddress;
 pub use self::utxo_info::UTxOInfo;
