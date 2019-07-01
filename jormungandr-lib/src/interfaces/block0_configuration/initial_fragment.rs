@@ -1,11 +1,11 @@
-use crate::interfaces::{Address, OldAddress, Value};
+use crate::interfaces::{Address, Certificate, OldAddress, Value};
 use chain_impl_mockchain::{
     certificate,
     legacy::UtxoDeclaration,
     message::Message,
     transaction::{AuthenticatedTransaction, NoExtra, Output, Transaction},
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -29,6 +29,7 @@ pub struct LegacyUTxO {
     pub value: Value,
 }
 
+<<<<<<< HEAD
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Certificate(certificate::Certificate);
 
@@ -75,6 +76,8 @@ impl<'de> Deserialize<'de> for Certificate {
     }
 }
 
+=======
+>>>>>>> add certificate type with proper conversion type available
 custom_error! {pub Error
     FirstBlock0MessageNotInit = "first message of block 0 is not initial",
     Block0MessageUnexpected  = "non-first message of block 0 has unexpected type",
@@ -115,7 +118,7 @@ fn extend_inits_with_cert(
     initials: &mut Vec<Initial>,
     tx: &AuthenticatedTransaction<chain_addr::Address, certificate::Certificate>,
 ) {
-    let cert = Certificate(tx.transaction.extra.clone());
+    let cert = Certificate::from(tx.transaction.extra.clone());
     initials.push(Initial::Cert(cert))
 }
 
@@ -170,7 +173,7 @@ impl<'a> From<&'a Certificate> for Message {
             transaction: Transaction {
                 inputs: vec![],
                 outputs: vec![],
-                extra: utxo.0.clone(),
+                extra: utxo.clone().into(),
             },
             witnesses: vec![],
         })
