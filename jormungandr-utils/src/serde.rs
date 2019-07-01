@@ -394,35 +394,6 @@ impl<'de> Visitor<'de> for BytesInBech32Visitor {
     }
 }
 
-pub mod certificate {
-
-    use super::*;
-    use chain_impl_mockchain::certificate::Certificate;
-
-    pub fn serialize<S>(cert: &Certificate, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use crate::certificate as cert;
-        use serde::ser::Error as _;
-        let bech32 = cert::serialize_to_bech32(cert).map_err(|err| S::Error::custom(err))?;
-        serializer.serialize_str(&bech32.to_string())
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Certificate, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        use chain_core::mempack::{ReadBuf, Readable};
-        deserializer
-            .deserialize_str(BytesInBech32Visitor::new("cert"))
-            .and_then(|bytes| {
-                let mut buf = ReadBuf::from(&bytes);
-                Certificate::read(&mut buf).map_err(|err| D::Error::custom(err))
-            })
-    }
-}
-
 pub mod system_time {
     use super::*;
     use std::time::SystemTime;

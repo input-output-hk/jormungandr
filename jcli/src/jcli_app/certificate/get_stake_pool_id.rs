@@ -1,4 +1,4 @@
-use chain_impl_mockchain::certificate::CertificateContent;
+use chain_impl_mockchain::certificate::{Certificate, CertificateContent};
 use jcli_app::certificate::{self, Error};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -14,7 +14,7 @@ pub struct GetStakePoolId {
 
 impl GetStakePoolId {
     pub fn exec(self) -> Result<(), Error> {
-        let cert = certificate::read_cert(self.input)?;
+        let cert : Certificate = certificate::read_cert(self.input)?.into();
         match cert.content {
             CertificateContent::StakePoolRegistration(stake_pool_info) => {
                 certificate::write_output(self.output, stake_pool_info.to_id())

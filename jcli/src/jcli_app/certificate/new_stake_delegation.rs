@@ -31,6 +31,6 @@ impl StakeDelegation {
             content: CertificateContent::StakeDelegation(content),
             signatures: vec![],
         };
-        certificate::write_cert(self.output, cert)
+        certificate::write_cert(self.output, cert.into())
     }
 }

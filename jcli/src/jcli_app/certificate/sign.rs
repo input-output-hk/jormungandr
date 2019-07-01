@@ -1,4 +1,4 @@
-use chain_impl_mockchain::certificate::CertificateContent;
+use chain_impl_mockchain::certificate::{Certificate, CertificateContent};
 use jcli_app::certificate::{self, Error};
 use jcli_app::utils::key_parser::parse_ed25519_secret_key;
 use std::path::PathBuf;
@@ -19,7 +19,7 @@ pub struct Sign {
 
 impl Sign {
     pub fn exec(self) -> Result<(), Error> {
-        let mut cert = certificate::read_cert(self.input)?;
+        let mut cert: Certificate = certificate::read_cert(self.input)?.into();
         let key_str = certificate::read_input(Some(self.signing_key))?;
         let private_key = parse_ed25519_secret_key(key_str.trim())?;
 
@@ -29,6 +29,6 @@ impl Sign {
             CertificateContent::StakePoolRetirement(s) => s.make_certificate(&private_key),
         };
         cert.signatures.push(signature);
-        certificate::write_cert(self.output, cert)
+        certificate::write_cert(self.output, cert.into())
     }
 }
