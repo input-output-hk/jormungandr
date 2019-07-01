@@ -123,3 +123,7 @@ peer_2_peer:
 ```
 jormungandr --genesis-block block-0.bin --config node.config --secret node_secret.yaml
 ```
+
+# Script
+
+Additionally, there is a script [here](https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap) that can be used to bootstrap a test node with bft consensus protocol.
