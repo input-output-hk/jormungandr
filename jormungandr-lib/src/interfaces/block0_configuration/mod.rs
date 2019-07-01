@@ -122,7 +122,6 @@ mod test {
         where
             G: Gen,
         {
-            const MAX_NUMBER_INITIALS: usize = 64;
             let number_initial = usize::arbitrary(g) % ARBITRARY_MAX_NUMBER_INITIAL_FRAGMENTS;
             Block0Configuration {
                 blockchain_configuration: Arbitrary::arbitrary(g),
