@@ -139,6 +139,11 @@ where
                 let ids = parse_repeated_bytes(&ids.ids)?;
                 BlockEvent::Solicit(ids)
             }
+            Some(Item::Missing(req)) => {
+                let from = parse_repeated_bytes(&req.from)?;
+                let to = parse_bytes(&req.to)?;
+                BlockEvent::Missing { from, to }
+            }
             None => {
                 return Err(core_error::Error::new(
                     core_error::Code::InvalidArgument,
@@ -228,6 +233,12 @@ where
     }
 }
 
+impl IntoProtobuf<gen::node::PushHeadersResponse> for () {
+    fn into_message(self) -> Result<gen::node::PushHeadersResponse, tower_grpc::Status> {
+        Ok(gen::node::PushHeadersResponse {})
+    }
+}
+
 impl IntoProtobuf<gen::node::UploadBlocksResponse> for () {
     fn into_message(self) -> Result<gen::node::UploadBlocksResponse, tower_grpc::Status> {
         Ok(gen::node::UploadBlocksResponse {})
@@ -250,6 +261,11 @@ where
             BlockEvent::Solicit(ids) => {
                 let ids = serialize_to_repeated_bytes(&ids)?;
                 Item::Solicit(gen::node::BlockIds { ids })
+            }
+            BlockEvent::Missing { from, to } => {
+                let from = serialize_to_repeated_bytes(&from)?;
+                let to = serialize_to_bytes(&to)?;
+                Item::Missing(gen::node::PullHeadersRequest { from, to })
             }
         };
         Ok(gen::node::BlockEvent { item: Some(item) })

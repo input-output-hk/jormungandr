@@ -349,6 +349,8 @@ where
     type BlockSubscriptionFuture =
         SubscriptionFuture<BlockEvent<P::Block>, Self::NodeId, gen::node::BlockEvent>;
 
+    type PushHeadersFuture = ClientStreamingCompletionFuture<gen::node::PushHeadersResponse>;
+
     type UploadBlocksFuture = ClientStreamingCompletionFuture<gen::node::UploadBlocksResponse>;
 
     fn tip(&mut self) -> Self::TipFuture {
@@ -377,6 +379,16 @@ where
         let req = gen::node::BlockIds { ids };
         let future = self.service.get_blocks(Request::new(req));
         ResponseStreamFuture::new(future)
+    }
+
+    fn push_headers<S>(&mut self, headers: S) -> Self::PushHeadersFuture
+    where
+        S: Stream<Item = P::Header> + Send + 'static,
+    {
+        let stream = RequestStream::new(headers);
+        let req = Request::new(stream);
+        let future = self.service.push_headers(req);
+        ClientStreamingCompletionFuture::new(future)
     }
 
     fn upload_blocks<S>(&mut self, blocks: S) -> Self::UploadBlocksFuture

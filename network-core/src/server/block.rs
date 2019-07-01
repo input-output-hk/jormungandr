@@ -76,11 +76,14 @@ pub trait BlockService: P2pService {
     /// implementation to produce a server-streamed response.
     type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error> + Send + 'static;
 
+    /// The type of asynchronous futures returned by method `push_headers`.
+    type PushHeadersFuture: Future<Item = (), Error = Error> + Send + 'static;
+
     /// The type of asynchronous futures returned by method `on_uploaded_block`.
     type OnUploadedBlockFuture: Future<Item = (), Error = Error> + Send + 'static;
 
-    /// The type of an asynchronous stream that retrieves headers of new
-    /// blocks as they are created.
+    /// The type of asynchronous stream that lets the client receive
+    /// new block announcements and solicitation requests from the service.
     type BlockSubscription: Stream<Item = BlockEvent<Self::Block>, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `block_subscription`.
@@ -111,8 +114,11 @@ pub trait BlockService: P2pService {
     /// to the server's tip.
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksToTipFuture;
 
-    /// Get block headers, walking forward in a range between any of the given
-    /// starting points, and the ending point.
+    /// Get block headers, walking the chain forward in a range between the
+    /// latest among the given starting points, and the given ending point.
+    /// If none of the starting points are found in the chain, or if the
+    /// ending point is not found, the future will fail with a `NotFound`
+    /// error.
     fn pull_headers(
         &mut self,
         from: &[Self::BlockId],
@@ -122,6 +128,15 @@ pub trait BlockService: P2pService {
     /// Stream block headers from either of the given starting points
     /// to the server's tip.
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
+
+    /// The outbound counterpart of `pull_headers`, called in response to a
+    /// `BlockEvent::Missing` solicitation. A client may report that
+    /// the solicitation does not refer to blocks found in the local blockchain
+    /// by making the `push_headers` call and failing the outbound stream with
+    /// a `NotFound` error.
+    fn push_headers<In>(&mut self, headers: In) -> Self::PushHeadersFuture
+    where
+        In: Stream<Item = Self::Header, Error = Error> + Send + 'static;
 
     /// Called when the client connection uploads a block.
     fn on_uploaded_block(&mut self, block: Self::Block) -> Self::OnUploadedBlockFuture;
@@ -133,7 +148,8 @@ pub trait BlockService: P2pService {
     /// announcements.
     ///
     /// Returns a future resolving to an asynchronous stream
-    /// that will be used by this node to send block announcements.
+    /// that will be used by this node to send block announcements
+    /// and solicitations.
     fn block_subscription<In>(
         &mut self,
         subscriber: Self::NodeId,

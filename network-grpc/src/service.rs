@@ -425,6 +425,10 @@ where
         Self::GetMessagesStream,
         <<T as Node>::ContentService as ContentService>::GetMessagesFuture,
     >;
+    type PushHeadersFuture = ResponseFuture<
+        gen::node::PushHeadersResponse,
+        <T::BlockService as BlockService>::PushHeadersFuture,
+    >;
     type UploadBlocksFuture = UploadBlocksFuture<T, Streaming<gen::node::Block>>;
     type BlockSubscriptionStream = ResponseStream<
         gen::node::BlockEvent,
@@ -524,6 +528,15 @@ where
             }
         };
         ResponseFuture::new(service.get_messages(&tx_ids))
+    }
+
+    fn push_headers(
+        &mut self,
+        req: Request<Streaming<gen::node::Header>>,
+    ) -> Self::PushHeadersFuture {
+        let service = try_get_service!(self.inner.block_service());
+        let stream = RequestStream::new(req.into_inner());
+        ResponseFuture::new(service.push_headers(stream))
     }
 
     fn upload_blocks(

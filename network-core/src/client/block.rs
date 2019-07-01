@@ -45,8 +45,10 @@ pub trait BlockService: P2pService {
     type PullHeadersFuture: Future<Item = Self::PullHeadersStream, Error = Error>;
 
     /// Requests headers of blocks in the blockchain's chronological order,
-    /// in the range between one of the given starting points, and
-    /// the given ending point.
+    /// in the range between the latest of the given starting points, and
+    /// the given ending point. If none of the starting points are found
+    /// in the chain on the service side, or if the ending point is not found,
+    /// the future will fail with a `NotFound` error.
     fn pull_headers(
         &mut self,
         from: &[<Self::Block as Block>::Id],
@@ -76,14 +78,17 @@ pub trait BlockService: P2pService {
     // implementation to produce a server-streamed response.
     //type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error>;
 
-    /// The type of asynchronous futures returned by method `block_subscription`.
-    ///
-    /// The future resolves to a stream of blocks sent by the remote node
-    /// and the identifier of the node in the network.
-    type BlockSubscriptionFuture: Future<
-        Item = (Self::BlockSubscription, Self::NodeId),
-        Error = Error,
-    >;
+    /// The type of asynchronous futures returned by method `push_headers`.
+    type PushHeadersFuture: Future<Item = (), Error = Error>;
+
+    /// The outbound counterpart of `pull_headers`, called in response to a
+    /// `BlockEvent::Missing` solicitation. A valid way to report that
+    /// the solicitation does not refer to blocks found in the local blockchain
+    /// is to make the `push_headers` call and fail the outbound stream with
+    /// a `NotFound` error.
+    fn push_headers<S>(&mut self, headers: S) -> Self::PushHeadersFuture
+    where
+        S: Stream<Item = <Self::Block as HasHeader>::Header> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `upload_blocks`.
     type UploadBlocksFuture: Future<Item = (), Error = Error>;
@@ -94,6 +99,15 @@ pub trait BlockService: P2pService {
     fn upload_blocks<S>(&mut self, blocks: S) -> Self::UploadBlocksFuture
     where
         S: Stream<Item = Self::Block> + Send + 'static;
+
+    /// The type of asynchronous futures returned by method `block_subscription`.
+    ///
+    /// The future resolves to a stream of blocks sent by the remote node
+    /// and the identifier of the node in the network.
+    type BlockSubscriptionFuture: Future<
+        Item = (Self::BlockSubscription, Self::NodeId),
+        Error = Error,
+    >;
 
     /// The type of an asynchronous stream that provides notifications
     /// of blocks created or accepted by the remote node.
