@@ -1,10 +1,6 @@
 use crate::{
+    interfaces::{DEFAULT_SLOT_DURATION, MAXIMUM_SLOT_DURATION, MINIMUM_SLOT_DURATION},
     time::Duration,
-    interfaces::{
-        DEFAULT_SLOT_DURATION,
-        MAXIMUM_SLOT_DURATION,
-        MINIMUM_SLOT_DURATION,
-    }
 };
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Deserializer, Serialize};
