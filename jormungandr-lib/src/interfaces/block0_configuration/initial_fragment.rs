@@ -7,7 +7,7 @@ use chain_impl_mockchain::{
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Initial {
     Fund(Vec<InitialUTxO>),
@@ -15,21 +15,21 @@ pub enum Initial {
     LegacyFund(Vec<LegacyUTxO>),
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InitialUTxO {
     pub address: Address,
     pub value: Value,
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LegacyUTxO {
     pub address: OldAddress,
     pub value: Value,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Certificate(certificate::Certificate);
 
 /* ------------------- Serde ----------------------------------------------- */
