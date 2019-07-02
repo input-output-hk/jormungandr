@@ -179,7 +179,6 @@ mod test {
         }
     }
 
-
     quickcheck! {
         fn identifier_display_and_from_str(transaction_witness: TransactionWitness) -> TestResult {
             let transaction_witness_str = transaction_witness.to_string();

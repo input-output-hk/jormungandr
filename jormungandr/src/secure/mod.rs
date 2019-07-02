@@ -1,6 +1,9 @@
 use chain_crypto::{Blake2b256, Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::leadership::{BftLeader, GenesisLeader};
-use jormungandr_lib::crypto::{key::{Identifier, SigningKey}, hash::Hash};
+use jormungandr_lib::crypto::{
+    hash::Hash,
+    key::{Identifier, SigningKey},
+};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -30,9 +33,7 @@ pub struct GenesisPraosPublic {
 }
 
 #[derive(Clone, Deserialize)]
-pub struct OwnerKey(
-    Identifier<Ed25519>,
-);
+pub struct OwnerKey(Identifier<Ed25519>);
 
 #[derive(Clone, Deserialize)]
 pub struct StakePoolInfo {
