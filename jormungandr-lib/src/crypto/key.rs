@@ -300,6 +300,13 @@ impl<T, A: VerificationAlgorithm> Signature<T, A> {
     }
 }
 
+impl<A: VerificationAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
+    #[inline]
+    pub fn verify(&self, identifier: &Identifier<A>, object: &T) -> chain_crypto::Verification {
+        self.0.verify(identifier.as_ref(), object)
+    }
+}
+
 /* ---------------- Display ------------------------------------------------ */
 
 impl<A: AsymmetricPublicKey> fmt::Display for Identifier<A> {
