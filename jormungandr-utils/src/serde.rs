@@ -6,10 +6,9 @@ use chain_crypto::bech32::Bech32;
 use serde::{
     de::{Deserializer, Error as DeserializerError, Visitor},
     ser::Serializer,
-    Serialize
+    Serialize,
 };
 use std::fmt::{self, Display};
-use std::str::FromStr;
 
 pub struct BytesInBech32Visitor {
     hrp: &'static str,
@@ -46,27 +45,6 @@ impl<'de> Visitor<'de> for BytesInBech32Visitor {
         let bytes = Vec::<u8>::from_base32(bech32.data())
             .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
         Ok(bytes)
-    }
-}
-
-pub mod as_string {
-    use super::*;
-
-    pub fn serialize<S: Serializer, T: ToString>(
-        data: &T,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        data.to_string().serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D, E, T>(deserializer: D) -> Result<T, D::Error>
-    where
-        D: Deserializer<'de>,
-        E: Display,
-        T: FromStr<Err = E> + SerdeExpected,
-    {
-        let visitor = StrParseVisitor::new(T::EXPECTED, str::parse);
-        deserializer.deserialize_str(visitor)
     }
 }
 
