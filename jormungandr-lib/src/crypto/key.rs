@@ -149,7 +149,7 @@ impl<A: AsymmetricPublicKey> Identifier<A> {
     ///
     #[inline]
     pub fn to_hex(&self) -> String {
-        self.to_string()
+        self.0.to_string()
     }
 
     /// try to decode the given hexadecimal string into a valid Identifier
