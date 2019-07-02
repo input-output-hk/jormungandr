@@ -1,5 +1,8 @@
 use chain_crypto::bech32::Bech32;
-use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, Blake2b256, PublicKey, SecretKey};
+use chain_crypto::{
+    AsymmetricKey, AsymmetricPublicKey, Blake2b256, PublicKey, SecretKey, Signature,
+    VerificationAlgorithm,
+};
 use serde::{
     de::{Deserializer, Error as DeserializerError, Visitor},
     ser::Serializer,
@@ -29,6 +32,21 @@ where
         key.to_bech32_str().serialize(serializer)
     } else {
         key.as_ref().serialize(serializer)
+    }
+}
+
+pub fn serialize_signature<S, T, A>(
+    signature: &Signature<T, A>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    A: VerificationAlgorithm,
+{
+    if serializer.is_human_readable() {
+        signature.to_bech32_str().serialize(serializer)
+    } else {
+        signature.as_ref().serialize(serializer)
     }
 }
 
@@ -69,6 +87,19 @@ where
     }
 }
 
+pub fn deserialize_signature<'de, D, T, A>(deserializer: D) -> Result<Signature<T, A>, D::Error>
+where
+    D: Deserializer<'de>,
+    A: VerificationAlgorithm,
+{
+    let signature_visitor = SignatureVisitor::new();
+    if deserializer.is_human_readable() {
+        deserializer.deserialize_str(signature_visitor)
+    } else {
+        deserializer.deserialize_bytes(signature_visitor)
+    }
+}
+
 pub fn deserialize_hash<'de, D>(deserializer: D) -> Result<Blake2b256, D::Error>
 where
     D: Deserializer<'de>,
@@ -88,6 +119,10 @@ struct SecretKeyVisitor<A: AsymmetricKey> {
 struct PublicKeyVisitor<A: AsymmetricPublicKey> {
     _marker: std::marker::PhantomData<A>,
 }
+struct SignatureVisitor<T, A: VerificationAlgorithm> {
+    _marker_1: std::marker::PhantomData<T>,
+    _marker_2: std::marker::PhantomData<A>,
+}
 impl HashVisitor {
     fn new() -> Self {
         HashVisitor
@@ -104,6 +139,14 @@ impl<A: AsymmetricPublicKey> PublicKeyVisitor<A> {
     fn new() -> Self {
         PublicKeyVisitor {
             _marker: std::marker::PhantomData,
+        }
+    }
+}
+impl<T, A: VerificationAlgorithm> SignatureVisitor<T, A> {
+    fn new() -> Self {
+        SignatureVisitor {
+            _marker_1: std::marker::PhantomData,
+            _marker_2: std::marker::PhantomData,
         }
     }
 }
@@ -196,6 +239,54 @@ where
                 A::PUBLIC_KEY_SIZE
             ))),
             Err(PublicKeyError::StructureInvalid) => Err(E::custom("Invalid structure")),
+            Ok(key) => Ok(key),
+        }
+    }
+}
+
+impl<'de, T, A> Visitor<'de> for SignatureVisitor<T, A>
+where
+    A: VerificationAlgorithm,
+{
+    type Value = Signature<T, A>;
+
+    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            fmt,
+            "Expecting a signature for algorithm {}",
+            A::SIGNATURE_BECH32_HRP
+        )
+    }
+
+    fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
+    where
+        E: DeserializerError,
+    {
+        use chain_crypto::bech32::Error as Bech32Error;
+        match Self::Value::try_from_bech32_str(&v) {
+            Err(Bech32Error::DataInvalid(err)) => Err(E::custom(format!("Invalid data: {}", err))),
+            Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
+                "Invalid prefix: expected {} but was {}",
+                expected, actual
+            ))),
+            Err(Bech32Error::Bech32Malformed(err)) => {
+                Err(E::custom(format!("Invalid bech32: {}", err)))
+            }
+            Ok(key) => Ok(key),
+        }
+    }
+
+    fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
+    where
+        E: DeserializerError,
+    {
+        use chain_crypto::SignatureError;
+        match Self::Value::from_binary(v) {
+            Err(SignatureError::SizeInvalid { expected, got }) => Err(E::custom(format!(
+                "Invalid size (expected: {}bytes but received {}bytes)",
+                expected, got,
+            ))),
+            Err(SignatureError::StructureInvalid) => Err(E::custom("Invalid structure")),
             Ok(key) => Ok(key),
         }
     }
