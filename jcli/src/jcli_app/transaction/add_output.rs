@@ -1,7 +1,6 @@
-use chain_addr::Address;
-use chain_impl_mockchain::{transaction::Output, value::Value};
+use chain_impl_mockchain::transaction::Output;
 use jcli_app::transaction::{common, Error};
-use jormungandr_utils::structopt;
+use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -11,12 +10,12 @@ pub struct AddOutput {
     pub common: common::CommonTransaction,
 
     /// the UTxO address or account address to credit funds to
-    #[structopt(name = "ADDRESS", parse(try_from_str = "structopt::try_parse_address"))]
-    pub address: Address,
+    #[structopt(name = "ADDRESS")]
+    pub address: interfaces::Address,
 
     /// the value
-    #[structopt(name = "VALUE", parse(try_from_str = "structopt::try_parse_value"))]
-    pub value: Value,
+    #[structopt(name = "VALUE")]
+    pub value: interfaces::Value,
 }
 
 impl AddOutput {
@@ -24,8 +23,8 @@ impl AddOutput {
         let mut transaction = self.common.load()?;
 
         transaction.add_output(Output {
-            address: self.address,
-            value: self.value,
+            address: self.address.into(),
+            value: self.value.into(),
         })?;
 
         self.common.store(&transaction)

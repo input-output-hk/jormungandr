@@ -12,79 +12,6 @@ use serde::{
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
-pub mod value {
-    use super::*;
-    use chain_impl_mockchain::value::Value;
-    use serde::de::Deserialize as _;
-
-    pub fn serialize<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        value.0.serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        u64::deserialize(deserializer).map(Value)
-    }
-}
-
-pub mod address {
-    use super::*;
-    use chain_addr::{Address, AddressReadable};
-
-    pub fn serialize<S>(address: &Address, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if serializer.is_human_readable() {
-            let address = AddressReadable::from_address(address);
-            serializer.serialize_str(address.as_string())
-        } else {
-            let bytes = address.to_bytes();
-            serializer.serialize_bytes(&bytes)
-        }
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        if deserializer.is_human_readable() {
-            deserializer.deserialize_str(StrParseVisitor::new("address", |s| {
-                s.parse().map(|addr: AddressReadable| addr.to_address())
-            }))
-        } else {
-            deserializer.deserialize_bytes(AddressVisitor)
-        }
-    }
-
-    struct AddressVisitor;
-
-    impl<'de> Visitor<'de> for AddressVisitor {
-        type Value = Address;
-
-        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            write!(fmt, "Expecting an Address",)
-        }
-
-        fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
-        where
-            E: DeserializerError,
-        {
-            use chain_core::mempack::{ReadBuf, Readable};
-            let mut buf = ReadBuf::from(v);
-            match Self::Value::read(&mut buf) {
-                Err(err) => Err(E::custom(err)),
-                Ok(address) => Ok(address),
-            }
-        }
-    }
-}
-
 pub mod witness {
     use super::*;
     use chain_core::{
@@ -391,35 +318,6 @@ impl<'de> Visitor<'de> for BytesInBech32Visitor {
         let bytes = Vec::<u8>::from_base32(bech32.data())
             .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
         Ok(bytes)
-    }
-}
-
-pub mod certificate {
-
-    use super::*;
-    use chain_impl_mockchain::certificate::Certificate;
-
-    pub fn serialize<S>(cert: &Certificate, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use crate::certificate as cert;
-        use serde::ser::Error as _;
-        let bech32 = cert::serialize_to_bech32(cert).map_err(|err| S::Error::custom(err))?;
-        serializer.serialize_str(&bech32.to_string())
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Certificate, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        use chain_core::mempack::{ReadBuf, Readable};
-        deserializer
-            .deserialize_str(BytesInBech32Visitor::new("cert"))
-            .and_then(|bytes| {
-                let mut buf = ReadBuf::from(&bytes);
-                Certificate::read(&mut buf).map_err(|err| D::Error::custom(err))
-            })
     }
 }
 

@@ -1,9 +1,8 @@
-use chain_impl_mockchain::{
-    transaction::{Input, InputEnum, TransactionId, TransactionIndex, UtxoPointer},
-    value::Value,
+use chain_impl_mockchain::transaction::{
+    Input, InputEnum, TransactionId, TransactionIndex, UtxoPointer,
 };
 use jcli_app::transaction::{common, Error};
-use jormungandr_utils::structopt;
+use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -21,8 +20,8 @@ pub struct AddInput {
     pub index: TransactionIndex,
 
     /// the value
-    #[structopt(name = "VALUE", parse(try_from_str = "structopt::try_parse_value"))]
-    pub value: Value,
+    #[structopt(name = "VALUE")]
+    pub value: interfaces::Value,
 }
 
 impl AddInput {
@@ -32,7 +31,7 @@ impl AddInput {
         transaction.add_input(Input::from_enum(InputEnum::UtxoInput(UtxoPointer {
             transaction_id: self.transaction_id,
             output_index: self.index,
-            value: self.value,
+            value: self.value.into(),
         })))?;
 
         self.common.store(&transaction)?;
@@ -43,17 +42,17 @@ impl AddInput {
 #[cfg(test)]
 mod tests {
 
-    extern crate mktemp;
     use self::common::CommonTransaction;
     use super::*;
     use crate::jcli_app::transaction::staging::Staging;
-    use crate::jcli_app::utils::io;
-    use chain_impl_mockchain::key::Hash;
+    use chain_impl_mockchain::{key::Hash, value::Value};
     use std::str::FromStr;
 
     #[test]
     pub fn test_input_transaction_is_saved() {
-        let temp_staging_file = io::get_path_in_temp("staging_file.tx").unwrap();
+        let tempfile = mktemp::Temp::new_file().unwrap();
+
+        let temp_staging_file = tempfile.to_path_buf();
         let transaction_id: TransactionId =
             Hash::from_str("c355a02d3b5337ad0e5f5940582675229f25bc03e7feebc3aa929738e1fec35e")
                 .unwrap();
@@ -71,7 +70,7 @@ mod tests {
             },
             transaction_id: transaction_id,
             index: transaction_index,
-            value: value,
+            value: value.into(),
         };
         add_input
             .exec()

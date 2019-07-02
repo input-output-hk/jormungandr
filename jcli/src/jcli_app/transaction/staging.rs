@@ -3,14 +3,14 @@ use chain_impl_mockchain::{
     self as chain,
     fee::FeeAlgorithm,
     message::Message,
-    transaction::{NoExtra, Transaction, TransactionId},
+    transaction::{NoExtra, Output, Transaction, TransactionId},
     txbuilder,
     value::Value,
 };
 use jcli_app::transaction::Error;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
-use jormungandr_lib::interfaces::Certificate;
+use jormungandr_lib::interfaces;
 use jormungandr_utils::serde;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -27,17 +27,8 @@ pub enum StagingKind {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Input {
     index_or_account: u8,
-    #[serde(with = "serde::value")]
-    value: Value,
+    value: interfaces::Value,
     input_ptr: [u8; INPUT_PTR_SIZE],
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct Output {
-    #[serde(with = "serde::address")]
-    address: Address,
-    #[serde(with = "serde::value")]
-    value: Value,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,9 +41,9 @@ struct Witness {
 pub struct Staging {
     kind: StagingKind,
     inputs: Vec<Input>,
-    outputs: Vec<Output>,
+    outputs: Vec<interfaces::TransactionOutput>,
     witnesses: Vec<Witness>,
-    extra: Option<Certificate>,
+    extra: Option<interfaces::Certificate>,
 }
 
 impl std::fmt::Display for StagingKind {
@@ -105,20 +96,17 @@ impl Staging {
 
         Ok(self.inputs.push(Input {
             index_or_account: input.index_or_account,
-            value: input.value,
+            value: input.value.into(),
             input_ptr: input.input_ptr,
         }))
     }
 
-    pub fn add_output(&mut self, output: chain::transaction::Output<Address>) -> Result<(), Error> {
+    pub fn add_output(&mut self, output: Output<Address>) -> Result<(), Error> {
         if self.kind != StagingKind::Balancing {
             return Err(Error::TxKindToAddOutputInvalid { kind: self.kind });
         }
 
-        Ok(self.outputs.push(Output {
-            address: output.address,
-            value: output.value,
-        }))
+        Ok(self.outputs.push(output.into()))
     }
 
     pub fn add_witness(&mut self, witness: chain::transaction::Witness) -> Result<(), Error> {
@@ -138,7 +126,7 @@ impl Staging {
 
     pub fn set_extra(&mut self, extra: chain::certificate::Certificate) -> Result<(), Error> {
         match self.kind {
-            StagingKind::Balancing => Ok(self.extra = Some(Certificate::from(extra))),
+            StagingKind::Balancing => Ok(self.extra = Some(extra.into())),
             kind => Err(Error::TxKindToAddExtraInvalid { kind }),
         }
     }
@@ -157,17 +145,14 @@ impl Staging {
             .into_iter()
             .map(|input| Input {
                 index_or_account: input.index_or_account,
-                value: input.value,
+                value: input.value.into(),
                 input_ptr: input.input_ptr,
             })
             .collect();
         self.outputs = tx
             .outputs
             .into_iter()
-            .map(|output| Output {
-                address: output.address,
-                value: output.value,
-            })
+            .map(interfaces::TransactionOutput::from)
             .collect();
     }
 
@@ -255,7 +240,7 @@ impl Staging {
 
     fn transaction_with_extra(
         &self,
-        certificate: &Certificate,
+        certificate: &interfaces::Certificate,
     ) -> chain::transaction::Transaction<Address, chain::certificate::Certificate> {
         chain::transaction::Transaction {
             inputs: self.inputs(),
@@ -336,20 +321,14 @@ impl Staging {
             .iter()
             .map(|input| chain::transaction::Input {
                 index_or_account: input.index_or_account,
-                value: input.value,
+                value: input.value.into(),
                 input_ptr: input.input_ptr,
             })
             .collect()
     }
 
-    pub fn outputs(&self) -> Vec<chain::transaction::Output<Address>> {
-        self.outputs
-            .iter()
-            .map(|output| chain::transaction::Output {
-                address: output.address.clone(),
-                value: output.value,
-            })
-            .collect()
+    pub fn outputs(&self) -> Vec<Output<Address>> {
+        self.outputs.iter().cloned().map(Output::from).collect()
     }
 }
 

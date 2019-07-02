@@ -1,6 +1,5 @@
-use chain_impl_mockchain::certificate::Certificate as MockchainCertificate;
 use jcli_app::utils::{io, key_parser};
-use jormungandr_utils::certificate;
+use jormungandr_lib::interfaces::{Certificate as CertificateType, CertificateFromStrError};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
@@ -12,7 +11,6 @@ mod new_stake_pool_registration;
 mod sign;
 
 custom_error! {pub Error
-    CertInvalid { source: certificate::Error } = "invalid certificate",
     KeyInvalid { source: key_parser::Error } = "invalid private key",
     Io { source: std::io::Error } = "I/O Error",
     NotStakePoolRegistration = "invalid certificate, expecting a stake pool registration",
@@ -20,6 +18,7 @@ custom_error! {pub Error
         = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
     OutputInvalid { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("invalid output file path '{}'", path.display()) }},
+    InvalidCertificate { source: CertificateFromStrError } = "Invalid certificate",
 }
 
 #[derive(StructOpt)]
@@ -75,9 +74,11 @@ impl Certificate {
     }
 }
 
-fn read_cert(input: Option<PathBuf>) -> Result<MockchainCertificate, Error> {
+fn read_cert(input: Option<PathBuf>) -> Result<CertificateType, Error> {
+    use std::str::FromStr as _;
+
     let cert_str = read_input(input)?;
-    let cert = certificate::deserialize_from_bech32(cert_str.trim())?;
+    let cert = CertificateType::from_str(&cert_str.trim_end())?;
     Ok(cert)
 }
 
@@ -91,9 +92,8 @@ fn read_input(input: Option<PathBuf>) -> Result<String, Error> {
     Ok(input_str)
 }
 
-fn write_cert(output: Option<PathBuf>, cert: MockchainCertificate) -> Result<(), Error> {
-    let bech32 = certificate::serialize_to_bech32(&cert)?;
-    write_output(output, bech32)
+fn write_cert(output: Option<PathBuf>, cert: CertificateType) -> Result<(), Error> {
+    write_output(output, cert)
 }
 
 fn write_output(output: Option<PathBuf>, data: impl Display) -> Result<(), Error> {
