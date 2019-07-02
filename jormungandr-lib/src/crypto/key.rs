@@ -293,6 +293,11 @@ impl<T, A: VerificationAlgorithm> Signature<T, A> {
     pub fn from_hex(s: &str) -> Result<Self, SignatureFromStrError> {
         s.parse().map(Signature)
     }
+
+    #[inline]
+    pub fn coerce<U>(self) -> Signature<U, A> {
+        Signature(self.0.coerce())
+    }
 }
 
 /* ---------------- Display ------------------------------------------------ */
