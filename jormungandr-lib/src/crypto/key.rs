@@ -212,6 +212,11 @@ where
 }
 
 impl<A: AsymmetricKey> SigningKey<A> {
+    #[inline]
+    pub fn into_secret_key(self) -> SecretKey<A> {
+        self.0
+    }
+
     /// generate a new signing key
     #[inline]
     pub fn generate<RNG>(rng: RNG) -> Self
