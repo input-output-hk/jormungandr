@@ -15,20 +15,7 @@ use std::str::FromStr;
 pub mod crypto {
     use super::*;
     use ::bech32::{Bech32 as Bech32Data, FromBase32 as _};
-    use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, Blake2b256, PublicKey, SecretKey};
-
-    pub fn deserialize_public<'de, D, A>(deserializer: D) -> Result<PublicKey<A>, D::Error>
-    where
-        D: Deserializer<'de>,
-        A: AsymmetricPublicKey,
-    {
-        let public_key_visitor = PublicKeyVisitor::new();
-        if deserializer.is_human_readable() {
-            deserializer.deserialize_str(public_key_visitor)
-        } else {
-            deserializer.deserialize_bytes(public_key_visitor)
-        }
-    }
+    use chain_crypto::Blake2b256;
 
     pub fn deserialize_hash<'de, D>(deserializer: D) -> Result<Blake2b256, D::Error>
     where
@@ -53,17 +40,6 @@ pub mod crypto {
             deserializer.deserialize_str(secret_key_visitor)
         } else {
             deserializer.deserialize_bytes(secret_key_visitor)
-        }
-    }
-
-    struct PublicKeyVisitor<A: AsymmetricPublicKey> {
-        _marker: std::marker::PhantomData<A>,
-    }
-    impl<A: AsymmetricPublicKey> PublicKeyVisitor<A> {
-        fn new() -> Self {
-            PublicKeyVisitor {
-                _marker: std::marker::PhantomData,
-            }
         }
     }
 
@@ -101,56 +77,6 @@ pub mod crypto {
             let bytes = Vec::<u8>::from_base32(bech32.data())
                 .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
             Ok(bytes)
-        }
-    }
-
-    impl<'de, A> Visitor<'de> for PublicKeyVisitor<A>
-    where
-        A: AsymmetricPublicKey,
-    {
-        type Value = PublicKey<A>;
-
-        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            write!(
-                fmt,
-                "Expecting a public key for algorithm {}",
-                A::PUBLIC_BECH32_HRP
-            )
-        }
-
-        fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
-        where
-            E: DeserializerError,
-        {
-            use chain_crypto::bech32::Error as Bech32Error;
-            match Self::Value::try_from_bech32_str(&v) {
-                Err(Bech32Error::DataInvalid(err)) => {
-                    Err(E::custom(format!("Invalid data: {}", err)))
-                }
-                Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
-                    "Invalid prefix: expected {} but was {}",
-                    expected, actual
-                ))),
-                Err(Bech32Error::Bech32Malformed(err)) => {
-                    Err(E::custom(format!("Invalid bech32: {}", err)))
-                }
-                Ok(key) => Ok(key),
-            }
-        }
-
-        fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
-        where
-            E: DeserializerError,
-        {
-            use chain_crypto::PublicKeyError;
-            match Self::Value::from_binary(v) {
-                Err(PublicKeyError::SizeInvalid) => Err(E::custom(format!(
-                    "Invalid size (expected: {}bytes)",
-                    A::PUBLIC_KEY_SIZE
-                ))),
-                Err(PublicKeyError::StructureInvalid) => Err(E::custom("Invalid structure")),
-                Ok(key) => Ok(key),
-            }
         }
     }
 }
