@@ -669,5 +669,17 @@ mod test {
 
             TestResult::from_bool(signature_dec == signature)
         }
+
+        fn sign_verify(data: (Vec<u8>, KeyPair<Ed25519>)) -> TestResult {
+            let (data, key_pair) = data;
+            let identifier = key_pair.identifier();
+            let signing_key = key_pair.signing_key();
+
+            let signature = signing_key.sign(&data);
+            match signature.verify(&identifier, &data) {
+                chain_crypto::Verification::Success => TestResult::passed(),
+                chain_crypto::Verification::Failed => TestResult::error("signature verification failed"),
+            }
+        }
     }
 }
