@@ -1,5 +1,6 @@
+use crate::blockcfg::{Header, HeaderHash};
 use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
-use crate::intercom::{BlockMsg, NetworkMsg, PropagateMsg};
+use crate::intercom::{self, BlockMsg, NetworkMsg, PropagateMsg};
 use crate::stats_counter::StatsCounter;
 use crate::utils::{
     async_msg::MessageBox,
@@ -7,6 +8,8 @@ use crate::utils::{
 };
 
 use chain_core::property::Header as _;
+
+use slog::Logger;
 
 pub fn handle_input(
     info: &TokioServiceInfo,
@@ -135,14 +138,76 @@ pub fn handle_input(
                 BlockHeaderTriage::ProcessBlockToState => {
                     info!(logger, "Block announcement is interesting, fetch block");
                     network_msg_box
-                        .try_send(NetworkMsg::GetBlocks(node_id, vec![header.id()]))
+                        .try_send(NetworkMsg::GetNextBlock(node_id, header.id()))
                         .unwrap_or_else(|err| {
-                            error!(logger, "cannot send GetBlocks request to network: {}", err)
+                            error!(
+                                logger,
+                                "cannot send GetNextBlock request to network: {}", err
+                            )
                         });
                 }
             }
         }
+        BlockMsg::ChainHeaders(headers, reply) => {
+            let res = process_chain_headers_into_block_request(blockchain, headers, &logger).map(
+                |block_ids| {
+                    network_msg_box
+                        .try_send(NetworkMsg::GetBlocks(block_ids))
+                        .unwrap_or_else(|err| {
+                            error!(logger, "cannot send GetBlocks request to network: {}", err)
+                        });
+                },
+            );
+            reply.send(res).unwrap_or_default();
+        }
     };
 
     Ok(())
+}
+
+fn process_chain_headers_into_block_request(
+    blockchain: &BlockchainR,
+    headers: Vec<Header>,
+    logger: &Logger,
+) -> Result<Vec<HeaderHash>, intercom::Error> {
+    let blockchain = blockchain.lock_read();
+    let mut block_ids = Vec::new();
+    for header in headers {
+        let triage = chain::header_triage(&blockchain, &header, false).map_err(|e| {
+            info!(logger, "triage of pulled header failed: {:?}", e);
+            intercom::Error::failed(e)
+        })?;
+        match triage {
+            BlockHeaderTriage::ProcessBlockToState => {
+                block_ids.push(header.hash());
+            }
+            BlockHeaderTriage::NotOfInterest { reason } => {
+                // The block is already present, or is otherwise of no
+                // interest. We cancel streaming of the entire branch.
+                info!(
+                    logger,
+                    "pulled block header {} is not of interest: {:?}",
+                    header.hash(),
+                    reason,
+                );
+                return Err(intercom::Error::failed_precondition(format!(
+                    "block {} is not accepted: {}",
+                    header.hash(),
+                    reason,
+                )));
+            }
+            BlockHeaderTriage::MissingParentOrBranch { .. } => {
+                info!(
+                    logger,
+                    "pulled block header {} is not connected to the blockchain",
+                    header.hash(),
+                );
+                return Err(intercom::Error::failed_precondition(format!(
+                    "block {} is not connected to the blockchain",
+                    header.hash(),
+                )));
+            }
+        }
+    }
+    Ok(block_ids)
 }

@@ -1,3 +1,5 @@
+mod peer_map;
+
 use super::topology;
 use crate::blockcfg::{Block, Header, HeaderHash, Message};
 use futures::prelude::*;
@@ -8,10 +10,8 @@ use network_core::{
     subscription::BlockEvent,
 };
 use slog::Logger;
-use std::{
-    collections::{hash_map, HashMap},
-    sync::Mutex,
-};
+
+use std::sync::Mutex;
 
 // Buffer size determines the number of stream items pending processing that
 // can be buffered before back pressure is applied to the inbound half of
@@ -202,38 +202,31 @@ impl PeerComms {
     }
 }
 
-/// The map of currently connected peer nodes.
+/// The collection of currently connected peer nodes.
 ///
-/// This map object uses internal locking and is shared between
+/// This object uses internal locking and is shared between
 /// all network connection tasks.
-pub struct PeerMap {
-    mutex: Mutex<HashMap<topology::NodeId, PeerComms>>,
+pub struct Peers {
+    mutex: Mutex<peer_map::PeerMap>,
     logger: Logger,
 }
 
-fn comms_for_peer<'a>(
-    map: &'a mut HashMap<topology::NodeId, PeerComms>,
-    id: topology::NodeId,
-) -> &'a mut PeerComms {
-    map.entry(id).or_insert(PeerComms::server())
-}
-
-impl PeerMap {
+impl Peers {
     pub fn new(logger: Logger) -> Self {
-        PeerMap {
-            mutex: Mutex::new(HashMap::new()),
+        Peers {
+            mutex: Mutex::new(peer_map::PeerMap::new()),
             logger,
         }
     }
 
-    pub fn insert_peer(&self, id: topology::NodeId, handles: PeerComms) {
+    pub fn insert_peer(&self, id: topology::NodeId, comms: PeerComms) {
         let mut map = self.mutex.lock().unwrap();
-        map.insert(id, handles);
+        map.insert_peer(id, comms)
     }
 
     pub fn subscribe_to_block_events(&self, id: topology::NodeId) -> BlockEventSubscription {
         let mut map = self.mutex.lock().unwrap();
-        let handles = comms_for_peer(&mut map, id);
+        let handles = map.ensure_peer_comms(id);
         let announce_events: BlockEventAnnounceStream = handles
             .block_announcements
             .subscribe()
@@ -247,7 +240,7 @@ impl PeerMap {
 
     pub fn subscribe_to_messages(&self, id: topology::NodeId) -> Subscription<Message> {
         let mut map = self.mutex.lock().unwrap();
-        let handles = comms_for_peer(&mut map, id);
+        let handles = map.ensure_peer_comms(id);
         handles.messages.subscribe()
     }
 
@@ -256,7 +249,7 @@ impl PeerMap {
         id: topology::NodeId,
     ) -> Subscription<Gossip<topology::Node>> {
         let mut map = self.mutex.lock().unwrap();
-        let handles = comms_for_peer(&mut map, id);
+        let handles = map.ensure_peer_comms(id);
         handles.gossip.subscribe()
     }
 
@@ -273,8 +266,8 @@ impl PeerMap {
             .into_iter()
             .filter(|node| {
                 let id = node.id();
-                if let hash_map::Entry::Occupied(mut entry) = map.entry(id) {
-                    match f(entry.get_mut()) {
+                if let Some(mut entry) = map.entry(id) {
+                    match f(entry.comms()) {
                         Ok(()) => false,
                         Err(e) => {
                             info!(
@@ -284,7 +277,7 @@ impl PeerMap {
                                 e.kind()
                             );
                             debug!(self.logger, "unsubscribing peer {}", id);
-                            entry.remove_entry();
+                            entry.remove();
                             true
                         }
                     }
@@ -324,9 +317,9 @@ impl PeerMap {
         gossip: Gossip<topology::Node>,
     ) -> Result<(), Gossip<topology::Node>> {
         let mut map = self.mutex.lock().unwrap();
-        if let hash_map::Entry::Occupied(mut entry) = map.entry(target) {
+        if let Some(mut entry) = map.entry(target) {
             let res = {
-                let handles = entry.get_mut();
+                let handles = entry.comms();
                 handles.try_send_gossip(gossip)
             };
             res.map_err(|e| {
@@ -337,7 +330,7 @@ impl PeerMap {
                     e.kind()
                 );
                 debug!(self.logger, "unsubscribing peer {}", target);
-                entry.remove_entry();
+                entry.remove();
                 e.into_item()
             })
         } else {
@@ -345,9 +338,27 @@ impl PeerMap {
         }
     }
 
+    pub fn fetch_blocks(&self, hashes: Vec<HeaderHash>) {
+        let mut map = self.mutex.lock().unwrap();
+        if let Some((node_id, comms)) = map.next_peer_for_block_fetch() {
+            debug!(self.logger, "fetching blocks from {}", node_id);
+            comms
+                .block_solicitations
+                .try_send(hashes)
+                .unwrap_or_else(|e| {
+                    warn!(
+                        self.logger,
+                        "block solicitation from {} failed: {:?}", node_id, e
+                    );
+                });
+        } else {
+            warn!(self.logger, "no peers to fetch blocks from");
+        }
+    }
+
     pub fn solicit_blocks(&self, node_id: topology::NodeId, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
-        match map.get_mut(&node_id) {
+        match map.peer_comms(node_id) {
             Some(comms) => comms
                 .block_solicitations
                 .try_send(hashes)
@@ -369,7 +380,7 @@ impl PeerMap {
 
     pub fn pull_headers(&self, node_id: topology::NodeId, from: Vec<HeaderHash>, to: HeaderHash) {
         let mut map = self.mutex.lock().unwrap();
-        match map.get_mut(&node_id) {
+        match map.peer_comms(node_id) {
             Some(PeerComms {
                 client_commands: Some(command_queue),
                 ..

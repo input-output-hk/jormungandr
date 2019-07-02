@@ -312,6 +312,7 @@ custom_error! {pub RejectionReason
     Consensus { error: leadership::Error } = "{error}",
 }
 
+#[derive(Debug)]
 pub enum BlockHeaderTriage {
     /// mark that a block is of no interest for this blockchain
     NotOfInterest { reason: RejectionReason },
