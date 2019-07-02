@@ -40,7 +40,10 @@ pub use key::{
     AsymmetricKey, AsymmetricPublicKey, KeyPair, PublicKey, PublicKeyError, PublicKeyFromStrError,
     SecretKey, SecretKeyError, SecretKeySizeStatic,
 };
-pub use sign::{Signature, SignatureError, SigningAlgorithm, Verification, VerificationAlgorithm};
+pub use sign::{
+    Signature, SignatureError, SignatureFromStrError, SigningAlgorithm, Verification,
+    VerificationAlgorithm,
+};
 pub use vrf::{
     vrf_evaluate_and_prove, vrf_verified_get_output, vrf_verify, VRFVerification,
     VerifiableRandomFunction,
