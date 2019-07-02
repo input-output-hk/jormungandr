@@ -59,7 +59,6 @@ poldercast = { version = "0.3.1", features = [ "serde_derive" ] }
 reqwest = "0.9.11"
 custom_error = "1.6"
 num-traits = "0.2"
-jormungandr-utils = { path = "../jormungandr-utils" }
 jormungandr-lib = { path = "../jormungandr-lib" }
 strfmt = "0.1"
 gtmpl = "0.5.6"

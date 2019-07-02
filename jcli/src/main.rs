@@ -6,7 +6,6 @@ extern crate chain_impl_mockchain;
 extern crate gtmpl;
 extern crate hex;
 extern crate jormungandr_lib;
-extern crate jormungandr_utils;
 extern crate mime;
 extern crate num_traits;
 extern crate rand;
