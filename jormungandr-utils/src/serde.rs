@@ -10,44 +10,6 @@ use serde::{
 };
 use std::fmt::{self, Display};
 
-pub struct BytesInBech32Visitor {
-    hrp: &'static str,
-}
-
-impl BytesInBech32Visitor {
-    pub fn new(hrp: &'static str) -> Self {
-        BytesInBech32Visitor { hrp }
-    }
-}
-
-impl<'de> Visitor<'de> for BytesInBech32Visitor {
-    type Value = Vec<u8>;
-
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "Expecting bech32 data with HRP {}", self.hrp)
-    }
-
-    fn visit_str<'a, E>(self, bech32_str: &'a str) -> Result<Self::Value, E>
-    where
-        E: DeserializerError,
-    {
-        use bech32::{Bech32, FromBase32};
-        let bech32: Bech32 = bech32_str
-            .parse()
-            .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
-        if bech32.hrp() != self.hrp {
-            return Err(E::custom(format!(
-                "Invalid prefix: expected {} but was {}",
-                self.hrp,
-                bech32.hrp()
-            )));
-        }
-        let bytes = Vec::<u8>::from_base32(bech32.data())
-            .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
-        Ok(bytes)
-    }
-}
-
 pub mod as_bech32 {
     use super::*;
     use chain_crypto::bech32::Bech32;
