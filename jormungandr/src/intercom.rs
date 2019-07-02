@@ -29,6 +29,16 @@ impl Error {
         }
     }
 
+    pub fn not_found<T>(cause: T) -> Self
+    where
+        T: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Error {
+            code: core_error::Code::NotFound,
+            cause: cause.into(),
+        }
+    }
+
     pub fn unimplemented<S: Into<String>>(message: S) -> Self {
         Error {
             code: core_error::Code::Unimplemented,
@@ -227,7 +237,7 @@ pub enum TransactionMsg {
 pub enum ClientMsg {
     GetBlockTip(ReplyHandle<Header>),
     GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
-    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyHandle<Vec<Header>>),
+    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
     GetBlocksRange(HeaderHash, HeaderHash, ReplyStreamHandle<Block>),
     PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle<Block>),
@@ -296,6 +306,11 @@ pub enum PropagateMsg {
 pub enum NetworkMsg {
     Propagate(PropagateMsg),
     GetBlocks(NodeId, Vec<HeaderHash>),
+    PullHeaders {
+        node_id: NodeId,
+        from: Vec<HeaderHash>,
+        to: HeaderHash,
+    },
 }
 
 #[cfg(test)]

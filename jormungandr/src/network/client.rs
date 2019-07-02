@@ -1,16 +1,17 @@
 use super::{
     grpc,
     p2p::{
-        comm::{PeerComms, Subscription},
+        comm::{ClientCommand, PeerComms, Subscription},
         topology,
     },
     subscription, Channels, ConnectionState,
 };
 use crate::{
-    blockcfg::{Block, HeaderHash},
+    blockcfg::{Block, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
 };
 use futures::prelude::*;
+use futures::sync::mpsc;
 use network_core::{
     client::{self as core_client, block::BlockService, gossip::GossipService, p2p::P2pService},
     gossip::Node,
@@ -18,11 +19,15 @@ use network_core::{
 };
 use slog::Logger;
 
+// Length of the channel buffering commands for client connections to the peers.
+const COMMAND_BUFFER_LEN: usize = 32;
+
 pub struct Client<S>
 where
     S: BlockService,
 {
     service: S,
+    commands: mpsc::Receiver<ClientCommand>,
     channels: Channels,
     remote_node_id: topology::NodeId,
     block_events: S::BlockSubscription,
@@ -54,7 +59,8 @@ where
         state: ConnectionState,
         channels: Channels,
     ) -> impl Future<Item = (Self, PeerComms), Error = ()> {
-        let mut peer_comms = PeerComms::new();
+        let (commands_tx, commands_rx) = mpsc::channel(COMMAND_BUFFER_LEN);
+        let mut peer_comms = PeerComms::client(commands_tx);
         let err_logger = state.logger().clone();
         service
             .ready()
@@ -103,6 +109,7 @@ where
                     // Resolve with the client instance and communication handles.
                     let client = Client {
                         service,
+                        commands: commands_rx,
                         channels,
                         remote_node_id: node_id,
                         block_events,
@@ -118,6 +125,7 @@ where
 impl<S> Client<S>
 where
     S: BlockService<Block = Block>,
+    S::PushHeadersFuture: Send + 'static,
     S::UploadBlocksFuture: Send + 'static,
 {
     fn process_block_event(&mut self, event: BlockEvent<S::Block>) {
@@ -147,6 +155,76 @@ where
                         })
                         .map_err(move |err| {
                             warn!(err_logger, "UploadBlocks request failed: {:?}", err);
+                        }),
+                );
+            }
+            BlockEvent::Missing { from, to } => {
+                let (reply_handle, stream) = intercom::stream_reply::<
+                    Header,
+                    network_core::error::Error,
+                >(self.logger.clone());
+                self.channels.client_box.send_to(ClientMsg::GetHeadersRange(
+                    from,
+                    to,
+                    reply_handle,
+                ));
+                let node_id = self.remote_node_id;
+                let done_logger = self.logger.clone();
+                let err_logger = self.logger.clone();
+                tokio::spawn(
+                    self.service
+                        .push_headers(stream)
+                        .map(move |_| {
+                            debug!(done_logger, "finished pushing headers to {}", node_id);
+                        })
+                        .map_err(move |err| {
+                            warn!(err_logger, "PushHeaders request failed: {:?}", err);
+                        }),
+                );
+            }
+        }
+    }
+}
+
+impl<S> Client<S>
+where
+    S: BlockService<Block = Block>,
+    S::PullHeadersFuture: Send + 'static,
+    S::PullHeadersStream: Send + 'static,
+{
+    fn process_command(&mut self, command: ClientCommand) {
+        match command {
+            ClientCommand::PullHeaders { from, to } => {
+                let mut block_box = self.channels.block_box.clone();
+                let node_id = self.remote_node_id.clone();
+                let err_logger = self.logger.clone();
+                let and_then_logger = self.logger.clone();
+                tokio::spawn(
+                    self.service
+                        .pull_headers(&from, &to)
+                        .map_err(move |e| {
+                            warn!(
+                                err_logger,
+                                "solicitation request PullHeaders failed: {:?}", e
+                            );
+                        })
+                        .and_then(move |headers| {
+                            // FIXME: batch headers and send them to the
+                            // processing task in a new type of message
+                            // specialized for restoration of the chain.
+                            headers
+                                .for_each(move |header| {
+                                    block_box
+                                        .try_send(BlockMsg::AnnouncedBlock(header, node_id))
+                                        .unwrap();
+                                    Ok(())
+                                })
+                                .map_err(move |e| {
+                                    warn!(
+                                        and_then_logger,
+                                        "solicitation stream response to GetBlocks failed: {:?}", e
+                                    );
+                                })
                         }),
                 );
             }
@@ -192,6 +270,9 @@ where
     S: BlockService<Block = Block>,
     S::GetBlocksFuture: Send + 'static,
     S::GetBlocksStream: Send + 'static,
+    S::PullHeadersFuture: Send + 'static,
+    S::PullHeadersStream: Send + 'static,
+    S::PushHeadersFuture: Send + 'static,
     S::UploadBlocksFuture: Send + 'static,
 {
     type Item = ();
@@ -213,8 +294,21 @@ where
                     self.process_block_event(event);
                 }
             }
-            let block_solicitation_polled = self.block_solicitations.poll().unwrap();
-            match block_solicitation_polled {
+            match self.commands.poll().unwrap() {
+                Async::NotReady => {}
+                Async::Ready(None) => {
+                    debug!(self.logger, "client command stream closed");
+                    return Ok(().into());
+                }
+                Async::Ready(Some(command)) => {
+                    streams_ready = true;
+                    self.process_command(command);
+                }
+            }
+            // Block solicitations are special: they are handled with
+            // client requests on the client side, but on the server side,
+            // they are fed into the block event stream.
+            match self.block_solicitations.poll().unwrap() {
                 Async::NotReady => {}
                 Async::Ready(None) => {
                     debug!(self.logger, "outbound block solicitation stream closed");
@@ -236,14 +330,18 @@ pub fn connect(
     state: ConnectionState,
     channels: Channels,
 ) -> impl Future<Item = (Client<grpc::Connection>, PeerComms), Error = ()> {
+    let addr = state.connection;
     let err_logger = state.logger().clone();
-    grpc::connect(state.connection, Some(state.global.as_ref().node.id()))
+    grpc::connect(addr, Some(state.global.as_ref().node.id()))
         .map_err(move |err| {
-            warn!(err_logger, "error connecting to peer: {:?}", err);
+            warn!(
+                err_logger,
+                "error connecting to peer at {}: {:?}", addr, err
+            );
         })
         .and_then(move |conn| Client::subscribe(conn, state, channels))
         .map(move |(client, comms)| {
-            debug!(client.logger(), "connected to peer",);
+            debug!(client.logger(), "connected to peer");
             (client, comms)
         })
 }

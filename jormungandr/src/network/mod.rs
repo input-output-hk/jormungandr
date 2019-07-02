@@ -214,6 +214,10 @@ fn handle_network_input(
             state.peers.solicit_blocks(node_id, block_ids);
             Ok(())
         }
+        NetworkMsg::PullHeaders { node_id, from, to } => {
+            state.peers.pull_headers(node_id, from, to);
+            Ok(())
+        }
     })
 }
 

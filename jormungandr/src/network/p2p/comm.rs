@@ -63,6 +63,15 @@ type BlockEventSolicitStream =
 
 pub type BlockEventSubscription = stream::Select<BlockEventAnnounceStream, BlockEventSolicitStream>;
 
+/// Commands sent by other tasks to translate to requests sent by
+/// the client connection.
+pub enum ClientCommand {
+    PullHeaders {
+        from: Vec<HeaderHash>,
+        to: HeaderHash,
+    },
+}
+
 /// Handle used by the per-peer communication tasks to produce an outbound
 /// subscription stream towards the peer.
 pub struct CommHandle<T> {
@@ -134,6 +143,7 @@ enum SubscriptionState<T> {
 /// server-side connection to be closed.
 #[derive(Default)]
 pub struct PeerComms {
+    client_commands: Option<mpsc::Sender<ClientCommand>>,
     block_announcements: CommHandle<Header>,
     block_solicitations: CommHandle<Vec<HeaderHash>>,
     messages: CommHandle<Message>,
@@ -141,9 +151,19 @@ pub struct PeerComms {
 }
 
 impl PeerComms {
-    pub fn new() -> PeerComms {
+    pub fn server() -> PeerComms {
         PeerComms {
             ..Default::default()
+        }
+    }
+
+    pub fn client(commands: mpsc::Sender<ClientCommand>) -> PeerComms {
+        PeerComms {
+            client_commands: Some(commands),
+            block_announcements: Default::default(),
+            block_solicitations: Default::default(),
+            messages: Default::default(),
+            gossip: Default::default(),
         }
     }
 
@@ -191,11 +211,11 @@ pub struct PeerMap {
     logger: Logger,
 }
 
-fn ensure_peer_comms<'a>(
+fn comms_for_peer<'a>(
     map: &'a mut HashMap<topology::NodeId, PeerComms>,
     id: topology::NodeId,
 ) -> &'a mut PeerComms {
-    map.entry(id).or_insert(PeerComms::new())
+    map.entry(id).or_insert(PeerComms::server())
 }
 
 impl PeerMap {
@@ -213,7 +233,7 @@ impl PeerMap {
 
     pub fn subscribe_to_block_events(&self, id: topology::NodeId) -> BlockEventSubscription {
         let mut map = self.mutex.lock().unwrap();
-        let handles = ensure_peer_comms(&mut map, id);
+        let handles = comms_for_peer(&mut map, id);
         let announce_events: BlockEventAnnounceStream = handles
             .block_announcements
             .subscribe()
@@ -227,7 +247,7 @@ impl PeerMap {
 
     pub fn subscribe_to_messages(&self, id: topology::NodeId) -> Subscription<Message> {
         let mut map = self.mutex.lock().unwrap();
-        let handles = ensure_peer_comms(&mut map, id);
+        let handles = comms_for_peer(&mut map, id);
         handles.messages.subscribe()
     }
 
@@ -236,7 +256,7 @@ impl PeerMap {
         id: topology::NodeId,
     ) -> Subscription<Gossip<topology::Node>> {
         let mut map = self.mutex.lock().unwrap();
-        let handles = ensure_peer_comms(&mut map, id);
+        let handles = comms_for_peer(&mut map, id);
         handles.gossip.subscribe()
     }
 
@@ -338,10 +358,42 @@ impl PeerMap {
                     );
                 }),
             None => {
-                // TODO: connect and request on demand?
+                // TODO: connect and request on demand, or select another peer?
                 warn!(
                     self.logger,
                     "peer {} not available to solicit blocks from", node_id
+                );
+            }
+        }
+    }
+
+    pub fn pull_headers(&self, node_id: topology::NodeId, from: Vec<HeaderHash>, to: HeaderHash) {
+        let mut map = self.mutex.lock().unwrap();
+        match map.get_mut(&node_id) {
+            Some(PeerComms {
+                client_commands: Some(command_queue),
+                ..
+            }) => command_queue
+                .try_send(ClientCommand::PullHeaders { from, to })
+                .unwrap_or_else(|e| {
+                    warn!(
+                        self.logger,
+                        "block solicitation from {} failed: {:?}", node_id, e
+                    );
+                }),
+            Some(_non_client_comms) => {
+                // TODO: send a new type of solicitation event to retrieve
+                // the chain of headers, or straight UploadBlocks
+                warn!(
+                    self.logger,
+                    "peer {} is connected as a client, can't pull headers from it", node_id
+                );
+            }
+            None => {
+                // TODO: connect and request on demand, or select another peer?
+                warn!(
+                    self.logger,
+                    "peer {} not available to pull headers from", node_id
                 );
             }
         }
