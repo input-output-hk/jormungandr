@@ -11,7 +11,6 @@ use jcli_app::transaction::Error;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
 use jormungandr_lib::interfaces;
-use jormungandr_utils::serde;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -31,18 +30,12 @@ struct Input {
     input_ptr: [u8; INPUT_PTR_SIZE],
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct Witness {
-    #[serde(with = "serde::witness")]
-    witness: chain::transaction::Witness,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Staging {
     kind: StagingKind,
     inputs: Vec<Input>,
     outputs: Vec<interfaces::TransactionOutput>,
-    witnesses: Vec<Witness>,
+    witnesses: Vec<interfaces::TransactionWitness>,
     extra: Option<interfaces::Certificate>,
 }
 
@@ -121,7 +114,7 @@ impl Staging {
             });
         }
 
-        Ok(self.witnesses.push(Witness { witness }))
+        Ok(self.witnesses.push(witness.into()))
     }
 
     pub fn set_extra(&mut self, extra: chain::certificate::Certificate) -> Result<(), Error> {
@@ -306,7 +299,7 @@ impl Staging {
 
         for (index, witness) in self.witnesses.iter().enumerate() {
             finalizer
-                .set_witness(index, witness.witness.clone())
+                .set_witness(index, witness.clone().into())
                 .map_err(|source| Error::AddingWitnessToFinalizedTxFailed {
                     source,
                     filler: CustomErrorFiller,

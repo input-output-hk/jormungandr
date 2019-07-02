@@ -12,48 +12,6 @@ use serde::{
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
-pub mod witness {
-    use super::*;
-    use chain_core::{
-        mempack::{ReadBuf, Readable as _},
-        property::Serialize as _,
-    };
-    use chain_impl_mockchain::transaction::Witness;
-    use serde::ser::Error as _;
-
-    pub fn serialize<S>(witness: &Witness, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let bytes = witness
-            .serialize_as_vec()
-            .map_err(|err| S::Error::custom(err))?;
-
-        if serializer.is_human_readable() {
-            use bech32::{Bech32, ToBase32 as _};
-            let bech32 = Bech32::new("witness".to_owned(), bytes.to_base32())
-                .map_err(|err| S::Error::custom(err))?;
-            serializer.serialize_str(&bech32.to_string())
-        } else {
-            serializer.serialize_bytes(&bytes)
-        }
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Witness, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let bytes = if deserializer.is_human_readable() {
-            deserializer.deserialize_str(BytesInBech32Visitor::new("witness"))?
-        } else {
-            Vec::deserialize(deserializer)?
-        };
-
-        let mut reader = ReadBuf::from(&bytes);
-        Witness::read(&mut reader).map_err(D::Error::custom)
-    }
-}
-
 pub mod crypto {
     use super::*;
     use ::bech32::{Bech32 as Bech32Data, FromBase32 as _};
