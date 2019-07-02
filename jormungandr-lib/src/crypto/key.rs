@@ -9,7 +9,7 @@ use crate::crypto::serde as internal;
 use chain_addr::{Address, Discrimination, Kind};
 use chain_crypto::{
     AsymmetricKey, AsymmetricPublicKey, Ed25519, PublicKey, SecretKey, SignatureFromStrError,
-    VerificationAlgorithm,
+    SigningAlgorithm, VerificationAlgorithm,
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -198,6 +198,16 @@ impl Identifier<Ed25519> {
     #[inline]
     pub fn to_account_address(&self, discrimination: Discrimination) -> Address {
         Address(discrimination, Kind::Account(self.0.clone()))
+    }
+}
+
+impl<A: SigningAlgorithm> SigningKey<A>
+where
+    <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
+{
+    #[inline]
+    pub fn sign<T: AsRef<[u8]>>(&self, object: &T) -> Signature<T, <A as AsymmetricKey>::PubAlg> {
+        Signature(self.0.sign(object))
     }
 }
 
