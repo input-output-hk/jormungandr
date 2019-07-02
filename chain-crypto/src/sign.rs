@@ -1,7 +1,8 @@
-use crate::bech32::{self, Bech32};
-use crate::{hex, key};
-use std::fmt;
-use std::marker::PhantomData;
+use crate::{
+    bech32::{self, Bech32},
+    hex, key,
+};
+use std::{fmt, marker::PhantomData, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verification {
@@ -23,6 +24,12 @@ impl From<bool> for Verification {
 pub enum SignatureError {
     SizeInvalid { expected: usize, got: usize }, // expected, got in bytes
     StructureInvalid,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SignatureFromStrError {
+    HexMalformed(hex::DecodeError),
+    Invalid(SignatureError),
 }
 
 pub trait VerificationAlgorithm: key::AsymmetricPublicKey {
@@ -59,6 +66,15 @@ impl<A: VerificationAlgorithm, T> fmt::Display for Signature<T, A> {
         write!(f, "{}", hex::encode(self.signdata.as_ref()))
     }
 }
+impl<T, A: VerificationAlgorithm> FromStr for Signature<T, A> {
+    type Err = SignatureFromStrError;
+
+    fn from_str(hex: &str) -> Result<Self, Self::Err> {
+        let bytes = hex::decode(hex).map_err(SignatureFromStrError::HexMalformed)?;
+        Self::from_binary(&bytes).map_err(SignatureFromStrError::Invalid)
+    }
+}
+
 impl fmt::Display for SignatureError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -71,8 +87,25 @@ impl fmt::Display for SignatureError {
         }
     }
 }
+impl fmt::Display for SignatureFromStrError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SignatureFromStrError::HexMalformed(_) => "hex encoding malformed",
+            SignatureFromStrError::Invalid(_) => "invalid signature data",
+        }
+        .fmt(f)
+    }
+}
 
 impl std::error::Error for SignatureError {}
+impl std::error::Error for SignatureFromStrError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            SignatureFromStrError::HexMalformed(e) => Some(e),
+            SignatureFromStrError::Invalid(e) => Some(e),
+        }
+    }
+}
 
 impl<A: VerificationAlgorithm, T> Signature<T, A> {
     pub fn from_binary(sig: &[u8]) -> Result<Self, SignatureError> {
