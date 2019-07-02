@@ -71,6 +71,12 @@ impl From<Blake2b256> for Hash {
     }
 }
 
+impl From<Hash> for Blake2b256 {
+    fn from(hash: Hash) -> Self {
+        hash.0
+    }
+}
+
 impl From<key::Hash> for Hash {
     fn from(hash: key::Hash) -> Self {
         let bytes: [u8; 32] = hash.into();
