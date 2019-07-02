@@ -1,5 +1,6 @@
-use chain_crypto::{Blake2b256, Curve25519_2HashDH, Ed25519, PublicKey, SecretKey, SumEd25519_12};
+use chain_crypto::{Blake2b256, Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::leadership::{BftLeader, GenesisLeader};
+use jormungandr_lib::crypto::{key::{Identifier, SigningKey}, hash::Hash};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -8,36 +9,29 @@ pub mod enclave;
 /// hold the node's bft secret setting
 #[derive(Clone, Deserialize)]
 pub struct Bft {
-    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
-    signing_key: SecretKey<Ed25519>,
+    signing_key: SigningKey<Ed25519>,
 }
 
 /// the genesis praos setting
 ///
 #[derive(Clone, Deserialize)]
 pub struct GenesisPraos {
-    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_hash")]
-    node_id: Blake2b256,
-    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
-    sig_key: SecretKey<SumEd25519_12>,
-    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_secret")]
-    vrf_key: SecretKey<Curve25519_2HashDH>,
+    node_id: Hash,
+    sig_key: SigningKey<SumEd25519_12>,
+    vrf_key: SigningKey<Curve25519_2HashDH>,
 }
 
 /// the genesis praos setting
 ///
 #[derive(Clone, Deserialize)]
 pub struct GenesisPraosPublic {
-    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
-    sig_key: PublicKey<SumEd25519_12>,
-    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
-    vrf_key: PublicKey<Curve25519_2HashDH>,
+    sig_key: Identifier<SumEd25519_12>,
+    vrf_key: Identifier<Curve25519_2HashDH>,
 }
 
 #[derive(Clone, Deserialize)]
 pub struct OwnerKey(
-    #[serde(deserialize_with = "jormungandr_utils::serde::crypto::deserialize_public")]
-    PublicKey<Ed25519>,
+    Identifier<Ed25519>,
 );
 
 #[derive(Clone, Deserialize)]
@@ -73,15 +67,15 @@ impl NodeSecret {
 
     pub fn bft(&self) -> Option<BftLeader> {
         self.bft.clone().map(|bft| BftLeader {
-            sig_key: bft.signing_key,
+            sig_key: bft.signing_key.into_secret_key(),
         })
     }
 
     pub fn genesis(&self) -> Option<GenesisLeader> {
         self.genesis.clone().map(|genesis| GenesisLeader {
-            node_id: genesis.node_id.into(),
-            sig_key: genesis.sig_key,
-            vrf_key: genesis.vrf_key,
+            node_id: Blake2b256::from(genesis.node_id).into(),
+            sig_key: genesis.sig_key.into_secret_key(),
+            vrf_key: genesis.vrf_key.into_secret_key(),
         })
     }
 }

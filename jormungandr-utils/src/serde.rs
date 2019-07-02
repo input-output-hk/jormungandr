@@ -17,19 +17,6 @@ pub mod crypto {
     use ::bech32::{Bech32 as Bech32Data, FromBase32 as _};
     use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, Blake2b256, PublicKey, SecretKey};
 
-    pub fn deserialize_secret<'de, D, A>(deserializer: D) -> Result<SecretKey<A>, D::Error>
-    where
-        D: Deserializer<'de>,
-        A: AsymmetricKey,
-    {
-        let secret_key_visitor = SecretKeyVisitor::new();
-        if deserializer.is_human_readable() {
-            deserializer.deserialize_str(secret_key_visitor)
-        } else {
-            deserializer.deserialize_bytes(secret_key_visitor)
-        }
-    }
-
     pub fn deserialize_public<'de, D, A>(deserializer: D) -> Result<PublicKey<A>, D::Error>
     where
         D: Deserializer<'de>,
@@ -69,18 +56,8 @@ pub mod crypto {
         }
     }
 
-    struct SecretKeyVisitor<A: AsymmetricKey> {
-        _marker: std::marker::PhantomData<A>,
-    }
     struct PublicKeyVisitor<A: AsymmetricPublicKey> {
         _marker: std::marker::PhantomData<A>,
-    }
-    impl<A: AsymmetricKey> SecretKeyVisitor<A> {
-        fn new() -> Self {
-            SecretKeyVisitor {
-                _marker: std::marker::PhantomData,
-            }
-        }
     }
     impl<A: AsymmetricPublicKey> PublicKeyVisitor<A> {
         fn new() -> Self {
@@ -124,53 +101,6 @@ pub mod crypto {
             let bytes = Vec::<u8>::from_base32(bech32.data())
                 .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
             Ok(bytes)
-        }
-    }
-
-    impl<'de, A> Visitor<'de> for SecretKeyVisitor<A>
-    where
-        A: AsymmetricKey,
-    {
-        type Value = SecretKey<A>;
-
-        fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            write!(
-                fmt,
-                "Expecting a secret key for algorithm {}",
-                A::SECRET_BECH32_HRP
-            )
-        }
-
-        fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
-        where
-            E: DeserializerError,
-        {
-            use chain_crypto::bech32::Error as Bech32Error;
-            match Self::Value::try_from_bech32_str(&v) {
-                Err(Bech32Error::DataInvalid(err)) => {
-                    Err(E::custom(format!("Invalid data: {}", err)))
-                }
-                Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
-                    "Invalid prefix: expected {} but was {}",
-                    expected, actual
-                ))),
-                Err(Bech32Error::Bech32Malformed(err)) => {
-                    Err(E::custom(format!("Invalid bech32: {}", err)))
-                }
-                Ok(key) => Ok(key),
-            }
-        }
-
-        fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
-        where
-            E: DeserializerError,
-        {
-            use chain_crypto::SecretKeyError;
-            match Self::Value::from_binary(v) {
-                Err(SecretKeyError::SizeInvalid) => Err(E::custom("Invalid size")),
-                Err(SecretKeyError::StructureInvalid) => Err(E::custom("Invalid structure")),
-                Ok(key) => Ok(key),
-            }
         }
     }
 
@@ -276,54 +206,6 @@ impl<'de> Visitor<'de> for BytesInBech32Visitor {
         let bytes = Vec::<u8>::from_base32(bech32.data())
             .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
         Ok(bytes)
-    }
-}
-
-pub mod system_time {
-    use super::*;
-    use std::time::SystemTime;
-
-    pub fn serialize<S>(timestamp: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        humantime::format_rfc3339_nanos(*timestamp)
-            .to_string()
-            .serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<SystemTime, D::Error> {
-        let visitor = StrParseVisitor::new("RFC3339 timestamp", humantime::parse_rfc3339_weak);
-        deserializer.deserialize_str(visitor)
-    }
-}
-
-#[derive(Serialize)]
-#[serde(bound = "T: ToString", transparent)]
-pub struct SerdeAsString<T>(#[serde(with = "as_string")] pub T);
-
-impl<'de, E: Display, T: FromStr<Err = E> + SerdeExpected> Deserialize<'de> for SerdeAsString<T> {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        as_string::deserialize(deserializer).map(Self)
-    }
-}
-
-impl<T: Clone> Clone for SerdeAsString<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(
-    bound(deserialize = "T: Bech32 + SerdeExpected", serialize = "T: Bech32"),
-    transparent
-)]
-pub struct SerdeAsBech32<T>(#[serde(with = "as_bech32")] pub T);
-
-impl<T: Clone> Clone for SerdeAsBech32<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
     }
 }
 
