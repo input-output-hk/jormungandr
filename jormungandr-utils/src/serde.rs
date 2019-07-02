@@ -2,31 +2,14 @@
 //! to serialize and deserialize most of the objects
 //!
 
-use chain_crypto::{bech32::Bech32, Ed25519, PublicKey};
-use chain_impl_mockchain::leadership::bft::LeaderId;
+use chain_crypto::bech32::Bech32;
 use serde::{
     de::{Deserializer, Error as DeserializerError, Visitor},
     ser::Serializer,
-    Deserialize, Serialize,
+    Serialize
 };
 use std::fmt::{self, Display};
 use std::str::FromStr;
-
-#[derive(Clone, Debug)]
-pub struct SerdeLeaderId(pub LeaderId);
-
-impl Serialize for SerdeLeaderId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        as_bech32::serialize(self.0.as_public_key(), serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for SerdeLeaderId {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        as_bech32::deserialize::<D, PublicKey<Ed25519>>(deserializer)
-            .map(|key| SerdeLeaderId(key.into()))
-    }
-}
 
 pub struct BytesInBech32Visitor {
     hrp: &'static str,
