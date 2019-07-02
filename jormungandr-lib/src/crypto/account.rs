@@ -175,14 +175,14 @@ impl fmt::Debug for SigningKey {
 
 impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        self.to_bech32_str().fmt(f)
     }
 }
 
 impl FromStr for Identifier {
-    type Err = chain_crypto::PublicKeyFromStrError;
+    type Err = chain_crypto::bech32::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        AccountPublicKey::from_str(s).map(Identifier::from)
+        Self::from_bech32_str(s)
     }
 }
 
@@ -289,7 +289,7 @@ mod test {
     #[test]
     fn identifier_display() {
         const EXPECTED_IDENTIFIER_STR: &'static str =
-            "2020202020202020202020202020202020202020202020202020202020202020";
+            "ed25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8";
         const IDENTIFIER_BYTES: [u8; 32] = [0x20; 32];
 
         let identifier = Identifier(

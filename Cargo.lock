@@ -1232,7 +1232,6 @@ dependencies = [
  "http 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jormungandr-lib 0.2.3",
- "jormungandr-utils 0.2.3",
  "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1293,20 +1292,17 @@ dependencies = [
  "humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "jormungandr-lib 0.2.3",
- "jormungandr-utils 0.2.3",
  "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "native-tls 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "network-core 0.1.0-dev",
  "network-grpc 0.1.0-dev",
- "num-traits 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "poldercast 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "quickcheck 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_chacha 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest 0.9.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.94 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.94 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1318,7 +1314,6 @@ dependencies = [
  "slog-json 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-syslog 0.12.0 (git+https://github.com/slog-rs/syslog?rev=336da50ed86058bfa87d9b497f5921fb7f95ea42)",
  "slog-term 2.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "strfmt 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1369,20 +1364,6 @@ dependencies = [
  "rand_core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.94 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.8.9 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "jormungandr-utils"
-version = "0.2.3"
-dependencies = [
- "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "chain-addr 0.1.0",
- "chain-core 0.1.0",
- "chain-crypto 0.1.0",
- "chain-impl-mockchain 0.1.0",
- "custom_error 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.94 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

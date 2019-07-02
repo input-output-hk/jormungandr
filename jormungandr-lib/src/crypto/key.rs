@@ -7,7 +7,10 @@
 
 use crate::crypto::serde as internal;
 use chain_addr::{Address, Discrimination, Kind};
-use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, Ed25519, PublicKey, SecretKey};
+use chain_crypto::{
+    AsymmetricKey, AsymmetricPublicKey, Ed25519, PublicKey, SecretKey, SignatureFromStrError,
+    SigningAlgorithm, VerificationAlgorithm,
+};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
@@ -55,6 +58,21 @@ pub struct SigningKey<A: AsymmetricKey>(
 /// [`SigningKey`]: ./struct.SigningKey.html
 /// [`Identifier`]: ./struct.Identifier.html
 pub struct KeyPair<A: AsymmetricKey>(chain_crypto::KeyPair<A>);
+
+/// signature for the given cryptographic algorithm and associated type
+/// It can be created from a [`SigningKey`] and a value of type `T` and
+/// verified against an [`Identifier`] and the value of type `T`.
+///
+/// [`SigningKey`]: ./struct.SigningKey.html
+/// [`Identifier`]: ./struct.Identifier.html
+#[derive(Deserialize, Serialize)]
+pub struct Signature<T, A: VerificationAlgorithm>(
+    #[serde(
+        deserialize_with = "internal::deserialize_signature",
+        serialize_with = "internal::serialize_signature"
+    )]
+    chain_crypto::Signature<T, A>,
+);
 
 impl<A: AsymmetricKey> KeyPair<A> {
     /// generate a new key pair with the given Random Number Generator
@@ -149,7 +167,7 @@ impl<A: AsymmetricPublicKey> Identifier<A> {
     ///
     #[inline]
     pub fn to_hex(&self) -> String {
-        self.to_string()
+        self.0.to_string()
     }
 
     /// try to decode the given hexadecimal string into a valid Identifier
@@ -183,7 +201,22 @@ impl Identifier<Ed25519> {
     }
 }
 
+impl<A: SigningAlgorithm> SigningKey<A>
+where
+    <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
+{
+    #[inline]
+    pub fn sign<T: AsRef<[u8]>>(&self, object: &T) -> Signature<T, <A as AsymmetricKey>::PubAlg> {
+        Signature(self.0.sign(object))
+    }
+}
+
 impl<A: AsymmetricKey> SigningKey<A> {
+    #[inline]
+    pub fn into_secret_key(self) -> SecretKey<A> {
+        self.0
+    }
+
     /// generate a new signing key
     #[inline]
     pub fn generate<RNG>(rng: RNG) -> Self
@@ -235,18 +268,62 @@ impl<A: AsymmetricKey> SigningKey<A> {
     }
 }
 
+impl<T, A: VerificationAlgorithm> Signature<T, A> {
+    /// encode the `Signature` into a bech32 string.
+    ///
+    /// This is a human readable encoding that allows to check input validation.
+    /// When displaying this signing key to the user it is preferable to provide
+    /// the output of this function.
+    ///
+    /// Serde implementation of `Signature` provides the bech32 string support.
+    #[inline]
+    pub fn to_bech32_str(&self) -> String {
+        use chain_crypto::bech32::Bech32 as _;
+        self.0.to_bech32_str()
+    }
+
+    /// try to decode the given bech32 string into a valid signature
+    #[inline]
+    pub fn from_bech32_str(s: &str) -> Result<Self, chain_crypto::bech32::Error> {
+        use chain_crypto::bech32::Bech32 as _;
+        chain_crypto::Signature::try_from_bech32_str(s).map(Signature::from)
+    }
+
+    #[inline]
+    pub fn to_hex(&self) -> String {
+        self.0.to_string()
+    }
+
+    #[inline]
+    pub fn from_hex(s: &str) -> Result<Self, SignatureFromStrError> {
+        s.parse().map(Signature)
+    }
+
+    #[inline]
+    pub fn coerce<U>(self) -> Signature<U, A> {
+        Signature(self.0.coerce())
+    }
+}
+
+impl<A: VerificationAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
+    #[inline]
+    pub fn verify(&self, identifier: &Identifier<A>, object: &T) -> chain_crypto::Verification {
+        self.0.verify(identifier.as_ref(), object)
+    }
+}
+
 /* ---------------- Display ------------------------------------------------ */
 
 impl<A: AsymmetricPublicKey> fmt::Display for Identifier<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        self.to_bech32_str().fmt(f)
     }
 }
 
 impl<A: AsymmetricPublicKey> FromStr for Identifier<A> {
-    type Err = chain_crypto::PublicKeyFromStrError;
+    type Err = chain_crypto::bech32::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        PublicKey::from_str(s).map(Identifier::from)
+        Self::from_bech32_str(s)
     }
 }
 
@@ -268,6 +345,25 @@ impl<A: AsymmetricKey> fmt::Debug for KeyPair<A> {
     }
 }
 
+impl<T, A: VerificationAlgorithm> fmt::Display for Signature<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_bech32_str().fmt(f)
+    }
+}
+
+impl<T, A: VerificationAlgorithm> FromStr for Signature<T, A> {
+    type Err = chain_crypto::bech32::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_bech32_str(s)
+    }
+}
+
+impl<T, A: VerificationAlgorithm> fmt::Debug for Signature<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Signature").field(&self.0).finish()
+    }
+}
+
 /* ---------------- AsRef -------------------------------------------------- */
 
 impl<A: AsymmetricPublicKey> AsRef<PublicKey<A>> for Identifier<A> {
@@ -278,6 +374,12 @@ impl<A: AsymmetricPublicKey> AsRef<PublicKey<A>> for Identifier<A> {
 
 impl<A: AsymmetricKey> AsRef<SecretKey<A>> for SigningKey<A> {
     fn as_ref(&self) -> &SecretKey<A> {
+        &self.0
+    }
+}
+
+impl<T, A: VerificationAlgorithm> AsRef<chain_crypto::Signature<T, A>> for Signature<T, A> {
+    fn as_ref(&self) -> &chain_crypto::Signature<T, A> {
         &self.0
     }
 }
@@ -296,6 +398,12 @@ impl<A: AsymmetricPublicKey> From<PublicKey<A>> for Identifier<A> {
     }
 }
 
+impl<T, A: VerificationAlgorithm> From<chain_crypto::Signature<T, A>> for Signature<T, A> {
+    fn from(signature: chain_crypto::Signature<T, A>) -> Self {
+        Signature(signature)
+    }
+}
+
 /* ---------------- Equality ----------------------------------------------- */
 
 impl<A: AsymmetricPublicKey> PartialEq<Identifier<A>> for Identifier<A> {
@@ -305,6 +413,14 @@ impl<A: AsymmetricPublicKey> PartialEq<Identifier<A>> for Identifier<A> {
 }
 
 impl<A: AsymmetricPublicKey> Eq for Identifier<A> {}
+
+impl<S, T, A: VerificationAlgorithm> PartialEq<Signature<S, A>> for Signature<T, A> {
+    fn eq(&self, other: &Signature<S, A>) -> bool {
+        self.0.as_ref() == other.0.as_ref()
+    }
+}
+
+impl<T, A: VerificationAlgorithm> Eq for Signature<T, A> {}
 
 /* ---------------- Comparison --------------------------------------------- */
 
@@ -331,6 +447,15 @@ impl<A: AsymmetricPublicKey> std::hash::Hash for Identifier<A> {
     }
 }
 
+impl<T, A: VerificationAlgorithm> std::hash::Hash for Signature<T, A> {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        self.0.as_ref().hash(state)
+    }
+}
+
 /* ---------------- Clone -------------------------------------------------- */
 
 impl<A: AsymmetricPublicKey> Clone for Identifier<A> {
@@ -348,6 +473,12 @@ impl<A: AsymmetricKey> Clone for SigningKey<A> {
 impl<A: AsymmetricKey> Clone for KeyPair<A> {
     fn clone(&self) -> Self {
         KeyPair(self.0.clone())
+    }
+}
+
+impl<T, A: VerificationAlgorithm> Clone for Signature<T, A> {
+    fn clone(&self) -> Self {
+        Signature(self.0.clone())
     }
 }
 
@@ -383,12 +514,23 @@ mod test {
         }
     }
 
+    impl<T, A> Arbitrary for Signature<T, A>
+    where
+        A: VerificationAlgorithm + 'static,
+        A::Signature: Send,
+        T: Send + 'static,
+    {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Signature(Arbitrary::arbitrary(g))
+        }
+    }
+
     // test to check that account identifier is encoded in hexadecimal
     // when we use the Display trait
     #[test]
     fn identifier_display() {
         const EXPECTED_IDENTIFIER_STR: &'static str =
-            "2020202020202020202020202020202020202020202020202020202020202020";
+            "ed25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8";
         const IDENTIFIER_BYTES: [u8; 32] = [0x20; 32];
 
         let identifier: Identifier<Ed25519> =
@@ -427,6 +569,32 @@ mod test {
         let signing_key_str = serde_yaml::to_string(&signing_key).unwrap();
 
         assert_eq!(signing_key_str, EXPECTED_SIGNING_KEY_STR);
+    }
+
+    #[test]
+    fn signature_display() {
+        const EXPECTED_SIGNATURE_STR: &'static str =
+            "ed25519_sig1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqzlcn38";
+        const SIGNATURE_BYTES: [u8; 64] = [0x20; 64];
+
+        let signature: Signature<&'static [u8], Ed25519> =
+            Signature(chain_crypto::Signature::from_binary(&SIGNATURE_BYTES).unwrap());
+
+        assert_eq!(signature.to_string(), EXPECTED_SIGNATURE_STR);
+    }
+
+    #[test]
+    fn signature_serde_human_readable() {
+        const EXPECTED_SIGNATURE_STR: &'static str =
+            "---\ned25519_sig1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqzlcn38";
+        const SIGNATURE_BYTES: [u8; 64] = [0x20; 64];
+
+        let signature: Signature<&'static [u8], Ed25519> =
+            Signature(chain_crypto::Signature::from_binary(&SIGNATURE_BYTES).unwrap());
+
+        let signature_str = serde_yaml::to_string(&signature).unwrap();
+
+        assert_eq!(signature_str, EXPECTED_SIGNATURE_STR);
     }
 
     quickcheck! {
@@ -473,6 +641,50 @@ mod test {
             };
 
             TestResult::from_bool(identifier_dec == identifier)
+        }
+
+        fn signature_display_and_from_str(signature: Signature<&'static [u8], Ed25519>) -> TestResult {
+            let signature_str = signature.to_string();
+            let signature_dec : Signature<&'static [u8], Ed25519> = match Signature::from_str(&signature_str) {
+                Err(error) => return TestResult::error(error.to_string()),
+                Ok(signature) => signature,
+            };
+
+            TestResult::from_bool(signature_dec == signature)
+        }
+
+        fn signature_serde_human_readable_encode_decode(signature: Signature<&'static [u8], Ed25519>) -> TestResult {
+            let signature_str = serde_yaml::to_string(&signature).unwrap();
+            let signature_dec : Signature<&'static [u8], Ed25519> = match serde_yaml::from_str(&signature_str) {
+                Err(error) => return TestResult::error(error.to_string()),
+                Ok(signature) => signature,
+            };
+
+            // here we compare the identifiers as there is no other way to compare the
+            // secret key (Eq is not implemented for secret -- with reason!).
+            TestResult::from_bool(signature_dec == signature)
+        }
+
+        fn signature_binary_readable_encode_decode(signature: Signature<&'static [u8], Ed25519>) -> TestResult {
+            let signature_str = bincode::serialize(&signature).unwrap();
+            let signature_dec : Signature<&'static [u8], Ed25519> = match bincode::deserialize(&signature_str) {
+                Err(error) => return TestResult::error(error.to_string()),
+                Ok(signature) => signature,
+            };
+
+            TestResult::from_bool(signature_dec == signature)
+        }
+
+        fn sign_verify(data: (Vec<u8>, KeyPair<Ed25519>)) -> TestResult {
+            let (data, key_pair) = data;
+            let identifier = key_pair.identifier();
+            let signing_key = key_pair.signing_key();
+
+            let signature = signing_key.sign(&data);
+            match signature.verify(&identifier, &data) {
+                chain_crypto::Verification::Success => TestResult::passed(),
+                chain_crypto::Verification::Failed => TestResult::error("signature verification failed"),
+            }
         }
     }
 }
