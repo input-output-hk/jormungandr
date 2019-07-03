@@ -8,7 +8,7 @@ use chain_addr::Discrimination;
 use crate::ledger::Error::{NotEnoughSignatures, TransactionHasTooManyOutputs};
 use crate::transaction::*;
 use crate::value::*;
-use crate::ledger::Entry;
+use crate::ledger::{Entry, Ledger};
 
 macro_rules! assert_err {
     ($left: expr, $right: expr) => {
@@ -306,7 +306,7 @@ pub fn iterate() {
         }
     }
 
-    let ledger2: Result<chain_impl_mockchain::ledger::Ledger, _> = ledger.iter().collect();
+    let ledger2: Result<Ledger, _> = ledger.iter().collect();
     let ledger2 = ledger2.unwrap();
 
     assert!(ledger == ledger2);
