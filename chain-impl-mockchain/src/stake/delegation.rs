@@ -7,7 +7,7 @@ use crate::transaction::AccountIdentifier;
 pub type PoolTable = Hamt<DefaultHasher, StakePoolId, StakePoolInfo>;
 
 /// A structure that keeps track of stake keys and stake pools.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct DelegationState {
     pub(crate) stake_pools: PoolTable,
 }

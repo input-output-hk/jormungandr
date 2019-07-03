@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 // static parameters, effectively this is constant in the parameter of the blockchain
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct LedgerStaticParameters {
     pub block0_initial_hash: HeaderHash,
     pub block0_start_time: config::Block0Date,
@@ -45,7 +45,7 @@ const MAX_TRANSACTION_WITNESSES_COUNT: usize = 256;
 ///
 /// The ledger can be easily and cheaply cloned despite containing reference
 /// to a lot of data (millions of utxos, thousands of accounts, ..)
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Ledger {
     pub(crate) utxos: utxo::Ledger<Address>,
     pub(crate) oldutxos: utxo::Ledger<legacy::OldAddress>,
@@ -57,6 +57,7 @@ pub struct Ledger {
     pub(crate) static_params: Arc<LedgerStaticParameters>,
     pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
+    pub(crate) era: TimeEra,
 }
 
 custom_error! {
@@ -125,10 +126,15 @@ custom_error! {
         Update { source: update::Error } = "Error or Invalid update",
         WrongChainLength { actual: ChainLength, expected: ChainLength } = "Wrong chain length, expected {expected} but received {actual}",
         NonMonotonicDate { block_date: BlockDate, chain_date: BlockDate } = "Non Monotonic date, chain date is at {chain_date} but the block is at {block_date}",
+        IncompleteLedger = "Ledger cannot be reconstructed from serialized state because of missing entries",
 }
 
 impl Ledger {
-    fn empty(settings: setting::Settings, static_params: LedgerStaticParameters) -> Self {
+    fn empty(
+        settings: setting::Settings,
+        static_params: LedgerStaticParameters,
+        era: TimeEra,
+    ) -> Self {
         Ledger {
             utxos: utxo::Ledger::new(),
             oldutxos: utxo::Ledger::new(),
@@ -140,6 +146,7 @@ impl Ledger {
             static_params: Arc::new(static_params),
             date: BlockDate::first(),
             chain_length: ChainLength(0),
+            era,
         }
     }
 
@@ -216,7 +223,7 @@ impl Ledger {
 
         let era = TimeEra::new(slot0, Epoch(0), slots_per_epoch);
 
-        let settings = setting::Settings::new(era).apply(&regular_ents)?;
+        let settings = setting::Settings::new().apply(&regular_ents)?;
 
         if settings.bft_leaders.is_empty() {
             return Err(Error::Block0 {
@@ -224,7 +231,7 @@ impl Ledger {
             });
         }
 
-        let mut ledger = Ledger::empty(settings, static_params);
+        let mut ledger = Ledger::empty(settings, static_params, era);
 
         let ledger_params = ledger.get_ledger_parameters();
 
@@ -541,6 +548,10 @@ impl Ledger {
         self.date
     }
 
+    pub fn era(&self) -> &TimeEra {
+        &self.era
+    }
+
     fn validate_utxo_total_value(&self) -> Result<(), Error> {
         let old_utxo_values = self.oldutxos.iter().map(|entry| entry.output.value);
         let new_utxo_values = self.utxos.iter().map(|entry| entry.output.value);
@@ -851,5 +862,235 @@ fn input_account_verify(
 
             Ok((ledger, mledger))
         }
+    }
+}
+
+pub enum Entry<'a> {
+    Globals(Globals),
+    Utxo(utxo::Entry<'a, Address>),
+    OldUtxo(utxo::Entry<'a, legacy::OldAddress>),
+    Account(
+        (
+            &'a account::Identifier,
+            &'a crate::accounting::account::AccountState<()>,
+        ),
+    ),
+    ConfigParam(ConfigParam),
+    UpdateProposal(
+        (
+            &'a crate::update::UpdateProposalId,
+            &'a crate::update::UpdateProposalState,
+        ),
+    ),
+    MultisigAccount(
+        (
+            &'a crate::multisig::Identifier,
+            &'a crate::accounting::account::AccountState<()>,
+        ),
+    ),
+    MultisigDeclaration(
+        (
+            &'a crate::multisig::Identifier,
+            &'a crate::multisig::Declaration,
+        ),
+    ),
+    StakePool(
+        (
+            &'a crate::stake::StakePoolId,
+            &'a crate::stake::StakePoolInfo,
+        ),
+    ),
+}
+
+pub struct Globals {
+    pub date: BlockDate,
+    pub chain_length: ChainLength,
+    pub static_params: LedgerStaticParameters,
+    pub era: TimeEra,
+}
+
+enum IterState<'a> {
+    Initial,
+    Utxo(utxo::Iter<'a, Address>),
+    OldUtxo(utxo::Iter<'a, legacy::OldAddress>),
+    Accounts(crate::accounting::account::Iter<'a, account::Identifier, ()>),
+    ConfigParams(Vec<ConfigParam>),
+    UpdateProposals(
+        std::collections::btree_map::Iter<
+            'a,
+            crate::update::UpdateProposalId,
+            crate::update::UpdateProposalState,
+        >,
+    ),
+    MultisigAccounts(crate::accounting::account::Iter<'a, crate::multisig::Identifier, ()>),
+    MultisigDeclarations(
+        imhamt::HamtIter<'a, crate::multisig::Identifier, crate::multisig::Declaration>,
+    ),
+    StakePools(imhamt::HamtIter<'a, crate::stake::StakePoolId, crate::stake::StakePoolInfo>),
+    Done,
+}
+
+pub struct LedgerIterator<'a> {
+    ledger: &'a Ledger,
+    state: IterState<'a>,
+}
+
+impl<'a> Iterator for LedgerIterator<'a> {
+    type Item = Entry<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.state {
+            IterState::Initial => {
+                self.state = IterState::Utxo(self.ledger.utxos.iter());
+                Some(Entry::Globals(Globals {
+                    date: self.ledger.date,
+                    chain_length: self.ledger.chain_length,
+                    static_params: (*self.ledger.static_params).clone(),
+                    era: self.ledger.era.clone(),
+                }))
+            }
+            IterState::Utxo(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::OldUtxo(self.ledger.oldutxos.iter());
+                    self.next()
+                }
+                Some(x) => Some(Entry::Utxo(x)),
+            },
+            IterState::OldUtxo(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::Accounts(self.ledger.accounts.iter());
+                    self.next()
+                }
+                Some(x) => Some(Entry::OldUtxo(x)),
+            },
+            IterState::Accounts(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::ConfigParams(self.ledger.settings.to_config_params().0);
+                    self.next()
+                }
+                Some(x) => Some(Entry::Account(x)),
+            },
+            IterState::ConfigParams(params) => {
+                if let Some(param) = params.pop() {
+                    Some(Entry::ConfigParam(param))
+                } else {
+                    self.state = IterState::UpdateProposals(self.ledger.updates.proposals.iter());
+                    self.next()
+                }
+            }
+            IterState::UpdateProposals(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::MultisigAccounts(self.ledger.multisig.iter_accounts());
+                    self.next()
+                }
+                Some(x) => Some(Entry::UpdateProposal(x)),
+            },
+            IterState::MultisigAccounts(iter) => match iter.next() {
+                None => {
+                    self.state =
+                        IterState::MultisigDeclarations(self.ledger.multisig.iter_declarations());
+                    self.next()
+                }
+                Some(x) => Some(Entry::MultisigAccount(x)),
+            },
+            IterState::MultisigDeclarations(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::StakePools(self.ledger.delegation.stake_pools.iter());
+                    self.next()
+                }
+                Some(x) => Some(Entry::MultisigDeclaration(x)),
+            },
+            IterState::StakePools(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::Done;
+                    self.next()
+                }
+                Some(x) => Some(Entry::StakePool(x)),
+            },
+            IterState::Done => None,
+        }
+    }
+}
+
+impl Ledger {
+    pub fn iter<'a>(&'a self) -> LedgerIterator<'a> {
+        LedgerIterator {
+            ledger: self,
+            state: IterState::Initial,
+        }
+    }
+}
+
+impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
+    fn from_iter<I: IntoIterator<Item = Entry<'a>>>(iter: I) -> Self {
+        let mut utxos = std::collections::HashMap::new();
+        let mut oldutxos = std::collections::HashMap::new();
+        let mut accounts = vec![];
+        let mut config_params = crate::message::ConfigParams::new();
+        let mut updates = update::UpdateState::new();
+        let mut multisig_accounts = vec![];
+        let mut multisig_declarations = vec![];
+        let delegation = DelegationState::new();
+        let mut globals = None;
+
+        for entry in iter {
+            match entry {
+                Entry::Globals(globals2) => {
+                    globals = Some(globals2);
+                    // FIXME: check duplicate
+                }
+                Entry::Utxo(entry) => {
+                    utxos
+                        .entry(entry.transaction_id)
+                        .or_insert(vec![])
+                        .push((entry.output_index, entry.output.clone()));
+                }
+                Entry::OldUtxo(entry) => {
+                    oldutxos
+                        .entry(entry.transaction_id)
+                        .or_insert(vec![])
+                        .push((entry.output_index, entry.output.clone()));
+                }
+                Entry::Account((account_id, account_state)) => {
+                    accounts.push((account_id.clone(), account_state.clone()));
+                }
+                Entry::ConfigParam(param) => {
+                    config_params.push(param.clone());
+                }
+                Entry::UpdateProposal((proposal_id, proposal_state)) => {
+                    updates
+                        .proposals
+                        .insert(proposal_id.clone(), proposal_state.clone());
+                }
+                Entry::MultisigAccount((account_id, account_state)) => {
+                    multisig_accounts.push((account_id.clone(), account_state.clone()));
+                }
+                Entry::MultisigDeclaration((id, decl)) => {
+                    multisig_declarations.push((id.clone(), decl.clone()));
+                }
+                Entry::StakePool((pool_id, pool_state)) => {
+                    delegation
+                        .stake_pools
+                        .insert(pool_id.clone(), pool_state.clone())
+                        .unwrap();
+                }
+            }
+        }
+
+        let globals = globals.ok_or(Error::IncompleteLedger)?;
+
+        Ok(Ledger {
+            utxos: utxos.into_iter().collect(),
+            oldutxos: oldutxos.into_iter().collect(),
+            accounts: accounts.into_iter().collect(),
+            settings: setting::Settings::new().apply(&config_params)?,
+            updates,
+            multisig: multisig::Ledger::restore(multisig_accounts, multisig_declarations),
+            delegation,
+            static_params: Arc::new(globals.static_params),
+            date: globals.date,
+            chain_length: globals.chain_length,
+            era: globals.era,
+        })
     }
 }

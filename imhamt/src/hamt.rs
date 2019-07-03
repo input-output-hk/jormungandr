@@ -202,3 +202,23 @@ impl<H: Default + Hasher, K: Eq + Hash, V> FromIterator<(K, V)> for Hamt<H, K, V
         h
     }
 }
+
+impl<H: Default + Hasher, K: Eq + Hash, V: PartialEq> PartialEq for Hamt<H, K, V> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.size() != other.size() {
+            return false;
+        }
+        for (k, v) in self.iter() {
+            if let Some(v2) = other.lookup(k) {
+                if v != v2 {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+impl<H: Default + Hasher, K: Eq + Hash, V: Eq> Eq for Hamt<H, K, V> {}

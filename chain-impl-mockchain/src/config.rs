@@ -60,7 +60,7 @@ pub enum ConfigParam {
 
 // Discriminants can NEVER be 1024 or higher
 #[derive(AsRefStr, Clone, Copy, Debug, EnumIter, EnumString, PartialEq)]
-enum Tag {
+pub enum Tag {
     #[strum(to_string = "discrimination")]
     Discrimination = 1,
     #[strum(to_string = "block0-date")]

@@ -1,11 +1,11 @@
-use imhamt::{Hamt, InsertError, RemoveError};
+use imhamt::{Hamt, HamtIter, InsertError, RemoveError};
 use std::collections::hash_map::DefaultHasher;
 
 use super::declaration::{Declaration, DeclarationError, Identifier};
-use crate::accounting::account::{self, SpendingCounter};
+use crate::accounting::account::{self, Iter, SpendingCounter};
 use crate::value::{Value, ValueError};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Ledger {
     // TODO : investigate about merging the declarations and the accounts in
     // one with an extension on the account::Ledger
@@ -46,6 +46,16 @@ impl Ledger {
         }
     }
 
+    pub fn restore(
+        accounts: Vec<(Identifier, account::AccountState<()>)>,
+        declarations: Vec<(Identifier, Declaration)>,
+    ) -> Self {
+        Ledger {
+            accounts: accounts.into_iter().collect(),
+            declarations: declarations.into_iter().collect(),
+        }
+    }
+
     /// Add a new multisig declaration into the ledger.
     ///
     /// If the identifier is already present, error out.
@@ -80,6 +90,14 @@ impl Ledger {
             accounts: new_accounts,
             declarations: self.declarations.clone(),
         })
+    }
+
+    pub fn iter_accounts<'a>(&'a self) -> Iter<'a, Identifier, ()> {
+        self.accounts.iter()
+    }
+
+    pub fn iter_declarations<'a>(&'a self) -> HamtIter<'a, Identifier, Declaration> {
+        self.declarations.iter()
     }
 
     /// If the account doesn't exist, or that the value would become negative, errors out.

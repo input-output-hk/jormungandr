@@ -44,7 +44,7 @@ impl From<RemoveError> for Error {
 }
 
 /// Hold all the individual outputs that remain unspent
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 struct TransactionUnspents<OutAddress>(BTreeMap<TransactionIndex, Output<OutAddress>>);
 
 impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
@@ -73,7 +73,7 @@ impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
 }
 
 /// Ledger of UTXO
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Ledger<OutAddress>(Hamt<DefaultHasher, TransactionId, TransactionUnspents<OutAddress>>);
 
 pub struct Iter<'a, V> {
@@ -241,5 +241,22 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
         } else {
             Ok((Ledger(self.0.replace(tid, treemap)?.0), outputs))
         }
+    }
+}
+
+impl<OutAddress: Clone>
+    std::iter::FromIterator<(TransactionId, Vec<(TransactionIndex, Output<OutAddress>)>)>
+    for Ledger<OutAddress>
+{
+    fn from_iter<
+        I: IntoIterator<Item = (TransactionId, Vec<(TransactionIndex, Output<OutAddress>)>)>,
+    >(
+        iter: I,
+    ) -> Self {
+        let mut ledger = Ledger::new();
+        for (tid, outputs) in iter {
+            ledger = ledger.add(&tid, &outputs).unwrap();
+        }
+        ledger
     }
 }

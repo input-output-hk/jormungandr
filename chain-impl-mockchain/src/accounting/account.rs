@@ -37,12 +37,12 @@ impl From<InsertError> for LedgerError {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct AccountState<Extra> {
-    counter: SpendingCounter,
-    delegation: Option<StakePoolId>,
-    value: Value,
-    extra: Extra,
+    pub counter: SpendingCounter,
+    pub delegation: Option<StakePoolId>,
+    pub value: Value,
+    pub extra: Extra,
 }
 
 impl<Extra> AccountState<Extra> {
@@ -149,9 +149,9 @@ impl From<u32> for SpendingCounter {
     }
 }
 
-impl Into<u32> for SpendingCounter {
-    fn into(self) -> u32 {
-        self.0
+impl From<SpendingCounter> for u32 {
+    fn from(v: SpendingCounter) -> u32 {
+        v.0
     }
 }
 
@@ -166,7 +166,7 @@ impl<'a, ID, Extra> Iterator for Iter<'a, ID, Extra> {
 }
 
 /// The public ledger of all accounts associated with their current state
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Ledger<ID: Hash + Eq, Extra>(Hamt<DefaultHasher, ID, AccountState<Extra>>);
 
 impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
@@ -270,5 +270,13 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
 
     pub fn iter<'a>(&'a self) -> Iter<'a, ID, Extra> {
         Iter(self.0.iter())
+    }
+}
+
+impl<ID: Clone + Eq + Hash, Extra: Clone> std::iter::FromIterator<(ID, AccountState<Extra>)>
+    for Ledger<ID, Extra>
+{
+    fn from_iter<I: IntoIterator<Item = (ID, AccountState<Extra>)>>(iter: I) -> Self {
+        Ledger(Hamt::from_iter(iter))
     }
 }
