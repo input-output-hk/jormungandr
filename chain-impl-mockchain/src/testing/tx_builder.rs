@@ -1,20 +1,19 @@
 use super::address::AddressData;
-use chain_addr::{Address, Kind};
-use chain_impl_mockchain::{
+use crate::{
     account::SpendingCounter,
     block::HeaderHash,
     fee::LinearFee,
     key::EitherEd25519SecretKey,
+    ledger::OutputAddress,
     message::Message,
-    transaction::{
-        AuthenticatedTransaction, Input, NoExtra, Output, Transaction, UtxoPointer, Witness,
-    },
+    transaction::{AuthenticatedTransaction, Input, NoExtra, Output, Transaction, Witness},
     txbuilder::{OutputPolicy, TransactionBuilder as Builder},
 };
+use chain_addr::{Address, Kind};
 
 pub struct TransactionBuilder {
     inputs: Vec<Input>,
-    outputs: Vec<Output<Address>>,
+    outputs: Vec<OutputAddress>,
 }
 
 impl TransactionBuilder {
@@ -25,17 +24,22 @@ impl TransactionBuilder {
         }
     }
 
+    pub fn with_inputs<'a>(&'a mut self, inputs: Vec<Input>) -> &'a mut Self {
+        self.inputs.extend(inputs.iter().cloned());
+        self
+    }
+
     pub fn with_input<'a>(&'a mut self, input: Input) -> &'a mut Self {
         self.inputs.push(input);
         self
     }
 
-    pub fn with_output<'a>(&'a mut self, output: Output<Address>) -> &'a mut Self {
+    pub fn with_output<'a>(&'a mut self, output: OutputAddress) -> &'a mut Self {
         self.outputs.push(output);
         self
     }
 
-    pub fn with_outputs<'a>(&'a mut self, outputs: Vec<Output<Address>>) -> &'a mut Self {
+    pub fn with_outputs<'a>(&'a mut self, outputs: Vec<OutputAddress>) -> &'a mut Self {
         self.outputs.extend(outputs.iter().cloned());
         self
     }
@@ -99,6 +103,17 @@ impl TransactionAuthenticator {
         }
     }
 
+    pub fn with_witnesses<'a>(
+        &'a mut self,
+        block0: &HeaderHash,
+        addreses_data: &'a Vec<AddressData>,
+    ) -> &'a mut Self {
+        for address in addreses_data {
+            self.with_witness(&block0, &address);
+        }
+        self
+    }
+
     pub fn with_witness<'a>(
         &'a mut self,
         block0: &HeaderHash,
@@ -140,18 +155,6 @@ impl TransactionAuthenticator {
             secret_key,
         ));
         self
-    }
-
-    pub fn as_utxos(&self) -> Vec<UtxoPointer> {
-        let mut utxos = Vec::new();
-        for (i, output) in self.transaction.outputs.iter().enumerate() {
-            utxos.push(UtxoPointer {
-                transaction_id: self.transaction.hash().clone(),
-                output_index: i as u8,
-                value: output.value.clone(),
-            });
-        }
-        utxos
     }
 
     pub fn as_message(&self) -> Message {
