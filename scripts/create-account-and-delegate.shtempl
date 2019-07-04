@@ -37,21 +37,21 @@ fi
 
 ### HELPERS
 
-function getTip {
+getTip() {
     echo $($CLI rest v0 tip get -h "${REST_URL}")
 }
 
-function waitNewBlockCreated {
+waitNewBlockCreated() {
     COUNTER=${TIMEOUT_NO_OF_BLOCKS}
     echo "  ##Waiting for new block to be created (timeout = $COUNTER blocks = $(( $COUNTER*$SLOT_DURATION ))s)"
     initialTip=$(getTip)
     actualTip=$(getTip)
 
-    while [[ ${actualTip} = ${initialTip} ]]; do
+    while [ "${actualTip}" = "${initialTip}" ]; do
         sleep ${SLOT_DURATION}
         actualTip=$(getTip)
-        let COUNTER=COUNTER-1
-        if [[ ${COUNTER} -lt 1 ]]; then
+        COUNTER=$((COUNTER-1))
+        if [ ${COUNTER} -lt 1 ]; then
             echo "  ##ERROR: Waited $(( $COUNTER*$SLOT_DURATION ))s secs ($COUNTER*$SLOT_DURATION) and no new block created"
             exit 1
         fi
