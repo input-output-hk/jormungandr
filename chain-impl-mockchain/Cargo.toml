@@ -39,6 +39,5 @@ chain-crypto = { path = "../chain-crypto", features=["property-test-api"]}
 chain-addr = { path = "../chain-addr", features=["property-test-api"]}
 ed25519-bip32 = "0.1"
 rand_chacha = "0.1"
-rand = "0.6.0"
 lazy_static = "1.3.0"
 rand = "0.6"

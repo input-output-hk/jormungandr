@@ -1,72 +1,62 @@
+use super::ArbitraryAddressDataVec;
 use crate::ledger::Ledger;
-use crate::testing::arbitrary::transaction::rand::prelude::SliceRandom;
 use crate::transaction::{Input, Output};
 use crate::utxo::{self, Entry};
 use crate::{
     testing::address::{AddressData, AddressDataValue},
+    testing::arbitrary::AverageValue,
     value::*,
 };
 use chain_addr::Address;
 use quickcheck::{Arbitrary, Gen};
+use std::cmp;
+use std::collections::HashSet;
 use std::iter;
 
-extern crate rand;
-use super::ArbitraryAddressDataVec;
-use rand::Rng;
-
 #[derive(Clone, Debug)]
-pub struct AribtraryValidTransactionData {
+pub struct ArbitraryValidTransactionData {
     pub addresses: Vec<AddressDataValue>,
     input_addresses: Vec<AddressDataValue>,
     output_addresses: Vec<AddressDataValue>,
 }
 
-impl Arbitrary for AribtraryValidTransactionData {
+impl Arbitrary for ArbitraryValidTransactionData {
     fn arbitrary<G: Gen>(gen: &mut G) -> Self {
-        AribtraryValidTransactionDataBuilder::new(ArbitraryAddressDataVec::arbitrary(gen).0).build()
-    }
-}
-
-pub struct AribtraryValidTransactionDataBuilder {
-    source: Vec<AddressData>,
-}
-
-impl AribtraryValidTransactionDataBuilder {
-    pub fn new(source: Vec<AddressData>) -> Self {
-        AribtraryValidTransactionDataBuilder { source: source }
-    }
-
-    pub fn build(&self) -> AribtraryValidTransactionData {
-        let values: Vec<Value> = Self::generate_random_values()
-            .take(self.source.len())
+        use ArbitraryValidTransactionData as tx_data;
+        let source = ArbitraryAddressDataVec::arbitrary(gen);
+        let values: Vec<Value> = iter::from_fn(|| Some(AverageValue::arbitrary(gen)))
+            .map(|x| x.into())
+            .take(source.0.len())
             .collect();
-
         let addresses_values: Vec<AddressDataValue> =
-            Self::zip_addresses_and_values(&self.source, values);
-        let input_addresses_values = Self::choose_random_subset(&addresses_values);
-        let total_input_value = Self::sum_up_funds(
-            input_addresses_values
-                .iter()
-                .cloned()
-                .map(|x| x.value)
-                .collect(),
-        );
+            tx_data::zip_addresses_and_values(&source.0, values);
+        let input_addresses_values = tx_data::choose_random_subset(&addresses_values, gen);
+        let total_input_value = input_addresses_values
+            .iter()
+            .cloned()
+            .map(|x| x.value.0)
+            .sum();
         let output_addresses_values =
-            Self::choose_random_output_subset(&addresses_values, total_input_value);
-        AribtraryValidTransactionData::new(
+            tx_data::choose_random_output_subset(&addresses_values, total_input_value, gen);
+        ArbitraryValidTransactionData::new(
             addresses_values,
             input_addresses_values,
             output_addresses_values,
         )
     }
+}
 
-    fn generate_random_values() -> impl Iterator<Item = Value> {
-        iter::from_fn(|| Some(Self::generate_single_random_value(1, 200)))
-    }
-
-    fn generate_single_random_value(lower_bound: u64, upper_bound: u64) -> Value {
-        let random_number: u64 = rand::thread_rng().gen_range(lower_bound, upper_bound);
-        Value(random_number)
+impl ArbitraryValidTransactionData {
+    pub fn new(
+        addresses: Vec<AddressDataValue>,
+        input_addresses_values: Vec<AddressDataValue>,
+        output_addresses_values: Vec<AddressDataValue>,
+    ) -> Self {
+        ArbitraryValidTransactionData {
+            addresses: addresses,
+            input_addresses: input_addresses_values,
+            output_addresses: output_addresses_values,
+        }
     }
 
     fn zip_addresses_and_values(
@@ -81,43 +71,53 @@ impl AribtraryValidTransactionDataBuilder {
             .collect()
     }
 
-    fn sum_up_funds(values: Vec<Value>) -> u64 {
-        values.iter().map(|x| x.0).sum()
-    }
-
-    fn choose_random_subset(source: &Vec<AddressDataValue>) -> Vec<AddressDataValue> {
-        let mut rng = rand::thread_rng();
+    fn choose_random_subset<G: Gen>(
+        source: &Vec<AddressDataValue>,
+        gen: &mut G,
+    ) -> Vec<AddressDataValue> {
         let lower_bound = 1;
         let upper_bound = source.len();
-        if upper_bound <= lower_bound {
-            return source.iter().cloned().collect();
+        let mut arbitrary_indexes = HashSet::new();
+
+        // set limit between lower_bound and upper_bound
+        let random_length = cmp::max(usize::arbitrary(gen) % upper_bound, lower_bound);
+
+        // choose arbitrary non-repertive indexes
+        while arbitrary_indexes.len() < random_length {
+            let random_number = usize::arbitrary(gen) % upper_bound;
+            arbitrary_indexes.insert(random_number);
         }
-        let random_length: usize = rng.gen_range(lower_bound, upper_bound);
-        let source = source
-            .choose_multiple(&mut rng, random_length)
-            .cloned()
-            .collect();
-        println!("{:?}", source);
+
+        // create sub collecion from arbitrary indexes
         source
+            .iter()
+            .cloned()
+            .enumerate()
+            .filter(|(i, _)| arbitrary_indexes.contains(i))
+            .map(|(_, e)| e)
+            .collect()
     }
 
-    fn choose_random_output_subset(
+    fn choose_random_output_subset<G: Gen>(
         source: &Vec<AddressDataValue>,
         total_input_funds: u64,
+        gen: &mut G,
     ) -> Vec<AddressDataValue> {
-        let mut outputs: Vec<AddressData>;
-        let mut funds_per_output: u64;
-        loop {
-            outputs = Self::choose_random_subset(source)
+        let mut outputs: Vec<AddressData> = Vec::new();
+        let mut funds_per_output: u64 = 0;
+
+        // keep choosing random subset from source until each output will recieve at least 1 coin
+        // since zero output is not allowed
+        // TODO: randomize funds per output
+        while funds_per_output == 0 {
+            outputs = Self::choose_random_subset(source, gen)
                 .iter()
                 .cloned()
                 .map(|x| x.address_data)
                 .collect();
             funds_per_output = total_input_funds / outputs.len() as u64;
-            if funds_per_output > 0 {
-                break;
-            }
         }
+
         let output_address_len = outputs.len() as u64;
         let remainder = total_input_funds - (output_address_len * funds_per_output);
         Self::distribute_values_for_outputs(outputs, funds_per_output, remainder)
@@ -136,20 +136,6 @@ impl AribtraryValidTransactionDataBuilder {
             .collect();
         outputs[0].value = Value(funds_per_output + remainder);
         outputs
-    }
-}
-
-impl AribtraryValidTransactionData {
-    pub fn new(
-        addresses: Vec<AddressDataValue>,
-        input_addresses_values: Vec<AddressDataValue>,
-        output_addresses_values: Vec<AddressDataValue>,
-    ) -> Self {
-        AribtraryValidTransactionData {
-            addresses: addresses,
-            input_addresses: input_addresses_values,
-            output_addresses: output_addresses_values,
-        }
     }
 
     fn find_utxo_for_address<'a>(
