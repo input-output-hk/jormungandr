@@ -79,7 +79,7 @@ impl Settings {
                     new_state.epoch_stability_depth = *d;
                 }
                 ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(d) => {
-                    new_state.active_slots_coeff = ActiveSlotsCoeff(*d);
+                    new_state.active_slots_coeff = ActiveSlotsCoeff::try_from(*d)?;
                 }
                 ConfigParam::MaxNumberOfTransactionsPerBlock(d) => {
                     new_state.max_number_of_transactions_per_block = *d;
@@ -126,7 +126,7 @@ impl Settings {
         params.push(ConfigParam::SlotDuration(self.slot_duration));
         params.push(ConfigParam::EpochStabilityDepth(self.epoch_stability_depth));
         params.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
-            self.active_slots_coeff.0,
+            self.active_slots_coeff.into(),
         ));
         params.push(ConfigParam::MaxNumberOfTransactionsPerBlock(
             self.max_number_of_transactions_per_block,

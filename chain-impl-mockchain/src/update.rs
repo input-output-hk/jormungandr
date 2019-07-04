@@ -1,6 +1,8 @@
 use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::date::BlockDate;
-use crate::{leadership::bft, message::config::ConfigParams, setting::Settings};
+use crate::leadership::{bft, genesis::ActiveSlotsCoeffError};
+use crate::message::config::ConfigParams;
+use crate::setting::Settings;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Verification};
@@ -154,6 +156,7 @@ pub enum Error {
     DuplicateVote(UpdateProposalId, UpdateVoterId),
     ReadOnlySetting,
     BadBftSlotsRatio(crate::milli::Milli),
+    BadConsensusGenesisPraosActiveSlotsCoeff(ActiveSlotsCoeffError),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -207,10 +210,22 @@ impl std::fmt::Display for Error {
             Error::BadBftSlotsRatio(m) => {
                 write!(f, "Cannot set BFT slots ratio to invalid value {}", m)
             }
+            Error::BadConsensusGenesisPraosActiveSlotsCoeff(err) => write!(
+                f,
+                "Cannot set consensus genesis praos active slots coefficient: {}",
+                err
+            ),
         }
     }
 }
+
 impl std::error::Error for Error {}
+
+impl From<ActiveSlotsCoeffError> for Error {
+    fn from(err: ActiveSlotsCoeffError) -> Self {
+        Error::BadConsensusGenesisPraosActiveSlotsCoeff(err)
+    }
+}
 
 pub type UpdateProposalId = crate::message::MessageId;
 pub type UpdateVoterId = bft::LeaderId;
