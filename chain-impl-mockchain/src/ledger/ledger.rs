@@ -58,6 +58,7 @@ pub struct Ledger {
     pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
     pub(crate) era: TimeEra,
+    pub(crate) pot: Value,
 }
 
 custom_error! {
@@ -127,6 +128,7 @@ custom_error! {
         WrongChainLength { actual: ChainLength, expected: ChainLength } = "Wrong chain length, expected {expected} but received {actual}",
         NonMonotonicDate { block_date: BlockDate, chain_date: BlockDate } = "Non Monotonic date, chain date is at {chain_date} but the block is at {block_date}",
         IncompleteLedger = "Ledger cannot be reconstructed from serialized state because of missing entries",
+        PotValueInvalid { error: ValueError } = "Ledger pot value invalid: {error}",
 }
 
 impl Ledger {
@@ -147,6 +149,7 @@ impl Ledger {
             date: BlockDate::first(),
             chain_length: ChainLength(0),
             era,
+            pot: Value::zero(),
         }
     }
 
@@ -564,7 +567,8 @@ impl Ledger {
         let all_utxo_values = old_utxo_values
             .chain(new_utxo_values)
             .chain(Some(account_value))
-            .chain(Some(multisig_value));
+            .chain(Some(multisig_value))
+            .chain(Some(self.pot));
         Value::sum(all_utxo_values).map_err(|_| Error::Block0 {
             source: Block0Error::UtxoTotalValueTooBig,
         })?;
@@ -678,6 +682,9 @@ fn internal_apply_transaction(
     ledger.utxos = new_utxos;
     ledger.accounts = new_accounts;
     ledger.multisig = new_multisig;
+
+    // 5. add fee to pot
+    ledger.pot = (ledger.pot + fee).map_err(|error| Error::PotValueInvalid { error })?;
 
     Ok(ledger)
 }
@@ -1091,6 +1098,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
             date: globals.date,
             chain_length: globals.chain_length,
             era: globals.era,
+            pot: Value::zero(),
         })
     }
 }
