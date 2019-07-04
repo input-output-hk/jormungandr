@@ -47,8 +47,12 @@ impl GenesisLeaderSelection {
         }
     }
 
-    pub fn distribution(&mut self) -> &mut StakeDistribution {
-        &mut self.distribution
+    pub fn distribution(&self) -> &StakeDistribution {
+        &self.distribution
+    }
+
+    pub fn nodes(&self) -> &stake::PoolTable {
+        &self.nodes
     }
 
     pub fn leader(
@@ -226,7 +230,7 @@ mod tests {
         let mut selection = GenesisLeaderSelection::new(0, &ledger);
 
         for (pool_id, (_, _, value)) in &pools {
-            selection.distribution().to_pools.insert(
+            selection.distribution.to_pools.insert(
                 pool_id.clone(),
                 PoolStakeDistribution {
                     total_stake: *value,
