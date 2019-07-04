@@ -7,8 +7,9 @@ use chain_core::property::{Deserialize, Serialize};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::key::Hash;
-use chain_impl_mockchain::message::Message;
 
+use chain_impl_mockchain::leadership::LeadershipConsensus;
+use chain_impl_mockchain::message::Message;
 use chain_storage::store;
 
 use bytes::{Bytes, IntoBuf};
@@ -147,5 +148,40 @@ pub struct QueryParams {
 impl QueryParams {
     pub fn get_count(&self) -> usize {
         self.count.unwrap_or(1).min(MAX_COUNT)
+    }
+}
+
+pub fn get_stake_distribution(context: State<Context>) -> Result<impl Responder, Error> {
+    let blockchain = context.blockchain.lock_read();
+
+    // TODO don't access storage layer, but instead get the date somewhere else
+    let (block, _) = blockchain
+        .get_block_tip()
+        .map_err(|e| ErrorInternalServerError(e))?;
+    let last_epoch = block.header.block_date().epoch;
+    // ******
+
+    let mleadership = blockchain.leaderships.get(last_epoch);
+    match mleadership {
+        None => Ok(Json(json!({ "epoch": last_epoch }))),
+        Some(mut leadership) => match leadership.next().map(|(_, l)| l.consensus()) {
+            Some(LeadershipConsensus::GenesisPraos(gp)) => {
+                let stake = gp.distribution();
+                let pools: Vec<_> = stake
+                    .to_pools
+                    .iter()
+                    .map(|(h, p)| (format!("{}", h), p.total_stake.0))
+                    .collect();
+                Ok(Json(json!({
+                    "epoch": last_epoch,
+                    "stake": {
+                        "unassigned": stake.unassigned.0,
+                        "dangling": stake.dangling.0,
+                        "pools": pools,
+                    }
+                })))
+            }
+            _ => Ok(Json(json!({ "epoch": last_epoch }))),
+        },
     }
 }

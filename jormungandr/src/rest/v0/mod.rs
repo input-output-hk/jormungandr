@@ -17,6 +17,7 @@ pub fn app(context: handlers::Context) -> App<handlers::Context> {
         .resource("/fragment/logs", |r| {
             r.get().with(handlers::get_message_logs)
         })
+        .resource("/stake", |r| r.get().with(handlers::get_stake_distribution))
         .resource("/message", |r| r.post().a(handlers::post_message))
         .resource("/node/stats", |r| r.get().with(handlers::get_stats_counter))
         .resource("/tip", |r| r.get().with(handlers::get_tip))
