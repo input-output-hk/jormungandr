@@ -64,7 +64,7 @@ pub enum LeaderOutput {
     GenesisPraos(genesis::Witness),
 }
 
-enum LeadershipConsensus {
+pub enum LeadershipConsensus {
     Bft(bft::BftLeaderSelection),
     GenesisPraos(genesis::GenesisLeaderSelection),
 }
@@ -171,6 +171,11 @@ impl Leadership {
     #[inline]
     pub fn era(&self) -> &TimeEra {
         &self.era
+    }
+
+    /// get the consensus associated with the `Leadership`
+    pub fn consensus(&self) -> &LeadershipConsensus {
+        &self.inner
     }
 
     /// access the ledger parameter for the current leadership
