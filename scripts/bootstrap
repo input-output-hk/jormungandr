@@ -1,6 +1,8 @@
 #!/bin/sh
 #
-# The script creates a bft or genesis configuration with 1 faucet with a hardcoded amount
+# The script creates a bft or genesis configuration with 1 faucet with a hardcoded amount.
+# It also configure a fixed account that is not exposed that prevent emptying the source of
+# stake in the system
 #
 # See help (-h) for synopsis
 #
@@ -26,7 +28,8 @@ FEE_CERTIFICATE=0
 FEE_COEFFICIENT=0
 SLOT_DURATION=10
 
-FAUCET_AMOUNT=1000000000
+FAUCET_AMOUNT=1000000000000
+FIXED_AMOUNT=1000000000000
 ADDRTYPE="--testing"
 
 CONSENSUS="genesis_praos"
@@ -143,6 +146,11 @@ FAUCET_SK=$($CLI key generate --type=Ed25519Extended)
 FAUCET_PK=$(echo ${FAUCET_SK} | $CLI key to-public)
 FAUCET_ADDR=$($CLI address account ${ADDRTYPE} ${FAUCET_PK})
 
+# fixed account
+FIXED_SK=$($CLI key generate --type=Ed25519Extended)
+FIXED_PK=$(echo ${FIXED_SK} | $CLI key to-public)
+FIXED_ADDR=$($CLI address account ${ADDRTYPE} ${FIXED_PK})
+
 # leader
 LEADER_SK=$($CLI key generate --type=Ed25519)
 LEADER_PK=$(echo ${LEADER_SK} | $CLI key to-public)
@@ -159,6 +167,7 @@ STAKE_KEY=${FAUCET_SK}
 STAKE_KEY_PUB=${FAUCET_PK}
 
 echo ${STAKE_KEY} > ${TMPDIR}/stake_key.sk
+echo ${FIXED_SK} > ${TMPDIR}/fixed_key.sk
 echo ${POOL_VRF_SK} > ${TMPDIR}/stake_pool.vrf.sk
 echo ${POOL_KES_SK} > ${TMPDIR}/stake_pool.kes.sk
 
@@ -174,9 +183,15 @@ STAKE_POOL_CERT=$(cat ${TMPDIR}/stake_pool.signcert)
 
 $CLI certificate new stake-delegation \
     ${STAKE_POOL_ID} \
-    ${STAKE_KEY_PUB} > ${TMPDIR}/stake_delegation.cert
-cat ${TMPDIR}/stake_delegation.cert | $CLI certificate sign ${TMPDIR}/stake_key.sk > ${TMPDIR}/stake_delegation.signcert
-STAKE_DELEGATION_CERT=$(cat ${TMPDIR}/stake_delegation.signcert)
+    ${FAUCET_PK} > ${TMPDIR}/stake_delegation1.cert
+cat ${TMPDIR}/stake_delegation1.cert | $CLI certificate sign ${TMPDIR}/stake_key.sk > ${TMPDIR}/stake_delegation1.signcert
+STAKE_DELEGATION_CERT1=$(cat ${TMPDIR}/stake_delegation1.signcert)
+
+$CLI certificate new stake-delegation \
+    ${STAKE_POOL_ID} \
+    ${FIXED_PK} > ${TMPDIR}/stake_delegation2.cert
+cat ${TMPDIR}/stake_delegation2.cert | $CLI certificate sign ${TMPDIR}/fixed_key.sk > ${TMPDIR}/stake_delegation2.signcert
+STAKE_DELEGATION_CERT2=$(cat ${TMPDIR}/stake_delegation2.signcert)
 
 
 cat << EOF > ${CONFIG_PATH}/genesis.yaml
@@ -200,8 +215,11 @@ initial:
   - fund:
       - address: ${FAUCET_ADDR}
         value: ${FAUCET_AMOUNT}
+      - address: ${FIXED_ADDR}
+        value: ${FIXED_AMOUNT}
   - cert: ${STAKE_POOL_CERT}
-  - cert: ${STAKE_DELEGATION_CERT}
+  - cert: ${STAKE_DELEGATION_CERT1}
+  - cert: ${STAKE_DELEGATION_CERT2}
 EOF
 
 cat << EOF > ${SECRET_PATH}/pool-secret1.yaml

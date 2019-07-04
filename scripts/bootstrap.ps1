@@ -31,7 +31,8 @@ $FEE_COEFFICIENT=0
 $SLOT_DURATION=10
 $SLOT_PER_EPOCH=5000
 
-$FAUCET_AMOUNT=1000000000
+$FAUCET_AMOUNT=1000000000000
+$FIXED_AMOUNT=1000000000000
 $ADDRTYPE="--testing"
 
 $CONSENSUS="genesis_praos"
@@ -178,6 +179,12 @@ if([System.IO.File]::Exists($MYCLI)){
 	$FAUCET_ADDR= & $MYCLI address account ${ADDRTYPE} ${FAUCET_PK}
 	write-host "FAUCET_ADDR ($FAUCET_ADDR)" -ForegroundColor DarkGreen
 	write-host "Faucet keys: done" -ForegroundColor DarkGreen
+
+	# fixed account
+	$FIXED_SK = & $MYCLI key generate --type=Ed25519Extended
+	$FIXED_PK = echo $FIXED_SK | & $MYCLI key to-public
+	$FIXED_ADDR= & $MYCLI address account ${ADDRTYPE} ${FIXED_PK}
+	write-host "Fixed keys: done" -ForegroundColor DarkGreen
 	
 	# leader
 	$LEADER_SK = & $MYCLI key generate --type=Ed25519
@@ -199,6 +206,7 @@ if([System.IO.File]::Exists($MYCLI)){
 	$STAKE_KEY=$FAUCET_SK
 	$STAKE_KEY_PUB=$FAUCET_PK
 	echo $STAKE_KEY | Out-File $WORKDIR"\"$SECRET_PATH\stake_key.sk -Encoding Oem
+	echo $FIXED_SK | Out-File $WORKDIR"\"$SECRET_PATH\fixed_key.sk -Encoding Oem
 	echo $POOL_VRF_SK | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.vrf.sk -Encoding Oem
 	echo $POOL_KES_SK | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.kes.sk -Encoding Oem
 	write-host "stake-pool vrf and kes keys: done" -ForegroundColor DarkGreen
@@ -210,11 +218,17 @@ if([System.IO.File]::Exists($MYCLI)){
 	$STAKE_POOL_ID = echo $STAKEPOOLCERTSIGN | & $MYCLI certificate get-stake-pool-id
 	write-host "stake-pool-registration certificate: done" -ForegroundColor DarkGreen
 
-	$STAKEDELEGATION = & $MYCLI certificate new stake-delegation $STAKE_POOL_ID $STAKE_KEY_PUB 
-	echo $STAKEDELEGATION | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation.cert -Encoding Oem
-	$STAKEDELEGATIONSIGN = $STAKEDELEGATION | & $MYCLI certificate sign $WORKDIR"\"$SECRET_PATH\stake_key.sk 
-	echo $STAKEDELEGATIONSIGN | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation.signcert -Encoding Oem
-	write-host "stake-pool-delegation certificate: done" -ForegroundColor DarkGreen
+	$STAKEDELEGATION1 = & $MYCLI certificate new stake-delegation $STAKE_POOL_ID $FAUCET_PK 
+	echo $STAKEDELEGATION1 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation1.cert -Encoding Oem
+	$STAKEDELEGATIONSIGN1 = $STAKEDELEGATION1 | & $MYCLI certificate sign $WORKDIR"\"$SECRET_PATH\stake_key.sk 
+	echo $STAKEDELEGATIONSIGN1 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation1.signcert -Encoding Oem
+	write-host "stake-pool-delegation certificate 1: done" -ForegroundColor DarkGreen
+
+	$STAKEDELEGATION2 = & $MYCLI certificate new stake-delegation $STAKE_POOL_ID $FIXED_PK
+	echo $STAKEDELEGATION2 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation2.cert -Encoding Oem
+	$STAKEDELEGATIONSIGN2 = $STAKEDELEGATION2 | & $MYCLI certificate sign $WORKDIR"\"$SECRET_PATH\fixed_key.sk 
+	echo $STAKEDELEGATIONSIGN2 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation2.signcert -Encoding Oem
+	write-host "stake-pool-delegation certificate 2: done" -ForegroundColor DarkGreen
 
 
 	if(!$RemoveConfig) {
@@ -238,8 +252,11 @@ initial:
   - fund:
       - address: $FAUCET_ADDR
         value: $FAUCET_AMOUNT
+      - address: $FIXED_ADDR
+        value: $FIXED_AMOUNT
   - cert: $STAKEPOOLCERTSIGN
-  - cert: $STAKEDELEGATIONSIGN" | Out-File $WORKDIR"\"$CONFIG_PATH\genesis.yaml -Encoding Oem
+  - cert: $STAKEDELEGATIONSIGN1
+  - cert: $STAKEDELEGATIONSIGN2" | Out-File $WORKDIR"\"$CONFIG_PATH\genesis.yaml -Encoding Oem
 		write-host "genesis file generated: done" -ForegroundColor DarkGreen
 
 "storage: ""$STORAGE_PATH""
