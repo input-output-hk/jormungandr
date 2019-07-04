@@ -136,10 +136,14 @@ impl BlockService for NodeService {
 
     fn pull_headers(
         &mut self,
-        _from: &[Self::BlockId],
-        _to: &Self::BlockId,
+        from: &[Self::BlockId],
+        to: &Self::BlockId,
     ) -> Self::PullHeadersFuture {
-        unimplemented!()
+        let (handle, stream) = stream_reply(self.logger().clone());
+        self.channels
+            .client_box
+            .send_to(ClientMsg::GetHeadersRange(from.into(), *to, handle));
+        future::ok(stream)
     }
 
     fn pull_headers_to_tip(&mut self, _from: &[Self::BlockId]) -> Self::PullHeadersFuture {
