@@ -1,5 +1,52 @@
 # Change Log
 
+## [v0.2.4](https://github.com/input-output-hk/jormungandr/tree/v0.2.4) (2019-07-04)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.2.3...v0.2.4)
+
+**Implemented enhancements:**
+
+- Improve bootstrap script to prevent a non-stake case to appear [\#604](https://github.com/input-output-hk/jormungandr/pull/604)
+- Rest stake distribution [\#603](https://github.com/input-output-hk/jormungandr/pull/603)
+- More graceful error handling in blockchain task [\#588](https://github.com/input-output-hk/jormungandr/pull/588)
+- More logging improvements; add output to stdout [\#587](https://github.com/input-output-hk/jormungandr/pull/587)
+
+**Fixed bugs:**
+
+- block0 initial funds should accept multiple entries [\#579](https://github.com/input-output-hk/jormungandr/issues/579)
+- jcli add-certificate does not take fees into account [\#499](https://github.com/input-output-hk/jormungandr/issues/499)
+
+**Closed issues:**
+
+- bootstrap script error [\#602](https://github.com/input-output-hk/jormungandr/issues/602)
+- v0.2.3 Cannot Compile \(Experimental Alpine Docker\) [\#590](https://github.com/input-output-hk/jormungandr/issues/590)
+- cargo install compile fail [\#581](https://github.com/input-output-hk/jormungandr/issues/581)
+- add-output results in invalid internal encoding error [\#577](https://github.com/input-output-hk/jormungandr/issues/577)
+- Documentation : empty faucet warning \(?\) [\#564](https://github.com/input-output-hk/jormungandr/issues/564)
+- bootstrap error in genesis\_praos, genesis file corrupted [\#562](https://github.com/input-output-hk/jormungandr/issues/562)
+- Documentation: Improve the documentation related to Staking&Delegation  [\#530](https://github.com/input-output-hk/jormungandr/issues/530)
+- documentation: Add a consolidated/consistent/easier way for starting the node [\#515](https://github.com/input-output-hk/jormungandr/issues/515)
+- documentation: improve the documentation for 'jcli rest v0 account get' [\#484](https://github.com/input-output-hk/jormungandr/issues/484)
+
+**Merged pull requests:**
+
+- Finalize Divide and Reuse [\#600](https://github.com/input-output-hk/jormungandr/pull/600)
+- More changes in the jormungandr-lib API [\#599](https://github.com/input-output-hk/jormungandr/pull/599)
+- take into account the certificate when computing the fees [\#598](https://github.com/input-output-hk/jormungandr/pull/598)
+- Use certificate from jormungandr lib [\#597](https://github.com/input-output-hk/jormungandr/pull/597)
+- Improve testing of the Block0Configuration [\#596](https://github.com/input-output-hk/jormungandr/pull/596)
+- updated delegation script  [\#595](https://github.com/input-output-hk/jormungandr/pull/595)
+- REST refactoring and simplification [\#593](https://github.com/input-output-hk/jormungandr/pull/593)
+- Test Improvement. Implement dumping logs on console on jormungandr error [\#592](https://github.com/input-output-hk/jormungandr/pull/592)
+- Update chain-deps [\#585](https://github.com/input-output-hk/jormungandr/pull/585)
+- experiment with changelog generation [\#584](https://github.com/input-output-hk/jormungandr/pull/584)
+- Fix multi output funds support in genesis yaml file [\#583](https://github.com/input-output-hk/jormungandr/pull/583)
+- Add notes on protobuf and C compilers to the install steps [\#582](https://github.com/input-output-hk/jormungandr/pull/582)
+- Improve GELF logging backend configuration [\#574](https://github.com/input-output-hk/jormungandr/pull/574)
+- bootstrap script ported to Windows Powershell [\#572](https://github.com/input-output-hk/jormungandr/pull/572)
+- Update blockchain.md [\#568](https://github.com/input-output-hk/jormungandr/pull/568)
+- Pull missing blocks [\#554](https://github.com/input-output-hk/jormungandr/pull/554)
+- Add example for account input and links to scripts [\#487](https://github.com/input-output-hk/jormungandr/pull/487)
+
 ## [v0.2.3](https://github.com/input-output-hk/jormungandr/tree/v0.2.3) (2019-06-23)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.2.2...v0.2.3)
 
