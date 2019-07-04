@@ -60,12 +60,6 @@ impl Node for NodeService {
     }
 }
 
-impl From<intercom::Error> for core_error::Error {
-    fn from(err: intercom::Error) -> Self {
-        core_error::Error::new(err.code(), err)
-    }
-}
-
 impl P2pService for NodeService {
     type NodeId = topology::NodeId;
 
