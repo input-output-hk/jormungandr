@@ -1,7 +1,5 @@
 use hex;
-use jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender};
-use std::fs;
-use std::io::{stdin, BufRead};
+use jcli_app::utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -60,16 +58,9 @@ fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) {
 }
 
 fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) {
-    let msg_hex = match file {
-        Some(path) => fs::read_to_string(path).unwrap(),
-        None => {
-            let stdin = stdin();
-            let mut lines = stdin.lock().lines();
-            lines.next().unwrap().unwrap()
-        }
-    };
-    let msg_bin = hex::decode(msg_hex.trim()).unwrap();
     let url = addr.with_segments(&["v0", "message"]).unwrap().into_url();
+    let msg_hex = io::read_line(&file).unwrap();
+    let msg_bin = hex::decode(&msg_hex).unwrap();
     let builder = reqwest::Client::new().post(url);
     let response = RestApiSender::new(builder, &debug)
         .with_binary_body(msg_bin)
