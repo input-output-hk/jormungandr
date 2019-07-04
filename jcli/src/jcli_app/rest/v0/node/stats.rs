@@ -1,3 +1,4 @@
+use jcli_app::rest::Error;
 use jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use structopt::StructOpt;
 
@@ -16,21 +17,19 @@ pub enum Stats {
 }
 
 impl Stats {
-    pub fn exec(self) {
+    pub fn exec(self) -> Result<(), Error> {
         let Stats::Get {
             addr,
             debug,
             output_format,
         } = self;
-        let url = addr
-            .with_segments(&["v0", "node", "stats"])
-            .unwrap()
-            .into_url();
+        let url = addr.with_segments(&["v0", "node", "stats"])?.into_url();
         let builder = reqwest::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug).send().unwrap();
-        response.response().error_for_status_ref().unwrap();
-        let status = response.body().json_value().unwrap();
-        let formatted = output_format.format_json(status).unwrap();
+        let response = RestApiSender::new(builder, &debug).send()?;
+        response.response().error_for_status_ref()?;
+        let status = response.body().json_value()?;
+        let formatted = output_format.format_json(status)?;
         println!("{}", formatted);
+        Ok(())
     }
 }

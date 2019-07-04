@@ -1,3 +1,4 @@
+use jcli_app::rest::Error;
 use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 
@@ -14,15 +15,16 @@ pub enum Tip {
 }
 
 impl Tip {
-    pub fn exec(self) {
+    pub fn exec(self) -> Result<(), Error> {
         let (addr, debug) = match self {
             Tip::Get { addr, debug } => (addr, debug),
         };
-        let url = addr.with_segments(&["v0", "tip"]).unwrap().into_url();
+        let url = addr.with_segments(&["v0", "tip"])?.into_url();
         let builder = reqwest::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug).send().unwrap();
-        response.response().error_for_status_ref().unwrap();
+        let response = RestApiSender::new(builder, &debug).send()?;
+        response.response().error_for_status_ref()?;
         let tip = response.body().text();
         println!("{}", tip.as_ref());
+        Ok(())
     }
 }

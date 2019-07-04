@@ -1,3 +1,4 @@
+use jcli_app::rest::Error;
 use structopt::StructOpt;
 
 mod next_id;
@@ -14,7 +15,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn exec(self) {
-        self.subcommand.exec(self.block_id);
+    pub fn exec(self) -> Result<(), Error> {
+        self.subcommand.exec(self.block_id)
     }
 }
