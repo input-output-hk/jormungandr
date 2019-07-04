@@ -16,7 +16,6 @@ pub fn test_non_empty_hash_is_returned_for_block0() {
 }
 
 #[test]
-/// False green due to: #298
 pub fn test_correct_error_is_returned_for_incorrect_block_id() {
     let incorrect_block_id = "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa";
 
@@ -24,19 +23,16 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id() {
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
 
-    process_assert::assert_process_failed_and_contains_message_with_desc(
+    process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_rest_get_block_command(
             &incorrect_block_id,
             &jormungandr_rest_address,
         ),
-        "Status(400)",
-        "This assertion is incorrect on purpose to avoid failing build when running test,
-        after #298 is fixed it need to be changed to correct one",
+        "node rejected request because of invalid parameters",
     );
 }
 
 #[test]
-/// False green due to: #298
 pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_request() {
     let incorrect_block_id = "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa";
 
@@ -44,15 +40,13 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_re
     let jormungandr_rest_address = config.get_node_address();
     let _jormungandr = startup::start_jormungandr_node(&mut config);
 
-    process_assert::assert_process_failed_and_contains_message_with_desc(
+    process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_rest_get_next_block_id_command(
             &incorrect_block_id,
             &1,
             &jormungandr_rest_address,
         ),
-        "Status(400)",
-        "This assertion is incorrect on purpose to avoid failing build when running test,
-        after #298 is fixed it need to be changed to correct one",
+        "node rejected request because of invalid parameters",
     );
 }
 
