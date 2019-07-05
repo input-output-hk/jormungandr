@@ -41,7 +41,7 @@ impl JCli {
             JCli::Key(key) => key.exec()?,
             JCli::Address(address) => address.exec()?,
             JCli::Genesis(genesis) => genesis.exec()?,
-            JCli::Rest(rest) => rest.exec(),
+            JCli::Rest(rest) => rest.exec()?,
             JCli::Transaction(transaction) => transaction.exec()?,
             JCli::Debug(debug) => debug.exec()?,
             JCli::Certificate(certificate) => certificate.exec()?,

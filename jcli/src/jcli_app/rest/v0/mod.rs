@@ -5,6 +5,7 @@ mod node;
 mod tip;
 mod utxo;
 
+use jcli_app::rest::Error;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -25,7 +26,7 @@ pub enum V0 {
 }
 
 impl V0 {
-    pub fn exec(self) {
+    pub fn exec(self) -> Result<(), Error> {
         match self {
             V0::Account(account) => account.exec(),
             V0::Block(block) => block.exec(),

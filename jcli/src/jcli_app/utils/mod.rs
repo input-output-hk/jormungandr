@@ -1,9 +1,9 @@
 mod account_id;
 mod debug_flag;
-mod host_addr;
 mod rest_api;
 
 pub mod error;
+pub mod host_addr;
 pub mod io;
 pub mod key_parser;
 pub mod output_format;

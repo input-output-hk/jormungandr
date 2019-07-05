@@ -1,5 +1,6 @@
 use super::next_id::NextId;
 use hex;
+use jcli_app::rest::Error;
 use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 
@@ -18,7 +19,7 @@ pub enum Subcommand {
 }
 
 impl Subcommand {
-    pub fn exec(self, block_id: String) {
+    pub fn exec(self, block_id: String) -> Result<(), Error> {
         match self {
             Subcommand::Get { addr, debug } => exec_get(block_id, addr, debug),
             Subcommand::NextId(next_id) => next_id.exec(block_id),
@@ -26,14 +27,12 @@ impl Subcommand {
     }
 }
 
-fn exec_get(block_id: String, addr: HostAddr, debug: DebugFlag) {
-    let url = addr
-        .with_segments(&["v0", "block", &block_id])
-        .unwrap()
-        .into_url();
+fn exec_get(block_id: String, addr: HostAddr, debug: DebugFlag) -> Result<(), Error> {
+    let url = addr.with_segments(&["v0", "block", &block_id])?.into_url();
     let builder = reqwest::Client::new().get(url);
-    let response = RestApiSender::new(builder, &debug).send().unwrap();
-    response.response().error_for_status_ref().unwrap();
+    let response = RestApiSender::new(builder, &debug).send()?;
+    response.response().error_for_status_ref()?;
     let body = response.body().binary();
     println!("{}", hex::encode(&body));
+    Ok(())
 }

@@ -1,7 +1,6 @@
 use hex;
-use jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender};
-use std::fs;
-use std::io::{stdin, BufRead};
+use jcli_app::rest::Error;
+use jcli_app::utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -34,7 +33,7 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn exec(self) {
+    pub fn exec(self) -> Result<(), Error> {
         match self {
             Message::Post { addr, debug, file } => post_message(file, addr, debug),
             Message::Logs {
@@ -46,35 +45,26 @@ impl Message {
     }
 }
 
-fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) {
-    let url = addr
-        .with_segments(&["v0", "fragment", "logs"])
-        .unwrap()
-        .into_url();
+fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<(), Error> {
+    let url = addr.with_segments(&["v0", "fragment", "logs"])?.into_url();
     let builder = reqwest::Client::new().get(url);
-    let response = RestApiSender::new(builder, &debug).send().unwrap();
-    response.response().error_for_status_ref().unwrap();
-    let status = response.body().json_value().unwrap();
-    let formatted = output_format.format_json(status).unwrap();
+    let response = RestApiSender::new(builder, &debug).send()?;
+    response.response().error_for_status_ref()?;
+    let status = response.body().json_value()?;
+    let formatted = output_format.format_json(status)?;
     println!("{}", formatted);
+    Ok(())
 }
 
-fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) {
-    let msg_hex = match file {
-        Some(path) => fs::read_to_string(path).unwrap(),
-        None => {
-            let stdin = stdin();
-            let mut lines = stdin.lock().lines();
-            lines.next().unwrap().unwrap()
-        }
-    };
-    let msg_bin = hex::decode(msg_hex.trim()).unwrap();
-    let url = addr.with_segments(&["v0", "message"]).unwrap().into_url();
+fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) -> Result<(), Error> {
+    let msg_hex = io::read_line(&file)?;
+    let msg_bin = hex::decode(&msg_hex)?;
+    let url = addr.with_segments(&["v0", "message"])?.into_url();
     let builder = reqwest::Client::new().post(url);
     let response = RestApiSender::new(builder, &debug)
         .with_binary_body(msg_bin)
-        .send()
-        .unwrap();
-    response.response().error_for_status_ref().unwrap();
+        .send()?;
+    response.response().error_for_status_ref()?;
     println!("Success!");
+    Ok(())
 }
