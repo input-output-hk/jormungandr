@@ -27,7 +27,7 @@
 //!
 //! println!(
 //!   "Please, send money to my account: {}",
-//!   AddressReadable::from_address(&address)
+//!   AddressReadable::from_address("ca", &address)
 //! );
 //! ```
 //!

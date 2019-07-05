@@ -7,11 +7,13 @@ use std::{fmt, str::FromStr};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Address(chain_addr::Address);
 
+pub const ADDRESS_PREFIX: &'static str = env!("ADDRESS_PREFIX");
+
 /* ---------------- Display ------------------------------------------------ */
 
 impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        chain_addr::AddressReadable::from_address(&self.0).fmt(f)
+        chain_addr::AddressReadable::from_address(ADDRESS_PREFIX, &self.0).fmt(f)
     }
 }
 
@@ -52,7 +54,7 @@ impl Serialize for Address {
         S: Serializer,
     {
         if serializer.is_human_readable() {
-            let address = chain_addr::AddressReadable::from_address(&self.0);
+            let address = chain_addr::AddressReadable::from_address(ADDRESS_PREFIX, &self.0);
             serializer.serialize_str(address.as_string())
         } else {
             let bytes = self.0.to_bytes();
@@ -68,7 +70,7 @@ impl<'de> Deserialize<'de> for Address {
     {
         if deserializer.is_human_readable() {
             let s: String = String::deserialize(deserializer)?;
-            chain_addr::AddressReadable::from_str(&s)
+            chain_addr::AddressReadable::from_string_anyprefix(&s)
                 .map_err(|e| serde::de::Error::custom(e))
                 .map(|a| Address(a.to_address()))
         } else {
