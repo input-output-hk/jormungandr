@@ -149,6 +149,10 @@ pub fn handle_input(
             }
         }
         BlockMsg::ChainHeaders(headers, reply) => {
+            // FIXME: there is currently no sequencing between block
+            // requests/solicitations sent out to different peers.
+            // If a batch of blocks arrives out of order, it will be
+            // dropped by the BlockMsg::NetworkBlock processing above.
             let res = process_chain_headers_into_block_request(blockchain, headers, &logger).map(
                 |block_ids| {
                     network_msg_box
