@@ -744,7 +744,7 @@ mod tests {
                 126, 176, 154, 229, 246, 71, 227, 121, 87,
             ],
         );
-        update(&mut sk).is_ok();
+        assert_eq!(update(&mut sk).is_ok(), true);
         secretkey_identical(
             &sk.sk().to_bytes(),
             &[
@@ -769,9 +769,9 @@ mod tests {
         let (mut sk, pk) = keygen(Depth(4), &Seed::zero());
 
         assert_eq!(sk.compute_public(), pk);
-        update(&mut sk).is_ok();
+        assert_eq!(update(&mut sk).is_ok(), true);
         assert_eq!(sk.compute_public(), pk);
-        update(&mut sk).is_ok();
+        assert_eq!(update(&mut sk).is_ok(), true);
         assert_eq!(sk.compute_public(), pk);
     }
 
