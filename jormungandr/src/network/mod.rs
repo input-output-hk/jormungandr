@@ -5,7 +5,7 @@
 //! transactions...);
 //!
 
-mod block_pull;
+mod chain_pull;
 mod client;
 mod grpc;
 pub mod p2p;

@@ -1,5 +1,5 @@
 use super::{
-    block_pull::BlockPull,
+    chain_pull::ChainPull,
     grpc,
     p2p::comm::{PeerComms, Subscription},
     p2p::topology,
@@ -200,7 +200,7 @@ where
                 })
                 .and_then(move |headers| {
                     let err_logger = and_then_logger.clone();
-                    BlockPull::new(headers, block_box, and_then_logger).map_err(move |e| {
+                    ChainPull::new(headers, block_box, and_then_logger).map_err(move |e| {
                         warn!(err_logger, "header pull failed: {:?}", e);
                     })
                 }),

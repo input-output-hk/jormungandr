@@ -1,5 +1,5 @@
 use super::{
-    block_pull::BlockPull,
+    chain_pull::ChainPull,
     p2p::comm::{BlockEventSubscription, Subscription},
     p2p::topology,
     subscription, Channels, GlobalStateR,
@@ -145,7 +145,7 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        Box::new(BlockPull::new(
+        Box::new(ChainPull::new(
             headers,
             self.channels.block_box.clone(),
             self.logger.clone(),

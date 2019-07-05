@@ -18,7 +18,7 @@ const CHUNK_SIZE: usize = 32;
 
 /// State machine for pulling blocks from the network after processing
 /// the stream of block headers composing the chain.
-pub struct BlockPull<In>
+pub struct ChainPull<In>
 where
     In: Stream<Item = Header, Error = core_error::Error>,
 {
@@ -35,12 +35,12 @@ enum State {
     WaitReply,
 }
 
-impl<In> BlockPull<In>
+impl<In> ChainPull<In>
 where
     In: Stream<Item = Header, Error = core_error::Error>,
 {
     pub fn new(stream: In, block_box: MessageBox<BlockMsg>, logger: Logger) -> Self {
-        BlockPull {
+        ChainPull {
             in_chunks: stream.chunks(CHUNK_SIZE),
             block_box,
             chain_reply: None,
@@ -50,7 +50,7 @@ where
     }
 }
 
-impl<In> Future for BlockPull<In>
+impl<In> Future for ChainPull<In>
 where
     In: Stream<Item = Header, Error = core_error::Error>,
 {
