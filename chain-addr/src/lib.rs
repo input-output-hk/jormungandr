@@ -301,7 +301,6 @@ pub struct AddressReadable(String);
 
 impl AddressReadable {
     const PRODUCTION_ADDRESS_PREFIX: &'static str = env!("PRODUCTION_ADDRESS_PREFIX");
-    const TEST_ADDRESS_PREFIX: &'static str = env!("TEST_ADDRESS_PREFIX");
 
     pub fn as_string(&self) -> &str {
         &self.0
@@ -311,28 +310,19 @@ impl AddressReadable {
     pub fn from_string(s: &str) -> Result<Self, Error> {
         use std::str::FromStr;
         let r = Bech32::from_str(s)?;
-        let expected_discrimination = if r.hrp() == Self::PRODUCTION_ADDRESS_PREFIX {
-            Discrimination::Production
-        } else if r.hrp() == Self::TEST_ADDRESS_PREFIX {
-            Discrimination::Test
-        } else {
+        if r.hrp() != Self::PRODUCTION_ADDRESS_PREFIX {
             return Err(Error::InvalidPrefix);
         };
         let dat = Vec::from_base32(r.data())?;
-        let (discrimination, _) = is_valid_data(&dat[..])?;
-        if discrimination != expected_discrimination {
-            return Err(Error::MismatchPrefix);
-        }
+        let _ = is_valid_data(&dat[..])?;
+
         Ok(AddressReadable(s.to_string()))
     }
 
     /// Create a new AddressReadable from an encoded address
     pub fn from_address(addr: &Address) -> Self {
         let v = ToBase32::to_base32(&addr.to_bytes());
-        let prefix = match addr.0 {
-            Discrimination::Production => Self::PRODUCTION_ADDRESS_PREFIX.to_string(),
-            Discrimination::Test => Self::TEST_ADDRESS_PREFIX.to_string(),
-        };
+        let prefix = Self::PRODUCTION_ADDRESS_PREFIX.to_string();
         let r = Bech32::new(prefix, v).unwrap();
         AddressReadable(r.to_string())
     }
@@ -621,7 +611,7 @@ mod test {
             );
             property_serialize_deserialize(&addr);
             property_readable(&addr);
-            expected_bech32(&addr, "ta1ssqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jq2f29vkz6t30xqcnyve5x5mrwwpe8ganc0f78aqyzsjrg3z5v36ge5qsky");
+            expected_bech32(&addr, "ca1ssqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jq2f29vkz6t30xqcnyve5x5mrwwpe8ganc0f78aqyzsjrg3z5v36gjdetkp");
             expected_base32(&addr, "qqaqeayeaudaocajbifqydiob4ibceqtcqkrmfyydenbwha5dypsakjkfmwc2lrpgaytemzugu3doobzhi5typj6h5aecqsdircumr2i");
         }
 
@@ -635,7 +625,7 @@ mod test {
             );
             expected_bech32(
                 &addr,
-                "ta1s55j52ev95hz7vp3xgengdfkxuurjw3m8s7nu06qg9pyx3z9ger5s28ezm6",
+                "ca1s55j52ev95hz7vp3xgengdfkxuurjw3m8s7nu06qg9pyx3z9ger5samu4rv",
             );
         }
     }
