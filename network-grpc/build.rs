@@ -12,4 +12,5 @@ fn main() {
             writeln!(stderr(), "{}", e).unwrap();
             process::exit(1)
         });
+    println!("cargo:rerun-if-changed=proto/node.proto");
 }
