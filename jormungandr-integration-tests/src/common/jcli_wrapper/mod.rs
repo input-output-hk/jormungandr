@@ -294,17 +294,25 @@ pub fn assert_rest_message_logs(host: &str) -> Vec<FragmentLog> {
 
 pub fn assert_transaction_in_block(transaction_message: &str, host: &str) {
     self::assert_post_transaction(&transaction_message, &host);
-    self::wait_until_transaction_processed(&host);
+    self::wait_until_last_transaction_processed(&host);
+    self::assert_transaction_log_shows_in_block(&host);
+}
+
+pub fn assert_all_transactions_in_block(transaction_messages: &Vec<String>, host: &str) {
+    for message in transaction_messages.iter() {
+        self::assert_post_transaction(&message, &host);
+    }
+    self::wait_until_all_transactions_processed(&host);
     self::assert_transaction_log_shows_in_block(&host);
 }
 
 pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_msg: &str) {
     self::assert_post_transaction(&transaction_message, &host);
-    self::wait_until_transaction_processed(&host);
+    self::wait_until_last_transaction_processed(&host);
     self::assert_transaction_log_shows_rejected(&host, &expected_msg);
 }
 
-pub fn wait_until_transaction_processed(host: &str) {
+pub fn wait_until_last_transaction_processed(host: &str) {
     process_utils::run_process_until_response_matches(
         jcli_commands::get_rest_message_log_command(&host),
         |output| {
@@ -320,7 +328,26 @@ pub fn wait_until_transaction_processed(host: &str) {
         5,
         "Waiting for last transaction to be inBlock or rejected",
         "transaction is pending for too long",
-    );
+    )
+    .expect("internal error while waiting until last transaction is processed");
+}
+
+pub fn wait_until_all_transactions_processed(host: &str) {
+    process_utils::run_process_until_response_matches(
+        jcli_commands::get_rest_message_log_command(&host),
+        |output| {
+            let content = output.as_lossy_string();
+            let fragments: Vec<FragmentLog> =
+                serde_yaml::from_str(&content).expect("Cannot parse fragment logs");
+            let at_least_one_pending = fragments.iter().any(|x| x.is_pending() == true);
+            !at_least_one_pending
+        },
+        1,
+        5,
+        "Waiting for last transaction to be inBlock or rejected",
+        "transaction is pending for too long",
+    )
+    .expect("internal error while waiting until all transactions is processed");
 }
 
 pub fn assert_transaction_log_shows_in_block(host: &str) {
