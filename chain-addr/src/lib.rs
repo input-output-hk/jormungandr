@@ -300,17 +300,15 @@ fn is_valid_data(bytes: &[u8]) -> Result<(Discrimination, KindType), Error> {
 pub struct AddressReadable(String);
 
 impl AddressReadable {
-    const PRODUCTION_ADDRESS_PREFIX: &'static str = env!("PRODUCTION_ADDRESS_PREFIX");
-
     pub fn as_string(&self) -> &str {
         &self.0
     }
 
     /// Validate from a String to create a valid AddressReadable
-    pub fn from_string(s: &str) -> Result<Self, Error> {
+    pub fn from_string(expected_prefix: &str, s: &str) -> Result<Self, Error> {
         use std::str::FromStr;
         let r = Bech32::from_str(s)?;
-        if r.hrp() != Self::PRODUCTION_ADDRESS_PREFIX {
+        if r.hrp() != expected_prefix {
             return Err(Error::InvalidPrefix);
         };
         let dat = Vec::from_base32(r.data())?;
@@ -319,11 +317,19 @@ impl AddressReadable {
         Ok(AddressReadable(s.to_string()))
     }
 
+    pub fn from_string_anyprefix(s: &str) -> Result<Self, Error> {
+        use std::str::FromStr;
+        let r = Bech32::from_str(s)?;
+        let dat = Vec::from_base32(r.data())?;
+        let _ = is_valid_data(&dat[..])?;
+
+        Ok(AddressReadable(s.to_string()))
+    }
+
     /// Create a new AddressReadable from an encoded address
-    pub fn from_address(addr: &Address) -> Self {
+    pub fn from_address(prefix: &str, addr: &Address) -> Self {
         let v = ToBase32::to_base32(&addr.to_bytes());
-        let prefix = Self::PRODUCTION_ADDRESS_PREFIX.to_string();
-        let r = Bech32::new(prefix, v).unwrap();
+        let r = Bech32::new(prefix.to_string(), v).unwrap();
         AddressReadable(r.to_string())
     }
 
@@ -346,7 +352,7 @@ impl std::fmt::Display for AddressReadable {
 impl std::str::FromStr for AddressReadable {
     type Err = Error;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        AddressReadable::from_string(s)
+        AddressReadable::from_string_anyprefix(s)
     }
 }
 
@@ -516,6 +522,8 @@ impl std::str::FromStr for Discrimination {
 mod test {
     use super::*;
 
+    const TEST_PREFIX: &'static str = "ca";
+
     fn property_serialize_deserialize(addr: &Address) {
         let data = addr.to_bytes();
         let r = Address::from_bytes(&data[..]).unwrap();
@@ -528,23 +536,23 @@ mod test {
 
     fn expected_bech32(addr: &Address, expected: &'static str) {
         assert_eq!(
-            AddressReadable::from_address(&addr),
+            AddressReadable::from_address(TEST_PREFIX, &addr),
             AddressReadable(expected.to_string())
         );
     }
 
     fn property_readable(addr: &Address) {
-        let ar = AddressReadable::from_address(addr);
+        let ar = AddressReadable::from_address(TEST_PREFIX, addr);
         let a = ar.to_address();
-        let ar2 =
-            AddressReadable::from_string(ar.as_string()).expect("address is readable from string");
+        let ar2 = AddressReadable::from_string(TEST_PREFIX, ar.as_string())
+            .expect("address is readable from string");
         assert_eq!(addr, &a);
         assert_eq!(ar, ar2);
     }
 
     quickcheck! {
         fn from_address_to_address(address: Address) -> bool {
-            let readable = AddressReadable::from_address(&address);
+            let readable = AddressReadable::from_address(TEST_PREFIX, &address);
             let decoded  = readable.to_address();
 
              address == decoded
