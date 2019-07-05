@@ -28,11 +28,11 @@ pub struct BlockchainConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub block0_consensus: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub slot_duration: Option<i32>,
+    pub slot_duration: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub slots_per_epoch: Option<i32>,
+    pub slots_per_epoch: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub epoch_stability_depth: Option<i32>,
+    pub epoch_stability_depth: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub consensus_leader_ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
