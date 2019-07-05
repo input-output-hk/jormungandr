@@ -221,7 +221,6 @@ mod tests {
     }
 
     use hash::HashedKey;
-    use std::fmt;
     use std::marker::PhantomData;
 
     #[test]
