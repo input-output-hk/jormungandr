@@ -45,26 +45,37 @@ impl RawSettings {
 
     pub fn to_logger(&self) -> Result<Logger, logging::Error> {
         LogSettings {
-            verbosity: self.logger_verbosity(),
+            level: self.logger_level(),
             format: self.logger_format(),
             output: self.logger_output(),
         }
         .to_logger()
     }
 
-    fn logger_verbosity(&self) -> slog::Level {
-        let cmd_level = match self.command_line.verbose {
+    fn logger_level(&self) -> slog::Level {
+        // Determine a logging level from the CLI arguments:
+        let command_q = match self.command_line.quietness {
             0 => None,
             level => Some(level),
         };
+        let command_v = match self.command_line.verbosity {
+            0 => None,
+            level => Some(level),
+        };
+        let command_level = determine_log_level(command_q, command_v).expect(
+            "The following CLI arguments are mutually exclusive: \
+             '--quiet', '--verbose'.",
+        );
+        // Determine a logging level from the configuration file:
         let config_logger = self.config.logger.as_ref();
-        let config_level = config_logger.and_then(|logger| logger.verbosity.clone());
-        let level = cmd_level.or(config_level).unwrap_or(0);
-        match level {
-            0 => slog::Level::Info,
-            1 => slog::Level::Debug,
-            _ => slog::Level::Trace,
-        }
+        let config_q = config_logger.and_then(|l| l.quietness.clone());
+        let config_v = config_logger.and_then(|l| l.verbosity.clone());
+        let config_level = determine_log_level(config_q, config_v).expect(
+            "The following configuration options are mutually exclusive: \
+             'quietness', 'verbosity'.",
+        );
+        // Select a logging level according to an order of precedence:
+        command_level.or(config_level).unwrap_or(DEFAULT_LOG_LEVEL)
     }
 
     fn logger_format(&self) -> LogFormat {
@@ -129,6 +140,34 @@ impl RawSettings {
             leadership,
             rest: config.rest,
         })
+    }
+}
+
+/// The default log level to use when none could be determined from CLI
+/// arguments or the configuration.
+const DEFAULT_LOG_LEVEL: slog::Level = slog::Level::Info;
+
+/// Determine a log level from *either* a quietness level *or* a verbosity
+/// level.
+///
+/// If *neither* a quietness level *nor* a verbosity level are specified, this
+/// function returns `Ok(None)`.
+///
+/// If *both* a quietness level *and* a verbosity level are specified, this
+/// function returns an error.
+///
+fn determine_log_level(
+    quietness_level: Option<u8>,
+    verbosity_level: Option<u8>,
+) -> Result<Option<slog::Level>, ()> {
+    match (quietness_level, verbosity_level) {
+        (None, None) => Ok(None),
+        (Some(1), None) => Ok(Some(slog::Level::Warning)),
+        (Some(2), None) => Ok(Some(slog::Level::Error)),
+        (Some(_), None) => Ok(Some(slog::Level::Critical)),
+        (None, Some(1)) => Ok(Some(slog::Level::Debug)),
+        (None, Some(_)) => Ok(Some(slog::Level::Trace)),
+        _ => Err(()),
     }
 }
 

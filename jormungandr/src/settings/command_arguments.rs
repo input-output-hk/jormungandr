@@ -67,10 +67,17 @@ pub struct StartArguments {
     raw(setting = "structopt::clap::AppSettings::ColoredHelp")
 )]
 pub struct CommandLine {
-    /// activate the verbosity, the more occurrences the more verbose.
+    /// Activate quiet mode.
+    /// The more occurrences, the quieter the output.
+    /// (-q, -qq, -qqq)
+    #[structopt(short = "q", long = "quiet", parse(from_occurrences))]
+    pub quietness: u8,
+
+    /// Activate verbose mode.
+    /// The more occurrences, the more verbose the output.
     /// (-v, -vv, -vvv)
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
-    pub verbose: u8,
+    pub verbosity: u8,
 
     /// Set format of the log emitted. Can be "json" or "plain".
     /// If not configured anywhere, defaults to "plain".

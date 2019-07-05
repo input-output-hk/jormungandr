@@ -15,7 +15,7 @@ use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct LogSettings {
-    pub verbosity: slog::Level,
+    pub level: slog::Level,
     pub format: LogFormat,
     pub output: LogOutput,
 }
@@ -86,7 +86,7 @@ impl FromStr for LogOutput {
 impl LogSettings {
     pub fn to_logger(&self) -> Result<Logger, Error> {
         let drain = self.output.to_logger(&self.format)?.fuse();
-        let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
+        let drain = slog::LevelFilter::new(drain, self.level).fuse();
         Ok(slog::Logger::root(drain, o!()))
     }
 }

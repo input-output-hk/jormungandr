@@ -21,6 +21,7 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConfigLogSettings {
+    pub quietness: Option<u8>,
     pub verbosity: Option<u8>,
     pub format: Option<LogFormat>,
     pub output: Option<LogOutput>,
