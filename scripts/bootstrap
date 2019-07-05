@@ -37,7 +37,7 @@ SECRET_PATH="."
 CONFIG_PATH="."
 ADD_STARTUP_SCRIPT=0
 
-while getopts 'bc:ghk:p:s:xCod' c
+while getopts 'bc:ghk:p:s:xCod:' c
 do
     case $c in
         b) CONSENSUS="bft" ;;
@@ -56,16 +56,16 @@ do
             echo "    [-k <SECRET-PATH>] [-c <CONFIG-PATH>]"
             echo "    [-s <SLOT-DURATION>]"
             echo ""
-            echo "  -p <REST_PORT>   REST PORT for the service to listen on"
-            echo "  -b               Use BFT consensus mode"
-            echo "  -g               Use Genesis-praos consensus mode"
-            echo "  -x               Add startup script"
-            echo "  -k <SECRET-PATH> The path to write secret files"
-            echo "  -c <CONFIG-PATH> The path to write config files"
-            echo "  -d <DATA-PATH>   The path to write sqlite files"
+            echo "  -p <REST_PORT>     REST PORT for the service to listen on"
+            echo "  -b                 Use BFT consensus mode"
+            echo "  -g                 Use Genesis-praos consensus mode"
+            echo "  -x                 Add startup script"
+            echo "  -k <SECRET-PATH>   The path to write secret files"
+            echo "  -c <CONFIG-PATH>   The path to write config files"
+            echo "  -d <DATA-PATH>     The path to write sqlite files"
             echo "  -s <SLOT-DURATION> Duration of a slot in seconds"
-            echo "  -C               Disable ansi shell colours in stdout"
-            echo "  -o               Overwrite existing sqlite files"
+            echo "  -C                 Disable ansi shell colours in stdout"
+            echo "  -o                 Overwrite existing sqlite files"
             exit 0
             ;;
     esac
