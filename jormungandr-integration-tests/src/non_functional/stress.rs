@@ -8,7 +8,7 @@ use crate::common::startup;
 use std::iter;
 
 #[test]
-//#[ignore] //Node crash if sending multiple transactions in the same slot #586
+#[ignore] //Node crash if sending multiple transactions in the same slot #586
 pub fn test_100_transaction_is_processed_in_10_packs() {
     let receivers: Vec<Account> = iter::from_fn(|| Some(startup::create_new_account_address()))
         .take(10)
@@ -17,7 +17,7 @@ pub fn test_100_transaction_is_processed_in_10_packs() {
 }
 
 #[test]
-//#[ignore] The Node stops creating blocks (BFT and Genesis) #591
+#[ignore] //The Node stops creating blocks (BFT and Genesis) #591
 pub fn test_100_transaction_is_processed_in_10_packs_to_single_account() {
     let single_reciever = startup::create_new_account_address();
     let receivers: Vec<Account> = iter::from_fn(|| Some(single_reciever.clone()))
