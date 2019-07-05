@@ -4,11 +4,9 @@ use chain_core::{
     mempack::{self, ReadBuf},
     property,
 };
-use network_core::{
-    error as core_error,
-    gossip::{Gossip, Node, NodeId},
-    subscription::BlockEvent,
-};
+use network_core::error as core_error;
+use network_core::gossip::{Gossip, Node, NodeId};
+use network_core::subscription::{BlockEvent, ChainPullRequest};
 
 use tower_grpc::{
     metadata::{BinaryMetadataValue, MetadataMap},
@@ -121,6 +119,17 @@ where
     }
 }
 
+impl<Id> FromProtobuf<gen::node::PullHeadersRequest> for ChainPullRequest<Id>
+where
+    Id: property::BlockId + mempack::Readable,
+{
+    fn from_message(msg: gen::node::PullHeadersRequest) -> Result<Self, core_error::Error> {
+        let from = parse_repeated_bytes(&msg.from)?;
+        let to = parse_bytes(&msg.to)?;
+        Ok(ChainPullRequest { from, to })
+    }
+}
+
 impl<T> FromProtobuf<gen::node::BlockEvent> for BlockEvent<T>
 where
     T: property::Block + property::HasHeader,
@@ -140,9 +149,8 @@ where
                 BlockEvent::Solicit(ids)
             }
             Some(Item::Missing(req)) => {
-                let from = parse_repeated_bytes(&req.from)?;
-                let to = parse_bytes(&req.to)?;
-                BlockEvent::Missing { from, to }
+                let req = ChainPullRequest::from_message(req)?;
+                BlockEvent::Missing(req)
             }
             None => {
                 return Err(core_error::Error::new(
@@ -245,6 +253,17 @@ impl IntoProtobuf<gen::node::UploadBlocksResponse> for () {
     }
 }
 
+impl<Id> IntoProtobuf<gen::node::PullHeadersRequest> for ChainPullRequest<Id>
+where
+    Id: property::BlockId + property::Serialize,
+{
+    fn into_message(self) -> Result<gen::node::PullHeadersRequest, tower_grpc::Status> {
+        let from = serialize_to_repeated_bytes(&self.from)?;
+        let to = serialize_to_bytes(&self.to)?;
+        Ok(gen::node::PullHeadersRequest { from, to })
+    }
+}
+
 impl<T> IntoProtobuf<gen::node::BlockEvent> for BlockEvent<T>
 where
     T: property::Block + property::HasHeader,
@@ -262,10 +281,9 @@ where
                 let ids = serialize_to_repeated_bytes(&ids)?;
                 Item::Solicit(gen::node::BlockIds { ids })
             }
-            BlockEvent::Missing { from, to } => {
-                let from = serialize_to_repeated_bytes(&from)?;
-                let to = serialize_to_bytes(&to)?;
-                Item::Missing(gen::node::PullHeadersRequest { from, to })
+            BlockEvent::Missing(req) => {
+                let req = req.into_message()?;
+                Item::Missing(req)
             }
         };
         Ok(gen::node::BlockEvent { item: Some(item) })

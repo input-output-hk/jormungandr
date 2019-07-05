@@ -8,7 +8,17 @@ where
 {
     Announce(B::Header),
     Solicit(Vec<B::Id>),
-    Missing { from: Vec<B::Id>, to: B::Id },
+    Missing(ChainPullRequest<B::Id>),
+}
+
+/// A request to send headers in the block chain sequence.
+#[derive(Debug)]
+pub struct ChainPullRequest<Id> {
+    /// A list of starting points known by the requester.
+    /// The sender should pick the latest one.
+    pub from: Vec<Id>,
+    /// The identifier of the last block to send the header for.
+    pub to: Id,
 }
 
 impl<B> Debug for BlockEvent<B>
@@ -21,11 +31,7 @@ where
         match self {
             BlockEvent::Announce(header) => f.debug_tuple("Announce").field(header).finish(),
             BlockEvent::Solicit(ids) => f.debug_tuple("Solicit").field(ids).finish(),
-            BlockEvent::Missing { from, to } => f
-                .debug_struct("Missing")
-                .field("from", from)
-                .field("to", to)
-                .finish(),
+            BlockEvent::Missing(req) => f.debug_tuple("Missing").field(req).finish(),
         }
     }
 }
