@@ -1,14 +1,11 @@
 use super::{
-    p2p::{
-        comm::{BlockEventSubscription, Subscription},
-        topology,
-    },
+    block_pull::BlockPull,
+    p2p::comm::{BlockEventSubscription, Subscription},
+    p2p::topology,
     subscription, Channels, GlobalStateR,
 };
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
-use crate::intercom::{
-    self, stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream,
-};
+use crate::intercom::{stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream};
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use network_core::{
@@ -148,8 +145,8 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        unimplemented!();
-        future::ok(())
+        //BlockPull::new(headers, self.channels.block_box.clone(), self.logger.clone())
+        unimplemented!()
     }
 
     fn on_uploaded_block(&mut self, block: Block) -> Self::OnUploadedBlockFuture {

@@ -158,7 +158,7 @@ pub fn handle_input(
                         });
                 },
             );
-            reply.send(res).unwrap_or_default();
+            reply.reply(res);
         }
     };
 

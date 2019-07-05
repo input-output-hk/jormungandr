@@ -309,8 +309,10 @@ pub enum BlockMsg {
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, NodeId),
     /// Headers for missing chain blocks have been received from the network
-    /// in response to a PullHeaders request.
-    ChainHeaders(Vec<Header>, oneshot::Sender<Result<(), Error>>),
+    /// in response to a PullHeaders request. The reply handle must be used to
+    /// continue streaming by sending Ok, or to cancel the incoming stream
+    /// with an error.
+    ChainHeaders(Vec<Header>, ReplyHandle<()>),
 }
 
 /// Propagation requests for the network task.
