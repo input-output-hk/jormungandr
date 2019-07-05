@@ -45,8 +45,8 @@ impl PeerMap {
         let (node_ptr, last_needs_updating) = match self.map.entry(id) {
             Occupied(mut entry) => (entry.get_mut().as_mut().as_ptr(), false),
             Vacant(entry) => {
-                let mut node = Box::pin(Node::new(id, PeerComms::server()));
-                let mut node = entry.insert(node);
+                let node = Box::pin(Node::new(id, PeerComms::new()));
+                let node = entry.insert(node);
                 (node.as_mut().as_ptr(), true)
             }
         };
@@ -65,7 +65,7 @@ impl PeerMap {
         let mut node = Box::pin(Node::new(id, comms));
         let (node_ptr, last_needs_updating) = match self.map.entry(id) {
             Occupied(mut entry) => {
-                let (mut prev, next) = unsafe { entry.get_mut().unlink() };
+                let (prev, next) = unsafe { entry.get_mut().unlink() };
                 if next.is_none() {
                     // The old entry was the last,
                     // the cursor does not need updating.

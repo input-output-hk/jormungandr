@@ -4,11 +4,9 @@ use super::topology;
 use crate::blockcfg::{Block, Header, HeaderHash, Message};
 use futures::prelude::*;
 use futures::{stream, sync::mpsc};
-use network_core::{
-    error as core_error,
-    gossip::{Gossip, Node},
-    subscription::BlockEvent,
-};
+use network_core::error as core_error;
+use network_core::gossip::{Gossip, Node};
+use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
 
 use std::sync::Mutex;
@@ -61,16 +59,15 @@ type BlockEventAnnounceStream = stream::Map<Subscription<Header>, fn(Header) -> 
 type BlockEventSolicitStream =
     stream::Map<Subscription<Vec<HeaderHash>>, fn(Vec<HeaderHash>) -> BlockEvent<Block>>;
 
-pub type BlockEventSubscription = stream::Select<BlockEventAnnounceStream, BlockEventSolicitStream>;
+type BlockEventMissingStream = stream::Map<
+    Subscription<ChainPullRequest<HeaderHash>>,
+    fn(ChainPullRequest<HeaderHash>) -> BlockEvent<Block>,
+>;
 
-/// Commands sent by other tasks to translate to requests sent by
-/// the client connection.
-pub enum ClientCommand {
-    PullHeaders {
-        from: Vec<HeaderHash>,
-        to: HeaderHash,
-    },
-}
+pub type BlockEventSubscription = stream::Select<
+    stream::Select<BlockEventAnnounceStream, BlockEventSolicitStream>,
+    BlockEventMissingStream,
+>;
 
 /// Handle used by the per-peer communication tasks to produce an outbound
 /// subscription stream towards the peer.
@@ -143,28 +140,16 @@ enum SubscriptionState<T> {
 /// server-side connection to be closed.
 #[derive(Default)]
 pub struct PeerComms {
-    client_commands: Option<mpsc::Sender<ClientCommand>>,
     block_announcements: CommHandle<Header>,
     block_solicitations: CommHandle<Vec<HeaderHash>>,
+    chain_pulls: CommHandle<ChainPullRequest<HeaderHash>>,
     messages: CommHandle<Message>,
     gossip: CommHandle<Gossip<topology::Node>>,
 }
 
 impl PeerComms {
-    pub fn server() -> PeerComms {
-        PeerComms {
-            ..Default::default()
-        }
-    }
-
-    pub fn client(commands: mpsc::Sender<ClientCommand>) -> PeerComms {
-        PeerComms {
-            client_commands: Some(commands),
-            block_announcements: Default::default(),
-            block_solicitations: Default::default(),
-            messages: Default::default(),
-            gossip: Default::default(),
-        }
+    pub fn new() -> PeerComms {
+        Default::default()
     }
 
     pub fn try_send_block_announcement(
@@ -191,6 +176,10 @@ impl PeerComms {
 
     pub fn subscribe_to_block_solicitations(&mut self) -> Subscription<Vec<HeaderHash>> {
         self.block_solicitations.subscribe()
+    }
+
+    pub fn subscribe_to_chain_pulls(&mut self) -> Subscription<ChainPullRequest<HeaderHash>> {
+        self.chain_pulls.subscribe()
     }
 
     pub fn subscribe_to_messages(&mut self) -> Subscription<Message> {
@@ -235,7 +224,11 @@ impl Peers {
             .block_solicitations
             .subscribe()
             .map(BlockEvent::Solicit);
-        announce_events.select(solicit_events)
+        let missing_events: BlockEventMissingStream =
+            handles.chain_pulls.subscribe().map(BlockEvent::Missing);
+        announce_events
+            .select(solicit_events)
+            .select(missing_events)
     }
 
     pub fn subscribe_to_messages(&self, id: topology::NodeId) -> Subscription<Message> {
@@ -381,25 +374,15 @@ impl Peers {
     pub fn pull_headers(&self, node_id: topology::NodeId, from: Vec<HeaderHash>, to: HeaderHash) {
         let mut map = self.mutex.lock().unwrap();
         match map.peer_comms(node_id) {
-            Some(PeerComms {
-                client_commands: Some(command_queue),
-                ..
-            }) => command_queue
-                .try_send(ClientCommand::PullHeaders { from, to })
+            Some(comms) => comms
+                .chain_pulls
+                .try_send(ChainPullRequest { from, to })
                 .unwrap_or_else(|e| {
                     warn!(
                         self.logger,
-                        "block solicitation from {} failed: {:?}", node_id, e
+                        "sending header pull solicitation to {} failed: {:?}", node_id, e
                     );
                 }),
-            Some(_non_client_comms) => {
-                // TODO: send a new type of solicitation event to retrieve
-                // the chain of headers, or straight UploadBlocks
-                warn!(
-                    self.logger,
-                    "peer {} is connected as a client, can't pull headers from it", node_id
-                );
-            }
             None => {
                 // TODO: connect and request on demand, or select another peer?
                 warn!(
