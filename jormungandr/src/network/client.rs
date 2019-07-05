@@ -1,9 +1,8 @@
 use super::{
+    block_pull::BlockPull,
     grpc,
-    p2p::{
-        comm::{ClientCommand, PeerComms, Subscription},
-        topology,
-    },
+    p2p::comm::{ClientCommand, PeerComms, Subscription},
+    p2p::topology,
     subscription, Channels, ConnectionState,
 };
 use crate::{
@@ -195,8 +194,7 @@ where
     fn process_command(&mut self, command: ClientCommand) {
         match command {
             ClientCommand::PullHeaders { from, to } => {
-                let mut block_box = self.channels.block_box.clone();
-                let node_id = self.remote_node_id.clone();
+                let block_box = self.channels.block_box.clone();
                 let err_logger = self.logger.clone();
                 let and_then_logger = self.logger.clone();
                 tokio::spawn(
@@ -209,22 +207,10 @@ where
                             );
                         })
                         .and_then(move |headers| {
-                            // FIXME: batch headers and send them to the
-                            // processing task in a new type of message
-                            // specialized for restoration of the chain.
-                            headers
-                                .for_each(move |header| {
-                                    block_box
-                                        .try_send(BlockMsg::AnnouncedBlock(header, node_id))
-                                        .unwrap();
-                                    Ok(())
-                                })
-                                .map_err(move |e| {
-                                    warn!(
-                                        and_then_logger,
-                                        "solicitation stream response to GetBlocks failed: {:?}", e
-                                    );
-                                })
+                            let err_logger = and_then_logger.clone();
+                            BlockPull::new(headers, block_box, and_then_logger).map_err(move |e| {
+                                warn!(err_logger, "header pull failed: {:?}", e);
+                            })
                         }),
                 );
             }

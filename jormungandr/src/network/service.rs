@@ -80,7 +80,7 @@ impl BlockService for NodeService {
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type PushHeadersFuture = FutureResult<(), core_error::Error>;
+    type PushHeadersFuture = Box<dyn Future<Item = (), Error = core_error::Error> + Send>;
     type OnUploadedBlockFuture = FutureResult<(), core_error::Error>;
     type BlockSubscription = BlockEventSubscription;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
@@ -145,8 +145,11 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        //BlockPull::new(headers, self.channels.block_box.clone(), self.logger.clone())
-        unimplemented!()
+        Box::new(BlockPull::new(
+            headers,
+            self.channels.block_box.clone(),
+            self.logger.clone(),
+        ))
     }
 
     fn on_uploaded_block(&mut self, block: Block) -> Self::OnUploadedBlockFuture {
