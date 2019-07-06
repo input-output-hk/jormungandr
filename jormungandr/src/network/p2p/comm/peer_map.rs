@@ -42,77 +42,69 @@ impl PeerMap {
     pub fn ensure_peer_comms(&mut self, id: NodeId) -> &mut PeerComms {
         use std::collections::hash_map::Entry::*;
 
-        let (node_ptr, last_needs_updating) = match self.map.entry(id) {
-            Occupied(mut entry) => (entry.get_mut().as_mut().as_ptr(), false),
+        let node_ptr = match self.map.entry(id) {
+            Occupied(mut entry) => entry.get_mut().as_mut().as_ptr(),
             Vacant(entry) => {
                 let node = Box::pin(Node::new(id, PeerComms::new()));
                 let node = entry.insert(node);
-                (node.as_mut().as_ptr(), true)
+                let node_ptr = node.as_mut().as_ptr();
+                unsafe {
+                    // Add the node, but don't reset the cursor
+                    // as the block subscription has not been established yet.
+                    self.block_cursor.add_last(node_ptr);
+                }
+                node_ptr
             }
         };
-        // TODO: update to edition 2018 so we can use NLLs
-        if last_needs_updating {
-            unsafe {
-                self.push_last(id, node_ptr);
-            }
-        }
         unsafe { &mut (*node_ptr.as_ptr()).comms }
     }
 
     pub fn insert_peer(&mut self, id: NodeId, comms: PeerComms) {
         use std::collections::hash_map::Entry::*;
 
-        let mut node = Box::pin(Node::new(id, comms));
-        let (node_ptr, last_needs_updating) = match self.map.entry(id) {
+        let node = Box::pin(Node::new(id, comms));
+        let node_ptr = match self.map.entry(id) {
             Occupied(mut entry) => {
-                let (prev, next) = unsafe { entry.get_mut().unlink() };
-                if next.is_none() {
-                    // The old entry was the last,
-                    // the cursor does not need updating.
-                    // Just link with the previous node here.
-                    node.prev = prev;
-                    if let Some(mut prev) = prev {
-                        unsafe {
-                            prev.as_mut().next = Some(node.as_mut().as_ptr());
-                        }
-                    }
+                unsafe {
+                    let old_node = entry.get_mut();
+                    let old_node_ptr = old_node.as_mut().as_ptr();
+                    self.block_cursor.on_unlink_node(old_node_ptr);
+                    old_node.unlink();
                 }
-                entry.insert(node);
-                (entry.into_mut().as_mut().as_ptr(), next.is_some())
+                entry.insert(node).as_mut().as_ptr()
             }
-            Vacant(entry) => (entry.insert(node).as_mut().as_ptr(), true),
+            Vacant(entry) => entry.insert(node).as_mut().as_ptr(),
         };
-        if last_needs_updating {
-            unsafe {
-                self.push_last(id, node_ptr);
-            }
+        unsafe {
+            self.block_cursor.push_last(node_ptr);
         }
     }
 
     pub fn next_peer_for_block_fetch(&mut self) -> Option<(NodeId, &mut PeerComms)> {
-        match self.block_cursor.next() {
-            None => None,
-            Some(id) => {
-                let node = self.map.get_mut(&id).unwrap();
-                let prev_id = match node.prev {
-                    None => None,
-                    Some(prev_ptr) => unsafe { Some(prev_ptr.as_ref().id) },
-                };
-                self.block_cursor.set_next(prev_id);
-                Some((id, &mut node.comms))
+        unsafe {
+            match self.block_cursor.next() {
+                None => None,
+                Some(node_ptr) => {
+                    let node = node_ptr.as_ref();
+                    Some((node.id, &mut (*node_ptr.as_ptr()).comms))
+                }
             }
         }
     }
 
-    unsafe fn push_last(&mut self, id: NodeId, mut node_ptr: NonNull<Node>) {
-        if let Some(last_id) = self.block_cursor.last() {
-            let last = self.map.get_mut(&last_id).unwrap();
-            last.next = Some(node_ptr);
-            let node = node_ptr.as_mut();
-            node.prev = Some(NonNull::new_unchecked(last.as_mut().get_mut()));
-            node.next = None;
+    pub fn bump_peer_for_block_fetch(&mut self, id: NodeId) {
+        let node = self
+            .map
+            .get_mut(&id)
+            .expect("peer must be present in the map");
+        unsafe {
+            let node_ptr = node.as_mut().as_ptr();
+            if !self.block_cursor.is_last(node_ptr) {
+                self.block_cursor.on_unlink_node(node_ptr);
+                node.unlink();
+                self.block_cursor.push_last(node_ptr);
+            }
         }
-        self.block_cursor.set_last(id);
     }
 }
 
@@ -120,55 +112,109 @@ impl PeerMap {
 enum BlockFetchCursor {
     // Placeholder when no entries exist in the map.
     Empty,
-    Ids {
-        // The ID of the last node in the order.
-        last: NodeId,
+    Ptrs {
+        // The last node in the fetch order.
+        last: NonNull<Node>,
         // Cursor for the next node to fetch blocks from.
         // If None, start from last.
-        next_back: Option<NodeId>,
+        next_back: Option<NonNull<Node>>,
     },
 }
 
 impl BlockFetchCursor {
-    fn is_last(&self, id: NodeId) -> bool {
+    fn is_last(&self, node_ptr: NonNull<Node>) -> bool {
         match self {
             BlockFetchCursor::Empty => false,
-            BlockFetchCursor::Ids { last, .. } => *last == id,
+            BlockFetchCursor::Ptrs { last, .. } => *last == node_ptr,
         }
     }
 
-    fn last(&self) -> Option<NodeId> {
+    unsafe fn next(&mut self) -> Option<NonNull<Node>> {
         match self {
             BlockFetchCursor::Empty => None,
-            BlockFetchCursor::Ids { last, .. } => Some(*last),
+            BlockFetchCursor::Ptrs {
+                ref last,
+                ref mut next_back,
+            } => {
+                let next_ptr = next_back.unwrap_or(*last);
+                let next = next_ptr.as_ref();
+                *next_back = next.prev;
+                Some(next_ptr)
+            }
         }
     }
 
-    fn next(&self) -> Option<NodeId> {
+    unsafe fn add_last(&mut self, mut node_ptr: NonNull<Node>) {
+        debug_assert!(node_ptr.as_mut().prev.is_none());
+        debug_assert!(node_ptr.as_mut().next.is_none());
         match self {
-            BlockFetchCursor::Empty => None,
-            BlockFetchCursor::Ids { last, next_back } => next_back.or(Some(*last)),
+            BlockFetchCursor::Empty => {
+                *self = BlockFetchCursor::Ptrs {
+                    last: node_ptr,
+                    next_back: None,
+                };
+            }
+            BlockFetchCursor::Ptrs {
+                last: ref mut last_ptr,
+                ..
+            } => {
+                let last = last_ptr.as_mut();
+                last.next = Some(node_ptr);
+                let node = node_ptr.as_mut();
+                node.prev = Some(*last_ptr);
+                *last_ptr = node_ptr;
+            }
         }
     }
 
-    fn set_last(&mut self, last: NodeId) {
+    unsafe fn push_last(&mut self, mut node_ptr: NonNull<Node>) {
+        debug_assert!(node_ptr.as_mut().prev.is_none());
+        debug_assert!(node_ptr.as_mut().next.is_none());
         *self = match self {
-            BlockFetchCursor::Empty => BlockFetchCursor::Ids {
-                last,
+            BlockFetchCursor::Empty => BlockFetchCursor::Ptrs {
+                last: node_ptr,
                 next_back: None,
             },
-            BlockFetchCursor::Ids { ref next_back, .. } => BlockFetchCursor::Ids {
-                last,
-                next_back: *next_back,
-            },
+            BlockFetchCursor::Ptrs {
+                last: ref mut last_ptr,
+                ..
+            } => {
+                let last = last_ptr.as_mut();
+                last.next = Some(node_ptr);
+                let node = node_ptr.as_mut();
+                node.prev = Some(*last_ptr);
+                BlockFetchCursor::Ptrs {
+                    last: *last_ptr,
+                    next_back: None,
+                }
+            }
         }
     }
 
-    fn set_next(&mut self, next: Option<NodeId>) {
+    // This must be called before the unlink method is called on the node.
+    unsafe fn on_unlink_node(&mut self, node_ptr: NonNull<Node>) {
         match self {
-            BlockFetchCursor::Empty => unreachable!("node key set in empty peer collection"),
-            BlockFetchCursor::Ids { next_back, .. } => {
-                *next_back = next;
+            BlockFetchCursor::Ptrs {
+                ref mut last,
+                ref mut next_back,
+            } => {
+                let node = node_ptr.as_ref();
+                if *next_back == Some(node_ptr) {
+                    *next_back = node.prev;
+                }
+                if *last == node_ptr {
+                    match node.prev {
+                        None => {
+                            *self = BlockFetchCursor::Empty;
+                        }
+                        Some(prev_ptr) => {
+                            *last = prev_ptr;
+                        }
+                    }
+                }
+            }
+            BlockFetchCursor::Empty => {
+                unreachable!("cursor is empty while a node is being removed")
             }
         }
     }
@@ -205,14 +251,15 @@ impl Node {
 
     // Require a mutable borrow on self because this modifies
     // adjacent nodes.
-    unsafe fn unlink(&mut self) -> (Option<NonNull<Node>>, Option<NonNull<Node>>) {
+    unsafe fn unlink(&mut self) {
         if let Some(mut prev) = self.prev {
             prev.as_mut().next = self.next;
+            self.prev = None;
         }
         if let Some(mut next) = self.next {
             next.as_mut().prev = self.prev;
+            self.next = None;
         }
-        (self.prev, self.next)
     }
 }
 
@@ -227,22 +274,11 @@ impl<'a> Entry<'a> {
     }
 
     pub fn remove(mut self) {
-        let id = *self.inner.key();
-        let (prev, _) = unsafe { self.inner.get_mut().unlink() };
-        if self.block_cursor.next() == Some(id) {
-            let next = match prev {
-                Some(prev) => unsafe { Some(prev.as_ref().id) },
-                None => None,
-            };
-            self.block_cursor.set_next(next);
-        }
-        if self.block_cursor.is_last(id) {
-            match prev {
-                Some(prev) => self.block_cursor.set_last(unsafe { prev.as_ref().id }),
-                None => {
-                    *self.block_cursor = BlockFetchCursor::Empty;
-                }
-            }
+        let node = self.inner.get_mut();
+        let node_ptr = node.as_mut().as_ptr();
+        unsafe {
+            self.block_cursor.on_unlink_node(node_ptr);
+            node.unlink();
         }
         self.inner.remove();
     }
