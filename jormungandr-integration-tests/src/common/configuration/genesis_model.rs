@@ -83,14 +83,14 @@ impl GenesisYaml {
         let pk1: PublicKey<Ed25519> = sk1.to_public();
         let initial_funds_address1 = Address(Discrimination::Test, Kind::Single(pk1));
         let initial_funds_address1 =
-            AddressReadable::from_address(&initial_funds_address1).to_string();
+            AddressReadable::from_address("ca", &initial_funds_address1).to_string();
 
         let sk2: SecretKey<Ed25519Extended> =
             SecretKey::generate(&mut ChaChaRng::from_seed([2; 32]));
         let pk2: PublicKey<Ed25519> = sk2.to_public();
         let initial_funds_address2 = Address(Discrimination::Test, Kind::Single(pk2));
         let initial_funds_address2 =
-            AddressReadable::from_address(&initial_funds_address2).to_string();
+            AddressReadable::from_address("ca", &initial_funds_address2).to_string();
 
         let initial_funds = vec![
             Fund {

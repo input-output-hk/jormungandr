@@ -1,6 +1,7 @@
 use chain_addr::{Address, AddressReadable};
 use chain_impl_mockchain::transaction::{Balance, Input, InputEnum, InputType, Output};
 use jcli_app::{
+    address::ADDRESS_PREFIX,
     transaction::{common, staging::Staging, Error},
     utils::io,
 };
@@ -117,7 +118,7 @@ impl Info {
 
         vars.insert(
             "address".to_owned(),
-            AddressReadable::from_address(&output.address).to_string(),
+            AddressReadable::from_address(ADDRESS_PREFIX, &output.address).to_string(),
         );
         vars.insert("value".to_owned(), output.value.0.to_string());
         self.write_info(writer, &self.format_output, vars)

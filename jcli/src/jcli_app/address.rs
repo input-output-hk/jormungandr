@@ -4,6 +4,8 @@ use chain_crypto::{AsymmetricPublicKey, Ed25519, PublicKey};
 use jcli_app::utils::key_parser::parse_pub_key;
 use structopt::StructOpt;
 
+pub const ADDRESS_PREFIX: &'static str = env!("ADDRESS_PREFIX");
+
 #[derive(StructOpt)]
 #[structopt(name = "address", rename_all = "kebab-case")]
 pub enum Address {
@@ -118,7 +120,10 @@ fn mk_discrimination(testing: bool) -> Discrimination {
 
 fn mk_address(discrimination: Discrimination, kind: Kind) {
     let address = chain_addr::Address(discrimination, kind);
-    println!("{}", AddressReadable::from_address(&address).to_string());
+    println!(
+        "{}",
+        AddressReadable::from_address(ADDRESS_PREFIX, &address).to_string()
+    );
 }
 
 fn mk_address_1<A, F>(s: PublicKey<A>, testing: bool, f: F)
