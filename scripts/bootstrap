@@ -33,7 +33,7 @@ FAUCET_AMOUNT=1000000000000
 FIXED_AMOUNT=1000000000000
 ADDRTYPE="--testing"
 
-CONSENSUS="genesis_praos"
+CONSENSUS="genesis"
 SECRET_PATH="."
 CONFIG_PATH="."
 ADD_STARTUP_SCRIPT=0
@@ -42,7 +42,7 @@ while getopts 'bc:ghk:p:s:xCod:e:' c
 do
     case $c in
         b) CONSENSUS="bft" ;;
-        g) CONSENSUS="genesis_praos" ;;
+        g) CONSENSUS="genesis" ;;
         p) REST_PORT="${OPTARG}" ;;
         k) SECRET_PATH="${OPTARG}" ;;
         c) CONFIG_PATH="${OPTARG}" ;;

@@ -309,6 +309,7 @@ enum DiscriminationDef {
 #[serde(rename_all = "snake_case", remote = "ConsensusVersion")]
 enum ConsensusVersionDef {
     Bft,
+    #[serde(rename = "genesis")]
     GenesisPraos,
 }
 
