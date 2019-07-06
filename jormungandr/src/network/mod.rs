@@ -5,6 +5,7 @@
 //! transactions...);
 //!
 
+mod chain_pull;
 mod client;
 mod grpc;
 pub mod p2p;
@@ -12,7 +13,7 @@ mod service;
 mod subscription;
 
 use self::p2p::{
-    comm::{PeerComms, PeerMap},
+    comm::{PeerComms, Peers},
     topology::{self, P2pTopology},
 };
 use crate::blockcfg::{Block, HeaderHash};
@@ -59,7 +60,7 @@ pub struct GlobalState {
     pub config: Configuration,
     pub topology: P2pTopology,
     pub node: topology::Node,
-    pub peers: PeerMap,
+    pub peers: Peers,
     pub logger: Logger,
 }
 
@@ -94,7 +95,7 @@ impl GlobalState {
             config,
             topology,
             node,
-            peers: PeerMap::new(logger.clone()),
+            peers: Peers::new(logger.clone()),
             logger,
         }
     }
@@ -210,8 +211,12 @@ fn handle_network_input(
             handle_propagation_msg(msg, state.clone(), channels.clone());
             Ok(())
         }
-        NetworkMsg::GetBlocks(node_id, block_ids) => {
-            state.peers.solicit_blocks(node_id, block_ids);
+        NetworkMsg::GetBlocks(block_ids) => {
+            state.peers.fetch_blocks(block_ids);
+            Ok(())
+        }
+        NetworkMsg::GetNextBlock(node_id, block_id) => {
+            state.peers.solicit_blocks(node_id, vec![block_id]);
             Ok(())
         }
         NetworkMsg::PullHeaders { node_id, from, to } => {

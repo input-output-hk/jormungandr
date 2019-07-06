@@ -1,38 +1,35 @@
 use super::{
+    chain_pull::ChainPull,
     grpc,
-    p2p::{
-        comm::{ClientCommand, PeerComms, Subscription},
-        topology,
-    },
-    subscription, Channels, ConnectionState,
+    p2p::comm::{PeerComms, Subscription},
+    p2p::topology,
+    subscription, Channels, ConnectionState, GlobalStateR,
 };
 use crate::{
     blockcfg::{Block, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
 };
 use futures::prelude::*;
-use futures::sync::mpsc;
-use network_core::{
-    client::{self as core_client, block::BlockService, gossip::GossipService, p2p::P2pService},
-    gossip::Node,
-    subscription::BlockEvent,
-};
+use network_core::client as core_client;
+use network_core::client::block::BlockService;
+use network_core::client::gossip::GossipService;
+use network_core::client::p2p::P2pService;
+use network_core::gossip::Node;
+use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
-
-// Length of the channel buffering commands for client connections to the peers.
-const COMMAND_BUFFER_LEN: usize = 32;
 
 pub struct Client<S>
 where
     S: BlockService,
 {
     service: S,
-    commands: mpsc::Receiver<ClientCommand>,
+    logger: Logger,
+    global_state: GlobalStateR,
     channels: Channels,
     remote_node_id: topology::NodeId,
     block_events: S::BlockSubscription,
     block_solicitations: Subscription<Vec<HeaderHash>>,
-    logger: Logger,
+    chain_pulls: Subscription<ChainPullRequest<HeaderHash>>,
 }
 
 impl<S: BlockService> Client<S> {
@@ -59,8 +56,7 @@ where
         state: ConnectionState,
         channels: Channels,
     ) -> impl Future<Item = (Self, PeerComms), Error = ()> {
-        let (commands_tx, commands_rx) = mpsc::channel(COMMAND_BUFFER_LEN);
-        let mut peer_comms = PeerComms::client(commands_tx);
+        let mut peer_comms = PeerComms::new();
         let err_logger = state.logger().clone();
         service
             .ready()
@@ -96,25 +92,27 @@ where
                         );
                         return Err(());
                     }
-                    let client_logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
+                    let logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
 
                     // Spin off processing tasks for subscriptions that can be
                     // managed with just the global state.
-                    subscription::process_gossip(gossip_sub, state.global, client_logger.clone());
+                    subscription::process_gossip(gossip_sub, state.global.clone(), logger.clone());
 
-                    // Plug the block solicitations to be handled
+                    // Plug the block solicitations and header pulls to be handled
                     // via client requests.
                     let block_solicitations = peer_comms.subscribe_to_block_solicitations();
+                    let chain_pulls = peer_comms.subscribe_to_chain_pulls();
 
                     // Resolve with the client instance and communication handles.
                     let client = Client {
                         service,
-                        commands: commands_rx,
+                        logger,
+                        global_state: state.global,
                         channels,
                         remote_node_id: node_id,
                         block_events,
                         block_solicitations,
-                        logger: client_logger,
+                        chain_pulls,
                     };
                     Ok((client, peer_comms))
                 },
@@ -131,6 +129,9 @@ where
     fn process_block_event(&mut self, event: BlockEvent<S::Block>) {
         match event {
             BlockEvent::Announce(header) => {
+                self.global_state
+                    .peers
+                    .bump_peer_for_block_fetch(self.remote_node_id);
                 self.channels
                     .block_box
                     .try_send(BlockMsg::AnnouncedBlock(header, self.remote_node_id))
@@ -158,14 +159,14 @@ where
                         }),
                 );
             }
-            BlockEvent::Missing { from, to } => {
+            BlockEvent::Missing(req) => {
                 let (reply_handle, stream) = intercom::stream_reply::<
                     Header,
                     network_core::error::Error,
                 >(self.logger.clone());
                 self.channels.client_box.send_to(ClientMsg::GetHeadersRange(
-                    from,
-                    to,
+                    req.from,
+                    req.to,
                     reply_handle,
                 ));
                 let node_id = self.remote_node_id;
@@ -192,43 +193,23 @@ where
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
 {
-    fn process_command(&mut self, command: ClientCommand) {
-        match command {
-            ClientCommand::PullHeaders { from, to } => {
-                let mut block_box = self.channels.block_box.clone();
-                let node_id = self.remote_node_id.clone();
-                let err_logger = self.logger.clone();
-                let and_then_logger = self.logger.clone();
-                tokio::spawn(
-                    self.service
-                        .pull_headers(&from, &to)
-                        .map_err(move |e| {
-                            warn!(
-                                err_logger,
-                                "solicitation request PullHeaders failed: {:?}", e
-                            );
-                        })
-                        .and_then(move |headers| {
-                            // FIXME: batch headers and send them to the
-                            // processing task in a new type of message
-                            // specialized for restoration of the chain.
-                            headers
-                                .for_each(move |header| {
-                                    block_box
-                                        .try_send(BlockMsg::AnnouncedBlock(header, node_id))
-                                        .unwrap();
-                                    Ok(())
-                                })
-                                .map_err(move |e| {
-                                    warn!(
-                                        and_then_logger,
-                                        "solicitation stream response to GetBlocks failed: {:?}", e
-                                    );
-                                })
-                        }),
-                );
-            }
-        }
+    fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
+        let block_box = self.channels.block_box.clone();
+        let err_logger = self.logger.clone();
+        let and_then_logger = self.logger.clone();
+        tokio::spawn(
+            self.service
+                .pull_headers(&req.from, &req.to)
+                .map_err(move |e| {
+                    warn!(err_logger, "PullHeaders request failed: {:?}", e);
+                })
+                .and_then(move |headers| {
+                    let err_logger = and_then_logger.clone();
+                    ChainPull::new(headers, block_box, and_then_logger).map_err(move |e| {
+                        warn!(err_logger, "header pull failed: {:?}", e);
+                    })
+                }),
+        );
     }
 }
 
@@ -294,20 +275,9 @@ where
                     self.process_block_event(event);
                 }
             }
-            match self.commands.poll().unwrap() {
-                Async::NotReady => {}
-                Async::Ready(None) => {
-                    debug!(self.logger, "client command stream closed");
-                    return Ok(().into());
-                }
-                Async::Ready(Some(command)) => {
-                    streams_ready = true;
-                    self.process_command(command);
-                }
-            }
-            // Block solicitations are special: they are handled with
-            // client requests on the client side, but on the server side,
-            // they are fed into the block event stream.
+            // Block solicitations and chain pulls are special:
+            // they are handled with client requests on the client side,
+            // but on the server side, they are fed into the block event stream.
             match self.block_solicitations.poll().unwrap() {
                 Async::NotReady => {}
                 Async::Ready(None) => {
@@ -317,6 +287,17 @@ where
                 Async::Ready(Some(block_ids)) => {
                     streams_ready = true;
                     self.solicit_blocks(&block_ids);
+                }
+            }
+            match self.chain_pulls.poll().unwrap() {
+                Async::NotReady => {}
+                Async::Ready(None) => {
+                    debug!(self.logger, "outbound header pull stream closed");
+                    return Ok(().into());
+                }
+                Async::Ready(Some(req)) => {
+                    streams_ready = true;
+                    self.pull_headers(req);
                 }
             }
             if !streams_ready {

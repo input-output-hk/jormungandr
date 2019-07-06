@@ -29,6 +29,16 @@ impl Error {
         }
     }
 
+    pub fn failed_precondition<T>(cause: T) -> Self
+    where
+        T: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Error {
+            code: core_error::Code::FailedPrecondition,
+            cause: cause.into(),
+        }
+    }
+
     pub fn not_found<T>(cause: T) -> Self
     where
         T: Into<Box<dyn error::Error + Send + Sync>>,
@@ -73,6 +83,12 @@ impl From<chain_storage::error::Error> for Error {
             code,
             cause: err.into(),
         }
+    }
+}
+
+impl From<Error> for core_error::Error {
+    fn from(err: Error) -> Self {
+        core_error::Error::new(err.code(), err)
     }
 }
 
@@ -292,6 +308,11 @@ pub enum BlockMsg {
     NetworkBlock(Block),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, NodeId),
+    /// Headers for missing chain blocks have been received from the network
+    /// in response to a PullHeaders request. The reply handle must be used to
+    /// continue streaming by sending Ok, or to cancel the incoming stream
+    /// with an error.
+    ChainHeaders(Vec<Header>, ReplyHandle<()>),
 }
 
 /// Propagation requests for the network task.
@@ -305,7 +326,8 @@ pub enum PropagateMsg {
 #[derive(Clone, Debug)]
 pub enum NetworkMsg {
     Propagate(PropagateMsg),
-    GetBlocks(NodeId, Vec<HeaderHash>),
+    GetBlocks(Vec<HeaderHash>),
+    GetNextBlock(NodeId, HeaderHash),
     PullHeaders {
         node_id: NodeId,
         from: Vec<HeaderHash>,

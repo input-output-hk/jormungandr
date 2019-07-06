@@ -1,14 +1,11 @@
 use super::{
-    p2p::{
-        comm::{BlockEventSubscription, Subscription},
-        topology,
-    },
+    chain_pull::ChainPull,
+    p2p::comm::{BlockEventSubscription, Subscription},
+    p2p::topology,
     subscription, Channels, GlobalStateR,
 };
 use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
-use crate::intercom::{
-    self, stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream,
-};
+use crate::intercom::{stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream};
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use network_core::{
@@ -60,12 +57,6 @@ impl Node for NodeService {
     }
 }
 
-impl From<intercom::Error> for core_error::Error {
-    fn from(err: intercom::Error) -> Self {
-        core_error::Error::new(err.code(), err)
-    }
-}
-
 impl P2pService for NodeService {
     type NodeId = topology::NodeId;
 
@@ -89,7 +80,7 @@ impl BlockService for NodeService {
     type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type PushHeadersFuture = FutureResult<(), core_error::Error>;
+    type PushHeadersFuture = Box<dyn Future<Item = (), Error = core_error::Error> + Send>;
     type OnUploadedBlockFuture = FutureResult<(), core_error::Error>;
     type BlockSubscription = BlockEventSubscription;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
@@ -136,10 +127,14 @@ impl BlockService for NodeService {
 
     fn pull_headers(
         &mut self,
-        _from: &[Self::BlockId],
-        _to: &Self::BlockId,
+        from: &[Self::BlockId],
+        to: &Self::BlockId,
     ) -> Self::PullHeadersFuture {
-        unimplemented!()
+        let (handle, stream) = stream_reply(self.logger().clone());
+        self.channels
+            .client_box
+            .send_to(ClientMsg::GetHeadersRange(from.into(), *to, handle));
+        future::ok(stream)
     }
 
     fn pull_headers_to_tip(&mut self, _from: &[Self::BlockId]) -> Self::PullHeadersFuture {
@@ -150,8 +145,11 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        unimplemented!();
-        future::ok(())
+        Box::new(ChainPull::new(
+            headers,
+            self.channels.block_box.clone(),
+            self.logger.clone(),
+        ))
     }
 
     fn on_uploaded_block(&mut self, block: Block) -> Self::OnUploadedBlockFuture {
@@ -173,6 +171,7 @@ impl BlockService for NodeService {
         subscription::process_block_announcements(
             inbound,
             subscriber,
+            self.global_state.clone(),
             self.channels.block_box.clone(),
             self.logger().clone(),
         );
