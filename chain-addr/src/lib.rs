@@ -306,7 +306,10 @@ impl AddressReadable {
 
     pub fn get_prefix(&self) -> String {
         use std::str::FromStr;
-        Bech32::from_str(&self.0).expect("only valid bech32 string are accepted").hrp().to_string()
+        Bech32::from_str(&self.0)
+            .expect("only valid bech32 string are accepted")
+            .hrp()
+            .to_string()
     }
 
     /// Validate from a String to create a valid AddressReadable
