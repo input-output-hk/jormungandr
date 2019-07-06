@@ -304,6 +304,11 @@ impl AddressReadable {
         &self.0
     }
 
+    pub fn get_prefix(&self) -> String {
+        use std::str::FromStr;
+        Bech32::from_str(&self.0).expect("only valid bech32 string are accepted").hrp().to_string()
+    }
+
     /// Validate from a String to create a valid AddressReadable
     pub fn from_string(expected_prefix: &str, s: &str) -> Result<Self, Error> {
         use std::str::FromStr;
@@ -317,13 +322,17 @@ impl AddressReadable {
         Ok(AddressReadable(s.to_string()))
     }
 
-    pub fn from_string_anyprefix(s: &str) -> Result<Self, Error> {
+    pub fn from_str_anyprefix(s: &str) -> Result<Self, Error> {
         use std::str::FromStr;
         let r = Bech32::from_str(s)?;
         let dat = Vec::from_base32(r.data())?;
         let _ = is_valid_data(&dat[..])?;
 
         Ok(AddressReadable(s.to_string()))
+    }
+
+    pub fn from_string_anyprefix(s: &str) -> Result<Self, Error> {
+        Self::from_str_anyprefix(s)
     }
 
     /// Create a new AddressReadable from an encoded address
