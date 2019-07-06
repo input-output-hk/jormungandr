@@ -215,14 +215,10 @@ impl<Address: Readable> Readable for Output<Address> {
 
 impl std::fmt::Display for Output<chain_addr::Address> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}.{}",
-            chain_addr::AddressReadable::from_address(&self.address).to_string(),
-            self.value
-        )
+        write!(f, "{}.{}", self.address.base32(), self.value)
     }
 }
+
 impl std::fmt::Display for Output<OldAddress> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}.{}", self.address, self.value)

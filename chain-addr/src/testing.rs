@@ -24,9 +24,11 @@ impl Arbitrary for KindType {
     }
 }
 
+const ARBITRARY_PREFIX: &'static str = "qaddr";
+
 impl Arbitrary for AddressReadable {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        AddressReadable::from_address(&Arbitrary::arbitrary(g))
+        AddressReadable::from_address(ARBITRARY_PREFIX, &Arbitrary::arbitrary(g))
     }
 }
 
