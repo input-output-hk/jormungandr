@@ -3,7 +3,7 @@ use super::{
     grpc,
     p2p::comm::{PeerComms, Subscription},
     p2p::topology,
-    subscription, Channels, ConnectionState,
+    subscription, Channels, ConnectionState, GlobalStateR,
 };
 use crate::{
     blockcfg::{Block, Header, HeaderHash},
@@ -23,12 +23,13 @@ where
     S: BlockService,
 {
     service: S,
+    logger: Logger,
+    global_state: GlobalStateR,
     channels: Channels,
     remote_node_id: topology::NodeId,
     block_events: S::BlockSubscription,
     block_solicitations: Subscription<Vec<HeaderHash>>,
     chain_pulls: Subscription<ChainPullRequest<HeaderHash>>,
-    logger: Logger,
 }
 
 impl<S: BlockService> Client<S> {
@@ -91,11 +92,11 @@ where
                         );
                         return Err(());
                     }
-                    let client_logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
+                    let logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
 
                     // Spin off processing tasks for subscriptions that can be
                     // managed with just the global state.
-                    subscription::process_gossip(gossip_sub, state.global, client_logger.clone());
+                    subscription::process_gossip(gossip_sub, state.global.clone(), logger.clone());
 
                     // Plug the block solicitations and header pulls to be handled
                     // via client requests.
@@ -105,12 +106,13 @@ where
                     // Resolve with the client instance and communication handles.
                     let client = Client {
                         service,
+                        logger,
+                        global_state: state.global,
                         channels,
                         remote_node_id: node_id,
                         block_events,
                         block_solicitations,
                         chain_pulls,
-                        logger: client_logger,
                     };
                     Ok((client, peer_comms))
                 },
@@ -127,6 +129,9 @@ where
     fn process_block_event(&mut self, event: BlockEvent<S::Block>) {
         match event {
             BlockEvent::Announce(header) => {
+                self.global_state
+                    .peers
+                    .bump_peer_for_block_fetch(self.remote_node_id);
                 self.channels
                     .block_box
                     .try_send(BlockMsg::AnnouncedBlock(header, self.remote_node_id))

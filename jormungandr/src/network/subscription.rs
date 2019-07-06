@@ -10,6 +10,7 @@ use slog::Logger;
 pub fn process_block_announcements<S>(
     inbound: S,
     node_id: NodeId,
+    global_state: GlobalStateR,
     mut block_box: MessageBox<BlockMsg>,
     logger: Logger,
 ) -> tokio::executor::Spawn
@@ -19,6 +20,7 @@ where
     tokio::spawn(
         inbound
             .for_each(move |header| {
+                global_state.peers.bump_peer_for_block_fetch(node_id);
                 block_box
                     .try_send(BlockMsg::AnnouncedBlock(header, node_id))
                     .unwrap();

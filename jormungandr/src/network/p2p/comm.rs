@@ -331,6 +331,11 @@ impl Peers {
         }
     }
 
+    pub fn bump_peer_for_block_fetch(&self, node_id: topology::NodeId) {
+        let mut map = self.mutex.lock().unwrap();
+        map.bump_peer_for_block_fetch(node_id);
+    }
+
     pub fn fetch_blocks(&self, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
         if let Some((node_id, comms)) = map.next_peer_for_block_fetch() {

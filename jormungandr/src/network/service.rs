@@ -171,6 +171,7 @@ impl BlockService for NodeService {
         subscription::process_block_announcements(
             inbound,
             subscriber,
+            self.global_state.clone(),
             self.channels.block_box.clone(),
             self.logger().clone(),
         );
