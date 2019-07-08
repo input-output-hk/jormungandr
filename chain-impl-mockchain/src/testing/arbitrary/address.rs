@@ -9,7 +9,7 @@ pub struct ArbitraryAddressDataVec(pub Vec<AddressData>);
 impl Arbitrary for ArbitraryAddressDataVec {
     fn arbitrary<G: Gen>(gen: &mut G) -> Self {
         let size_limit = 253;
-        let n = usize::arbitrary(gen) % size_limit;
+        let n = usize::arbitrary(gen) % size_limit + 1;
         let addresses = iter::from_fn(|| Some(AddressData::arbitrary(gen))).take(n);
         ArbitraryAddressDataVec(addresses.collect())
     }

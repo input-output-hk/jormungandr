@@ -1,14 +1,22 @@
 #![cfg(test)]
 
 use crate::testing::address::AddressData;
+use crate::testing::arbitrary::{ArbitraryValidTransactionData, NonZeroValue};
 use crate::testing::ledger;
 use crate::testing::ledger::ConfigBuilder;
 use crate::testing::tx_builder::TransactionBuilder;
+use crate::{
+    ledger::{
+        Entry,
+        Error::{NotEnoughSignatures, TransactionHasTooManyOutputs},
+        Ledger,
+    },
+    transaction::*,
+    value::*,
+};
 use chain_addr::Discrimination;
-use crate::ledger::Error::{NotEnoughSignatures, TransactionHasTooManyOutputs};
-use crate::transaction::*;
-use crate::value::*;
-use crate::ledger::{Entry, Ledger};
+use quickcheck::TestResult;
+use quickcheck_macros::quickcheck;
 
 macro_rules! assert_err {
     ($left: expr, $right: expr) => {
@@ -32,20 +40,114 @@ macro_rules! assert_err {
     };
 }
 
+#[quickcheck]
+pub fn ledger_accepts_correct_transaction(
+    faucet: AddressData,
+    receiver: AddressData,
+    value: NonZeroValue,
+) -> TestResult {
+    let message = ledger::create_initial_transaction(Output::from_address(
+        faucet.address.clone(),
+        value.into(),
+    ));
+
+    let (block0_hash, ledger) =
+        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
+    let mut utxos = ledger.utxos();
+    let signed_tx = TransactionBuilder::new()
+        .with_input(faucet.make_input(value.into(), utxos.next()))
+        .with_output(Output::from_address(receiver.address.clone(), value.into()))
+        .authenticate()
+        .with_witness(&block0_hash, &faucet)
+        .seal();
+
+    let total_funds_before = calculate_total_funds_in_ledger(&ledger);
+
+    let fees = ledger.get_ledger_parameters();
+    let result = ledger.apply_transaction(&signed_tx, &fees);
+
+    match result {
+        Err(err) => TestResult::error(format!("Error from ledger: {}", err)),
+        Ok((ledger, _)) => {
+            let total_funds_after = calculate_total_funds_in_ledger(&ledger);
+            match total_funds_before == total_funds_after {
+                false => TestResult::error(format!(
+                    "Total funds in ledger before and after transaction is not equal {} <> {} ",
+                    total_funds_before, total_funds_after
+                )),
+                true => TestResult::passed(),
+            }
+        }
+    }
+}
+
+fn calculate_total_funds_in_ledger(ledger: &Ledger) -> u64 {
+    ledger.utxos().map(|x| x.output.value.0).sum::<u64>()
+        + ledger
+            .accounts()
+            .iter()
+            .map(|(_, x)| x.value().0)
+            .sum::<u64>()
+}
+
+#[quickcheck]
+pub fn total_funds_are_total_in_ledger(
+    mut transaction_data: ArbitraryValidTransactionData,
+) -> TestResult {
+    let message =
+        ledger::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
+    let (block0_hash, ledger) = ledger::create_initial_fake_ledger(
+        &[message],
+        ConfigBuilder::new()
+            .with_discrimination(Discrimination::Test)
+            .build(),
+    )
+    .expect("ledger_failed");
+
+    let inputs = transaction_data.make_inputs(&ledger);
+    let outputs = transaction_data.make_outputs();
+    let input_addresses = transaction_data.input_addresses();
+
+    let signed_tx = TransactionBuilder::new()
+        .with_inputs(inputs)
+        .with_outputs(outputs)
+        .authenticate()
+        .with_witnesses(&block0_hash, &input_addresses)
+        .seal();
+
+    let total_funds_before = calculate_total_funds_in_ledger(&ledger);
+    let fees = ledger.get_ledger_parameters();
+    let result = ledger.apply_transaction(&signed_tx, &fees);
+
+    match result {
+        Err(err) => TestResult::error(format!("Error from ledger: {}", err)),
+        Ok((ledger, _)) => {
+            let total_funds_after = calculate_total_funds_in_ledger(&ledger);
+            match total_funds_before == total_funds_after {
+                false => TestResult::error(format!(
+                    "Total funds in ledger before and after transaction is not equal {} <> {} ",
+                    total_funds_before, total_funds_after
+                )),
+                true => TestResult::passed(),
+            }
+        }
+    }
+}
+
 #[test]
 pub fn utxo_no_enough_signatures() {
     let faucet = AddressData::utxo(Discrimination::Test);
     let receiver = AddressData::utxo(Discrimination::Test);
 
-    let (message, utxos) = ledger::create_initial_transaction(Output::from_address(
+    let message = ledger::create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(42000),
     ));
     let (_, ledger) =
         ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
+    let mut utxos = ledger.utxos();
     let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo(utxos[0]))
+        .with_input(Input::from_utxo_entry(utxos.next().unwrap()))
         .with_output(Output::from_address(receiver.address.clone(), Value(1)))
         .authenticate()
         .seal();
@@ -61,132 +163,6 @@ pub fn utxo_no_enough_signatures() {
 }
 
 #[test]
-pub fn utxo_to_utxo_correct_transaction() {
-    let faucet = AddressData::utxo(Discrimination::Test);
-    let receiver = AddressData::utxo(Discrimination::Test);
-
-    let (message, utxos) = ledger::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(42000),
-    ));
-
-    let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo(utxos[0]))
-        .with_output(Output::from_address(receiver.address.clone(), Value(42000)))
-        .authenticate()
-        .with_witness(&block0_hash, &faucet)
-        .seal();
-
-    let fees = ledger.get_ledger_parameters();
-    assert!(ledger.apply_transaction(&signed_tx, &fees).is_ok());
-}
-
-#[test]
-pub fn utxo_to_account_correct_transaction() {
-    let faucet = AddressData::utxo(Discrimination::Test);
-    let receiver = AddressData::account(Discrimination::Test);
-
-    let (message, utxos) = ledger::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(42000),
-    ));
-
-    let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo(utxos[0]))
-        .with_output(Output::from_address(receiver.address.clone(), Value(42000)))
-        .authenticate()
-        .with_witness(&block0_hash, &faucet)
-        .seal();
-
-    let fees = ledger.get_ledger_parameters();
-    assert!(ledger.apply_transaction(&signed_tx, &fees).is_ok());
-}
-
-#[test]
-pub fn account_to_account_correct_transaction() {
-    let faucet = AddressData::account(Discrimination::Test);
-    let receiver = AddressData::account(Discrimination::Test);
-
-    let (message, _) = ledger::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(42000),
-    ));
-
-    let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_account_public_key(
-            faucet.public_key.clone(),
-            Value(1),
-        ))
-        .with_output(Output::from_address(receiver.address.clone(), Value(1)))
-        .authenticate()
-        .with_witness(&block0_hash, &faucet)
-        .seal();
-
-    let fees = ledger.get_ledger_parameters();
-    assert!(ledger.apply_transaction(&signed_tx, &fees).is_ok());
-}
-
-#[test]
-pub fn account_to_delegation_correct_transaction() {
-    let faucet = AddressData::account(Discrimination::Test);
-    let receiver = AddressData::delegation(Discrimination::Test);
-
-    let (message, _) = ledger::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(42000),
-    ));
-
-    let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_account_public_key(
-            faucet.public_key.clone(),
-            Value(1),
-        ))
-        .with_output(Output::from_address(receiver.address.clone(), Value(1)))
-        .authenticate()
-        .with_witness(&block0_hash, &faucet)
-        .seal();
-
-    let fees = ledger.get_ledger_parameters();
-    assert!(ledger.apply_transaction(&signed_tx, &fees).is_ok());
-}
-
-#[test]
-pub fn delegation_to_account_correct_transaction() {
-    let faucet = AddressData::delegation(Discrimination::Test);
-    let receiver = AddressData::account(Discrimination::Test);
-
-    let (message, utxos) = ledger::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(42000),
-    ));
-
-    let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo(utxos[0]))
-        .with_output(Output::from_address(receiver.address.clone(), Value(42000)))
-        .authenticate()
-        .with_witness(&block0_hash, &faucet)
-        .seal();
-
-    let fees = ledger.get_ledger_parameters();
-    assert!(ledger.apply_transaction(&signed_tx, &fees).is_ok());
-}
-
-#[test]
 pub fn transaction_with_more_than_253_outputs() {
     let faucet = AddressData::utxo(Discrimination::Test);
     let mut outputs = vec![];
@@ -195,16 +171,16 @@ pub fn transaction_with_more_than_253_outputs() {
         outputs.push(Output::from_address(receiver.address.clone(), Value(1)));
     }
 
-    let (message, utxos) = ledger::create_initial_transaction(Output::from_address(
+    let message = ledger::create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(256),
     ));
 
     let (block0_hash, ledger) =
         ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
+    let mut utxos = ledger.utxos();
     let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo(utxos[0]))
+        .with_input(Input::from_utxo_entry(utxos.next().unwrap()))
         .with_outputs(outputs)
         .authenticate()
         .with_witness(&block0_hash, &faucet)
@@ -224,7 +200,7 @@ pub fn transaction_with_more_than_253_outputs() {
 pub fn iterate() {
     let faucet = AddressData::utxo(Discrimination::Test);
 
-    let (message, _utxos) = ledger::create_initial_transaction(Output::from_address(
+    let message = ledger::create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(42000),
     ));

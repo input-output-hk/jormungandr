@@ -1,5 +1,3 @@
-use chain_addr::{Address, Discrimination};
-use chain_crypto::*;
 use crate::block::ConsensusVersion;
 use crate::block::HeaderHash;
 use crate::config::ConfigParam;
@@ -9,6 +7,8 @@ use crate::message::config::ConfigParams;
 use crate::message::Message;
 use crate::milli::Milli;
 use crate::transaction::*;
+use chain_addr::{Address, Discrimination};
+use chain_crypto::*;
 use std::vec::Vec;
 
 use crate::testing::tx_builder::TransactionBuilder;
@@ -60,9 +60,7 @@ impl ConfigBuilder {
             SecretKey::generate(rand_os::OsRng::new().unwrap());
         let leader_pub_key = leader_prv_key.to_public();
         ie.push(ConfigParam::AddBftLeader(leader_pub_key.into()));
-        ie.push(ConfigParam::Block0Date(
-            crate::config::Block0Date(0),
-        ));
+        ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
         ie.push(ConfigParam::SlotDuration(self.slot_duration));
         ie.push(ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(
             self.active_slots_coeff,
@@ -90,14 +88,14 @@ pub fn create_initial_fake_ledger(
     }
 }
 
-pub fn create_initial_transaction(output: Output<Address>) -> (Message, Vec<UtxoPointer>) {
+pub fn create_initial_transaction(output: Output<Address>) -> Message {
     let mut builder = TransactionBuilder::new();
     let authenticator = builder.with_output(output).authenticate();
-    (authenticator.as_message(), authenticator.as_utxos())
+    authenticator.as_message()
 }
 
-pub fn create_initial_transactions(outputs: &Vec<Output<Address>>) -> (Message, Vec<UtxoPointer>) {
+pub fn create_initial_transactions(outputs: &Vec<Output<Address>>) -> Message {
     let mut builder = TransactionBuilder::new();
     let authenticator = builder.with_outputs(outputs.to_vec()).authenticate();
-    (authenticator.as_message(), authenticator.as_utxos())
+    authenticator.as_message()
 }

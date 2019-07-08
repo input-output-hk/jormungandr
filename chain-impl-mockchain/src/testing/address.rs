@@ -1,10 +1,11 @@
-use chain_addr::{Address, Discrimination, Kind, KindType};
 use crate::{
     account::SpendingCounter,
     key::{EitherEd25519SecretKey, SpendingPublicKey},
-    transaction::{Input, Output, UtxoPointer},
+    transaction::{Input, Output},
+    utxo::Entry,
     value::Value,
 };
+use chain_addr::{Address, Discrimination, Kind, KindType};
 use std::fmt::{self, Debug};
 
 ///
@@ -44,13 +45,16 @@ impl AddressData {
         }
     }
 
-    pub fn make_input(&self, value: Value, utxo: UtxoPointer) -> Input {
+    pub fn make_input(&self, value: Value, utxo: Option<Entry<Address>>) -> Input {
         match self.address.kind() {
             Kind::Account { .. } => {
                 Input::from_account_public_key(self.public_key.clone(), value.clone())
             }
             Kind::Single { .. } | Kind::Group { .. } | Kind::Multisig { .. } => {
-                Input::from_utxo(utxo)
+                Input::from_utxo_entry(utxo.expect(&format!(
+                    "invalid state, utxo should be Some if Kind not Account {:?}",
+                    &self.address
+                )))
             }
         }
     }
@@ -101,5 +105,28 @@ impl AddressData {
 
     fn generate_random_secret_key() -> EitherEd25519SecretKey {
         EitherEd25519SecretKey::generate(rand_os::OsRng::new().unwrap())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct AddressDataValue {
+    pub address_data: AddressData,
+    pub value: Value,
+}
+
+impl AddressDataValue {
+    pub fn new(address_data: AddressData, value: Value) -> Self {
+        AddressDataValue {
+            address_data: address_data,
+            value: value,
+        }
+    }
+
+    pub fn make_input(&self, utxo: Option<Entry<Address>>) -> Input {
+        self.address_data.make_input(self.value, utxo)
+    }
+
+    pub fn make_output(&self) -> Output<Address> {
+        self.address_data.make_output(self.value)
     }
 }

@@ -3,8 +3,10 @@ use super::utxo::UtxoPointer;
 use crate::account::Identifier;
 use crate::key::SpendingPublicKey;
 use crate::legacy::OldAddress;
+use crate::utxo::Entry;
 use crate::value::*;
 use crate::{account, multisig};
+use chain_addr::Address;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::PublicKey;
@@ -91,6 +93,16 @@ impl Input {
         Input {
             index_or_account: utxo_pointer.output_index,
             value: utxo_pointer.value,
+            input_ptr: input_ptr,
+        }
+    }
+
+    pub fn from_utxo_entry(utxo_entry: Entry<Address>) -> Self {
+        let mut input_ptr = [0u8; INPUT_PTR_SIZE];
+        input_ptr.clone_from_slice(utxo_entry.transaction_id.as_ref());
+        Input {
+            index_or_account: utxo_entry.output_index,
+            value: utxo_entry.output.value,
             input_ptr: input_ptr,
         }
     }

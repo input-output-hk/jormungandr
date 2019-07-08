@@ -6,9 +6,9 @@ use crate::testing::{
     ledger::{self, ConfigBuilder},
     tx_builder::TransactionBuilder,
 };
-use chain_addr::Discrimination;
 use crate::transaction::*;
 use crate::value::*;
+use chain_addr::Discrimination;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -23,7 +23,7 @@ pub fn ledger_verifies_faucet_discrimination(
         &arbitrary_faucet_address_kind.0,
     );
 
-    let (message, _) = ledger::create_initial_transaction(Output::from_address(
+    let message = ledger::create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(100),
     ));
@@ -64,15 +64,16 @@ pub fn ledger_verifies_transaction_discrimination(
         &arbitrary_output_address_kind.kind_type(),
     );
     let value = Value(100);
-    let (message, utxos) =
+    let message =
         ledger::create_initial_transaction(Output::from_address(faucet.address.clone(), value));
 
     let config = ConfigBuilder::new()
         .with_discrimination(arbitrary_input_disc)
         .build();
     let (block0_hash, ledger) = ledger::create_initial_fake_ledger(&[message], config).unwrap();
+    let mut utxos = ledger.utxos();
     let signed_tx = TransactionBuilder::new()
-        .with_input(faucet.make_input(value, utxos[0]))
+        .with_input(faucet.make_input(value, utxos.next()))
         .with_output(Output::from_address(receiver.address.clone(), value))
         .authenticate()
         .with_witness(&block0_hash, &faucet)
