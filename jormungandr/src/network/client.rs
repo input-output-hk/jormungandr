@@ -129,6 +129,7 @@ where
     fn process_block_event(&mut self, event: BlockEvent<S::Block>) {
         match event {
             BlockEvent::Announce(header) => {
+                debug!(self.logger, "received block event Announce");
                 self.global_state
                     .peers
                     .bump_peer_for_block_fetch(self.remote_node_id);
@@ -138,6 +139,7 @@ where
                     .unwrap();
             }
             BlockEvent::Solicit(block_ids) => {
+                debug!(self.logger, "received block event Solicit");
                 let (reply_handle, stream) = intercom::stream_reply::<
                     Block,
                     network_core::error::Error,
@@ -160,6 +162,7 @@ where
                 );
             }
             BlockEvent::Missing(req) => {
+                debug!(self.logger, "received block event Missing");
                 let (reply_handle, stream) = intercom::stream_reply::<
                     Header,
                     network_core::error::Error,
