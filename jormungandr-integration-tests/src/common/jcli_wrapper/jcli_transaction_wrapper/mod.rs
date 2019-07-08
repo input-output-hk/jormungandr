@@ -251,6 +251,13 @@ impl JCLITransactionWrapper {
         self
     }
 
+    pub fn seal_with_witness_for_address<'a, T: AddressDataProvider>(
+        &'a mut self,
+        address: &T,
+    ) -> &'a mut JCLITransactionWrapper {
+        self.seal_with_witness_default(&address.get_private_key(), &address.get_address_type())
+    }
+
     pub fn seal_with_witness_default<'a>(
         &'a mut self,
         private_key: &str,

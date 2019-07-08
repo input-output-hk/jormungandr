@@ -14,6 +14,9 @@ pub struct ConfigurationBuilder {
     logger: Option<Logger>,
     bft_slots_ratio: Option<String>,
     consensus_genesis_praos_active_slot_coeff: Option<String>,
+    slots_per_epoch: Option<u32>,
+    slot_duration: Option<u32>,
+    epoch_stability_depth: Option<u32>,
     kes_update_speed: u32,
     linear_fees: LinearFees,
     certs: Vec<String>,
@@ -29,6 +32,9 @@ impl ConfigurationBuilder {
             trusted_peers: None,
             block0_hash: None,
             block0_consensus: Some("bft".to_string()),
+            slots_per_epoch: None,
+            slot_duration: None,
+            epoch_stability_depth: None,
             logger: None,
             linear_fees: LinearFees {
                 constant: 0,
@@ -39,6 +45,24 @@ impl ConfigurationBuilder {
             consensus_genesis_praos_active_slot_coeff: Some("0.1".to_owned()),
             kes_update_speed: 12 * 3600,
         }
+    }
+
+    pub fn with_slots_per_epoch<'a>(&'a mut self, slots_per_epoch: u32) -> &'a mut Self {
+        self.slots_per_epoch = Some(slots_per_epoch);
+        self
+    }
+
+    pub fn with_slot_duration<'a>(&'a mut self, slot_duration: u32) -> &'a mut Self {
+        self.slot_duration = Some(slot_duration);
+        self
+    }
+
+    pub fn with_epoch_stability_depth<'a>(
+        &'a mut self,
+        epoch_stability_depth: u32,
+    ) -> &'a mut Self {
+        self.epoch_stability_depth = Some(epoch_stability_depth);
+        self
     }
 
     pub fn with_kes_update_speed<'a>(&'a mut self, kes_update_speed: u32) -> &'a mut Self {
@@ -119,6 +143,18 @@ impl ConfigurationBuilder {
         genesis_model.blockchain_configuration.block0_consensus = self.block0_consensus.clone();
         genesis_model.blockchain_configuration.bft_slots_ratio = self.bft_slots_ratio.clone();
         genesis_model.blockchain_configuration.kes_update_speed = self.kes_update_speed.clone();
+
+        if self.slots_per_epoch.is_some() {
+            genesis_model.blockchain_configuration.slots_per_epoch = self.slots_per_epoch;
+        }
+        if self.slot_duration.is_some() {
+            genesis_model.blockchain_configuration.slot_duration = self.slot_duration;
+        }
+        if self.epoch_stability_depth.is_some() {
+            genesis_model.blockchain_configuration.epoch_stability_depth =
+                self.epoch_stability_depth;
+        }
+
         genesis_model
             .blockchain_configuration
             .consensus_genesis_praos_active_slot_coeff =
