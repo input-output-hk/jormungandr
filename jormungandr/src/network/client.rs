@@ -18,6 +18,7 @@ use network_core::gossip::Node;
 use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
 
+#[must_use = "Client must be polled"]
 pub struct Client<S>
 where
     S: BlockService,
