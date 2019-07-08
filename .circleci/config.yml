@@ -52,7 +52,10 @@ jobs:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build and test
+          name: Build
+          command: cargo build --tests --verbose --frozen
+      - run:
+          name: Test
           command: cargo test --verbose --frozen
 
   test_release:
@@ -70,7 +73,10 @@ jobs:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build and test with release profile
+          name: Build
+          command: cargo build --tests --verbose --frozen --release
+      - run:
+          name: Test
           command: cargo test --verbose --frozen --release
 
   test_nightly:
@@ -88,9 +94,11 @@ jobs:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build and test with nightly Rust
+          name: Build
+          command: cargo build --tests --verbose --frozen
+      - run:
+          name: Test
           command: cargo test --verbose --frozen
-
 
 workflows:
   version: 2
