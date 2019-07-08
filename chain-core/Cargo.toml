@@ -8,6 +8,7 @@ authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
           , "Alexander Vershilov <alexander.vershilov@gmail.com>"
           ]
 edition = "2018"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 cfg-if = "0.1"
