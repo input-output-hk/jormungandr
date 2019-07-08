@@ -8,7 +8,6 @@ use crate::common::startup;
 use std::iter;
 
 #[test]
-#[ignore] //Node crash if sending multiple transactions in the same slot #586
 pub fn test_100_transaction_is_processed_in_10_packs() {
     let receivers: Vec<Account> = iter::from_fn(|| Some(startup::create_new_account_address()))
         .take(10)
