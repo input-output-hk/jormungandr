@@ -52,7 +52,7 @@ before_install:
   - rustup self update
 
 install:
-  - rustup udpate stable
+  - rustup update stable
   - sh ci/install.sh
   - source ~/.cargo/env || true
 
