@@ -1,14 +1,17 @@
 //! Address
 //!
 //! It uses a simple serialization format which is made to be concise:
+//!
 //! * First byte contains the discrimination information (1 bit) and the kind of address (7 bits)
 //! * Remaining bytes contains a kind specific encoding describe after.
 //!
-//! 3 kinds of address are currently supported:
+//! 4 kinds of address are currently supported:
+//!
 //! * Single: Just a (spending) public key using the ED25519 algorithm
 //! * Group: Same as single, but with a added (staking/group) public key
 //!   using the ED25519 algorithm.
 //! * Account: A account public key using the ED25519 algorithm
+//! * Multisig: a multisig account public key
 //!
 //! Single key:
 //!     DISCRIMINATION_BIT || SINGLE_KIND_TYPE (7 bits) || SPENDING_KEY
@@ -62,6 +65,7 @@ pub enum Discrimination {
 /// * Single address : just a single ed25519 spending public key
 /// * Group address : an ed25519 spending public key followed by a group public key used for staking
 /// * Account address : an ed25519 stake public key
+/// * Multisig address : a multisig public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
     Single(PublicKey<Ed25519>),
