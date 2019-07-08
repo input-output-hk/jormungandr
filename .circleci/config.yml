@@ -10,8 +10,6 @@ jobs:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-
             - cargo-v3-
-      - run: git submodule sync
-      - run: git submodule update --init
       - run: cargo fetch
       - persist_to_workspace:
           root: /mnt/crate
@@ -47,8 +45,6 @@ jobs:
       - checkout
       - attach_workspace:
           at: /mnt/crate
-      - run: git submodule sync
-      - run: git submodule update --init
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
@@ -70,8 +66,6 @@ jobs:
       - checkout
       - attach_workspace:
           at: /mnt/crate
-      - run: git submodule sync
-      - run: git submodule update --init
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
@@ -90,8 +84,6 @@ jobs:
       - checkout
       - attach_workspace:
           at: /mnt/crate
-      - run: git submodule sync
-      - run: git submodule update --init
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
@@ -114,8 +106,6 @@ jobs:
       - checkout
       - attach_workspace:
           at: /mnt/crate
-      - run: git submodule sync
-      - run: git submodule update --init
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
