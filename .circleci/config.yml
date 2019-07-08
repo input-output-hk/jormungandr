@@ -37,27 +37,6 @@ jobs:
           name: Check rustfmt
           command: cargo fmt -- --check
 
-  build_debug:
-    docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
-    steps:
-      - checkout
-      - attach_workspace:
-          at: /mnt/crate
-      - restore_cache:
-          keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Print version information
-          command: rustc --version; cargo --version
-      - run:
-          name: Build
-          command: cargo build --frozen
-      - persist_to_workspace:
-          root: /mnt/crate
-          paths:
-            - target/debug
   test_debug:
     docker:
       - image: rust:latest
@@ -73,30 +52,8 @@ jobs:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Test
+          name: Build and test
           command: cargo test --verbose --frozen
-
-  build_release:
-    docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
-    steps:
-      - checkout
-      - attach_workspace:
-          at: /mnt/crate
-      - restore_cache:
-          keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Print version information
-          command: rustc --version; cargo --version
-      - run:
-          name: Build in release profile
-          command: cargo build --frozen --release
-      - persist_to_workspace:
-          root: /mnt/crate
-          paths:
-            - target/release
 
   test_release:
     docker:
@@ -113,7 +70,7 @@ jobs:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Test
+          name: Build and test with release profile
           command: cargo test --verbose --frozen --release
 
   test_nightly:
@@ -141,20 +98,14 @@ workflows:
     jobs:
       - cargo_fetch
       - rustfmt
-      - build_debug:
-          requires:
-            - rustfmt
-            - cargo_fetch
-      - build_release:
-          requires:
-            - rustfmt
-            - cargo_fetch
       - test_debug:
           requires:
-            - build_debug
+            - rustfmt
+            - cargo_fetch
       - test_release:
           requires:
-            - build_release
+            - rustfmt
+            - cargo_fetch
       - test_nightly:
           requires:
             - rustfmt
