@@ -37,16 +37,14 @@ pub fn handle_input(
         }
         BlockMsg::LeadershipBlock(block) => {
             let mut blockchain = blockchain.lock_write();
-            match chain::handle_block(&mut blockchain, block, true)
-                .map_err(|e| crit!(logger, "block processing failed: {:?}", e))?
-            {
-                HandledBlock::Rejected { reason } => {
+            match chain::handle_block(&mut blockchain, block, true) {
+                Ok(HandledBlock::Rejected { reason }) => {
                     warn!(logger,
                         "rejecting node's created block" ;
                         "reason" => reason.to_string(),
                     );
                 }
-                HandledBlock::MissingBranchToBlock { to } => {
+                Ok(HandledBlock::MissingBranchToBlock { to }) => {
                     // this is an error because we are in a situation
                     // where the leadership has created a block but we
                     // cannot add it in the blockchain because it is not
@@ -60,7 +58,7 @@ pub fn handle_input(
                         "the block cannot be added, missing intermediate blocks to {}", to
                     );
                 }
-                HandledBlock::Acquired { header } => {
+                Ok(HandledBlock::Acquired { header }) => {
                     info!(logger,
                         "block added successfully to Node's blockchain";
                         "id" => header.id().to_string(),
@@ -73,6 +71,7 @@ pub fn handle_input(
                             error!(logger, "cannot propagate block to network: {}", err)
                         });
                 }
+                Err(e) => crit!(logger, "block processing failed: {:?}", e),
             }
         }
         BlockMsg::NetworkBlock(block) => {
