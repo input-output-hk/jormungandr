@@ -357,15 +357,19 @@ impl Peers {
     pub fn solicit_blocks(&self, node_id: topology::NodeId, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
         match map.peer_comms(node_id) {
-            Some(comms) => comms
-                .block_solicitations
-                .try_send(hashes)
-                .unwrap_or_else(|e| {
-                    warn!(
-                        self.logger,
-                        "block solicitation from {} failed: {:?}", node_id, e
-                    );
-                }),
+            Some(comms) => {
+                debug!(self.logger, "sending block solicitation to {}", node_id;
+                       "hashes" => ?hashes);
+                comms
+                    .block_solicitations
+                    .try_send(hashes)
+                    .unwrap_or_else(|e| {
+                        warn!(
+                            self.logger,
+                            "block solicitation from {} failed: {:?}", node_id, e
+                        );
+                    });
+            }
             None => {
                 // TODO: connect and request on demand, or select another peer?
                 warn!(
@@ -379,15 +383,19 @@ impl Peers {
     pub fn pull_headers(&self, node_id: topology::NodeId, from: Vec<HeaderHash>, to: HeaderHash) {
         let mut map = self.mutex.lock().unwrap();
         match map.peer_comms(node_id) {
-            Some(comms) => comms
-                .chain_pulls
-                .try_send(ChainPullRequest { from, to })
-                .unwrap_or_else(|e| {
-                    warn!(
-                        self.logger,
-                        "sending header pull solicitation to {} failed: {:?}", node_id, e
-                    );
-                }),
+            Some(comms) => {
+                debug!(self.logger, "pulling headers from {}", node_id;
+                       "from" => ?from, "to" => ?to);
+                comms
+                    .chain_pulls
+                    .try_send(ChainPullRequest { from, to })
+                    .unwrap_or_else(|e| {
+                        warn!(
+                            self.logger,
+                            "sending header pull solicitation to {} failed: {:?}", node_id, e
+                        );
+                    });
+            }
             None => {
                 // TODO: connect and request on demand, or select another peer?
                 warn!(

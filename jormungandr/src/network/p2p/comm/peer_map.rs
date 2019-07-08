@@ -62,7 +62,7 @@ impl PeerMap {
     pub fn insert_peer(&mut self, id: NodeId, comms: PeerComms) {
         use std::collections::hash_map::Entry::*;
 
-        let node = Box::pin(Node::new(id, comms));
+        let mut node = Box::pin(Node::new(id, comms));
         let node_ptr = match self.map.entry(id) {
             Occupied(mut entry) => {
                 unsafe {
@@ -71,7 +71,9 @@ impl PeerMap {
                     self.block_cursor.on_unlink_node(old_node_ptr);
                     old_node.unlink();
                 }
-                entry.insert(node).as_mut().as_ptr()
+                let node_ptr = node.as_mut().as_ptr();
+                entry.insert(node);
+                node_ptr
             }
             Vacant(entry) => entry.insert(node).as_mut().as_ptr(),
         };
@@ -252,12 +254,12 @@ impl Node {
     // Require a mutable borrow on self because this modifies
     // adjacent nodes.
     unsafe fn unlink(&mut self) {
-        if let Some(mut prev) = self.prev {
-            prev.as_mut().next = self.next;
+        if let Some(mut prev_ptr) = self.prev {
+            prev_ptr.as_mut().next = self.next;
             self.prev = None;
         }
-        if let Some(mut next) = self.next {
-            next.as_mut().prev = self.prev;
+        if let Some(mut next_ptr) = self.next {
+            next_ptr.as_mut().prev = self.prev;
             self.next = None;
         }
     }

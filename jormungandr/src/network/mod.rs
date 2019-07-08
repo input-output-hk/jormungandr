@@ -169,20 +169,24 @@ pub fn run(
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
         info!(conn_state.logger(), "connecting to initial gossip peer");
-        client::connect(conn_state, conn_channels.clone()).map(move |(client, mut comms)| {
-            // TODO
-            let node_id = client.remote_node_id();
-            let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
-            match comms.try_send_gossip(gossip) {
-                Ok(()) => state.peers.insert_peer(node_id, comms),
-                Err(e) => {
-                    warn!(
-                        client.logger(),
-                        "gossiping to peer failed just after connection: {:?}", e
-                    );
+        client::connect(conn_state, conn_channels.clone())
+            .and_then(move |(client, mut comms)| {
+                // TODO
+                let node_id = client.remote_node_id();
+                let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
+                match comms.try_send_gossip(gossip) {
+                    Ok(()) => state.peers.insert_peer(node_id, comms),
+                    Err(e) => {
+                        warn!(
+                            client.logger(),
+                            "gossiping to peer failed just after connection: {:?}", e
+                        );
+                        return Err(());
+                    }
                 }
-            }
-        })
+                Ok(client)
+            })
+            .and_then(|client| client)
     });
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
@@ -296,29 +300,33 @@ fn connect_and_propagate_with<F>(
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     debug!(conn_state.logger(), "connecting to node {}", node_id);
-    let cf = client::connect(conn_state, channels.clone()).map(move |(client, mut comms)| {
-        let connected_node_id = client.remote_node_id();
-        if connected_node_id == node_id {
-            let res = once_connected(&mut comms);
-            match res {
-                Ok(()) => (),
-                Err(e) => {
-                    info!(
-                        client.logger(),
-                        "propagation to peer failed just after connection: {:?}", e
-                    );
-                    return;
+    let cf = client::connect(conn_state, channels.clone())
+        .and_then(move |(client, mut comms)| {
+            let connected_node_id = client.remote_node_id();
+            if connected_node_id == node_id {
+                let res = once_connected(&mut comms);
+                match res {
+                    Ok(()) => (),
+                    Err(e) => {
+                        info!(
+                            client.logger(),
+                            "propagation to peer failed just after connection: {:?}", e
+                        );
+                        return Err(());
+                    }
                 }
-            }
-        } else {
-            info!(
-                client.logger(),
-                "peer responded with different node id: {}", connected_node_id
-            );
-        };
+            } else {
+                info!(
+                    client.logger(),
+                    "peer responded with different node id: {}", connected_node_id
+                );
+            };
 
-        state.peers.insert_peer(connected_node_id, comms);
-    });
+            state.peers.insert_peer(connected_node_id, comms);
+
+            Ok(client)
+        })
+        .and_then(|client| client);
     tokio::spawn(cf);
 }
 
