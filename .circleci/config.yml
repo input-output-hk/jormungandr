@@ -58,6 +58,10 @@ jobs:
       - run:
           name: Build
           command: cargo build --frozen
+      - persist_to_workspace:
+          root: /mnt/crate
+          paths:
+            - target/debug
   test_debug:
     docker:
       - image: rust:latest
@@ -97,6 +101,10 @@ jobs:
       - run:
           name: Build in release profile
           command: cargo build --frozen --release
+      - persist_to_workspace:
+          root: /mnt/crate
+          paths:
+            - target/release
 
   test_release:
     docker:
