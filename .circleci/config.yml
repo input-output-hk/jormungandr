@@ -8,7 +8,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}
+            - cargo-v3-{{ checksum "Cargo.toml" }}-
             - cargo-v3-
       - run: git submodule sync
       - run: git submodule update --init
@@ -18,7 +18,7 @@ jobs:
           paths:
             - Cargo.lock
       - save_cache:
-          key: cargo-v3-{{ checksum "Cargo.toml" }}
+          key: cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
@@ -52,14 +52,12 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build
-          command: cargo build
+          command: cargo build --frozen
   test_debug:
     docker:
       - image: rust:latest
@@ -73,14 +71,12 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Test
-          command: cargo test --verbose
+          command: cargo test --verbose --frozen
 
   build_release:
     docker:
@@ -95,14 +91,12 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build in release profile
-          command: cargo build --release
+          command: cargo build --frozen --release
 
   test_release:
     docker:
@@ -117,14 +111,12 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Test
-          command: cargo test --release --verbose
+          command: cargo test --verbose --frozen --release
 
   test_nightly:
     docker:
@@ -137,14 +129,12 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build and test with nightly Rust
-          command: cargo test --verbose
+          command: cargo test --verbose --frozen
 
 
 workflows:
