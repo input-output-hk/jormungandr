@@ -6,19 +6,20 @@ jobs:
     working_directory: /mnt/crate
     steps:
       - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
             - cargo-v3-{{ checksum "Cargo.toml" }}
             - cargo-v3-
-      - run: git submodule sync
-      - run: git submodule update --init
       - run: cargo fetch
       - save_cache:
           key: cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
+
   rustfmt:
     docker:
       - image: rust:latest
@@ -34,6 +35,7 @@ jobs:
       - run:
           name: Check rustfmt
           command: cargo fmt -- --check
+
   build_debug:
     docker:
       - image: rust:latest
@@ -45,36 +47,36 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
           name: Build
-          command: cargo build --frozen
+          command: cargo build -p jormungandr -p jcli --frozen
       - persist_to_workspace:
           root: target
           paths:
-            - debug/*
+            - debug
+
   test_debug:
     docker:
       - image: rust:latest
     working_directory: /mnt/crate
     steps:
       - checkout
-      - attach_workspace:
-          at: target
       - run: git submodule sync
       - run: git submodule update --init
+      - attach_workspace:
+          at: target
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
+      - run:
+          name: Build tests
+          command: cargo build --tests --frozen --verbose
       - run:
           name: Test
           command: cargo test --frozen --verbose
@@ -90,18 +92,16 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build in release profile
-          command: cargo build --release --frozen
+          name: Build
+          command: cargo build -p jormungandr -p jcli --release --frozen
       - persist_to_workspace:
           root: target
           paths:
-            - release/*
+            - release
 
   test_release:
     docker:
@@ -109,18 +109,19 @@ jobs:
     working_directory: /mnt/crate
     steps:
       - checkout
-      - attach_workspace:
-          at: target
       - run: git submodule sync
       - run: git submodule update --init
+      - attach_workspace:
+          at: target
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
+      - run:
+          name: Build tests
+          command: cargo build --tests --release --frozen --verbose
       - run:
           name: Test
           command: cargo test --release --frozen --verbose
@@ -136,18 +137,16 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build in debug profile
-          command: cargo build --frozen
+          name: Build
+          command: cargo build -p jormungandr -p jcli --frozen
       - persist_to_workspace:
           root: target
           paths:
-            - debug/*
+            - debug
 
   test_nightly:
     docker:
@@ -162,11 +161,12 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
       - run:
           name: Print version information
           command: rustc --version; cargo --version
+      - run:
+          name: Build tests
+          command: cargo build --tests --frozen --verbose
       - run:
           name: Test
           command: cargo test --frozen --verbose
