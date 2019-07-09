@@ -76,8 +76,8 @@ pub trait BlockService: P2pService {
     /// implementation to produce a server-streamed response.
     type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error> + Send + 'static;
 
-    /// The type of asynchronous futures returned by method `push_headers`.
-    type PushHeadersFuture: Future<Item = (), Error = Error> + Send + 'static;
+    /// The type of asynchronous futures returned by method `on_pushed_headers`.
+    type OnPushedHeadersFuture: Future<Item = (), Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `on_uploaded_block`.
     type OnUploadedBlockFuture: Future<Item = (), Error = Error> + Send + 'static;
@@ -129,14 +129,21 @@ pub trait BlockService: P2pService {
     /// to the server's tip.
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
 
-    /// The outbound counterpart of `pull_headers`, called in response to a
-    /// `BlockEvent::Missing` solicitation. A client may report that
-    /// the solicitation does not refer to blocks found in the local blockchain
-    /// by making the `push_headers` call and failing the outbound stream with
-    /// a `NotFound` error.
-    fn push_headers<In>(&mut self, headers: In) -> Self::PushHeadersFuture
-    where
-        In: Stream<Item = Self::Header, Error = Error> + Send + 'static;
+    /// Preferred maximum size of processing chunks to split the incoming
+    /// stream of block headers, to be passed to the `on_pushed_headers` method.
+    const PUSH_HEADERS_CHUNK_SIZE: usize;
+
+    /// Called by the protocol implementation with an `Ok` variant when a
+    /// series of block headers constituting the chain is sent by the client
+    /// in response to a `BlockEvent::Missing` solicitation.
+    /// An `Err` is used to report errors with streaming of inbound headers.
+    /// A client may report that the solicitation does not refer to blocks
+    /// found in the local blockchain by sending a `NotFound` error which
+    /// is passed to this method.
+    fn on_pushed_headers(
+        &mut self,
+        headers: Result<Vec<Self::Header>, Error>,
+    ) -> Self::OnPushedHeadersFuture;
 
     /// Called when the client connection uploads a block.
     fn on_uploaded_block(&mut self, block: Self::Block) -> Self::OnUploadedBlockFuture;
