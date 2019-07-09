@@ -387,7 +387,7 @@ pub struct UploadBlocksFuture<T, S>
 where
     T: Node,
 {
-    stream: RequestStream<<T::BlockService as BlockService>::Block, S>,
+    stream: Option<RequestStream<<T::BlockService as BlockService>::Block, S>>,
     service: T,
     processing: Option<<T::BlockService as BlockService>::OnUploadedBlockFuture>,
 }
@@ -398,7 +398,7 @@ where
 {
     fn new(service: T, stream: S) -> Self {
         UploadBlocksFuture {
-            stream: RequestStream::new(stream),
+            stream: Some(RequestStream::new(stream)),
             service,
             processing: None,
         }
@@ -423,19 +423,21 @@ where
                 try_ready!(future.poll().map_err(error_into_grpc));
                 self.processing = None;
             }
-            match self.stream.poll() {
+            let stream = match self.stream {
+                None => break,
+                Some(ref mut stream) => stream,
+            };
+            match stream.poll() {
                 Ok(Async::NotReady) => return Ok(Async::NotReady),
                 Ok(Async::Ready(None)) => break,
                 Ok(Async::Ready(Some(block))) => {
-                    let future = service.on_uploaded_block(block);
+                    let future = service.on_uploaded_block(Ok(block));
                     self.processing = Some(future);
                 }
-                Err(_e) => {
-                    // FIXME: add a core service method for error reporting
-                    return Err(tower_grpc::Status::new(
-                        tower_grpc::Code::Aborted,
-                        "upload stream error",
-                    ));
+                Err(e) => {
+                    let future = service.on_uploaded_block(Err(e));
+                    self.processing = Some(future);
+                    self.stream = None;
                 }
             }
         }

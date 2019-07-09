@@ -138,15 +138,23 @@ pub trait BlockService: P2pService {
     /// in response to a `BlockEvent::Missing` solicitation.
     /// An `Err` is used to report errors with streaming of inbound headers.
     /// A client may report that the solicitation does not refer to blocks
-    /// found in the local blockchain by sending a `NotFound` error which
+    /// found in its local blockchain by sending a `NotFound` error which
     /// is passed to this method.
     fn on_pushed_headers(
         &mut self,
-        headers: Result<Vec<Self::Header>, Error>,
+        item: Result<Vec<Self::Header>, Error>,
     ) -> Self::OnPushedHeadersFuture;
 
-    /// Called when the client connection uploads a block.
-    fn on_uploaded_block(&mut self, block: Self::Block) -> Self::OnUploadedBlockFuture;
+    /// Called with an `Ok` value when the client connection uploads a block
+    /// in response to a `BlockEvent::Solicit` solicitation.
+    /// An `Err` is used to report errors with streaming of inbound blocks.
+    /// A client may report that the solicitation refers to a block not
+    /// found in its local blockchain by sending a `NotFound` error which
+    /// is passed to this method.
+    fn on_uploaded_block(
+        &mut self,
+        item: Result<Self::Block, Error>,
+    ) -> Self::OnUploadedBlockFuture;
 
     /// Establishes a bidirectional subscription for announcing blocks.
     ///
