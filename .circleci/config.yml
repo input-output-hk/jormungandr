@@ -60,6 +60,8 @@ jobs:
           command: cargo build --tests --frozen --verbose
       - run:
           name: Test
+          environment:
+            RUST_BACKTRACE: 1
           command: cargo test --frozen --verbose
 
   test_release:
@@ -110,6 +112,8 @@ jobs:
           command: cargo build --tests --frozen --verbose
       - run:
           name: Test
+          environment:
+            RUST_BACKTRACE: 1
           command: cargo test --frozen --verbose
 
 workflows:
