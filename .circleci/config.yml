@@ -39,6 +39,8 @@ jobs:
   test_debug:
     docker:
       - image: rust:latest
+    environment:
+      CARGO_INCREMENTAL: 0
     working_directory: /mnt/crate
     steps:
       - checkout
@@ -87,6 +89,8 @@ jobs:
   test_nightly:
     docker:
       - image: rustlang/rust:nightly
+    environment:
+      CARGO_INCREMENTAL: 0
     working_directory: /mnt/crate
     steps:
       - checkout
