@@ -26,6 +26,7 @@ cfg_if! {
 pub mod algorithms;
 pub mod asymlock;
 pub mod bech32;
+pub mod digest;
 mod evolving;
 pub mod hash;
 mod hex;
