@@ -54,9 +54,9 @@ impl RawSettings {
 
     fn logger_level(&self) -> FilterLevel {
         let cmd_level = self.command_line.log_level.clone();
-        let config_logger = self.config.logger.as_ref();
-        let config_level = config_logger
-            .and_then(|logger| logger.verbosity.clone())
+        let config_log = self.config.log.as_ref();
+        let config_level = config_log
+            .and_then(|log| log.level.clone())
             .map(|level| match level {
                 0 => FilterLevel::Info,
                 1 => FilterLevel::Debug,
@@ -67,15 +67,15 @@ impl RawSettings {
 
     fn logger_format(&self) -> LogFormat {
         let cmd_format = self.command_line.log_format.clone();
-        let config_logger = self.config.logger.as_ref();
-        let config_format = config_logger.and_then(|logger| logger.format.clone());
+        let config_log = self.config.log.as_ref();
+        let config_format = config_log.and_then(|logger| logger.format.clone());
         cmd_format.or(config_format).unwrap_or(LogFormat::Plain)
     }
 
     fn logger_output(&self) -> LogOutput {
         let cmd_output = self.command_line.log_output.clone();
-        let config_logger = self.config.logger.as_ref();
-        let config_output = config_logger.and_then(|logger| logger.output.clone());
+        let config_log = self.config.log.as_ref();
+        let config_output = config_log.and_then(|logger| logger.output.clone());
         cmd_output.or(config_output).unwrap_or(LogOutput::Stderr)
     }
 

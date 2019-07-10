@@ -14,14 +14,14 @@ pub struct Config {
     pub legacy_peers: Option<Vec<SocketAddr>>,
     pub grpc_peers: Option<Vec<SocketAddr>>,
     pub storage: Option<PathBuf>,
-    pub logger: Option<ConfigLogSettings>,
+    pub log: Option<ConfigLogSettings>,
     pub rest: Option<Rest>,
     pub peer_2_peer: P2pConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConfigLogSettings {
-    pub verbosity: Option<u8>,
+    pub level: Option<u8>,
     pub format: Option<LogFormat>,
     pub output: Option<LogOutput>,
 }
