@@ -1,11 +1,12 @@
 use crate::{
     network::p2p::topology::{NodeId, NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC},
     settings::logging::{LogFormat, LogOutput},
+    settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
 
 use poldercast;
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
-
+use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use slog::FilterLevel;
 use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,7 +22,8 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConfigLogSettings {
-    pub level: Option<u8>,
+    #[serde(with = "filter_level_opt_serde")]
+    pub level: Option<FilterLevel>,
     pub format: Option<LogFormat>,
     pub output: Option<LogOutput>,
 }
@@ -200,5 +202,30 @@ impl<'de> Deserialize<'de> for InterestLevel {
             }
         }
         deserializer.deserialize_str(InterestLevelVisitor)
+    }
+}
+
+mod filter_level_opt_serde {
+    use super::*;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<FilterLevel>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Option::<String>::deserialize(deserializer)?
+            .map(|variant| {
+                variant.parse().map_err(|_| {
+                    D::Error::unknown_variant(&variant, LOG_FILTER_LEVEL_POSSIBLE_VALUES)
+                })
+            })
+            .transpose()
+    }
+
+    pub fn serialize<S>(data: &Option<FilterLevel>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        data.map(crate::settings::filter_level_to_str)
+            .serialize(serializer)
     }
 }

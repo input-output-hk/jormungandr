@@ -55,13 +55,7 @@ impl RawSettings {
     fn logger_level(&self) -> FilterLevel {
         let cmd_level = self.command_line.log_level.clone();
         let config_log = self.config.log.as_ref();
-        let config_level = config_log
-            .and_then(|log| log.level.clone())
-            .map(|level| match level {
-                0 => FilterLevel::Info,
-                1 => FilterLevel::Debug,
-                _ => FilterLevel::Trace,
-            });
+        let config_level = config_log.and_then(|log| log.level.clone());
         cmd_level.or(config_level).unwrap_or(FilterLevel::Info)
     }
 
