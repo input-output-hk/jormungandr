@@ -24,7 +24,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::Unknown,
+            code: core_error::Code::Internal,
             cause: cause.into(),
         }
     }
