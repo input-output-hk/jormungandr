@@ -232,6 +232,11 @@ fn process_chain_headers_into_block_request(
                 }
             }
             BlockHeaderTriage::MissingParentOrBranch { .. } => {
+                // TODO: this fails on the first header after the
+                // immediate descendant of the local tip. Need branch storage
+                // that would store the whole header chain without blocks,
+                // so that the chain can be pre-validated first and blocks
+                // fetched afterwards in arbitrary order.
                 info!(
                     logger,
                     "pulled block header {} is not connected to the blockchain", hash,
