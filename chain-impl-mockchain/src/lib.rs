@@ -10,8 +10,8 @@ pub mod block;
 pub mod certificate;
 pub mod config;
 mod date;
+pub mod fragment;
 pub mod legacy;
-pub mod message;
 pub mod milli;
 // #[cfg(test)]
 // pub mod environment;

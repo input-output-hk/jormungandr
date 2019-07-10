@@ -1,7 +1,7 @@
 use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::date::BlockDate;
+use crate::fragment::config::ConfigParams;
 use crate::leadership::{bft, genesis::ActiveSlotsCoeffError};
-use crate::message::config::ConfigParams;
 use crate::setting::Settings;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
@@ -227,7 +227,7 @@ impl From<ActiveSlotsCoeffError> for Error {
     }
 }
 
-pub type UpdateProposalId = crate::message::MessageId;
+pub type UpdateProposalId = crate::fragment::FragmentId;
 pub type UpdateVoterId = bft::LeaderId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

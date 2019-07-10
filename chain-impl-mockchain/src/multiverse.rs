@@ -261,9 +261,9 @@ mod test {
     use super::Multiverse;
     use crate::block::{Block, BlockBuilder, ConsensusVersion};
     use crate::config::{Block0Date, ConfigParam};
+    use crate::fragment::{ConfigParams, Fragment};
     use crate::leadership::bft::LeaderId;
     use crate::ledger::Ledger;
-    use crate::message::{ConfigParams, Message};
     use crate::milli::Milli;
     use chain_addr::Discrimination;
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
@@ -314,7 +314,7 @@ mod test {
             Milli::HALF,
         ));
         ents.push(ConfigParam::SlotsPerEpoch(NUM_BLOCK_PER_EPOCH));
-        genesis_block.message(Message::Initial(ents));
+        genesis_block.message(Fragment::Initial(ents));
         let genesis_block = genesis_block.make_genesis_block();
         let mut date = genesis_block.date();
         let genesis_state = Ledger::new(genesis_block.id(), genesis_block.messages()).unwrap();

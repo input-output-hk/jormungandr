@@ -6,8 +6,8 @@ use crate::block::{
 };
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
+use crate::fragment::Fragment;
 use crate::leadership::genesis::ActiveSlotsCoeffError;
-use crate::message::Message;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
@@ -155,19 +155,19 @@ impl Ledger {
 
     pub fn new<'a, I>(block0_initial_hash: HeaderHash, contents: I) -> Result<Self, Error>
     where
-        I: IntoIterator<Item = &'a Message>,
+        I: IntoIterator<Item = &'a Fragment>,
     {
         let mut content_iter = contents.into_iter();
 
         let init_ents = match content_iter.next() {
-            Some(Message::Initial(ref init_ents)) => Ok(init_ents),
+            Some(Fragment::Initial(ref init_ents)) => Ok(init_ents),
             Some(_) => Err(Error::ExpectingInitialMessage),
             None => Err(Error::Block0 {
                 source: Block0Error::InitialMessageMissing,
             }),
         }?;
 
-        let mut regular_ents = crate::message::ConfigParams::new();
+        let mut regular_ents = crate::fragment::ConfigParams::new();
         let mut block0_start_time = None;
         let mut slot_duration = None;
         let mut discrimination = None;
@@ -240,15 +240,15 @@ impl Ledger {
 
         for content in content_iter {
             match content {
-                Message::Initial(_) => {
+                Fragment::Initial(_) => {
                     return Err(Error::Block0 {
                         source: Block0Error::InitialMessageMany,
                     });
                 }
-                Message::OldUtxoDeclaration(old) => {
+                Fragment::OldUtxoDeclaration(old) => {
                     ledger.oldutxos = apply_old_declaration(ledger.oldutxos, old)?;
                 }
-                Message::Transaction(authenticated_tx) => {
+                Fragment::Transaction(authenticated_tx) => {
                     if authenticated_tx.transaction.inputs.len() != 0 {
                         return Err(Error::Block0 {
                             source: Block0Error::TransactionHasInput,
@@ -274,17 +274,17 @@ impl Ledger {
                     ledger.accounts = new_accounts;
                     ledger.multisig = new_multisig;
                 }
-                Message::UpdateProposal(_) => {
+                Fragment::UpdateProposal(_) => {
                     return Err(Error::Block0 {
                         source: Block0Error::HasUpdateProposal,
                     });
                 }
-                Message::UpdateVote(_) => {
+                Fragment::UpdateVote(_) => {
                     return Err(Error::Block0 {
                         source: Block0Error::HasUpdateVote,
                     });
                 }
-                Message::Certificate(authenticated_cert_tx) => {
+                Fragment::Certificate(authenticated_cert_tx) => {
                     if authenticated_cert_tx.transaction.inputs.len() != 0 {
                         return Err(Error::Block0 {
                             source: Block0Error::TransactionHasInput,
@@ -318,7 +318,7 @@ impl Ledger {
         metadata: &HeaderContentEvalContext,
     ) -> Result<Self, Error>
     where
-        I: IntoIterator<Item = &'a Message>,
+        I: IntoIterator<Item = &'a Fragment>,
     {
         let mut new_ledger = self.clone();
 
@@ -366,38 +366,38 @@ impl Ledger {
     pub fn apply_fragment(
         &self,
         ledger_params: &LedgerParameters,
-        content: &Message,
+        content: &Fragment,
         metadata: &HeaderContentEvalContext,
     ) -> Result<Self, Error> {
         let mut new_ledger = self.clone();
 
         match content {
-            Message::Initial(_) => {
+            Fragment::Initial(_) => {
                 return Err(Error::Block0 {
                     source: Block0Error::OnlyMessageReceived,
                 })
             }
-            Message::OldUtxoDeclaration(_) => {
+            Fragment::OldUtxoDeclaration(_) => {
                 return Err(Error::Block0 {
                     source: Block0Error::OnlyMessageReceived,
                 });
             }
-            Message::Transaction(authenticated_tx) => {
+            Fragment::Transaction(authenticated_tx) => {
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
                 new_ledger = new_ledger_;
             }
-            Message::UpdateProposal(update_proposal) => {
+            Fragment::UpdateProposal(update_proposal) => {
                 new_ledger = new_ledger.apply_update_proposal(
                     content.id(),
                     &update_proposal,
                     metadata.block_date,
                 )?;
             }
-            Message::UpdateVote(vote) => {
+            Fragment::UpdateVote(vote) => {
                 new_ledger = new_ledger.apply_update_vote(&vote)?;
             }
-            Message::Certificate(authenticated_cert_tx) => {
+            Fragment::Certificate(authenticated_cert_tx) => {
                 let (new_ledger_, _fee) =
                     new_ledger.apply_certificate(authenticated_cert_tx, &ledger_params)?;
                 new_ledger = new_ledger_;
@@ -1033,7 +1033,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
         let mut utxos = std::collections::HashMap::new();
         let mut oldutxos = std::collections::HashMap::new();
         let mut accounts = vec![];
-        let mut config_params = crate::message::ConfigParams::new();
+        let mut config_params = crate::fragment::ConfigParams::new();
         let mut updates = update::UpdateState::new();
         let mut multisig_accounts = vec![];
         let mut multisig_declarations = vec![];

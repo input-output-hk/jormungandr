@@ -3,7 +3,7 @@
 
 use crate::block::{
     BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion,
-    ChainLength, Common, GenesisPraosProof, Header, KESSignature, Message, Proof,
+    ChainLength, Common, Fragment, GenesisPraosProof, Header, KESSignature, Proof,
 };
 use crate::key::make_signature;
 use crate::leadership;
@@ -66,16 +66,16 @@ impl BlockBuilder {
 
     /// set a transaction in the block to build
     ///
-    /// Equivalent to call `block_builder.message(Message::Transaction(transaction))`
+    /// Equivalent to call `block_builder.message(Fragment::Transaction(transaction))`
     pub fn transaction(
         &mut self,
         signed_transaction: AuthenticatedTransaction<Address, NoExtra>,
     ) -> &mut Self {
-        self.message(Message::Transaction(signed_transaction))
+        self.message(Fragment::Transaction(signed_transaction))
     }
 
     /// add a message in the block to build
-    pub fn message(&mut self, message: Message) -> &mut Self {
+    pub fn message(&mut self, message: Fragment) -> &mut Self {
         self.contents.0.push(message);
         self
     }
@@ -83,7 +83,7 @@ impl BlockBuilder {
     /// set multiple messages in the block to build
     pub fn messages<I>(&mut self, messages: I) -> &mut Self
     where
-        I: IntoIterator<Item = Message>,
+        I: IntoIterator<Item = Fragment>,
     {
         self.contents.0.extend(messages);
         self
