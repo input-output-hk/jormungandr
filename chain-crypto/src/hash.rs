@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::{error, fmt, result};
 
 use cryptoxide::blake2b::Blake2b;
-use cryptoxide::digest::Digest;
+use cryptoxide::digest::Digest as _;
 use cryptoxide::sha3::Sha3;
 
 use crate::bech32::{self, Bech32};
@@ -133,14 +133,7 @@ macro_rules! define_hash_object {
     };
 }
 
-pub const HASH_SIZE_224: usize = 28;
-
 pub const HASH_SIZE_256: usize = 32;
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
-pub struct Blake2b224([u8; HASH_SIZE_224]);
-define_hash_object!(Blake2b224, Blake2b224, HASH_SIZE_224, "blake2b224");
-define_blake2b_new!(Blake2b224);
 
 /// Blake2b 256 bits
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
@@ -158,19 +151,5 @@ impl Sha3_256 {
         sh3.input(buf.as_ref());
         sh3.result(&mut out);
         Self::from(out)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn debug_blake2b_224() {
-        let h = Blake2b224::new([0; 28].as_ref());
-        assert_eq!(
-            format!("{:?}", h),
-            "Blake2b224(0x317512db8239e1f9c2549b04e8071f965983c938d3e649cec78532c7)",
-        );
     }
 }
