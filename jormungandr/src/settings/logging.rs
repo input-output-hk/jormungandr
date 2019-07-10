@@ -1,5 +1,5 @@
 use crate::log::AsyncableDrain;
-use slog::{Drain, Logger};
+use slog::{Drain, FilterLevel, Logger, Record};
 use slog_async::Async;
 #[cfg(feature = "gelf")]
 use slog_gelf::Gelf;
@@ -15,7 +15,7 @@ use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct LogSettings {
-    pub verbosity: slog::Level,
+    pub level: FilterLevel,
     pub format: LogFormat,
     pub output: LogOutput,
 }
@@ -86,7 +86,11 @@ impl FromStr for LogOutput {
 impl LogSettings {
     pub fn to_logger(&self) -> Result<Logger, Error> {
         let drain = self.output.to_logger(&self.format)?.fuse();
-        let drain = slog::LevelFilter::new(drain, self.verbosity).fuse();
+        let max_level = self.level.as_usize();
+        let drain = slog::Filter::new(drain, move |record: &Record| {
+            record.level().as_usize() <= max_level
+        })
+        .fuse();
         Ok(slog::Logger::root(drain, o!()))
     }
 }

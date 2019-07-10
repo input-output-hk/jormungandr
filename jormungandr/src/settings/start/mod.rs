@@ -1,13 +1,13 @@
 mod config;
 pub mod network;
 
+use self::config::Config;
 pub use self::config::Rest;
-use self::config::{Config, ConfigLogSettings};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
-use slog::Logger;
+use slog::{FilterLevel, Logger};
 
 use std::{collections::BTreeMap, fs::File, path::PathBuf};
 
@@ -45,14 +45,14 @@ impl RawSettings {
 
     pub fn to_logger(&self) -> Result<Logger, logging::Error> {
         LogSettings {
-            verbosity: self.logger_verbosity(),
+            level: self.logger_level(),
             format: self.logger_format(),
             output: self.logger_output(),
         }
         .to_logger()
     }
 
-    fn logger_verbosity(&self) -> slog::Level {
+    fn logger_level(&self) -> FilterLevel {
         let cmd_level = match self.command_line.verbose {
             0 => None,
             level => Some(level),
@@ -61,9 +61,9 @@ impl RawSettings {
         let config_level = config_logger.and_then(|logger| logger.verbosity.clone());
         let level = cmd_level.or(config_level).unwrap_or(0);
         match level {
-            0 => slog::Level::Info,
-            1 => slog::Level::Debug,
-            _ => slog::Level::Trace,
+            0 => FilterLevel::Info,
+            1 => FilterLevel::Debug,
+            _ => FilterLevel::Trace,
         }
     }
 
