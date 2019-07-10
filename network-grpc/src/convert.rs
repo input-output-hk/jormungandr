@@ -28,6 +28,7 @@ pub fn error_into_grpc(err: core_error::Error) -> Status {
         Aborted => Code::Aborted,
         Unimplemented => Code::Unimplemented,
         Internal => Code::Internal,
+        Unavailable => Code::Unavailable,
         // When a new case has to be added here, remember to
         // add the corresponding case in error_from_grpc below.
     };
@@ -47,6 +48,7 @@ pub fn error_from_grpc(e: Status) -> core_error::Error {
         Aborted => core_error::Code::Aborted,
         Unimplemented => core_error::Code::Unimplemented,
         Internal => core_error::Code::Internal,
+        Unavailable => core_error::Code::Unavailable,
         _ => core_error::Code::Unknown,
     };
 

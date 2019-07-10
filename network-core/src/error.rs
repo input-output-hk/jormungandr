@@ -14,6 +14,7 @@ pub enum Code {
     Aborted,
     Unimplemented,
     Internal,
+    Unavailable,
 }
 
 /// Represents errors that can be returned by the node protocol implementation.
@@ -56,6 +57,7 @@ impl fmt::Display for Error {
             Code::Aborted => "the operation was aborted",
             Code::Unimplemented => "not implemented",
             Code::Internal => "internal processing error",
+            Code::Unavailable => "the service is unavailable",
         };
         f.write_str(msg)
     }
