@@ -1,4 +1,4 @@
-use crate::common::configuration::node_config_model::{Logger, Peer};
+use crate::common::configuration::node_config_model::{Log, Peer};
 use crate::common::startup;
 
 #[test]
@@ -61,21 +61,21 @@ pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
 #[test]
 pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
     let mut config = startup::ConfigurationBuilder::new()
-        .with_logger(Logger {
-            format: String::from("xml"),
-            verbosity: 1,
+        .with_log(Log {
+            format: Some("xml".to_string()),
+            level: None,
         })
         .build();
     startup::assert_start_jormungandr_node_as_passive_fail(
         &mut config,
-        r"Error while parsing the node configuration file: logger\.format: unknown variant",
+        r"Error while parsing the node configuration file: log\.format: unknown variant",
     );
 }
 
 #[test]
 pub fn test_jormungandr_without_logger_starts_successfully() {
     let mut config = startup::ConfigurationBuilder::new().build();
-    config.node_config.logger = None;
+    config.node_config.log = None;
     let _jormungandr = startup::start_jormungandr_node(&mut config);
     startup::assert_node_is_up(&config.get_node_address());
 }
