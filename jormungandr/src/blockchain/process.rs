@@ -1,4 +1,4 @@
-use crate::blockcfg::{Header, HeaderHash};
+use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
 use crate::intercom::{self, BlockMsg, NetworkMsg, PropagateMsg};
 use crate::stats_counter::StatsCounter;
@@ -7,7 +7,7 @@ use crate::utils::{
     task::{Input, TokioServiceInfo},
 };
 
-use chain_core::property::Header as _;
+use chain_core::property::{Block as _, Header as _};
 
 use slog::Logger;
 
@@ -74,51 +74,6 @@ pub fn handle_input(
                 Err(e) => crit!(logger, "block processing failed: {:?}", e),
             }
         }
-        BlockMsg::NetworkBlock(block, reply) => {
-            let mut blockchain = blockchain.lock_write();
-            match chain::handle_block(&mut blockchain, block, true).unwrap() {
-                HandledBlock::Rejected { reason } => {
-                    // TODO: drop the network peer that has sent
-                    // an invalid block.
-                    warn!(logger, "rejecting block from the network: {:?}", reason);
-                    let message = format!("block is not accepted: {}", reason);
-                    reply.reply_error(intercom::Error::failed_precondition(message));
-                }
-                HandledBlock::MissingBranchToBlock { to } => {
-                    // This can happen when we distribute outbound block
-                    // solicitations to several nodes, which then respond
-                    // with block streams arriving out of order.
-                    //
-                    // TODO: put out of order blocks in quarantine to verify
-                    // when order is restored, or drop after a timeout.
-                    // TODO: once quarantine is implemented and the block is
-                    // still not in order, drop the network peer that has sent
-                    // the wrong block.
-                    warn!(
-                        logger,
-                        "disconnected block received, missing intermediate blocks to {}", to
-                    );
-                    reply.reply_error(intercom::Error::failed_precondition(
-                        "block is not connected to the blockchain",
-                    ));
-                }
-                HandledBlock::Acquired { header } => {
-                    info!(logger,
-                        "block added successfully to Node's blockchain";
-                        "id" => header.id().to_string(),
-                        "date" => format!("{}.{}", header.date().epoch, header.date().slot_id)
-                    );
-                    debug!(logger, "Header: {:?}", header);
-                    // Propagate the block to other nodes
-                    network_msg_box
-                        .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-                        .unwrap_or_else(|err| {
-                            error!(logger, "cannot propagate block to network: {}", err)
-                        });
-                    reply.reply_ok(())
-                }
-            }
-        }
         BlockMsg::AnnouncedBlock(header, node_id) => {
             let blockchain = blockchain.lock_read();
             match chain::header_triage(&blockchain, &header, false).unwrap() {
@@ -155,6 +110,10 @@ pub fn handle_input(
                 }
             }
         }
+        BlockMsg::NetworkBlock(block, reply) => {
+            let res = process_network_block(blockchain, block, network_msg_box, &logger);
+            reply.reply(res);
+        }
         BlockMsg::ChainHeaders(headers, reply) => {
             // FIXME: there is currently no sequencing between block
             // requests/solicitations sent out to different peers.
@@ -176,6 +135,63 @@ pub fn handle_input(
     Ok(())
 }
 
+fn process_network_block(
+    blockchain: &BlockchainR,
+    block: Block,
+    network_msg_box: &mut MessageBox<NetworkMsg>,
+    logger: &Logger,
+) -> Result<(), intercom::Error> {
+    let block_id = block.id();
+    let mut blockchain = blockchain.lock_write();
+    let handled = chain::handle_block(&mut blockchain, block, true).map_err(|e| {
+        error!(logger, "handling of uploaded block failed: {:?}", e);
+        intercom::Error::failed(e)
+    })?;
+    match handled {
+        HandledBlock::Rejected { reason } => {
+            // TODO: drop the network peer that has sent
+            // an invalid block.
+            warn!(
+                logger,
+                "rejecting block {} from the network: {:?}", block_id, reason
+            );
+            let message = format!("block {} is not accepted: {}", block_id, reason);
+            Err(intercom::Error::failed_precondition(message))
+        }
+        HandledBlock::MissingBranchToBlock { to } => {
+            // This can happen when we distribute outbound block
+            // solicitations to several nodes, which then respond
+            // with block streams arriving out of order.
+            //
+            // TODO: put out of order blocks in quarantine to verify
+            // when order is restored, or drop after a timeout.
+            // TODO: once quarantine is implemented and the block is
+            // still not in order, drop the network peer that has sent
+            // the wrong block.
+            warn!(
+                logger,
+                "disconnected block received, missing intermediate blocks to {}", to
+            );
+            Err(intercom::Error::failed_precondition(
+                "block is not connected to the blockchain",
+            ))
+        }
+        HandledBlock::Acquired { header } => {
+            info!(logger,
+                "block added successfully to Node's blockchain";
+                "id" => header.id().to_string(),
+                "date" => format!("{}.{}", header.date().epoch, header.date().slot_id)
+            );
+            debug!(logger, "Header: {:?}", header);
+            // Propagate the block to other nodes
+            network_msg_box
+                .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                .unwrap_or_else(|err| error!(logger, "cannot propagate block to network: {}", err));
+            Ok(())
+        }
+    }
+}
+
 fn process_chain_headers_into_block_request(
     blockchain: &BlockchainR,
     headers: Vec<Header>,
@@ -185,7 +201,7 @@ fn process_chain_headers_into_block_request(
     let mut block_ids = Vec::new();
     for header in headers {
         let triage = chain::header_triage(&blockchain, &header, false).map_err(|e| {
-            info!(logger, "triage of pulled header failed: {:?}", e);
+            error!(logger, "triage of pulled header failed: {:?}", e);
             intercom::Error::failed(e)
         })?;
         match triage {
