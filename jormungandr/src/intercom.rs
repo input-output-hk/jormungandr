@@ -64,7 +64,7 @@ impl Error {
 impl From<oneshot::Canceled> for Error {
     fn from(src: oneshot::Canceled) -> Self {
         Error {
-            code: core_error::Code::Canceled,
+            code: core_error::Code::Unavailable,
             cause: src.into(),
         }
     }
