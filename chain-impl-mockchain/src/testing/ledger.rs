@@ -4,7 +4,7 @@ use crate::config::ConfigParam;
 use crate::ledger::Error;
 use crate::ledger::Ledger;
 use crate::message::config::ConfigParams;
-use crate::message::Message;
+use crate::message::Fragment;
 use crate::milli::Milli;
 use crate::transaction::*;
 use chain_addr::{Address, Discrimination};
@@ -73,13 +73,13 @@ impl ConfigBuilder {
 
 // create an initial fake ledger with the non-optional parameter setup
 pub fn create_initial_fake_ledger(
-    initial_msgs: &[Message],
+    initial_msgs: &[Fragment],
     config_params: ConfigParams,
 ) -> Result<(HeaderHash, Ledger), Error> {
     let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
 
     let mut messages = Vec::new();
-    messages.push(Message::Initial(config_params));
+    messages.push(Fragment::Initial(config_params));
     messages.extend_from_slice(initial_msgs);
     let ledger_init_result = Ledger::new(block0_hash, &messages);
     match ledger_init_result {
@@ -88,13 +88,13 @@ pub fn create_initial_fake_ledger(
     }
 }
 
-pub fn create_initial_transaction(output: Output<Address>) -> Message {
+pub fn create_initial_transaction(output: Output<Address>) -> Fragment {
     let mut builder = TransactionBuilder::new();
     let authenticator = builder.with_output(output).authenticate();
     authenticator.as_message()
 }
 
-pub fn create_initial_transactions(outputs: &Vec<Output<Address>>) -> Message {
+pub fn create_initial_transactions(outputs: &Vec<Output<Address>>) -> Fragment {
     let mut builder = TransactionBuilder::new();
     let authenticator = builder.with_outputs(outputs.to_vec()).authenticate();
     authenticator.as_message()

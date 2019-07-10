@@ -5,7 +5,7 @@ use crate::{
     fee::LinearFee,
     key::EitherEd25519SecretKey,
     ledger::OutputAddress,
-    message::Message,
+    message::Fragment,
     transaction::{AuthenticatedTransaction, Input, NoExtra, Output, Transaction, Witness},
     txbuilder::{OutputPolicy, TransactionBuilder as Builder},
 };
@@ -157,9 +157,9 @@ impl TransactionAuthenticator {
         self
     }
 
-    pub fn as_message(&self) -> Message {
+    pub fn as_message(&self) -> Fragment {
         let signed_tx = self.seal();
-        Message::Transaction(signed_tx)
+        Fragment::Transaction(signed_tx)
     }
 
     pub fn seal(&self) -> AuthenticatedTransaction<Address, NoExtra> {

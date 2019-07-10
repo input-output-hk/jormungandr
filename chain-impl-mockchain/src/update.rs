@@ -227,7 +227,7 @@ impl From<ActiveSlotsCoeffError> for Error {
     }
 }
 
-pub type UpdateProposalId = crate::message::MessageId;
+pub type UpdateProposalId = crate::message::FragmentId;
 pub type UpdateVoterId = bft::LeaderId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

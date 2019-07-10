@@ -1,6 +1,6 @@
 //! Representation of the block in the mockchain.
 use crate::key::Hash;
-use crate::message::{Message, MessageRaw};
+use crate::message::{Fragment, FragmentRaw};
 use chain_core::mempack::{read_from_raw, ReadBuf, ReadError, Readable};
 use chain_core::property::{self, Serialize};
 
@@ -42,7 +42,7 @@ impl PartialEq for Block {
 impl Eq for Block {}
 
 #[derive(Debug, Clone)]
-pub struct BlockContents(Vec<Message>);
+pub struct BlockContents(Vec<Fragment>);
 
 impl PartialEq for BlockContents {
     fn eq(&self, rhs: &Self) -> bool {
@@ -53,11 +53,11 @@ impl Eq for BlockContents {}
 
 impl BlockContents {
     #[inline]
-    pub fn new(messages: Vec<Message>) -> Self {
+    pub fn new(messages: Vec<Fragment>) -> Self {
         BlockContents(messages)
     }
     #[inline]
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a Message> {
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a Fragment> {
         self.0.iter()
     }
     pub fn compute_hash_size(&self) -> (BlockContentHash, usize) {
@@ -142,12 +142,12 @@ impl property::Deserialize for Block {
         let mut contents = BlockContents(Vec::with_capacity(4));
 
         while serialized_content_size > 0 {
-            let message_raw = MessageRaw::deserialize(&mut reader)?;
+            let message_raw = FragmentRaw::deserialize(&mut reader)?;
             let message_size = message_raw.size_bytes_plus_size();
 
             // return error here if message serialize sized is bigger than remaining size
 
-            let message = Message::from_raw(&message_raw)
+            let message = Fragment::from_raw(&message_raw)
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
             contents.0.push(message);
 
@@ -176,7 +176,7 @@ impl Readable for Block {
 
             // return error here if message serialize sized is bigger than remaining size
 
-            let message = Message::read(&mut message_buf)?;
+            let message = Fragment::read(&mut message_buf)?;
             contents.0.push(message);
 
             remaining_content_size -= 2 + message_size as u32;
@@ -190,8 +190,8 @@ impl Readable for Block {
 }
 
 impl<'a> property::HasMessages<'a> for &'a Block {
-    type Message = Message;
-    type Messages = slice::Iter<'a, Message>;
+    type Message = Fragment;
+    type Messages = slice::Iter<'a, Fragment>;
     fn messages(self) -> Self::Messages {
         self.contents.0.iter()
     }
