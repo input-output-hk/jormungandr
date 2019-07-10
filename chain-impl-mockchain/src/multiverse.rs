@@ -263,7 +263,7 @@ mod test {
     use crate::config::{Block0Date, ConfigParam};
     use crate::leadership::bft::LeaderId;
     use crate::ledger::Ledger;
-    use crate::message::{ConfigParams, Fragment};
+    use crate::fragment::{ConfigParams, Fragment};
     use crate::milli::Milli;
     use chain_addr::Discrimination;
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};

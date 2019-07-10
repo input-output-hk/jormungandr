@@ -3,9 +3,9 @@ use crate::{
     account::SpendingCounter,
     block::HeaderHash,
     fee::LinearFee,
+    fragment::Fragment,
     key::EitherEd25519SecretKey,
     ledger::OutputAddress,
-    message::Fragment,
     transaction::{AuthenticatedTransaction, Input, NoExtra, Output, Transaction, Witness},
     txbuilder::{OutputPolicy, TransactionBuilder as Builder},
 };

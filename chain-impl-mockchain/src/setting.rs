@@ -2,7 +2,7 @@
 //!
 
 use crate::leadership::genesis::ActiveSlotsCoeff;
-use crate::message::config::ConfigParams;
+use crate::fragment::config::ConfigParams;
 use crate::milli::Milli;
 use crate::update::Error;
 use crate::{

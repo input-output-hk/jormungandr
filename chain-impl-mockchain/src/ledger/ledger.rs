@@ -7,7 +7,7 @@ use crate::block::{
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
-use crate::message::Fragment;
+use crate::fragment::Fragment;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;
@@ -167,7 +167,7 @@ impl Ledger {
             }),
         }?;
 
-        let mut regular_ents = crate::message::ConfigParams::new();
+        let mut regular_ents = crate::fragment::ConfigParams::new();
         let mut block0_start_time = None;
         let mut slot_duration = None;
         let mut discrimination = None;
@@ -1033,7 +1033,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
         let mut utxos = std::collections::HashMap::new();
         let mut oldutxos = std::collections::HashMap::new();
         let mut accounts = vec![];
-        let mut config_params = crate::message::ConfigParams::new();
+        let mut config_params = crate::fragment::ConfigParams::new();
         let mut updates = update::UpdateState::new();
         let mut multisig_accounts = vec![];
         let mut multisig_declarations = vec![];
