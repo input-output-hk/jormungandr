@@ -53,18 +53,16 @@ impl RawSettings {
     }
 
     fn logger_level(&self) -> FilterLevel {
-        let cmd_level = match self.command_line.verbose {
-            0 => None,
-            level => Some(level),
-        };
+        let cmd_level = self.command_line.log_level.clone();
         let config_logger = self.config.logger.as_ref();
-        let config_level = config_logger.and_then(|logger| logger.verbosity.clone());
-        let level = cmd_level.or(config_level).unwrap_or(0);
-        match level {
-            0 => FilterLevel::Info,
-            1 => FilterLevel::Debug,
-            _ => FilterLevel::Trace,
-        }
+        let config_level = config_logger
+            .and_then(|logger| logger.verbosity.clone())
+            .map(|level| match level {
+                0 => FilterLevel::Info,
+                1 => FilterLevel::Debug,
+                _ => FilterLevel::Trace,
+            });
+        cmd_level.or(config_level).unwrap_or(FilterLevel::Info)
     }
 
     fn logger_format(&self) -> LogFormat {
