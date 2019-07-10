@@ -60,7 +60,7 @@ impl fmt::Display for TryFromSliceError {
     }
 }
 
-pub trait HashingAlg {
+pub trait DigestAlg {
     const HASH_SIZE: usize;
     type DigestData: Clone + PartialEq + Hash + AsRef<[u8]>;
     type DigestContext: Clone;
@@ -71,7 +71,7 @@ pub trait HashingAlg {
     fn finalize(ctx: Self::DigestContext) -> Self::DigestData;
 }
 
-impl HashingAlg for Blake2b256 {
+impl DigestAlg for Blake2b256 {
     const HASH_SIZE: usize = 32;
     type DigestData = [u8; Self::HASH_SIZE];
     type DigestContext = Blake2b;
@@ -104,7 +104,7 @@ impl HashingAlg for Blake2b256 {
     }
 }
 
-impl HashingAlg for Sha3_256 {
+impl DigestAlg for Sha3_256 {
     const HASH_SIZE: usize = 32;
     type DigestData = [u8; Self::HASH_SIZE];
     type DigestContext = Sha3;
@@ -137,15 +137,15 @@ impl HashingAlg for Sha3_256 {
     }
 }
 
-pub struct Context<H: HashingAlg>(H::DigestContext);
+pub struct Context<H: DigestAlg>(H::DigestContext);
 
-impl<H: HashingAlg> Clone for Context<H> {
+impl<H: DigestAlg> Clone for Context<H> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<H: HashingAlg> Context<H> {
+impl<H: DigestAlg> Context<H> {
     pub fn new() -> Self {
         Self(H::new())
     }
@@ -159,9 +159,9 @@ impl<H: HashingAlg> Context<H> {
     }
 }
 
-pub struct Digest<H: HashingAlg>(H::DigestData);
+pub struct Digest<H: DigestAlg>(H::DigestData);
 
-impl<H: HashingAlg> Clone for Digest<H> {
+impl<H: DigestAlg> Clone for Digest<H> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
@@ -197,32 +197,32 @@ macro_rules! define_from_instances {
 define_from_instances!(Sha3_256, 32, "sha3");
 define_from_instances!(Blake2b256, 32, "blake2b");
 
-impl<H: HashingAlg> PartialEq for Digest<H> {
+impl<H: DigestAlg> PartialEq for Digest<H> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl<H: HashingAlg> AsRef<[u8]> for Digest<H> {
+impl<H: DigestAlg> AsRef<[u8]> for Digest<H> {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-impl<H: HashingAlg> Hash for Digest<H> {
+impl<H: DigestAlg> Hash for Digest<H> {
     fn hash<HA: Hasher>(&self, state: &mut HA) {
         self.0.hash(state)
     }
 }
 
-impl<H: HashingAlg> TryFrom<&[u8]> for Digest<H> {
+impl<H: DigestAlg> TryFrom<&[u8]> for Digest<H> {
     type Error = Error;
     fn try_from(slice: &[u8]) -> Result<Digest<H>, Self::Error> {
-        <H as HashingAlg>::try_from_slice(slice).map(Digest)
+        <H as DigestAlg>::try_from_slice(slice).map(Digest)
     }
 }
 
-impl<H: HashingAlg> FromStr for Digest<H> {
+impl<H: DigestAlg> FromStr for Digest<H> {
     type Err = Error;
     fn from_str(s: &str) -> result::Result<Digest<H>, Self::Err> {
         let bytes = hex::decode(s)?;
@@ -230,12 +230,12 @@ impl<H: HashingAlg> FromStr for Digest<H> {
     }
 }
 
-impl<H: HashingAlg> fmt::Display for Digest<H> {
+impl<H: DigestAlg> fmt::Display for Digest<H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.as_ref()))
     }
 }
-impl<H: HashingAlg> fmt::Debug for Digest<H> {
+impl<H: DigestAlg> fmt::Debug for Digest<H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(concat!(stringify!($hash_ty), "(0x"))?;
         write!(f, "{}", hex::encode(self.as_ref()))?;
