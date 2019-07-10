@@ -47,81 +47,75 @@ impl ConfigurationBuilder {
         }
     }
 
-    pub fn with_slots_per_epoch<'a>(&'a mut self, slots_per_epoch: u32) -> &'a mut Self {
+    pub fn with_slots_per_epoch(&mut self, slots_per_epoch: u32) -> &mut Self {
         self.slots_per_epoch = Some(slots_per_epoch);
         self
     }
 
-    pub fn with_slot_duration<'a>(&'a mut self, slot_duration: u32) -> &'a mut Self {
+    pub fn with_slot_duration(&mut self, slot_duration: u32) -> &mut Self {
         self.slot_duration = Some(slot_duration);
         self
     }
 
-    pub fn with_epoch_stability_depth<'a>(
-        &'a mut self,
-        epoch_stability_depth: u32,
-    ) -> &'a mut Self {
+    pub fn with_epoch_stability_depth(&mut self, epoch_stability_depth: u32) -> &mut Self {
         self.epoch_stability_depth = Some(epoch_stability_depth);
         self
     }
 
-    pub fn with_kes_update_speed<'a>(&'a mut self, kes_update_speed: u32) -> &'a mut Self {
+    pub fn with_kes_update_speed(&mut self, kes_update_speed: u32) -> &mut Self {
         self.kes_update_speed = kes_update_speed;
         self
     }
 
-    pub fn with_linear_fees<'a>(&'a mut self, linear_fees: LinearFees) -> &'a mut Self {
+    pub fn with_linear_fees(&mut self, linear_fees: LinearFees) -> &mut Self {
         self.linear_fees = linear_fees;
         self
     }
 
-    pub fn with_consensus_leaders_ids<'a>(
-        &'a mut self,
-        consensus_leader_ids: Vec<String>,
-    ) -> &'a mut Self {
+    pub fn with_consensus_leaders_ids(&mut self, consensus_leader_ids: Vec<String>) -> &mut Self {
         self.consensus_leader_ids = consensus_leader_ids;
         self
     }
 
-    pub fn with_initial_certs<'a>(&'a mut self, certs: Vec<String>) -> &'a mut Self {
+    pub fn with_initial_certs(&mut self, certs: Vec<String>) -> &mut Self {
         self.certs = certs;
         self
     }
 
-    pub fn with_block0_consensus<'a>(&'a mut self, consensus: &str) -> &'a mut Self {
+    pub fn with_block0_consensus(&mut self, consensus: &str) -> &mut Self {
         self.block0_consensus = Some(consensus.to_string());
         self
     }
 
-    pub fn with_consensus_genesis_praos_active_slot_coeff<'a>(
-        &'a mut self,
+    pub fn with_consensus_genesis_praos_active_slot_coeff(
+        &mut self,
         active_slot_coeff: &str,
-    ) -> &'a mut Self {
+    ) -> &mut Self {
         self.consensus_genesis_praos_active_slot_coeff = Some(active_slot_coeff.to_string());
         self
     }
 
-    pub fn with_bft_slots_ratio<'a>(&'a mut self, slots_ratio: String) -> &'a mut Self {
+    pub fn with_bft_slots_ratio(&mut self, slots_ratio: String) -> &mut Self {
         self.bft_slots_ratio = Some(slots_ratio);
         self
     }
 
-    pub fn with_funds<'a>(&'a mut self, funds: Vec<Fund>) -> &'a mut Self {
+    pub fn with_funds(&mut self, funds: Vec<Fund>) -> &mut Self {
         self.funds = funds.clone();
         self
     }
 
-    pub fn with_log<'a>(&'a mut self, log: Log) -> &'a mut Self {
+    pub fn with_log(&mut self, log: Log) -> &mut Self {
         self.log = Some(log.clone());
         self
     }
 
-    pub fn with_trusted_peers<'a>(&'a mut self, trusted_peers: Vec<Peer>) -> &'a mut Self {
+    pub fn with_trusted_peers(&mut self, trusted_peers: Vec<Peer>) -> &mut Self {
         self.trusted_peers = Some(trusted_peers.clone());
         self
     }
 
-    pub fn with_block_hash<'a>(&'a mut self, block0_hash: String) -> &'a mut Self {
+    pub fn with_block_hash(&mut self, block0_hash: String) -> &mut Self {
         self.block0_hash = Some(block0_hash.clone());
         self
     }
