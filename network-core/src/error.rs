@@ -1,6 +1,9 @@
 use std::{error, fmt};
 
 /// Common error codes for network protocol requests.
+///
+/// These codes mimic the status codes used in gRPC and map one to one to
+/// those in the gRPC protocol implementation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Code {
     Canceled,
@@ -8,6 +11,7 @@ pub enum Code {
     InvalidArgument,
     NotFound,
     FailedPrecondition,
+    Aborted,
     Unimplemented,
     Internal,
 }
@@ -49,6 +53,7 @@ impl fmt::Display for Error {
             Code::InvalidArgument => "invalid request data",
             Code::NotFound => "not found",
             Code::FailedPrecondition => "system state does not permit the operation",
+            Code::Aborted => "the operation was aborted",
             Code::Unimplemented => "not implemented",
             Code::Internal => "internal processing error",
         };

@@ -25,6 +25,7 @@ pub fn error_into_grpc(err: core_error::Error) -> Status {
         InvalidArgument => Code::InvalidArgument,
         NotFound => Code::NotFound,
         FailedPrecondition => Code::FailedPrecondition,
+        Aborted => Code::Aborted,
         Unimplemented => Code::Unimplemented,
         Internal => Code::Internal,
         // When a new case has to be added here, remember to
@@ -43,6 +44,7 @@ pub fn error_from_grpc(e: Status) -> core_error::Error {
         InvalidArgument => core_error::Code::InvalidArgument,
         NotFound => core_error::Code::NotFound,
         FailedPrecondition => core_error::Code::FailedPrecondition,
+        Aborted => core_error::Code::Aborted,
         Unimplemented => core_error::Code::Unimplemented,
         Internal => core_error::Code::Internal,
         _ => core_error::Code::Unknown,
