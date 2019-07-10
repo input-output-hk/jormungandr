@@ -32,7 +32,6 @@ pub enum Fragment {
     UpdateVote(SignedUpdateVote),
 }
 
-
 /// Tag enumeration of all known fragment
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum FragmentTag {

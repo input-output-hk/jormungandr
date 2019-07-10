@@ -1,7 +1,7 @@
 use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::date::BlockDate;
-use crate::leadership::{bft, genesis::ActiveSlotsCoeffError};
 use crate::fragment::config::ConfigParams;
+use crate::leadership::{bft, genesis::ActiveSlotsCoeffError};
 use crate::setting::Settings;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;

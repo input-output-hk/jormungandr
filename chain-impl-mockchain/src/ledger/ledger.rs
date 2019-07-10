@@ -6,8 +6,8 @@ use crate::block::{
 };
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
-use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::fragment::Fragment;
+use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
 use crate::value::*;

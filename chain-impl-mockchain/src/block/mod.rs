@@ -1,6 +1,6 @@
 //! Representation of the block in the mockchain.
-use crate::key::Hash;
 use crate::fragment::{Fragment, FragmentRaw};
+use crate::key::Hash;
 use chain_core::mempack::{read_from_raw, ReadBuf, ReadError, Readable};
 use chain_core::property::{self, Serialize};
 

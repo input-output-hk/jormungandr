@@ -1,8 +1,8 @@
 //! define the Blockchain settings
 //!
 
-use crate::leadership::genesis::ActiveSlotsCoeff;
 use crate::fragment::config::ConfigParams;
+use crate::leadership::genesis::ActiveSlotsCoeff;
 use crate::milli::Milli;
 use crate::update::Error;
 use crate::{

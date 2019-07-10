@@ -261,9 +261,9 @@ mod test {
     use super::Multiverse;
     use crate::block::{Block, BlockBuilder, ConsensusVersion};
     use crate::config::{Block0Date, ConfigParam};
+    use crate::fragment::{ConfigParams, Fragment};
     use crate::leadership::bft::LeaderId;
     use crate::ledger::Ledger;
-    use crate::fragment::{ConfigParams, Fragment};
     use crate::milli::Milli;
     use chain_addr::Discrimination;
     use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};

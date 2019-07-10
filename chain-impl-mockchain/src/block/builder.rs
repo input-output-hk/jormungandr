@@ -3,7 +3,7 @@
 
 use crate::block::{
     BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion,
-    ChainLength, Common, GenesisPraosProof, Header, KESSignature, Fragment, Proof,
+    ChainLength, Common, Fragment, GenesisPraosProof, Header, KESSignature, Proof,
 };
 use crate::key::make_signature;
 use crate::leadership;
