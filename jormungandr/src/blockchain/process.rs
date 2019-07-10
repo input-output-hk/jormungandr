@@ -74,26 +74,33 @@ pub fn handle_input(
                 Err(e) => crit!(logger, "block processing failed: {:?}", e),
             }
         }
-        BlockMsg::NetworkBlock(block) => {
+        BlockMsg::NetworkBlock(block, reply) => {
             let mut blockchain = blockchain.lock_write();
             match chain::handle_block(&mut blockchain, block, true).unwrap() {
                 HandledBlock::Rejected { reason } => {
                     // TODO: drop the network peer that has sent
                     // an invalid block.
                     warn!(logger, "rejecting block from the network: {:?}", reason);
+                    let message = format!("block is not accepted: {}", reason);
+                    reply.reply_error(intercom::Error::failed_precondition(message));
                 }
                 HandledBlock::MissingBranchToBlock { to } => {
-                    // This is abnormal because we have received a block
-                    // that is not connected to preceding blocks, which
-                    // should not happen as we solicit blocks in descending
-                    // order.
+                    // This can happen when we distribute outbound block
+                    // solicitations to several nodes, which then respond
+                    // with block streams arriving out of order.
                     //
-                    // TODO: drop the network peer that has sent
+                    // TODO: put out of order blocks in quarantine to verify
+                    // when order is restored, or drop after a timeout.
+                    // TODO: once quarantine is implemented and the block is
+                    // still not in order, drop the network peer that has sent
                     // the wrong block.
                     warn!(
                         logger,
                         "disconnected block received, missing intermediate blocks to {}", to
                     );
+                    reply.reply_error(intercom::Error::failed_precondition(
+                        "block is not connected to the blockchain",
+                    ));
                 }
                 HandledBlock::Acquired { header } => {
                     info!(logger,
@@ -108,6 +115,7 @@ pub fn handle_input(
                         .unwrap_or_else(|err| {
                             error!(logger, "cannot propagate block to network: {}", err)
                         });
+                    reply.reply_ok(())
                 }
             }
         }

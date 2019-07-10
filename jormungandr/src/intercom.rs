@@ -144,7 +144,7 @@ where
     fn poll(&mut self) -> Poll<T, E> {
         let item = match self.receiver.poll() {
             Err(oneshot::Canceled) => {
-                warn!(self.logger, "response canceled by the client request task");
+                warn!(self.logger, "response canceled by the processing task");
                 return Err(Error::from(oneshot::Canceled).into());
             }
             Ok(Async::NotReady) => {
@@ -304,14 +304,18 @@ pub enum BlockMsg {
     LeadershipBlock(Block),
     /// Leadership process expect a new end of epoch
     LeadershipExpectEndOfEpoch(Epoch),
-    /// An untrusted Block has been received from the network task
-    NetworkBlock(Block),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, NodeId),
+    /// An untrusted Block has been received from the network task.
+    /// The reply handle must be used to enable continued streaming by
+    /// sending `Ok`, or to cancel the incoming stream with an error sent in
+    /// `Err`.
+    NetworkBlock(Block, ReplyHandle<()>),
     /// Headers for missing chain blocks have been received from the network
-    /// in response to a PullHeaders request. The reply handle must be used to
-    /// continue streaming by sending Ok, or to cancel the incoming stream
-    /// with an error.
+    /// in response to a PullHeaders request
+    /// The reply handle must be used to enable continued streaming by
+    /// sending `Ok`, or to cancel the incoming stream with an error sent in
+    /// `Err`.
     ChainHeaders(Vec<Header>, ReplyHandle<()>),
 }
 

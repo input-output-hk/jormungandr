@@ -5,12 +5,23 @@
 //! transactions...);
 //!
 
-mod chain_pull;
 mod client;
 mod grpc;
+mod inbound;
 pub mod p2p;
 mod service;
 mod subscription;
+
+// Constants
+mod chain_pull {
+    // Size of chunks to split processing of chain pull streams.
+    // Apart from sizing data chunks for intercom messages, it also
+    // determines how many blocks will be requested per each GetBlocks request
+    // distributed between different peers.
+    //
+    // This may need to be made into a configuration parameter.
+    pub const CHUNK_SIZE: usize = 32;
+}
 
 use self::p2p::{
     comm::{PeerComms, Peers},

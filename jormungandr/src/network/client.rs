@@ -1,6 +1,6 @@
 use super::{
-    chain_pull::ChainPull,
-    grpc,
+    chain_pull, grpc,
+    inbound::InboundProcessing,
     p2p::comm::{PeerComms, Subscription},
     p2p::topology,
     subscription, Channels, ConnectionState, GlobalStateR,
@@ -199,19 +199,32 @@ where
 {
     fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
         let block_box = self.channels.block_box.clone();
-        let err_logger = self.logger.clone();
-        let and_then_logger = self.logger.clone();
+        let logger = self.logger.clone();
+        let err_logger = logger.clone();
         tokio::spawn(
             self.service
                 .pull_headers(&req.from, &req.to)
                 .map_err(move |e| {
                     warn!(err_logger, "PullHeaders request failed: {:?}", e);
                 })
-                .and_then(move |headers| {
-                    let err_logger = and_then_logger.clone();
-                    ChainPull::new(headers, block_box, and_then_logger).map_err(move |e| {
-                        warn!(err_logger, "header pull failed: {:?}", e);
-                    })
+                .and_then(move |stream| {
+                    let err_logger = logger.clone();
+                    stream
+                        .map_err(move |e| {
+                            warn!(err_logger, "PullHeaders response stream failed: {:?}", e);
+                        })
+                        .chunks(chain_pull::CHUNK_SIZE)
+                        .for_each(move |headers| {
+                            let err_logger = logger.clone();
+                            InboundProcessing::with_unary(
+                                block_box.clone(),
+                                logger.clone(),
+                                |reply| BlockMsg::ChainHeaders(headers, reply),
+                            )
+                            .map_err(move |e| {
+                                warn!(err_logger, "chain header validation failed: {:?}", e)
+                            })
+                        })
                 }),
         );
     }
@@ -224,26 +237,34 @@ where
     S::GetBlocksStream: Send + 'static,
 {
     fn solicit_blocks(&mut self, block_ids: &[HeaderHash]) {
-        let mut block_box = self.channels.block_box.clone();
-        let err_logger = self.logger.clone();
-        let and_then_logger = self.logger.clone();
+        let block_box = self.channels.block_box.clone();
+        let logger = self.logger.clone();
+        let err_logger = logger.clone();
         tokio::spawn(
             self.service
                 .get_blocks(block_ids)
                 .map_err(move |e| {
-                    warn!(err_logger, "solicitation request GetBlocks failed: {:?}", e);
+                    warn!(
+                        err_logger,
+                        "GetBlocks request (solicitation) failed: {:?}", e
+                    );
                 })
-                .and_then(move |blocks| {
-                    blocks
-                        .for_each(move |block| {
-                            block_box.try_send(BlockMsg::NetworkBlock(block)).unwrap();
-                            Ok(())
-                        })
+                .and_then(move |stream| {
+                    let err_logger = logger.clone();
+                    stream
                         .map_err(move |e| {
-                            warn!(
-                                and_then_logger,
-                                "solicitation stream response to GetBlocks failed: {:?}", e
-                            );
+                            warn!(err_logger, "GetBlocks response stream failed: {:?}", e);
+                        })
+                        .for_each(move |block| {
+                            let err_logger = logger.clone();
+                            InboundProcessing::with_unary(
+                                block_box.clone(),
+                                logger.clone(),
+                                |reply| BlockMsg::NetworkBlock(block, reply),
+                            )
+                            .map_err(move |e| {
+                                warn!(err_logger, "network block validation failed: {:?}", e)
+                            })
                         })
                 }),
         );
