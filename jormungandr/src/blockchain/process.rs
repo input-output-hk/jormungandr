@@ -1,5 +1,5 @@
+use super::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock, RejectionReason};
 use crate::blockcfg::{Block, Header, HeaderHash};
-use crate::blockchain::chain::{self, BlockHeaderTriage, BlockchainR, HandledBlock};
 use crate::intercom::{self, BlockMsg, NetworkMsg, PropagateMsg};
 use crate::stats_counter::StatsCounter;
 use crate::utils::{
@@ -204,34 +204,41 @@ fn process_chain_headers_into_block_request(
             error!(logger, "triage of pulled header failed: {:?}", e);
             intercom::Error::failed(e)
         })?;
+        let hash = header.hash();
         match triage {
             BlockHeaderTriage::ProcessBlockToState => {
-                block_ids.push(header.hash());
+                block_ids.push(hash);
             }
             BlockHeaderTriage::NotOfInterest { reason } => {
-                // The block is already present, or is otherwise of no
-                // interest. We cancel streaming of the entire branch.
-                info!(
-                    logger,
-                    "pulled block header {} is not of interest: {:?}",
-                    header.hash(),
-                    reason,
-                );
-                return Err(intercom::Error::failed_precondition(format!(
-                    "block {} is not accepted: {}",
-                    header.hash(),
-                    reason,
-                )));
+                match reason {
+                    RejectionReason::AlreadyPresent => {
+                        // The block is already present. This may happen
+                        // if the peer has started from an earlier checkpoint
+                        // than our tip, so ignore this and proceed.
+                    }
+                    _ => {
+                        // The block is not already in the chain, but is
+                        // rejected for another reason. We cancel streaming
+                        // of the entire branch.
+                        info!(
+                            logger,
+                            "pulled block header {} is not of interest: {:?}", hash, reason,
+                        );
+                        return Err(intercom::Error::failed_precondition(format!(
+                            "block {} is not accepted: {}",
+                            hash, reason,
+                        )));
+                    }
+                }
             }
             BlockHeaderTriage::MissingParentOrBranch { .. } => {
                 info!(
                     logger,
-                    "pulled block header {} is not connected to the blockchain",
-                    header.hash(),
+                    "pulled block header {} is not connected to the blockchain", hash,
                 );
                 return Err(intercom::Error::failed_precondition(format!(
                     "block {} is not connected to the blockchain",
-                    header.hash(),
+                    hash,
                 )));
             }
         }
