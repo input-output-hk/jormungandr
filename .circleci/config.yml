@@ -54,15 +54,15 @@ jobs:
           command: rustc --version; cargo --version
       - run:
           name: Build binaries
-          command: cargo build -p jormungandr -p jcli --frozen --verbose
+          command: cargo build -p jormungandr -p jcli --offline --verbose
       - run:
           name: Build tests
-          command: cargo build --tests --frozen --verbose
+          command: cargo build --tests --offline --verbose
       - run:
           name: Test
           environment:
             RUST_BACKTRACE: 1
-          command: cargo test --frozen --verbose
+          command: cargo test --offline --verbose
 
   test_release:
     docker:
@@ -80,13 +80,13 @@ jobs:
           command: rustc --version; cargo --version
       - run:
           name: Build binaries
-          command: cargo build -p jormungandr -p jcli --release --frozen --verbose
+          command: cargo build -p jormungandr -p jcli --release --offline --verbose
       - run:
           name: Build tests
-          command: cargo build --tests --release --frozen --verbose
+          command: cargo build --tests --release --offline --verbose
       - run:
           name: Test
-          command: cargo test --release --frozen --verbose
+          command: cargo test --release --offline --verbose
 
   test_nightly:
     docker:
@@ -106,15 +106,15 @@ jobs:
           command: rustc --version; cargo --version
       - run:
           name: Build binaries
-          command: cargo build -p jormungandr -p jcli --frozen --verbose
+          command: cargo build -p jormungandr -p jcli --offline --verbose
       - run:
           name: Build tests
-          command: cargo build --tests --frozen --verbose
+          command: cargo build --tests --offline --verbose
       - run:
           name: Test
           environment:
             RUST_BACKTRACE: 1
-          command: cargo test --frozen --verbose
+          command: cargo test --offline --verbose
 
 workflows:
   version: 2
