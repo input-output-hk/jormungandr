@@ -48,7 +48,7 @@ Let's use the following utxo as input and transfer 50 lovelaces to the destinati
 
 ## Destination address
 
-**addressca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6**
+**address**: ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6
 
 ## Create a staging area
 
@@ -60,13 +60,13 @@ jcli transaction new > tx
 
 For the input, we need to reference the uxto with the **UTXO's transaction ID** and **UTXO'S output index** fields and we need to specify how much coins are there with the **associated value** field.
 
-### Example
+### Example - UTXO address as Input
 
 ```sh
 jcli transaction add-input  55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c 0 100 --staging tx
 ```
 
-### Account input
+### Example - Account address as Input
 
 If the input is an account, the command is slightly different
 
@@ -79,7 +79,7 @@ jcli transaction add-account account_address account_funds --staging tx
 For the output, we need the address we want to transfer to, and the amount.
 
 ```sh
-jcli transaction add-output  ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj650 --staging tx
+jcli transaction add-output  ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6 50 --staging tx
 ```
 
 ## Add fee and change address
@@ -106,7 +106,7 @@ Transaction `0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273' (
   Fees:    11
   Balance: 0
  - 55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c:0 100
- + ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj650 50
+ + ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6 50
  + ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu 39
 ```
 
