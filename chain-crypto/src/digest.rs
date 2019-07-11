@@ -246,3 +246,80 @@ impl<H: DigestAlg> fmt::Debug for Digest<H> {
         f.write_str(")")
     }
 }
+
+impl<H: DigestAlg> Digest<H> {
+    /// Get the digest of a slice of data
+    pub fn digest(slice: &[u8]) -> Self {
+        let mut ctx = Context::new();
+        ctx.append_data(slice);
+        ctx.finalize()
+    }
+}
+
+use std::marker::PhantomData;
+
+/// A typed version of Digest
+pub struct DigestOf<H: DigestAlg, T> {
+    inner: Digest<H>,
+    marker: PhantomData<T>,
+}
+
+impl<H: DigestAlg, T> Clone for DigestOf<H, T> {
+    fn clone(&self) -> Self {
+        DigestOf {
+            inner: self.inner.clone(),
+            marker: self.marker.clone(),
+        }
+    }
+}
+
+impl<H: DigestAlg, T> From<DigestOf<H, T>> for Digest<H> {
+    fn from(d: DigestOf<H, T>) -> Self {
+        d.inner
+    }
+}
+
+impl<H: DigestAlg, T> From<Digest<H>> for DigestOf<H, T> {
+    fn from(d: Digest<H>) -> Self {
+        DigestOf {
+            inner: d,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<H: DigestAlg, T> DigestOf<H, T> {
+    /// Coerce a digest of T, to a digest of U
+    pub fn coerce<U>(&self) -> DigestOf<H, U> {
+        DigestOf {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+
+    /// Get the digest of object T, given its AsRef<[u8]> implementation
+    pub fn digest(obj: &T) -> Self
+    where
+        T: AsRef<[u8]>,
+    {
+        let mut ctx = Context::new();
+        ctx.append_data(obj.as_ref());
+        DigestOf {
+            inner: ctx.finalize(),
+            marker: PhantomData,
+        }
+    }
+
+    /// Get the digest of object T, given its serialization function in closure
+    pub fn digest_with<F>(obj: &T, f: F) -> Self
+    where
+        F: FnOnce(&T) -> &[u8],
+    {
+        let mut ctx = Context::new();
+        ctx.append_data(f(obj));
+        DigestOf {
+            inner: ctx.finalize(),
+            marker: PhantomData,
+        }
+    }
+}
