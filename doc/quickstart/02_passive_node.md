@@ -21,7 +21,7 @@ Your node configuration file may look like the following:
 
 **Note**
 
-This config shouldn't work as it is, the ip address and port for the trusted peer should be those of an already running node. 
+This config shouldn't work as it is, the ip address and port for the trusted peer should be those of an already running node.
 Also, the public_address ('u.x.v.t') should be a valid address (you can use an internal one, eg: 127.0.0.1).
 Furthermore, you need to have permission to write in the path specified by the storage config.
 
@@ -45,8 +45,9 @@ Description of the fields:
 
 - `storage`: (optional) Path to the storage. If omitted, the
   blockchain is stored in memory only.
-- `logger`: (optional) Logging configuration:
-    - `verbosity`: 0 - warning, 1 - info, 2 - debug, 3 and above - trace
+- `log`: (optional) Logging configuration:
+    - `level`: log messages minimum severity. If not configured anywhere, defaults to "info".
+        Possible values: "off", "critical", "error", "warn", "info", "debug", "trace".
     - `format`: Log output format, `plain` or `json`.
     - `output`: Log output destination. Possible values are:
       - `stdout`: standard output
@@ -85,7 +86,7 @@ Description of the fields:
 jormungandr --config config.yaml --genesis-block-hash 'abcdef987654321....'
 ```
 
-The 'abcdef987654321....' part refers to the hash of the genesis, that should be given to you from one of the peers in the network you are connecting to. 
+The 'abcdef987654321....' part refers to the hash of the genesis, that should be given to you from one of the peers in the network you are connecting to.
 
 In case you have the genesis file (for example, because you are creating the network) you can get this hash with jcli.
 

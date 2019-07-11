@@ -107,9 +107,9 @@ bft:
 
 ```yaml
 ---
-logger:
- verbosity: 4
- format: json
+log:
+  level: trace
+  format: json
 rest:
  listen: "127.0.0.1:8607"
 peer_2_peer:

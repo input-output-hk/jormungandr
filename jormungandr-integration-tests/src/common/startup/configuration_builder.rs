@@ -1,7 +1,7 @@
 use crate::common::configuration::{
     genesis_model::{Fund, GenesisYaml, Initial, LinearFees},
     jormungandr_config::JormungandrConfig,
-    node_config_model::{Logger, NodeConfig, Peer},
+    node_config_model::{Log, NodeConfig, Peer},
     secret_model::SecretModel,
 };
 use crate::common::file_utils;
@@ -11,7 +11,7 @@ pub struct ConfigurationBuilder {
     trusted_peers: Option<Vec<Peer>>,
     block0_hash: Option<String>,
     block0_consensus: Option<String>,
-    logger: Option<Logger>,
+    log: Option<Log>,
     bft_slots_ratio: Option<String>,
     consensus_genesis_praos_active_slot_coeff: Option<String>,
     slots_per_epoch: Option<u32>,
@@ -35,7 +35,7 @@ impl ConfigurationBuilder {
             slots_per_epoch: None,
             slot_duration: None,
             epoch_stability_depth: None,
-            logger: None,
+            log: None,
             linear_fees: LinearFees {
                 constant: 0,
                 coefficient: 0,
@@ -111,8 +111,8 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_logger<'a>(&'a mut self, logger: Logger) -> &'a mut Self {
-        self.logger = Some(logger.clone());
+    pub fn with_log<'a>(&'a mut self, log: Log) -> &'a mut Self {
+        self.log = Some(log.clone());
         self
     }
 
@@ -129,7 +129,7 @@ impl ConfigurationBuilder {
     pub fn build(&self) -> JormungandrConfig {
         let mut node_config = NodeConfig::new();
         node_config.peer_2_peer.trusted_peers = self.trusted_peers.clone();
-        node_config.logger = self.logger.clone();
+        node_config.log = self.log.clone();
         let node_config_path = NodeConfig::serialize(&node_config);
 
         let secret_key = jcli_wrapper::assert_key_generate("ed25519");

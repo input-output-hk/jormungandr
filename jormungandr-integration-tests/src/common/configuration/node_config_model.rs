@@ -5,9 +5,9 @@ use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
 use std::path::PathBuf;
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Logger {
-    pub verbosity: i32,
-    pub format: String,
+pub struct Log {
+    pub level: Option<String>,
+    pub format: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -40,7 +40,7 @@ pub struct NodeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logger: Option<Logger>,
+    pub log: Option<Log>,
     pub rest: Option<Rest>,
     pub peer_2_peer: Peer2Peer,
 }
@@ -59,9 +59,9 @@ impl NodeConfig {
 
         NodeConfig {
             storage: Some(String::from(storage_file.as_os_str().to_str().unwrap())),
-            logger: Some(Logger {
-                verbosity: 1,
-                format: String::from("json"),
+            log: Some(Log {
+                level: Some("info".to_string()),
+                format: Some("json".to_string()),
             }),
             rest: Some(Rest {
                 listen: format!("127.0.0.1:{}", rest_port.to_string()),

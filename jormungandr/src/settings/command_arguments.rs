@@ -1,3 +1,5 @@
+use crate::settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES;
+use slog::FilterLevel;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -67,10 +69,13 @@ pub struct StartArguments {
     raw(setting = "structopt::clap::AppSettings::ColoredHelp")
 )]
 pub struct CommandLine {
-    /// activate the verbosity, the more occurrences the more verbose.
-    /// (-v, -vv, -vvv)
-    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
-    pub verbose: u8,
+    /// Set log messages minimum severity. If not configured anywhere, defaults to "info".
+    #[structopt(
+        long = "log-level",
+        parse(try_from_str = "log_level_parse"),
+        raw(possible_values = "&LOG_FILTER_LEVEL_POSSIBLE_VALUES")
+    )]
+    pub log_level: Option<FilterLevel>,
 
     /// Set format of the log emitted. Can be "json" or "plain".
     /// If not configured anywhere, defaults to "plain".
@@ -98,4 +103,9 @@ impl CommandLine {
     pub fn load() -> Self {
         Self::from_args()
     }
+}
+
+fn log_level_parse(level: &str) -> Result<FilterLevel, &'static str> {
+    // Error message is ignored by Clap, because it generates message based on list of variants
+    level.parse().map_err(|_| "")
 }

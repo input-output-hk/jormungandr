@@ -260,8 +260,8 @@ initial:
 		write-host "genesis file generated: done" -ForegroundColor DarkGreen
 
 "storage: ""$STORAGE_PATH""
-logger:
-  verbosity: 1
+log:
+  level: debug
   format: plain
   output: stderr
 rest:

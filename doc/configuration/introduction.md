@@ -7,8 +7,8 @@ This is an example of a configuration file:
 
 ```YAML
 storage: "/tmp/storage"
-logger:
-  verbosity: 1
+log:
+  level: debug
   format: json
 peer_2_peer:
   trusted_peers:
