@@ -4,7 +4,7 @@ use super::{
     p2p::topology,
     subscription, Channels, GlobalStateR,
 };
-use crate::blockcfg::{Block, BlockDate, Header, HeaderHash, Message, MessageId};
+use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
 use crate::intercom::{stream_reply, unary_reply, BlockMsg, ClientMsg, ReplyFuture, ReplyStream};
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
@@ -185,11 +185,11 @@ impl BlockService for NodeService {
 }
 
 impl ContentService for NodeService {
-    type Message = Message;
-    type MessageId = MessageId;
+    type Message = Fragment;
+    type MessageId = FragmentId;
     type GetMessagesStream = ReplyStream<Self::Message, core_error::Error>;
     type GetMessagesFuture = ReplyFuture<Self::GetMessagesStream, core_error::Error>;
-    type MessageSubscription = Subscription<Message>;
+    type MessageSubscription = Subscription<Fragment>;
     type MessageSubscriptionFuture = FutureResult<Self::MessageSubscription, core_error::Error>;
 
     fn get_messages(&mut self, _ids: &[Self::MessageId]) -> Self::GetMessagesFuture {

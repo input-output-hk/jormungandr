@@ -10,7 +10,7 @@ use chain_impl_mockchain::{
     block::ConsensusVersion,
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
-    message::config::ConfigParams,
+    fragment::config::ConfigParams,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;

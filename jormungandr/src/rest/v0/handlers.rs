@@ -8,8 +8,8 @@ use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::key::Hash;
 
+use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::leadership::LeadershipConsensus;
-use chain_impl_mockchain::message::Message;
 use chain_storage::store;
 
 use bytes::{Bytes, IntoBuf};
@@ -65,7 +65,7 @@ pub fn post_message(
 {
     let sender = request.state().transaction_task.clone();
     request.body().map(move |message| -> Result<_, ActixError> {
-        let msg = Message::deserialize(message.into_buf()).map_err(|e| {
+        let msg = Fragment::deserialize(message.into_buf()).map_err(|e| {
             println!("{}", e);
             ErrorBadRequest(e)
         })?;

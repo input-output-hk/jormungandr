@@ -1,4 +1,4 @@
-use crate::blockcfg::{Block, Epoch, Header, HeaderHash, Message, MessageId};
+use crate::blockcfg::{Block, Epoch, Fragment, FragmentId, Header, HeaderHash};
 use crate::network::p2p::topology::NodeId;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
@@ -243,9 +243,9 @@ where
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg {
-    ProposeTransaction(Vec<MessageId>, ReplyHandle<Vec<bool>>),
-    SendTransaction(FragmentOrigin, Vec<Message>),
-    GetTransactions(Vec<MessageId>, ReplyStreamHandle<Message>),
+    ProposeTransaction(Vec<FragmentId>, ReplyHandle<Vec<bool>>),
+    SendTransaction(FragmentOrigin, Vec<Fragment>),
+    GetTransactions(Vec<FragmentId>, ReplyStreamHandle<Fragment>),
 }
 
 /// Client messages, mainly requests from connected peers to our node.
@@ -319,7 +319,7 @@ pub enum BlockMsg {
 #[derive(Clone, Debug)]
 pub enum PropagateMsg {
     Block(Header),
-    Message(Message),
+    Message(Fragment),
 }
 
 /// Messages to the network task.

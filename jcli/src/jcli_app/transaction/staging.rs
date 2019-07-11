@@ -2,7 +2,7 @@ use chain_addr::Address;
 use chain_impl_mockchain::{
     self as chain,
     fee::FeeAlgorithm,
-    message::Message,
+    fragment::Fragment,
     transaction::{NoExtra, Output, Transaction, TransactionId},
     txbuilder,
     value::Value,
@@ -201,7 +201,7 @@ impl Staging {
         Ok(self.kind = StagingKind::Sealed)
     }
 
-    pub fn message(&self) -> Result<Message, Error> {
+    pub fn message(&self) -> Result<Fragment, Error> {
         if self.kind != StagingKind::Sealed {
             Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
         }
@@ -216,8 +216,8 @@ impl Staging {
             })?;
 
         match result {
-            chain::txbuilder::GeneratedTransaction::Type1(auth) => Ok(Message::Transaction(auth)),
-            chain::txbuilder::GeneratedTransaction::Type2(auth) => Ok(Message::Certificate(auth)),
+            chain::txbuilder::GeneratedTransaction::Type1(auth) => Ok(Fragment::Transaction(auth)),
+            chain::txbuilder::GeneratedTransaction::Type2(auth) => Ok(Fragment::Certificate(auth)),
         }
     }
 

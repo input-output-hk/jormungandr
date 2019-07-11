@@ -9,7 +9,4 @@ pub use self::logs::Logs;
 pub use self::pool::Pool;
 pub use self::process::Process;
 
-use crate::blockcfg::{Message, MessageId};
-
-pub type FragmentId = MessageId;
-pub type Fragment = Message;
+pub use crate::blockcfg::{Fragment, FragmentId};
