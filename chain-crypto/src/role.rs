@@ -49,7 +49,10 @@ impl<R, Algorithm: key::AsymmetricPublicKey> PublicKey<R, Algorithm> {
 
 impl<R, A: key::AsymmetricKey> Clone for SecretKey<R, A> {
     fn clone(&self) -> Self {
-        SecretKey { inner: self.inner.clone(), marker: self.marker.clone() }
+        SecretKey {
+            inner: self.inner.clone(),
+            marker: self.marker.clone(),
+        }
     }
 }
 
