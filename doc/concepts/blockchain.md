@@ -65,7 +65,10 @@ or cannot create blocks.
 
 In Genesis-Praos slot time duration is constant, however the frequency of 
 creating blocks is not stable, since the creation of blocks is a probability 
-that is linked to the stake and active slot coefficient.
+that is linked to the stake and consensus_genesis_praos_active_slot_coeff.
+
+**Note**: In Genesis-Praos, if there is no stake in the system, no blocks will be 
+created anymore starting with the next epoch.
 
 ## Leadership
 
