@@ -288,6 +288,49 @@ impl<H: DigestAlg, T> From<Digest<H>> for DigestOf<H, T> {
     }
 }
 
+impl<H: DigestAlg, T> PartialEq for DigestOf<H, T> {
+    fn eq(&self, other: &Self) -> bool {
+        &self.inner == &other.inner
+    }
+}
+
+impl<H: DigestAlg, T> AsRef<[u8]> for DigestOf<H, T> {
+    fn as_ref(&self) -> &[u8] {
+        self.inner.as_ref()
+    }
+}
+
+impl<H: DigestAlg, T> Hash for DigestOf<H, T> {
+    fn hash<HA: Hasher>(&self, state: &mut HA) {
+        self.inner.hash(state)
+    }
+}
+
+impl<H: DigestAlg, T> TryFrom<&[u8]> for DigestOf<H, T> {
+    type Error = Error;
+    fn try_from(slice: &[u8]) -> Result<Self, Self::Error> {
+        Digest::<H>::try_from(slice).map(|d| d.into())
+    }
+}
+
+impl<H: DigestAlg, T> FromStr for DigestOf<H, T> {
+    type Err = Error;
+    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
+        Digest::<H>::from_str(s).map(|d| d.into())
+    }
+}
+
+impl<H: DigestAlg, T> fmt::Display for DigestOf<H, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+impl<H: DigestAlg, T> fmt::Debug for DigestOf<H, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
 impl<H: DigestAlg, T> DigestOf<H, T> {
     /// Coerce a digest of T, to a digest of U
     pub fn coerce<U>(&self) -> DigestOf<H, U> {
