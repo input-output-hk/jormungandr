@@ -32,7 +32,7 @@ The output can now be added in the `transaction` and submitted to a node.
 
 ## submitting to a node
 
-To `jcli transaction add-certificate` command can be used to add a certificate to a transaction in _finalized_ state.
+The `jcli transaction add-certificate` command should be used to add a certificate **before finalizing** the transaction.
 
 For example:
 
@@ -40,9 +40,9 @@ For example:
 
 ...
 
-jcli transaction finalize CHANGE_ADDRESS --fee-constant 5 --fee-coefficient 2 --fee-certificate 2 --staging tx
-
 jcli transaction add-certificate $(cat stake_delegation.cert) --staging tx
+
+jcli transaction finalize CHANGE_ADDRESS --fee-constant 5 --fee-coefficient 2 --fee-certificate 2 --staging tx
 
 ...
 
