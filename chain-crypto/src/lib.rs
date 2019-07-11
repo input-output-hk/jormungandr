@@ -19,7 +19,7 @@ cfg_if! {
     if #[cfg(test)] {
         mod testing;
     } else if #[cfg(feature = "property-test-api")] {
-        mod testing;
+        pub mod testing;
     }
 }
 
@@ -34,6 +34,8 @@ mod kes;
 mod key;
 mod sign;
 mod vrf;
+
+pub mod role;
 
 pub use evolving::{EvolvingStatus, KeyEvolvingAlgorithm};
 pub use kes::KeyEvolvingSignatureAlgorithm;

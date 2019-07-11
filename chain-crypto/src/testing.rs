@@ -4,6 +4,39 @@ use quickcheck::{Arbitrary, Gen};
 use rand_chacha::ChaChaRng;
 use rand_core::SeedableRng;
 
+/// an Arbitrary friendly cryptographic generator
+///
+/// Given the same generation, all the cryptographic
+/// material that is created through it, is
+/// deterministic, and thus can be replay
+///
+/// For obvious reasons, do *not* use anywhere except for testing
+#[derive(Clone, Debug)]
+pub struct TestCryptoGen(u64);
+
+impl Arbitrary for TestCryptoGen {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        TestCryptoGen(Arbitrary::arbitrary(g))
+    }
+}
+
+impl TestCryptoGen {
+    /// get the nth deterministic RNG
+    pub fn get_rng(&self, idx: u32) -> ChaChaRng {
+        ChaChaRng::seed_from_u64(idx as u64 * 2^12 + self.0)
+    }
+
+    /// Get the nth deterministic secret key
+    pub fn secret_key<A: AsymmetricKey>(&self, idx: u32) -> SecretKey<A> {
+        SecretKey::generate(self.get_rng(idx))
+    }
+
+    /// Get the nth deterministic keypair
+    pub fn keypair<A: AsymmetricKey>(&self, idx: u32) -> KeyPair<A> {
+        KeyPair::from(self.secret_key(idx))
+    }
+}
+
 #[allow(dead_code)]
 pub fn arbitrary_public_key<A: AsymmetricKey, G: Gen>(g: &mut G) -> PublicKey<A::PubAlg> {
     let sk: SecretKey<A> = arbitrary_secret_key(g);
