@@ -164,7 +164,7 @@ impl Staging {
 
         let balance = if let Some(certificate) = self.extra.clone() {
             let tx = self.transaction_with_extra(&certificate);
-            let mut builder = txbuilder::TransactionBuilder::from(tx);
+            let builder = txbuilder::TransactionBuilder::from(tx);
 
             let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
 
@@ -173,7 +173,7 @@ impl Staging {
             balance
         } else {
             let tx = self.transaction();
-            let mut builder = txbuilder::TransactionBuilder::from(tx);
+            let builder = txbuilder::TransactionBuilder::from(tx);
             let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
 
             self.update_tx(tx);
