@@ -6,7 +6,7 @@ use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 
 // FIXME: should this be a wrapper type?
-pub type TransactionId = Hash;
+pub type TransactionSignDataHash = Hash;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoExtra;
@@ -112,10 +112,10 @@ impl<Extra: property::Serialize> Transaction<Address, Extra> {
         self.serialize_body(&mut codec.into_inner())
     }
 
-    pub fn hash(&self) -> TransactionId {
+    pub fn hash(&self) -> TransactionSignDataHash {
         let mut bytes = Vec::new();
         self.serialize_body(&mut bytes).unwrap();
-        TransactionId::hash_bytes(&bytes)
+        TransactionSignDataHash::hash_bytes(&bytes)
     }
 }
 
@@ -219,5 +219,3 @@ impl<A, Extra> Transaction<A, Extra> {
         }
     }
 }
-
-impl property::TransactionId for TransactionId {}

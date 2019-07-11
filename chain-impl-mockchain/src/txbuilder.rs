@@ -259,7 +259,7 @@ impl TransactionFinalizer {
         }
     }
 
-    pub fn get_txid(&self) -> tx::TransactionId {
+    pub fn get_txid(&self) -> tx::TransactionSignDataHash {
         match self {
             TransactionFinalizer::Type1(t, _) => t.hash(),
             TransactionFinalizer::Type2(t, _) => t.hash(),

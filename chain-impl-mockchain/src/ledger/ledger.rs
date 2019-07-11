@@ -598,7 +598,7 @@ fn apply_old_declaration(
 fn internal_apply_transaction(
     mut ledger: Ledger,
     dyn_params: &LedgerParameters,
-    transaction_id: &TransactionId,
+    transaction_id: &TransactionSignDataHash,
     inputs: &[Input],
     outputs: &[Output<Address>],
     witnesses: &[Witness],
@@ -695,7 +695,7 @@ fn internal_apply_transaction_output(
     mut multisig: multisig::Ledger,
     static_params: &LedgerStaticParameters,
     _dyn_params: &LedgerParameters,
-    transaction_id: &TransactionId,
+    transaction_id: &TransactionSignDataHash,
     outputs: &[Output<Address>],
 ) -> Result<(utxo::Ledger<Address>, account::Ledger, multisig::Ledger), Error> {
     let mut new_utxos = Vec::new();
@@ -746,7 +746,7 @@ fn internal_apply_transaction_output(
 
 fn input_utxo_verify(
     mut ledger: Ledger,
-    transaction_id: &TransactionId,
+    transaction_id: &TransactionSignDataHash,
     utxo: &UtxoPointer,
     witness: &Witness,
 ) -> Result<Ledger, Error> {
@@ -821,7 +821,7 @@ fn input_account_verify(
     mut ledger: account::Ledger,
     mut mledger: multisig::Ledger,
     block0_hash: &HeaderHash,
-    transaction_id: &TransactionId,
+    transaction_id: &TransactionSignDataHash,
     account: &AccountIdentifier,
     value: Value,
     witness: &Witness,

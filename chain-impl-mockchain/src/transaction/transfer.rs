@@ -1,4 +1,4 @@
-use super::transaction::TransactionId;
+use super::transaction::TransactionSignDataHash;
 use super::utxo::UtxoPointer;
 use crate::account::Identifier;
 use crate::key::SpendingPublicKey;
@@ -14,7 +14,7 @@ use chain_crypto::PublicKey;
 pub const INPUT_PTR_SIZE: usize = 32;
 
 /// Generalized input which have a specific input value, and
-/// either contains an account reference or a TransactionId+index
+/// either contains an account reference or a TransactionSignDataHash+index
 ///
 /// This uniquely refer to a specific source of value.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -142,7 +142,7 @@ impl Input {
                 InputEnum::AccountInput(id, self.value)
             }
             InputType::Utxo => InputEnum::UtxoInput(UtxoPointer::new(
-                TransactionId::from_bytes(self.input_ptr.clone()),
+                TransactionSignDataHash::from_bytes(self.input_ptr.clone()),
                 self.index_or_account,
                 self.value,
             )),

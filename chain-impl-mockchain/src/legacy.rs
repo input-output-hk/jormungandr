@@ -1,4 +1,4 @@
-use crate::transaction::TransactionId;
+use crate::transaction::TransactionSignDataHash;
 use crate::value::Value;
 
 pub use cardano_legacy_address::Addr as OldAddress;
@@ -18,9 +18,9 @@ pub fn oldaddress_from_xpub(address: &OldAddress, xpub: &PublicKey<Ed25519Bip32>
 }
 
 impl UtxoDeclaration {
-    pub fn hash(&self) -> TransactionId {
+    pub fn hash(&self) -> TransactionSignDataHash {
         let v = self.serialize_as_vec().unwrap();
-        TransactionId::hash_bytes(&v[..])
+        TransactionSignDataHash::hash_bytes(&v[..])
     }
 }
 

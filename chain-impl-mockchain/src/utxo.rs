@@ -4,7 +4,7 @@
 //! and each demonination get permanantly consumed by the system once spent.
 //!
 
-use crate::transaction::{Output, TransactionId, TransactionIndex};
+use crate::transaction::{Output, TransactionIndex, TransactionSignDataHash};
 use std::collections::btree_map;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
@@ -74,18 +74,20 @@ impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
 
 /// Ledger of UTXO
 #[derive(Clone, PartialEq, Eq)]
-pub struct Ledger<OutAddress>(Hamt<DefaultHasher, TransactionId, TransactionUnspents<OutAddress>>);
+pub struct Ledger<OutAddress>(
+    Hamt<DefaultHasher, TransactionSignDataHash, TransactionUnspents<OutAddress>>,
+);
 
 pub struct Iter<'a, V> {
-    hamt_iter: HamtIter<'a, TransactionId, TransactionUnspents<V>>,
+    hamt_iter: HamtIter<'a, TransactionSignDataHash, TransactionUnspents<V>>,
     unspents_iter: Option<(
-        &'a TransactionId,
+        &'a TransactionSignDataHash,
         btree_map::Iter<'a, TransactionIndex, Output<V>>,
     )>,
 }
 
 pub struct Values<'a, V> {
-    hamt_iter: HamtIter<'a, TransactionId, TransactionUnspents<V>>,
+    hamt_iter: HamtIter<'a, TransactionSignDataHash, TransactionUnspents<V>>,
     unspents_iter: Option<btree_map::Iter<'a, TransactionIndex, Output<V>>>,
 }
 
@@ -93,7 +95,7 @@ pub struct Values<'a, V> {
 ///
 #[derive(Debug)]
 pub struct Entry<'a, OutputAddress> {
-    pub transaction_id: TransactionId,
+    pub transaction_id: TransactionSignDataHash,
     pub output_index: u8,
     pub output: &'a Output<OutputAddress>,
 }
@@ -115,7 +117,7 @@ impl<OutAddress> Ledger<OutAddress> {
 
     pub fn get<'a>(
         &'a self,
-        tid: &TransactionId,
+        tid: &TransactionSignDataHash,
         index: &TransactionIndex,
     ) -> Option<Entry<'a, OutAddress>> {
         self.0
@@ -190,7 +192,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
     /// Error if the transaction already exist
     pub fn add(
         &self,
-        tid: &TransactionId,
+        tid: &TransactionSignDataHash,
         outs: &[(TransactionIndex, Output<OutAddress>)],
     ) -> Result<Self, Error> {
         assert!(outs.len() < 255);
@@ -203,7 +205,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
     ///
     pub fn remove(
         &self,
-        tid: &TransactionId,
+        tid: &TransactionSignDataHash,
         index: TransactionIndex,
     ) -> Result<(Self, Output<OutAddress>), Error> {
         let (treemap, output) = match self.0.lookup(tid) {
@@ -220,7 +222,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
 
     pub fn remove_multiple(
         &self,
-        tid: &TransactionId,
+        tid: &TransactionSignDataHash,
         indices: &[TransactionIndex],
     ) -> Result<(Self, Vec<Output<OutAddress>>), Error> {
         let (treemap, outputs) = match self.0.lookup(tid) {
@@ -246,11 +248,18 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
 }
 
 impl<OutAddress: Clone>
-    std::iter::FromIterator<(TransactionId, Vec<(TransactionIndex, Output<OutAddress>)>)>
-    for Ledger<OutAddress>
+    std::iter::FromIterator<(
+        TransactionSignDataHash,
+        Vec<(TransactionIndex, Output<OutAddress>)>,
+    )> for Ledger<OutAddress>
 {
     fn from_iter<
-        I: IntoIterator<Item = (TransactionId, Vec<(TransactionIndex, Output<OutAddress>)>)>,
+        I: IntoIterator<
+            Item = (
+                TransactionSignDataHash,
+                Vec<(TransactionIndex, Output<OutAddress>)>,
+            ),
+        >,
     >(
         iter: I,
     ) -> Self {
