@@ -366,3 +366,33 @@ impl<H: DigestAlg, T> DigestOf<H, T> {
         }
     }
 }
+
+macro_rules! typed_define_from_instances {
+    ($hash_ty:ty, $hash_size:expr, $bech32_hrp:expr) => {
+        impl<T> From<DigestOf<$hash_ty, T>> for [u8; $hash_size] {
+            fn from(digest: DigestOf<$hash_ty, T>) -> Self {
+                digest.inner.into()
+            }
+        }
+        impl<T> From<[u8; $hash_size]> for DigestOf<$hash_ty, T> {
+            fn from(bytes: [u8; $hash_size]) -> Self {
+                Digest::from(bytes).into()
+            }
+        }
+        impl<T> Bech32 for DigestOf<$hash_ty, T> {
+            const BECH32_HRP: &'static str = $bech32_hrp;
+
+            fn try_from_bech32_str(bech32_str: &str) -> bech32::Result<Self> {
+                let bytes = bech32::try_from_bech32_to_bytes::<Self>(bech32_str)?;
+                Digest::try_from(&bytes[..]).map_err(bech32::Error::data_invalid).map(|d| d.into())
+            }
+
+            fn to_bech32_str(&self) -> String {
+                bech32::to_bech32_from_bytes::<Self>(self.inner.as_ref())
+            }
+        }
+    };
+}
+
+typed_define_from_instances!(Sha3_256, 32, "sha3");
+typed_define_from_instances!(Blake2b256, 32, "blake2b");
