@@ -4,6 +4,7 @@
 //! and each demonination get permanantly consumed by the system once spent.
 //!
 
+use crate::fragment::FragmentId;
 use crate::transaction::{Output, TransactionIndex, TransactionSignDataHash};
 use std::collections::btree_map;
 use std::collections::hash_map::DefaultHasher;
@@ -117,7 +118,7 @@ impl<OutAddress> Ledger<OutAddress> {
 
     pub fn get<'a>(
         &'a self,
-        tid: &TransactionSignDataHash,
+        tid: &FragmentId,
         index: &TransactionIndex,
     ) -> Option<Entry<'a, OutAddress>> {
         self.0
@@ -192,7 +193,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
     /// Error if the transaction already exist
     pub fn add(
         &self,
-        tid: &TransactionSignDataHash,
+        tid: &FragmentId,
         outs: &[(TransactionIndex, Output<OutAddress>)],
     ) -> Result<Self, Error> {
         assert!(outs.len() < 255);
@@ -205,7 +206,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
     ///
     pub fn remove(
         &self,
-        tid: &TransactionSignDataHash,
+        tid: &FragmentId,
         index: TransactionIndex,
     ) -> Result<(Self, Output<OutAddress>), Error> {
         let (treemap, output) = match self.0.lookup(tid) {
@@ -213,7 +214,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
             Some(out) => out.remove_input(index),
         }?;
 
-        if treemap.0.len() == 0 {
+        if treemap.0.is_empty() {
             Ok((Ledger(self.0.remove(tid)?), output))
         } else {
             Ok((Ledger(self.0.replace(tid, treemap)?.0), output))
@@ -222,7 +223,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
 
     pub fn remove_multiple(
         &self,
-        tid: &TransactionSignDataHash,
+        tid: &FragmentId,
         indices: &[TransactionIndex],
     ) -> Result<(Self, Vec<Output<OutAddress>>), Error> {
         let (treemap, outputs) = match self.0.lookup(tid) {
@@ -239,7 +240,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
             }
         }?;
 
-        if treemap.0.len() == 0 {
+        if treemap.0.is_empty() {
             Ok((Ledger(self.0.remove(tid)?), outputs))
         } else {
             Ok((Ledger(self.0.replace(tid, treemap)?.0), outputs))
@@ -248,18 +249,11 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
 }
 
 impl<OutAddress: Clone>
-    std::iter::FromIterator<(
-        TransactionSignDataHash,
-        Vec<(TransactionIndex, Output<OutAddress>)>,
-    )> for Ledger<OutAddress>
+    std::iter::FromIterator<(FragmentId, Vec<(TransactionIndex, Output<OutAddress>)>)>
+    for Ledger<OutAddress>
 {
     fn from_iter<
-        I: IntoIterator<
-            Item = (
-                TransactionSignDataHash,
-                Vec<(TransactionIndex, Output<OutAddress>)>,
-            ),
-        >,
+        I: IntoIterator<Item = (FragmentId, Vec<(TransactionIndex, Output<OutAddress>)>)>,
     >(
         iter: I,
     ) -> Self {
