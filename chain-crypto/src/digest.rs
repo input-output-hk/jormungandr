@@ -384,7 +384,9 @@ macro_rules! typed_define_from_instances {
 
             fn try_from_bech32_str(bech32_str: &str) -> bech32::Result<Self> {
                 let bytes = bech32::try_from_bech32_to_bytes::<Self>(bech32_str)?;
-                Digest::try_from(&bytes[..]).map_err(bech32::Error::data_invalid).map(|d| d.into())
+                Digest::try_from(&bytes[..])
+                    .map_err(bech32::Error::data_invalid)
+                    .map(|d| d.into())
             }
 
             fn to_bech32_str(&self) -> String {
