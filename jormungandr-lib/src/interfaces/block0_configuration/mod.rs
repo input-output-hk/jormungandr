@@ -20,7 +20,7 @@ pub use self::slots_duration::SlotDuration;
 use chain_core::property::HasMessages as _;
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder},
-    message::Message,
+    fragment::Fragment,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom as _;
@@ -57,7 +57,7 @@ impl Block0Configuration {
         let mut messages = block.messages();
 
         let blockchain_configuration = match messages.next() {
-            Some(Message::Initial(initial)) => BlockchainConfiguration::try_from(initial.clone())?,
+            Some(Fragment::Initial(initial)) => BlockchainConfiguration::try_from(initial.clone())?,
             _ => return Err(Block0ConfigurationError::FirstBlock0MessageNotInit),
         };
 
@@ -69,10 +69,10 @@ impl Block0Configuration {
 
     pub fn to_block(&self) -> Block {
         let mut builder = BlockBuilder::new();
-        builder.message(Message::Initial(
+        builder.message(Fragment::Initial(
             self.blockchain_configuration.clone().into(),
         ));
-        builder.messages(self.initial.iter().map(Message::from));
+        builder.messages(self.initial.iter().map(Fragment::from));
         builder.make_genesis_block()
     }
 }

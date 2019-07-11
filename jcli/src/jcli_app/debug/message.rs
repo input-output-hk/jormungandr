@@ -1,5 +1,5 @@
 use chain_core::property::Deserialize as _;
-use chain_impl_mockchain::message::Message as MockMessage;
+use chain_impl_mockchain::fragment::Fragment as MockFragment;
 use hex;
 use jcli_app::debug::Error;
 use jcli_app::utils::{error::CustomErrorFiller, io};
@@ -23,11 +23,12 @@ impl Message {
         let mut hex_str = String::new();
         BufReader::new(reader).read_line(&mut hex_str)?;
         let bytes = hex::decode(hex_str.trim())?;
-        let message =
-            MockMessage::deserialize(bytes.as_ref()).map_err(|source| Error::MessageMalformed {
+        let message = MockFragment::deserialize(bytes.as_ref()).map_err(|source| {
+            Error::MessageMalformed {
                 source,
                 filler: CustomErrorFiller,
-            })?;
+            }
+        })?;
         println!("{:#?}", message);
         Ok(())
     }

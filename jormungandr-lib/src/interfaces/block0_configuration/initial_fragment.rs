@@ -1,8 +1,8 @@
 use crate::interfaces::{Address, Certificate, OldAddress, Value};
 use chain_impl_mockchain::{
     certificate,
+    fragment::Fragment,
     legacy::UtxoDeclaration,
-    message::Message,
     transaction::{AuthenticatedTransaction, NoExtra, Output, Transaction},
 };
 use serde::{Deserialize, Serialize};
@@ -36,14 +36,14 @@ custom_error! {pub Error
 }
 
 pub fn try_initials_vec_from_messages<'a>(
-    messages: impl Iterator<Item = &'a Message>,
+    messages: impl Iterator<Item = &'a Fragment>,
 ) -> Result<Vec<Initial>, Error> {
     let mut inits = Vec::new();
     for message in messages {
         match message {
-            Message::Transaction(tx) => try_extend_inits_with_tx(&mut inits, tx)?,
-            Message::Certificate(tx) => extend_inits_with_cert(&mut inits, tx),
-            Message::OldUtxoDeclaration(utxo) => extend_inits_with_legacy_utxo(&mut inits, utxo),
+            Fragment::Transaction(tx) => try_extend_inits_with_tx(&mut inits, tx)?,
+            Fragment::Certificate(tx) => extend_inits_with_cert(&mut inits, tx),
+            Fragment::OldUtxoDeclaration(utxo) => extend_inits_with_legacy_utxo(&mut inits, utxo),
             _ => return Err(Error::Block0MessageUnexpected),
         }
     }
@@ -81,8 +81,8 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
     initials.push(Initial::LegacyFund(inits_iter.collect()))
 }
 
-impl<'a> From<&'a Initial> for Message {
-    fn from(initial: &'a Initial) -> Message {
+impl<'a> From<&'a Initial> for Fragment {
+    fn from(initial: &'a Initial) -> Fragment {
         match initial {
             Initial::Fund(utxo) => pack_utxo_in_message(&utxo),
             Initial::Cert(cert) => cert.into(),
@@ -91,7 +91,7 @@ impl<'a> From<&'a Initial> for Message {
     }
 }
 
-fn pack_utxo_in_message(v: &[InitialUTxO]) -> Message {
+fn pack_utxo_in_message(v: &[InitialUTxO]) -> Fragment {
     let outputs = v
         .iter()
         .map(|utxo| Output {
@@ -100,7 +100,7 @@ fn pack_utxo_in_message(v: &[InitialUTxO]) -> Message {
         })
         .collect();
 
-    Message::Transaction(AuthenticatedTransaction {
+    Fragment::Transaction(AuthenticatedTransaction {
         transaction: Transaction {
             inputs: vec![],
             outputs: outputs,
@@ -110,17 +110,17 @@ fn pack_utxo_in_message(v: &[InitialUTxO]) -> Message {
     })
 }
 
-fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Message {
+fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
     let addrs = v
         .iter()
         .map(|utxo| (utxo.address.clone().into(), utxo.value.into()))
         .collect();
-    Message::OldUtxoDeclaration(UtxoDeclaration { addrs: addrs })
+    Fragment::OldUtxoDeclaration(UtxoDeclaration { addrs: addrs })
 }
 
-impl<'a> From<&'a Certificate> for Message {
-    fn from(utxo: &'a Certificate) -> Message {
-        Message::Certificate(AuthenticatedTransaction {
+impl<'a> From<&'a Certificate> for Fragment {
+    fn from(utxo: &'a Certificate) -> Fragment {
+        Fragment::Certificate(AuthenticatedTransaction {
             transaction: Transaction {
                 inputs: vec![],
                 outputs: vec![],

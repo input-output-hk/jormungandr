@@ -1,7 +1,7 @@
 mod peer_map;
 
 use super::topology;
-use crate::blockcfg::{Block, Header, HeaderHash, Message};
+use crate::blockcfg::{Block, Fragment, Header, HeaderHash};
 use futures::prelude::*;
 use futures::{stream, sync::mpsc};
 use network_core::error as core_error;
@@ -143,7 +143,7 @@ pub struct PeerComms {
     block_announcements: CommHandle<Header>,
     block_solicitations: CommHandle<Vec<HeaderHash>>,
     chain_pulls: CommHandle<ChainPullRequest<HeaderHash>>,
-    messages: CommHandle<Message>,
+    messages: CommHandle<Fragment>,
     gossip: CommHandle<Gossip<topology::Node>>,
 }
 
@@ -159,7 +159,7 @@ impl PeerComms {
         self.block_announcements.try_send(header)
     }
 
-    pub fn try_send_message(&mut self, message: Message) -> Result<(), PropagateError<Message>> {
+    pub fn try_send_message(&mut self, message: Fragment) -> Result<(), PropagateError<Fragment>> {
         self.messages.try_send(message)
     }
 
@@ -182,7 +182,7 @@ impl PeerComms {
         self.chain_pulls.subscribe()
     }
 
-    pub fn subscribe_to_messages(&mut self) -> Subscription<Message> {
+    pub fn subscribe_to_messages(&mut self) -> Subscription<Fragment> {
         self.messages.subscribe()
     }
 
@@ -231,7 +231,7 @@ impl Peers {
             .select(missing_events)
     }
 
-    pub fn subscribe_to_messages(&self, id: topology::NodeId) -> Subscription<Message> {
+    pub fn subscribe_to_messages(&self, id: topology::NodeId) -> Subscription<Fragment> {
         let mut map = self.mutex.lock().unwrap();
         let handles = map.ensure_peer_comms(id);
         handles.messages.subscribe()
@@ -299,7 +299,7 @@ impl Peers {
     pub fn propagate_message(
         &self,
         nodes: Vec<topology::Node>,
-        message: Message,
+        message: Fragment,
     ) -> Result<(), Vec<topology::Node>> {
         self.propagate_with(nodes, |handles| handles.try_send_message(message.clone()))
     }

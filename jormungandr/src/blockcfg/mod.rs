@@ -7,9 +7,9 @@ pub use chain_impl_mockchain::{
         HeaderContentEvalContext, HeaderHash, SlotId,
     },
     config::{self, Block0Date, ConfigParam},
+    fragment::{ConfigParams, Fragment, FragmentId},
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
-    message::{ConfigParams, Message, MessageId},
     multiverse::Multiverse,
     value::{Value, ValueError},
 };
@@ -65,7 +65,7 @@ impl Block0DataSource for Block {
 
 fn initial(block: &Block) -> Result<&ConfigParams, Block0Malformed> {
     for message in block.messages() {
-        if let Message::Initial(init) = message {
+        if let Fragment::Initial(init) = message {
             return Ok(init);
         }
     }

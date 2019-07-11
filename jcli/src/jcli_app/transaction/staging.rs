@@ -2,7 +2,7 @@ use chain_addr::Address;
 use chain_impl_mockchain::{
     self as chain,
     fee::FeeAlgorithm,
-    message::Message,
+    fragment::Fragment,
     transaction::{NoExtra, Output, Transaction, TransactionId},
     txbuilder,
     value::Value,
@@ -164,7 +164,7 @@ impl Staging {
 
         let balance = if let Some(certificate) = self.extra.clone() {
             let tx = self.transaction_with_extra(&certificate);
-            let mut builder = txbuilder::TransactionBuilder::from(tx);
+            let builder = txbuilder::TransactionBuilder::from(tx);
 
             let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
 
@@ -173,7 +173,7 @@ impl Staging {
             balance
         } else {
             let tx = self.transaction();
-            let mut builder = txbuilder::TransactionBuilder::from(tx);
+            let builder = txbuilder::TransactionBuilder::from(tx);
             let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
 
             self.update_tx(tx);
@@ -201,7 +201,7 @@ impl Staging {
         Ok(self.kind = StagingKind::Sealed)
     }
 
-    pub fn message(&self) -> Result<Message, Error> {
+    pub fn message(&self) -> Result<Fragment, Error> {
         if self.kind != StagingKind::Sealed {
             Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
         }
@@ -216,8 +216,8 @@ impl Staging {
             })?;
 
         match result {
-            chain::txbuilder::GeneratedTransaction::Type1(auth) => Ok(Message::Transaction(auth)),
-            chain::txbuilder::GeneratedTransaction::Type2(auth) => Ok(Message::Certificate(auth)),
+            chain::txbuilder::GeneratedTransaction::Type1(auth) => Ok(Fragment::Transaction(auth)),
+            chain::txbuilder::GeneratedTransaction::Type2(auth) => Ok(Fragment::Certificate(auth)),
         }
     }
 
