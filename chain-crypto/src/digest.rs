@@ -137,6 +137,7 @@ impl DigestAlg for Sha3_256 {
     }
 }
 
+/// A Digest Context for the H digest algorithm
 pub struct Context<H: DigestAlg>(H::DigestContext);
 
 impl<H: DigestAlg> Clone for Context<H> {
@@ -146,14 +147,17 @@ impl<H: DigestAlg> Clone for Context<H> {
 }
 
 impl<H: DigestAlg> Context<H> {
+    /// Create a new digest context
     pub fn new() -> Self {
         Self(H::new())
     }
 
+    /// Append data in the context
     pub fn append_data(&mut self, data: &[u8]) {
         H::append_data(&mut self.0, data)
     }
 
+    /// Finalize a context and create a digest
     pub fn finalize(self) -> Digest<H> {
         Digest(H::finalize(self.0))
     }
