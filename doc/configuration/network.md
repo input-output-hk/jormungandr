@@ -4,7 +4,7 @@ There's 2 differents network interfaces which are covered by their respective se
 ```
 rest:
    ...
-peer_2_peer:
+p2p:
    ...
 ```
 

@@ -112,7 +112,7 @@ log:
   format: json
 rest:
  listen: "127.0.0.1:8607"
-peer_2_peer:
+p2p:
  public_address: /ip4/127.0.0.1/tcp/8606
  topics_of_interests:
  messages: low

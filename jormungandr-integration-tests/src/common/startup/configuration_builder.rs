@@ -122,7 +122,7 @@ impl ConfigurationBuilder {
 
     pub fn build(&self) -> JormungandrConfig {
         let mut node_config = NodeConfig::new();
-        node_config.peer_2_peer.trusted_peers = self.trusted_peers.clone();
+        node_config.p2p.trusted_peers = self.trusted_peers.clone();
         node_config.log = self.log.clone();
         let node_config_path = NodeConfig::serialize(&node_config);
 

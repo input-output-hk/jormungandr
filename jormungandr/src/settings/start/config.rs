@@ -17,7 +17,7 @@ pub struct Config {
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,
     pub rest: Option<Rest>,
-    pub peer_2_peer: P2pConfig,
+    pub p2p: P2pConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

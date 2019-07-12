@@ -10,7 +10,7 @@ storage: "/tmp/storage"
 log:
   level: debug
   format: json
-peer_2_peer:
+p2p:
   trusted_peers:
     - id: 1
       address: "/ip4/104.24.28.11/tcp/8299"

@@ -22,7 +22,7 @@ pub fn two_nodes_communication() {
     let mut trusted_node_config = startup::ConfigurationBuilder::new()
         .with_trusted_peers(vec![Peer {
             id: 1,
-            address: leader_config.node_config.peer_2_peer.public_address.clone(),
+            address: leader_config.node_config.p2p.public_address.clone(),
         }])
         .with_block_hash(leader_config.genesis_block_hash.clone())
         .build();

@@ -128,7 +128,7 @@ fn generate_network(
     _command_arguments: &StartArguments,
     config: &Config,
 ) -> network::Configuration {
-    let p2p = &config.peer_2_peer;
+    let p2p = &config.p2p;
     network::Configuration {
         public_id: p2p.public_id.clone(),
         public_address: p2p.public_address.clone(),
@@ -136,7 +136,7 @@ fn generate_network(
         trusted_peers: p2p.trusted_peers.clone().unwrap_or(vec![]),
         protocol: Protocol::Grpc,
         subscriptions: config
-            .peer_2_peer
+            .p2p
             .topics_of_interests
             .clone()
             .unwrap_or(BTreeMap::new()),
