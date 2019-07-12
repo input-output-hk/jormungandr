@@ -57,25 +57,28 @@ header is just applying the hash function to the binary data except the first
 
 ## Block Body
 
-We need to be able to have different type of content on the blockchain, we
-also need a flexible system for future extension. The block content is
-effectively a sequence of serialized content, one after another.
+We need to be able to have different type of content on the blockchain, we also
+need a flexible system for future expansion of this content.  The block content
+is effectively a sequence of serialized content, one after another.
 
-Each individual piece of block content is prefixed with a header which
-contains the following information:
+Each individual piece of block content is called a fragment and is prefixed
+with a header which contains the following information:
 
 * Size of content piece in bytes (2 bytes)
 * Type of piece (1 byte): up to 256 different type of block content.
 
 The block body is formed of the following stream of data:
 
-    HEADER(CONTENT1) | CONTENT1 | HEADER(CONTENT2) | CONTENT2 ...
+    HEADER(FRAGMENT1) | FRAGMENT1 | HEADER(FRAGMENT2) | FRAGMENT2 ...
 
 Where HEADER is:
 
 	SIZE (2 bytes) | TYPE (1 byte)
 
-Additionally, we introduce the capability to address each content object individually by using a cryptographic hash function : `H(TYPE | CONTENT)`. The hash doesn't include the size prefix in the header to simplify calculation of hash with on-the-fly (non serialized) structure.
+Additionally, we introduce the capability to refer to each fragment
+individually by fragment-id, using a cryptographic hash function : `H(TYPE |
+CONTENT)`. The hash doesn't include the size prefix in the header to simplify
+calculation of hash with on-the-fly (non serialized) structure.
 
 Types of content:
 
@@ -91,7 +94,7 @@ Types of content:
 
 Token Transfer is found in different type of messages, and allow to transfer tokens between an input to an output.
 
-There's 4 differents type of spending:
+There's 4 differents type of supported spending:
 
 * Utxo -> Utxo
 * Utxo -> Account
