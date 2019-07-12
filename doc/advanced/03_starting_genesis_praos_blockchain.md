@@ -38,11 +38,6 @@ Remember that in this array the **order** matters:
 
 In order to delegate your stake, you need a stake pool to already exist, so the stake pool registration certificate should go first.
 
-### The stake key declaration
-
-To create a stake key simply follow the
-[registering stake key guide](../stake_pool/registering_stake.md).
-
 ### Stake pool registration
 
 Now you can register a stake pool.
