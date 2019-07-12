@@ -105,7 +105,8 @@ impl CommandLine {
     }
 }
 
-fn log_level_parse(level: &str) -> Result<FilterLevel, &'static str> {
-    // Error message is ignored by Clap, because it generates message based on list of variants
-    level.parse().map_err(|_| "")
+fn log_level_parse(level: &str) -> Result<FilterLevel, String> {
+    level
+        .parse()
+        .map_err(|_| format!("Unknown log level value: '{}'", level))
 }

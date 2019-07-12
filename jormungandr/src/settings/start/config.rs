@@ -208,24 +208,22 @@ impl<'de> Deserialize<'de> for InterestLevel {
 mod filter_level_opt_serde {
     use super::*;
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<FilterLevel>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<FilterLevel>, D::Error> {
         Option::<String>::deserialize(deserializer)?
             .map(|variant| {
                 variant.parse().map_err(|_| {
-                    D::Error::unknown_variant(&variant, LOG_FILTER_LEVEL_POSSIBLE_VALUES)
+                    D::Error::unknown_variant(&variant, &**LOG_FILTER_LEVEL_POSSIBLE_VALUES)
                 })
             })
             .transpose()
     }
 
-    pub fn serialize<S>(data: &Option<FilterLevel>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        data.map(crate::settings::filter_level_to_str)
-            .serialize(serializer)
+    pub fn serialize<S: Serializer>(
+        data: &Option<FilterLevel>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        data.map(|level| level.as_str()).serialize(serializer)
     }
 }
