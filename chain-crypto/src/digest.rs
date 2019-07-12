@@ -62,7 +62,7 @@ impl fmt::Display for TryFromSliceError {
 
 pub trait DigestAlg {
     const HASH_SIZE: usize;
-    type DigestData: Clone + PartialEq + Hash + AsRef<[u8]>;
+    type DigestData: Clone + PartialEq + Hash + Send + AsRef<[u8]>;
     type DigestContext: Clone;
 
     fn try_from_slice(slice: &[u8]) -> Result<Self::DigestData, Error>;
@@ -201,6 +201,8 @@ macro_rules! define_from_instances {
 define_from_instances!(Sha3_256, 32, "sha3");
 define_from_instances!(Blake2b256, 32, "blake2b");
 
+unsafe impl<H: DigestAlg> Send for Digest<H> {}
+
 impl<H: DigestAlg> PartialEq for Digest<H> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
@@ -263,6 +265,8 @@ pub struct DigestOf<H: DigestAlg, T> {
     inner: Digest<H>,
     marker: PhantomData<T>,
 }
+
+unsafe impl<H: DigestAlg, T> Send for DigestOf<H, T> {}
 
 impl<H: DigestAlg, T> Clone for DigestOf<H, T> {
     fn clone(&self) -> Self {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::digest;
 
 use quickcheck::{Arbitrary, Gen};
 use rand_chacha::ChaChaRng;
@@ -102,5 +103,23 @@ impl Arbitrary for Sha3_256 {
             .take(Self::HASH_SIZE)
             .collect();
         Self::try_from_slice(&bytes).unwrap()
+    }
+}
+
+impl<H: digest::DigestAlg+'static> Arbitrary for digest::Digest<H> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let bytes: Vec<_> = std::iter::repeat_with(|| u8::arbitrary(g))
+            .take(26) // actual number doesn't really matter
+            .collect();
+        digest::Digest::<H>::digest(&bytes[..])
+    }
+}
+
+impl<H: digest::DigestAlg+'static, T: 'static> Arbitrary for digest::DigestOf<H, T> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let bytes: Vec<_> = std::iter::repeat_with(|| u8::arbitrary(g))
+            .take(26) // actual number doesn't really matter
+            .collect();
+        digest::DigestOf::<H, Vec<u8>>::digest(&bytes).coerce()
     }
 }
