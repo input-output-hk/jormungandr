@@ -3,8 +3,8 @@ use crate::milli::Milli;
 use crate::{
     config::ConfigParam,
     fee::LinearFee,
+    fragment::config::ConfigParams,
     leadership::bft::LeaderId,
-    message::config::ConfigParams,
     testing::arbitrary::utils as arbitrary_utils,
     update::{
         SignedUpdateProposal, SignedUpdateVote, UpdateProposal, UpdateProposalWithProposer,

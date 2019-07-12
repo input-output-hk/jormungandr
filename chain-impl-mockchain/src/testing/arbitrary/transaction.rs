@@ -11,7 +11,7 @@ use crate::{
 use chain_addr::{Address, Kind};
 use chain_crypto::{Ed25519, PublicKey};
 use quickcheck::{Arbitrary, Gen};
-use std::{cmp, collections::HashSet, iter};
+use std::iter;
 
 #[derive(Clone, Debug)]
 pub struct ArbitraryValidTransactionData {
