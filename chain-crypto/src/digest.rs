@@ -62,7 +62,7 @@ impl fmt::Display for TryFromSliceError {
 
 pub trait DigestAlg {
     const HASH_SIZE: usize;
-    type DigestData: Clone + PartialEq + Hash + Send + Sync + AsRef<[u8]>;
+    type DigestData: Clone + PartialEq + Hash + Send + AsRef<[u8]>;
     type DigestContext: Clone;
 
     fn try_from_slice(slice: &[u8]) -> Result<Self::DigestData, Error>;
