@@ -24,7 +24,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::Unknown,
+            code: core_error::Code::Internal,
             cause: cause.into(),
         }
     }
@@ -64,7 +64,7 @@ impl Error {
 impl From<oneshot::Canceled> for Error {
     fn from(src: oneshot::Canceled) -> Self {
         Error {
-            code: core_error::Code::Canceled,
+            code: core_error::Code::Unavailable,
             cause: src.into(),
         }
     }
@@ -143,18 +143,18 @@ where
 
     fn poll(&mut self) -> Poll<T, E> {
         let item = match self.receiver.poll() {
-            Err(oneshot::Canceled) => {
-                warn!(self.logger, "response canceled by the client request task");
-                return Err(Error::from(oneshot::Canceled).into());
-            }
             Ok(Async::NotReady) => {
                 return Ok(Async::NotReady);
             }
+            Ok(Async::Ready(Ok(item))) => item,
             Ok(Async::Ready(Err(e))) => {
                 warn!(self.logger, "error processing request: {:?}", e);
                 return Err(Error::from(e).into());
             }
-            Ok(Async::Ready(Ok(item))) => item,
+            Err(oneshot::Canceled) => {
+                warn!(self.logger, "response canceled by the processing task");
+                return Err(Error::from(oneshot::Canceled).into());
+            }
         };
 
         Ok(Async::Ready(item))
@@ -304,14 +304,18 @@ pub enum BlockMsg {
     LeadershipBlock(Block),
     /// Leadership process expect a new end of epoch
     LeadershipExpectEndOfEpoch(Epoch),
-    /// An untrusted Block has been received from the network task
-    NetworkBlock(Block),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, NodeId),
+    /// An untrusted Block has been received from the network task.
+    /// The reply handle must be used to enable continued streaming by
+    /// sending `Ok`, or to cancel the incoming stream with an error sent in
+    /// `Err`.
+    NetworkBlock(Block, ReplyHandle<()>),
     /// Headers for missing chain blocks have been received from the network
-    /// in response to a PullHeaders request. The reply handle must be used to
-    /// continue streaming by sending Ok, or to cancel the incoming stream
-    /// with an error.
+    /// in response to a PullHeaders request
+    /// The reply handle must be used to enable continued streaming by
+    /// sending `Ok`, or to cancel the incoming stream with an error sent in
+    /// `Err`.
     ChainHeaders(Vec<Header>, ReplyHandle<()>),
 }
 
