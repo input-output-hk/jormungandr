@@ -4,7 +4,7 @@ use chain_crypto::{AsymmetricKey, Ed25519Bip32, SecretKey};
 use chain_impl_mockchain::{
     account::SpendingCounter,
     block::HeaderHash,
-    transaction::{TransactionId, Witness},
+    transaction::{TransactionSignDataHash, Witness},
 };
 use jcli_app::transaction::Error;
 use jcli_app::utils::{
@@ -20,7 +20,7 @@ use structopt::StructOpt;
 pub struct MkWitness {
     /// the Transaction ID of the witness to sign
     #[structopt(name = "TRANSACTION_ID")]
-    pub transaction_id: TransactionId,
+    pub sign_data_hash: TransactionSignDataHash,
 
     /// the file path to the file to write the witness in.
     /// If omitted it will be printed to the standard output.
@@ -73,7 +73,7 @@ impl MkWitness {
         let witness = match self.witness_type {
             WitnessType::UTxO => {
                 let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
-                Witness::new_utxo(&self.genesis_block_hash, &self.transaction_id, &secret_key)
+                Witness::new_utxo(&self.genesis_block_hash, &self.sign_data_hash, &secret_key)
             }
             WitnessType::OldUTxO => {
                 // TODO unimplemented!()
@@ -90,7 +90,7 @@ impl MkWitness {
                 let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
                 Witness::new_account(
                     &self.genesis_block_hash,
-                    &self.transaction_id,
+                    &self.sign_data_hash,
                     &account_spending_counter,
                     &secret_key,
                 )
