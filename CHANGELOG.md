@@ -1,5 +1,45 @@
 # Change Log
 
+## [v0.3.0](https://github.com/input-output-hk/jormungandr/tree/v0.3.0) (2019-07-12)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.2.4...v0.3.0)
+
+**Implemented enhancements:**
+
+- Log Level consistency between CLI and config file [\#622](https://github.com/input-output-hk/jormungandr/issues/622)
+- breaking change: move to fragment id to refer to utxo [\#633](https://github.com/input-output-hk/jormungandr/pull/633)
+- Rework handling of inbound blocks and headers from the network [\#626](https://github.com/input-output-hk/jormungandr/pull/626)
+
+**Fixed bugs:**
+
+- Node crash if sending multiple transactions in the same slot [\#586](https://github.com/input-output-hk/jormungandr/issues/586)
+- broken link, registering stake key guide [\#565](https://github.com/input-output-hk/jormungandr/issues/565)
+
+**Closed issues:**
+
+- add-output example missing value [\#628](https://github.com/input-output-hk/jormungandr/issues/628)
+- gelf logging broken [\#621](https://github.com/input-output-hk/jormungandr/issues/621)
+- Transactions are rejected when genesis file is re-encoded manually [\#610](https://github.com/input-output-hk/jormungandr/issues/610)
+
+**Merged pull requests:**
+
+- Rename Message to Fragment [\#631](https://github.com/input-output-hk/jormungandr/pull/631)
+- Clean up unnecessary lifetimes in configuration\_builder test tools [\#630](https://github.com/input-output-hk/jormungandr/pull/630)
+- Small doc updates [\#629](https://github.com/input-output-hk/jormungandr/pull/629)
+- Clean up and extend log configuration [\#627](https://github.com/input-output-hk/jormungandr/pull/627)
+- Process events in the client connection [\#620](https://github.com/input-output-hk/jormungandr/pull/620)
+- Fix node crashing when multiple TXs for same account are in slot [\#619](https://github.com/input-output-hk/jormungandr/pull/619)
+- make sure we use the latest stable available [\#616](https://github.com/input-output-hk/jormungandr/pull/616)
+- move the address prefix to -lib and jcli [\#614](https://github.com/input-output-hk/jormungandr/pull/614)
+- Fix localhost for BSD & OSX [\#613](https://github.com/input-output-hk/jormungandr/pull/613)
+- scripts: bootstrap small fixes [\#611](https://github.com/input-output-hk/jormungandr/pull/611)
+- \[Test\] node stops producing blocks test case [\#609](https://github.com/input-output-hk/jormungandr/pull/609)
+- scripts: create-account-and-delegate POSIX-syntax [\#608](https://github.com/input-output-hk/jormungandr/pull/608)
+- jormungandr: fix binary version release 0.2.3 -\> 0.2.4 [\#607](https://github.com/input-output-hk/jormungandr/pull/607)
+- Add proper error reporting to JCLI REST commands [\#605](https://github.com/input-output-hk/jormungandr/pull/605)
+- Pulling missing chain blocks from the network [\#601](https://github.com/input-output-hk/jormungandr/pull/601)
+- use binaries by default and support building source too [\#594](https://github.com/input-output-hk/jormungandr/pull/594)
+- Docker: use alpine base image and versioned releases [\#567](https://github.com/input-output-hk/jormungandr/pull/567)
+
 ## [v0.2.4](https://github.com/input-output-hk/jormungandr/tree/v0.2.4) (2019-07-04)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.2.3...v0.2.4)
 
