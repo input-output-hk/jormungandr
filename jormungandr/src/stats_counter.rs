@@ -31,7 +31,7 @@ impl StatsCounter {
         self.stats.tx_recv_cnt.fetch_add(count, Ordering::Relaxed);
     }
 
-    pub fn get_tx_recv_cnt(&self) -> u64 {
+    pub fn tx_recv_cnt(&self) -> u64 {
         self.stats.tx_recv_cnt.load(Ordering::Relaxed) as u64
     }
 
@@ -41,11 +41,11 @@ impl StatsCounter {
             .fetch_add(count, Ordering::Relaxed);
     }
 
-    pub fn get_block_recv_cnt(&self) -> u64 {
+    pub fn block_recv_cnt(&self) -> u64 {
         self.stats.block_recv_cnt.load(Ordering::Relaxed) as u64
     }
 
-    pub fn get_uptime_sec(&self) -> u64 {
+    pub fn uptime_sec(&self) -> u64 {
         self.stats.start_time.elapsed().as_secs()
     }
 
@@ -57,7 +57,7 @@ impl StatsCounter {
             .replace(time);
     }
 
-    pub fn get_slot_start_time(&self) -> Option<SystemTime> {
+    pub fn slot_start_time(&self) -> Option<SystemTime> {
         *self
             .stats
             .slot_start_time

@@ -88,9 +88,9 @@ pub fn get_tip(settings: State<Context>) -> impl Responder {
 pub fn get_stats_counter(context: State<Context>) -> impl Responder {
     let stats = &context.stats_counter;
     Json(json!({
-        "txRecvCnt": stats.get_tx_recv_cnt(),
-        "blockRecvCnt": stats.get_block_recv_cnt(),
-        "uptime": stats.get_uptime_sec(),
+        "txRecvCnt": stats.tx_recv_cnt(),
+        "blockRecvCnt": stats.block_recv_cnt(),
+        "uptime": stats.uptime_sec(),
     }))
 }
 
@@ -201,7 +201,7 @@ pub fn get_settings(context: State<Context>) -> Result<impl Responder, Error> {
     Ok(Json(json!({
         "block0Hash": static_params.block0_initial_hash.to_string(),
         "block0Time": SystemTime::from(static_params.block0_start_time.0),
-        "currSlotStartTime": context.stats_counter.get_slot_start_time().map(SystemTime::from),
+        "currSlotStartTime": context.stats_counter.slot_start_time().map(SystemTime::from),
         "consensusVersion": settings.consensus_version.to_string(),
         "fees":{
             "constant": fees.constant,
