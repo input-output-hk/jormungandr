@@ -1,8 +1,3 @@
-extern crate chain_addr;
-extern crate chain_core;
-extern crate chain_impl_mockchain;
-extern crate structopt;
-
 use chain_core::property::{Block as _, Deserialize, HasMessages, Serialize};
 use chain_impl_mockchain::{
     block::Block,
