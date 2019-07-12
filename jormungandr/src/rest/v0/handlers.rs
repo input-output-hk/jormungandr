@@ -1,4 +1,5 @@
 use jormungandr_lib::interfaces::*;
+use jormungandr_lib::time::SystemTime;
 
 use actix_web::error::{Error, ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::{Error as ActixError, HttpMessage, HttpRequest};
@@ -184,4 +185,28 @@ pub fn get_stake_distribution(context: State<Context>) -> Result<impl Responder,
             _ => Ok(Json(json!({ "epoch": last_epoch }))),
         },
     }
+}
+
+pub fn get_settings(context: State<Context>) -> Result<impl Responder, Error> {
+    let blockchain = context.blockchain.lock_read();
+    let mut ledger = blockchain
+        .tip
+        .ledger()
+        .map_err(|_| ErrorInternalServerError("Failed to get blockchain tip ledger"))?;
+
+    let static_params = ledger.get_static_parameters().clone();
+    let settings = ledger.settings();
+    let fees = *settings.linear_fees;
+
+    Ok(Json(json!({
+        "block0Hash": static_params.block0_initial_hash.to_string(),
+        "block0Time": SystemTime::from(static_params.block0_start_time.0),
+        "consensusVersion": settings.consensus_version.to_string(),
+        "fees":{
+            "constant": fees.constant,
+            "coefficient": fees.coefficient,
+            "certificate": fees.certificate,
+        },
+        "maxTxsPerBlock":  settings.max_number_of_transactions_per_block,
+    })))
 }
