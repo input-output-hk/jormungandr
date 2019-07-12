@@ -2,6 +2,7 @@ mod account;
 mod block;
 mod message;
 mod node;
+mod settings;
 mod tip;
 mod utxo;
 
@@ -19,6 +20,8 @@ pub enum V0 {
     Message(message::Message),
     /// Node information
     Node(node::Node),
+    /// Node settings
+    Settings(settings::Settings),
     /// Blockchain tip information
     Tip(tip::Tip),
     /// UTXO information
@@ -32,6 +35,7 @@ impl V0 {
             V0::Block(block) => block.exec(),
             V0::Message(message) => message.exec(),
             V0::Node(node) => node.exec(),
+            V0::Settings(settings) => settings.exec(),
             V0::Tip(tip) => tip.exec(),
             V0::Utxo(utxo) => utxo.exec(),
         }

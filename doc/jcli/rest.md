@@ -206,3 +206,34 @@ value: 990
 * `delegation` is the Stake Pool Identifier the account is delegating to.
   it is possible this value is not set if there is no delegation certificate
   sent associated to this account.
+
+
+## Node settings
+
+Fetches node settings
+
+```
+jcli rest v0 node settings get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+
+
+YAML printed on success
+
+```yaml
+---
+block0Hash: 8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7  # block 0 hash of
+block0Time: "2019-07-09T12:32:51+00:00"         # block 0 creation time of
+consensusVersion: bft                           # currently used consensus
+currSlotStartTime: "2019-07-09T12:55:11+00:00"  # current slot start time
+fees:                                           # transaction fee configuration
+  certificate: 4                                # fee per certificate
+  coefficient: 1                                # fee per every input and output
+  constant: 2                                   # fee per transaction
+maxTxsPerBlock: 100                             # maximum number of transactions in block
+```
