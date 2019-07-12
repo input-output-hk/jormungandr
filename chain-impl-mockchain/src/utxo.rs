@@ -5,7 +5,7 @@
 //!
 
 use crate::fragment::FragmentId;
-use crate::transaction::{Output, TransactionIndex, TransactionSignDataHash};
+use crate::transaction::{Output, TransactionIndex};
 use std::collections::btree_map;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
@@ -75,20 +75,18 @@ impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
 
 /// Ledger of UTXO
 #[derive(Clone, PartialEq, Eq)]
-pub struct Ledger<OutAddress>(
-    Hamt<DefaultHasher, TransactionSignDataHash, TransactionUnspents<OutAddress>>,
-);
+pub struct Ledger<OutAddress>(Hamt<DefaultHasher, FragmentId, TransactionUnspents<OutAddress>>);
 
 pub struct Iter<'a, V> {
-    hamt_iter: HamtIter<'a, TransactionSignDataHash, TransactionUnspents<V>>,
+    hamt_iter: HamtIter<'a, FragmentId, TransactionUnspents<V>>,
     unspents_iter: Option<(
-        &'a TransactionSignDataHash,
+        &'a FragmentId,
         btree_map::Iter<'a, TransactionIndex, Output<V>>,
     )>,
 }
 
 pub struct Values<'a, V> {
-    hamt_iter: HamtIter<'a, TransactionSignDataHash, TransactionUnspents<V>>,
+    hamt_iter: HamtIter<'a, FragmentId, TransactionUnspents<V>>,
     unspents_iter: Option<btree_map::Iter<'a, TransactionIndex, Output<V>>>,
 }
 
@@ -96,7 +94,7 @@ pub struct Values<'a, V> {
 ///
 #[derive(Debug)]
 pub struct Entry<'a, OutputAddress> {
-    pub transaction_id: TransactionSignDataHash,
+    pub fragment_id: FragmentId,
     pub output_index: u8,
     pub output: &'a Output<OutputAddress>,
 }
@@ -125,7 +123,7 @@ impl<OutAddress> Ledger<OutAddress> {
             .lookup(tid)
             .and_then(|unspent| unspent.0.get(index))
             .map(|output| Entry {
-                transaction_id: tid.clone(),
+                fragment_id: tid.clone(),
                 output_index: *index,
                 output: output,
             })
@@ -173,7 +171,7 @@ impl<'a, V> Iterator for Iter<'a, V> {
                     self.next()
                 }
                 Some(x) => Some(Entry {
-                    transaction_id: id.clone(),
+                    fragment_id: id.clone(),
                     output_index: *x.0,
                     output: x.1,
                 }),

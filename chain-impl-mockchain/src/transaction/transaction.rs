@@ -1,12 +1,26 @@
 use super::transfer::*;
-use crate::key::Hash;
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
+use chain_crypto::{digest::DigestOf, Blake2b256};
+use std::boxed::Box;
 
-// FIXME: should this be a wrapper type?
-pub type TransactionSignDataHash = Hash;
+pub struct TransactionSignData(Box<[u8]>);
+
+impl From<Vec<u8>> for TransactionSignData {
+    fn from(v: Vec<u8>) -> TransactionSignData {
+        TransactionSignData(v.into())
+    }
+}
+
+impl AsRef<[u8]> for TransactionSignData {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+pub type TransactionSignDataHash = DigestOf<Blake2b256, TransactionSignData>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoExtra;
@@ -115,7 +129,7 @@ impl<Extra: property::Serialize> Transaction<Address, Extra> {
     pub fn hash(&self) -> TransactionSignDataHash {
         let mut bytes = Vec::new();
         self.serialize_body(&mut bytes).unwrap();
-        TransactionSignDataHash::hash_bytes(&bytes)
+        DigestOf::digest(&TransactionSignData(bytes.into()))
     }
 }
 

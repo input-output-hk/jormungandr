@@ -1,6 +1,6 @@
-use super::transaction::TransactionSignDataHash;
 use super::utxo::UtxoPointer;
 use crate::account::Identifier;
+use crate::fragment::FragmentId;
 use crate::key::SpendingPublicKey;
 use crate::legacy::OldAddress;
 use crate::utxo::Entry;
@@ -99,7 +99,7 @@ impl Input {
 
     pub fn from_utxo_entry(utxo_entry: Entry<Address>) -> Self {
         let mut input_ptr = [0u8; INPUT_PTR_SIZE];
-        input_ptr.clone_from_slice(utxo_entry.transaction_id.as_ref());
+        input_ptr.clone_from_slice(utxo_entry.fragment_id.as_ref());
         Input {
             index_or_account: utxo_entry.output_index,
             value: utxo_entry.output.value,
@@ -142,7 +142,7 @@ impl Input {
                 InputEnum::AccountInput(id, self.value)
             }
             InputType::Utxo => InputEnum::UtxoInput(UtxoPointer::new(
-                TransactionSignDataHash::from_bytes(self.input_ptr.clone()),
+                FragmentId::from(self.input_ptr.clone()),
                 self.index_or_account,
                 self.value,
             )),

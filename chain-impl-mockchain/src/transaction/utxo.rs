@@ -18,11 +18,7 @@ pub struct UtxoPointer {
 }
 
 impl UtxoPointer {
-    pub fn new(
-        transaction_id: FragmentId,
-        output_index: TransactionIndex,
-        value: Value,
-    ) -> Self {
+    pub fn new(transaction_id: FragmentId, output_index: TransactionIndex, value: Value) -> Self {
         UtxoPointer {
             transaction_id,
             output_index,

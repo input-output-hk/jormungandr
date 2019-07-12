@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use crate::{
+    fragment::{Fragment, FragmentId},
     ledger::{
         Entry,
         Error::{NotEnoughSignatures, TransactionHasTooManyOutputs},
@@ -16,6 +17,7 @@ use crate::{
     }
 };
 use chain_addr::Discrimination;
+use chain_core::property::Message as _;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -61,11 +63,12 @@ pub fn ledger_accepts_correct_transaction(
         .authenticate()
         .with_witness(&block0_hash, &faucet)
         .seal();
+    let fragment_id = Fragment::Transaction(signed_tx.clone()).id();
 
     let total_funds_before = calculate_total_funds_in_ledger(&ledger);
 
     let fees = ledger.get_ledger_parameters();
-    let result = ledger.apply_transaction(&signed_tx, &fees);
+    let result = ledger.apply_transaction(&fragment_id, &signed_tx, &fees);
 
     match result {
         Err(err) => TestResult::error(format!("Error from ledger: {}", err)),
@@ -111,10 +114,11 @@ pub fn total_funds_are_total_in_ledger(
         .authenticate()
         .with_witnesses(&block0_hash, &input_addresses)
         .seal();
+    let fragment_id = Fragment::Transaction(signed_tx.clone()).id();
 
     let total_funds_before = calculate_total_funds_in_ledger(&ledger);
     let fees = ledger.get_ledger_parameters();
-    let result = ledger.apply_transaction(&signed_tx, &fees);
+    let result = ledger.apply_transaction(&fragment_id, &signed_tx, &fees);
 
     match result {
         Err(err) => TestResult::error(format!("Error from ledger: {:?}", err)),
@@ -153,6 +157,7 @@ pub fn utxo_no_enough_signatures() {
         .with_output(Output::from_address(receiver.address.clone(), Value(1)))
         .authenticate()
         .seal();
+    let fragment_id = Fragment::Transaction(signed_tx.clone()).id();
 
     let fees = ledger.get_ledger_parameters();
     assert_err!(
@@ -160,7 +165,7 @@ pub fn utxo_no_enough_signatures() {
             actual: 0,
             expected: 1
         },
-        ledger.apply_transaction(&signed_tx, &fees)
+        ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
     )
 }
 
@@ -187,6 +192,9 @@ pub fn transaction_with_more_than_253_outputs() {
         .authenticate()
         .with_witness(&block0_hash, &faucet)
         .seal();
+    // here we have to build a random FragmentId, since the transaction is invalid,
+    // and will trigger an assert during Fragment -> Id calculation otherwise
+    let fragment_id = FragmentId::hash_bytes(&[1, 2, 3]);
 
     let fees = ledger.get_ledger_parameters();
     assert_err!(
@@ -194,7 +202,7 @@ pub fn transaction_with_more_than_253_outputs() {
             expected: 254,
             actual: 255
         },
-        ledger.apply_transaction(&signed_tx, &fees)
+        ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
     )
 }
 
@@ -227,13 +235,13 @@ pub fn iterate() {
             Entry::Utxo(entry) => {
                 println!(
                     "Utxo {} {} {}",
-                    entry.transaction_id, entry.output_index, entry.output
+                    entry.fragment_id, entry.output_index, entry.output
                 );
             }
             Entry::OldUtxo(entry) => {
                 println!(
                     "OldUtxo {} {} {}",
-                    entry.transaction_id, entry.output_index, entry.output
+                    entry.fragment_id, entry.output_index, entry.output
                 );
             }
             Entry::Account((id, state)) => {

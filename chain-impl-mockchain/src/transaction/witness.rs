@@ -119,21 +119,21 @@ impl Witness {
     /// Creates new `Witness` value.
     pub fn new_utxo(
         block0: &HeaderHash,
-        transaction_id: &TransactionSignDataHash,
+        sign_data_hash: &TransactionSignDataHash,
         secret_key: &EitherEd25519SecretKey,
     ) -> Self {
-        let wud = WitnessUtxoData::new(block0, transaction_id);
+        let wud = WitnessUtxoData::new(block0, sign_data_hash);
         let sig = secret_key.sign(&wud);
         Witness::Utxo(sig)
     }
 
     pub fn new_account(
         block0: &HeaderHash,
-        transaction_id: &TransactionSignDataHash,
+        sign_data_hash: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
         secret_key: &EitherEd25519SecretKey,
     ) -> Self {
-        let wud = WitnessAccountData::new(block0, transaction_id, spending_counter);
+        let wud = WitnessAccountData::new(block0, sign_data_hash, spending_counter);
         let sig = secret_key.sign(&wud);
         Witness::Account(sig)
     }
@@ -143,12 +143,12 @@ impl Witness {
         &self,
         public_key: &SpendingPublicKey,
         block0: &HeaderHash,
-        transaction_id: &TransactionSignDataHash,
+        sign_data_hash: &TransactionSignDataHash,
     ) -> Verification {
         match self {
             Witness::OldUtxo(_xpub, _signature) => unimplemented!(),
             Witness::Utxo(signature) => {
-                signature.verify(public_key, &WitnessUtxoData::new(block0, transaction_id))
+                signature.verify(public_key, &WitnessUtxoData::new(block0, sign_data_hash))
             }
             Witness::Account(_) => Verification::Failed,
             Witness::Multisig(_) => Verification::Failed,

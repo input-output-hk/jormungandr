@@ -1,11 +1,9 @@
-use crate::transaction::TransactionSignDataHash;
 use crate::value::Value;
 
 pub use cardano_legacy_address::Addr as OldAddress;
 
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_core::property::Serialize;
 use chain_crypto::{Ed25519Bip32, PublicKey};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,13 +13,6 @@ pub struct UtxoDeclaration {
 
 pub fn oldaddress_from_xpub(address: &OldAddress, xpub: &PublicKey<Ed25519Bip32>) -> bool {
     address.identical_with_pubkey_raw(xpub.as_ref())
-}
-
-impl UtxoDeclaration {
-    pub fn hash(&self) -> TransactionSignDataHash {
-        let v = self.serialize_as_vec().unwrap();
-        TransactionSignDataHash::hash_bytes(&v[..])
-    }
 }
 
 impl Readable for UtxoDeclaration {
