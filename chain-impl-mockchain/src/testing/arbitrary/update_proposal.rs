@@ -2,6 +2,7 @@ use crate::key::Hash;
 use crate::milli::Milli;
 use crate::{
     config::ConfigParam,
+    fee::LinearFee,
     leadership::bft::LeaderId,
     message::config::ConfigParams,
     testing::arbitrary::utils as arbitrary_utils,
@@ -9,7 +10,6 @@ use crate::{
         SignedUpdateProposal, SignedUpdateVote, UpdateProposal, UpdateProposalWithProposer,
         UpdateVote,
     },
-    fee::LinearFee
 };
 use chain_crypto::{Ed25519, Ed25519Extended, SecretKey};
 use quickcheck::{Arbitrary, Gen};

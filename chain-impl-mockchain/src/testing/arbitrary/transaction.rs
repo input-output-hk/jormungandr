@@ -3,7 +3,7 @@ use crate::{
     account::Ledger as AccountLedger,
     ledger::Ledger,
     testing::address::{AddressData, AddressDataValue},
-    testing::arbitrary::{AverageValue,utils as arbitrary_utils},
+    testing::arbitrary::{utils as arbitrary_utils, AverageValue},
     transaction::{Input, Output},
     utxo::{self, Entry},
     value::*,
@@ -30,7 +30,8 @@ impl Arbitrary for ArbitraryValidTransactionData {
             .collect();
         let addresses_values: Vec<AddressDataValue> =
             tx_data::zip_addresses_and_values(&source.0, values);
-        let input_addresses_values = arbitrary_utils::choose_random_vec_subset(&addresses_values, gen);
+        let input_addresses_values =
+            arbitrary_utils::choose_random_vec_subset(&addresses_values, gen);
         let total_input_value = input_addresses_values
             .iter()
             .cloned()
@@ -71,7 +72,6 @@ impl ArbitraryValidTransactionData {
             .collect()
     }
 
-   
     fn choose_random_output_subset<G: Gen>(
         source: &Vec<AddressDataValue>,
         total_input_funds: u64,
