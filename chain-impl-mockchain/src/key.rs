@@ -262,7 +262,7 @@ impl property::BlockId for Hash {
     }
 }
 
-impl property::MessageId for Hash {}
+impl property::FragmentId for Hash {}
 
 impl AsRef<[u8]> for Hash {
     fn as_ref(&self) -> &[u8] {

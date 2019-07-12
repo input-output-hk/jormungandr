@@ -189,10 +189,10 @@ impl Readable for Block {
     }
 }
 
-impl<'a> property::HasMessages<'a> for &'a Block {
-    type Message = Fragment;
-    type Messages = slice::Iter<'a, Fragment>;
-    fn messages(self) -> Self::Messages {
+impl<'a> property::HasFragments<'a> for &'a Block {
+    type Fragment = Fragment;
+    type Fragments = slice::Iter<'a, Fragment>;
+    fn fragments(self) -> Self::Fragments {
         self.contents.0.iter()
     }
 }

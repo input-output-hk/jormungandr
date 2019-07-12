@@ -167,11 +167,11 @@ where
     }
 }
 
-impl<T> FromProtobuf<gen::node::Message> for T
+impl<T> FromProtobuf<gen::node::Fragment> for T
 where
-    T: property::Message + mempack::Readable,
+    T: property::Fragment + mempack::Readable,
 {
-    fn from_message(msg: gen::node::Message) -> Result<T, core_error::Error> {
+    fn from_message(msg: gen::node::Fragment) -> Result<T, core_error::Error> {
         let tx = deserialize_bytes(&msg.content)?;
         Ok(tx)
     }
@@ -294,13 +294,13 @@ where
     }
 }
 
-impl<T> IntoProtobuf<gen::node::Message> for T
+impl<T> IntoProtobuf<gen::node::Fragment> for T
 where
-    T: property::Message + property::Serialize,
+    T: property::Fragment + property::Serialize,
 {
-    fn into_message(self) -> Result<gen::node::Message, tower_grpc::Status> {
+    fn into_message(self) -> Result<gen::node::Fragment, tower_grpc::Status> {
         let content = serialize_to_bytes(&self)?;
-        Ok(gen::node::Message { content })
+        Ok(gen::node::Fragment { content })
     }
 }
 

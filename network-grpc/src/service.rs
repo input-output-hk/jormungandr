@@ -485,9 +485,9 @@ pub mod protocol_bounds {
 
     impl<T> Header for T where T: property::Header + mempack::Readable + Send + 'static {}
 
-    pub trait Message: property::Message + mempack::Readable + Send + 'static {}
+    pub trait Fragment: property::Fragment + mempack::Readable + Send + 'static {}
 
-    impl<T> Message for T where T: property::Message + mempack::Readable + Send + 'static {}
+    impl<T> Fragment for T where T: property::Fragment + mempack::Readable + Send + 'static {}
 
     pub trait Node:
         gossip::Node + property::Serialize + property::Deserialize + Send + 'static
@@ -505,7 +505,7 @@ where
     T: Node + Clone,
     <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
+    <T::ContentService as ContentService>::Fragment: protocol_bounds::Fragment,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     type TipFuture = ResponseFuture<
@@ -544,13 +544,13 @@ where
         Self::PullBlocksToTipStream,
         <<T as Node>::BlockService as BlockService>::PullBlocksToTipFuture,
     >;
-    type GetMessagesStream = ResponseStream<
-        gen::node::Message,
-        <<T as Node>::ContentService as ContentService>::GetMessagesStream,
+    type GetFragmentsStream = ResponseStream<
+        gen::node::Fragment,
+        <<T as Node>::ContentService as ContentService>::GetFragmentsStream,
     >;
-    type GetMessagesFuture = ResponseFuture<
-        Self::GetMessagesStream,
-        <<T as Node>::ContentService as ContentService>::GetMessagesFuture,
+    type GetFragmentsFuture = ResponseFuture<
+        Self::GetFragmentsStream,
+        <<T as Node>::ContentService as ContentService>::GetFragmentsFuture,
     >;
     type PushHeadersFuture = PushHeadersFuture<T, Streaming<gen::node::Header>>;
     type UploadBlocksFuture = UploadBlocksFuture<T, Streaming<gen::node::Block>>;
@@ -563,14 +563,14 @@ where
         <T::BlockService as P2pService>::NodeId,
         <T::BlockService as BlockService>::BlockSubscriptionFuture,
     >;
-    type MessageSubscriptionStream = ResponseStream<
-        gen::node::Message,
-        <<T as Node>::ContentService as ContentService>::MessageSubscription,
+    type ContentSubscriptionStream = ResponseStream<
+        gen::node::Fragment,
+        <<T as Node>::ContentService as ContentService>::ContentSubscription,
     >;
-    type MessageSubscriptionFuture = SubscriptionFuture<
-        Self::MessageSubscriptionStream,
+    type ContentSubscriptionFuture = SubscriptionFuture<
+        Self::ContentSubscriptionStream,
         <T::ContentService as P2pService>::NodeId,
-        <T::ContentService as ContentService>::MessageSubscriptionFuture,
+        <T::ContentService as ContentService>::ContentSubscriptionFuture,
     >;
     type GossipSubscriptionStream = ResponseStream<
         gen::node::Gossip,
@@ -643,7 +643,7 @@ where
         ResponseFuture::new(service.pull_blocks_to_tip(&block_ids))
     }
 
-    fn get_messages(&mut self, req: Request<gen::node::MessageIds>) -> Self::GetMessagesFuture {
+    fn get_fragments(&mut self, req: Request<gen::node::FragmentIds>) -> Self::GetFragmentsFuture {
         let service = try_get_service!(self.inner.content_service());
         let tx_ids = match deserialize_repeated_bytes(&req.get_ref().ids) {
             Ok(tx_ids) => tx_ids,
@@ -651,7 +651,7 @@ where
                 return ResponseFuture::error(error_into_grpc(e));
             }
         };
-        ResponseFuture::new(service.get_messages(&tx_ids))
+        ResponseFuture::new(service.get_fragments(&tx_ids))
     }
 
     fn push_headers(
@@ -681,16 +681,16 @@ where
         )
     }
 
-    fn message_subscription(
+    fn content_subscription(
         &mut self,
-        req: Request<Streaming<gen::node::Message>>,
-    ) -> Self::MessageSubscriptionFuture {
+        req: Request<Streaming<gen::node::Fragment>>,
+    ) -> Self::ContentSubscriptionFuture {
         let service = try_get_service_sub!(self.inner.content_service());
         let subscriber = try_decode_node_id!(&req);
         let stream = RequestStream::new(req.into_inner());
         SubscriptionFuture::new(
             service.node_id(),
-            service.message_subscription(subscriber, stream),
+            service.content_subscription(subscriber, stream),
         )
     }
 

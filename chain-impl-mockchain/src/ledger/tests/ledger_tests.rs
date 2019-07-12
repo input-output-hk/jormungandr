@@ -17,7 +17,7 @@ use crate::{
     }
 };
 use chain_addr::Discrimination;
-use chain_core::property::Message as _;
+use chain_core::property::Fragment as _;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 

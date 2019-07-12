@@ -8,7 +8,7 @@
 
 use crate::block::ChainLength;
 use crate::ledger::Ledger;
-use chain_core::property::{BlockId as _, HasMessages as _};
+use chain_core::property::{BlockId as _, HasFragments as _};
 use chain_storage::store::BlockStore;
 use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
@@ -245,7 +245,7 @@ impl Multiverse<Ledger> {
             state = state
                 .apply_block(
                     &state.get_ledger_parameters(),
-                    block.messages(),
+                    block.fragments(),
                     &header_meta,
                 )
                 .unwrap();
@@ -266,7 +266,7 @@ mod test {
     use crate::ledger::Ledger;
     use crate::milli::Milli;
     use chain_addr::Discrimination;
-    use chain_core::property::{Block as _, ChainLength as _, HasMessages as _};
+    use chain_core::property::{Block as _, ChainLength as _, HasFragments as _};
     use chain_crypto::{Ed25519, SecretKey};
     use chain_storage::store::BlockStore;
     use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
@@ -279,7 +279,7 @@ mod test {
         state
             .apply_block(
                 &state.get_ledger_parameters(),
-                block.messages(),
+                block.fragments(),
                 &block.header.to_content_eval_context(),
             )
             .unwrap()
@@ -317,7 +317,7 @@ mod test {
         genesis_block.message(Fragment::Initial(ents));
         let genesis_block = genesis_block.make_genesis_block();
         let mut date = genesis_block.date();
-        let genesis_state = Ledger::new(genesis_block.id(), genesis_block.messages()).unwrap();
+        let genesis_state = Ledger::new(genesis_block.id(), genesis_block.fragments()).unwrap();
         assert_eq!(genesis_state.chain_length().0, 0);
         store.put_block(&genesis_block).unwrap();
         multiverse.add(genesis_block.id(), genesis_state.clone());
