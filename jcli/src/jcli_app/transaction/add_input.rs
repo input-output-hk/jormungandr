@@ -1,7 +1,5 @@
 use chain_impl_mockchain::fragment::FragmentId;
-use chain_impl_mockchain::transaction::{
-    Input, InputEnum, TransactionIndex, UtxoPointer,
-};
+use chain_impl_mockchain::transaction::{Input, InputEnum, TransactionIndex, UtxoPointer};
 use jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
