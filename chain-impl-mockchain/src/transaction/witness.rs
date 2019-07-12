@@ -55,7 +55,7 @@ impl std::fmt::Display for Witness {
 pub struct WitnessUtxoData(Vec<u8>);
 
 impl WitnessUtxoData {
-    pub fn new(block0: &HeaderHash, transaction_id: &TransactionId) -> Self {
+    pub fn new(block0: &HeaderHash, transaction_id: &TransactionSignDataHash) -> Self {
         let mut v = Vec::with_capacity(65);
         v.extend_from_slice(block0.as_ref());
         v.extend_from_slice(transaction_id.as_ref());
@@ -74,7 +74,7 @@ pub struct WitnessAccountData(Vec<u8>);
 impl WitnessAccountData {
     pub fn new(
         block0: &HeaderHash,
-        transaction_id: &TransactionId,
+        transaction_id: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
     ) -> Self {
         let mut v = Vec::with_capacity(65);
@@ -97,7 +97,7 @@ pub struct WitnessMultisigData(Vec<u8>);
 impl WitnessMultisigData {
     pub fn new(
         block0: &HeaderHash,
-        transaction_id: &TransactionId,
+        transaction_id: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
     ) -> Self {
         let mut v = Vec::with_capacity(65);
@@ -119,36 +119,36 @@ impl Witness {
     /// Creates new `Witness` value.
     pub fn new_utxo(
         block0: &HeaderHash,
-        transaction_id: &TransactionId,
+        sign_data_hash: &TransactionSignDataHash,
         secret_key: &EitherEd25519SecretKey,
     ) -> Self {
-        let wud = WitnessUtxoData::new(block0, transaction_id);
+        let wud = WitnessUtxoData::new(block0, sign_data_hash);
         let sig = secret_key.sign(&wud);
         Witness::Utxo(sig)
     }
 
     pub fn new_account(
         block0: &HeaderHash,
-        transaction_id: &TransactionId,
+        sign_data_hash: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
         secret_key: &EitherEd25519SecretKey,
     ) -> Self {
-        let wud = WitnessAccountData::new(block0, transaction_id, spending_counter);
+        let wud = WitnessAccountData::new(block0, sign_data_hash, spending_counter);
         let sig = secret_key.sign(&wud);
         Witness::Account(sig)
     }
 
-    // Verify the given `TransactionId` using the witness.
+    // Verify the given `TransactionSignDataHash` using the witness.
     pub fn verify_utxo(
         &self,
         public_key: &SpendingPublicKey,
         block0: &HeaderHash,
-        transaction_id: &TransactionId,
+        sign_data_hash: &TransactionSignDataHash,
     ) -> Verification {
         match self {
             Witness::OldUtxo(_xpub, _signature) => unimplemented!(),
             Witness::Utxo(signature) => {
-                signature.verify(public_key, &WitnessUtxoData::new(block0, transaction_id))
+                signature.verify(public_key, &WitnessUtxoData::new(block0, sign_data_hash))
             }
             Witness::Account(_) => Verification::Failed,
             Witness::Multisig(_) => Verification::Failed,
@@ -250,7 +250,7 @@ pub mod test {
         /// ```
         /// \forall w=Witness(tx) => w.verifies(tx)
         /// ```
-        fn prop_witness_verifies_own_tx(sk: TransactionSigningKey, tx:TransactionId, block0: HeaderHash) -> bool {
+        fn prop_witness_verifies_own_tx(sk: TransactionSigningKey, tx:TransactionSignDataHash, block0: HeaderHash) -> bool {
             let pk = sk.0.to_public();
             let witness = Witness::new_utxo(&block0, &tx, &sk.0);
             witness.verify_utxo(&pk, &block0, &tx) == Verification::Success

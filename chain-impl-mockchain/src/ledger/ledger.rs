@@ -6,7 +6,7 @@ use crate::block::{
 };
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
-use crate::fragment::Fragment;
+use crate::fragment::{Fragment, FragmentId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
@@ -239,6 +239,7 @@ impl Ledger {
         let ledger_params = ledger.get_ledger_parameters();
 
         for content in content_iter {
+            let fragment_id = content.id();
             match content {
                 Fragment::Initial(_) => {
                     return Err(Error::Block0 {
@@ -246,7 +247,7 @@ impl Ledger {
                     });
                 }
                 Fragment::OldUtxoDeclaration(old) => {
-                    ledger.oldutxos = apply_old_declaration(ledger.oldutxos, old)?;
+                    ledger.oldutxos = apply_old_declaration(&fragment_id, ledger.oldutxos, old)?;
                 }
                 Fragment::Transaction(authenticated_tx) => {
                     if authenticated_tx.transaction.inputs.len() != 0 {
@@ -259,7 +260,6 @@ impl Ledger {
                             source: Block0Error::TransactionHasWitnesses,
                         });
                     }
-                    let transaction_id = authenticated_tx.transaction.hash();
                     let (new_utxos, new_accounts, new_multisig) =
                         internal_apply_transaction_output(
                             ledger.utxos,
@@ -267,7 +267,7 @@ impl Ledger {
                             ledger.multisig,
                             &ledger.static_params,
                             &ledger_params,
-                            &transaction_id,
+                            &fragment_id,
                             &authenticated_tx.transaction.outputs,
                         )?;
                     ledger.utxos = new_utxos;
@@ -371,6 +371,7 @@ impl Ledger {
     ) -> Result<Self, Error> {
         let mut new_ledger = self.clone();
 
+        let fragment_id = content.id();
         match content {
             Fragment::Initial(_) => {
                 return Err(Error::Block0 {
@@ -383,8 +384,11 @@ impl Ledger {
                 });
             }
             Fragment::Transaction(authenticated_tx) => {
-                let (new_ledger_, _fee) =
-                    new_ledger.apply_transaction(&authenticated_tx, &ledger_params)?;
+                let (new_ledger_, _fee) = new_ledger.apply_transaction(
+                    &fragment_id,
+                    &authenticated_tx,
+                    &ledger_params,
+                )?;
                 new_ledger = new_ledger_;
             }
             Fragment::UpdateProposal(update_proposal) => {
@@ -398,8 +402,11 @@ impl Ledger {
                 new_ledger = new_ledger.apply_update_vote(&vote)?;
             }
             Fragment::Certificate(authenticated_cert_tx) => {
-                let (new_ledger_, _fee) =
-                    new_ledger.apply_certificate(authenticated_cert_tx, &ledger_params)?;
+                let (new_ledger_, _fee) = new_ledger.apply_certificate(
+                    &fragment_id,
+                    authenticated_cert_tx,
+                    &ledger_params,
+                )?;
                 new_ledger = new_ledger_;
             }
         }
@@ -409,6 +416,7 @@ impl Ledger {
 
     pub fn apply_transaction<Extra>(
         mut self,
+        fragment_id: &FragmentId,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
         dyn_params: &LedgerParameters,
     ) -> Result<(Self, Value), Error>
@@ -416,7 +424,7 @@ impl Ledger {
         Extra: property::Serialize,
         LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
     {
-        let transaction_id = signed_tx.transaction.hash();
+        let sign_data_hash = signed_tx.transaction.hash();
         let fee = dyn_params
             .fees
             .calculate(&signed_tx.transaction)
@@ -427,7 +435,8 @@ impl Ledger {
         self = internal_apply_transaction(
             self,
             dyn_params,
-            &transaction_id,
+            &fragment_id,
+            &sign_data_hash,
             &signed_tx.transaction.inputs[..],
             &signed_tx.transaction.outputs[..],
             &signed_tx.witnesses[..],
@@ -494,6 +503,7 @@ impl Ledger {
 
     pub fn apply_certificate(
         mut self,
+        fragment_id: &FragmentId,
         auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
         dyn_params: &LedgerParameters,
     ) -> Result<(Self, Value), Error> {
@@ -501,7 +511,7 @@ impl Ledger {
         if verified == chain_crypto::Verification::Failed {
             return Err(Error::CertificateInvalidSignature);
         };
-        let (new_ledger, fee) = self.apply_transaction(auth_cert, dyn_params)?;
+        let (new_ledger, fee) = self.apply_transaction(fragment_id, auth_cert, dyn_params)?;
 
         self = new_ledger.apply_certificate_content(&auth_cert.transaction.extra)?;
 
@@ -577,11 +587,11 @@ impl Ledger {
 }
 
 fn apply_old_declaration(
+    fragment_id: &FragmentId,
     mut utxos: utxo::Ledger<legacy::OldAddress>,
     decl: &legacy::UtxoDeclaration,
 ) -> Result<utxo::Ledger<legacy::OldAddress>, Error> {
     assert!(decl.addrs.len() < 255);
-    let txid = decl.hash();
     let mut outputs = Vec::with_capacity(decl.addrs.len());
     for (i, d) in decl.addrs.iter().enumerate() {
         let output = Output {
@@ -590,7 +600,7 @@ fn apply_old_declaration(
         };
         outputs.push((i as u8, output))
     }
-    utxos = utxos.add(&txid, &outputs)?;
+    utxos = utxos.add(&fragment_id, &outputs)?;
     Ok(utxos)
 }
 
@@ -598,7 +608,8 @@ fn apply_old_declaration(
 fn internal_apply_transaction(
     mut ledger: Ledger,
     dyn_params: &LedgerParameters,
-    transaction_id: &TransactionId,
+    fragment_id: &FragmentId,
+    sign_data_hash: &TransactionSignDataHash,
     inputs: &[Input],
     outputs: &[Output<Address>],
     witnesses: &[Witness],
@@ -639,14 +650,14 @@ fn internal_apply_transaction(
     for (input, witness) in inputs.iter().zip(witnesses.iter()) {
         match input.to_enum() {
             InputEnum::UtxoInput(utxo) => {
-                ledger = input_utxo_verify(ledger, transaction_id, &utxo, witness)?
+                ledger = input_utxo_verify(ledger, sign_data_hash, &utxo, witness)?
             }
             InputEnum::AccountInput(account_id, value) => {
                 let (single, multi) = input_account_verify(
                     ledger.accounts,
                     ledger.multisig,
                     &ledger.static_params.block0_initial_hash,
-                    transaction_id,
+                    sign_data_hash,
                     &account_id,
                     value,
                     witness,
@@ -676,7 +687,7 @@ fn internal_apply_transaction(
         ledger.multisig,
         &ledger.static_params,
         dyn_params,
-        transaction_id,
+        fragment_id,
         outputs,
     )?;
     ledger.utxos = new_utxos;
@@ -695,7 +706,7 @@ fn internal_apply_transaction_output(
     mut multisig: multisig::Ledger,
     static_params: &LedgerStaticParameters,
     _dyn_params: &LedgerParameters,
-    transaction_id: &TransactionId,
+    transaction_id: &FragmentId,
     outputs: &[Output<Address>],
 ) -> Result<(utxo::Ledger<Address>, account::Ledger, multisig::Ledger), Error> {
     let mut new_utxos = Vec::new();
@@ -746,7 +757,7 @@ fn internal_apply_transaction_output(
 
 fn input_utxo_verify(
     mut ledger: Ledger,
-    transaction_id: &TransactionId,
+    sign_data_hash: &TransactionSignDataHash,
     utxo: &UtxoPointer,
     witness: &Witness,
 ) -> Result<Ledger, Error> {
@@ -775,7 +786,7 @@ fn input_utxo_verify(
             };
 
             let data_to_verify =
-                WitnessUtxoData::new(&ledger.static_params.block0_initial_hash, &transaction_id);
+                WitnessUtxoData::new(&ledger.static_params.block0_initial_hash, sign_data_hash);
             let verified = signature.verify(&xpub, &data_to_verify);
             if verified == chain_crypto::Verification::Failed {
                 return Err(Error::OldUtxoInvalidSignature {
@@ -800,7 +811,7 @@ fn input_utxo_verify(
             }
 
             let data_to_verify =
-                WitnessUtxoData::new(&ledger.static_params.block0_initial_hash, &transaction_id);
+                WitnessUtxoData::new(&ledger.static_params.block0_initial_hash, sign_data_hash);
             let verified = signature.verify(
                 &associated_output.address.public_key().unwrap(),
                 &data_to_verify,
@@ -821,7 +832,7 @@ fn input_account_verify(
     mut ledger: account::Ledger,
     mut mledger: multisig::Ledger,
     block0_hash: &HeaderHash,
-    transaction_id: &TransactionId,
+    sign_data_hash: &TransactionSignDataHash,
     account: &AccountIdentifier,
     value: Value,
     witness: &Witness,
@@ -840,7 +851,7 @@ fn input_account_verify(
             let (new_ledger, spending_counter) = ledger.remove_value(&account, value)?;
             ledger = new_ledger;
 
-            let tidsc = WitnessAccountData::new(block0_hash, transaction_id, &spending_counter);
+            let tidsc = WitnessAccountData::new(block0_hash, sign_data_hash, &spending_counter);
             let verified = sig.verify(&account.clone().into(), &tidsc);
             if verified == chain_crypto::Verification::Failed {
                 return Err(Error::AccountInvalidSignature {
@@ -858,7 +869,7 @@ fn input_account_verify(
                 mledger.remove_value(&account, value)?;
 
             let data_to_verify =
-                WitnessMultisigData::new(&block0_hash, &transaction_id, &spending_counter);
+                WitnessMultisigData::new(&block0_hash, sign_data_hash, &spending_counter);
             if msignature.verify(declaration, &data_to_verify) != true {
                 return Err(Error::MultisigInvalidSignature {
                     multisig: account,
@@ -1048,13 +1059,13 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
                 }
                 Entry::Utxo(entry) => {
                     utxos
-                        .entry(entry.transaction_id)
+                        .entry(entry.fragment_id)
                         .or_insert(vec![])
                         .push((entry.output_index, entry.output.clone()));
                 }
                 Entry::OldUtxo(entry) => {
                     oldutxos
-                        .entry(entry.transaction_id)
+                        .entry(entry.fragment_id)
                         .or_insert(vec![])
                         .push((entry.output_index, entry.output.clone()));
                 }

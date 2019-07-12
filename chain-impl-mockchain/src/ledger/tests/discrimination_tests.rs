@@ -1,5 +1,6 @@
 #![cfg(test)]
 
+use crate::fragment::Fragment;
 use crate::testing::{
     address::AddressData,
     arbitrary::KindTypeWithoutMultisig,
@@ -9,6 +10,7 @@ use crate::testing::{
 use crate::transaction::*;
 use crate::value::*;
 use chain_addr::Discrimination;
+use chain_core::property::Message as _;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -78,11 +80,12 @@ pub fn ledger_verifies_transaction_discrimination(
         .authenticate()
         .with_witness(&block0_hash, &faucet)
         .seal();
+    let fragment_id = Fragment::Transaction(signed_tx.clone()).id();
 
     let are_discriminations_unified = arbitrary_input_disc == arbitrary_output_disc;
 
     let fees = ledger.get_ledger_parameters();
-    let actual_result = ledger.apply_transaction(&signed_tx, &fees);
+    let actual_result = ledger.apply_transaction(&fragment_id, &signed_tx, &fees);
 
     match (are_discriminations_unified, actual_result) {
         (true, Ok(_)) => TestResult::passed(),

@@ -1,4 +1,4 @@
-use super::transaction::TransactionId;
+use crate::fragment::FragmentId;
 use crate::value::*;
 
 pub type TransactionIndex = u8;
@@ -7,7 +7,7 @@ pub type TransactionIndex = u8;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UtxoPointer {
     /// the transaction identifier where the unspent output is
-    pub transaction_id: TransactionId,
+    pub transaction_id: FragmentId,
     /// the output index within the pointed transaction's outputs
     pub output_index: TransactionIndex,
     /// the value we expect to read from this output
@@ -18,11 +18,7 @@ pub struct UtxoPointer {
 }
 
 impl UtxoPointer {
-    pub fn new(
-        transaction_id: TransactionId,
-        output_index: TransactionIndex,
-        value: Value,
-    ) -> Self {
+    pub fn new(transaction_id: FragmentId, output_index: TransactionIndex, value: Value) -> Self {
         UtxoPointer {
             transaction_id,
             output_index,

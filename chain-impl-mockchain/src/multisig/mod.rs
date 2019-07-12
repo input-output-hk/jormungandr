@@ -15,7 +15,7 @@ pub use index::{Index, TreeIndex};
 mod test {
     use super::*;
     use crate::accounting::account::SpendingCounter;
-    use crate::transaction::TransactionId;
+    use crate::transaction::{TransactionSignData, TransactionSignDataHash};
     use crate::{account, key};
     use chain_crypto::{PublicKey, SecretKey};
     use rand_core::{CryptoRng, RngCore};
@@ -63,9 +63,14 @@ mod test {
         };
 
         let fake_spending_counter = SpendingCounter::zero();
-        let fake_tid = TransactionId::hash_bytes(&[1, 2, 3]);
+        let fake_sign_data: TransactionSignData = vec![1, 2, 3].into();
+        let fake_sign_data_hash = TransactionSignDataHash::digest(&fake_sign_data);
         let fake_block0_hash = key::Hash::hash_bytes(&[1, 2, 3, 4, 5, 6, 7]);
-        let msg = WitnessMultisigData::new(&fake_block0_hash, &fake_tid, &fake_spending_counter);
+        let msg = WitnessMultisigData::new(
+            &fake_block0_hash,
+            &fake_sign_data_hash,
+            &fake_spending_counter,
+        );
 
         // test participant 1 and 3
         {
