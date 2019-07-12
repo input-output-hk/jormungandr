@@ -195,6 +195,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let blockchain = bootstrapped_node.blockchain.clone();
 
         let enclave = enclave.clone();
+        let stats_counter = stats_counter.clone();
 
         services.spawn_future("leadership", move |info| {
             let process = self::leadership::Process::new(
@@ -202,6 +203,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 fragment_pool,
                 blockchain.lock_read().tip.clone(),
                 block_task,
+                stats_counter,
             );
 
             process.start(enclave, new_epoch_notifier)

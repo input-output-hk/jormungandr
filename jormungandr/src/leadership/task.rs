@@ -7,6 +7,7 @@ use crate::{
     intercom::BlockMsg,
     leadership::{LeaderSchedule, Leadership},
     secure::enclave::{Enclave, LeaderId},
+    stats_counter::StatsCounter,
     utils::async_msg::MessageBox,
 };
 use chain_core::property::ChainLength as _;
@@ -38,6 +39,7 @@ pub struct Task {
     epoch_receiver: watch::Receiver<Option<TaskParameters>>,
     fragment_pool: Pool,
     block_message: MessageBox<BlockMsg>,
+    stats_counter: StatsCounter,
 }
 
 impl Task {
@@ -50,6 +52,7 @@ impl Task {
         fragment_pool: Pool,
         epoch_receiver: watch::Receiver<Option<TaskParameters>>,
         block_message: MessageBox<BlockMsg>,
+        stats_counter: StatsCounter,
     ) -> Self {
         let logger = Logger::root(
             logger,
@@ -67,6 +70,7 @@ impl Task {
             fragment_pool,
             epoch_receiver,
             block_message,
+            stats_counter,
         }
     }
 
@@ -78,6 +82,7 @@ impl Task {
         let blockchain_tip = self.blockchain_tip;
         let fragment_pool = self.fragment_pool;
         let block_message = self.block_message;
+        let stats_counter = self.stats_counter;
 
         self.epoch_receiver
             .map_err(|error| TaskError::LeadershipReceiver {
@@ -94,6 +99,7 @@ impl Task {
                     blockchain_tip.clone(),
                     fragment_pool.clone(),
                     task_parameters,
+                    stats_counter.clone(),
                 )
                 .map_err(|error| {
                     TaskError::LeadershipHandle { source: error }
@@ -116,6 +122,7 @@ fn handle_leadership(
     blockchain_tip: Tip,
     mut fragment_pool: Pool,
     task_parameters: TaskParameters,
+    stats_counter: StatsCounter,
 ) -> impl Future<Item = (), Error = HandleLeadershipError> {
     let schedule = LeaderSchedule::new(logger.clone(), &leader_id, &enclave, &task_parameters);
 
@@ -143,7 +150,7 @@ fn handle_leadership(
             block_message
                 .try_send(BlockMsg::LeadershipBlock(block))
                 .unwrap();
-
+            stats_counter.set_slot_start_time(scheduled_event.expected_time);
             future::ok(())
         })
 }
