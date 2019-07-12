@@ -17,7 +17,7 @@ p2p:
     - id: 2
       address: "/ip4/104.24.29.11/tcp/8299"
   public_address: "/ip4/127.0.0.1/tcp/8080"
-  topics_of_interests:
+  topics_of_interest:
     messages: low
     blocks: normal
 ```

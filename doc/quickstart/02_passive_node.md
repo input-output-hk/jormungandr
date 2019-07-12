@@ -36,7 +36,7 @@ p2p:
     - id: 1
       address: "/ip4/104.24.28.11/tcp/8299"
   public_address: "/ip4/u.v.x.y/tcp/8299"
-  topics_of_interests:
+  topics_of_interest:
     messages: low
     blocks: normal
 ```
@@ -72,7 +72,7 @@ Description of the fields:
       P2P service. This is the public address that will be distributed to other
       peers of the network that may find interest in participating to the
       blockchain dissemination with the node.
-    - `topics_of_interests`: The dissemination topics this node is interested to hear about:
+    - `topics_of_interest`: The dissemination topics this node is interested to hear about:
       - `messages`: Transactions and other ledger entries.
         Typical setting for a non-mining node: `low`. For a stakepool: `high`;
       - `blocks`: Notifications about new blocks.

@@ -23,7 +23,7 @@ p2p:
     from. This is the public address that will be distributed to other peers
     of the network that may find interest into participating to the blockchain
     dissemination with the node;
-- *topics_of_interests*: the different topics we are interested to hear about:
+- *topics_of_interest*: the different topics we are interested to hear about:
     - *messages*: notify other peers this node is interested about Transactions
     typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
     - *blocks*: notify other peers this node is interested about new Blocs.

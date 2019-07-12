@@ -56,7 +56,7 @@ pub struct P2pConfig {
     /// When connecting to different nodes we will expose these too in order to
     /// help the different modules of the P2P topology engine to determine the
     /// best possible neighborhood.
-    pub topics_of_interests: Option<BTreeMap<Topic, InterestLevel>>,
+    pub topics_of_interest: Option<BTreeMap<Topic, InterestLevel>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

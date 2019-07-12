@@ -137,7 +137,7 @@ fn generate_network(
         protocol: Protocol::Grpc,
         subscriptions: config
             .p2p
-            .topics_of_interests
+            .topics_of_interest
             .clone()
             .unwrap_or(BTreeMap::new()),
         timeout: std::time::Duration::from_secs(15),

@@ -20,7 +20,7 @@ pub struct Peer2Peer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trusted_peers: Option<Vec<Peer>>,
     pub public_address: String,
-    pub topics_of_interests: TopicsOfInterests,
+    pub topics_of_interest: TopicsOfInterest,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -30,7 +30,7 @@ pub struct Peer {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TopicsOfInterests {
+pub struct TopicsOfInterest {
     pub messages: String,
     pub blocks: String,
 }
@@ -69,7 +69,7 @@ impl NodeConfig {
             p2p: Peer2Peer {
                 trusted_peers: None,
                 public_address: format!("/ip4/127.0.0.1/tcp/{}", public_address_port.to_string()),
-                topics_of_interests: TopicsOfInterests {
+                topics_of_interest: TopicsOfInterest {
                     messages: String::from("high"),
                     blocks: String::from("high"),
                 },
