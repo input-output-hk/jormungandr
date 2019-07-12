@@ -54,7 +54,7 @@ cfg_if! {
 // Allow to differentiate between address in
 // production and testing setting, so that
 // one type of address is not used in another setting.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Hash)]
 pub enum Discrimination {
     Production,
     Test,
@@ -66,7 +66,7 @@ pub enum Discrimination {
 /// * Group address : an ed25519 spending public key followed by a group public key used for staking
 /// * Account address : an ed25519 stake public key
 /// * Multisig address : a multisig public key
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub enum Kind {
     Single(PublicKey<Ed25519>),
     Group(PublicKey<Ed25519>, PublicKey<Ed25519>),

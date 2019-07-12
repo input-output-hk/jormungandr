@@ -91,6 +91,7 @@ pub struct Values<'a, V> {
 
 /// structure used by the iterator or the getter of the UTxO `Ledger`
 ///
+#[derive(Debug)]
 pub struct Entry<'a, OutputAddress> {
     pub transaction_id: TransactionId,
     pub output_index: u8,

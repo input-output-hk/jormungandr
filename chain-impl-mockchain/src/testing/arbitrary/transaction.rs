@@ -1,23 +1,23 @@
 use super::ArbitraryAddressDataVec;
-use crate::ledger::Ledger;
-use crate::transaction::{Input, Output};
-use crate::utxo::{self, Entry};
 use crate::{
+    account::Ledger as AccountLedger,
+    ledger::Ledger,
     testing::address::{AddressData, AddressDataValue},
     testing::arbitrary::AverageValue,
+    transaction::{Input, Output},
+    utxo::{self, Entry},
     value::*,
 };
-use chain_addr::Address;
+use chain_addr::{Address, Kind};
+use chain_crypto::{Ed25519, PublicKey};
 use quickcheck::{Arbitrary, Gen};
-use std::cmp;
-use std::collections::HashSet;
-use std::iter;
+use std::{cmp, collections::HashSet, iter};
 
 #[derive(Clone, Debug)]
 pub struct ArbitraryValidTransactionData {
     pub addresses: Vec<AddressDataValue>,
-    input_addresses: Vec<AddressDataValue>,
-    output_addresses: Vec<AddressDataValue>,
+    pub input_addresses: Vec<AddressDataValue>,
+    pub output_addresses: Vec<AddressDataValue>,
 }
 
 impl Arbitrary for ArbitraryValidTransactionData {
@@ -179,5 +179,93 @@ impl ArbitraryValidTransactionData {
             .cloned()
             .map(|x| x.address_data)
             .collect()
+    }
+}
+
+pub struct AccountStatesVerifier(pub ArbitraryValidTransactionData);
+
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub Error
+        AccountNotFound {  element: PublicKey<Ed25519> } = "Cannot find coresponding account for expected {element}",
+        WrongValue { element: PublicKey<Ed25519>, expected: Value, actual: Value } = "Account funds are different for {element} than expected: {expected}, but got: {actual}",
+}
+
+impl AccountStatesVerifier {
+    pub fn new(transaction_data: ArbitraryValidTransactionData) -> Self {
+        AccountStatesVerifier(transaction_data)
+    }
+
+    pub fn calculate_current_account_states(&self) -> Vec<AddressDataValue> {
+        let inputs = &self.0.input_addresses;
+        let snapshot: Vec<AddressDataValue> = self
+            .0
+            .addresses
+            .iter()
+            .cloned()
+            .filter(filter_accounts)
+            .map(|x| find_equal_and_sub(x, inputs))
+            .collect();
+
+        let outputs = &self.0.output_addresses;
+        let snapshot: Vec<AddressDataValue> = snapshot
+            .iter()
+            .cloned()
+            .map(|x| find_equal_and_add(x, outputs))
+            .collect();
+        snapshot
+    }
+
+    pub fn verify(&self, accounts: &AccountLedger) -> Result<(), Error> {
+        let account_snapshot = self.calculate_current_account_states();
+        for address_data_value in account_snapshot.iter() {
+            let result = accounts.get_state(&address_data_value.address_data.public_key().into());
+            match result {
+                Ok(state) => {
+                    if state.value != address_data_value.value {
+                        return Err(Error::WrongValue {
+                            element: address_data_value.address_data.public_key(),
+                            actual: state.value.clone(),
+                            expected: address_data_value.value.clone(),
+                        });
+                    }
+                }
+                Err(_) => {
+                    return Err(Error::AccountNotFound {
+                        element: address_data_value.address_data.public_key(),
+                    })
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn find_equal_and_sub(x: AddressDataValue, collection: &Vec<AddressDataValue>) -> AddressDataValue {
+    match collection
+        .iter()
+        .cloned()
+        .find(|y| y.address_data == x.address_data)
+    {
+        Some(y) => AddressDataValue::new(x.address_data, (x.value - y.value).unwrap().clone()),
+        None => x,
+    }
+}
+
+fn find_equal_and_add(x: AddressDataValue, collection: &Vec<AddressDataValue>) -> AddressDataValue {
+    match collection
+        .iter()
+        .cloned()
+        .find(|y| y.address_data == x.address_data)
+    {
+        Some(y) => AddressDataValue::new(x.address_data, (x.value + y.value).unwrap().clone()),
+        None => x,
+    }
+}
+
+fn filter_accounts(x: &AddressDataValue) -> bool {
+    match x.address_data.kind() {
+        Kind::Account { .. } => true,
+        _ => false,
     }
 }

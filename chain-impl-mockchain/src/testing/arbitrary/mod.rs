@@ -43,7 +43,7 @@ pub struct AverageValue(pub Value);
 
 impl Arbitrary for AverageValue {
     fn arbitrary<G: Gen>(gen: &mut G) -> Self {
-        AverageValue(Value(cmp::max(u64::arbitrary(gen) % 10000, 253)))
+        AverageValue(Value(u64::arbitrary(gen) % 10000 + 253))
     }
 }
 
