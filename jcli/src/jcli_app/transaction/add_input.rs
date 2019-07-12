@@ -1,5 +1,6 @@
+use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::transaction::{
-    Input, InputEnum, TransactionId, TransactionIndex, UtxoPointer,
+    Input, InputEnum, TransactionIndex, UtxoPointer,
 };
 use jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces;
@@ -13,7 +14,7 @@ pub struct AddInput {
 
     /// the Transaction ID which contains the credited funds to utilise.
     #[structopt(name = "TRANSACTION_ID")]
-    pub transaction_id: TransactionId,
+    pub transaction_id: FragmentId,
 
     /// the output index where the credited funds to utilise are.
     #[structopt(name = "INDEX")]
@@ -53,7 +54,7 @@ mod tests {
         let tempfile = mktemp::Temp::new_file().unwrap();
 
         let temp_staging_file = tempfile.to_path_buf();
-        let transaction_id: TransactionId =
+        let transaction_id: FragmentId =
             Hash::from_str("c355a02d3b5337ad0e5f5940582675229f25bc03e7feebc3aa929738e1fec35e")
                 .unwrap();
         let transaction_index: TransactionIndex = 0;

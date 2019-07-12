@@ -3,7 +3,7 @@ use chain_impl_mockchain::{
     self as chain,
     fee::FeeAlgorithm,
     fragment::Fragment,
-    transaction::{NoExtra, Output, Transaction, TransactionId},
+    transaction::{NoExtra, Output, Transaction, TransactionSignDataHash},
     txbuilder,
     value::Value,
 };
@@ -248,7 +248,7 @@ impl Staging {
         chain::txbuilder::TransactionBuilder::from(self.transaction())
     }
 
-    pub fn id(&self) -> TransactionId {
+    pub fn id(&self) -> TransactionSignDataHash {
         if let Some(extra) = &self.extra {
             self.transaction_with_extra(&extra).hash()
         } else {

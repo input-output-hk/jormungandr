@@ -60,7 +60,7 @@ impl UTxOInfo {
 impl<'a> From<Entry<'a, chain_addr::Address>> for UTxOInfo {
     fn from(utxo_entry: Entry<'a, chain_addr::Address>) -> Self {
         Self {
-            transaction_id: utxo_entry.transaction_id.into(),
+            transaction_id: utxo_entry.fragment_id.into(),
             index_in_transaction: utxo_entry.output_index,
             address: utxo_entry.output.address.clone().into(),
             associated_fund: utxo_entry.output.value.into(),
