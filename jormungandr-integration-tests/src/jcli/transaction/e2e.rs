@@ -169,13 +169,13 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
         0,
         "since only one transaction was made, idx should be equal to 1"
     );
-/*
-    assert_eq!(
-        utxo.transaction_id().to_hex(),
-        transaction_id,
-        "transaction hash should be equal to new transaction"
-    );
-*/
+    /*
+        assert_eq!(
+            utxo.transaction_id().to_hex(),
+            transaction_id,
+            "transaction hash should be equal to new transaction"
+        );
+    */
 }
 
 #[test]
