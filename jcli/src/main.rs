@@ -7,7 +7,6 @@ extern crate gtmpl;
 extern crate hex;
 extern crate jormungandr_lib;
 extern crate mime;
-extern crate num_traits;
 extern crate rand;
 extern crate rand_chacha;
 extern crate reqwest;
