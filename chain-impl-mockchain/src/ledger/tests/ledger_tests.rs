@@ -7,14 +7,16 @@ use crate::{
         Error::{NotEnoughSignatures, TransactionHasTooManyOutputs},
         Ledger,
     },
+    testing::{
+        address::AddressData,
+        arbitrary::{
+            AccountStatesVerifier, ArbitraryValidTransactionData, NonZeroValue, UtxoVerifier,
+        },
+        ledger::{self, ConfigBuilder},
+        tx_builder::TransactionBuilder,
+    },
     transaction::*,
     value::*,
-    testing::{ 
-        address::AddressData,
-        arbitrary::{ArbitraryValidTransactionData, NonZeroValue, AccountStatesVerifier},
-        ledger::{self,ConfigBuilder},
-        tx_builder::TransactionBuilder,
-    }
 };
 use chain_addr::Discrimination;
 use chain_core::property::Message as _;
@@ -123,17 +125,29 @@ pub fn total_funds_are_total_in_ledger(
     match result {
         Err(err) => TestResult::error(format!("Error from ledger: {:?}", err)),
 
-        Ok((ledger,_)) =>  {
+        Ok((ledger, _)) => {
             let total_funds_after = calculate_total_funds_in_ledger(&ledger);
             if total_funds_before != total_funds_after {
                 return TestResult::error(format!(
                     "Total funds in ledger before and after transaction is not equal {} <> {} ",
-                    total_funds_before, total_funds_after))
+                    total_funds_before, total_funds_after
+                ));
             }
-            let account_state_verifier = AccountStatesVerifier::new(transaction_data);
-            let account_state_verification_result = account_state_verifier.verify(ledger.accounts());
-            if account_state_verification_result.is_err(){
-                return TestResult::error(format!("{}",account_state_verification_result.err().unwrap()))
+
+            let utxo_verifier = UtxoVerifier::new(transaction_data.clone());
+            let utxo_verification_result = utxo_verifier.verify(&ledger);
+            if utxo_verification_result.is_err() {
+                return TestResult::error(format!("{}", utxo_verification_result.err().unwrap()));
+            }
+
+            let account_state_verifier = AccountStatesVerifier::new(transaction_data.clone());
+            let account_state_verification_result =
+                account_state_verifier.verify(ledger.accounts());
+            if account_state_verification_result.is_err() {
+                return TestResult::error(format!(
+                    "{}",
+                    account_state_verification_result.err().unwrap()
+                ));
             }
             TestResult::passed()
         }

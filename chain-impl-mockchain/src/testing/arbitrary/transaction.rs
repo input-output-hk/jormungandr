@@ -187,8 +187,9 @@ pub struct AccountStatesVerifier(pub ArbitraryValidTransactionData);
 custom_error! {
     #[derive(Clone, PartialEq, Eq)]
     pub Error
-        AccountNotFound {  element: PublicKey<Ed25519> } = "Cannot find coresponding account for expected {element}",
-        WrongValue { element: PublicKey<Ed25519>, expected: Value, actual: Value } = "Account funds are different for {element} than expected: {expected}, but got: {actual}",
+        AccountNotFound { element: PublicKey<Ed25519> } = "Cannot find coresponding account address for expected {element}",
+        UtxoNotFound { output: PublicKey<Ed25519>, value: Value} = "Cannot find expected output: {output} with value: {value}",
+        WrongValue { element: PublicKey<Ed25519>, expected: Value, actual: Value } = "Address funds are different for {element} than expected: {expected}, but got: {actual}",
 }
 
 impl AccountStatesVerifier {
@@ -267,5 +268,60 @@ fn filter_accounts(x: &AddressDataValue) -> bool {
     match x.address_data.kind() {
         Kind::Account { .. } => true,
         _ => false,
+    }
+}
+
+fn filter_utxo(x: &AddressDataValue) -> bool {
+    match x.address_data.kind() {
+        Kind::Single { .. } | Kind::Group { .. } => true,
+        _ => false,
+    }
+}
+
+fn with_non_empty_value(x: &AddressDataValue) -> bool {
+    x.value > Value::zero()
+}
+
+pub struct UtxoVerifier(pub ArbitraryValidTransactionData);
+
+impl UtxoVerifier {
+    pub fn new(transaction_data: ArbitraryValidTransactionData) -> Self {
+        UtxoVerifier(transaction_data)
+    }
+
+    pub fn calculate_current_utxo(&self) -> Vec<AddressDataValue> {
+        let inputs = &self.0.input_addresses;
+        let all = &self.0.addresses;
+        let outputs = &self.0.output_addresses;
+
+        let utxo_not_changed: Vec<AddressDataValue> = all
+            .iter()
+            .cloned()
+            .filter(filter_utxo)
+            .filter(|x| !inputs.contains(x))
+            .collect();
+        let utxo_added: Vec<AddressDataValue> =
+            outputs.iter().cloned().filter(filter_utxo).collect();
+
+        let mut snapshot = Vec::new();
+        snapshot.extend(utxo_not_changed);
+        snapshot.extend(utxo_added);
+        snapshot
+    }
+
+    pub fn verify(&self, ledger: &Ledger) -> Result<(), Error> {
+        let expected_utxo_snapshots = &self.calculate_current_utxo();
+        for utxo_snapshot in expected_utxo_snapshots {
+            if !ledger.utxos().any(|x| {
+                x.output.address.clone() == utxo_snapshot.address_data.address.clone()
+                    && x.output.value.0 == utxo_snapshot.value.0
+            }) {
+                return Err(Error::UtxoNotFound {
+                    output: utxo_snapshot.address_data.public_key(),
+                    value: utxo_snapshot.value.clone(),
+                });
+            }
+        }
+        Ok(())
     }
 }
