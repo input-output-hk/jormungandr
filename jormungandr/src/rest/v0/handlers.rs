@@ -200,7 +200,7 @@ pub fn get_settings(context: State<Context>) -> Result<impl Responder, Error> {
 
     Ok(Json(json!({
         "block0Hash": static_params.block0_initial_hash.to_string(),
-        "block0Time": SystemTime::from(static_params.block0_start_time.0),
+        "block0Time": SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
         "currSlotStartTime": context.stats_counter.slot_start_time().map(SystemTime::from),
         "consensusVersion": settings.consensus_version.to_string(),
         "fees":{

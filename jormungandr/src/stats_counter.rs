@@ -55,13 +55,14 @@ impl StatsCounter {
     pub fn set_slot_start_time(&self, time: SecondsSinceUnixEpoch) {
         self.stats
             .slot_start_time
-            .store(time.into(), Ordering::Relaxed)
+            .store(time.to_secs(), Ordering::Relaxed)
     }
 
     pub fn slot_start_time(&self) -> Option<SecondsSinceUnixEpoch> {
         match self.stats.slot_start_time.load(Ordering::Relaxed) {
             SLOT_START_TIME_UNDEFINED => None,
-            slot_start_time => Some(slot_start_time.into()),
+            slot_start_time => Some(slot_start_time),
         }
+        .map(SecondsSinceUnixEpoch::from_secs)
     }
 }
