@@ -144,7 +144,7 @@ fn handle_leadership(
             block_message
                 .try_send(BlockMsg::LeadershipBlock(block))
                 .unwrap();
-            stats_counter.set_slot_start_time(scheduled_event.expected_time);
+            stats_counter.set_slot_start_time(scheduled_event.expected_time.into());
             future::ok(())
         })
 }
