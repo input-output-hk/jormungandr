@@ -31,12 +31,12 @@ storage: "/mnt/cardano/storage"
 rest:
   listen: "127.0.0.1:8443"
 
-peer_2_peer:
+p2p:
   trusted_peers:
     - id: 1
       address: "/ip4/104.24.28.11/tcp/8299"
   public_address: "/ip4/u.v.x.y/tcp/8299"
-  topics_of_interests:
+  topics_of_interest:
     messages: low
     blocks: normal
 ```
@@ -63,7 +63,7 @@ Description of the fields:
 - `rest`: (optional) Configuration of the REST endpoint.
     - `listen`: _address_:_port_ to listen for requests
     - `pkcs12`: (optional) Certificate file
-- `peer_2_peer`: P2P network settings
+- `p2p`: P2P network settings
     - `trusted_peers`: (optional) the list of nodes to connect to in order to
       bootstrap the P2P topology (and bootstrap our local blockchain);
     - `public_id`: (optional) the public identifier sent to the other nodes
@@ -72,7 +72,7 @@ Description of the fields:
       P2P service. This is the public address that will be distributed to other
       peers of the network that may find interest in participating to the
       blockchain dissemination with the node.
-    - `topics_of_interests`: The dissemination topics this node is interested to hear about:
+    - `topics_of_interest`: The dissemination topics this node is interested to hear about:
       - `messages`: Transactions and other ledger entries.
         Typical setting for a non-mining node: `low`. For a stakepool: `high`;
       - `blocks`: Notifications about new blocks.

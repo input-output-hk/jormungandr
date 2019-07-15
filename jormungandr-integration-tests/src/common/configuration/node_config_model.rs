@@ -20,7 +20,7 @@ pub struct Peer2Peer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trusted_peers: Option<Vec<Peer>>,
     pub public_address: String,
-    pub topics_of_interests: TopicsOfInterests,
+    pub topics_of_interest: TopicsOfInterest,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -30,7 +30,7 @@ pub struct Peer {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TopicsOfInterests {
+pub struct TopicsOfInterest {
     pub messages: String,
     pub blocks: String,
 }
@@ -42,7 +42,7 @@ pub struct NodeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log: Option<Log>,
     pub rest: Option<Rest>,
-    pub peer_2_peer: Peer2Peer,
+    pub p2p: Peer2Peer,
 }
 
 impl NodeConfig {
@@ -66,10 +66,10 @@ impl NodeConfig {
             rest: Some(Rest {
                 listen: format!("127.0.0.1:{}", rest_port.to_string()),
             }),
-            peer_2_peer: Peer2Peer {
+            p2p: Peer2Peer {
                 trusted_peers: None,
                 public_address: format!("/ip4/127.0.0.1/tcp/{}", public_address_port.to_string()),
-                topics_of_interests: TopicsOfInterests {
+                topics_of_interest: TopicsOfInterest {
                     messages: String::from("high"),
                     blocks: String::from("high"),
                 },
@@ -80,7 +80,7 @@ impl NodeConfig {
     pub fn regenerate_ports(&mut self) {
         self.rest.as_mut().unwrap().listen =
             format!("127.0.0.1:{}", super::get_available_port().to_string()).to_string();
-        self.peer_2_peer.public_address = format!(
+        self.p2p.public_address = format!(
             "/ip4/127.0.0.1/tcp/{}",
             super::get_available_port().to_string()
         );

@@ -111,12 +111,12 @@ log:
   level: trace
   format: json
 rest:
- listen: "127.0.0.1:8607"
-peer_2_peer:
- public_address: /ip4/127.0.0.1/tcp/8606
- topics_of_interests:
- messages: low
- blocks: normal
+  listen: "127.0.0.1:8607"
+p2p:
+  public_address: /ip4/127.0.0.1/tcp/8606
+  topics_of_interest:
+    messages: low
+    blocks: normal
 ```
 
 8. Start Jörmungandr node :
