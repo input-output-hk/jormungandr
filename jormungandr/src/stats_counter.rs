@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
+use std::sync::{Arc, PoisonError, RwLock};
+use std::time::{Instant, SystemTime};
 
 #[derive(Clone, Debug, Default)]
 pub struct StatsCounter {
@@ -12,6 +12,7 @@ struct StatsCounterImpl {
     tx_recv_cnt: AtomicUsize,
     block_recv_cnt: AtomicUsize,
     start_time: Instant,
+    slot_start_time: RwLock<Option<SystemTime>>,
 }
 
 impl Default for StatsCounterImpl {
@@ -20,6 +21,7 @@ impl Default for StatsCounterImpl {
             tx_recv_cnt: AtomicUsize::default(),
             block_recv_cnt: AtomicUsize::default(),
             start_time: Instant::now(),
+            slot_start_time: RwLock::default(),
         }
     }
 }
@@ -29,7 +31,7 @@ impl StatsCounter {
         self.stats.tx_recv_cnt.fetch_add(count, Ordering::Relaxed);
     }
 
-    pub fn get_tx_recv_cnt(&self) -> u64 {
+    pub fn tx_recv_cnt(&self) -> u64 {
         self.stats.tx_recv_cnt.load(Ordering::Relaxed) as u64
     }
 
@@ -39,11 +41,27 @@ impl StatsCounter {
             .fetch_add(count, Ordering::Relaxed);
     }
 
-    pub fn get_block_recv_cnt(&self) -> u64 {
+    pub fn block_recv_cnt(&self) -> u64 {
         self.stats.block_recv_cnt.load(Ordering::Relaxed) as u64
     }
 
-    pub fn get_uptime_sec(&self) -> u64 {
+    pub fn uptime_sec(&self) -> u64 {
         self.stats.start_time.elapsed().as_secs()
+    }
+
+    pub fn set_slot_start_time(&self, time: SystemTime) {
+        self.stats
+            .slot_start_time
+            .write()
+            .unwrap_or_else(PoisonError::into_inner)
+            .replace(time);
+    }
+
+    pub fn slot_start_time(&self) -> Option<SystemTime> {
+        *self
+            .stats
+            .slot_start_time
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
     }
 }

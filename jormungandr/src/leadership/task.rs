@@ -7,6 +7,7 @@ use crate::{
     intercom::BlockMsg,
     leadership::{LeaderSchedule, Leadership},
     secure::enclave::{Enclave, LeaderId},
+    stats_counter::StatsCounter,
     utils::async_msg::MessageBox,
 };
 use chain_core::property::ChainLength as _;
@@ -31,13 +32,8 @@ pub struct TaskParameters {
 }
 
 pub struct Task {
-    logger: Logger,
-    leader: LeaderId,
-    enclave: Enclave,
-    blockchain_tip: Tip,
+    leadership_params: HandleLeadershipParams,
     epoch_receiver: watch::Receiver<Option<TaskParameters>>,
-    fragment_pool: Pool,
-    block_message: MessageBox<BlockMsg>,
 }
 
 impl Task {
@@ -50,6 +46,7 @@ impl Task {
         fragment_pool: Pool,
         epoch_receiver: watch::Receiver<Option<TaskParameters>>,
         block_message: MessageBox<BlockMsg>,
+        stats_counter: StatsCounter,
     ) -> Self {
         let logger = Logger::root(
             logger,
@@ -60,25 +57,22 @@ impl Task {
         );
 
         Task {
-            logger,
-            leader: leader,
-            enclave: enclave,
-            blockchain_tip,
-            fragment_pool,
+            leadership_params: HandleLeadershipParams {
+                logger,
+                leader,
+                enclave,
+                blockchain_tip,
+                fragment_pool,
+                block_message,
+                stats_counter,
+            },
             epoch_receiver,
-            block_message,
         }
     }
 
     pub fn start(self) -> impl Future<Item = (), Error = ()> {
-        let handle_logger = self.logger.clone();
-        let crit_logger = self.logger;
-        let leader = self.leader;
-        let enclave = self.enclave;
-        let blockchain_tip = self.blockchain_tip;
-        let fragment_pool = self.fragment_pool;
-        let block_message = self.block_message;
-
+        let crit_logger = self.leadership_params.logger.clone();
+        let leadership_params = self.leadership_params;
         self.epoch_receiver
             .map_err(|error| TaskError::LeadershipReceiver {
                 extra: format!("{}", error),
@@ -86,15 +80,7 @@ impl Task {
             // filter_map so we don't have to do the pattern match on `Option::Nothing`.
             .filter_map(|task_parameters| task_parameters)
             .for_each(move |task_parameters| {
-                handle_leadership(
-                    block_message.clone(),
-                    leader,
-                    enclave.clone(),
-                    handle_logger.clone(),
-                    blockchain_tip.clone(),
-                    fragment_pool.clone(),
-                    task_parameters,
-                )
+                handle_leadership(leadership_params.clone(), task_parameters)
                 .map_err(|error| {
                     TaskError::LeadershipHandle { source: error }
                 })
@@ -105,19 +91,34 @@ impl Task {
     }
 }
 
+#[derive(Clone)]
+struct HandleLeadershipParams {
+    logger: Logger,
+    leader: LeaderId,
+    enclave: Enclave,
+    blockchain_tip: Tip,
+    fragment_pool: Pool,
+    block_message: MessageBox<BlockMsg>,
+    stats_counter: StatsCounter,
+}
+
 /// function that will run for the length of the Epoch associated
 /// to the given leadership
 ///
 fn handle_leadership(
-    mut block_message: MessageBox<BlockMsg>,
-    leader_id: LeaderId,
-    enclave: Enclave,
-    logger: Logger,
-    blockchain_tip: Tip,
-    mut fragment_pool: Pool,
+    leadership_params: HandleLeadershipParams,
     task_parameters: TaskParameters,
 ) -> impl Future<Item = (), Error = HandleLeadershipError> {
-    let schedule = LeaderSchedule::new(logger.clone(), &leader_id, &enclave, &task_parameters);
+    let HandleLeadershipParams {
+        logger,
+        leader,
+        enclave,
+        mut block_message,
+        mut fragment_pool,
+        blockchain_tip,
+        stats_counter,
+    } = leadership_params;
+    let schedule = LeaderSchedule::new(logger.clone(), &leader, &enclave, &task_parameters);
 
     schedule
         .map_err(|err| HandleLeadershipError::Schedule { source: err })
@@ -143,7 +144,7 @@ fn handle_leadership(
             block_message
                 .try_send(BlockMsg::LeadershipBlock(block))
                 .unwrap();
-
+            stats_counter.set_slot_start_time(scheduled_event.expected_time);
             future::ok(())
         })
 }

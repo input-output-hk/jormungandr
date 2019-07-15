@@ -5,6 +5,7 @@ use crate::{
     intercom::BlockMsg,
     leadership::{EpochParameters, Leadership, Task, TaskParameters},
     secure::enclave::{Enclave, LeaderId},
+    stats_counter::StatsCounter,
     utils::{async_msg::MessageBox, task::TokioServiceInfo},
 };
 use chain_core::property::BlockDate as _;
@@ -37,6 +38,7 @@ pub struct Process {
 
     epoch_broadcaster: watch::Sender<Option<TaskParameters>>,
     epoch_receiver: watch::Receiver<Option<TaskParameters>>,
+    stats_counter: StatsCounter,
 }
 
 impl Process {
@@ -48,6 +50,7 @@ impl Process {
         fragment_pool: Pool,
         blockchain_tip: Tip,
         block_message_box: MessageBox<BlockMsg>,
+        stats_counter: StatsCounter,
     ) -> Self {
         let (epoch_broadcaster, epoch_receiver) = watch::channel(None);
 
@@ -60,6 +63,7 @@ impl Process {
             block_message_box,
             epoch_broadcaster,
             epoch_receiver,
+            stats_counter,
         }
     }
 
@@ -114,6 +118,7 @@ impl Process {
             fragment_pool,
             epoch_receiver,
             block_message,
+            self.stats_counter.clone(),
         );
 
         self.service_info.spawn(task.start())
