@@ -33,7 +33,7 @@ where
     T: Clone + PartialEq + Eq + Hash,
     U: std::clone::Clone,
 {
-    let keys: Vec<T> = source.iter().map(|(id, _)| id.clone()).collect();
+    let keys: Vec<T> = source.keys().cloned().collect();
     let randomized_key = choose_random_vec_subset(&keys, gen);
     randomized_key
         .iter()
