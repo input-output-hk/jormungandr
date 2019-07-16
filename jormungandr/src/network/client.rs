@@ -197,6 +197,9 @@ where
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
 {
+    // FIXME: use this to handle chain pull requests when two-stage
+    // chain pull processing is implemented in the blockchain task.
+    #[allow(dead_code)]
     fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
         let block_box = self.channels.block_box.clone();
         let logger = self.logger.clone();
@@ -223,6 +226,49 @@ where
                             )
                             .map_err(move |e| {
                                 warn!(err_logger, "chain header validation failed: {:?}", e)
+                            })
+                        })
+                }),
+        );
+    }
+}
+
+impl<S> Client<S>
+where
+    S: BlockService<Block = Block>,
+    S::PullBlocksToTipFuture: Send + 'static,
+    S::PullBlocksStream: Send + 'static,
+{
+    // Temporary support for pulling chain blocks without two-stage
+    // retrieval.
+    fn pull_blocks_to_tip(&mut self, req: ChainPullRequest<HeaderHash>) {
+        let block_box = self.channels.block_box.clone();
+        let logger = self.logger.clone();
+        let err_logger = logger.clone();
+        tokio::spawn(
+            self.service
+                .pull_blocks_to_tip(&req.from)
+                .map_err(move |e| {
+                    warn!(err_logger, "PullBlocksToTip request failed: {:?}", e);
+                })
+                .and_then(move |stream| {
+                    let err_logger = logger.clone();
+                    stream
+                        .map_err(move |e| {
+                            warn!(
+                                err_logger,
+                                "PullBlocksToTip response stream failed: {:?}", e
+                            );
+                        })
+                        .for_each(move |block| {
+                            let err_logger = logger.clone();
+                            InboundProcessing::with_unary(
+                                block_box.clone(),
+                                logger.clone(),
+                                |reply| BlockMsg::NetworkBlock(block, reply),
+                            )
+                            .map_err(move |e| {
+                                warn!(err_logger, "pulled block validation failed: {:?}", e)
                             })
                         })
                 }),
@@ -276,6 +322,8 @@ where
     S: BlockService<Block = Block>,
     S::GetBlocksFuture: Send + 'static,
     S::GetBlocksStream: Send + 'static,
+    S::PullBlocksToTipFuture: Send + 'static,
+    S::PullBlocksStream: Send + 'static,
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
     S::PushHeadersFuture: Send + 'static,
@@ -322,7 +370,9 @@ where
                 }
                 Async::Ready(Some(req)) => {
                     streams_ready = true;
-                    self.pull_headers(req);
+                    // FIXME: implement two-stage chain pull processing
+                    // in the blockchain task and use pull_headers here.
+                    self.pull_blocks_to_tip(req);
                 }
             }
             if !streams_ready {
