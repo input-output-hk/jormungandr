@@ -164,30 +164,58 @@ where
             }
             BlockEvent::Missing(req) => {
                 debug!(self.logger, "received block event Missing");
-                let (reply_handle, stream) = intercom::stream_reply::<
-                    Header,
-                    network_core::error::Error,
-                >(self.logger.clone());
-                self.channels.client_box.send_to(ClientMsg::GetHeadersRange(
-                    req.from,
-                    req.to,
-                    reply_handle,
-                ));
-                let node_id = self.remote_node_id;
-                let done_logger = self.logger.clone();
-                let err_logger = self.logger.clone();
-                tokio::spawn(
-                    self.service
-                        .push_headers(stream)
-                        .map(move |_| {
-                            debug!(done_logger, "finished pushing headers to {}", node_id);
-                        })
-                        .map_err(move |err| {
-                            warn!(err_logger, "PushHeaders request failed: {:?}", err);
-                        }),
-                );
+                self.push_missing_blocks(req);
             }
         }
+    }
+
+    // FIXME: use this to handle BlockEvent::Missing events when two-stage
+    // chain pull processing is implemented in the blockchain task.
+    #[allow(dead_code)]
+    fn push_missing_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
+        let (reply_handle, stream) =
+            intercom::stream_reply::<Header, network_core::error::Error>(self.logger.clone());
+        self.channels.client_box.send_to(ClientMsg::GetHeadersRange(
+            req.from,
+            req.to,
+            reply_handle,
+        ));
+        let node_id = self.remote_node_id;
+        let done_logger = self.logger.clone();
+        let err_logger = self.logger.clone();
+        tokio::spawn(
+            self.service
+                .push_headers(stream)
+                .map(move |_| {
+                    debug!(done_logger, "finished pushing headers to {}", node_id);
+                })
+                .map_err(move |err| {
+                    warn!(err_logger, "PushHeaders request failed: {:?}", err);
+                }),
+        );
+    }
+
+    // Temporary support for pushing chain blocks without two-stage
+    // retrieval.
+    fn push_missing_blocks(&mut self, req: ChainPullRequest<HeaderHash>) {
+        let (reply_handle, stream) =
+            intercom::stream_reply::<Block, network_core::error::Error>(self.logger.clone());
+        self.channels
+            .client_box
+            .send_to(ClientMsg::PullBlocksToTip(req.from, reply_handle));
+        let node_id = self.remote_node_id;
+        let done_logger = self.logger.clone();
+        let err_logger = self.logger.clone();
+        tokio::spawn(
+            self.service
+                .upload_blocks(stream)
+                .map(move |_| {
+                    debug!(done_logger, "finished pushing blocks to {}", node_id);
+                })
+                .map_err(move |err| {
+                    warn!(err_logger, "UploadBlocks request failed: {:?}", err);
+                }),
+        );
     }
 }
 
