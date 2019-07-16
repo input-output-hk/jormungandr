@@ -2,6 +2,8 @@ pub mod address;
 pub mod kind_type;
 pub mod output;
 pub mod transaction;
+pub mod update_proposal;
+pub mod utils;
 
 use crate::transaction::Output;
 use crate::value::Value;
@@ -13,6 +15,7 @@ pub use kind_type::*;
 pub use output::*;
 use std::cmp;
 pub use transaction::*;
+pub use update_proposal::*;
 
 impl Arbitrary for Value {
     fn arbitrary<G: Gen>(gen: &mut G) -> Self {

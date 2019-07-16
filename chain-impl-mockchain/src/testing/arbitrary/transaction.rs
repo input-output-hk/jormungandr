@@ -3,7 +3,7 @@ use crate::{
     account::Ledger as AccountLedger,
     ledger::Ledger,
     testing::address::{AddressData, AddressDataValue},
-    testing::arbitrary::AverageValue,
+    testing::arbitrary::{utils as arbitrary_utils, AverageValue},
     transaction::{Input, Output},
     utxo::{self, Entry},
     value::*,
@@ -11,7 +11,7 @@ use crate::{
 use chain_addr::{Address, Kind};
 use chain_crypto::{Ed25519, PublicKey};
 use quickcheck::{Arbitrary, Gen};
-use std::{cmp, collections::HashSet, iter};
+use std::iter;
 
 #[derive(Clone, Debug)]
 pub struct ArbitraryValidTransactionData {
@@ -30,7 +30,8 @@ impl Arbitrary for ArbitraryValidTransactionData {
             .collect();
         let addresses_values: Vec<AddressDataValue> =
             tx_data::zip_addresses_and_values(&source.0, values);
-        let input_addresses_values = tx_data::choose_random_subset(&addresses_values, gen);
+        let input_addresses_values =
+            arbitrary_utils::choose_random_vec_subset(&addresses_values, gen);
         let total_input_value = input_addresses_values
             .iter()
             .cloned()
@@ -71,33 +72,6 @@ impl ArbitraryValidTransactionData {
             .collect()
     }
 
-    fn choose_random_subset<G: Gen>(
-        source: &Vec<AddressDataValue>,
-        gen: &mut G,
-    ) -> Vec<AddressDataValue> {
-        let lower_bound = 1;
-        let upper_bound = source.len();
-        let mut arbitrary_indexes = HashSet::new();
-
-        // set limit between lower_bound and upper_bound
-        let random_length = cmp::max(usize::arbitrary(gen) % upper_bound, lower_bound);
-
-        // choose arbitrary non-repertive indexes
-        while arbitrary_indexes.len() < random_length {
-            let random_number = usize::arbitrary(gen) % upper_bound;
-            arbitrary_indexes.insert(random_number);
-        }
-
-        // create sub collecion from arbitrary indexes
-        source
-            .iter()
-            .cloned()
-            .enumerate()
-            .filter(|(i, _)| arbitrary_indexes.contains(i))
-            .map(|(_, e)| e)
-            .collect()
-    }
-
     fn choose_random_output_subset<G: Gen>(
         source: &Vec<AddressDataValue>,
         total_input_funds: u64,
@@ -110,7 +84,7 @@ impl ArbitraryValidTransactionData {
         // since zero output is not allowed
         // TODO: randomize funds per output
         while funds_per_output == 0 {
-            outputs = Self::choose_random_subset(source, gen)
+            outputs = arbitrary_utils::choose_random_vec_subset(source, gen)
                 .iter()
                 .cloned()
                 .map(|x| x.address_data)
