@@ -250,15 +250,36 @@ impl From<SystemTime> for time::SystemTime {
     }
 }
 
-impl From<u64> for SystemTime {
-    fn from(seconds_since_epoch: u64) -> Self {
+impl From<time::SystemTime> for SecondsSinceUnixEpoch {
+    fn from(system_time: time::SystemTime) -> Self {
+        system_time
+            .duration_since(time::UNIX_EPOCH)
+            // duration since UNIX EPOCH will never go beyond boundaries
+            .map(|duration| duration.as_secs())
+            .map(SecondsSinceUnixEpoch::from_secs)
+            .unwrap()
+    }
+}
+
+impl SystemTime {
+    pub fn from_secs_since_epoch(secs: u64) -> Self {
         // here we can safely unwrap as we are adding from UNIX_EPOCH (0)
         // and SecondsSinceUnixEpoch is always a positive integer
         // and seconds will always be within bounds
         time::UNIX_EPOCH
-            .checked_add(time::Duration::from_secs(seconds_since_epoch))
+            .checked_add(time::Duration::from_secs(secs))
             .unwrap()
             .into()
+    }
+}
+
+impl SecondsSinceUnixEpoch {
+    pub fn from_secs(secs: u64) -> Self {
+        SecondsSinceUnixEpoch(secs)
+    }
+
+    pub fn to_secs(self) -> u64 {
+        self.0
     }
 }
 
@@ -270,18 +291,13 @@ impl From<time::Duration> for Duration {
 
 impl From<SecondsSinceUnixEpoch> for SystemTime {
     fn from(seconds: SecondsSinceUnixEpoch) -> SystemTime {
-        seconds.0.into()
+        SystemTime::from_secs_since_epoch(seconds.0)
     }
 }
 
 impl From<SystemTime> for SecondsSinceUnixEpoch {
     fn from(system_time: SystemTime) -> SecondsSinceUnixEpoch {
-        // duration since UNIX EPOCH will never go beyond boundaries
-        system_time
-            .0
-            .duration_since(time::UNIX_EPOCH)
-            .map(|d| SecondsSinceUnixEpoch(d.as_secs()))
-            .unwrap()
+        system_time.0.into()
     }
 }
 

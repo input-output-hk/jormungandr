@@ -1,6 +1,9 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, PoisonError, RwLock};
-use std::time::{Instant, SystemTime};
+use jormungandr_lib::time::SecondsSinceUnixEpoch;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::Instant;
+
+const SLOT_START_TIME_UNDEFINED: u64 = u64::max_value();
 
 #[derive(Clone, Debug, Default)]
 pub struct StatsCounter {
@@ -12,7 +15,7 @@ struct StatsCounterImpl {
     tx_recv_cnt: AtomicUsize,
     block_recv_cnt: AtomicUsize,
     start_time: Instant,
-    slot_start_time: RwLock<Option<SystemTime>>,
+    slot_start_time: AtomicU64,
 }
 
 impl Default for StatsCounterImpl {
@@ -21,7 +24,7 @@ impl Default for StatsCounterImpl {
             tx_recv_cnt: AtomicUsize::default(),
             block_recv_cnt: AtomicUsize::default(),
             start_time: Instant::now(),
-            slot_start_time: RwLock::default(),
+            slot_start_time: AtomicU64::new(SLOT_START_TIME_UNDEFINED),
         }
     }
 }
@@ -49,19 +52,17 @@ impl StatsCounter {
         self.stats.start_time.elapsed().as_secs()
     }
 
-    pub fn set_slot_start_time(&self, time: SystemTime) {
+    pub fn set_slot_start_time(&self, time: SecondsSinceUnixEpoch) {
         self.stats
             .slot_start_time
-            .write()
-            .unwrap_or_else(PoisonError::into_inner)
-            .replace(time);
+            .store(time.to_secs(), Ordering::Relaxed)
     }
 
-    pub fn slot_start_time(&self) -> Option<SystemTime> {
-        *self
-            .stats
-            .slot_start_time
-            .read()
-            .unwrap_or_else(PoisonError::into_inner)
+    pub fn slot_start_time(&self) -> Option<SecondsSinceUnixEpoch> {
+        match self.stats.slot_start_time.load(Ordering::Relaxed) {
+            SLOT_START_TIME_UNDEFINED => None,
+            slot_start_time => Some(slot_start_time),
+        }
+        .map(SecondsSinceUnixEpoch::from_secs)
     }
 }
