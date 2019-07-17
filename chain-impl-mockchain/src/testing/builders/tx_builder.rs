@@ -1,11 +1,9 @@
-use super::address::AddressData;
 use crate::{
-    account::SpendingCounter,
     block::HeaderHash,
     fee::LinearFee,
     fragment::Fragment,
-    key::EitherEd25519SecretKey,
     ledger::OutputAddress,
+    testing::{address::AddressData, witness_builder},
     transaction::{AuthenticatedTransaction, Input, NoExtra, Output, Transaction, Witness},
     txbuilder::{OutputPolicy, TransactionBuilder as Builder},
 };
@@ -24,22 +22,22 @@ impl TransactionBuilder {
         }
     }
 
-    pub fn with_inputs<'a>(&'a mut self, inputs: Vec<Input>) -> &'a mut Self {
+    pub fn with_inputs(&mut self, inputs: Vec<Input>) -> &mut Self {
         self.inputs.extend(inputs.iter().cloned());
         self
     }
 
-    pub fn with_input<'a>(&'a mut self, input: Input) -> &'a mut Self {
+    pub fn with_input(&mut self, input: Input) -> &mut Self {
         self.inputs.push(input);
         self
     }
 
-    pub fn with_output<'a>(&'a mut self, output: OutputAddress) -> &'a mut Self {
+    pub fn with_output(&mut self, output: OutputAddress) -> &mut Self {
         self.outputs.push(output);
         self
     }
 
-    pub fn with_outputs<'a>(&'a mut self, outputs: Vec<OutputAddress>) -> &'a mut Self {
+    pub fn with_outputs(&mut self, outputs: Vec<OutputAddress>) -> &mut Self {
         self.outputs.extend(outputs.iter().cloned());
         self
     }
@@ -103,56 +101,22 @@ impl TransactionAuthenticator {
         }
     }
 
-    pub fn with_witnesses<'a>(
-        &'a mut self,
+    pub fn with_witnesses(
+        &mut self,
         block0: &HeaderHash,
-        addreses_data: &'a Vec<AddressData>,
-    ) -> &'a mut Self {
+        addreses_data: &Vec<AddressData>,
+    ) -> &mut Self {
         for address in addreses_data {
             self.with_witness(&block0, &address);
         }
         self
     }
 
-    pub fn with_witness<'a>(
-        &'a mut self,
-        block0: &HeaderHash,
-        addres_data: &AddressData,
-    ) -> &'a mut Self {
-        match addres_data.address.kind() {
-            Kind::Account(_) => self.with_account_witness(
-                block0,
-                &addres_data.spending_counter.unwrap(),
-                &addres_data.private_key(),
-            ),
-            _ => self.with_utxo_witness(block0, &addres_data.private_key()),
-        }
-    }
-
-    pub fn with_utxo_witness<'a>(
-        &'a mut self,
-        block0: &HeaderHash,
-        secret_key: &EitherEd25519SecretKey,
-    ) -> &'a mut Self {
-        self.witnesses.push(Witness::new_utxo(
-            block0,
-            &self.transaction.hash(),
-            secret_key,
-        ));
-        self
-    }
-
-    pub fn with_account_witness<'a>(
-        &'a mut self,
-        block0: &HeaderHash,
-        spending_counter: &SpendingCounter,
-        secret_key: &EitherEd25519SecretKey,
-    ) -> &'a mut Self {
-        self.witnesses.push(Witness::new_account(
-            block0,
-            &self.transaction.hash(),
-            spending_counter,
-            secret_key,
+    pub fn with_witness(&mut self, block0: &HeaderHash, address_data: &AddressData) -> &mut Self {
+        self.witnesses.push(witness_builder::make_witness(
+            &block0,
+            &address_data,
+            self.transaction.hash(),
         ));
         self
     }
