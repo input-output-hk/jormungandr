@@ -252,10 +252,6 @@ fn filter_utxo(x: &AddressDataValue) -> bool {
     }
 }
 
-fn with_non_empty_value(x: &AddressDataValue) -> bool {
-    x.value > Value::zero()
-}
-
 pub struct UtxoVerifier(pub ArbitraryValidTransactionData);
 
 impl UtxoVerifier {
