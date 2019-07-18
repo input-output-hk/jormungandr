@@ -25,6 +25,16 @@ pub enum CertificateContent {
     StakePoolRetirement(StakePoolRetirement),
 }
 
+impl CertificateContent {
+    fn get_certificate_tag(&self) -> CertificateTag {
+        match self {
+            CertificateContent::StakeDelegation(_) => CertificateTag::StakeDelegation,
+            CertificateContent::StakePoolRegistration(_) => CertificateTag::StakePoolRegistration,
+            CertificateContent::StakePoolRetirement(_) => CertificateTag::StakePoolRetirement,
+        }
+    }
+}
+
 enum CertificateTag {
     StakeDelegation = 1,
     StakePoolRegistration = 2,
@@ -47,19 +57,11 @@ impl property::Serialize for Certificate {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         let mut codec = Codec::new(writer);
+        codec.put_u8(self.content.get_certificate_tag() as u8)?;
         match &self.content {
-            CertificateContent::StakeDelegation(s) => {
-                codec.put_u8(CertificateTag::StakeDelegation as u8)?;
-                s.serialize(&mut codec)
-            }
-            CertificateContent::StakePoolRegistration(s) => {
-                codec.put_u8(CertificateTag::StakePoolRegistration as u8)?;
-                s.serialize(&mut codec)
-            }
-            CertificateContent::StakePoolRetirement(s) => {
-                codec.put_u8(CertificateTag::StakePoolRetirement as u8)?;
-                s.serialize(&mut codec)
-            }
+            CertificateContent::StakeDelegation(s) => s.serialize(&mut codec),
+            CertificateContent::StakePoolRegistration(s) => s.serialize(&mut codec),
+            CertificateContent::StakePoolRetirement(s) => s.serialize(&mut codec),
         }?;
         Ok(())
     }
