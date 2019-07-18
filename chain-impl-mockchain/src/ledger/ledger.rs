@@ -657,18 +657,31 @@ fn internal_apply_transaction(
                 ledger = input_utxo_verify(ledger, sign_data_hash, &utxo, witness)?
             }
             InputEnum::AccountInput(account_id, value) => {
-                let (single, multi) = input_account_verify(
+                match match_identifier_witness(&account_id, witness)? {
+                    MatchingIdentifierWitness::Single(account_id, witness) => {
+                        let single = input_single_account_verify(
                     ledger.accounts,
+                            &ledger.static_params.block0_initial_hash,
+                            sign_data_hash,
+                            &account_id,
+                            witness,
+                            value,
+                        )?;
+                        ledger.accounts = single;
+                    }
+                    MatchingIdentifierWitness::Multi(account_id, witness) => {
+                        let multi = input_multi_account_verify(
                     ledger.multisig,
                     &ledger.static_params.block0_initial_hash,
                     sign_data_hash,
                     &account_id,
+                            witness,
                     value,
-                    witness,
                 )?;
-                ledger.accounts = single;
                 ledger.multisig = multi;
             }
+        }
+    }
         }
     }
 
@@ -832,59 +845,76 @@ fn input_utxo_verify(
     }
 }
 
-fn input_account_verify(
-    mut ledger: account::Ledger,
-    mut mledger: multisig::Ledger,
-    block0_hash: &HeaderHash,
-    sign_data_hash: &TransactionSignDataHash,
-    account: &AccountIdentifier,
-    value: Value,
-    witness: &Witness,
-) -> Result<(account::Ledger, multisig::Ledger), Error> {
-    // .remove_value() check if there's enough value and if not, returns a Err.
+pub enum MatchingIdentifierWitness<'a> {
+    Single(account::Identifier, &'a account::Witness),
+    Multi(multisig::Identifier, &'a multisig::Witness),
+}
 
+fn match_identifier_witness<'a>(
+    account: &AccountIdentifier,
+    witness: &'a Witness,
+) -> Result<MatchingIdentifierWitness<'a>, Error> {
     match witness {
-        Witness::OldUtxo(_, _) => return Err(Error::ExpectingAccountWitness),
-        Witness::Utxo(_) => return Err(Error::ExpectingAccountWitness),
+        Witness::OldUtxo(_, _) => Err(Error::ExpectingAccountWitness),
+        Witness::Utxo(_) => Err(Error::ExpectingAccountWitness),
         Witness::Account(sig) => {
             // refine account to a single account identifier
             let account = account
                 .to_single_account()
                 .ok_or(Error::AccountIdentifierInvalid)?;
-
-            let (new_ledger, spending_counter) = ledger.remove_value(&account, value)?;
-            ledger = new_ledger;
-
-            let tidsc = WitnessAccountData::new(block0_hash, sign_data_hash, &spending_counter);
-            let verified = sig.verify(&account.clone().into(), &tidsc);
-            if verified == chain_crypto::Verification::Failed {
-                return Err(Error::AccountInvalidSignature {
-                    account: account.clone(),
-                    witness: witness.clone(),
-                });
-            };
-            Ok((ledger, mledger))
+            Ok(MatchingIdentifierWitness::Single(account, sig))
         }
         Witness::Multisig(msignature) => {
             // refine account to a multisig account identifier
             let account = account.to_multi_account();
-
-            let (new_ledger, declaration, spending_counter) =
-                mledger.remove_value(&account, value)?;
-
-            let data_to_verify =
-                WitnessMultisigData::new(&block0_hash, sign_data_hash, &spending_counter);
-            if msignature.verify(declaration, &data_to_verify) != true {
-                return Err(Error::MultisigInvalidSignature {
-                    multisig: account,
-                    witness: witness.clone(),
-                });
-            }
-            mledger = new_ledger;
-
-            Ok((ledger, mledger))
+            Ok(MatchingIdentifierWitness::Multi(account, msignature))
         }
     }
+}
+
+fn input_single_account_verify<'a>(
+    mut ledger: account::Ledger,
+    block0_hash: &HeaderHash,
+    sign_data_hash: &TransactionSignDataHash,
+    account: &account::Identifier,
+    witness: &'a account::Witness,
+    value: Value,
+) -> Result<account::Ledger, Error> {
+    // .remove_value() check if there's enough value and if not, returns a Err.
+            let (new_ledger, spending_counter) = ledger.remove_value(&account, value)?;
+            ledger = new_ledger;
+
+            let tidsc = WitnessAccountData::new(block0_hash, sign_data_hash, &spending_counter);
+    let verified = witness.verify(&account.clone().into(), &tidsc);
+            if verified == chain_crypto::Verification::Failed {
+                return Err(Error::AccountInvalidSignature {
+                    account: account.clone(),
+            witness: Witness::Account(witness.clone()),
+                });
+            };
+    Ok(ledger)
+        }
+
+fn input_multi_account_verify<'a>(
+    mut ledger: multisig::Ledger,
+    block0_hash: &HeaderHash,
+    sign_data_hash: &TransactionSignDataHash,
+    account: &multisig::Identifier,
+    witness: &'a multisig::Witness,
+    value: Value,
+) -> Result<multisig::Ledger, Error> {
+    // .remove_value() check if there's enough value and if not, returns a Err.
+    let (new_ledger, declaration, spending_counter) = ledger.remove_value(&account, value)?;
+
+    let data_to_verify = WitnessMultisigData::new(&block0_hash, sign_data_hash, &spending_counter);
+    if witness.verify(declaration, &data_to_verify) != true {
+                return Err(Error::MultisigInvalidSignature {
+            multisig: account.clone(),
+            witness: Witness::Multisig(witness.clone()),
+                });
+            }
+    ledger = new_ledger;
+    Ok(ledger)
 }
 
 pub enum Entry<'a> {
