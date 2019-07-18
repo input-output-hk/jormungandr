@@ -1,3 +1,5 @@
+mod delegation;
+
 #[cfg(test)]
 mod test;
 
@@ -6,6 +8,8 @@ use crate::transaction::AccountIdentifier;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::Verification;
+
+pub use delegation::OwnerStakeDelegation;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Certificate {
