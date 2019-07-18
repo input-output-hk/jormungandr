@@ -19,7 +19,7 @@ use chain_crypto::{Ed25519Bip32, PublicKey, Signature, Verification};
 #[derive(Debug, Clone)]
 pub enum Witness {
     Utxo(SpendingSignature<WitnessUtxoData>),
-    Account(SpendingSignature<WitnessAccountData>),
+    Account(account::Witness),
     OldUtxo(
         PublicKey<Ed25519Bip32>,
         Signature<WitnessUtxoData, Ed25519Bip32>,
