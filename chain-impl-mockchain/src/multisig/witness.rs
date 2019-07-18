@@ -17,6 +17,21 @@ use super::ledger::LedgerError;
 #[derive(Debug, Clone)]
 pub struct Witness(Vec<(TreeIndex, Pk, Sig)>);
 
+impl PartialEq for Witness {
+    fn eq(&self, other: &Self) -> bool {
+        // TODO this is not a valid instance, but mostly for placeholder for error comparaison.
+        // no one should compare the Witnesses.
+        self.0.len() == other.0.len()
+    }
+}
+impl Eq for Witness {}
+
+impl std::fmt::Display for Witness {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Multisig Witness {} elements", self.0.len())
+    }
+}
+
 impl Witness {
     pub fn verify(&self, declaration: &Declaration, msg: &WitnessMultisigData) -> bool {
         let mut v = Vec::new();
