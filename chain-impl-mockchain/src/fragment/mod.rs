@@ -27,6 +27,7 @@ pub enum Fragment {
     Initial(ConfigParams),
     OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
+    OwnerStakeDelegation(AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>),
     Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
     UpdateProposal(SignedUpdateProposal),
     UpdateVote(SignedUpdateVote),
@@ -38,9 +39,10 @@ pub(super) enum FragmentTag {
     Initial = 0,
     OldUtxoDeclaration = 1,
     Transaction = 2,
-    Certificate = 3,
-    UpdateProposal = 4,
-    UpdateVote = 5,
+    OwnerStakeDelegation = 3,
+    Certificate = 4,
+    UpdateProposal = 5,
+    UpdateVote = 6,
 }
 
 impl FragmentTag {
@@ -49,9 +51,10 @@ impl FragmentTag {
             0 => Some(FragmentTag::Initial),
             1 => Some(FragmentTag::OldUtxoDeclaration),
             2 => Some(FragmentTag::Transaction),
-            3 => Some(FragmentTag::Certificate),
-            4 => Some(FragmentTag::UpdateProposal),
-            5 => Some(FragmentTag::UpdateVote),
+            3 => Some(FragmentTag::OwnerStakeDelegation),
+            4 => Some(FragmentTag::Certificate),
+            5 => Some(FragmentTag::UpdateProposal),
+            6 => Some(FragmentTag::UpdateVote),
             _ => None,
         }
     }
@@ -64,6 +67,7 @@ impl Fragment {
             Fragment::Initial(_) => FragmentTag::Initial,
             Fragment::OldUtxoDeclaration(_) => FragmentTag::OldUtxoDeclaration,
             Fragment::Transaction(_) => FragmentTag::Transaction,
+            Fragment::OwnerStakeDelegation(_) => FragmentTag::OwnerStakeDelegation,
             Fragment::Certificate(_) => FragmentTag::Certificate,
             Fragment::UpdateProposal(_) => FragmentTag::UpdateProposal,
             Fragment::UpdateVote(_) => FragmentTag::UpdateVote,
@@ -81,6 +85,7 @@ impl Fragment {
             Fragment::Initial(i) => i.serialize(&mut codec).unwrap(),
             Fragment::OldUtxoDeclaration(s) => s.serialize(&mut codec).unwrap(),
             Fragment::Transaction(signed) => signed.serialize(&mut codec).unwrap(),
+            Fragment::OwnerStakeDelegation(od) => od.serialize(&mut codec).unwrap(),
             Fragment::Certificate(signed) => signed.serialize(&mut codec).unwrap(),
             Fragment::UpdateProposal(proposal) => proposal.serialize(&mut codec).unwrap(),
             Fragment::UpdateVote(vote) => vote.serialize(&mut codec).unwrap(),
@@ -103,6 +108,9 @@ impl Readable for Fragment {
                 legacy::UtxoDeclaration::read(buf).map(Fragment::OldUtxoDeclaration)
             }
             Some(FragmentTag::Transaction) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::Transaction)
+            }
+            Some(FragmentTag::OwnerStakeDelegation) => {
                 AuthenticatedTransaction::read(buf).map(Fragment::Transaction)
             }
             Some(FragmentTag::Certificate) => {
@@ -153,8 +161,9 @@ mod test {
                 0 => Fragment::Initial(Arbitrary::arbitrary(g)),
                 1 => Fragment::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
                 2 => Fragment::Transaction(Arbitrary::arbitrary(g)),
-                3 => Fragment::Certificate(Arbitrary::arbitrary(g)),
-                4 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
+                3 => Fragment::OwnerStakeDelegation(Arbitrary::arbitrary(g)),
+                4 => Fragment::Certificate(Arbitrary::arbitrary(g)),
+                5 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
                 _ => Fragment::UpdateVote(Arbitrary::arbitrary(g)),
             }
         }
