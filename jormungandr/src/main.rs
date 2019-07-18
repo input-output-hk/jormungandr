@@ -64,7 +64,6 @@ use crate::{
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
-use futures::Future;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::sync::{Arc, Mutex};
@@ -217,6 +216,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 blockchain: bootstrapped_node.blockchain.clone(),
                 transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
                 logs: Arc::new(Mutex::new(pool_logs)),
+                server: Arc::default(),
             };
             Some(rest::start_rest_server(&rest, context)?)
         }
@@ -226,7 +226,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     services.wait_all();
 
     if let Some(server) = rest_server {
-        server.stop().wait().unwrap()
+        server.stop();
     }
 
     Ok(())

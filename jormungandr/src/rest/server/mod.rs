@@ -7,16 +7,16 @@ pub use self::error::Error;
 
 use actix_net::server::Server as ActixServer;
 use actix_web::{
-    actix::{Addr, MailboxError, System},
+    actix::{Addr, System},
     server::{self, IntoHttpHandler, StopServer},
 };
-use futures::Future;
 use native_tls::{Identity, TlsAcceptor};
 
 use std::{
     fs,
     net::{SocketAddr, ToSocketAddrs},
     path::PathBuf,
+    process,
     sync::mpsc::sync_channel,
     thread,
 };
@@ -47,20 +47,14 @@ impl Server {
             let _ = sender.send(server_handler);
             if run_system {
                 actix_system.run();
+                process::exit(0);
             }
         });
         receiver.recv().unwrap()
     }
 
-    pub fn stop(&self) -> impl Future<Item = (), Error = Error> {
-        self.addr
-            .send(StopServer { graceful: true })
-            .then(|result| match result {
-                Ok(Ok(_)) => Ok(()),
-                Ok(Err(_)) => Err(Error::ServerStopFailed),
-                Err(MailboxError::Closed) => Err(Error::ServerAlreadyStopped),
-                Err(MailboxError::Timeout) => Err(Error::ServerStopTimeout),
-            })
+    pub fn stop(&self) {
+        self.addr.do_send(StopServer { graceful: false })
     }
 }
 
