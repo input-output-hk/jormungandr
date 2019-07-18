@@ -4,6 +4,7 @@ use std::collections::hash_map::DefaultHasher;
 use super::declaration::{Declaration, DeclarationError, Identifier};
 use crate::accounting::account::{self, Iter, SpendingCounter};
 use crate::value::{Value, ValueError};
+use crate::stake::StakePoolId;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Ledger {
@@ -120,6 +121,20 @@ impl Ledger {
             spending_counter,
         ))
     }
+
+    /// Set the delegation of an account in this ledger
+    pub fn set_delegation(
+        &self,
+        identifier: &Identifier,
+        delegation: Option<StakePoolId>,
+    ) -> Result<Self, LedgerError> {
+        let new_accounts = self.accounts.set_delegation(identifier, delegation)?;
+        Ok(Self {
+            accounts: new_accounts,
+            declarations: self.declarations.clone(),
+        })
+    }
+
 
     pub fn get_total_value(&self) -> Result<Value, ValueError> {
         self.accounts.get_total_value()
