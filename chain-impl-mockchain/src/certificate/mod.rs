@@ -80,8 +80,11 @@ impl Readable for Certificate {
             Some(CertificateTag::StakeDelegation) => {
                 CertificateContent::StakeDelegation(StakeDelegation::read(buf)?)
             }
-
-            None => panic!("not a certificate"),
+            None => {
+                return Err(ReadError::StructureInvalid(
+                    "certificate unknown".to_string(),
+                ))
+            }
         };
         Ok(Certificate { content })
     }
