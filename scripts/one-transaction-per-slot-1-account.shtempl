@@ -1,0 +1,145 @@
+#!/bin/sh
+#
+# Script steps:
+#   1. create 1 Account
+#   2. send a custom number of transactions from Faucet to Account
+#       - there is only 1 transaction pe slot.
+#       - after each transaction, check both balances (account and faucet)
+#
+# Disclaimer:
+#
+#  The following use of shell script is for demonstration and understanding
+#  only, it should *NOT* be used at scale or for any sort of serious
+#  deployment, and is solely used for learning how the node and blockchain
+#  works, and how to interact with everything.
+#
+
+### CONFIGURATION
+
+
+### TEMPLATE
+FAUCET_SK="####FAUCET_SK####"
+BLOCK0_HASH="####BLOCK0_HASH####"
+REST_URL="####REST_URL####"
+CLI="####CLI####"
+COLORS=####COLORS####
+FEE_CONSTANT=####FEE_CONSTANT####
+FEE_CERTIFICATE=####FEE_CERTIFICATE####
+FEE_COEFFICIENT=####FEE_COEFFICIENT####
+ADDRTYPE="####ADDRTYPE####"
+STAKE_POOL_ID="####STAKE_POOL_ID####"
+SLOT_DURATION="####SLOT_DURATION####"
+TIMEOUT_NO_OF_BLOCKS=30
+FAUCET_AMOUNT="####FAUCET_AMOUNT####"
+
+### COLORS
+if [ ${COLORS} -eq 1 ]; then
+    GREEN=`printf "\033[0;32m"`
+    RED=`printf "\033[0;31m"`
+    BLUE=`printf "\033[0;33m"`
+    WHITE=`printf "\033[0m"`
+else
+    GREEN=""
+    RED=""
+    BLUE=""
+    WHITE=""
+fi
+
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <NO-OF-TRANSACTIONS>"
+    echo "    <NO-OF-TRANSACTIONS>   Number of transactions to be sent from Faucet to Account (1 TX per slot)"
+    exit 1
+fi
+
+NO_OF_TRANSACTIONS=$1
+
+### HELPERS
+
+getTip() {
+    echo $($CLI rest v0 tip get -h "${REST_URL}")
+}
+
+waitNewBlockCreated() {
+    COUNTER=${TIMEOUT_NO_OF_BLOCKS}
+    echo "  ##Waiting for new block to be created (timeout = $COUNTER blocks = $(( $COUNTER*$SLOT_DURATION ))s)"
+    initialTip=$(getTip)
+    actualTip=$(getTip)
+
+    while [ "${actualTip}" = "${initialTip}" ]; do
+        sleep ${SLOT_DURATION}
+        actualTip=$(getTip)
+        COUNTER=$((COUNTER-1))
+        if [ ${COUNTER} -lt 2 ]; then
+            echo "  ##ERROR: Waited $(( ${COUNTER}*${SLOT_DURATION} )) secs and no new block was created"
+            exit 1
+        fi
+    done
+    echo "New block was created - $(getTip)"
+}
+
+getAccountValue() {
+    echo $($CLI rest v0 account get $1 -h "${REST_URL}" | grep 'value: ' | awk -F'value: ' '{print $2}')
+}
+
+compareBalances() {
+    if [[ $1 == $2 ]]; then
+      echo "  ###OK; Correct Balance; $1 = $2"
+    else
+      echo "  ###ERROR: Actual Balance is different than expected; Actual: $1  vs  Expected: $2"
+      exit 2
+    fi
+}
+
+FAUCET_PK=$(echo ${FAUCET_SK} | $CLI key to-public)
+FAUCET_ADDR=$($CLI address account ${ADDRTYPE} ${FAUCET_PK})
+# check if there was any transaction executed by Faucet in order to set the Faucet Value
+FAUCET_COUNTER=$( $CLI rest v0 account get "${FAUCET_ADDR}" -h "${REST_URL}" | grep '^counter:' | sed -e 's/counter: //' )
+if [[ ${FAUCET_COUNTER} -gt 0 ]]; then
+    FAUCET_AMOUNT=$(getAccountValue ${FAUCET_ADDR})
+fi
+
+##
+# 1. create an account
+##
+
+echo "=================Create a new Account Address=============================="
+RECEIVER_SK=$($CLI key generate --type=ed25519extended)
+RECEIVER_PK=$(echo ${RECEIVER_SK} | $CLI key to-public)
+RECEIVER_ADDR=$(echo ${RECEIVER_PK} | xargs $CLI address account ${ADDRTYPE})
+RECEIVER_VALUE=0
+
+##
+# 2. create multiple transactions (1 per slot) from Faucet to Account address and check balances after each transaction
+##
+
+for i in `seq 1 ${NO_OF_TRANSACTIONS}`;
+do
+    echo "---------------------------------------------------------------------"
+    TX_VALUE=$((1000 + $i))
+    echo "  ##Transaction No: $i; Value: $TX_VALUE"
+    bash faucet-send-money.sh ${RECEIVER_ADDR} ${TX_VALUE}
+
+    waitNewBlockCreated
+
+    echo "=================Display the node logs==============================="
+    $CLI rest v0 message logs -h "${REST_URL}"
+    echo "=================Display the Faucet details=========================="
+    $CLI rest v0 account get "${FAUCET_ADDR}" -h "${REST_URL}"
+    echo "=================Display the RECEIVER_ADDR details==================="
+    $CLI rest v0 account get "${RECEIVER_ADDR}" -h "${REST_URL}"
+
+    echo "=================Check Receiver Account's balance=================="
+    ACTUAL_ACC_VALUE=$(getAccountValue ${RECEIVER_ADDR})
+    EXPECTED_ACC_VALUE=$((${RECEIVER_VALUE} + ${TX_VALUE}))
+    compareBalances ${ACTUAL_ACC_VALUE} ${EXPECTED_ACC_VALUE}
+    RECEIVER_VALUE=${ACTUAL_ACC_VALUE}
+
+    echo "=================Check Faucet Account's balance===================="
+    ACTUAL_FAUCET_AMOUNT=$(getAccountValue ${FAUCET_ADDR})
+    EXPECTED_FAUCET_AMOUNT=$(({FAUCET_AMOUNT} - ${TX_VALUE} - ${FEE_CONSTANT}))
+    compareBalances ${ACTUAL_FAUCET_AMOUNT} ${EXPECTED_FAUCET_AMOUNT}
+    FAUCET_AMOUNT=${ACTUAL_FAUCET_AMOUNT}
+    echo "---------------------------------------------------------------------"
+done
+
+exit 0

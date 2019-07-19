@@ -1,0 +1,261 @@
+#!/bin/sh
+#
+# Script steps;
+#   1. create 2 accounts and send 10000000 Lovelaces from Faucet to each account
+#   2. create a loop of transactions, sending funds from Account 1 to Account 2
+#       - the SOURCE_ADDR_COUNTER is calculated/incremented for each transaction in the same block
+#       - the scope is to sent many valid transactions between 2 Accounts in the same slot
+#   3. at the end of the loop check the Account balances
+#
+# Disclaimer:
+#
+#  The following use of shell script is for demonstration and understanding
+#  only, it should *NOT* be used at scale or for any sort of serious
+#  deployment, and is solely used for learning how the node and blockchain
+#  works, and how to interact with everything.
+#
+
+### CONFIGURATION
+
+
+### TEMPLATE
+FAUCET_SK="####FAUCET_SK####"
+BLOCK0_HASH="####BLOCK0_HASH####"
+REST_URL="####REST_URL####"
+CLI="####CLI####"
+COLORS=####COLORS####
+FEE_CONSTANT=####FEE_CONSTANT####
+FEE_CERTIFICATE=####FEE_CERTIFICATE####
+FEE_COEFFICIENT=####FEE_COEFFICIENT####
+ADDRTYPE="####ADDRTYPE####"
+STAKE_POOL_ID="####STAKE_POOL_ID####"
+SLOT_DURATION="####SLOT_DURATION####"
+TIMEOUT_NO_OF_BLOCKS=30
+FAUCET_AMOUNT="####FAUCET_AMOUNT####"
+INITIAL_TIP=""
+TX_COUNTER_SAME_SLOT="aa"
+INITIAL_SRC_COUNTER=0
+INITIAL_SOURCE_COUNTER=0
+
+
+### COLORS
+if [ ${COLORS} -eq 1 ]; then
+    GREEN=`printf "\033[0;32m"`
+    RED=`printf "\033[0;31m"`
+    BLUE=`printf "\033[0;33m"`
+    WHITE=`printf "\033[0m"`
+else
+    GREEN=""
+    RED=""
+    BLUE=""
+    WHITE=""
+fi
+
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <NO-OF-TRANSACTIONS>"
+    echo "    <NO-OF-TRANSACTIONS>   Number of transactions to be sent from Account 1 to Account2"
+    exit 1
+fi
+
+NO_OF_TRANSACTIONS=$1
+
+### HELPERS
+
+getTip() {
+    echo $($CLI rest v0 tip get -h "${REST_URL}")
+}
+
+waitNewBlockCreated() {
+    COUNTER=${TIMEOUT_NO_OF_BLOCKS}
+    echo "  ##Waiting for new block to be created (timeout = $COUNTER blocks = $(( $COUNTER*$SLOT_DURATION ))s)"
+    initialTip=$(getTip)
+    actualTip=$(getTip)
+
+    while [ "${actualTip}" = "${initialTip}" ]; do
+        sleep ${SLOT_DURATION}
+        actualTip=$(getTip)
+        COUNTER=$((COUNTER-1))
+        if [ ${COUNTER} -lt 2 ]; then
+            echo "  ${RED}ERROR${WHITE}: Waited $(( $COUNTER*$SLOT_DURATION ))s secs ($COUNTER*$SLOT_DURATION) and no new block created"
+            exit 1
+        fi
+    done
+    echo "New block was created - $(getTip)"
+}
+
+getAccountValue() {
+    echo $($CLI rest v0 account get $1 -h "${REST_URL}" | grep 'value: ' | awk -F'value: ' '{print $2}')
+}
+
+compareBalances() {
+    if [[ $1 == $2 ]]; then
+      echo "  ${GREEN}OK${WHITE}; Correct Balance; $1 = $2"
+    else
+      echo "  ${RED}ERROR${WHITE}: Actual Balance is different than expected; Actual: $1  vs  Expected: $2"
+      exit 2
+    fi
+}
+
+sendMoney() {
+    if [[ $# -ne 3 ]]; then
+        echo "usage: $0 <SRC_SK> <DST_ADDRESS> <AMOUNT>"
+        echo "    <SRC_SK>        Source's Private Key"
+        echo "    <DST_ADDRESS>   Address to send amount of money to"
+        echo "    <AMOUNT>        Amount in lovelace"
+        exit 1
+    fi
+
+    SRC_SK="$1"
+    SOURCE_PK=$(echo ${SRC_SK} | $CLI key to-public)
+    SOURCE_ADDRESS=$($CLI address account ${ADDRTYPE} ${SOURCE_PK})
+    DESTINATION_ADDRESS="$2"
+    DESTINATION_AMOUNT="$3"
+
+    # Account 1 pays for the transaction fee
+    TX_AMOUNT=$((${DESTINATION_AMOUNT} + ${FEE_CONSTANT}))
+
+    STAGING_FILE="acc_staging.$$.transaction"
+
+    echo "## Sending ${RED}${DESTINATION_AMOUNT}${WHITE} from ${BLUE}${SOURCE_ADDRESS}${WHITE} to ${BLUE}${DESTINATION_ADDRESS}${WHITE}"
+
+    # increase the SOURCE_COUNTER with TX_COUNTER_SAME_SLOT if Account1 initiates more than 1 transaction in the same slot
+    # TX_COUNTER_SAME_SLOT = the number of transactions initiated and sent by Account1 in the same slot (based on TIP)
+    ACTUAL_TIP=$(getTip)
+    SRC_COUNTER=$( $CLI rest v0 account get "${SOURCE_ADDRESS}" -h "${REST_URL}" | grep '^counter:' | sed -e 's/counter: //' )
+    echo "  ===== SRC_COUNTER: ${SRC_COUNTER}"
+
+    if [[ ${ACTUAL_TIP} == ${INITIAL_TIP} ]]; then
+        echo "ACTUAL_TIP == INITIAL_TIP"
+
+        if [[ ${SRC_COUNTER} -ne ${INITIAL_SRC_COUNTER} ]]; then
+            echo "  == New blow created after getting ACTUAL_TIP but before getting SRC_COUNTER"
+            TX_COUNTER_SAME_SLOT=0
+        else
+            let TX_COUNTER_SAME_SLOT=TX_COUNTER_SAME_SLOT+1
+        fi
+    else
+        echo "ACTUAL_TIP != INITIAL_TIP"
+        if [[ (${SRC_COUNTER} -ne ${INITIAL_SOURCE_COUNTER}) || (${TX_COUNTER_SAME_SLOT} == "aa") ]]; then
+            TX_COUNTER_SAME_SLOT=0
+        else
+            TX_COUNTER_SAME_SLOT=1
+        fi
+
+        INITIAL_TIP=${ACTUAL_TIP}
+    fi
+
+    SOURCE_COUNTER=$((${SRC_COUNTER} + ${TX_COUNTER_SAME_SLOT}))
+    echo "  ===== SOURCE_COUNTER: ${SOURCE_COUNTER}"
+    echo "  ===== TX_COUNTER_SAME_SLOT: ${TX_COUNTER_SAME_SLOT}"
+
+    INITIAL_SRC_COUNTER=${SRC_COUNTER}
+    INITIAL_SOURCE_COUNTER=${SOURCE_COUNTER}
+    echo "  ===== INITIAL_SRC_COUNTER: ${INITIAL_SRC_COUNTER}"
+    echo "  ===== INITIAL_SOURCE_COUNTER: ${INITIAL_SOURCE_COUNTER}"
+
+    # Create the transaction
+    $CLI transaction new --staging ${STAGING_FILE}
+    $CLI transaction add-account "${SOURCE_ADDRESS}" "${TX_AMOUNT}" --staging "${STAGING_FILE}"
+    $CLI transaction add-output "${DESTINATION_ADDRESS}" "${DESTINATION_AMOUNT}" --staging "${STAGING_FILE}"
+    $CLI transaction finalize --staging ${STAGING_FILE}
+
+    TRANSACTION_ID=$($CLI transaction id --staging ${STAGING_FILE})
+
+    # Create the witness for the 1 input (add-account) and add it
+    SRC_WITNESS_SECRET_FILE="witness.secret.$$"
+    SRC_WITNESS_OUTPUT_FILE="witness.out.$$"
+
+    printf "${SRC_SK}" > ${SRC_WITNESS_SECRET_FILE}
+
+    $CLI transaction make-witness ${TRANSACTION_ID} \
+        --genesis-block-hash ${BLOCK0_HASH} \
+        --type "account" --account-spending-counter "${SOURCE_COUNTER}" \
+        ${SRC_WITNESS_OUTPUT_FILE} ${SRC_WITNESS_SECRET_FILE}
+    $CLI transaction add-witness ${SRC_WITNESS_OUTPUT_FILE} --staging "${STAGING_FILE}"
+
+    # Finalize the transaction and send it
+    $CLI transaction seal --staging "${STAGING_FILE}"
+    $CLI transaction to-message --staging "${STAGING_FILE}" | $CLI rest v0 message post -h "${REST_URL}"
+
+    rm ${STAGING_FILE} ${SRC_WITNESS_SECRET_FILE} ${SRC_WITNESS_OUTPUT_FILE}
+}
+
+##
+# 1. create 2 account addresses
+##
+
+echo "=================Create 2 new Account Addresses=============================="
+ACCOUNT_1_SK=$($CLI key generate --type=ed25519extended)
+ACCOUNT_1_PK=$(echo ${ACCOUNT_1_SK} | $CLI key to-public)
+ACCOUNT_1_ADDR=$(echo ${ACCOUNT_1_PK} | xargs $CLI address account ${ADDRTYPE})
+ACCOUNT_1_VALUE=0
+
+ACCOUNT_2_SK=$($CLI key generate --type=ed25519extended)
+ACCOUNT_2_PK=$(echo ${ACCOUNT_2_SK} | $CLI key to-public)
+ACCOUNT_2_ADDR=$(echo ${ACCOUNT_2_PK} | xargs $CLI address account ${ADDRTYPE})
+ACCOUNT_2_VALUE=0
+
+##
+# 2. send 10000000 Lovelaces from Faucet to Account1
+##
+
+echo "=================Send 10000000 Lovelaces to first Account Addresses======"
+FAUCET_TX_VALUE=10000000
+bash faucet-send-money.sh ${ACCOUNT_1_ADDR} ${FAUCET_TX_VALUE}
+waitNewBlockCreated
+
+echo "=================Check Account1's balance=================="
+ACTUAL_ACC1_VALUE=$(getAccountValue ${ACCOUNT_1_ADDR})
+EXPECTED_ACC1_VALUE=$((${ACCOUNT_1_VALUE} + ${FAUCET_TX_VALUE}))
+compareBalances ${ACTUAL_ACC1_VALUE} ${EXPECTED_ACC1_VALUE}
+ACCOUNT_1_VALUE=${ACTUAL_ACC1_VALUE}
+
+##
+# 3. send 10000000 Lovelaces from Faucet to Account2
+##
+
+echo "=================Send 10000000 Lovelaces to second Account Addresses======"
+bash faucet-send-money.sh ${ACCOUNT_2_ADDR} ${FAUCET_TX_VALUE}
+waitNewBlockCreated
+
+echo "=================Check Account2's balance=================="
+ACTUAL_ACC2_VALUE=$(getAccountValue ${ACCOUNT_2_ADDR})
+EXPECTED_ACC2_VALUE=$((${ACCOUNT_2_VALUE} + ${FAUCET_TX_VALUE}))
+compareBalances ${ACTUAL_ACC2_VALUE} ${EXPECTED_ACC2_VALUE}
+ACCOUNT_2_VALUE=${ACTUAL_ACC2_VALUE}
+
+##
+# 4. create multiple transactions from Account 1 to Account 2 and check their balances
+##
+
+SUM_TX_VALUE=0
+for i in `seq 1 ${NO_OF_TRANSACTIONS}`;
+do
+    echo "---------------------------------------------------------------------"
+    TX_VALUE=$((1000 + $i))
+    echo "  ##Transaction No: $i; Value: $TX_VALUE"
+    sendMoney ${ACCOUNT_1_SK} ${ACCOUNT_2_ADDR} ${TX_VALUE}
+    SUM_TX_VALUE=$((${SUM_TX_VALUE} + ${TX_VALUE}))
+    echo "---------------------------------------------------------------------"
+done
+
+waitNewBlockCreated
+
+echo "=================Display ACCOUNT_1's details=========================="
+$CLI rest v0 account get "${ACCOUNT_1_ADDR}" -h "${REST_URL}"
+echo "=================Display ACCOUNT_2's details==================="
+$CLI rest v0 account get "${ACCOUNT_2_ADDR}" -h "${REST_URL}"
+echo "=================Display the node logs==============================="
+# $CLI rest v0 message logs -h "${REST_URL}"
+
+echo "=================Check ACCOUNT_2's balance=================="
+ACTUAL_ACC2_VALUE=$(getAccountValue ${ACCOUNT_2_ADDR})
+EXPECTED_ACC2_VALUE=$((${ACCOUNT_2_VALUE} + ${SUM_TX_VALUE}))
+compareBalances ${ACTUAL_ACC2_VALUE} ${EXPECTED_ACC2_VALUE}
+
+echo "=================Check ACCOUNT_1's balance=================="
+ACTUAL_ACC1_VALUE=$(getAccountValue ${ACCOUNT_1_ADDR})
+EXPECTED_ACC1_VALUE=$((${ACCOUNT_1_VALUE} - ${SUM_TX_VALUE} - $((${NO_OF_TRANSACTIONS}*${FEE_CONSTANT}))))
+compareBalances ${ACTUAL_ACC1_VALUE} ${EXPECTED_ACC1_VALUE}
+
+exit 0

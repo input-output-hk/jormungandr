@@ -308,5 +308,7 @@ else
     process_file "$SCRIPTPATH/faucet-send-money.shtempl" faucet-send-money.sh
     process_file "$SCRIPTPATH/faucet-send-certificate.shtempl" faucet-send-certificate.sh
     process_file "$SCRIPTPATH/create-account-and-delegate.shtempl" create-account-and-delegate.sh
+    process_file "$SCRIPTPATH/one-transaction-per-slot-1-account.shtempl" one-transaction-per-slot-1-account.sh
+    process_file "$SCRIPTPATH/multiple-transactions-per-slot-2-accounts.shtempl" multiple-transactions-per-slot-2-accounts.sh
     exit 0
 fi
