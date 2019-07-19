@@ -1,5 +1,26 @@
 # Change Log
 
+## [v0.3.1](https://github.com/input-output-hk/jormungandr/tree/v0.3.1) (2019-07-19)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.0...v0.3.1)
+
+**Implemented enhancements:**
+
+- Add node shutdown over REST [\#643](https://github.com/input-output-hk/jormungandr/pull/643)
+- Add lastBlock info to node state REST [\#642](https://github.com/input-output-hk/jormungandr/pull/642)
+- Add REST endpoint for getting node settings [\#634](https://github.com/input-output-hk/jormungandr/pull/634)
+
+**Closed issues:**
+
+- Node crash with Crit error when sending multiple transactions from the same Account, with the same Counter, in 2 consecutive slots [\#641](https://github.com/input-output-hk/jormungandr/issues/641)
+- Transaction rejected because "Account with invalid signature" when sending multiple transactions from the same Account in the same slot \(with different Counter values\) [\#640](https://github.com/input-output-hk/jormungandr/issues/640)
+
+**Merged pull requests:**
+
+- Upgrade Slog to 2.5.1 [\#637](https://github.com/input-output-hk/jormungandr/pull/637)
+- Simplify slot\_start\_time storage to seconds [\#636](https://github.com/input-output-hk/jormungandr/pull/636)
+- Remove unused JCLI deps [\#635](https://github.com/input-output-hk/jormungandr/pull/635)
+- Rename more fields in p2p config [\#632](https://github.com/input-output-hk/jormungandr/pull/632)
+
 ## [v0.3.0](https://github.com/input-output-hk/jormungandr/tree/v0.3.0) (2019-07-12)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.2.4...v0.3.0)
 
