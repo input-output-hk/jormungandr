@@ -7,10 +7,11 @@ use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Deserialize, Serialize};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
-use chain_impl_mockchain::key::Hash;
-
 use chain_impl_mockchain::fragment::Fragment;
+use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::LeadershipConsensus;
+use chain_impl_mockchain::ledger::Ledger;
+use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::store;
 
 use bytes::{Bytes, IntoBuf};
@@ -18,8 +19,7 @@ use futures::Future;
 use std::str::FromStr;
 
 use crate::intercom::TransactionMsg;
-
-pub type Context = crate::rest::Context;
+pub use crate::rest::Context;
 
 pub fn get_utxos(context: State<Context>) -> impl Responder {
     let blockchain = context.blockchain.lock_read();
@@ -85,13 +85,44 @@ pub fn get_tip(settings: State<Context>) -> impl Responder {
         .to_string()
 }
 
-pub fn get_stats_counter(context: State<Context>) -> impl Responder {
+pub fn get_stats_counter(context: State<Context>) -> Result<impl Responder, Error> {
+    let mut block_tx_count = 0;
+    let mut block_input_sum = Value::zero();
+    let mut block_fee_sum = Value::zero();
+    context
+        .blockchain
+        .lock_read()
+        .get_block_tip()
+        .map_err(|e| ErrorInternalServerError(format!("Get blockchain tip block error: {}", e)))?
+        .0
+        .contents
+        .iter()
+        .filter_map(|fragment| match fragment {
+            Fragment::Transaction(tx) => Some(&tx.transaction),
+            _ => None,
+        })
+        .map(|tx| {
+            let input_sum = Value::sum(tx.inputs.iter().map(|input| input.value))?;
+            let output_sum = Value::sum(tx.outputs.iter().map(|input| input.value))?;
+            // Input < output implies minting, so no fee
+            let fee = (input_sum - output_sum).unwrap_or(Value::zero());
+            block_tx_count += 1;
+            block_input_sum = (block_input_sum + input_sum)?;
+            block_fee_sum = (block_fee_sum + fee)?;
+            Ok(())
+        })
+        .collect::<Result<(), ValueError>>()
+        .map_err(|e| ErrorInternalServerError(format!("Block value calculation error: {}", e)))?;
     let stats = &context.stats_counter;
-    Json(json!({
+    Ok(Json(json!({
         "txRecvCnt": stats.tx_recv_cnt(),
         "blockRecvCnt": stats.block_recv_cnt(),
         "uptime": stats.uptime_sec(),
-    }))
+        "lastBlockTime": stats.slot_start_time().map(SystemTime::from),
+        "lastBlockTx": block_tx_count,
+        "lastBlockSum": block_input_sum.0,
+        "lastBlockFees": block_fee_sum.0,
+    })))
 }
 
 pub fn get_block_id(
