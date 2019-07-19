@@ -67,6 +67,8 @@ use crate::{
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -116,7 +118,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let (fragment_pool, pool_logs) = {
         let stats_counter = stats_counter.clone();
-        use std::time::Duration;
         // TODO: get the TTL and from the settings
         let process = fragment::Process::new(
             // TTL of a fragment in the MemPool: 1h
@@ -223,11 +224,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         None => None,
     };
 
-    services.wait_all();
-
-    if let Some(server) = rest_server {
-        server.stop();
+    match rest_server {
+        Some(server) => server.wait_for_stop(),
+        None => thread::sleep(Duration::from_secs(u64::max_value())),
     }
+    info!(bootstrapped_node.logger, "Shutting down node");
 
     Ok(())
 }

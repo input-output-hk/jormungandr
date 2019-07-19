@@ -213,6 +213,8 @@ pub fn get_settings(context: State<Context>) -> Result<impl Responder, Error> {
 }
 
 pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
+    // Server finishes ongoing tasks before stopping, so user will get response to this request
+    // Node should be shutdown automatically when server stopping is finished
     context
         .server
         .read()
