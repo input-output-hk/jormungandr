@@ -2,7 +2,7 @@ use jormungandr_lib::interfaces::*;
 use jormungandr_lib::time::SystemTime;
 
 use actix_web::error::{Error, ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
-use actix_web::{Error as ActixError, HttpMessage, HttpRequest};
+use actix_web::{Error as ActixError, HttpMessage, HttpRequest, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Deserialize, Serialize};
 use chain_crypto::{Blake2b256, PublicKey};
@@ -210,4 +210,17 @@ pub fn get_settings(context: State<Context>) -> Result<impl Responder, Error> {
         },
         "maxTxsPerBlock":  settings.max_number_of_transactions_per_block,
     })))
+}
+
+pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
+    // Server finishes ongoing tasks before stopping, so user will get response to this request
+    // Node should be shutdown automatically when server stopping is finished
+    context
+        .server
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .ok_or_else(|| ErrorInternalServerError("Server not set in context"))?
+        .stop();
+    Ok(HttpResponse::Ok().finish())
 }

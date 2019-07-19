@@ -207,7 +207,6 @@ value: 990
   it is possible this value is not set if there is no delegation certificate
   sent associated to this account.
 
-
 ## Node settings
 
 Fetches node settings
@@ -237,3 +236,16 @@ fees:                                           # transaction fee configuration
   constant: 2                                   # fee per transaction
 maxTxsPerBlock: 100                             # maximum number of transactions in block
 ```
+
+## Node shutdown
+
+Node shutdown
+
+```
+jcli rest v0 shutdown get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)

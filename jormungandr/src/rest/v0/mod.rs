@@ -19,6 +19,7 @@ pub fn app(context: handlers::Context) -> App<handlers::Context> {
         })
         .resource("/settings", |r| r.get().with(handlers::get_settings))
         .resource("/stake", |r| r.get().with(handlers::get_stake_distribution))
+        .resource("/shutdown", |r| r.get().with(handlers::get_shutdown))
         .resource("/message", |r| r.post().a(handlers::post_message))
         .resource("/node/stats", |r| r.get().with(handlers::get_stats_counter))
         .resource("/tip", |r| r.get().with(handlers::get_tip))

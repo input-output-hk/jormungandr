@@ -6,7 +6,7 @@ pub mod v0;
 
 pub use self::server::{Error, Server};
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::blockchain::BlockchainR;
 use crate::fragment::Logs;
@@ -22,11 +22,18 @@ pub struct Context {
     pub blockchain: BlockchainR,
     pub transaction_task: Arc<Mutex<MessageBox<TransactionMsg>>>,
     pub logs: Arc<Mutex<Logs>>,
+    pub server: Arc<RwLock<Option<Server>>>,
 }
 
 pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, ConfigError> {
-    Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
-        vec![v0::app(context.clone()).boxed()]
-    })
-    .map_err(|e| e.into())
+    let app_context = context.clone();
+    let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
+        vec![v0::app(app_context.clone()).boxed()]
+    })?;
+    context
+        .server
+        .write()
+        .unwrap_or_else(|e| e.into_inner())
+        .replace(server.clone());
+    Ok(server)
 }

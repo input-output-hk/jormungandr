@@ -5,14 +5,13 @@ mod error;
 
 pub use self::error::Error;
 
+use crate::utils::drop_watchdog::{DropTripwire, DropWatchdog};
 use actix_net::server::Server as ActixServer;
 use actix_web::{
-    actix::{Addr, MailboxError, System},
+    actix::{Addr, System},
     server::{self, IntoHttpHandler, StopServer},
 };
-use futures::Future;
 use native_tls::{Identity, TlsAcceptor};
-
 use std::{
     fs,
     net::{SocketAddr, ToSocketAddrs},
@@ -26,6 +25,7 @@ pub type ServerResult<T> = Result<T, Error>;
 #[derive(Clone)]
 pub struct Server {
     addr: Addr<ActixServer>,
+    shutdown_watchdog: DropWatchdog,
 }
 
 impl Server {
@@ -42,9 +42,14 @@ impl Server {
         let (sender, receiver) = sync_channel::<ServerResult<Server>>(0);
         thread::spawn(move || {
             let actix_system = System::builder().build();
-            let server_handler = start_server_curr_actix_system(address, tls, handler);
-            let run_system = server_handler.is_ok();
-            let _ = sender.send(server_handler);
+            let shutdown_tripwire = DropTripwire::new();
+            let server_res =
+                start_server_curr_actix_system(address, tls, handler).map(|addr| Server {
+                    addr,
+                    shutdown_watchdog: shutdown_tripwire.watchdog(),
+                });
+            let run_system = server_res.is_ok();
+            let _ = sender.send(server_res);
             if run_system {
                 actix_system.run();
             }
@@ -52,15 +57,12 @@ impl Server {
         receiver.recv().unwrap()
     }
 
-    pub fn stop(&self) -> impl Future<Item = (), Error = Error> {
-        self.addr
-            .send(StopServer { graceful: true })
-            .then(|result| match result {
-                Ok(Ok(_)) => Ok(()),
-                Ok(Err(_)) => Err(Error::ServerStopFailed),
-                Err(MailboxError::Closed) => Err(Error::ServerAlreadyStopped),
-                Err(MailboxError::Timeout) => Err(Error::ServerStopTimeout),
-            })
+    pub fn stop(&self) {
+        self.addr.do_send(StopServer { graceful: false })
+    }
+
+    pub fn wait_for_stop(&self) {
+        self.shutdown_watchdog.wait()
     }
 }
 
@@ -79,7 +81,7 @@ fn start_server_curr_actix_system<F, H>(
     address: impl ToSocketAddrs,
     tls_opt: Option<TlsAcceptor>,
     handler: F,
-) -> ServerResult<Server>
+) -> ServerResult<Addr<ActixServer>>
 where
     F: Fn() -> H + Clone + Send + 'static,
     H: IntoHttpHandler + 'static,
@@ -88,12 +90,10 @@ where
         .workers(1)
         .system_exit()
         .disable_signals();
-    let bound_server = match tls_opt {
+    match tls_opt {
         Some(tls) => server.bind_tls(address, tls),
         None => server.bind(address),
     }
-    .map_err(|err| Error::BindFailed(err))?;
-    Ok(Server {
-        addr: bound_server.start(),
-    })
+    .map(|bound_server| bound_server.start())
+    .map_err(|err| Error::BindFailed(err))
 }
