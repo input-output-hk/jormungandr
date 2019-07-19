@@ -22,6 +22,8 @@ extern crate hex;
 extern crate http;
 extern crate hyper;
 extern crate jormungandr_lib;
+#[macro_use]
+extern crate lazy_static;
 extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
