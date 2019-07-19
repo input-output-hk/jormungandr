@@ -255,3 +255,9 @@ pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
         .stop();
     Ok(HttpResponse::Ok().finish())
 }
+
+pub fn get_leaders(context: State<Context>) -> impl Responder {
+    Json(json! {
+        context.enclave.get_leaderids()
+    })
+}

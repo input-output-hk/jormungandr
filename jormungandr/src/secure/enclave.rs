@@ -4,7 +4,8 @@ use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(transparent)]
 pub struct LeaderId(u32);
 
 impl LeaderId {
