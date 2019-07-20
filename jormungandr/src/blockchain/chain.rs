@@ -5,7 +5,7 @@ use crate::{
     start_up::NodeStorage,
     utils::borrow::Borrow,
 };
-use chain_core::property::{Block as _, HasHeader as _, HasFragments as _, Header as _};
+use chain_core::property::{Block as _, HasFragments as _, HasHeader as _, Header as _};
 use chain_impl_mockchain::{
     leadership::{self, Verification},
     ledger, multiverse,
