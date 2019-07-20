@@ -111,7 +111,7 @@ impl Readable for Fragment {
                 AuthenticatedTransaction::read(buf).map(Fragment::Transaction)
             }
             Some(FragmentTag::OwnerStakeDelegation) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::Transaction)
+                AuthenticatedTransaction::read(buf).map(Fragment::OwnerStakeDelegation)
             }
             Some(FragmentTag::Certificate) => {
                 AuthenticatedTransaction::read(buf).map(Fragment::Certificate)
