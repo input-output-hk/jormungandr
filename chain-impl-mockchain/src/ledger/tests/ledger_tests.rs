@@ -19,7 +19,6 @@ use crate::{
     value::*,
 };
 use chain_addr::Discrimination;
-use chain_core::property::Fragment as _;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -65,7 +64,7 @@ pub fn ledger_accepts_correct_transaction(
         .authenticate()
         .with_witness(&block0_hash, &faucet)
         .seal();
-    let fragment_id = Fragment::Transaction(signed_tx.clone()).id();
+    let fragment_id = Fragment::Transaction(signed_tx.clone()).hash();
 
     let total_funds_before = calculate_total_funds_in_ledger(&ledger);
 
@@ -116,7 +115,7 @@ pub fn total_funds_are_total_in_ledger(
         .authenticate()
         .with_witnesses(&block0_hash, &input_addresses)
         .seal();
-    let fragment_id = Fragment::Transaction(signed_tx.clone()).id();
+    let fragment_id = Fragment::Transaction(signed_tx.clone()).hash();
 
     let total_funds_before = calculate_total_funds_in_ledger(&ledger);
     let fees = ledger.get_ledger_parameters();
@@ -171,7 +170,7 @@ pub fn utxo_no_enough_signatures() {
         .with_output(Output::from_address(receiver.address.clone(), Value(1)))
         .authenticate()
         .seal();
-    let fragment_id = Fragment::Transaction(signed_tx.clone()).id();
+    let fragment_id = Fragment::Transaction(signed_tx.clone()).hash();
 
     let fees = ledger.get_ledger_parameters();
     assert_err!(
