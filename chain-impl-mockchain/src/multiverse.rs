@@ -8,7 +8,7 @@
 
 use crate::block::ChainLength;
 use crate::ledger::Ledger;
-use chain_core::property::{BlockId as _, HasFragments as _};
+use chain_core::property::BlockId as _;
 use chain_storage::store::BlockStore;
 use std::collections::{hash_map::Entry, BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};
@@ -266,7 +266,7 @@ mod test {
     use crate::ledger::Ledger;
     use crate::milli::Milli;
     use chain_addr::Discrimination;
-    use chain_core::property::{Block as _, ChainLength as _, HasFragments as _};
+    use chain_core::property::{Block as _, ChainLength as _};
     use chain_crypto::{Ed25519, SecretKey};
     use chain_storage::store::BlockStore;
     use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};

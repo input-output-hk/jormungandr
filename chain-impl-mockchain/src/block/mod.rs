@@ -79,6 +79,10 @@ impl Block {
         &content_hash == self.header.block_content_hash()
             && content_size == self.header.common.block_content_size as usize
     }
+
+    pub fn fragments<'a>(&'a self) -> slice::Iter<'a, Fragment> {
+        self.contents.0.iter()
+    }
 }
 
 impl property::Block for Block {
@@ -193,7 +197,7 @@ impl<'a> property::HasFragments<'a> for &'a Block {
     type Fragment = Fragment;
     type Fragments = slice::Iter<'a, Fragment>;
     fn fragments(self) -> Self::Fragments {
-        self.contents.0.iter()
+        self.fragments()
     }
 }
 
