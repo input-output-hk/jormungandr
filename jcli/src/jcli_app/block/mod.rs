@@ -1,4 +1,4 @@
-use chain_core::property::{Block as _, Deserialize, HasMessages, Serialize};
+use chain_core::property::{Block as _, Deserialize, HasFragments, Serialize};
 use chain_impl_mockchain::{
     block::Block,
     ledger::{self, Ledger},
@@ -48,7 +48,7 @@ fn encode_block_0(common: Common) -> Result<(), Error> {
             filler: CustomErrorFiller,
         })?;
     let block = genesis.to_block();
-    Ledger::new(block.id(), block.messages())?;
+    Ledger::new(block.id(), block.fragments())?;
     block
         .serialize(common.open_output()?)
         .map_err(|source| Error::BlockSerializationFailed {

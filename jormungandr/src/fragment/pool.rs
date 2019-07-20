@@ -29,7 +29,7 @@ impl Pool {
         origin: FragmentOrigin,
         fragment: Fragment,
     ) -> impl Future<Item = bool, Error = ()> {
-        use chain_core::property::Message as _;
+        use chain_core::property::Fragment as _;
 
         let id = fragment.id();
         let mut lock = self.pool.clone();
