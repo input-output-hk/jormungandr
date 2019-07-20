@@ -17,7 +17,7 @@ pub use self::kes_update_speed::KESUpdateSpeed;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
 pub use self::slots_duration::SlotDuration;
-use chain_core::property::HasMessages as _;
+use chain_core::property::HasFragments as _;
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder},
     fragment::Fragment,
@@ -54,7 +54,7 @@ custom_error! {pub Block0ConfigurationError
 
 impl Block0Configuration {
     pub fn from_block(block: &Block) -> Result<Self, Block0ConfigurationError> {
-        let mut messages = block.messages();
+        let mut messages = block.fragments();
 
         let blockchain_configuration = match messages.next() {
             Some(Fragment::Initial(initial)) => BlockchainConfiguration::try_from(initial.clone())?,

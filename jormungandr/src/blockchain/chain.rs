@@ -5,7 +5,7 @@ use crate::{
     start_up::NodeStorage,
     utils::borrow::Borrow,
 };
-use chain_core::property::{Block as _, HasHeader as _, HasMessages as _, Header as _};
+use chain_core::property::{Block as _, HasHeader as _, HasFragments as _, Header as _};
 use chain_impl_mockchain::{
     leadership::{self, Verification},
     ledger, multiverse,
@@ -112,7 +112,7 @@ impl Blockchain {
 
                 let block_0_id = block_0.id(); // TODO: get this from the parameter
                 let (block_0, _block_0_info) = storage.get_block(&block_0_id)?;
-                let mut state = Ledger::new(block_0_id, block_0.messages())?;
+                let mut state = Ledger::new(block_0_id, block_0.fragments())?;
 
                 let mut epoch = block_0.date().epoch;
                 let initial_leadership = Leadership::new(epoch, &state);
@@ -127,7 +127,7 @@ impl Blockchain {
                     let block_header = &block.header;
                     state = state.apply_block(
                         &parameters,
-                        block.messages(),
+                        block.fragments(),
                         &block.header.to_content_eval_context(),
                     )?;
                     let gc_root = multiverse.add(info.block_hash.clone(), state.clone());
@@ -150,7 +150,7 @@ impl Blockchain {
 
                 (tip.unwrap(), leaderships)
             } else {
-                let state = Ledger::new(block_0.id(), block_0.messages())?;
+                let state = Ledger::new(block_0.id(), block_0.fragments())?;
                 storage.put_block(&block_0)?;
                 let initial_leadership = Leadership::new(block_0.date().epoch, &state);
                 let tip = multiverse.add(block_0.id(), state.clone());
@@ -389,7 +389,7 @@ fn process_block(
         let current_parameters = parent_state.get_ledger_parameters();
         parent_state.apply_block(
             &current_parameters,
-            block.messages(),
+            block.fragments(),
             &block.header.to_content_eval_context(),
         )?
     };

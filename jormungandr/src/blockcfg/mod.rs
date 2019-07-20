@@ -1,4 +1,4 @@
-use chain_core::property::HasMessages as _;
+use chain_core::property::HasFragments as _;
 pub use network_core::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
@@ -64,9 +64,9 @@ impl Block0DataSource for Block {
 }
 
 fn initial(block: &Block) -> Result<&ConfigParams, Block0Malformed> {
-    for message in block.messages() {
-        if let Fragment::Initial(init) = message {
-            return Ok(init);
+    for fragment in block.fragments() {
+        if let Fragment::Initial(init) = fragment {
+            return Ok(&init);
         }
     }
     Err(Block0Malformed::NoInitialSettings)

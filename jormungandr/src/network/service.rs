@@ -209,24 +209,24 @@ impl BlockService for NodeService {
 }
 
 impl ContentService for NodeService {
-    type Message = Fragment;
-    type MessageId = FragmentId;
-    type GetMessagesStream = ReplyStream<Self::Message, core_error::Error>;
-    type GetMessagesFuture = ReplyFuture<Self::GetMessagesStream, core_error::Error>;
-    type MessageSubscription = Subscription<Fragment>;
-    type MessageSubscriptionFuture = FutureResult<Self::MessageSubscription, core_error::Error>;
+    type Fragment = Fragment;
+    type FragmentId = FragmentId;
+    type GetFragmentsStream = ReplyStream<Self::Fragment, core_error::Error>;
+    type GetFragmentsFuture = ReplyFuture<Self::GetFragmentsStream, core_error::Error>;
+    type ContentSubscription = Subscription<Fragment>;
+    type ContentSubscriptionFuture = FutureResult<Self::ContentSubscription, core_error::Error>;
 
-    fn get_messages(&mut self, _ids: &[Self::MessageId]) -> Self::GetMessagesFuture {
+    fn get_fragments(&mut self, _ids: &[Self::FragmentId]) -> Self::GetFragmentsFuture {
         unimplemented!()
     }
 
-    fn message_subscription<S>(
+    fn content_subscription<S>(
         &mut self,
         subscriber: Self::NodeId,
         _inbound: S,
-    ) -> Self::MessageSubscriptionFuture
+    ) -> Self::ContentSubscriptionFuture
     where
-        S: Stream<Item = Self::Message, Error = core_error::Error>,
+        S: Stream<Item = Self::Fragment, Error = core_error::Error>,
     {
         unimplemented!()
     }
