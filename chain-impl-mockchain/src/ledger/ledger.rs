@@ -14,7 +14,7 @@ use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
-use chain_core::property::{self, ChainLength as _, Fragment as _};
+use chain_core::property::{self, ChainLength as _};
 use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -242,7 +242,7 @@ impl Ledger {
         let ledger_params = ledger.get_ledger_parameters();
 
         for content in content_iter {
-            let fragment_id = content.id();
+            let fragment_id = content.hash();
             match content {
                 Fragment::Initial(_) => {
                     return Err(Error::Block0 {
@@ -379,7 +379,7 @@ impl Ledger {
     ) -> Result<Self, Error> {
         let mut new_ledger = self.clone();
 
-        let fragment_id = content.id();
+        let fragment_id = content.hash();
         match content {
             Fragment::Initial(_) => {
                 return Err(Error::Block0 {
@@ -406,7 +406,7 @@ impl Ledger {
             }
             Fragment::UpdateProposal(update_proposal) => {
                 new_ledger = new_ledger.apply_update_proposal(
-                    content.id(),
+                    fragment_id,
                     &update_proposal,
                     metadata.block_date,
                 )?;
@@ -576,7 +576,10 @@ impl Ledger {
                     witness,
                     value,
                 )?;
-                self.accounts = single.set_delegation(&account_id, Some(auth_cert.transaction.extra.stake_pool.clone()))?;
+                self.accounts = single.set_delegation(
+                    &account_id,
+                    Some(auth_cert.transaction.extra.stake_pool.clone()),
+                )?;
             }
             MatchingIdentifierWitness::Multi(account_id, witness) => {
                 let multi = input_multi_account_verify(
@@ -587,7 +590,10 @@ impl Ledger {
                     witness,
                     value,
                 )?;
-                self.multisig = multi.set_delegation(&account_id, Some(auth_cert.transaction.extra.stake_pool.clone()))?;
+                self.multisig = multi.set_delegation(
+                    &account_id,
+                    Some(auth_cert.transaction.extra.stake_pool.clone()),
+                )?;
             }
         }
 

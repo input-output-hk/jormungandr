@@ -97,6 +97,11 @@ impl Fragment {
         let mut buf = ReadBuf::from(raw.as_ref());
         Fragment::read(&mut buf)
     }
+
+    /// The ID of a message is a hash of its serialization *without* the size.
+    pub fn hash(&self) -> FragmentId {
+        self.to_raw().id()
+}
 }
 
 impl Readable for Fragment {
@@ -146,7 +151,7 @@ impl property::Fragment for Fragment {
 
     /// The ID of a fragment is a hash of its serialization *without* the size.
     fn id(&self) -> Self::Id {
-        self.to_raw().id()
+        self.hash()
     }
 }
 
