@@ -33,7 +33,7 @@ where
     T: Node + Clone,
     <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
+    <T::ContentService as ContentService>::Fragment: protocol_bounds::Fragment,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     inner: tower_hyper::Server<
@@ -66,7 +66,7 @@ where
     T: Node + Clone + Send + 'static,
     <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Message: protocol_bounds::Message,
+    <T::ContentService as ContentService>::Fragment: protocol_bounds::Fragment,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     /// Creates a server instance around the node service implementation.

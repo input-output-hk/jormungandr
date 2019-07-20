@@ -12,15 +12,15 @@ message TipResponse {
   bytes block_header = 1;
 }
 
-// Request to fetch the methods for blocks and headers.
+// A sequence of block identifiers used in fetch requests and solicitation.
 message BlockIds {
   // The identifiers of blocks for loading.
   repeated bytes ids = 1;
 }
 
-// Request to fetch the methods for blocks and headers.
-message MessageIds {
-  // The identifiers of blocks for loading.
+// A sequence of fragment identifiers used in fetch requests.
+message FragmentIds {
+  // The identifiers of fragments.
   repeated bytes ids = 1;
 }
 
@@ -59,10 +59,10 @@ message Header {
   bytes content = 1;
 }
 
-// Representation of a blockchain message, that is, a transaction or other
-// content item. A block in the blockchain consists of messages.
-message Message {
-  // The serialized content of the message.
+// Representation of a block fragment, that is, a transaction or other
+// content item.
+message Fragment {
+  // The serialized content of the fragment.
   bytes content = 1;
 }
 
@@ -94,7 +94,7 @@ service Node {
   rpc GetHeaders(BlockIds) returns (stream Header) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  rpc GetMessages(MessageIds) returns (stream Message) {
+  rpc GetFragments(FragmentIds) returns (stream Fragment) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -122,8 +122,8 @@ service Node {
   rpc BlockSubscription(stream Header) returns (stream BlockEvent);
 
   // Establishes a bidirectional stream to exchange information on new
-  // messages created or accepted by the peers.
-  rpc MessageSubscription(stream Message) returns (stream Message);
+  // block fragments created or accepted by the peers.
+  rpc ContentSubscription(stream Fragment) returns (stream Fragment);
 
   // Establishes a bidirectional stream to exchange information on new
   // network peers.

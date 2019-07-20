@@ -13,7 +13,7 @@ use crate::transaction::*;
 use crate::value::*;
 use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
-use chain_core::property::{self, ChainLength as _, Message as _};
+use chain_core::property::{self, ChainLength as _, Fragment as _};
 use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};

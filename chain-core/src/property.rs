@@ -146,34 +146,34 @@ pub trait HasHeader {
     fn header(&self) -> Self::Header;
 }
 
-/// Trait identifying the message identifier type.
-pub trait MessageId: Eq + Hash + Clone + Debug + Serialize + Deserialize {}
+/// Trait identifying the fragment identifier type.
+pub trait FragmentId: Eq + Hash + Clone + Debug + Serialize + Deserialize {}
 
-/// A message is some item contained in a block, such as a
+/// A fragment is some item contained in a block, such as a
 /// transaction, a delegation-related certificate, an update proposal,
-/// and so on. Messages can be serialized (so that they can be
+/// and so on. Fragments can be serialized (so that they can be
 /// concatenated to form a binary block( and have a unique ID
 /// (typically the hash of their serialization).
-pub trait Message: Serialize + Deserialize {
-    type Id: MessageId;
+pub trait Fragment: Serialize + Deserialize {
+    type Id: FragmentId;
 
     /// Return the message's identifier.
     fn id(&self) -> Self::Id;
 }
 
-/// Accessor to messages within a block.
+/// Accessor to fragments within a block.
 ///
 /// This trait has a lifetime parameter and is normally implemented by
 /// reference types.
-pub trait HasMessages<'a> {
-    /// The type of messages in this block.
-    type Message: 'a + Message;
+pub trait HasFragments<'a> {
+    /// The type representing fragments in this block.
+    type Fragment: 'a + Fragment;
 
-    /// Iterator over block's messages.
-    type Messages: 'a + Iterator<Item = &'a Self::Message>;
+    /// A by-reference iterator over block's fragments.
+    type Fragments: 'a + Iterator<Item = &'a Self::Fragment>;
 
-    /// Returns an iterator over the messages in the block.
-    fn messages(self) -> Self::Messages;
+    /// Returns a by-reference iterator over the fragments in the block.
+    fn fragments(self) -> Self::Fragments;
 }
 
 /// define a transaction within the blockchain. This transaction can be used
@@ -200,7 +200,7 @@ pub trait Transaction: Serialize + Deserialize {
 pub trait State: Sized + Clone {
     type Error: std::error::Error;
     type Header: Header;
-    type Content: Message;
+    type Content: Fragment;
 
     /// yield a new block in the state
     ///

@@ -133,10 +133,10 @@ impl property::Deserialize for Fragment {
     }
 }
 
-impl property::Message for Fragment {
+impl property::Fragment for Fragment {
     type Id = FragmentId;
 
-    /// The ID of a message is a hash of its serialization *without* the size.
+    /// The ID of a fragment is a hash of its serialization *without* the size.
     fn id(&self) -> Self::Id {
         self.to_raw().id()
     }
