@@ -69,6 +69,7 @@ impl Error for ReadError {}
 pub struct ReadBuf<'a> {
     offset: usize,
     data: &'a [u8],
+    //trace: Vec<(usize, String)>,
 }
 
 impl<'a> ReadBuf<'a> {
@@ -77,6 +78,7 @@ impl<'a> ReadBuf<'a> {
         ReadBuf {
             offset: 0,
             data: slice,
+            //trace: Vec::new(),
         }
     }
 
@@ -89,7 +91,7 @@ impl<'a> ReadBuf<'a> {
         if left >= expected {
             Ok(())
         } else {
-            dbg!(self.data);
+            dbg!(self.debug());
             Err(ReadError::NotEnoughBytes(left, expected))
         }
     }
@@ -168,6 +170,25 @@ impl<'a> ReadBuf<'a> {
         let mut buf = [0u8; SIZE];
         buf.copy_from_slice(self.get_slice(SIZE)?);
         Ok(u128::from_be_bytes(buf))
+    }
+
+    /*
+    pub fn trace(&mut self, s: &str) {
+        self.trace.push((self.offset, s.to_string()))
+    }
+    */
+
+    pub fn debug(&self) -> String {
+        let mut s = String::new();
+        for (i, x) in self.data.iter().enumerate() {
+            //self.trace.iter().find(|(ofs,_)| ofs == &i).map(|(_,name)| { s.push_str(&name); s.push(' ') });
+            if i == self.offset {
+                s.push_str(&".. ");
+            }
+            let bytes = format!("{:02x} ", x);
+            s.push_str(&bytes);
+        }
+        s
     }
 }
 
