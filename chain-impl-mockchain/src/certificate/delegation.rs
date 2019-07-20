@@ -22,9 +22,8 @@ impl property::Serialize for OwnerStakeDelegation {
 
 impl Readable for OwnerStakeDelegation {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        Ok(Self {
-            stake_pool: StakePoolId::read(buf)?,
-        })
+        let stake_pool = StakePoolId::read(buf)?;
+        Ok(Self { stake_pool })
     }
 }
 

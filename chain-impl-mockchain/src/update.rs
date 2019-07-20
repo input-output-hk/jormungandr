@@ -333,9 +333,11 @@ impl property::Serialize for UpdateVote {
 
 impl Readable for UpdateVote {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let proposal_id = Readable::read(buf)?;
+        let voter_id = Readable::read(buf)?;
         Ok(UpdateVote {
-            proposal_id: Readable::read(buf)?,
-            voter_id: Readable::read(buf)?,
+            proposal_id,
+            voter_id,
         })
     }
 }
