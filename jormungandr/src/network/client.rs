@@ -164,30 +164,58 @@ where
             }
             BlockEvent::Missing(req) => {
                 debug!(self.logger, "received block event Missing");
-                let (reply_handle, stream) = intercom::stream_reply::<
-                    Header,
-                    network_core::error::Error,
-                >(self.logger.clone());
-                self.channels.client_box.send_to(ClientMsg::GetHeadersRange(
-                    req.from,
-                    req.to,
-                    reply_handle,
-                ));
-                let node_id = self.remote_node_id;
-                let done_logger = self.logger.clone();
-                let err_logger = self.logger.clone();
-                tokio::spawn(
-                    self.service
-                        .push_headers(stream)
-                        .map(move |_| {
-                            debug!(done_logger, "finished pushing headers to {}", node_id);
-                        })
-                        .map_err(move |err| {
-                            warn!(err_logger, "PushHeaders request failed: {:?}", err);
-                        }),
-                );
+                self.push_missing_blocks(req);
             }
         }
+    }
+
+    // FIXME: use this to handle BlockEvent::Missing events when two-stage
+    // chain pull processing is implemented in the blockchain task.
+    #[allow(dead_code)]
+    fn push_missing_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
+        let (reply_handle, stream) =
+            intercom::stream_reply::<Header, network_core::error::Error>(self.logger.clone());
+        self.channels.client_box.send_to(ClientMsg::GetHeadersRange(
+            req.from,
+            req.to,
+            reply_handle,
+        ));
+        let node_id = self.remote_node_id;
+        let done_logger = self.logger.clone();
+        let err_logger = self.logger.clone();
+        tokio::spawn(
+            self.service
+                .push_headers(stream)
+                .map(move |_| {
+                    debug!(done_logger, "finished pushing headers to {}", node_id);
+                })
+                .map_err(move |err| {
+                    warn!(err_logger, "PushHeaders request failed: {:?}", err);
+                }),
+        );
+    }
+
+    // Temporary support for pushing chain blocks without two-stage
+    // retrieval.
+    fn push_missing_blocks(&mut self, req: ChainPullRequest<HeaderHash>) {
+        let (reply_handle, stream) =
+            intercom::stream_reply::<Block, network_core::error::Error>(self.logger.clone());
+        self.channels
+            .client_box
+            .send_to(ClientMsg::PullBlocksToTip(req.from, reply_handle));
+        let node_id = self.remote_node_id;
+        let done_logger = self.logger.clone();
+        let err_logger = self.logger.clone();
+        tokio::spawn(
+            self.service
+                .upload_blocks(stream)
+                .map(move |_| {
+                    debug!(done_logger, "finished pushing blocks to {}", node_id);
+                })
+                .map_err(move |err| {
+                    warn!(err_logger, "UploadBlocks request failed: {:?}", err);
+                }),
+        );
     }
 }
 
@@ -197,6 +225,9 @@ where
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
 {
+    // FIXME: use this to handle chain pull requests when two-stage
+    // chain pull processing is implemented in the blockchain task.
+    #[allow(dead_code)]
     fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
         let block_box = self.channels.block_box.clone();
         let logger = self.logger.clone();
@@ -223,6 +254,49 @@ where
                             )
                             .map_err(move |e| {
                                 warn!(err_logger, "chain header validation failed: {:?}", e)
+                            })
+                        })
+                }),
+        );
+    }
+}
+
+impl<S> Client<S>
+where
+    S: BlockService<Block = Block>,
+    S::PullBlocksToTipFuture: Send + 'static,
+    S::PullBlocksStream: Send + 'static,
+{
+    // Temporary support for pulling chain blocks without two-stage
+    // retrieval.
+    fn pull_blocks_to_tip(&mut self, req: ChainPullRequest<HeaderHash>) {
+        let block_box = self.channels.block_box.clone();
+        let logger = self.logger.clone();
+        let err_logger = logger.clone();
+        tokio::spawn(
+            self.service
+                .pull_blocks_to_tip(&req.from)
+                .map_err(move |e| {
+                    warn!(err_logger, "PullBlocksToTip request failed: {:?}", e);
+                })
+                .and_then(move |stream| {
+                    let err_logger = logger.clone();
+                    stream
+                        .map_err(move |e| {
+                            warn!(
+                                err_logger,
+                                "PullBlocksToTip response stream failed: {:?}", e
+                            );
+                        })
+                        .for_each(move |block| {
+                            let err_logger = logger.clone();
+                            InboundProcessing::with_unary(
+                                block_box.clone(),
+                                logger.clone(),
+                                |reply| BlockMsg::NetworkBlock(block, reply),
+                            )
+                            .map_err(move |e| {
+                                warn!(err_logger, "pulled block validation failed: {:?}", e)
                             })
                         })
                 }),
@@ -276,6 +350,8 @@ where
     S: BlockService<Block = Block>,
     S::GetBlocksFuture: Send + 'static,
     S::GetBlocksStream: Send + 'static,
+    S::PullBlocksToTipFuture: Send + 'static,
+    S::PullBlocksStream: Send + 'static,
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
     S::PushHeadersFuture: Send + 'static,
@@ -322,7 +398,9 @@ where
                 }
                 Async::Ready(Some(req)) => {
                     streams_ready = true;
-                    self.pull_headers(req);
+                    // FIXME: implement two-stage chain pull processing
+                    // in the blockchain task and use pull_headers here.
+                    self.pull_blocks_to_tip(req);
                 }
             }
             if !streams_ready {
