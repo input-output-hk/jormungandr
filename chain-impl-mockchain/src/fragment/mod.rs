@@ -33,6 +33,13 @@ pub enum Fragment {
     UpdateVote(SignedUpdateVote),
 }
 
+impl PartialEq for Fragment {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash() == other.hash()
+    }
+}
+impl Eq for Fragment {}
+
 /// Tag enumeration of all known fragment
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum FragmentTag {
@@ -101,7 +108,7 @@ impl Fragment {
     /// The ID of a message is a hash of its serialization *without* the size.
     pub fn hash(&self) -> FragmentId {
         self.to_raw().id()
-}
+    }
 }
 
 impl Readable for Fragment {
@@ -158,11 +165,11 @@ impl property::Fragment for Fragment {
 #[cfg(test)]
 mod test {
     use super::*;
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, TestResult};
 
-    impl Arbitrary for Message {
+    impl Arbitrary for Fragment {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match g.next_u32() % 6 {
+            match g.next_u32() % 7 {
                 0 => Fragment::Initial(Arbitrary::arbitrary(g)),
                 1 => Fragment::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
                 2 => Fragment::Transaction(Arbitrary::arbitrary(g)),
@@ -171,6 +178,13 @@ mod test {
                 5 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
                 _ => Fragment::UpdateVote(Arbitrary::arbitrary(g)),
             }
+        }
+    }
+
+    quickcheck! {
+        fn fragment_serialization_bijection(b: Fragment) -> TestResult {
+            let b_got = Fragment::from_raw(&b.to_raw()).unwrap();
+            TestResult::from_bool(b == b_got)
         }
     }
 }
