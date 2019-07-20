@@ -44,8 +44,8 @@ In BFT the header also contains (768 bits = 96 bytes):
 
 In Praos/Genesis the header also contains (616 bytes):
 
-* VRF PubKey: 32 bytes (curve25519-dalek)
-* VRF Proof: 96 bytes (curve25519-dalek DLEQs)
+* VRF PubKey: 32 bytes (ristretto25519)
+* VRF Proof: 96 bytes (ristretto25519 DLEQs)
 * KES Signature: 484 bytes (sumed25519-12)
 
 Additionally, we introduce the capability to address each header individually
