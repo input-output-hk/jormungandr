@@ -38,7 +38,7 @@ impl<Extra: property::Serialize> property::Serialize for AuthenticatedTransactio
 
 impl<Extra: Readable> Readable for AuthenticatedTransaction<Address, Extra> {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let transaction = Transaction::read_with_header(buf)?;
+        let transaction = Transaction::read(buf)?;
         let num_witnesses = transaction.inputs.len();
         let witnesses = read_vec(buf, num_witnesses)?;
 
@@ -54,10 +54,17 @@ impl<Extra: Readable> Readable for AuthenticatedTransaction<Address, Extra> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::certificate::{Certificate, OwnerStakeDelegation};
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
         fn transaction_encode_decode(transaction: Transaction<Address, NoExtra>) -> TestResult {
+            chain_core::property::testing::serialization_bijection_r(transaction)
+        }
+        fn stake_owner_delegation_tx_encode_decode(transaction: Transaction<Address, OwnerStakeDelegation>) -> TestResult {
+            chain_core::property::testing::serialization_bijection_r(transaction)
+        }
+        fn certificate_tx_encode_decode(transaction: Transaction<Address, Certificate>) -> TestResult {
             chain_core::property::testing::serialization_bijection_r(transaction)
         }
         fn signed_transaction_encode_decode(transaction: AuthenticatedTransaction<Address, NoExtra>) -> TestResult {

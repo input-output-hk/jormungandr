@@ -76,14 +76,18 @@ Where HEADER is:
 	SIZE (2 bytes) | TYPE (1 byte)
 
 Additionally, we introduce the capability to refer to each fragment
-individually by fragment-id, using a cryptographic hash function : `H(TYPE |
-CONTENT)`. The hash doesn't include the size prefix in the header to simplify
+individually by FragmentId, using a cryptographic hash function :
+
+    FragmentId = H(TYPE | FRAGMENT-CONTENT)
+
+The hash doesn't include the size prefix in the header to simplify
 calculation of hash with on-the-fly (non serialized) structure.
 
 Types of content:
 
 * Transaction
 * Old Transaction
+* Owner stake Delegation
 * Certificate (Staking, Pool, Delegation, ...)
 * TBD Update
 * TBD Debug Stats : block debug information in chain.
@@ -103,22 +107,27 @@ There's 4 differents type of supported spending:
 
 We add support to this with the following TokenTransfer data structure:
 
-* Transaction Header (2 bytes)
+* Optional Payload defined by the container above
 * Input number (1 byte: 256 inputs maximum)
 * Output number (1 byte where 0xff is reserved: 255 outputs maximum)
 * Transaction Inputs (Input number of time * 41 bytes):
-  * Index (1 byte) : special value 0xff specify an account spending
-  * Account Public Key or Transaction Hash (32 bytes) (which is H(CONTENT))
+  * Index (1 byte) : special value 0xff specify a account spending (single or multi)
+  * Account Identifier or Utxo Identifier (also FragmentId) (32 bytes)
   * Value (8 bytes)
 * Transaction Outputs (Output number of time):
   * Address (bootstrap address 33 bytes, delegation address 65 bytes, account address 33 bytes)
   * Value (8 bytes)
 
-Value are encoded as fixed size 8 bytes, wasting a few bytes of space for small amounts, but making fee calculation simpler when based on bytes.
+Effectively making the following stream of data:
 
-We add a way to refer to this content by hash using the following construction:
+    TokenTransfer<PAYLOAD> = PAYLOAD | #INPUTS (1 byte) | #OUTPUTS (1 byte) | INPUT1 | .. | OUTPUT1 | ..
 
-    H(HEADER | INPUTS | OUTPUTS)
+Value are encoded as fixed size 8 bytes, wasting a few bytes of space for
+small amounts, but making fee calculation simpler when based on bytes.
+
+We add a way to refer to this content for authentication using the following construction:
+
+    TransactionSignDataHash = H(TokenTransfer<PAYLOAD>)
 
 Rationales:
 
@@ -165,9 +174,9 @@ With the following serialization:
 
 The message, w.r.t the cryptographic signature, is generally of the form:
 
-	Msg = HEADER | INPUTS | OUTPUTS | EXTRA
+    Authenticated-Data = H(HEADER-GENESIS) | TRANSACTION-SIGN-DATA-HASH | WITNESS-SPECIFIC-DATA
 
-Where HEADER, INPUTS and OUTPUTS comes from the Token Transfer type, and EXTRA is the optional data serialized between the token transfer type, and the witnesses.
+Where HEADER, INPUTS and OUTPUTS comes from the Token Transfer type, and PAYLOAD is the optional data serialized between the token transfer type, and the witnesses.
 
 ## Type 0: Initial blockchain configuration
 
@@ -231,20 +240,26 @@ serialization of the corresponding parts of a transaction in bytes.
 
 ## Type 2: Transaction
 
-Transaction is the composition of the TokenTransfer structure followed directly by the witnesses. EXTRA needs to be empty. Effectively:
+Transaction is the composition of the TokenTransfer structure followed directly by the witnesses. PAYLOAD needs to be empty. Effectively:
 
-    TokenTransfer | Witnesses
+    TokenTransfer<PAYLOAD = ()> | Witnesses
 
 TODO:
 
 * Multisig
 * Fees
 
+## Type 2: OwnerStakeDelegation
+
+    TokenTransfer<PAYLOAD = OwnerStakeDelegation> | Witnesses
+
+    OwnerStakeDelegation = StakePoolId
+
 ## Type 3: Certificate
 
-Certificate is the composition of the TokenTransfer structure, followed by the certificate data, then the witnesses. Effectively:
+Certificate is the composition of the TokenTransfer structure where PAYLOAD is the certificate data, and then the witnesses. Effectively:
 
-    TokenTransfer | Certificate | Witnesses
+    TokenTransfer<PAYLOAD = CERTIFICATE> | Witnesses
 
 Known Certificate types:
 
