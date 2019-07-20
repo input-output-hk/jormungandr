@@ -3,8 +3,8 @@ use std::collections::hash_map::DefaultHasher;
 
 use super::declaration::{Declaration, DeclarationError, Identifier};
 use crate::accounting::account::{self, Iter, SpendingCounter};
-use crate::value::{Value, ValueError};
 use crate::stake::StakePoolId;
+use crate::value::{Value, ValueError};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Ledger {
@@ -134,7 +134,6 @@ impl Ledger {
             declarations: self.declarations.clone(),
         })
     }
-
 
     pub fn get_total_value(&self) -> Result<Value, ValueError> {
         self.accounts.get_total_value()
