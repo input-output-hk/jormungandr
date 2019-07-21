@@ -810,12 +810,7 @@ fn internal_apply_transaction_output(
 ) -> Result<(utxo::Ledger<Address>, account::Ledger, multisig::Ledger), Error> {
     let mut new_utxos = Vec::new();
     for (index, output) in outputs.iter().enumerate() {
-        // Reject zero-valued outputs.
-        if output.value == Value::zero() {
-            return Err(Error::ZeroOutput {
-                output: output.clone(),
-            });
-        }
+        check::valid_output_value(&output)?;
 
         if output.address.discrimination() != static_params.discrimination {
             return Err(Error::InvalidDiscrimination);
