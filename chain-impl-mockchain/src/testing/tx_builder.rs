@@ -123,9 +123,9 @@ impl TransactionAuthenticator {
             Kind::Account(_) => self.with_account_witness(
                 block0,
                 &addres_data.spending_counter.unwrap(),
-                &addres_data.private_key,
+                &addres_data.private_key(),
             ),
-            _ => self.with_utxo_witness(block0, &addres_data.private_key),
+            _ => self.with_utxo_witness(block0, &addres_data.private_key()),
         }
     }
 

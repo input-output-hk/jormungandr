@@ -171,6 +171,7 @@ mod tests {
     use crate::stake::StakePoolInfo;
     use crate::testing::ledger as ledger_mock;
     use crate::value::*;
+
     use chain_crypto::*;
     use std::collections::HashMap;
 
