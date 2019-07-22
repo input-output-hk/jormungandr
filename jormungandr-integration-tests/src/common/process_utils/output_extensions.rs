@@ -22,7 +22,11 @@ impl ProcessOutput for Output {
             let len = content.len();
             content.truncate(len - 1);
         }
-        content
+        let mut split = content.split_whitespace();
+        match split.next() {
+            Some(x) => x.to_string(),
+            None => "".to_owned(),
+        }
     }
 
     fn err_as_lossy_string(&self) -> String {
