@@ -1,13 +1,19 @@
+use chain_core::property::Deserialize;
+use chain_impl_mockchain::fragment::Fragment;
 use hex;
 use jcli_app::rest::Error;
 use jcli_app::utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+extern crate bytes;
+use self::bytes::IntoBuf;
+use chain_core::property::Message as message_property;
+
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum Message {
-    /// Post message
+    /// Post message. Prints id for posted message
     Post {
         #[structopt(flatten)]
         addr: HostAddr,
@@ -62,9 +68,18 @@ fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) -> Resu
     let url = addr.with_segments(&["v0", "message"])?.into_url();
     let builder = reqwest::Client::new().post(url);
     let response = RestApiSender::new(builder, &debug)
-        .with_binary_body(msg_bin)
+        .with_binary_body(msg_bin.clone())
         .send()?;
     response.response().error_for_status_ref()?;
-    println!("Success!");
-    Ok(())
+
+    match Fragment::deserialize(msg_bin.into_buf()) {
+        Ok(fragment) => {
+            println!("{}", fragment.id());
+            Ok(())
+        }
+        Err(err) => {
+            println!("Error: {}", err);
+            Ok(())
+        }
+    }
 }
