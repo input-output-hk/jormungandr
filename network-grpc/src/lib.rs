@@ -16,3 +16,5 @@ pub mod client;
 mod convert;
 pub mod server;
 mod service;
+
+pub const PROTOCOL_VERSION: u32 = 0;
