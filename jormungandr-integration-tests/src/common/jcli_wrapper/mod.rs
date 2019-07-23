@@ -285,42 +285,27 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
     single_line
 }
 
-pub fn assert_rest_message_logs(host: &str) -> Vec<FragmentLog> {
-    let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_rest_message_log_command(&host),
-    );
-    let content = output.as_lossy_string();
-    serde_yaml::from_str(&content).unwrap()
+pub fn assert_transaction_in_block(transaction_message: &str, host: &str) -> Hash {
+    let fragment_id = self::assert_post_transaction(&transaction_message, &host);
+    self::wait_until_transaction_processed(fragment_id, &host);
+    self::assert_transaction_log_shows_in_block(fragment_id, &host);
+    fragment_id.clone()
 }
 
-pub fn assert_transaction_in_block(transaction_message: &str, host: &str) {
-    self::assert_post_transaction(&transaction_message, &host);
-    self::wait_until_last_transaction_processed(&host);
-    self::assert_transaction_log_shows_in_block(&host);
+pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_reason: &str) {
+    let fragment_id = self::assert_post_transaction(&transaction_message, &host);
+    self::wait_until_transaction_processed(fragment_id, &host);
+    self::assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
 }
 
-pub fn assert_all_transactions_in_block(transaction_messages: &Vec<String>, host: &str) {
-    for message in transaction_messages.iter() {
-        self::assert_post_transaction(&message, &host);
-    }
-    self::wait_until_all_transactions_processed(&host);
-    self::assert_transaction_log_shows_in_block(&host);
-}
-
-pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_msg: &str) {
-    self::assert_post_transaction(&transaction_message, &host);
-    self::wait_until_last_transaction_processed(&host);
-    self::assert_transaction_log_shows_rejected(&host, &expected_msg);
-}
-
-pub fn wait_until_last_transaction_processed(host: &str) {
+pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str) {
     process_utils::run_process_until_response_matches(
         jcli_commands::get_rest_message_log_command(&host),
         |output| {
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
                 serde_yaml::from_str(&content).expect("Cannot parse fragment logs");
-            match fragments.last() {
+            match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
                 Some(x) => !x.is_pending(),
                 None => false,
             }
@@ -331,6 +316,50 @@ pub fn wait_until_last_transaction_processed(host: &str) {
         "transaction is pending for too long",
     )
     .expect("internal error while waiting until last transaction is processed");
+}
+
+pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, host: &str) {
+    let fragments = self::assert_get_rest_message_log(&host);
+    match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
+        Some(x) => assert!(
+            x.is_in_a_block(),
+            "Fragment should be in block, actual: {:?}",
+            &x
+        ),
+        None => panic!(
+            "cannot find any fragment in rest message log, output: {:?}",
+            &fragments
+        ),
+    }
+}
+
+pub fn assert_transaction_log_shows_rejected(fragment_id: Hash, host: &str, expected_msg: &str) {
+    let fragments = self::assert_get_rest_message_log(&host);
+    match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
+        Some(x) => {
+            assert!(
+                x.is_rejected(),
+                "Fragment should be rejected, actual: {:?}",
+                &x
+            );
+            match x.status() {
+                FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
+                _ => panic!("Non expected state for for rejected log"),
+            }
+        }
+        None => panic!(
+            "cannot find any fragment in rest message log, output: {:?}",
+            &fragments
+        ),
+    }
+}
+
+pub fn assert_all_transactions_in_block(transactions_messages: &Vec<String>, host: &str) {
+    for transactions_message in transactions_messages.iter() {
+        self::assert_post_transaction(&transactions_message, &host);
+    }
+    self::wait_until_all_transactions_processed(&host);
+    self::assert_all_transaction_log_shows_in_block(&host);
 }
 
 pub fn wait_until_all_transactions_processed(host: &str) {
@@ -351,41 +380,14 @@ pub fn wait_until_all_transactions_processed(host: &str) {
     .expect("internal error while waiting until all transactions is processed");
 }
 
-pub fn assert_transaction_log_shows_in_block(host: &str) {
+pub fn assert_all_transaction_log_shows_in_block(host: &str) {
     let fragments = self::assert_get_rest_message_log(&host);
-    let fragment = fragments.last();
-    match fragment {
-        Some(x) => assert!(
-            x.is_in_a_block(),
+    for fragment in fragments {
+        assert!(
+            fragment.is_in_a_block(),
             "Fragment should be in block, actual: {:?}",
             &fragment
-        ),
-        None => panic!(
-            "cannot find any fragment in rest message log, output: {:?}",
-            &fragments
-        ),
-    }
-}
-
-pub fn assert_transaction_log_shows_rejected(host: &str, expected_msg: &str) {
-    let fragments = self::assert_get_rest_message_log(&host);
-    let fragment = fragments.last();
-    match fragment {
-        Some(x) => {
-            assert!(
-                x.is_rejected(),
-                "Fragment should be rejected, actual: {:?}",
-                &fragment
-            );
-            match x.status() {
-                FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
-                _ => panic!("Non expected state for for rejected log"),
-            }
-        }
-        None => panic!(
-            "cannot find any fragment in rest message log, output: {:?}",
-            &fragments
-        ),
+        );
     }
 }
 
