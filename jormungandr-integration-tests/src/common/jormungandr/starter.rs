@@ -81,6 +81,20 @@ pub fn start_jormungandr_node(config: &mut JormungandrConfig) -> JormungandrProc
     process
 }
 
+pub fn restart_jormungandr_node_as_leader(process: &mut JormungandrProcess) -> JormungandrProcess {
+    let mut config = process.config.clone();
+    std::mem::drop(process);
+    config.node_config.regenerate_ports();
+    start_jormungandr_node_as_leader(&mut config)
+}
+
+pub fn restart_jormungandr_node(process: &mut JormungandrProcess) -> JormungandrProcess {
+    let mut config = process.config.clone();
+    std::mem::drop(process);
+    config.node_config.regenerate_ports();
+    start_jormungandr_node(&mut config)
+}
+
 pub fn start_jormungandr_node_as_leader(config: &mut JormungandrConfig) -> JormungandrProcess {
     let mut command = commands::get_start_jormungandr_as_leader_node_command(
         &config.node_config_path,
