@@ -50,9 +50,8 @@ impl JCLITransactionWrapper {
         output_amount: &Value,
         sender: &U,
         genesis_hash: &str,
-    ) -> JCLITransactionWrapper {
-        let mut transaction_builder = JCLITransactionWrapper::new_transaction(genesis_hash);
-        transaction_builder
+    ) -> String {
+        JCLITransactionWrapper::new_transaction(genesis_hash)
             .assert_add_input(
                 &utxo.transaction_id(),
                 utxo.index_in_transaction(),
@@ -60,8 +59,8 @@ impl JCLITransactionWrapper {
             )
             .assert_add_output(&receiver.get_address(), output_amount)
             .assert_finalize()
-            .seal_with_witness_default(&sender.get_private_key(), &receiver.get_address_type());
-        transaction_builder
+            .seal_with_witness_default(&sender.get_private_key(), &receiver.get_address_type())
+            .assert_to_message()
     }
 
     pub fn build_transaction<T: AddressDataProvider, U: AddressDataProvider>(
@@ -72,14 +71,13 @@ impl JCLITransactionWrapper {
         output_amount: &Value,
         sender: &U,
         genesis_hash: &str,
-    ) -> JCLITransactionWrapper {
-        let mut transaction_builder = JCLITransactionWrapper::new_transaction(genesis_hash);
-        transaction_builder
+    ) -> String {
+        JCLITransactionWrapper::new_transaction(genesis_hash)
             .assert_add_input(transaction_id, transaction_index, input_amount)
             .assert_add_output(&receiver.get_address(), &output_amount)
             .assert_finalize()
-            .seal_with_witness_default(&sender.get_private_key(), &receiver.get_address_type());
-        transaction_builder
+            .seal_with_witness_default(&sender.get_private_key(), &receiver.get_address_type())
+            .assert_to_message()
     }
 
     pub fn assert_new_transaction(&mut self) -> &mut Self {
@@ -326,7 +324,7 @@ impl JCLITransactionWrapper {
         self
     }
 
-    pub fn assert_transaction_to_message(&self) -> String {
+    pub fn assert_to_message(&self) -> String {
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_transaction_message_to_command(&self.staging_file_path),
@@ -336,7 +334,7 @@ impl JCLITransactionWrapper {
         content
     }
 
-    pub fn assert_transaction_to_message_fails(&self, expected_msg: &str) {
+    pub fn assert_to_message_fails(&self, expected_msg: &str) {
         process_assert::assert_process_failed_and_matches_message(
             self.commands
                 .get_transaction_message_to_command(&self.staging_file_path),

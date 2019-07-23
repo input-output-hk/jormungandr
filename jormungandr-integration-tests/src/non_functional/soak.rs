@@ -26,28 +26,21 @@ pub fn test_100_transaction_is_processed() {
     for _i in 0..100 {
         let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
 
-        let transaction_message =
-            JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
-                .assert_add_input_from_utxo(&utxo)
-                .assert_add_output(&receiver.address.clone(), &utxo.associated_fund())
-                .assert_finalize()
-                .seal_with_witness_for_address(&sender)
-                .assert_transaction_to_message();
+        let transaction = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
+            .assert_add_input_from_utxo(&utxo)
+            .assert_add_output(&receiver.address.clone(), &utxo.associated_fund())
+            .assert_finalize()
+            .seal_with_witness_for_address(&sender)
+            .assert_to_message();
 
-        jcli_wrapper::assert_all_transactions_in_block(
-            &vec![transaction_message.to_owned()],
-            &jormungandr_rest_address,
-        );
+        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr_rest_address);
+
         assert_funds_transferred_to(&receiver.address, &jormungandr_rest_address);
         jormungandr.assert_no_errors_in_log();
         std::mem::swap(&mut sender, &mut receiver);
     }
 
-    process_utils::sleep(1);
-    let message_logs = jcli_wrapper::assert_rest_message_logs(&jormungandr_rest_address);
-    message_logs
-        .iter()
-        .for_each(|el| assert!(el.is_in_a_block()));
+    jcli_wrapper::assert_all_transaction_log_shows_in_block(&jormungandr_rest_address);
 }
 
 fn assert_funds_transferred_to(address: &str, host: &str) {
@@ -85,18 +78,14 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
     loop {
         let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
 
-        let transaction_message =
-            JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
-                .assert_add_input_from_utxo(&utxo)
-                .assert_add_output(&receiver.address.clone(), &utxo.associated_fund())
-                .assert_finalize()
-                .seal_with_witness_for_address(&sender)
-                .assert_transaction_to_message();
+        let new_transaction = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
+            .assert_add_input_from_utxo(&utxo)
+            .assert_add_output(&receiver.address.clone(), &utxo.associated_fund())
+            .assert_finalize()
+            .seal_with_witness_for_address(&sender)
+            .assert_to_message();
 
-        super::send_transaction_and_ensure_block_was_produced(
-            &vec![transaction_message.to_owned()],
-            &jormungandr,
-        );
+        super::send_transaction_and_ensure_block_was_produced(&vec![new_transaction], &jormungandr);
         assert_funds_transferred_to(&receiver.address, &jormungandr_rest_address);
 
         // 900 s = 15 minutes
