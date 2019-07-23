@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
-use jormungandr_lib::interfaces::{AccountState, FragmentLog, FragmentStatus, UTxOInfo};
 
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::{AccountState, FragmentLog, FragmentStatus, UTxOInfo};
 pub mod certificate;
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
@@ -130,13 +131,13 @@ pub fn assert_address_account(public_key: &str, discrimination: Discrimination) 
     single_line
 }
 
-pub fn assert_post_transaction(transaction_hash: &str, host: &str) -> () {
+pub fn assert_post_transaction(transactions_message: &str, host: &str) -> Hash {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_post_transaction_command(&transaction_hash, &host),
+        jcli_commands::get_post_transaction_command(&transactions_message, &host),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
-    assert_eq!("Success!", single_line);
+    Hash::from_hex(&single_line).unwrap()
 }
 
 pub fn assert_transaction_post_accepted(transaction_hash: &str, host: &str) -> () {

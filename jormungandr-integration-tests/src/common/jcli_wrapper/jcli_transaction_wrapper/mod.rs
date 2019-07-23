@@ -21,24 +21,24 @@ use std::path::PathBuf;
 pub struct JCLITransactionWrapper {
     pub staging_file_path: PathBuf,
     commands: TransactionCommands,
-    pub genesis_hash: String,
+    pub genesis_hash: Hash,
 }
 
 impl JCLITransactionWrapper {
-    pub fn new() -> JCLITransactionWrapper {
-        JCLITransactionWrapper::from_genesis("")
+    pub fn empty() -> Self {
+        JCLITransactionWrapper::new("")
     }
 
-    pub fn from_genesis(genesis_hash: &str) -> JCLITransactionWrapper {
+    pub fn new(genesis_hash: &str) -> Self {
         JCLITransactionWrapper {
             staging_file_path: PathBuf::from(""),
             commands: TransactionCommands::new(),
-            genesis_hash: genesis_hash.to_string(),
+            genesis_hash: Hash::from_hex(&genesis_hash.to_string()).unwrap(),
         }
     }
 
-    pub fn new_transaction(genesis_hash: &str) -> JCLITransactionWrapper {
-        let mut transaction_builder = JCLITransactionWrapper::from_genesis(genesis_hash);
+    pub fn new_transaction(genesis_hash: &str) -> Self {
+        let mut transaction_builder = JCLITransactionWrapper::new(genesis_hash);
         transaction_builder.assert_new_transaction();
         transaction_builder
     }
@@ -278,14 +278,11 @@ impl JCLITransactionWrapper {
         self
     }
 
-    pub fn assert_make_witness<'a>(
-        &'a mut self,
-        witness: &Witness,
-    ) -> &'a mut JCLITransactionWrapper {
+    pub fn assert_make_witness(&mut self, witness: &Witness) -> &mut Self {
         let output =
             process_utils::run_process_and_get_output(self.commands.get_make_witness_command(
-                &witness.block_hash,
-                &witness.transaction_id,
+                &witness.block_hash.to_hex(),
+                &witness.transaction_id.to_hex(),
                 &witness.addr_type,
                 &witness.spending_account_counter,
                 &witness.file,
@@ -298,8 +295,8 @@ impl JCLITransactionWrapper {
     pub fn assert_make_witness_fails(&self, witness: &Witness, expected_msg: &str) {
         process_assert::assert_process_failed_and_matches_message(
             self.commands.get_make_witness_command(
-                &witness.block_hash,
-                &witness.transaction_id,
+                &witness.block_hash.to_hex(),
+                &witness.transaction_id.to_hex(),
                 &witness.addr_type,
                 &witness.spending_account_counter,
                 &witness.file,
@@ -372,14 +369,13 @@ impl JCLITransactionWrapper {
         );
     }
 
-    pub fn get_transaction_id(&self) -> String {
+    pub fn get_transaction_id(&self) -> Hash {
         let output = process_utils::run_process_and_get_output(
             self.commands
                 .get_transaction_id_command(&self.staging_file_path),
         );
-        let content = output.as_single_line();
-        let mut split = content.split_whitespace();
-        split.next().unwrap().to_string()
+        Hash::from_hex(output.as_single_line().as_str())
+            .expect("Cannot parse transaction id into hash")
     }
 
     pub fn get_transaction_info(&self, format: &str) -> String {

@@ -1,12 +1,13 @@
 extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
 use super::super::file_utils;
+use jormungandr_lib::crypto::hash::Hash;
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Witness {
-    pub block_hash: String,
-    pub transaction_id: String,
+    pub block_hash: Hash,
+    pub transaction_id: Hash,
     pub addr_type: String,
     pub private_key_path: PathBuf,
     pub spending_account_counter: i32,
@@ -15,16 +16,16 @@ pub struct Witness {
 
 impl Witness {
     pub fn new(
-        block_hash: &str,
-        transaction_id: &str,
+        block_hash: &Hash,
+        transaction_id: &Hash,
         addr_type: &str,
         private_key: &str,
         spending_account_counter: &i32,
     ) -> Witness {
         let temp_folder_path = file_utils::get_temp_folder();
         Witness {
-            block_hash: block_hash.to_string(),
-            transaction_id: transaction_id.to_string(),
+            block_hash: block_hash.clone(),
+            transaction_id: transaction_id.clone(),
             addr_type: addr_type.to_string(),
             private_key_path: Witness::save_witness_key_temp_file(&temp_folder_path, private_key),
             file: Witness::generate_new_random_witness_file_path(&temp_folder_path),
