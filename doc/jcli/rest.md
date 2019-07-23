@@ -78,6 +78,13 @@ The options are
 - -f --file <file_path> - File containing hex-encoded transaction.
 If not provided, transaction will be read from stdin.
 
+
+Fragment Id is printed on success (which can help finding transaction status using get message log command)
+
+```
+50f21ac6bd3f57f231c4bf9c5fff7c45e2529c4dffed68f92410dbf7647541f1
+```
+
 ## Get message log
 
 Get the node's logs on the message pool. This will provide information on pending transaction,

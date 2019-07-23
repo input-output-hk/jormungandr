@@ -8,7 +8,7 @@ use structopt::StructOpt;
 
 extern crate bytes;
 use self::bytes::IntoBuf;
-use chain_core::property::Message as message_property;
+use chain_core::property::Fragment as fragment_property;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
