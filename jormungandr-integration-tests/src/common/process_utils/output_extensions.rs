@@ -1,9 +1,11 @@
+use jormungandr_lib::crypto::hash::Hash;
 use std::collections::BTreeMap;
 use std::process::Output;
 
 pub trait ProcessOutput {
     fn as_lossy_string(&self) -> String;
     fn as_single_line(&self) -> String;
+    fn as_hash(&self) -> Hash;
     fn as_multi_node_yaml(&self) -> Vec<BTreeMap<String, String>>;
     fn as_single_node_yaml(&self) -> BTreeMap<String, String>;
     fn err_as_lossy_string(&self) -> String;
@@ -22,11 +24,14 @@ impl ProcessOutput for Output {
             let len = content.len();
             content.truncate(len - 1);
         }
-        let mut split = content.split_whitespace();
-        match split.next() {
-            Some(x) => x.to_string(),
-            None => "".to_owned(),
-        }
+        content.trim().to_string()
+    }
+
+    fn as_hash(&self) -> Hash {
+        let single_line = self.as_single_line();
+        let result = Hash::from_hex(&single_line);
+        assert!(result.is_ok(), "Cannot parse line {} as hash", single_line);
+        result.unwrap()
     }
 
     fn err_as_lossy_string(&self) -> String {

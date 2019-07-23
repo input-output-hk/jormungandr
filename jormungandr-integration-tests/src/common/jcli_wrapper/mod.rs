@@ -135,17 +135,17 @@ pub fn assert_post_transaction(transactions_message: &str, host: &str) -> Hash {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_post_transaction_command(&transactions_message, &host),
     );
-    let single_line = output.as_single_line();
+    let hash = output.as_hash();
     process_assert::assert_process_exited_successfully(output);
-    Hash::from_hex(&single_line).unwrap()
+    hash
 }
 
 pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) -> () {
-    let node_stats = self::assert_rest_stats(&host);
+    let node_stats = assert_rest_stats(&host);
     let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
 
-    self::assert_post_transaction(&transactions_message, &host);
-    let node_stats = self::assert_rest_stats(&host);
+    assert_post_transaction(&transactions_message, &host);
+    let node_stats = assert_rest_stats(&host);
     let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
     assert_eq!(
         before + 1,
@@ -154,15 +154,15 @@ pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) 
      txRecvCnt counter wasn't incremented after post"
     );
 
-    self::assert_rest_utxo_get(&host);
+    assert_rest_utxo_get(&host);
 }
 
 pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) -> () {
-    let node_stats = self::assert_rest_stats(&host);
+    let node_stats = assert_rest_stats(&host);
     let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
 
-    self::assert_post_transaction(&transactions_message, &host);
-    let node_stats = self::assert_rest_stats(&host);
+    assert_post_transaction(&transactions_message, &host);
+    let node_stats = assert_rest_stats(&host);
     let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
     assert_eq!(
         before, after,
@@ -170,7 +170,7 @@ pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) ->
      txRecvCnt counter was incremented after post"
     );
 
-    self::assert_rest_utxo_get(&host);
+    assert_rest_utxo_get(&host);
 }
 
 pub fn assert_key_generate_default() -> String {
@@ -286,16 +286,16 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
 }
 
 pub fn assert_transaction_in_block(transaction_message: &str, host: &str) -> Hash {
-    let fragment_id = self::assert_post_transaction(&transaction_message, &host);
-    self::wait_until_transaction_processed(fragment_id, &host);
-    self::assert_transaction_log_shows_in_block(fragment_id, &host);
+    let fragment_id = assert_post_transaction(&transaction_message, &host);
+    wait_until_transaction_processed(fragment_id, &host);
+    assert_transaction_log_shows_in_block(fragment_id, &host);
     fragment_id.clone()
 }
 
 pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_reason: &str) {
-    let fragment_id = self::assert_post_transaction(&transaction_message, &host);
-    self::wait_until_transaction_processed(fragment_id, &host);
-    self::assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
+    let fragment_id = assert_post_transaction(&transaction_message, &host);
+    wait_until_transaction_processed(fragment_id, &host);
+    assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
 }
 
 pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str) {
@@ -319,7 +319,7 @@ pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str) {
 }
 
 pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, host: &str) {
-    let fragments = self::assert_get_rest_message_log(&host);
+    let fragments = assert_get_rest_message_log(&host);
     match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
         Some(x) => assert!(
             x.is_in_a_block(),
@@ -334,7 +334,7 @@ pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, host: &str) {
 }
 
 pub fn assert_transaction_log_shows_rejected(fragment_id: Hash, host: &str, expected_msg: &str) {
-    let fragments = self::assert_get_rest_message_log(&host);
+    let fragments = assert_get_rest_message_log(&host);
     match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
         Some(x) => {
             assert!(
@@ -356,10 +356,10 @@ pub fn assert_transaction_log_shows_rejected(fragment_id: Hash, host: &str, expe
 
 pub fn assert_all_transactions_in_block(transactions_messages: &Vec<String>, host: &str) {
     for transactions_message in transactions_messages.iter() {
-        self::assert_post_transaction(&transactions_message, &host);
+        assert_post_transaction(&transactions_message, &host);
     }
-    self::wait_until_all_transactions_processed(&host);
-    self::assert_all_transaction_log_shows_in_block(&host);
+    wait_until_all_transactions_processed(&host);
+    assert_all_transaction_log_shows_in_block(&host);
 }
 
 pub fn wait_until_all_transactions_processed(host: &str) {
@@ -381,7 +381,7 @@ pub fn wait_until_all_transactions_processed(host: &str) {
 }
 
 pub fn assert_all_transaction_log_shows_in_block(host: &str) {
-    let fragments = self::assert_get_rest_message_log(&host);
+    let fragments = assert_get_rest_message_log(&host);
     for fragment in fragments {
         assert!(
             fragment.is_in_a_block(),

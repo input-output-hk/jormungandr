@@ -25,15 +25,11 @@ pub struct JCLITransactionWrapper {
 }
 
 impl JCLITransactionWrapper {
-    pub fn empty() -> Self {
-        JCLITransactionWrapper::new("")
-    }
-
     pub fn new(genesis_hash: &str) -> Self {
         JCLITransactionWrapper {
             staging_file_path: PathBuf::from(""),
             commands: TransactionCommands::new(),
-            genesis_hash: Hash::from_hex(&genesis_hash.to_string()).unwrap(),
+            genesis_hash: Hash::from_hex(genesis_hash).unwrap(),
         }
     }
 

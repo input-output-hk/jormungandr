@@ -1,11 +1,12 @@
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::fragment::Fragment;
 use hex;
-use jcli_app::rest::Error;
-use jcli_app::utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender};
+use jcli_app::{
+    rest::Error,
+    utils::{error::CustomErrorFiller, io, DebugFlag, HostAddr, OutputFormat, RestApiSender},
+};
 use std::path::PathBuf;
 use structopt::StructOpt;
-
 extern crate bytes;
 use self::bytes::IntoBuf;
 use chain_core::property::Fragment as fragment_property;
@@ -67,19 +68,16 @@ fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) -> Resu
     let msg_bin = hex::decode(&msg_hex)?;
     let url = addr.with_segments(&["v0", "message"])?.into_url();
     let builder = reqwest::Client::new().post(url);
+    let fragment = Fragment::deserialize(msg_bin.as_slice().into_buf()).map_err(|e| {
+        Error::InputFragmentMalformed {
+            source: e,
+            filler: CustomErrorFiller,
+        }
+    })?;
     let response = RestApiSender::new(builder, &debug)
-        .with_binary_body(msg_bin.clone())
+        .with_binary_body(msg_bin)
         .send()?;
     response.response().error_for_status_ref()?;
-
-    match Fragment::deserialize(msg_bin.into_buf()) {
-        Ok(fragment) => {
-            println!("{}", fragment.id());
-            Ok(())
-        }
-        Err(err) => {
-            println!("Error: {}", err);
-            Ok(())
-        }
-    }
+    println!("{}", fragment.id());
+    Ok(())
 }

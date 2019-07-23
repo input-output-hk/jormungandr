@@ -39,16 +39,7 @@ pub fn two_nodes_communication() {
         &utxo.associated_fund(),
         &reciever,
         &trusted_node_config.genesis_block_hash,
-    )
-    .assert_transaction_to_message();
-    jcli_wrapper::assert_transaction_post_accepted(
-        &transaction_message,
-        &leader_jormungandr_rest_address,
     );
 
-    println!("Leader");
-    jcli_wrapper::assert_rest_stats(&leader_jormungandr_rest_address);
-
-    println!("Trusted");
-    jcli_wrapper::assert_rest_stats(&trusted_jormungandr_rest_address);
+    jcli_wrapper::assert_post_transaction(&transaction_message, &trusted_jormungandr_rest_address);
 }

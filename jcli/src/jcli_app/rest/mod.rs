@@ -17,6 +17,7 @@ custom_error! {pub Error
     ReqwestError { source: reqwest::Error } = @{ reqwest_error_msg(source) },
     HostAddrError { source: host_addr::Error } = "invalid host address",
     DeserializationError { source: serde_json::Error } = @{{ let _ = source; DESERIALIZATION_ERROR_MSG }},
+    InputFragmentMalformed { source: std::io::Error,  filler: CustomErrorFiller}  =  "input is not a valid fragment",
     OutputFormatFailed { source: output_format::Error } = "formatting output failed",
     InputFileInvalid { source: std::io::Error } = "could not read input file",
     InputFileYamlMalformed { source: serde_yaml::Error } = "input yaml is not valid",
