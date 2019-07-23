@@ -11,15 +11,15 @@ use crate::{
 use chain_addr::Address;
 
 #[derive(Debug)]
-pub struct CertificateBuilder {
+pub struct TransactionCertBuilder {
     certificate: Option<Certificate>,
     inputs: Vec<Input>,
     outputs: Vec<Output<Address>>,
 }
 
-impl CertificateBuilder {
+impl TransactionCertBuilder {
     pub fn new() -> Self {
-        CertificateBuilder {
+        TransactionCertBuilder {
             certificate: None,
             inputs: Vec::new(),
             outputs: Vec::new(),
@@ -32,8 +32,8 @@ impl CertificateBuilder {
     }
 
     fn update_tx<Extra>(&mut self, tx: Transaction<Address, Extra>) {
-        self.inputs = tx.inputs.iter().cloned().collect();
-        self.outputs = tx.outputs.iter().cloned().collect();
+        self.inputs = tx.inputs.clone();
+        self.outputs = tx.outputs.clone();
     }
 
     pub fn finalize<FA>(&mut self, fee_algorithm: FA, output_policy: OutputPolicy) -> &mut Self
@@ -54,9 +54,9 @@ impl CertificateBuilder {
 
     fn build_transaction(&self) -> Transaction<Address, Certificate> {
         Transaction {
-            inputs: self.inputs.iter().cloned().collect(),
-            outputs: self.outputs.iter().cloned().collect(),
-            extra: self.certificate.clone().unwrap(),
+            inputs: self.inputs.clone(),
+            outputs: self.outputs.clone(),
+            extra: self.certificate.clone().expect("Cannot build transaction: Certificate in None"),
         }
     }
 }
