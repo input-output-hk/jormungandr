@@ -77,6 +77,12 @@ This is a general high level list of what information will need to be exchanged:
 We model everything so that we don't need any network state machine. Everything
 is stateless for
 
+* `Handshake: () -> (Version, Hash)`
+  * This should be the first request performed by the client after connecting.
+    The server responds with the protocol version and the hash of the genesis
+    block.
+  * The handshake is used to establish that the remote node has
+    a compatible protocol implementation and serves the right block chain.
 * `Tip: () -> Header`:
   * Return the header of the latest block known by the peer
     (also known as at the tip of the blockchain).
