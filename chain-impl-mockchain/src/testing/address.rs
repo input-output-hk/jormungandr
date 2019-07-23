@@ -1,6 +1,6 @@
 use crate::{
     account::SpendingCounter,
-    key::{EitherEd25519SecretKey, SpendingPublicKey},
+    key::{EitherEd25519SecretKey},
     transaction::{Input, Output},
     utxo::Entry,
     value::Value,
@@ -116,7 +116,7 @@ impl AddressData {
 
     pub fn delegation(discrimination: Discrimination) -> Self {
         let (single_sk,single_pk) = super::generate_key_pair::<Ed25519Extended>().into_keys();
-        let (delegation_sk,delegation_pk) = super::generate_key_pair::<Ed25519Extended>().into_keys();
+        let (_delegation_sk,delegation_pk) = super::generate_key_pair::<Ed25519Extended>().into_keys();
 
         let user_address = Address(
             discrimination.clone(),
