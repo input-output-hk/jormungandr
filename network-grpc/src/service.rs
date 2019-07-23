@@ -3,8 +3,7 @@ use crate::{
         decode_node_id, deserialize_bytes, deserialize_repeated_bytes, encode_node_id,
         error_from_grpc, error_into_grpc, serialize_to_bytes, FromProtobuf, IntoProtobuf,
     },
-    gen,
-    PROTOCOL_VERSION,
+    gen, PROTOCOL_VERSION,
 };
 
 use chain_core::property;

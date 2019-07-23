@@ -1,4 +1,4 @@
-use crate::{gen, convert, PROTOCOL_VERSION};
+use crate::{convert, gen, PROTOCOL_VERSION};
 use chain_core::property;
 use network_core::client::block::HandshakeError;
 
@@ -40,7 +40,9 @@ where
             Err(status) => return Err(HandshakeError::Rpc(convert::error_from_grpc(status))),
         };
         if res.version != PROTOCOL_VERSION {
-            return Err(HandshakeError::UnsupportedVersion(res.version.to_string().into()));
+            return Err(HandshakeError::UnsupportedVersion(
+                res.version.to_string().into(),
+            ));
         }
         let block0_id = convert::deserialize_bytes(&res.block0)?;
         Ok(Async::Ready(block0_id))

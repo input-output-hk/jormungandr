@@ -20,7 +20,7 @@ pub trait BlockService: P2pService {
     type HandshakeFuture: Future<Item = <Self::Block as Block>::Id, Error = HandshakeError>;
 
     /// Requests the identifier of the genesis block from the service node.
-    /// 
+    ///
     /// The implementation can also perform version information checks to
     /// ascertain that the client use compatible protocol versions.
     ///
