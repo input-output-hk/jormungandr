@@ -100,18 +100,38 @@ is stateless for
     for clients that don't have a need to fiddle with batched
     `GetBlocks` requests and traffic distribution among
     multiple peers.
-* `BlockSubscription: (Stream<Header>) -> Stream<Announce(Header)|Solicit([Hash])>`
+* `BlockSubscription: (Stream<Header>) -> Stream<BlockEvent>`
   * Establish a bidirectional subscription to send and receive announcements
     of new blocks and (in the client role) receive solicitations to upload
-    blocks.
+    blocks or push the chain of headers.
+  * The stream item is a tagged enumeration:
+    `BlockEvent: Announce(Header)|Solicit([Hash])|Missing([Hash], Hash)`
+    * `Announce` propagates header information of a newly minted block.
+    * `Solicit` requests the client to upload blocks identified by the given
+      hashes using the `UploadBlocks` request.
+    * `Missing` requests the client to stream the chain of block headers using
+      the given range parameters. The meaning of the parameters is the same
+      as in the `PullHeaders` request.
   * The client does not need to stream solicitations upwards, as it can
-    request blocks directly with the `GetBlocks` method.
-  * Used for announcing new locally minted blocks, and for relaying
-    block gossip on the network.
+    request blocks directly with `GetBlocks` or `PullHeaders`.
+  * The announcements send in either direction are used for both announcing new
+    blocks when minted by this node in the leadership role, and propagating
+    blocks received from other nodes on the p2p network.
+* `PullHeaders: ([Hash], Hash) -> Stream<Header>`
+  * Retrieve a stream of headers for blocks descending from one of the hashes
+    given in the first parameter, up to the hash given in the second parameter.
+    The starting point that is latest in the chain is selected.
+  * The client sends this request after receiving an announcement of a new
+    block via the `BlockSubscription` stream, when the parent of the new
+    block is not present in its local storage. The proposed starting points
+    are selected from locally known blocks with exponentially receding depth.
+* `PushHeaders: (Stream<Header>)`
+  * Streams the chain of headers in response to a `Missing` event received
+    via the `BlockSubscription` stream.
 * `UploadBlocks: (Stream<Block>)`
-  * Upload blocks in response to a solicitation received via a
+  * Uploads blocks in response to a `Solicit` event received via the
     `BlockSubscription` stream.
-* `GetMessages: [Hash] -> [Message]`
+* `GetMessages: ([Hash]) -> [Message]`
   * Fetch one or multiple messages (block content items, such as transactions)
     identified by the hashes.
 * `MessageSubscription: (Stream<Message>) -> Stream<Message>`
