@@ -140,11 +140,11 @@ pub fn assert_post_transaction(transactions_message: &str, host: &str) -> Hash {
     Hash::from_hex(&single_line).unwrap()
 }
 
-pub fn assert_transaction_post_accepted(transaction_hash: &str, host: &str) -> () {
+pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) -> () {
     let node_stats = self::assert_rest_stats(&host);
     let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
 
-    self::assert_post_transaction(&transaction_hash, &host);
+    self::assert_post_transaction(&transactions_message, &host);
     let node_stats = self::assert_rest_stats(&host);
     let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
     assert_eq!(
@@ -157,11 +157,11 @@ pub fn assert_transaction_post_accepted(transaction_hash: &str, host: &str) -> (
     self::assert_rest_utxo_get(&host);
 }
 
-pub fn assert_transaction_post_failed(transaction_hash: &str, host: &str) -> () {
+pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) -> () {
     let node_stats = self::assert_rest_stats(&host);
     let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
 
-    self::assert_post_transaction(&transaction_hash, &host);
+    self::assert_post_transaction(&transactions_message, &host);
     let node_stats = self::assert_rest_stats(&host);
     let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
     assert_eq!(
