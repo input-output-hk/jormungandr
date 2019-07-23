@@ -48,7 +48,6 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
 }
 
 #[test]
-#[ignore]
 pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let middle_man = startup::create_new_utxo_address();
@@ -139,7 +138,8 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
         .seal_with_witness_default(&sender.private_key, "utxo")
         .assert_to_message();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
+    let transaction_id =
+        jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
 
     let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
     assert_eq!(utxos.len(), 1);
@@ -158,15 +158,14 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
     assert_eq!(
         utxo.index_in_transaction(),
         0,
-        "since only one transaction was made, idx should be equal to 1"
+        "since only one transaction was made, idx should be equal to 0"
     );
-    /*
-        assert_eq!(
-            utxo.transaction_id().to_hex(),
-            transaction_id,
-            "transaction hash should be equal to new transaction"
-        );
-    */
+
+    assert_eq!(
+        *utxo.transaction_id(),
+        transaction_id,
+        "transaction hash should be equal to new transaction"
+    );
 }
 
 #[test]
