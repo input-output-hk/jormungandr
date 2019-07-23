@@ -1,4 +1,5 @@
 mod connect;
+mod handshake;
 
 use crate::{
     convert::{
@@ -24,6 +25,7 @@ use tower_request_modifier::{self, RequestModifier};
 use std::marker::PhantomData;
 
 pub use connect::{Connect, ConnectError, ConnectFuture};
+pub use handshake::HandshakeFuture;
 
 /// Traits setting additional bounds for blockchain entities
 /// that need to be satisfied for the protocol implementation.
@@ -334,6 +336,9 @@ where
     P: ProtocolConfig,
 {
     type Block = P::Block;
+
+    type HandshakeFuture = HandshakeFuture<P::BlockId>;
+
     type TipFuture = ResponseFuture<P::Header, gen::node::TipResponse>;
 
     type PullBlocksStream = ResponseStream<P::Block, gen::node::Block>;
@@ -352,6 +357,12 @@ where
     type PushHeadersFuture = ClientStreamingCompletionFuture<gen::node::PushHeadersResponse>;
 
     type UploadBlocksFuture = ClientStreamingCompletionFuture<gen::node::UploadBlocksResponse>;
+
+    fn handshake(&mut self) -> Self::HandshakeFuture {
+        let req = gen::node::HandshakeRequest {};
+        let future = self.service.handshake(Request::new(req));
+        HandshakeFuture::new(future)
+    }
 
     fn tip(&mut self) -> Self::TipFuture {
         let req = gen::node::TipRequest {};

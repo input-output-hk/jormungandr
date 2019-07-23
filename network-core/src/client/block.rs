@@ -5,11 +5,28 @@ use chain_core::property::{Block, HasHeader};
 
 use futures::prelude::*;
 
+use std::{error, fmt};
+
 /// Interface for the blockchain node service responsible for
 /// providing access to blocks.
 pub trait BlockService: P2pService {
     /// The type of blockchain block served by this service.
     type Block: Block + HasHeader;
+
+    /// The type of asynchronous futures returned by method `handshake`.
+    ///
+    /// The future resolves to the identifier of the genesis block of the
+    /// chain managed by the service node.
+    type HandshakeFuture: Future<Item = <Self::Block as Block>::Id, Error = HandshakeError>;
+
+    /// Requests the identifier of the genesis block from the service node.
+    /// 
+    /// The implementation can also perform version information checks to
+    /// ascertain that the client use compatible protocol versions.
+    ///
+    /// This method should be called first after establishing the client
+    /// connection.
+    fn handshake(&mut self) -> Self::HandshakeFuture;
 
     /// The type of asynchronous futures returned by method `tip`.
     ///
@@ -121,4 +138,34 @@ pub trait BlockService: P2pService {
     fn block_subscription<S>(&mut self, outbound: S) -> Self::BlockSubscriptionFuture
     where
         S: Stream<Item = <Self::Block as HasHeader>::Header> + Send + 'static;
+}
+
+/// An error that the future returned by `BlockService::handshake` can
+/// resolve to.
+#[derive(Debug)]
+pub enum HandshakeError {
+    /// The protocol version reported by the server is not supported.
+    /// Carries the reported version in a human-readable form.
+    UnsupportedVersion(Box<str>),
+    /// Error occurred with the protocol request.
+    Rpc(Error),
+}
+
+impl fmt::Display for HandshakeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HandshakeError::UnsupportedVersion(v) => {
+                write!(f, "unsupported protocol version {}", v)
+            }
+            HandshakeError::Rpc(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl error::Error for HandshakeError {}
+
+impl From<Error> for HandshakeError {
+    fn from(src: Error) -> Self {
+        HandshakeError::Rpc(src)
+    }
 }
