@@ -9,6 +9,7 @@ pub mod jcli_transaction_wrapper;
 
 use super::configuration;
 use super::configuration::genesis_model::GenesisYaml;
+use super::data::Settings;
 use super::file_assert;
 use super::file_utils;
 use super::process_assert;
@@ -400,4 +401,13 @@ pub fn assert_get_rest_message_log(host: &str) -> Vec<FragmentLog> {
     let fragments: Vec<FragmentLog> =
         serde_yaml::from_str(&content).expect("Failed to parse fragment log");
     fragments
+}
+
+pub fn assert_get_rest_settings(host: &str) -> Settings {
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_rest_settings_command(&host));
+    let content = output.as_lossy_string();
+    process_assert::assert_process_exited_successfully(output);
+    let settings: Settings = serde_yaml::from_str(&content).expect("Failed to parse settings");
+    settings
 }
