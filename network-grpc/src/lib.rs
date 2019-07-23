@@ -17,4 +17,8 @@ mod convert;
 pub mod server;
 mod service;
 
-pub const PROTOCOL_VERSION: u32 = 0;
+/// Version of the protocol implemented by this crate.
+///
+/// Note that until the protocol is stabilized, breaking changes may still
+/// occur without changing this version number.
+pub const PROTOCOL_VERSION: u32 = 1;
