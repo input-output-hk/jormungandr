@@ -13,7 +13,7 @@ use rand_core::SeedableRng;
 ///
 /// For obvious reasons, do *not* use anywhere except for testing
 #[derive(Clone, Debug)]
-pub struct TestCryptoGen(u64);
+pub struct TestCryptoGen(pub u64);
 
 impl Arbitrary for TestCryptoGen {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
