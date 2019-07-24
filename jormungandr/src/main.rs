@@ -32,6 +32,8 @@ extern crate rand_chacha;
 extern crate tokio;
 #[macro_use]
 extern crate custom_error;
+#[macro_use]
+extern crate error_chain;
 
 #[cfg(test)]
 extern crate quickcheck;
