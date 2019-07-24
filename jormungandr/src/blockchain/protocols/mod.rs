@@ -68,6 +68,7 @@ use chain_core::property::{Block as _, HasFragments as _};
 use chain_impl_mockchain::ledger;
 use chain_storage::error::Error as StorageError;
 use std::time::Duration;
+use tokio::prelude::*;
 
 error_chain! {
     foreign_links {
@@ -111,11 +112,50 @@ impl Blockchain {
         }
     }
 
-    pub fn push(&mut self, block: Block) -> Result<Self> {
-        unimplemented!()
-    }
+    pub fn apply_block0(&mut self, block0: Block) -> impl Future<Item = (), Error = Error> {
+        let block0_header = block0.header.clone();
+        let block0_id = block0_header.hash();
+        let block0_date = block0_header.block_date();
+        let block0_chain_length = block0_header.chain_length();
 
-    pub fn get_branch_including(&mut self, header_hash: HeaderHash) -> Option<Branch> {
-        unimplemented!()
+        // 1. check the block0 is not already in the storage
+
+        let block0_ledger = Ledger::new(block0_id.clone(), block0.contents.iter())
+            // TODO: handle that case
+            .unwrap();
+        let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
+
+        // TODO: chain futures
+        let block0_ledger_gcroot = self
+            .multiverse
+            .insert(block0_chain_length, block0_id.clone(), block0_ledger)
+            .wait()
+            .unwrap();
+        // TODO: chain futures
+        let block0_leadership_gcroot = self
+            .leaderships
+            .insert(block0_chain_length, block0_id.clone(), block0_leadership)
+            .wait()
+            .unwrap();
+
+        let reference = Ref::new(
+            block0_ledger_gcroot,
+            block0_leadership_gcroot,
+            block0_header,
+        );
+
+        // TODO: chain futures
+        self.ref_cache
+            .insert(block0_id.clone(), reference.clone())
+            .wait()
+            .unwrap();
+
+        let branch = Branch::new(reference);
+        // TODO: chain futures
+        self.branches.add(branch).wait().unwrap();
+
+        // TODO: store block0 in storage
+
+        future::ok(())
     }
 }
