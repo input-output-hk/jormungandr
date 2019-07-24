@@ -48,17 +48,18 @@ forks between different tasks of the blockchain module.
 */
 
 mod branch;
+mod multiverse;
 mod reference;
 mod reference_cache;
 
 pub use self::{
     branch::{Branch, Branches},
+    multiverse::Multiverse,
     reference::Ref,
     reference_cache::RefCache,
 };
 use crate::{
-    blockcfg::{Block, Block0Error, HeaderHash, Leadership, Ledger, Multiverse},
-    leadership::Leaderships,
+    blockcfg::{Block, Block0Error, HeaderHash, Leadership, Ledger},
     start_up::NodeStorage,
 };
 use chain_core::property::{Block as _, HasFragments as _};
@@ -91,9 +92,9 @@ pub struct Blockchain {
 
     ref_cache: RefCache,
 
-    multiverse: Lock<Multiverse<Ledger>>,
+    multiverse: Multiverse<Ledger>,
 
-    leaderships: Lock<Leaderships>,
+    leaderships: Multiverse<Leadership>,
 
     storage: Lock<NodeStorage>,
 }
@@ -103,8 +104,8 @@ impl Blockchain {
         Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
-            multiverse: Lock::new(Multiverse::new()),
-            leaderships: Lock::new(Leaderships::new()),
+            multiverse: Multiverse::new(),
+            leaderships: Multiverse::new(),
             storage: Lock::new(storage),
         }
     }
