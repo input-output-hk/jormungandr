@@ -9,12 +9,13 @@ use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::key::Hash;
-use chain_impl_mockchain::leadership::LeadershipConsensus;
+use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
 use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::store;
 
 use crate::intercom::TransactionMsg;
 use crate::secure::enclave::LeaderId;
+use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
 use futures::Future;
 use std::str::FromStr;
@@ -260,6 +261,15 @@ pub fn get_leaders(context: State<Context>) -> impl Responder {
     Json(json! {
         context.enclave.get_leaderids()
     })
+}
+
+pub fn post_leaders(secret: Json<NodeSecret>, context: State<Context>) -> impl Responder {
+    let leader = Leader {
+        bft_leader: secret.bft(),
+        genesis_leader: secret.genesis(),
+    };
+    let leader_id = context.enclave.add_leader(leader);
+    Json(leader_id)
 }
 
 pub fn delete_leaders(

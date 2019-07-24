@@ -49,7 +49,7 @@ impl Enclave {
         leaders.keys().map(|v| v.clone()).collect()
     }
 
-    pub fn add_leader(&mut self, leader: Leader) -> LeaderId {
+    pub fn add_leader(&self, leader: Leader) -> LeaderId {
         let mut leaders = self.leaders.write().unwrap();
         let next_leader_id = get_maximum_id(&leaders).next();
         // This panic case should never happens in practice, as this structure is

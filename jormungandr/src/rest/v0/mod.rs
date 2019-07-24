@@ -17,7 +17,10 @@ pub fn app(context: handlers::Context) -> App<handlers::Context> {
         .resource("/fragment/logs", |r| {
             r.get().with(handlers::get_message_logs)
         })
-        .resource("/leaders", |r| r.get().with(handlers::get_leaders))
+        .resource("/leaders", |r| {
+            r.get().with(handlers::get_leaders);
+            r.post().with(handlers::post_leaders);
+        })
         .resource("/leaders/{leader_id}", |r| {
             r.delete().with(handlers::delete_leaders)
         })
