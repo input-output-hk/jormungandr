@@ -151,6 +151,7 @@ impl Blockchain {
 
         let mut self1 = self.clone();
         let mut branches = self.branches.clone();
+        let mut storage = self.storage.clone();
 
         // 1. check the block0 is not already in the storage
 
@@ -177,5 +178,10 @@ impl Blockchain {
             })
             .map(Branch::new)
             .and_then(move |branch| branches.add(branch).map_err(|_: Infallible| unreachable!()))
+            .and_then(move |()| {
+                storage
+                    .put_block(block0)
+                    .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))
+            })
     }
 }
