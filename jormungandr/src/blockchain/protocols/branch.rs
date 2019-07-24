@@ -14,6 +14,7 @@ pub struct Branch {
     inner: Lock<BranchData>,
 }
 
+/// the data that is contained in a branch
 pub struct BranchData {
     /// reference to the block where the branch points to
     reference: Ref,
@@ -45,6 +46,11 @@ impl Branch {
     #[inline]
     pub fn poll_lock<E>(&mut self) -> Poll<LockGuard<BranchData>, E> {
         Ok(self.inner.poll_lock())
+    }
+
+    pub fn get_ref(&self) -> impl Future<Item = Ref, Error = std::convert::Infallible> {
+        future::poll_fn(|| self.poll_lock())
+            .map(|guard| guard.reference().clone())
     }
 }
 

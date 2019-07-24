@@ -57,7 +57,7 @@ pub use self::{
     reference_cache::RefCache,
 };
 use crate::{
-    blockcfg::{Block, Block0Error, Leadership, Ledger, Multiverse},
+    blockcfg::{Block, Block0Error, HeaderHash, Leadership, Ledger, Multiverse},
     leadership::Leaderships,
     start_up::NodeStorage,
 };
@@ -65,6 +65,7 @@ use chain_core::property::{Block as _, HasFragments as _};
 use chain_impl_mockchain::ledger;
 use chain_storage::error::Error as StorageError;
 use std::time::Duration;
+use tokio::sync::lock::Lock;
 
 error_chain! {
     foreign_links {
@@ -84,62 +85,35 @@ error_chain! {
     }
 }
 
+#[derive(Clone)]
 pub struct Blockchain {
-    branches: Branches,
+    branches: Lock<Branches>,
 
-    ref_cache: RefCache,
+    ref_cache: Lock<RefCache>,
 
-    multiverse: Multiverse<Ledger>,
+    multiverse: Lock<Multiverse<Ledger>>,
 
-    leaderships: Leaderships,
+    leaderships: Lock<Leaderships>,
 
-    storage: NodeStorage,
+    storage: Lock<NodeStorage>,
 }
 
 impl Blockchain {
     pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
-            branches: Branches::new(),
-            ref_cache: RefCache::new(ref_cache_ttl),
-            multiverse: Multiverse::new(),
-            leaderships: Leaderships::new(),
-            storage,
+            branches: Lock::new(Branches::new()),
+            ref_cache: Lock::new(RefCache::new(ref_cache_ttl)),
+            multiverse: Lock::new(Multiverse::new()),
+            leaderships: Lock::new(Leaderships::new()),
+            storage: Lock::new(storage),
         }
     }
 
-    pub fn new_with(
-        mut storage: NodeStorage,
-        block_0: Block,
-        ref_cache_ttl: Duration,
-    ) -> Result<Self> {
-        let mut multiverse = Multiverse::new();
-        let mut leaderships = Leaderships::new();
+    pub fn push(&mut self, block: Block) -> Result<Self> {
+        unimplemented!()
+    }
 
-        let state = Ledger::new(block_0.id(), block_0.fragments())?;
-        storage.put_block(&block_0)?;
-        let initial_leadership = Leadership::new(block_0.date().epoch, &state);
-        let gcroot_ledger = multiverse.add(block_0.id(), state.clone());
-        let gcroot_leadership = leaderships.add(
-            block_0.date().epoch,
-            block_0.chain_length(),
-            block_0.id(),
-            initial_leadership,
-        );
-
-        let branch = Branch::new(Ref::new(
-            gcroot_ledger,
-            gcroot_leadership,
-            block_0.header.clone(),
-        ));
-        let mut branches = Branches::new();
-        branches.add(branch);
-
-        Ok(Blockchain {
-            branches: branches,
-            ref_cache: RefCache::new(ref_cache_ttl),
-            multiverse: multiverse,
-            leaderships: leaderships,
-            storage: storage,
-        })
+    pub fn get_branch_including(&mut self, header_hash: HeaderHash) -> Option<Branch> {
+        unimplemented!()
     }
 }
