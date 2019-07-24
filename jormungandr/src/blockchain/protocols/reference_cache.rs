@@ -6,6 +6,7 @@ use tokio::{
     timer::{self, delay_queue, DelayQueue},
 };
 
+#[derive(Clone)]
 pub struct RefCache {
     inner: Lock<RefCacheData>,
 }
