@@ -24,12 +24,12 @@ pub struct BranchData {
 impl Branches {
     pub fn new() -> Self {
         Branches {
-            branches: Vec::new()
+            branches: Vec::new(),
         }
     }
 
     pub fn add(&mut self, branch: Branch) {
-        self.add(branch)
+        self.branches.push(branch)
     }
 }
 
