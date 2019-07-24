@@ -97,7 +97,21 @@ pub struct Blockchain {
 }
 
 impl Blockchain {
-    pub fn new(mut storage: NodeStorage, block_0: Block, ref_cache_ttl: Duration) -> Result<Self> {
+    pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
+        Blockchain {
+            branches: Branches::new(),
+            ref_cache: RefCache::new(ref_cache_ttl),
+            multiverse: Multiverse::new(),
+            leaderships: Leaderships::new(),
+            storage,
+        }
+    }
+
+    pub fn new_with(
+        mut storage: NodeStorage,
+        block_0: Block,
+        ref_cache_ttl: Duration,
+    ) -> Result<Self> {
         let mut multiverse = Multiverse::new();
         let mut leaderships = Leaderships::new();
 
