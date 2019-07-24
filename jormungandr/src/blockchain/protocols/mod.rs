@@ -87,7 +87,7 @@ error_chain! {
 
 #[derive(Clone)]
 pub struct Blockchain {
-    branches: Lock<Branches>,
+    branches: Branches,
 
     ref_cache: RefCache,
 
@@ -101,7 +101,7 @@ pub struct Blockchain {
 impl Blockchain {
     pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
-            branches: Lock::new(Branches::new()),
+            branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
             multiverse: Lock::new(Multiverse::new()),
             leaderships: Lock::new(Leaderships::new()),

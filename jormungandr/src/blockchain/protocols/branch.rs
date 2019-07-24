@@ -1,8 +1,14 @@
 use crate::blockchain::protocols::Ref;
 use tokio::{prelude::*, sync::lock::Lock};
 
+use std::convert::Infallible;
+
 #[derive(Clone)]
 pub struct Branches {
+    inner: Lock<BranchesData>,
+}
+
+struct BranchesData {
     branches: Vec<Branch>,
 }
 
@@ -22,11 +28,21 @@ struct BranchData {
 impl Branches {
     pub fn new() -> Self {
         Branches {
-            branches: Vec::new(),
+            inner: Lock::new(BranchesData {
+                branches: Vec::new(),
+            }),
         }
     }
 
-    pub fn add(&mut self, branch: Branch) {
+    pub fn add(&mut self, branch: Branch) -> impl Future<Item = (), Error = Infallible> {
+        let mut branches = self.clone();
+        future::poll_fn(move || Ok(branches.inner.poll_lock()))
+            .map(move |mut guard| guard.add(branch))
+    }
+}
+
+impl BranchesData {
+    fn add(&mut self, branch: Branch) {
         self.branches.push(branch)
     }
 }
@@ -38,7 +54,7 @@ impl Branch {
         }
     }
 
-    pub fn get_ref(&self) -> impl Future<Item = Ref, Error = std::convert::Infallible> {
+    pub fn get_ref(&self) -> impl Future<Item = Ref, Error = Infallible> {
         let mut branch = self.clone();
         future::poll_fn(move || Ok(branch.inner.poll_lock())).map(|guard| guard.reference().clone())
     }
