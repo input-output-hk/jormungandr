@@ -61,9 +61,9 @@ impl Enclave {
         next_leader_id
     }
 
-    pub fn remove_leader(&mut self, leader_id: LeaderId) {
+    pub fn remove_leader(&self, leader_id: LeaderId) -> bool {
         let mut leaders = self.leaders.write().unwrap();
-        leaders.remove(&leader_id);
+        leaders.remove(&leader_id).is_some()
     }
 
     // temporary method

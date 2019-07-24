@@ -18,6 +18,9 @@ pub fn app(context: handlers::Context) -> App<handlers::Context> {
             r.get().with(handlers::get_message_logs)
         })
         .resource("/leaders", |r| r.get().with(handlers::get_leaders))
+        .resource("/leaders/{leader_id}", |r| {
+            r.delete().with(handlers::delete_leaders)
+        })
         .resource("/settings", |r| r.get().with(handlers::get_settings))
         .resource("/stake", |r| r.get().with(handlers::get_stake_distribution))
         .resource("/shutdown", |r| r.get().with(handlers::get_shutdown))

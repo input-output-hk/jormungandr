@@ -10,15 +10,15 @@ use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::LeadershipConsensus;
-use chain_impl_mockchain::ledger::Ledger;
 use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::store;
 
+use crate::intercom::TransactionMsg;
+use crate::secure::enclave::LeaderId;
 use bytes::{Bytes, IntoBuf};
 use futures::Future;
 use std::str::FromStr;
 
-use crate::intercom::TransactionMsg;
 pub use crate::rest::Context;
 
 pub fn get_utxos(context: State<Context>) -> impl Responder {
@@ -260,4 +260,14 @@ pub fn get_leaders(context: State<Context>) -> impl Responder {
     Json(json! {
         context.enclave.get_leaderids()
     })
+}
+
+pub fn delete_leaders(
+    context: State<Context>,
+    leader_id: Path<LeaderId>,
+) -> Result<impl Responder, Error> {
+    match context.enclave.remove_leader(*leader_id) {
+        true => Ok(HttpResponse::Ok().finish()),
+        false => Err(ErrorNotFound("Leader with given ID not found")),
+    }
 }
