@@ -51,12 +51,14 @@ mod branch;
 mod multiverse;
 mod reference;
 mod reference_cache;
+mod storage;
 
 pub use self::{
     branch::{Branch, Branches},
     multiverse::Multiverse,
     reference::Ref,
     reference_cache::RefCache,
+    storage::Storage,
 };
 use crate::{
     blockcfg::{Block, Block0Error, HeaderHash, Leadership, Ledger},
@@ -66,7 +68,6 @@ use chain_core::property::{Block as _, HasFragments as _};
 use chain_impl_mockchain::ledger;
 use chain_storage::error::Error as StorageError;
 use std::time::Duration;
-use tokio::sync::lock::Lock;
 
 error_chain! {
     foreign_links {
@@ -96,7 +97,7 @@ pub struct Blockchain {
 
     leaderships: Multiverse<Leadership>,
 
-    storage: Lock<NodeStorage>,
+    storage: Storage,
 }
 
 impl Blockchain {
@@ -106,7 +107,7 @@ impl Blockchain {
             ref_cache: RefCache::new(ref_cache_ttl),
             multiverse: Multiverse::new(),
             leaderships: Multiverse::new(),
-            storage: Lock::new(storage),
+            storage: Storage::new(storage),
         }
     }
 
