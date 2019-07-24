@@ -5,6 +5,8 @@ use tokio::{
     timer::{self, delay_queue, DelayQueue},
 };
 
+/// cache of already loaded in-memory block `Ref`
+///
 pub struct RefCache {
     entries: HashMap<HeaderHash, (Ref, delay_queue::Key)>,
     expirations: DelayQueue<HeaderHash>,
@@ -27,8 +29,16 @@ impl RefCache {
         self.entries.insert(key, (value, delay));
     }
 
-    pub fn get(&self, key: &HeaderHash) -> Option<&Ref> {
-        self.entries.get(key).map(|&(ref v, _)| v)
+    /// accessing the `Ref` will reset the timeout and extend the time
+    /// before expiration from the cache.
+    pub fn get(&mut self, key: &HeaderHash) -> Option<&Ref> {
+        if let Some((v, k)) = self.entries.get(key) {
+            self.expirations.reset(k, self.ttl);
+
+            Some(v)
+        } else {
+            None
+        }
     }
 
     pub fn remove(&mut self, key: &HeaderHash) {
