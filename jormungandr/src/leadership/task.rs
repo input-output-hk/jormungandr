@@ -139,11 +139,12 @@ fn handle_leadership(
                 blockchain_tip.hash().unwrap(),
             );
 
-            let block = enclave.create_block(block, scheduled_event.leader_output);
+            if let Some(block) = enclave.create_block(block, scheduled_event.leader_output) {
+                block_message
+                    .try_send(BlockMsg::LeadershipBlock(block))
+                    .unwrap()
+            }
 
-            block_message
-                .try_send(BlockMsg::LeadershipBlock(block))
-                .unwrap();
             stats_counter.set_slot_start_time(scheduled_event.expected_time.into());
             future::ok(())
         })

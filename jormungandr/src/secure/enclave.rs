@@ -126,13 +126,10 @@ impl Enclave {
         output
     }
 
-    pub fn create_block(&self, block: BlockBuilder, event: LeaderEvent) -> Block {
+    pub fn create_block(&self, block: BlockBuilder, event: LeaderEvent) -> Option<Block> {
         let leaders = self.leaders.read().unwrap();
-        let leader = match leaders.get(&event.id) {
-            None => panic!("leader is gone while creating a block"),
-            Some(l) => l,
-        };
-        match event.output {
+        let leader = leaders.get(&event.id)?;
+        let block = match event.output {
             LeaderOutput::None => unreachable!("Output::None are supposed to be filtered out"),
             LeaderOutput::Bft(_) => {
                 if let Some(ref leader) = &leader.bft_leader {
@@ -152,6 +149,7 @@ impl Enclave {
                     unreachable!("the leader was elected for Genesis Praos signing block, we expect it has the signing key")
                 }
             }
-        }
+        };
+        Some(block)
     }
 }
