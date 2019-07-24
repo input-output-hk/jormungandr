@@ -140,6 +140,16 @@ impl Blockchain {
             })
     }
 
+    /// function to do the initial application of the block0 in the `Blockchain` and its
+    /// storage. We assume `Block0` is not already in the `NodeStorage`.
+    ///
+    /// # Errors
+    ///
+    /// The resulted future may fail if
+    ///
+    /// * the block0 already exists in the storage: `ErrorKind::Block0AlreadExists`;
+    /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError` ;
+    ///
     pub fn apply_block0(&mut self, block0: Block) -> impl Future<Item = (), Error = Error> {
         let block0_clone = block0.clone();
         let block0_header = block0.header.clone();
@@ -191,5 +201,12 @@ impl Blockchain {
                     .put_block(block0_clone)
                     .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))
             })
+    }
+
+    /// returns a future that will propagate the initial states and leadership
+    /// from the block0 to the `Head` of the storage (the last known block which
+    /// made consensus).
+    pub fn load_from_block0(&mut self, block0: Block) -> impl Future<Item = (), Error = Error> {
+        future::ok(())
     }
 }
