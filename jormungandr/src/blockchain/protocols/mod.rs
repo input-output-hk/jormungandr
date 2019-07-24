@@ -61,13 +61,12 @@ pub use self::{
     storage::Storage,
 };
 use crate::{
-    blockcfg::{Block, Block0Error, HeaderHash, Leadership, Ledger},
+    blockcfg::{Block, Block0Error, Header, HeaderHash, Leadership, Ledger},
     start_up::NodeStorage,
 };
-use chain_core::property::{Block as _, HasFragments as _};
 use chain_impl_mockchain::ledger;
 use chain_storage::error::Error as StorageError;
-use std::time::Duration;
+use std::{convert::Infallible, time::Duration};
 use tokio::prelude::*;
 
 error_chain! {
@@ -78,6 +77,10 @@ error_chain! {
     }
 
     errors {
+        Block0InitialLedgerError {
+            description("Error while creating the initial ledger out of the block0")
+        }
+
         PoisonedLock {
             description("lock is poisoned"),
         }
@@ -112,50 +115,67 @@ impl Blockchain {
         }
     }
 
+    /// create and store a reference of this leader to the new
+    fn create_and_store_reference(
+        &mut self,
+        header_hash: HeaderHash,
+        header: Header,
+        ledger: Ledger,
+        leadership: Leadership,
+    ) -> impl Future<Item = Ref, Error = Infallible> {
+        let chain_length = header.chain_length();
+
+        let leaderships = self.leaderships.clone();
+        let multiverse = self.multiverse.clone();
+        let ref_cache = self.ref_cache.clone();
+
+        multiverse
+            .insert(chain_length, header_hash, ledger)
+            .and_then(move |ledger_gcroot| {
+                leaderships
+                    .insert(chain_length, header_hash, leadership)
+                    .map(|leadership_gcroot| (ledger_gcroot, leadership_gcroot))
+            })
+            .and_then(move |(ledger_gcroot, leadership_gcroot)| {
+                let reference = Ref::new(ledger_gcroot, leadership_gcroot, header);
+                ref_cache
+                    .insert(header_hash, reference.clone())
+                    .map(|()| reference)
+            })
+    }
+
     pub fn apply_block0(&mut self, block0: Block) -> impl Future<Item = (), Error = Error> {
         let block0_header = block0.header.clone();
         let block0_id = block0_header.hash();
-        let block0_date = block0_header.block_date();
-        let block0_chain_length = block0_header.chain_length();
+        let block0_date = block0_header.block_date().clone();
+
+        let mut self1 = self.clone();
+        let mut branches = self.branches.clone();
 
         // 1. check the block0 is not already in the storage
 
-        let block0_ledger = Ledger::new(block0_id.clone(), block0.contents.iter())
-            // TODO: handle that case
-            .unwrap();
-        let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
-
-        // TODO: chain futures
-        let block0_ledger_gcroot = self
-            .multiverse
-            .insert(block0_chain_length, block0_id.clone(), block0_ledger)
-            .wait()
-            .unwrap();
-        // TODO: chain futures
-        let block0_leadership_gcroot = self
-            .leaderships
-            .insert(block0_chain_length, block0_id.clone(), block0_leadership)
-            .wait()
-            .unwrap();
-
-        let reference = Ref::new(
-            block0_ledger_gcroot,
-            block0_leadership_gcroot,
-            block0_header,
-        );
-
-        // TODO: chain futures
-        self.ref_cache
-            .insert(block0_id.clone(), reference.clone())
-            .wait()
-            .unwrap();
-
-        let branch = Branch::new(reference);
-        // TODO: chain futures
-        self.branches.add(branch).wait().unwrap();
-
-        // TODO: store block0 in storage
-
-        future::ok(())
+        // we lift the creation of the ledger in the future type
+        // this allow chaining of the operation and lifting the error handling
+        // in the same place
+        Ledger::new(block0_id.clone(), block0.contents.iter())
+            .map(future::ok)
+            .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))
+            .unwrap_or_else(future::err)
+            .map(move |block0_ledger| {
+                let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
+                (block0_ledger, block0_leadership)
+            })
+            .and_then(move |(block0_ledger, block0_leadership)| {
+                self1
+                    .create_and_store_reference(
+                        block0_id,
+                        block0_header,
+                        block0_ledger,
+                        block0_leadership,
+                    )
+                    .map_err(|_: Infallible| unreachable!())
+            })
+            .map(Branch::new)
+            .and_then(move |branch| branches.add(branch).map_err(|_: Infallible| unreachable!()))
     }
 }
