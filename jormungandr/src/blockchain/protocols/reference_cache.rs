@@ -1,13 +1,18 @@
 use crate::{blockcfg::HeaderHash, blockchain::protocols::Ref};
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, convert::Infallible, time::Duration};
 use tokio::{
     prelude::*,
+    sync::lock::Lock,
     timer::{self, delay_queue, DelayQueue},
 };
 
+pub struct RefCache {
+    inner: Lock<RefCacheData>,
+}
+
 /// cache of already loaded in-memory block `Ref`
 ///
-pub struct RefCache {
+struct RefCacheData {
     entries: HashMap<HeaderHash, (Ref, delay_queue::Key)>,
     expirations: DelayQueue<HeaderHash>,
 
@@ -17,13 +22,51 @@ pub struct RefCache {
 impl RefCache {
     pub fn new(ttl: Duration) -> Self {
         RefCache {
+            inner: Lock::new(RefCacheData::new(ttl)),
+        }
+    }
+
+    pub fn insert(
+        &self,
+        key: HeaderHash,
+        value: Ref,
+    ) -> impl Future<Item = (), Error = Infallible> {
+        let mut inner = self.inner.clone();
+        future::poll_fn(move || Ok(inner.poll_lock()))
+            .map(move |mut guard| guard.insert(key, value))
+    }
+
+    pub fn get(&self, key: HeaderHash) -> impl Future<Item = Option<Ref>, Error = Infallible> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock()))
+            .map(move |mut guard| guard.get(&key).cloned())
+    }
+
+    pub fn remove(&self, key: HeaderHash) -> impl Future<Item = (), Error = Infallible> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock())).map(move |mut guard| guard.remove(&key))
+    }
+
+    pub fn purge(&self) -> impl Future<Item = (), Error = timer::Error> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock()))
+            .and_then(|mut guard| future::poll_fn(move || guard.poll_purge()))
+    }
+}
+
+impl RefCacheData {
+    fn new(ttl: Duration) -> Self {
+        RefCacheData {
             entries: HashMap::new(),
             expirations: DelayQueue::new(),
             ttl,
         }
     }
 
-    pub fn insert(&mut self, key: HeaderHash, value: Ref) {
+    fn insert(&mut self, key: HeaderHash, value: Ref) {
         let delay = self.expirations.insert(key.clone(), self.ttl);
 
         self.entries.insert(key, (value, delay));
@@ -31,7 +74,7 @@ impl RefCache {
 
     /// accessing the `Ref` will reset the timeout and extend the time
     /// before expiration from the cache.
-    pub fn get(&mut self, key: &HeaderHash) -> Option<&Ref> {
+    fn get(&mut self, key: &HeaderHash) -> Option<&Ref> {
         if let Some((v, k)) = self.entries.get(key) {
             self.expirations.reset(k, self.ttl);
 
@@ -41,13 +84,13 @@ impl RefCache {
         }
     }
 
-    pub fn remove(&mut self, key: &HeaderHash) {
+    fn remove(&mut self, key: &HeaderHash) {
         if let Some((_, cache_key)) = self.entries.remove(key) {
             self.expirations.remove(&cache_key);
         }
     }
 
-    pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
+    fn poll_purge(&mut self) -> Poll<(), timer::Error> {
         while let Some(entry) = try_ready!(self.expirations.poll()) {
             self.entries.remove(entry.get_ref());
         }

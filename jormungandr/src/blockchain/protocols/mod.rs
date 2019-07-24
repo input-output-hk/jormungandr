@@ -89,7 +89,7 @@ error_chain! {
 pub struct Blockchain {
     branches: Lock<Branches>,
 
-    ref_cache: Lock<RefCache>,
+    ref_cache: RefCache,
 
     multiverse: Lock<Multiverse<Ledger>>,
 
@@ -102,7 +102,7 @@ impl Blockchain {
     pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
             branches: Lock::new(Branches::new()),
-            ref_cache: Lock::new(RefCache::new(ref_cache_ttl)),
+            ref_cache: RefCache::new(ref_cache_ttl),
             multiverse: Lock::new(Multiverse::new()),
             leaderships: Lock::new(Leaderships::new()),
             storage: Lock::new(storage),
