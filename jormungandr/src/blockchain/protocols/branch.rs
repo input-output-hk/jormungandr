@@ -49,8 +49,8 @@ impl Branch {
     }
 
     pub fn get_ref(&self) -> impl Future<Item = Ref, Error = std::convert::Infallible> {
-        future::poll_fn(|| self.poll_lock())
-            .map(|guard| guard.reference().clone())
+        let mut branch = self.clone();
+        future::poll_fn(move || branch.poll_lock()).map(|guard| guard.reference().clone())
     }
 }
 
