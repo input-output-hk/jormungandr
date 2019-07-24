@@ -140,18 +140,19 @@ impl Blockchain {
             })
     }
 
-    /// function to do the initial application of the block0 in the `Blockchain` and its
-    /// storage. We assume `Block0` is not already in the `NodeStorage`.
+    /// Apply the given block0 in the blockchain (updating the RefCache and the other objects)
+    ///
+    /// This function returns the create block0 branch. Having it will
+    /// avoid searching for it in the blockchain's `branches` and perform
+    /// operations to update the branch as we move along already.
     ///
     /// # Errors
     ///
     /// The resulted future may fail if
     ///
-    /// * the block0 already exists in the storage: `ErrorKind::Block0AlreadExists`;
-    /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError` ;
+    /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     ///
-    pub fn apply_block0(&mut self, block0: Block) -> impl Future<Item = (), Error = Error> {
-        let block0_clone = block0.clone();
+    pub fn apply_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
         let block0_header = block0.header.clone();
         let block0_id = block0_header.hash();
         let block0_id_1 = block0_header.hash();
@@ -159,27 +160,14 @@ impl Blockchain {
 
         let mut self1 = self.clone();
         let mut branches = self.branches.clone();
-        let mut storage_store = self.storage.clone();
 
-        self.storage
-            .block_exists(block0_id.clone())
-            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
-            .and_then(|existence| {
-                if !existence {
-                    future::err(ErrorKind::Block0AlreadyExists.into())
-                } else {
-                    future::ok(())
-                }
-            })
-            .and_then(move |()| {
-                // we lift the creation of the ledger in the future type
-                // this allow chaining of the operation and lifting the error handling
-                // in the same place
-                Ledger::new(block0_id_1, block0.contents.iter())
-                    .map(future::ok)
-                    .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))
-                    .unwrap_or_else(future::err)
-            })
+        // we lift the creation of the ledger in the future type
+        // this allow chaining of the operation and lifting the error handling
+        // in the same place
+        Ledger::new(block0_id_1, block0.contents.iter())
+            .map(future::ok)
+            .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))
+            .unwrap_or_else(future::err)
             .map(move |block0_ledger| {
                 let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
                 (block0_ledger, block0_leadership)
@@ -195,10 +183,52 @@ impl Blockchain {
                     .map_err(|_: Infallible| unreachable!())
             })
             .map(Branch::new)
-            .and_then(move |branch| branches.add(branch).map_err(|_: Infallible| unreachable!()))
-            .and_then(move |()| {
+            .and_then(move |branch| {
+                branches
+                    .add(branch.clone())
+                    .map(|()| branch)
+                    .map_err(|_: Infallible| unreachable!())
+            })
+    }
+
+    /// function to do the initial application of the block0 in the `Blockchain` and its
+    /// storage. We assume `Block0` is not already in the `NodeStorage`.
+    ///
+    /// This function returns the create block0 branch. Having it will
+    /// avoid searching for it in the blockchain's `branches` and perform
+    /// operations to update the branch as we move along already.
+    ///
+    /// # Errors
+    ///
+    /// The resulted future may fail if
+    ///
+    /// * the block0 already exists in the storage: `ErrorKind::Block0AlreadyExists`;
+    /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
+    /// * other errors while interacting with the storage (IO errors)
+    ///
+    pub fn load_from_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
+        let block0_clone = block0.clone();
+        let block0_header = block0.header.clone();
+        let block0_id = block0_header.hash();
+
+        let mut self1 = self.clone();
+        let mut storage_store = self.storage.clone();
+
+        self.storage
+            .block_exists(block0_id.clone())
+            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
+            .and_then(|existence| {
+                if !existence {
+                    future::err(ErrorKind::Block0AlreadyExists.into())
+                } else {
+                    future::ok(())
+                }
+            })
+            .and_then(move |()| self1.apply_block0(block0_clone))
+            .and_then(move |block0_branch| {
                 storage_store
-                    .put_block(block0_clone)
+                    .put_block(block0)
+                    .map(|()| block0_branch)
                     .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))
             })
     }
@@ -206,7 +236,7 @@ impl Blockchain {
     /// returns a future that will propagate the initial states and leadership
     /// from the block0 to the `Head` of the storage (the last known block which
     /// made consensus).
-    pub fn load_from_block0(&mut self, block0: Block) -> impl Future<Item = (), Error = Error> {
+    pub fn load_from_storage(&mut self, block0: Block) -> impl Future<Item = (), Error = Error> {
         future::ok(())
     }
 }
