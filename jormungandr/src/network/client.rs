@@ -131,13 +131,12 @@ where
         match event {
             BlockEvent::Announce(header) => {
                 debug!(self.logger, "received block event Announce");
-                self.global_state
-                    .peers
-                    .bump_peer_for_block_fetch(self.remote_node_id);
-                self.channels
-                    .block_box
-                    .try_send(BlockMsg::AnnouncedBlock(header, self.remote_node_id))
-                    .unwrap();
+                subscription::process_block_announcement(
+                    header,
+                    self.remote_node_id,
+                    &self.global_state,
+                    &mut self.channels.block_box,
+                );
             }
             BlockEvent::Solicit(block_ids) => {
                 debug!(self.logger, "received block event Solicit");
