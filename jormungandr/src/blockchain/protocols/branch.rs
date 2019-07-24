@@ -55,8 +55,13 @@ impl Branch {
     }
 
     pub fn get_ref(&self) -> impl Future<Item = Ref, Error = Infallible> {
-        let mut branch = self.clone();
-        future::poll_fn(move || Ok(branch.inner.poll_lock())).map(|guard| guard.reference().clone())
+        let mut branch = self.inner.clone();
+        future::poll_fn(move || Ok(branch.poll_lock())).map(|guard| guard.reference().clone())
+    }
+
+    pub fn update_ref(&mut self, new_ref: Ref) -> impl Future<Item = Ref, Error = Infallible> {
+        let mut branch = self.inner.clone();
+        future::poll_fn(move || Ok(branch.poll_lock())).map(move |mut guard| guard.update(new_ref))
     }
 }
 
