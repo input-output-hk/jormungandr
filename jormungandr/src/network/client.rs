@@ -417,10 +417,7 @@ pub fn connect(
     let err_logger = state.logger().clone();
     grpc::connect(addr, Some(state.global.as_ref().node.id()))
         .map_err(move |err| {
-            warn!(
-                err_logger,
-                "error connecting to peer at {}: {:?}", addr, err
-            );
+            warn!(err_logger, "error connecting to peer: {:?}", err);
         })
         .and_then(move |conn| Client::subscribe(conn, state, channels))
         .map(move |(client, comms)| {
