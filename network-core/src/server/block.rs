@@ -94,6 +94,9 @@ pub trait BlockService: P2pService {
         + Send
         + 'static;
 
+    /// Returns the ID of the genesis block of the chain served by this node.
+    fn block0(&mut self) -> Self::BlockId;
+
     /// Request the current blockchain tip.
     /// The returned future resolves to the tip of the blockchain
     /// accepted by this node.

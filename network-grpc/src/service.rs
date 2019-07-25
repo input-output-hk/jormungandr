@@ -1,9 +1,9 @@
 use crate::{
     convert::{
         decode_node_id, deserialize_bytes, deserialize_repeated_bytes, encode_node_id,
-        error_from_grpc, error_into_grpc, FromProtobuf, IntoProtobuf,
+        error_from_grpc, error_into_grpc, serialize_to_bytes, FromProtobuf, IntoProtobuf,
     },
-    gen,
+    gen, PROTOCOL_VERSION,
 };
 
 use chain_core::property;
@@ -16,9 +16,10 @@ use network_core::{
     },
 };
 
+use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use futures::try_ready;
-use tower_grpc::{self, Code, Request, Status, Streaming};
+use tower_grpc::{self, Code, Request, Response, Status, Streaming};
 
 use std::{marker::PhantomData, mem};
 
@@ -508,6 +509,7 @@ where
     <T::ContentService as ContentService>::Fragment: protocol_bounds::Fragment,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
+    type HandshakeFuture = FutureResult<Response<gen::node::HandshakeResponse>, tower_grpc::Status>;
     type TipFuture = ResponseFuture<
         gen::node::TipResponse,
         <<T as Node>::BlockService as BlockService>::TipFuture,
@@ -581,6 +583,19 @@ where
         <T::GossipService as P2pService>::NodeId,
         <T::GossipService as GossipService>::GossipSubscriptionFuture,
     >;
+
+    fn handshake(&mut self, _req: Request<gen::node::HandshakeRequest>) -> Self::HandshakeFuture {
+        let service = match self.inner.block_service() {
+            Some(service) => service,
+            None => return future::err(Status::new(Code::Unimplemented, "not implemented")),
+        };
+        let block0 = serialize_to_bytes(&service.block0()).unwrap();
+        let res = gen::node::HandshakeResponse {
+            version: PROTOCOL_VERSION,
+            block0,
+        };
+        future::ok(Response::new(res))
+    }
 
     fn tip(&mut self, _request: Request<gen::node::TipRequest>) -> Self::TipFuture {
         let service = try_get_service!(self.inner.block_service());

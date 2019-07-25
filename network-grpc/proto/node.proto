@@ -3,6 +3,18 @@ syntax = "proto3";
 // gRPC protocol for a blockchain node
 package iohk.chain.node;
 
+// Request message for method Handshake.
+message HandshakeRequest {}
+
+// Response message for method Handshake.
+message HandshakeResponse {
+  // Version of the protocol implemented by the server.
+  uint32 version = 1;
+  // The identifier of the genesis block. This can be used by the client
+  // to determine if the server node runs the expected blockchain.
+  bytes block0 = 2;
+}
+
 // Request message for method Tip.
 message TipRequest {}
 
@@ -87,6 +99,7 @@ message BlockEvent {
 }
 
 service Node {
+  rpc Handshake(HandshakeRequest) returns (HandshakeResponse);
   rpc Tip(TipRequest) returns (TipResponse);
   rpc GetBlocks(BlockIds) returns (stream Block) {
     option idempotency_level = NO_SIDE_EFFECTS;
