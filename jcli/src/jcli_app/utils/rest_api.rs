@@ -1,6 +1,7 @@
 use hex;
 use jcli_app::utils::DebugFlag;
 use reqwest::{Error, RequestBuilder, Response};
+use serde::Serialize;
 use std::{fmt, io::Write};
 
 pub struct RestApiSender<'a> {
@@ -40,6 +41,21 @@ impl<'a> RestApiSender<'a> {
             )
             .body(body);
         self
+    }
+
+    pub fn with_json_body(mut self, body: &impl Serialize) -> Result<Self, serde_json::Error> {
+        let json = serde_json::to_string(body)?;
+        if self.debug_flag.debug_writer().is_some() {
+            self.request_body_debug = Some(json.clone());
+        }
+        self.builder = self
+            .builder
+            .header(
+                reqwest::header::CONTENT_TYPE,
+                mime::APPLICATION_JSON.as_ref(),
+            )
+            .body(json.into_bytes());
+        Ok(self)
     }
 
     pub fn send(self) -> Result<RestApiResponse, Error> {

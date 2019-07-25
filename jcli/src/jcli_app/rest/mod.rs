@@ -20,6 +20,7 @@ custom_error! {pub Error
     OutputFormatFailed { source: output_format::Error } = "formatting output failed",
     InputFileInvalid { source: std::io::Error } = "could not read input file",
     InputFileYamlMalformed { source: serde_yaml::Error } = "input yaml is not valid",
+    InputSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller } = "failed to serialize input",
     InputHexMalformed { source: hex::Error } = "input hex encoding is not valid",
 }
 
