@@ -354,6 +354,27 @@ impl Blockchain {
             })
     }
 
+    /// retrieve the leadership associated at the given block reference
+    ///
+    /// # Errors
+    ///
+    /// this function cannot fail as if we already hold the reference
+    /// the leadership is already in the cache.
+    pub fn get_leadership_at_ref(
+        &self,
+        reference: Ref,
+    ) -> impl Future<Item = Arc<Leadership>, Error = Infallible> {
+        self.leaderships
+            .get(reference.hash().clone())
+            .and_then(|opt_leadership| {
+                if let Some(leadership) = opt_leadership {
+                    future::ok(leadership)
+                } else {
+                    panic!("leadership should always be in memory when we old the Ref")
+                }
+            })
+    }
+
     /// check the header cryptographic properties and leadership's schedule
     ///
     /// on success returns the PostCheckedHeader:
