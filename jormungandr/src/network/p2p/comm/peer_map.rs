@@ -186,7 +186,7 @@ impl BlockFetchCursor {
                 let node = node_ptr.as_mut();
                 node.prev = Some(*last_ptr);
                 BlockFetchCursor::Ptrs {
-                    last: *last_ptr,
+                    last: node_ptr,
                     next_back: None,
                 }
             }
