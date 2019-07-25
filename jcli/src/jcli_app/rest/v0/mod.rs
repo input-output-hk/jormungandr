@@ -1,5 +1,6 @@
 mod account;
 mod block;
+mod leaders;
 mod message;
 mod node;
 mod settings;
@@ -17,6 +18,8 @@ pub enum V0 {
     Account(account::Account),
     /// Block operations
     Block(block::Block),
+    /// Node leaders operations
+    Leaders(leaders::Leaders),
     /// Message sending
     Message(message::Message),
     /// Node information
@@ -36,6 +39,7 @@ impl V0 {
         match self {
             V0::Account(account) => account.exec(),
             V0::Block(block) => block.exec(),
+            V0::Leaders(leaders) => leaders.exec(),
             V0::Message(message) => message.exec(),
             V0::Node(node) => node.exec(),
             V0::Settings(settings) => settings.exec(),
