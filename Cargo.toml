@@ -11,4 +11,5 @@ members = [
     "cardano-legacy-address",
     "network-core",
     "network-grpc",
+    "typed-bytes",
 ]
