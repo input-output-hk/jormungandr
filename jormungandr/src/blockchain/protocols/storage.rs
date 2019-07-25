@@ -18,6 +18,35 @@ impl Storage {
         }
     }
 
+    pub fn get_tag(
+        &self,
+        tag: String,
+    ) -> impl Future<Item = Option<HeaderHash>, Error = StorageError> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
+            match guard.get_tag(&tag) {
+                Err(error) => future::err(error),
+                Ok(res) => future::ok(res),
+            }
+        })
+    }
+
+    pub fn put_tag(
+        &mut self,
+        tag: String,
+        header_hash: HeaderHash,
+    ) -> impl Future<Item = (), Error = StorageError> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |mut guard| {
+            match guard.put_tag(&tag, &header_hash) {
+                Err(error) => future::err(error),
+                Ok(res) => future::ok(res),
+            }
+        })
+    }
+
     pub fn get(
         &self,
         header_hash: HeaderHash,
