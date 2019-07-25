@@ -1,8 +1,8 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
-use crate::blockchain::BlockchainR;
+use crate::blockchain::{Blockchain, BlockchainR};
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
 use crate::utils::task::{Input, ThreadServiceInfo};
-use chain_core::property::{Block as _, HasHeader as _};
+use chain_core::property::HasHeader;
 use chain_storage::store;
 
 pub fn handle_input(_info: &ThreadServiceInfo, blockchain: &BlockchainR, input: Input<ClientMsg>) {
@@ -48,6 +48,24 @@ fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<Header, Error> {
 
 const MAX_HEADERS: usize = 2000;
 
+fn find_latest_checkpoint(
+    blockchain: &Blockchain,
+    checkpoints: &[HeaderHash],
+) -> Option<HeaderHash> {
+    // Filter out the checkpoints that don't exist
+    // (or failed to be retrieved from the store for any other reason)
+    // and find the latest by chain length.
+    let storage = blockchain.storage.read().unwrap();
+    checkpoints
+        .iter()
+        .filter_map(|hash| match storage.get_block_info(hash) {
+            Ok(info) => Some((info.depth, hash)),
+            Err(_) => None,
+        })
+        .max_by_key(|&(depth, _)| depth)
+        .map(|(_, hash)| *hash)
+}
+
 fn handle_get_headers_range(
     blockchain: &BlockchainR,
     checkpoints: Vec<HeaderHash>,
@@ -56,45 +74,32 @@ fn handle_get_headers_range(
 ) -> Result<(), Error> {
     let blockchain = blockchain.lock_read();
 
-    /* Filter out the checkpoints that don't exist and sort them by
-     * block date. */
-    let mut checkpoints = checkpoints
-        .iter()
-        .filter_map(
-            |checkpoint| match blockchain.storage.read().unwrap().get_block(&checkpoint) {
-                Err(_) => None,
-                Ok((blk, _)) => Some((blk.date(), checkpoint)),
-            },
-        )
-        .collect::<Vec<_>>();
-
-    if checkpoints.is_empty() {
-        return Err(Error::not_found(
-            "none of the starting points are found in the blockchain",
-        ));
-    } else {
-        /* Start at the newest checkpoint. */
-        checkpoints.sort_unstable();
-        let from = checkpoints.last().unwrap().1;
-
-        // FIXME: handle checkpoint == genesis
-
-        /* Send headers up to the maximum. */
-        let mut header_count = 0usize;
-        let storage = blockchain.storage.read().unwrap();
-        for x in store::iterate_range(&*storage, &from, &to)? {
-            match x {
-                Err(err) => return Err(Error::from(err)),
-                Ok(info) => {
-                    let (block, _) = storage.get_block(&info.block_hash)?;
-                    reply.send(block.header());
-                    header_count += 1;
-                    if header_count >= MAX_HEADERS {
-                        break;
-                    }
-                }
-            };
+    let from = match find_latest_checkpoint(&blockchain, &checkpoints) {
+        Some(hash) => hash,
+        None => {
+            return Err(Error::not_found(
+                "none of the starting points are found in the blockchain",
+            ))
         }
+    };
+
+    // FIXME: handle checkpoint == genesis
+
+    /* Send headers up to the maximum. */
+    let mut header_count = 0usize;
+    let storage = blockchain.storage.read().unwrap();
+    for x in store::iterate_range(&*storage, &from, &to)? {
+        match x {
+            Err(err) => return Err(Error::from(err)),
+            Ok(info) => {
+                let (block, _) = storage.get_block(&info.block_hash)?;
+                reply.send(block.header());
+                header_count += 1;
+                if header_count >= MAX_HEADERS {
+                    break;
+                }
+            }
+        };
     }
 
     Ok(())
@@ -153,18 +158,19 @@ fn handle_get_headers(
 
 fn handle_pull_blocks_to_tip(
     blockchain: &BlockchainR,
-    mut from: Vec<HeaderHash>,
+    checkpoints: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
     let blockchain = blockchain.lock_read();
 
-    // FIXME: handle multiple from addresses
-    if from.len() != 1 {
-        return Err(Error::unimplemented(
-            "only one checkpoint address is currently supported",
-        ));
-    }
-    let from = from.remove(0);
+    let from = match find_latest_checkpoint(&blockchain, &checkpoints) {
+        Some(hash) => hash,
+        None => {
+            return Err(Error::not_found(
+                "none of the starting points are found in the blockchain",
+            ))
+        }
+    };
 
     let tip = blockchain.get_tip().unwrap();
 

@@ -142,11 +142,6 @@ impl P2pTopology {
     /// to contact for event dissemination.
     pub fn view(&self) -> impl Iterator<Item = Node> {
         let topology = self.lock.read().unwrap();
-        debug!(
-            self.logger,
-            "loading P2P local topology view {:?}",
-            topology.view()
-        );
         topology.view().into_iter().map(Node)
     }
 

@@ -1,6 +1,6 @@
 use super::{
     p2p::topology::{Node, NodeId},
-    GlobalStateR,
+    GlobalState, GlobalStateR,
 };
 use crate::{blockcfg::Header, intercom::BlockMsg, utils::async_msg::MessageBox};
 use futures::prelude::*;
@@ -20,16 +20,25 @@ where
     tokio::spawn(
         inbound
             .for_each(move |header| {
-                global_state.peers.bump_peer_for_block_fetch(node_id);
-                block_box
-                    .try_send(BlockMsg::AnnouncedBlock(header, node_id))
-                    .unwrap();
+                process_block_announcement(header, node_id, &global_state, &mut block_box);
                 Ok(())
             })
             .map_err(move |err| {
                 info!(logger, "block subscription stream failure: {:?}", err);
             }),
     )
+}
+
+pub fn process_block_announcement(
+    header: Header,
+    node_id: NodeId,
+    global_state: &GlobalState,
+    block_box: &mut MessageBox<BlockMsg>,
+) {
+    global_state.peers.bump_peer_for_block_fetch(node_id);
+    block_box
+        .try_send(BlockMsg::AnnouncedBlock(header, node_id))
+        .unwrap();
 }
 
 pub fn process_gossip<S>(inbound: S, state: GlobalStateR, logger: Logger) -> tokio::executor::Spawn
