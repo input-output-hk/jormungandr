@@ -6,9 +6,13 @@
 
 use crate::stake::StakePoolId;
 use crate::value::*;
-use imhamt::{Hamt, HamtIter, InsertError, UpdateError};
+use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
+
+pub mod account_state;
+
+pub use account_state::*;
 
 custom_error! {
     #[derive(Clone, PartialEq, Eq)]
@@ -34,134 +38,6 @@ impl From<InsertError> for LedgerError {
         match e {
             InsertError::EntryExists => LedgerError::AlreadyExists,
         }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct AccountState<Extra> {
-    pub counter: SpendingCounter,
-    pub delegation: Option<StakePoolId>,
-    pub value: Value,
-    pub extra: Extra,
-}
-
-impl<Extra> AccountState<Extra> {
-    /// Create a new account state with a specific start value
-    pub fn new(v: Value, e: Extra) -> Self {
-        Self {
-            counter: SpendingCounter(0),
-            delegation: None,
-            value: v,
-            extra: e,
-        }
-    }
-
-    /// Get referencet to delegation setting
-    pub fn delegation(&self) -> &Option<StakePoolId> {
-        &self.delegation
-    }
-
-    pub fn value(&self) -> Value {
-        self.value
-    }
-
-    // deprecated use value()
-    pub fn get_value(&self) -> Value {
-        self.value
-    }
-
-    pub fn get_counter(&self) -> u32 {
-        self.counter.into()
-    }
-}
-
-impl<Extra: Clone> AccountState<Extra> {
-    /// Add a value to an account state
-    ///
-    /// Only error if value is overflowing
-    pub fn add(&self, v: Value) -> Result<Self, LedgerError> {
-        let new_value = (self.value + v)?;
-        let mut st = self.clone();
-        st.value = new_value;
-        Ok(st)
-    }
-
-    /// Subtract a value from an account state, and return the new state.
-    ///
-    /// Note that this *also* increment the counter, as this function would be usually call
-    /// for spending.
-    ///
-    /// If the counter is also reaching the extremely rare of max, we only authorise
-    /// a total withdrawal of fund otherwise the fund will be stuck forever in limbo.
-    pub fn sub(&self, v: Value) -> Result<Option<Self>, LedgerError> {
-        let new_value = (self.value - v)?;
-        match self.counter.increment() {
-            None => {
-                if new_value == Value::zero() {
-                    Ok(None)
-                } else {
-                    Err(LedgerError::NeedTotalWithdrawal)
-                }
-            }
-            Some(new_counter) => Ok(Some(Self {
-                counter: new_counter,
-                delegation: self.delegation.clone(),
-                value: new_value,
-                extra: self.extra.clone(),
-            })),
-        }
-    }
-
-    /// Set delegation
-    pub fn set_delegation(&self, delegation: Option<StakePoolId>) -> Self {
-        let mut st = self.clone();
-        st.delegation = delegation;
-        st
-    }
-}
-
-/// Spending counter associated to an account.
-///
-/// every time the owner is spending from an account,
-/// the counter is incremented. A matching counter
-/// needs to be used in the spending phase to make
-/// sure we have non-replayability of a transaction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SpendingCounter(u32);
-
-impl SpendingCounter {
-    pub fn zero() -> Self {
-        SpendingCounter(0)
-    }
-
-    fn increment(&self) -> Option<Self> {
-        self.0.checked_add(1).map(SpendingCounter)
-    }
-
-    pub fn to_bytes(&self) -> [u8; 4] {
-        self.0.to_le_bytes()
-    }
-}
-
-impl From<u32> for SpendingCounter {
-    fn from(v: u32) -> Self {
-        SpendingCounter(v)
-    }
-}
-
-impl From<SpendingCounter> for u32 {
-    fn from(v: SpendingCounter) -> u32 {
-        v.0
-    }
-}
-
-pub struct Iter<'a, ID, Extra>(HamtIter<'a, ID, AccountState<Extra>>);
-
-impl<'a, ID, Extra> Iterator for Iter<'a, ID, Extra> {
-    type Item = (&'a ID, &'a AccountState<Extra>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
     }
 }
 
