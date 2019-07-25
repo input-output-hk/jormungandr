@@ -1,5 +1,4 @@
-use crate::blockcfg::{ChainLength, Epoch, Header, HeaderHash};
-use chain_core::property::Header as _;
+use crate::blockcfg::{ChainLength, Epoch, HeaderHash};
 use chain_impl_mockchain::multiverse::{GCRoot, Multiverse};
 use std::collections::{BTreeMap, HashSet};
 
