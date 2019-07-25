@@ -212,7 +212,7 @@ value: 990
 Fetches node settings
 
 ```
-jcli rest v0 node settings get <options>
+jcli rest v0 settings get <options>
 ```
 
 The options are
