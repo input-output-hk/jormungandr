@@ -434,7 +434,7 @@ impl Blockchain {
 
     /// Apply the given block0 in the blockchain (updating the RefCache and the other objects)
     ///
-    /// This function returns the create block0 branch. Having it will
+    /// This function returns the created block0 branch. Having it will
     /// avoid searching for it in the blockchain's `branches` and perform
     /// operations to update the branch as we move along already.
     ///
@@ -442,7 +442,7 @@ impl Blockchain {
     ///
     /// The resulted future may fail if
     ///
-    /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
+    /// * the block0 does build an invalid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     ///
     fn apply_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
         let block0_header = block0.header.clone();
