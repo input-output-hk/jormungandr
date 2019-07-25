@@ -10,10 +10,10 @@ use crate::{
     intercom::{self, BlockMsg, ClientMsg},
 };
 use futures::prelude::*;
-use network_core::client as core_client;
 use network_core::client::block::BlockService;
 use network_core::client::gossip::GossipService;
 use network_core::client::p2p::P2pService;
+use network_core::client::{self as core_client, Client as _};
 use network_core::gossip::Node;
 use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
@@ -420,10 +420,41 @@ pub fn connect(
     channels: Channels,
 ) -> impl Future<Item = (Client<grpc::Connection>, PeerComms), Error = ()> {
     let addr = state.connection;
-    let err_logger = state.logger().clone();
+    let expected_block0 = state.global.block0_hash;
+    let connect_err_logger = state.logger().clone();
+    let ready_err_logger = state.logger().clone();
+    let handshake_err_logger = state.logger().clone();
+    let block0_mismatch_logger = state.logger().clone();
     grpc::connect(addr, Some(state.global.as_ref().node.id()))
-        .map_err(move |err| {
-            warn!(err_logger, "error connecting to peer: {:?}", err);
+        .map_err(move |e| {
+            warn!(connect_err_logger, "error connecting to peer: {:?}", e);
+        })
+        .and_then(move |conn| {
+            conn.ready().map_err(move |e| {
+                warn!(
+                    ready_err_logger,
+                    "gRPC client error after connecting: {:?}", e
+                );
+            })
+        })
+        .and_then(move |mut conn| {
+            conn.handshake()
+                .map_err(move |e| {
+                    warn!(handshake_err_logger, "protocol handshake failed: {:?}", e);
+                })
+                .and_then(move |block0| {
+                    if block0 == expected_block0 {
+                        Ok(conn)
+                    } else {
+                        warn!(
+                            block0_mismatch_logger,
+                            "block 0 hash {} in handshake is not expected {}",
+                            block0,
+                            expected_block0
+                        );
+                        Err(())
+                    }
+                })
         })
         .and_then(move |conn| Client::subscribe(conn, state, channels))
         .map(move |(client, comms)| {
