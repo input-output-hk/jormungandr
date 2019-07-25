@@ -346,6 +346,7 @@ where
 
 impl<S> Future for Client<S>
 where
+    S: core_client::Client,
     S: BlockService<Block = Block>,
     S::GetBlocksFuture: Send + 'static,
     S::GetBlocksStream: Send + 'static,
@@ -360,6 +361,11 @@ where
     type Error = ();
     fn poll(&mut self) -> Poll<(), ()> {
         loop {
+            // Drive any pending activity of the gRPC client until it is ready
+            // to process another request.
+            try_ready!(self.service.poll_ready().map_err(|e| {
+                warn!(self.logger, "gRPC client error: {:?}", e);
+            }));
             let mut streams_ready = false;
             let block_event_polled = self.block_events.poll().map_err(|e| {
                 info!(self.logger, "block subscription stream failure: {:?}", e);
