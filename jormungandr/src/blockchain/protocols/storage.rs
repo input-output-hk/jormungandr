@@ -127,7 +127,7 @@ impl Storage {
 }
 
 impl Stream for BlockStream {
-    type Item = BlockInfo<HeaderHash>;
+    type Item = Block;
     type Error = StorageError;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
@@ -143,7 +143,8 @@ impl Stream for BlockStream {
 
         if block_info.depth == self.cur_depth {
             // We've seen this block on a previous ancestor traversal.
-            Ok(Async::Ready(Some(block_info)))
+            let (block, _block_info) = guard.get_block(&block_info.block_hash)?;
+            Ok(Async::Ready(Some(block)))
         } else {
             // We don't have this block yet, so search back from
             // the furthest block that we do have.
@@ -160,7 +161,8 @@ impl Stream for BlockStream {
                 },
             )?;
 
-            Ok(Async::Ready(Some(block_info)))
+            let (block, _block_info) = guard.get_block(&block_info.block_hash)?;
+            Ok(Async::Ready(Some(block)))
         }
     }
 }
