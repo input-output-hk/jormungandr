@@ -81,8 +81,12 @@ error_chain! {
             description("Error while creating the initial ledger out of the block0")
         }
 
-        Block0AlreadyExists {
+        Block0AlreadyInStorage {
             description("Block0 already exists in the storage")
+        }
+
+        Block0NotAlreadyInStorage {
+            description("Block0 already is not yet in the storage")
         }
     }
 }
@@ -202,7 +206,7 @@ impl Blockchain {
     ///
     /// The resulted future may fail if
     ///
-    /// * the block0 already exists in the storage: `ErrorKind::Block0AlreadyExists`;
+    /// * the block0 already exists in the storage: `ErrorKind::Block0AlreadyInStorage`;
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
@@ -219,7 +223,7 @@ impl Blockchain {
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
             .and_then(|existence| {
                 if !existence {
-                    future::err(ErrorKind::Block0AlreadyExists.into())
+                    future::err(ErrorKind::Block0AlreadyInStorage.into())
                 } else {
                     future::ok(())
                 }
@@ -236,7 +240,35 @@ impl Blockchain {
     /// returns a future that will propagate the initial states and leadership
     /// from the block0 to the `Head` of the storage (the last known block which
     /// made consensus).
-    pub fn load_from_storage(&mut self, block0: Block) -> impl Future<Item = (), Error = Error> {
-        future::ok(())
+    ///
+    /// The Future will returns a branch pointing to the `Head`.
+    ///
+    /// # Errors
+    ///
+    /// The resulted future may fail if
+    ///
+    /// * the block0 is not already in the storage: `ErrorKind::Block0NotAlreadyInStorage`;
+    /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
+    /// * other errors while interacting with the storage (IO errors)
+    ///
+    pub fn load_from_storage(
+        &mut self,
+        block0: Block,
+    ) -> impl Future<Item = Branch, Error = Error> {
+        let block0_header = block0.header.clone();
+        let block0_id = block0_header.hash();
+        let mut self1 = self.clone();
+
+        self.storage
+            .block_exists(block0_id.clone())
+            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
+            .and_then(|existence| {
+                if existence {
+                    future::err(ErrorKind::Block0NotAlreadyInStorage.into())
+                } else {
+                    future::ok(())
+                }
+            })
+            .and_then(move |()| self1.apply_block0(block0))
     }
 }
