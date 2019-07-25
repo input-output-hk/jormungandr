@@ -91,6 +91,8 @@ error_chain! {
     }
 }
 
+const MAIN_BRANCH_TAG: &str = "HEAD";
+
 #[derive(Clone)]
 pub struct Blockchain {
     branches: Branches,
@@ -217,6 +219,7 @@ impl Blockchain {
 
         let mut self1 = self.clone();
         let mut storage_store = self.storage.clone();
+        let mut storage_store_2 = self.storage.clone();
 
         self.storage
             .block_exists(block0_id.clone())
@@ -234,6 +237,12 @@ impl Blockchain {
                     .put_block(block0)
                     .map(|()| block0_branch)
                     .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))
+            })
+            .and_then(move |block0_branch| {
+                storage_store_2
+                    .put_tag(MAIN_BRANCH_TAG.to_owned(), block0_id)
+                    .map(|()| block0_branch)
+                    .map_err(|e| Error::with_chain(e, "Cannot put block0's hash in the HEAD tag"))
             })
     }
 
