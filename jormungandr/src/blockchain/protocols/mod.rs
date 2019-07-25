@@ -211,7 +211,8 @@ impl Blockchain {
     /// and it might be necessary to contacts the network to retrieve a missing
     /// branch
     ///
-    /// TODO: the case where the
+    /// TODO: the case where the block is in storage but not yet in the cache
+    ///       is not implemented
     pub fn get_ref(
         &mut self,
         header_hash: HeaderHash,
@@ -399,7 +400,7 @@ impl Blockchain {
     ///
     /// apply the block on the blockchain from a post checked header
     ///
-    fn apply_block(
+    pub fn apply_block(
         &mut self,
         post_checked_header: PostCheckedHeader,
         block: Block,
@@ -443,7 +444,7 @@ impl Blockchain {
     ///
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     ///
-    pub fn apply_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
+    fn apply_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
         let block0_header = block0.header.clone();
         let block0_id = block0_header.hash();
         let block0_id_1 = block0_header.hash();
@@ -635,7 +636,8 @@ impl Blockchain {
                                             .map(move |_old_ref| (branch, returned))
                                             .map_err(|_: Infallible| unreachable!())
                                     })
-                            }).map(|(branch, _)| branch)
+                            })
+                            .map(|(branch, _)| branch)
                     })
             })
     }
