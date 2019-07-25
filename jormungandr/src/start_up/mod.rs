@@ -3,7 +3,9 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
-    blockchain::{Blockchain, BlockchainR},
+    blockchain::{
+        protocols::{Blockchain, ErrorKind as BlockchainError, Branch}, Blockchain as LegacyBlockchain, BlockchainR as LegacyBlockchainR,
+    },
     leadership::EpochParameters,
     network,
     settings::start::Settings,
@@ -82,13 +84,38 @@ pub fn prepare_block_0(
     }
 }
 
+pub fn load_legacy_blockchain(
+    block0: Block,
+    storage: NodeStorage,
+    epoch_event: mpsc::Sender<EpochParameters>,
+    logger: &Logger,
+) -> Result<LegacyBlockchainR, Error> {
+    let mut blockchain_data = LegacyBlockchain::load(block0, storage, epoch_event, logger)?;
+    blockchain_data.initial()?;
+    Ok(blockchain_data.into())
+}
+
 pub fn load_blockchain(
     block0: Block,
     storage: NodeStorage,
     epoch_event: mpsc::Sender<EpochParameters>,
     logger: &Logger,
-) -> Result<BlockchainR, Error> {
-    let mut blockchain_data = Blockchain::load(block0, storage, epoch_event, logger)?;
-    blockchain_data.initial()?;
-    Ok(blockchain_data.into())
+) -> Result<(Blockchain, Branch), Error> {
+    use tokio::prelude::*;
+
+    let mut blockchain = Blockchain::new(storage, std::time::Duration::from_secs(3600 * 24 * 30));
+
+    let main_branch = match blockchain.load_from_block0(block0.clone()).wait() {
+        Err(error) => {
+            match error.kind() {
+                BlockchainError::Block0AlreadyInStorage => {
+                    blockchain.load_from_storage(block0).wait()
+                }
+                _ => Err(error)
+            }
+        }
+        Ok(branch) => Ok(branch),
+    }?;
+
+    Ok((blockchain, main_branch))
 }
