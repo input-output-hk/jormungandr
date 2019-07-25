@@ -1,3 +1,4 @@
+use serde::de::DeserializeOwned;
 use std::io::{stdin, stdout, BufRead, BufReader, Error, Write};
 use std::path::Path;
 use std::path::PathBuf;
@@ -47,4 +48,15 @@ pub fn read_line<P: AsRef<Path>>(path: &Option<P>) -> Result<String, Error> {
     let mut line = String::new();
     open_file_read(path)?.read_line(&mut line)?;
     Ok(line.trim_end().to_string())
+}
+
+custom_error! { pub ReadYamlError
+    Io { source: Error } = "could not read input",
+    Yaml { source: serde_yaml::Error } = "input contains malformed yaml",
+}
+
+pub fn read_yaml<D: DeserializeOwned>(path: &Option<impl AsRef<Path>>) -> Result<D, ReadYamlError> {
+    let reader = open_file_read(path)?;
+    let yaml = serde_yaml::from_reader(reader)?;
+    Ok(yaml)
 }

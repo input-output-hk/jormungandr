@@ -1,6 +1,6 @@
 mod v0;
 
-use jcli_app::utils::{host_addr, output_format};
+use jcli_app::utils::{host_addr, io::ReadYamlError, output_format, CustomErrorFiller};
 use structopt::StructOpt;
 
 /// Send request to node REST API
@@ -19,7 +19,17 @@ custom_error! {pub Error
     DeserializationError { source: serde_json::Error } = @{{ let _ = source; DESERIALIZATION_ERROR_MSG }},
     OutputFormatFailed { source: output_format::Error } = "formatting output failed",
     InputFileInvalid { source: std::io::Error } = "could not read input file",
+    InputFileYamlMalformed { source: serde_yaml::Error } = "input yaml is not valid",
     InputHexMalformed { source: hex::Error } = "input hex encoding is not valid",
+}
+
+impl From<ReadYamlError> for Error {
+    fn from(error: ReadYamlError) -> Self {
+        match error {
+            ReadYamlError::Io { source } => Error::InputFileInvalid { source },
+            ReadYamlError::Yaml { source } => Error::InputFileYamlMalformed { source },
+        }
+    }
 }
 
 fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
