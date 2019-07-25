@@ -86,6 +86,10 @@ impl BlockService for NodeService {
     type BlockSubscription = BlockEventSubscription;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
+    fn block0(&mut self) -> HeaderHash {
+        self.global_state.block0_hash
+    }
+
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = intercom::unary_reply(self.logger().clone());
         self.channels

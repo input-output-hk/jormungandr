@@ -68,6 +68,7 @@ impl Clone for Channels {
 
 /// Global state shared between all network tasks.
 pub struct GlobalState {
+    pub block0_hash: HeaderHash,
     pub config: Configuration,
     pub topology: P2pTopology,
     pub node: topology::Node,
@@ -79,7 +80,7 @@ type GlobalStateR = Arc<GlobalState>;
 
 impl GlobalState {
     /// the network global state
-    pub fn new(config: Configuration, logger: Logger) -> Self {
+    pub fn new(block0_hash: HeaderHash, config: Configuration, logger: Logger) -> Self {
         let node_id = config.public_id.unwrap_or(topology::NodeId::generate());
         info!(logger, "our node id: {}", node_id);
         let node_address = config
@@ -103,6 +104,7 @@ impl GlobalState {
         ));
 
         GlobalState {
+            block0_hash,
             config,
             topology,
             node,
@@ -144,16 +146,26 @@ impl ConnectionState {
     }
 }
 
-pub fn run(
-    config: Configuration,
-    input: MessageQueue<NetworkMsg>,
-    channels: Channels,
-    logger: Logger,
-) {
+pub struct TaskParams {
+    pub config: Configuration,
+    pub block0_hash: HeaderHash,
+    pub input: MessageQueue<NetworkMsg>,
+    pub channels: Channels,
+    pub logger: Logger,
+}
+
+pub fn run(params: TaskParams) {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
-    let global_state = Arc::new(GlobalState::new(config, logger.clone()));
+    let input = params.input;
+    let channels = params.channels;
+    let logger = params.logger;
+    let global_state = Arc::new(GlobalState::new(
+        params.block0_hash,
+        params.config,
+        logger.clone(),
+    ));
 
     // open the port for listening/accepting other peers to connect too
     let listen = global_state.config.listen();
