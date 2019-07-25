@@ -1,4 +1,5 @@
 mod delegation;
+mod pool;
 
 #[cfg(test)]
 mod test;
@@ -10,6 +11,7 @@ use chain_core::property;
 use chain_crypto::Verification;
 
 pub use delegation::OwnerStakeDelegation;
+pub use pool::{PoolRegistration, PoolRetirement};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Certificate {
