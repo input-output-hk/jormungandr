@@ -11,12 +11,12 @@ pub enum Rest {
     V0(v0::V0),
 }
 
-const SERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
+const DESERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
 
 custom_error! {pub Error
     ReqwestError { source: reqwest::Error } = @{ reqwest_error_msg(source) },
     HostAddrError { source: host_addr::Error } = "invalid host address",
-    SerializationError { source: serde_json::Error } = @{{ let _ = source; SERIALIZATION_ERROR_MSG }},
+    DeserializationError { source: serde_json::Error } = @{{ let _ = source; DESERIALIZATION_ERROR_MSG }},
     OutputFormatFailed { source: output_format::Error } = "formatting output failed",
     InputFileInvalid { source: std::io::Error } = "could not read input file",
     InputHexMalformed { source: hex::Error } = "input hex encoding is not valid",
@@ -28,7 +28,7 @@ fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
     } else if err.is_http() {
         "could not connect with node"
     } else if err.is_serialization() {
-        SERIALIZATION_ERROR_MSG
+        DESERIALIZATION_ERROR_MSG
     } else if err.is_redirect() {
         "redirecting error while connecting with node"
     } else if err.is_client_error() {
