@@ -60,7 +60,7 @@ extern crate structopt;
 extern crate test;
 
 use crate::{
-    blockcfg::Leader,
+    blockcfg::{HeaderHash, Leader},
     blockchain::BlockchainR,
     secure::enclave::Enclave,
     settings::start::Settings,
@@ -101,6 +101,7 @@ fn start() -> Result<(), start_up::Error> {
 pub struct BootstrappedNode {
     settings: Settings,
     blockchain: BlockchainR,
+    block0_hash: HeaderHash,
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::EpochParameters>,
     logger: Logger,
 }
@@ -164,6 +165,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let client_msgbox = client_task.clone();
         let fragment_msgbox = fragment_msgbox.clone();
         let block_msgbox = block_task.clone();
+        let block0_hash = bootstrapped_node.block0_hash;
         let config = bootstrapped_node.settings.network.clone();
         let channels = network::Channels {
             client_box: client_msgbox,
@@ -172,7 +174,14 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         };
 
         services.spawn("network", move |info| {
-            network::run(config, network_queue, channels, info.into_logger());
+            let params = network::TaskParams {
+                config,
+                block0_hash,
+                input: network_queue,
+                channels,
+                logger: info.into_logger(),
+            };
+            network::run(params);
         });
     }
 
@@ -258,6 +267,8 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
 
+    let block0_hash = block0.header.hash();
+
     let blockchain =
         start_up::load_blockchain(block0, storage, new_epoch_announcements, &bootstrap_logger)?;
 
@@ -265,6 +276,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     Ok(BootstrappedNode {
         settings,
+        block0_hash,
         blockchain,
         new_epoch_notifier,
         logger,
