@@ -113,7 +113,7 @@ pub struct Blockchain {
 
     ref_cache: RefCache,
 
-    multiverse: Multiverse<Ledger>,
+    ledgers: Multiverse<Ledger>,
 
     leaderships: Multiverse<Arc<Leadership>>,
 
@@ -167,7 +167,7 @@ impl Blockchain {
         Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
-            multiverse: Multiverse::new(),
+            ledgers: Multiverse::new(),
             leaderships: Multiverse::new(),
             storage: Storage::new(storage),
         }
@@ -184,7 +184,7 @@ impl Blockchain {
         let chain_length = header.chain_length();
 
         let leaderships = self.leaderships.clone();
-        let multiverse = self.multiverse.clone();
+        let multiverse = self.ledgers.clone();
         let ref_cache = self.ref_cache.clone();
 
         multiverse
@@ -326,7 +326,7 @@ impl Blockchain {
         &mut self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = Ledger, Error = Error> {
-        self.multiverse
+        self.ledgers
             .get(header_hash)
             .map_err(|_: Infallible| unreachable!())
             .and_then(|opt_ledger| {
