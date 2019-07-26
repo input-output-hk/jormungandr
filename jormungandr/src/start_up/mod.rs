@@ -124,12 +124,11 @@ pub fn load_blockchain(
     let blockchain_clone = blockchain.clone();
     main_branch
         .get_ref()
-        .and_then(move |reference| blockchain_clone.get_leadership_at_ref(reference))
         .map_err(|_: std::convert::Infallible| unreachable!())
-        .and_then(move |leadership| {
+        .and_then(move |reference| {
             epoch_event
                 .send(TaskParameters {
-                    leadership: leadership.clone(),
+                    leadership: reference.epoch_leadership_schedule().clone(),
                     time_frame,
                 })
                 .into_future()

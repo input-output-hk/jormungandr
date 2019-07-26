@@ -61,7 +61,7 @@ pub use self::{
     storage::Storage,
 };
 use crate::{
-    blockcfg::{Block, Block0Error, Header, HeaderHash, Leadership, Ledger},
+    blockcfg::{Block, Block0Error, Header, HeaderHash, Leadership, Ledger, LedgerParameters},
     start_up::NodeStorage,
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
@@ -113,9 +113,7 @@ pub struct Blockchain {
 
     ref_cache: RefCache,
 
-    ledgers: Multiverse<Ledger>,
-
-    leaderships: Multiverse<Arc<Leadership>>,
+    ledgers: Multiverse<Arc<Ledger>>,
 
     storage: Storage,
 }
@@ -158,8 +156,9 @@ pub enum PreCheckedHeader {
 
 pub struct PostCheckedHeader {
     header: Header,
-    leadership_schedule: Arc<Leadership>,
-    parent_ledger_state: Ledger,
+    epoch_leadership_schedule: Arc<Leadership>,
+    epoch_ledger_parameters: Arc<LedgerParameters>,
+    parent_ledger_state: Arc<Ledger>,
 }
 
 impl Blockchain {
@@ -168,7 +167,6 @@ impl Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
             ledgers: Multiverse::new(),
-            leaderships: Multiverse::new(),
             storage: Storage::new(storage),
         }
     }
@@ -178,24 +176,20 @@ impl Blockchain {
         &mut self,
         header_hash: HeaderHash,
         header: Header,
-        ledger: Ledger,
+        ledger: Arc<Ledger>,
         leadership: Arc<Leadership>,
+        ledger_parameters: Arc<LedgerParameters>,
     ) -> impl Future<Item = Ref, Error = Infallible> {
         let chain_length = header.chain_length();
 
-        let leaderships = self.leaderships.clone();
         let multiverse = self.ledgers.clone();
         let ref_cache = self.ref_cache.clone();
 
         multiverse
-            .insert(chain_length, header_hash, ledger)
+            .insert(chain_length, header_hash, ledger.clone())
             .and_then(move |ledger_gcroot| {
-                leaderships
-                    .insert(chain_length, header_hash, leadership)
-                    .map(|leadership_gcroot| (ledger_gcroot, leadership_gcroot))
-            })
-            .and_then(move |(ledger_gcroot, leadership_gcroot)| {
-                let reference = Ref::new(ledger_gcroot, leadership_gcroot, header);
+                let reference =
+                    Ref::new(ledger_gcroot, ledger, leadership, ledger_parameters, header);
                 ref_cache
                     .insert(header_hash, reference.clone())
                     .map(|()| reference)
@@ -322,59 +316,6 @@ impl Blockchain {
             })
     }
 
-    fn get_ledger_state(
-        &mut self,
-        header_hash: HeaderHash,
-    ) -> impl Future<Item = Ledger, Error = Error> {
-        self.ledgers
-            .get(header_hash)
-            .map_err(|_: Infallible| unreachable!())
-            .and_then(|opt_ledger| {
-                if let Some(ledger) = opt_ledger {
-                    future::ok(ledger)
-                } else {
-                    unimplemented!("missing implementation to load ledger state from storage")
-                }
-            })
-    }
-
-    fn get_leadership_state(
-        &mut self,
-        header_hash: HeaderHash,
-    ) -> impl Future<Item = Arc<Leadership>, Error = Error> {
-        self.leaderships
-            .get(header_hash)
-            .map_err(|_: Infallible| unreachable!())
-            .and_then(|opt_leadership| {
-                if let Some(leadership) = opt_leadership {
-                    future::ok(leadership)
-                } else {
-                    unimplemented!("missing implementation to load leadership state from storage")
-                }
-            })
-    }
-
-    /// retrieve the leadership associated at the given block reference
-    ///
-    /// # Errors
-    ///
-    /// this function cannot fail as if we already hold the reference
-    /// the leadership is already in the cache.
-    pub fn get_leadership_at_ref(
-        &self,
-        reference: Ref,
-    ) -> impl Future<Item = Arc<Leadership>, Error = Infallible> {
-        self.leaderships
-            .get(reference.hash().clone())
-            .and_then(|opt_leadership| {
-                if let Some(leadership) = opt_leadership {
-                    future::ok(leadership)
-                } else {
-                    panic!("leadership should always be in memory when we old the Ref")
-                }
-            })
-    }
-
     /// check the header cryptographic properties and leadership's schedule
     ///
     /// on success returns the PostCheckedHeader:
@@ -387,34 +328,41 @@ impl Blockchain {
         header: Header,
         parent: Ref,
     ) -> impl Future<Item = PostCheckedHeader, Error = Error> {
-        let parent_ledger_state = self.get_ledger_state(parent.hash().clone());
-        let parent_leadership = self.get_leadership_state(parent.hash().clone());
+        let parent_ledger_state = parent.ledger().clone();
+        let parent_epoch_leadership_schedule = parent.epoch_leadership_schedule().clone();
+        let parent_epoch_ledger_parameters = parent.epoch_ledger_parameters().clone();
 
-        parent_ledger_state
-            .and_then(|parent_ledger_state| {
-                parent_leadership.map(|parent_leadership| (parent_ledger_state, parent_leadership))
-            })
-            .and_then(move |(parent_ledger_state, parent_leadership_schedule)| {
-                let current_date = header.block_date();
-                let parent_date = parent.block_date();
+        let current_date = header.block_date();
+        let parent_date = parent.block_date();
 
-                let leadership_schedule = if parent_date.epoch < current_date.epoch {
-                    Arc::new(Leadership::new(current_date.epoch, &parent_ledger_state))
-                } else {
-                    parent_leadership_schedule
-                };
+        let (epoch_leadership_schedule, epoch_ledger_parameters) = if parent_date.epoch
+            < current_date.epoch
+        {
+            // TODO: this is valid for the case of BFT, in the event
+            //       Genesis Praos we need to take the previous leadership
+            //       but there is no easy cheap way to get it for now
 
-                match leadership_schedule.verify(&header) {
-                    Verification::Success => future::ok(PostCheckedHeader {
-                        header,
-                        leadership_schedule,
-                        parent_ledger_state,
-                    }),
-                    Verification::Failure(error) => future::err(
-                        ErrorKind::BLockHeaderVerificationFail(error.to_string()).into(),
-                    ),
-                }
-            })
+            let leadership = Arc::new(Leadership::new(current_date.epoch, &parent_ledger_state));
+            let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
+            (leadership, ledger_parameters)
+        } else {
+            (
+                parent_epoch_leadership_schedule,
+                parent_epoch_ledger_parameters,
+            )
+        };
+
+        match epoch_leadership_schedule.verify(&header) {
+            Verification::Success => future::ok(PostCheckedHeader {
+                header,
+                epoch_leadership_schedule,
+                epoch_ledger_parameters,
+                parent_ledger_state,
+            }),
+            Verification::Failure(error) => {
+                future::err(ErrorKind::BLockHeaderVerificationFail(error.to_string()).into())
+            }
+        }
     }
 
     /// TODO:
@@ -428,7 +376,8 @@ impl Blockchain {
     ) -> impl Future<Item = Ref, Error = Error> {
         let header = post_checked_header.header;
         let block_id = header.hash();
-        let leadership = post_checked_header.leadership_schedule;
+        let epoch_leadership_schedule = post_checked_header.epoch_leadership_schedule;
+        let epoch_ledger_parameters = post_checked_header.epoch_ledger_parameters;
         let ledger = post_checked_header.parent_ledger_state;
 
         debug_assert!(block.header.hash() == block_id);
@@ -439,16 +388,18 @@ impl Blockchain {
 
         future::result(
             ledger
-                .apply_block(
-                    leadership.ledger_parameters(),
-                    block.contents.iter(),
-                    &metadata,
-                )
+                .apply_block(&epoch_ledger_parameters, block.contents.iter(), &metadata)
                 .chain_err(|| ErrorKind::CannotApplyBlock),
         )
         .and_then(move |new_ledger| {
             self1
-                .create_and_store_reference(block_id, header, new_ledger, leadership)
+                .create_and_store_reference(
+                    block_id,
+                    header,
+                    Arc::new(new_ledger),
+                    epoch_leadership_schedule,
+                    epoch_ledger_parameters,
+                )
                 .map_err(|_: Infallible| unreachable!())
         })
     }
@@ -486,12 +437,15 @@ impl Blockchain {
                 (block0_ledger, block0_leadership)
             })
             .and_then(move |(block0_ledger, block0_leadership)| {
+                let ledger_parameters = block0_leadership.ledger_parameters().clone();
+
                 self1
                     .create_and_store_reference(
                         block0_id,
                         block0_header,
-                        block0_ledger,
+                        Arc::new(block0_ledger),
                         Arc::new(block0_leadership),
+                        Arc::new(ledger_parameters),
                     )
                     .map_err(|_: Infallible| unreachable!())
             })
