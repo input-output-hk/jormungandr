@@ -23,14 +23,16 @@ pub struct NodeService {
     channels: Channels,
     global_state: GlobalStateR,
     logger: Logger,
+    block0: HeaderHash,
 }
 
 impl NodeService {
-    pub fn new(channels: Channels, global_state: GlobalStateR) -> Self {
+    pub fn new(channels: Channels, global_state: GlobalStateR, block0: HeaderHash) -> Self {
         NodeService {
             channels,
             logger: global_state.logger().new(o!(::log::KEY_TASK => "server")),
             global_state,
+            block0,
         }
     }
 
@@ -85,6 +87,10 @@ impl BlockService for NodeService {
     type OnUploadedBlockFuture = InboundProcessing<BlockMsg>;
     type BlockSubscription = BlockEventSubscription;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
+
+    fn block0(&mut self) -> Self::BlockId {
+        self.block0
+    }
 
     fn tip(&mut self) -> Self::TipFuture {
         let (handle, future) = intercom::unary_reply(self.logger().clone());

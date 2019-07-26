@@ -170,9 +170,17 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             transaction_box: fragment_msgbox,
             block_box: block_msgbox,
         };
+        let block0 = bootstrapped_node
+            .blockchain
+            .lock_read()
+            .tip
+            .ledger()
+            .expect("Failed to get bootstrapped blockchain tip ledger")
+            .get_static_parameters()
+            .block0_initial_hash;
 
         services.spawn("network", move |info| {
-            network::run(config, network_queue, channels, info.into_logger());
+            network::run(config, network_queue, channels, info.into_logger(), block0);
         });
     }
 

@@ -149,6 +149,7 @@ pub fn run(
     input: MessageQueue<NetworkMsg>,
     channels: Channels,
     logger: Logger,
+    block0: HeaderHash,
 ) {
     // TODO: the node needs to be saved/loaded
     //
@@ -160,7 +161,7 @@ pub fn run(
     let listener = if let Some(listen) = listen {
         match listen.protocol {
             Protocol::Grpc => {
-                grpc::run_listen_socket(listen, global_state.clone(), channels.clone())
+                grpc::run_listen_socket(listen, global_state.clone(), channels.clone(), block0)
             }
             Protocol::Ntt => unimplemented!(),
         }

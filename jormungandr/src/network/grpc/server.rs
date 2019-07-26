@@ -1,4 +1,5 @@
 use super::super::{service::NodeService, Channels, GlobalStateR};
+use crate::blockcfg::HeaderHash;
 use crate::settings::start::network::Listen;
 use network_grpc::server::{self, Server};
 use tokio::prelude::*;
@@ -7,6 +8,7 @@ pub fn run_listen_socket(
     listen: Listen,
     state: GlobalStateR,
     channels: Channels,
+    block0: HeaderHash,
 ) -> impl Future<Item = (), Error = ()> {
     let sockaddr = listen.address();
 
@@ -26,7 +28,7 @@ pub fn run_listen_socket(
         Ok(listener_stream) => {
             let fold_logger = state.logger().clone();
             let err_logger = state.logger().clone();
-            let node_server = NodeService::new(channels, state);
+            let node_server = NodeService::new(channels, state, block0);
             let server = Server::new(node_server);
 
             listener_stream
