@@ -71,9 +71,9 @@ impl DelegationState {
         }
     }
 
-    //pub fn get_stake_pools(&self) -> &HashMap<GenesisPraosId, StakePoolInfo> {
-    //    &self.stake_pools
-    //}
+    pub fn stake_pool_ids<'a>(&'a self) -> impl Iterator<Item = StakePoolId> + 'a {
+        self.stake_pools.iter().map(|(id, _)| id.clone())
+    }
 
     pub fn stake_pool_exists(&self, pool_id: &StakePoolId) -> bool {
         self.stake_pools
