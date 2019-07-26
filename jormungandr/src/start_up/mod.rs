@@ -121,7 +121,6 @@ pub fn load_blockchain(
         Ok(branch) => Ok(branch),
     }?;
 
-    let blockchain_clone = blockchain.clone();
     main_branch
         .get_ref()
         .map_err(|_: std::convert::Infallible| unreachable!())
