@@ -5,6 +5,7 @@ mod message;
 mod node;
 mod settings;
 mod shutdown;
+mod stake_pools;
 mod tip;
 mod utxo;
 
@@ -26,6 +27,8 @@ pub enum V0 {
     Node(node::Node),
     /// Node settings
     Settings(settings::Settings),
+    /// Stake pools operations
+    StakePools(stake_pools::StakePools),
     /// Shutdown node
     Shutdown(shutdown::Shutdown),
     /// Blockchain tip information
@@ -43,6 +46,7 @@ impl V0 {
             V0::Message(message) => message.exec(),
             V0::Node(node) => node.exec(),
             V0::Settings(settings) => settings.exec(),
+            V0::StakePools(stake_pools) => stake_pools.exec(),
             V0::Shutdown(shutdown) => shutdown.exec(),
             V0::Tip(tip) => tip.exec(),
             V0::Utxo(utxo) => utxo.exec(),
