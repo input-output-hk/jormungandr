@@ -23,16 +23,16 @@ pub struct BlockchainConfiguration {
     ///
     /// any value between 0 (1/1/1970) and 1099511627775 (20/08/4147) is valid
     #[serde(default)]
-    block0_date: SecondsSinceUnixEpoch,
+    pub block0_date: SecondsSinceUnixEpoch,
 
     /// the address discrimination (test or production)
     #[serde(with = "DiscriminationDef")]
-    discrimination: Discrimination,
+    pub discrimination: Discrimination,
 
     /// the type of consensus to utilise from the starting point of the
     /// blockchain. `bft` or `genesis`
     #[serde(with = "ConsensusVersionDef")]
-    block0_consensus: ConsensusVersion,
+    pub block0_consensus: ConsensusVersion,
 
     /// the list of consensus leaders
     ///
@@ -46,7 +46,7 @@ pub struct BlockchainConfiguration {
     ///
     /// If the `consensus_version` is `bft`. This value cannot be left empty.
     #[serde(default)]
-    consensus_leader_ids: Vec<ConsensusLeaderId>,
+    pub consensus_leader_ids: Vec<ConsensusLeaderId>,
 
     /// the linear fee settings.
     ///
@@ -57,17 +57,17 @@ pub struct BlockchainConfiguration {
     /// `constant + coefficient * (num_inputs + num_outputs) [+ certificate]`
     ///
     #[serde(with = "LinearFeeDef")]
-    linear_fees: LinearFee,
+    pub linear_fees: LinearFee,
 
     /// number of slots in one given epoch. The default value is `720`.
     ///
     #[serde(default)]
-    slots_per_epoch: NumberOfSlotsPerEpoch,
+    pub slots_per_epoch: NumberOfSlotsPerEpoch,
 
     /// the number of seconds between the creation of 2 slots. The default
     /// is `5` seconds.
     #[serde(default)]
-    slot_duration: SlotDuration,
+    pub slot_duration: SlotDuration,
 
     /// number of seconds between 2 required KES Key updates.
     ///
@@ -76,34 +76,34 @@ pub struct BlockchainConfiguration {
     /// cannot reuse a key that was valid at a given state when
     /// to create a fork.
     #[serde(default)]
-    kes_update_speed: KESUpdateSpeed,
+    pub kes_update_speed: KESUpdateSpeed,
 
     /// the active slot coefficient to determine the minimal stake
     /// in order to participate to the consensus.
     ///
     /// default value is 0.1
     #[serde(default)]
-    consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
+    pub consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
 
     /// allow BFT and Genesis Praos to live together by allocating some
     /// slots to the `consensus_leader_ids` (the BFT Leaders).
     ///
     /// default value is 0.22.
     #[serde(default)]
-    bft_slots_ratio: BFTSlotsRatio,
+    pub bft_slots_ratio: BFTSlotsRatio,
 
     /// TODO: need some love
     /// this value is left for compatibility only but should be removed or
     /// replaced by something more meaningful: max block size (in bytes)
     #[serde(default)]
-    max_number_of_transactions_per_block: Option<u32>,
+    pub max_number_of_transactions_per_block: Option<u32>,
 
     /// TODO: need some love
     /// this value is left for compatibility only be should be removed
     /// or replaced by something more meaningful or merged with
     /// `slots_per_epoch`.
     #[serde(default)]
-    epoch_stability_depth: Option<u32>,
+    pub epoch_stability_depth: Option<u32>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
