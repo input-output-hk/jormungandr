@@ -308,7 +308,6 @@ impl Blockchain {
                                 .into(),
                         );
                     }
-                    // TODO: check the crypto of the header
 
                     future::ok(pre_check)
                 }
