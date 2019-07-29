@@ -1,0 +1,95 @@
+digraph G {
+    rankdir = LR;
+
+    subgraph cluster_blocks {
+        style = filled;
+        color = lightgrey;
+        node [ style = filled; color = white ];
+        "block0" -> "block1.0" -> "block1.1" -> "block1.[...]" -> "block1.n" -> "block2.0" -> "block2.1" -> "block2.[...]" -> "block2.n" -> "block3.0" -> "block3.1" -> "block3.[...]" -> "block3.n" [style = dotted, label = "link", dir = back ] ;
+        label = "blocks";
+    }
+
+    subgraph cluster_ledgers {
+        node [style = filled, color = cyan ];
+        "ledger0" -> "ledger1.0" -> "ledger1.1" -> "ledger1.[...]" -> "ledger1.n" -> "ledger2.0" -> "ledger2.1" -> "ledger2.[...]" -> "ledger2.n" -> "ledger3.0" -> "ledger3.1" -> "ledger3.[...]" -> "ledger3.n" [ ] ;
+        color = none;
+    }
+
+    subgraph parameters {
+        node [style = filled, color = orange ];
+        "epoch 1 parameters" ; "epoch 2 parameters" ; "epoch 3 parameters" ; "epoch 4 parameters";
+        color = none;
+    }
+
+    subgraph stake {
+        node [style = filled, color = pink ];
+        "epoch 0 stake distribution" ; "epoch 1 stake distribution" ; "epoch 2 stake distribution" ; "epoch 3 stake distribution";
+        color = none;
+    }
+
+    subgraph leadership {
+        node [ color = red ];
+        "epoch 1 leadership" ; "epoch 2 leadership" ; "epoch 3 leadership" ; "epoch 4 leadership";
+        color = none;
+    }
+
+    "ledger0" -> "epoch 1 parameters" [ label = "create" ];
+    "ledger1.n" -> "epoch 2 parameters" [ label = "create" ];
+    "ledger2.n" -> "epoch 3 parameters" [ label = "create" ];
+    "ledger3.n" -> "epoch 4 parameters" [ label = "create" ];
+
+    "ledger0" -> "epoch 0 stake distribution" [ label = "create" ];
+    "ledger1.n" -> "epoch 1 stake distribution" [ label = "create" ];
+    "ledger2.n" -> "epoch 2 stake distribution" [ label = "create" ];
+    "ledger3.n" -> "epoch 3 stake distribution" [ label = "create" ];
+
+    "epoch 0 stake distribution" -> "epoch 1 leadership" [ label = "create" ];
+    "epoch 0 stake distribution" -> "epoch 2 leadership" [ label = "create" ];
+    "epoch 1 stake distribution" -> "epoch 3 leadership" [ label = "create" ];
+    "epoch 2 stake distribution" -> "epoch 4 leadership" [ label = "create" ];
+
+    "epoch 1 leadership" -> "block1.0" [ label = "schedule" ; style = dashed ];
+    "epoch 1 leadership" -> "block1.1" [ label = "schedule"; style = dashed ];
+    "epoch 1 leadership" -> "block1.[...]" [ label = "schedule" ; style = dashed];
+    "epoch 1 leadership" -> "block1.n" [ label = "schedule" ; style = dashed];
+
+    "epoch 2 leadership" -> "block2.0" [ label = "schedule" ; style = dashed];
+    "epoch 2 leadership" -> "block2.1" [ label = "schedule" ; style = dashed];
+    "epoch 2 leadership" -> "block2.[...]" [ label = "schedule" ; style = dashed];
+    "epoch 2 leadership" -> "block2.n" [ label = "schedule" ; style = dashed];
+
+    "epoch 3 leadership" -> "block3.0" [ label = "schedule" ; style = dashed];
+    "epoch 3 leadership" -> "block3.1" [ label = "schedule" ; style = dashed];
+    "epoch 3 leadership" -> "block3.[...]" [ label = "schedule" ; style = dashed];
+    "epoch 3 leadership" -> "block3.n" [ label = "schedule" ; style = dashed];
+
+    "epoch 1 parameters" -> "ledger1.0" [ label = "input to create" ];
+    "epoch 1 parameters" -> "ledger1.1" [ label = "input to create" ];
+    "epoch 1 parameters" -> "ledger1.[...]" [ label = "input to create" ];
+    "epoch 1 parameters" -> "ledger1.n" [ label = "input to create" ];
+
+    "epoch 2 parameters" -> "ledger2.0" [ label = "input to create" ];
+    "epoch 2 parameters" -> "ledger2.1" [ label = "input to create" ];
+    "epoch 2 parameters" -> "ledger2.[...]" [ label = "input to create" ];
+    "epoch 2 parameters" -> "ledger2.n" [ label = "input to create" ];
+
+    "epoch 3 parameters" -> "ledger3.0" [ label = "input to create" ];
+    "epoch 3 parameters" -> "ledger3.1" [ label = "input to create" ];
+    "epoch 3 parameters" -> "ledger3.[...]" [ label = "input to create" ];
+    "epoch 3 parameters" -> "ledger3.n" [ label = "input to create" ];
+
+    "block0" -> "ledger0";
+    "block1.0" -> "ledger1.0";
+    "block1.1" -> "ledger1.1";
+    "block1.[...]" -> "ledger1.[...]";
+    "block1.n" -> "ledger1.n";
+    "block2.0" -> "ledger2.0";
+    "block2.1" -> "ledger2.1";
+    "block2.[...]" -> "ledger2.[...]";
+    "block2.n" -> "ledger2.n";
+    "block3.0" -> "ledger3.0";
+    "block3.1" -> "ledger3.1";
+    "block3.[...]" -> "ledger3.[...]";
+    "block3.n" -> "ledger3.n";
+
+}
