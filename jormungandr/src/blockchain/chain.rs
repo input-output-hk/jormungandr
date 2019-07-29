@@ -179,7 +179,7 @@ impl Blockchain {
         let slot = self
             .time_frame
             .slot_at(&std::time::SystemTime::now())
-            .unwrap();
+            .ok_or(StorageError::Block0InFuture)?;
         let leadership = Leadership::new(0, &state);
         let date = leadership.era().from_slot_to_era(slot).unwrap();
 
