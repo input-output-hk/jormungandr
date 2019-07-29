@@ -5,10 +5,10 @@ use self::custom_error::custom_error;
 use crate::common::configuration::jormungandr_config::JormungandrConfig;
 use crate::common::jcli_wrapper;
 use crate::common::jormungandr::{commands, process::JormungandrProcess};
+use crate::common::startup::ConfigurationBuilder;
 
 use crate::common::process_assert;
-use crate::common::process_utils;
-use crate::common::process_utils::{output_extensions::ProcessOutput, ProcessError};
+use crate::common::process_utils::{self, output_extensions::ProcessOutput, ProcessError};
 use std::process::{Child, Command, Output};
 
 custom_error! {pub StartupError
@@ -53,7 +53,7 @@ fn start_jormungandr_node_sync_with_retry(
 
     match second_attempt {
         Ok(guard) => return JormungandrProcess::from_config(guard, config.clone()),
-        Err(e) => panic!(e.to_string()),
+        Err(e) => panic!(format!("{}", e.to_string())),
     };
 }
 
@@ -82,16 +82,14 @@ pub fn start_jormungandr_node(config: &mut JormungandrConfig) -> JormungandrProc
 }
 
 pub fn restart_jormungandr_node_as_leader(process: &mut JormungandrProcess) -> JormungandrProcess {
-    let mut config = process.config.clone();
+    let mut config = ConfigurationBuilder::new_from_config(&process.config);
     std::mem::drop(process);
-    config.node_config.regenerate_ports();
     start_jormungandr_node_as_leader(&mut config)
 }
 
 pub fn restart_jormungandr_node(process: &mut JormungandrProcess) -> JormungandrProcess {
-    let mut config = process.config.clone();
+    let mut config = ConfigurationBuilder::new_from_config(&process.config);
     std::mem::drop(process);
-    config.node_config.regenerate_ports();
     start_jormungandr_node(&mut config)
 }
 
