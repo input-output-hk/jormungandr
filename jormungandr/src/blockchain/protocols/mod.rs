@@ -375,7 +375,7 @@ impl Blockchain {
         }
     }
 
-    /// TODO:
+    /// TODO: document this function
     ///
     /// apply the block on the blockchain from a post checked header
     ///
