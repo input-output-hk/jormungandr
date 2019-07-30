@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 bech32 = "0.6"
 serde = { version = "1.0", features = ["derive"] }
-custom_error = "1.6"
+custom_error = "1.7"
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
