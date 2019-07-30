@@ -3,6 +3,7 @@
 use crate::common::configuration::genesis_model::GenesisYaml;
 use crate::common::configuration::node_config_model::NodeConfig;
 use crate::common::configuration::secret_model::SecretModel;
+use crate::common::file_utils;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -20,6 +21,11 @@ pub struct JormungandrConfig {
 impl JormungandrConfig {
     pub fn get_node_address(&self) -> String {
         self.node_config.get_node_address()
+    }
+
+    pub fn refresh_dynamic_params(&mut self) {
+        self.node_config.regenerate_ports();
+        self.log_file_path = file_utils::get_path_in_temp("log_file.log");
     }
 
     pub fn new() -> Self {

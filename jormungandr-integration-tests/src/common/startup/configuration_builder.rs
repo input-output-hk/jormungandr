@@ -24,13 +24,6 @@ pub struct ConfigurationBuilder {
 }
 
 impl ConfigurationBuilder {
-    pub fn new_from_config(config: &JormungandrConfig) -> JormungandrConfig {
-        let mut new_config = config.clone();
-        new_config.node_config.regenerate_ports();
-        new_config.log_file_path = file_utils::get_path_in_temp("log_file.log");
-        new_config
-    }
-
     pub fn new() -> Self {
         ConfigurationBuilder {
             funds: vec![],
