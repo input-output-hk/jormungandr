@@ -1,12 +1,17 @@
 use crate::{
     account::SpendingCounter,
-    key::{EitherEd25519SecretKey, SpendingPublicKey},
+    key::EitherEd25519SecretKey,
     transaction::{Input, Output},
     utxo::Entry,
     value::Value,
 };
-use chain_addr::{Address, Discrimination, Kind, KindType};
-use chain_crypto::{Ed25519, PublicKey};
+use chain_addr::{Address, AddressReadable, Discrimination, Kind, KindType};
+use chain_crypto::{
+    bech32::Bech32, testing::TestCryptoGen, AsymmetricKey, Ed25519, Ed25519Extended, KeyPair,
+    PublicKey,
+};
+
+use crate::quickcheck::RngCore;
 use std::fmt::{self, Debug};
 
 ///
@@ -15,8 +20,7 @@ use std::fmt::{self, Debug};
 ///
 #[derive(Clone)]
 pub struct AddressData {
-    pub private_key: EitherEd25519SecretKey,
-    pub public_key: SpendingPublicKey,
+    private_key: EitherEd25519SecretKey,
     pub spending_counter: Option<SpendingCounter>,
     pub address: Address,
 }
@@ -24,7 +28,7 @@ pub struct AddressData {
 impl Debug for AddressData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("AddressData")
-            .field("public_key", &self.public_key)
+            .field("public_key", &self.public_key())
             .field("spending_counter", &self.spending_counter)
             .field("address", &self.address)
             .finish()
@@ -40,48 +44,16 @@ impl PartialEq for AddressData {
 impl AddressData {
     pub fn new(
         private_key: EitherEd25519SecretKey,
-        public_key: SpendingPublicKey,
         spending_counter: Option<SpendingCounter>,
         address: Address,
     ) -> Self {
         AddressData {
             private_key,
-            public_key,
             address,
             spending_counter,
         }
     }
 
-    pub fn make_input(&self, value: Value, utxo: Option<Entry<Address>>) -> Input {
-        match self.address.kind() {
-            Kind::Account { .. } => {
-                Input::from_account_public_key(self.public_key.clone(), value.clone())
-            }
-            Kind::Single { .. } | Kind::Group { .. } | Kind::Multisig { .. } => {
-                Input::from_utxo_entry(utxo.expect(&format!(
-                    "invalid state, utxo should be Some if Kind not Account {:?}",
-                    &self.address
-                )))
-            }
-        }
-    }
-
-    pub fn public_key(&self) -> PublicKey<Ed25519> {
-        match self.kind() {
-            Kind::Account(key) => key,
-            Kind::Group(key, _) => key,
-            Kind::Single(key) => key,
-            Kind::Multisig(_) => panic!("not yet implemented"),
-        }
-    }
-
-    pub fn kind(&self) -> Kind {
-        self.address.kind().clone()
-    }
-
-    pub fn make_output(&self, value: Value) -> Output<Address> {
-        Output::from_address(self.address.clone(), value)
-    }
 
     pub fn from_discrimination_and_kind_type(
         discrimination: Discrimination,
@@ -96,35 +68,86 @@ impl AddressData {
     }
 
     pub fn utxo(discrimination: Discrimination) -> Self {
-        let sk = AddressData::generate_random_secret_key();
-        let pk = sk.to_public();
+        let (sk, pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
+        let sk = EitherEd25519SecretKey::Extended(sk);
         let user_address = Address(discrimination.clone(), Kind::Single(pk.clone()));
-        AddressData::new(sk, pk, None, user_address)
+        AddressData::new(sk, None, user_address)
     }
 
     pub fn account(discrimination: Discrimination) -> Self {
-        let sk = AddressData::generate_random_secret_key();
-        let pk = sk.to_public();
+        let (sk, pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
+        let sk = EitherEd25519SecretKey::Extended(sk);
         let user_address = Address(discrimination.clone(), Kind::Account(pk.clone()));
-        AddressData::new(sk, pk, Some(SpendingCounter::zero()), user_address)
+        AddressData::new(sk, Some(SpendingCounter::zero()), user_address)
     }
 
     pub fn delegation(discrimination: Discrimination) -> Self {
-        let single_sk = AddressData::generate_random_secret_key();
-        let single_pk = single_sk.to_public();
-
-        let delegation_sk = AddressData::generate_random_secret_key();
-        let delegation_pk = delegation_sk.to_public();
+        let (single_sk, single_pk) =
+            AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
+        let (_delegation_sk, delegation_pk) =
+            AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
 
         let user_address = Address(
             discrimination.clone(),
             Kind::Group(single_pk.clone(), delegation_pk.clone()),
         );
-        AddressData::new(single_sk, single_pk, None, user_address)
+        let single_sk = EitherEd25519SecretKey::Extended(single_sk);
+        AddressData::new(single_sk, None, user_address)
     }
 
-    fn generate_random_secret_key() -> EitherEd25519SecretKey {
-        EitherEd25519SecretKey::generate(rand_os::OsRng::new().unwrap())
+    pub fn make_input(&self, value: Value, utxo: Option<Entry<Address>>) -> Input {
+        match self.address.kind() {
+            Kind::Account { .. } => {
+                Input::from_account_public_key(self.public_key(), value.clone())
+            }
+            Kind::Single { .. } | Kind::Group { .. } | Kind::Multisig { .. } => {
+                Input::from_utxo_entry(utxo.expect(&format!(
+                    "invalid state, utxo should be Some if Kind not Account {:?}",
+                    &self.address
+                )))
+            }
+        }
+    }
+
+    pub fn make_output(&self, value: Value) -> Output<Address> {
+        Output::from_address(self.address.clone(), value)
+    }
+
+    pub fn public_key(&self) -> PublicKey<Ed25519> {
+        match self.kind() {
+            Kind::Account(key) => key,
+            Kind::Group(key, _) => key,
+            Kind::Single(key) => key,
+            Kind::Multisig(_) => panic!("not yet implemented"),
+        }
+    }
+
+    pub fn private_key(&self) -> EitherEd25519SecretKey {
+        self.private_key.clone()
+    }
+
+    pub fn kind(&self) -> Kind {
+        self.address.kind().clone()
+    }
+
+    pub fn discrimination(&self) -> Discrimination {
+        self.address.discrimination().clone()
+    }
+
+    pub fn address_as_string(&self) -> String {
+        let prefix = match self.discrimination() {
+            Discrimination::Production => "ta",
+            Discrimination::Test => "ca",
+        };
+        AddressReadable::from_address(prefix, &self.address).to_string()
+    }
+
+    pub fn public_key_as_string(&self) -> String {
+        self.public_key().to_bech32_str()
+    }
+
+    pub fn generate_key_pair<A: AsymmetricKey>() -> KeyPair<A> {
+        TestCryptoGen(0).keypair::<A>(rand_os::OsRng::new().unwrap().next_u32())
     }
 }
 
