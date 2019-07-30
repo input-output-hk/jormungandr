@@ -65,8 +65,8 @@ pub enum LeaderOutput {
 }
 
 pub enum LeadershipConsensus {
-    Bft(bft::BftLeaderSelection),
-    GenesisPraos(genesis::GenesisLeaderSelection),
+    Bft(bft::LeadershipData),
+    GenesisPraos(genesis::LeadershipData),
 }
 
 /// Leadership represent a given epoch and their associated leader or metadata.
@@ -134,11 +134,11 @@ impl Leadership {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         let inner = match ledger.settings.consensus_version {
             ConsensusVersion::Bft => {
-                LeadershipConsensus::Bft(bft::BftLeaderSelection::new(ledger).unwrap())
+                LeadershipConsensus::Bft(bft::LeadershipData::new(ledger).unwrap())
             }
-            ConsensusVersion::GenesisPraos => LeadershipConsensus::GenesisPraos(
-                genesis::GenesisLeaderSelection::new(epoch, ledger),
-            ),
+            ConsensusVersion::GenesisPraos => {
+                LeadershipConsensus::GenesisPraos(genesis::LeadershipData::new(epoch, ledger))
+            }
         };
         Leadership {
             epoch: epoch,

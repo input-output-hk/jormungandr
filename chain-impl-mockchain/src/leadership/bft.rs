@@ -19,18 +19,18 @@ pub struct BftRoundRobinIndex(u64);
 
 /// The BFT Leader selection is based on a round robin of the expected leaders
 #[derive(Debug)]
-pub struct BftLeaderSelection {
+pub struct LeadershipData {
     pub(crate) leaders: Arc<Vec<LeaderId>>,
 }
 
-impl BftLeaderSelection {
+impl LeadershipData {
     /// Create a new BFT leadership
     pub fn new(ledger: &Ledger) -> Option<Self> {
         if ledger.settings.bft_leaders.len() == 0 {
             return None;
         }
 
-        Some(BftLeaderSelection {
+        Some(LeadershipData {
             leaders: Arc::clone(&ledger.settings.bft_leaders),
         })
     }

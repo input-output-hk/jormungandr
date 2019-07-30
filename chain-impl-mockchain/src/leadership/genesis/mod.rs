@@ -22,7 +22,8 @@ pub struct GenesisPraosLeader {
     pub vrf_public_key: PublicKey<Curve25519_2HashDH>,
 }
 
-pub struct GenesisLeaderSelection {
+/// Genesis Praos leadership data for a specific epoch
+pub struct LeadershipData {
     epoch_nonce: Nonce,
     nodes: stake::PoolTable,
     distribution: StakeDistribution,
@@ -36,9 +37,9 @@ custom_error! {GenesisError
     TotalStakeIsZero = "Total stake is null",
 }
 
-impl GenesisLeaderSelection {
+impl LeadershipData {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
-        GenesisLeaderSelection {
+        LeadershipData {
             epoch_nonce: ledger.settings.consensus_nonce.clone(),
             nodes: ledger.delegation.stake_pools.clone(),
             distribution: ledger.get_stake_distribution(),
@@ -253,7 +254,7 @@ mod tests {
             );
         }
 
-        let mut selection = GenesisLeaderSelection::new(0, &ledger);
+        let mut selection = LeadershipData::new(0, &ledger);
 
         for (pool_id, (_, _, value)) in &pools {
             selection.distribution.to_pools.insert(
@@ -348,7 +349,7 @@ mod tests {
             );
         }
 
-        let mut selection = GenesisLeaderSelection::new(0, &ledger);
+        let mut selection = LeadershipData::new(0, &ledger);
 
         for (pool_id, (_, _, value)) in &pools {
             selection.distribution.to_pools.insert(
