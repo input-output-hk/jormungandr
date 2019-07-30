@@ -1,15 +1,18 @@
 use crate::{
     account::SpendingCounter,
-    key::{EitherEd25519SecretKey},
+    key::EitherEd25519SecretKey,
     transaction::{Input, Output},
     utxo::Entry,
     value::Value,
 };
-use chain_addr::{Address, Discrimination, Kind, KindType,AddressReadable};
-use chain_crypto::{Ed25519,Ed25519Extended, PublicKey,bech32::Bech32,testing::TestCryptoGen,AsymmetricKey,KeyPair};
+use chain_addr::{Address, AddressReadable, Discrimination, Kind, KindType};
+use chain_crypto::{
+    bech32::Bech32, testing::TestCryptoGen, AsymmetricKey, Ed25519, Ed25519Extended, KeyPair,
+    PublicKey,
+};
+
+use crate::quickcheck::RngCore;
 use std::fmt::{self, Debug};
-use lazy_static::lazy_static;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 ///
 /// Struct is responsible for adding some code which makes converting into transaction input/output easily.
@@ -38,10 +41,6 @@ impl PartialEq for AddressData {
     }
 }
 
-lazy_static! {
-    static ref DETERMINISTIC_ID: AtomicU64 = AtomicU64::new(1);
-}
-
 impl AddressData {
     pub fn new(
         private_key: EitherEd25519SecretKey,
@@ -55,7 +54,7 @@ impl AddressData {
         }
     }
 
-    
+
     pub fn from_discrimination_and_kind_type(
         discrimination: Discrimination,
         kind: &KindType,
@@ -68,23 +67,25 @@ impl AddressData {
         }
     }
 
-     pub fn utxo(discrimination: Discrimination) -> Self {
-        let (sk,pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
+    pub fn utxo(discrimination: Discrimination) -> Self {
+        let (sk, pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
         let sk = EitherEd25519SecretKey::Extended(sk);
         let user_address = Address(discrimination.clone(), Kind::Single(pk.clone()));
         AddressData::new(sk, None, user_address)
     }
 
     pub fn account(discrimination: Discrimination) -> Self {
-        let (sk,pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
+        let (sk, pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
         let sk = EitherEd25519SecretKey::Extended(sk);
         let user_address = Address(discrimination.clone(), Kind::Account(pk.clone()));
         AddressData::new(sk, Some(SpendingCounter::zero()), user_address)
     }
 
     pub fn delegation(discrimination: Discrimination) -> Self {
-        let (single_sk,single_pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
-        let (_delegation_sk,delegation_pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
+        let (single_sk, single_pk) =
+            AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
+        let (_delegation_sk, delegation_pk) =
+            AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
 
         let user_address = Address(
             discrimination.clone(),
@@ -121,7 +122,7 @@ impl AddressData {
         }
     }
 
-    pub fn private_key(&self) -> EitherEd25519SecretKey{
+    pub fn private_key(&self) -> EitherEd25519SecretKey {
         self.private_key.clone()
     }
 
@@ -136,7 +137,7 @@ impl AddressData {
     pub fn address_as_string(&self) -> String {
         let prefix = match self.discrimination() {
             Discrimination::Production => "ta",
-            Discrimination::Test => "ca"
+            Discrimination::Test => "ca",
         };
         AddressReadable::from_address(prefix, &self.address).to_string()
     }
@@ -145,9 +146,8 @@ impl AddressData {
         self.public_key().to_bech32_str()
     }
 
-    pub fn generate_key_pair<A: AsymmetricKey>() -> KeyPair<A>{
-        let n = DETERMINISTIC_ID.fetch_add(1, Ordering::SeqCst) as u32;
-        TestCryptoGen(0).keypair::<A>(n)
+    pub fn generate_key_pair<A: AsymmetricKey>() -> KeyPair<A> {
+        TestCryptoGen(0).keypair::<A>(rand_os::OsRng::new().unwrap().next_u32())
     }
 }
 
