@@ -43,6 +43,8 @@ We are constructing a blockchain as we would on with git blocks:
 A [`Branch`] contains a [`Ref`]. It allows us to follow and monitor
 forks between different tasks of the blockchain module.
 
+See Internal documentation for more details: doc/internal_design.md
+
 [`Ref`]: ./struct.Ref.html
 [`Branch`]: ./struct.Branch.html
 */
@@ -107,6 +109,15 @@ error_chain! {
 
 const MAIN_BRANCH_TAG: &str = "HEAD";
 
+/// blockchain object, can be safely shared across multiple threads. However it is better not
+/// to as some operations may require a mutex.
+///
+/// This objects holds a reference to the persistent storage. It also holds 2 different caching
+/// of objects:
+///
+/// * `RefCache`: a cache of blocks headers and associated states;
+/// * `Multiverse`: of ledger. It is a cache of different ledger states.
+///
 #[derive(Clone)]
 pub struct Blockchain {
     branches: Branches,
@@ -561,11 +572,6 @@ impl Blockchain {
                     .map(move |branch| (branch, head_hash))
             })
             .and_then(move |(branch, head_hash)| {
-                // TODO:
-                // 1. [x] stream for every blocks between block0_id and head_hash
-                // 2. [x] for every block, apply blockchain on top of branch
-                // 3. [ ] run GC so we don't keep things we don't need
-
                 self3
                     .storage
                     .stream_from_to(block0_id_2, head_hash)
