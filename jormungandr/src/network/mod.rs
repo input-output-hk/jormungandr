@@ -198,24 +198,26 @@ pub fn run(params: TaskParams) {
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
         info!(conn_state.logger(), "connecting to initial gossip peer");
-        client::connect(conn_state, conn_channels.clone())
-            .and_then(move |(client, mut comms)| {
-                // TODO
-                let node_id = client.remote_node_id();
-                let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
-                match comms.try_send_gossip(gossip) {
-                    Ok(()) => state.peers.insert_peer(node_id, comms),
-                    Err(e) => {
-                        warn!(
-                            client.logger(),
-                            "gossiping to peer failed just after connection: {:?}", e
-                        );
-                        return Err(());
+        tokio::spawn(
+            client::connect(conn_state, conn_channels.clone())
+                .and_then(move |(client, mut comms)| {
+                    // TODO
+                    let node_id = client.remote_node_id();
+                    let gossip = Gossip::from_nodes(iter::once(state.node.clone()));
+                    match comms.try_send_gossip(gossip) {
+                        Ok(()) => state.peers.insert_peer(node_id, comms),
+                        Err(e) => {
+                            warn!(
+                                client.logger(),
+                                "gossiping to peer failed just after connection: {:?}", e
+                            );
+                            return Err(());
+                        }
                     }
-                }
-                Ok(client)
-            })
-            .and_then(|client| client)
+                    Ok(client)
+                })
+                .and_then(|client| client),
+        )
     });
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
