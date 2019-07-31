@@ -16,10 +16,10 @@ pub fn make_witness(
         Kind::Account(_) => self::make_account_witness(
             block0,
             &addres_data.spending_counter.unwrap(),
-            &addres_data.private_key,
+            &addres_data.private_key(),
             &transaction_hash,
         ),
-        _ => self::make_utxo_witness(block0, &addres_data.private_key, &transaction_hash),
+        _ => self::make_utxo_witness(block0, &addres_data.private_key(), &transaction_hash),
     }
 }
 
