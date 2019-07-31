@@ -4,7 +4,8 @@ use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(transparent)]
 pub struct LeaderId(u32);
 
 impl LeaderId {
@@ -48,7 +49,7 @@ impl Enclave {
         leaders.keys().map(|v| v.clone()).collect()
     }
 
-    pub fn add_leader(&mut self, leader: Leader) -> LeaderId {
+    pub fn add_leader(&self, leader: Leader) -> LeaderId {
         let mut leaders = self.leaders.write().unwrap();
         let next_leader_id = get_maximum_id(&leaders).next();
         // This panic case should never happens in practice, as this structure is
@@ -60,9 +61,9 @@ impl Enclave {
         next_leader_id
     }
 
-    pub fn remove_leader(&mut self, leader_id: LeaderId) {
+    pub fn remove_leader(&self, leader_id: LeaderId) -> bool {
         let mut leaders = self.leaders.write().unwrap();
-        leaders.remove(&leader_id);
+        leaders.remove(&leader_id).is_some()
     }
 
     // temporary method
@@ -125,13 +126,10 @@ impl Enclave {
         output
     }
 
-    pub fn create_block(&self, block: BlockBuilder, event: LeaderEvent) -> Block {
+    pub fn create_block(&self, block: BlockBuilder, event: LeaderEvent) -> Option<Block> {
         let leaders = self.leaders.read().unwrap();
-        let leader = match leaders.get(&event.id) {
-            None => panic!("leader is gone while creating a block"),
-            Some(l) => l,
-        };
-        match event.output {
+        let leader = leaders.get(&event.id)?;
+        let block = match event.output {
             LeaderOutput::None => unreachable!("Output::None are supposed to be filtered out"),
             LeaderOutput::Bft(_) => {
                 if let Some(ref leader) = &leader.bft_leader {
@@ -151,6 +149,7 @@ impl Enclave {
                     unreachable!("the leader was elected for Genesis Praos signing block, we expect it has the signing key")
                 }
             }
-        }
+        };
+        Some(block)
     }
 }

@@ -212,7 +212,7 @@ value: 990
 Fetches node settings
 
 ```
-jcli rest v0 node settings get <options>
+jcli rest v0 settings get <options>
 ```
 
 The options are
@@ -244,6 +244,65 @@ Node shutdown
 ```
 jcli rest v0 shutdown get <options>
 ```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+
+## Get leaders
+
+Fetches list of leader IDs
+
+```
+jcli rest v0 leaders get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+
+
+YAML printed on success
+
+```yaml
+---
+- 1 # list of leader IDs
+- 2
+```
+
+## Register leader
+
+Register new leader and get its ID
+
+```
+jcli rest v0 leaders post <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+-f, --file <file> - File containing YAML with leader secret. It must have the same format as secret YAML passed to Jormungandr as --secret. If not provided, YAML will be read from stdin.
+
+On success created leader ID is printed
+
+```
+3
+```
+
+## Delete leader
+
+Delete leader with given ID
+
+```
+jcli rest v0 leaders delete <id> <options>
+```
+
+<id> - ID of deleted leader
 
 The options are
 

@@ -10,6 +10,7 @@ pub mod output_format;
 
 pub use self::account_id::AccountId;
 pub use self::debug_flag::DebugFlag;
+pub use self::error::CustomErrorFiller;
 pub use self::host_addr::HostAddr;
 pub use self::output_format::OutputFormat;
 pub use self::rest_api::{RestApiResponse, RestApiResponseBody, RestApiSender};

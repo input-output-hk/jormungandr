@@ -1,6 +1,6 @@
 mod v0;
 
-use jcli_app::utils::{host_addr, output_format};
+use jcli_app::utils::{host_addr, io::ReadYamlError, output_format, CustomErrorFiller};
 use structopt::StructOpt;
 
 /// Send request to node REST API
@@ -11,15 +11,26 @@ pub enum Rest {
     V0(v0::V0),
 }
 
-const SERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
+const DESERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
 
 custom_error! {pub Error
     ReqwestError { source: reqwest::Error } = @{ reqwest_error_msg(source) },
     HostAddrError { source: host_addr::Error } = "invalid host address",
-    SerializationError { source: serde_json::Error } = @{{ let _ = source; SERIALIZATION_ERROR_MSG }},
+    DeserializationError { source: serde_json::Error } = @{{ let _ = source; DESERIALIZATION_ERROR_MSG }},
     OutputFormatFailed { source: output_format::Error } = "formatting output failed",
     InputFileInvalid { source: std::io::Error } = "could not read input file",
+    InputFileYamlMalformed { source: serde_yaml::Error } = "input yaml is not valid",
+    InputSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller } = "failed to serialize input",
     InputHexMalformed { source: hex::Error } = "input hex encoding is not valid",
+}
+
+impl From<ReadYamlError> for Error {
+    fn from(error: ReadYamlError) -> Self {
+        match error {
+            ReadYamlError::Io { source } => Error::InputFileInvalid { source },
+            ReadYamlError::Yaml { source } => Error::InputFileYamlMalformed { source },
+        }
+    }
 }
 
 fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
@@ -28,7 +39,7 @@ fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
     } else if err.is_http() {
         "could not connect with node"
     } else if err.is_serialization() {
-        SERIALIZATION_ERROR_MSG
+        DESERIALIZATION_ERROR_MSG
     } else if err.is_redirect() {
         "redirecting error while connecting with node"
     } else if err.is_client_error() {
