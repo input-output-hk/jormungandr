@@ -308,3 +308,26 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
+
+## Get stake pools
+
+Fetches list of stake pool IDs
+
+```
+jcli rest v0 stake-pools get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+
+
+YAML printed on success
+
+```yaml
+---
+- 5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f # list of stake pool IDs
+- 3815602c096fcbb91072f419c296c3dfe1f730e0f446a9bd2553145688e75615
+```
