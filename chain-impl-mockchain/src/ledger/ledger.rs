@@ -553,7 +553,11 @@ impl Ledger {
         &mut self.settings
     }
 
-    pub fn delegation(&mut self) -> &mut DelegationState {
+    pub fn delegation(&self) -> &DelegationState {
+        &self.delegation
+    }
+
+    pub fn delegation_mut(&mut self) -> &mut DelegationState {
         &mut self.delegation
     }
 
