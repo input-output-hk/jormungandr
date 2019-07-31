@@ -1,11 +1,11 @@
 use crate::block::ConsensusVersion;
 use crate::block::HeaderHash;
 use crate::config::ConfigParam;
+use crate::fragment::config::ConfigParams;
+use crate::fragment::Fragment;
 use crate::leadership::bft::LeaderId;
 use crate::ledger::Error;
 use crate::ledger::Ledger;
-use crate::fragment::config::ConfigParams;
-use crate::fragment::Fragment;
 use crate::milli::Milli;
 use crate::transaction::*;
 use chain_addr::{Address, Discrimination};
