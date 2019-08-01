@@ -1,5 +1,4 @@
-use crate::blockcfg::{ChainLength, Epoch, Header, HeaderHash};
-use chain_core::property::Header as _;
+use crate::blockcfg::{ChainLength, Epoch, HeaderHash};
 use chain_impl_mockchain::multiverse::{GCRoot, Multiverse};
 use std::collections::{BTreeMap, HashSet};
 
@@ -11,28 +10,13 @@ pub struct Leaderships {
     multiverse: Multiverse<Leadership>,
 
     anchors: BTreeMap<Epoch, HashSet<HeaderHash>>,
-
-    pub tip: GCRoot,
 }
 
 impl Leaderships {
-    /// Leadership object need to be construction with initial data
-    pub fn new(block_0_header: &Header, initial: Leadership) -> Self {
-        let mut multiverse = Multiverse::new();
-        let mut anchors = BTreeMap::new();
-
-        let gc_root =
-            multiverse.insert(block_0_header.chain_length(), block_0_header.id(), initial);
-
-        anchors
-            .entry(block_0_header.date().epoch)
-            .or_insert(HashSet::new())
-            .insert(*gc_root);
-
+    pub fn new() -> Self {
         Leaderships {
-            multiverse: multiverse,
-            anchors: anchors,
-            tip: gc_root,
+            multiverse: Multiverse::new(),
+            anchors: BTreeMap::new(),
         }
     }
 

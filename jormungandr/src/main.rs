@@ -32,6 +32,8 @@ extern crate rand_chacha;
 extern crate tokio;
 #[macro_use]
 extern crate custom_error;
+#[macro_use]
+extern crate error_chain;
 
 #[cfg(test)]
 extern crate quickcheck;
@@ -270,8 +272,20 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let block0_hash = block0.header.hash();
 
-    let blockchain =
-        start_up::load_blockchain(block0, storage, new_epoch_announcements, &bootstrap_logger)?;
+    let blockchain = start_up::load_legacy_blockchain(
+        block0,
+        storage,
+        new_epoch_announcements,
+        &bootstrap_logger,
+    )?;
+    /*
+
+    // TODO: we should get this value from the configuration
+    let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
+
+    let (new_blockchain, branch) =
+        start_up::load_blockchain(block0, storage, new_epoch_announcements, block_cache_ttl)?;
+        */
 
     network::bootstrap(&settings.network, blockchain.clone(), &bootstrap_logger);
 

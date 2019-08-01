@@ -95,6 +95,7 @@ impl Blockchain {
     ) -> Result<Self, LoadError> {
         use blockcfg::Block0DataSource as _;
         let mut multiverse = multiverse::Multiverse::new();
+        let mut leaderships = Leaderships::new();
 
         let start_time = block_0.start_time()?;
         let slot_duration = block_0.slot_duration()?;
@@ -116,7 +117,13 @@ impl Blockchain {
 
                 let mut epoch = block_0.date().epoch;
                 let initial_leadership = Leadership::new(epoch, &state);
-                let mut leaderships = Leaderships::new(&block_0.header, initial_leadership);
+
+                let initial_gc_root = leaderships.add(
+                    epoch,
+                    block_0.header.chain_length(),
+                    block_0_id,
+                    initial_leadership,
+                );
 
                 // FIXME: should restore from serialized chain state once we have it.
                 info!(logger, "restoring state from block0 {}", block_0_id);
@@ -154,7 +161,12 @@ impl Blockchain {
                 storage.put_block(&block_0)?;
                 let initial_leadership = Leadership::new(block_0.date().epoch, &state);
                 let tip = multiverse.add(block_0.id(), state.clone());
-                let leaderships = Leaderships::new(&block_0.header, initial_leadership);
+                let initial_gc_root = leaderships.add(
+                    block_0.date().epoch,
+                    block_0.header.chain_length(),
+                    block_0.id(),
+                    initial_leadership,
+                );
                 let tip = Tip::new(Branch::new(tip, block_0.header.chain_length(), state));
 
                 (tip, leaderships)

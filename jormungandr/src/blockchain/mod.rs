@@ -1,6 +1,7 @@
 mod branch;
 mod chain;
 mod process;
+pub mod protocols;
 mod tip;
 
 pub use self::branch::Branch;

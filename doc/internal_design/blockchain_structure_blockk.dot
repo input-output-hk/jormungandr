@@ -1,0 +1,50 @@
+digraph G {
+    rankdir = LR;
+
+    subgraph cluster_blocks {
+        style = filled;
+        color = lightgrey;
+        node [ style = filled; color = white ];
+        "block N.(k - 1)" -> "block N.k"  [style = dotted, label = "link", dir = back ];
+        label = "blocks";
+    }
+
+    subgraph ledgers {
+        node [style = filled, color = cyan ];
+        "ledger (N - 1).m" -> "ledgers ..." -> "ledger N.(k - 1)" [style = dotted];
+        "ledger N.(k - 1)" -> "ledger N.k";
+        color = none;
+    }
+
+    subgraph parameters {
+        node [style = filled, color = orange ];
+        "epoch N parameters" ;
+        color = none;
+    }
+
+    subgraph stake {
+        node [style = filled, color = pink ];
+        "epoch (N - 2) stake distribution";
+        color = none;
+    }
+
+    subgraph leadership {
+        node [ color = red ];
+        "epoch N leadership";
+        color = none;
+    }
+
+    "epoch (N - 2) stake distribution" -> "epoch N leadership" [ label = "create" ];
+
+    "epoch N leadership" -> "block N.(k - 1)" [ label = "schedule" ; style = dashed ];
+    "epoch N leadership" -> "block N.k" [ label = "schedule" ; style = dashed ];
+
+    "epoch N parameters" -> "ledger N.k" [ label = "input to create" ];
+    "epoch N parameters" -> "ledger N.(k - 1)" [ label = "input to create" ];
+
+    "ledger (N - 1).m" -> "epoch N parameters" [ label = "create" ];
+
+    "block N.k" -> "ledger N.k";
+    "block N.(k - 1)" -> "ledger N.(k - 1)";
+
+}

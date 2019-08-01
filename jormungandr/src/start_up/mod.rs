@@ -3,14 +3,18 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
-    blockchain::{Blockchain, BlockchainR},
-    leadership::EpochParameters,
+    blockchain::{
+        protocols::{Blockchain, Branch, ErrorKind as BlockchainError},
+        Blockchain as LegacyBlockchain, BlockchainR as LegacyBlockchainR,
+    },
+    leadership::{EpochParameters, TaskParameters},
     network,
     settings::start::Settings,
 };
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 use slog::Logger;
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
@@ -82,13 +86,48 @@ pub fn prepare_block_0(
     }
 }
 
-pub fn load_blockchain(
+pub fn load_legacy_blockchain(
     block0: Block,
     storage: NodeStorage,
     epoch_event: mpsc::Sender<EpochParameters>,
     logger: &Logger,
-) -> Result<BlockchainR, Error> {
-    let mut blockchain_data = Blockchain::load(block0, storage, epoch_event, logger)?;
+) -> Result<LegacyBlockchainR, Error> {
+    let mut blockchain_data = LegacyBlockchain::load(block0, storage, epoch_event, logger)?;
     blockchain_data.initial()?;
     Ok(blockchain_data.into())
+}
+
+pub fn load_blockchain(
+    block0: Block,
+    storage: NodeStorage,
+    epoch_event: mpsc::Sender<TaskParameters>,
+    block_cache_ttl: Duration,
+) -> Result<(Blockchain, Branch), Error> {
+    use tokio::prelude::*;
+
+    let mut blockchain = Blockchain::new(storage, block_cache_ttl);
+
+    let main_branch: Branch = match blockchain.load_from_block0(block0.clone()).wait() {
+        Err(error) => match error.kind() {
+            BlockchainError::Block0AlreadyInStorage => blockchain.load_from_storage(block0).wait(),
+            _ => Err(error),
+        },
+        Ok(branch) => Ok(branch),
+    }?;
+
+    main_branch
+        .get_ref()
+        .map_err(|_: std::convert::Infallible| unreachable!())
+        .and_then(move |reference| {
+            epoch_event
+                .send(TaskParameters {
+                    leadership: reference.epoch_leadership_schedule().clone(),
+                    time_frame: reference.time_frame().as_ref().clone(),
+                })
+                .into_future()
+        })
+        .wait()
+        .unwrap();
+
+    Ok((blockchain, main_branch))
 }

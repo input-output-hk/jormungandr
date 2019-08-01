@@ -1,0 +1,53 @@
+digraph G {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        style = filled;
+        color = lightgrey;
+        node [ style = filled; color = white ];
+        "block (N - 1).m" -> "block N.1" [style = dotted, label = "link", dir = back ] ;
+        label = "blocks";
+    }
+
+    subgraph cluster_1 {
+        node [style = filled, color = cyan ];
+        "ledger (N - 1).m" -> "ledger N.1";
+        color = none;
+    }
+
+    subgraph parameters {
+        node [style = filled, color = orange ];
+        "epoch (N - 1) parameters" ; "epoch N parameters";
+        color = none;
+    }
+
+    subgraph stake {
+        node [style = filled, color = pink ];
+        "epoch (N - 2) stake distribution" ;
+        "epoch (N - 1) stake distribution" ;
+        color = none;
+    }
+
+    subgraph leadership {
+        node [ color = red ];
+        "epoch (N - 1) leadership" ; "epoch N leadership" ; "epoch (N + 1) leadership"
+        color = none;
+    }
+
+    "ledger (N - 1).m" -> "epoch N parameters" [ label = "create" ];
+
+    "ledger (N - 1).m" -> "epoch (N - 1) stake distribution" [ label = "create" ];
+
+    "epoch (N - 1) stake distribution" -> "epoch (N + 1) leadership" [ label = "create" ];
+    "epoch (N - 2) stake distribution" -> "epoch N leadership" [ label = "create" ];
+
+    "epoch (N - 1) leadership" -> "block (N - 1).m" [ label = "schedule" ; style = dashed];
+    "epoch N leadership" -> "block N.1" [ label = "schedule" ; style = dashed];
+
+    "epoch N parameters" -> "ledger N.1" [ label = "input to create" ];
+    "epoch (N - 1) parameters" -> "ledger (N - 1).m" [ label = "input to create" ];
+
+    "block (N - 1).m" -> "ledger (N - 1).m";
+    "block N.1" -> "ledger N.1";
+
+}
