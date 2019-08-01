@@ -10,6 +10,7 @@ mod client;
 mod grpc;
 mod inbound;
 pub mod p2p;
+pub mod protocols;
 mod service;
 mod subscription;
 
