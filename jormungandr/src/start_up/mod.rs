@@ -2,7 +2,7 @@ mod error;
 
 pub use self::error::{Error, ErrorKind};
 use crate::{
-    blockcfg::{Block, Block0DataSource as _},
+    blockcfg::Block,
     blockchain::{
         protocols::{Blockchain, Branch, ErrorKind as BlockchainError},
         Blockchain as LegacyBlockchain, BlockchainR as LegacyBlockchainR,
@@ -103,14 +103,6 @@ pub fn load_blockchain(
 ) -> Result<(Blockchain, Branch), Error> {
     use tokio::prelude::*;
 
-    let start_time = block0.start_time()?;
-    let slot_duration = block0.slot_duration()?;
-
-    let time_frame = chain_time::TimeFrame::new(
-        chain_time::Timeline::new(start_time),
-        chain_time::SlotDuration::from_secs(slot_duration.as_secs() as u32),
-    );
-
     let mut blockchain = Blockchain::new(storage, std::time::Duration::from_secs(3600 * 24 * 30));
 
     let main_branch: Branch = match blockchain.load_from_block0(block0.clone()).wait() {
@@ -128,7 +120,7 @@ pub fn load_blockchain(
             epoch_event
                 .send(TaskParameters {
                     leadership: reference.epoch_leadership_schedule().clone(),
-                    time_frame,
+                    time_frame: reference.time_frame().as_ref().clone(),
                 })
                 .into_future()
         })
