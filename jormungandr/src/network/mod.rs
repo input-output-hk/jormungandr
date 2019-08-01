@@ -5,6 +5,7 @@
 //! transactions...);
 //!
 
+mod bootstrap;
 mod client;
 mod grpc;
 mod inbound;
@@ -370,7 +371,7 @@ pub fn bootstrap(config: &Configuration, blockchain: BlockchainR, logger: &Logge
     match first_trusted_peer_address(config) {
         Some(address) => {
             let peer = Peer::new(address, Protocol::Grpc);
-            grpc::bootstrap_from_peer(peer, blockchain, logger)
+            bootstrap::bootstrap_from_peer(peer, blockchain, logger)
         }
         None => {
             warn!(logger, "no gRPC peers specified, skipping bootstrap");

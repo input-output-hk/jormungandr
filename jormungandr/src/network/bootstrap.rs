@@ -1,5 +1,4 @@
-use super::super::BlockConfig;
-use super::connect;
+use super::{grpc, BlockConfig};
 use crate::{blockchain::BlockchainR, settings::start::network::Peer};
 use blockcfg::Block;
 use chain_core::property::HasHeader;
@@ -12,7 +11,7 @@ use tokio::runtime::current_thread;
 
 pub fn bootstrap_from_peer(peer: Peer, blockchain: BlockchainR, logger: &Logger) {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
-    let bootstrap = connect(peer.address(), None)
+    let bootstrap = grpc::connect(peer.address(), None)
         .map_err(|e| {
             error!(logger, "failed to connect to bootstrap peer: {:?}", e);
         })
