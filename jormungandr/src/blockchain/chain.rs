@@ -155,7 +155,7 @@ impl Blockchain {
                     )));
                 }
 
-                (tip.unwrap(),  leaderships)
+                (tip.unwrap(), leaderships)
             } else {
                 let state = Ledger::new(block_0.id(), block_0.fragments())?;
                 storage.put_block(&block_0)?;
