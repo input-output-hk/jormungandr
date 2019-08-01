@@ -608,7 +608,7 @@ impl Blockchain {
                                                 header,
                                                 parent_ref,
                                             } => future::Either::A(self5.post_check_header(header, parent_ref)),
-                                            PreCheckedHeader::AlreadyPresent { header, cached_reference } => {
+                                            PreCheckedHeader::AlreadyPresent { header, cached_reference: _cached_reference } => {
                                                 unreachable!("block already present, this should not happen. {:#?}", header)
                                             },
                                             PreCheckedHeader::MissingParent { header } =>
