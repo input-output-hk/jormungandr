@@ -34,7 +34,6 @@ pub fn node_restart() {
 
     let expected_settings = jcli_wrapper::assert_get_rest_settings(&jormungandr_rest_address);
     let expected_utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
-    let expected_current_block = jcli_wrapper::assert_rest_get_block_tip(&jormungandr_rest_address);
     let expected_account_state = jcli_wrapper::assert_rest_account_get_stats(
         &account_receiver.address,
         &jormungandr_rest_address,
@@ -44,7 +43,6 @@ pub fn node_restart() {
 
     let actual_settings = jcli_wrapper::assert_get_rest_settings(&jormungandr_rest_address);
     let actual_utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
-    let actual_current_block = jcli_wrapper::assert_rest_get_block_tip(&jormungandr_rest_address);
     let actual_account_state = jcli_wrapper::assert_rest_account_get_stats(
         &account_receiver.address,
         &jormungandr_rest_address,
@@ -59,11 +57,6 @@ pub fn node_restart() {
         actual_utxos, expected_utxos,
         "Different utxos after restart {:?} vs {:?}",
         actual_utxos, expected_utxos
-    );
-    assert_eq!(
-        actual_current_block, expected_current_block,
-        "Different block after restart {:?} vs {:?}",
-        actual_current_block, expected_current_block
     );
     assert_eq!(
         actual_account_state, expected_account_state,

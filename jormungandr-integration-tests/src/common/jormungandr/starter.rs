@@ -47,7 +47,7 @@ fn start_jormungandr_node_sync_with_retry(
         Ok(guard) => return JormungandrProcess::from_config(guard, config.clone()),
         _ => println!("failed to start jormungandr node. retrying.."),
     };
-    config.refresh_dynamic_params();
+    config.refresh_node_dynamic_params();
     let second_attempt = try_to_start_jormungandr_node(command, config.clone());
 
     match second_attempt {
@@ -85,8 +85,10 @@ pub fn start_jormungandr_node(config: &mut JormungandrConfig) -> JormungandrProc
 
 pub fn restart_jormungandr_node_as_leader(process: &mut JormungandrProcess) -> JormungandrProcess {
     let mut config = process.config.clone();
-    config.refresh_dynamic_params();
+    config.refresh_node_dynamic_params();
     std::mem::drop(process);
+
+    println!("Starting node with configuration : {:?}", &config);
 
     let mut command = commands::get_start_jormungandr_as_leader_node_command(
         &config.node_config_path,

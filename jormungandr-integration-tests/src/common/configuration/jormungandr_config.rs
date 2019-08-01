@@ -23,9 +23,14 @@ impl JormungandrConfig {
         self.node_config.get_node_address()
     }
 
-    pub fn refresh_dynamic_params(&mut self) {
+    pub fn refresh_node_dynamic_params(&mut self) {
         self.node_config.regenerate_ports();
+        self.update_node_config();
         self.log_file_path = file_utils::get_path_in_temp("log_file.log");
+    }
+
+    pub fn update_node_config(&mut self) {
+        self.node_config_path = NodeConfig::serialize(&self.node_config);
     }
 
     pub fn new() -> Self {
