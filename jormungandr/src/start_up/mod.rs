@@ -14,6 +14,7 @@ use crate::{
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 use slog::Logger;
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
@@ -100,10 +101,11 @@ pub fn load_blockchain(
     block0: Block,
     storage: NodeStorage,
     epoch_event: mpsc::Sender<TaskParameters>,
+    block_cache_ttl: Duration,
 ) -> Result<(Blockchain, Branch), Error> {
     use tokio::prelude::*;
 
-    let mut blockchain = Blockchain::new(storage, std::time::Duration::from_secs(3600 * 24 * 30));
+    let mut blockchain = Blockchain::new(storage, block_cache_ttl);
 
     let main_branch: Branch = match blockchain.load_from_block0(block0.clone()).wait() {
         Err(error) => match error.kind() {

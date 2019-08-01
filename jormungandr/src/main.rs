@@ -279,8 +279,12 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         &bootstrap_logger,
     )?;
     /*
+
+    // TODO: we should get this value from the configuration
+    let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
+
     let (new_blockchain, branch) =
-        start_up::load_blockchain(block0, storage, new_epoch_announcements)?;
+        start_up::load_blockchain(block0, storage, new_epoch_announcements, block_cache_ttl)?;
         */
 
     network::bootstrap(&settings.network, blockchain.clone(), &bootstrap_logger);
