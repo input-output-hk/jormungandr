@@ -49,7 +49,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
                 .assert_add_output(&receiver.address.clone(), &output_value.into())
                 .assert_finalize()
                 .seal_with_witness_for_address(&sender)
-                .assert_transaction_to_message()
+                .assert_to_message()
         })
         .collect();
 

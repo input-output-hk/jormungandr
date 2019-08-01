@@ -174,9 +174,7 @@ impl TransactionCommands {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command
             .arg("transaction")
-            .arg("info")
-            .arg("--format")
-            .arg("{id}")
+            .arg("id")
             .arg("--staging")
             .arg(staging_file.as_os_str());
         command

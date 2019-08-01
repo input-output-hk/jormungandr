@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
-use jormungandr_lib::interfaces::{AccountState, FragmentLog, FragmentStatus, UTxOInfo};
 
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::{AccountState, FragmentLog, FragmentStatus, UTxOInfo};
 pub mod certificate;
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
@@ -130,21 +131,21 @@ pub fn assert_address_account(public_key: &str, discrimination: Discrimination) 
     single_line
 }
 
-pub fn assert_post_transaction(transaction_hash: &str, host: &str) -> () {
+pub fn assert_post_transaction(transactions_message: &str, host: &str) -> Hash {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_post_transaction_command(&transaction_hash, &host),
+        jcli_commands::get_post_transaction_command(&transactions_message, &host),
     );
-    let single_line = output.as_single_line();
+    let hash = output.as_hash();
     process_assert::assert_process_exited_successfully(output);
-    assert_eq!("Success!", single_line);
+    hash
 }
 
-pub fn assert_transaction_post_accepted(transaction_hash: &str, host: &str) -> () {
-    let node_stats = self::assert_rest_stats(&host);
+pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) -> () {
+    let node_stats = assert_rest_stats(&host);
     let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
 
-    self::assert_post_transaction(&transaction_hash, &host);
-    let node_stats = self::assert_rest_stats(&host);
+    assert_post_transaction(&transactions_message, &host);
+    let node_stats = assert_rest_stats(&host);
     let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
     assert_eq!(
         before + 1,
@@ -153,15 +154,15 @@ pub fn assert_transaction_post_accepted(transaction_hash: &str, host: &str) -> (
      txRecvCnt counter wasn't incremented after post"
     );
 
-    self::assert_rest_utxo_get(&host);
+    assert_rest_utxo_get(&host);
 }
 
-pub fn assert_transaction_post_failed(transaction_hash: &str, host: &str) -> () {
-    let node_stats = self::assert_rest_stats(&host);
+pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) -> () {
+    let node_stats = assert_rest_stats(&host);
     let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
 
-    self::assert_post_transaction(&transaction_hash, &host);
-    let node_stats = self::assert_rest_stats(&host);
+    assert_post_transaction(&transactions_message, &host);
+    let node_stats = assert_rest_stats(&host);
     let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
     assert_eq!(
         before, after,
@@ -169,7 +170,7 @@ pub fn assert_transaction_post_failed(transaction_hash: &str, host: &str) -> () 
      txRecvCnt counter was incremented after post"
     );
 
-    self::assert_rest_utxo_get(&host);
+    assert_rest_utxo_get(&host);
 }
 
 pub fn assert_key_generate_default() -> String {
@@ -284,42 +285,27 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
     single_line
 }
 
-pub fn assert_rest_message_logs(host: &str) -> Vec<FragmentLog> {
-    let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_rest_message_log_command(&host),
-    );
-    let content = output.as_lossy_string();
-    serde_yaml::from_str(&content).unwrap()
+pub fn assert_transaction_in_block(transaction_message: &str, host: &str) -> Hash {
+    let fragment_id = assert_post_transaction(&transaction_message, &host);
+    wait_until_transaction_processed(fragment_id, &host);
+    assert_transaction_log_shows_in_block(fragment_id, &host);
+    fragment_id.clone()
 }
 
-pub fn assert_transaction_in_block(transaction_message: &str, host: &str) {
-    self::assert_post_transaction(&transaction_message, &host);
-    self::wait_until_last_transaction_processed(&host);
-    self::assert_transaction_log_shows_in_block(&host);
+pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_reason: &str) {
+    let fragment_id = assert_post_transaction(&transaction_message, &host);
+    wait_until_transaction_processed(fragment_id, &host);
+    assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
 }
 
-pub fn assert_all_transactions_in_block(transaction_messages: &Vec<String>, host: &str) {
-    for message in transaction_messages.iter() {
-        self::assert_post_transaction(&message, &host);
-    }
-    self::wait_until_all_transactions_processed(&host);
-    self::assert_transaction_log_shows_in_block(&host);
-}
-
-pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_msg: &str) {
-    self::assert_post_transaction(&transaction_message, &host);
-    self::wait_until_last_transaction_processed(&host);
-    self::assert_transaction_log_shows_rejected(&host, &expected_msg);
-}
-
-pub fn wait_until_last_transaction_processed(host: &str) {
+pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str) {
     process_utils::run_process_until_response_matches(
         jcli_commands::get_rest_message_log_command(&host),
         |output| {
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
                 serde_yaml::from_str(&content).expect("Cannot parse fragment logs");
-            match fragments.last() {
+            match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
                 Some(x) => !x.is_pending(),
                 None => false,
             }
@@ -330,6 +316,50 @@ pub fn wait_until_last_transaction_processed(host: &str) {
         "transaction is pending for too long",
     )
     .expect("internal error while waiting until last transaction is processed");
+}
+
+pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, host: &str) {
+    let fragments = assert_get_rest_message_log(&host);
+    match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
+        Some(x) => assert!(
+            x.is_in_a_block(),
+            "Fragment should be in block, actual: {:?}",
+            &x
+        ),
+        None => panic!(
+            "cannot find any fragment in rest message log, output: {:?}",
+            &fragments
+        ),
+    }
+}
+
+pub fn assert_transaction_log_shows_rejected(fragment_id: Hash, host: &str, expected_msg: &str) {
+    let fragments = assert_get_rest_message_log(&host);
+    match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
+        Some(x) => {
+            assert!(
+                x.is_rejected(),
+                "Fragment should be rejected, actual: {:?}",
+                &x
+            );
+            match x.status() {
+                FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
+                _ => panic!("Non expected state for for rejected log"),
+            }
+        }
+        None => panic!(
+            "cannot find any fragment in rest message log, output: {:?}",
+            &fragments
+        ),
+    }
+}
+
+pub fn assert_all_transactions_in_block(transactions_messages: &Vec<String>, host: &str) {
+    for transactions_message in transactions_messages.iter() {
+        assert_post_transaction(&transactions_message, &host);
+    }
+    wait_until_all_transactions_processed(&host);
+    assert_all_transaction_log_shows_in_block(&host);
 }
 
 pub fn wait_until_all_transactions_processed(host: &str) {
@@ -350,41 +380,14 @@ pub fn wait_until_all_transactions_processed(host: &str) {
     .expect("internal error while waiting until all transactions is processed");
 }
 
-pub fn assert_transaction_log_shows_in_block(host: &str) {
-    let fragments = self::assert_get_rest_message_log(&host);
-    let fragment = fragments.last();
-    match fragment {
-        Some(x) => assert!(
-            x.is_in_a_block(),
+pub fn assert_all_transaction_log_shows_in_block(host: &str) {
+    let fragments = assert_get_rest_message_log(&host);
+    for fragment in fragments {
+        assert!(
+            fragment.is_in_a_block(),
             "Fragment should be in block, actual: {:?}",
             &fragment
-        ),
-        None => panic!(
-            "cannot find any fragment in rest message log, output: {:?}",
-            &fragments
-        ),
-    }
-}
-
-pub fn assert_transaction_log_shows_rejected(host: &str, expected_msg: &str) {
-    let fragments = self::assert_get_rest_message_log(&host);
-    let fragment = fragments.last();
-    match fragment {
-        Some(x) => {
-            assert!(
-                x.is_rejected(),
-                "Fragment should be rejected, actual: {:?}",
-                &fragment
-            );
-            match x.status() {
-                FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
-                _ => panic!("Non expected state for for rejected log"),
-            }
-        }
-        None => panic!(
-            "cannot find any fragment in rest message log, output: {:?}",
-            &fragments
-        ),
+        );
     }
 }
 
