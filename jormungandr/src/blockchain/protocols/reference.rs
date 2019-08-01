@@ -1,5 +1,8 @@
-use crate::blockcfg::{BlockDate, ChainLength, Ledger, Header, Leadership, HeaderHash, LedgerParameters};
+use crate::blockcfg::{
+    BlockDate, ChainLength, Header, HeaderHash, Leadership, Ledger, LedgerParameters,
+};
 use chain_impl_mockchain::multiverse::GCRoot;
+use chain_time::TimeFrame;
 use std::sync::Arc;
 
 /// a reference to a block in the blockchain
@@ -9,6 +12,9 @@ pub struct Ref {
     ledger_gc: Arc<GCRoot>,
 
     ledger: Arc<Ledger>,
+
+    /// the time frame applicable in the current branch of the blockchain
+    time_frame: Arc<TimeFrame>,
 
     /// the leadership used to validate the current header's leader
     ///
@@ -27,7 +33,14 @@ pub struct Ref {
 
 impl Ref {
     /// create a new `Ref`
-    pub fn new(ledger_pointer: GCRoot, ledger: Arc<Ledger>, epoch_leadership_schedule: Arc<Leadership>, epoch_ledger_parameters: Arc<LedgerParameters> , header: Header) -> Self {
+    pub fn new(
+        ledger_pointer: GCRoot,
+        ledger: Arc<Ledger>,
+        time_frame: Arc<TimeFrame>,
+        epoch_leadership_schedule: Arc<Leadership>,
+        epoch_ledger_parameters: Arc<LedgerParameters>,
+        header: Header,
+    ) -> Self {
         #[cfg(debug_assertions)]
         use std::ops::Deref as _;
 
@@ -39,6 +52,7 @@ impl Ref {
         Ref {
             ledger_gc: Arc::new(ledger_pointer),
             ledger,
+            time_frame,
             epoch_leadership_schedule,
             epoch_ledger_parameters,
             header,
@@ -76,6 +90,11 @@ impl Ref {
 
     pub fn ledger(&self) -> &Arc<Ledger> {
         &self.ledger
+    }
+
+    /// get the time frame in application in the current branch of the blockchain
+    pub fn time_frame(&self) -> &Arc<TimeFrame> {
+        &self.time_frame
     }
 
     pub fn epoch_leadership_schedule(&self) -> &Arc<Leadership> {
