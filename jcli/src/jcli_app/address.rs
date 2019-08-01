@@ -9,7 +9,7 @@ pub const ADDRESS_PREFIX: &'static str = env!("ADDRESS_PREFIX");
 #[derive(StructOpt)]
 #[structopt(name = "address", rename_all = "kebab-case")]
 pub enum Address {
-    /// start jormungandr service and start participating to the network
+    /// display the content and info of a bench32 formatted address
     Info(InfoArgs),
 
     /// create an address from the single public key. This address does
