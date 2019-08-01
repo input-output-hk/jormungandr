@@ -40,8 +40,8 @@ Define all the core mechanism of the blockchain:
 * consensus
 
 The outcome of this phase is that everything is in place for a single node to
-expose the blockchain, and developpers have the tool necessary to start
-developping integration.  Apart from the network component, this also represent
+expose the blockchain, and developers have the tool necessary to start
+developing integration.  Apart from the network component, this also represent
 feature complete on the blockchain system.
 
 Network
@@ -52,7 +52,7 @@ node to exchanges blocks.
 
 The first goal is to get a somewhat central network perusing the trusted-peers,
 then gradually as feature and progress allow move to a fully decentralized
-content delivery system with initial point of communcation maintained by
+content delivery system with initial point of communication maintained by
 trusted-peers.
 
 Incentive
@@ -72,11 +72,11 @@ This phase is about reviewing and tweaking many of our internals and externals
 APIs, with the goals to future proof mechanisms and formats, and doing
 systematic internal security review.
 
-Another axis that will developped here is protection against abuse and monitoring
+Another axis that will developed here is protection against abuse and monitoring
 our resources usages.
 
 It's very important to note that until we have the end of the phase,
-anything can change and that the security is not guarantee in any way.
+anything can change and that the security is not guaranteed in any way.
 
 Security Audit
 --------------
