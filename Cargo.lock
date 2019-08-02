@@ -421,7 +421,7 @@ dependencies = [
  "chain-crypto 0.1.0",
  "chain-storage 0.1.0",
  "chain-time 0.1.0",
- "custom_error 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "imhamt 0.1.0",
  "rand_core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_os 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -645,7 +645,7 @@ dependencies = [
 
 [[package]]
 name = "custom_error"
-version = "1.7.0"
+version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1200,7 +1200,7 @@ dependencies = [
  "chain-crypto 0.1.0",
  "chain-impl-mockchain 0.1.0",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "custom_error 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gtmpl 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.1.0",
  "jormungandr-lib 0.3.1",
@@ -1238,7 +1238,7 @@ dependencies = [
  "chain-time 0.1.0",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cryptoxide 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "custom_error 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dirs 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1284,7 +1284,7 @@ dependencies = [
  "assert_fs 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "chain-addr 0.1.0",
  "chain-crypto 0.1.0",
- "custom_error 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "galvanic-test 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jcli 0.3.1",
  "jormungandr 0.3.1",
@@ -1313,7 +1313,7 @@ dependencies = [
  "chain-crypto 0.1.0",
  "chain-impl-mockchain 0.1.0",
  "chrono 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "custom_error 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519-bip32 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "quickcheck 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3459,7 +3459,7 @@ dependencies = [
 "checksum crunchy 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 "checksum cryptoxide 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b486f0f6730b6972b7831f0faf2dc7c3280aab69bc07357c7a2f24042b945e36"
 "checksum curve25519-dalek 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5d4b820e8711c211745880150f5fac78ab07d6e3851d8ce9f5a02cedc199174c"
-"checksum custom_error 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b98c1db41e448d6816faabc5decccf2efb0f72803b77de885817d7882469f926"
+"checksum custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "93a0fc65739ae998afc8d68e64bdac2efd1bc4ffa1a0703d171ef2defae3792f"
 "checksum difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 "checksum digest 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)" = "03b072242a8cbaf9c145665af9d250c59af3b958f83ed6824e13533cf76d5b90"
 "checksum digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
