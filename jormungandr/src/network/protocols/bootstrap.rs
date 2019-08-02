@@ -10,7 +10,12 @@ use std::fmt::Debug;
 use tokio::prelude::*;
 use tokio::runtime::current_thread;
 
-pub fn bootstrap_from_peer(peer: Peer, blockchain: Blockchain, tip: Ref, logger: &Logger) {
+pub fn bootstrap_from_peer(
+    peer: Peer,
+    blockchain: Blockchain,
+    tip: Ref,
+    logger: &Logger,
+) -> Result<Ref, ()> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
     let bootstrap = grpc::connect(peer.address(), None)
         .map_err(|e| {
@@ -22,28 +27,27 @@ pub fn bootstrap_from_peer(peer: Peer, blockchain: Blockchain, tip: Ref, logger:
             })
         })
         .and_then(|mut client| {
+            let tip_hash = *tip.hash();
             client
-                .pull_blocks_to_tip(&[*tip.hash()])
+                .pull_blocks_to_tip(&[tip_hash])
                 .map_err(|e| {
                     error!(logger, "PullBlocksToTip request failed: {:?}", e);
                 })
-                .and_then(|stream| bootstrap_from_stream(blockchain, stream, logger.clone()))
+                .and_then(|stream| bootstrap_from_stream(blockchain, tip, stream, logger.clone()))
         });
 
-    match current_thread::block_on_all(bootstrap) {
-        Ok(()) => debug!(logger, "bootstrap complete"),
-        Err(()) => {
-            // All specific errors should be logged and mapped to () in
-            // future/stream error handling combinators.
-        }
-    }
+    current_thread::block_on_all(bootstrap).map(|tip| {
+        debug!(logger, "bootstrap complete");
+        tip
+    })
 }
 
 fn bootstrap_from_stream<S>(
     blockchain: Blockchain,
+    tip: Ref,
     stream: S,
     logger: Logger,
-) -> impl Future<Item = (), Error = ()>
+) -> impl Future<Item = Ref, Error = ()>
 where
     S: Stream<Item = Block>,
     S::Error: Debug,
@@ -53,17 +57,16 @@ where
         .map_err(move |e| {
             error!(logger, "bootstrap block streaming failed: {:?}", e);
         })
-        .fold(blockchain, move |blockchain, block| {
-            handle_block(blockchain, block, fold_logger.clone())
+        .fold(tip, move |tip, block| {
+            handle_block(blockchain.clone(), block, fold_logger.clone())
         })
-        .map(|_| ())
 }
 
 fn handle_block(
     mut blockchain: Blockchain,
     block: Block,
     logger: Logger,
-) -> impl Future<Item = Blockchain, Error = ()> {
+) -> impl Future<Item = Ref, Error = ()> {
     let header = block.header();
     debug!(
         logger,
@@ -102,6 +105,5 @@ fn handle_block(
                 .map_err(move |e| {
                     error!(err3_logger, "failed to apply block to storage: {:?}", e);
                 })
-                .map(|_| end_blockchain)
         })
 }
