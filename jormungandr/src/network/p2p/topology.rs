@@ -15,8 +15,14 @@ pub const NEW_MESSAGES_TOPIC: u32 = 0u32;
 pub const NEW_BLOCKS_TOPIC: u32 = 1u32;
 
 custom_error! {pub Error
-    Encoding { source: bincode::Error } = "Serialization error",
+    Encoding { source: bincode::ErrorKind } = "Serialization error",
     Io { source: io::Error } = "I/O Error",
+}
+
+impl From<bincode::Error> for Error {
+    fn from(source: bincode::Error) -> Self {
+        Error::Encoding { source: *source }
+    }
 }
 
 #[derive(Clone, Debug)]
