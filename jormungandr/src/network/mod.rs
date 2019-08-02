@@ -42,14 +42,8 @@ use network_core::{
     gossip::{Gossip, Node},
 };
 use slog::Logger;
+use std::{error::Error, iter, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::timer::Interval;
-
-use std::error::Error;
-use std::fmt;
-use std::iter;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::time::Duration;
 
 type Connection = SocketAddr;
 
@@ -405,34 +399,10 @@ pub fn fetch_block(
     }
 }
 
-#[derive(Debug)]
-pub enum FetchBlockError {
-    NoTrustedPeers,
-    Connect { source: Box<dyn Error> },
-    GetBlocks { source: core_error::Error },
-    NoBlocks,
-}
-
-impl fmt::Display for FetchBlockError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::FetchBlockError::*;
-        match self {
-            NoTrustedPeers => write!(f, "no trusted peers specified"),
-            Connect { .. } => write!(f, "connection to peer failed"),
-            GetBlocks { .. } => write!(f, "block request failed"),
-            NoBlocks => write!(f, "no blocks in the stream"),
-        }
-    }
-}
-
-impl Error for FetchBlockError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        use self::FetchBlockError::*;
-        match self {
-            NoTrustedPeers => None,
-            Connect { source } => Some(&**source),
-            GetBlocks { source } => Some(source),
-            NoBlocks => None,
-        }
-    }
+custom_error! {
+    pub FetchBlockError
+        NoTrustedPeers = "no trusted peers specified",
+        Connect { source: Box<Error> } = "connection to peer failed",
+        GetBlocks { source: core_error::Error } = "block request failed",
+        NoBlocks = "no blocks in the stream",
 }
