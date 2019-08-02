@@ -66,7 +66,7 @@ impl Staging {
             path: io::path_to_path_buf(path),
         })?;
         bincode::deserialize_from(file).map_err(|source| Error::StagingFileReadFailed {
-            source,
+            source: *source,
             path: io::path_to_path_buf(path),
         })
     }
@@ -77,7 +77,7 @@ impl Staging {
             path: io::path_to_path_buf(path),
         })?;
         bincode::serialize_into(file, self).map_err(|source| Error::StagingFileWriteFailed {
-            source,
+            source: *source,
             path: io::path_to_path_buf(path),
         })
     }

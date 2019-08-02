@@ -59,9 +59,9 @@ type StaticStr = &'static str;
 custom_error! { pub Error
     StagingFileOpenFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not open staging transaction file '{}'", path.display()) }},
-    StagingFileReadFailed { source: bincode::Error, path: PathBuf }
+    StagingFileReadFailed { source: bincode::ErrorKind, path: PathBuf }
         = @{{ let _ = source; format_args!("could not read staging transaction file '{}'", path.display()) }},
-    StagingFileWriteFailed { source: bincode::Error, path: PathBuf }
+    StagingFileWriteFailed { source: bincode::ErrorKind, path: PathBuf }
         = @{{ let _ = source; format_args!("could not write staging transaction file '{}'", path.display()) }},
     SecretFileFailed { source: key_parser::Error }
         = @{{ format_args!("could not process secret file '{}'", source) }},
