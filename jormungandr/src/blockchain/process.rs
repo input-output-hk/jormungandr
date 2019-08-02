@@ -8,6 +8,7 @@ use crate::utils::{
 };
 
 use chain_core::property::{Block as _, Header as _};
+use chain_impl_mockchain::block::BlockDate;
 
 use slog::Logger;
 
@@ -27,15 +28,14 @@ pub fn handle_input(
         Input::Input(msg) => msg,
     };
 
-    let logger = info.logger().clone();
-
     match bquery {
         BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
             let blockchain = blockchain.lock_read();
             chain::handle_end_of_epoch_event(&blockchain, epoch)
-                .map_err(|e| crit!(logger, "end of epoch processing failed: {:?}", e))?;
+                .map_err(|e| crit!(info.logger(), "end of epoch processing failed: {:?}", e))?;
         }
         BlockMsg::LeadershipBlock(block) => {
+            let logger = logger_for_block_date(info.logger(), &block.date());
             let mut blockchain = blockchain.lock_write();
             match chain::handle_block(&mut blockchain, block, true) {
                 Ok(HandledBlock::Rejected { reason }) => {
@@ -75,6 +75,7 @@ pub fn handle_input(
             }
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
+            let logger = logger_for_block_date(info.logger(), header.block_date());
             let blockchain = blockchain.lock_read();
             match chain::header_triage(&blockchain, &header, false).unwrap() {
                 BlockHeaderTriage::NotOfInterest { reason } => {
@@ -111,6 +112,7 @@ pub fn handle_input(
             }
         }
         BlockMsg::NetworkBlock(block, reply) => {
+            let logger = logger_for_block_date(info.logger(), &block.date());
             let res = process_network_block(blockchain, block, network_msg_box, &logger);
             reply.reply(res);
         }
@@ -119,7 +121,8 @@ pub fn handle_input(
             // requests/solicitations sent out to different peers.
             // If a batch of blocks arrives out of order, it will be
             // dropped by the BlockMsg::NetworkBlock processing above.
-            let res = process_chain_headers_into_block_request(blockchain, headers, &logger).map(
+            let logger = info.logger();
+            let res = process_chain_headers_into_block_request(blockchain, headers, logger).map(
                 |block_ids| {
                     network_msg_box
                         .try_send(NetworkMsg::GetBlocks(block_ids))
@@ -195,11 +198,12 @@ fn process_network_block(
 fn process_chain_headers_into_block_request(
     blockchain: &BlockchainR,
     headers: Vec<Header>,
-    logger: &Logger,
+    plain_logger: &Logger,
 ) -> Result<Vec<HeaderHash>, intercom::Error> {
     let blockchain = blockchain.lock_read();
     let mut block_ids = Vec::new();
     for header in headers {
+        let logger = logger_for_block_date(plain_logger, header.block_date());
         let triage = chain::header_triage(&blockchain, &header, false).map_err(|e| {
             error!(logger, "triage of pulled header failed: {:?}", e);
             intercom::Error::failed(e)
@@ -249,4 +253,8 @@ fn process_chain_headers_into_block_request(
         }
     }
     Ok(block_ids)
+}
+
+fn logger_for_block_date(logger: &Logger, block_date: &BlockDate) -> Logger {
+    logger.new(o!("epoch" => block_date.epoch, "slot_id" => block_date.slot_id))
 }
