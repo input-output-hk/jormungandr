@@ -156,3 +156,79 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> std::iter::FromIterator<(ID, AccountSt
         Ledger(Hamt::from_iter(iter))
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+
+    use crate::account::Identifier;
+
+    use quickcheck::TestResult;
+    use quickcheck_macros::quickcheck;
+
+    use super::AccountState;
+    use crate::account::Ledger;
+    use crate::value::Value;
+
+    #[quickcheck]
+    pub fn ledger_total_value_is_correct_after_remove_value(
+        id: Identifier,
+        account_state: AccountState<()>,
+        value_to_remove: Value,
+    ) -> TestResult {
+        let mut ledger = Ledger::new();
+        ledger = ledger
+            .add_account(&id, account_state.get_value(), ())
+            .unwrap();
+        let result = ledger.remove_value(&id, value_to_remove);
+        let expected_result = account_state.get_value() - value_to_remove;
+        match (result, expected_result) {
+            (Err(_), Err(_)) => verify_total_value(ledger, account_state.get_value()),
+            (Ok(_), Err(_)) => TestResult::failed(),
+            (Err(_), Ok(_)) => TestResult::failed(),
+            (Ok((ledger, _)), Ok(value)) => verify_total_value(ledger, value),
+        }
+    }
+
+    fn verify_total_value(ledger: Ledger, value: Value) -> TestResult {
+        match ledger.get_total_value().unwrap() == value {
+            true => TestResult::passed(),
+            false => TestResult::error(format!(
+                "Wrong total value got {:?}, while expecting {:?}",
+                ledger.get_total_value(),
+                value
+            )),
+        }
+    }
+
+    #[quickcheck]
+    pub fn ledger_removes_account_only_if_zeroed(
+        id: Identifier,
+        account_state: AccountState<()>,
+    ) -> TestResult {
+        let mut ledger = Ledger::new();
+        ledger = ledger
+            .add_account(&id, account_state.get_value(), ())
+            .unwrap();
+        let result = ledger.remove_account(&id);
+        let expected_result = account_state.get_value() == Value::zero();
+        match (result, expected_result) {
+            (Err(_), false) => verify_account_exists(&ledger, &id, true),
+            (Ok(_), false) => TestResult::failed(),
+            (Err(_), true) => TestResult::failed(),
+            (Ok(ledger), true) => verify_account_exists(&ledger, &id, false),
+        }
+    }
+
+    fn verify_account_exists(ledger: &Ledger, id: &Identifier, should_exist: bool) -> TestResult {
+        match (ledger.exists(&id), should_exist) {
+            (true, true) => TestResult::passed(),
+            (true, false) => {
+                TestResult::error(format!("Account ({:?}) exists , while it should not", &id))
+            }
+            (false, true) => {
+                TestResult::error(format!("Account ({:?}) not exists , while it should", &id))
+            }
+            (false, false) => TestResult::passed(),
+        }
+    }
+}
