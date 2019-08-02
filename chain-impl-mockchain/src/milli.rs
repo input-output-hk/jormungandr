@@ -59,7 +59,7 @@ impl fmt::Display for Milli {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "property-test-api"))]
 mod tests {
     use super::*;
     use quickcheck::{Arbitrary, Gen, TestResult};
