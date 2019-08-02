@@ -1,6 +1,8 @@
 use super::super::{grpc, BlockConfig};
 use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::protocols::{Blockchain, Error as BlockchainError, PreCheckedHeader, Ref};
+use crate::blockchain::protocols::{
+    Blockchain, Branch, Error as BlockchainError, PreCheckedHeader, Ref,
+};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
 use network_core::client::{block::BlockService, Client as _};
@@ -66,25 +68,24 @@ impl error::Error for Error {
 pub fn bootstrap_from_peer(
     peer: Peer,
     blockchain: Blockchain,
-    tip: Ref,
+    mut branch: Branch,
     logger: &Logger,
 ) -> Result<Ref, Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
     let bootstrap = grpc::connect(peer.address(), None)
         .map_err(Error::Connect)
         .and_then(|client: Connection<BlockConfig>| client.ready().map_err(Error::ClientNotReady))
-        .and_then(|mut client| {
+        .join(branch.get_ref().map_err(|_| unreachable!()))
+        .and_then(|(mut client, tip)| {
             let tip_hash = *tip.hash();
             client
                 .pull_blocks_to_tip(&[tip_hash])
                 .map_err(Error::PullRequestFailed)
                 .and_then(|stream| bootstrap_from_stream(blockchain, tip, stream, logger.clone()))
-        });
+        })
+        .and_then(move |tip| branch.update_ref(tip).map_err(|_| unreachable!()));
 
-    current_thread::block_on_all(bootstrap).map(|tip| {
-        debug!(logger, "bootstrap complete");
-        tip
-    })
+    current_thread::block_on_all(bootstrap)
 }
 
 fn bootstrap_from_stream<S>(
@@ -100,7 +101,7 @@ where
     let fold_logger = logger.clone();
     stream
         .map_err(Error::PullStreamFailed)
-        .fold(tip, move |tip, block| {
+        .fold(tip, move |_, block| {
             handle_block(blockchain.clone(), block, fold_logger.clone())
         })
 }
