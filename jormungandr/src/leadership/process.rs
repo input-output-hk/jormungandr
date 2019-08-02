@@ -186,7 +186,9 @@ impl EndOfEpochReminder {
             // filter_map so we don't have to do the pattern match on `Option::Nothing`.
             .filter_map(|task_parameters| task_parameters)
             .for_each(move |task_parameters| {
-                handle_epoch(block_message.clone(), handle_logger.clone(), task_parameters)
+                let epoch = task_parameters.leadership.epoch();
+                let logger = handle_logger.new(o!("epoch" => epoch));
+                handle_epoch(block_message.clone(), logger, task_parameters)
             })
             .map_err(move |error| {
                 crit!(crit_logger, "critical error in the Leader task" ; "reason" => error.to_string())
