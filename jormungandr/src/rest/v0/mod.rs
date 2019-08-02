@@ -1,5 +1,7 @@
 mod handlers;
 
+pub use self::handlers::{SettingsDto, SettingsFeesDto};
+
 use actix_web::App;
 
 pub fn app(context: handlers::Context) -> App<handlers::Context> {
