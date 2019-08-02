@@ -41,11 +41,8 @@ impl Ref {
         epoch_ledger_parameters: Arc<LedgerParameters>,
         header: Header,
     ) -> Self {
-        #[cfg(debug_assertions)]
-        use std::ops::Deref as _;
-
         debug_assert!(
-            ledger_pointer.deref() == &header.hash(),
+            (*ledger_pointer) == header.hash(),
             "expect the GCRoot to be for the same `Header`"
         );
 
