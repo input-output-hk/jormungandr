@@ -11,6 +11,8 @@ use cryptoxide::digest::Digest as _;
 use cryptoxide::sha3::Sha3;
 use hex::FromHexError;
 
+use typed_bytes::ByteSlice;
+
 use crate::bech32::{self, Bech32};
 use crate::hash::{Blake2b256, Sha3_256};
 
@@ -340,6 +342,15 @@ impl<H: DigestAlg, T> DigestOf<H, T> {
     pub fn coerce<U>(&self) -> DigestOf<H, U> {
         DigestOf {
             inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+
+    pub fn digest_byteslice<'a>(byteslice: &ByteSlice<'a, T>) -> Self {
+        let mut ctx = Context::new();
+        ctx.append_data(byteslice.as_slice());
+        DigestOf {
+            inner: ctx.finalize(),
             marker: PhantomData,
         }
     }
