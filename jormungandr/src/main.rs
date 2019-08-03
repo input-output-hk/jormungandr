@@ -13,6 +13,7 @@ extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate chain_storage_sqlite;
 extern crate chain_time;
+#[macro_use(crate_name, crate_version)]
 extern crate clap;
 extern crate cryptoxide;
 #[macro_use(try_ready)]
@@ -313,6 +314,12 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let logger = raw_settings.to_logger()?;
 
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
+    info!(
+        init_logger,
+        "Starting {} {}",
+        crate_name!(),
+        crate_version!()
+    );
     let settings = raw_settings.try_into_settings(&init_logger)?;
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
 

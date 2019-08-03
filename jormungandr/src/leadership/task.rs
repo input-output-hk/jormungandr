@@ -48,13 +48,10 @@ impl Task {
         block_message: MessageBox<BlockMsg>,
         stats_counter: StatsCounter,
     ) -> Self {
-        let logger = Logger::root(
-            logger,
-            o!(
-                ::log::KEY_SUB_TASK => "Leader Task",
-                // TODO: add some general context information here (leader alias?)
-            ),
-        );
+        let logger = logger.new(o!(
+            ::log::KEY_SUB_TASK => "Leader Task",
+            // TODO: add some general context information here (leader alias?)
+        ));
 
         Task {
             leadership_params: HandleLeadershipParams {

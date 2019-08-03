@@ -45,16 +45,13 @@ impl LeaderSchedule {
             events: DelayQueue::with_capacity(number_of_slots_per_epoch as usize),
         };
 
-        let logger = Logger::root(
-            logger,
-            o!(
-                "epoch" => leadership.epoch(),
-            ),
-        );
+        let logger = logger.new(o!(
+            "epoch" => leadership.epoch(),
+        ));
 
         for slot_idx in 0..number_of_slots_per_epoch {
             schedule.schedule(
-                Logger::root(logger.clone(), o!("epoch_slot" => slot_idx)),
+                logger.new(o!("epoch_slot" => slot_idx)),
                 now,
                 leader_id,
                 enclave,
