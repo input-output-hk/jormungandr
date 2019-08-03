@@ -37,7 +37,7 @@ impl Enclave {
     }
 
     pub fn from_vec(leaders: Vec<Leader>) -> Self {
-        let mut e = Self::new();
+        let e = Self::new();
         for leader in leaders {
             e.add_leader(leader);
         }

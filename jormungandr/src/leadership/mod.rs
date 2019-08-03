@@ -92,6 +92,8 @@ mod process;
 mod schedule;
 mod task;
 
+pub mod protocols;
+
 pub use self::leaderships::*;
 
 pub use self::epoch_parameters::EpochParameters;
