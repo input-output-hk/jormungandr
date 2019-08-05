@@ -29,7 +29,6 @@ pub mod bech32;
 pub mod digest;
 mod evolving;
 pub mod hash;
-mod hex;
 mod kes;
 mod key;
 mod sign;
