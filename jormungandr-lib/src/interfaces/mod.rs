@@ -6,6 +6,7 @@ mod certificate;
 mod fragment_log;
 mod leadership_log;
 mod old_address;
+mod settings;
 mod transaction_output;
 mod transaction_witness;
 mod utxo_info;
@@ -21,6 +22,7 @@ pub use self::certificate::{
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::leadership_log::{EnclaveLeaderId, LeadershipLog, LeadershipLogId};
 pub use self::old_address::OldAddress;
+pub use self::settings::*;
 pub use self::transaction_output::TransactionOutput;
 pub use self::transaction_witness::TransactionWitness;
 pub use self::utxo_info::UTxOInfo;

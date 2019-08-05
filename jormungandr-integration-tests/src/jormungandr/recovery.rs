@@ -1,8 +1,7 @@
-use crate::common::configuration::genesis_model::Fund;
-use crate::common::jcli_wrapper;
-use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
-use crate::common::jormungandr::starter;
-use crate::common::startup;
+use crate::common::{
+    configuration::genesis_model::Fund, jcli_wrapper,
+    jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper, jormungandr::starter, startup,
+};
 
 #[test]
 pub fn node_restart() {
@@ -28,7 +27,7 @@ pub fn node_restart() {
         .assert_add_output(&utxo_receiver.address, &50.into())
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
-        .assert_transaction_to_message();
+        .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
 
