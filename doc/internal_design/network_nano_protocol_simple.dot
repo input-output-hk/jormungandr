@@ -1,0 +1,45 @@
+digraph G {
+    subgraph cluster_blockchain_header_validation {
+        style = filled;
+        color = lightgrey;
+        node [ style = filled ; shape = Mdiamond ; color = white ];
+        "check hash is present";
+        "check basic crypto";
+        "known parent header";
+        "check leadership";
+        label = "header validation";
+    }
+
+    subgraph cluster_blockchain_block_validation {
+        style = filled;
+        color = lightgrey;
+        node [ style = filled ; shape = Mdiamond ; color = white ];
+        "validate block content";
+        "build new ledger state";
+        "is new epoch transition";
+        label = "block validation";
+    }
+
+    subgraph from_the_network {
+        node [ color = red ];
+
+        "fetch parent header";
+        "fetch block content";
+    }
+
+    "Block Header";
+
+    "Block Header" -> "check hash is present" [ style = dashed ; color = red ; label = "receiving new header" ];
+    "check hash is present" -> "check basic crypto" [ label = "not present" ];
+    "check basic crypto" -> "known parent header" [ label = "valid" ; color = green];
+    "known parent header" -> "check leadership" [label = "has parent" ; color = green ];
+    "known parent header" -> "fetch parent header" [label = "" ; color = red ];
+    "fetch parent header" -> "Block Header" [label = "run validation" ; color = red ];
+    "Block Header" -> "check leadership" [label = "once parent block validated" ; color = red ];
+
+    "check leadership" -> "fetch block content" [color = red; label = "valide"];
+    "fetch block content" -> "validate block content" [color = red ; label = "valide"];
+    "validate block content" -> "build new ledger state" [label = "valide"];
+    "build new ledger state" -> "is new epoch transition" [label = "new ledger"];
+    "is new epoch transition" -> "extract new epoch data" [label = "yes" ; color = green];
+}
