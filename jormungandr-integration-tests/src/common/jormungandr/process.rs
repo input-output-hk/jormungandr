@@ -1,6 +1,6 @@
 use super::logger::JormungandrLogger;
 use crate::common::{configuration::jormungandr_config::JormungandrConfig, jcli_wrapper};
-use crate::common::jcli_wrapper;
+use crate::common::{process_assert, process_utils};
 use std::path::PathBuf;
 use std::process::Child;
 
@@ -59,10 +59,7 @@ impl JormungandrProcess {
 
 impl Drop for JormungandrProcess {
     fn drop(&mut self) {
+        jcli_wrapper::assert_shutdown_node(&self.config.get_node_address());
         self.logger.print_error_and_invalid_logs();
-        match self.child.kill() {
-            Err(e) => println!("Could not kill {}: {}", self.description, e),
-            Ok(_) => println!("Successfully killed {}", self.description),
-        }
     }
 }
