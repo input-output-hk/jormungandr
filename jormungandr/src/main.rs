@@ -1,12 +1,7 @@
-#![cfg_attr(feature = "with-bench", feature(test))]
-
 extern crate actix_net;
 extern crate actix_web;
-extern crate bech32;
 extern crate bincode;
 extern crate bytes;
-extern crate cbor_event;
-extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
@@ -15,12 +10,14 @@ extern crate chain_storage_sqlite;
 extern crate chain_time;
 #[macro_use(crate_name, crate_version)]
 extern crate clap;
-extern crate cryptoxide;
+#[macro_use]
+extern crate custom_error;
+#[macro_use]
+extern crate error_chain;
 #[macro_use(try_ready)]
 extern crate futures;
-extern crate generic_array;
-extern crate hex;
 extern crate http;
+extern crate humantime;
 extern crate hyper;
 extern crate jormungandr_lib;
 #[macro_use]
@@ -29,17 +26,7 @@ extern crate native_tls;
 extern crate network_core;
 extern crate network_grpc;
 extern crate poldercast;
-extern crate rand_chacha;
-extern crate tokio;
-#[macro_use]
-extern crate custom_error;
-#[macro_use]
-extern crate error_chain;
-
-#[cfg(test)]
-extern crate quickcheck;
 extern crate rand;
-extern crate regex;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -58,9 +45,7 @@ extern crate slog_json;
 extern crate slog_syslog;
 extern crate slog_term;
 extern crate structopt;
-#[cfg(test)]
-#[cfg(feature = "with-bench")]
-extern crate test;
+extern crate tokio;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
