@@ -2,6 +2,7 @@ use crate::{
     bech32::{self, Bech32},
     hex, key,
 };
+use hex::FromHexError;
 use std::{fmt, marker::PhantomData, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,7 +29,7 @@ pub enum SignatureError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SignatureFromStrError {
-    HexMalformed(hex::DecodeError),
+    HexMalformed(FromHexError),
     Invalid(SignatureError),
 }
 

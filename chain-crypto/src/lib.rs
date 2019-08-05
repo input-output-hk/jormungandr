@@ -12,7 +12,7 @@ extern crate quickcheck;
 #[cfg(test)]
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
-
+extern crate hex;
 extern crate rand_core;
 
 cfg_if! {
