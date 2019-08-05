@@ -12,7 +12,7 @@ use cryptoxide::sha3::Sha3;
 use crate::bech32::{self, Bech32};
 use crate::hex;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     InvalidHashSize(usize, usize),
     InvalidHexEncoding(hex::DecodeError),

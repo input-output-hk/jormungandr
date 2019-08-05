@@ -17,7 +17,7 @@ pub enum PublicKeyError {
     StructureInvalid,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PublicKeyFromStrError {
     HexMalformed(hex::DecodeError),
     KeyInvalid(PublicKeyError),

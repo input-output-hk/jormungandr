@@ -14,7 +14,7 @@ use crate::bech32::{self, Bech32};
 use crate::hash::{Blake2b256, Sha3_256};
 use crate::hex;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     InvalidDigestSize { got: usize, expected: usize },
     InvalidHexEncoding(hex::DecodeError),

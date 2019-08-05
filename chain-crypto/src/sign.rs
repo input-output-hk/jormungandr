@@ -26,7 +26,7 @@ pub enum SignatureError {
     StructureInvalid,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SignatureFromStrError {
     HexMalformed(hex::DecodeError),
     Invalid(SignatureError),
