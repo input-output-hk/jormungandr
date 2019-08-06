@@ -8,6 +8,12 @@ use chain_core::property;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct StakePoolId(Hash);
 
+impl AsRef<[u8]> for StakePoolId {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakePoolInfo {
     pub serial: u128,
