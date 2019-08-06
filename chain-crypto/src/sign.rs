@@ -4,6 +4,7 @@ use crate::{
 };
 use hex::FromHexError;
 use std::{fmt, marker::PhantomData, str::FromStr};
+use typed_bytes::{ByteArray, ByteSlice};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verification {
@@ -121,7 +122,18 @@ impl<A: VerificationAlgorithm, T> Signature<T, A> {
             phantom: PhantomData,
         }
     }
+
+    pub fn safe_coerce<U: SafeSignatureCoerce<T>>(self) -> Signature<U, A> {
+        Signature {
+            signdata: self.signdata,
+            phantom: PhantomData,
+        }
+    }
 }
+
+pub trait SafeSignatureCoerce<T> {}
+
+impl<'a, T> SafeSignatureCoerce<ByteArray<T>> for ByteSlice<'a, T> {}
 
 impl<A: VerificationAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
     #[must_use]
