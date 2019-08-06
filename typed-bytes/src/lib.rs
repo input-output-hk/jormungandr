@@ -1,7 +1,7 @@
 mod builder;
 
-use std::marker::PhantomData;
 pub use builder::ByteBuilder;
+use std::marker::PhantomData;
 
 /// A typed slice of bytes
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
