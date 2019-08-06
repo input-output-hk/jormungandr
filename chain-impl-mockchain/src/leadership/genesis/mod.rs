@@ -10,7 +10,10 @@ use crate::{
     value::Value,
 };
 use chain_crypto::Verification as SigningVerification;
-use chain_crypto::{Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12};
+use chain_crypto::{
+    digest::DigestOf, Blake2b256, Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12,
+};
+use typed_bytes::ByteBuilder;
 pub(crate) use vrfeval::witness_to_nonce;
 pub use vrfeval::{ActiveSlotsCoeff, ActiveSlotsCoeffError, Nonce, Witness, WitnessOutput};
 use vrfeval::{PercentStake, VrfEvaluator};
@@ -20,6 +23,18 @@ use vrfeval::{PercentStake, VrfEvaluator};
 pub struct GenesisPraosLeader {
     pub kes_public_key: PublicKey<SumEd25519_12>,
     pub vrf_public_key: PublicKey<Curve25519_2HashDH>,
+}
+
+impl GenesisPraosLeader {
+    pub fn digest(&self) -> DigestOf<Blake2b256, Self> {
+        DigestOf::digest_byteslice(
+            &ByteBuilder::new()
+                .bytes(self.vrf_public_key.as_ref())
+                .bytes(self.kes_public_key.as_ref())
+                .finalize()
+                .as_byteslice(),
+        )
+    }
 }
 
 /// Genesis Praos leadership data for a specific epoch
@@ -175,6 +190,9 @@ mod tests {
     use crate::value::*;
 
     use chain_crypto::*;
+    use lazy_static::lazy_static;
+    use quickcheck::{Arbitrary, Gen};
+    use rand_core;
     use std::collections::HashMap;
 
     fn make_pool(ledger: &mut Ledger) -> (StakePoolId, SecretKey<Curve25519_2HashDH>) {
@@ -206,6 +224,27 @@ mod tests {
         active_slots_coeff: f32,
         pools_count: usize,
         value: Value,
+    }
+
+    impl Arbitrary for GenesisPraosLeader {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            use rand_core::SeedableRng;
+            lazy_static! {
+                static ref PK_KES: PublicKey<SumEd25519_12> = {
+                    let sk: SecretKey<SumEd25519_12> =
+                        SecretKey::generate(&mut rand_chacha::ChaChaRng::from_seed([0; 32]));
+                    sk.to_public()
+                };
+            }
+
+            let tcg = testing::TestCryptoGen::arbitrary(g);
+            let mut rng = tcg.get_rng(0);
+            let vrf_sk: SecretKey<Curve25519_2HashDH> = SecretKey::generate(&mut rng);
+            GenesisPraosLeader {
+                vrf_public_key: vrf_sk.to_public(),
+                kes_public_key: PK_KES.clone(),
+            }
+        }
     }
 
     impl LeaderElectionParameters {
