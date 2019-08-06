@@ -49,8 +49,9 @@ impl<T> ByteBuilder<T> {
     /// note that the buffer contains a byte to represent the size
     /// of the list
     pub fn iter8<F, I>(self, mut l: I, f: F) -> Self
-      where I: Iterator + ExactSizeIterator,
-            F: Fn(Self, &I::Item) -> Self,
+    where
+        I: Iterator + ExactSizeIterator,
+        F: Fn(Self, &I::Item) -> Self,
     {
         assert!(l.len() < 256);
         let mut bb = self.u8(l.len() as u8);
@@ -58,6 +59,20 @@ impl<T> ByteBuilder<T> {
             bb = f(bb, i)
         }
         bb
+    }
+
+    pub fn sub<F, U>(self, f: F) -> Self
+    where
+        F: Fn(ByteBuilder<U>) -> ByteBuilder<U>,
+    {
+        let res = f(ByteBuilder {
+            buffer: self.buffer,
+            phantom: PhantomData,
+        });
+        ByteBuilder {
+            buffer: res.buffer,
+            phantom: self.phantom,
+        }
     }
 
     /// Append an u16 in the builder
