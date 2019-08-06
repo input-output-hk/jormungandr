@@ -1,18 +1,9 @@
 use crate::blockcfg::{BlockBuilder, BlockDate};
+use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
-
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-#[serde(transparent)]
-pub struct LeaderId(u32);
-
-impl LeaderId {
-    pub fn next(self) -> Self {
-        Self(self.0 + 1)
-    }
-}
 
 #[derive(Clone)]
 pub struct Enclave {
@@ -26,7 +17,7 @@ pub struct LeaderEvent {
 }
 
 fn get_maximum_id<A>(leaders: &BTreeMap<LeaderId, A>) -> LeaderId {
-    leaders.keys().last().copied().unwrap_or(LeaderId(0))
+    leaders.keys().last().copied().unwrap_or(LeaderId::new())
 }
 
 impl Enclave {

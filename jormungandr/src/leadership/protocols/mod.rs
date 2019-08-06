@@ -58,7 +58,9 @@
 //!
 
 mod enclave;
+mod logs;
 mod schedule;
 
-pub use self::enclave::{Enclave, EnclaveLeaderId, Error as EnclaveError, LeaderEvent};
+pub use self::enclave::{Enclave, Error as EnclaveError, LeaderEvent};
+pub use self::logs::{LeadershipLogHandle, Logs};
 pub use self::schedule::{Event, Schedule};

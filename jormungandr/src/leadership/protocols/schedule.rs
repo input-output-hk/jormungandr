@@ -1,5 +1,5 @@
-use crate::leadership::protocols::{EnclaveLeaderId, LeaderEvent};
-use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
+use crate::leadership::protocols::{LeaderEvent};
+use jormungandr_lib::{interfaces::{BlockDate, EnclaveLeaderId}, time::SystemTime};
 use serde::Serialize;
 use tokio::timer::delay_queue::{self, DelayQueue};
 
@@ -19,6 +19,7 @@ pub struct Schedule {
     enclave_leader_id: EnclaveLeaderId,
 }
 
+/// one of the main issue with the current build for the
 pub struct Schedules {
     scheduled_events: DelayQueue<Event>,
 

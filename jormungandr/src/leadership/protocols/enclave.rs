@@ -5,7 +5,7 @@ use crate::{
 use std::sync::Arc;
 use tokio::{prelude::*, sync::lock::Lock};
 
-pub use crate::secure::enclave::{LeaderEvent, LeaderId as EnclaveLeaderId};
+pub use crate::secure::enclave::{LeaderEvent};
 
 error_chain! {}
 
