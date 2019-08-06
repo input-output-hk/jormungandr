@@ -43,6 +43,8 @@ pub type SpendingSignature<T> = crypto::Signature<T, crypto::Ed25519>;
 pub type AccountPublicKey = crypto::PublicKey<crypto::Ed25519>;
 pub type AccountSignature<T> = crypto::Signature<T, crypto::Ed25519>;
 
+pub type Ed25519Signature<T> = crypto::Signature<T, crypto::Ed25519>;
+
 fn chain_crypto_pub_err(e: crypto::PublicKeyError) -> ReadError {
     match e {
         crypto::PublicKeyError::SizeInvalid => {

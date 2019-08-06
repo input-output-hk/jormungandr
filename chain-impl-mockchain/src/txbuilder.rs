@@ -1,4 +1,3 @@
-use crate::certificate as cert;
 use crate::fee::FeeAlgorithm;
 use crate::transaction::{self as tx, Balance};
 use crate::value::{Value, ValueError};
@@ -51,7 +50,7 @@ pub struct TransactionBuilder<Address, Extra> {
 }
 
 impl TransactionBuilder<Address, tx::NoExtra> {
-    pub fn new() -> Self {
+    pub fn no_extra() -> Self {
         TransactionBuilder {
             tx: tx::Transaction {
                 inputs: vec![],
@@ -60,13 +59,16 @@ impl TransactionBuilder<Address, tx::NoExtra> {
             },
         }
     }
+}
 
-    pub fn set_certificate(
-        self,
-        certificate: cert::Certificate,
-    ) -> TransactionBuilder<Address, cert::Certificate> {
+impl<Extra> TransactionBuilder<Address, Extra> {
+    pub fn new_payload(e: Extra) -> Self {
         TransactionBuilder {
-            tx: self.tx.replace_extra(certificate),
+            tx: tx::Transaction {
+                inputs: vec![],
+                outputs: vec![],
+                extra: e,
+            },
         }
     }
 }
@@ -189,15 +191,17 @@ pub enum TransactionFinalizer {
         tx::Transaction<Address, tx::NoExtra>,
         Vec<Option<tx::Witness>>,
     ),
+    /*
     Type2(
         tx::Transaction<Address, cert::Certificate>,
         Vec<Option<tx::Witness>>,
     ),
+    */
 }
 
 pub enum GeneratedTransaction {
     Type1(tx::AuthenticatedTransaction<Address, tx::NoExtra>),
-    Type2(tx::AuthenticatedTransaction<Address, cert::Certificate>),
+    //Type2(tx::AuthenticatedTransaction<Address, cert::Certificate>),
 }
 
 custom_error! {pub BuildError
@@ -247,22 +251,17 @@ impl TransactionFinalizer {
         TransactionFinalizer::Type1(transaction, vec![None; nb_inputs])
     }
 
-    pub fn new_cert(transaction: tx::Transaction<Address, cert::Certificate>) -> Self {
-        let nb_inputs = transaction.inputs.len();
-        TransactionFinalizer::Type2(transaction, vec![None; nb_inputs])
-    }
-
     pub fn set_witness(&mut self, index: usize, witness: tx::Witness) -> Result<(), BuildError> {
         match self {
             TransactionFinalizer::Type1(ref t, ref mut w) => set_witness(t, w, index, witness),
-            TransactionFinalizer::Type2(ref t, ref mut w) => set_witness(t, w, index, witness),
+            //TransactionFinalizer::Type2(ref t, ref mut w) => set_witness(t, w, index, witness),
         }
     }
 
     pub fn get_txid(&self) -> tx::TransactionSignDataHash {
         match self {
             TransactionFinalizer::Type1(t, _) => t.hash(),
-            TransactionFinalizer::Type2(t, _) => t.hash(),
+            //TransactionFinalizer::Type2(t, _) => t.hash(),
         }
     }
 
@@ -273,13 +272,14 @@ impl TransactionFinalizer {
                     transaction: t,
                     witnesses: get_full_witnesses(witnesses)?,
                 }))
-            }
-            TransactionFinalizer::Type2(t, witnesses) => {
-                Ok(GeneratedTransaction::Type2(tx::AuthenticatedTransaction {
-                    transaction: t,
-                    witnesses: get_full_witnesses(witnesses)?,
-                }))
-            }
+            } /*
+              TransactionFinalizer::Type2(t, witnesses) => {
+                  Ok(GeneratedTransaction::Type2(tx::AuthenticatedTransaction {
+                      transaction: t,
+                      witnesses: get_full_witnesses(witnesses)?,
+                  }))
+              }
+              */
         }
     }
 }
@@ -324,7 +324,7 @@ mod tests {
         inputs: &ArbitraryInputs,
         outputs: &ArbitraryOutputs,
     ) -> TransactionBuilder<Address, NoExtra> {
-        let mut builder = TransactionBuilder::new();
+        let mut builder = TransactionBuilder::no_extra();
         for input in &inputs.0 {
             builder.add_input(input)
         }

@@ -1,60 +1,88 @@
 use super::*;
 use crate::leadership::genesis::GenesisPraosLeader;
-use chain_crypto::{Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12};
-use lazy_static::lazy_static;
+use chain_crypto::{testing, Ed25519};
+use chain_time::DurationSeconds;
 use quickcheck::{Arbitrary, Gen};
 
-impl Arbitrary for Certificate {
+impl Arbitrary for PoolRetirement {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let content = match g.next_u32() % 3 {
-            0 => CertificateContent::StakeDelegation(Arbitrary::arbitrary(g)),
-            1 => CertificateContent::StakePoolRegistration(Arbitrary::arbitrary(g)),
-            _ => CertificateContent::StakePoolRetirement(Arbitrary::arbitrary(g)),
-        };
-        Certificate { content }
+        let retirement_time = DurationSeconds::from(u64::arbitrary(g)).into();
+        PoolRetirement {
+            pool_id: Arbitrary::arbitrary(g),
+            retirement_time,
+        }
     }
 }
+
+impl Arbitrary for PoolUpdate {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let pool_id = Arbitrary::arbitrary(g);
+        let start_validity = DurationSeconds::from(u64::arbitrary(g)).into();
+        let prev = GenesisPraosLeader::arbitrary(g);
+        let updated_keys = GenesisPraosLeader::arbitrary(g);
+        let previous_keys = prev.digest();
+
+        PoolUpdate {
+            pool_id,
+            start_validity,
+            previous_keys,
+            updated_keys,
+        }
+    }
+}
+
+impl<A: Arbitrary> Arbitrary for PoolOwnersSigned<A> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let signatoree = Arbitrary::arbitrary(g);
+        let inner = Arbitrary::arbitrary(g);
+        let mut signatures = Vec::new();
+        for i in 0..signatoree {
+            let s = Arbitrary::arbitrary(g);
+            signatures.push((i, s));
+        }
+        PoolOwnersSigned { inner, signatures }
+    }
+}
+
+impl Arbitrary for PoolManagement {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        if Arbitrary::arbitrary(g) {
+            PoolManagement::Update(Arbitrary::arbitrary(g))
+        } else {
+            PoolManagement::Retirement(Arbitrary::arbitrary(g))
+        }
+    }
+}
+
 impl Arbitrary for StakeDelegation {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         StakeDelegation {
-            stake_key_id: Arbitrary::arbitrary(g),
+            account_id: Arbitrary::arbitrary(g),
             pool_id: Arbitrary::arbitrary(g),
         }
     }
 }
 
-impl Arbitrary for StakePoolInfo {
+impl Arbitrary for PoolInfo {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        use rand_core::SeedableRng;
-        let mut seed = [0; 32];
-        for byte in seed.iter_mut() {
-            *byte = Arbitrary::arbitrary(g);
-        }
-        lazy_static! {
-            static ref PK_KES: PublicKey<SumEd25519_12> = {
-                let sk: SecretKey<SumEd25519_12> =
-                    SecretKey::generate(&mut rand_chacha::ChaChaRng::from_seed([0; 32]));
-                sk.to_public()
-            };
-        }
-        let mut rng = rand_chacha::ChaChaRng::from_seed(seed);
-        let vrf_sk: SecretKey<Curve25519_2HashDH> = SecretKey::generate(&mut rng);
-        StakePoolInfo {
+        let start_validity: DurationSeconds = u64::arbitrary(g).into();
+        let keys = Arbitrary::arbitrary(g);
+
+        let pk = testing::arbitrary_public_key::<Ed25519, G>(g);
+        PoolInfo {
             serial: Arbitrary::arbitrary(g),
-            owners: vec![Arbitrary::arbitrary(g)],
-            initial_key: GenesisPraosLeader {
-                vrf_public_key: vrf_sk.to_public(),
-                kes_public_key: PK_KES.clone(),
-            },
+            management_threshold: 1,
+            start_validity: start_validity.into(),
+            owners: vec![pk],
+            keys,
         }
     }
 }
 
-impl Arbitrary for StakePoolRetirement {
+impl Arbitrary for PoolRegistration {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        StakePoolRetirement {
-            pool_id: Arbitrary::arbitrary(g),
-            pool_info: Arbitrary::arbitrary(g),
+        PoolRegistration {
+            info: Arbitrary::arbitrary(g),
         }
     }
 }

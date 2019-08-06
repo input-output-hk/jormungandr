@@ -292,25 +292,39 @@ impl Ledger {
                         source: Block0Error::HasOwnerStakeDelegation,
                     });
                 }
-                Fragment::Certificate(authenticated_cert_tx) => {
-                    if authenticated_cert_tx.transaction.inputs.len() != 0 {
-                        return Err(Error::Block0 {
-                            source: Block0Error::TransactionHasInput,
-                        });
-                    }
-                    if authenticated_cert_tx.witnesses.len() != 0 {
-                        return Err(Error::Block0 {
-                            source: Block0Error::TransactionHasWitnesses,
-                        });
-                    }
-                    if authenticated_cert_tx.transaction.outputs.len() != 0 {
-                        return Err(Error::Block0 {
-                            source: Block0Error::TransactionHasOutput,
-                        });
-                    }
-                    ledger = ledger
-                        .apply_certificate_content(&authenticated_cert_tx.transaction.extra)?;
+                Fragment::StakeDelegation(_) => {
+                    // TODO
+                    unimplemented!()
                 }
+                Fragment::PoolRegistration(_) => {
+                    // TODO
+                    unimplemented!()
+                }
+                Fragment::PoolManagement(_) => {
+                    // TODO
+                    unimplemented!()
+                } //
+                  /*
+                  Fragment::Certificate(authenticated_cert_tx) => {
+                      if authenticated_cert_tx.transaction.inputs.len() != 0 {
+                          return Err(Error::Block0 {
+                              source: Block0Error::TransactionHasInput,
+                          });
+                      }
+                      if authenticated_cert_tx.witnesses.len() != 0 {
+                          return Err(Error::Block0 {
+                              source: Block0Error::TransactionHasWitnesses,
+                          });
+                      }
+                      if authenticated_cert_tx.transaction.outputs.len() != 0 {
+                          return Err(Error::Block0 {
+                              source: Block0Error::TransactionHasOutput,
+                          });
+                      }
+                      ledger = ledger
+                          .apply_certificate_content(&authenticated_cert_tx.transaction.extra)?;
+                  }
+                  */
             }
         }
 
@@ -404,6 +418,9 @@ impl Ledger {
                     new_ledger.apply_owner_stake_delegation(&osd_tx, &ledger_params)?;
                 new_ledger = new_ledger_;
             }
+            Fragment::StakeDelegation(_) => unimplemented!(),
+            Fragment::PoolRegistration(_) => unimplemented!(),
+            Fragment::PoolManagement(_) => unimplemented!(),
             Fragment::UpdateProposal(update_proposal) => {
                 new_ledger = new_ledger.apply_update_proposal(
                     fragment_id,
@@ -413,15 +430,16 @@ impl Ledger {
             }
             Fragment::UpdateVote(vote) => {
                 new_ledger = new_ledger.apply_update_vote(&vote)?;
-            }
-            Fragment::Certificate(authenticated_cert_tx) => {
-                let (new_ledger_, _fee) = new_ledger.apply_certificate(
-                    &fragment_id,
-                    authenticated_cert_tx,
-                    &ledger_params,
-                )?;
-                new_ledger = new_ledger_;
-            }
+            } /*
+                          Fragment::Certificate(authenticated_cert_tx) => {
+                              let (new_ledger_, _fee) = new_ledger.apply_certificate(
+                                  &fragment_id,
+                                  authenticated_cert_tx,
+                                  &ledger_params,
+                              )?;
+                              new_ledger = new_ledger_;
+                          }
+              */
         }
 
         Ok(new_ledger)
@@ -480,6 +498,7 @@ impl Ledger {
         Ok(self)
     }
 
+    /*
     fn apply_certificate_content(
         mut self,
         certificate: &certificate::Certificate,
@@ -530,6 +549,7 @@ impl Ledger {
 
         Ok((self, fee))
     }
+    */
 
     pub fn apply_owner_stake_delegation(
         mut self,

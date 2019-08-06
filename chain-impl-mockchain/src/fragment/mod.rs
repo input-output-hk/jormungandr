@@ -28,7 +28,9 @@ pub enum Fragment {
     OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
     OwnerStakeDelegation(AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>),
-    Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
+    StakeDelegation(AuthenticatedTransaction<Address, certificate::StakeDelegation>),
+    PoolRegistration(certificate::PoolRegistration),
+    PoolManagement(AuthenticatedTransaction<Address, certificate::PoolManagement>),
     UpdateProposal(SignedUpdateProposal),
     UpdateVote(SignedUpdateVote),
 }
@@ -47,9 +49,11 @@ pub(super) enum FragmentTag {
     OldUtxoDeclaration = 1,
     Transaction = 2,
     OwnerStakeDelegation = 3,
-    Certificate = 4,
-    UpdateProposal = 5,
-    UpdateVote = 6,
+    StakeDelegation = 4,
+    PoolRegistration = 5,
+    PoolManagement = 6,
+    UpdateProposal = 7,
+    UpdateVote = 8,
 }
 
 impl FragmentTag {
@@ -59,9 +63,11 @@ impl FragmentTag {
             1 => Some(FragmentTag::OldUtxoDeclaration),
             2 => Some(FragmentTag::Transaction),
             3 => Some(FragmentTag::OwnerStakeDelegation),
-            4 => Some(FragmentTag::Certificate),
-            5 => Some(FragmentTag::UpdateProposal),
-            6 => Some(FragmentTag::UpdateVote),
+            4 => Some(FragmentTag::StakeDelegation),
+            5 => Some(FragmentTag::PoolRegistration),
+            6 => Some(FragmentTag::PoolManagement),
+            7 => Some(FragmentTag::UpdateProposal),
+            8 => Some(FragmentTag::UpdateVote),
             _ => None,
         }
     }
@@ -75,7 +81,9 @@ impl Fragment {
             Fragment::OldUtxoDeclaration(_) => FragmentTag::OldUtxoDeclaration,
             Fragment::Transaction(_) => FragmentTag::Transaction,
             Fragment::OwnerStakeDelegation(_) => FragmentTag::OwnerStakeDelegation,
-            Fragment::Certificate(_) => FragmentTag::Certificate,
+            Fragment::StakeDelegation(_) => FragmentTag::StakeDelegation,
+            Fragment::PoolRegistration(_) => FragmentTag::PoolRegistration,
+            Fragment::PoolManagement(_) => FragmentTag::PoolManagement,
             Fragment::UpdateProposal(_) => FragmentTag::UpdateProposal,
             Fragment::UpdateVote(_) => FragmentTag::UpdateVote,
         }
@@ -85,6 +93,7 @@ impl Fragment {
     pub fn to_raw(&self) -> FragmentRaw {
         use chain_core::packer::*;
         use chain_core::property::Serialize;
+        use std::io::Write;
         let v = Vec::new();
         let mut codec = Codec::new(v);
         codec.put_u8(self.get_tag() as u8).unwrap();
@@ -93,7 +102,9 @@ impl Fragment {
             Fragment::OldUtxoDeclaration(s) => s.serialize(&mut codec).unwrap(),
             Fragment::Transaction(signed) => signed.serialize(&mut codec).unwrap(),
             Fragment::OwnerStakeDelegation(od) => od.serialize(&mut codec).unwrap(),
-            Fragment::Certificate(signed) => signed.serialize(&mut codec).unwrap(),
+            Fragment::StakeDelegation(od) => od.serialize(&mut codec).unwrap(),
+            Fragment::PoolRegistration(pr) => codec.write_all(pr.serialize().as_slice()).unwrap(),
+            Fragment::PoolManagement(pm) => pm.serialize(&mut codec).unwrap(),
             Fragment::UpdateProposal(proposal) => proposal.serialize(&mut codec).unwrap(),
             Fragment::UpdateVote(vote) => vote.serialize(&mut codec).unwrap(),
         }
@@ -125,8 +136,14 @@ impl Readable for Fragment {
             Some(FragmentTag::OwnerStakeDelegation) => {
                 AuthenticatedTransaction::read(buf).map(Fragment::OwnerStakeDelegation)
             }
-            Some(FragmentTag::Certificate) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::Certificate)
+            Some(FragmentTag::StakeDelegation) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::StakeDelegation)
+            }
+            Some(FragmentTag::PoolRegistration) => {
+                certificate::PoolRegistration::read(buf).map(Fragment::PoolRegistration)
+            }
+            Some(FragmentTag::PoolManagement) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::PoolManagement)
             }
             Some(FragmentTag::UpdateProposal) => {
                 SignedUpdateProposal::read(buf).map(Fragment::UpdateProposal)
@@ -169,13 +186,15 @@ mod test {
 
     impl Arbitrary for Fragment {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match g.next_u32() % 7 {
+            match g.next_u32() % 9 {
                 0 => Fragment::Initial(Arbitrary::arbitrary(g)),
                 1 => Fragment::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
                 2 => Fragment::Transaction(Arbitrary::arbitrary(g)),
                 3 => Fragment::OwnerStakeDelegation(Arbitrary::arbitrary(g)),
-                4 => Fragment::Certificate(Arbitrary::arbitrary(g)),
-                5 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
+                4 => Fragment::StakeDelegation(Arbitrary::arbitrary(g)),
+                5 => Fragment::PoolRegistration(Arbitrary::arbitrary(g)),
+                6 => Fragment::PoolManagement(Arbitrary::arbitrary(g)),
+                7 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
                 _ => Fragment::UpdateVote(Arbitrary::arbitrary(g)),
             }
         }
