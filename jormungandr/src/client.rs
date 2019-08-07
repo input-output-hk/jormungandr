@@ -162,7 +162,7 @@ fn handle_pull_blocks_to_tip(
         None => {
             return Err(Error::not_found(
                 "none of the starting points are found in the blockchain",
-            ))
+            ));
         }
     };
 

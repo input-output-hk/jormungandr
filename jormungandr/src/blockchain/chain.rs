@@ -664,4 +664,15 @@ impl Blockchain {
                     })
             })
     }
+
+    pub fn get_checkpoints(
+        &self,
+        branch: Branch,
+    ) -> impl Future<Item = Vec<HeaderHash>, Error = Error> {
+        let storage = self.storage.clone();
+        branch
+            .get_ref()
+            .map_err(|_| unreachable!())
+            .and_then(move |tip| storage.get_checkpoints(*tip.hash()).map_err(|e| e.into()))
+    }
 }

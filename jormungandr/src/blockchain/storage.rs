@@ -146,6 +146,22 @@ impl Storage {
             }
         })
     }
+
+    pub fn get_checkpoints(
+        &self,
+        tip: HeaderHash,
+    ) -> impl Future<Item = Vec<HeaderHash>, Error = StorageError> {
+        let mut inner = self.inner.clone();
+        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
+            let tip_info = store.get_block_info(&tip)?;
+            let mut checkpoints = Vec::new();
+            assert!(tip_info.depth > 0);
+            for_path_to_nth_ancestor(&*store, &tip, tip_info.depth - 1, |block_info| {
+                checkpoints.push(block_info.block_hash.clone());
+            })?;
+            Ok(checkpoints)
+        })
+    }
 }
 
 impl Stream for BlockStream {
