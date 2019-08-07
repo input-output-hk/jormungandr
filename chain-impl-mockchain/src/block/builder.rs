@@ -7,7 +7,7 @@ use crate::block::{
 };
 use crate::key::make_signature;
 use crate::leadership;
-use crate::stake;
+use crate::certificate::PoolId;
 use crate::transaction::{AuthenticatedTransaction, NoExtra};
 use chain_addr::Address;
 use chain_crypto::{
@@ -135,7 +135,7 @@ impl BlockBuilder {
     /// given KES key.
     pub fn make_genesis_praos_block(
         mut self,
-        node_id: &stake::StakePoolId,
+        node_id: &PoolId,
         kes_signing_key: &SecretKey<SumEd25519_12>,
         vrf_proof: <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput,
     ) -> Block {

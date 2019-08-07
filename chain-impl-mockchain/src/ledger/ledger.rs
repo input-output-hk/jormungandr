@@ -89,6 +89,7 @@ custom_error! {
         HasOwnerStakeDelegation = "Owner stake delegation are not valid in the block0",
         HasUpdateProposal = "Update proposal fragments are not valid in the block0",
         HasUpdateVote = "Update vote fragments are not valid in the block0",
+        HasPoolManagement = "Pool management are not valid in the block0",
 }
 
 pub type OutputOldAddress = Output<legacy::OldAddress>;
@@ -253,16 +254,8 @@ impl Ledger {
                     ledger.oldutxos = apply_old_declaration(&fragment_id, ledger.oldutxos, old)?;
                 }
                 Fragment::Transaction(authenticated_tx) => {
-                    if authenticated_tx.transaction.inputs.len() != 0 {
-                        return Err(Error::Block0 {
-                            source: Block0Error::TransactionHasInput,
-                        });
-                    }
-                    if authenticated_tx.witnesses.len() != 0 {
-                        return Err(Error::Block0 {
-                            source: Block0Error::TransactionHasWitnesses,
-                        });
-                    }
+                    check::valid_block0_transaction_no_inputs(&authenticated_tx)?;
+
                     let (new_utxos, new_accounts, new_multisig) =
                         internal_apply_transaction_output(
                             ledger.utxos,
@@ -292,39 +285,21 @@ impl Ledger {
                         source: Block0Error::HasOwnerStakeDelegation,
                     });
                 }
-                Fragment::StakeDelegation(_) => {
-                    // TODO
-                    unimplemented!()
+                Fragment::StakeDelegation(tx) => {
+                    check::valid_block0_transaction_no_inputs(&tx)?;
+                    check::valid_block0_transaction_no_outputs(&tx)?;
+                    ledger = ledger.apply_stake_delegation(&tx.transaction.extra)?;
                 }
-                Fragment::PoolRegistration(_) => {
-                    // TODO
-                    unimplemented!()
+                Fragment::PoolRegistration(tx) => {
+                    check::valid_block0_transaction_no_inputs(&tx)?;
+                    check::valid_block0_transaction_no_outputs(&tx)?;
+                    ledger = ledger.apply_pool_registration(&tx.transaction.extra)?;
                 }
                 Fragment::PoolManagement(_) => {
-                    // TODO
-                    unimplemented!()
-                } //
-                  /*
-                  Fragment::Certificate(authenticated_cert_tx) => {
-                      if authenticated_cert_tx.transaction.inputs.len() != 0 {
-                          return Err(Error::Block0 {
-                              source: Block0Error::TransactionHasInput,
-                          });
-                      }
-                      if authenticated_cert_tx.witnesses.len() != 0 {
-                          return Err(Error::Block0 {
-                              source: Block0Error::TransactionHasWitnesses,
-                          });
-                      }
-                      if authenticated_cert_tx.transaction.outputs.len() != 0 {
-                          return Err(Error::Block0 {
-                              source: Block0Error::TransactionHasOutput,
-                          });
-                      }
-                      ledger = ledger
-                          .apply_certificate_content(&authenticated_cert_tx.transaction.extra)?;
-                  }
-                  */
+                    return Err(Error::Block0 {
+                        source: Block0Error::HasPoolManagement,
+                    });
+                }
             }
         }
 
@@ -418,9 +393,33 @@ impl Ledger {
                     new_ledger.apply_owner_stake_delegation(&osd_tx, &ledger_params)?;
                 new_ledger = new_ledger_;
             }
-            Fragment::StakeDelegation(_) => unimplemented!(),
-            Fragment::PoolRegistration(_) => unimplemented!(),
-            Fragment::PoolManagement(_) => unimplemented!(),
+            Fragment::StakeDelegation(authenticated_tx) => {
+                let (new_ledger_, _fee) = new_ledger.apply_transaction(
+                    &fragment_id,
+                    &authenticated_tx,
+                    &ledger_params,
+                )?;
+                new_ledger =
+                    new_ledger_.apply_stake_delegation(&authenticated_tx.transaction.extra)?;
+            }
+            Fragment::PoolRegistration(authenticated_tx) => {
+                let (new_ledger_, _fee) = new_ledger.apply_transaction(
+                    &fragment_id,
+                    &authenticated_tx,
+                    &ledger_params,
+                )?;
+                new_ledger =
+                    new_ledger_.apply_pool_registration(&authenticated_tx.transaction.extra)?;
+            }
+            Fragment::PoolManagement(authenticated_tx) => {
+                let (new_ledger_, _fee) = new_ledger.apply_transaction(
+                    &fragment_id,
+                    &authenticated_tx,
+                    &ledger_params,
+                )?;
+                new_ledger =
+                    new_ledger_.apply_pool_management(&authenticated_tx.transaction.extra)?;
+            }
             Fragment::UpdateProposal(update_proposal) => {
                 new_ledger = new_ledger.apply_update_proposal(
                     fragment_id,
@@ -430,16 +429,7 @@ impl Ledger {
             }
             Fragment::UpdateVote(vote) => {
                 new_ledger = new_ledger.apply_update_vote(&vote)?;
-            } /*
-                          Fragment::Certificate(authenticated_cert_tx) => {
-                              let (new_ledger_, _fee) = new_ledger.apply_certificate(
-                                  &fragment_id,
-                                  authenticated_cert_tx,
-                                  &ledger_params,
-                              )?;
-                              new_ledger = new_ledger_;
-                          }
-              */
+            }
         }
 
         Ok(new_ledger)
@@ -498,58 +488,52 @@ impl Ledger {
         Ok(self)
     }
 
-    /*
-    fn apply_certificate_content(
+    pub fn apply_pool_registration(
         mut self,
-        certificate: &certificate::Certificate,
+        auth_cert: &certificate::PoolRegistration,
     ) -> Result<Self, Error> {
-        match certificate.content {
-            certificate::CertificateContent::StakeDelegation(ref reg) => {
-                if !self.delegation.stake_pool_exists(&reg.pool_id) {
-                    return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(
-                        reg.pool_id.clone(),
-                    )
-                    .into());
-                }
-
-                if let Some(account_key) = reg.stake_key_id.to_single_account() {
-                    self.accounts = self
-                        .accounts
-                        .set_delegation(&account_key, Some(reg.pool_id.clone()))?;
-                } else {
-                    return Err(DelegationError::StakeDelegationAccountIsInvalid(
-                        reg.stake_key_id.clone(),
-                    )
-                    .into());
-                }
-            }
-            certificate::CertificateContent::StakePoolRegistration(ref reg) => {
-                self.delegation = self.delegation.register_stake_pool(reg.clone())?
-            }
-            certificate::CertificateContent::StakePoolRetirement(ref reg) => {
-                self.delegation = self.delegation.deregister_stake_pool(&reg.pool_id)?
-            }
-        }
+        // TODO do verification
+        self.delegation = self.delegation.register_stake_pool(auth_cert.clone())?;
         Ok(self)
     }
 
-    pub fn apply_certificate(
+    pub fn apply_pool_management(
         mut self,
-        fragment_id: &FragmentId,
-        auth_cert: &AuthenticatedTransaction<Address, certificate::Certificate>,
-        dyn_params: &LedgerParameters,
-    ) -> Result<(Self, Value), Error> {
-        let verified = auth_cert.transaction.extra.verify();
-        if verified == chain_crypto::Verification::Failed {
-            return Err(Error::CertificateInvalidSignature);
-        };
-        let (new_ledger, fee) = self.apply_transaction(fragment_id, auth_cert, dyn_params)?;
-
-        self = new_ledger.apply_certificate_content(&auth_cert.transaction.extra)?;
-
-        Ok((self, fee))
+        auth_cert: &certificate::PoolManagement,
+    ) -> Result<Self, Error> {
+        match auth_cert {
+            certificate::PoolManagement::Retirement(ret) => {
+                // TODO verify signatures
+                // TODO verify transition
+                self.delegation = self.delegation.deregister_stake_pool(&ret.inner.pool_id)?;
+                Ok(self)
+            }
+            certificate::PoolManagement::Update(update) => {
+                // TODO do things
+                Ok(self)
+            }
+        }
     }
-    */
+
+    pub fn apply_stake_delegation(
+        mut self,
+        auth_cert: &certificate::StakeDelegation,
+    ) -> Result<Self, Error> {
+        let pool_id = &auth_cert.pool_id;
+
+        if !self.delegation.stake_pool_exists(pool_id) {
+            return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(pool_id.clone()).into());
+        }
+
+        if let Some(account_key) = auth_cert.account_id.to_single_account() {
+            self.accounts = self
+                .accounts
+                .set_delegation(&account_key, Some(pool_id.clone()))?;
+        } else {
+            return Err(DelegationError::StakeDelegationAccountIsInvalid(auth_cert.account_id.clone()).into())
+        }
+        Ok(self)
+    }
 
     pub fn apply_owner_stake_delegation(
         mut self,
@@ -598,7 +582,7 @@ impl Ledger {
                 )?;
                 self.accounts = single.set_delegation(
                     &account_id,
-                    Some(auth_cert.transaction.extra.stake_pool.clone()),
+                    Some(auth_cert.transaction.extra.pool_id.clone()),
                 )?;
             }
             MatchingIdentifierWitness::Multi(account_id, witness) => {
@@ -612,7 +596,7 @@ impl Ledger {
                 )?;
                 self.multisig = multi.set_delegation(
                     &account_id,
-                    Some(auth_cert.transaction.extra.stake_pool.clone()),
+                    Some(auth_cert.transaction.extra.pool_id.clone()),
                 )?;
             }
         }
@@ -1045,8 +1029,8 @@ pub enum Entry<'a> {
     ),
     StakePool(
         (
-            &'a crate::stake::StakePoolId,
-            &'a crate::stake::StakePoolInfo,
+            &'a crate::certificate::PoolId,
+            &'a crate::certificate::PoolRegistration,
         ),
     ),
 }
@@ -1075,7 +1059,7 @@ enum IterState<'a> {
     MultisigDeclarations(
         imhamt::HamtIter<'a, crate::multisig::Identifier, crate::multisig::Declaration>,
     ),
-    StakePools(imhamt::HamtIter<'a, crate::stake::StakePoolId, crate::stake::StakePoolInfo>),
+    StakePools(imhamt::HamtIter<'a, crate::certificate::PoolId, crate::certificate::PoolRegistration>),
     Done,
 }
 

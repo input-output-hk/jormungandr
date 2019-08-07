@@ -1,4 +1,4 @@
-use super::Error;
+use super::{Block0Error, Error};
 use crate::certificate;
 use crate::transaction::*;
 use crate::value::Value;
@@ -15,6 +15,36 @@ macro_rules! if_cond_fail_with(
 );
 
 type LedgerCheck = Result<(), Error>;
+
+// Check that a specific block0 transaction has no inputs and no witnesses
+pub(super) fn valid_block0_transaction_no_inputs<Extra>(
+    tx: &AuthenticatedTransaction<Address, Extra>,
+) -> LedgerCheck {
+    if_cond_fail_with!(
+        tx.transaction.inputs.len() != 0,
+        Error::Block0 {
+            source: Block0Error::TransactionHasInput
+        }
+    )?;
+    if_cond_fail_with!(
+        tx.witnesses.len() != 0,
+        Error::Block0 {
+            source: Block0Error::TransactionHasWitnesses
+        }
+    )
+}
+
+// Check that a specific block0 transaction has no outputs
+pub(super) fn valid_block0_transaction_no_outputs<Extra>(
+    tx: &AuthenticatedTransaction<Address, Extra>,
+) -> LedgerCheck {
+    if_cond_fail_with!(
+        tx.transaction.outputs.len() != 0,
+        Error::Block0 {
+            source: Block0Error::TransactionHasOutput
+        }
+    )
+}
 
 /// Check that the output value is valid
 pub(super) fn valid_output_value(output: &Output<Address>) -> LedgerCheck {

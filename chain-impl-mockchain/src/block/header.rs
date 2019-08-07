@@ -7,7 +7,7 @@ use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature, Hash,
 };
 use crate::leadership::{bft, genesis};
-use crate::stake::StakePoolId;
+use crate::certificate::PoolId;
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
@@ -48,7 +48,7 @@ pub struct BftSignature(pub(crate) Signature<HeaderToSign, Ed25519>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenesisPraosProof {
-    pub(crate) node_id: StakePoolId,
+    pub(crate) node_id: PoolId,
     pub(crate) vrf_proof: genesis::Witness,
     pub(crate) kes_proof: KESSignature,
 }
@@ -148,7 +148,7 @@ impl Header {
     }
 
     #[inline]
-    pub fn get_stakepool_id(&self) -> Option<&StakePoolId> {
+    pub fn get_stakepool_id(&self) -> Option<&PoolId> {
         match self.proof() {
             Proof::GenesisPraos(proof) => Some(&proof.node_id),
             _ => None,
@@ -208,7 +208,8 @@ impl property::Serialize for Header {
                 serialize_signature(&bft_proof.signature.0, &mut writer)?;
             }
             Proof::GenesisPraos(genesis_praos_proof) => {
-                genesis_praos_proof.node_id.serialize(&mut writer)?;
+                writer.write_all(genesis_praos_proof.node_id.as_ref())?;
+                //genesis_praos_proof.node_id.serialize(&mut writer)?;
                 {
                     let mut buf =
                         [0; <Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE];
@@ -260,7 +261,7 @@ impl Readable for Header {
                 })
             }
             AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => {
-                let node_id = StakePoolId::read(buf)?;
+                let node_id = <[u8;32]>::read(buf)?.into();
                 let vrf_proof = {
                     let bytes = <[u8;<Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE]>::read(buf)?;
 

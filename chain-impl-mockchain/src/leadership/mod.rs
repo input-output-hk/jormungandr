@@ -1,8 +1,8 @@
 use crate::{
     block::{AnyBlockVersion, BlockDate, BlockVersion, ConsensusVersion, Header},
+    certificate::PoolId,
     date::Epoch,
     ledger::{Ledger, LedgerParameters},
-    stake::StakePoolId,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SecretKey, SumEd25519_12};
 use chain_time::era::TimeEra;
@@ -48,7 +48,7 @@ pub struct BftLeader {
 }
 
 pub struct GenesisLeader {
-    pub node_id: StakePoolId,
+    pub node_id: PoolId,
     pub sig_key: SecretKey<SumEd25519_12>,
     pub vrf_key: SecretKey<Curve25519_2HashDH>,
 }

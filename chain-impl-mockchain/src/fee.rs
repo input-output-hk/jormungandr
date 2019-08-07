@@ -1,4 +1,4 @@
-use crate::certificate::{OwnerStakeDelegation, PoolManagement, PoolRegistration};
+use crate::certificate::{OwnerStakeDelegation, PoolManagement, PoolRegistration, StakeDelegation};
 use crate::transaction as tx;
 use crate::value::Value;
 use chain_addr::Address;
@@ -69,6 +69,18 @@ impl FeeAlgorithm<tx::Transaction<Address, PoolManagement>> for LinearFee {
 
 impl FeeAlgorithm<tx::Transaction<Address, OwnerStakeDelegation>> for LinearFee {
     fn calculate(&self, tx: &tx::Transaction<Address, OwnerStakeDelegation>) -> Option<Value> {
+        let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
+        let fee = self
+            .coefficient
+            .checked_mul(msz)?
+            .checked_add(self.constant)?
+            .checked_add(self.certificate)?;
+        Some(Value(fee))
+    }
+}
+
+impl FeeAlgorithm<tx::Transaction<Address, StakeDelegation>> for LinearFee {
+    fn calculate(&self, tx: &tx::Transaction<Address, StakeDelegation>) -> Option<Value> {
         let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
         let fee = self
             .coefficient

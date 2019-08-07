@@ -299,7 +299,7 @@ pub fn iterate() {
             Entry::StakePool((id, info)) => {
                 println!(
                     "StakePool {} {} {:?} {:?}",
-                    id, info.serial, info.owners, info.initial_key,
+                    id, info.serial, info.owners, info.keys,
                 );
             }
         }

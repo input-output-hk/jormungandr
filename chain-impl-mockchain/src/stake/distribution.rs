@@ -1,5 +1,6 @@
 use crate::account;
-use crate::{stake::StakePoolId, utxo, value::Value};
+use crate::{utxo, value::Value};
+use crate::certificate::PoolId;
 use chain_addr::{Address, Kind};
 use std::collections::HashMap;
 
@@ -17,7 +18,7 @@ pub struct StakeDistribution {
     pub dangling: Value,
     /// For each stake pool, the total stake value, and the value for the
     /// stake pool members.
-    pub to_pools: HashMap<StakePoolId, PoolStakeDistribution>,
+    pub to_pools: HashMap<PoolId, PoolStakeDistribution>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,12 +48,12 @@ impl StakeDistribution {
             .fold(Value::zero(), |sum, x| (sum + x).unwrap())
     }
 
-    pub fn get_stake_for(&self, poolid: &StakePoolId) -> Option<Value> {
+    pub fn get_stake_for(&self, poolid: &PoolId) -> Option<Value> {
         self.to_pools.get(poolid).map(|psd| psd.total_stake)
     }
 
-    pub fn get_distribution(&self, stake_pool_id: &StakePoolId) -> Option<&PoolStakeDistribution> {
-        self.to_pools.get(stake_pool_id)
+    pub fn get_distribution(&self, pool_id: &PoolId) -> Option<&PoolStakeDistribution> {
+        self.to_pools.get(pool_id)
     }
 }
 

@@ -1,10 +1,11 @@
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 
-use super::role::{StakePoolId, StakePoolInfo};
 use crate::transaction::AccountIdentifier;
+use crate::certificate::{PoolId, PoolRegistration};
+
 /// All registered Stake Node
-pub type PoolTable = Hamt<DefaultHasher, StakePoolId, StakePoolInfo>;
+pub type PoolTable = Hamt<DefaultHasher, PoolId, PoolRegistration>;
 
 /// A structure that keeps track of stake keys and stake pools.
 #[derive(Clone, PartialEq, Eq)]
@@ -15,12 +16,12 @@ pub struct DelegationState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DelegationError {
     StakeDelegationSigIsInvalid,
-    StakeDelegationPoolKeyIsInvalid(StakePoolId),
+    StakeDelegationPoolKeyIsInvalid(PoolId),
     StakeDelegationAccountIsInvalid(AccountIdentifier),
     StakePoolRegistrationPoolSigIsInvalid,
-    StakePoolAlreadyExists(StakePoolId),
+    StakePoolAlreadyExists(PoolId),
     StakePoolRetirementSigIsInvalid,
-    StakePoolDoesNotExist(StakePoolId),
+    StakePoolDoesNotExist(PoolId),
 }
 
 impl std::fmt::Display for DelegationError {
@@ -75,13 +76,13 @@ impl DelegationState {
         self.stake_pools.iter().map(|(id, _)| id.clone())
     }
 
-    pub fn stake_pool_exists(&self, pool_id: &StakePoolId) -> bool {
+    pub fn stake_pool_exists(&self, pool_id: &PoolId) -> bool {
         self.stake_pools
             .lookup(pool_id)
             .map_or_else(|| false, |_| true)
     }
 
-    pub fn register_stake_pool(&self, owner: StakePoolInfo) -> Result<Self, DelegationError> {
+    pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, DelegationError> {
         let id = owner.to_id();
         let new_pools = self
             .stake_pools
@@ -92,7 +93,7 @@ impl DelegationState {
         })
     }
 
-    pub fn deregister_stake_pool(&self, pool_id: &StakePoolId) -> Result<Self, DelegationError> {
+    pub fn deregister_stake_pool(&self, pool_id: &PoolId) -> Result<Self, DelegationError> {
         Ok(DelegationState {
             stake_pools: self
                 .stake_pools

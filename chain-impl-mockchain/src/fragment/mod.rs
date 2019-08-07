@@ -29,7 +29,7 @@ pub enum Fragment {
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
     OwnerStakeDelegation(AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>),
     StakeDelegation(AuthenticatedTransaction<Address, certificate::StakeDelegation>),
-    PoolRegistration(certificate::PoolRegistration),
+    PoolRegistration(AuthenticatedTransaction<Address, certificate::PoolRegistration>),
     PoolManagement(AuthenticatedTransaction<Address, certificate::PoolManagement>),
     UpdateProposal(SignedUpdateProposal),
     UpdateVote(SignedUpdateVote),
@@ -93,7 +93,6 @@ impl Fragment {
     pub fn to_raw(&self) -> FragmentRaw {
         use chain_core::packer::*;
         use chain_core::property::Serialize;
-        use std::io::Write;
         let v = Vec::new();
         let mut codec = Codec::new(v);
         codec.put_u8(self.get_tag() as u8).unwrap();
@@ -103,7 +102,7 @@ impl Fragment {
             Fragment::Transaction(signed) => signed.serialize(&mut codec).unwrap(),
             Fragment::OwnerStakeDelegation(od) => od.serialize(&mut codec).unwrap(),
             Fragment::StakeDelegation(od) => od.serialize(&mut codec).unwrap(),
-            Fragment::PoolRegistration(pr) => codec.write_all(pr.serialize().as_slice()).unwrap(),
+            Fragment::PoolRegistration(atx) => atx.serialize(&mut codec).unwrap(),
             Fragment::PoolManagement(pm) => pm.serialize(&mut codec).unwrap(),
             Fragment::UpdateProposal(proposal) => proposal.serialize(&mut codec).unwrap(),
             Fragment::UpdateVote(vote) => vote.serialize(&mut codec).unwrap(),
@@ -140,7 +139,7 @@ impl Readable for Fragment {
                 AuthenticatedTransaction::read(buf).map(Fragment::StakeDelegation)
             }
             Some(FragmentTag::PoolRegistration) => {
-                certificate::PoolRegistration::read(buf).map(Fragment::PoolRegistration)
+                AuthenticatedTransaction::read(buf).map(Fragment::PoolRegistration)
             }
             Some(FragmentTag::PoolManagement) => {
                 AuthenticatedTransaction::read(buf).map(Fragment::PoolManagement)

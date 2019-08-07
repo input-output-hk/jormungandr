@@ -1,4 +1,4 @@
-use crate::stake::StakePoolId;
+use crate::certificate::PoolId;
 use crate::value::*;
 use imhamt::HamtIter;
 
@@ -7,7 +7,7 @@ use super::LedgerError;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AccountState<Extra> {
     pub counter: SpendingCounter,
-    pub delegation: Option<StakePoolId>,
+    pub delegation: Option<PoolId>,
     pub value: Value,
     pub extra: Extra,
 }
@@ -24,7 +24,7 @@ impl<Extra> AccountState<Extra> {
     }
 
     /// Get referencet to delegation setting
-    pub fn delegation(&self) -> &Option<StakePoolId> {
+    pub fn delegation(&self) -> &Option<PoolId> {
         &self.delegation
     }
 
@@ -80,7 +80,7 @@ impl<Extra: Clone> AccountState<Extra> {
     }
 
     /// Set delegation
-    pub fn set_delegation(&self, delegation: Option<StakePoolId>) -> Self {
+    pub fn set_delegation(&self, delegation: Option<PoolId>) -> Self {
         let mut st = self.clone();
         st.delegation = delegation;
         st
@@ -135,7 +135,7 @@ impl<'a, ID, Extra> Iterator for Iter<'a, ID, Extra> {
 #[cfg(test)]
 mod tests {
     use super::{AccountState, SpendingCounter};
-    use crate::{stake::StakePoolId, value::Value};
+    use crate::{certificate::PoolId, value::Value};
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
     use std::iter;
@@ -161,7 +161,7 @@ mod tests {
     pub enum ArbitraryAccountStateOp {
         Add(Value),
         Sub(Value),
-        Delegate(StakePoolId),
+        Delegate(PoolId),
         RemoveDelegation,
     }
 
@@ -171,7 +171,7 @@ mod tests {
             match option {
                 0 => ArbitraryAccountStateOp::Add(Value::arbitrary(gen)),
                 1 => ArbitraryAccountStateOp::Sub(Value::arbitrary(gen)),
-                2 => ArbitraryAccountStateOp::Delegate(StakePoolId::arbitrary(gen)),
+                2 => ArbitraryAccountStateOp::Delegate(PoolId::arbitrary(gen)),
                 3 => ArbitraryAccountStateOp::RemoveDelegation,
                 _ => panic!("not implemented"),
             }

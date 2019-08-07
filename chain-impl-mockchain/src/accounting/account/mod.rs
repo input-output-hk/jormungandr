@@ -4,7 +4,7 @@
 //! which contains a non negative value representing your balance with the
 //! identifier of this account as key.
 
-use crate::stake::StakePoolId;
+use crate::certificate::PoolId;
 use crate::value::*;
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
@@ -70,7 +70,7 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
     pub fn set_delegation(
         &self,
         identifier: &ID,
-        delegation: Option<StakePoolId>,
+        delegation: Option<PoolId>,
     ) -> Result<Self, LedgerError> {
         self.0
             .update(identifier, |st| Ok(Some(st.set_delegation(delegation))))

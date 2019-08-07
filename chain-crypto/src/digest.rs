@@ -300,6 +300,8 @@ impl<H: DigestAlg, T> PartialEq for DigestOf<H, T> {
     }
 }
 
+impl<H: DigestAlg, T> Eq for DigestOf<H, T> {}
+
 impl<H: DigestAlg, T> AsRef<[u8]> for DigestOf<H, T> {
     fn as_ref(&self) -> &[u8] {
         self.inner.as_ref()

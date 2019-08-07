@@ -63,26 +63,18 @@ impl Arbitrary for StakeDelegation {
     }
 }
 
-impl Arbitrary for PoolInfo {
+impl Arbitrary for PoolRegistration {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let start_validity: DurationSeconds = u64::arbitrary(g).into();
         let keys = Arbitrary::arbitrary(g);
 
         let pk = testing::arbitrary_public_key::<Ed25519, G>(g);
-        PoolInfo {
+        PoolRegistration {
             serial: Arbitrary::arbitrary(g),
             management_threshold: 1,
             start_validity: start_validity.into(),
             owners: vec![pk],
             keys,
-        }
-    }
-}
-
-impl Arbitrary for PoolRegistration {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        PoolRegistration {
-            info: Arbitrary::arbitrary(g),
         }
     }
 }

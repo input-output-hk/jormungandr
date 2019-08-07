@@ -3,7 +3,7 @@ use std::collections::hash_map::DefaultHasher;
 
 use super::declaration::{Declaration, DeclarationError, Identifier};
 use crate::accounting::account::{self, Iter, SpendingCounter};
-use crate::stake::StakePoolId;
+use crate::certificate::PoolId;
 use crate::value::{Value, ValueError};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -126,7 +126,7 @@ impl Ledger {
     pub fn set_delegation(
         &self,
         identifier: &Identifier,
-        delegation: Option<StakePoolId>,
+        delegation: Option<PoolId>,
     ) -> Result<Self, LedgerError> {
         let new_accounts = self.accounts.set_delegation(identifier, delegation)?;
         Ok(Self {

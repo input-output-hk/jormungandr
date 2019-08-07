@@ -15,8 +15,8 @@ pub type PoolId = DigestOf<Blake2b256, PoolRegistration>;
 pub type IndexSignatures<T> = Vec<(u8, Signature<ByteArray<T>, Ed25519>)>;
 
 /// Pool information
-#[derive(Debug, Clone)]
-pub struct PoolInfo {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoolRegistration {
     /// A random value, for user purpose similar to a UUID.
     /// it may not be unique over a blockchain, so shouldn't be used a unique identifier
     pub serial: u128,
@@ -29,12 +29,6 @@ pub struct PoolInfo {
     pub owners: Vec<PublicKey<Ed25519>>,
     /// Genesis Praos keys
     pub keys: GenesisPraosLeader,
-}
-
-/// Pool registration certificate
-#[derive(Debug, Clone)]
-pub struct PoolRegistration {
-    pub info: PoolInfo,
 }
 
 /// Updating info for a pool
@@ -66,7 +60,7 @@ pub enum PoolManagement {
     Retirement(PoolOwnersSigned<PoolRetirement>),
 }
 
-impl PoolInfo {
+impl PoolRegistration {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.u128(self.serial)
             .u64(self.start_validity.into())
@@ -74,6 +68,14 @@ impl PoolInfo {
             .iter8(&mut self.owners.iter(), |bb, o| bb.bytes(o.as_ref()))
             .bytes(self.keys.vrf_public_key.as_ref())
             .bytes(self.keys.kes_public_key.as_ref())
+    }
+    pub fn serialize(&self) -> ByteArray<Self> {
+        self.serialize_in(ByteBuilder::new()).finalize()
+    }
+
+    pub fn to_id(&self) -> PoolId {
+        let ba = self.serialize();
+        DigestOf::digest_byteslice(&ba.as_byteslice())
     }
 }
 
@@ -159,16 +161,11 @@ impl Readable for PoolManagement {
     }
 }
 
-impl PoolRegistration {
-    pub fn serialize(&self) -> ByteArray<Self> {
-        ByteBuilder::new()
-            .sub(|bb| self.info.serialize_in(bb))
-            .finalize()
-    }
-
-    pub fn hash(&self) -> PoolId {
-        let ba = self.serialize();
-        DigestOf::digest_byteslice(&ba.as_byteslice())
+impl property::Serialize for PoolRegistration {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        writer.write_all(self.serialize().as_slice())?;
+        Ok(())
     }
 }
 
@@ -186,14 +183,14 @@ impl Readable for PoolRegistration {
 
         let keys = GenesisPraosLeader::read(buf)?;
 
-        let info = PoolInfo {
+        let info = Self {
             serial,
             start_validity,
             management_threshold,
             owners,
             keys,
         };
-        Ok(Self { info })
+        Ok(info)
     }
 }
 
@@ -208,7 +205,7 @@ impl<T> PoolOwnersSigned<T> {
             })
     }
 
-    pub fn verify<F>(&self, pool_info: &PoolInfo, serialize_inner: F) -> Verification
+    pub fn verify<F>(&self, pool_info: &PoolRegistration, serialize_inner: F) -> Verification
     where
         F: Fn(&T, ByteBuilder<T>) -> ByteBuilder<T>,
     {
