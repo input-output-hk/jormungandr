@@ -1,5 +1,53 @@
 # Change Log
 
+## [v0.3.2](https://github.com/input-output-hk/jormungandr/tree/v0.3.2) (2019-08-07)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.1...v0.3.2)
+
+**Implemented enhancements:**
+
+- version info in startup messages [\#606](https://github.com/input-output-hk/jormungandr/issues/606)
+- Improve naming in config YAML [\#575](https://github.com/input-output-hk/jormungandr/issues/575)
+- Extend logs with app version, epoch and slot\_id [\#679](https://github.com/input-output-hk/jormungandr/pull/679)
+- Graceful handling of block0 in the future [\#661](https://github.com/input-output-hk/jormungandr/pull/661)
+- Add stake pool getter to REST API [\#660](https://github.com/input-output-hk/jormungandr/pull/660)
+- network: Perform protocol handshake [\#657](https://github.com/input-output-hk/jormungandr/pull/657)
+- Add leadership management REST API [\#654](https://github.com/input-output-hk/jormungandr/pull/654)
+
+**Fixed bugs:**
+
+- Upgrade custom\_error to 1.7.1 [\#678](https://github.com/input-output-hk/jormungandr/pull/678)
+- it seems that debug\_assertions feature was not doing what I expected [\#677](https://github.com/input-output-hk/jormungandr/pull/677)
+- Graceful handling of block0 in the future [\#661](https://github.com/input-output-hk/jormungandr/pull/661)
+- Poll gRPC client ready before sending any requests [\#656](https://github.com/input-output-hk/jormungandr/pull/656)
+- Don't let one client connection terminate task [\#650](https://github.com/input-output-hk/jormungandr/pull/650)
+
+**Closed issues:**
+
+- Jcli: address info - wrong subcommand description [\#670](https://github.com/input-output-hk/jormungandr/issues/670)
+- jormungandr install error [\#665](https://github.com/input-output-hk/jormungandr/issues/665)
+- Jcli: cargo install failure due to custom\_error/1.7.1 crate [\#664](https://github.com/input-output-hk/jormungandr/issues/664)
+- v0.3.1 Cannot Compile [\#648](https://github.com/input-output-hk/jormungandr/issues/648)
+- Add fields useful for logs [\#645](https://github.com/input-output-hk/jormungandr/issues/645)
+
+**Merged pull requests:**
+
+- Remove Mjolnir [\#683](https://github.com/input-output-hk/jormungandr/pull/683)
+- Remove unused deps from Jormungandr [\#682](https://github.com/input-output-hk/jormungandr/pull/682)
+- internal code design: simple case state machine [\#681](https://github.com/input-output-hk/jormungandr/pull/681)
+- Implement bootstrap for new blockchain API [\#675](https://github.com/input-output-hk/jormungandr/pull/675)
+- New blockchain data representation [\#673](https://github.com/input-output-hk/jormungandr/pull/673)
+- Jcli: Fix - address info, wrong subcommand description [\#671](https://github.com/input-output-hk/jormungandr/pull/671)
+- \[Tests\] Set rust backtrace in e2e tests [\#668](https://github.com/input-output-hk/jormungandr/pull/668)
+- add ROADMAP [\#666](https://github.com/input-output-hk/jormungandr/pull/666)
+- Boxing problem with custom\_error [\#662](https://github.com/input-output-hk/jormungandr/pull/662)
+- Network fixes [\#655](https://github.com/input-output-hk/jormungandr/pull/655)
+- Protocol doc update [\#653](https://github.com/input-output-hk/jormungandr/pull/653)
+- Fixed test\_correct\_utxo\_transaction\_replaces\_old\_utxo\_by\_node test [\#651](https://github.com/input-output-hk/jormungandr/pull/651)
+- \[Tests\] Use fragment Id to track transaction status after post [\#647](https://github.com/input-output-hk/jormungandr/pull/647)
+- update to latest chain-deps [\#646](https://github.com/input-output-hk/jormungandr/pull/646)
+- Push/pull chain as complete blocks in one go [\#639](https://github.com/input-output-hk/jormungandr/pull/639)
+- CircleCI: Streamline the workflow [\#625](https://github.com/input-output-hk/jormungandr/pull/625)
+
 ## [v0.3.1](https://github.com/input-output-hk/jormungandr/tree/v0.3.1) (2019-07-19)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.0...v0.3.1)
 
