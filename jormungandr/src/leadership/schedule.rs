@@ -1,8 +1,9 @@
 use crate::{
     leadership::TaskParameters,
-    secure::enclave::{Enclave, LeaderEvent, LeaderId},
+    secure::enclave::{Enclave, LeaderEvent},
 };
 use chain_time::era::{EpochPosition, EpochSlotOffset};
+use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use slog::Logger;
 use std::time::SystemTime;
 use tokio::{

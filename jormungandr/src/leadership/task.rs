@@ -6,12 +6,13 @@ use crate::{
     fragment::Pool,
     intercom::BlockMsg,
     leadership::{LeaderSchedule, Leadership},
-    secure::enclave::{Enclave, LeaderId},
+    secure::enclave::Enclave,
     stats_counter::StatsCounter,
     utils::async_msg::MessageBox,
 };
 use chain_core::property::ChainLength as _;
 use chain_time::timeframe::TimeFrame;
+use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use slog::Logger;
 use std::sync::Arc;
 use tokio::{prelude::*, sync::watch};

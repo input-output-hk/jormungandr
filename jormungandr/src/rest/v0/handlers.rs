@@ -14,7 +14,6 @@ use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::store;
 
 use crate::intercom::TransactionMsg;
-use crate::secure::enclave::LeaderId;
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
 use futures::Future;
@@ -274,7 +273,7 @@ pub fn post_leaders(secret: Json<NodeSecret>, context: State<Context>) -> impl R
 
 pub fn delete_leaders(
     context: State<Context>,
-    leader_id: Path<LeaderId>,
+    leader_id: Path<EnclaveLeaderId>,
 ) -> Result<impl Responder, Error> {
     match context.enclave.remove_leader(*leader_id) {
         true => Ok(HttpResponse::Ok().finish()),
