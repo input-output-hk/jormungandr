@@ -200,7 +200,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
         let fragment_pool = fragment_pool.clone();
         let block_task = block_task.clone();
-        let blockchain = bootstrapped_node.blockchain.clone();
+        let blockchain_tip = blockchain_tip.clone();
 
         let enclave = leadership::Enclave::new(enclave.clone());
         let stats_counter = stats_counter.clone();
@@ -223,7 +223,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         Some(rest) => {
             let context = rest::Context {
                 stats_counter,
-                blockchain: bootstrapped_node.blockchain.clone(),
+                blockchain: blockchain.clone(),
                 blockchain_tip,
                 transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
                 logs: Arc::new(Mutex::new(pool_logs)),
