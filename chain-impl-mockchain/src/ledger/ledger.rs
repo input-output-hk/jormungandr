@@ -503,12 +503,14 @@ impl Ledger {
     ) -> Result<Self, Error> {
         match auth_cert {
             certificate::PoolManagement::Retirement(ret) => {
-                // TODO verify signatures
+                check::valid_pool_retirement_certificate(ret)?;
+                // TODO verify signaturpool_es
                 // TODO verify transition
                 self.delegation = self.delegation.deregister_stake_pool(&ret.inner.pool_id)?;
                 Ok(self)
             }
             certificate::PoolManagement::Update(update) => {
+                check::valid_pool_update_certificate(update)?;
                 // TODO do things
                 Ok(self)
             }
@@ -530,7 +532,10 @@ impl Ledger {
                 .accounts
                 .set_delegation(&account_key, Some(pool_id.clone()))?;
         } else {
-            return Err(DelegationError::StakeDelegationAccountIsInvalid(auth_cert.account_id.clone()).into())
+            return Err(DelegationError::StakeDelegationAccountIsInvalid(
+                auth_cert.account_id.clone(),
+            )
+            .into());
         }
         Ok(self)
     }
@@ -1059,7 +1064,9 @@ enum IterState<'a> {
     MultisigDeclarations(
         imhamt::HamtIter<'a, crate::multisig::Identifier, crate::multisig::Declaration>,
     ),
-    StakePools(imhamt::HamtIter<'a, crate::certificate::PoolId, crate::certificate::PoolRegistration>),
+    StakePools(
+        imhamt::HamtIter<'a, crate::certificate::PoolId, crate::certificate::PoolRegistration>,
+    ),
     Done,
 }
 

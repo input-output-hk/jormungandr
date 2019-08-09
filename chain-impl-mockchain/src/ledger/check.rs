@@ -67,3 +67,15 @@ pub(super) fn valid_stake_owner_delegation_transaction(
         Error::OwnerStakeDelegationInvalidTransaction
     )
 }
+
+pub(super) fn valid_pool_retirement_certificate(
+    _auth_cert: &certificate::PoolOwnersSigned<certificate::PoolRetirement>
+) -> LedgerCheck {
+    Ok(())
+}
+
+pub(super) fn valid_pool_update_certificate(
+    _auth_cert: &certificate::PoolOwnersSigned<certificate::PoolUpdate>
+) -> LedgerCheck {
+    Ok(())
+}
