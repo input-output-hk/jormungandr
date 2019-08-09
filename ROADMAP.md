@@ -40,15 +40,15 @@ Define all the core mechanism of the blockchain:
 * consensus
 
 The outcome of this phase is that everything is in place for a single node to
-expose the blockchain, and developers have the tool necessary to start
-developing integration.  Apart from the network component, this also represent
+expose the blockchain, and developers have the tools necessary to start
+developing integration.  Apart from the network component, this also represents
 feature complete on the blockchain system.
 
 Network
 -------
 
-Define communication between nodes, bootstrapping and allowing
-node to exchanges blocks.
+Define communication between nodes, bootstrapping and allow
+node to exchange blocks.
 
 The first goal is to get a somewhat central network perusing the trusted-peers,
 then gradually as feature and progress allow move to a fully decentralized
@@ -72,11 +72,11 @@ This phase is about reviewing and tweaking many of our internals and externals
 APIs, with the goals to future proof mechanisms and formats, and doing
 systematic internal security review.
 
-Another axis that will developed here is protection against abuse and monitoring
+Another axis that will be developed here is protection against abuse and monitoring
 our resources usages.
 
 It's very important to note that until we have the end of the phase,
-anything can change and that the security is not guaranteed in any way.
+anything can change and that security is not guaranteed in any way.
 
 Security Audit
 --------------
@@ -84,7 +84,7 @@ Security Audit
 This phase is about focusing on the last mile, increasing the number of tests,
 and specifically internal, cross-team and external audits, and careful
 examination of the final code. This phase should remain short, depending on
-the finding.
+the results.
 
 Until we finalize this step, use at your own peril.
 
