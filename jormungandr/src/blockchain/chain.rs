@@ -51,8 +51,8 @@ See Internal documentation for more details: doc/internal_design.md
 
 use crate::{
     blockcfg::{Block, Block0Error, Header, HeaderHash, Leadership, Ledger, LedgerParameters},
+    blockchain::{Branch, Branches, Multiverse, Ref, RefCache, Storage},
     start_up::NodeStorage,
-    blockchain::{Branch, Branches, Ref, RefCache, Multiverse, Storage},
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_storage::error::Error as StorageError;

@@ -5,7 +5,7 @@ use crate::{
     utils::{
         async_msg::MessageBox,
         task::{Input, TokioServiceInfo},
-    }
+    },
 };
 
 pub fn handle_input(
@@ -25,21 +25,11 @@ pub fn handle_input(
     };
 
     match bquery {
-        BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
-            unimplemented!()
-        }
-        BlockMsg::LeadershipBlock(block) => {
-            unimplemented!()
-        }
-        BlockMsg::AnnouncedBlock(header, node_id) => {
-            unimplemented!()
-        }
-        BlockMsg::NetworkBlock(block, reply) => {
-            unimplemented!()
-        }
-        BlockMsg::ChainHeaders(headers, reply) => {
-            unimplemented!()
-        }
+        BlockMsg::LeadershipExpectEndOfEpoch(epoch) => unimplemented!(),
+        BlockMsg::LeadershipBlock(block) => unimplemented!(),
+        BlockMsg::AnnouncedBlock(header, node_id) => unimplemented!(),
+        BlockMsg::NetworkBlock(block, reply) => unimplemented!(),
+        BlockMsg::ChainHeaders(headers, reply) => unimplemented!(),
     };
 
     Ok(())

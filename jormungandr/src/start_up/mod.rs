@@ -3,9 +3,7 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
-    blockchain::{
-        Blockchain, Branch, ErrorKind as BlockchainError,
-    },
+    blockchain::{Blockchain, Branch, ErrorKind as BlockchainError},
     leadership::NewEpochToSchedule,
     network,
     settings::start::Settings,
@@ -109,7 +107,7 @@ pub fn load_blockchain(
         .and_then(move |reference| {
             epoch_event
                 .send(NewEpochToSchedule {
-                    new_schedule:  reference.epoch_leadership_schedule().clone(),
+                    new_schedule: reference.epoch_leadership_schedule().clone(),
                     new_parameters: reference.epoch_ledger_parameters().clone(),
                     time_frame: reference.time_frame().as_ref().clone(),
                 })

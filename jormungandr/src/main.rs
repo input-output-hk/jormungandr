@@ -206,11 +206,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             leadership::LeadershipModule::start(
                 info,
                 leadership_logs,
-                enclave, 
+                enclave,
                 fragment_pool,
                 blockchain_tip,
-                new_epoch_notifier, block_task)
-                .map_err(|e| unimplemented!("error in leadership {}", e))
+                new_epoch_notifier,
+                block_task,
+            )
+            .map_err(|e| unimplemented!("error in leadership {}", e))
         });
     }
 
@@ -270,7 +272,12 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     let (blockchain, blockchain_tip) =
         start_up::load_blockchain(block0, storage, new_epoch_announcements, block_cache_ttl)?;
 
-    network::bootstrap(&settings.network, blockchain.clone(), blockchain_tip.clone(), &bootstrap_logger);
+    network::bootstrap(
+        &settings.network,
+        blockchain.clone(),
+        blockchain_tip.clone(),
+        &bootstrap_logger,
+    );
 
     Ok(BootstrappedNode {
         settings,

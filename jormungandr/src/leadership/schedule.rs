@@ -1,8 +1,6 @@
 use crate::{
     blockcfg::{Leadership, LedgerParameters},
-    leadership::{
-        LeaderEvent, LeadershipLogHandle, Logs,
-    },
+    leadership::{LeaderEvent, LeadershipLogHandle, Logs},
 };
 use jormungandr_lib::{interfaces::LeadershipLog, time::SystemTime};
 use std::sync::Arc;
