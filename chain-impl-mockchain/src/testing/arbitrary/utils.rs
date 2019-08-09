@@ -20,6 +20,21 @@ where
         .collect()
 }
 
+pub fn choose_random_set_subset<G: Gen, T>(source: &HashSet<T>, gen: &mut G) -> HashSet<T>
+where
+    T: std::clone::Clone + Eq + Hash,
+{
+    let arbitrary_indexes = choose_random_indexes(gen, source.len());
+    // create sub collecion from arbitrary indexes
+    source
+        .iter()
+        .cloned()
+        .enumerate()
+        .filter(|(i, _)| arbitrary_indexes.contains(i))
+        .map(|(_, e)| e)
+        .collect()
+}
+
 pub fn choose_random_item<G: Gen, T>(source: &Vec<T>, gen: &mut G) -> T
 where
     T: std::clone::Clone,
