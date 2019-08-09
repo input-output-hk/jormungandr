@@ -33,7 +33,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_yaml;
-#[macro_use(o, debug, info, warn, error, crit)]
+#[macro_use]
 extern crate slog;
 extern crate slog_async;
 #[cfg(feature = "gelf")]
