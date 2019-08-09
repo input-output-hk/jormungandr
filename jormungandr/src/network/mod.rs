@@ -46,6 +46,8 @@ use slog::Logger;
 use std::{error::Error, iter, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::timer::Interval;
 
+pub use self::bootstrap::Error as BootstrapError;
+
 type Connection = SocketAddr;
 
 pub enum BlockConfig {}

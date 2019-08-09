@@ -280,7 +280,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         blockchain.clone(),
         blockchain_tip.clone(),
         &bootstrap_logger,
-    );
+    )?;
 
     Ok(BootstrappedNode {
         settings,

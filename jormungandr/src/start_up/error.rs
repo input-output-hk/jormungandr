@@ -19,6 +19,7 @@ custom_error! {pub Error
     Blockchain { source: blockchain::Error } = "Error while loading the legacy blockchain state",
     Block0 { source: blockcfg::Block0Error } = "Error in the genesis-block",
     FetchBlock0 { source: network::FetchBlockError } = "Error fetching the genesis block from the network",
+    NetworkBootstrapError { source: network::BootstrapError } = "Error while loading the blockchain from the network",
     NodeSecrets { source: secure::NodeSecretFromFileError} = "Error while loading the node's secrets."
 }
 
@@ -35,6 +36,7 @@ impl Error {
             Error::Block0 { .. } => 7,
             Error::NodeSecrets { .. } => 8,
             Error::FetchBlock0 { .. } => 9,
+            Error::NetworkBootstrapError { .. } => 10,
         }
     }
 }
