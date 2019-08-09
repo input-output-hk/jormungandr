@@ -80,6 +80,21 @@ impl Storage {
         })
     }
 
+    pub fn get_with_info(
+        &self,
+        header_hash: HeaderHash,
+    ) -> impl Future<Item = Option<(Block, BlockInfo<HeaderHash>)>, Error = StorageError> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
+            match guard.get_block(&header_hash) {
+                Err(StorageError::BlockNotFound) => future::ok(None),
+                Err(error) => future::err(error),
+                Ok(v) => future::ok(Some(v)),
+            }
+        })
+    }
+
     pub fn block_exists(
         &self,
         header_hash: HeaderHash,
