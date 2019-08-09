@@ -10,7 +10,6 @@ mod client;
 mod grpc;
 mod inbound;
 pub mod p2p;
-pub mod protocols;
 mod service;
 mod subscription;
 
@@ -30,8 +29,7 @@ use self::p2p::{
     topology::{self, P2pTopology},
 };
 use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::protocols::{Blockchain as NewBlockchain, Branch};
-use crate::blockchain::BlockchainR;
+use crate::blockchain::{Blockchain as NewBlockchain, Branch};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
@@ -371,38 +369,21 @@ pub fn bootstrap(
     blockchain: NewBlockchain,
     branch: Branch,
     logger: &Logger,
-) -> Result<(), protocols::bootstrap::Error> {
+) -> Result<(), bootstrap::Error> {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
     match first_trusted_peer_address(config) {
         Some(address) => {
             let peer = Peer::new(address, Protocol::Grpc);
-            protocols::bootstrap::bootstrap_from_peer(peer, blockchain, branch, logger).map(
-                |_tip| {
-                    debug!(logger, "bootstrap complete");
-                },
-            )
+            bootstrap::bootstrap_from_peer(peer, blockchain, branch, logger).map(|_tip| {
+                debug!(logger, "bootstrap complete");
+            })
         }
         None => {
             warn!(logger, "no gRPC peers specified, skipping bootstrap");
             // FIXME: could be an error case?
             Ok(())
-        }
-    }
-}
-
-pub fn legacy_bootstrap(config: &Configuration, blockchain: BlockchainR, logger: &Logger) {
-    if config.protocol != Protocol::Grpc {
-        unimplemented!()
-    }
-    match first_trusted_peer_address(config) {
-        Some(address) => {
-            let peer = Peer::new(address, Protocol::Grpc);
-            bootstrap::bootstrap_from_peer(peer, blockchain, logger)
-        }
-        None => {
-            warn!(logger, "no gRPC peers specified, skipping bootstrap");
         }
     }
 }

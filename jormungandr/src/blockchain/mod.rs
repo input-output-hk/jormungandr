@@ -1,17 +1,17 @@
 mod branch;
+mod chain;
 mod multiverse;
+mod process;
 mod reference;
 mod reference_cache;
 mod storage;
-mod process;
-mod chain;
 
 pub use self::{
     branch::{Branch, Branches},
+    chain::{Blockchain, Error, ErrorKind, PreCheckedHeader},
     multiverse::Multiverse,
+    process::handle_input,
     reference::Ref,
     reference_cache::RefCache,
     storage::Storage,
-    chain::{Blockchain, Error, ErrorKind},
-    process::handle_input,
 };
