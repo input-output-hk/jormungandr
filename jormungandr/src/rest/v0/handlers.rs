@@ -219,23 +219,23 @@ pub fn get_stake_distribution(context: State<Context>) -> Result<impl Responder,
 pub fn get_settings(context: State<Context>) -> Result<impl Responder, Error> {
     let blockchain_tip = context.blockchain_tip.get_ref().wait().unwrap();
 
-    let mut ledger = blockchain_tip.ledger();
-
-    let static_params = ledger.get_static_parameters().clone();
-    let settings = ledger.settings();
-    let fees = *settings.linear_fees;
+    let ledger = blockchain_tip.ledger();
+    let static_params = ledger.get_static_parameters();
+    let consensus_version = ledger.consensus_version();
+    let current_params = blockchain_tip.epoch_ledger_parameters();
+    let fees = current_params.fees;
 
     Ok(Json(json!({
         "block0Hash": static_params.block0_initial_hash.to_string(),
         "block0Time": SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
         "currSlotStartTime": context.stats_counter.slot_start_time().map(SystemTime::from),
-        "consensusVersion": settings.consensus_version.to_string(),
+        "consensusVersion": consensus_version.to_string(),
         "fees":{
             "constant": fees.constant,
             "coefficient": fees.coefficient,
             "certificate": fees.certificate,
         },
-        "maxTxsPerBlock":  settings.max_number_of_transactions_per_block,
+        "maxTxsPerBlock": 255, // TODO?
     })))
 }
 
