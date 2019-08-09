@@ -68,6 +68,12 @@ pub(super) fn valid_stake_owner_delegation_transaction(
     )
 }
 
+pub(super) fn valid_pool_registration_certificate(
+    _auth_cert: &certificate::PoolRegistration
+) -> LedgerCheck {
+    Ok(())
+}
+
 pub(super) fn valid_pool_retirement_certificate(
     _auth_cert: &certificate::PoolOwnersSigned<certificate::PoolRetirement>
 ) -> LedgerCheck {

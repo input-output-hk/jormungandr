@@ -490,10 +490,10 @@ impl Ledger {
 
     pub fn apply_pool_registration(
         mut self,
-        auth_cert: &certificate::PoolRegistration,
+        cert: &certificate::PoolRegistration,
     ) -> Result<Self, Error> {
-        // TODO do verification
-        self.delegation = self.delegation.register_stake_pool(auth_cert.clone())?;
+        check::valid_pool_registration_certificate(cert)?;
+        self.delegation = self.delegation.register_stake_pool(cert.clone())?;
         Ok(self)
     }
 
@@ -504,7 +504,7 @@ impl Ledger {
         match auth_cert {
             certificate::PoolManagement::Retirement(ret) => {
                 check::valid_pool_retirement_certificate(ret)?;
-                // TODO verify signaturpool_es
+                // TODO verify signatures
                 // TODO verify transition
                 self.delegation = self.delegation.deregister_stake_pool(&ret.inner.pool_id)?;
                 Ok(self)
