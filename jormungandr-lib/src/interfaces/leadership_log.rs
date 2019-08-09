@@ -1,4 +1,5 @@
 use crate::{interfaces::BlockDate, time::SystemTime};
+use std::fmt;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
@@ -99,5 +100,11 @@ impl LeadershipLog {
     pub fn mark_finished(&mut self) {
         debug_assert!(self.finished_at_time.is_none());
         self.finished_at_time = Some(SystemTime::now())
+    }
+}
+
+impl fmt::Display for EnclaveLeaderId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
