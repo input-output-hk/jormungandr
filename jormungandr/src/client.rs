@@ -1,5 +1,5 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
-use crate::blockchain::{Blockchain, Branch, Storage};
+use crate::blockchain::{Branch, Storage};
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
 use crate::utils::task::{Input, ThreadServiceInfo};
 use chain_core::property::HasHeader;
