@@ -10,7 +10,7 @@ use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
-use chain_impl_mockchain::value::Value;
+use chain_impl_mockchain::value::{Value, ValueError};
 
 use crate::intercom::TransactionMsg;
 use crate::secure::NodeSecret;
@@ -86,13 +86,11 @@ pub fn get_stats_counter(context: State<Context>) -> Result<impl Responder, Erro
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
 
-    /*
-    context
-        .blockchain
-        .lock_read()
-        .get_block_tip()
-        .map_err(|e| ErrorInternalServerError(format!("Get blockchain tip block error: {}", e)))?
-        .0
+    let tip = context.blockchain_tip.get_ref().wait().unwrap();
+    let storage = context.blockchain.storage();
+    let block_tip = storage.get(tip.hash().clone()).wait().unwrap().unwrap();
+
+    block_tip
         .contents
         .iter()
         .filter_map(|fragment| match fragment {
@@ -111,7 +109,7 @@ pub fn get_stats_counter(context: State<Context>) -> Result<impl Responder, Erro
         })
         .collect::<Result<(), ValueError>>()
         .map_err(|e| ErrorInternalServerError(format!("Block value calculation error: {}", e)))?;
-    */
+
     let stats = &context.stats_counter;
     Ok(Json(json!({
         "txRecvCnt": stats.tx_recv_cnt(),
@@ -128,22 +126,15 @@ pub fn get_block_id(
     context: State<Context>,
     block_id_hex: Path<String>,
 ) -> Result<Bytes, ActixError> {
-    unimplemented!("block content is not directly available for now")
+    use chain_core::property::Serialize as _;
 
-    /*
     let block_id = parse_block_hash(&block_id_hex)?;
-    let blockchain = context.blockchain.lock_read();
-    let block = blockchain
-        .storage
-        .read()
-        .unwrap()
-        .get_block(&block_id)
-        .map_err(|e| ErrorBadRequest(e))?
-        .0
-        .serialize_as_vec()
-        .map_err(|e| ErrorInternalServerError(e))?;
+
+    let storage = context.blockchain.storage();
+    let block = storage.get(block_id).wait().unwrap().unwrap();
+    let block = block.serialize_as_vec().unwrap();
+
     Ok(Bytes::from(block))
-    */
 }
 
 fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
@@ -156,18 +147,17 @@ pub fn get_block_next_id(
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> Result<Bytes, ActixError> {
+    use chain_storage::store;
+
     let block_id = parse_block_hash(&block_id_hex)?;
 
-    unimplemented!("not implemented for now")
-
-    /*
     // FIXME
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
     // FIXME: don't hog the blockchain lock.
-    let blockchain = context.blockchain.lock_read();
-    let storage = blockchain.storage.read().unwrap();
-    store::iterate_range(&*storage, &block_id, &blockchain.get_tip().unwrap())
+    let storage = context.blockchain.storage().get_inner().wait().unwrap();
+    let tip = context.blockchain_tip.get_ref().wait().unwrap();
+    store::iterate_range(&*storage, &block_id, tip.hash())
         .map_err(|e| ErrorBadRequest(e))?
         .take(query_params.get_count())
         .try_fold(Bytes::new(), |mut bytes, res| {
@@ -175,7 +165,6 @@ pub fn get_block_next_id(
             bytes.extend_from_slice(block_info.block_hash.as_ref());
             Ok(bytes)
         })
-        */
 }
 
 const MAX_COUNT: usize = 100;
