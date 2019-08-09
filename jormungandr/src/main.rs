@@ -219,6 +219,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             let context = rest::Context {
                 stats_counter,
                 blockchain: bootstrapped_node.blockchain.clone(),
+                blockchain_tip,
                 transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
                 logs: Arc::new(Mutex::new(pool_logs)),
                 server: Arc::default(),

@@ -4,14 +4,13 @@ use jormungandr_lib::time::SystemTime;
 use actix_web::error::{Error, ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::{Error as ActixError, HttpMessage, HttpRequest, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
-use chain_core::property::{Deserialize, Serialize};
+use chain_core::property::{Deserialize};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
-use chain_impl_mockchain::value::{Value, ValueError};
-use chain_storage::store;
+use chain_impl_mockchain::value::{Value};
 
 use crate::intercom::TransactionMsg;
 use crate::secure::NodeSecret;
@@ -22,12 +21,8 @@ use std::str::FromStr;
 pub use crate::rest::Context;
 
 pub fn get_utxos(context: State<Context>) -> impl Responder {
-    let blockchain = context.blockchain.lock_read();
-    let utxos = blockchain
-        .multiverse
-        .get(&blockchain.get_tip().unwrap())
-        .unwrap()
-        .utxos();
+    let tip_reference = context.blockchain_tip.get_ref().wait().unwrap();
+    let utxos = tip_reference.ledger().utxos();
     let utxos = utxos.map(UTxOInfo::from).collect::<Vec<_>>();
     Json(utxos)
 }
@@ -37,14 +32,11 @@ pub fn get_account_state(
     account_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
     let account_id = parse_account_id(&account_id_hex)?;
-    let blockchain = context.blockchain.lock_read();
-    let state = blockchain
-        .multiverse
-        .get(&blockchain.get_tip().unwrap())
-        .unwrap()
-        .accounts()
-        .get_state(&account_id)
+
+    let tip_reference = context.blockchain_tip.get_ref().wait().unwrap();
+    let state = tip_reference.ledger().accounts().get_state(&account_id)
         .map_err(|e| ErrorNotFound(e))?;
+
     Ok(Json(AccountState::from(state)))
 }
 
@@ -77,18 +69,16 @@ pub fn post_message(
 }
 
 pub fn get_tip(settings: State<Context>) -> impl Responder {
-    settings
-        .blockchain
-        .lock_read()
-        .get_tip()
-        .unwrap()
-        .to_string()
+    settings.blockchain_tip.get_ref().wait().unwrap()
+        .hash().to_string()
 }
 
 pub fn get_stats_counter(context: State<Context>) -> Result<impl Responder, Error> {
     let mut block_tx_count = 0;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
+
+    /*
     context
         .blockchain
         .lock_read()
@@ -113,6 +103,7 @@ pub fn get_stats_counter(context: State<Context>) -> Result<impl Responder, Erro
         })
         .collect::<Result<(), ValueError>>()
         .map_err(|e| ErrorInternalServerError(format!("Block value calculation error: {}", e)))?;
+    */
     let stats = &context.stats_counter;
     Ok(Json(json!({
         "txRecvCnt": stats.tx_recv_cnt(),
@@ -129,6 +120,9 @@ pub fn get_block_id(
     context: State<Context>,
     block_id_hex: Path<String>,
 ) -> Result<Bytes, ActixError> {
+    unimplemented!("block content is not directly available for now")
+
+    /*
     let block_id = parse_block_hash(&block_id_hex)?;
     let blockchain = context.blockchain.lock_read();
     let block = blockchain
@@ -141,6 +135,7 @@ pub fn get_block_id(
         .serialize_as_vec()
         .map_err(|e| ErrorInternalServerError(e))?;
     Ok(Bytes::from(block))
+    */
 }
 
 fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
@@ -154,6 +149,10 @@ pub fn get_block_next_id(
     query_params: Query<QueryParams>,
 ) -> Result<Bytes, ActixError> {
     let block_id = parse_block_hash(&block_id_hex)?;
+
+    unimplemented!("not implemented for now")
+
+    /*
     // FIXME
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
@@ -168,6 +167,7 @@ pub fn get_block_next_id(
             bytes.extend_from_slice(block_info.block_hash.as_ref());
             Ok(bytes)
         })
+        */
 }
 
 const MAX_COUNT: usize = 100;
@@ -184,46 +184,34 @@ impl QueryParams {
 }
 
 pub fn get_stake_distribution(context: State<Context>) -> Result<impl Responder, Error> {
-    let blockchain = context.blockchain.lock_read();
+    let blockchain_tip = context.blockchain_tip.get_ref().wait().unwrap();
 
-    // TODO don't access storage layer, but instead get the date somewhere else
-    let (block, _) = blockchain
-        .get_block_tip()
-        .map_err(|e| ErrorInternalServerError(e))?;
-    let last_epoch = block.header.block_date().epoch;
-    // ******
-
-    let mleadership = blockchain.leaderships.get(last_epoch);
-    match mleadership {
-        None => Ok(Json(json!({ "epoch": last_epoch }))),
-        Some(mut leadership) => match leadership.next().map(|(_, l)| l.consensus()) {
-            Some(LeadershipConsensus::GenesisPraos(gp)) => {
-                let stake = gp.distribution();
-                let pools: Vec<_> = stake
-                    .to_pools
-                    .iter()
-                    .map(|(h, p)| (format!("{}", h), p.total_stake.0))
-                    .collect();
-                Ok(Json(json!({
-                    "epoch": last_epoch,
-                    "stake": {
-                        "unassigned": stake.unassigned.0,
-                        "dangling": stake.dangling.0,
-                        "pools": pools,
-                    }
-                })))
+    let leadership = blockchain_tip.epoch_leadership_schedule();
+    let last_epoch = blockchain_tip.block_date().epoch;
+    if let LeadershipConsensus::GenesisPraos(gp) = leadership.consensus() {
+        let stake = gp.distribution();
+        let pools: Vec<_> = stake
+            .to_pools
+            .iter()
+            .map(|(h, p)| (format!("{}", h), p.total_stake.0))
+            .collect();
+        Ok(Json(json!({
+            "epoch": last_epoch,
+            "stake": {
+                "unassigned": stake.unassigned.0,
+                "dangling": stake.dangling.0,
+                "pools": pools,
             }
-            _ => Ok(Json(json!({ "epoch": last_epoch }))),
-        },
+        })))
+    } else {
+        Ok(Json(json!({ "epoch": last_epoch })))
     }
 }
 
 pub fn get_settings(context: State<Context>) -> Result<impl Responder, Error> {
-    let blockchain = context.blockchain.lock_read();
-    let mut ledger = blockchain
-        .tip
-        .ledger()
-        .map_err(|_| ErrorInternalServerError("Failed to get blockchain tip ledger"))?;
+    let blockchain_tip = context.blockchain_tip.get_ref().wait().unwrap();
+
+    let mut ledger = blockchain_tip.ledger();
 
     let static_params = ledger.get_static_parameters().clone();
     let settings = ledger.settings();
@@ -282,11 +270,10 @@ pub fn delete_leaders(
 }
 
 pub fn get_stake_pools(context: State<Context>) -> Result<impl Responder, Error> {
-    let blockchain = context.blockchain.lock_read();
-    let stake_pool_ids = blockchain
-        .tip
+    let blockchain_tip = context.blockchain_tip.get_ref().wait().unwrap();
+
+    let stake_pool_ids = blockchain_tip
         .ledger()
-        .map_err(|_| ErrorInternalServerError("Failed to get blockchain tip ledger"))?
         .delegation()
         .stake_pool_ids()
         .map(|id| id.to_string())
