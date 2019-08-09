@@ -106,6 +106,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
     let blockchain_tip = bootstrapped_node.blockchain_tip;
+    let blockchain = bootstrapped_node.blockchain;
     // TODO: make this value configuration
     let leadership_logs = leadership::Logs::new(Duration::from_secs(3 * 24 * 3600));
 
@@ -133,7 +134,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     };
 
     let block_task = {
-        let blockchain = bootstrapped_node.blockchain.clone();
+        let blockchain = blockchain.clone();
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(
@@ -147,9 +148,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     };
 
     let client_task = {
-        let blockchain = bootstrapped_node.blockchain.clone();
+        let storage = blockchain.storage().clone();
+        let blockchain_tip = blockchain_tip.clone();
+
         services.spawn_with_inputs("client-query", move |info, input| {
-            client::handle_input(info, &blockchain, input)
+            client::handle_input(info, &storage, &blockchain_tip, input)
         })
     };
 

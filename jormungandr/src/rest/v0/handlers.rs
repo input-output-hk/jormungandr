@@ -4,13 +4,13 @@ use jormungandr_lib::time::SystemTime;
 use actix_web::error::{Error, ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::{Error as ActixError, HttpMessage, HttpRequest, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
-use chain_core::property::{Deserialize};
+use chain_core::property::Deserialize;
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
-use chain_impl_mockchain::value::{Value};
+use chain_impl_mockchain::value::Value;
 
 use crate::intercom::TransactionMsg;
 use crate::secure::NodeSecret;
@@ -34,7 +34,10 @@ pub fn get_account_state(
     let account_id = parse_account_id(&account_id_hex)?;
 
     let tip_reference = context.blockchain_tip.get_ref().wait().unwrap();
-    let state = tip_reference.ledger().accounts().get_state(&account_id)
+    let state = tip_reference
+        .ledger()
+        .accounts()
+        .get_state(&account_id)
         .map_err(|e| ErrorNotFound(e))?;
 
     Ok(Json(AccountState::from(state)))
@@ -69,8 +72,13 @@ pub fn post_message(
 }
 
 pub fn get_tip(settings: State<Context>) -> impl Responder {
-    settings.blockchain_tip.get_ref().wait().unwrap()
-        .hash().to_string()
+    settings
+        .blockchain_tip
+        .get_ref()
+        .wait()
+        .unwrap()
+        .hash()
+        .to_string()
 }
 
 pub fn get_stats_counter(context: State<Context>) -> Result<impl Responder, Error> {
