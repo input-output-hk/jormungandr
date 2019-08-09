@@ -1,8 +1,8 @@
-use imhamt::Hamt;
-use std::collections::hash_map::DefaultHasher;
-
 use crate::certificate::{PoolId, PoolRegistration};
 use crate::transaction::AccountIdentifier;
+use imhamt::Hamt;
+use std::collections::hash_map::DefaultHasher;
+use std::fmt::{self, Debug};
 
 /// All registered Stake Node
 pub type PoolTable = Hamt<DefaultHasher, PoolId, PoolRegistration>;
@@ -22,6 +22,19 @@ pub enum DelegationError {
     StakePoolAlreadyExists(PoolId),
     StakePoolRetirementSigIsInvalid,
     StakePoolDoesNotExist(PoolId),
+}
+
+impl Debug for DelegationState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?}",
+            self.stake_pools
+                .iter()
+                .map(|(id, stake)| (id.clone(), stake.clone()))
+                .collect::<Vec<(PoolId, PoolRegistration)>>()
+        )
+    }
 }
 
 impl std::fmt::Display for DelegationError {
@@ -110,5 +123,113 @@ impl DelegationState {
                 .remove(pool_id)
                 .map_err(|_| DelegationError::StakePoolDoesNotExist(pool_id.clone()))?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::DelegationState;
+    use crate::certificate::{PoolId, PoolRegistration};
+    use quickcheck::{Arbitrary, Gen, TestResult};
+    use quickcheck_macros::quickcheck;
+    use std::iter;
+
+    impl Arbitrary for DelegationState {
+        fn arbitrary<G: Gen>(gen: &mut G) -> Self {
+            let size = usize::arbitrary(gen);
+            let arbitrary_stake_pools = iter::from_fn(|| Some(PoolRegistration::arbitrary(gen)))
+                .take(size)
+                .collect::<Vec<PoolRegistration>>();
+            let mut delegation_state = DelegationState::new();
+            for stake_pool in arbitrary_stake_pools {
+                delegation_state = delegation_state.register_stake_pool(stake_pool).unwrap();
+            }
+            delegation_state
+        }
+    }
+
+    #[quickcheck]
+    pub fn delegation_state_tests(
+        delegation_state: DelegationState,
+        stake_pool: PoolRegistration,
+    ) -> TestResult {
+        // register stake pool first time should be ok
+        let delegation_state = match delegation_state.register_stake_pool(stake_pool.clone()) {
+            Ok(delegation_state) => delegation_state,
+            Err(err) => {
+                return TestResult::error(format!("Cannot register stake pool, due to {:?}", err))
+            }
+        };
+
+        // register stake pool again should throw error
+        if delegation_state
+            .register_stake_pool(stake_pool.clone())
+            .is_ok()
+        {
+            return TestResult::error(
+                "Register the same stake pool twice should return error while it didn't",
+            );
+        }
+
+        let stake_pool_id = stake_pool.to_id();
+
+        // stake pool should be in collection
+        if !delegation_state
+            .stake_pool_ids()
+            .any(|x| x == stake_pool_id)
+        {
+            return TestResult::error(format!(
+                "stake pool with id: {:?} should exist in iterator",
+                stake_pool_id
+            ));
+        };
+
+        // stake pool should exist in collection
+        if !delegation_state.stake_pool_exists(&stake_pool_id) {
+            TestResult::error(format!(
+                "stake pool with id {:?} should exist in collection",
+                stake_pool_id
+            ));
+        }
+
+        // deregister stake pool should be ok
+        let delegation_state = match delegation_state.deregister_stake_pool(&stake_pool_id) {
+            Ok(delegation_state) => delegation_state,
+            Err(err) => {
+                return TestResult::error(format!("Cannot deregister stake pool due to: {:?}", err))
+            }
+        };
+
+        // deregister stake pool again should throw error
+        if delegation_state
+            .deregister_stake_pool(&stake_pool_id)
+            .is_ok()
+        {
+            return TestResult::error(
+                "Deregister the same stake pool twice should return error while it didn't",
+            );
+        }
+
+        // stake pool should not exist in collection
+        if delegation_state.stake_pool_exists(&stake_pool_id) {
+            return TestResult::error(format!(
+                "stake pool with id should be removed from collection {:?}",
+                stake_pool_id
+            ));
+        }
+
+        // stake pool should not be in collection
+        if delegation_state
+            .stake_pool_ids()
+            .any(|x| x == stake_pool_id)
+        {
+            return TestResult::error(format!(
+                "stake pool with id should be removed from iterator {:?}",
+                stake_pool_id
+            ));
+        }
+
+        TestResult::passed()
     }
 }
