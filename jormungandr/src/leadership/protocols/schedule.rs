@@ -1,43 +1,91 @@
-use crate::leadership::protocols::{LeadershipLogHandle, Logs, LeaderEvent};
-use jormungandr_lib::{time::SystemTime, interfaces::LeadershipLog};
-use tokio::{prelude::*, timer::delay_queue::{self, DelayQueue}, sync::lock::Lock};
+use crate::{
+    blockcfg::LedgerParameters,
+    leadership::{
+        protocols::{LeaderEvent, LeadershipLogHandle, Logs},
+        Leadership,
+    },
+};
+use jormungandr_lib::{interfaces::LeadershipLog, time::SystemTime};
+use std::sync::Arc;
+use tokio::{
+    prelude::*,
+    timer::delay_queue::{self, DelayQueue},
+};
 
 pub struct Schedule {
     /// keep a hand on the log handle so we can update
     /// the logs as we see fit
-    log: LeadershipLogHandle,
+    pub(super) log: LeadershipLogHandle,
 
     /// data for the enclave to work on
-    leader_event: LeaderEvent,
+    pub(super) leader_event: LeaderEvent,
+
+    /// leadership valid for the ongoing epoch
+    pub(super) leadership: Arc<Leadership>,
+
+    /// parameters valid for the on going epochs
+    pub(super) epoch_ledger_parameters: Arc<LedgerParameters>,
 }
 
 /// one of the main issue with the current build for the
 pub struct Schedules {
-    scheduler: Lock<DelayQueue<Schedule>>,
+    scheduler: DelayQueue<Schedule>,
+}
 
-    logs: Logs
+impl Schedule {
+    pub fn log_handle(&self) -> &LeadershipLogHandle {
+        &self.log
+    }
+
+    pub fn leader_event(&self) -> &LeaderEvent {
+        &self.leader_event
+    }
+
+    pub fn leadership(&self) -> &Arc<Leadership> {
+        &self.leadership
+    }
+
+    pub fn ledger_parameters(&self) -> &Arc<LedgerParameters> {
+        &self.epoch_ledger_parameters
+    }
 }
 
 impl Schedules {
-    pub fn new(logger: Logs) -> Self {
+    pub fn new() -> Self {
         Schedules {
-            scheduler: Lock::new(DelayQueue::new()),
-            logs: logger,
+            scheduler: DelayQueue::new(),
         }
     }
 
-    pub fn schedule(&mut self, scheduled_at_time: SystemTime, leader_event: LeaderEvent) -> impl Future<Item = (), Error = ()> {
+    pub fn schedule(
+        mut self,
+        mut logs: Logs,
+        leadership: Arc<Leadership>,
+        epoch_ledger_parameters: Arc<LedgerParameters>,
+        scheduled_at_time: SystemTime,
+        leader_event: LeaderEvent,
+    ) -> impl Future<Item = Self, Error = ()> {
         let log = LeadershipLog::new(leader_event.id, leader_event.date.into(), scheduled_at_time);
-        let scheduler = self.scheduler.clone();
-        self.logs.insert(log)
-            .map(move |handle| {
-                Schedule {
-                    log: handle,
-                    leader_event,
-                }
+        logs.insert(log)
+            .map(move |handle| Schedule {
+                log: handle,
+                leadership,
+                epoch_ledger_parameters,
+                leader_event,
             })
-            .and_then(|schedule| {
-                scheduler.insert_at(schedule, std::time::Instant::now())
+            .map(move |schedule| {
+                self.scheduler
+                    .insert_at(schedule, std::time::Instant::now());
+                self
             })
+    }
+}
+
+impl Stream for Schedules {
+    type Error = tokio::timer::Error;
+    type Item = delay_queue::Expired<Schedule>;
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        self.scheduler.poll()
     }
 }
