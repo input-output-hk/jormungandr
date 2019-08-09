@@ -56,7 +56,7 @@ impl Schedules {
 
     pub fn schedule(
         mut self,
-        mut logs: Logs,
+        logs: Logs,
         leadership: Arc<Leadership>,
         epoch_ledger_parameters: Arc<LedgerParameters>,
         scheduled_at_time: SystemTime,
