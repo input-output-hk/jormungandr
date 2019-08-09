@@ -1,7 +1,7 @@
 use crate::blockcfg::{BlockBuilder, BlockDate};
-use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
+use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 

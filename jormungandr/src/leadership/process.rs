@@ -4,13 +4,13 @@ use crate::{
     fragment::Pool,
     intercom::BlockMsg,
     leadership::{EpochParameters, Leadership, Task, TaskParameters},
-    secure::enclave::{Enclave},
+    secure::enclave::Enclave,
     stats_counter::StatsCounter,
     utils::{async_msg::MessageBox, task::TokioServiceInfo},
 };
-use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use chain_core::property::BlockDate as _;
 use chain_time::era::{EpochPosition, EpochSlotOffset};
+use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use slog::Logger;
 use std::sync::Arc;
 use tokio::{
