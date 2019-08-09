@@ -4,10 +4,9 @@ pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
     blockchain::{
-        protocols::{Blockchain, Branch, ErrorKind as BlockchainError},
-        Blockchain as LegacyBlockchain, BlockchainR as LegacyBlockchainR,
+        Blockchain, Branch, ErrorKind as BlockchainError,
     },
-    leadership::{EpochParameters, TaskParameters},
+    leadership::NewEpochToSchedule,
     network,
     settings::start::Settings,
 };
@@ -86,21 +85,10 @@ pub fn prepare_block_0(
     }
 }
 
-pub fn load_legacy_blockchain(
-    block0: Block,
-    storage: NodeStorage,
-    epoch_event: mpsc::Sender<EpochParameters>,
-    logger: &Logger,
-) -> Result<LegacyBlockchainR, Error> {
-    let mut blockchain_data = LegacyBlockchain::load(block0, storage, epoch_event, logger)?;
-    blockchain_data.initial()?;
-    Ok(blockchain_data.into())
-}
-
 pub fn load_blockchain(
     block0: Block,
     storage: NodeStorage,
-    epoch_event: mpsc::Sender<TaskParameters>,
+    epoch_event: mpsc::Sender<NewEpochToSchedule>,
     block_cache_ttl: Duration,
 ) -> Result<(Blockchain, Branch), Error> {
     use tokio::prelude::*;
@@ -120,8 +108,9 @@ pub fn load_blockchain(
         .map_err(|_: std::convert::Infallible| unreachable!())
         .and_then(move |reference| {
             epoch_event
-                .send(TaskParameters {
-                    leadership: reference.epoch_leadership_schedule().clone(),
+                .send(NewEpochToSchedule {
+                    new_schedule:  reference.epoch_leadership_schedule().clone(),
+                    new_parameters: reference.epoch_ledger_parameters().clone(),
                     time_frame: reference.time_frame().as_ref().clone(),
                 })
                 .into_future()

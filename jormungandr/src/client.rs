@@ -1,11 +1,11 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
-use crate::blockchain::{Blockchain, BlockchainR};
+use crate::blockchain::{Blockchain};
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
 use crate::utils::task::{Input, ThreadServiceInfo};
 use chain_core::property::HasHeader;
 use chain_storage::store;
 
-pub fn handle_input(_info: &ThreadServiceInfo, blockchain: &BlockchainR, input: Input<ClientMsg>) {
+pub fn handle_input(_info: &ThreadServiceInfo, blockchain: &Blockchain, input: Input<ClientMsg>) {
     let cquery = match input {
         Input::Shutdown => return,
         Input::Input(msg) => msg,
@@ -67,7 +67,7 @@ fn find_latest_checkpoint(
 }
 
 fn handle_get_headers_range(
-    blockchain: &BlockchainR,
+    blockchain: &Blockchain,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
     reply: &mut ReplyStreamHandle<Header>,
@@ -106,7 +106,7 @@ fn handle_get_headers_range(
 }
 
 fn handle_get_blocks_range(
-    blockchain: &BlockchainR,
+    blockchain: &Blockchain,
     from: HeaderHash,
     to: HeaderHash,
     reply: &mut ReplyStreamHandle<Block>,
@@ -127,7 +127,7 @@ fn handle_get_blocks_range(
 }
 
 fn handle_get_blocks(
-    blockchain: &BlockchainR,
+    blockchain: &Blockchain,
     ids: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
@@ -142,7 +142,7 @@ fn handle_get_blocks(
 }
 
 fn handle_get_headers(
-    blockchain: &BlockchainR,
+    blockchain: &Blockchain,
     ids: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Header>,
 ) -> Result<(), Error> {
@@ -157,7 +157,7 @@ fn handle_get_headers(
 }
 
 fn handle_pull_blocks_to_tip(
-    blockchain: &BlockchainR,
+    blockchain: &Blockchain,
     checkpoints: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {

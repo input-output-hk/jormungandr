@@ -1,67 +1,88 @@
-use crate::blockcfg::{ChainLength, HeaderHash, Ledger};
-use chain_impl_mockchain::multiverse::GCRoot;
-use std::sync::Arc;
+use crate::blockchain::Ref;
+use tokio::{prelude::*, sync::lock::Lock};
 
-/// `Branch` or `Fork` are the different _propositions_ of what is
-/// the current state of the ledger
-///
-/// In some modes, like in BFT, it is very unlikely (near impossible)
-/// to experiences competitive branches because the leadership is
-/// deterministic and *absolute*: only one node is authorized to create
-/// a new block at a time.
-///
-/// In other modes, like in genesis praos, the leadership is deterministic
-/// (in the sense we can reproduce the result in the same circumstances)
-/// but it is not necessarily *absolute*: it is possible that multiple nodes
-/// are elected to propose the next block.
-///
-/// This Branch structure is useful to maintain states of different branches
-/// as well as the consensus branch: the **tip**.
+use std::convert::Infallible;
+
 #[derive(Clone)]
-pub struct Branch {
-    /// Make sure we hold the branch's details for as long as we need to
-    /// in the multiverse.
-    reference: Arc<GCRoot>,
-
-    /// keep the chain length details of the branch
-    ///
-    /// This is a useful parameter to make choices regarding
-    /// competitive branch (for the consensus, the choice of the **tip**).
-    chain_length: ChainLength,
-
-    /// keep the ledger setting in the branch, this will allow to have quick
-    /// access to the ledger state for this given branch and continue the
-    /// branch or extract some other information regarding the healthy state
-    /// of that branch
-    ledger: Ledger,
+pub struct Branches {
+    inner: Lock<BranchesData>,
 }
 
-impl Branch {
-    /// create a new branch from the given GCRoot
-    #[inline]
-    pub fn new(reference: GCRoot, chain_length: ChainLength, ledger: Ledger) -> Self {
-        Branch {
-            reference: Arc::new(reference),
-            chain_length,
-            ledger,
+struct BranchesData {
+    branches: Vec<Branch>,
+}
+
+#[derive(Clone)]
+pub struct Branch {
+    inner: Lock<BranchData>,
+}
+
+/// the data that is contained in a branch
+struct BranchData {
+    /// reference to the block where the branch points to
+    reference: Ref,
+
+    last_updated: std::time::SystemTime,
+}
+
+impl Branches {
+    pub fn new() -> Self {
+        Branches {
+            inner: Lock::new(BranchesData {
+                branches: Vec::new(),
+            }),
         }
     }
 
-    /// get the branch latest block hash
-    #[inline]
-    pub fn hash(&self) -> HeaderHash {
-        **self.reference
+    pub fn add(&mut self, branch: Branch) -> impl Future<Item = (), Error = Infallible> {
+        let mut branches = self.clone();
+        future::poll_fn(move || Ok(branches.inner.poll_lock()))
+            .map(move |mut guard| guard.add(branch))
+    }
+}
+
+impl BranchesData {
+    fn add(&mut self, branch: Branch) {
+        self.branches.push(branch)
+    }
+}
+
+impl Branch {
+    pub fn new(reference: Ref) -> Self {
+        Branch {
+            inner: Lock::new(BranchData::new(reference)),
+        }
     }
 
-    /// get the branch latest block hash
-    #[inline]
-    pub fn chain_length(&self) -> &ChainLength {
-        &self.chain_length
+    pub fn get_ref(&self) -> impl Future<Item = Ref, Error = Infallible> {
+        let mut branch = self.inner.clone();
+        future::poll_fn(move || Ok(branch.poll_lock())).map(|guard| guard.reference().clone())
     }
 
-    /// get the ledger state associated to this branch latest hash
-    #[inline]
-    pub fn ledger(&self) -> &Ledger {
-        &self.ledger
+    pub fn update_ref(&mut self, new_ref: Ref) -> impl Future<Item = Ref, Error = Infallible> {
+        let mut branch = self.inner.clone();
+        future::poll_fn(move || Ok(branch.poll_lock())).map(move |mut guard| guard.update(new_ref))
+    }
+}
+
+impl BranchData {
+    /// create the branch data with the current `last_updated` to
+    /// the current time this function was called
+    fn new(reference: Ref) -> Self {
+        BranchData {
+            reference,
+            last_updated: std::time::SystemTime::now(),
+        }
+    }
+
+    fn update(&mut self, reference: Ref) -> Ref {
+        let old_reference = std::mem::replace(&mut self.reference, reference);
+        self.last_updated = std::time::SystemTime::now();
+
+        old_reference
+    }
+
+    fn reference(&self) -> &Ref {
+        &self.reference
     }
 }

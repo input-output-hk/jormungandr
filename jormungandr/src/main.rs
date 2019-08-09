@@ -49,7 +49,7 @@ extern crate tokio;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
-    blockchain::BlockchainR,
+    blockchain::Blockchain,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -88,9 +88,10 @@ fn start() -> Result<(), start_up::Error> {
 
 pub struct BootstrappedNode {
     settings: Settings,
-    blockchain: BlockchainR,
+    blockchain: Blockchain,
+    blockchain_tip: blockchain::Branch,
     block0_hash: HeaderHash,
-    new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::EpochParameters>,
+    new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,
     logger: Logger,
 }
 
@@ -104,6 +105,9 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let (mut network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
+    let blockchain_tip = bootstrapped_node.blockchain_tip;
+    // TODO: make this value configuration
+    let leadership_logs = leadership::Logs::new(Duration::from_secs(3 * 24 * 3600));
 
     let stats_counter = StatsCounter::default();
 
@@ -189,23 +193,24 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let enclave = Enclave::from_vec(leader_secrets);
 
     {
+        use tokio::prelude::*;
+
         let fragment_pool = fragment_pool.clone();
         let block_task = block_task.clone();
         let blockchain = bootstrapped_node.blockchain.clone();
 
-        let enclave = enclave.clone();
+        let enclave = leadership::Enclave::new(enclave.clone());
         let stats_counter = stats_counter.clone();
 
         services.spawn_future("leadership", move |info| {
-            let process = self::leadership::Process::new(
+            leadership::LeadershipModule::start(
                 info,
+                leadership_logs,
+                enclave, 
                 fragment_pool,
-                blockchain.lock_read().tip.clone(),
-                block_task,
-                stats_counter,
-            );
-
-            process.start(enclave, new_epoch_notifier)
+                blockchain_tip,
+                new_epoch_notifier, block_task)
+                .map_err(|e| unimplemented!("error in leadership {}", e))
         });
     }
 
@@ -258,29 +263,19 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let block0_hash = block0.header.hash();
 
-    let blockchain = start_up::load_legacy_blockchain(
-        block0,
-        storage,
-        new_epoch_announcements,
-        &bootstrap_logger,
-    )?;
-
-    network::legacy_bootstrap(&settings.network, blockchain.clone(), &bootstrap_logger);
-
-    /*
     // TODO: we should get this value from the configuration
     let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
 
-    let (new_blockchain, branch) =
+    let (blockchain, blockchain_tip) =
         start_up::load_blockchain(block0, storage, new_epoch_announcements, block_cache_ttl)?;
 
-    network::bootstrap(&settings.network, new_blockchain.clone(), branch, &bootstrap_logger);
-    */
+    network::bootstrap(&settings.network, blockchain.clone(), blockchain_tip.clone(), &bootstrap_logger);
 
     Ok(BootstrappedNode {
         settings,
         block0_hash,
         blockchain,
+        blockchain_tip,
         new_epoch_notifier,
         logger,
     })

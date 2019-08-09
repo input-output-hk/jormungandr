@@ -1,119 +1,90 @@
 use crate::{
-    leadership::TaskParameters,
-    secure::enclave::{Enclave, LeaderEvent},
+    blockcfg::{Leadership, LedgerParameters},
+    leadership::{
+        LeaderEvent, LeadershipLogHandle, Logs,
+    },
 };
-use chain_time::era::{EpochPosition, EpochSlotOffset};
-use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
-use slog::Logger;
-use std::time::SystemTime;
+use jormungandr_lib::{interfaces::LeadershipLog, time::SystemTime};
+use std::sync::Arc;
 use tokio::{
     prelude::*,
-    timer::{delay_queue::Expired, DelayQueue},
+    timer::delay_queue::{self, DelayQueue},
 };
 
-/// structure to prepare the schedule of a leader
-///
-/// This object will generate a steam of events at precise times
-/// where the `Leader` is expected to create a block.
-pub struct LeaderSchedule {
-    events: DelayQueue<ScheduledEvent>,
+pub struct Schedule {
+    /// keep a hand on the log handle so we can update
+    /// the logs as we see fit
+    pub(super) log: LeadershipLogHandle,
+
+    /// data for the enclave to work on
+    pub(super) leader_event: LeaderEvent,
+
+    /// leadership valid for the ongoing epoch
+    pub(super) leadership: Arc<Leadership>,
+
+    /// parameters valid for the on going epochs
+    pub(super) epoch_ledger_parameters: Arc<LedgerParameters>,
 }
 
-/// a scheduled event where the `Leader` is expected to create a block
-pub struct ScheduledEvent {
-    pub leader_output: LeaderEvent,
-    pub expected_time: SystemTime,
+/// one of the main issue with the current build for the
+pub struct Schedules {
+    scheduler: DelayQueue<Schedule>,
 }
 
-impl LeaderSchedule {
-    /// create a new schedule based on the [`TaskParameters`] and the `Leader`
-    /// settings.
-    ///
-    /// [`TaskParameters`]: ./struct.TaskParameters.html
-    ///
-    pub fn new(
-        logger: Logger,
-        leader_id: &LeaderId,
-        enclave: &Enclave,
-        task_parameters: &TaskParameters,
-    ) -> Self {
-        let leadership = &task_parameters.leadership;
-        let era = leadership.era();
-        let number_of_slots_per_epoch = era.slots_per_epoch();
-        let now = std::time::SystemTime::now();
-
-        let mut schedule = LeaderSchedule {
-            events: DelayQueue::with_capacity(number_of_slots_per_epoch as usize),
-        };
-
-        let logger = logger.new(o!(
-            "epoch" => leadership.epoch(),
-        ));
-
-        for slot_idx in 0..number_of_slots_per_epoch {
-            schedule.schedule(
-                logger.new(o!("epoch_slot" => slot_idx)),
-                now,
-                leader_id,
-                enclave,
-                task_parameters,
-                slot_idx as u32,
-            );
-        }
-
-        schedule
+impl Schedule {
+    pub fn log_handle(&self) -> &LeadershipLogHandle {
+        &self.log
     }
 
-    #[inline]
-    fn schedule(
-        &mut self,
-        logger: Logger,
-        now: std::time::SystemTime,
-        leader_id: &LeaderId,
-        enclave: &Enclave,
-        task_parameters: &TaskParameters,
-        slot_idx: u32,
-    ) {
-        let leadership = &task_parameters.leadership;
-        let slot = task_parameters
-            .leadership
-            .era()
-            .from_era_to_slot(EpochPosition {
-                epoch: chain_time::Epoch(leadership.epoch()),
-                slot: EpochSlotOffset(slot_idx),
-            });
-        let slot_system_time = task_parameters
-            .time_frame
-            .slot_to_systemtime(slot)
-            .expect("The slot should always be in the given timeframe here");
+    pub fn leader_event(&self) -> &LeaderEvent {
+        &self.leader_event
+    }
 
-        if now < slot_system_time {
-            match enclave.leadership_evaluate1(leadership, leader_id, slot_idx) {
-                None => debug!(logger, "not a leader at this time"),
-                Some(leader_output) => {
-                    debug!(logger, "scheduling a block leader");
-                    self.events.insert(
-                        ScheduledEvent {
-                            expected_time: slot_system_time.clone(),
-                            leader_output: leader_output,
-                        },
-                        slot_system_time
-                            .duration_since(now)
-                            .expect("expect the slot scheduled system time to be in the future"),
-                    );
-                }
-            }
-        } else {
-            debug!(logger, "ignoring past events...")
-        }
+    pub fn leadership(&self) -> &Arc<Leadership> {
+        &self.leadership
+    }
+
+    pub fn ledger_parameters(&self) -> &Arc<LedgerParameters> {
+        &self.epoch_ledger_parameters
     }
 }
 
-impl Stream for LeaderSchedule {
-    type Item = Expired<ScheduledEvent>;
+impl Schedules {
+    pub fn new() -> Self {
+        Schedules {
+            scheduler: DelayQueue::new(),
+        }
+    }
+
+    pub fn schedule(
+        mut self,
+        mut logs: Logs,
+        leadership: Arc<Leadership>,
+        epoch_ledger_parameters: Arc<LedgerParameters>,
+        scheduled_at_time: SystemTime,
+        leader_event: LeaderEvent,
+    ) -> impl Future<Item = Self, Error = ()> {
+        let log = LeadershipLog::new(leader_event.id, leader_event.date.into(), scheduled_at_time);
+        logs.insert(log)
+            .map(move |handle| Schedule {
+                log: handle,
+                leadership,
+                epoch_ledger_parameters,
+                leader_event,
+            })
+            .map(move |schedule| {
+                self.scheduler
+                    .insert_at(schedule, std::time::Instant::now());
+                self
+            })
+    }
+}
+
+impl Stream for Schedules {
     type Error = tokio::timer::Error;
+    type Item = delay_queue::Expired<Schedule>;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        self.events.poll()
+        self.scheduler.poll()
     }
 }
