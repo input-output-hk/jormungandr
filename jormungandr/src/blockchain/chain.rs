@@ -77,7 +77,7 @@ error_chain! {
         }
 
         Block0NotAlreadyInStorage {
-            description("Block0 already is not yet in the storage")
+            description("Block0 is not yet in the storage")
         }
 
         MissingParentBlockFromStorage(header: Header) {
@@ -535,7 +535,7 @@ impl Blockchain {
             .block_exists(block0_id.clone())
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
             .and_then(|existence| {
-                if !existence {
+                if existence {
                     future::err(ErrorKind::Block0AlreadyInStorage.into())
                 } else {
                     future::ok(())
@@ -586,7 +586,7 @@ impl Blockchain {
             .block_exists(block0_id.clone())
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
             .and_then(|existence| {
-                if existence {
+                if !existence {
                     future::err(ErrorKind::Block0NotAlreadyInStorage.into())
                 } else {
                     future::ok(())
