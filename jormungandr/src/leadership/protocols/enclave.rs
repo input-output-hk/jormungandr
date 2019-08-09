@@ -5,7 +5,7 @@ use crate::{
 use std::sync::Arc;
 use tokio::{prelude::*, sync::lock::Lock};
 
-pub use crate::secure::enclave::{LeaderEvent};
+pub use crate::secure::enclave::LeaderEvent;
 
 error_chain! {}
 
@@ -33,7 +33,7 @@ impl Enclave {
     /// ask the enclave to attempt computing some leadership schedule for the
     /// given settings
     ///
-    /// TODO: for now we are utilising the Leadership object fully but on the long
+    /// TODO: for now we are utilizing the Leadership object fully but on the long
     ///       run this might be limited to only the required data.
     pub fn query_schedules(
         &self,

@@ -1,4 +1,4 @@
-use jormungandr_lib::{interfaces::{LeadershipLog, LeadershipLogId}};
+use jormungandr_lib::interfaces::{LeadershipLog, LeadershipLogId};
 use std::time::Duration;
 use tokio::{
     prelude::*,
@@ -30,7 +30,7 @@ impl LeadershipLogHandle {
     /// on non-release build, this function will panic if the log was already
     /// marked as awaken.
     ///
-    pub fn mark_wake(&mut self) -> impl Future<Item = (), Error = ()> {
+    pub fn mark_wake(&self) -> impl Future<Item = (), Error = ()> {
         self.logs.mark_wake(self.internal_id)
     }
 
@@ -44,7 +44,7 @@ impl LeadershipLogHandle {
     /// on non-release build, this function will panic if the log was already
     /// marked as finished.
     ///
-    pub fn mark_finished(&mut self) -> impl Future<Item = (), Error = ()> {
+    pub fn mark_finished(&self) -> impl Future<Item = (), Error = ()> {
         self.logs.mark_finished(self.internal_id)
     }
 }
@@ -62,11 +62,11 @@ impl Logs {
     }
 
     pub fn insert(
-        &mut self,
+        &self,
         log: LeadershipLog,
     ) -> impl Future<Item = LeadershipLogHandle, Error = ()> {
         let logs = self.clone();
-        self.inner_mut().and_then(move |mut guard| {
+        self.inner().and_then(move |mut guard| {
             let id = guard.insert(log);
 
             future::ok(LeadershipLogHandle {
@@ -76,28 +76,25 @@ impl Logs {
         })
     }
 
-    fn mark_wake(
-        &mut self,
-        leadership_log_id: LeadershipLogId,
-    ) -> impl Future<Item = (), Error = ()> {
-        self.inner_mut().and_then(move |mut guard| {
+    fn mark_wake(&self, leadership_log_id: LeadershipLogId) -> impl Future<Item = (), Error = ()> {
+        self.inner().and_then(move |mut guard| {
             guard.mark_wake(&leadership_log_id.into());
             future::ok(())
         })
     }
 
     fn mark_finished(
-        &mut self,
+        &self,
         leadership_log_id: LeadershipLogId,
     ) -> impl Future<Item = (), Error = ()> {
-        self.inner_mut().and_then(move |mut guard| {
+        self.inner().and_then(move |mut guard| {
             guard.mark_finished(&leadership_log_id.into());
             future::ok(())
         })
     }
 
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
-        self.inner_mut()
+        self.inner()
             .and_then(move |mut guard| future::poll_fn(move || guard.poll_purge()))
     }
 
@@ -109,10 +106,6 @@ impl Logs {
     fn inner<E>(&self) -> impl Future<Item = LockGuard<internal::Logs>, Error = E> {
         let mut lock = self.0.clone();
         future::poll_fn(move || Ok(lock.poll_lock()))
-    }
-
-    fn inner_mut<E>(&mut self) -> impl Future<Item = LockGuard<internal::Logs>, Error = E> {
-        self.inner()
     }
 }
 
@@ -147,7 +140,10 @@ pub(super) mod internal {
 
             let now = std::time::SystemTime::now();
             let minimal_duration = if &now < log.scheduled_at_time().as_ref() {
-                log.scheduled_at_time().as_ref().duration_since(now).unwrap()
+                log.scheduled_at_time()
+                    .as_ref()
+                    .duration_since(now)
+                    .unwrap()
             } else {
                 Duration::from_secs(0)
             };
