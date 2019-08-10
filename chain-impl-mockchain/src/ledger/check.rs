@@ -69,19 +69,47 @@ pub(super) fn valid_stake_owner_delegation_transaction(
 }
 
 pub(super) fn valid_pool_registration_certificate(
-    _auth_cert: &certificate::PoolRegistration
+    auth_cert: &certificate::PoolRegistration,
 ) -> LedgerCheck {
+    if_cond_fail_with!(
+        auth_cert.management_threshold == 0,
+        Error::PoolRegistrationInvalid
+    )?;
+    if_cond_fail_with!(
+        auth_cert.management_threshold as usize > auth_cert.owners.len(),
+        Error::PoolRegistrationInvalid
+    )?;
+    if_cond_fail_with!(
+        auth_cert.owners.len() >= 256,
+        Error::PoolRegistrationInvalid
+    )?;
     Ok(())
 }
 
 pub(super) fn valid_pool_retirement_certificate(
-    _auth_cert: &certificate::PoolOwnersSigned<certificate::PoolRetirement>
+    cert: &certificate::PoolOwnersSigned<certificate::PoolRetirement>,
 ) -> LedgerCheck {
+    if_cond_fail_with!(
+        cert.signatures.len() == 0,
+        Error::CertificateInvalidSignature
+    )?;
+    if_cond_fail_with!(
+        cert.signatures.len() > 255,
+        Error::CertificateInvalidSignature
+    )?;
     Ok(())
 }
 
 pub(super) fn valid_pool_update_certificate(
-    _auth_cert: &certificate::PoolOwnersSigned<certificate::PoolUpdate>
+    cert: &certificate::PoolOwnersSigned<certificate::PoolUpdate>,
 ) -> LedgerCheck {
+    if_cond_fail_with!(
+        cert.signatures.len() == 0,
+        Error::CertificateInvalidSignature
+    )?;
+    if_cond_fail_with!(
+        cert.signatures.len() > 255,
+        Error::CertificateInvalidSignature
+    )?;
     Ok(())
 }

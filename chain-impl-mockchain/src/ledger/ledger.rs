@@ -15,6 +15,7 @@ use crate::value::*;
 use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_core::property::{self, ChainLength as _};
+use chain_crypto::Verification;
 use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -120,7 +121,7 @@ custom_error! {
         NotBalanced { inputs: Value, outputs: Value } = "Inputs, outputs and fees are not balanced, transaction with {inputs} input and {outputs} output",
         ZeroOutput { output: Output<Address> } = "Empty output",
         OutputGroupInvalid { output: Output<Address> } = "Output group invalid",
-        Delegation { source: DelegationError } = "Error or Invalid delegation ",
+        Delegation { source: DelegationError } = "Error or Invalid delegation",
         AccountIdentifierInvalid = "Invalid account identifier",
         InvalidDiscrimination = "Invalid discrimination",
         ExpectingAccountWitness = "Expected an account witness",
@@ -133,6 +134,8 @@ custom_error! {
         NonMonotonicDate { block_date: BlockDate, chain_date: BlockDate } = "Non Monotonic date, chain date is at {chain_date} but the block is at {block_date}",
         IncompleteLedger = "Ledger cannot be reconstructed from serialized state because of missing entries",
         PotValueInvalid { error: ValueError } = "Ledger pot value invalid: {error}",
+        PoolRegistrationInvalid = "Pool Registration certificate invalid",
+        PoolUpdateNotAllowedYet = "Pool Update not allowed yet",
 }
 
 impl Ledger {
@@ -504,15 +507,25 @@ impl Ledger {
         match auth_cert {
             certificate::PoolManagement::Retirement(ret) => {
                 check::valid_pool_retirement_certificate(ret)?;
-                // TODO verify signatures
-                // TODO verify transition
+
+                let reg = self.delegation.stake_pool_get(&ret.inner.pool_id)?;
+                if ret.verify(reg, certificate::PoolRetirement::serialize_in)
+                    == Verification::Failed
+                {
+                    return Err(Error::CertificateInvalidSignature);
+                }
                 self.delegation = self.delegation.deregister_stake_pool(&ret.inner.pool_id)?;
                 Ok(self)
             }
             certificate::PoolManagement::Update(update) => {
                 check::valid_pool_update_certificate(update)?;
+                let reg = self.delegation.stake_pool_get(&update.inner.pool_id)?;
+                if update.verify(reg, certificate::PoolUpdate::serialize_in) == Verification::Failed
+                {
+                    return Err(Error::CertificateInvalidSignature);
+                }
                 // TODO do things
-                Ok(self)
+                Err(Error::PoolUpdateNotAllowedYet)
             }
         }
     }

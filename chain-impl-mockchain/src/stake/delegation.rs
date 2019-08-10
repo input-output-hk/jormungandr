@@ -1,8 +1,8 @@
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 
-use crate::transaction::AccountIdentifier;
 use crate::certificate::{PoolId, PoolRegistration};
+use crate::transaction::AccountIdentifier;
 
 /// All registered Stake Node
 pub type PoolTable = Hamt<DefaultHasher, PoolId, PoolRegistration>;
@@ -80,6 +80,16 @@ impl DelegationState {
         self.stake_pools
             .lookup(pool_id)
             .map_or_else(|| false, |_| true)
+    }
+
+    pub fn stake_pool_lookup(&self, pool_id: &PoolId) -> Option<&PoolRegistration> {
+        self.stake_pools.lookup(pool_id)
+    }
+
+    pub fn stake_pool_get(&self, pool_id: &PoolId) -> Result<&PoolRegistration, DelegationError> {
+        self.stake_pools
+            .lookup(pool_id)
+            .ok_or(DelegationError::StakePoolDoesNotExist(pool_id.clone()))
     }
 
     pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, DelegationError> {
