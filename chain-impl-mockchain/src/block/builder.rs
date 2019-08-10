@@ -5,9 +5,9 @@ use crate::block::{
     BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion,
     ChainLength, Common, Fragment, GenesisPraosProof, Header, KESSignature, Proof,
 };
+use crate::certificate::PoolId;
 use crate::key::make_signature;
 use crate::leadership;
-use crate::certificate::PoolId;
 use crate::transaction::{AuthenticatedTransaction, NoExtra};
 use chain_addr::Address;
 use chain_crypto::{

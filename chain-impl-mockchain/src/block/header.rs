@@ -2,12 +2,12 @@ use crate::block::{
     headerraw::HeaderRaw,
     version::{AnyBlockVersion, BlockVersion},
 };
+use crate::certificate::PoolId;
 use crate::date::BlockDate;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature, Hash,
 };
 use crate::leadership::{bft, genesis};
-use crate::certificate::PoolId;
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
@@ -261,7 +261,7 @@ impl Readable for Header {
                 })
             }
             AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => {
-                let node_id = <[u8;32]>::read(buf)?.into();
+                let node_id = <[u8; 32]>::read(buf)?.into();
                 let vrf_proof = {
                     let bytes = <[u8;<Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE]>::read(buf)?;
 

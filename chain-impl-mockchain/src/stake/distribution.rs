@@ -1,6 +1,6 @@
 use crate::account;
-use crate::{utxo, value::Value};
 use crate::certificate::PoolId;
+use crate::{utxo, value::Value};
 use chain_addr::{Address, Kind};
 use std::collections::HashMap;
 

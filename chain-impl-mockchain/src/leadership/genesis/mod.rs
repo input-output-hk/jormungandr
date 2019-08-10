@@ -4,13 +4,13 @@ use crate::{
     block::{BlockDate, Header, Proof},
     certificate::PoolId,
     date::Epoch,
-    key::{verify_signature, deserialize_public_key},
+    key::{deserialize_public_key, verify_signature},
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
     stake::{self, StakeDistribution},
     value::Value,
 };
-use chain_core::mempack::{Readable, ReadBuf, ReadError};
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_crypto::Verification as SigningVerification;
 use chain_crypto::{
     digest::DigestOf, Blake2b256, Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12,
@@ -184,17 +184,20 @@ impl Readable for GenesisPraosLeader {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let vrf_public_key = deserialize_public_key(buf)?;
         let kes_public_key = deserialize_public_key(buf)?;
-        Ok(GenesisPraosLeader { vrf_public_key, kes_public_key })
+        Ok(GenesisPraosLeader {
+            vrf_public_key,
+            kes_public_key,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::certificate::{PoolId, PoolRegistration};
     use crate::ledger::Ledger;
     use crate::milli::Milli;
     use crate::stake::PoolStakeDistribution;
-    use crate::certificate::{PoolId, PoolRegistration};
     use crate::testing::ledger as ledger_mock;
     use crate::value::*;
 
