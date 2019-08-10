@@ -72,7 +72,7 @@ impl DelegationState {
         }
     }
 
-    pub fn stake_pool_ids<'a>(&'a self) -> impl Iterator<Item = StakePoolId> + 'a {
+    pub fn stake_pool_ids<'a>(&'a self) -> impl Iterator<Item = PoolId> + 'a {
         self.stake_pools.iter().map(|(id, _)| id.clone())
     }
 
