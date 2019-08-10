@@ -1,17 +1,23 @@
 use crate::{
     blockchain::Blockchain,
     intercom::{BlockMsg, NetworkMsg},
+    leadership::NewEpochToSchedule,
     stats_counter::StatsCounter,
     utils::{
         async_msg::MessageBox,
         task::{Input, TokioServiceInfo},
     },
 };
+use tokio::{
+    prelude::*,
+    sync::mpsc::Sender,
+};
 
 pub fn handle_input(
     info: &TokioServiceInfo,
     blockchain: &Blockchain,
     _stats_counter: &StatsCounter,
+    new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     input: Input<BlockMsg>,
 ) -> Result<(), ()> {

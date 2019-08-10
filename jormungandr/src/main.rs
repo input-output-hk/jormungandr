@@ -91,6 +91,7 @@ pub struct BootstrappedNode {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Branch,
     block0_hash: HeaderHash,
+    new_epoch_announcements: tokio::sync::mpsc::Sender<self::leadership::NewEpochToSchedule>,
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,
     logger: Logger,
 }
@@ -104,6 +105,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     // initialize the network propagation channel
     let (mut network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
+    let mut new_epoch_announcements = bootstrapped_node.new_epoch_announcements;
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
@@ -141,6 +143,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 info,
                 &blockchain,
                 &stats_counter,
+                &mut new_epoch_announcements,
                 &mut network_msgbox,
                 input,
             )
@@ -272,8 +275,12 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     // TODO: we should get this value from the configuration
     let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
 
-    let (blockchain, blockchain_tip) =
-        start_up::load_blockchain(block0, storage, new_epoch_announcements, block_cache_ttl)?;
+    let (blockchain, blockchain_tip) = start_up::load_blockchain(
+        block0,
+        storage,
+        new_epoch_announcements.clone(),
+        block_cache_ttl,
+    )?;
 
     network::bootstrap(
         &settings.network,
@@ -287,6 +294,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block0_hash,
         blockchain,
         blockchain_tip,
+        new_epoch_announcements,
         new_epoch_notifier,
         logger,
     })
