@@ -62,6 +62,10 @@ impl Schedules {
         scheduled_at_time: SystemTime,
         leader_event: LeaderEvent,
     ) -> impl Future<Item = Self, Error = ()> {
+        let now = std::time::Instant::now();
+        let duration = scheduled_at_time.as_ref().duration_since(std::time::SystemTime::now()).unwrap();
+        let scheduled_time = now + duration;
+
         let log = LeadershipLog::new(leader_event.id, leader_event.date.into(), scheduled_at_time);
         logs.insert(log)
             .map(move |handle| Schedule {
@@ -72,7 +76,7 @@ impl Schedules {
             })
             .map(move |schedule| {
                 self.scheduler
-                    .insert_at(schedule, std::time::Instant::now());
+                    .insert_at(schedule, scheduled_time);
                 self
             })
     }

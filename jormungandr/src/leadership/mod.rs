@@ -75,6 +75,7 @@ use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     TimeFrame,
 };
+use jormungandr_lib::time::SystemTime;
 use std::sync::Arc;
 use tokio::{prelude::*, sync::mpsc};
 
@@ -179,24 +180,40 @@ impl LeadershipModule {
                             epoch: chain_time::Epoch(schedule.date.epoch),
                             slot: EpochSlotOffset(schedule.date.slot_id),
                         });
-                        let slot_system_time = time_frame
+                        let slot_system_time: SystemTime = time_frame
                             .slot_to_systemtime(slot)
-                            .expect("The slot should always be in the given time frame here");
+                            .expect("The slot should always be in the given time frame here")
+                            .into();
 
-                        debug!(logger, "registering new leader event";
-                            "leader"     => schedule.id.to_string(),
-                            "block date" => schedule.date.to_string()
-                        );
+                        let now = SystemTime::now();
 
-                        scheduler
-                            .schedule(
-                                logs.clone(),
-                                leadership.clone(),
-                                epoch_parameters.clone(),
-                                slot_system_time.into(),
-                                schedule,
+                        if slot_system_time <= now {
+                            debug!(logger, "ignoring new leader event";
+                                "leader"     => schedule.id.to_string(),
+                                "block date" => schedule.date.to_string(),
+                                "scheduled_at" => slot_system_time.to_string(),
+                                "now" => now.to_string(),
+                            );
+                            future::Either::A(future::ok(scheduler))
+                        } else {
+                            debug!(logger, "registering new leader event";
+                                "leader"     => schedule.id.to_string(),
+                                "block date" => schedule.date.to_string(),
+                                "scheduled_at" => slot_system_time.to_string(),
+                            );
+
+                            future::Either::B(
+                                scheduler
+                                    .schedule(
+                                        logs.clone(),
+                                        leadership.clone(),
+                                        epoch_parameters.clone(),
+                                        slot_system_time,
+                                        schedule,
+                                    )
+                                    .map_err(|()| Error::from("error while adding a new schedule")),
                             )
-                            .map_err(|()| Error::from("error while adding a new schedule"))
+                        }
                     },
                 )
             })
