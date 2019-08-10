@@ -83,6 +83,9 @@ impl Stream for Schedules {
     type Item = delay_queue::Expired<Schedule>;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        self.scheduler.poll()
+        match try_ready!(self.scheduler.poll()) {
+            Some(item) => Ok(Async::Ready(Some(item))),
+            None => Ok(Async::NotReady)
+        }
     }
 }

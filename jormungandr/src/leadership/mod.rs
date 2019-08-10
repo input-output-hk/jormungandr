@@ -240,12 +240,15 @@ impl LeadershipModule {
                     .and_then(move |either| {
                         match either {
                             future::Either::A(((schedule, schedules), new_epoch_future)) => {
-                                let schedule = schedule.expect(
-                                    "delay queue should always be NotReady if no more schedule",
-                                );
-                                let scheduler_future = schedules.into_future();
+                                if let Some(schedule) = schedule {
+                                    leadership_module.handle_schedule(schedule.into_inner());
+                                } else {
+                                    unreachable!(
+                                        "Schedules stream either returns item or stay Async::NoReady"
+                                    )
+                                }
 
-                                leadership_module.handle_schedule(schedule.into_inner());
+                                let scheduler_future = schedules.into_future();
 
                                 future::Either::A(future::ok((
                                     leadership_module,
