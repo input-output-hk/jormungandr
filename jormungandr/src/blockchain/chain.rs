@@ -319,7 +319,7 @@ impl Blockchain {
                             "block is not valid, date is set before parent's".into(),
                         );
                     }
-                    if header.chain_length().next() != parent_ref.chain_length() {
+                    if header.chain_length() != parent_ref.chain_length().next() {
                         return future::err(
                             "block is not valid, chain length is not monotonically increasing"
                                 .into(),
