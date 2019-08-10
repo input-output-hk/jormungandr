@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::Blockchain,
+    blockchain::{Blockchain, PreCheckedHeader, Branch},
     intercom::{BlockMsg, NetworkMsg},
     leadership::NewEpochToSchedule,
     stats_counter::StatsCounter,
@@ -12,10 +12,12 @@ use tokio::{
     prelude::*,
     sync::mpsc::Sender,
 };
+use chain_core::property::HasHeader as _;
 
 pub fn handle_input(
     info: &TokioServiceInfo,
-    blockchain: &Blockchain,
+    blockchain: &mut Blockchain,
+    blockchain_tip: &mut Branch,
     _stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
@@ -32,7 +34,19 @@ pub fn handle_input(
 
     match bquery {
         BlockMsg::LeadershipExpectEndOfEpoch(epoch) => unimplemented!(),
-        BlockMsg::LeadershipBlock(block) => unimplemented!(),
+        BlockMsg::LeadershipBlock(block) => {
+            let header = block.header();
+
+            match blockchain.pre_check_header(header).wait().unwrap() {
+                PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+                    let pch = blockchain.post_check_header(header, parent_ref).wait().unwrap();
+                    let new_block_ref = blockchain.apply_block(pch, block).wait().unwrap();
+
+                    blockchain_tip.update_ref(new_block_ref).wait().unwrap();
+                }
+                _ => unimplemented!(),
+            }
+        }
         BlockMsg::AnnouncedBlock(header, node_id) => unimplemented!(),
         BlockMsg::NetworkBlock(block, reply) => unimplemented!(),
         BlockMsg::ChainHeaders(headers, reply) => unimplemented!(),

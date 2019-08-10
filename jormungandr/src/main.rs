@@ -136,12 +136,14 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     };
 
     let block_task = {
-        let blockchain = blockchain.clone();
+        let mut blockchain = blockchain.clone();
+        let mut blockchain_tip = blockchain_tip.clone();
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(
                 info,
-                &blockchain,
+                &mut blockchain,
+                &mut blockchain_tip,
                 &stats_counter,
                 &mut new_epoch_announcements,
                 &mut network_msgbox,
