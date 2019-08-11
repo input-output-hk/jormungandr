@@ -32,7 +32,7 @@ pub struct PoolRegistration {
 }
 
 /// Updating info for a pool
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoolUpdate {
     pub pool_id: PoolId,
     pub start_validity: TimeOffsetSeconds,
@@ -41,7 +41,7 @@ pub struct PoolUpdate {
 }
 
 /// Retirement info for a pool
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoolRetirement {
     pub pool_id: PoolId,
     pub retirement_time: TimeOffsetSeconds,
