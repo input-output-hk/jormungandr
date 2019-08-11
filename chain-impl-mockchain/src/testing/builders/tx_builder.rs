@@ -7,7 +7,7 @@ use crate::{
     transaction::{AuthenticatedTransaction, Input, NoExtra, Output, Transaction, Witness},
     txbuilder::{OutputPolicy, TransactionBuilder as Builder},
 };
-use chain_addr::{Address, Kind};
+use chain_addr::Address;
 
 pub struct TransactionBuilder {
     inputs: Vec<Input>,
@@ -62,7 +62,9 @@ impl TransactionBuilder {
         };
         let tx_builder = Builder::from(transaction);
         let fee_algorithm = LinearFee::new(0, 0, 0);
-        let (_, tx) = tx_builder.finalize(fee_algorithm, output_policy).unwrap();
+        let (_, tx) = tx_builder
+            .seal_with_output_policy(fee_algorithm, output_policy)
+            .unwrap();
 
         self.inputs = tx
             .inputs
