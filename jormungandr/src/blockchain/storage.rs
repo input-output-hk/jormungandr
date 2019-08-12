@@ -8,7 +8,7 @@ use chain_storage::{
 };
 use std::ops::Deref as _;
 use tokio::prelude::*;
-use tokio::sync::lock::Lock;
+use tokio::sync::lock::{Lock, LockGuard};
 
 #[derive(Clone)]
 pub struct Storage {
@@ -27,6 +27,13 @@ impl Storage {
         Storage {
             inner: Lock::new(storage),
         }
+    }
+
+    #[deprecated(since = "new blockchain API", note = "use the stream iterator instead")]
+    pub fn get_inner(&self) -> impl Future<Item = LockGuard<NodeStorage>, Error = StorageError> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock()))
     }
 
     pub fn get_tag(
@@ -69,6 +76,21 @@ impl Storage {
                 Err(StorageError::BlockNotFound) => future::ok(None),
                 Err(error) => future::err(error),
                 Ok((block, _block_info)) => future::ok(Some(block)),
+            }
+        })
+    }
+
+    pub fn get_with_info(
+        &self,
+        header_hash: HeaderHash,
+    ) -> impl Future<Item = Option<(Block, BlockInfo<HeaderHash>)>, Error = StorageError> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
+            match guard.get_block(&header_hash) {
+                Err(StorageError::BlockNotFound) => future::ok(None),
+                Err(error) => future::err(error),
+                Ok(v) => future::ok(Some(v)),
             }
         })
     }

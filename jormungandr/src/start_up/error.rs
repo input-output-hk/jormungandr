@@ -16,11 +16,12 @@ custom_error! {pub Error
     IO{source: io::Error, reason: ErrorKind} = "I/O Error with {reason}",
     ParseError{ source: io::Error, reason: ErrorKind} = "Parsing error on {reason}",
     StorageError { source: StorageError } = "Storage error",
-    Blockchain { source: blockchain::LoadError } = "Error while loading the legacy blockchain state",
-    NewBlockchain { source: blockchain::protocols::Error } = "Error while loading the blockchain state",
+    Blockchain { source: blockchain::Error } = "Error while loading the legacy blockchain state",
     Block0 { source: blockcfg::Block0Error } = "Error in the genesis-block",
     FetchBlock0 { source: network::FetchBlockError } = "Error fetching the genesis block from the network",
-    NodeSecrets { source: secure::NodeSecretFromFileError} = "Error while loading the node's secrets."
+    NetworkBootstrapError { source: network::BootstrapError } = "Error while loading the blockchain from the network",
+    NodeSecrets { source: secure::NodeSecretFromFileError} = "Error while loading the node's secrets.",
+    Block0InFuture = "Block 0 is set to start in the future",
 }
 
 impl Error {
@@ -33,10 +34,11 @@ impl Error {
             Error::ParseError { .. } => 4,
             Error::StorageError { .. } => 5,
             Error::Blockchain { .. } => 6,
-            Error::NewBlockchain { .. } => 6,
             Error::Block0 { .. } => 7,
+            Error::Block0InFuture => 7,
             Error::NodeSecrets { .. } => 8,
             Error::FetchBlock0 { .. } => 9,
+            Error::NetworkBootstrapError { .. } => 10,
         }
     }
 }

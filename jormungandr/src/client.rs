@@ -1,65 +1,61 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
-use crate::blockchain::{Blockchain, BlockchainR};
+use crate::blockchain::{Branch, Storage};
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
 use crate::utils::task::{Input, ThreadServiceInfo};
 use chain_core::property::HasHeader;
 use chain_storage::store;
+use tokio::prelude::*;
 
-pub fn handle_input(_info: &ThreadServiceInfo, blockchain: &BlockchainR, input: Input<ClientMsg>) {
+pub fn handle_input(
+    _info: &ThreadServiceInfo,
+    storage: &Storage,
+    blockchain_tip: &Branch,
+    input: Input<ClientMsg>,
+) {
     let cquery = match input {
         Input::Shutdown => return,
         Input::Input(msg) => msg,
     };
 
     match cquery {
-        ClientMsg::GetBlockTip(handler) => handler.reply(handle_get_block_tip(&blockchain)),
-        ClientMsg::GetHeaders(ids, handler) => do_stream_reply(handler, |handler| {
-            handle_get_headers(&blockchain, ids, handler)
-        }),
+        ClientMsg::GetBlockTip(handler) => handler.reply(handle_get_block_tip(blockchain_tip)),
+        ClientMsg::GetHeaders(ids, handler) => {
+            do_stream_reply(handler, |handler| handle_get_headers(storage, ids, handler))
+        }
         ClientMsg::GetHeadersRange(checkpoints, to, handler) => {
             do_stream_reply(handler, |handler| {
-                handle_get_headers_range(&blockchain, checkpoints, to, handler)
+                handle_get_headers_range(storage, checkpoints, to, handler)
             })
         }
-        ClientMsg::GetBlocks(ids, handler) => do_stream_reply(handler, |handler| {
-            handle_get_blocks(&blockchain, ids, handler)
-        }),
+        ClientMsg::GetBlocks(ids, handler) => {
+            do_stream_reply(handler, |handler| handle_get_blocks(storage, ids, handler))
+        }
         ClientMsg::GetBlocksRange(from, to, handler) => do_stream_reply(handler, |handler| {
-            handle_get_blocks_range(&blockchain, from, to, handler)
+            handle_get_blocks_range(storage, from, to, handler)
         }),
         ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
-            handle_pull_blocks_to_tip(&blockchain, from, handler)
+            handle_pull_blocks_to_tip(storage, blockchain_tip, from, handler)
         }),
     }
 }
 
-fn handle_get_block_tip(blockchain: &BlockchainR) -> Result<Header, Error> {
-    let blockchain = blockchain.lock_read();
-    let tip = blockchain.get_tip().unwrap();
-    let storage = blockchain.storage.read().unwrap();
-    match storage.get_block(&tip) {
-        Err(err) => Err(Error::failed(format!(
-            "Cannot read block '{}': {}",
-            tip, err
-        ))),
-        Ok((blk, _)) => Ok(blk.header()),
-    }
+fn handle_get_block_tip(blockchain_tip: &Branch) -> Result<Header, Error> {
+    let blockchain_tip = blockchain_tip.get_ref().wait().unwrap();
+
+    Ok(blockchain_tip.header().clone())
 }
 
 const MAX_HEADERS: usize = 2000;
 
-fn find_latest_checkpoint(
-    blockchain: &Blockchain,
-    checkpoints: &[HeaderHash],
-) -> Option<HeaderHash> {
+fn find_latest_checkpoint(storage: &Storage, checkpoints: &[HeaderHash]) -> Option<HeaderHash> {
     // Filter out the checkpoints that don't exist
     // (or failed to be retrieved from the store for any other reason)
     // and find the latest by chain length.
-    let storage = blockchain.storage.read().unwrap();
     checkpoints
         .iter()
-        .filter_map(|hash| match storage.get_block_info(hash) {
-            Ok(info) => Some((info.depth, hash)),
+        .filter_map(|hash| match storage.get_with_info(hash.clone()).wait() {
+            Ok(Some((_, info))) => Some((info.depth, hash)),
+            Ok(None) => None,
             Err(_) => None,
         })
         .max_by_key(|&(depth, _)| depth)
@@ -67,14 +63,12 @@ fn find_latest_checkpoint(
 }
 
 fn handle_get_headers_range(
-    blockchain: &BlockchainR,
+    storage: &Storage,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
     reply: &mut ReplyStreamHandle<Header>,
 ) -> Result<(), Error> {
-    let blockchain = blockchain.lock_read();
-
-    let from = match find_latest_checkpoint(&blockchain, &checkpoints) {
+    let from = match find_latest_checkpoint(&storage, &checkpoints) {
         Some(hash) => hash,
         None => {
             return Err(Error::not_found(
@@ -87,7 +81,7 @@ fn handle_get_headers_range(
 
     /* Send headers up to the maximum. */
     let mut header_count = 0usize;
-    let storage = blockchain.storage.read().unwrap();
+    let storage = storage.get_inner().wait().unwrap();
     for x in store::iterate_range(&*storage, &from, &to)? {
         match x {
             Err(err) => return Err(Error::from(err)),
@@ -106,14 +100,13 @@ fn handle_get_headers_range(
 }
 
 fn handle_get_blocks_range(
-    blockchain: &BlockchainR,
+    storage: &Storage,
     from: HeaderHash,
     to: HeaderHash,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
     // FIXME: remove double locking
-    let blockchain = blockchain.lock_read();
-    let storage = blockchain.storage.read().unwrap();
+    let storage = storage.get_inner().wait().unwrap();
 
     // FIXME: include the from block
 
@@ -127,43 +120,44 @@ fn handle_get_blocks_range(
 }
 
 fn handle_get_blocks(
-    blockchain: &BlockchainR,
+    storage: &Storage,
     ids: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
-    let blockchain = blockchain.lock_read();
-
     for id in ids.into_iter() {
-        let (blk, _) = blockchain.storage.read().unwrap().get_block(&id)?;
-        reply.send(blk);
+        if let Some(blk) = storage.get(id).wait()? {
+            reply.send(blk);
+        } else {
+            // TODO: reply this hash was not found?
+        }
     }
 
     Ok(())
 }
 
 fn handle_get_headers(
-    blockchain: &BlockchainR,
+    storage: &Storage,
     ids: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Header>,
 ) -> Result<(), Error> {
-    let blockchain = blockchain.lock_read();
-
     for id in ids.into_iter() {
-        let (blk, _) = blockchain.storage.read().unwrap().get_block(&id)?;
-        reply.send(blk.header());
+        if let Some(blk) = storage.get(id).wait()? {
+            reply.send(blk.header());
+        } else {
+            // TODO: reply this hash was not found?
+        }
     }
 
     Ok(())
 }
 
 fn handle_pull_blocks_to_tip(
-    blockchain: &BlockchainR,
+    storage: &Storage,
+    blockchain_tip: &Branch,
     checkpoints: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
-    let blockchain = blockchain.lock_read();
-
-    let from = match find_latest_checkpoint(&blockchain, &checkpoints) {
+    let from = match find_latest_checkpoint(storage, &checkpoints) {
         Some(hash) => hash,
         None => {
             return Err(Error::not_found(
@@ -172,16 +166,12 @@ fn handle_pull_blocks_to_tip(
         }
     };
 
-    let tip = blockchain.get_tip().unwrap();
+    let tip = blockchain_tip.get_ref().wait().unwrap();
 
-    let storage = blockchain.storage.read().unwrap();
-    for x in store::iterate_range(&*storage, &from, &tip)? {
+    let storage = storage.get_inner().wait().unwrap();
+    for x in store::iterate_range(&*storage, &from, tip.hash())? {
         let info = x?;
-        let (blk, _) = blockchain
-            .storage
-            .read()
-            .unwrap()
-            .get_block(&info.block_hash)?;
+        let (blk, _) = storage.get_block(&info.block_hash)?;
         reply.send(blk);
     }
 

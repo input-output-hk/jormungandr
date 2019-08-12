@@ -2,19 +2,16 @@ mod error;
 
 pub use self::error::{Error, ErrorKind};
 use crate::{
-    blockcfg::Block,
-    blockchain::{
-        protocols::{Blockchain, Branch, ErrorKind as BlockchainError},
-        Blockchain as LegacyBlockchain, BlockchainR as LegacyBlockchainR,
-    },
-    leadership::{EpochParameters, TaskParameters},
+    blockcfg::{Block, Leadership},
+    blockchain::{Blockchain, Branch, ErrorKind as BlockchainError},
+    leadership::NewEpochToSchedule,
     network,
     settings::start::Settings,
 };
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 use slog::Logger;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
@@ -86,21 +83,10 @@ pub fn prepare_block_0(
     }
 }
 
-pub fn load_legacy_blockchain(
-    block0: Block,
-    storage: NodeStorage,
-    epoch_event: mpsc::Sender<EpochParameters>,
-    logger: &Logger,
-) -> Result<LegacyBlockchainR, Error> {
-    let mut blockchain_data = LegacyBlockchain::load(block0, storage, epoch_event, logger)?;
-    blockchain_data.initial()?;
-    Ok(blockchain_data.into())
-}
-
 pub fn load_blockchain(
     block0: Block,
     storage: NodeStorage,
-    epoch_event: mpsc::Sender<TaskParameters>,
+    epoch_event: mpsc::Sender<NewEpochToSchedule>,
     block_cache_ttl: Duration,
 ) -> Result<(Blockchain, Branch), Error> {
     use tokio::prelude::*;
@@ -119,9 +105,24 @@ pub fn load_blockchain(
         .get_ref()
         .map_err(|_: std::convert::Infallible| unreachable!())
         .and_then(move |reference| {
+            let time_frame = reference.time_frame();
+            let current_known_leadership = reference.epoch_leadership_schedule();
+            let current_known_state = reference.ledger();
+
+            let slot = time_frame
+                .slot_at(&std::time::SystemTime::now())
+                .ok_or(Error::Block0InFuture)
+                .unwrap();
+            let date = current_known_leadership
+                .era()
+                .from_slot_to_era(slot)
+                .unwrap();
+            let new_schedule = Leadership::new(date.epoch.0, &current_known_state);
+
             epoch_event
-                .send(TaskParameters {
-                    leadership: reference.epoch_leadership_schedule().clone(),
+                .send(NewEpochToSchedule {
+                    new_schedule: Arc::new(new_schedule),
+                    new_parameters: reference.epoch_ledger_parameters().clone(),
                     time_frame: reference.time_frame().as_ref().clone(),
                 })
                 .into_future()

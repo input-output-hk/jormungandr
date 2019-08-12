@@ -33,7 +33,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_yaml;
-#[macro_use(o, debug, info, warn, error, crit)]
+#[macro_use]
 extern crate slog;
 extern crate slog_async;
 #[cfg(feature = "gelf")]
@@ -49,7 +49,7 @@ extern crate tokio;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
-    blockchain::BlockchainR,
+    blockchain::Blockchain,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -88,9 +88,11 @@ fn start() -> Result<(), start_up::Error> {
 
 pub struct BootstrappedNode {
     settings: Settings,
-    blockchain: BlockchainR,
+    blockchain: Blockchain,
+    blockchain_tip: blockchain::Branch,
     block0_hash: HeaderHash,
-    new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::EpochParameters>,
+    new_epoch_announcements: tokio::sync::mpsc::Sender<self::leadership::NewEpochToSchedule>,
+    new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,
     logger: Logger,
 }
 
@@ -103,7 +105,12 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     // initialize the network propagation channel
     let (mut network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
+    let mut new_epoch_announcements = bootstrapped_node.new_epoch_announcements;
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
+    let blockchain_tip = bootstrapped_node.blockchain_tip;
+    let blockchain = bootstrapped_node.blockchain;
+    // TODO: make this value configuration
+    let leadership_logs = leadership::Logs::new(Duration::from_secs(3 * 24 * 3600));
 
     let stats_counter = StatsCounter::default();
 
@@ -129,13 +136,16 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     };
 
     let block_task = {
-        let blockchain = bootstrapped_node.blockchain.clone();
+        let mut blockchain = blockchain.clone();
+        let mut blockchain_tip = blockchain_tip.clone();
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(
                 info,
-                &blockchain,
+                &mut blockchain,
+                &mut blockchain_tip,
                 &stats_counter,
+                &mut new_epoch_announcements,
                 &mut network_msgbox,
                 input,
             )
@@ -143,9 +153,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     };
 
     let client_task = {
-        let blockchain = bootstrapped_node.blockchain.clone();
+        let storage = blockchain.storage().clone();
+        let blockchain_tip = blockchain_tip.clone();
+
         services.spawn_with_inputs("client-query", move |info, input| {
-            client::handle_input(info, &blockchain, input)
+            client::handle_input(info, &storage, &blockchain_tip, input)
         })
     };
 
@@ -189,23 +201,26 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let enclave = Enclave::from_vec(leader_secrets);
 
     {
+        use tokio::prelude::*;
+
         let fragment_pool = fragment_pool.clone();
         let block_task = block_task.clone();
-        let blockchain = bootstrapped_node.blockchain.clone();
+        let blockchain_tip = blockchain_tip.clone();
 
-        let enclave = enclave.clone();
+        let enclave = leadership::Enclave::new(enclave.clone());
         let stats_counter = stats_counter.clone();
 
         services.spawn_future("leadership", move |info| {
-            let process = self::leadership::Process::new(
+            leadership::LeadershipModule::start(
                 info,
+                leadership_logs,
+                enclave,
                 fragment_pool,
-                blockchain.lock_read().tip.clone(),
+                blockchain_tip,
+                new_epoch_notifier,
                 block_task,
-                stats_counter,
-            );
-
-            process.start(enclave, new_epoch_notifier)
+            )
+            .map_err(|e| unimplemented!("error in leadership {}", e))
         });
     }
 
@@ -213,7 +228,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         Some(rest) => {
             let context = rest::Context {
                 stats_counter,
-                blockchain: bootstrapped_node.blockchain.clone(),
+                blockchain: blockchain.clone(),
+                blockchain_tip,
                 transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
                 logs: Arc::new(Mutex::new(pool_logs)),
                 server: Arc::default(),
@@ -258,29 +274,29 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let block0_hash = block0.header.hash();
 
-    let blockchain = start_up::load_legacy_blockchain(
-        block0,
-        storage,
-        new_epoch_announcements,
-        &bootstrap_logger,
-    )?;
-
-    network::legacy_bootstrap(&settings.network, blockchain.clone(), &bootstrap_logger);
-
-    /*
     // TODO: we should get this value from the configuration
     let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
 
-    let (new_blockchain, branch) =
-        start_up::load_blockchain(block0, storage, new_epoch_announcements, block_cache_ttl)?;
+    let (blockchain, blockchain_tip) = start_up::load_blockchain(
+        block0,
+        storage,
+        new_epoch_announcements.clone(),
+        block_cache_ttl,
+    )?;
 
-    network::bootstrap(&settings.network, new_blockchain.clone(), branch, &bootstrap_logger);
-    */
+    network::bootstrap(
+        &settings.network,
+        blockchain.clone(),
+        blockchain_tip.clone(),
+        &bootstrap_logger,
+    )?;
 
     Ok(BootstrappedNode {
         settings,
         block0_hash,
         blockchain,
+        blockchain_tip,
+        new_epoch_announcements,
         new_epoch_notifier,
         logger,
     })

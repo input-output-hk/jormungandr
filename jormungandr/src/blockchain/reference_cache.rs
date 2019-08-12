@@ -1,4 +1,4 @@
-use crate::{blockcfg::HeaderHash, blockchain::protocols::Ref};
+use crate::{blockcfg::HeaderHash, blockchain::Ref};
 use std::{collections::HashMap, convert::Infallible, time::Duration};
 use tokio::{
     prelude::*,

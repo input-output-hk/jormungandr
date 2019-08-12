@@ -1,12 +1,17 @@
 mod branch;
 mod chain;
+mod multiverse;
 mod process;
-pub mod protocols;
-mod tip;
+mod reference;
+mod reference_cache;
+mod storage;
 
-pub use self::branch::Branch;
-pub use self::chain::{
-    handle_block, Blockchain, BlockchainR, HandleBlockError, HandledBlock, LoadError,
+pub use self::{
+    branch::{Branch, Branches},
+    chain::{Blockchain, Error, ErrorKind, PreCheckedHeader},
+    multiverse::Multiverse,
+    process::handle_input,
+    reference::Ref,
+    reference_cache::RefCache,
+    storage::Storage,
 };
-pub use self::process::handle_input;
-pub use self::tip::{Tip, TipGetError, TipReplaceError};

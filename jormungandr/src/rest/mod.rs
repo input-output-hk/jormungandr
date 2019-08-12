@@ -8,7 +8,7 @@ pub use self::server::{Error, Server};
 
 use std::sync::{Arc, Mutex, RwLock};
 
-use crate::blockchain::BlockchainR;
+use crate::blockchain::{Blockchain, Branch};
 use crate::fragment::Logs;
 use crate::secure::enclave::Enclave;
 use crate::settings::start::{Error as ConfigError, Rest};
@@ -20,7 +20,8 @@ use crate::utils::async_msg::MessageBox;
 #[derive(Clone)]
 pub struct Context {
     pub stats_counter: StatsCounter,
-    pub blockchain: BlockchainR,
+    pub blockchain: Blockchain,
+    pub blockchain_tip: Branch,
     pub transaction_task: Arc<Mutex<MessageBox<TransactionMsg>>>,
     pub logs: Arc<Mutex<Logs>>,
     pub server: Arc<RwLock<Option<Server>>>,
