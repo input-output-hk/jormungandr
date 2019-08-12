@@ -10,7 +10,7 @@ use crate::{
         task::{Input, TokioServiceInfo},
     },
 };
-use chain_core::property::HasHeader as _;
+use chain_core::property::{Block as _, HasHeader as _};
 
 use futures::future::Either;
 use slog::Logger;
@@ -39,20 +39,9 @@ pub fn handle_input(
     match bquery {
         BlockMsg::LeadershipExpectEndOfEpoch(epoch) => unimplemented!(),
         BlockMsg::LeadershipBlock(block) => {
-            let header = block.header();
-
-            match blockchain.pre_check_header(header).wait().unwrap() {
-                PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                    let pch = blockchain
-                        .post_check_header(header, parent_ref)
-                        .wait()
-                        .unwrap();
-                    let new_block_ref = blockchain.apply_block(pch, block).wait().unwrap();
-
-                    blockchain_tip.update_ref(new_block_ref).wait().unwrap();
-                }
-                _ => unimplemented!(),
-            }
+            let future = process_leadership_block(blockchain.clone(), block);
+            let new_block_ref = future.wait().unwrap();
+            blockchain_tip.update_ref(new_block_ref).wait().unwrap();
         }
         BlockMsg::AnnouncedBlock(header, node_id) => unimplemented!(),
         BlockMsg::NetworkBlock(block, reply) => unimplemented!(),
@@ -65,15 +54,24 @@ pub fn handle_input(
 pub fn process_leadership_block(
     mut blockchain: Blockchain,
     block: Block,
-    parent: Ref,
-    logger: Logger,
 ) -> impl Future<Item = Ref, Error = Error> {
+    let mut end_blockchain = blockchain.clone();
     let header = block.header();
+    let parent_hash = block.parent_id();
     // This is a trusted block from the leadership task,
     // so we can skip pre-validation.
     blockchain
-        .post_check_header(header, parent)
-        .and_then(move |post_checked| blockchain.apply_block(post_checked, block))
+        .get_ref(parent_hash)
+        .and_then(move |parent| {
+            if let Some(parent_ref) = parent {
+                Either::A(blockchain.post_check_header(header, parent_ref))
+            } else {
+                Either::B(future::err(
+                    ErrorKind::MissingParentBlockFromStorage(header).into(),
+                ))
+            }
+        })
+        .and_then(move |post_checked| end_blockchain.apply_block(post_checked, block))
 }
 
 pub fn process_block_announcement(
