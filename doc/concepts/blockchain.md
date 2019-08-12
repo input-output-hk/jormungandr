@@ -81,9 +81,9 @@ duration of an epoch.
 
 ## Leader
 
-Leader are an abstration related to the specific actor that have the ability
+Leader are an abstraction related to the specific actor that have the ability
 to create block; In OBFT mode, the leader just the owner of a cryptographic
-key, whereas in GenesisPraos mode, the leader is a stake pool.
+key, whereas in Genesis-Praos mode, the leader is a stake pool.
 
 ## Transaction
 
@@ -98,7 +98,7 @@ coins being spent, and on the other side the outputs represent coins being recei
                         \             /
                          \           /
                           -----------
-                                120$
+                                100$
                              --------- 
                             /         \
     Outputs            Charlie (50$)  Dan (50$)
