@@ -2,7 +2,7 @@ mod error;
 
 pub use self::error::{Error, ErrorKind};
 use crate::{
-    blockcfg::Block,
+    blockcfg::{Block, Leadership},
     blockchain::{Blockchain, Branch, ErrorKind as BlockchainError},
     leadership::NewEpochToSchedule,
     network,
@@ -11,7 +11,7 @@ use crate::{
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 use slog::Logger;
-use std::time::Duration;
+use std::{time::Duration, sync::Arc};
 use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
@@ -105,9 +105,19 @@ pub fn load_blockchain(
         .get_ref()
         .map_err(|_: std::convert::Infallible| unreachable!())
         .and_then(move |reference| {
+            let time_frame = reference.time_frame();
+            let current_known_leadership = reference.epoch_leadership_schedule();
+            let current_known_state = reference.ledger();
+
+            let slot = time_frame
+                .slot_at(&std::time::SystemTime::now())
+                .ok_or(Error::Block0InFuture).unwrap();
+            let date = current_known_leadership.era().from_slot_to_era(slot).unwrap();
+            let new_schedule = Leadership::new(date.epoch.0, &current_known_state);
+
             epoch_event
                 .send(NewEpochToSchedule {
-                    new_schedule: reference.epoch_leadership_schedule().clone(),
+                    new_schedule: Arc::new(new_schedule),
                     new_parameters: reference.epoch_ledger_parameters().clone(),
                     time_frame: reference.time_frame().as_ref().clone(),
                 })

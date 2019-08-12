@@ -20,7 +20,8 @@ custom_error! {pub Error
     Block0 { source: blockcfg::Block0Error } = "Error in the genesis-block",
     FetchBlock0 { source: network::FetchBlockError } = "Error fetching the genesis block from the network",
     NetworkBootstrapError { source: network::BootstrapError } = "Error while loading the blockchain from the network",
-    NodeSecrets { source: secure::NodeSecretFromFileError} = "Error while loading the node's secrets."
+    NodeSecrets { source: secure::NodeSecretFromFileError} = "Error while loading the node's secrets.",
+    Block0InFuture = "Block 0 is set to start in the future",
 }
 
 impl Error {
@@ -34,6 +35,7 @@ impl Error {
             Error::StorageError { .. } => 5,
             Error::Blockchain { .. } => 6,
             Error::Block0 { .. } => 7,
+            Error::Block0InFuture => 7,
             Error::NodeSecrets { .. } => 8,
             Error::FetchBlock0 { .. } => 9,
             Error::NetworkBootstrapError { .. } => 10,
