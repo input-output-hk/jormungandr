@@ -211,6 +211,20 @@ impl<H: DigestAlg> PartialEq for Digest<H> {
     }
 }
 
+impl<H: DigestAlg> Eq for Digest<H> {}
+
+impl<H: DigestAlg> PartialOrd for Digest<H> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<H: DigestAlg> Ord for Digest<H> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_ref().cmp(other.as_ref())
+    }
+}
+
 impl<H: DigestAlg> AsRef<[u8]> for Digest<H> {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
@@ -301,6 +315,18 @@ impl<H: DigestAlg, T> PartialEq for DigestOf<H, T> {
 }
 
 impl<H: DigestAlg, T> Eq for DigestOf<H, T> {}
+
+impl<H: DigestAlg, T> PartialOrd for DigestOf<H, T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.inner.partial_cmp(&other.inner)
+    }
+}
+
+impl<H: DigestAlg, T> Ord for DigestOf<H, T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.inner.cmp(&other.inner)
+    }
+}
 
 impl<H: DigestAlg, T> AsRef<[u8]> for DigestOf<H, T> {
     fn as_ref(&self) -> &[u8] {
