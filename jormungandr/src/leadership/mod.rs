@@ -162,12 +162,18 @@ impl LeadershipModule {
         let time_frame = new_epoch_event.time_frame;
         let logs = self.logs.clone();
 
-        let slot_start = 0;
-        let nb_slots = era.slots_per_epoch();
+        let current_slot = time_frame.slot_at(&std::time::SystemTime::now()).unwrap();
+        let within_era = era.from_slot_to_era(current_slot).unwrap();
+
+        let slot_start = within_era.slot.0;
+        let nb_slots = era.slots_per_epoch() - slot_start;
 
         let logger = self.service_info.logger().new(o!("epoch" => epoch));
 
-        debug!(logger, "handling new epoch event");
+        debug!(logger, "handling new epoch event";
+            "slot start" => slot_start,
+            "nb_slots" => nb_slots,
+        );
 
         self.enclave
             .query_schedules(leadership.clone(), slot_start, nb_slots)
