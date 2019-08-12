@@ -63,7 +63,10 @@ impl Schedules {
         leader_event: LeaderEvent,
     ) -> impl Future<Item = Self, Error = ()> {
         let now = std::time::Instant::now();
-        let duration = scheduled_at_time.as_ref().duration_since(std::time::SystemTime::now()).unwrap();
+        let duration = scheduled_at_time
+            .as_ref()
+            .duration_since(std::time::SystemTime::now())
+            .unwrap();
         let scheduled_time = now + duration;
 
         let log = LeadershipLog::new(leader_event.id, leader_event.date.into(), scheduled_at_time);
@@ -75,8 +78,7 @@ impl Schedules {
                 leader_event,
             })
             .map(move |schedule| {
-                self.scheduler
-                    .insert_at(schedule, scheduled_time);
+                self.scheduler.insert_at(schedule, scheduled_time);
                 self
             })
     }
@@ -89,7 +91,7 @@ impl Stream for Schedules {
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         match try_ready!(self.scheduler.poll()) {
             Some(item) => Ok(Async::Ready(Some(item))),
-            None => Ok(Async::NotReady)
+            None => Ok(Async::NotReady),
         }
     }
 }

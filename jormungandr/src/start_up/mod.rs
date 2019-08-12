@@ -11,7 +11,7 @@ use crate::{
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 use slog::Logger;
-use std::{time::Duration, sync::Arc};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
@@ -111,8 +111,12 @@ pub fn load_blockchain(
 
             let slot = time_frame
                 .slot_at(&std::time::SystemTime::now())
-                .ok_or(Error::Block0InFuture).unwrap();
-            let date = current_known_leadership.era().from_slot_to_era(slot).unwrap();
+                .ok_or(Error::Block0InFuture)
+                .unwrap();
+            let date = current_known_leadership
+                .era()
+                .from_slot_to_era(slot)
+                .unwrap();
             let new_schedule = Leadership::new(date.epoch.0, &current_known_state);
 
             epoch_event

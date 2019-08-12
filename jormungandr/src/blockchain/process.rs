@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::{Blockchain, PreCheckedHeader, Branch},
+    blockchain::{Blockchain, Branch, PreCheckedHeader},
     intercom::{BlockMsg, NetworkMsg},
     leadership::NewEpochToSchedule,
     stats_counter::StatsCounter,
@@ -8,11 +8,8 @@ use crate::{
         task::{Input, TokioServiceInfo},
     },
 };
-use tokio::{
-    prelude::*,
-    sync::mpsc::Sender,
-};
 use chain_core::property::HasHeader as _;
+use tokio::{prelude::*, sync::mpsc::Sender};
 
 pub fn handle_input(
     info: &TokioServiceInfo,
@@ -39,7 +36,10 @@ pub fn handle_input(
 
             match blockchain.pre_check_header(header).wait().unwrap() {
                 PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                    let pch = blockchain.post_check_header(header, parent_ref).wait().unwrap();
+                    let pch = blockchain
+                        .post_check_header(header, parent_ref)
+                        .wait()
+                        .unwrap();
                     let new_block_ref = blockchain.apply_block(pch, block).wait().unwrap();
 
                     blockchain_tip.update_ref(new_block_ref).wait().unwrap();
