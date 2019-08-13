@@ -1,6 +1,7 @@
 mod v0;
 
 use hex::FromHexError;
+use jcli_app::utils::rest_api::{self, DESERIALIZATION_ERROR_MSG};
 use jcli_app::utils::{host_addr, io::ReadYamlError, output_format, CustomErrorFiller};
 use structopt::StructOpt;
 
@@ -12,10 +13,8 @@ pub enum Rest {
     V0(v0::V0),
 }
 
-const DESERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
-
 custom_error! {pub Error
-    ReqwestError { source: reqwest::Error } = @{ reqwest_error_msg(source) },
+    RestError { source: rest_api::Error } = "failed to make a REST request",
     HostAddrError { source: host_addr::Error } = "invalid host address",
     DeserializationError { source: serde_json::Error } = @{{ let _ = source; DESERIALIZATION_ERROR_MSG }},
     InputFragmentMalformed { source: std::io::Error,  filler: CustomErrorFiller}  =  "input is not a valid fragment",
@@ -32,24 +31,6 @@ impl From<ReadYamlError> for Error {
             ReadYamlError::Io { source } => Error::InputFileInvalid { source },
             ReadYamlError::Yaml { source } => Error::InputFileYamlMalformed { source },
         }
-    }
-}
-
-fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
-    if err.is_timeout() {
-        "connection with node timed out"
-    } else if err.is_http() {
-        "could not connect with node"
-    } else if err.is_serialization() {
-        DESERIALIZATION_ERROR_MSG
-    } else if err.is_redirect() {
-        "redirecting error while connecting with node"
-    } else if err.is_client_error() {
-        "node rejected request because of invalid parameters"
-    } else if err.is_server_error() {
-        "node internal error"
-    } else {
-        "communication with node failed in unexpected way"
     }
 }
 

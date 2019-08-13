@@ -1,12 +1,12 @@
 mod account_id;
 mod debug_flag;
-mod rest_api;
 
 pub mod error;
 pub mod host_addr;
 pub mod io;
 pub mod key_parser;
 pub mod output_format;
+pub mod rest_api;
 
 pub use self::account_id::AccountId;
 pub use self::debug_flag::DebugFlag;

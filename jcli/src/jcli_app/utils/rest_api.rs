@@ -1,7 +1,9 @@
 use jcli_app::utils::DebugFlag;
-use reqwest::{Error, RequestBuilder, Response};
+use reqwest::{self, Client, RequestBuilder, Response};
 use serde::Serialize;
 use std::{fmt, io::Write};
+
+pub const DESERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
 
 pub struct RestApiSender<'a> {
     builder: RequestBuilder,
@@ -17,6 +19,28 @@ pub struct RestApiResponse {
 pub enum RestApiResponseBody {
     Text(String),
     Binary(Vec<u8>),
+}
+
+custom_error! { pub Error
+    RequestFailed { source: reqwest::Error } = @{ reqwest_error_msg(source) },
+}
+
+fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
+    if err.is_timeout() {
+        "connection with node timed out"
+    } else if err.is_http() {
+        "could not connect with node"
+    } else if err.is_serialization() {
+        DESERIALIZATION_ERROR_MSG
+    } else if err.is_redirect() {
+        "redirecting error while connecting with node"
+    } else if err.is_client_error() {
+        "node rejected request because of invalid parameters"
+    } else if err.is_server_error() {
+        "node internal error"
+    } else {
+        "communication with node failed in unexpected way"
+    }
 }
 
 impl<'a> RestApiSender<'a> {
@@ -65,9 +89,8 @@ impl<'a> RestApiSender<'a> {
                 writeln!(writer, "Request body:\n{}", body).unwrap();
             }
         }
-        let response = reqwest::Client::new()
-            .execute(request)
-            .and_then(RestApiResponse::new)?;
+        let response_raw = Client::new().execute(request)?;
+        let response = RestApiResponse::new(response_raw)?;
         if let Some(mut writer) = self.debug_flag.debug_writer() {
             writeln!(writer, "{:#?}", response.response()).unwrap();
             if !response.body().is_empty() {
@@ -107,7 +130,10 @@ impl RestApiResponseBody {
                 response.copy_to(&mut data)?;
                 Ok(RestApiResponseBody::Binary(data))
             }
-            false => response.text().map(RestApiResponseBody::Text),
+            false => {
+                let data = response.text()?;
+                Ok(RestApiResponseBody::Text(data))
+            }
         }
     }
 
