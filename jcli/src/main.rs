@@ -7,6 +7,7 @@ extern crate gtmpl;
 extern crate hex;
 extern crate jormungandr_lib;
 extern crate mime;
+extern crate openapiv3;
 extern crate rand;
 extern crate rand_chacha;
 extern crate reqwest;

@@ -1,4 +1,5 @@
-use jcli_app::utils::DebugFlag;
+use hex;
+use jcli_app::utils::{open_api_verifier, DebugFlag, OpenApiVerifier};
 use reqwest::{self, Client, RequestBuilder, Response};
 use serde::Serialize;
 use std::{fmt, io::Write};
@@ -23,6 +24,7 @@ pub enum RestApiResponseBody {
 
 custom_error! { pub Error
     RequestFailed { source: reqwest::Error } = @{ reqwest_error_msg(source) },
+    VerificationFailed { source: open_api_verifier::Error } = "request didn't pass verification",
 }
 
 fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
@@ -89,6 +91,7 @@ impl<'a> RestApiSender<'a> {
                 writeln!(writer, "Request body:\n{}", body).unwrap();
             }
         }
+        OpenApiVerifier::load_from_env()?.verify_request(&request)?;
         let response_raw = Client::new().execute(request)?;
         let response = RestApiResponse::new(response_raw)?;
         if let Some(mut writer) = self.debug_flag.debug_writer() {
