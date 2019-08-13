@@ -1,0 +1,555 @@
+openapi: "3.0.2"
+info:
+  title: Generic blockchain node REST API
+  version: 0.0.1
+paths:
+  /api/v0/account/{account_id}:
+    get:
+      description: Gets account state
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            description: Hex-encoded account ID
+            type: string
+            pattern: '[0-9a-fA-F]+'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [value, counter]
+                properties:
+                  delegation:
+                    description: Hex-encoded stake pool ID this account is delegating to
+                    type: string
+                    pattern: '[0-9a-fA-F]+'
+                  value:
+                    description: Current balance of this account
+                    type: integer
+                    minimum: 0
+                  counter:
+                    description: Number of transactions performed with this account
+                    type: integer
+                    minimum: 0
+              example: |
+                {
+                  "counter": 1,
+                  "delegation": "c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356",
+                  "value": 990
+                }
+        404:
+          description: Account with given ID was not found
+  /api/v0/block/{block_id}:
+    get:
+      description: Gets block
+      parameters:
+        - name: block_id
+          in: path
+          required: true
+          schema:
+            description: Hex-encoded block ID
+            type: string
+            pattern: '[0-9a-fA-F]+'
+      responses:
+        200:
+          description: Success
+          content:
+            application/octet-stream:
+              schema:
+                description: Binary blob with block
+                type: string
+                format: binary
+        400:
+          description: Block with given ID was not found
+  /api/v0/block/{block_id}/next_id:
+    get:
+      description: Gets IDs of descendants of block
+      parameters:
+        - name: block_id
+          in: path
+          required: true
+          schema:
+            description: Hex-encoded block ID
+            type: string
+            pattern: '[0-9a-fA-F]+'
+        - name: count
+          in: query
+          schema:
+            description: Max number of IDs to get
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 1
+      responses:
+        200:
+          description: Success
+          content:
+            application/octet-stream:
+              schema:
+                description: Concatenated binary blobs with block IDs, sorted from closest to furthest descendant
+                type: string
+                format: binary
+        400:
+          description: Block with given ID was not found
+  /api/v0/fragment/logs:
+    get:
+      description: Gets logs from node message pool
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [fragment_id, received_from, received_at, last_updated_at, status]
+                  properties:
+                    fragment_id:
+                      description: Hex-encoded fragment ID
+                      type: string
+                      pattern: '[0-9a-fA-F]+'
+                    received_from:
+                      description: Source of the fragment
+                      type: string
+                      enum: [Network, Rest]
+                    received_at:
+                      description: When fragment was received by node
+                      type: string
+                      format: date-time
+                    last_updated_at:
+                      description: When fragment changed status last time
+                      type: string
+                      format: date-time
+                    status:
+                      description: Status of the fragment
+                      oneOf:
+                        - description: Fragment is yet to be processed
+                          type: string
+                          enum: [Pending]
+                        - description: Fragment was rejected and won't be added to a block
+                          type: object
+                          required: [Rejected]
+                          properties:
+                            Rejected:
+                              type: object
+                              required: [reason]
+                              properties:
+                                reason:
+                                  description: Reason for rejection
+                                  type: string
+                        - description: Fragment was added to a block
+                          type: object
+                          required: [InABlock]
+                          properties:
+                            InABlock:
+                              type: object
+                              required: [date]
+                              properties:
+                                date:
+                                  description: Epoch and slot ID of block containing fragment separated with a dot
+                                  type: string
+                                  pattern: '[0-9]+\.[0-9]+'
+              examples:
+                Pending:
+                  value: |
+                    [
+                      {
+                        "fragment_id": "a50a80e0ce6cb8e19d4381dc2a521c1d3ab8a532029131e440548625b2a4d3e8",
+                        "received_from": "Rest",
+                        "received_at": "2019-08-12T11:20:52.316544007+00:00",
+                        "last_updated_at": "2019-08-12T11:20:52.316544079+00:00",
+                        "status": "Pending"
+                      }
+                    ]
+                Rejected:
+                  value: |
+                    [
+                      {
+                        "fragment_id": "68b36b0e244ff571d4d01026c149a3986bbd7d7deaabac5e3b994171d9c50856",
+                        "received_from": "Rest",
+                        "received_at": "2019-08-12T11:20:57.758070884+00:00",
+                        "last_updated_at": "2019-08-12T11:20:58.005548031+00:00",
+                        "status": {
+                          "Rejected": {
+                            "reason": "The UTxO value (99) in the transaction does not match the actually state value: 100"
+                          }
+                        }
+                      }
+                    ]
+                InABlock:
+                  value: |
+                    [
+                      {
+                        "fragment_id": "99e8fbb961e9956cab03779e427b9aad249ddcb4ad7c508f3a80f44091485f01",
+                        "received_from": "Rest",
+                        "received_at": "2019-08-12T11:21:11.314829989+00:00",
+                        "last_updated_at": "2019-08-12T11:21:12.017821060+00:00",
+                        "status": {
+                          "InABlock": {
+                            "date": "114237.32"
+                          }
+                        }
+                      }
+                    ]
+  /api/v0/leaders:
+    get:
+      description: Gets leader IDs
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: IDs of leaders
+                type: array
+                items:
+                  description: ID of the leader
+                  type: integer
+                  minimum: 0
+              example: [1, 5]
+    post:
+      description: Registers new leader
+      requestBody:
+        description: Leader secret
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bft:
+                  description: Secret key for BFT node
+                  type: object
+                  required: [signing_key]
+                  properties:
+                    signing_key:
+                      description: Bech32-encoded BFT signing key
+                      type: string
+                genesis:
+                  description: Secret key for genesis node
+                  type: object
+                  required: [node_id, sig_key, vrf_key]
+                  properties:
+                    node_id:
+                      description: Hex-encoded node ID
+                      type: string
+                      pattern: '[0-9a-fA-F]+'
+                    sig_key:
+                      description: Bech32-encoded KES signing key
+                      type: string
+                    vrf_key:
+                      description: Bech32-encoded VRF signing key
+                      type: string
+            examples:
+              bft:
+                value: |
+                  {
+                    "bft": {
+                      "signing_key": "ed25519_sk185kghuwsgjmznumrd60ytnw84fn00cpn0mqa2428hj6mvnf5edqqkv40lg"
+                    }
+                  }
+              genesis:
+                value: |
+                  {
+                    "genesis": {
+                      "node_id": "ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74",
+                      "sig_key": "kes25519-12-sk1qqqqqqq2avmtk06hwh68c9nthtu5f66wxsghf8h5hvk37d58zeux9sqt8a86vc5uy3z470jpy4yk72fp6vd9c9rw2smnh4hxnsa3puaz35h8znqwnz33u0tclwpxfy7hxw43lxe4tpxmjcz8mfrlhdm0lj9qc30uaeefnw909txczqstmf4x2kgege5adlaytgx3surq78tx4gnxxt5xh6pwkj23kkpqt99hqg637ld8h0fd7uwf0c7d8t29tjfu5ltaew4gn93z2pp20drtc9dq724lltepn52yrp6dchhjezqws4737kglz3ch7qgls3k0gjynxcyrdtn3ldm95mjn56es4l3nzs25349ahmahxm079f0uhf4m9v0whaye3kq9kr74x4mpw52w8tndtnyh3cyxuqws4fqhsfeczewkku70unu3wr5460hemw205mc9pl684rx2hxmhvexgu93qwgglzq60n582lt243sduvuatq9skpstazytl4srp7n0958xkf3vcyh3xj6tl0fnp55el7teqzpj5u02vqh9rfhg2tx55z2uqna0dnnsa4tejk46cnr9m2e39cldp3f35mlp3qlrnn53f87pankta4x9aj3rv6ghzvr52gc3s4j6ncsz4j4he6xm9n8z6uq0ht3kztgfqnwwm893xcd4za0ph2zl4954xxgfwk9yvpzkuq3a2y2d6t70rtj27zdt07qvm8cjqgthe76zqmm80fuwkw4qh2qeah0y634a8svatj8tjr8j7ykczm5dfzh734hwwz457djt7227220sm5eg7gh9tamkhem43huysprdjvm43swmxptsq9krwa4eqzlq76ftsam83mqmzmnuyl0s7qn0qfzyturkkwhqvxlml0zg6dwkt6rhaj8w0r45qnpvksu0qvdtpggqerw6stqxgx885sslrs53nr3u4azqhwjf9vgpztw6hm2eex7c8kqy7hx3cnmzlq5m89lrvj5g5fxggk09nmvsnqv54x5q2ktf0dk6d0aavp9vy7g0vpm4wfmln6c03dlmwjgk3ket9np8n62k48j640a0sew52j7tsq7ysl35ggrxthdeu54dd229pedtnyqa0jehn0zurr3e599yjuneh7kzw5792rfzp4kq3dz82rjd48q6yp59wvddnjn2cd0wes66hx8jhjw3gmdhxjlxtggedg65nnz00qfav65fx8d35lfnznsjy2he7gyj5jmefy8f35hq5de2rww7ku6wrky8n52xjuu2e25jezj6sr82wmwqguq0y6qruh3phqr4fxk3pwctqsdefpkftxdpzz2ql2yvtuch29sr98zwzztmegjl8fdk93j7q7r6raclxl8t5rfnu8djemu0xlw8l7s60ju4y77zrsqm3dwe4xxk79tcl9nvd5ks4ysxxkyrvtjg5546ccq78cyfrzx0lyrwtma2dgdprcq0yganfwxmq7t0mcl33r3wy37qjjh7zplrm5zrsnyak84zqxvkkw9ncr06ysykcrz8dyxmjj9hw6nstchzkk2cqtlq9hclhz0p8nxeqjqp26eda7u8kv8kp5d5k7wflncpyjj7vgugmv43kjtyyuaejnlw7378qf6nqp2zpcchmfy746hupfejh6upe3aegmztmhq3s2d8vslf0cqsr8esgy9vxymezl6w897ysjjx4q28falljdseh87eveukg0mtq33t8j77zzjanvc27wnxmayefgk7xeus3mvgn4g7u0z6sa3ucyj49h2485pu96mjmle889ncz2c4djr8w34054hxr3qqk29xty4n3e7858t694zcqh7ff2885vvpjuqf78waulr04alj99q25j958urm6qdsxsyg2f9ldeqw00ff4sz837xnhkaxlnqw3kchzsqjzmhwyj5ygjmwn2t4ypn950k",
+                      "vrf_key": "vrf_sk1mxv9dqw2xwdkygkkgw54e2qez699amw0ujqvxhzz9vfdaarw2qyq39p5qr"
+                    }
+                  }
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: ID of the created leader
+                type: integer
+                minimum: 0
+              example: 5
+
+  /api/v0/leaders/{leader_id}:
+    delete:
+      description: Deletes leader
+      parameters:
+        - name: leader_id
+          in: path
+          required: true
+          schema:
+            description: Leader ID
+            type: integer
+            minimum: 0
+      responses:
+        200:
+          description: Success
+        404:
+          description: Leader with given ID does not exist
+  /api/v0/message:
+    post:
+      description: Posts a signed transaction
+      requestBody:
+        description: Leader secret
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              description: Binary blob with message
+              type: string
+              format: binary
+      responses:
+        200:
+          description: Success
+        400:
+          description: Message is malformed
+  /api/v0/node/stats:
+    get:
+      description: Fetches node stats
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, txRecvCnt, uptime]
+                properties:
+                  blockRecvCnt:
+                    description: Number of blocks received by node
+                    type: integer
+                    minimum: 0
+                  lastBlockFees:
+                    description: Sum of all fee values in all transactions in last block
+                    type: integer
+                    minimum: 0
+                  lastBlockSum:
+                    description: Sum of all input values in all transactions in last block
+                    type: integer
+                    minimum: 0
+                  lastBlockTime:
+                      description: When last block was created, not set if none was created yet
+                      type: string
+                      format: date-time
+                  lastBlockTx:
+                    description: Number of transactions in last block
+                    type: integer
+                    minimum: 0
+                  txRecvCnt:
+                    description: Number of transactions received by node
+                    type: integer
+                    minimum: 0
+                  uptime:
+                    description: Node uptime in seconds
+                    type: integer
+                    minimum: 0
+              example: |
+                {
+                  "blockRecvCnt": 1102,
+                  "lastBlockFees": 534,
+                  "lastBlockSum": 51604,
+                  "lastBlockTime": "2019-08-12T11:20:52.316544007+00:00",
+                  "lastBlockTx": 2,
+                  "txRecvCnt": 5440,
+                  "uptime": 20032
+                }
+  /api/v0/settings:
+    get:
+      description: Gets node settings
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock]
+                properties:
+                  block0Hash:
+                    description: Hex-encoded hash of block0
+                    type: string
+                    pattern: '[0-9a-fA-F]+'
+                  block0Time:
+                    description: When block0 was created
+                    type: string
+                    format: date-time
+                  consensusVersion:
+                    description: Version of consensus, which is currently used
+                    type: string
+                    enum: [bft, genesis]
+                  currSlotStartTime:
+                    description: When current slot was opened, not set if none is currently open
+                    type: string
+                    format: date-time
+                  fees:
+                    description: Linear fees configuration
+                    type: object
+                    required: [certificate, coefficient, constant]
+                    properties:
+                      certificate:
+                        description: Fee per certificate used in witness
+                        type: integer
+                        minimum: 0
+                      coefficient:
+                        description: Fee per every input and output of transaction
+                        type: integer
+                        minimum: 0
+                      constant:
+                        description: Base fee per transaction
+                        type: integer
+                        minimum: 0
+                  maxTxsPerBlock:
+                    description: Maximum number of transactions in block
+                    type: integer
+                    minimum: 0
+              example: |
+                {
+                  "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
+                  "block0Time": "2019-07-09T12:32:51+00:00",
+                  "consensusVersion": "bft",
+                  "currSlotStartTime": "2019-07-18T22:01:17+00:00",
+                  "fees": {
+                    "certificate": 4,
+                    "coefficient": 1,
+                    "constant": 2
+                  },
+                  "maxTxsPerBlock": 100
+                }
+  /api/v0/shutdown:
+    get:
+      description: Starts node shutdown procedure
+      responses:
+        200:
+          description: Success
+  /api/v0/stake_pools:
+    get:
+      description: Gets stake pool IDs
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: IDs of stake pools
+                type: array
+                items:
+                  description: Hex-encoded stake pool ID
+                  type: string
+                  pattern: '[0-9a-fA-F]+'
+              example: [ "5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f" ]
+  /api/v0/stake:
+    get:
+      description: Gets stake distribution
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [epoch]
+                properties:
+                  epoch:
+                    description: Epoch of last block
+                    type: integer
+                    minimum: 0
+                  stake:
+                    description: Stake state, present only if there is leadership and it works with Genesis Praos consensus
+                    type: object
+                    required: [dangling, pools, unassigned]
+                    properties:
+                      dangling:
+                        description: Total value stored in accounts, but assigned to nonexisatent pools
+                        type: integer
+                        minimum: 0
+                      pools:
+                        description: All valid assignments of value stored in accounts to pools
+                        type: array
+                        items:
+                          description: The first item is always stake pool ID and the second is always pool value
+                          type: array
+                          items:
+                            oneOf:
+                              - description: Hex-encoded stake pool ID
+                                type: string
+                                pattern: '[0-9a-fA-F]+'
+                              - description: Total pool value
+                                type: integer
+                                minimum: 0
+                          minItems: 2
+                          maxItems: 2
+                      unassigned:
+                        description: Total value stored in accounts, but not assigned to any pool
+                        type: integer
+                        minimum: 0
+              example: |
+                {
+                  "epoch": 0,
+                  "stake": {
+                    "dangling": 0,
+                    "pools": [
+                      [
+                        "d882fc32c4b4b901cb29dfb4162e070d7650e937abb7bc2947d3a7d48b6c86a6",
+                        2000000000000
+                      ]
+                    ],
+                    "unassigned": 0
+                  }
+                }
+  /api/v0/tip:
+    get:
+      description: Gets ID of the blockchain tip
+      responses:
+        200:
+          description: Success
+          content:
+            text/plain:
+              schema:
+                description: Hex-encoded ID of the blockchain tip
+                type: string
+                pattern: '[0-9a-fA-F]+'
+              example: 8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7
+  /api/v0/utxo:
+    get:
+      description: Fetches whole UTXO
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: List of UTXOs
+                type: array
+                items:
+                  description: Single UTXO
+                  type: object
+                  required: [transaction_id, index_in_transaction, address, associated_fund]
+                  properties:
+                    transaction_id:
+                      description: Hex-encoded ID of transaction that created this UTXO
+                      type: string
+                      pattern: '[0-9a-fA-F]+'
+                    index_in_transaction:
+                      description: Output index inside transaction that created this UTXO
+                      type: integer
+                      minimum: 0
+                      maximum: 253
+                    address:
+                      description: Bech32-encoded address of owner of UTXO
+                      type: string
+                    associated_fund:
+                      description: Amount that is held in this UTXO
+                      type: integer
+                      minimum: 0
+              example: |
+                [
+                  {
+                    "transaction_id": "586ed9ea0b1094c739e2a9611a1dd720679d2f718626f5fe05201b3ae68dfb14",
+                    "index_in_transaction": 0,
+                    "address": "ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w",
+                    "associated_fund": 10000
+                  }
+                ]
