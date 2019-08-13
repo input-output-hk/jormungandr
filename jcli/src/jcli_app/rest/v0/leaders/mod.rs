@@ -56,7 +56,7 @@ fn get(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<
     let url = addr.with_segments(&["v0", "leaders"])?.into_url();
     let builder = reqwest::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send()?;
-    response.response().error_for_status_ref()?;
+    response.ok_response()?;
     let leaders = response.body().json_value()?;
     let formatted = output_format.format_json(leaders)?;
     println!("{}", formatted);
@@ -70,7 +70,7 @@ fn post(addr: HostAddr, debug: DebugFlag, file: Option<PathBuf>) -> Result<(), E
     let response = RestApiSender::new(builder, &debug)
         .with_json_body(&input)?
         .send()?;
-    response.response().error_for_status_ref()?;
+    response.ok_response()?;
     println!("{}", response.body().text().as_ref());
     Ok(())
 }
@@ -81,7 +81,7 @@ fn delete(addr: HostAddr, debug: DebugFlag, id: u32) -> Result<(), Error> {
         .into_url();
     let builder = reqwest::Client::new().delete(url);
     let response = RestApiSender::new(builder, &debug).send()?;
-    response.response().error_for_status_ref()?;
+    response.ok_response()?;
     println!("Success");
     Ok(())
 }

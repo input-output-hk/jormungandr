@@ -90,6 +90,10 @@ impl RestApiResponse {
         &self.response
     }
 
+    pub fn ok_response(&self) -> Result<&Response, Error> {
+        Ok(self.response().error_for_status_ref()?)
+    }
+
     pub fn body(&self) -> &RestApiResponseBody {
         &self.body
     }

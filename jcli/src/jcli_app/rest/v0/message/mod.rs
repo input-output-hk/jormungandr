@@ -55,7 +55,7 @@ fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Re
     let url = addr.with_segments(&["v0", "fragment", "logs"])?.into_url();
     let builder = reqwest::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send()?;
-    response.response().error_for_status_ref()?;
+    response.ok_response()?;
     let status = response.body().json_value()?;
     let formatted = output_format.format_json(status)?;
     println!("{}", formatted);
@@ -76,7 +76,7 @@ fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) -> Resu
     let response = RestApiSender::new(builder, &debug)
         .with_binary_body(msg_bin)
         .send()?;
-    response.response().error_for_status_ref()?;
+    response.ok_response()?;
     println!("{}", fragment.id());
     Ok(())
 }

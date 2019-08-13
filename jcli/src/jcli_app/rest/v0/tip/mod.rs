@@ -22,7 +22,7 @@ impl Tip {
         let url = addr.with_segments(&["v0", "tip"])?.into_url();
         let builder = reqwest::Client::new().get(url);
         let response = RestApiSender::new(builder, &debug).send()?;
-        response.response().error_for_status_ref()?;
+        response.ok_response()?;
         let tip = response.body().text();
         println!("{}", tip.as_ref());
         Ok(())

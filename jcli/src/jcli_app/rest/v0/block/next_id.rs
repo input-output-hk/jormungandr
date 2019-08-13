@@ -37,7 +37,7 @@ fn exec_get(
         .into_url();
     let builder = reqwest::Client::new().get(url).query(&[("count", count)]);
     let response = RestApiSender::new(builder, &debug).send()?;
-    response.response().error_for_status_ref()?;
+    response.ok_response()?;
     let body = response.body().binary();
     for block_id in body.chunks(Blake2b256::HASH_SIZE) {
         println!("{}", hex::encode(block_id));
