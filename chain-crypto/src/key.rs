@@ -1,5 +1,5 @@
 use crate::bech32::{self, Bech32};
-use crate::hex;
+use hex::FromHexError;
 use rand_core::{CryptoRng, RngCore};
 use std::fmt;
 use std::hash::Hash;
@@ -17,9 +17,9 @@ pub enum PublicKeyError {
     StructureInvalid,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PublicKeyFromStrError {
-    HexMalformed(hex::DecodeError),
+    HexMalformed(FromHexError),
     KeyInvalid(PublicKeyError),
 }
 

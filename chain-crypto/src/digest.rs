@@ -9,15 +9,15 @@ use std::{error, fmt, result};
 use cryptoxide::blake2b::Blake2b;
 use cryptoxide::digest::Digest as _;
 use cryptoxide::sha3::Sha3;
+use hex::FromHexError;
 
 use crate::bech32::{self, Bech32};
 use crate::hash::{Blake2b256, Sha3_256};
-use crate::hex;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     InvalidDigestSize { got: usize, expected: usize },
-    InvalidHexEncoding(hex::DecodeError),
+    InvalidHexEncoding(FromHexError),
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -44,8 +44,8 @@ impl error::Error for Error {
     }
 }
 
-impl From<hex::DecodeError> for Error {
-    fn from(err: hex::DecodeError) -> Self {
+impl From<FromHexError> for Error {
+    fn from(err: FromHexError) -> Self {
         Error::InvalidHexEncoding(err)
     }
 }
