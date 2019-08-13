@@ -395,7 +395,7 @@ impl Blockchain {
     pub fn apply_block(
         &mut self,
         post_checked_header: PostCheckedHeader,
-        block: Block,
+        block: &Block,
     ) -> impl Future<Item = Ref, Error = Error> {
         let header = post_checked_header.header;
         let block_id = header.hash();
@@ -650,7 +650,7 @@ impl Blockchain {
                                         }
                                     })
                                     .and_then(move |post_checked_header: PostCheckedHeader| {
-                                        self6.apply_block(post_checked_header, block)
+                                        self6.apply_block(post_checked_header, &block)
                                     })
                                     .and_then(move |new_ref| {
                                         branch
