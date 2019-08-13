@@ -3,7 +3,6 @@ use chain_crypto::{
     AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended,
     SumEd25519_12,
 };
-use hex;
 use jcli_app::utils::io;
 use rand::{rngs::EntropyRng, SeedableRng};
 use rand_chacha::ChaChaRng;

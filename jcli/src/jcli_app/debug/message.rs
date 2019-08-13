@@ -1,6 +1,5 @@
 use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::fragment::Fragment as MockFragment;
-use hex;
 use jcli_app::debug::Error;
 use jcli_app::utils::{error::CustomErrorFiller, io};
 use std::io::{BufRead, BufReader};

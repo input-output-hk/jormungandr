@@ -1,6 +1,5 @@
 mod message;
 
-use hex;
 use jcli_app::utils::error::CustomErrorFiller;
 use std::path::PathBuf;
 use structopt::StructOpt;
