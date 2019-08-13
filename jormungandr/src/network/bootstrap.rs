@@ -76,6 +76,7 @@ pub fn bootstrap_from_peer(
         .join(branch.get_ref().map_err(|_| unreachable!()))
         .and_then(|(mut client, tip)| {
             let tip_hash = *tip.hash();
+            debug!(logger, "pulling blocks starting from {}", tip_hash);
             client
                 .pull_blocks_to_tip(&[tip_hash])
                 .map_err(Error::PullRequestFailed)
@@ -134,7 +135,7 @@ fn handle_block(
         })
         .and_then(move |post_checked| {
             end_blockchain
-                .apply_block(post_checked, block)
+                .apply_and_store_block(post_checked, block)
                 .map_err(Error::ApplyBlockFailed)
         })
 }
