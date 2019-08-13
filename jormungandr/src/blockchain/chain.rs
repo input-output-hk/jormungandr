@@ -388,11 +388,7 @@ impl Blockchain {
         }
     }
 
-    /// TODO: document this function
-    ///
-    /// apply the block on the blockchain from a post checked header
-    ///
-    pub fn apply_block(
+    fn apply_block(
         &mut self,
         post_checked_header: PostCheckedHeader,
         block: &Block,
@@ -427,6 +423,23 @@ impl Blockchain {
                 )
                 .map_err(|_: Infallible| unreachable!())
         })
+    }
+
+    /// Apply the block on the blockchain from a post checked header
+    /// and add it to the storage.
+    pub fn apply_and_store_block(
+        &mut self,
+        post_checked_header: PostCheckedHeader,
+        block: Block,
+    ) -> impl Future<Item = Ref, Error = Error> {
+        let mut storage = self.storage.clone();
+        self.apply_block(post_checked_header, &block)
+            .and_then(move |block_ref| {
+                storage
+                    .put_block(block)
+                    .map_err(|e| e.into())
+                    .and_then(move |()| Ok(block_ref))
+            })
     }
 
     /// Apply the given block0 in the blockchain (updating the RefCache and the other objects)

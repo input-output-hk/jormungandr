@@ -71,7 +71,7 @@ pub fn process_leadership_block(
                 ))
             }
         })
-        .and_then(move |post_checked| end_blockchain.apply_block(post_checked, &block))
+        .and_then(move |post_checked| end_blockchain.apply_and_store_block(post_checked, block))
 }
 
 pub fn process_block_announcement(
@@ -145,7 +145,9 @@ pub fn process_network_block(
             PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
                 let post_check_and_apply = blockchain
                     .post_check_header(header, parent_ref)
-                    .and_then(move |post_checked| end_blockchain.apply_block(post_checked, &block))
+                    .and_then(move |post_checked| {
+                        end_blockchain.apply_and_store_block(post_checked, block)
+                    })
                     .map(move |_| {
                         // TODO: advance branch?
                         debug!(logger, "block successfully applied");

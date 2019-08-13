@@ -135,7 +135,7 @@ fn handle_block(
         })
         .and_then(move |post_checked| {
             end_blockchain
-                .apply_block(post_checked, &block)
+                .apply_and_store_block(post_checked, block)
                 .map_err(Error::ApplyBlockFailed)
         })
 }
