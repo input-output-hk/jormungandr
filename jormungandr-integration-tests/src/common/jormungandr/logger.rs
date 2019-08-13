@@ -34,6 +34,11 @@ impl JormungandrLogger {
         lines.filter(move |x| self.is_error_line(x))
     }
 
+    pub fn get_lines_with_error_and_invalid(&self) -> impl Iterator<Item = String> + '_ {
+        let lines = self.get_lines_from_log();
+        lines.filter(move |x| self.is_error_line_or_invalid(x))
+    }
+
     pub fn get_created_blocks_counter(&self) -> usize {
         self.get_log_entries()
             .filter(|x| {
@@ -43,40 +48,44 @@ impl JormungandrLogger {
     }
 
     fn is_error_line(&self, line: &String) -> bool {
-        let entry = self.parse_line_as_entry(&line);
-        entry.level == "ERROR"
+        self.parse_line_as_entry(&line).level == "ERROR"
+    }
+
+    fn is_error_line_or_invalid(&self, line: &String) -> bool {
+        match self.try_parse_line_as_entry(&line) {
+            Ok(entry) => entry.level == "ERROR",
+            Err(_) => true,
+        }
     }
 
     fn parse_line_as_entry(&self, line: &String) -> LogEntry {
-        let entry: LogEntry = serde_json::from_str(&line).expect(&format!(
-            "Cannot parse log line into json '{}'. Please ensure json logger is used for node. Full log content: {}",
+        self.try_parse_line_as_entry(line).unwrap_or_else(|error| panic!(
+            "Cannot parse log line into json '{}': {}. Please ensure json logger is used for node. Full log content: {}",
             &line,
+            error,
             self.get_log_content()
-        ));
-        entry
+        ))
     }
 
-    pub fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
+    fn try_parse_line_as_entry(&self, line: &String) -> Result<LogEntry, impl std::error::Error> {
+        serde_json::from_str(&line)
+    }
+
+    fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
         let file = File::open(self.log_file_path.clone()).unwrap();
         let reader = BufReader::new(file);
         reader.lines().map(|line| line.unwrap())
     }
 
-    pub fn get_log_entries(&self) -> impl Iterator<Item = LogEntry> + '_ {
+    fn get_log_entries(&self) -> impl Iterator<Item = LogEntry> + '_ {
         self.get_lines_from_log()
             .map(move |x| self.parse_line_as_entry(&x))
     }
 
-    pub fn contains_any_errors(&self) -> bool {
-        self.get_lines_with_error().next().is_some()
-    }
-
-    pub fn print_logs_if_contain_error(&self) {
-        if self.contains_any_errors() {
-            println!(
-                "Error lines: {:?}",
-                self.get_lines_with_error().collect::<Vec<String>>()
-            );
+    pub fn print_error_and_invalid_logs(&self) {
+        let error_lines: Vec<_> = self.get_lines_with_error_and_invalid().collect();
+        if !error_lines.is_empty() {
+            println!("Error lines: {:?}", error_lines);
         }
     }
 }
