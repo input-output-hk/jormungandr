@@ -27,7 +27,7 @@ mime = "^0.3.7"
 structopt = "^0.2"
 bech32 = "0.6"
 bytes = "0.4"
-hex             = { path = "../hex" }
+hex = "0.3.2"
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }

@@ -1,5 +1,6 @@
 mod v0;
 
+use hex::FromHexError;
 use jcli_app::utils::{host_addr, io::ReadYamlError, output_format, CustomErrorFiller};
 use structopt::StructOpt;
 
@@ -22,7 +23,7 @@ custom_error! {pub Error
     InputFileInvalid { source: std::io::Error } = "could not read input file",
     InputFileYamlMalformed { source: serde_yaml::Error } = "input yaml is not valid",
     InputSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller } = "failed to serialize input",
-    InputHexMalformed { source: hex::Error } = "input hex encoding is not valid",
+    InputHexMalformed { source: FromHexError } = "input hex encoding is not valid",
 }
 
 impl From<ReadYamlError> for Error {

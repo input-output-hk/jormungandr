@@ -1,5 +1,6 @@
 mod message;
 
+use hex::FromHexError;
 use jcli_app::utils::error::CustomErrorFiller;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -15,7 +16,7 @@ custom_error! {pub Error
     Io { source: std::io::Error } = "I/O Error",
     InputInvalid { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
-    HexMalformed { source: hex::Error } = "hex encoding malformed",
+    HexMalformed { source: FromHexError } = "hex encoding malformed",
     MessageMalformed { source: std::io::Error, filler: CustomErrorFiller } = "message malformed",
 }
 

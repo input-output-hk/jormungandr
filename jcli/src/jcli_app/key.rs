@@ -3,6 +3,7 @@ use chain_crypto::{
     AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended,
     SumEd25519_12,
 };
+use hex::FromHexError;
 use jcli_app::utils::io;
 use rand::{rngs::EntropyRng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -15,7 +16,7 @@ use structopt::{clap::arg_enum, StructOpt};
 custom_error! { pub Error
     Io { source: std::io::Error } = "I/O error",
     Bech32 { source: bech32::Error } = "invalid Bech32",
-    Hex { source: hex::Error } = "invalid Hexadecimal",
+    Hex { source: FromHexError } = "invalid Hexadecimal",
     SecretKey { source: chain_crypto::SecretKeyError } = "invalid secret key",
     Rand { source: rand::Error } = "error while using random source",
     InvalidSeed { seed_len: usize } = "invalid seed length, expected 32 bytes but received {seed_len}",
