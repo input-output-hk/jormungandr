@@ -56,11 +56,6 @@ version = "0.7.18"
 default-features = false
 features = [ "tls" ]
 
-[dependencies.clap]
-version = "2.32"
-default-features = false
-features = [ "suggestions", "color", "wrap_help" ]
-
 [target.'cfg(unix)'.dependencies]
 # Crates.io version does not work on NetBsd due to dependency on outdated `nix` crate
 # TODO switch to crates.io when fixed version is released

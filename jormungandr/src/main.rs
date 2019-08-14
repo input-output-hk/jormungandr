@@ -8,8 +8,6 @@ extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate chain_storage_sqlite;
 extern crate chain_time;
-#[macro_use(crate_name, crate_version)]
-extern crate clap;
 #[macro_use]
 extern crate custom_error;
 #[macro_use]
@@ -318,8 +316,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     info!(
         init_logger,
         "Starting {} {}",
-        crate_name!(),
-        crate_version!()
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
     );
     let settings = raw_settings.try_into_settings(&init_logger)?;
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
