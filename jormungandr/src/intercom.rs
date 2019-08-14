@@ -39,6 +39,16 @@ impl Error {
         }
     }
 
+    pub fn invalid_argument<T>(cause: T) -> Self
+    where
+        T: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Error {
+            code: core_error::Code::InvalidArgument,
+            cause: cause.into(),
+        }
+    }
+
     pub fn not_found<T>(cause: T) -> Self
     where
         T: Into<Box<dyn error::Error + Send + Sync>>,
