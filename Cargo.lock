@@ -1253,7 +1253,7 @@ dependencies = [
  "slog-gelf 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-journald 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-json 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog-syslog 0.12.0 (git+https://github.com/slog-rs/syslog?rev=336da50ed86058bfa87d9b497f5921fb7f95ea42)",
+ "slog-syslog 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-term 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2526,7 +2526,7 @@ dependencies = [
 [[package]]
 name = "slog-syslog"
 version = "0.12.0"
-source = "git+https://github.com/slog-rs/syslog?rev=336da50ed86058bfa87d9b497f5921fb7f95ea42#336da50ed86058bfa87d9b497f5921fb7f95ea42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "nix 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog 2.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3636,7 +3636,7 @@ dependencies = [
 "checksum slog-gelf 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "3b634d825581a7ef6f0600d425e14cdaa7d5a3a4775202d0c90624afd775b738"
 "checksum slog-journald 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3b26ffb38b66da09bca566da1553fb93aaafa8ab508125ffc3eadf88c4c9b292"
 "checksum slog-json 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ddc0d2aff1f8f325ef660d9a0eb6e6dcd20b30b3f581a5897f58bf42d061c37a"
-"checksum slog-syslog 0.12.0 (git+https://github.com/slog-rs/syslog?rev=336da50ed86058bfa87d9b497f5921fb7f95ea42)" = "<none>"
+"checksum slog-syslog 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9aa4bcc86188ea50a6ae3be357c72a87d96d8bce713abd819ca55f15589609dd"
 "checksum slog-term 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cb9b3fd9a3c2c86580fce3558a98ed7c69039da0288b08a3f15b371635254e08"
 "checksum smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)" = "ab606a9c5e214920bb66c458cd7be8ef094f813f20fe77a54cc7dbfff220d4b7"
 "checksum socket2 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)" = "df028e0e632c2a1823d920ad74895e7f9128e6438cbc4bc6fd1f180e644767b9"
