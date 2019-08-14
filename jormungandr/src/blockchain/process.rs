@@ -43,7 +43,17 @@ pub fn handle_input(
             let new_block_ref = future.wait().unwrap();
             blockchain_tip.update_ref(new_block_ref).wait().unwrap();
         }
-        BlockMsg::AnnouncedBlock(header, node_id) => unimplemented!(),
+        BlockMsg::AnnouncedBlock(header, node_id) => {
+            let future = process_block_announcement(
+                blockchain.clone(),
+                blockchain_tip.clone(),
+                header,
+                node_id,
+                network_msg_box.clone(),
+                info.logger().clone(),
+            );
+            future.wait().unwrap();
+        }
         BlockMsg::NetworkBlock(block, reply) => unimplemented!(),
         BlockMsg::ChainHeaders(headers, reply) => unimplemented!(),
     };
