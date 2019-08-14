@@ -90,7 +90,7 @@ error_chain! {
             display("Tag '{}' not found in the storage", tag),
         }
 
-        BLockHeaderVerificationFail (reason: String) {
+        BlockHeaderVerificationFailed (reason: String) {
             description("Block header verification failed"),
             display("The block header verification failed: {}", reason),
         }
@@ -383,7 +383,7 @@ impl Blockchain {
                 time_frame,
             }),
             Verification::Failure(error) => {
-                future::err(ErrorKind::BLockHeaderVerificationFail(error.to_string()).into())
+                future::err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()).into())
             }
         }
     }
