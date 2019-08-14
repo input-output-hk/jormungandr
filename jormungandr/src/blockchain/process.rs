@@ -1,7 +1,7 @@
 use super::{Blockchain, Branch, Error, ErrorKind, PreCheckedHeader, Ref};
 use crate::{
     blockcfg::{Block, Header, HeaderHash},
-    intercom::{BlockMsg, NetworkMsg},
+    intercom::{self, BlockMsg, NetworkMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
     stats_counter::StatsCounter,
@@ -54,7 +54,20 @@ pub fn handle_input(
             );
             future.wait().unwrap();
         }
-        BlockMsg::NetworkBlock(block, reply) => unimplemented!(),
+        BlockMsg::NetworkBlock(block, reply) => {
+            let future = process_network_block(blockchain.clone(), block, info.logger().clone());
+            match future.wait() {
+                Err(e) => {
+                    reply.reply_error(network_block_error_into_reply(e));
+                }
+                Ok(maybe_updated) => {
+                    if let Some(new_block_ref) = maybe_updated {
+                        blockchain_tip.update_ref(new_block_ref).wait().unwrap();
+                    }
+                    reply.reply_ok(());
+                }
+            }
+        }
         BlockMsg::ChainHeaders(headers, reply) => unimplemented!(),
     };
 
@@ -134,9 +147,8 @@ pub fn process_block_announcement(
 pub fn process_network_block(
     mut blockchain: Blockchain,
     block: Block,
-    mut network_msg_box: MessageBox<NetworkMsg>,
     logger: Logger,
-) -> impl Future<Item = (), Error = Error> {
+) -> impl Future<Item = Option<Ref>, Error = Error> {
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     blockchain
@@ -144,7 +156,7 @@ pub fn process_network_block(
         .and_then(move |pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { .. } => {
                 debug!(logger, "block is already present");
-                Either::A(future::ok(()))
+                Either::A(future::ok(None))
             }
             PreCheckedHeader::MissingParent { header, .. } => {
                 debug!(logger, "block is missing a locally stored parent");
@@ -158,13 +170,26 @@ pub fn process_network_block(
                     .and_then(move |post_checked| {
                         end_blockchain.apply_and_store_block(post_checked, block)
                     })
-                    .map(move |_| {
-                        // TODO: advance branch?
+                    .map(move |block_ref| {
                         debug!(logger, "block successfully applied");
+                        Some(block_ref)
                     });
                 Either::B(post_check_and_apply)
             }
         })
+}
+
+fn network_block_error_into_reply(err: Error) -> intercom::Error {
+    use super::ErrorKind::*;
+
+    match err.0 {
+        Storage(e) => intercom::Error::failed(e),
+        Ledger(e) => intercom::Error::failed_precondition(e),
+        Block0(e) => intercom::Error::failed(e),
+        MissingParentBlockFromStorage(_) => intercom::Error::failed_precondition(err.to_string()),
+        BlockHeaderVerificationFailed(_) => intercom::Error::invalid_argument(err.to_string()),
+        _ => intercom::Error::failed(err.to_string()),
+    }
 }
 
 pub fn process_chain_headers_into_block_request<S>(
