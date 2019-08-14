@@ -1,10 +1,10 @@
 use jormungandr_lib::interfaces::*;
 use jormungandr_lib::time::SystemTime;
 
-use actix_web::error::{Error, ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
-use actix_web::{Error as ActixError, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
+use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
-use chain_core::property::Deserialize;
+use chain_core::property::{Deserialize, Serialize as _};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::Fragment;
@@ -12,35 +12,49 @@ use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
 use chain_impl_mockchain::value::{Value, ValueError};
 
+use crate::blockchain::Ref;
 use crate::intercom::TransactionMsg;
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
-use futures::Future;
+use futures::{Future, IntoFuture};
 use std::str::FromStr;
 
 pub use crate::rest::Context;
 
-pub fn get_utxos(context: State<Context>) -> impl Responder {
-    let tip_reference = context.blockchain_tip.get_ref().wait().unwrap();
-    let utxos = tip_reference.ledger().utxos();
-    let utxos = utxos.map(UTxOInfo::from).collect::<Vec<_>>();
-    Json(utxos)
+macro_rules! ActixFuture {
+    () => { impl Future<Item = impl Responder + 'static, Error = impl Into<Error> + 'static> + 'static }
 }
 
-pub fn get_account_state(
-    context: State<Context>,
-    account_id_hex: Path<String>,
-) -> Result<impl Responder, Error> {
-    let account_id = parse_account_id(&account_id_hex)?;
+fn chain_tip_fut<'a>(context: &State<Context>) -> impl Future<Item = Ref, Error = Error> {
+    context
+        .blockchain_tip
+        .get_ref()
+        .map_err(|infallible| match infallible {})
+}
 
-    let tip_reference = context.blockchain_tip.get_ref().wait().unwrap();
-    let state = tip_reference
-        .ledger()
-        .accounts()
-        .get_state(&account_id)
-        .map_err(|e| ErrorNotFound(e))?;
+pub fn get_utxos(context: State<Context>) -> ActixFuture!() {
+    chain_tip_fut(&context).map(|tip_reference| {
+        let utxos = tip_reference.ledger().utxos();
+        let utxos = utxos.map(UTxOInfo::from).collect::<Vec<_>>();
+        Json(utxos)
+    })
+}
 
-    Ok(Json(AccountState::from(state)))
+pub fn get_account_state(context: State<Context>, account_id_hex: Path<String>) -> ActixFuture!() {
+    parse_account_id(&account_id_hex)
+        .into_future()
+        .and_then(move |account_id| {
+            chain_tip_fut(&context).map(|tip_reference| (tip_reference, account_id))
+        })
+        .and_then(|(tip_reference, account_id)| {
+            let state = tip_reference
+                .ledger()
+                .accounts()
+                .get_state(&account_id)
+                .map_err(|e| ErrorNotFound(e))?;
+
+            Ok(Json(AccountState::from(state)))
+        })
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -49,18 +63,18 @@ fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
         .map_err(|e| ErrorBadRequest(e))
 }
 
-pub fn get_message_logs(context: State<Context>) -> impl Responder {
+pub fn get_message_logs(context: State<Context>) -> ActixFuture!() {
     let logs = context.logs.lock().unwrap();
-    let logs = logs.logs().wait().unwrap();
-    Json(logs)
+    logs.logs()
+        .map_err(|_| ErrorInternalServerError("Failed to get logs"))
+        .map(Json)
 }
 
 pub fn post_message(
     request: &HttpRequest<Context>,
-) -> impl Future<Item = impl Responder + 'static, Error = impl Into<ActixError> + 'static> + 'static
-{
+) -> impl Future<Item = impl Responder + 'static, Error = impl Into<Error> + 'static> + 'static {
     let sender = request.state().transaction_task.clone();
-    request.body().map(move |message| -> Result<_, ActixError> {
+    request.body().map(move |message| -> Result<_, Error> {
         let msg = Fragment::deserialize(message.into_buf()).map_err(|e| {
             println!("{}", e);
             ErrorBadRequest(e)
@@ -71,14 +85,8 @@ pub fn post_message(
     })
 }
 
-pub fn get_tip(settings: State<Context>) -> impl Responder {
-    settings
-        .blockchain_tip
-        .get_ref()
-        .wait()
-        .unwrap()
-        .hash()
-        .to_string()
+pub fn get_tip(context: State<Context>) -> ActixFuture!() {
+    chain_tip_fut(&context).map(|tip| tip.hash().to_string())
 }
 
 pub fn get_stats_counter(context: State<Context>) -> Result<impl Responder, Error> {
@@ -122,31 +130,30 @@ pub fn get_stats_counter(context: State<Context>) -> Result<impl Responder, Erro
     })))
 }
 
-pub fn get_block_id(
-    context: State<Context>,
-    block_id_hex: Path<String>,
-) -> Result<Bytes, ActixError> {
-    use chain_core::property::Serialize as _;
-
-    let block_id = parse_block_hash(&block_id_hex)?;
-
-    let storage = context.blockchain.storage();
-    let block = storage.get(block_id).wait().unwrap().unwrap();
-    let block = block.serialize_as_vec().unwrap();
-
-    Ok(Bytes::from(block))
+pub fn get_block_id(context: State<Context>, block_id_hex: Path<String>) -> ActixFuture!() {
+    parse_block_hash(&block_id_hex)
+        .into_future()
+        .and_then(move |block_id| {
+            context
+                .blockchain
+                .storage()
+                .get(block_id)
+                .map_err(|e| ErrorInternalServerError(e))
+        })
+        .map(|block| Bytes::from(block.unwrap().serialize_as_vec().unwrap()))
 }
 
-fn parse_block_hash(hex: &str) -> Result<Hash, ActixError> {
-    let hash: Blake2b256 = hex.parse().map_err(|e| ErrorBadRequest(e))?;
-    Ok(Hash::from(hash))
+fn parse_block_hash(hex: &str) -> Result<Hash, Error> {
+    Blake2b256::from_str(hex)
+        .map_err(|e| ErrorBadRequest(e))
+        .map(Into::into)
 }
 
 pub fn get_block_next_id(
     context: State<Context>,
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
-) -> Result<Bytes, ActixError> {
+) -> Result<Bytes, Error> {
     use chain_storage::store;
 
     let block_id = parse_block_hash(&block_id_hex)?;
@@ -180,52 +187,51 @@ impl QueryParams {
     }
 }
 
-pub fn get_stake_distribution(context: State<Context>) -> Result<impl Responder, Error> {
-    let blockchain_tip = context.blockchain_tip.get_ref().wait().unwrap();
-
-    let leadership = blockchain_tip.epoch_leadership_schedule();
-    let last_epoch = blockchain_tip.block_date().epoch;
-    if let LeadershipConsensus::GenesisPraos(gp) = leadership.consensus() {
-        let stake = gp.distribution();
-        let pools: Vec<_> = stake
-            .to_pools
-            .iter()
-            .map(|(h, p)| (format!("{}", h), p.total_stake.0))
-            .collect();
-        Ok(Json(json!({
-            "epoch": last_epoch,
-            "stake": {
-                "unassigned": stake.unassigned.0,
-                "dangling": stake.dangling.0,
-                "pools": pools,
-            }
-        })))
-    } else {
-        Ok(Json(json!({ "epoch": last_epoch })))
-    }
+pub fn get_stake_distribution(context: State<Context>) -> ActixFuture!() {
+    chain_tip_fut(&context).map(|blockchain_tip| {
+        let leadership = blockchain_tip.epoch_leadership_schedule();
+        let last_epoch = blockchain_tip.block_date().epoch;
+        if let LeadershipConsensus::GenesisPraos(gp) = leadership.consensus() {
+            let stake = gp.distribution();
+            let pools: Vec<_> = stake
+                .to_pools
+                .iter()
+                .map(|(h, p)| (format!("{}", h), p.total_stake.0))
+                .collect();
+            Json(json!({
+                "epoch": last_epoch,
+                "stake": {
+                    "unassigned": stake.unassigned.0,
+                    "dangling": stake.dangling.0,
+                    "pools": pools,
+                }
+            }))
+        } else {
+            Json(json!({ "epoch": last_epoch }))
+        }
+    })
 }
 
-pub fn get_settings(context: State<Context>) -> Result<impl Responder, Error> {
-    let blockchain_tip = context.blockchain_tip.get_ref().wait().unwrap();
-
-    let ledger = blockchain_tip.ledger();
-    let static_params = ledger.get_static_parameters();
-    let consensus_version = ledger.consensus_version();
-    let current_params = blockchain_tip.epoch_ledger_parameters();
-    let fees = current_params.fees;
-
-    Ok(Json(json!({
-        "block0Hash": static_params.block0_initial_hash.to_string(),
-        "block0Time": SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
-        "currSlotStartTime": context.stats_counter.slot_start_time().map(SystemTime::from),
-        "consensusVersion": consensus_version.to_string(),
-        "fees":{
-            "constant": fees.constant,
-            "coefficient": fees.coefficient,
-            "certificate": fees.certificate,
-        },
-        "maxTxsPerBlock": 255, // TODO?
-    })))
+pub fn get_settings(context: State<Context>) -> ActixFuture!() {
+    chain_tip_fut(&context).map(move |blockchain_tip| {
+        let ledger = blockchain_tip.ledger();
+        let static_params = ledger.get_static_parameters();
+        let consensus_version = ledger.consensus_version();
+        let current_params = blockchain_tip.epoch_ledger_parameters();
+        let fees = current_params.fees;
+        Json(json!({
+            "block0Hash": static_params.block0_initial_hash.to_string(),
+            "block0Time": SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
+            "currSlotStartTime": context.stats_counter.slot_start_time().map(SystemTime::from),
+            "consensusVersion": consensus_version.to_string(),
+            "fees":{
+                "constant": fees.constant,
+                "coefficient": fees.coefficient,
+                "certificate": fees.certificate,
+            },
+            "maxTxsPerBlock": 255, // TODO?
+        }))
+    })
 }
 
 pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
@@ -266,14 +272,14 @@ pub fn delete_leaders(
     }
 }
 
-pub fn get_stake_pools(context: State<Context>) -> Result<impl Responder, Error> {
-    let blockchain_tip = context.blockchain_tip.get_ref().wait().unwrap();
-
-    let stake_pool_ids = blockchain_tip
-        .ledger()
-        .delegation()
-        .stake_pool_ids()
-        .map(|id| id.to_string())
-        .collect::<Vec<_>>();
-    Ok(Json(stake_pool_ids))
+pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
+    chain_tip_fut(&context).map(|blockchain_tip| {
+        let stake_pool_ids = blockchain_tip
+            .ledger()
+            .delegation()
+            .stake_pool_ids()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>();
+        Json(stake_pool_ids)
+    })
 }
