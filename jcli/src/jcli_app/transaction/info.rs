@@ -1,7 +1,6 @@
 use chain_addr::{Address, AddressReadable};
 use chain_impl_mockchain::transaction::{Balance, Input, InputEnum, InputType, Output};
 use jcli_app::{
-    address::ADDRESS_PREFIX,
     transaction::{common, staging::Staging, Error},
     utils::io,
 };
@@ -62,6 +61,10 @@ pub struct Info {
     /// available variables: address and value.
     #[structopt(alias = "output", default_value = " + {address} {value}\n")]
     pub format_output: String,
+
+    /// set the address prefix to use when displaying the addresses
+    #[structopt(long = "prefix", default_value = "ca")]
+    address_prefix: String,
 }
 
 impl Info {
@@ -118,7 +121,7 @@ impl Info {
 
         vars.insert(
             "address".to_owned(),
-            AddressReadable::from_address(ADDRESS_PREFIX, &output.address).to_string(),
+            AddressReadable::from_address(&self.address_prefix, &output.address).to_string(),
         );
         vars.insert("value".to_owned(), output.value.0.to_string());
         self.write_info(writer, &self.format_output, vars)
