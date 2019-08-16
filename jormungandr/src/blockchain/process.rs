@@ -1,6 +1,6 @@
 use super::{Blockchain, Branch, Error, ErrorKind, PreCheckedHeader, Ref};
 use crate::{
-    blockcfg::{Block, Header, HeaderHash},
+    blockcfg::{Block, Epoch, Header, HeaderHash},
     intercom::{self, BlockMsg, NetworkMsg, PropagateMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
