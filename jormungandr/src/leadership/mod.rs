@@ -65,7 +65,9 @@ pub use self::enclave::{Enclave, Error as EnclaveError, LeaderEvent};
 pub use self::logs::{LeadershipLogHandle, Logs};
 pub use self::schedule::{Schedule, Schedules};
 use crate::{
-    blockcfg::{BlockBuilder, BlockDate, HeaderContentEvalContext, Leadership, LedgerParameters},
+    blockcfg::{
+        BlockBuilder, BlockDate, Epoch, HeaderContentEvalContext, Leadership, LedgerParameters,
+    },
     blockchain::Branch,
     fragment,
     intercom::BlockMsg,
@@ -77,7 +79,7 @@ use chain_time::{
 };
 use jormungandr_lib::time::SystemTime;
 use std::sync::Arc;
-use tokio::{prelude::*, sync::mpsc};
+use tokio::{prelude::*, sync::mpsc, timer::Delay};
 
 error_chain! {
     errors {
@@ -150,6 +152,39 @@ impl LeadershipModule {
         );
     }
 
+    fn spawn_end_of_epoch(&self, time_frame: &TimeFrame, epoch: Epoch, slot: chain_time::Slot) {
+        let slot_system_time = time_frame
+            .slot_to_systemtime(slot)
+            .expect("The slot should always be in the given time frame here");
+
+        let now = std::time::Instant::now();
+        let duration = slot_system_time
+            .duration_since(std::time::SystemTime::now())
+            .unwrap();
+        let scheduled_time = now + duration;
+
+        let sa: SystemTime = (std::time::SystemTime::now() + duration).into();
+        debug!(self.service_info.logger(), "scheduling new end of epoch"
+        ; "scheduled at" => sa.to_string());
+
+        let logger1 = self.service_info.logger().new(o!());
+        let logger2 = self.service_info.logger().new(o!());
+        let block_message = self.block_message.clone();
+
+        self.service_info.spawn(
+            Delay::new(scheduled_time)
+                .map_err(move |err| crit!(logger1, "cannot reschedule future epoch" ; "reason" => err.to_string()))
+                .and_then(move |()| {
+                    info!(logger2, "end of epoch");
+                    block_message.send(BlockMsg::LeadershipExpectEndOfEpoch(epoch))
+                        .map_err(move |_| {
+                            crit!(logger2, "cannot reschedule future epoch" ; "reason" => "cannot send the BlockMsg end of epoch")
+                        })
+                        .map(|_| ())
+                })
+        );
+    }
+
     fn handle_new_epoch_event(
         self,
         scheduler: Schedules,
@@ -173,6 +208,15 @@ impl LeadershipModule {
         debug!(logger, "handling new epoch event";
             "slot start" => slot_start,
             "nb_slots" => nb_slots,
+        );
+
+        self.spawn_end_of_epoch(
+            &time_frame,
+            epoch,
+            era.from_era_to_slot(EpochPosition {
+                epoch: chain_time::Epoch(epoch + 1),
+                slot: EpochSlotOffset(0),
+            }),
         );
 
         self.enclave

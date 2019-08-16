@@ -29,6 +29,12 @@ pub struct Ref {
     /// keep the Block header in memory, this will avoid retrieving
     /// the data from the storage if needs be
     header: Header,
+
+    /// holder to the previous epoch state or more precisely the previous epoch's
+    /// last `Ref`. Every time there is a transition this value will be filled with
+    /// the parent `Ref`. Otherwise it will be copied from `Ref` to `Ref`.
+    ///
+    previous_epoch_state: Option<Arc<Ref>>,
 }
 
 impl Ref {
@@ -40,6 +46,7 @@ impl Ref {
         epoch_leadership_schedule: Arc<Leadership>,
         epoch_ledger_parameters: Arc<LedgerParameters>,
         header: Header,
+        previous_epoch_state: Option<Arc<Ref>>,
     ) -> Self {
         debug_assert!(
             (*ledger_pointer) == header.hash(),
@@ -53,6 +60,7 @@ impl Ref {
             epoch_leadership_schedule,
             epoch_ledger_parameters,
             header,
+            previous_epoch_state,
         }
     }
 
@@ -98,5 +106,9 @@ impl Ref {
 
     pub fn epoch_ledger_parameters(&self) -> &Arc<LedgerParameters> {
         &self.epoch_ledger_parameters
+    }
+
+    pub fn last_ref_previous_epoch(&self) -> Option<&Arc<Ref>> {
+        self.previous_epoch_state.as_ref()
     }
 }

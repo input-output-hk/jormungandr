@@ -259,7 +259,7 @@ fn handle_network_input(
 }
 
 fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
-    debug!(state.logger(), "to propagate: {:?}", &msg);
+    trace!(state.logger(), "to propagate: {:?}", &msg);
     let nodes = state.topology.view().collect::<Vec<_>>();
     debug!(
         state.logger(),
