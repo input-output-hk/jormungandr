@@ -1,13 +1,13 @@
 use super::{Blockchain, Branch, Error, ErrorKind, PreCheckedHeader, Ref};
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash},
-    intercom::{self, BlockMsg, NetworkMsg, PropagateMsg},
+    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
     stats_counter::StatsCounter,
     utils::{
         async_msg::MessageBox,
-        task::{Input, TokioServiceInfo},
+        task::{Input, TaskMessageBox, TokioServiceInfo},
     },
 };
 use chain_core::property::{Block as _, HasHeader as _};
@@ -25,6 +25,7 @@ pub fn handle_input(
     _stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
+    explorer_msg_box: &mut Option<TaskMessageBox<ExplorerMsg>>,
     input: Input<BlockMsg>,
 ) -> Result<(), ()> {
     let bquery = match input {
@@ -60,10 +61,14 @@ pub fn handle_input(
             let header = new_block_ref.header().clone();
             blockchain_tip.update_ref(new_block_ref).wait().unwrap();
             network_msg_box
-                .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header.clone())))
                 .unwrap_or_else(|err| {
                     error!(info.logger(), "cannot propagate block to network: {}", err)
                 });
+
+            if let Some(msg_box) = explorer_msg_box {
+                msg_box.send_to(ExplorerMsg::NewBlock(header));
+            };
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
             let future = process_block_announcement(
