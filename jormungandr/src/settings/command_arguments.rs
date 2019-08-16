@@ -61,6 +61,11 @@ pub struct StartArguments {
     /// or from the network.
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
     pub block_0_hash: Option<HeaderHash>,
+
+    // TODO: Explorer mode description
+    // Maybe a config file variable is better
+    #[structopt(long = "enable-explorer")]
+    pub explorer: bool,
 }
 
 #[derive(StructOpt, Debug)]
