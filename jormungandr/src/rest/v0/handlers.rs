@@ -4,7 +4,7 @@ use jormungandr_lib::time::SystemTime;
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
-use chain_core::property::{Deserialize, Serialize as _};
+use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::Fragment;
@@ -16,7 +16,7 @@ use crate::blockchain::Ref;
 use crate::intercom::TransactionMsg;
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
-use futures::{Future, IntoFuture};
+use futures::{Future, IntoFuture, Stream};
 use std::str::FromStr;
 
 pub use crate::rest::Context;
@@ -153,36 +153,39 @@ pub fn get_block_next_id(
     context: State<Context>,
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
-) -> Result<Bytes, Error> {
-    use chain_storage::store;
-
-    let block_id = parse_block_hash(&block_id_hex)?;
-
-    // FIXME
-    // POSSIBLE RACE CONDITION OR DEADLOCK!
-    // Assuming that during update whole blockchain is write-locked
-    // FIXME: don't hog the blockchain lock.
-    let tip_hash = context.blockchain_tip.get_ref().wait().unwrap().hash();
-    let storage = context.blockchain.storage().get_inner().wait().unwrap();
-    store::iterate_range(&*storage, &block_id, &tip_hash)
-        .map_err(|e| ErrorBadRequest(e))?
+) -> ActixFuture!() {
+    parse_block_hash(&block_id_hex)
+        .into_future()
+        .and_then(|block_id| {
+            chain_tip_fut(&context).and_then(move |tip| {
+                context
+                    .blockchain
+                    .storage()
+                    .stream_from_to(block_id, tip.hash())
+                    .then(|res| match res {
+                        Ok(Some(stream)) => Ok(stream.map_err(ErrorInternalServerError)),
+                        Ok(None) => Err(ErrorInternalServerError("Tip block is parent of a block")),
+                        Err(e) => Err(ErrorBadRequest(e)),
+                    })
+            })
+        })
+        .flatten_stream()
         .take(query_params.get_count())
-        .try_fold(Bytes::new(), |mut bytes, res| {
-            let block_info = res.map_err(|e| ErrorInternalServerError(e))?;
-            bytes.extend_from_slice(block_info.block_hash.as_ref());
-            Ok(bytes)
+        .fold(Bytes::new(), |mut bytes, block| {
+            bytes.extend_from_slice(block.id().as_ref());
+            Result::<Bytes, Error>::Ok(bytes)
         })
 }
 
-const MAX_COUNT: usize = 100;
+const MAX_COUNT: u64 = 100;
 
 #[derive(Deserialize)]
 pub struct QueryParams {
-    count: Option<usize>,
+    count: Option<u64>,
 }
 
 impl QueryParams {
-    pub fn get_count(&self) -> usize {
+    pub fn get_count(&self) -> u64 {
         self.count.unwrap_or(1).min(MAX_COUNT)
     }
 }

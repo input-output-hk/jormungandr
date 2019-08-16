@@ -12,7 +12,7 @@ pub fn app(context: handlers::Context) -> App<handlers::Context> {
             r.get().with_async(handlers::get_block_id)
         })
         .resource("/block/{block_id}/next_id", |r| {
-            r.get().with(handlers::get_block_next_id)
+            r.get().with_async(handlers::get_block_next_id)
         })
         .resource("/fragment/logs", |r| {
             r.get().with_async(handlers::get_message_logs)
