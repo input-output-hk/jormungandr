@@ -37,7 +37,23 @@ pub fn handle_input(
     };
 
     match bquery {
-        BlockMsg::LeadershipExpectEndOfEpoch(epoch) => unimplemented!(),
+        BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
+            handle_end_of_epoch(
+                info.logger().new(o!()),
+                new_epoch_announcements.clone(),
+                blockchain.clone(),
+                blockchain_tip.clone(),
+                epoch + 1, // next epoch
+            )
+            .wait()
+            .unwrap_or_else(|err| {
+                crit!(
+                    info.logger(),
+                    "cannot send new leader schedule data to leadership module";
+                    "reason" => err.to_string()
+                )
+            });
+        }
         BlockMsg::LeadershipBlock(block) => {
             let future = process_leadership_block(blockchain.clone(), block);
             let new_block_ref = future.wait().unwrap();
@@ -84,6 +100,38 @@ pub fn handle_input(
     };
 
     Ok(())
+}
+
+pub fn handle_end_of_epoch(
+    logger: Logger,
+    new_epoch_announcements: Sender<NewEpochToSchedule>,
+    mut blockchain: Blockchain,
+    blockchain_tip: Branch,
+    epoch: Epoch,
+) -> impl Future<Item = (), Error = Error> {
+    debug!(logger, "preparing new epoch schedule" ; "epoch" => epoch);
+    blockchain_tip
+        .get_ref()
+        .map_err(|_: std::convert::Infallible| unreachable!())
+        .and_then(move |ref_tip| {
+            let (new_schedule, new_parameters, time_frame, _) =
+                blockchain.new_epoch_leadership_from(epoch, ref_tip);
+
+            new_epoch_announcements
+                .send(NewEpochToSchedule {
+                    new_schedule,
+                    new_parameters,
+                    time_frame: (*time_frame).clone(),
+                })
+                .map_err(move |_err| {
+                    crit!(
+                        logger,
+                        "cannot send new epoch schedule data to leadership module"
+                    );
+                    "unable to process new epoch schedule".into()
+                })
+        })
+        .map(|_| ())
 }
 
 pub fn process_leadership_block(
