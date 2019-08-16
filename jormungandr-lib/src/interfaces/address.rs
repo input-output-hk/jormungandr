@@ -5,15 +5,13 @@ use std::{fmt, str::FromStr};
 /// Display/FromStr interfaces.
 ///
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Address(chain_addr::Address);
-
-pub const ADDRESS_PREFIX: &'static str = env!("ADDRESS_PREFIX");
+pub struct Address(String, chain_addr::Address);
 
 /* ---------------- Display ------------------------------------------------ */
 
 impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        chain_addr::AddressReadable::from_address(ADDRESS_PREFIX, &self.0).fmt(f)
+        chain_addr::AddressReadable::from_address(&self.0, &self.1).fmt(f)
     }
 }
 
@@ -21,7 +19,7 @@ impl FromStr for Address {
     type Err = chain_addr::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse()
-            .map(|v: chain_addr::AddressReadable| Address(v.to_address()))
+            .map(|v: chain_addr::AddressReadable| Address(v.get_prefix(), v.to_address()))
     }
 }
 
@@ -29,20 +27,20 @@ impl FromStr for Address {
 
 impl AsRef<chain_addr::Address> for Address {
     fn as_ref(&self) -> &chain_addr::Address {
-        &self.0
+        &self.1
     }
 }
 /* ---------------- Conversion --------------------------------------------- */
 
 impl From<chain_addr::Address> for Address {
     fn from(v: chain_addr::Address) -> Self {
-        Address(v)
+        Address("ca".to_owned(), v)
     }
 }
 
 impl From<Address> for chain_addr::Address {
     fn from(v: Address) -> Self {
-        v.0
+        v.1
     }
 }
 
@@ -54,10 +52,10 @@ impl Serialize for Address {
         S: Serializer,
     {
         if serializer.is_human_readable() {
-            let address = chain_addr::AddressReadable::from_address(ADDRESS_PREFIX, &self.0);
-            serializer.serialize_str(address.as_string())
+            let address = self.to_string();
+            serializer.serialize_str(&address)
         } else {
-            let bytes = self.0.to_bytes();
+            let bytes = self.1.to_bytes();
             serializer.serialize_bytes(&bytes)
         }
     }
@@ -72,12 +70,12 @@ impl<'de> Deserialize<'de> for Address {
             let s: String = String::deserialize(deserializer)?;
             chain_addr::AddressReadable::from_string_anyprefix(&s)
                 .map_err(|e| serde::de::Error::custom(e))
-                .map(|a| Address(a.to_address()))
+                .map(|a| Address(a.get_prefix(), a.to_address()))
         } else {
             let b: Vec<u8> = Vec::deserialize(deserializer)?;
             chain_addr::Address::from_bytes(&b)
                 .map_err(|e| serde::de::Error::custom(e))
-                .map(Address)
+                .map(Address::from)
         }
     }
 }
@@ -97,9 +95,9 @@ mod test {
             let pk: chain_crypto::PublicKey<chain_crypto::Ed25519> =
                 kp.identifier().into_public_key();
 
-            let discrimination = match bool::arbitrary(g) {
-                true => chain_addr::Discrimination::Production,
-                false => chain_addr::Discrimination::Test,
+            let (discrimination, prefix) = match bool::arbitrary(g) {
+                true => (chain_addr::Discrimination::Production, "ca".to_owned()),
+                false => (chain_addr::Discrimination::Test, "ca".to_owned()),
             };
 
             let kind = match u8::arbitrary(g) % 3 {
@@ -111,7 +109,7 @@ mod test {
 
             let address = chain_addr::Address(discrimination, kind);
 
-            Address(address)
+            Address(prefix, address)
         }
     }
 

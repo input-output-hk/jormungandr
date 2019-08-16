@@ -69,3 +69,17 @@ $ jcli address \
     account ed25519_pk1c4yq3hflulynn8fef0hdq92579n3c49qxljasrl9dnuvcksk84gs9sqvc2
 ca1qhz5szxa8lnujwva8997a5q42nckw8z55qm7tkq0u4k03nz6zc74ze780qe
 ```
+
+### changing the address prefix
+
+You can decide to change the address prefix, allowing you to provide more
+enriched data to the user. However, this prefix is not forwarded to the node,
+it is only for UI/UX.
+
+```
+$ jcli address \
+    account \
+    --prefix=address_ \
+    ed25519_pk1yx6q8rsndawfx8hjzwntfs2h2c37v5g6edv67hmcxvrmxfjdz9wqeejchg
+address_1q5smgquwzdh4eyc77gf6ddxp2atz8ej3rt94nt6l0qes0vexf5g4cw68kdx
+```
