@@ -55,7 +55,7 @@ pub fn test_key_with_seed_generation() {
 
 #[test]
 pub fn test_key_with_too_short_seed_generation() {
-    let too_short_seed = "73855612722627931e20c850f8ad53eb04c615c7601a95747be073dcada";
+    let too_short_seed = "73855612722627931e20c850f8ad53eb04c615c7601a95747be073dcadaa";
     test_key_invalid_seed_length(&too_short_seed);
 }
 

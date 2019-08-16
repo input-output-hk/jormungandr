@@ -41,7 +41,7 @@ pub fn test_from_bytes_for_invalid_key() {
     jcli_wrapper::assert_key_from_bytes_fails(
         &byte_key_file,
         "ed25519Extended",
-        "Unknown symbol at byte index 8",
+        "Odd number of digits",
     );
 }
 

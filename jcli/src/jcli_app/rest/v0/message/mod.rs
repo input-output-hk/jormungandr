@@ -1,6 +1,5 @@
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::fragment::Fragment;
-use hex;
 use jcli_app::{
     rest::Error,
     utils::{error::CustomErrorFiller, io, DebugFlag, HostAddr, OutputFormat, RestApiSender},

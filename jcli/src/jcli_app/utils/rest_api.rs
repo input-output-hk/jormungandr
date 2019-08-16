@@ -1,4 +1,3 @@
-use hex;
 use jcli_app::utils::DebugFlag;
 use reqwest::{Error, RequestBuilder, Response};
 use serde::Serialize;

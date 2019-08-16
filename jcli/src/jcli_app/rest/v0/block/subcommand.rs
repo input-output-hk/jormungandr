@@ -1,5 +1,4 @@
 use super::next_id::NextId;
-use hex;
 use jcli_app::rest::Error;
 use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
