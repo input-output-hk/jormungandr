@@ -169,7 +169,7 @@ fn handle_pull_blocks_to_tip(
     let tip = blockchain_tip.get_ref().wait().unwrap();
 
     let storage = storage.get_inner().wait().unwrap();
-    for x in store::iterate_range(&*storage, &from, tip.hash())? {
+    for x in store::iterate_range(&*storage, &from, &tip.hash())? {
         let info = x?;
         let (blk, _) = storage.get_block(&info.block_hash)?;
         reply.send(blk);

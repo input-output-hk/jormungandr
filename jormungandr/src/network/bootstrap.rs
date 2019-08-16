@@ -75,7 +75,7 @@ pub fn bootstrap_from_peer(
         .and_then(|client: Connection<BlockConfig>| client.ready().map_err(Error::ClientNotReady))
         .join(branch.get_ref().map_err(|_| unreachable!()))
         .and_then(|(mut client, tip)| {
-            let tip_hash = *tip.hash();
+            let tip_hash = tip.hash();
             debug!(logger, "pulling blocks starting from {}", tip_hash);
             client
                 .pull_blocks_to_tip(&[tip_hash])

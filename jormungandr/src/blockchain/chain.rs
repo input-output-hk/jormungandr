@@ -686,6 +686,6 @@ impl Blockchain {
         branch
             .get_ref()
             .map_err(|_| unreachable!())
-            .and_then(move |tip| storage.get_checkpoints(*tip.hash()).map_err(|e| e.into()))
+            .and_then(move |tip| storage.get_checkpoints(tip.hash()).map_err(|e| e.into()))
     }
 }

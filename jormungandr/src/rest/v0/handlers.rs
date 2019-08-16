@@ -155,9 +155,9 @@ pub fn get_block_next_id(
     // POSSIBLE RACE CONDITION OR DEADLOCK!
     // Assuming that during update whole blockchain is write-locked
     // FIXME: don't hog the blockchain lock.
+    let tip_hash = context.blockchain_tip.get_ref().wait().unwrap().hash();
     let storage = context.blockchain.storage().get_inner().wait().unwrap();
-    let tip = context.blockchain_tip.get_ref().wait().unwrap();
-    store::iterate_range(&*storage, &block_id, tip.hash())
+    store::iterate_range(&*storage, &block_id, &tip_hash)
         .map_err(|e| ErrorBadRequest(e))?
         .take(query_params.get_count())
         .try_fold(Bytes::new(), |mut bytes, res| {
