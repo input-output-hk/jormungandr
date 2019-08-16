@@ -57,10 +57,8 @@ impl Ref {
     }
 
     /// retrieve the header hash of the `Ref`
-    pub fn hash(&self) -> &HeaderHash {
-        use std::ops::Deref as _;
-
-        self.ledger_gc.deref()
+    pub fn hash(&self) -> HeaderHash {
+        **self.ledger_gc
     }
 
     /// access the reference's parent hash
