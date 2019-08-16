@@ -1,7 +1,7 @@
 use super::{Blockchain, Branch, Error, ErrorKind, PreCheckedHeader, Ref};
 use crate::{
     blockcfg::{Block, Header, HeaderHash},
-    intercom::{self, BlockMsg, NetworkMsg},
+    intercom::{self, BlockMsg, NetworkMsg, PropagateMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
     stats_counter::StatsCounter,
@@ -41,7 +41,13 @@ pub fn handle_input(
         BlockMsg::LeadershipBlock(block) => {
             let future = process_leadership_block(blockchain.clone(), block);
             let new_block_ref = future.wait().unwrap();
+            let header = new_block_ref.header().clone();
             blockchain_tip.update_ref(new_block_ref).wait().unwrap();
+            network_msg_box
+                .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                .unwrap_or_else(|err| {
+                    error!(info.logger(), "cannot propagate block to network: {}", err)
+                });
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
             let future = process_block_announcement(
@@ -62,7 +68,13 @@ pub fn handle_input(
                 }
                 Ok(maybe_updated) => {
                     if let Some(new_block_ref) = maybe_updated {
+                        let header = new_block_ref.header().clone();
                         blockchain_tip.update_ref(new_block_ref).wait().unwrap();
+                        network_msg_box
+                            .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                            .unwrap_or_else(|err| {
+                                error!(info.logger(), "cannot propagate block to network: {}", err)
+                            });
                     }
                     reply.reply_ok(());
                 }
