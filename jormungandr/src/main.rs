@@ -62,6 +62,7 @@ use tokio::sync::lock::Lock;
 pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
+pub mod explorer;
 pub mod fragment;
 pub mod intercom;
 pub mod leadership;
@@ -136,6 +137,20 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         (pool, logs)
     };
 
+    let mut explorer_task = {
+        if bootstrapped_node.settings.explorer {
+            let blockchain = blockchain.clone();
+            let mut explorer_task = explorer::Process::new();
+
+            let task = services.spawn_with_inputs("explorer", move |info, input| {
+                explorer_task.handle_input(info, &blockchain, input);
+            });
+            Some(task)
+        } else {
+            None
+        }
+    };
+
     let block_task = {
         let mut blockchain = blockchain.clone();
         let mut blockchain_tip = blockchain_tip.clone();
@@ -148,6 +163,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 &stats_counter,
                 &mut new_epoch_announcements,
                 &mut network_msgbox,
+                &mut explorer_task,
                 input,
             )
         })
