@@ -96,7 +96,22 @@ pub fn handle_input(
                 }
             }
         }
-        BlockMsg::ChainHeaders(headers, reply) => unimplemented!(),
+        BlockMsg::ChainHeaders(headers, reply) => {
+            let future = process_chain_headers_into_block_request(blockchain.clone(), headers);
+            match future.wait() {
+                Err(e) => {
+                    reply.reply_error(chain_header_error_into_reply(e));
+                }
+                Ok(hashes) => {
+                    network_msg_box
+                        .try_send(NetworkMsg::GetBlocks(hashes))
+                        .unwrap_or_else(|err| {
+                            error!(info.logger(), "cannot request blocks from network: {}", err)
+                        });
+                    reply.reply_ok(());
+                }
+            }
+        }
     };
 
     Ok(())
@@ -268,20 +283,13 @@ fn network_block_error_into_reply(err: Error) -> intercom::Error {
     }
 }
 
-pub fn process_chain_headers_into_block_request<S>(
+pub fn process_chain_headers_into_block_request(
     mut blockchain: Blockchain,
-    headers: S,
-    logger: Logger,
-) -> impl Future<Item = Vec<HeaderHash>, Error = Error>
-where
-    S: Stream<Item = Header>,
-{
-    headers
-        .map_err(|e| {
-            // TODO: map the incoming stream error to the result error
-            unimplemented!()
-        })
+    headers: Vec<Header>,
+) -> impl Future<Item = Vec<HeaderHash>, Error = Error> {
+    stream::iter_ok(headers)
         .and_then(move |header| {
+            let mut end_blockchain = blockchain.clone();
             blockchain
                 .pre_check_header(header)
                 .and_then(move |pre_checked| match pre_checked {
@@ -289,23 +297,45 @@ where
                         // The block is already present. This may happen
                         // if the peer has started from an earlier checkpoint
                         // than our tip, so ignore this and proceed.
-                        Ok(None)
+                        Either::A(future::ok(None))
                     }
                     PreCheckedHeader::MissingParent { header, .. } => {
-                        // TODO: this fails on the first header after the
-                        // immediate descendant of the local tip. Need branch storage
-                        // that would store the whole header chain without blocks,
-                        // so that the chain can be pre-validated first and blocks
-                        // fetched afterwards in arbitrary order.
-                        Err(ErrorKind::MissingParentBlockFromStorage(header).into())
+                        // TODO: when the functionality below is implemented,
+                        // Blockchain::pre_check_header will only return this
+                        // variant on headers that do not belong to the chain.
+                        Either::A(future::err(
+                            ErrorKind::MissingParentBlockFromStorage(header).into(),
+                        ))
                     }
                     PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                        // TODO: limit the headers to the single epoch
-                        // before pausing to retrieve blocks.
-                        Ok(Some(header.hash()))
+                        let post_check = end_blockchain
+                            .post_check_header(header, parent_ref)
+                            .and_then(|post_checked| {
+                                // TODO: a blockchain method that will build
+                                // up the reference chain, or tell that
+                                // block data is needed for new epoch
+                                // leadership.
+                                unimplemented!();
+                                Ok(None)
+                            });
+                        Either::B(post_check)
                     }
                 })
         })
         .filter_map(identity)
         .collect()
+}
+
+fn chain_header_error_into_reply(err: Error) -> intercom::Error {
+    use super::ErrorKind::*;
+
+    // TODO: more detailed error case matching
+    match err.0 {
+        Storage(e) => intercom::Error::failed(e),
+        Ledger(e) => intercom::Error::failed_precondition(e),
+        Block0(e) => intercom::Error::failed(e),
+        MissingParentBlockFromStorage(_) => intercom::Error::failed_precondition(err.to_string()),
+        BlockHeaderVerificationFailed(_) => intercom::Error::invalid_argument(err.to_string()),
+        _ => intercom::Error::failed(err.to_string()),
+    }
 }
