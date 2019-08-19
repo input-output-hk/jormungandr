@@ -15,9 +15,9 @@ pub fn open_file_write<P: AsRef<Path>>(path: &Option<P>) -> Result<impl Write, E
                 .append(false)
                 .truncate(true)
                 .open(path)?;
-            Ok(Box::new(writer) as Box<Write>)
+            Ok(Box::new(writer) as Box<dyn Write>)
         }
-        None => Ok(Box::new(stdout()) as Box<Write>),
+        None => Ok(Box::new(stdout()) as Box<dyn Write>),
     }
 }
 

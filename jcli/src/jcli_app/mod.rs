@@ -36,7 +36,7 @@ pub enum JCli {
 }
 
 impl JCli {
-    pub fn exec(self) -> Result<(), Box<Error>> {
+    pub fn exec(self) -> Result<(), Box<dyn Error>> {
         match self {
             JCli::Key(key) => key.exec()?,
             JCli::Address(address) => address.exec()?,
