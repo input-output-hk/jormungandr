@@ -144,18 +144,22 @@ pub(super) mod internal {
         }
 
         pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
-            while let Some(entry) = try_ready!(self.expirations.poll()) {
-                self.entries.remove(entry.get_ref());
-                self.entries_by_id.remove(entry.get_ref());
-                self.entries_by_time
-                    .iter()
-                    .position(|id| id == entry.get_ref())
-                    .map(|position| {
-                        self.entries_by_time.remove(position);
-                    });
+            loop {
+                match self.expirations.poll()? {
+                    Async::NotReady => return Ok(Async::Ready(())),
+                    Async::Ready(None) => return Ok(Async::Ready(())),
+                    Async::Ready(Some(entry)) => {
+                        self.entries.remove(entry.get_ref());
+                        self.entries_by_id.remove(entry.get_ref());
+                        self.entries_by_time
+                            .iter()
+                            .position(|id| id == entry.get_ref())
+                            .map(|position| {
+                                self.entries_by_time.remove(position);
+                            });
+                    }
+                }
             }
-
-            Ok(Async::Ready(()))
         }
     }
 }
