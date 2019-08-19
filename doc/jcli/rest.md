@@ -316,6 +316,33 @@ The options are
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
 
+## Get leadership logs
+
+Fetches leadership logs
+
+```
+jcli rest v0 leaders logs get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+
+
+YAML printed on success
+
+```yaml
+---
+- created_at_time: "2019-08-19T12:25:00.417263555+00:00"
+  enclave_leader_id: 1
+  finished_at_time: "2019-08-19T23:19:05.010113333+00:00"
+  scheduled_at_date: "0.3923"
+  scheduled_at_time: "2019-08-19T23:18:35+00:00"
+  wake_at_time: "2019-08-19T23:18:35.001254555+00:00"
+```
+
 ## Get stake pools
 
 Fetches list of stake pool IDs
