@@ -109,6 +109,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let blockchain = bootstrapped_node.blockchain;
     // TODO: make this value configuration
     let leadership_logs = leadership::Logs::new(Duration::from_secs(3 * 24 * 3600));
+    let leadership_garbage_collection_interval = Duration::from_secs(3600 / 4);
 
     let stats_counter = StatsCounter::default();
 
@@ -212,6 +213,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             leadership::LeadershipModule::start(
                 info,
                 leadership_logs,
+                leadership_garbage_collection_interval,
                 enclave,
                 fragment_pool,
                 blockchain_tip,

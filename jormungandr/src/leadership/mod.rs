@@ -78,8 +78,12 @@ use chain_time::{
     TimeFrame,
 };
 use jormungandr_lib::time::SystemTime;
-use std::sync::Arc;
-use tokio::{prelude::*, sync::mpsc, timer::Delay};
+use std::{sync::Arc, time::Duration};
+use tokio::{
+    prelude::*,
+    sync::mpsc,
+    timer::{Delay, Interval},
+};
 
 error_chain! {
     errors {
@@ -114,6 +118,7 @@ pub struct LeadershipModule {
     fragment_pool: fragment::Pool,
     tip: Branch,
     block_message: MessageBox<BlockMsg>,
+    garbage_collection_interval: Duration,
 }
 
 impl LeadershipModule {
@@ -270,9 +275,28 @@ impl LeadershipModule {
             .map(|scheduler| (self, scheduler))
     }
 
+    fn spawn_log_purge(&self) -> impl Future<Item = (), Error = ()> {
+        let mut logs = self.logs.clone();
+        let garbage_collection_interval = self.garbage_collection_interval;
+        let logger = self
+            .service_info
+            .logger()
+            .new(o!("sub task" => "garbage collection"));
+        let error_logger = logger.clone();
+        Interval::new_interval(garbage_collection_interval)
+            .for_each(move |_instant| {
+                debug!(logger, "garbage collect entries in the logs");
+                logs.poll_purge()
+            })
+            .map_err(move |error| {
+                error!(error_logger, "Cannot run the garbage collection" ; "reason" => error.to_string());
+            })
+    }
+
     pub fn start(
         service_info: TokioServiceInfo,
         logs: Logs,
+        garbage_collection_interval: Duration,
         enclave: Enclave,
         fragment_pool: fragment::Pool,
         tip_branch: Branch,
@@ -289,7 +313,10 @@ impl LeadershipModule {
             fragment_pool,
             tip: tip_branch,
             block_message,
+            garbage_collection_interval,
         };
+
+        leadership_module.spawn_log_purge();
 
         future::loop_fn(
             (leadership_module, scheduler_future, new_epoch_future),
