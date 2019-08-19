@@ -23,6 +23,7 @@ custom_error! {pub Error
     InputFileYamlMalformed { source: serde_yaml::Error } = "input yaml is not valid",
     InputSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller } = "failed to serialize input",
     InputHexMalformed { source: FromHexError } = "input hex encoding is not valid",
+    HttpError { source: reqwest::Error } = "HTTP query error",
 }
 
 impl From<ReadYamlError> for Error {
