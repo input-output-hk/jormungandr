@@ -16,6 +16,8 @@
 - [Configuration](./configuration/introduction.md)
     - [Logging](./configuration/logging.md)
     - [Node network](./configuration/network.md)
+    - [Fragment Pool](./configuration/mempool.md)
+    - [Leader Events](./configuration/leadership.md)
 
 - [jcli](./jcli/introduction.md)
     - [Cryptographic keys](./jcli/key.md)

@@ -1,7 +1,7 @@
 
 There's 2 differents network interfaces which are covered by their respective section:
 
-```
+```yaml
 rest:
    ...
 p2p:

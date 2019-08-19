@@ -3,7 +3,7 @@ use crate::{
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
-
+use jormungandr_lib::time::Duration;
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
@@ -16,6 +16,14 @@ pub struct Config {
     pub grpc_peers: Option<Vec<SocketAddr>>,
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,
+
+    /// setting of the mempool, fragment logs and related data
+    #[serde(default)]
+    pub mempool: Mempool,
+
+    #[serde(default)]
+    pub leadership: Leadership,
+
     pub rest: Option<Rest>,
     pub p2p: P2pConfig,
 }
@@ -59,6 +67,27 @@ pub struct P2pConfig {
     pub topics_of_interest: Option<BTreeMap<Topic, InterestLevel>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Leadership {
+    /// LeadershipLog time to live, it is for information purposes, we log all the Leadership
+    /// event logs in a cache. The log will be discarded at the end of the ttl.
+    pub log_ttl: Duration,
+    /// interval between 2 garbage collection check logs
+    pub garbage_collection_interval: Duration,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Mempool {
+    /// time to live in the mempool before being discarded. If the value is not applied
+    /// in a block within this duration it will be discarded.
+    pub fragment_ttl: Duration,
+    /// FragmentLog time to live, it is for information purposes, we log all the fragments
+    /// logs in a cache. The log will be discarded at the end of the ttl.
+    pub log_ttl: Duration,
+    /// interval between 2 garbage collection check of the mempool and the log cache.
+    pub garbage_collection_interval: Duration,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Address(pub poldercast::Address);
 
@@ -72,6 +101,25 @@ pub struct InterestLevel(pub poldercast::InterestLevel);
 pub struct TrustedPeer {
     pub address: Address,
     pub id: NodeId,
+}
+
+impl Default for Mempool {
+    fn default() -> Self {
+        Mempool {
+            fragment_ttl: Duration::new(30 * 60, 0),
+            log_ttl: Duration::new(3600, 0),
+            garbage_collection_interval: Duration::new(3600 / 4, 0),
+        }
+    }
+}
+
+impl Default for Leadership {
+    fn default() -> Self {
+        Leadership {
+            log_ttl: Duration::new(3600, 0),
+            garbage_collection_interval: Duration::new(3600 / 4, 0),
+        }
+    }
 }
 
 impl Address {

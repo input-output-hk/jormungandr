@@ -14,7 +14,7 @@ use slog::Logger;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::mpsc;
 
-pub type NodeStorage = Box<BlockStore<Block = Block> + Send + Sync>;
+pub type NodeStorage = Box<dyn BlockStore<Block = Block> + Send + Sync>;
 
 /// prepare the block storage from the given settings
 ///

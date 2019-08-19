@@ -1,8 +1,8 @@
 mod config;
 pub mod network;
 
-use self::config::Config;
 pub use self::config::Rest;
+use self::config::{Config, Leadership, Mempool};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
@@ -24,8 +24,10 @@ pub struct Settings {
     pub network: network::Configuration,
     pub storage: Option<PathBuf>,
     pub block_0: Block0Info,
-    pub leadership: Vec<PathBuf>,
+    pub secrets: Vec<PathBuf>,
     pub rest: Option<Rest>,
+    pub mempool: Mempool,
+    pub leadership: Leadership,
 }
 
 pub struct RawSettings {
@@ -92,12 +94,12 @@ impl RawSettings {
             (None, None) => None,
         };
 
-        let mut leadership = command_arguments.secret.clone();
+        let mut secrets = command_arguments.secret.clone();
         if let Some(secret_files) = config.secret_files {
-            leadership.extend(secret_files);
+            secrets.extend(secret_files);
         }
 
-        if leadership.is_empty() {
+        if secrets.is_empty() {
             warn!(
                 logger,
                 "Node started without path to the stored secret keys"
@@ -118,8 +120,10 @@ impl RawSettings {
             storage: storage,
             block_0: block0_info,
             network: network,
-            leadership,
+            secrets,
             rest: config.rest,
+            mempool: config.mempool,
+            leadership: config.leadership,
         })
     }
 }
