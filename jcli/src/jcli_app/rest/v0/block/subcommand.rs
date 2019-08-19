@@ -30,7 +30,7 @@ fn exec_get(block_id: String, addr: HostAddr, debug: DebugFlag) -> Result<(), Er
     let url = addr.with_segments(&["v0", "block", &block_id])?.into_url();
     let builder = reqwest::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send()?;
-    response.response().error_for_status_ref()?;
+    response.ok_response()?;
     let body = response.body().binary();
     println!("{}", hex::encode(&body));
     Ok(())

@@ -61,6 +61,14 @@ fn get_working_directory() -> PathBuf {
     output_directory
 }
 
+pub fn get_openapi_path() -> PathBuf {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.pop();
+    path.push("doc");
+    path.push("openapi.yaml");
+    path
+}
+
 lazy_static! {
     static ref NEXT_AVAILABLE_PORT_NUMBER: AtomicU16 = {
         let initial_port = rand::thread_rng().gen_range(6000, 60000);

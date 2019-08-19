@@ -18,7 +18,7 @@ pub fn get_genesis_encode_command(
     genesis_yaml_file_path: &PathBuf,
     path_to_output_block: &PathBuf,
 ) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("genesis")
         .arg("encode")
@@ -36,7 +36,7 @@ pub fn get_genesis_encode_command(
 /// * `path_to_output_block` - Path to output block file
 ///
 pub fn get_genesis_hash_command(path_to_output_block: &PathBuf) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("genesis")
         .arg("hash")
@@ -47,7 +47,7 @@ pub fn get_genesis_hash_command(path_to_output_block: &PathBuf) -> Command {
 
 /// Get rest stat command.
 pub fn get_rest_stats_command(host: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
@@ -61,7 +61,7 @@ pub fn get_rest_stats_command(host: &str) -> Command {
 
 /// Get rest stat command.
 pub fn get_rest_account_stats_command(address: &str, host: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
@@ -75,7 +75,7 @@ pub fn get_rest_account_stats_command(address: &str, host: &str) -> Command {
 
 /// Get rest block tip command.
 pub fn get_rest_block_tip_command(host: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
@@ -88,7 +88,7 @@ pub fn get_rest_block_tip_command(host: &str) -> Command {
 
 /// Get rest block command.
 pub fn get_rest_get_block_command(block_id: &str, host: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
@@ -102,7 +102,7 @@ pub fn get_rest_get_block_command(block_id: &str, host: &str) -> Command {
 
 /// Get rest next block id command.
 pub fn get_rest_get_next_block_id_command(block_id: &str, id_count: &i32, host: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
@@ -119,7 +119,7 @@ pub fn get_rest_get_next_block_id_command(block_id: &str, id_count: &i32, host: 
 
 /// Get utxo get command.
 pub fn get_rest_utxo_get_command(host: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
@@ -132,7 +132,7 @@ pub fn get_rest_utxo_get_command(host: &str) -> Command {
 
 /// Get address single command.
 pub fn get_address_single_command(public_key: &str, discrimination: Discrimination) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command.arg("address").arg("single").arg(&public_key);
     add_discrimination(&mut command, discrimination);
     command
@@ -140,14 +140,14 @@ pub fn get_address_single_command(public_key: &str, discrimination: Discriminati
 
 /// Get address single command.
 pub fn get_address_info_command_default(address: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command.arg("address").arg("info").arg(&address);
     command
 }
 
 /// Get address single command.
 pub fn get_address_account_command(public_key: &str, discrimination: Discrimination) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command.arg("address").arg("account").arg(&public_key);
     add_discrimination(&mut command, discrimination);
     command
@@ -161,7 +161,7 @@ fn add_discrimination(command: &mut Command, discrimination: Discrimination) {
 
 /// Get address single command.
 pub fn get_genesis_init_command() -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command.arg("genesis").arg("init");
     command
 }
@@ -172,7 +172,7 @@ pub fn get_address_delegation_command(
     delegation_key: &str,
     discrimination: Discrimination,
 ) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("address")
         .arg("single")
@@ -187,7 +187,7 @@ pub fn get_address_delegation_command(
 pub fn get_post_transaction_command(transaction_hash: &str, host: &str) -> Command {
     let transaction_hash_file_path =
         file_utils::create_file_in_temp("transaction.hash", &transaction_hash);
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
@@ -209,7 +209,7 @@ pub fn get_key_generate_command_default() -> Command {
 
 /// Get key generate command
 pub fn get_key_generate_command(key_type: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("key")
         .arg("generate")
@@ -220,7 +220,7 @@ pub fn get_key_generate_command(key_type: &str) -> Command {
 
 /// Get key generate command
 pub fn get_key_generate_with_seed_command(key_type: &str, seed: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("key")
         .arg("generate")
@@ -233,7 +233,7 @@ pub fn get_key_generate_with_seed_command(key_type: &str, seed: &str) -> Command
 
 /// Get key to public command
 pub fn get_key_to_public_command(private_key: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     let secret_file_key = file_utils::create_file_in_temp("secret_file_key", &private_key);
     command
         .arg("key")
@@ -245,7 +245,7 @@ pub fn get_key_to_public_command(private_key: &str) -> Command {
 
 /// Get key to public command
 pub fn get_key_to_bytes_command(input_file: &PathBuf, output_file: &PathBuf) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("key")
         .arg("to-bytes")
@@ -255,7 +255,7 @@ pub fn get_key_to_bytes_command(input_file: &PathBuf, output_file: &PathBuf) -> 
 }
 
 pub fn get_key_from_bytes_command(input_file: &PathBuf, key_type: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("key")
         .arg("from-bytes")
@@ -266,7 +266,7 @@ pub fn get_key_from_bytes_command(input_file: &PathBuf, key_type: &str) -> Comma
 }
 
 pub fn get_rest_message_log_command(host: &str) -> Command {
-    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
@@ -274,5 +274,14 @@ pub fn get_rest_message_log_command(host: &str) -> Command {
         .arg("logs")
         .arg("--host")
         .arg(&host);
+    command
+}
+
+fn get_jcli_command() -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command.env(
+        "JCLI_OPEN_API_VERIFY_PATH",
+        configuration::get_openapi_path(),
+    );
     command
 }
