@@ -284,6 +284,14 @@ pub fn delete_leaders(
     }
 }
 
+pub fn get_leaders_logs(context: State<Context>) -> ActixFuture!() {
+    context
+        .leadership_logs
+        .logs()
+        .map(Json)
+        .map_err(|_| ErrorInternalServerError("Failed to get leader logs"))
+}
+
 pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
     chain_tip_fut(&context).map(|blockchain_tip| {
         let stake_pool_ids = blockchain_tip

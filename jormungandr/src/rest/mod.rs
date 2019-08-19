@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use crate::blockchain::{Blockchain, Branch};
 use crate::fragment::Logs;
+use crate::leadership::Logs as LeadershipLogs;
 use crate::secure::enclave::Enclave;
 use crate::settings::start::{Error as ConfigError, Rest};
 use crate::stats_counter::StatsCounter;
@@ -24,6 +25,7 @@ pub struct Context {
     pub blockchain_tip: Branch,
     pub transaction_task: Arc<Mutex<MessageBox<TransactionMsg>>>,
     pub logs: Arc<Mutex<Logs>>,
+    pub leadership_logs: LeadershipLogs,
     pub server: Arc<RwLock<Option<Server>>>,
     pub enclave: Enclave,
 }
