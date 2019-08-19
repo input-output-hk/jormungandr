@@ -176,11 +176,15 @@ pub(super) mod internal {
         }
 
         pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
-            while let Some(entry) = try_ready!(self.expirations.poll()) {
-                self.entries.remove(entry.get_ref());
+            loop {
+                match self.expirations.poll()? {
+                    Async::NotReady => return Ok(Async::Ready(())),
+                    Async::Ready(None) => return Ok(Async::Ready(())),
+                    Async::Ready(Some(entry)) => {
+                        self.entries.remove(entry.get_ref());
+                    }
+                }
             }
-
-            Ok(Async::Ready(()))
         }
 
         pub fn logs<'a>(&'a self) -> impl Iterator<Item = &'a LeadershipLog> {
