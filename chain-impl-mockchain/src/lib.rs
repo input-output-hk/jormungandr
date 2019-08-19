@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(any(test, feature = "property-test-api"))]
 #[macro_use]
 extern crate quickcheck;
 #[macro_use(custom_error)]

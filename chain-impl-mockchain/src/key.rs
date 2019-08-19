@@ -289,7 +289,7 @@ impl FromStr for Hash {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "property-test-api"))]
 pub mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};

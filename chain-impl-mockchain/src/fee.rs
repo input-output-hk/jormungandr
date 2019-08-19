@@ -55,7 +55,7 @@ impl FeeAlgorithm<tx::Transaction<Address, Certificate>> for LinearFee {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "property-test-api"))]
 mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};

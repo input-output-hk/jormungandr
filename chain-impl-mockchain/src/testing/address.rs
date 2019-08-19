@@ -134,16 +134,19 @@ impl AddressData {
         self.address.discrimination().clone()
     }
 
-    pub fn address_as_string(&self) -> String {
+    pub fn delegation_key(&self) -> PublicKey<Ed25519> {
+        match self.kind() {
+            Kind::Group(_, delegation_key) => delegation_key,
+            _ => panic!("cannot get delegation key from non group addres kind"),
+        }
+    }
+
+    pub fn to_bech32_str(&self) -> String {
         let prefix = match self.discrimination() {
             Discrimination::Production => "ta",
             Discrimination::Test => "ca",
         };
         AddressReadable::from_address(prefix, &self.address).to_string()
-    }
-
-    pub fn public_key_as_string(&self) -> String {
-        self.public_key().to_bech32_str()
     }
 
     pub fn generate_key_pair<A: AsymmetricKey>() -> KeyPair<A> {
