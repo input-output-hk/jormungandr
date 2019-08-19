@@ -52,6 +52,7 @@ use crate::{
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
+use futures::Future;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::sync::{Arc, Mutex};
@@ -201,14 +202,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let enclave = Enclave::from_vec(leader_secrets);
 
     {
-        use tokio::prelude::*;
-
+        let leadership_logs = leadership_logs.clone();
         let fragment_pool = fragment_pool.clone();
         let block_task = block_task.clone();
         let blockchain_tip = blockchain_tip.clone();
-
         let enclave = leadership::Enclave::new(enclave.clone());
-        let stats_counter = stats_counter.clone();
 
         services.spawn_future("leadership", move |info| {
             leadership::LeadershipModule::start(
@@ -229,10 +227,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         Some(rest) => {
             let context = rest::Context {
                 stats_counter,
-                blockchain: blockchain.clone(),
+                blockchain,
                 blockchain_tip,
                 transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
                 logs: Arc::new(Mutex::new(pool_logs)),
+                leadership_logs,
                 server: Arc::default(),
                 enclave,
             };

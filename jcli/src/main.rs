@@ -29,7 +29,7 @@ fn main() {
         .unwrap_or_else(report_error)
 }
 
-fn report_error(error: Box<Error>) {
+fn report_error(error: Box<dyn Error>) {
     eprintln!("{}", error);
     let mut source = error.source();
     while let Some(sub_error) = source {

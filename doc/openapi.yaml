@@ -272,7 +272,57 @@ paths:
                 type: integer
                 minimum: 0
               example: 5
-
+  /api/v0/leaders/logs:
+    get:
+      description: Gets leader logs
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: List of log entries
+                type: array
+                items:
+                  description: Log entry
+                  type: object
+                  required: [created_at_time, scheduled_at_time, scheduled_at_date, enclave_leader_id]
+                  properties:
+                    lastBlockTime:
+                      description: Timestamp of when this log entry was created
+                      type: string
+                      format: date-time
+                    scheduled_at_time:
+                      description: Timestamp of start of leadership according to schedule
+                      type: string
+                      format: date-time
+                    scheduled_at_date:
+                      description: Epoch and slot ID of start of leadership according to schedule
+                      type: string
+                      pattern: '[0-9]+\.[0-9]+'
+                    wake_at_time:
+                      description: Timestamp of when leadership was started
+                      type: string
+                      format: date-time
+                    finished_at_time:
+                      description: Timestamp of when leadership was finished
+                      type: string
+                      format: date-time
+                    enclave_leader_id:
+                      description: ID of leadership event that produced this log entry
+                      type: integer
+                      minimum: 0
+              example: |
+                [
+                  {
+                    "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
+                    "scheduled_at_time": "2019-08-19T23:18:35+00:00",
+                    "scheduled_at_date": "0.3923",
+                    "wake_at_time": "2019-08-19T23:18:35.001254555+00:00",
+                    "finished_at_time": "2019-08-19T23:19:05.010113333+00:00",
+                    "enclave_leader_id": 1
+                  }
+                ]
   /api/v0/leaders/{leader_id}:
     delete:
       description: Deletes leader
@@ -462,7 +512,7 @@ paths:
                     required: [dangling, pools, unassigned]
                     properties:
                       dangling:
-                        description: Total value stored in accounts, but assigned to nonexisatent pools
+                        description: Total value stored in accounts, but assigned to nonexistent pools
                         type: integer
                         minimum: 0
                       pools:

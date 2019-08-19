@@ -21,6 +21,9 @@ pub fn app(context: handlers::Context) -> App<handlers::Context> {
             r.get().with(handlers::get_leaders);
             r.post().with(handlers::post_leaders);
         })
+        .resource("/leaders/logs", |r| {
+            r.get().with_async(handlers::get_leaders_logs);
+        })
         .resource("/leaders/{leader_id}", |r| {
             r.delete().with(handlers::delete_leaders)
         })
