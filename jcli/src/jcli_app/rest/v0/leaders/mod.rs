@@ -112,7 +112,7 @@ fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Re
     let url = addr.with_segments(&["v0", "leaders", "logs"])?.into_url();
     let builder = reqwest::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send()?;
-    response.response().error_for_status_ref()?;
+    response.ok_response()?;
     let logs = response.body().json_value()?;
     let formatted = output_format.format_json(logs)?;
     println!("{}", formatted);
