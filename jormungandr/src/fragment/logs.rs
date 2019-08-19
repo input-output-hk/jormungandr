@@ -54,8 +54,7 @@ impl Logs {
     }
 
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
-        let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock()))
+        self.inner()
             .and_then(move |mut guard| future::poll_fn(move || guard.poll_purge()))
     }
 
@@ -65,7 +64,7 @@ impl Logs {
             .and_then(|guard| future::ok(guard.logs().cloned().collect()))
     }
 
-    pub(super) fn inner(&self) -> impl Future<Item = LockGuard<internal::Logs>, Error = ()> {
+    pub(super) fn inner<E>(&self) -> impl Future<Item = LockGuard<internal::Logs>, Error = E> {
         let mut lock = self.0.clone();
         future::poll_fn(move || Ok(lock.poll_lock()))
     }
