@@ -107,22 +107,23 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
-    // TODO: make this value configuration
-    let leadership_logs = leadership::Logs::new(Duration::from_secs(3 * 24 * 3600));
-    let leadership_garbage_collection_interval = Duration::from_secs(3600 / 4);
+    let leadership_logs =
+        leadership::Logs::new(bootstrapped_node.settings.leadership.log_ttl.into());
+    let leadership_garbage_collection_interval =
+        bootstrapped_node.settings.leadership.log_ttl.into();
 
     let stats_counter = StatsCounter::default();
 
     let (fragment_pool, pool_logs) = {
         let stats_counter = stats_counter.clone();
-        // TODO: get the TTL and from the settings
         let process = fragment::Process::new(
-            // TTL of a fragment in the MemPool: 1h
-            Duration::from_secs(3600),
-            // TTL of a MemPool log: 2h
-            Duration::from_secs(3600 * 2),
-            // Interval between GC pauses: 15min
-            Duration::from_secs(3600 / 4),
+            bootstrapped_node.settings.mempool.fragment_ttl.into(),
+            bootstrapped_node.settings.mempool.log_ttl.into(),
+            bootstrapped_node
+                .settings
+                .mempool
+                .garbage_collection_interval
+                .into(),
         );
 
         let pool = process.pool().clone();
@@ -186,7 +187,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let leader_secrets: Result<Vec<Leader>, start_up::Error> = bootstrapped_node
         .settings
-        .leadership
+        .secrets
         .iter()
         .map(|secret_path| {
             let secret = secure::NodeSecret::load_from_file(secret_path.as_path())?;
