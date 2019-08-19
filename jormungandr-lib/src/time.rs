@@ -289,6 +289,12 @@ impl From<time::Duration> for Duration {
     }
 }
 
+impl From<Duration> for time::Duration {
+    fn from(Duration(duration): Duration) -> Self {
+        duration
+    }
+}
+
 impl From<SecondsSinceUnixEpoch> for SystemTime {
     fn from(seconds: SecondsSinceUnixEpoch) -> SystemTime {
         SystemTime::from_secs_since_epoch(seconds.0)
