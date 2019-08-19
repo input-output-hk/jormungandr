@@ -202,7 +202,7 @@ pub fn process_block_announcement(
                         });
                 }))
             }
-            PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+            PreCheckedHeader::HeaderWithCache { header, .. } => {
                 debug!(
                     logger,
                     "Announced block has a locally stored parent, fetch it"
