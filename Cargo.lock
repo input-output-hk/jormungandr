@@ -1340,6 +1340,7 @@ dependencies = [
  "chain-crypto 0.1.0",
  "chain-impl-mockchain 0.1.0",
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "jormungandr-lib 0.3.2",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "poldercast 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",

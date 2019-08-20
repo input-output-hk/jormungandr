@@ -1,17 +1,24 @@
 #[macro_use]
 extern crate jormungandr_scenario_tests;
 
-use jormungandr_scenario_tests::{prepare_command, Context};
+use jormungandr_scenario_tests::{prepare_command, Context, Seed};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
+#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
 struct CommandArgs {
+    /// path or name of the jormungandr node to test
     #[structopt(long = "jormungandr", default_value = "jormungandr")]
     jormungandr: PathBuf,
 
+    /// path or name of the jcli to test
     #[structopt(long = "jcli", default_value = "jcli")]
     jcli: PathBuf,
+
+    /// to set if to reproduce an existing test
+    #[structopt(long = "seed")]
+    seed: Option<Seed>,
 }
 
 fn main() {
@@ -19,8 +26,11 @@ fn main() {
 
     let jormungandr = prepare_command(command_args.jormungandr);
     let jcli = prepare_command(command_args.jcli);
+    let seed = command_args
+        .seed
+        .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng::new().unwrap()));
 
-    let mut context = Context::new(jormungandr, jcli);
+    let mut context = Context::new(seed, jormungandr, jcli);
 
     scenario_1(context.derive());
 }

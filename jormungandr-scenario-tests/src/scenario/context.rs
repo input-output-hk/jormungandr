@@ -1,12 +1,17 @@
 use rand_chacha::ChaChaRng;
 use rand_core::{RngCore, SeedableRng};
 use std::{
+    fmt::{self, Display, Formatter},
     net::SocketAddr,
+    str::FromStr,
     sync::{
         atomic::{self, AtomicU16},
         Arc,
     },
 };
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct Seed([u8; 32]);
 
 /// scenario context with all the details to setup the necessary port number
 /// a pseudo random number generator (and its original seed).
@@ -14,7 +19,7 @@ use std::{
 pub struct Context<RNG: RngCore + Sized> {
     rng: RNG,
 
-    seed: [u8; 32],
+    seed: Seed,
 
     jormungandr: bawawa::Command,
     jcli: bawawa::Command,
@@ -23,11 +28,21 @@ pub struct Context<RNG: RngCore + Sized> {
     next_available_grpc_port_number: Arc<AtomicU16>,
 }
 
+impl Seed {
+    fn zero() -> Self {
+        Seed([0; 32])
+    }
+
+    pub fn generate<RNG: RngCore>(mut rng: RNG) -> Self {
+        let mut seed = Seed::zero();
+        rng.fill_bytes(&mut seed.0);
+        seed
+    }
+}
+
 impl Context<ChaChaRng> {
-    pub fn new(jormungandr: bawawa::Command, jcli: bawawa::Command) -> Self {
-        let mut seed = [0; 32];
-        rand::rngs::OsRng::new().unwrap().fill_bytes(&mut seed);
-        let rng = ChaChaRng::from_seed(seed);
+    pub fn new(seed: Seed, jormungandr: bawawa::Command, jcli: bawawa::Command) -> Self {
+        let rng = ChaChaRng::from_seed(seed.0);
 
         Context {
             rng,
@@ -42,9 +57,8 @@ impl Context<ChaChaRng> {
     /// derive the Context into a new context, seeding a new RNG from the original
     /// Context (so reproducibility is still available).
     pub fn derive(&mut self) -> Self {
-        let mut seed = [0; 32];
-        self.rng_mut().fill_bytes(&mut seed);
-        let rng = ChaChaRng::from_seed(seed);
+        let seed = Seed::generate(self.rng_mut());
+        let rng = ChaChaRng::from_seed(seed.0);
 
         Context {
             rng,
@@ -93,7 +107,31 @@ impl<RNG: RngCore> Context<RNG> {
 
     /// retrieve the original seed of the pseudo random generator
     #[inline]
-    pub fn seed(&self) -> &[u8; 32] {
+    pub fn seed(&self) -> &Seed {
         &self.seed
+    }
+}
+
+impl Display for Seed {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        hex::encode(&self.0).fmt(f)
+    }
+}
+
+impl FromStr for Seed {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = hex::decode(s)?;
+
+        let mut seed = Seed::zero();
+
+        if bytes.len() != seed.0.len() {
+            Err(hex::FromHexError::InvalidStringLength)
+        } else {
+            seed.0.copy_from_slice(&bytes);
+
+            Ok(seed)
+        }
     }
 }

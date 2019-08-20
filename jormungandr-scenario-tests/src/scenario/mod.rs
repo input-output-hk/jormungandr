@@ -6,7 +6,7 @@ mod wallet;
 
 pub use self::{
     blockchain::Blockchain,
-    context::Context,
+    context::{Context, Seed},
     topology::{Node, NodeAlias, Topology, TopologyBuilder},
     wallet::{Wallet, WalletAlias, WalletType},
 };

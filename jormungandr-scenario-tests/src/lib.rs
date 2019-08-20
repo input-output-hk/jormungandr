@@ -10,7 +10,6 @@ mod wallet;
 
 pub use self::node::Node;
 pub use self::programs::prepare_command;
-pub use self::scenario::Context;
-pub use self::scenario::{NodeAlias, WalletAlias, WalletType};
+pub use self::scenario::{Context, NodeAlias, Seed, WalletAlias, WalletType};
 pub use self::slog::{Error as SlogCodecError, SlogCodec};
 pub use self::wallet::Wallet;
