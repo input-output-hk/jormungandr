@@ -1,4 +1,4 @@
-use crate::{blockcfg::HeaderHash, blockchain::Ref};
+use crate::blockcfg::HeaderHash;
 use std::{collections::HashMap, convert::Infallible, time::Duration};
 use tokio::{
     prelude::*,
@@ -6,57 +6,53 @@ use tokio::{
     timer::{self, delay_queue, DelayQueue},
 };
 
-/// object that store the [`Ref`] in a cache. Every time a [`Ref`]
-/// is accessed its TTL will be reset. Once the TTL of [`Ref`] has
+/// Cache for temporary block data such as [`Ref`]. Every time an entry
+/// is accessed its TTL will be reset. Once the TTL of the entry has
 /// expired it may be removed from the cache.
 ///
-/// The cache expired [`Ref`] will be removed only if the [`Ref`]'s
+/// The cache expired entry will be removed only if the entry's
 /// TTL has expired and [`purge`] has been called and has completed.
 ///
 /// [`Ref`]: ./struct.Ref.html
-/// [`purge`]: ./struct.Ref.html#method.purge
+/// [`purge`]: ./struct.BlockCache.html#method.purge
 #[derive(Clone)]
-pub struct RefCache {
-    inner: Lock<RefCacheData>,
+pub struct BlockCache<R> {
+    inner: Lock<RefCacheData<R>>,
 }
 
 /// cache of already loaded in-memory block `Ref`
-struct RefCacheData {
-    entries: HashMap<HeaderHash, (Ref, delay_queue::Key)>,
+struct RefCacheData<R> {
+    entries: HashMap<HeaderHash, (R, delay_queue::Key)>,
     expirations: DelayQueue<HeaderHash>,
 
     ttl: Duration,
 }
 
-impl RefCache {
-    /// create a new `RefCache` with the given expiration `Duration`.
+impl<R: Clone> BlockCache<R> {
+    /// create a new `BlockCache` with the given expiration `Duration`.
     ///
     pub fn new(ttl: Duration) -> Self {
-        RefCache {
+        BlockCache {
             inner: Lock::new(RefCacheData::new(ttl)),
         }
     }
 
-    /// return a future that will attempt to insert the given [`Ref`]
+    /// return a future that will attempt to insert the given value
     /// in the cache.
     ///
     /// # Errors
     ///
     /// there is no error possible yet.
     ///
-    pub fn insert(
-        &self,
-        key: HeaderHash,
-        value: Ref,
-    ) -> impl Future<Item = (), Error = Infallible> {
+    pub fn insert(&self, key: HeaderHash, value: R) -> impl Future<Item = (), Error = Infallible> {
         let mut inner = self.inner.clone();
         future::poll_fn(move || Ok(inner.poll_lock()))
             .map(move |mut guard| guard.insert(key, value))
     }
 
-    /// return a future to get a [`Ref`] from the cache
+    /// Return a future to get a value from the cache.
     ///
-    /// The future returns `None` if the `Ref` was not found in the
+    /// The future returns `None` if the entry was not found in the
     /// cache. This does not mean the associated block is not in the
     /// blockchain storage. It only means it is not in the cache:
     /// it has not been seen _recently_.
@@ -65,14 +61,14 @@ impl RefCache {
     ///
     /// No error possible yet
     ///
-    pub fn get(&self, key: HeaderHash) -> impl Future<Item = Option<Ref>, Error = Infallible> {
+    pub fn get(&self, key: HeaderHash) -> impl Future<Item = Option<R>, Error = Infallible> {
         let mut inner = self.inner.clone();
 
         future::poll_fn(move || Ok(inner.poll_lock()))
             .map(move |mut guard| guard.get(&key).cloned())
     }
 
-    /// return a future to remove a specific [`Ref`] from the cache.
+    /// return a future to remove a specific entry from the cache.
     ///
     pub fn remove(&self, key: HeaderHash) -> impl Future<Item = (), Error = Infallible> {
         let mut inner = self.inner.clone();
@@ -90,7 +86,7 @@ impl RefCache {
     }
 }
 
-impl RefCacheData {
+impl<R> RefCacheData<R> {
     fn new(ttl: Duration) -> Self {
         RefCacheData {
             entries: HashMap::new(),
@@ -99,13 +95,13 @@ impl RefCacheData {
         }
     }
 
-    fn insert(&mut self, key: HeaderHash, value: Ref) {
+    fn insert(&mut self, key: HeaderHash, value: R) {
         let delay = self.expirations.insert(key.clone(), self.ttl);
 
         self.entries.insert(key, (value, delay));
     }
 
-    fn get(&mut self, key: &HeaderHash) -> Option<&Ref> {
+    fn get(&mut self, key: &HeaderHash) -> Option<&R> {
         if let Some((v, k)) = self.entries.get(key) {
             self.expirations.reset(k, self.ttl);
 

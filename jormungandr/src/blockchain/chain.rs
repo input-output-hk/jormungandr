@@ -53,7 +53,7 @@ use crate::{
     blockcfg::{
         Block, Block0Error, Epoch, Header, HeaderHash, Leadership, Ledger, LedgerParameters,
     },
-    blockchain::{Branch, Branches, Multiverse, Ref, RefCache, Storage},
+    blockchain::{BlockCache, Branch, Branches, Multiverse, Ref, Storage},
     start_up::NodeStorage,
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
@@ -118,7 +118,7 @@ const MAIN_BRANCH_TAG: &str = "HEAD";
 pub struct Blockchain {
     branches: Branches,
 
-    ref_cache: RefCache,
+    ref_cache: BlockCache<Ref>,
 
     ledgers: Multiverse<Arc<Ledger>>,
 
@@ -174,7 +174,7 @@ impl Blockchain {
     pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
             branches: Branches::new(),
-            ref_cache: RefCache::new(ref_cache_ttl),
+            ref_cache: BlockCache::new(ref_cache_ttl),
             ledgers: Multiverse::new(),
             storage: Storage::new(storage),
         }
