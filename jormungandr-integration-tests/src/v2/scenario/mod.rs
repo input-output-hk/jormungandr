@@ -12,6 +12,7 @@ pub use chain_impl_mockchain::{
     block::{Block, ConsensusVersion, HeaderHash},
     value::Value,
 };
+pub use jormungandr_lib::interfaces::{NumberOfSlotsPerEpoch, SlotDuration};
 use mktemp::Temp;
 use rand_chacha::ChaChaRng;
 use rand_core::{RngCore, SeedableRng};
@@ -49,6 +50,8 @@ macro_rules! prepare_scenario {
         ]
         blockchain {
             consensus = $blockchain_consensus:tt,
+            number_of_slots_per_epoch = $slots_per_epoch:tt,
+            slot_duration = $slot_duration:tt,
             leaders = [ $($node_leader:tt),* $(,)* ],
             initials = [
                 $(account $initial_wallet_name:tt with $initial_wallet_funds:tt $(delegates to $initial_wallet_delegate_to:tt)* ),+ $(,)*
@@ -67,7 +70,9 @@ macro_rules! prepare_scenario {
         let topology : $crate::v2::scenario::Topology = topology_builder.build();
 
         let mut blockchain = $crate::v2::scenario::Blockchain::new(
-            $crate::v2::scenario::ConsensusVersion::$blockchain_consensus
+            $crate::v2::scenario::ConsensusVersion::$blockchain_consensus,
+            $crate::v2::scenario::NumberOfSlotsPerEpoch::new($slots_per_epoch).expect("valid number of slots per epoch"),
+            $crate::v2::scenario::SlotDuration::new($slot_duration).expect("valid slot duration in seconds"),
         );
 
         $(

@@ -266,9 +266,10 @@ impl Settings {
             }
             leader_ids
         };
+        blockchain_configuration.slots_per_epoch = *blockchain.slots_per_epoch();
+        blockchain_configuration.slot_duration = *blockchain.slot_duration();
+
         // TODO blockchain_configuration.linear_fees = ;
-        // TODO blockchain_configuration.slots_per_epoch = ;
-        // TODO blockchain_configuration.slot_duration = ;
         // TODO blockchain_configuration.kes_update_speed = ;
         // TODO blockchain_configuration.consensus_genesis_praos_active_slot_coeff = ;
         // TODO blockchain_configuration.bft_slots_ratio = ;
