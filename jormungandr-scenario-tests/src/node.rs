@@ -1,9 +1,10 @@
 use crate::{
     scenario::{settings::NodeSetting, NodeBlock0},
-    NodeAlias, JORMUNGANDR,
+    Context, NodeAlias,
 };
 use bawawa::Process;
 use mktemp::Temp;
+use rand_core::RngCore;
 
 error_chain! {
     errors {
@@ -42,8 +43,13 @@ impl Node {
         &mut self.process
     }
 
-    pub fn spawn(alias: &str, node_settings: &NodeSetting, block0: NodeBlock0) -> Result<Self> {
-        let mut command = JORMUNGANDR.clone();
+    pub fn spawn<R: RngCore>(
+        context: &Context<R>,
+        alias: &str,
+        node_settings: &NodeSetting,
+        block0: NodeBlock0,
+    ) -> Result<Self> {
+        let mut command = context.jormungandr().clone();
         let temp_dir = Temp::new_dir().chain_err(|| ErrorKind::CannotCreateTemporaryDirectory)?;
 
         let config_file = {

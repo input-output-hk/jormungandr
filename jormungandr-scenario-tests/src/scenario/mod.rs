@@ -132,6 +132,9 @@ pub struct Context<RNG: RngCore + Sized> {
 
     seed: [u8; 32],
 
+    jormungandr: bawawa::Command,
+    jcli: bawawa::Command,
+
     next_available_rest_port_number: u16,
     next_available_grpc_port_number: u16,
 }
@@ -156,7 +159,12 @@ impl Scenario {
         })
     }
 
-    pub fn spawn_node(&mut self, node_alias: &str, with_block0: bool) -> Result<&crate::Node> {
+    pub fn spawn_node<R: RngCore>(
+        &mut self,
+        context: &Context<R>,
+        node_alias: &str,
+        with_block0: bool,
+    ) -> Result<&crate::Node> {
         let node_setting = if let Some(node_setting) = self.settings.nodes.get(node_alias) {
             node_setting
         } else {
@@ -168,7 +176,7 @@ impl Scenario {
         } else {
             NodeBlock0::Hash(self.block0_hash.clone())
         };
-        let node = crate::node::Node::spawn("node1", node_setting, block0_setting)?;
+        let node = crate::node::Node::spawn(context, "node1", node_setting, block0_setting)?;
 
         self.nodes.insert(node_alias.to_owned(), node);
 
@@ -218,7 +226,7 @@ impl Scenario {
 }
 
 impl Context<ChaChaRng> {
-    pub fn new() -> Self {
+    pub fn new(jormungandr: bawawa::Command, jcli: bawawa::Command) -> Self {
         let mut seed = [0; 32];
         rand::rngs::OsRng::new().unwrap().fill_bytes(&mut seed);
         let rng = ChaChaRng::from_seed(seed);
@@ -228,11 +236,21 @@ impl Context<ChaChaRng> {
             seed,
             next_available_rest_port_number: 11_000,
             next_available_grpc_port_number: 12_000,
+            jormungandr,
+            jcli,
         }
     }
 }
 
 impl<RNG: RngCore> Context<RNG> {
+    pub fn jormungandr(&self) -> &bawawa::Command {
+        &self.jormungandr
+    }
+
+    pub fn jcli(&self) -> &bawawa::Command {
+        &self.jcli
+    }
+
     pub fn generate_new_rest_listen_address(&mut self) -> SocketAddr {
         use std::net::{IpAddr, Ipv4Addr};
 

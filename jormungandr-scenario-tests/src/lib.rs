@@ -1,25 +1,25 @@
-#[macro_use(lazy_static)]
-extern crate lazy_static;
 #[macro_use(error_chain, bail)]
 extern crate error_chain;
 
+pub mod node;
 mod programs;
 #[macro_use]
 pub mod scenario;
-pub mod node;
 mod slog;
 mod wallet;
 
 pub use self::node::Node;
-pub use self::programs::{JCLI, JORMUNGANDR};
+pub use self::programs::prepare_command;
+pub use self::scenario::Context;
 pub use self::scenario::{NodeAlias, WalletAlias, WalletType};
 pub use self::slog::{Error as SlogCodecError, SlogCodec};
 pub use self::wallet::Wallet;
+use rand_core::{CryptoRng, RngCore};
 
-#[test]
-fn scenario_1() {
-    let mut context = scenario::Context::new();
-
+pub fn scenario_1<RNG>(mut context: Context<RNG>)
+where
+    RNG: RngCore + CryptoRng,
+{
     let mut scenario = prepare_scenario! {
         &mut context,
         topology [
@@ -39,9 +39,9 @@ fn scenario_1() {
     }
     .unwrap();
 
-    scenario.spawn_node("node1", true).unwrap();
+    scenario.spawn_node(&context, "node1", true).unwrap();
     std::thread::sleep(std::time::Duration::from_secs(1));
-    scenario.spawn_node("node2", false).unwrap();
+    scenario.spawn_node(&context, "node2", false).unwrap();
 
     std::thread::sleep(std::time::Duration::from_secs(20));
 
