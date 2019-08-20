@@ -351,7 +351,6 @@ pub enum NetworkMsg {
 }
 
 /// Messages to the explorer task
-
 #[derive(Debug)]
 pub enum ExplorerMsg {
     NewBlock(Header),
