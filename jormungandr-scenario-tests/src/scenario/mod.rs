@@ -20,13 +20,13 @@ use std::{collections::BTreeMap, net::SocketAddr};
 
 error_chain! {
     links {
-        Node(crate::v2::node::Error, crate::v2::node::ErrorKind);
+        Node(crate::node::Error, crate::node::ErrorKind);
     }
 
     foreign_links {
         Io(std::io::Error);
         Reqwest(reqwest::Error);
-        BlockFormatErrror(chain_core::mempack::ReadError);
+        BlockFormatError(chain_core::mempack::ReadError);
     }
 
     errors {
@@ -58,21 +58,21 @@ macro_rules! prepare_scenario {
             ] $(,)*
         }
     ) => {{
-        let mut topology_builder = $crate::v2::scenario::TopologyBuilder::new();
+        let mut topology_builder = $crate::scenario::TopologyBuilder::new();
         $(
             #[allow(unused_mut)]
-            let mut node = $crate::v2::scenario::Node::new($topology_tt);
+            let mut node = $crate::scenario::Node::new($topology_tt);
             $(
                 node.add_trusted_peer($node_link);
             )*
             topology_builder.register_node(node);
         )*
-        let topology : $crate::v2::scenario::Topology = topology_builder.build();
+        let topology : $crate::scenario::Topology = topology_builder.build();
 
-        let mut blockchain = $crate::v2::scenario::Blockchain::new(
-            $crate::v2::scenario::ConsensusVersion::$blockchain_consensus,
-            $crate::v2::scenario::NumberOfSlotsPerEpoch::new($slots_per_epoch).expect("valid number of slots per epoch"),
-            $crate::v2::scenario::SlotDuration::new($slot_duration).expect("valid slot duration in seconds"),
+        let mut blockchain = $crate::scenario::Blockchain::new(
+            $crate::scenario::ConsensusVersion::$blockchain_consensus,
+            $crate::scenario::NumberOfSlotsPerEpoch::new($slots_per_epoch).expect("valid number of slots per epoch"),
+            $crate::scenario::SlotDuration::new($slot_duration).expect("valid slot duration in seconds"),
         );
 
         $(
@@ -82,9 +82,9 @@ macro_rules! prepare_scenario {
 
         $(
             #[allow(unused_mut)]
-            let mut wallet = $crate::v2::scenario::Wallet::new_account(
+            let mut wallet = $crate::scenario::Wallet::new_account(
                 $initial_wallet_name.to_owned(),
-                $crate::v2::scenario::Value($initial_wallet_funds)
+                $crate::scenario::Value($initial_wallet_funds)
             );
 
             $(
@@ -100,13 +100,13 @@ macro_rules! prepare_scenario {
             blockchain.add_wallet(wallet);
         )*
 
-        let settings = $crate::v2::scenario::settings::Settings::prepare(
+        let settings = $crate::scenario::settings::Settings::prepare(
             topology,
             blockchain,
             $context
         );
 
-        $crate::v2::scenario::Scenario::new(settings)
+        $crate::scenario::Scenario::new(settings)
     }};
 }
 
@@ -121,7 +121,7 @@ pub struct Scenario {
     block0_file: Temp,
     block0_hash: HeaderHash,
 
-    nodes: BTreeMap<NodeAlias, crate::v2::node::Node>,
+    nodes: BTreeMap<NodeAlias, crate::node::Node>,
 }
 
 /// scenario context with all the details to setup the necessary port number
@@ -156,7 +156,7 @@ impl Scenario {
         })
     }
 
-    pub fn spawn_node(&mut self, node_alias: &str, with_block0: bool) -> Result<&crate::v2::Node> {
+    pub fn spawn_node(&mut self, node_alias: &str, with_block0: bool) -> Result<&crate::Node> {
         let node_setting = if let Some(node_setting) = self.settings.nodes.get(node_alias) {
             node_setting
         } else {
@@ -168,7 +168,7 @@ impl Scenario {
         } else {
             NodeBlock0::Hash(self.block0_hash.clone())
         };
-        let node = crate::v2::node::Node::spawn("node1", node_setting, block0_setting)?;
+        let node = crate::node::Node::spawn("node1", node_setting, block0_setting)?;
 
         self.nodes.insert(node_alias.to_owned(), node);
 
@@ -208,11 +208,11 @@ impl Scenario {
         Ok(block)
     }
 
-    pub fn node(&self, node_alias: &str) -> Option<&crate::v2::Node> {
+    pub fn node(&self, node_alias: &str) -> Option<&crate::node::Node> {
         self.nodes.get(node_alias)
     }
 
-    pub fn node_mut(&mut self, node_alias: &str) -> Option<&mut crate::v2::Node> {
+    pub fn node_mut(&mut self, node_alias: &str) -> Option<&mut crate::Node> {
         self.nodes.get_mut(node_alias)
     }
 }

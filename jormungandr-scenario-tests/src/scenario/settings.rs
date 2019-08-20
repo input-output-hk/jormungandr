@@ -1,4 +1,4 @@
-use crate::v2::{
+use crate::{
     scenario::{
         Blockchain as BlockchainTemplate, Context, Node as NodeTemplate,
         Topology as TopologyTemplate, Wallet as WalletTemplate,

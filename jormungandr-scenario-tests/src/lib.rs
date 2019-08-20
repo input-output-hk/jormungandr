@@ -1,7 +1,8 @@
-/**
-# Example
+#[macro_use(lazy_static)]
+extern crate lazy_static;
+#[macro_use(error_chain, bail)]
+extern crate error_chain;
 
-*/
 mod programs;
 #[macro_use]
 pub mod scenario;

@@ -1,4 +1,4 @@
-use crate::v2::{
+use crate::{
     scenario::{settings::NodeSetting, NodeBlock0},
     NodeAlias, JORMUNGANDR,
 };
