@@ -4,6 +4,7 @@ members = [
   "jormungandr",
   "jcli",
   "jormungandr-integration-tests",
+  "jormungandr-scenario-tests",
 ]
 
 exclude = [

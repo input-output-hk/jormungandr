@@ -1,4 +1,4 @@
-use crate::v2::scenario::{ConsensusVersion, NodeAlias, Wallet, WalletAlias};
+use crate::scenario::{ConsensusVersion, NodeAlias, Wallet, WalletAlias};
 use jormungandr_lib::interfaces::{NumberOfSlotsPerEpoch, SlotDuration};
 use std::collections::HashMap;
 

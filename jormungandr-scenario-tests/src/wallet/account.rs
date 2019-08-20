@@ -1,4 +1,4 @@
-use crate::v2::wallet::{ErrorKind, Result, ResultExt};
+use crate::wallet::{ErrorKind, Result, ResultExt};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     account,

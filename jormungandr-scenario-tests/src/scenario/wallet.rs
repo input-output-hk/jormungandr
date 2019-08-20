@@ -1,4 +1,4 @@
-use crate::v2::scenario::NodeAlias;
+use crate::scenario::NodeAlias;
 use chain_impl_mockchain::value::Value;
 
 pub type WalletAlias = String;
