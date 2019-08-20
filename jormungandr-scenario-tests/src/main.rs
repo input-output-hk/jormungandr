@@ -32,7 +32,53 @@ fn main() {
 
     let mut context = Context::new(seed, jormungandr, jcli);
 
+    introduction(&context);
+
     scenario_1(context.derive());
+}
+
+fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
+    use console::{Emoji, Style};
+
+    let binary = Style::new().cyan();
+    let seed = Style::new().red();
+
+    let seed_emoji = Emoji::new("\u{1f331}", "");
+    let tool_emoji = Emoji::new("\u{1f6e0}", "");
+    let snake_emoji = Emoji::new("\u{1f40d}", "");
+
+    println!(
+        r###"
+        ---_ ......._-_--.
+       (|\ /      / /| \  \               _  ___  ____  __  __ _   _ _   _  ____    _    _   _ ____  ____
+       /  /     .'  -=-'   `.            | |/ _ \|  _ \|  \/  | | | | \ | |/ ___|  / \  | \ | |  _ \|  _ \
+      /  /    .'             )        _  | | | | | |_) | |\/| | | | |  \| | |  _  / _ \ |  \| | | | | |_) |
+    _/  /   .'        _.)   /        | |_| | |_| |  _ <| |  | | |_| | |\  | |_| |/ ___ \| |\  | |_| |  _ <
+   /   o  o       _.-' /  .'          \___/ \___/|_| \_\_|  |_|\___/|_| \_|\____/_/   \_\_| \_|____/|_| \_\
+   \          _.-'    / .'#|
+    \______.-'//    .'.' \#|         SCENARIO TEST SUITE
+     \|  \ | //   .'.' _ |#|
+      `   \|//  .'.'_._._|#|
+       .  .// .'.' | _._ \#|
+       \`-|\_/ /    \ _._ \#\
+        `/'\__/      \ _._ \#\
+       /^|            \ _-_ \#
+      '  `             \ _-_ \
+                        \_
+
+ {}jormungandr: {}
+ {}jcli:        {}
+ {}seed:        {}
+
+###############################################################################
+    "###,
+        snake_emoji,
+        binary.apply_to(context.jormungandr().to_string()),
+        tool_emoji,
+        binary.apply_to(context.jcli().to_string()),
+        seed_emoji,
+        seed.apply_to(context.seed()),
+    )
 }
 
 use rand_chacha::ChaChaRng;
