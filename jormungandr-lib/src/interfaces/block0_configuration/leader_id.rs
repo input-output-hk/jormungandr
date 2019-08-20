@@ -1,3 +1,4 @@
+use crate::crypto::key::Identifier;
 use chain_crypto::{bech32::Bech32 as _, Ed25519, PublicKey};
 use chain_impl_mockchain::{config::ConfigParam, leadership::bft::LeaderId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -23,6 +24,12 @@ impl TryFrom<ConfigParam> for ConsensusLeaderId {
 impl From<ConsensusLeaderId> for ConfigParam {
     fn from(consensus_leader_id: ConsensusLeaderId) -> Self {
         ConfigParam::AddBftLeader(consensus_leader_id.0)
+    }
+}
+
+impl From<Identifier<Ed25519>> for ConsensusLeaderId {
+    fn from(identifier: Identifier<Ed25519>) -> Self {
+        ConsensusLeaderId(LeaderId::from(identifier.into_public_key()))
     }
 }
 
