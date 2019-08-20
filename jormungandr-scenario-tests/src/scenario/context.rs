@@ -2,7 +2,10 @@ use rand_chacha::ChaChaRng;
 use rand_core::{RngCore, SeedableRng};
 use std::{
     net::SocketAddr,
-    sync::atomic::{self, AtomicU16},
+    sync::{
+        atomic::{self, AtomicU16},
+        Arc,
+    },
 };
 
 /// scenario context with all the details to setup the necessary port number
@@ -16,8 +19,8 @@ pub struct Context<RNG: RngCore + Sized> {
     jormungandr: bawawa::Command,
     jcli: bawawa::Command,
 
-    next_available_rest_port_number: AtomicU16,
-    next_available_grpc_port_number: AtomicU16,
+    next_available_rest_port_number: Arc<AtomicU16>,
+    next_available_grpc_port_number: Arc<AtomicU16>,
 }
 
 impl Context<ChaChaRng> {
@@ -29,19 +32,32 @@ impl Context<ChaChaRng> {
         Context {
             rng,
             seed,
-            next_available_rest_port_number: AtomicU16::new(8_000),
-            next_available_grpc_port_number: AtomicU16::new(12_000),
+            next_available_rest_port_number: Arc::new(AtomicU16::new(8_000)),
+            next_available_grpc_port_number: Arc::new(AtomicU16::new(12_000)),
             jormungandr,
             jcli,
+        }
+    }
+
+    /// derive the Context into a new context, seeding a new RNG from the original
+    /// Context (so reproducibility is still available).
+    pub fn derive(&mut self) -> Self {
+        let mut seed = [0; 32];
+        self.rng_mut().fill_bytes(&mut seed);
+        let rng = ChaChaRng::from_seed(seed);
+
+        Context {
+            rng,
+            seed,
+            next_available_rest_port_number: Arc::clone(&self.next_available_rest_port_number),
+            next_available_grpc_port_number: Arc::clone(&self.next_available_grpc_port_number),
+            jormungandr: self.jormungandr().clone(),
+            jcli: self.jcli().clone(),
         }
     }
 }
 
 impl<RNG: RngCore> Context<RNG> {
-    pub fn derive(&mut self) -> Self {
-        unimplemented!()
-    }
-
     pub fn jormungandr(&self) -> &bawawa::Command {
         &self.jormungandr
     }
