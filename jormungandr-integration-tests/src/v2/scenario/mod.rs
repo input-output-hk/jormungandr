@@ -221,7 +221,7 @@ impl Context<ChaChaRng> {
         Context {
             rng,
             seed,
-            next_available_rest_port_number: 8_000,
+            next_available_rest_port_number: 11_000,
             next_available_grpc_port_number: 12_000,
         }
     }

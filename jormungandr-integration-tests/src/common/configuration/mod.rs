@@ -71,7 +71,7 @@ pub fn get_openapi_path() -> PathBuf {
 
 lazy_static! {
     static ref NEXT_AVAILABLE_PORT_NUMBER: AtomicU16 = {
-        let initial_port = rand::thread_rng().gen_range(6000, 60000);
+        let initial_port = rand::thread_rng().gen_range(6000, 10999);
         AtomicU16::new(initial_port)
     };
 }
