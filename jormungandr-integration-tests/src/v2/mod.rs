@@ -37,6 +37,7 @@ fn scenario_1() {
     .unwrap();
 
     scenario.spawn_node("node1", true).unwrap();
+    std::thread::sleep(std::time::Duration::from_secs(1));
     scenario.spawn_node("node2", false).unwrap();
 
     std::thread::sleep(std::time::Duration::from_secs(10));
