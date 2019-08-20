@@ -6,13 +6,16 @@ pub mod v0;
 
 pub use self::server::{Error, Server};
 
+use actix_web::dev::Resource;
+use actix_web::middleware::cors::Cors;
+use actix_web::App;
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::blockchain::{Blockchain, Branch};
 use crate::fragment::Logs;
 use crate::leadership::Logs as LeadershipLogs;
 use crate::secure::enclave::Enclave;
-use crate::settings::start::{Error as ConfigError, Rest};
+use crate::settings::start::{Cors as CorsConfig, Error as ConfigError, Rest};
 use crate::stats_counter::StatsCounter;
 
 use crate::intercom::TransactionMsg;
@@ -32,8 +35,14 @@ pub struct Context {
 
 pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, ConfigError> {
     let app_context = context.clone();
+    let cors_cfg = config.cors.clone();
     let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
-        vec![v0::app(app_context.clone()).boxed()]
+        vec![build_app(
+            app_context.clone(),
+            "/api/v0",
+            v0::resources(),
+            &cors_cfg,
+        )]
     })?;
     context
         .server
@@ -41,4 +50,46 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, Conf
         .unwrap_or_else(|e| e.into_inner())
         .replace(server.clone());
     Ok(server)
+}
+
+fn build_app<S, P, R>(state: S, prefix: P, resources: R, cors_cfg: &Option<CorsConfig>) -> App<S>
+where
+    S: 'static,
+    P: Into<String>,
+    R: IntoIterator<Item = (&'static str, &'static dyn Fn(&mut Resource<S>))>,
+{
+    let app = App::with_state(state).prefix(prefix);
+    match cors_cfg {
+        Some(cors_cfg) => register_resources_with_cors(app, resources, cors_cfg),
+        None => register_resources(app, resources),
+    }
+}
+
+fn register_resources<S, R>(mut app: App<S>, resources: R) -> App<S>
+where
+    S: 'static,
+    R: IntoIterator<Item = (&'static str, &'static dyn Fn(&mut Resource<S>))>,
+{
+    for (path, resource) in resources {
+        app = app.resource(path, resource);
+    }
+    app
+}
+
+fn register_resources_with_cors<S, R>(app: App<S>, resources: R, cors_cfg: &CorsConfig) -> App<S>
+where
+    S: 'static,
+    R: IntoIterator<Item = (&'static str, &'static dyn Fn(&mut Resource<S>))>,
+{
+    let mut cors = Cors::for_app(app);
+    if let Some(max_age_secs) = cors_cfg.max_age_secs {
+        cors.max_age(max_age_secs);
+    }
+    for origin in &cors_cfg.allowed_origins {
+        cors.allowed_origin(origin);
+    }
+    for (path, resource) in resources {
+        cors.resource(path, resource);
+    }
+    cors.register()
 }
