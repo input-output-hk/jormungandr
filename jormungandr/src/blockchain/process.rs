@@ -59,15 +59,18 @@ pub fn handle_input(
             let future = process_leadership_block(info.logger(), blockchain.clone(), block);
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
-            blockchain_tip.update_ref(new_block_ref).wait().unwrap();
+            blockchain_tip
+                .update_ref(new_block_ref.clone())
+                .wait()
+                .unwrap();
             network_msg_box
-                .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header.clone())))
+                .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                 .unwrap_or_else(|err| {
                     error!(info.logger(), "cannot propagate block to network: {}", err)
                 });
 
             if let Some(msg_box) = explorer_msg_box {
-                msg_box.send_to(ExplorerMsg::NewBlock(header));
+                msg_box.send_to(ExplorerMsg::NewBlock(new_block_ref));
             };
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
