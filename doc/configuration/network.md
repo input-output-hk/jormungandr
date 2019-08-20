@@ -12,6 +12,9 @@ p2p:
 
 - *listen*: listen address
 - *pkcs12*: certificate file (optional)
+- *cors*: (optional) CORS configuration, if not provided, CORS is disabled
+  - *allowed_origins*: (optional) allowed origins, if none provided, echos request origin
+  - *max_age_secs*: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled
 
 ## P2P configuration
 

@@ -40,6 +40,17 @@ pub struct ConfigLogSettings {
 pub struct Rest {
     pub listen: SocketAddr,
     pub pkcs12: Option<PathBuf>,
+    /// Enables CORS if provided
+    pub cors: Option<Cors>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Cors {
+    /// If none provided, echos request origin
+    #[serde(default)]
+    pub allowed_origins: Vec<String>,
+    /// If none provided, CORS responses won't be cached
+    pub max_age_secs: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

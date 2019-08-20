@@ -1,8 +1,8 @@
 mod config;
 pub mod network;
 
-pub use self::config::Rest;
 use self::config::{Config, Leadership, Mempool};
+pub use self::config::{Cors, Rest};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};

@@ -63,6 +63,9 @@ Description of the fields:
 - `rest`: (optional) Configuration of the REST endpoint.
     - `listen`: _address_:_port_ to listen for requests
     - `pkcs12`: (optional) Certificate file
+    - `cors`: (optional) CORS configuration, if not provided, CORS is disabled
+      - `allowed_origins`: (optional) allowed origins, if none provided, echos request origin
+      - `max_age_secs`: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled
 - `p2p`: P2P network settings
     - `trusted_peers`: (optional) the list of nodes to connect to in order to
       bootstrap the P2P topology (and bootstrap our local blockchain);
