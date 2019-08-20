@@ -1,10 +1,12 @@
 mod blockchain;
+mod context;
 pub mod settings;
 mod topology;
 mod wallet;
 
 pub use self::{
     blockchain::Blockchain,
+    context::Context,
     topology::{Node, NodeAlias, Topology, TopologyBuilder},
     wallet::{Wallet, WalletAlias, WalletType},
 };
@@ -14,9 +16,8 @@ pub use chain_impl_mockchain::{
 };
 pub use jormungandr_lib::interfaces::{NumberOfSlotsPerEpoch, SlotDuration};
 use mktemp::Temp;
-use rand_chacha::ChaChaRng;
-use rand_core::{RngCore, SeedableRng};
-use std::{collections::BTreeMap, net::SocketAddr};
+use rand_core::RngCore;
+use std::collections::BTreeMap;
 
 error_chain! {
     links {
@@ -124,21 +125,6 @@ pub struct Scenario {
     nodes: BTreeMap<NodeAlias, crate::node::Node>,
 }
 
-/// scenario context with all the details to setup the necessary port number
-/// a pseudo random number generator (and its original seed).
-///
-pub struct Context<RNG: RngCore + Sized> {
-    rng: RNG,
-
-    seed: [u8; 32],
-
-    jormungandr: bawawa::Command,
-    jcli: bawawa::Command,
-
-    next_available_rest_port_number: u16,
-    next_available_grpc_port_number: u16,
-}
-
 impl Scenario {
     pub fn new(settings: settings::Settings) -> Result<Self> {
         use chain_core::property::Serialize as _;
@@ -222,57 +208,5 @@ impl Scenario {
 
     pub fn node_mut(&mut self, node_alias: &str) -> Option<&mut crate::Node> {
         self.nodes.get_mut(node_alias)
-    }
-}
-
-impl Context<ChaChaRng> {
-    pub fn new(jormungandr: bawawa::Command, jcli: bawawa::Command) -> Self {
-        let mut seed = [0; 32];
-        rand::rngs::OsRng::new().unwrap().fill_bytes(&mut seed);
-        let rng = ChaChaRng::from_seed(seed);
-
-        Context {
-            rng,
-            seed,
-            next_available_rest_port_number: 11_000,
-            next_available_grpc_port_number: 12_000,
-            jormungandr,
-            jcli,
-        }
-    }
-}
-
-impl<RNG: RngCore> Context<RNG> {
-    pub fn jormungandr(&self) -> &bawawa::Command {
-        &self.jormungandr
-    }
-
-    pub fn jcli(&self) -> &bawawa::Command {
-        &self.jcli
-    }
-
-    pub fn generate_new_rest_listen_address(&mut self) -> SocketAddr {
-        use std::net::{IpAddr, Ipv4Addr};
-
-        let port_number = self.next_available_rest_port_number;
-        self.next_available_rest_port_number += 1;
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port_number)
-    }
-
-    pub fn generate_new_grpc_public_address(&mut self) -> String {
-        use std::net::{IpAddr, Ipv4Addr};
-
-        let port_number = self.next_available_grpc_port_number;
-        self.next_available_grpc_port_number += 1;
-
-        let address = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-
-        format!("/ip4/{}/tcp/{}", address, port_number)
-    }
-
-    /// retrieve the original seed of the pseudo random generator
-    #[inline]
-    pub fn seed(&self) -> &[u8; 32] {
-        &self.seed
     }
 }

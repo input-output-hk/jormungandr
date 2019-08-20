@@ -137,8 +137,8 @@ impl Settings {
         for wallet_template in wallet_templates {
             // TODO: check the wallet does not already exist ?
             let wallet = match wallet_template.wallet_type() {
-                WalletType::UTxO => Wallet::generate_utxo(&mut context.rng),
-                WalletType::Account => Wallet::generate_account(&mut context.rng),
+                WalletType::UTxO => Wallet::generate_utxo(context.rng_mut()),
+                WalletType::Account => Wallet::generate_account(context.rng_mut()),
             };
 
             let initial_address = wallet.address(discrimination);
@@ -171,9 +171,9 @@ impl Settings {
                             leadership::genesis::GenesisPraosLeader, stake::StakePoolInfo,
                         };
                         use rand::{distributions::Standard, Rng as _};
-                        let serial: u128 = context.rng.sample(Standard);
-                        let kes_signing_key = SigningKey::generate(&mut context.rng);
-                        let vrf_signing_key = SigningKey::generate(&mut context.rng);
+                        let serial: u128 = context.rng_mut().sample(Standard);
+                        let kes_signing_key = SigningKey::generate(context.rng_mut());
+                        let vrf_signing_key = SigningKey::generate(context.rng_mut());
                         let stake_pool_info = StakePoolInfo {
                             serial,
                             owners: Vec::new(),
@@ -254,13 +254,13 @@ impl Settings {
                     if let Some(bft) = &node.secret.bft {
                         bft.signing_key.identifier()
                     } else {
-                        let signing_key = SigningKey::generate(&mut context.rng);
+                        let signing_key = SigningKey::generate(context.rng_mut());
                         let identifier = signing_key.identifier();
                         node.secret.bft = Some(Bft { signing_key });
                         identifier
                     }
                 } else {
-                    SigningKey::<Ed25519>::generate(&mut context.rng).identifier()
+                    SigningKey::<Ed25519>::generate(context.rng_mut()).identifier()
                 };
                 leader_ids.push(identifier.into());
             }
@@ -357,7 +357,7 @@ impl P2pConfig {
     {
         P2pConfig {
             public_address: context.generate_new_grpc_public_address(),
-            id: poldercast::Id::generate(&mut context.rng),
+            id: poldercast::Id::generate(&mut context.rng_mut()),
             trusted_peers: Vec::new(),
         }
     }
