@@ -3,7 +3,6 @@ use crate::blockcfg::ChainLength;
 use crate::blockchain::Multiverse;
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, ThreadServiceInfo};
-use chain_impl_mockchain::block::HeaderHash;
 use chain_impl_mockchain::multiverse::GCRoot;
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -42,7 +41,7 @@ impl Process {
         };
     }
 
-    fn store_ref(&mut self, new_block_ref: Ref) -> GCRoot {
+    fn store_ref(&mut self, new_block_ref: Ref) -> impl Future<Item = GCRoot, Error = Infallible> {
         let chain_length = new_block_ref.chain_length();
         let header_hash = new_block_ref.hash();
 
