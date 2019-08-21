@@ -2,9 +2,10 @@ use crate::{
     scenario::{settings::NodeSetting, NodeBlock0},
     Context, NodeAlias,
 };
-use bawawa::Process;
+use bawawa::{Control, Process};
 use mktemp::Temp;
 use rand_core::RngCore;
+use tokio::prelude::*;
 
 error_chain! {
     errors {
@@ -33,14 +34,6 @@ const NODE_SECRET: &str = "node_secret.yaml";
 impl Node {
     pub fn alias(&self) -> &NodeAlias {
         &self.alias
-    }
-
-    pub fn process(&self) -> &Process {
-        &self.process
-    }
-
-    pub fn process_mut(&mut self) -> &mut Process {
-        &mut self.process
     }
 
     pub fn spawn<R: RngCore>(
@@ -102,5 +95,28 @@ impl Node {
 
             process,
         })
+    }
+}
+
+impl Future for Node {
+    type Item = <Process as Future>::Item;
+    type Error = bawawa::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        self.process.poll()
+    }
+}
+
+impl Control for Node {
+    fn command(&self) -> &bawawa::Command {
+        &self.process.command()
+    }
+
+    fn id(&self) -> u32 {
+        self.process.id()
+    }
+
+    fn kill(&mut self) -> bawawa::Result<()> {
+        self.process.kill()
     }
 }
