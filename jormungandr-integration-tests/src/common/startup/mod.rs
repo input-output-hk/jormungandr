@@ -62,38 +62,25 @@ pub fn create_new_account_address() -> Account {
 }
 
 pub fn create_new_delegation_address() -> Delegation {
-    let private_key = jcli_wrapper::assert_key_generate_default();
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
-
     let private_delegation_key = jcli_wrapper::assert_key_generate_default();
     let public_delegation_key = jcli_wrapper::assert_key_to_public_default(&private_delegation_key);
-    let delegation_address =
-        jcli_wrapper::assert_address_single(&public_delegation_key, Discrimination::Test);
-
-    let utxo_with_delegation = Delegation {
-        private_key,
-        public_key,
-        address,
-        delegation_address,
-    };
-    println!(
-        "New utxo with delegation generated: {:?}",
-        &utxo_with_delegation
-    );
-    utxo_with_delegation
+    create_new_delegation_address_for(&public_delegation_key)
 }
 
-pub fn create_new_delegation_address_for(delegation_address: &str) -> Delegation {
+pub fn create_new_delegation_address_for(delegation_public_key: &str) -> Delegation {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
+    let address = jcli_wrapper::assert_address_delegation(
+        &public_key,
+        delegation_public_key,
+        Discrimination::Test,
+    );
 
     let utxo_with_delegation = Delegation {
         private_key: private_key,
         public_key: public_key,
         address: address,
-        delegation_address: delegation_address.to_string(),
+        delegation_key: delegation_public_key.to_string(),
     };
     println!(
         "New utxo with delegation generated: {:?}",

@@ -15,7 +15,7 @@ pub struct Delegation {
     pub private_key: String,
     pub public_key: String,
     pub address: String,
-    pub delegation_address: String,
+    pub delegation_key: String,
 }
 
 pub trait AddressDataProvider {
