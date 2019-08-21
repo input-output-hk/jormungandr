@@ -1,36 +1,33 @@
 use super::blockchain::{Blockchain, Ref};
-use crate::blockcfg::Block;
 use crate::blockcfg::ChainLength;
+use crate::blockchain::Multiverse;
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, ThreadServiceInfo};
-use chain_impl_mockchain::multiverse::{GCRoot, Multiverse};
-use futures::Future;
-use futures::IntoFuture;
-use std::collections::{HashMap, HashSet};
+use chain_impl_mockchain::block::HeaderHash;
+use chain_impl_mockchain::multiverse::GCRoot;
+use std::collections::HashMap;
+use std::convert::Infallible;
+use tokio::prelude::Future;
 
-use chain_core::property::Block as _;
-
+#[derive(Clone)]
 pub struct Process {
     multiverse: Multiverse<Ref>,
     // This is kind of the same thing the multiverse holds (with Ref instead of BlockId)
     chain_length_to_hash: HashMap<ChainLength, Vec<Ref>>,
+    blockchain: Blockchain,
 }
 
 impl Process {
-    pub fn new() -> Self {
+    pub fn new(blockchain: Blockchain) -> Self {
         Self {
             multiverse: Multiverse::<Ref>::new(),
             chain_length_to_hash: HashMap::new(),
+            blockchain,
         }
     }
 
-    pub fn handle_input(
-        &mut self,
-        info: &ThreadServiceInfo,
-        blockchain: &Blockchain,
-        input: Input<ExplorerMsg>,
-    ) {
-        let logger = info.logger();
+    pub fn handle_input(&mut self, info: &ThreadServiceInfo, input: Input<ExplorerMsg>) {
+        let _logger = info.logger();
         let bquery = match input {
             Input::Shutdown => {
                 return;
