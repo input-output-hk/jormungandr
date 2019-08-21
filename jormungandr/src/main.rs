@@ -137,15 +137,17 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         (pool, logs)
     };
 
-    let mut explorer_task = {
+    let explorer = {
         if bootstrapped_node.settings.explorer {
             let blockchain = blockchain.clone();
-            let mut explorer_task = explorer::Process::new();
+            let mut explorer_task = explorer::Process::new(blockchain);
 
-            let task = services.spawn_with_inputs("explorer", move |info, input| {
-                explorer_task.handle_input(info, &blockchain, input);
+            let context = explorer_task.clone();
+
+            let task_msg_box = services.spawn_with_inputs("explorer", move |info, input| {
+                explorer_task.handle_input(info, input);
             });
-            Some(task)
+            Some((task_msg_box, context))
         } else {
             None
         }
@@ -154,6 +156,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let block_task = {
         let mut blockchain = blockchain.clone();
         let mut blockchain_tip = blockchain_tip.clone();
+        let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(
@@ -163,7 +166,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 &stats_counter,
                 &mut new_epoch_announcements,
                 &mut network_msgbox,
-                &mut explorer_task,
+                &mut explorer_msg_box,
                 input,
             )
         })
@@ -250,6 +253,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 leadership_logs,
                 server: Lock::new(None),
                 enclave,
+                explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
             };
             Some(rest::start_rest_server(&rest, context)?)
         }
