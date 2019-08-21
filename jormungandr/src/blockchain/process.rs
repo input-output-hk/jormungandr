@@ -1,6 +1,6 @@
-use super::{Blockchain, Branch, Error, ErrorKind, PreCheckedHeader, Ref};
+use super::{Blockchain, Branch, CandidateRepo, Error, ErrorKind, PreCheckedHeader, Ref};
 use crate::{
-    blockcfg::{Block, Epoch, Header, HeaderHash},
+    blockcfg::{Block, Epoch, Header},
     intercom::{self, BlockMsg, NetworkMsg, PropagateMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
@@ -16,12 +16,11 @@ use futures::future::Either;
 use slog::Logger;
 use tokio::{prelude::*, sync::mpsc::Sender};
 
-use std::convert::identity;
-
 pub fn handle_input(
     info: &TokioServiceInfo,
     blockchain: &mut Blockchain,
     blockchain_tip: &mut Branch,
+    candidate_repo: &CandidateRepo,
     _stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
@@ -97,7 +96,7 @@ pub fn handle_input(
             }
         }
         BlockMsg::ChainHeaders(headers, reply) => {
-            let future = process_chain_headers_into_block_request(blockchain.clone(), headers);
+            let future = candidate_repo.advance_branch(headers);
             match future.wait() {
                 Err(e) => {
                     reply.reply_error(chain_header_error_into_reply(e));
@@ -252,7 +251,7 @@ pub fn process_network_block(
             PreCheckedHeader::MissingParent { header, .. } => {
                 debug!(logger, "block is missing a locally stored parent");
                 Either::A(future::err(
-                    ErrorKind::MissingParentBlockFromStorage(header).into(),
+                    ErrorKind::BlockHeaderMissingParent(header.block_parent_hash().clone()).into(),
                 ))
             }
             PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
@@ -278,52 +277,10 @@ fn network_block_error_into_reply(err: Error) -> intercom::Error {
         Ledger(e) => intercom::Error::failed_precondition(e),
         Block0(e) => intercom::Error::failed(e),
         MissingParentBlockFromStorage(_) => intercom::Error::failed_precondition(err.to_string()),
+        BlockHeaderMissingParent(_) => intercom::Error::invalid_argument(err.to_string()),
         BlockHeaderVerificationFailed(_) => intercom::Error::invalid_argument(err.to_string()),
         _ => intercom::Error::failed(err.to_string()),
     }
-}
-
-pub fn process_chain_headers_into_block_request(
-    mut blockchain: Blockchain,
-    headers: Vec<Header>,
-) -> impl Future<Item = Vec<HeaderHash>, Error = Error> {
-    stream::iter_ok(headers)
-        .and_then(move |header| {
-            let mut end_blockchain = blockchain.clone();
-            blockchain
-                .pre_check_header(header)
-                .and_then(move |pre_checked| match pre_checked {
-                    PreCheckedHeader::AlreadyPresent { .. } => {
-                        // The block is already present. This may happen
-                        // if the peer has started from an earlier checkpoint
-                        // than our tip, so ignore this and proceed.
-                        Either::A(future::ok(None))
-                    }
-                    PreCheckedHeader::MissingParent { header, .. } => {
-                        // TODO: when the functionality below is implemented,
-                        // Blockchain::pre_check_header will only return this
-                        // variant on headers that do not belong to the chain.
-                        Either::A(future::err(
-                            ErrorKind::MissingParentBlockFromStorage(header).into(),
-                        ))
-                    }
-                    PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                        let post_check = end_blockchain
-                            .post_check_header(header, parent_ref)
-                            .and_then(|post_checked| {
-                                // TODO: a blockchain method that will build
-                                // up the reference chain, or tell that
-                                // block data is needed for new epoch
-                                // leadership.
-                                unimplemented!();
-                                Ok(None)
-                            });
-                        Either::B(post_check)
-                    }
-                })
-        })
-        .filter_map(identity)
-        .collect()
 }
 
 fn chain_header_error_into_reply(err: Error) -> intercom::Error {

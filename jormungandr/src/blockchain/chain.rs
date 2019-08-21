@@ -92,6 +92,11 @@ error_chain! {
             display("Tag '{}' not found in the storage", tag),
         }
 
+        BlockHeaderMissingParent (hash: HeaderHash) {
+            description("Block header parent is not known"),
+            display("The block header parent {} is not known to this node", hash),
+        }
+
         BlockHeaderVerificationFailed (reason: String) {
             description("Block header verification failed"),
             display("The block header verification failed: {}", reason),
