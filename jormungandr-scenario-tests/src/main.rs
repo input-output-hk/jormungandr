@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate jormungandr_scenario_tests;
 
-use jormungandr_scenario_tests::{prepare_command, Context, Seed};
+use jormungandr_scenario_tests::{prepare_command, style, Context, Seed};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -38,15 +38,6 @@ fn main() {
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
-    use console::{Emoji, Style};
-
-    let binary = Style::new().cyan();
-    let seed = Style::new().red();
-
-    let seed_emoji = Emoji::new("\u{1f331}", "");
-    let tool_emoji = Emoji::new("\u{1f6e0}", "");
-    let snake_emoji = Emoji::new("\u{1f40d}", "");
-
     println!(
         r###"
         ---_ ......._-_--.
@@ -72,12 +63,12 @@ fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
 
 ###############################################################################
     "###,
-        snake_emoji,
-        binary.apply_to(context.jormungandr().to_string()),
-        tool_emoji,
-        binary.apply_to(context.jcli().to_string()),
-        seed_emoji,
-        seed.apply_to(context.seed()),
+        *style::icons::jormungandr,
+        style::binary.apply_to(context.jormungandr().to_string()),
+        *style::icons::jcli,
+        style::binary.apply_to(context.jcli().to_string()),
+        *style::icons::seed,
+        style::seed.apply_to(context.seed()),
     )
 }
 

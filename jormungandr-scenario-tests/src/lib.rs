@@ -1,11 +1,14 @@
 #[macro_use(error_chain, bail)]
 extern crate error_chain;
+#[macro_use(lazy_static)]
+extern crate lazy_static;
 
 pub mod node;
 mod programs;
 #[macro_use]
 pub mod scenario;
 mod slog;
+pub mod style;
 mod wallet;
 
 pub use self::node::Node;
