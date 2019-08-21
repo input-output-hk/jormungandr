@@ -230,7 +230,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 blockchain,
                 blockchain_tip,
                 transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
-                logs: Arc::new(Mutex::new(pool_logs)),
+                logs: pool_logs,
                 leadership_logs,
                 server: Arc::default(),
                 enclave,

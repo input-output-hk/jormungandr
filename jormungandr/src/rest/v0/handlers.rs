@@ -64,8 +64,9 @@ fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
 }
 
 pub fn get_message_logs(context: State<Context>) -> ActixFuture!() {
-    let logs = context.logs.lock().unwrap();
-    logs.logs()
+    context
+        .logs
+        .logs()
         .map_err(|_| ErrorInternalServerError("Failed to get logs"))
         .map(Json)
 }

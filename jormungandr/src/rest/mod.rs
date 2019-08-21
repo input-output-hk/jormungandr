@@ -10,6 +10,7 @@ use actix_web::dev::Resource;
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
 use std::sync::{Arc, Mutex, RwLock};
+use tokio::sync::lock::Lock;
 
 use crate::blockchain::{Blockchain, Branch};
 use crate::fragment::Logs;
@@ -27,7 +28,7 @@ pub struct Context {
     pub blockchain: Blockchain,
     pub blockchain_tip: Branch,
     pub transaction_task: Arc<Mutex<MessageBox<TransactionMsg>>>,
-    pub logs: Arc<Mutex<Logs>>,
+    pub logs: Logs,
     pub leadership_logs: LeadershipLogs,
     pub server: Arc<RwLock<Option<Server>>>,
     pub enclave: Enclave,
