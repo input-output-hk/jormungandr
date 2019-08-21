@@ -62,10 +62,9 @@ pub struct StartArguments {
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
     pub block_0_hash: Option<HeaderHash>,
 
-    // TODO: Explorer mode description
-    // Maybe a config file variable is better
+    /// Start the explorer task and enable associated query endpoints.
     #[structopt(long = "enable-explorer")]
-    pub explorer: bool,
+    pub explorer_enabled: Option<bool>,
 }
 
 #[derive(StructOpt, Debug)]

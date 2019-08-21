@@ -26,6 +26,8 @@ pub struct Config {
 
     pub rest: Option<Rest>,
     pub p2p: P2pConfig,
+
+    pub explorer: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

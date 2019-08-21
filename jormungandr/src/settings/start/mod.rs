@@ -117,7 +117,10 @@ impl RawSettings {
             (None, Some(hash)) => Block0Info::Hash(hash.clone()),
         };
 
-        let explorer = command_arguments.explorer.clone();
+        let explorer = match command_arguments.explorer_enabled.or(config.explorer) {
+            Some(flag) => flag,
+            None => false
+        };
 
         Ok(Settings {
             storage: storage,
