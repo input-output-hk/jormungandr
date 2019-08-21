@@ -144,8 +144,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
             let context = explorer_task.clone();
 
-            let task_msg_box = services.spawn_with_inputs("explorer", move |info, input| {
-                explorer_task.handle_input(info, input);
+            let task_msg_box = services.spawn_future_with_inputs("explorer", move |info, input| {
+                explorer_task.handle_input(info, input)
             });
             Some((task_msg_box, context))
         } else {

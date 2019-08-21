@@ -7,7 +7,7 @@ use crate::{
     stats_counter::StatsCounter,
     utils::{
         async_msg::MessageBox,
-        task::{Input, TaskMessageBox, TokioServiceInfo},
+        task::{Input, TokioServiceInfo},
     },
 };
 use chain_core::property::{Block as _, HasHeader as _};
@@ -25,7 +25,7 @@ pub fn handle_input(
     _stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
-    explorer_msg_box: &mut Option<TaskMessageBox<ExplorerMsg>>,
+    explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
     input: Input<BlockMsg>,
 ) -> Result<(), ()> {
     let bquery = match input {
@@ -70,7 +70,11 @@ pub fn handle_input(
                 });
 
             if let Some(msg_box) = explorer_msg_box {
-                msg_box.send_to(ExplorerMsg::NewBlock(new_block_ref));
+                msg_box
+                    .try_send(ExplorerMsg::NewBlock(new_block_ref))
+                    .unwrap_or_else(|err| {
+                        error!(info.logger(), "cannot add block to explorer: {}", err)
+                    });
             };
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
