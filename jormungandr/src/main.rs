@@ -55,9 +55,9 @@ use crate::{
 use futures::Future;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use tokio::sync::lock::Lock;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -232,7 +232,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 transaction_task: fragment_msgbox,
                 logs: pool_logs,
                 leadership_logs,
-                server: Arc::default(),
+                server: Lock::new(None),
                 enclave,
             };
             Some(rest::start_rest_server(&rest, context)?)

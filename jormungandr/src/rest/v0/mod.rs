@@ -36,7 +36,7 @@ pub fn resources() -> Vec<(
         ("/stake_pools", &|r| {
             r.get().with_async(handlers::get_stake_pools)
         }),
-        ("/shutdown", &|r| r.get().with(handlers::get_shutdown)),
+        ("/shutdown", &|r| r.get().with_async(handlers::get_shutdown)),
         ("/message", &|r| r.post().with(handlers::post_message)),
         ("/node/stats", &|r| {
             r.get().with_async(handlers::get_stats_counter)
