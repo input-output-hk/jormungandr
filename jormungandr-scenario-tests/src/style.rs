@@ -21,6 +21,23 @@ pub mod icons {
 
         /// icon associated the `jcli` command line binary
         pub static ref jormungandr: Icon = Icon::new("\u{1f40d}", "");
+
+        pub static ref wallet: Icon = Icon::new("\u{1f45b}", "");
+
+        pub static ref account: Icon = Icon::new("\u{1f4b3}", "");
+
+        pub static ref transaction: Icon = Icon::new("\u{1f9fe}", "");
+
+        pub static ref block: Icon = Icon::new("\u{1f4e6}", "");
+
+        pub static ref blockchain: Icon = Icon::new("\u{26d3}", "");
+
+        pub static ref success: Icon = Icon::new("\u{2714}", "success");
+
+        pub static ref failure: Icon = Icon::new("\u{1f4a5}", "failure");
+
+        pub static ref ignored: Icon = Icon::new("\u{1f507}", "ignored");
+
     }
 }
 
