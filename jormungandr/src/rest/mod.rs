@@ -9,8 +9,7 @@ pub use self::server::{Error, Server};
 use actix_web::dev::Resource;
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
-use std::sync::{Arc, Mutex, RwLock};
-use tokio::sync::lock::Lock;
+use std::sync::{Arc, RwLock};
 
 use crate::blockchain::{Blockchain, Branch};
 use crate::fragment::Logs;
@@ -27,7 +26,7 @@ pub struct Context {
     pub stats_counter: StatsCounter,
     pub blockchain: Blockchain,
     pub blockchain_tip: Branch,
-    pub transaction_task: Arc<Mutex<MessageBox<TransactionMsg>>>,
+    pub transaction_task: MessageBox<TransactionMsg>,
     pub logs: Logs,
     pub leadership_logs: LeadershipLogs,
     pub server: Arc<RwLock<Option<Server>>>,

@@ -55,7 +55,7 @@ use crate::{
 use futures::Future;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -229,7 +229,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 stats_counter,
                 blockchain,
                 blockchain_tip,
-                transaction_task: Arc::new(Mutex::new(fragment_msgbox)),
+                transaction_task: fragment_msgbox,
                 logs: pool_logs,
                 leadership_logs,
                 server: Arc::default(),

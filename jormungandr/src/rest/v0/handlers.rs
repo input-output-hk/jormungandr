@@ -71,19 +71,15 @@ pub fn get_message_logs(context: State<Context>) -> ActixFuture!() {
         .map(Json)
 }
 
-pub fn post_message(
-    request: &HttpRequest<Context>,
-) -> impl Future<Item = impl Responder + 'static, Error = impl Into<Error> + 'static> + 'static {
-    let sender = request.state().transaction_task.clone();
-    request.body().map(move |message| -> Result<_, Error> {
-        let msg = Fragment::deserialize(message.into_buf()).map_err(|e| {
-            println!("{}", e);
-            ErrorBadRequest(e)
-        })?;
-        let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![msg]);
-        sender.lock().unwrap().try_send(msg).unwrap();
-        Ok("")
-    })
+pub fn post_message(context: State<Context>, message: Bytes) -> Result<HttpResponse, Error> {
+    let fragment = Fragment::deserialize(message.into_buf()).map_err(ErrorBadRequest)?;
+    let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
+    context
+        .transaction_task
+        .clone()
+        .try_send(msg)
+        .map_err(|e| ErrorInternalServerError(e))?;
+    Ok(HttpResponse::Ok().finish())
 }
 
 pub fn get_tip(context: State<Context>) -> ActixFuture!() {
