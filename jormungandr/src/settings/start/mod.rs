@@ -119,7 +119,7 @@ impl RawSettings {
 
         let explorer = match command_arguments.explorer_enabled.or(config.explorer) {
             Some(flag) => flag,
-            None => false
+            None => false,
         };
 
         Ok(Settings {
