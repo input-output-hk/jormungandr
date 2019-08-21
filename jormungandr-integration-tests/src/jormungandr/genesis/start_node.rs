@@ -64,7 +64,6 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
 }
 
 #[test]
-#[ignore] // due to bug https://github.com/input-output-hk/jormungandr/issues/465
 pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     // stake key
     let stake_key = startup::create_new_key_pair("Ed25519Extended");
@@ -79,7 +78,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
 
     // note we use the faucet as the owner to this pool
     let stake_key = faucet.private_key;
-    let stake_key_pub = faucet.public_key;
+    let stake_key_pub = faucet.delegation_key;
 
     let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key);
 
@@ -102,7 +101,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     );
 
     let mut config = startup::ConfigurationBuilder::new()
-        .with_block0_consensus("genesis")
+        .with_block0_consensus("genesis_praos")
         .with_bft_slots_ratio("0".to_owned())
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_consensus_leaders_ids(vec![leader.public_key.clone()])
