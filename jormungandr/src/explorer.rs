@@ -12,6 +12,8 @@ use tokio::prelude::Future;
 pub struct Process {
     multiverse: Multiverse<Ref>,
     // This is kind of the same thing the multiverse holds (with Ref instead of BlockId)
+    // FIXME: The constructor of `ChainLength` is private, so querying this thing could be
+    // a problem
     chain_length_to_hash: HashMap<ChainLength, Vec<Ref>>,
     blockchain: Blockchain,
 }
