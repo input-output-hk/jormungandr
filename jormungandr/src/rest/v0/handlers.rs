@@ -2,7 +2,7 @@ use jormungandr_lib::interfaces::*;
 use jormungandr_lib::time::SystemTime;
 
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
-use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::{Error, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{Blake2b256, PublicKey};
@@ -16,7 +16,8 @@ use crate::blockchain::Ref;
 use crate::intercom::TransactionMsg;
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
-use futures::{Future, IntoFuture, Stream};
+use futures::{future, Future, IntoFuture, Stream};
+use std::convert::Infallible;
 use std::str::FromStr;
 
 pub use crate::rest::Context;
@@ -64,25 +65,22 @@ fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
 }
 
 pub fn get_message_logs(context: State<Context>) -> ActixFuture!() {
-    let logs = context.logs.lock().unwrap();
-    logs.logs()
+    context
+        .logs
+        .logs()
         .map_err(|_| ErrorInternalServerError("Failed to get logs"))
         .map(Json)
 }
 
-pub fn post_message(
-    request: &HttpRequest<Context>,
-) -> impl Future<Item = impl Responder + 'static, Error = impl Into<Error> + 'static> + 'static {
-    let sender = request.state().transaction_task.clone();
-    request.body().map(move |message| -> Result<_, Error> {
-        let msg = Fragment::deserialize(message.into_buf()).map_err(|e| {
-            println!("{}", e);
-            ErrorBadRequest(e)
-        })?;
-        let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![msg]);
-        sender.lock().unwrap().try_send(msg).unwrap();
-        Ok("")
-    })
+pub fn post_message(context: State<Context>, message: Bytes) -> Result<HttpResponse, Error> {
+    let fragment = Fragment::deserialize(message.into_buf()).map_err(ErrorBadRequest)?;
+    let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
+    context
+        .transaction_task
+        .clone()
+        .try_send(msg)
+        .map_err(|e| ErrorInternalServerError(e))?;
+    Ok(HttpResponse::Ok().finish())
 }
 
 pub fn get_tip(context: State<Context>) -> ActixFuture!() {
@@ -246,17 +244,17 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
     })
 }
 
-pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
+pub fn get_shutdown(context: State<Context>) -> ActixFuture!() {
     // Server finishes ongoing tasks before stopping, so user will get response to this request
     // Node should be shutdown automatically when server stopping is finished
-    context
-        .server
-        .read()
-        .unwrap_or_else(|e| e.into_inner())
-        .as_ref()
-        .ok_or_else(|| ErrorInternalServerError("Server not set in context"))?
-        .stop();
-    Ok(HttpResponse::Ok().finish())
+    future::poll_fn(move || Ok(context.server.clone().poll_lock())).then(|server_res| {
+        server_res
+            .unwrap_or_else(|e: Infallible| match e {})
+            .as_ref()
+            .ok_or_else(|| ErrorInternalServerError("Server not set in context"))
+            .map(|server| server.stop())
+            .map(|_| HttpResponse::Ok().finish())
+    })
 }
 
 pub fn get_leaders(context: State<Context>) -> impl Responder {

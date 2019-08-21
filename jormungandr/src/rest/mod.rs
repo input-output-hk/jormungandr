@@ -9,7 +9,9 @@ pub use self::server::{Error, Server};
 use actix_web::dev::Resource;
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
-use std::sync::{Arc, Mutex, RwLock};
+use futures::{future, Future};
+use std::convert::Infallible;
+use tokio::sync::lock::Lock;
 
 use crate::blockchain::{Blockchain, Branch};
 use crate::fragment::Logs;
@@ -26,14 +28,14 @@ pub struct Context {
     pub stats_counter: StatsCounter,
     pub blockchain: Blockchain,
     pub blockchain_tip: Branch,
-    pub transaction_task: Arc<Mutex<MessageBox<TransactionMsg>>>,
-    pub logs: Arc<Mutex<Logs>>,
+    pub transaction_task: MessageBox<TransactionMsg>,
+    pub logs: Logs,
     pub leadership_logs: LeadershipLogs,
-    pub server: Arc<RwLock<Option<Server>>>,
+    pub server: Lock<Option<Server>>,
     pub enclave: Enclave,
 }
 
-pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, ConfigError> {
+pub fn start_rest_server(config: &Rest, mut context: Context) -> Result<Server, ConfigError> {
     let app_context = context.clone();
     let cors_cfg = config.cors.clone();
     let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
@@ -44,10 +46,9 @@ pub fn start_rest_server(config: &Rest, context: Context) -> Result<Server, Conf
             &cors_cfg,
         )]
     })?;
-    context
-        .server
-        .write()
-        .unwrap_or_else(|e| e.into_inner())
+    future::poll_fn(|| Ok(context.server.poll_lock()))
+        .wait()
+        .unwrap_or_else(|e: Infallible| match e {})
         .replace(server.clone());
     Ok(server)
 }
