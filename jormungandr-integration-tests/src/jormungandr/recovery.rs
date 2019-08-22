@@ -4,7 +4,7 @@ use crate::common::{
 };
 
 #[test]
-pub fn node_restart() {
+pub fn test_node_recovers_from_node_restart() {
     let sender = startup::create_new_utxo_address();
     let account_receiver = startup::create_new_account_address();
     let utxo_receiver = startup::create_new_utxo_address();
