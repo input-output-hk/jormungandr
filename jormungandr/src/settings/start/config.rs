@@ -50,7 +50,7 @@ pub struct Cors {
     #[serde(default)]
     pub allowed_origins: Vec<String>,
     /// If none provided, CORS responses won't be cached
-    pub max_age_secs: Option<usize>,
+    pub max_age_secs: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
