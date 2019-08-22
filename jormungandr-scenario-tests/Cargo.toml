@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 slog = "2"
-bawawa = "0.1.4"
+bawawa = "0.1.5"
 bytes = "0.4"
 error-chain = "0.12"
 tokio = "0.1"
