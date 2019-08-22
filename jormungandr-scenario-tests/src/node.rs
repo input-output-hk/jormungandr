@@ -209,6 +209,7 @@ impl Node {
             &config_file.display().to_string(),
             "--secret",
             &config_secret.display().to_string(),
+            "--log-level=warn",
         ]);
 
         match block0 {
@@ -237,6 +238,18 @@ impl Node {
         node.progress_bar_start();
 
         Ok(node)
+    }
+
+    pub fn capture_logs(&mut self) -> impl Future<Item = (), Error = ()> {
+        let stderr = self.process.stderr().take().unwrap();
+
+        let stderr = tokio::codec::FramedRead::new(stderr, tokio::codec::LinesCodec::new());
+
+        let progress_bar = self.progress_bar.clone();
+
+        stderr
+            .for_each(move |line| future::ok(progress_bar.log_info(&line)))
+            .map_err(|err| unimplemented!("{}", err))
     }
 
     fn progress_bar_start(&self) {
