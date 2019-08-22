@@ -148,7 +148,7 @@ impl Controller {
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
 
-        let node = Node::spawn(
+        let mut node = Node::spawn(
             &self.context,
             pb,
             node_alias,
@@ -158,6 +158,7 @@ impl Controller {
         )?;
         let controller = node.controller();
 
+        self.runtime.executor().spawn(node.capture_logs());
         self.runtime.executor().spawn(node);
 
         Ok(controller)

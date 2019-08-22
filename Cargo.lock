@@ -236,7 +236,7 @@ dependencies = [
 
 [[package]]
 name = "bawawa"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1378,7 +1378,7 @@ dependencies = [
 name = "jormungandr-scenario-tests"
 version = "0.3.3"
 dependencies = [
- "bawawa 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bawawa 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "chain-addr 0.1.0",
  "chain-core 0.1.0",
@@ -3567,7 +3567,7 @@ dependencies = [
 "checksum backtrace-sys 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)" = "82a830b4ef2d1124a711c71d263c5abdc710ef8e907bd508c88be475cebc422b"
 "checksum base-x 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "76f4eae81729e69bb1819a26c6caac956cc429238388091f98cb6cd858f16443"
 "checksum base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0b25d992356d2eb0ed82172f5248873db5560c4721f564b13cb5193bda5e668e"
-"checksum bawawa 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "cc7b73915d202a5a483782d63db9523de1a8c7b9764dfe3b2f9279db7d0cfbe4"
+"checksum bawawa 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "f8a0b511f881feae65eb88a002da86c4346f2fc09135ac0934d420ef79cc7ee1"
 "checksum bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "58946044516aa9dc922182e0d6e9d124a31aafe6b421614654eb27cf90cec09c"
 "checksum bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "9f04a5e50dc80b3d5d35320889053637d15011aed5e66b66b37ae798c65da6f7"
 "checksum bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3d155346769a6855b86399e9bc3814ab343cd3d62c7e985113d46a0ec3c281fd"
