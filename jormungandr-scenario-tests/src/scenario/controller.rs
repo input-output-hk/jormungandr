@@ -1,6 +1,6 @@
 use crate::{
     scenario::{settings::Settings, ContextChaCha, ErrorKind, Result},
-    Node, NodeBlock0, NodeController,
+    style, Node, NodeBlock0, NodeController,
 };
 use chain_impl_mockchain::block::HeaderHash;
 use indicatif::{MultiProgress, ProgressBar};
@@ -20,6 +20,8 @@ pub struct Controller {
     progress_bar: Arc<MultiProgress>,
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 
+    startup_progress_bar: ProgressBar,
+
     runtime: runtime::Runtime,
 }
 
@@ -34,6 +36,15 @@ impl Controller {
         let file = std::fs::File::create(&block0_file)?;
         block0.serialize(file)?;
         let progress_bar = Arc::new(MultiProgress::new());
+        let startup_progress_bar = ProgressBar::new(10);
+        startup_progress_bar.set_prefix(&format!("{} context", *style::icons::scenario));
+        startup_progress_bar.set_message("initializing...");
+        startup_progress_bar.set_style(
+            indicatif::ProgressStyle::default_spinner()
+                .template("{spinner:.green} {prefix:.bold.dim} [{bar:10.cyan/blue}] [{elapsed_precise}] {wide_msg}")
+                .tick_chars(style::TICKER)
+        );
+        startup_progress_bar.enable_steady_tick(100);
 
         Ok(Controller {
             settings: Arc::new(settings),
@@ -42,6 +53,7 @@ impl Controller {
             block0_hash,
             progress_bar,
             progress_bar_thread: None,
+            startup_progress_bar,
             runtime: runtime::Runtime::new()?,
         })
     }
@@ -73,6 +85,7 @@ impl Controller {
     pub fn monitor_nodes(&mut self) {
         let pb = Arc::clone(&self.progress_bar);
 
+        self.startup_progress_bar.finish_with_message("done");
         self.progress_bar_thread = Some(std::thread::spawn(move || {
             pb.join().unwrap();
         }));

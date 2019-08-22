@@ -247,8 +247,11 @@ impl Node {
     }
 
     fn progress_bar_start(&self) {
-        self.progress_bar
-            .set_style(indicatif::ProgressStyle::default_spinner().tick_chars("/|\\- "));
+        self.progress_bar.set_style(
+            indicatif::ProgressStyle::default_spinner()
+                .template("{spinner:.green} {wide_msg}")
+                .tick_chars(style::TICKER),
+        );
         self.progress_bar.enable_steady_tick(100);
         self.progress_bar.set_message(&format!(
             "{} {} ... [{}]",

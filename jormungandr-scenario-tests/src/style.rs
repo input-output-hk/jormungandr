@@ -22,6 +22,8 @@ pub mod icons {
         /// icon associated the `jcli` command line binary
         pub static ref jormungandr: Icon = Icon::new("\u{1f40d}", "");
 
+        pub static ref scenario: Icon = Icon::new("\u{1f4c3}", "");
+
         pub static ref wallet: Icon = Icon::new("\u{1f45b}", "");
 
         pub static ref account: Icon = Icon::new("\u{1f4b3}", "");
@@ -54,3 +56,5 @@ lazy_static! {
 
     pub static ref info: Style = Style::new().cyan().bold();
 }
+
+pub const TICKER: &str = "▖▗▝▘ ";
