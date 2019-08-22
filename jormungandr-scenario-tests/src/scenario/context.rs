@@ -10,6 +10,8 @@ use std::{
     },
 };
 
+pub type ContextChaCha = Context<ChaChaRng>;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Seed([u8; 32]);
 

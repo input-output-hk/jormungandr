@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate jormungandr_scenario_tests;
 
-use jormungandr_scenario_tests::{prepare_command, Context, Seed};
+use jormungandr_scenario_tests::{prepare_command, style, Context, Controller, Seed};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -38,15 +38,6 @@ fn main() {
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
-    use console::{Emoji, Style};
-
-    let binary = Style::new().cyan();
-    let seed = Style::new().red();
-
-    let seed_emoji = Emoji::new("\u{1f331}", "");
-    let tool_emoji = Emoji::new("\u{1f6e0}", "");
-    let snake_emoji = Emoji::new("\u{1f40d}", "");
-
     println!(
         r###"
         ---_ ......._-_--.
@@ -72,19 +63,19 @@ fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
 
 ###############################################################################
     "###,
-        snake_emoji,
-        binary.apply_to(context.jormungandr().to_string()),
-        tool_emoji,
-        binary.apply_to(context.jcli().to_string()),
-        seed_emoji,
-        seed.apply_to(context.seed()),
+        *style::icons::jormungandr,
+        style::binary.apply_to(context.jormungandr().to_string()),
+        *style::icons::jcli,
+        style::binary.apply_to(context.jcli().to_string()),
+        *style::icons::seed,
+        style::seed.apply_to(context.seed()),
     )
 }
 
 use rand_chacha::ChaChaRng;
 
 pub fn scenario_1(mut context: Context<ChaChaRng>) {
-    let mut scenario = prepare_scenario! {
+    let scenario_settings = prepare_scenario! {
         &mut context,
         topology [
             "node1",
@@ -94,34 +85,29 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) {
             consensus = Bft,
             number_of_slots_per_epoch = 10,
             slot_duration = 1,
-            leaders = [ "node1", "node2" ],
+            leaders = [ "node1" ],
             initials = [
                 account "faucet1" with 1_000_000_000,
                 account "faucet2" with 2_000_000_000 delegates to "node2",
             ],
         }
-    }
-    .unwrap();
+    };
 
-    scenario.spawn_node(&context, "node1", true).unwrap();
+    let mut controller = Controller::new(scenario_settings, context).unwrap();
+
+    let node1 = controller.spawn_node("node1", true).unwrap();
+    let node2 = controller.spawn_node("node2", false).unwrap();
+
+    controller.monitor_nodes();
+    std::thread::sleep(std::time::Duration::from_secs(10));
+    let tip1 = node1.get_tip().unwrap();
     std::thread::sleep(std::time::Duration::from_secs(1));
-    scenario.spawn_node(&context, "node2", false).unwrap();
-
-    std::thread::sleep(std::time::Duration::from_secs(20));
-
-    let node1_tip_hash = scenario.get_tip("node1").unwrap();
-    let node2_tip_hash = scenario.get_tip("node2").unwrap();
-    println!("got tip from node 1: {}", node1_tip_hash);
-    println!("got tip from node 2: {}", node2_tip_hash);
+    node1.shutdown().unwrap();
+    let _block = node2.get_block(&tip1).unwrap();
 
     std::thread::sleep(std::time::Duration::from_secs(1));
-    let node1_block = scenario.get_block("node1", &node2_tip_hash).unwrap();
-    println!("got block {} from node2", node1_tip_hash);
-    let node2_block = scenario.get_block("node2", &node1_tip_hash).unwrap();
-    println!("got block {} from node2", node1_tip_hash);
 
-    dbg!(&node1_block);
-    dbg!(&node2_block);
+    node2.shutdown().unwrap();
 
-    assert_eq!(node1_tip_hash, node2_tip_hash);
+    controller.finalize();
 }

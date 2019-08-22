@@ -25,7 +25,7 @@ pub struct Settings {
 }
 
 /// contains all the data to start or interact with a node
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeSetting {
     /// for reference purpose only
     pub alias: NodeAlias,
