@@ -1,5 +1,52 @@
 # Change Log
 
+## [v0.3.3](https://github.com/input-output-hk/jormungandr/tree/v0.3.3) (2019-08-22)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.2...v0.3.3)
+
+**Implemented enhancements:**
+
+- CORS not enabled [\#708](https://github.com/input-output-hk/jormungandr/issues/708)
+- add some logging on the leader event created block [\#717](https://github.com/input-output-hk/jormungandr/pull/717)
+- Add CORS to REST endpoint [\#711](https://github.com/input-output-hk/jormungandr/pull/711)
+- Add leadership logs fetching over REST API and JCLI [\#707](https://github.com/input-output-hk/jormungandr/pull/707)
+- Finalize the loop for the new leadership code/event [\#701](https://github.com/input-output-hk/jormungandr/pull/701)
+- allow setting the address prefix manually when creating the address [\#695](https://github.com/input-output-hk/jormungandr/pull/695)
+- blockchain task: Process block announcements and blocks from network [\#693](https://github.com/input-output-hk/jormungandr/pull/693)
+- plumbing changes for the leadership scheduling and blockchain validation [\#688](https://github.com/input-output-hk/jormungandr/pull/688)
+- Update Leadership module to handle new blockchain API [\#685](https://github.com/input-output-hk/jormungandr/pull/685)
+- Added block processing for new blockchain [\#684](https://github.com/input-output-hk/jormungandr/pull/684)
+
+**Fixed bugs:**
+
+- \[Jormungandr\] - \[mempool\] : Node "stops" producing blocks if garbage\_collection\_interval \< fragment\_ttl [\#705](https://github.com/input-output-hk/jormungandr/issues/705)
+- Database error after abrupt node restart [\#676](https://github.com/input-output-hk/jormungandr/issues/676)
+- make sure we don't  block the poll in the fragment pool too [\#706](https://github.com/input-output-hk/jormungandr/pull/706)
+- Mempool and Leadership logs GC setting and fixes [\#703](https://github.com/input-output-hk/jormungandr/pull/703)
+- Fix tests aborting on invalid logs [\#689](https://github.com/input-output-hk/jormungandr/pull/689)
+- Added block processing for new blockchain [\#684](https://github.com/input-output-hk/jormungandr/pull/684)
+
+**Closed issues:**
+
+- serve the leader logs through the Rest API [\#698](https://github.com/input-output-hk/jormungandr/issues/698)
+
+**Merged pull requests:**
+
+- Testing scenario managing test flow [\#716](https://github.com/input-output-hk/jormungandr/pull/716)
+- Testing scenario managing test flow [\#715](https://github.com/input-output-hk/jormungandr/pull/715)
+- Rest async [\#714](https://github.com/input-output-hk/jormungandr/pull/714)
+- \[Tests\] Fixed test\_genesis\_stake\_pool\_with\_utxo\_faucet\_starts\_successfully [\#713](https://github.com/input-output-hk/jormungandr/pull/713)
+- Minor improvements on scenario testing [\#712](https://github.com/input-output-hk/jormungandr/pull/712)
+- experiment with new interface for multi nodes testing [\#710](https://github.com/input-output-hk/jormungandr/pull/710)
+- Futures rest [\#700](https://github.com/input-output-hk/jormungandr/pull/700)
+- Deps cleanup [\#699](https://github.com/input-output-hk/jormungandr/pull/699)
+- add link to the Node REST Api documentation [\#697](https://github.com/input-output-hk/jormungandr/pull/697)
+- blockchain: Restore block propagation [\#696](https://github.com/input-output-hk/jormungandr/pull/696)
+- Openapi validator 1st level [\#692](https://github.com/input-output-hk/jormungandr/pull/692)
+- Use mainstream implementation for hex [\#691](https://github.com/input-output-hk/jormungandr/pull/691)
+- Create OpenAPI docs [\#690](https://github.com/input-output-hk/jormungandr/pull/690)
+- cosmetic-summing fixes [\#686](https://github.com/input-output-hk/jormungandr/pull/686)
+- Update ROADMAP.md [\#669](https://github.com/input-output-hk/jormungandr/pull/669)
+
 ## [v0.3.2](https://github.com/input-output-hk/jormungandr/tree/v0.3.2) (2019-08-07)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.1...v0.3.2)
 
