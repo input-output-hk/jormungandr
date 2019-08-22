@@ -55,7 +55,7 @@ pub fn handle_input(
             });
         }
         BlockMsg::LeadershipBlock(block) => {
-            let future = process_leadership_block(blockchain.clone(), block);
+            let future = process_leadership_block(info.logger(), blockchain.clone(), block);
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
             blockchain_tip.update_ref(new_block_ref).wait().unwrap();
@@ -135,26 +135,42 @@ pub fn handle_end_of_epoch(
 }
 
 pub fn process_leadership_block(
+    logger: &Logger,
     mut blockchain: Blockchain,
     block: Block,
 ) -> impl Future<Item = Ref, Error = Error> {
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     let parent_hash = block.parent_id();
+
+    let logger = logger.new(o!(
+        "hash" => header.hash().to_string(),
+        "parent" => parent_hash.to_string(),
+        "date" => header.block_date().to_string()));
+    let logger1 = logger.clone();
     // This is a trusted block from the leadership task,
     // so we can skip pre-validation.
     blockchain
         .get_ref(parent_hash)
         .and_then(move |parent| {
             if let Some(parent_ref) = parent {
+                debug!(logger1, "processing block from leader event");
                 Either::A(blockchain.post_check_header(header, parent_ref))
             } else {
+                error!(
+                    logger1,
+                    "block from leader event does not have parent block in storage"
+                );
                 Either::B(future::err(
                     ErrorKind::MissingParentBlockFromStorage(header).into(),
                 ))
             }
         })
         .and_then(move |post_checked| end_blockchain.apply_and_store_block(post_checked, block))
+        .map(move |e| {
+            info!(logger, "block from leader event successfully stored");
+            e
+        })
 }
 
 pub fn process_block_announcement(
