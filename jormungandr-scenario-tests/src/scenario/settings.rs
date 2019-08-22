@@ -3,7 +3,7 @@ use crate::{
         Blockchain as BlockchainTemplate, Context, Node as NodeTemplate,
         Topology as TopologyTemplate, Wallet as WalletTemplate,
     },
-    NodeAlias, Wallet, WalletAlias, WalletType,
+    style, NodeAlias, Wallet, WalletAlias, WalletType,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
@@ -13,7 +13,7 @@ use jormungandr_lib::{
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap, io::Write, net::SocketAddr};
 
 #[derive(Debug)]
 pub struct Settings {
@@ -37,6 +37,8 @@ pub struct NodeSetting {
     pub secret: NodeSecret,
 
     pub config: NodeConfig,
+
+    node_topology: NodeTemplate,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -103,8 +105,13 @@ impl Settings {
     {
         let mut settings = Settings {
             nodes: topology
-                .aliases()
-                .map(|alias| (alias.clone(), NodeSetting::prepare(alias.clone(), context)))
+                .into_iter()
+                .map(|(alias, template)| {
+                    (
+                        alias.clone(),
+                        NodeSetting::prepare(alias.clone(), context, template),
+                    )
+                })
                 .collect(),
             wallets: HashMap::new(),
             block0: Block0Configuration {
@@ -117,7 +124,7 @@ impl Settings {
             },
         };
 
-        settings.populate_trusted_peers(topology.into_iter());
+        settings.populate_trusted_peers();
         settings.populate_block0_blockchain_configuration(&blockchain, context);
         settings.populate_block0_blockchain_initials(blockchain.wallets(), context);
 
@@ -137,8 +144,12 @@ impl Settings {
         for wallet_template in wallet_templates {
             // TODO: check the wallet does not already exist ?
             let wallet = match wallet_template.wallet_type() {
-                WalletType::UTxO => Wallet::generate_utxo(context.rng_mut()),
-                WalletType::Account => Wallet::generate_account(context.rng_mut()),
+                WalletType::UTxO => {
+                    Wallet::generate_utxo(wallet_template.clone(), context.rng_mut())
+                }
+                WalletType::Account => {
+                    Wallet::generate_account(wallet_template.clone(), context.rng_mut())
+                }
             };
 
             let initial_address = wallet.address(discrimination);
@@ -275,27 +286,69 @@ impl Settings {
         // TODO blockchain_configuration.bft_slots_ratio = ;
     }
 
-    fn populate_trusted_peers<I>(&mut self, i: I)
-    where
-        I: Iterator<Item = (NodeAlias, NodeTemplate)>,
-    {
-        for (alias, node_template) in i {
+    fn populate_trusted_peers(&mut self) {
+        let nodes = self.nodes.clone();
+        for (_alias, node) in self.nodes.iter_mut() {
             let mut trusted_peers = Vec::new();
 
-            for trusted_peer in node_template.trusted_peers() {
-                let trusted_peer = self.nodes.get(trusted_peer).unwrap();
+            for trusted_peer in node.node_topology.trusted_peers() {
+                let trusted_peer = nodes.get(trusted_peer).unwrap();
 
                 trusted_peers.push(trusted_peer.config.p2p.make_trusted_peer_setting());
             }
 
-            let node = self.nodes.get_mut(&alias).unwrap();
             node.config.p2p.trusted_peers = trusted_peers;
         }
+    }
+
+    pub(crate) fn dottify<W: Write>(&self, mut w: W) -> std::io::Result<()> {
+        writeln!(&mut w, r"digraph protocol {{")?;
+
+        writeln!(
+            &mut w,
+            r###"  subgraph nodes {{
+    node [ style = filled; color = lightgrey ];
+"###
+        )?;
+        for node in self.nodes.values() {
+            let label = node.dot_label();
+            writeln!(&mut w, "    {}", &label)?;
+
+            for trusted_peer in node.node_topology.trusted_peers() {
+                let trusted_peer = self.nodes.get(trusted_peer).unwrap();
+                writeln!(
+                    &mut w,
+                    "    {} -> {} [ label = \"trusts\" ; color = blue ]",
+                    &label,
+                    trusted_peer.dot_label()
+                )?;
+            }
+        }
+        writeln!(&mut w, "  }}")?;
+
+        for wallet in self.wallets.values() {
+            let template = wallet.template();
+            let label = template.dot_label();
+            writeln!(&mut w, "  {}", &label)?;
+
+            if let Some(node) = template.delegate() {
+                let trusted_peer = self.nodes.get(node).unwrap();
+                writeln!(
+                    &mut w,
+                    "  {} -> {} [ label = \"delegates\"; style = dashed ; color = red ]",
+                    &label,
+                    trusted_peer.dot_label()
+                )?;
+            }
+        }
+
+        writeln!(&mut w, "}}")?;
+        Ok(())
     }
 }
 
 impl NodeSetting {
-    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>) -> Self
+    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: NodeTemplate) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
@@ -303,6 +356,7 @@ impl NodeSetting {
             alias,
             config: NodeConfig::prepare(context),
             secret: NodeSecret::prepare(context),
+            node_topology: template,
         }
     }
 
@@ -312,6 +366,27 @@ impl NodeSetting {
 
     pub fn secrets(&self) -> &NodeSecret {
         &self.secret
+    }
+
+    fn dot_label(&self) -> String {
+        let bft = if let Some(_bft) = &self.secret.bft {
+            format!("[b]")
+        } else {
+            "".to_owned()
+        };
+
+        let genesis = if let Some(_genesis) = &self.secret.genesis {
+            format!("[g]")
+        } else {
+            "".to_owned()
+        };
+        format!(
+            "\"{}{}{}{}\"",
+            &self.alias,
+            *style::icons::jormungandr,
+            bft,
+            genesis
+        )
     }
 }
 

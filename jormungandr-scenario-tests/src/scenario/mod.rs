@@ -8,7 +8,7 @@ mod wallet;
 pub use self::{
     blockchain::Blockchain,
     context::{Context, ContextChaCha, Seed},
-    controller::Controller,
+    controller::{Controller, ControllerBuilder},
     topology::{Node, NodeAlias, Topology, TopologyBuilder},
     wallet::{Wallet, WalletAlias, WalletType},
 };
@@ -41,6 +41,7 @@ error_chain! {
 #[macro_export]
 macro_rules! prepare_scenario {
     (
+        $title:expr,
         $context:expr,
         topology [
             $($topology_tt:tt $(-> $node_link:tt)*),+ $(,)*
@@ -55,6 +56,7 @@ macro_rules! prepare_scenario {
             ] $(,)*
         }
     ) => {{
+        let mut builder = $crate::scenario::ControllerBuilder::new($title);
         let mut topology_builder = $crate::scenario::TopologyBuilder::new();
         $(
             #[allow(unused_mut)]
@@ -65,6 +67,7 @@ macro_rules! prepare_scenario {
             topology_builder.register_node(node);
         )*
         let topology : $crate::scenario::Topology = topology_builder.build();
+        builder.set_topology(topology);
 
         let mut blockchain = $crate::scenario::Blockchain::new(
             $crate::scenario::ConsensusVersion::$blockchain_consensus,
@@ -96,11 +99,10 @@ macro_rules! prepare_scenario {
 
             blockchain.add_wallet(wallet);
         )*
+        builder.set_blockchain(blockchain);
 
-        $crate::scenario::settings::Settings::prepare(
-            topology,
-            blockchain,
-            $context
-        )
+        builder.build_settings($context);
+
+        builder
     }};
 }

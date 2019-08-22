@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate jormungandr_scenario_tests;
 
-use jormungandr_scenario_tests::{prepare_command, style, Context, Controller, Seed};
+use jormungandr_scenario_tests::{prepare_command, style, Context, Seed};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -16,6 +16,19 @@ struct CommandArgs {
     #[structopt(long = "jcli", default_value = "jcli")]
     jcli: PathBuf,
 
+    /// set a directory in which the tests will be run, allowing every details
+    /// to be save persistently. By default it will create temporary directories
+    /// and will delete the files and documents
+    #[structopt(long = "root-dir")]
+    testing_directory: Option<PathBuf>,
+
+    /// document the different scenario, creating markdown and dot (graphviz) files
+    /// describing the tests initial setup
+    ///
+    /// The files are created within the `--root-dir`  directory.
+    #[structopt(long = "document")]
+    generate_documentation: bool,
+
     /// to set if to reproduce an existing test
     #[structopt(long = "seed")]
     seed: Option<Seed>,
@@ -29,8 +42,16 @@ fn main() {
     let seed = command_args
         .seed
         .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng::new().unwrap()));
+    let testing_directory = command_args.testing_directory;
+    let generate_documentation = command_args.generate_documentation;
 
-    let mut context = Context::new(seed, jormungandr, jcli);
+    let mut context = Context::new(
+        seed,
+        jormungandr,
+        jcli,
+        testing_directory,
+        generate_documentation,
+    );
 
     introduction(&context);
 
@@ -76,6 +97,7 @@ use rand_chacha::ChaChaRng;
 
 pub fn scenario_1(mut context: Context<ChaChaRng>) {
     let scenario_settings = prepare_scenario! {
+        "simple network example",
         &mut context,
         topology [
             "node1",
@@ -93,7 +115,7 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) {
         }
     };
 
-    let mut controller = Controller::new(scenario_settings, context).unwrap();
+    let mut controller = scenario_settings.build(context).unwrap();
 
     let node1 = controller.spawn_node("node1", true).unwrap();
     let node2 = controller.spawn_node("node2", false).unwrap();

@@ -1,6 +1,7 @@
 mod account;
 mod utxo;
 
+use crate::scenario::Wallet as WalletTemplate;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment, transaction::AccountIdentifier};
 use jormungandr_lib::{
@@ -55,24 +56,28 @@ enum Inner {
 #[derive(Debug, Clone)]
 pub struct Wallet {
     inner: Inner,
+
+    template: WalletTemplate,
 }
 
 impl Wallet {
-    pub fn generate_account<RNG>(rng: &mut RNG) -> Self
+    pub fn generate_account<RNG>(template: WalletTemplate, rng: &mut RNG) -> Self
     where
         RNG: CryptoRng + RngCore,
     {
         Wallet {
             inner: Inner::Account(account::Wallet::generate(rng)),
+            template,
         }
     }
 
-    pub fn generate_utxo<RNG>(rng: &mut RNG) -> Self
+    pub fn generate_utxo<RNG>(template: WalletTemplate, rng: &mut RNG) -> Self
     where
         RNG: CryptoRng + RngCore,
     {
         Wallet {
             inner: Inner::UTxO(utxo::Wallet::generate(rng)),
+            template,
         }
     }
 
@@ -88,6 +93,10 @@ impl Wallet {
             Inner::Account(account) => Some(account.stake_key()),
             Inner::UTxO(_utxo) => unimplemented!(),
         }
+    }
+
+    pub(crate) fn template(&self) -> &WalletTemplate {
+        &self.template
     }
 
     /// simple function to create a transaction with only one output to the given

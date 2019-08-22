@@ -3,6 +3,8 @@ use rand_core::{RngCore, SeedableRng};
 use std::{
     fmt::{self, Display, Formatter},
     net::SocketAddr,
+    ops::Deref,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::{
         atomic::{self, AtomicU16},
@@ -11,6 +13,12 @@ use std::{
 };
 
 pub type ContextChaCha = Context<ChaChaRng>;
+
+#[derive(Clone)]
+enum TestingDirectory {
+    Temp(Arc<mktemp::Temp>),
+    User(PathBuf),
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Seed([u8; 32]);
@@ -28,6 +36,9 @@ pub struct Context<RNG: RngCore + Sized> {
 
     next_available_rest_port_number: Arc<AtomicU16>,
     next_available_grpc_port_number: Arc<AtomicU16>,
+
+    testing_directory: TestingDirectory,
+    generate_documentation: bool,
 }
 
 impl Seed {
@@ -43,8 +54,20 @@ impl Seed {
 }
 
 impl Context<ChaChaRng> {
-    pub fn new(seed: Seed, jormungandr: bawawa::Command, jcli: bawawa::Command) -> Self {
+    pub fn new(
+        seed: Seed,
+        jormungandr: bawawa::Command,
+        jcli: bawawa::Command,
+        testing_directory: Option<PathBuf>,
+        generate_documentation: bool,
+    ) -> Self {
         let rng = ChaChaRng::from_seed(seed.0);
+
+        let testing_directory = if let Some(testing_directory) = testing_directory {
+            TestingDirectory::User(testing_directory)
+        } else {
+            TestingDirectory::Temp(Arc::new(mktemp::Temp::new_dir().unwrap()))
+        };
 
         Context {
             rng,
@@ -53,6 +76,8 @@ impl Context<ChaChaRng> {
             next_available_grpc_port_number: Arc::new(AtomicU16::new(12_000)),
             jormungandr,
             jcli,
+            testing_directory,
+            generate_documentation,
         }
     }
 
@@ -69,7 +94,17 @@ impl Context<ChaChaRng> {
             next_available_grpc_port_number: Arc::clone(&self.next_available_grpc_port_number),
             jormungandr: self.jormungandr().clone(),
             jcli: self.jcli().clone(),
+            testing_directory: self.testing_directory.clone(),
+            generate_documentation: self.generate_documentation.clone(),
         }
+    }
+
+    pub(super) fn working_directory(&self) -> &Path {
+        &self.testing_directory
+    }
+
+    pub(super) fn generate_documentation(&self) -> bool {
+        self.generate_documentation
     }
 }
 
@@ -134,6 +169,16 @@ impl FromStr for Seed {
             seed.0.copy_from_slice(&bytes);
 
             Ok(seed)
+        }
+    }
+}
+
+impl Deref for TestingDirectory {
+    type Target = Path;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            TestingDirectory::User(ref path) => path.deref(),
+            TestingDirectory::Temp(ref path) => path.deref(),
         }
     }
 }
