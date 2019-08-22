@@ -1,6 +1,6 @@
 use crate::{
     interfaces::{
-        ActiveSlotCoefficient, BFTSlotsRatio, ConsensusLeaderId, KESUpdateSpeed,
+        ActiveSlotCoefficient, BFTSlotsRatio, ConsensusLeaderId, KESUpdateSpeed, LinearFeeDef,
         NumberOfSlotsPerEpoch, SlotDuration,
     },
     time::SecondsSinceUnixEpoch,
@@ -288,14 +288,6 @@ impl BlockchainConfiguration {
                 params
             })
     }
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "snake_case", remote = "LinearFee")]
-struct LinearFeeDef {
-    constant: u64,
-    coefficient: u64,
-    certificate: u64,
 }
 
 #[derive(Serialize, Deserialize)]
