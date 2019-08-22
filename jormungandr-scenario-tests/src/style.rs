@@ -47,4 +47,10 @@ lazy_static! {
 
     /// style to apply when displaying the `Seed`
     pub static ref seed: Style = Style::new().red();
+
+    pub static ref error: Style = Style::new().red().bold();
+
+    pub static ref success: Style = Style::new().green().bold();
+
+    pub static ref info: Style = Style::new().cyan().bold();
 }

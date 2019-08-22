@@ -11,8 +11,8 @@ mod slog;
 pub mod style;
 mod wallet;
 
-pub use self::node::Node;
+pub use self::node::{Node, NodeBlock0, NodeController, Status};
 pub use self::programs::prepare_command;
-pub use self::scenario::{Context, NodeAlias, Seed, WalletAlias, WalletType};
+pub use self::scenario::{Context, Controller, NodeAlias, Seed, WalletAlias, WalletType};
 pub use self::slog::{Error as SlogCodecError, SlogCodec};
 pub use self::wallet::Wallet;
