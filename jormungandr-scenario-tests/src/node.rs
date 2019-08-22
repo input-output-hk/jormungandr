@@ -59,6 +59,7 @@ struct ProgressBarController {
     prefix: String,
 }
 
+/// send query to a running node
 pub struct NodeController {
     alias: NodeAlias,
     settings: NodeSetting,
@@ -66,6 +67,9 @@ pub struct NodeController {
     status: Arc<Mutex<Status>>,
 }
 
+/// Node is going to be used by the `Controller` to monitor the node process
+///
+/// To send queries to the Node, use the `NodeController`
 pub struct Node {
     alias: NodeAlias,
 
