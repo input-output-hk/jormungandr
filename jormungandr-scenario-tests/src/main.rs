@@ -97,6 +97,7 @@ use rand_chacha::ChaChaRng;
 
 pub fn scenario_1(mut context: Context<ChaChaRng>) {
     let scenario_settings = prepare_scenario! {
+        "simple network example",
         &mut context,
         topology [
             "node1",

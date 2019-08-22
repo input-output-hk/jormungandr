@@ -41,6 +41,7 @@ error_chain! {
 #[macro_export]
 macro_rules! prepare_scenario {
     (
+        $title:expr,
         $context:expr,
         topology [
             $($topology_tt:tt $(-> $node_link:tt)*),+ $(,)*
@@ -55,7 +56,7 @@ macro_rules! prepare_scenario {
             ] $(,)*
         }
     ) => {{
-        let mut builder = $crate::scenario::ControllerBuilder::new("title...");
+        let mut builder = $crate::scenario::ControllerBuilder::new($title);
         let mut topology_builder = $crate::scenario::TopologyBuilder::new();
         $(
             #[allow(unused_mut)]
