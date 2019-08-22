@@ -24,9 +24,9 @@ pub mod icons {
 
         pub static ref scenario: Icon = Icon::new("\u{1f4c3}", "");
 
-        pub static ref wallet: Icon = Icon::new("\u{1f45b}", "");
+        pub static ref wallet: Icon = Icon::new("\u{1f45b}", "[wallet]");
 
-        pub static ref account: Icon = Icon::new("\u{1f4b3}", "");
+        pub static ref account: Icon = Icon::new("\u{1f4b3}", "[utxo]");
 
         pub static ref transaction: Icon = Icon::new("\u{1f9fe}", "");
 
@@ -55,6 +55,8 @@ lazy_static! {
     pub static ref success: Style = Style::new().green().bold();
 
     pub static ref info: Style = Style::new().cyan().bold();
+
+    pub static ref scenario_title: Style = Style::new().bold();
 }
 
 pub const TICKER: &str = "▖▗▝▘ ";

@@ -3,13 +3,13 @@ use chain_impl_mockchain::value::Value;
 
 pub type WalletAlias = String;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WalletType {
     Account,
     UTxO,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Wallet {
     alias: WalletAlias,
     value: Value,
@@ -53,5 +53,15 @@ impl Wallet {
 
     pub fn delegate_mut(&mut self) -> &mut Option<NodeAlias> {
         &mut self.delegate
+    }
+
+    pub(crate) fn dot_label(&self) -> String {
+        let t: crate::style::icons::Icon = if self.wallet_type == WalletType::Account {
+            *crate::style::icons::account
+        } else {
+            *crate::style::icons::wallet
+        };
+
+        format!("\"{}{}\\nfunds = {}\"", &self.alias, t, self.value)
     }
 }

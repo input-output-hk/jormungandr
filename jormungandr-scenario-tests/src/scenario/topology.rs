@@ -2,14 +2,14 @@ use std::{borrow::Borrow, collections::HashMap, hash::Hash};
 
 pub type NodeAlias = String;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     alias: NodeAlias,
 
     trusted_peers: Vec<NodeAlias>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Topology {
     nodes: HashMap<NodeAlias, Node>,
 }

@@ -2,7 +2,6 @@ use crate::{scenario::settings::NodeSetting, style, Context, NodeAlias};
 use bawawa::{Control, Process};
 use chain_impl_mockchain::block::{Block, HeaderHash};
 use indicatif::ProgressBar;
-use mktemp::Temp;
 use rand_core::RngCore;
 use std::{
     path::PathBuf,
@@ -74,7 +73,7 @@ pub struct Node {
     alias: NodeAlias,
 
     #[allow(unused)]
-    temp_dir: Temp,
+    dir: PathBuf,
 
     process: Process,
 
@@ -177,25 +176,19 @@ impl Node {
         alias: &str,
         node_settings: &NodeSetting,
         block0: NodeBlock0,
+        working_dir: &PathBuf,
     ) -> Result<Self> {
         let mut command = context.jormungandr().clone();
-        let temp_dir = Temp::new_dir().chain_err(|| ErrorKind::CannotCreateTemporaryDirectory)?;
+        let dir = working_dir.join(alias);
+        std::fs::DirBuilder::new().recursive(true).create(&dir)?;
 
         let progress_bar = ProgressBarController::new(
             progress_bar,
             format!("{}@{}", alias, node_settings.config().rest.listen),
         );
 
-        let config_file = {
-            let mut dir = temp_dir.clone().release();
-            dir.push(NODE_CONFIG);
-            dir
-        };
-        let config_secret = {
-            let mut dir = temp_dir.clone().release();
-            dir.push(NODE_SECRET);
-            dir
-        };
+        let config_file = dir.join(NODE_CONFIG);
+        let config_secret = dir.join(NODE_SECRET);
 
         serde_yaml::to_writer(
             std::fs::File::create(&config_file)
@@ -232,7 +225,7 @@ impl Node {
         let node = Node {
             alias: alias.into(),
 
-            temp_dir,
+            dir,
 
             process,
 
