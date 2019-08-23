@@ -1,14 +1,13 @@
 extern crate custom_error;
 
 use self::custom_error::custom_error;
-
 use crate::common::configuration::jormungandr_config::JormungandrConfig;
+use crate::common::file_utils;
 use crate::common::jcli_wrapper;
 use crate::common::jormungandr::{commands, process::JormungandrProcess};
 
 use crate::common::process_assert;
-use crate::common::process_utils;
-use crate::common::process_utils::{output_extensions::ProcessOutput, ProcessError};
+use crate::common::process_utils::{self, output_extensions::ProcessOutput, ProcessError};
 use std::process::{Child, Command, Output};
 
 custom_error! {pub StartupError
@@ -48,12 +47,15 @@ fn start_jormungandr_node_sync_with_retry(
         Ok(guard) => return JormungandrProcess::from_config(guard, config.clone()),
         _ => println!("failed to start jormungandr node. retrying.."),
     };
-    config.node_config.regenerate_ports();
+    config.refresh_node_dynamic_params();
     let second_attempt = try_to_start_jormungandr_node(command, config.clone());
 
     match second_attempt {
         Ok(guard) => return JormungandrProcess::from_config(guard, config.clone()),
-        Err(e) => panic!(e.to_string()),
+        Err(e) => {
+            let log_file_content = file_utils::read_file(&config.log_file_path);
+            panic!(format!("{}. Log file: {}", e.to_string(), log_file_content));
+        }
     };
 }
 
@@ -81,7 +83,13 @@ pub fn start_jormungandr_node(config: &mut JormungandrConfig) -> JormungandrProc
     process
 }
 
-pub fn start_jormungandr_node_as_leader(config: &mut JormungandrConfig) -> JormungandrProcess {
+pub fn restart_jormungandr_node_as_leader(process: &mut JormungandrProcess) -> JormungandrProcess {
+    let mut config = process.config.clone();
+    config.refresh_node_dynamic_params();
+    std::mem::drop(process);
+
+    println!("Starting node with configuration : {:?}", &config);
+
     let mut command = commands::get_start_jormungandr_as_leader_node_command(
         &config.node_config_path,
         &config.genesis_block_path,
@@ -89,6 +97,22 @@ pub fn start_jormungandr_node_as_leader(config: &mut JormungandrConfig) -> Jormu
         &config.log_file_path,
     );
 
+    match try_to_start_jormungandr_node(&mut command, config.clone()) {
+        Ok(guard) => return JormungandrProcess::from_config(guard, config.clone()),
+        Err(e) => {
+            let log_file_content = file_utils::read_file(&config.log_file_path);
+            panic!(format!("{}. Log file: {}", e.to_string(), log_file_content));
+        }
+    };
+}
+
+pub fn start_jormungandr_node_as_leader(config: &mut JormungandrConfig) -> JormungandrProcess {
+    let mut command = commands::get_start_jormungandr_as_leader_node_command(
+        &config.node_config_path,
+        &config.genesis_block_path,
+        &config.secret_model_path,
+        &config.log_file_path,
+    );
     println!("Starting node with configuration : {:?}", &config);
     let process = start_jormungandr_node_sync_with_retry(&mut command, config);
     process

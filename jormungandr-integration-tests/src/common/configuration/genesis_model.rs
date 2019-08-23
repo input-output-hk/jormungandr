@@ -43,7 +43,7 @@ pub struct BlockchainConfig {
     pub kes_update_speed: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LinearFees {
     pub constant: u32,
     pub coefficient: u32,

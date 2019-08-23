@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
-
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{AccountState, FragmentLog, FragmentStatus, UTxOInfo};
+use jormungandr_lib::interfaces::{
+    AccountState, FragmentLog, FragmentStatus, SettingsDto, UTxOInfo,
+};
+
 pub mod certificate;
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
@@ -400,4 +402,13 @@ pub fn assert_get_rest_message_log(host: &str) -> Vec<FragmentLog> {
     let fragments: Vec<FragmentLog> =
         serde_yaml::from_str(&content).expect("Failed to parse fragment log");
     fragments
+}
+
+pub fn assert_get_rest_settings(host: &str) -> SettingsDto {
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_rest_settings_command(&host));
+    let content = output.as_lossy_string();
+    process_assert::assert_process_exited_successfully(output);
+    let settings: SettingsDto = serde_yaml::from_str(&content).expect("Failed to parse settings");
+    settings
 }
