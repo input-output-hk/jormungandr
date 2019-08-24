@@ -428,6 +428,12 @@ macro_rules! typed_define_from_instances {
                 Digest::from(bytes).into()
             }
         }
+        impl<T> From<$hash_ty> for DigestOf<$hash_ty, T> {
+            fn from(bytes: $hash_ty) -> Self {
+                let out : [u8; $hash_size] = bytes.into();
+                out.into()
+            }
+        }
         impl<T> Bech32 for DigestOf<$hash_ty, T> {
             const BECH32_HRP: &'static str = $bech32_hrp;
 
