@@ -185,6 +185,12 @@ macro_rules! define_from_instances {
                 Digest(bytes)
             }
         }
+        impl From<$hash_ty> for Digest<$hash_ty> {
+            fn from(bytes: $hash_ty) -> Self {
+                let out : [u8; $hash_size] = bytes.into();
+                out.into()
+            }
+        }
         impl Bech32 for Digest<$hash_ty> {
             const BECH32_HRP: &'static str = $bech32_hrp;
 
