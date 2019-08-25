@@ -1,0 +1,3 @@
+export const LOADGING_IN_PROGRESS = 'LOADGING_IN_PROGRESS'
+export const DATA_LOADED = 'DATA_LOADED'
+export const ERROR = 'ERROR'

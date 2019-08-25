@@ -1,0 +1,1 @@
+export { default as ChannelSettings } from './ChannelSettingsPage';
