@@ -1,3 +1,4 @@
+use jcli_app::utils::rest_api::RestApiRequestBody;
 use openapiv3::{OpenAPI, Operation, PathItem, ReferenceOr};
 use reqwest::{Method, Request};
 use std::env;
@@ -43,12 +44,12 @@ impl OpenApiVerifier {
             .map_err(|source| Error::VerificationFailed { source, path })
     }
 
-    pub fn verify_request(&self, req: &Request) -> Result<(), Error> {
+    pub fn verify_request(&self, req: &Request, body: &RestApiRequestBody) -> Result<(), Error> {
         match self.0 {
             VerifierMode::AcceptAll => Ok(()),
             VerifierMode::Verify(ref verifier) => {
                 verifier
-                    .verify_request(req)
+                    .verify_request(req, body)
                     .map_err(|source| Error::VerificationFailed {
                         source,
                         path: verifier.path(),
@@ -69,7 +70,11 @@ impl Verifier {
         Ok(Verifier { openapi, path })
     }
 
-    pub fn verify_request(&self, req: &Request) -> Result<(), VerifierError> {
+    pub fn verify_request(
+        &self,
+        req: &Request,
+        _body: &RestApiRequestBody,
+    ) -> Result<(), VerifierError> {
         let url = req.url().path();
         let _operation = find_operation(&self.openapi, req.method(), url)?;
         Ok(())
