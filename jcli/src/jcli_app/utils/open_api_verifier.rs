@@ -1,5 +1,5 @@
 use jcli_app::utils::rest_api::RestApiRequestBody;
-use openapiv3::{OpenAPI, Operation, PathItem, ReferenceOr};
+use openapiv3::{OpenAPI, Operation, PathItem, ReferenceOr, RequestBody};
 use reqwest::{Method, Request};
 use std::env;
 use std::fs::File;
@@ -25,9 +25,21 @@ custom_error! { pub Error
 custom_error! { pub VerifierError
     OpenApiFileOpenFailed { source: io::Error } = "could not open OpenApi file",
     OpenApiFileMalformed { source: serde_yaml::Error } = "OpenApi file malformed",
-    OpenApiFilePathRef { path: String } = "path '{path}' in OpenApi file is a reference",
-    PathNotFound { url: String } = "no path found for URL '{url}'",
-    MethodNotFound { url: String, method: String } = "method '{method}' not found for URL '{url}'",
+    PathVerificationFailed { source: PathError, url: String } = "failed to validate URL '{url}'",
+}
+
+custom_error! { pub PathError
+    PathNotFound = "path not found",
+    RefError { source: RefError } = "error while reading reference",
+    MethodVerificationFailed { source: MethodError, method: String } = "failed to validate method '{method}'",
+}
+
+custom_error! { pub MethodError
+    MethodNotFound = "method not found",
+}
+
+custom_error! { pub RefError
+    NotSupported { reference: String } = "references are not supported, found one pointing at '{reference}'",
 }
 
 impl OpenApiVerifier {
@@ -73,52 +85,36 @@ impl Verifier {
     pub fn verify_request(
         &self,
         req: &Request,
-        _body: &RestApiRequestBody,
+        body: &RestApiRequestBody,
     ) -> Result<(), VerifierError> {
-        let url = req.url().path();
-        let _operation = find_operation(&self.openapi, req.method(), url)?;
-        Ok(())
+        verify_path(&self.openapi, req, body).map_err(|source| {
+            VerifierError::PathVerificationFailed {
+                source,
+                url: req.url().path().to_string(),
+            }
+        })
     }
 }
 
-fn find_operation<'a>(
-    openapi: &'a OpenAPI,
-    method: &Method,
-    url: &str,
-) -> Result<&'a Operation, VerifierError> {
-    let item = find_path_item(openapi, url)?;
-    match *method {
-        Method::GET => &item.get,
-        Method::PUT => &item.put,
-        Method::POST => &item.post,
-        Method::DELETE => &item.delete,
-        Method::OPTIONS => &item.options,
-        Method::HEAD => &item.head,
-        Method::PATCH => &item.patch,
-        Method::TRACE => &item.trace,
-        _ => &None,
-    }
-    .as_ref()
-    .ok_or_else(|| VerifierError::MethodNotFound {
-        method: method.to_string(),
-        url: url.to_string(),
+fn verify_path(
+    openapi: &OpenAPI,
+    req: &Request,
+    body: &RestApiRequestBody,
+) -> Result<(), PathError> {
+    let path = find_path_item(openapi, req.url().path())?;
+    verify_method(path, req, body).map_err(|source| PathError::MethodVerificationFailed {
+        source,
+        method: req.method().to_string(),
     })
 }
 
-fn find_path_item<'a>(openapi: &'a OpenAPI, url: &str) -> Result<&'a PathItem, VerifierError> {
-    let (path, item) = openapi
+fn find_path_item<'a>(openapi: &'a OpenAPI, url: &str) -> Result<&'a PathItem, PathError> {
+    openapi
         .paths
         .iter()
         .find(|(path, _)| url_matches_path(url, &path))
-        .ok_or_else(|| VerifierError::PathNotFound {
-            url: url.to_string(),
-        })?;
-    match item {
-        ReferenceOr::Reference { .. } => {
-            Err(VerifierError::OpenApiFilePathRef { path: path.clone() })
-        }
-        ReferenceOr::Item(ref path_item) => Ok(path_item),
-    }
+        .ok_or_else(|| PathError::PathNotFound)
+        .and_then(|(_, item)| unpack_reference_or(item).map_err(Into::into))
 }
 
 fn url_matches_path(url: &str, path: &str) -> bool {
@@ -137,6 +133,41 @@ fn url_segment_matches_path_segment((url_segment, path_segment): (&str, &str)) -
 
 fn path_segment_is_wildcard(path_segment: &str) -> bool {
     path_segment.starts_with('{') && path_segment.ends_with('}')
+}
+
+fn verify_method(
+    path: &PathItem,
+    req: &Request,
+    body: &RestApiRequestBody,
+) -> Result<(), MethodError> {
+    let operation = find_operation(path, req)?;
+    Ok(()) //TODO
+}
+
+fn find_operation<'a>(path: &'a PathItem, req: &Request) -> Result<&'a Operation, MethodError> {
+    let method = req.method();
+    match *method {
+        Method::GET => &path.get,
+        Method::PUT => &path.put,
+        Method::POST => &path.post,
+        Method::DELETE => &path.delete,
+        Method::OPTIONS => &path.options,
+        Method::HEAD => &path.head,
+        Method::PATCH => &path.patch,
+        Method::TRACE => &path.trace,
+        _ => &None,
+    }
+    .as_ref()
+    .ok_or_else(|| MethodError::MethodNotFound)
+}
+
+fn unpack_reference_or<T>(reference_or: &ReferenceOr<T>) -> Result<&T, RefError> {
+    match *reference_or {
+        ReferenceOr::Item(ref path_item) => Ok(path_item),
+        ReferenceOr::Reference { ref reference } => Err(RefError::NotSupported {
+            reference: reference.clone(),
+        }),
+    }
 }
 
 #[cfg(test)]
