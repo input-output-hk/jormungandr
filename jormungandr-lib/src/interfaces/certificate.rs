@@ -1,10 +1,47 @@
 use bech32::{Bech32, FromBase32 as _, ToBase32 as _};
 use chain_impl_mockchain::certificate;
+use chain_core::property;
+use chain_core::mempack::{Readable, ReadBuf, ReadError};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Certificate(certificate::Certificate);
+#[derive(Clone, Debug)]
+pub struct Certificate(pub certificate::Certificate);
+
+impl PartialEq for Certificate {
+    fn eq(&self, other: &Self) -> bool {
+        use property::Serialize as _;
+        match (self.serialize_as_vec(),other.serialize_as_vec()) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl property::Serialize for Certificate {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        match &self.0 {
+            certificate::Certificate::StakeDelegation(c) => { writer.write_all(&[1])?; c.serialize(&mut writer)? },
+            certificate::Certificate::OwnerStakeDelegation(c) => { writer.write_all(&[2])?; c.serialize(&mut writer)? },
+            certificate::Certificate::PoolRegistration(c) => { writer.write_all(&[3])?; writer.write_all(c.serialize().as_slice())? },
+            certificate::Certificate::PoolManagement(c) => { writer.write_all(&[4])?; writer.write_all(c.serialize().as_slice())? },
+        };
+        Ok(())
+    }
+}
+
+impl Readable for Certificate {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        match buf.get_u8()? {
+            1 => Ok(Certificate(certificate::Certificate::StakeDelegation(certificate::StakeDelegation::read(buf)?))),
+            2 => Ok(Certificate(certificate::Certificate::OwnerStakeDelegation(certificate::OwnerStakeDelegation::read(buf)?))),
+            3 => Ok(Certificate(certificate::Certificate::PoolRegistration(certificate::PoolRegistration::read(buf)?))),
+            4 => Ok(Certificate(certificate::Certificate::PoolManagement(certificate::PoolManagement::read(buf)?))),
+            t => Err(ReadError::UnknownTag(t as u32))?,
+        }
+    }
+}
 
 custom_error! {pub CertificateToBech32Error
     Io { source: std::io::Error } = "Cannot serialize the Certificate",
@@ -25,13 +62,11 @@ custom_error! {pub CertificateFromStrError
 impl Certificate {
     pub fn to_bech32(&self) -> Result<Bech32, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
-        let bytes = self.0.serialize_as_vec()?;
+        let bytes = self.serialize_as_vec()?;
         Ok(Bech32::new("cert".to_string(), bytes.to_base32())?)
     }
 
     pub fn from_bech32(bech32: &Bech32) -> Result<Self, CertificateFromBech32Error> {
-        use chain_core::mempack::{ReadBuf, Readable as _};
-
         if bech32.hrp() != "cert" {
             return Err(CertificateFromBech32Error::InvalidHRP {
                 expected: "cert".to_owned(),
@@ -40,9 +75,8 @@ impl Certificate {
         }
         let bytes: Vec<u8> = Vec::from_base32(bech32.data())?;
         let mut buf = ReadBuf::from(&bytes);
-        certificate::Certificate::read(&mut buf)
+        Certificate::read(&mut buf)
             .map_err(CertificateFromBech32Error::from)
-            .map(Certificate)
     }
 }
 
