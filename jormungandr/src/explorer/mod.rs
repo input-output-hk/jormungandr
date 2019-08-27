@@ -30,6 +30,8 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
+pub mod graphql;
+
 #[derive(Clone)]
 pub struct ExplorerDB {
     multiverse: Multiverse<Ref>,
