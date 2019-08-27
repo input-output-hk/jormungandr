@@ -301,3 +301,19 @@ pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
         Json(stake_pool_ids)
     })
 }
+
+pub fn graphql(
+    st: web::Data<Arc<Schema>>,
+    data: web::Json<explorer::graphql::GraphQLRequest>,
+) -> ActixFuture!() {
+    actix::web::block(move || {
+        let res = data.execute(&st, &());
+        Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
+    })
+    .map_err(Error::from)
+    .and_then(|user| {
+        Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(user))
+    })
+}
