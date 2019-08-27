@@ -33,7 +33,7 @@ pub struct Context {
     pub leadership_logs: LeadershipLogs,
     pub server: Lock<Option<Server>>,
     pub enclave: Enclave,
-    pub explorer: Option<crate::explorer::Process>,
+    pub explorer: Option<crate::explorer::Explorer>,
 }
 
 pub fn start_rest_server(config: &Rest, mut context: Context) -> Result<Server, ConfigError> {
