@@ -1,4 +1,6 @@
-use crate::certificate::{OwnerStakeDelegation, PoolManagement, PoolRegistration, StakeDelegation, Certificate};
+use crate::certificate::{
+    Certificate, OwnerStakeDelegation, PoolManagement, PoolRegistration, StakeDelegation,
+};
 use crate::transaction as tx;
 use crate::value::Value;
 use chain_addr::Address;
@@ -95,9 +97,13 @@ impl FeeAlgorithm<tx::Transaction<Address, Certificate>> for LinearFee {
     fn calculate(&self, tx: &tx::Transaction<Address, Certificate>) -> Option<Value> {
         match &tx.extra {
             Certificate::PoolManagement(c) => self.calculate(&tx.clone().replace_extra(c.clone())),
-            Certificate::PoolRegistration(c) => self.calculate(&tx.clone().replace_extra(c.clone())),
+            Certificate::PoolRegistration(c) => {
+                self.calculate(&tx.clone().replace_extra(c.clone()))
+            }
             Certificate::StakeDelegation(c) => self.calculate(&tx.clone().replace_extra(c.clone())),
-            Certificate::OwnerStakeDelegation(c) => self.calculate(&tx.clone().replace_extra(c.clone())),
+            Certificate::OwnerStakeDelegation(c) => {
+                self.calculate(&tx.clone().replace_extra(c.clone()))
+            }
         }
     }
 }

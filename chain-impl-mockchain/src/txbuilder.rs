@@ -9,11 +9,11 @@
 //! 5. Finalize
 //!
 
+use crate::block::Fragment;
+use crate::certificate::Certificate;
 use crate::fee::FeeAlgorithm;
 use crate::transaction::{self as tx, Balance};
-use crate::certificate::Certificate;
 use crate::value::{Value, ValueError};
-use crate::block::Fragment;
 use chain_addr::Address;
 use std::{error, fmt};
 
@@ -262,13 +262,15 @@ impl TransactionFinalizer {
     /// Return the transaction sign data hash of the embedded transaction
     pub fn get_tx_sign_data_hash(&self) -> tx::TransactionSignDataHash {
         match &self.tx.extra {
-            None    => self.tx.clone().replace_extra(tx::NoExtra).hash(),
+            None => self.tx.clone().replace_extra(tx::NoExtra).hash(),
             Some(c) => match c {
                 Certificate::PoolRegistration(c) => self.tx.clone().replace_extra(c.clone()).hash(),
                 Certificate::PoolManagement(c) => self.tx.clone().replace_extra(c.clone()).hash(),
                 Certificate::StakeDelegation(c) => self.tx.clone().replace_extra(c.clone()).hash(),
-                Certificate::OwnerStakeDelegation(c) => self.tx.clone().replace_extra(c.clone()).hash(),
-            }
+                Certificate::OwnerStakeDelegation(c) => {
+                    self.tx.clone().replace_extra(c.clone()).hash()
+                }
+            },
         }
     }
 
@@ -285,7 +287,9 @@ impl TransactionFinalizer {
     ///
     /// This doesn't guarantee that the cryptographic witnesses are valid
     /// or that the transaction is valid on any chain.
-    pub fn finalize(self) -> Result<tx::AuthenticatedTransaction<Address, Option<Certificate>>, BuildError> {
+    pub fn finalize(
+        self,
+    ) -> Result<tx::AuthenticatedTransaction<Address, Option<Certificate>>, BuildError> {
         let mut witnesses_flatten = Vec::new();
         for (i, w) in self.witnesses.iter().enumerate() {
             match w {
@@ -338,7 +342,7 @@ impl TransactionFinalizer {
                     };
                     Ok(Fragment::OwnerStakeDelegation(atx))
                 }
-            }
+            },
         }
     }
 }

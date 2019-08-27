@@ -187,7 +187,7 @@ macro_rules! define_from_instances {
         }
         impl From<$hash_ty> for Digest<$hash_ty> {
             fn from(bytes: $hash_ty) -> Self {
-                let out : [u8; $hash_size] = bytes.into();
+                let out: [u8; $hash_size] = bytes.into();
                 out.into()
             }
         }
@@ -430,7 +430,7 @@ macro_rules! typed_define_from_instances {
         }
         impl<T> From<$hash_ty> for DigestOf<$hash_ty, T> {
             fn from(bytes: $hash_ty) -> Self {
-                let out : [u8; $hash_size] = bytes.into();
+                let out: [u8; $hash_size] = bytes.into();
                 out.into()
             }
         }
