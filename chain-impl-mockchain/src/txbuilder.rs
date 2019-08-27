@@ -11,6 +11,7 @@
 
 use crate::fee::FeeAlgorithm;
 use crate::transaction::{self as tx, Balance};
+use crate::certificate::Certificate;
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use chain_core::property::Serialize;
@@ -213,8 +214,8 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
     }
 }
 
-pub struct TransactionFinalizer<Extra> {
-    tx: tx::Transaction<Address, Extra>,
+pub struct TransactionFinalizer {
+    tx: tx::Transaction<Address, Option<Certificate>>,
     witnesses: Vec<Option<tx::Witness>>,
 }
 
@@ -224,9 +225,9 @@ custom_error! {pub BuildError
     MissingWitnessAt { index: usize } = "Missing a witness for input at index {index}",
 }
 
-impl<Extra: Serialize> TransactionFinalizer<Extra> {
+impl TransactionFinalizer {
     /// Create a new finalizer from a given transaction
-    pub fn new(transaction: tx::Transaction<Address, Extra>) -> Self {
+    pub fn new(transaction: tx::Transaction<Address, Option<Certificate>>) -> Self {
         let nb_inputs = transaction.inputs.len();
         TransactionFinalizer {
             tx: transaction,
@@ -260,7 +261,15 @@ impl<Extra: Serialize> TransactionFinalizer<Extra> {
 
     /// Return the transaction sign data hash of the embedded transaction
     pub fn get_tx_sign_data_hash(&self) -> tx::TransactionSignDataHash {
-        self.tx.hash()
+        match &self.tx.extra {
+            None    => self.tx.clone().replace_extra(tx::NoExtra).hash(),
+            Some(c) => match c {
+                Certificate::PoolRegistration(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::PoolManagement(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::StakeDelegation(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::OwnerStakeDelegation(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+            }
+        }
     }
 
     /// Check if the transaction is finalizable already.
@@ -276,7 +285,7 @@ impl<Extra: Serialize> TransactionFinalizer<Extra> {
     ///
     /// This doesn't guarantee that the cryptographic witnesses are valid
     /// or that the transaction is valid on any chain.
-    pub fn finalize(self) -> Result<tx::AuthenticatedTransaction<Address, Extra>, BuildError> {
+    pub fn finalize(self) -> Result<tx::AuthenticatedTransaction<Address, Option<Certificate>>, BuildError> {
         let mut witnesses_flatten = Vec::new();
         for (i, w) in self.witnesses.iter().enumerate() {
             match w {
