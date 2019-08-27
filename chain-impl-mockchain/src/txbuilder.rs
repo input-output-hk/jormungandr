@@ -9,9 +9,9 @@
 //! 5. Finalize
 //!
 
-use crate::block::Fragment;
 use crate::certificate::Certificate;
 use crate::fee::FeeAlgorithm;
+use crate::fragment::Fragment;
 use crate::transaction::{self as tx, Balance};
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
