@@ -3,16 +3,19 @@ pub use self::juniper::http::GraphQLRequest;
 use self::juniper::EmptyMutation;
 use self::juniper::FieldResult;
 use self::juniper::RootNode;
+use crate::blockcfg::{self, FragmentId};
+use crate::blockchain::Blockchain;
+use chain_core::property::Block as _;
+use std::str::FromStr;
+use tokio::prelude::Future;
 
-use crate::explorer::Process as Explorer;
+use crate::explorer::ExplorerDB;
 
 #[derive(juniper::GraphQLObject)]
 #[graphql(description = "change this")]
 struct Block {
     hash: String,
     date: BlockDate,
-    transactions: Vec<Transaction>,
-    depth: ChainLength,
 }
 
 #[derive(juniper::GraphQLObject)]
@@ -22,18 +25,20 @@ struct BlockDate {
     slot: Slot,
 }
 
+impl From<blockcfg::BlockDate> for BlockDate {
+    fn from(date: blockcfg::BlockDate) -> BlockDate {
+        BlockDate {
+            epoch: Epoch(format!("{}", date.epoch)),
+            slot: Slot(format!("{}", date.slot_id)),
+        }
+    }
+}
+
 #[derive(juniper::GraphQLScalarValue)]
 struct Epoch(String);
 
 #[derive(juniper::GraphQLScalarValue)]
 struct Slot(String);
-
-#[derive(juniper::GraphQLScalarValue)]
-struct ChainLength(String);
-
-#[derive(juniper::GraphQLObject)]
-#[graphql(description = "change this")]
-struct Transaction {}
 
 pub struct Query;
 
@@ -41,21 +46,24 @@ pub struct Query;
     Context = Context,
 )]
 impl Query {
-    fn block(id: String, context: &Context) -> FieldResult<Block> {
-        Ok(Block {
-            hash: "test".to_owned(),
-            date: BlockDate {
-                epoch: Epoch("1".to_owned()),
-                slot: Slot("2".to_owned()),
-            },
-            transactions: Vec::new(),
-            depth: ChainLength("3".to_owned()),
-        })
+    fn block(transaction: String, context: &Context) -> FieldResult<Option<Block>> {
+        // Warning: This call blocks the current thread
+        let id = FragmentId::from_str(&transaction)?;
+        let block = context
+            .db
+            .find_block_by_transaction(id, context.blockchain.clone())
+            .wait()?
+            .map(|b| Block {
+                hash: dbg!(b.id().to_string()),
+                date: dbg!(b.date()).into(),
+            });
+        Ok(block)
     }
 }
 
 pub struct Context {
-    explorer: Explorer,
+    pub db: ExplorerDB,
+    pub blockchain: Blockchain,
 }
 
 impl self::juniper::Context for Context {}
@@ -64,44 +72,4 @@ pub type Schema = RootNode<'static, Query, EmptyMutation<Context>>;
 
 pub fn create_schema() -> Schema {
     Schema::new(Query {}, EmptyMutation::new())
-}
-
-#[cfg(test)]
-mod test {
-    use super::juniper::graphql_value;
-    use super::*;
-
-    #[test]
-    fn test_graphql() {
-        let ctx = Context {
-            explorer: explorer::Process::new(),
-        };
-
-        // Run the executor.
-        let (res, _errors) = super::juniper::execute(
-            "query { block(id: \"test\") {
-                hash,
-                date {
-                    epoch,
-                    slot,
-                }
-            } }",
-            None,
-            &Schema::new(Query, EmptyMutation::new()),
-            &juniper::Variables::new(),
-            &ctx,
-        )
-        .unwrap();
-
-        let mut expected = graphql_value!(
-            {"block" :
-                {
-                    "hash": "test",
-                    "date": { "epoch": "1", "slot": "2" }
-                }
-            }
-        );
-
-        assert_eq!(res, expected);
-    }
 }
