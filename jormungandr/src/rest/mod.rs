@@ -2,6 +2,7 @@
 
 mod server;
 
+pub mod explorer;
 pub mod v0;
 
 pub use self::server::{Error, Server};
@@ -40,12 +41,15 @@ pub fn start_rest_server(config: &Rest, mut context: Context) -> Result<Server, 
     let app_context = context.clone();
     let cors_cfg = config.cors.clone();
     let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
-        vec![build_app(
-            app_context.clone(),
-            "/api/v0",
-            v0::resources(),
-            &cors_cfg,
-        )]
+        vec![
+            build_app(app_context.clone(), "/api/v0", v0::resources(), &cors_cfg),
+            build_app(
+                app_context.clone(),
+                "/explorer",
+                explorer::resources(),
+                &cors_cfg,
+            ),
+        ]
     })?;
     future::poll_fn(|| Ok(context.server.poll_lock()))
         .wait()

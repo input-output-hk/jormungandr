@@ -1,11 +1,9 @@
 use jormungandr_lib::interfaces::*;
 use jormungandr_lib::time::SystemTime;
 
-use actix_web::error::{
-    ErrorBadRequest, ErrorInternalServerError, ErrorNotFound, ErrorServiceUnavailable,
-};
-use actix_web::{http, Json, Path, Query, Responder, State};
+use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::{Error, HttpResponse};
+use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
@@ -302,36 +300,4 @@ pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
             .collect::<Vec<_>>();
         Json(stake_pool_ids)
     })
-}
-
-pub fn graphiql(context: State<Context>) -> impl Responder {
-    let html = juniper::http::graphiql::graphiql_source("http://localhost:8443/api/v0/graphql");
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(html)
-}
-
-use crate::explorer::graphql::GraphQLRequest;
-pub fn graphql(context: State<Context>, data: Json<GraphQLRequest>) -> ActixFuture!() {
-    context
-        .explorer
-        .clone()
-        .ok_or(ErrorServiceUnavailable("Explorer not enabled"))
-        .into_future()
-        .and_then(move |explorer| {
-            // Run the query in a threadpool, as Juniper is synchronous
-            actix_threadpool::run(move || {
-                Some(data.execute(&explorer.schema, &explorer.context()))
-                    .filter(|ref response| response.is_ok())
-                    .ok_or(ErrorBadRequest("Error processing query"))
-                    .and_then(|ref res| Ok(serde_json::to_string(res)?))
-            })
-            .map_err(|err| ErrorInternalServerError(err))
-        })
-        .map(|response| {
-            HttpResponse::Ok()
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(response)
-        })
-        .map_err(|err| ErrorInternalServerError(err))
 }
