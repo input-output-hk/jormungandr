@@ -13,8 +13,8 @@ use crate::fee::FeeAlgorithm;
 use crate::transaction::{self as tx, Balance};
 use crate::certificate::Certificate;
 use crate::value::{Value, ValueError};
+use crate::block::Fragment;
 use chain_addr::Address;
-use chain_core::property::Serialize;
 use std::{error, fmt};
 
 /// Possible error for the builder.
@@ -297,6 +297,49 @@ impl TransactionFinalizer {
             transaction: self.tx,
             witnesses: witnesses_flatten,
         })
+    }
+
+    pub fn to_fragment(self) -> Result<Fragment, BuildError> {
+        let tx = self.finalize()?;
+        match &tx.transaction.extra {
+            None => {
+                let atx = tx::AuthenticatedTransaction {
+                    transaction: tx.transaction.clone().replace_extra(tx::NoExtra),
+                    witnesses: tx.witnesses,
+                };
+                Ok(Fragment::Transaction(atx))
+            }
+            Some(c) => match c {
+                Certificate::PoolRegistration(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::PoolRegistration(atx))
+                }
+                Certificate::PoolManagement(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::PoolManagement(atx))
+                }
+                Certificate::StakeDelegation(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::StakeDelegation(atx))
+                }
+                Certificate::OwnerStakeDelegation(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::OwnerStakeDelegation(atx))
+                }
+            }
+        }
     }
 }
 
