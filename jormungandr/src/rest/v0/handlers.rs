@@ -4,8 +4,8 @@ use jormungandr_lib::time::SystemTime;
 use actix_web::error::{
     ErrorBadRequest, ErrorInternalServerError, ErrorNotFound, ErrorServiceUnavailable,
 };
+use actix_web::{http, Json, Path, Query, Responder, State};
 use actix_web::{Error, HttpResponse};
-use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
@@ -313,25 +313,25 @@ pub fn graphiql(context: State<Context>) -> impl Responder {
 
 use crate::explorer::graphql::GraphQLRequest;
 pub fn graphql(context: State<Context>, data: Json<GraphQLRequest>) -> ActixFuture!() {
-    actix_threadpool::run(move || {
-            Some(data.execute(&explorer.schema, &explorer.context()))
-                .filter(|response| response.is_ok())
-                //FIXME: Maybe it can also be internal server error?
-                .ok_or(ErrorBadRequest("Invalid query"))
-                .map(|response| HttpResponse::Ok().json(response))
-                .map_err(|err| ErrorInternalServerError(err))
-    })
     context
         .explorer
         .clone()
         .ok_or(ErrorServiceUnavailable("Explorer not enabled"))
         .into_future()
         .and_then(move |explorer| {
-            Some(data.execute(&explorer.schema, &explorer.context()))
-                .filter(|response| response.is_ok())
-                //FIXME: Maybe it can also be internal server error?
-                .ok_or(ErrorBadRequest("Invalid query"))
-                .map(|response| HttpResponse::Ok().json(response))
-                .map_err(|err| ErrorInternalServerError(err))
+            // Run the query in a threadpool, as Juniper is synchronous
+            actix_threadpool::run(move || {
+                Some(data.execute(&explorer.schema, &explorer.context()))
+                    .filter(|ref response| response.is_ok())
+                    .ok_or(ErrorBadRequest("Error processing query"))
+                    .and_then(|ref res| Ok(serde_json::to_string(res)?))
+            })
+            .map_err(|err| ErrorInternalServerError(err))
         })
+        .map(|response| {
+            HttpResponse::Ok()
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(response)
+        })
+        .map_err(|err| ErrorInternalServerError(err))
 }
