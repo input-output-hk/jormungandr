@@ -212,23 +212,24 @@ pub mod tests {
         let result = ledger.remove_account(&id);
         let expected_result = account_state.get_value() == Value::zero();
         match (result, expected_result) {
-            (Err(_), false) => verify_account_exists(&ledger, &id, true),
+            (Err(_), false) => verify_account_exists(&ledger, &id),
             (Ok(_), false) => TestResult::failed(),
             (Err(_), true) => TestResult::failed(),
-            (Ok(ledger), true) => verify_account_exists(&ledger, &id, false),
+            (Ok(ledger), true) => verify_account_does_not_exist(&ledger, &id),
         }
     }
 
-    fn verify_account_exists(ledger: &Ledger, id: &Identifier, should_exist: bool) -> TestResult {
-        match (ledger.exists(&id), should_exist) {
-            (true, true) => TestResult::passed(),
-            (true, false) => {
-                TestResult::error(format!("Account ({:?}) exists , while it should not", &id))
-            }
-            (false, true) => {
-                TestResult::error(format!("Account ({:?}) not exists , while it should", &id))
-            }
-            (false, false) => TestResult::passed(),
+    fn verify_account_exists(ledger: &Ledger, id: &Identifier) -> TestResult {
+        match ledger.exists(&id) {
+            true => TestResult::passed(),
+            false => TestResult::error(format!("Account ({:?}) not exists , while it should", &id)),
+        }
+    }
+
+    fn verify_account_does_not_exist(ledger: &Ledger, id: &Identifier) -> TestResult {
+        match ledger.exists(&id) {
+            true => TestResult::error(format!("Account ({:?}) exists , while it should not", &id)),
+            false => TestResult::passed(),
         }
     }
 }
