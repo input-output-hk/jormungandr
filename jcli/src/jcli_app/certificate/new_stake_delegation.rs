@@ -1,10 +1,11 @@
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::certificate::{
-    Certificate, CertificateContent, StakeDelegation as Delegation,
+    Certificate, StakeDelegation as Delegation,
 };
 use chain_impl_mockchain::transaction::AccountIdentifier;
-use jcli_app::certificate::{self, Error};
+use jcli_app::certificate::{write_cert, Error};
 use jcli_app::utils::key_parser::parse_pub_key;
+use jormungandr_lib::interfaces::{Certificate as CertificateType};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -24,13 +25,10 @@ pub struct StakeDelegation {
 impl StakeDelegation {
     pub fn exec(self) -> Result<(), Error> {
         let content = Delegation {
-            stake_key_id: AccountIdentifier::from_single_account(self.stake_id.into()),
+            account_id: AccountIdentifier::from_single_account(self.stake_id.into()),
             pool_id: self.pool_id.into(),
         };
-        let cert = Certificate {
-            content: CertificateContent::StakeDelegation(content),
-            signatures: vec![],
-        };
-        certificate::write_cert(self.output, cert.into())
+        let cert = Certificate::StakeDelegation(content);
+        write_cert(self.output, CertificateType(cert))
     }
 }

@@ -32,6 +32,7 @@ chain-core      = { path = "../chain-deps/chain-core" }
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
+chain-time    = { path = "../chain-deps/chain-time" }
 reqwest = "0.9.11"
 custom_error = "1.7"
 jormungandr-lib = { path = "../jormungandr-lib" }
