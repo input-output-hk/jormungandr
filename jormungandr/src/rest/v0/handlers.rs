@@ -1,7 +1,9 @@
 use jormungandr_lib::interfaces::*;
 use jormungandr_lib::time::SystemTime;
 
-use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
+use actix_web::error::{
+    ErrorBadRequest, ErrorInternalServerError, ErrorNotFound, ErrorServiceUnavailable,
+};
 use actix_web::{Error, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
@@ -302,18 +304,34 @@ pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
     })
 }
 
-pub fn graphql(
-    st: web::Data<Arc<Schema>>,
-    data: web::Json<explorer::graphql::GraphQLRequest>,
-) -> ActixFuture!() {
-    actix::web::block(move || {
-        let res = data.execute(&st, &());
-        Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
+pub fn graphiql(context: State<Context>) -> impl Responder {
+    let html = juniper::http::graphiql::graphiql_source("http://localhost:8443/api/v0/graphql");
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
+}
+
+use crate::explorer::graphql::GraphQLRequest;
+pub fn graphql(context: State<Context>, data: Json<GraphQLRequest>) -> ActixFuture!() {
+    actix_threadpool::run(move || {
+            Some(data.execute(&explorer.schema, &explorer.context()))
+                .filter(|response| response.is_ok())
+                //FIXME: Maybe it can also be internal server error?
+                .ok_or(ErrorBadRequest("Invalid query"))
+                .map(|response| HttpResponse::Ok().json(response))
+                .map_err(|err| ErrorInternalServerError(err))
     })
-    .map_err(Error::from)
-    .and_then(|user| {
-        Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body(user))
-    })
+    context
+        .explorer
+        .clone()
+        .ok_or(ErrorServiceUnavailable("Explorer not enabled"))
+        .into_future()
+        .and_then(move |explorer| {
+            Some(data.execute(&explorer.schema, &explorer.context()))
+                .filter(|response| response.is_ok())
+                //FIXME: Maybe it can also be internal server error?
+                .ok_or(ErrorBadRequest("Invalid query"))
+                .map(|response| HttpResponse::Ok().json(response))
+                .map_err(|err| ErrorInternalServerError(err))
+        })
 }

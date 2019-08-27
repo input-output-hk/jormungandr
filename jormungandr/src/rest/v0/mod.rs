@@ -44,5 +44,6 @@ pub fn resources() -> Vec<(
         ("/tip", &|r| r.get().with_async(handlers::get_tip)),
         ("/utxo", &|r| r.get().with_async(handlers::get_utxos)),
         ("/graphql", &|r| r.post().with_async(handlers::graphql)),
+        ("/graphiql", &|r| r.get().with(handlers::graphiql)),
     ]
 }
