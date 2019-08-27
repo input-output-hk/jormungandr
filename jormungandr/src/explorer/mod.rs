@@ -166,7 +166,6 @@ impl ExplorerDB {
         blockchain: Blockchain,
     ) -> impl Future<Item = Option<Block>, Error = StorageError> {
         let mut blocks = self.transaction_to_block.clone();
-        dbg!("finding transactions for");
         future::poll_fn(move || Ok(blocks.poll_lock()))
             .and_then(move |guard| Ok(guard.get(&transaction).map(|block_ref| block_ref.hash())))
             .and_then(move |hash| {

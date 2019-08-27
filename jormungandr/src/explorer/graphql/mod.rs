@@ -54,8 +54,8 @@ impl Query {
             .find_block_by_transaction(id, context.blockchain.clone())
             .wait()?
             .map(|b| Block {
-                hash: dbg!(b.id().to_string()),
-                date: dbg!(b.date()).into(),
+                hash: b.id().to_string(),
+                date: b.date().into(),
             });
         Ok(block)
     }
