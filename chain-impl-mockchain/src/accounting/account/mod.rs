@@ -185,7 +185,7 @@ pub mod tests {
     use quickcheck_macros::quickcheck;
     use std::collections::HashSet;
     use std::iter;
-#[quickcheck]
+    #[quickcheck]
     pub fn ledger_total_value_is_correct_after_remove_value(
         id: Identifier,
         account_state: AccountState<()>,
@@ -248,7 +248,7 @@ pub mod tests {
             false => TestResult::passed(),
         }
     }
- impl Arbitrary for Ledger {
+    impl Arbitrary for Ledger {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             let account_size = std::cmp::max(usize::arbitrary(gen), 1);
             let stake_pool_size =
@@ -489,4 +489,5 @@ pub mod tests {
                 expected, actual
             )),
         }
-    }}
+    }
+}
