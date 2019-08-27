@@ -81,7 +81,7 @@ impl Wallet {
 
     pub fn add_input<Extra: Clone>(
         &self,
-        txbuilder: &mut TransactionBuilder<chain_addr::Address, Extra>,
+        txbuilder: &mut TransactionBuilder<Extra>,
         fees: &LinearFee,
     ) -> Result<txbuilder::OutputPolicy>
     where

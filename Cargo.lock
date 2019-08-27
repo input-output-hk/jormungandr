@@ -421,6 +421,7 @@ dependencies = [
  "rand_chacha 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "typed-bytes 0.1.0",
 ]
 
 [[package]]
@@ -440,6 +441,7 @@ dependencies = [
  "rand_os 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum_macros 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "typed-bytes 0.1.0",
 ]
 
 [[package]]
@@ -1261,6 +1263,7 @@ dependencies = [
  "chain-core 0.1.0",
  "chain-crypto 0.1.0",
  "chain-impl-mockchain 0.1.0",
+ "chain-time 0.1.0",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gtmpl 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1384,6 +1387,7 @@ dependencies = [
  "chain-core 0.1.0",
  "chain-crypto 0.1.0",
  "chain-impl-mockchain 0.1.0",
+ "chain-time 0.1.0",
  "console 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3295,6 +3299,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "typed-bytes"
+version = "0.1.0"
 
 [[package]]
 name = "typenum"

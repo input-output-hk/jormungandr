@@ -3,7 +3,7 @@ use chain_impl_mockchain::{
     self as chain,
     fee::FeeAlgorithm,
     fragment::Fragment,
-    transaction::{NoExtra, Output, Transaction, TransactionSignDataHash},
+    transaction::{Output, Transaction, TransactionSignDataHash},
     txbuilder,
     value::Value,
 };
@@ -155,32 +155,15 @@ impl Staging {
         output_policy: chain::txbuilder::OutputPolicy,
     ) -> Result<chain::transaction::Balance, Error>
     where
-        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
-            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+        FA: FeeAlgorithm<Transaction<Address, Option<chain::certificate::Certificate>>>,
     {
         if self.kind != StagingKind::Balancing {
             return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
         }
 
-        let balance = if let Some(certificate) = self.extra.clone() {
-            let tx = self.transaction_with_extra(&certificate);
-            let builder = txbuilder::TransactionBuilder::from(tx);
-
-            let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
-
-            self.update_tx(tx);
-
-            balance
-        } else {
-            let tx = self.transaction();
-            let builder = txbuilder::TransactionBuilder::from(tx);
-            let (balance, tx) = builder.finalize(fee_algorithm, output_policy)?;
-
-            self.update_tx(tx);
-
-            balance
-        };
-
+        let (balance, tx) = txbuilder::TransactionBuilder::from(self.transaction())
+            .seal_with_output_policy(fee_algorithm, output_policy)?;
+        self.update_tx(tx);
         self.kind = StagingKind::Finalizing;
 
         Ok(balance)
@@ -206,96 +189,51 @@ impl Staging {
             Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
         }
 
-        let transaction = self.finalizer()?;
-
-        let result = transaction
-            .build()
+        self.finalizer()?
+            .to_fragment()
             .map_err(|source| Error::GeneratedTxBuildingFailed {
                 source,
                 filler: CustomErrorFiller,
-            })?;
-
-        match result {
-            chain::txbuilder::GeneratedTransaction::Type1(auth) => Ok(Fragment::Transaction(auth)),
-            chain::txbuilder::GeneratedTransaction::Type2(auth) => Ok(Fragment::Certificate(auth)),
-        }
+            })
     }
 
     pub fn transaction(
         &self,
-    ) -> chain::transaction::Transaction<Address, chain::transaction::NoExtra> {
+    ) -> chain::transaction::Transaction<Address, Option<chain::certificate::Certificate>> {
         chain::transaction::Transaction {
             inputs: self.inputs(),
             outputs: self.outputs(),
-            extra: chain::transaction::NoExtra,
+            extra: self.extra.clone().map(|c| c.0),
         }
-    }
-
-    fn transaction_with_extra(
-        &self,
-        certificate: &interfaces::Certificate,
-    ) -> chain::transaction::Transaction<Address, chain::certificate::Certificate> {
-        chain::transaction::Transaction {
-            inputs: self.inputs(),
-            outputs: self.outputs(),
-            extra: certificate.clone().into(),
-        }
-    }
-
-    pub fn builder(
-        &self,
-    ) -> chain::txbuilder::TransactionBuilder<Address, chain::transaction::NoExtra> {
-        chain::txbuilder::TransactionBuilder::from(self.transaction())
     }
 
     pub fn id(&self) -> TransactionSignDataHash {
-        if let Some(extra) = &self.extra {
-            self.transaction_with_extra(&extra).hash()
-        } else {
-            self.transaction().hash()
-        }
+        let finalizer = chain::txbuilder::TransactionFinalizer::new(self.transaction());
+        finalizer.get_tx_sign_data_hash()
     }
 
     pub fn fees<FA>(&self, fee_algorithm: FA) -> Result<Value, Error>
     where
-        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
-            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+        FA: FeeAlgorithm<Transaction<Address, Option<chain::certificate::Certificate>>>,
     {
-        if let Some(certificate) = &self.extra {
-            let tx = self.transaction_with_extra(certificate);
-            let builder = txbuilder::TransactionBuilder::from(tx);
-            Ok(builder.estimate_fee(fee_algorithm)?)
-        } else {
-            let tx = self.transaction();
-            let builder = txbuilder::TransactionBuilder::from(tx);
-            Ok(builder.estimate_fee(fee_algorithm)?)
-        }
+        let v = fee_algorithm
+            .calculate(&self.transaction())
+            .ok_or(Error::FeeCalculationFailed)?;
+        Ok(v)
     }
 
     pub fn balance<FA>(&self, fee_algorithm: FA) -> Result<chain::transaction::Balance, Error>
     where
-        FA: FeeAlgorithm<Transaction<Address, NoExtra>>
-            + FeeAlgorithm<Transaction<Address, chain::certificate::Certificate>>,
+        FA: FeeAlgorithm<Transaction<Address, Option<chain::certificate::Certificate>>>,
     {
-        if let Some(certificate) = &self.extra {
-            let tx = self.transaction_with_extra(certificate);
-            let builder = txbuilder::TransactionBuilder::from(tx);
-            Ok(builder.get_balance(fee_algorithm)?)
-        } else {
-            let tx = self.transaction();
-            let builder = txbuilder::TransactionBuilder::from(tx);
-            Ok(builder.get_balance(fee_algorithm)?)
-        }
+        let fees = self.fees(fee_algorithm)?;
+        let transaction = self.transaction();
+        let balance = transaction.balance(fees)?;
+        Ok(balance)
     }
 
     pub fn finalizer(&self) -> Result<chain::txbuilder::TransactionFinalizer, Error> {
-        let mut finalizer = if let Some(certificate) = &self.extra {
-            let transaction = self.transaction_with_extra(certificate);
-            chain::txbuilder::TransactionFinalizer::new_cert(transaction)
-        } else {
-            let transaction = self.transaction();
-            chain::txbuilder::TransactionFinalizer::new_trans(transaction)
-        };
+        let mut finalizer = chain::txbuilder::TransactionFinalizer::new(self.transaction());
 
         for (index, witness) in self.witnesses.iter().enumerate() {
             finalizer

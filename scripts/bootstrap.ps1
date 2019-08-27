@@ -211,7 +211,7 @@ if([System.IO.File]::Exists($MYCLI)){
 	echo $POOL_KES_SK | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.kes.sk -Encoding Oem
 	write-host "stake-pool vrf and kes keys: done" -ForegroundColor DarkGreen
 
-	$STAKEPOOLCERT = & $MYCLI certificate new stake-pool-registration --kes-key $POOL_KES_PK --vrf-key $POOL_VRF_PK --serial 1010101010
+	$STAKEPOOLCERT = & $MYCLI certificate new stake-pool-registration --kes-key $POOL_KES_PK --vrf-key $POOL_VRF_PK --serial 1010101010 --management-threshold 1 --start-validity 0 --owner $LEADER_PK
 	echo $STAKEPOOLCERT | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.cert -Encoding Oem
 	$STAKEPOOLCERTSIGN = echo $STAKEPOOLCERT | & $MYCLI certificate sign $WORKDIR"\"$SECRET_PATH\stake_key.sk 
 	echo $STAKEPOOLCERTSIGN | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.signcert -Encoding Oem

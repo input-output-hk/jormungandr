@@ -1,6 +1,7 @@
 //! Hash interface for all that is a hash
 
 use crate::crypto::serde as internal;
+use chain_crypto::digest::{Digest, DigestOf};
 use chain_crypto::hash::Blake2b256;
 use chain_impl_mockchain::key;
 use serde::{Deserialize, Serialize};
@@ -21,6 +22,14 @@ impl Hash {
     #[inline]
     pub fn into_hash(self) -> key::Hash {
         key::Hash::from(self.0)
+    }
+
+    pub fn into_digest(self) -> Digest<Blake2b256> {
+        self.0.into()
+    }
+
+    pub fn into_digest_of<T>(self) -> DigestOf<Blake2b256, T> {
+        self.into_digest().into()
     }
 
     pub fn to_hex(&self) -> String {

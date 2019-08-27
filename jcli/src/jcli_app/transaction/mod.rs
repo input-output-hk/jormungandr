@@ -113,6 +113,7 @@ custom_error! { pub Error
         = "serialization of message to bytes failed",
     InfoOutputFormatInvalid { source: strfmt::FmtError, format: String } = "invalid info output format '{format}'",
     InfoCalculationFailed { source: chain::value::ValueError } = "calculation of info failed",
+    FeeCalculationFailed = "fee calculation failed",
     InfoExpectedSingleAccount = "expected a single account, multisig is not supported yet",
     MakeWitnessLegacyUtxoUnsupported = "making legacy UTxO witness unsupported",
     MakeWitnessAccountCounterMissing = "making account witness requires passing spending counter",

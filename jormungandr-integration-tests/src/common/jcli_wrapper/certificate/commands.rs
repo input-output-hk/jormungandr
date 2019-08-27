@@ -54,7 +54,14 @@ impl CertificateCommands {
             .arg("--vrf-key")
             .arg(&vrf_key)
             .arg("--serial")
-            .arg(&serial_id);
+            .arg(&serial_id)
+            // The following are hardcoded, but will need testing
+            .arg("--start-validity")
+            .arg("0")
+            .arg("--management-threshold")
+            .arg("1")
+            .arg("--owner")
+            .arg("ed25519_pk12tx2erdy6m3xntfsgf8t2cyscjv0ls73974ma6a4rwfs3v2aup9q3qys5m");
         command
     }
 

@@ -176,6 +176,9 @@ echo ${POOL_VRF_SK} > ${TMPDIR}/stake_pool.vrf.sk
 echo ${POOL_KES_SK} > ${TMPDIR}/stake_pool.kes.sk
 
 $CLI certificate new stake-pool-registration \
+    --management-threshold 1 \
+    --start-validity 0 \
+    --owner ${LEADER_PK} \
     --kes-key ${POOL_KES_PK} \
     --vrf-key ${POOL_VRF_PK} \
     --serial 1010101010 > ${TMPDIR}/stake_pool.cert

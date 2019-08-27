@@ -1,4 +1,5 @@
 use crate::interfaces::{Address, Certificate, OldAddress, Value};
+use chain_addr;
 use chain_impl_mockchain::{
     certificate,
     fragment::Fragment,
@@ -7,7 +8,7 @@ use chain_impl_mockchain::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Initial {
     Fund(Vec<InitialUTxO>),
@@ -42,8 +43,15 @@ pub fn try_initials_vec_from_messages<'a>(
     for message in messages {
         match message {
             Fragment::Transaction(tx) => try_extend_inits_with_tx(&mut inits, tx)?,
-            Fragment::Certificate(tx) => extend_inits_with_cert(&mut inits, tx),
             Fragment::OldUtxoDeclaration(utxo) => extend_inits_with_legacy_utxo(&mut inits, utxo),
+            Fragment::PoolRegistration(tx) => {
+                let cert = certificate::Certificate::PoolRegistration(tx.transaction.extra.clone());
+                inits.push(Initial::Cert(Certificate(cert)))
+            }
+            Fragment::StakeDelegation(tx) => {
+                let cert = certificate::Certificate::StakeDelegation(tx.transaction.extra.clone());
+                inits.push(Initial::Cert(Certificate(cert)))
+            }
             _ => return Err(Error::Block0MessageUnexpected),
         }
     }
@@ -65,14 +73,6 @@ fn try_extend_inits_with_tx(
     Ok(())
 }
 
-fn extend_inits_with_cert(
-    initials: &mut Vec<Initial>,
-    tx: &AuthenticatedTransaction<chain_addr::Address, certificate::Certificate>,
-) {
-    let cert = Certificate::from(tx.transaction.extra.clone());
-    initials.push(Initial::Cert(cert))
-}
-
 fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDeclaration) {
     let inits_iter = utxo_decl.addrs.iter().map(|(address, value)| LegacyUTxO {
         address: address.clone().into(),
@@ -85,7 +85,7 @@ impl<'a> From<&'a Initial> for Fragment {
     fn from(initial: &'a Initial) -> Fragment {
         match initial {
             Initial::Fund(utxo) => pack_utxo_in_message(&utxo),
-            Initial::Cert(cert) => cert.into(),
+            Initial::Cert(cert) => pack_certificate_in_message(&cert),
             Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(&utxo),
         }
     }
@@ -118,16 +118,29 @@ fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
     Fragment::OldUtxoDeclaration(UtxoDeclaration { addrs: addrs })
 }
 
-impl<'a> From<&'a Certificate> for Fragment {
-    fn from(utxo: &'a Certificate) -> Fragment {
-        Fragment::Certificate(AuthenticatedTransaction {
-            transaction: Transaction {
-                inputs: vec![],
-                outputs: vec![],
-                extra: utxo.clone().into(),
-            },
-            witnesses: vec![],
-        })
+fn empty_auth_tx<Payload: Clone>(
+    payload: &Payload,
+) -> AuthenticatedTransaction<chain_addr::Address, Payload> {
+    AuthenticatedTransaction {
+        transaction: Transaction {
+            inputs: vec![],
+            outputs: vec![],
+            extra: payload.clone(),
+        },
+        witnesses: vec![],
+    }
+}
+
+fn pack_certificate_in_message(cert: &Certificate) -> Fragment {
+    match &cert.0 {
+        certificate::Certificate::StakeDelegation(c) => Fragment::StakeDelegation(empty_auth_tx(c)),
+        certificate::Certificate::OwnerStakeDelegation(c) => {
+            Fragment::OwnerStakeDelegation(empty_auth_tx(c))
+        }
+        certificate::Certificate::PoolRegistration(c) => {
+            Fragment::PoolRegistration(empty_auth_tx(c))
+        }
+        certificate::Certificate::PoolManagement(c) => Fragment::PoolManagement(empty_auth_tx(c)),
     }
 }
 

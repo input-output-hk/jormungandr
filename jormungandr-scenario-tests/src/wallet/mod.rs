@@ -109,11 +109,9 @@ impl Wallet {
         address: Address,
         value: Value,
     ) -> Result<Fragment> {
-        use chain_impl_mockchain::txbuilder::{
-            GeneratedTransaction, TransactionBuilder, TransactionFinalizer,
-        };
+        use chain_impl_mockchain::txbuilder::{TransactionBuilder, TransactionFinalizer};
 
-        let mut txbuilder = TransactionBuilder::new();
+        let mut txbuilder = TransactionBuilder::no_payload();
 
         txbuilder.add_output(address.into(), value.into());
 
@@ -125,11 +123,11 @@ impl Wallet {
         };
 
         let (_, tx) = txbuilder
-            .finalize(fees, output_policy)
+            .seal_with_output_policy(fees, output_policy)
             .chain_err(|| "Cannot finalize the transaction")?;
-        let mut finalizer = TransactionFinalizer::new_trans(tx);
+        let mut finalizer = TransactionFinalizer::new(tx.replace_extra(None));
 
-        let sign_data = finalizer.get_txid();
+        let sign_data = finalizer.get_tx_sign_data_hash();
 
         let witness = match &mut self.inner {
             Inner::Account(account) => account
@@ -142,12 +140,8 @@ impl Wallet {
             .set_witness(0, witness)
             .chain_err(|| "Cannot add witness")?;
 
-        match finalizer
-            .build()
-            .chain_err(|| "Cannot generate the finalized transaction")?
-        {
-            GeneratedTransaction::Type1(transaction) => Ok(Fragment::Transaction(transaction)),
-            _ => unimplemented!(),
-        }
+        finalizer
+            .to_fragment()
+            .chain_err(|| "Cannot generate the finalized transaction")
     }
 }
