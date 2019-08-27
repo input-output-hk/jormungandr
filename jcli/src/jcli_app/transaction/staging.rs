@@ -4,6 +4,7 @@ use chain_impl_mockchain::{
     fee::FeeAlgorithm,
     fragment::Fragment,
     transaction::{Output, Transaction, TransactionSignDataHash},
+    txbuilder,
     value::Value,
 };
 use jcli_app::transaction::Error;
@@ -160,29 +161,9 @@ impl Staging {
             return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
         }
 
-        /*
-        let balance = if let Some(certificate) = self.extra.clone() {
-            let tx = self.transaction_with_extra(&certificate);
-            let builder = txbuilder::TransactionBuilder::from(tx);
-
-            let (balance, tx) = builder.seal_with_output_policy(fee_algorithm, output_policy)?;
-
-            self.update_tx(tx);
-
-            balance
-        } else {
-            let tx = self.transaction();
-            let builder = txbuilder::TransactionBuilder::from(tx);
-            let (balance, tx) = builder.seal_with_output_policy(fee_algorithm, output_policy)?;
-
-            self.update_tx(tx);
-
-            balance
-        };
-
-        */
-        let balance = self.balance(fee_algorithm)?;
-
+        let (balance, tx) = txbuilder::TransactionBuilder::from(self.transaction())
+            .seal_with_output_policy(fee_algorithm, output_policy)?;
+        self.update_tx(tx);
         self.kind = StagingKind::Finalizing;
 
         Ok(balance)
@@ -216,7 +197,9 @@ impl Staging {
             })
     }
 
-    pub fn transaction(&self) -> chain::transaction::Transaction<Address, Option<chain::certificate::Certificate>> {
+    pub fn transaction(
+        &self,
+    ) -> chain::transaction::Transaction<Address, Option<chain::certificate::Certificate>> {
         chain::transaction::Transaction {
             inputs: self.inputs(),
             outputs: self.outputs(),

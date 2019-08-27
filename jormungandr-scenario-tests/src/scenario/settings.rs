@@ -7,6 +7,7 @@ use crate::{
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
+use chain_time::DurationSeconds;
 use jormungandr_lib::{
     crypto::{hash::Hash, key::SigningKey},
     interfaces::{Block0Configuration, BlockchainConfiguration, Initial, InitialUTxO},
@@ -166,29 +167,30 @@ impl Settings {
 
             if let Some(delegation) = wallet_template.delegate() {
                 use chain_impl_mockchain::certificate::{
-                    Certificate, CertificateContent, StakeDelegation,
+                    Certificate, PoolId as StakePoolId, StakeDelegation,
                 };
-                use chain_impl_mockchain::stake::StakePoolId;
 
                 // 1. retrieve the public data (we may need to create a stake pool
                 //    registration here)
                 let stake_pool_id: StakePoolId = if let Some(node) = self.nodes.get_mut(delegation)
                 {
                     if let Some(genesis) = &node.secret.genesis {
-                        StakePoolId::from(genesis.node_id.clone().into_hash())
+                        genesis.node_id.clone().into_digest_of()
                     } else {
                         // create and register the stake pool
                         use chain_impl_mockchain::{
-                            leadership::genesis::GenesisPraosLeader, stake::StakePoolInfo,
+                            certificate::PoolRegistration, leadership::genesis::GenesisPraosLeader,
                         };
                         use rand::{distributions::Standard, Rng as _};
                         let serial: u128 = context.rng_mut().sample(Standard);
                         let kes_signing_key = SigningKey::generate(context.rng_mut());
                         let vrf_signing_key = SigningKey::generate(context.rng_mut());
-                        let stake_pool_info = StakePoolInfo {
+                        let stake_pool_info = PoolRegistration {
                             serial,
+                            management_threshold: 1,
+                            start_validity: DurationSeconds(0).into(),
                             owners: Vec::new(),
-                            initial_key: GenesisPraosLeader {
+                            keys: GenesisPraosLeader {
                                 kes_public_key: kes_signing_key.identifier().into_public_key(),
                                 vrf_public_key: vrf_signing_key.identifier().into_public_key(),
                             },
@@ -203,10 +205,8 @@ impl Settings {
                             },
                         });
 
-                        let stake_pool_registration_certificate = Certificate {
-                            signatures: Vec::new(),
-                            content: CertificateContent::StakePoolRegistration(stake_pool_info),
-                        };
+                        let stake_pool_registration_certificate =
+                            Certificate::PoolRegistration(stake_pool_info);
 
                         self.block0
                             .initial
@@ -231,13 +231,10 @@ impl Settings {
                 };
 
                 // 3. create delegation certificate and add it to the block0.initial array
-                let delegation_certificate = Certificate {
-                    content: CertificateContent::StakeDelegation(StakeDelegation {
-                        stake_key_id,           // 2
-                        pool_id: stake_pool_id, // 1
-                    }),
-                    signatures: Vec::new(), // Leave empty
-                };
+                let delegation_certificate = Certificate::StakeDelegation(StakeDelegation {
+                    account_id: stake_key_id, // 2
+                    pool_id: stake_pool_id,   // 1
+                });
 
                 self.block0
                     .initial

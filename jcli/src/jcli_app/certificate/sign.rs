@@ -1,7 +1,7 @@
-use chain_impl_mockchain::certificate::{Certificate};
+use chain_impl_mockchain::certificate::Certificate;
 use jcli_app::certificate::{read_cert, read_input, write_cert, Error};
 use jcli_app::utils::key_parser::parse_ed25519_secret_key;
-use jormungandr_lib::interfaces::{Certificate as CertificateType};
+use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

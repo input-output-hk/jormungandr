@@ -18,6 +18,7 @@ chain-core           = { path = "../chain-deps/chain-core" }
 chain-crypto         = { path = "../chain-deps/chain-crypto" }
 chain-addr           = { path = "../chain-deps/chain-addr" }
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
+chain-time           = { path = "../chain-deps/chain-time" }
 jormungandr-lib = { path = "../jormungandr-lib" }
 poldercast = { version = "0.3.1", features = [ "serde_derive" ] }
 rand = "0.6"

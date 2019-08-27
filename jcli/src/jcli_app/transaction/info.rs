@@ -157,19 +157,13 @@ impl Info {
         vars.insert("status".to_owned(), transaction.staging_kind_name());
         vars.insert("id".to_owned(), transaction.id().to_string());
         vars.insert("num_inputs".to_owned(), tx.inputs.len().to_string());
-        vars.insert(
-            "num_outputs".to_owned(),
-            tx.outputs.len().to_string(),
-        );
+        vars.insert("num_outputs".to_owned(), tx.outputs.len().to_string());
         vars.insert(
             "num_witnesses".to_owned(),
             transaction.witness_count().to_string(),
         );
         vars.insert("input".to_owned(), tx.total_input()?.0.to_string());
-        vars.insert(
-            "output".to_owned(),
-            tx.total_output()?.0.to_string(),
-        );
+        vars.insert("output".to_owned(), tx.total_output()?.0.to_string());
         vars.insert("fee".to_owned(), transaction.fees(&fee_algo)?.0.to_string());
         vars.insert(
             "balance".to_owned(),

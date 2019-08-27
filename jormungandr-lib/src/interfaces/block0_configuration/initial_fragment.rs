@@ -118,7 +118,9 @@ fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
     Fragment::OldUtxoDeclaration(UtxoDeclaration { addrs: addrs })
 }
 
-fn empty_auth_tx<Payload: Clone>(payload: &Payload) -> AuthenticatedTransaction<chain_addr::Address, Payload> {
+fn empty_auth_tx<Payload: Clone>(
+    payload: &Payload,
+) -> AuthenticatedTransaction<chain_addr::Address, Payload> {
     AuthenticatedTransaction {
         transaction: Transaction {
             inputs: vec![],
@@ -131,14 +133,14 @@ fn empty_auth_tx<Payload: Clone>(payload: &Payload) -> AuthenticatedTransaction<
 
 fn pack_certificate_in_message(cert: &Certificate) -> Fragment {
     match &cert.0 {
-        certificate::Certificate::StakeDelegation(c) =>
-            Fragment::StakeDelegation(empty_auth_tx(c)),
-        certificate::Certificate::OwnerStakeDelegation(c) =>
-            Fragment::OwnerStakeDelegation(empty_auth_tx(c)),
-        certificate::Certificate::PoolRegistration(c) =>
-            Fragment::PoolRegistration(empty_auth_tx(c)),
-        certificate::Certificate::PoolManagement(c) =>
-            Fragment::PoolManagement(empty_auth_tx(c)),
+        certificate::Certificate::StakeDelegation(c) => Fragment::StakeDelegation(empty_auth_tx(c)),
+        certificate::Certificate::OwnerStakeDelegation(c) => {
+            Fragment::OwnerStakeDelegation(empty_auth_tx(c))
+        }
+        certificate::Certificate::PoolRegistration(c) => {
+            Fragment::PoolRegistration(empty_auth_tx(c))
+        }
+        certificate::Certificate::PoolManagement(c) => Fragment::PoolManagement(empty_auth_tx(c)),
     }
 }
 

@@ -1,11 +1,9 @@
 use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::certificate::{
-    Certificate, StakeDelegation as Delegation,
-};
+use chain_impl_mockchain::certificate::{Certificate, StakeDelegation as Delegation};
 use chain_impl_mockchain::transaction::AccountIdentifier;
 use jcli_app::certificate::{write_cert, Error};
 use jcli_app::utils::key_parser::parse_pub_key;
-use jormungandr_lib::interfaces::{Certificate as CertificateType};
+use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
