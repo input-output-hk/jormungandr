@@ -159,49 +159,21 @@ impl ExplorerDB {
                 future::ok(())
             })
     }
-}
 
-#[derive(Clone)]
-pub struct Process {}
-
-impl Process {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn handle_input(
-        &mut self,
-        info: &TokioServiceInfo,
-        input: Input<ExplorerMsg>,
-        explorer_db: &mut ExplorerDB,
-        blockchain: &Blockchain,
-    ) -> impl Future<Item = (), Error = ()> {
-        let _logger = info.logger();
-        let bquery = match input {
-            Input::Shutdown => {
-                return future::ok(());
-            }
-            Input::Input(msg) => msg,
-        };
-
-        let mut explorer_db = explorer_db.clone();
-        let blockchain = blockchain.clone();
-        let logger = info.logger().clone();
-        match bquery {
-            ExplorerMsg::NewBlock(new_block_ref) => info.spawn(lazy(move || {
-                explorer_db
-                    .store_ref(new_block_ref.clone())
-                    .map_err(|_| unreachable!())
-                    .join(
-                        explorer_db
-                            .index_transactions(new_block_ref, blockchain)
-                            .map_err(move |err| {
-                                error!(logger, "Explorer error: {}", err);
-                            }),
-                    )
-                    .map(move |_| ())
-            })),
-        }
-        future::ok::<(), ()>(())
+    pub fn find_block_by_transaction(
+        &self,
+        transaction: FragmentId,
+        blockchain: Blockchain,
+    ) -> impl Future<Item = Option<Block>, Error = StorageError> {
+        let mut blocks = self.transaction_to_block.clone();
+        dbg!("finding transactions for");
+        future::poll_fn(move || Ok(blocks.poll_lock()))
+            .and_then(move |guard| Ok(guard.get(&transaction).map(|block_ref| block_ref.hash())))
+            .and_then(move |hash| {
+                future::poll_fn(move || match hash {
+                    Some(h) => blockchain.storage().get(h).poll(),
+                    None => Ok(Async::Ready(None)),
+                })
+            })
     }
 }
