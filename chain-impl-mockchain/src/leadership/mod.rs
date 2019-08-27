@@ -1,8 +1,8 @@
 use crate::{
     block::{AnyBlockVersion, BlockDate, BlockVersion, ConsensusVersion, Header},
+    certificate::PoolId,
     date::Epoch,
     ledger::{Ledger, LedgerParameters},
-    stake::StakePoolId,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SecretKey, SumEd25519_12};
 use chain_time::era::TimeEra;
@@ -48,7 +48,7 @@ pub struct BftLeader {
 }
 
 pub struct GenesisLeader {
-    pub node_id: StakePoolId,
+    pub node_id: PoolId,
     pub sig_key: SecretKey<SumEd25519_12>,
     pub vrf_key: SecretKey<Curve25519_2HashDH>,
 }
@@ -65,8 +65,8 @@ pub enum LeaderOutput {
 }
 
 pub enum LeadershipConsensus {
-    Bft(bft::BftLeaderSelection),
-    GenesisPraos(genesis::GenesisLeaderSelection),
+    Bft(bft::LeadershipData),
+    GenesisPraos(genesis::LeadershipData),
 }
 
 /// Leadership represent a given epoch and their associated leader or metadata.
@@ -134,11 +134,11 @@ impl Leadership {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         let inner = match ledger.settings.consensus_version {
             ConsensusVersion::Bft => {
-                LeadershipConsensus::Bft(bft::BftLeaderSelection::new(ledger).unwrap())
+                LeadershipConsensus::Bft(bft::LeadershipData::new(ledger).unwrap())
             }
-            ConsensusVersion::GenesisPraos => LeadershipConsensus::GenesisPraos(
-                genesis::GenesisLeaderSelection::new(epoch, ledger),
-            ),
+            ConsensusVersion::GenesisPraos => {
+                LeadershipConsensus::GenesisPraos(genesis::LeadershipData::new(epoch, ledger))
+            }
         };
         Leadership {
             epoch: epoch,

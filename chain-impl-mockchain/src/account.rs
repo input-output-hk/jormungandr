@@ -1,14 +1,17 @@
 use crate::accounting::account;
 use crate::key::{deserialize_public_key, serialize_public_key};
+use crate::transaction::WitnessAccountData;
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
 };
-use chain_crypto::{Ed25519, PublicKey};
+use chain_crypto::{Ed25519, PublicKey, Signature};
 
 pub use account::{LedgerError, SpendingCounter};
 
 pub type AccountAlg = Ed25519;
+
+pub type Witness = Signature<WitnessAccountData, AccountAlg>;
 
 /// Account Identifier (also used as Public Key)
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

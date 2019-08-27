@@ -10,7 +10,6 @@ use crate::testing::{
 use crate::transaction::*;
 use crate::value::*;
 use chain_addr::Discrimination;
-use chain_core::property::Fragment as _;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -80,7 +79,7 @@ pub fn ledger_verifies_transaction_discrimination(
         .authenticate()
         .with_witness(&block0_hash, &faucet)
         .seal();
-    let fragment_id = Fragment::Transaction(signed_tx.clone()).id();
+    let fragment_id = Fragment::Transaction(signed_tx.clone()).hash();
 
     let are_discriminations_unified = arbitrary_input_disc == arbitrary_output_disc;
 

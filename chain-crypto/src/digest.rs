@@ -11,6 +11,8 @@ use cryptoxide::digest::Digest as _;
 use cryptoxide::sha3::Sha3;
 use hex::FromHexError;
 
+use typed_bytes::ByteSlice;
+
 use crate::bech32::{self, Bech32};
 use crate::hash::{Blake2b256, Sha3_256};
 
@@ -183,6 +185,12 @@ macro_rules! define_from_instances {
                 Digest(bytes)
             }
         }
+        impl From<$hash_ty> for Digest<$hash_ty> {
+            fn from(bytes: $hash_ty) -> Self {
+                let out: [u8; $hash_size] = bytes.into();
+                out.into()
+            }
+        }
         impl Bech32 for Digest<$hash_ty> {
             const BECH32_HRP: &'static str = $bech32_hrp;
 
@@ -206,6 +214,20 @@ unsafe impl<H: DigestAlg> Send for Digest<H> {}
 impl<H: DigestAlg> PartialEq for Digest<H> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
+    }
+}
+
+impl<H: DigestAlg> Eq for Digest<H> {}
+
+impl<H: DigestAlg> PartialOrd for Digest<H> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<H: DigestAlg> Ord for Digest<H> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_ref().cmp(other.as_ref())
     }
 }
 
@@ -298,6 +320,20 @@ impl<H: DigestAlg, T> PartialEq for DigestOf<H, T> {
     }
 }
 
+impl<H: DigestAlg, T> Eq for DigestOf<H, T> {}
+
+impl<H: DigestAlg, T> PartialOrd for DigestOf<H, T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.inner.partial_cmp(&other.inner)
+    }
+}
+
+impl<H: DigestAlg, T> Ord for DigestOf<H, T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.inner.cmp(&other.inner)
+    }
+}
+
 impl<H: DigestAlg, T> AsRef<[u8]> for DigestOf<H, T> {
     fn as_ref(&self) -> &[u8] {
         self.inner.as_ref()
@@ -344,6 +380,15 @@ impl<H: DigestAlg, T> DigestOf<H, T> {
         }
     }
 
+    pub fn digest_byteslice<'a>(byteslice: &ByteSlice<'a, T>) -> Self {
+        let mut ctx = Context::new();
+        ctx.append_data(byteslice.as_slice());
+        DigestOf {
+            inner: ctx.finalize(),
+            marker: PhantomData,
+        }
+    }
+
     /// Get the digest of object T, given its AsRef<[u8]> implementation
     pub fn digest(obj: &T) -> Self
     where
@@ -381,6 +426,12 @@ macro_rules! typed_define_from_instances {
         impl<T> From<[u8; $hash_size]> for DigestOf<$hash_ty, T> {
             fn from(bytes: [u8; $hash_size]) -> Self {
                 Digest::from(bytes).into()
+            }
+        }
+        impl<T> From<$hash_ty> for DigestOf<$hash_ty, T> {
+            fn from(bytes: $hash_ty) -> Self {
+                let out: [u8; $hash_size] = bytes.into();
+                out.into()
             }
         }
         impl<T> Bech32 for DigestOf<$hash_ty, T> {

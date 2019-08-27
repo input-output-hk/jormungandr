@@ -1,3 +1,4 @@
+use crate::units::DurationSeconds;
 use std::time::{Duration, SystemTime};
 
 /// Represent a timeline with a specific start point rooted on earth time.
@@ -8,9 +9,31 @@ pub struct Timeline(pub(crate) SystemTime);
 #[derive(Debug, Clone)]
 pub struct TimeOffset(pub(crate) Duration);
 
+/// Represent an offset in seconds in the timeline
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TimeOffsetSeconds(pub(crate) DurationSeconds);
+
 impl From<SystemTime> for Timeline {
     fn from(s: SystemTime) -> Self {
         Timeline(s)
+    }
+}
+
+impl From<DurationSeconds> for TimeOffsetSeconds {
+    fn from(v: DurationSeconds) -> Self {
+        TimeOffsetSeconds(v)
+    }
+}
+
+impl From<TimeOffsetSeconds> for TimeOffset {
+    fn from(v: TimeOffsetSeconds) -> TimeOffset {
+        TimeOffset(v.0.into())
+    }
+}
+
+impl From<TimeOffsetSeconds> for u64 {
+    fn from(v: TimeOffsetSeconds) -> Self {
+        v.0.into()
     }
 }
 

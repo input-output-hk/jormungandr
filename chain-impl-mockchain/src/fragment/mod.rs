@@ -27,10 +27,20 @@ pub enum Fragment {
     Initial(ConfigParams),
     OldUtxoDeclaration(legacy::UtxoDeclaration),
     Transaction(AuthenticatedTransaction<Address, NoExtra>),
-    Certificate(AuthenticatedTransaction<Address, certificate::Certificate>),
+    OwnerStakeDelegation(AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>),
+    StakeDelegation(AuthenticatedTransaction<Address, certificate::StakeDelegation>),
+    PoolRegistration(AuthenticatedTransaction<Address, certificate::PoolRegistration>),
+    PoolManagement(AuthenticatedTransaction<Address, certificate::PoolManagement>),
     UpdateProposal(SignedUpdateProposal),
     UpdateVote(SignedUpdateVote),
 }
+
+impl PartialEq for Fragment {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash() == other.hash()
+    }
+}
+impl Eq for Fragment {}
 
 /// Tag enumeration of all known fragment
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,9 +48,12 @@ pub(super) enum FragmentTag {
     Initial = 0,
     OldUtxoDeclaration = 1,
     Transaction = 2,
-    Certificate = 3,
-    UpdateProposal = 4,
-    UpdateVote = 5,
+    OwnerStakeDelegation = 3,
+    StakeDelegation = 4,
+    PoolRegistration = 5,
+    PoolManagement = 6,
+    UpdateProposal = 7,
+    UpdateVote = 8,
 }
 
 impl FragmentTag {
@@ -49,9 +62,12 @@ impl FragmentTag {
             0 => Some(FragmentTag::Initial),
             1 => Some(FragmentTag::OldUtxoDeclaration),
             2 => Some(FragmentTag::Transaction),
-            3 => Some(FragmentTag::Certificate),
-            4 => Some(FragmentTag::UpdateProposal),
-            5 => Some(FragmentTag::UpdateVote),
+            3 => Some(FragmentTag::OwnerStakeDelegation),
+            4 => Some(FragmentTag::StakeDelegation),
+            5 => Some(FragmentTag::PoolRegistration),
+            6 => Some(FragmentTag::PoolManagement),
+            7 => Some(FragmentTag::UpdateProposal),
+            8 => Some(FragmentTag::UpdateVote),
             _ => None,
         }
     }
@@ -64,7 +80,10 @@ impl Fragment {
             Fragment::Initial(_) => FragmentTag::Initial,
             Fragment::OldUtxoDeclaration(_) => FragmentTag::OldUtxoDeclaration,
             Fragment::Transaction(_) => FragmentTag::Transaction,
-            Fragment::Certificate(_) => FragmentTag::Certificate,
+            Fragment::OwnerStakeDelegation(_) => FragmentTag::OwnerStakeDelegation,
+            Fragment::StakeDelegation(_) => FragmentTag::StakeDelegation,
+            Fragment::PoolRegistration(_) => FragmentTag::PoolRegistration,
+            Fragment::PoolManagement(_) => FragmentTag::PoolManagement,
             Fragment::UpdateProposal(_) => FragmentTag::UpdateProposal,
             Fragment::UpdateVote(_) => FragmentTag::UpdateVote,
         }
@@ -81,7 +100,10 @@ impl Fragment {
             Fragment::Initial(i) => i.serialize(&mut codec).unwrap(),
             Fragment::OldUtxoDeclaration(s) => s.serialize(&mut codec).unwrap(),
             Fragment::Transaction(signed) => signed.serialize(&mut codec).unwrap(),
-            Fragment::Certificate(signed) => signed.serialize(&mut codec).unwrap(),
+            Fragment::OwnerStakeDelegation(od) => od.serialize(&mut codec).unwrap(),
+            Fragment::StakeDelegation(od) => od.serialize(&mut codec).unwrap(),
+            Fragment::PoolRegistration(atx) => atx.serialize(&mut codec).unwrap(),
+            Fragment::PoolManagement(pm) => pm.serialize(&mut codec).unwrap(),
             Fragment::UpdateProposal(proposal) => proposal.serialize(&mut codec).unwrap(),
             Fragment::UpdateVote(vote) => vote.serialize(&mut codec).unwrap(),
         }
@@ -91,6 +113,11 @@ impl Fragment {
     pub fn from_raw(raw: &FragmentRaw) -> Result<Self, ReadError> {
         let mut buf = ReadBuf::from(raw.as_ref());
         Fragment::read(&mut buf)
+    }
+
+    /// The ID of a message is a hash of its serialization *without* the size.
+    pub fn hash(&self) -> FragmentId {
+        self.to_raw().id()
     }
 }
 
@@ -105,8 +132,17 @@ impl Readable for Fragment {
             Some(FragmentTag::Transaction) => {
                 AuthenticatedTransaction::read(buf).map(Fragment::Transaction)
             }
-            Some(FragmentTag::Certificate) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::Certificate)
+            Some(FragmentTag::OwnerStakeDelegation) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::OwnerStakeDelegation)
+            }
+            Some(FragmentTag::StakeDelegation) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::StakeDelegation)
+            }
+            Some(FragmentTag::PoolRegistration) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::PoolRegistration)
+            }
+            Some(FragmentTag::PoolManagement) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::PoolManagement)
             }
             Some(FragmentTag::UpdateProposal) => {
                 SignedUpdateProposal::read(buf).map(Fragment::UpdateProposal)
@@ -138,25 +174,35 @@ impl property::Fragment for Fragment {
 
     /// The ID of a fragment is a hash of its serialization *without* the size.
     fn id(&self) -> Self::Id {
-        self.to_raw().id()
+        self.hash()
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, TestResult};
 
-    impl Arbitrary for Message {
+    impl Arbitrary for Fragment {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match g.next_u32() % 6 {
+            match g.next_u32() % 9 {
                 0 => Fragment::Initial(Arbitrary::arbitrary(g)),
                 1 => Fragment::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
                 2 => Fragment::Transaction(Arbitrary::arbitrary(g)),
-                3 => Fragment::Certificate(Arbitrary::arbitrary(g)),
-                4 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
+                3 => Fragment::OwnerStakeDelegation(Arbitrary::arbitrary(g)),
+                4 => Fragment::StakeDelegation(Arbitrary::arbitrary(g)),
+                5 => Fragment::PoolRegistration(Arbitrary::arbitrary(g)),
+                6 => Fragment::PoolManagement(Arbitrary::arbitrary(g)),
+                7 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
                 _ => Fragment::UpdateVote(Arbitrary::arbitrary(g)),
             }
+        }
+    }
+
+    quickcheck! {
+        fn fragment_serialization_bijection(b: Fragment) -> TestResult {
+            let b_got = Fragment::from_raw(&b.to_raw()).unwrap();
+            TestResult::from_bool(b == b_got)
         }
     }
 }

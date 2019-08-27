@@ -1,13 +1,12 @@
-use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
+//use crate::certificate::{verify_certificate, HasPublicKeys, SignatureRaw};
 use crate::date::BlockDate;
 use crate::fragment::config::ConfigParams;
 use crate::leadership::{bft, genesis::ActiveSlotsCoeffError};
 use crate::setting::Settings;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Verification};
+use chain_crypto::Verification;
 use std::collections::{BTreeMap, HashSet};
-use std::iter;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateState {
@@ -265,13 +264,6 @@ pub struct UpdateProposalWithProposer {
     pub proposer_id: UpdateVoterId,
 }
 
-impl<'a> HasPublicKeys<'a> for &'a UpdateProposalWithProposer {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
-    fn public_keys(self) -> Self::PublicKeys {
-        std::iter::once(&self.proposer_id.0)
-    }
-}
-
 impl property::Serialize for UpdateProposalWithProposer {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -295,26 +287,11 @@ impl Readable for UpdateProposalWithProposer {
 #[derive(Clone, Debug)]
 pub struct SignedUpdateProposal {
     pub proposal: UpdateProposalWithProposer,
-    pub signature: SignatureRaw,
-}
-
-impl UpdateProposal {
-    pub fn make_certificate(
-        &self,
-        proposer_private_key: &SecretKey<Ed25519Extended>,
-    ) -> SignatureRaw {
-        use crate::key::make_signature;
-        SignatureRaw(
-            make_signature(proposer_private_key, &self)
-                .as_ref()
-                .to_vec(),
-        )
-    }
 }
 
 impl SignedUpdateProposal {
     pub fn verify(&self) -> Verification {
-        verify_certificate(&self.proposal, &vec![self.signature.clone()])
+        Verification::Success
     }
 }
 
@@ -324,7 +301,6 @@ impl property::Serialize for SignedUpdateProposal {
         use chain_core::packer::*;
         let mut codec = Codec::new(writer);
         self.proposal.serialize(&mut codec)?;
-        self.signature.serialize(&mut codec)?;
         Ok(())
     }
 }
@@ -333,7 +309,6 @@ impl Readable for SignedUpdateProposal {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(Self {
             proposal: Readable::read(buf)?,
-            signature: Readable::read(buf)?,
         })
     }
 }
@@ -343,13 +318,6 @@ impl Readable for SignedUpdateProposal {
 pub struct UpdateVote {
     pub proposal_id: UpdateProposalId,
     pub voter_id: UpdateVoterId,
-}
-
-impl<'a> HasPublicKeys<'a> for &'a UpdateVote {
-    type PublicKeys = iter::Once<&'a PublicKey<Ed25519>>;
-    fn public_keys(self) -> Self::PublicKeys {
-        std::iter::once(&self.voter_id.0)
-    }
 }
 
 impl property::Serialize for UpdateVote {
@@ -365,9 +333,11 @@ impl property::Serialize for UpdateVote {
 
 impl Readable for UpdateVote {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let proposal_id = Readable::read(buf)?;
+        let voter_id = Readable::read(buf)?;
         Ok(UpdateVote {
-            proposal_id: Readable::read(buf)?,
-            voter_id: Readable::read(buf)?,
+            proposal_id,
+            voter_id,
         })
     }
 }
@@ -375,19 +345,11 @@ impl Readable for UpdateVote {
 #[derive(Clone, Debug)]
 pub struct SignedUpdateVote {
     pub vote: UpdateVote,
-    pub signature: SignatureRaw,
-}
-
-impl UpdateVote {
-    pub fn make_certificate(&self, voter_private_key: &SecretKey<Ed25519Extended>) -> SignatureRaw {
-        use crate::key::make_signature;
-        SignatureRaw(make_signature(voter_private_key, &self).as_ref().to_vec())
-    }
 }
 
 impl SignedUpdateVote {
     pub fn verify(&self) -> Verification {
-        verify_certificate(&self.vote, &vec![self.signature.clone()])
+        Verification::Success
     }
 }
 
@@ -397,7 +359,6 @@ impl property::Serialize for SignedUpdateVote {
         use chain_core::packer::*;
         let mut codec = Codec::new(writer);
         self.vote.serialize(&mut codec)?;
-        self.signature.serialize(&mut codec)?;
         Ok(())
     }
 }
@@ -406,7 +367,6 @@ impl Readable for SignedUpdateVote {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(SignedUpdateVote {
             vote: Readable::read(buf)?,
-            signature: Readable::read(buf)?,
         })
     }
 }
@@ -440,7 +400,6 @@ mod test {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Self {
                 proposal: Arbitrary::arbitrary(g),
-                signature: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -458,7 +417,6 @@ mod test {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Self {
                 vote: Arbitrary::arbitrary(g),
-                signature: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -474,6 +432,7 @@ mod test {
         },
     };
     use chain_core::property::ChainLength;
+    use chain_crypto::{Ed25519, SecretKey};
 
     #[quickcheck]
     pub fn ledger_adopt_settiings_from_update_proposal(

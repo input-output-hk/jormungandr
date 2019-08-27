@@ -1,5 +1,17 @@
-use crate::certificate as cert;
+//! Transaction builder
+//!
+//! The process to build a transaction:
+//!
+//! 1. Gather the Payload (Extra) to use, or NoExtra for a plain transaction
+//! 2. Add inputs and outputs whilst looking at the fees
+//! 3. Seal the transaction
+//! 4. Add witnesses for each inputs
+//! 5. Finalize
+//!
+
+use crate::certificate::Certificate;
 use crate::fee::FeeAlgorithm;
+use crate::fragment::Fragment;
 use crate::transaction::{self as tx, Balance};
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
@@ -11,6 +23,7 @@ pub enum Error {
     TxInvalidNoInput,
     TxInvalidNoOutput,
     TxNotEnoughTotalInput,
+    TxTooMuchTotalInput,
     MathErr(ValueError),
 }
 
@@ -20,6 +33,7 @@ impl fmt::Display for Error {
             Error::TxInvalidNoInput => write!(f, "transaction has no inputs"),
             Error::TxInvalidNoOutput => write!(f, "transaction has no outputs"),
             Error::TxNotEnoughTotalInput => write!(f, "not enough input for making transaction"),
+            Error::TxTooMuchTotalInput => write!(f, "too muny input value for making transaction"),
             Error::MathErr(v) => write!(f, "error in arithmetics {:?}", v),
         }
     }
@@ -46,12 +60,12 @@ pub enum OutputPolicy {
 #[derive(Clone, Debug)]
 /// Transaction builder is an object to construct
 /// a transaction with iterative steps (inputs, outputs)
-pub struct TransactionBuilder<Address, Extra> {
+pub struct TransactionBuilder<Extra> {
     pub tx: tx::Transaction<Address, Extra>,
 }
 
-impl TransactionBuilder<Address, tx::NoExtra> {
-    pub fn new() -> Self {
+impl TransactionBuilder<tx::NoExtra> {
+    pub fn no_payload() -> Self {
         TransactionBuilder {
             tx: tx::Transaction {
                 inputs: vec![],
@@ -60,24 +74,27 @@ impl TransactionBuilder<Address, tx::NoExtra> {
             },
         }
     }
+}
 
-    pub fn set_certificate(
-        self,
-        certificate: cert::Certificate,
-    ) -> TransactionBuilder<Address, cert::Certificate> {
+impl<Extra> TransactionBuilder<Extra> {
+    pub fn new_payload(e: Extra) -> Self {
         TransactionBuilder {
-            tx: self.tx.replace_extra(certificate),
+            tx: tx::Transaction {
+                inputs: vec![],
+                outputs: vec![],
+                extra: e,
+            },
         }
     }
 }
 
-impl<Address, Extra> From<tx::Transaction<Address, Extra>> for TransactionBuilder<Address, Extra> {
+impl<Extra> From<tx::Transaction<Address, Extra>> for TransactionBuilder<Extra> {
     fn from(tx: tx::Transaction<Address, Extra>) -> Self {
         TransactionBuilder { tx }
     }
 }
 
-impl<Extra: Clone> TransactionBuilder<Address, Extra> {
+impl<Extra: Clone> TransactionBuilder<Extra> {
     /// Create new transaction builder.
 
     /// Add additional input.
@@ -94,6 +111,7 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
         self.tx.outputs.push(tx::Output { address, value })
     }
 
+    /// Calculate the fees on a given fee algorithm for the current transaction
     pub fn estimate_fee<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
         &self,
         fee_algorithm: F,
@@ -119,17 +137,29 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
         self.tx.balance(Value::zero())
     }
 
-    /// Create transaction finalizer without performing any
-    /// checks or output balancing.
-    pub fn unchecked_finalize(self) -> tx::Transaction<Address, Extra> {
+    /// Seal the transaction without performing any checks or output balancing.
+    pub fn unchecked_seal(self) -> tx::Transaction<Address, Extra> {
         self.tx
     }
 
-    /// We finalize the transaction by passing fee rule and return
-    /// policy. Then after all calculations were made we can get
-    /// the information back to us.
+    /// Seal the transaction checking that the transaction fits the fee algorithm
+    pub fn seal<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+        self,
+        fee_algorithm: F,
+    ) -> Result<tx::Transaction<Address, Extra>, Error> {
+        match self.get_balance(fee_algorithm) {
+            Err(err) => Err(Error::MathErr(err)),
+            Ok(Balance::Negative(_)) => Err(Error::TxNotEnoughTotalInput),
+            Ok(Balance::Positive(_)) => Err(Error::TxTooMuchTotalInput),
+            Ok(Balance::Zero) => Ok(self.tx),
+        }
+    }
+
+    /// Seal the transaction by passing fee rule and the output policy
     ///
-    pub fn finalize<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    /// Along with the transaction, this return the balance unassigned to output policy
+    /// if any
+    pub fn seal_with_output_policy<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
         mut self,
         fee_algorithm: F,
         policy: OutputPolicy,
@@ -184,20 +214,9 @@ impl<Extra: Clone> TransactionBuilder<Address, Extra> {
     }
 }
 
-pub enum TransactionFinalizer {
-    Type1(
-        tx::Transaction<Address, tx::NoExtra>,
-        Vec<Option<tx::Witness>>,
-    ),
-    Type2(
-        tx::Transaction<Address, cert::Certificate>,
-        Vec<Option<tx::Witness>>,
-    ),
-}
-
-pub enum GeneratedTransaction {
-    Type1(tx::AuthenticatedTransaction<Address, tx::NoExtra>),
-    Type2(tx::AuthenticatedTransaction<Address, cert::Certificate>),
+pub struct TransactionFinalizer {
+    tx: tx::Transaction<Address, Option<Certificate>>,
+    witnesses: Vec<Option<tx::Witness>>,
 }
 
 custom_error! {pub BuildError
@@ -206,80 +225,124 @@ custom_error! {pub BuildError
     MissingWitnessAt { index: usize } = "Missing a witness for input at index {index}",
 }
 
-fn set_witness<Address, Extra>(
-    transaction: &tx::Transaction<Address, Extra>,
-    witnesses: &mut Vec<Option<tx::Witness>>,
-    index: usize,
-    witness: tx::Witness,
-) -> Result<(), BuildError> {
-    if index >= witnesses.len() {
-        return Err(BuildError::WitnessOutOfBound {
-            index,
-            max: witnesses.len(),
-        });
-    }
-
-    match (transaction.inputs[index].get_type(), &witness) {
-        (tx::InputType::Utxo, tx::Witness::OldUtxo(_, _)) => (),
-        (tx::InputType::Utxo, tx::Witness::Utxo(_)) => (),
-        (tx::InputType::Account, tx::Witness::Account(_)) => (),
-        (_, _) => return Err(BuildError::WitnessMismatch { index }),
-    };
-
-    witnesses[index] = Some(witness);
-    Ok(())
-}
-
-fn get_full_witnesses(witnesses: Vec<Option<tx::Witness>>) -> Result<Vec<tx::Witness>, BuildError> {
-    let mut v = Vec::new();
-    for (i, w) in witnesses.iter().enumerate() {
-        match w {
-            None => return Err(BuildError::MissingWitnessAt { index: i }),
-            Some(w) => v.push(w.clone()),
-        }
-    }
-    Ok(v)
-}
-
 impl TransactionFinalizer {
-    pub fn new_trans(transaction: tx::Transaction<Address, tx::NoExtra>) -> Self {
+    /// Create a new finalizer from a given transaction
+    pub fn new(transaction: tx::Transaction<Address, Option<Certificate>>) -> Self {
         let nb_inputs = transaction.inputs.len();
-        TransactionFinalizer::Type1(transaction, vec![None; nb_inputs])
+        TransactionFinalizer {
+            tx: transaction,
+            witnesses: vec![None; nb_inputs],
+        }
     }
 
-    pub fn new_cert(transaction: tx::Transaction<Address, cert::Certificate>) -> Self {
-        let nb_inputs = transaction.inputs.len();
-        TransactionFinalizer::Type2(transaction, vec![None; nb_inputs])
-    }
-
+    /// Set the witness for a given input
+    ///
+    /// If the witness is out of bound or doesn't match the type of input,
+    /// then it return an error
     pub fn set_witness(&mut self, index: usize, witness: tx::Witness) -> Result<(), BuildError> {
-        match self {
-            TransactionFinalizer::Type1(ref t, ref mut w) => set_witness(t, w, index, witness),
-            TransactionFinalizer::Type2(ref t, ref mut w) => set_witness(t, w, index, witness),
+        if index >= self.witnesses.len() {
+            return Err(BuildError::WitnessOutOfBound {
+                index,
+                max: self.witnesses.len(),
+            });
+        }
+
+        match (self.tx.inputs[index].get_type(), &witness) {
+            (tx::InputType::Utxo, tx::Witness::OldUtxo(_, _)) => (),
+            (tx::InputType::Utxo, tx::Witness::Utxo(_)) => (),
+            (tx::InputType::Account, tx::Witness::Account(_)) => (),
+            (tx::InputType::Account, tx::Witness::Multisig(_)) => (),
+            (_, _) => return Err(BuildError::WitnessMismatch { index }),
+        };
+
+        self.witnesses[index] = Some(witness);
+        Ok(())
+    }
+
+    /// Return the transaction sign data hash of the embedded transaction
+    pub fn get_tx_sign_data_hash(&self) -> tx::TransactionSignDataHash {
+        match &self.tx.extra {
+            None => self.tx.clone().replace_extra(tx::NoExtra).hash(),
+            Some(c) => match c {
+                Certificate::PoolRegistration(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::PoolManagement(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::StakeDelegation(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::OwnerStakeDelegation(c) => {
+                    self.tx.clone().replace_extra(c.clone()).hash()
+                }
+            },
         }
     }
 
-    pub fn get_txid(&self) -> tx::TransactionSignDataHash {
-        match self {
-            TransactionFinalizer::Type1(t, _) => t.hash(),
-            TransactionFinalizer::Type2(t, _) => t.hash(),
-        }
+    /// Check if the transaction is finalizable already.
+    pub fn is_finalizable(&self) -> bool {
+        self.witnesses
+            .iter()
+            .find(|x| x.is_none())
+            .map_or(true, |_| false)
     }
 
-    pub fn build(self) -> Result<GeneratedTransaction, BuildError> {
-        match self {
-            TransactionFinalizer::Type1(t, witnesses) => {
-                Ok(GeneratedTransaction::Type1(tx::AuthenticatedTransaction {
-                    transaction: t,
-                    witnesses: get_full_witnesses(witnesses)?,
-                }))
+    /// Try to finalize the transaction, which is only possible if all
+    /// witnesses have been filled (1 input, 1 witness).
+    ///
+    /// This doesn't guarantee that the cryptographic witnesses are valid
+    /// or that the transaction is valid on any chain.
+    pub fn finalize(
+        self,
+    ) -> Result<tx::AuthenticatedTransaction<Address, Option<Certificate>>, BuildError> {
+        let mut witnesses_flatten = Vec::new();
+        for (i, w) in self.witnesses.iter().enumerate() {
+            match w {
+                None => return Err(BuildError::MissingWitnessAt { index: i }),
+                Some(w) => witnesses_flatten.push(w.clone()),
             }
-            TransactionFinalizer::Type2(t, witnesses) => {
-                Ok(GeneratedTransaction::Type2(tx::AuthenticatedTransaction {
-                    transaction: t,
-                    witnesses: get_full_witnesses(witnesses)?,
-                }))
+        }
+        Ok(tx::AuthenticatedTransaction {
+            transaction: self.tx,
+            witnesses: witnesses_flatten,
+        })
+    }
+
+    pub fn to_fragment(self) -> Result<Fragment, BuildError> {
+        let tx = self.finalize()?;
+        match &tx.transaction.extra {
+            None => {
+                let atx = tx::AuthenticatedTransaction {
+                    transaction: tx.transaction.clone().replace_extra(tx::NoExtra),
+                    witnesses: tx.witnesses,
+                };
+                Ok(Fragment::Transaction(atx))
             }
+            Some(c) => match c {
+                Certificate::PoolRegistration(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::PoolRegistration(atx))
+                }
+                Certificate::PoolManagement(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::PoolManagement(atx))
+                }
+                Certificate::StakeDelegation(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::StakeDelegation(atx))
+                }
+                Certificate::OwnerStakeDelegation(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::OwnerStakeDelegation(atx))
+                }
+            },
         }
     }
 }
@@ -300,10 +363,10 @@ mod tests {
         outputs: ArbitraryOutputs,
         fee: LinearFee,
     ) -> TestResult {
-        let builder = build_builder(&inputs, &outputs);
+        let builder = builder_ios(&inputs, &outputs);
         let fee_value = fee.calculate(&builder.tx).unwrap();
 
-        let result = builder.finalize(fee, OutputPolicy::Forget);
+        let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
 
         let expected_balance_res = expected_balance(&inputs, &outputs, fee_value);
         match (expected_balance_res, result) {
@@ -320,16 +383,16 @@ mod tests {
         }
     }
 
-    fn build_builder(
+    fn builder_ios(
         inputs: &ArbitraryInputs,
         outputs: &ArbitraryOutputs,
-    ) -> TransactionBuilder<Address, NoExtra> {
-        let mut builder = TransactionBuilder::new();
-        for input in &inputs.0 {
-            builder.add_input(input)
+    ) -> TransactionBuilder<tx::NoExtra> {
+        let mut builder = TransactionBuilder::no_payload();
+        for i in inputs.0.iter() {
+            builder.add_input(&i)
         }
-        for (address, value) in outputs.0.iter().cloned() {
-            builder.add_output(address, value)
+        for (a, v) in outputs.0.iter() {
+            builder.add_output(a.clone(), *v)
         }
         builder
     }

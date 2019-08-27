@@ -2,15 +2,20 @@ mod vrfeval;
 
 use crate::{
     block::{BlockDate, Header, Proof},
+    certificate::PoolId,
     date::Epoch,
-    key::verify_signature,
+    key::{deserialize_public_key, verify_signature},
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
-    stake::{self, StakeDistribution, StakePoolId},
+    stake::{self, StakeDistribution},
     value::Value,
 };
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_crypto::Verification as SigningVerification;
-use chain_crypto::{Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12};
+use chain_crypto::{
+    digest::DigestOf, Blake2b256, Curve25519_2HashDH, PublicKey, SecretKey, SumEd25519_12,
+};
+use typed_bytes::ByteBuilder;
 pub(crate) use vrfeval::witness_to_nonce;
 pub use vrfeval::{ActiveSlotsCoeff, ActiveSlotsCoeffError, Nonce, Witness, WitnessOutput};
 use vrfeval::{PercentStake, VrfEvaluator};
@@ -22,7 +27,20 @@ pub struct GenesisPraosLeader {
     pub vrf_public_key: PublicKey<Curve25519_2HashDH>,
 }
 
-pub struct GenesisLeaderSelection {
+impl GenesisPraosLeader {
+    pub fn digest(&self) -> DigestOf<Blake2b256, Self> {
+        DigestOf::digest_byteslice(
+            &ByteBuilder::new()
+                .bytes(self.vrf_public_key.as_ref())
+                .bytes(self.kes_public_key.as_ref())
+                .finalize()
+                .as_byteslice(),
+        )
+    }
+}
+
+/// Genesis Praos leadership data for a specific epoch
+pub struct LeadershipData {
     epoch_nonce: Nonce,
     nodes: stake::PoolTable,
     distribution: StakeDistribution,
@@ -36,9 +54,9 @@ custom_error! {GenesisError
     TotalStakeIsZero = "Total stake is null",
 }
 
-impl GenesisLeaderSelection {
+impl LeadershipData {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
-        GenesisLeaderSelection {
+        LeadershipData {
             epoch_nonce: ledger.settings.consensus_nonce.clone(),
             nodes: ledger.delegation.stake_pools.clone(),
             distribution: ledger.get_stake_distribution(),
@@ -57,7 +75,7 @@ impl GenesisLeaderSelection {
 
     pub fn leader(
         &self,
-        pool_id: &StakePoolId,
+        pool_id: &PoolId,
         vrf_key: &SecretKey<Curve25519_2HashDH>,
         date: BlockDate,
     ) -> Result<Option<Witness>, Error> {
@@ -73,7 +91,7 @@ impl GenesisLeaderSelection {
 
         let stake_snapshot = &self.distribution;
 
-        match stake_snapshot.get_stake_for(&pool_id) {
+        match stake_snapshot.get_stake_for(pool_id) {
             None => Ok(None),
             Some(stake) => {
                 // Calculate the total stake.
@@ -138,13 +156,13 @@ impl GenesisLeaderSelection {
                             active_slots_coeff: self.active_slots_coeff,
                         }
                         .verify(
-                            &pool_info.initial_key.vrf_public_key,
+                            &pool_info.keys.vrf_public_key,
                             &genesis_praos_proof.vrf_proof,
                         );
 
                         let valid = verify_signature(
                             &genesis_praos_proof.kes_proof.0,
-                            &pool_info.initial_key.kes_public_key,
+                            &pool_info.keys.kes_public_key,
                             &block_header.common,
                         );
 
@@ -162,31 +180,47 @@ impl GenesisLeaderSelection {
     }
 }
 
+impl Readable for GenesisPraosLeader {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        let vrf_public_key = deserialize_public_key(buf)?;
+        let kes_public_key = deserialize_public_key(buf)?;
+        Ok(GenesisPraosLeader {
+            vrf_public_key,
+            kes_public_key,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::certificate::{PoolId, PoolRegistration};
     use crate::ledger::Ledger;
     use crate::milli::Milli;
     use crate::stake::PoolStakeDistribution;
-    use crate::stake::StakePoolId;
-    use crate::stake::StakePoolInfo;
     use crate::testing::ledger as ledger_mock;
     use crate::value::*;
 
     use chain_crypto::*;
+    use chain_time::DurationSeconds;
+    use lazy_static::lazy_static;
+    use quickcheck::{Arbitrary, Gen};
+    use rand_core;
     use std::collections::HashMap;
 
-    fn make_pool(ledger: &mut Ledger) -> (StakePoolId, SecretKey<Curve25519_2HashDH>) {
+    fn make_pool(ledger: &mut Ledger) -> (PoolId, SecretKey<Curve25519_2HashDH>) {
         let mut rng = rand_os::OsRng::new().unwrap();
 
         let pool_vrf_private_key = SecretKey::generate(&mut rng);
         let pool_kes: KeyPair<SumEd25519_12> = KeyPair::generate(&mut rng);
         let (_, pool_kes_public_key) = pool_kes.into_keys();
 
-        let pool_info = StakePoolInfo {
+        let pool_info = PoolRegistration {
             serial: 1234,
             owners: vec![],
-            initial_key: GenesisPraosLeader {
+            start_validity: DurationSeconds::from(0).into(),
+            management_threshold: 1,
+            keys: GenesisPraosLeader {
                 vrf_public_key: pool_vrf_private_key.to_public(),
                 kes_public_key: pool_kes_public_key,
             },
@@ -205,6 +239,27 @@ mod tests {
         active_slots_coeff: f32,
         pools_count: usize,
         value: Value,
+    }
+
+    impl Arbitrary for GenesisPraosLeader {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            use rand_core::SeedableRng;
+            lazy_static! {
+                static ref PK_KES: PublicKey<SumEd25519_12> = {
+                    let sk: SecretKey<SumEd25519_12> =
+                        SecretKey::generate(&mut rand_chacha::ChaChaRng::from_seed([0; 32]));
+                    sk.to_public()
+                };
+            }
+
+            let tcg = testing::TestCryptoGen::arbitrary(g);
+            let mut rng = tcg.get_rng(0);
+            let vrf_sk: SecretKey<Curve25519_2HashDH> = SecretKey::generate(&mut rng);
+            GenesisPraosLeader {
+                vrf_public_key: vrf_sk.to_public(),
+                kes_public_key: PK_KES.clone(),
+            }
+        }
     }
 
     impl LeaderElectionParameters {
@@ -239,7 +294,7 @@ mod tests {
         let (_genesis_hash, mut ledger) =
             ledger_mock::create_initial_fake_ledger(&vec![], config_params).unwrap();
 
-        let mut pools = HashMap::<StakePoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
+        let mut pools = HashMap::<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
 
         for _i in 0..leader_election_parameters.pools_count {
             let (pool_id, pool_vrf_private_key) = make_pool(&mut ledger);
@@ -253,7 +308,7 @@ mod tests {
             );
         }
 
-        let mut selection = GenesisLeaderSelection::new(0, &ledger);
+        let mut selection = LeadershipData::new(0, &ledger);
 
         for (pool_id, (_, _, value)) in &pools {
             selection.distribution.to_pools.insert(
@@ -332,7 +387,7 @@ mod tests {
         let (_genesis_hash, mut ledger) =
             ledger_mock::create_initial_fake_ledger(&vec![], config_params).unwrap();
 
-        let mut pools = HashMap::<StakePoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
+        let mut pools = HashMap::<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
 
         let (big_pool_id, big_pool_vrf_private_key) = make_pool(&mut ledger);
         pools.insert(
@@ -348,7 +403,7 @@ mod tests {
             );
         }
 
-        let mut selection = GenesisLeaderSelection::new(0, &ledger);
+        let mut selection = LeadershipData::new(0, &ledger);
 
         for (pool_id, (_, _, value)) in &pools {
             selection.distribution.to_pools.insert(

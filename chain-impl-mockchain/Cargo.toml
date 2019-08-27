@@ -18,6 +18,7 @@ chain-addr = { path = "../chain-addr" }
 chain-crypto = { path = "../chain-crypto" }
 chain-storage = { path = "../chain-storage" }
 chain-time = { path = "../chain-time" }
+typed-bytes = { path = "../typed-bytes" }
 rand_core = "0.3"
 rand_os = "0.1"
 imhamt = { path = "../imhamt" }

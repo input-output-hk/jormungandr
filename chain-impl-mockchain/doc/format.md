@@ -44,8 +44,8 @@ In BFT the header also contains (768 bits = 96 bytes):
 
 In Praos/Genesis the header also contains (616 bytes):
 
-* VRF PubKey: 32 bytes (curve25519-dalek)
-* VRF Proof: 96 bytes (curve25519-dalek DLEQs)
+* VRF PubKey: 32 bytes (ristretto25519)
+* VRF Proof: 96 bytes (ristretto25519 DLEQs)
 * KES Signature: 484 bytes (sumed25519-12)
 
 Additionally, we introduce the capability to address each header individually
@@ -76,57 +76,94 @@ Where HEADER is:
 	SIZE (2 bytes) | TYPE (1 byte)
 
 Additionally, we introduce the capability to refer to each fragment
-individually by fragment-id, using a cryptographic hash function : `H(TYPE |
-CONTENT)`. The hash doesn't include the size prefix in the header to simplify
+individually by FragmentId, using a cryptographic hash function :
+
+    FragmentId = H(TYPE | FRAGMENT-CONTENT)
+
+The hash doesn't include the size prefix in the header to simplify
 calculation of hash with on-the-fly (non serialized) structure.
 
 Types of content:
 
 * Transaction
 * Old Transaction
+* Owner stake Delegation
 * Certificate (Staking, Pool, Delegation, ...)
 * TBD Update
 * TBD Debug Stats : block debug information in chain.
 
 ### Common Structure
 
-#### Token Transfer
+Fragment contents unless otherwise specify are in the following generic format:
 
-Token Transfer is found in different type of messages, and allow to transfer tokens between an input to an output.
+    1. PAYLOAD
+    2. INPUTS/OUTPUTS
+    3. WITNESSNES(using 1+2 as message)
+    4. PAYLOAD-AUTHENTICATION(using 1+2+3 as message)
 
-There's 4 differents type of supported spending:
+PAYLOAD can be empty depending on the specific message. PAYLOAD-AUTHENTICATION allows
+binding the PAYLOAD with the Witness to prevent replayability when necessary, and
+its actual content is linked to the PAYLOAD and can be empty too.
 
-* Utxo -> Utxo
-* Utxo -> Account
-* Account -> Utxo
-* Account -> Account
+This construction is generic and allow payments to occurs for either transfer of value
+and/or fees payment, whilst preventing replays.
 
-We add support to this with the following TokenTransfer data structure:
+#### Inputs/Outputs
 
-* Transaction Header (2 bytes)
-* Input number (1 byte: 256 inputs maximum)
-* Output number (1 byte where 0xff is reserved: 255 outputs maximum)
+Inputs/Outputs is in the following format:
+
+    IOs = #INPUTS (1 byte) | #OUTPUTS (1 byte) | INPUT1 | .. | OUTPUT1 | ..
+
+* Input number : 1 byte: 256 inputs maximum
+* Output number : 1 byte where 0xff is reserved: 255 outputs maximum
 * Transaction Inputs (Input number of time * 41 bytes):
-  * Index (1 byte) : special value 0xff specify an account spending
-  * Account Public Key or Transaction Hash (32 bytes) (which is H(CONTENT))
+  * Index (1 byte) : special value 0xff specify a account spending (single or multi)
+  * Account Identifier or Utxo Identifier (also FragmentId) (32 bytes)
   * Value (8 bytes)
 * Transaction Outputs (Output number of time):
   * Address (bootstrap address 33 bytes, delegation address 65 bytes, account address 33 bytes)
   * Value (8 bytes)
 
-Value are encoded as fixed size 8 bytes, wasting a few bytes of space for small amounts, but making fee calculation simpler when based on bytes.
+#### Witnesses
 
-We add a way to refer to this content by hash using the following construction:
+To authenticate the PAYLOAD and the IOs, we add witnesses with a 1-to-1 mapping
+with inputs. The serialized sequence of inputs, is directly linked with the
+serialized sequence of witnesses.
 
-    H(HEADER | INPUTS | OUTPUTS)
+Fundamentally the witness is about signing a message and generating/revealing
+cryptographic material to approve unequivocally the content.
 
-Rationales:
+There's currently 3 differents types of witness supported:
+
+* Old utxo scheme: an extended public key, followed by a ED25519 signature
+* utxo scheme: a ED25519 signature
+* Account scheme: a counter and an ED25519 signature
+
+With the following serialization:
+
+* Type of witness: 1 byte
+* Then either:
+  * Type=1 Old utxo witness scheme (128 bytes):
+    * ED25519-Extended Public key (64 bytes)
+    * ED25519 Signature (64 bytes)
+  * Type=2 utxo witness scheme (64 bytes):
+    * ED25519 Signature (64 bytes)
+  * Type=3 Account witness (68 bytes):
+    * Account Counter (4 bytes : TODO-ENDIANNESS)
+    * ED25519 Signature (64 bytes)
+
+The message, w.r.t the cryptographic signature, is generally of the form:
+
+    TRANSACTION-SIGN-DATA-HASH = H(PAYLOAD | IOs)
+    Authenticated-Data = H(HEADER-GENESIS) | TRANSACTION-SIGN-DATA-HASH | WITNESS-SPECIFIC-DATA
+
+#### Rationale
 
 * 1 byte index utxos: 256 utxos = 10496 bytes just for inputs, already quite big and above a potential 8K soft limit for block content
 Utxo representation optimisations (e.g. fixed sized bitmap)
 
 * Values in inputs:
-Support for account spending: specifying exactly how much to spend from an account 
+Support for account spending: specifying exactly how much to spend from an account.
 Light client don't have to trust the utxo information from a source (which can lead to e.g. spending more in fees), since a client will now sign a specific known value.
 
 * Account Counter encoding:
@@ -135,39 +172,13 @@ Light client don't have to trust the utxo information from a source (which can l
 2^32 signatures on the same signature key is stretching the limits of scheme.
 Just the publickey+witnesses for the maximum amount of spending would take 400 gigabytes
 
-#### Witnesses
-
-To authenticate such a data structure, we add witnesses with a 1-to-1 mapping
-with inputs. The serialized sequence of inputs, is directly linked with the
-serialized sequence of witnesses.
-
-Fundamentally the witness is about signing a message and generating/revealing
-cryptographic material to approve the unequivocally the content.
-
-We have currently 3 differents types of witness that need support:
-
-* Old address scheme: an extended public key, followed by the signature
-* New address scheme: a signature
-* Account witness
-
-With the following serialization:
-
-* Type of witness: 1 byte
-* Then either:
-  * Type=1 Old address witness scheme (128 bytes):
-    * Extended Public key (64 bytes)
-    * Signature (64 bytes)
-  * Type=2 New address witness scheme (64 bytes):
-    * Signature (64 bytes)
-  * Type=3 Account witness (68 bytes):
-    * Account Counter (4 bytes)
-    * Signature (64 bytes)
-
-The message, w.r.t the cryptographic signature, is generally of the form:
-
-	Msg = HEADER | INPUTS | OUTPUTS | EXTRA
-
-Where HEADER, INPUTS and OUTPUTS comes from the Token Transfer type, and EXTRA is the optional data serialized between the token transfer type, and the witnesses.
+* Value are encoded as fixed size integer of 8 bytes (TODO: specify endianness),
+instead of using any sort of VLE (Variable Length Encoding). While it does
+waste space for small values, it does this at the net advantages of
+simplifying handling from low memory devices by not having need for a
+specific serialization format encoder/decoder and allowing value changing in
+binary format without having to reduce or grow the binary representation.
+This
 
 ## Type 0: Initial blockchain configuration
 
@@ -231,20 +242,26 @@ serialization of the corresponding parts of a transaction in bytes.
 
 ## Type 2: Transaction
 
-Transaction is the composition of the TokenTransfer structure followed directly by the witnesses. EXTRA needs to be empty. Effectively:
+Transaction is the composition of the TokenTransfer structure followed directly by the witnesses. PAYLOAD needs to be empty. Effectively:
 
-    TokenTransfer | Witnesses
+    TokenTransfer<PAYLOAD = ()> | Witnesses
 
 TODO:
 
 * Multisig
 * Fees
 
+## Type 2: OwnerStakeDelegation
+
+    TokenTransfer<PAYLOAD = OwnerStakeDelegation> | Witnesses
+
+    OwnerStakeDelegation = StakePoolId
+
 ## Type 3: Certificate
 
-Certificate is the composition of the TokenTransfer structure, followed by the certificate data, then the witnesses. Effectively:
+Certificate is the composition of the TokenTransfer structure where PAYLOAD is the certificate data, and then the witnesses. Effectively:
 
-    TokenTransfer | Certificate | Witnesses
+    TokenTransfer<PAYLOAD = CERTIFICATE> | Witnesses
 
 Known Certificate types:
 

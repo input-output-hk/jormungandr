@@ -19,7 +19,7 @@ use chain_crypto::{Ed25519Bip32, PublicKey, Signature, Verification};
 #[derive(Debug, Clone)]
 pub enum Witness {
     Utxo(SpendingSignature<WitnessUtxoData>),
-    Account(SpendingSignature<WitnessAccountData>),
+    Account(account::Witness),
     OldUtxo(
         PublicKey<Ed25519Bip32>,
         Signature<WitnessUtxoData, Ed25519Bip32>,
@@ -32,6 +32,7 @@ impl PartialEq for Witness {
         match (self, rhs) {
             (Witness::Utxo(s1), Witness::Utxo(s2)) => s1.as_ref() == s2.as_ref(),
             (Witness::Account(s1), Witness::Account(s2)) => s1.as_ref() == s2.as_ref(),
+            (Witness::Multisig(s1), Witness::Multisig(s2)) => s1 == s2,
             (Witness::OldUtxo(p1, s1), Witness::OldUtxo(p2, s2)) => {
                 s1.as_ref() == s2.as_ref() && p1 == p2
             }

@@ -20,6 +20,7 @@ ed25519-bip32 = "0.1"
 quickcheck = { version = "0.8", optional = true }
 cfg-if = "0.1"
 hex = "0.3.2"
+typed-bytes = { path = "../typed-bytes" }
 
 [dev-dependencies]
 quickcheck = "0.8"

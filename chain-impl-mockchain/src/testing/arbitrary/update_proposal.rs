@@ -63,7 +63,6 @@ impl Arbitrary for UpdateProposalData {
             arbitrary_utils::choose_random_map_subset(&leaders, gen);
         let leaders_ids: Vec<LeaderId> = leaders.keys().cloned().collect();
         let proposer_id = arbitrary_utils::choose_random_item(&leaders_ids, gen);
-        let proposer_key = leaders.get(&proposer_id).unwrap();
 
         //create proposal
         let mut update_proposal = UpdateProposal::new();
@@ -84,7 +83,6 @@ impl Arbitrary for UpdateProposalData {
         }
 
         //add proposer
-        let proposal_signature = update_proposal.make_certificate(proposer_key);
         let update_proposal_with_proposer = UpdateProposalWithProposer {
             proposal: update_proposal,
             proposer_id: proposer_id.clone(),
@@ -93,7 +91,6 @@ impl Arbitrary for UpdateProposalData {
         //sign proposal
         let signed_update_proposal = SignedUpdateProposal {
             proposal: update_proposal_with_proposer,
-            signature: proposal_signature,
         };
 
         //generate proposal header
@@ -102,16 +99,12 @@ impl Arbitrary for UpdateProposalData {
         // create signed votes
         let signed_votes: Vec<SignedUpdateVote> = voters
             .iter()
-            .map(|(id, key)| {
+            .map(|(id, _)| {
                 let update_vote = UpdateVote {
                     proposal_id: proposal_id.clone(),
                     voter_id: id.clone(),
                 };
-                let vote_signature = update_vote.make_certificate(&key.clone());
-                SignedUpdateVote {
-                    vote: update_vote,
-                    signature: vote_signature,
-                }
+                SignedUpdateVote { vote: update_vote }
             })
             .collect();
 

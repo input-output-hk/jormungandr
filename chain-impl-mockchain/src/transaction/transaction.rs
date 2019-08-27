@@ -63,85 +63,24 @@ pub enum Balance {
     Zero,
 }
 
-impl<Extra: Readable> Transaction<Address, Extra> {
-    fn read_body<'a>(
-        buf: &mut ReadBuf<'a>,
-        num_inputs: usize,
-        num_outputs: usize,
-    ) -> Result<Self, ReadError> {
-        let inputs = read_vec(buf, num_inputs)?;
-        let outputs = read_vec(buf, num_outputs)?;
-        let extra = Extra::read(buf)?;
-
-        Ok(Transaction {
-            inputs,
-            outputs,
-            extra,
-        })
-    }
-
-    pub fn read_with_header<'a>(reader: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let num_inputs = reader.get_u8()? as usize;
-        let num_outputs = reader.get_u8()? as usize;
-
-        if !(num_inputs < 255) {
-            return Err(ReadError::SizeTooBig(num_inputs, 255));
-        }
-        if !(num_outputs < 255) {
-            return Err(ReadError::SizeTooBig(num_outputs, 255));
-        }
-        Self::read_body(reader, num_inputs, num_outputs)
-    }
-}
-
 impl<Extra: property::Serialize> Transaction<Address, Extra> {
-    fn serialize_body<W: std::io::Write>(&self, writer: &mut W) -> Result<(), Extra::Error> {
-        use chain_core::packer::*;
-        use chain_core::property::Serialize;
-
-        let mut codec = Codec::new(writer);
-        for input in self.inputs.iter() {
-            input.serialize(&mut codec)?;
-        }
-        for output in self.outputs.iter() {
-            output.address.serialize(&mut codec)?;
-            output.value.serialize(&mut codec)?;
-        }
-        self.extra.serialize(&mut codec)?;
-        Ok(())
-    }
-
-    pub fn serialize_with_header<W: std::io::Write>(&self, writer: W) -> Result<(), Extra::Error> {
-        use chain_core::packer::*;
-
-        assert!(self.inputs.len() < 255);
-        assert!(self.outputs.len() < 255);
-
-        let mut codec = Codec::new(writer);
-
-        // store the number of inputs and outputs
-        codec.put_u8(self.inputs.len() as u8)?;
-        codec.put_u8(self.outputs.len() as u8)?;
-
-        self.serialize_body(&mut codec.into_inner())
-    }
-
     pub fn hash(&self) -> TransactionSignDataHash {
-        let mut bytes = Vec::new();
-        self.serialize_body(&mut bytes).unwrap();
+        use chain_core::property::Serialize;
+        let bytes = self.serialize_as_vec().unwrap(); // unwrap is safe when serializing to Vec
         DigestOf::digest(&TransactionSignData(bytes.into()))
     }
 }
 
 impl<Extra: property::Deserialize> Transaction<Address, Extra> {
-    fn deserialize_body<R: std::io::BufRead>(
-        reader: R,
-        num_inputs: usize,
-        num_outputs: usize,
-    ) -> Result<Self, Extra::Error> {
+    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Extra::Error> {
         use chain_core::packer::*;
         use chain_core::property::Deserialize as _;
         let mut codec = Codec::new(reader);
+
+        let extra = Extra::deserialize(&mut codec)?;
+
+        let num_inputs = codec.get_u8()? as usize;
+        let num_outputs = codec.get_u8()? as usize;
 
         let mut inputs = Vec::with_capacity(num_inputs);
         let mut outputs = Vec::with_capacity(num_outputs);
@@ -156,29 +95,11 @@ impl<Extra: property::Deserialize> Transaction<Address, Extra> {
             outputs.push(Output { address, value });
         }
 
-        let extra = Extra::deserialize(&mut codec)?;
-
         Ok(Transaction {
             inputs,
             outputs,
             extra,
         })
-    }
-
-    pub fn deserialize_with_header<R: std::io::BufRead>(reader: R) -> Result<Self, Extra::Error> {
-        use chain_core::packer::*;
-
-        let mut codec = Codec::new(reader);
-
-        let num_inputs = codec.get_u8()? as usize;
-        let num_outputs = codec.get_u8()? as usize;
-
-        if num_inputs < 255 && num_outputs < 255 {
-            Self::deserialize_body(codec.into_inner(), num_inputs, num_outputs)
-        } else {
-            // should return a nice error ...
-            panic!("deserialization with 256 inputs/outputs")
-        }
     }
 }
 
@@ -186,20 +107,47 @@ impl<Extra: property::Serialize> property::Serialize for Transaction<Address, Ex
     type Error = Extra::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Extra::Error> {
-        self.serialize_with_header(writer)
+        use chain_core::packer::*;
+
+        let mut codec = Codec::new(writer);
+        self.extra.serialize(&mut codec)?;
+
+        // store the number of inputs and outputs
+        codec.put_u8(self.inputs.len() as u8)?;
+        codec.put_u8(self.outputs.len() as u8)?;
+
+        for input in self.inputs.iter() {
+            input.serialize(&mut codec)?;
+        }
+        for output in self.outputs.iter() {
+            output.address.serialize(&mut codec)?;
+            output.value.serialize(&mut codec)?;
+        }
+        Ok(())
     }
 }
 
 impl<Extra: property::Deserialize> property::Deserialize for Transaction<Address, Extra> {
     type Error = Extra::Error;
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Extra::Error> {
-        Self::deserialize_with_header(reader)
+        Self::deserialize(reader)
     }
 }
 
 impl<Extra: Readable> Readable for Transaction<Address, Extra> {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        Self::read_with_header(buf)
+        let extra = Extra::read(buf)?;
+
+        let num_inputs = buf.get_u8()? as usize;
+        let num_outputs = buf.get_u8()? as usize;
+        let inputs = read_vec(buf, num_inputs)?;
+        let outputs = read_vec(buf, num_outputs)?;
+
+        Ok(Transaction {
+            inputs,
+            outputs,
+            extra,
+        })
     }
 }
 

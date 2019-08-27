@@ -374,10 +374,12 @@ pub mod testing {
         };
         let mut buf = ReadBuf::from(&vec);
         let decoded_t = match T::read(&mut buf) {
-            Err(error) => return TestResult::error(format!("deserialization: {:?}", error)),
+            Err(error) => {
+                return TestResult::error(format!("deserialization: {:?}\n{}", error, buf.debug()))
+            }
             Ok(v) => v,
         };
-        TestResult::from_bool(decoded_t == t)
+        TestResult::from_bool(buf.expect_end().is_ok() && decoded_t == t)
     }
 
 }

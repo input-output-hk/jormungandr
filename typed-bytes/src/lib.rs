@@ -1,3 +1,6 @@
+mod builder;
+
+pub use builder::ByteBuilder;
 use std::marker::PhantomData;
 
 /// A typed slice of bytes
