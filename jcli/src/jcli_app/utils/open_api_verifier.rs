@@ -1,9 +1,18 @@
-use jcli_app::utils::rest_api::RestApiRequestBody;
-use openapiv3::{OpenAPI, Operation, PathItem, ReferenceOr, RequestBody};
+use jcli_app::utils::{rest_api::RestApiRequestBody, CustomErrorFiller};
+use mime::Mime;
+use openapiv3::{
+    OpenAPI, Operation, PathItem, ReferenceOr, RequestBody, Schema, SchemaKind, StringFormat,
+    StringType, Type, VariantOrUnknownOrEmpty,
+};
 use reqwest::{Method, Request};
+use serde_json::Value;
 use std::env;
 use std::fs::File;
 use std::io;
+use valico::json_schema::{SchemaError, Scope, ValidationState};
+
+const BINARY_BODY_MIME: &'static Mime = &mime::APPLICATION_OCTET_STREAM;
+const JSON_BODY_MIME: &'static Mime = &mime::APPLICATION_JSON;
 
 pub struct OpenApiVerifier(VerifierMode);
 
@@ -29,13 +38,29 @@ custom_error! { pub VerifierError
 }
 
 custom_error! { pub PathError
-    PathNotFound = "path not found",
+    NotFound = "path not found",
     RefError { source: RefError } = "error while reading reference",
     MethodVerificationFailed { source: MethodError, method: String } = "failed to validate method '{method}'",
 }
 
 custom_error! { pub MethodError
-    MethodNotFound = "method not found",
+    NotFound = "method not found",
+    RequestBodyVerificationFailed { source: RequestBodyError } = "failed to validate request body",
+}
+
+custom_error! { pub RequestBodyError
+    RefError { source: RefError } = "error while reading reference",
+    UnexpectedBody = "request should not have body",
+    ExpectedBody = "request should have a body",
+    MediaTypeVerificationFailed { source: RequestMediaTypeError, mime: &'static Mime } = "failed to verify media type '{mime}'"
+}
+
+custom_error! { pub RequestMediaTypeError
+    NotFound = "media type not found",
+    SchemaRefError { source: RefError } = "error while reading schema reference",
+    SchemaMissing = "schema is missing",
+    SchemaReadOnly = "schema has read_only flag set",
+    SchemaBinaryInvalid = "schema does not match binary blob",
 }
 
 custom_error! { pub RefError
@@ -113,7 +138,7 @@ fn find_path_item<'a>(openapi: &'a OpenAPI, url: &str) -> Result<&'a PathItem, P
         .paths
         .iter()
         .find(|(path, _)| url_matches_path(url, &path))
-        .ok_or_else(|| PathError::PathNotFound)
+        .ok_or_else(|| PathError::NotFound)
         .and_then(|(_, item)| unpack_reference_or(item).map_err(Into::into))
 }
 
@@ -141,7 +166,8 @@ fn verify_method(
     body: &RestApiRequestBody,
 ) -> Result<(), MethodError> {
     let operation = find_operation(path, req)?;
-    Ok(()) //TODO
+    verify_request_body(&operation.request_body, body)?;
+    Ok(())
 }
 
 fn find_operation<'a>(path: &'a PathItem, req: &Request) -> Result<&'a Operation, MethodError> {
@@ -158,7 +184,92 @@ fn find_operation<'a>(path: &'a PathItem, req: &Request) -> Result<&'a Operation
         _ => &None,
     }
     .as_ref()
-    .ok_or_else(|| MethodError::MethodNotFound)
+    .ok_or_else(|| MethodError::NotFound)
+}
+
+fn verify_request_body(
+    body_def_opt: &Option<ReferenceOr<RequestBody>>,
+    body: &RestApiRequestBody,
+) -> Result<(), RequestBodyError> {
+    match unpack_reference_or_opt(body_def_opt)? {
+        Some(body_def) => match body {
+            RestApiRequestBody::None => verify_none_body(body_def),
+            RestApiRequestBody::Binary(_) => verify_binary_body(body_def),
+            RestApiRequestBody::Json(ref json) => verify_json_body(body_def, json),
+        },
+        None => verify_body_is_none(body),
+    }
+}
+
+fn verify_none_body(body_def: &RequestBody) -> Result<(), RequestBodyError> {
+    match body_def.required {
+        true => Err(RequestBodyError::ExpectedBody),
+        false => Ok(()),
+    }
+}
+
+fn verify_binary_body(body_def: &RequestBody) -> Result<(), RequestBodyError> {
+    verify_binary_media_type(body_def).map_err(|source| {
+        RequestBodyError::MediaTypeVerificationFailed {
+            source,
+            mime: BINARY_BODY_MIME,
+        }
+    })
+}
+
+fn verify_binary_media_type(body_def: &RequestBody) -> Result<(), RequestMediaTypeError> {
+    let schema = unpack_request_media_type_schema(body_def, BINARY_BODY_MIME)?;
+    let valid_schema_kind = SchemaKind::Type(Type::String(StringType {
+        format: VariantOrUnknownOrEmpty::Item(StringFormat::Binary),
+        pattern: None,
+        enumeration: vec![],
+    }));
+    if schema.schema_kind != valid_schema_kind {
+        return Err(RequestMediaTypeError::SchemaBinaryInvalid);
+    }
+    Ok(())
+}
+
+fn verify_json_body(body_def: &RequestBody, json: &str) -> Result<(), RequestBodyError> {
+    verify_json_media_type(body_def, json).map_err(|source| {
+        RequestBodyError::MediaTypeVerificationFailed {
+            source,
+            mime: JSON_BODY_MIME,
+        }
+    })
+}
+
+fn verify_json_media_type(body_def: &RequestBody, json: &str) -> Result<(), RequestMediaTypeError> {
+    let media_type = find_media_type(body_def, JSON_BODY_MIME)?;
+    Ok(()) // TODO
+
+fn unpack_request_media_type_schema<'a>(
+    body_def: &'a RequestBody,
+    mime: &Mime,
+) -> Result<&'a Schema, RequestMediaTypeError> {
+    let media_type = body_def
+        .content
+        .get(mime.as_ref())
+        .ok_or_else(|| RequestMediaTypeError::NotFound)?;
+    let schema = unpack_reference_or_opt(&media_type.schema)?
+        .ok_or_else(|| RequestMediaTypeError::SchemaMissing)?;
+    if schema.schema_data.read_only {
+        return Err(RequestMediaTypeError::SchemaReadOnly);
+    }
+    Ok(schema)
+}
+
+fn verify_body_is_none(body: &RestApiRequestBody) -> Result<(), RequestBodyError> {
+    match body {
+        RestApiRequestBody::None => Ok(()),
+        _ => Err(RequestBodyError::UnexpectedBody),
+    }
+}
+
+fn unpack_reference_or_opt<T>(
+    reference_or: &Option<ReferenceOr<T>>,
+) -> Result<Option<&T>, RefError> {
+    reference_or.as_ref().map(unpack_reference_or).transpose()
 }
 
 fn unpack_reference_or<T>(reference_or: &ReferenceOr<T>) -> Result<&T, RefError> {
