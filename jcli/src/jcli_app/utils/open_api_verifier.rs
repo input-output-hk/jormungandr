@@ -1,5 +1,5 @@
-use openapiv3::{OpenAPI, PathItem, ReferenceOr};
-use reqwest::Request;
+use openapiv3::{OpenAPI, Operation, PathItem, ReferenceOr};
+use reqwest::{Method, Request};
 use std::env;
 use std::fs::File;
 use std::io;
@@ -17,15 +17,16 @@ struct Verifier {
 }
 
 custom_error! { pub Error
-    VerificationFailed { source: ImplError, path: String }
+    VerificationFailed { source: VerifierError, path: String }
         = "verification with OpenAPI definition in '{path}' failed",
 }
 
-custom_error! { pub ImplError
+custom_error! { pub VerifierError
     OpenApiFileOpenFailed { source: io::Error } = "could not open OpenApi file",
     OpenApiFileMalformed { source: serde_yaml::Error } = "OpenApi file malformed",
     OpenApiFilePathRef { path: String } = "path '{path}' in OpenApi file is a reference",
     PathNotFound { url: String } = "no path found for URL '{url}'",
+    MethodNotFound { url: String, method: String } = "method '{method}' not found for URL '{url}'",
 }
 
 impl OpenApiVerifier {
@@ -62,33 +63,56 @@ impl Verifier {
         self.path.clone()
     }
 
-    pub fn load(path: String) -> Result<Self, ImplError> {
+    pub fn load(path: String) -> Result<Self, VerifierError> {
         let file = File::open(&path)?;
         let openapi = serde_yaml::from_reader(file)?;
         Ok(Verifier { openapi, path })
     }
 
-    pub fn verify_request(&self, req: &Request) -> Result<(), ImplError> {
+    pub fn verify_request(&self, req: &Request) -> Result<(), VerifierError> {
         let url = req.url().path();
-        let _item = self.find_path_item(url)?;
+        let _operation = find_operation(&self.openapi, req.method(), url)?;
         Ok(())
     }
+}
 
-    fn find_path_item(&self, url: &str) -> Result<&PathItem, ImplError> {
-        let (path, item) = self
-            .openapi
-            .paths
-            .iter()
-            .find(|(path, _)| url_matches_path(url, &path))
-            .ok_or_else(|| ImplError::PathNotFound {
-                url: url.to_string(),
-            })?;
-        match item {
-            ReferenceOr::Reference { .. } => {
-                Err(ImplError::OpenApiFilePathRef { path: path.clone() })
-            }
-            ReferenceOr::Item(ref path_item) => Ok(path_item),
+fn find_operation<'a>(
+    openapi: &'a OpenAPI,
+    method: &Method,
+    url: &str,
+) -> Result<&'a Operation, VerifierError> {
+    let item = find_path_item(openapi, url)?;
+    match *method {
+        Method::GET => &item.get,
+        Method::PUT => &item.put,
+        Method::POST => &item.post,
+        Method::DELETE => &item.delete,
+        Method::OPTIONS => &item.options,
+        Method::HEAD => &item.head,
+        Method::PATCH => &item.patch,
+        Method::TRACE => &item.trace,
+        _ => &None,
+    }
+    .as_ref()
+    .ok_or_else(|| VerifierError::MethodNotFound {
+        method: method.to_string(),
+        url: url.to_string(),
+    })
+}
+
+fn find_path_item<'a>(openapi: &'a OpenAPI, url: &str) -> Result<&'a PathItem, VerifierError> {
+    let (path, item) = openapi
+        .paths
+        .iter()
+        .find(|(path, _)| url_matches_path(url, &path))
+        .ok_or_else(|| VerifierError::PathNotFound {
+            url: url.to_string(),
+        })?;
+    match item {
+        ReferenceOr::Reference { .. } => {
+            Err(VerifierError::OpenApiFilePathRef { path: path.clone() })
         }
+        ReferenceOr::Item(ref path_item) => Ok(path_item),
     }
 }
 

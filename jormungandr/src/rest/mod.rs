@@ -84,7 +84,7 @@ where
 {
     let mut cors = Cors::for_app(app);
     if let Some(max_age_secs) = cors_cfg.max_age_secs {
-        cors.max_age(max_age_secs);
+        cors.max_age(max_age_secs as usize);
     }
     for origin in &cors_cfg.allowed_origins {
         cors.allowed_origin(origin);
