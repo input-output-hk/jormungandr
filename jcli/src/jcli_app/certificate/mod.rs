@@ -31,6 +31,8 @@ pub enum Certificate {
     Sign(sign::Sign),
     /// get the stake pool id from the given stake pool registration certificate
     GetStakePoolId(get_stake_pool_id::GetStakePoolId),
+    /// Print certificate
+    Print(PrintArgs),
 }
 
 #[derive(StructOpt)]
@@ -40,6 +42,14 @@ pub enum NewArgs {
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
     /// build a stake delegation certificate
     StakeDelegation(new_stake_delegation::StakeDelegation),
+}
+
+#[derive(StructOpt)]
+#[structopt(rename_all = "kebab-case")]
+pub struct PrintArgs {
+    /// get the certificate to sign from the given file. If no file
+    /// provided, it will be read from the standard input
+    pub input: Option<PathBuf>,
 }
 
 #[derive(StructOpt)]
@@ -62,11 +72,20 @@ impl NewArgs {
     }
 }
 
+impl PrintArgs {
+    pub fn exec(self) -> Result<(), Error> {
+        let cert = read_cert(self.input)?;
+        println!("{:?}", cert);
+        Ok(())
+    }
+}
+
 impl Certificate {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Certificate::New(args) => args.exec()?,
             Certificate::Sign(args) => args.exec()?,
+            Certificate::Print(args) => args.exec()?,
             Certificate::GetStakePoolId(args) => args.exec()?,
         }
 
