@@ -1,5 +1,5 @@
 use super::blockchain::{Blockchain, Ref};
-use crate::blockcfg::{ChainLength, FragmentId};
+use crate::blockcfg::{Block, ChainLength, FragmentId};
 use crate::blockchain::Multiverse;
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
@@ -31,6 +31,66 @@ impl fmt::Display for Error {
 impl error::Error for Error {}
 
 pub mod graphql;
+use std::sync::Arc;
+
+#[derive(Clone)]
+pub struct Explorer {
+    pub db: ExplorerDB,
+    pub schema: Arc<graphql::Schema>,
+    pub blockchain: Blockchain,
+}
+
+use self::graphql::Context;
+impl Explorer {
+    pub fn new(db: ExplorerDB, schema: graphql::Schema, blockchain: Blockchain) -> Explorer {
+        Explorer {
+            db,
+            schema: Arc::new(schema),
+            blockchain,
+        }
+    }
+
+    pub fn context(&self) -> Context {
+        Context {
+            db: self.db.clone(),
+            blockchain: self.blockchain.clone(),
+        }
+    }
+
+    pub fn handle_input(
+        &mut self,
+        info: &TokioServiceInfo,
+        input: Input<ExplorerMsg>,
+    ) -> impl Future<Item = (), Error = ()> {
+        let _logger = info.logger();
+        let bquery = match input {
+            Input::Shutdown => {
+                return future::ok(());
+            }
+            Input::Input(msg) => msg,
+        };
+
+        let mut explorer_db = self.db.clone();
+        let logger = info.logger().clone();
+        let blockchain = self.blockchain.clone();
+        match bquery {
+            ExplorerMsg::NewBlock(new_block_ref) => info.spawn(lazy(move || {
+                explorer_db
+                    .store_ref(new_block_ref.clone())
+                    .map_err(|_| unreachable!())
+                    .join(
+                        explorer_db
+                            .index_transactions(new_block_ref, blockchain)
+                            .map_err(move |err| {
+                                error!(logger, "Explorer error: {}", err);
+                            }),
+                    )
+                    .map(move |_| ())
+            })),
+        }
+        future::ok::<(), ()>(())
+    }
+}
 
 #[derive(Clone)]
 pub struct ExplorerDB {
