@@ -11,14 +11,16 @@ use tokio::prelude::Future;
 use crate::explorer::ExplorerDB;
 
 #[derive(juniper::GraphQLObject)]
-#[graphql(description = "change this")]
+/// A Block
 struct Block {
+    /// The Block unique identifier
     hash: String,
+    /// Date the Block was included in the blockchain
     date: BlockDate,
 }
 
 #[derive(juniper::GraphQLObject)]
-#[graphql(description = "block date")]
+/// Block's date, composed of an Epoch and a Slot
 struct BlockDate {
     epoch: Epoch,
     slot: Slot,
@@ -45,8 +47,10 @@ pub struct Query;
     Context = Context,
 )]
 impl Query {
+    /// Query a Block from a Transaction hash
     fn block(transaction: String, context: &Context) -> FieldResult<Option<Block>> {
-        // Warning: This call blocks the current thread
+        // This call blocks the current thread (the call to wait), but it won't block the node's
+        // thread, as queries are only executed in an exclusive runtime
         let id = FragmentId::from_str(&transaction)?;
         let block = context
             .db
