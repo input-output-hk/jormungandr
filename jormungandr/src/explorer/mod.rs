@@ -1,3 +1,5 @@
+pub mod graphql;
+
 use super::blockchain::{Blockchain, Ref};
 use crate::blockcfg::{Block, ChainLength, FragmentId};
 use crate::blockchain::Multiverse;
@@ -29,8 +31,6 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
-
-pub mod graphql;
 use std::sync::Arc;
 
 #[derive(Clone)]
