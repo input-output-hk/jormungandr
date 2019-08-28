@@ -12,6 +12,7 @@ use std::collections::{HashMap, VecDeque};
 use std::convert::Infallible;
 use std::time::{Duration, Instant};
 
+#[derive(Clone)]
 pub struct CandidateRepo {
     block_cache: BlockCache<Candidate>,
     branches: CandidateBranches,
@@ -279,6 +280,36 @@ impl CandidateRepo {
                         )
                     }
                 }
+            })
+    }
+
+    /// Puts a block into the cache for later application.
+    ///
+    /// The block's header must have been earlier registered in a header chain
+    /// passed to the `advance_branch` method. If the block is already
+    /// in the cache, the block value is not updated and the returned future
+    /// resolves successfully.
+    pub fn cache_block(&self, block: Block) -> impl Future<Item = (), Error = Error> {
+        let header = block.header();
+        let block_id = header.hash();
+        let block_cache = self.block_cache.clone();
+        block_cache
+            .get(block_id)
+            .map_err(|_: Infallible| unreachable!())
+            .and_then(move |maybe_candidate| match maybe_candidate {
+                Some(Candidate::Header(header)) => {
+                    debug_assert!(header.hash() == block_id);
+                    Either::A(
+                        block_cache
+                            .insert(block_id, Candidate::Block(block))
+                            .map_err(|_: Infallible| unreachable!()),
+                    )
+                }
+                Some(Candidate::Block(block)) => {
+                    debug_assert!(block.header().hash() == block_id);
+                    Either::B(future::ok(()))
+                }
+                None => Either::B(future::err(ErrorKind::MissingParentBlock(header).into())),
             })
     }
 

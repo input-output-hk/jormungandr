@@ -82,7 +82,7 @@ error_chain! {
             description("Block0 is not yet in the storage")
         }
 
-        MissingParentBlockFromStorage(header: Header) {
+        MissingParentBlock(header: Header) {
             description("missing a parent block from the storage"),
             display("Missing a block from the storage. The process was recovering the blockchain and the block parent block '{}' was not already in the cache", header.block_parent_hash()),
         }
@@ -704,7 +704,7 @@ impl Blockchain {
                                                 unreachable!("block already present, this should not happen. {:#?}", header)
                                             },
                                             PreCheckedHeader::MissingParent { header } =>
-                                                future::Either::B(future::err(ErrorKind::MissingParentBlockFromStorage(header).into())),
+                                                future::Either::B(future::err(ErrorKind::MissingParentBlock(header).into())),
                                         }
                                     })
                                     .and_then(move |post_checked_header: PostCheckedHeader| {

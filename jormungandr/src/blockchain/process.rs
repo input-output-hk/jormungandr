@@ -76,7 +76,12 @@ pub fn handle_input(
             future.wait().unwrap();
         }
         BlockMsg::NetworkBlock(block, reply) => {
-            let future = process_network_block(blockchain.clone(), block, info.logger().clone());
+            let future = process_network_block(
+                blockchain.clone(),
+                candidate_repo.clone(),
+                block,
+                info.logger().clone(),
+            );
             match future.wait() {
                 Err(e) => {
                     reply.reply_error(network_block_error_into_reply(e));
@@ -175,9 +180,7 @@ pub fn process_leadership_block(
                     logger1,
                     "block from leader event does not have parent block in storage"
                 );
-                Either::B(future::err(
-                    ErrorKind::MissingParentBlockFromStorage(header).into(),
-                ))
+                Either::B(future::err(ErrorKind::MissingParentBlock(header).into()))
             }
         })
         .and_then(move |post_checked| end_blockchain.apply_and_store_block(post_checked, block))
@@ -236,9 +239,12 @@ pub fn process_block_announcement(
 
 pub fn process_network_block(
     mut blockchain: Blockchain,
+    candidate_repo: CandidateRepo,
     block: Block,
     logger: Logger,
 ) -> impl Future<Item = Option<Ref>, Error = Error> {
+    use futures::future::Either::{A, B};
+
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     blockchain
@@ -246,25 +252,29 @@ pub fn process_network_block(
         .and_then(move |pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { .. } => {
                 debug!(logger, "block is already present");
-                Either::A(future::ok(None))
+                A(A(future::ok(None)))
             }
-            PreCheckedHeader::MissingParent { header, .. } => {
-                debug!(logger, "block is missing a locally stored parent");
-                Either::A(future::err(
-                    ErrorKind::BlockHeaderMissingParent(header.block_parent_hash().clone()).into(),
-                ))
+            PreCheckedHeader::MissingParent { .. } => {
+                debug!(
+                    logger,
+                    "block is missing a locally stored parent, putting to cache"
+                );
+                A(B(candidate_repo.cache_block(block).map(|()| None)))
             }
             PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
                 let post_check_and_apply = blockchain
                     .post_check_header(header, parent_ref)
                     .and_then(move |post_checked| {
                         end_blockchain.apply_and_store_block(post_checked, block)
+                        // TODO: look up a branch starting with this block
+                        // in the candidate repo and apply all cached blocks
+                        // that follow up.
                     })
                     .map(move |block_ref| {
                         debug!(logger, "block successfully applied");
                         Some(block_ref)
                     });
-                Either::B(post_check_and_apply)
+                B(post_check_and_apply)
             }
         })
 }
@@ -276,7 +286,7 @@ fn network_block_error_into_reply(err: Error) -> intercom::Error {
         Storage(e) => intercom::Error::failed(e),
         Ledger(e) => intercom::Error::failed_precondition(e),
         Block0(e) => intercom::Error::failed(e),
-        MissingParentBlockFromStorage(_) => intercom::Error::failed_precondition(err.to_string()),
+        MissingParentBlock(_) => intercom::Error::failed_precondition(err.to_string()),
         BlockHeaderMissingParent(_) => intercom::Error::invalid_argument(err.to_string()),
         BlockHeaderVerificationFailed(_) => intercom::Error::invalid_argument(err.to_string()),
         _ => intercom::Error::failed(err.to_string()),
@@ -291,7 +301,7 @@ fn chain_header_error_into_reply(err: Error) -> intercom::Error {
         Storage(e) => intercom::Error::failed(e),
         Ledger(e) => intercom::Error::failed_precondition(e),
         Block0(e) => intercom::Error::failed(e),
-        MissingParentBlockFromStorage(_) => intercom::Error::failed_precondition(err.to_string()),
+        MissingParentBlock(_) => intercom::Error::failed_precondition(err.to_string()),
         BlockHeaderVerificationFailed(_) => intercom::Error::invalid_argument(err.to_string()),
         _ => intercom::Error::failed(err.to_string()),
     }
