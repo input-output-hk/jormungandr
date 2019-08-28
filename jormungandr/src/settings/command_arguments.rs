@@ -64,7 +64,7 @@ pub struct StartArguments {
 
     /// Start the explorer task and enable associated query endpoints.
     #[structopt(long = "enable-explorer")]
-    pub explorer_enabled: Option<bool>,
+    pub explorer_enabled: bool,
 }
 
 #[derive(StructOpt, Debug)]

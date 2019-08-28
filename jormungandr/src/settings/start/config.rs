@@ -27,7 +27,7 @@ pub struct Config {
     pub rest: Option<Rest>,
     pub p2p: P2pConfig,
 
-    pub explorer: Option<bool>,
+    pub explorer: Option<Explorer>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -114,6 +114,11 @@ pub struct InterestLevel(pub poldercast::InterestLevel);
 pub struct TrustedPeer {
     pub address: Address,
     pub id: NodeId,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Explorer {
+    pub enabled: bool,
 }
 
 impl Default for Mempool {
