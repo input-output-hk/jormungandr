@@ -8,8 +8,8 @@ use crate::certificate::PoolId;
 use crate::value::*;
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
+use std::fmt::{self, Debug};
 use std::hash::Hash;
-
 pub mod account_state;
 
 pub use account_state::*;
@@ -149,6 +149,19 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
     }
 }
 
+impl<ID: Clone + Eq + Hash + Debug, Extra: Clone + Debug> Debug for Ledger<ID, Extra> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?}",
+            self.0
+                .iter()
+                .map(|(id, account)| (id.clone(), account.clone()))
+                .collect::<Vec<(ID, AccountState<Extra>)>>()
+        )
+    }
+}
+
 impl<ID: Clone + Eq + Hash, Extra: Clone> std::iter::FromIterator<(ID, AccountState<Extra>)>
     for Ledger<ID, Extra>
 {
@@ -160,15 +173,18 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> std::iter::FromIterator<(ID, AccountSt
 #[cfg(test)]
 pub mod tests {
 
-    use crate::account::Identifier;
+    use crate::{
+        account::{Identifier, Ledger},
+        accounting::account::account_state::{AccountState, SpendingCounter},
+        stake::{StakePoolId, StakePoolInfo},
+        testing::{arbitrary::utils as arbitrary_utils, arbitrary::AverageValue},
+        value::Value,
+    };
 
-    use quickcheck::TestResult;
+    use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
-
-    use super::AccountState;
-    use crate::account::Ledger;
-    use crate::value::Value;
-
+    use std::collections::HashSet;
+    use std::iter;
     #[quickcheck]
     pub fn ledger_total_value_is_correct_after_remove_value(
         id: Identifier,
@@ -230,6 +246,248 @@ pub mod tests {
         match ledger.exists(&id) {
             true => TestResult::error(format!("Account ({:?}) exists , while it should not", &id)),
             false => TestResult::passed(),
+        }
+    }
+    impl Arbitrary for Ledger {
+        fn arbitrary<G: Gen>(gen: &mut G) -> Self {
+            let account_size = std::cmp::max(usize::arbitrary(gen), 1);
+            let stake_pool_size =
+                std::cmp::min(account_size, usize::arbitrary(gen) % account_size + 1);
+            let arbitrary_accounts_ids = iter::from_fn(|| Some(Identifier::arbitrary(gen)))
+                .take(account_size)
+                .collect::<HashSet<Identifier>>();
+
+            let arbitrary_stake_pools = iter::from_fn(|| Some(StakePoolInfo::arbitrary(gen)))
+                .take(stake_pool_size)
+                .collect::<Vec<StakePoolInfo>>();
+
+            let mut ledger = Ledger::new();
+
+            // Add all arbitrary accounts
+            for account_id in arbitrary_accounts_ids.iter().cloned() {
+                ledger = ledger
+                    .add_account(&account_id, AverageValue::arbitrary(gen).into(), ())
+                    .unwrap();
+            }
+
+            // Choose random subset of arbitraty accounts and delegate stake to random stake pools
+            for account_id in
+                arbitrary_utils::choose_random_set_subset(&arbitrary_accounts_ids, gen)
+            {
+                let random_stake_pool =
+                    arbitrary_utils::choose_random_item(&arbitrary_stake_pools, gen);
+                ledger = ledger
+                    .set_delegation(&account_id, Some(random_stake_pool.to_id()))
+                    .unwrap();
+            }
+            ledger
+        }
+    }
+
+    #[quickcheck]
+    pub fn account_ledger_test(
+        mut ledger: Ledger,
+        account_id: Identifier,
+        value: Value,
+        stake_pool_id: StakePoolId,
+    ) -> TestResult {
+        if value == Value::zero() || ledger.exists(&account_id) {
+            return TestResult::discard();
+        }
+
+        let initial_total_value = ledger.get_total_value().unwrap();
+
+        // add new account
+        ledger = match ledger.add_account(&account_id, value, ()) {
+            Ok(ledger) => ledger,
+            Err(err) => {
+                return TestResult::error(format!(
+                    "Add account with id {} should be successful: {:?}",
+                    account_id, err
+                ))
+            }
+        };
+
+        // add account again should throw an error
+        if ledger.add_account(&account_id, value, ()).is_ok() {
+            return TestResult::error(format!(
+                "Account with id {} again should should",
+                account_id
+            ));
+        }
+
+        // verify account exists
+        if !ledger.exists(&account_id) {
+            return TestResult::error(format!("Account with id {} should exist", account_id));
+        }
+
+        // verify account is listed amongst other
+        if !ledger.iter().any(|(x, _)| *x == account_id) {
+            return TestResult::error(format!(
+                "Account with id {} should be lister amongst other",
+                account_id
+            ));
+        }
+
+        // verify total value was increased
+        let test_result = test_total_value(
+            (initial_total_value + value).unwrap(),
+            ledger.get_total_value().unwrap(),
+        );
+        if test_result.is_error() {
+            return test_result;
+        }
+
+        // set delegation to stake pool
+        ledger = match ledger.set_delegation(&account_id, Some(stake_pool_id.clone())) {
+            Ok(ledger) => ledger,
+            Err(err) => {
+                return TestResult::error(format!(
+                    "Error for id {} should be successful: {:?}",
+                    account_id, err
+                ))
+            }
+        };
+
+        // verify total value is still the same
+        let test_result = test_total_value(
+            (initial_total_value + value).unwrap(),
+            ledger.get_total_value().unwrap(),
+        );
+        if test_result.is_error() {
+            return test_result;
+        }
+
+        // add value to account
+        ledger = match ledger.add_value(&account_id, value.clone()) {
+            Ok(ledger) => ledger,
+            Err(err) => {
+                return TestResult::error(format!(
+                    "Error for id {} should be successful: {:?}",
+                    account_id, err
+                ))
+            }
+        };
+
+        // verify total value was increased
+        let test_result = test_total_value(
+            (initial_total_value + (value + value).unwrap()).unwrap(),
+            ledger.get_total_value().unwrap(),
+        );
+        if test_result.is_error() {
+            return test_result;
+        }
+
+        //verify account state
+        match ledger.get_state(&account_id) {
+            Ok(account_state) => {
+                let expected_account_state = AccountState {
+                    counter: SpendingCounter::zero(),
+                    delegation: Some(stake_pool_id),
+                    value: Value(value.0 * 2),
+                    extra: (),
+                };
+
+                match *account_state == expected_account_state {
+                    true => (),
+                    false => {
+                        return TestResult::error(format!(
+                            "Account state is incorrect expected {:?} but got {:?}",
+                            expected_account_state, account_state
+                        ))
+                    }
+                }
+            }
+            Err(err) => {
+                return TestResult::error(format!(
+                    "Get state for id {} should be successful: {:?}",
+                    account_id, err
+                ))
+            }
+        }
+
+        // remove value from account
+        ledger = match ledger.remove_value(&account_id, value.clone()) {
+            Ok((ledger, _spending_counter)) => ledger,
+            Err(err) => {
+                return TestResult::error(format!(
+                    "Error for id {} should be successful: {:?}",
+                    account_id, err
+                ))
+            }
+        };
+
+        // verify total value was decreased
+        let test_result = test_total_value(
+            (initial_total_value + value).unwrap(),
+            ledger.get_total_value().unwrap(),
+        );
+        if test_result.is_error() {
+            return test_result;
+        }
+
+        // verify remove account fails beause account still got some founds
+        if ledger.remove_account(&account_id).is_ok() {
+            return TestResult::error(format!(
+                "Remove account should be unsuccesfull... account for id {} still got funds",
+                account_id
+            ));
+        }
+
+        // removes all funds from account
+        ledger = match ledger.remove_value(&account_id, value.clone()) {
+            Ok((ledger, _spending_counter)) => ledger,
+            Err(err) => {
+                return TestResult::error(format!(
+                    "Error for id {} should be successful: {:?}",
+                    account_id, err
+                ))
+            }
+        };
+
+        // removes account
+        ledger = match ledger.remove_account(&account_id) {
+            Ok(ledger) => ledger,
+            Err(err) => {
+                return TestResult::error(format!(
+                    "Error for id {} should be successful: {:?}",
+                    account_id, err
+                ))
+            }
+        };
+
+        // verify accounts does not exists
+        if ledger.exists(&account_id) {
+            return TestResult::error(format!("Account with id {} should not exist", account_id));
+        }
+
+        // verify account is not listed amongst other accounts
+        if ledger.iter().any(|(x, _)| *x == account_id) {
+            return TestResult::error(format!(
+                "Account with id {} should not be listed amongst accounts",
+                account_id
+            ));
+        }
+
+        // verify total funds is equal to initial total_value
+        let test_result = test_total_value(initial_total_value, ledger.get_total_value().unwrap());
+        if test_result.is_error() {
+            return test_result;
+        }
+
+        match ledger.get_state(&account_id) {
+            Ok(_) => TestResult::error("Account state is should be none"),
+            Err(_) => TestResult::passed(),
+        }
+    }
+
+    fn test_total_value(expected: Value, actual: Value) -> TestResult {
+        match actual == expected {
+            true => TestResult::passed(),
+            false => TestResult::error(format!(
+                "Wrong total value expected {} but got {}",
+                expected, actual
+            )),
         }
     }
 }
