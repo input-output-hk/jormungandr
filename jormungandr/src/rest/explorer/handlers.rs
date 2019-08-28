@@ -12,7 +12,7 @@ macro_rules! ActixFuture {
 }
 
 pub fn graphiql(_context: State<Context>) -> impl Responder {
-    let html = juniper::http::graphiql::graphiql_source("http://localhost:8443/explorer/graphql");
+    let html = juniper::http::graphiql::graphiql_source("/explorer/graphql");
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(html)
