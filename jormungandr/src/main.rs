@@ -34,6 +34,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use]
 extern crate slog;
+extern crate juniper;
 extern crate slog_async;
 #[cfg(feature = "gelf")]
 extern crate slog_gelf;

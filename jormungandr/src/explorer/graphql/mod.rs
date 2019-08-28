@@ -1,11 +1,10 @@
-extern crate juniper;
-pub use self::juniper::http::GraphQLRequest;
-use self::juniper::EmptyMutation;
-use self::juniper::FieldResult;
-use self::juniper::RootNode;
 use crate::blockcfg::{self, FragmentId};
 use crate::blockchain::Blockchain;
 use chain_core::property::Block as _;
+pub use juniper::http::GraphQLRequest;
+use juniper::EmptyMutation;
+use juniper::FieldResult;
+use juniper::RootNode;
 use std::str::FromStr;
 use tokio::prelude::Future;
 
@@ -66,7 +65,7 @@ pub struct Context {
     pub blockchain: Blockchain,
 }
 
-impl self::juniper::Context for Context {}
+impl juniper::Context for Context {}
 
 pub type Schema = RootNode<'static, Query, EmptyMutation<Context>>;
 
