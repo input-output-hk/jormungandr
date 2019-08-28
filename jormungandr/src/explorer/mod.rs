@@ -11,9 +11,9 @@ use chain_storage::error::Error as StorageError;
 use futures::lazy;
 use std::collections::HashMap;
 use std::convert::Infallible;
+use std::sync::Arc;
 use tokio::prelude::*;
 use tokio::sync::lock::Lock;
-use std::sync::Arc;
 
 error_chain! {
     foreign_links {

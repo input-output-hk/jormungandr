@@ -40,16 +40,25 @@ pub struct Context {
 pub fn start_rest_server(config: &Rest, mut context: Context) -> Result<Server, ConfigError> {
     let app_context = context.clone();
     let cors_cfg = config.cors.clone();
+    let explorer_enabled = app_context.explorer.is_some();
     let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
-        vec![
-            build_app(app_context.clone(), "/api/v0", v0::resources(), &cors_cfg),
-            build_app(
+        let mut apps = vec![build_app(
+            app_context.clone(),
+            "/api/v0",
+            v0::resources(),
+            &cors_cfg,
+        )];
+
+        if explorer_enabled {
+            apps.push(build_app(
                 app_context.clone(),
                 "/explorer",
                 explorer::resources(),
                 &cors_cfg,
-            ),
-        ]
+            ))
+        }
+
+        apps
     })?;
     future::poll_fn(|| Ok(context.server.poll_lock()))
         .wait()
