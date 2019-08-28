@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use tokio::prelude::*;
 use tokio::sync::lock::Lock;
+use std::sync::Arc;
 
 error_chain! {
     foreign_links {
@@ -25,8 +26,6 @@ error_chain! {
         }
     }
 }
-
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Explorer {
