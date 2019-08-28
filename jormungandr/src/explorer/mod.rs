@@ -11,26 +11,21 @@ use chain_storage::error::Error as StorageError;
 use futures::lazy;
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::{error, fmt};
 use tokio::prelude::*;
 use tokio::sync::lock::Lock;
 
-#[derive(Debug)]
-pub enum Error {
-    BlockNotFound,
-    StorageError(StorageError),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::BlockNotFound => write!(f, "block not found"),
-            Error::StorageError(err) => write!(f, "{}", err),
+error_chain! {
+    foreign_links {
+        StorageError(StorageError);
+    }
+    errors {
+        BlockNotFound(hash: String) {
+            description("block not found"),
+            display("block '{}' cannot be found in the explorer", hash)
         }
     }
 }
 
-impl error::Error for Error {}
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -146,7 +141,7 @@ impl ExplorerDB {
         blockchain
             .storage()
             .get(new_block_ref.hash())
-            .map_err(|err| Error::StorageError(err))
+            .map_err(|err| ErrorKind::StorageError(err).into())
             .join(future::poll_fn(move || Ok(map.poll_lock())))
             .and_then(move |(block, mut guard)| {
                 if let Some(b) = block {
@@ -154,7 +149,9 @@ impl ExplorerDB {
                         guard.insert(fragment.id(), new_block_ref.clone());
                     }
                 } else {
-                    return future::err(Error::BlockNotFound);
+                    return future::err(
+                        ErrorKind::BlockNotFound(new_block_ref.hash().to_string()).into(),
+                    );
                 }
                 future::ok(())
             })
