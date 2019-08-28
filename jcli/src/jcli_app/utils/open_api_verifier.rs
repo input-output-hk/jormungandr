@@ -61,6 +61,10 @@ custom_error! { pub RequestMediaTypeError
     SchemaMissing = "schema is missing",
     SchemaReadOnly = "schema has read_only flag set",
     SchemaBinaryInvalid = "schema does not match binary blob",
+    SchemaSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller } = "schema serialization failed",
+    SchemaIsNotValidJsonSchema { source: SchemaError } = "schema is not a valid JSON Schema",
+    RequestBodyNotValidJson { source: serde_json::Error, filler: CustomErrorFiller } = "request body is not a valid JSON",
+    SchemaJsonInvalid { report: ValidationState } = @{format_args!("schema does not match json: {:?}", report)},
 }
 
 custom_error! { pub RefError
@@ -240,8 +244,27 @@ fn verify_json_body(body_def: &RequestBody, json: &str) -> Result<(), RequestBod
 }
 
 fn verify_json_media_type(body_def: &RequestBody, json: &str) -> Result<(), RequestMediaTypeError> {
-    let media_type = find_media_type(body_def, JSON_BODY_MIME)?;
-    Ok(()) // TODO
+    let schema = unpack_request_media_type_schema(body_def, JSON_BODY_MIME)?;
+    let schema_value = serde_json::to_value(schema).map_err(|source| {
+        RequestMediaTypeError::SchemaSerializationFailed {
+            source,
+            filler: CustomErrorFiller,
+        }
+    })?;
+    let mut scope = Scope::new();
+    let validator = scope.compile_and_return(schema_value, true)?;
+    let data: Value = serde_json::from_str(json).map_err(|source| {
+        RequestMediaTypeError::RequestBodyNotValidJson {
+            source,
+            filler: CustomErrorFiller,
+        }
+    })?;
+    let report = validator.validate(&data);
+    if !report.is_strictly_valid() {
+        return Err(RequestMediaTypeError::SchemaJsonInvalid { report });
+    }
+    Ok(())
+}
 
 fn unpack_request_media_type_schema<'a>(
     body_def: &'a RequestBody,
