@@ -176,7 +176,7 @@ pub mod tests {
     use crate::{
         account::{Identifier, Ledger},
         accounting::account::account_state::{AccountState, SpendingCounter},
-        stake::{StakePoolId, StakePoolInfo},
+        certificate::{PoolId, PoolRegistration},
         testing::{arbitrary::utils as arbitrary_utils, arbitrary::AverageValue},
         value::Value,
     };
@@ -257,9 +257,9 @@ pub mod tests {
                 .take(account_size)
                 .collect::<HashSet<Identifier>>();
 
-            let arbitrary_stake_pools = iter::from_fn(|| Some(StakePoolInfo::arbitrary(gen)))
+            let arbitrary_stake_pools = iter::from_fn(|| Some(PoolRegistration::arbitrary(gen)))
                 .take(stake_pool_size)
-                .collect::<Vec<StakePoolInfo>>();
+                .collect::<Vec<_>>();
 
             let mut ledger = Ledger::new();
 
@@ -289,7 +289,7 @@ pub mod tests {
         mut ledger: Ledger,
         account_id: Identifier,
         value: Value,
-        stake_pool_id: StakePoolId,
+        stake_pool_id: PoolId,
     ) -> TestResult {
         if value == Value::zero() || ledger.exists(&account_id) {
             return TestResult::discard();
