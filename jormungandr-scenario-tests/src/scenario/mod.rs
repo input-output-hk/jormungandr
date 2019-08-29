@@ -21,6 +21,7 @@ pub use jormungandr_lib::interfaces::{NumberOfSlotsPerEpoch, SlotDuration};
 error_chain! {
     links {
         Node(crate::node::Error, crate::node::ErrorKind);
+        Wallet(crate::wallet::Error, crate::wallet::ErrorKind);
     }
 
     foreign_links {
@@ -34,7 +35,10 @@ error_chain! {
             description("Node not found"),
             display("No node with alias {}", node),
         }
-
+        WalletNotFound(wallet: String) {
+            description("Wallet was not found"),
+            display("Wallet '{}' was not found. Used before or never initialize", wallet)
+        }
     }
 }
 

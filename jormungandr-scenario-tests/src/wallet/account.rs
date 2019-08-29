@@ -46,8 +46,17 @@ impl Wallet {
         }
     }
 
+    pub fn save_to<W: std::io::Write>(&self, mut w: W) -> std::io::Result<()> {
+        writeln!(w, "{}", self.signing_key().to_bech32_str())
+    }
+
     pub fn address(&self, discrimination: Discrimination) -> Address {
         self.identifier().to_address(discrimination).into()
+    }
+
+    pub fn increment_counter(&mut self) {
+        let v: u32 = self.internal_counter.into();
+        self.internal_counter = account::SpendingCounter::from(v + 1);
     }
 
     pub fn internal_counter(&self) -> &account::SpendingCounter {

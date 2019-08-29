@@ -1,12 +1,18 @@
 use crate::{scenario::settings::NodeSetting, style, Context, NodeAlias};
 use bawawa::{Control, Process};
-use chain_impl_mockchain::block::{Block, HeaderHash};
+use chain_impl_mockchain::{
+    block::{Block, HeaderHash},
+    fragment::{Fragment, FragmentId},
+};
 use indicatif::ProgressBar;
+use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
 use rand_core::RngCore;
 use std::{
+    collections::HashMap,
     path::PathBuf,
     process::ExitStatus,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 use tokio::prelude::*;
 
@@ -33,11 +39,23 @@ error_chain! {
         InvalidBlock {
             description("Invalid block"),
         }
+        InvalidFragmentLogs {
+            description("Fragment logs in an invalid format")
+        }
 
         NodeStopped (status: Status) {
             description("the node is no longer running"),
         }
+
+        FragmentNoInMemPoolLogs (fragment_id: FragmentId) {
+            description("cannot find fragment in mempool logs"),
+            display("fragment '{}' not in the mempool of the node", fragment_id),
+        }
     }
+}
+
+pub struct MemPoolCheck {
+    fragment_id: FragmentId,
 }
 
 pub enum NodeBlock0 {
@@ -59,6 +77,7 @@ struct ProgressBarController {
 }
 
 /// send query to a running node
+#[derive(Clone)]
 pub struct NodeController {
     alias: NodeAlias,
     settings: NodeSetting,
@@ -98,14 +117,16 @@ impl NodeController {
         self.status() == Status::Running
     }
 
-    fn get(&self, path: &str) -> Result<reqwest::Response> {
-        let node_settings = &self.settings;
+    fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::Response> {
+        self.progress_bar.log_info(format!("POST '{}'", path));
 
-        let address = node_settings.config.rest.listen.clone();
+        let client = reqwest::Client::new();
+        let res = client
+            .post(&format!("{}/{}", self.base_url(), path))
+            .body(body)
+            .send();
 
-        self.progress_bar.log_info(format!("GET '{}'", path));
-
-        match reqwest::get(&format!("http://{}/api/v0/{}", address, path)) {
+        match res {
             Err(err) => {
                 self.progress_bar
                     .log_err(format!("Failed to send request {}", &err));
@@ -113,6 +134,49 @@ impl NodeController {
             }
             Ok(r) => Ok(r),
         }
+    }
+
+    fn get(&self, path: &str) -> Result<reqwest::Response> {
+        self.progress_bar.log_info(format!("GET '{}'", path));
+
+        match reqwest::get(&format!("{}/{}", self.base_url(), path)) {
+            Err(err) => {
+                self.progress_bar
+                    .log_err(format!("Failed to send request {}", &err));
+                Err(err.into())
+            }
+            Ok(r) => Ok(r),
+        }
+    }
+
+    fn base_url(&self) -> String {
+        format!("http://{}/api/v0", self.settings.config.rest.listen.clone())
+    }
+
+    pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck> {
+        use chain_core::property::Fragment as _;
+        use chain_core::property::Serialize as _;
+
+        let raw = fragment.serialize_as_vec().unwrap();
+        let fragment_id = fragment.id();
+
+        let response = self.post("message", raw.clone())?;
+        self.progress_bar
+            .log_info(format!("Fragment '{}' sent", fragment_id,));
+
+        let res = response.error_for_status_ref();
+        if let Err(err) = res {
+            self.progress_bar.log_err(format!(
+                "Fragment '{}' ({}) fail to send: {}",
+                hex::encode(&raw),
+                fragment_id,
+                err,
+            ));
+        }
+
+        Ok(MemPoolCheck {
+            fragment_id: fragment_id,
+        })
     }
 
     pub fn get_tip(&self) -> Result<HeaderHash> {
@@ -142,6 +206,62 @@ impl NodeController {
         ));
 
         Ok(block)
+    }
+
+    pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>> {
+        let logs = self.get("fragment/logs")?.text()?;
+
+        let logs: Vec<FragmentLog> = if logs.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&logs).chain_err(|| ErrorKind::InvalidFragmentLogs)?
+        };
+
+        self.progress_bar
+            .log_info(format!("fragment logs ({})", logs.len()));
+
+        let logs = logs
+            .into_iter()
+            .map(|log| (log.fragment_id().clone().into_hash(), log))
+            .collect();
+
+        Ok(logs)
+    }
+
+    pub fn wait_fragment(&self, duration: Duration, check: MemPoolCheck) -> Result<FragmentStatus> {
+        loop {
+            let logs = self.fragment_logs()?;
+
+            if let Some(log) = logs.get(&check.fragment_id) {
+                use jormungandr_lib::interfaces::FragmentStatus::*;
+                let status = log.status().clone();
+                match log.status() {
+                    Pending => {
+                        self.progress_bar
+                            .log_info(format!("Fragment '{}' is still pending", check.fragment_id));
+                    }
+                    Rejected { reason } => {
+                        self.progress_bar.log_info(format!(
+                            "Fragment '{}' rejected: {}",
+                            check.fragment_id, reason
+                        ));
+                        return Ok(status);
+                    }
+                    InABlock { date } => {
+                        self.progress_bar.log_info(format!(
+                            "Fragment '{}' in block: {}",
+                            check.fragment_id, date
+                        ));
+                        return Ok(status);
+                    }
+                }
+            } else {
+                // bail!(ErrorKind::FragmentNoInMemPoolLogs(
+                //    check.fragment_id.clone()
+                //))
+            }
+            std::thread::sleep(duration);
+        }
     }
 
     pub fn shutdown(&self) -> Result<bool> {
