@@ -39,6 +39,31 @@ pub struct FragmentLog {
     status: FragmentStatus,
 }
 
+impl FragmentStatus {
+    #[inline]
+    pub fn is_pending(&self) -> bool {
+        self == &FragmentStatus::Pending
+    }
+
+    #[inline]
+    pub fn is_rejected(&self) -> bool {
+        if let FragmentStatus::Rejected { .. } = &self {
+            true
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    pub fn is_in_a_block(&self) -> bool {
+        if let FragmentStatus::InABlock { .. } = &self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 impl FragmentLog {
     /// create a new FragmentLog with the given values
     #[inline]
@@ -54,25 +79,17 @@ impl FragmentLog {
 
     #[inline]
     pub fn is_pending(&self) -> bool {
-        self.status == FragmentStatus::Pending
+        self.status().is_pending()
     }
 
     #[inline]
     pub fn is_rejected(&self) -> bool {
-        if let FragmentStatus::Rejected { .. } = &self.status {
-            true
-        } else {
-            false
-        }
+        self.status().is_rejected()
     }
 
     #[inline]
     pub fn is_in_a_block(&self) -> bool {
-        if let FragmentStatus::InABlock { .. } = &self.status {
-            true
-        } else {
-            false
-        }
+        self.status().is_in_a_block()
     }
 
     /// set the new status
