@@ -22,7 +22,7 @@ pub fn handle_input(
     info: &TokioServiceInfo,
     blockchain: &mut Blockchain,
     blockchain_tip: &mut Branch,
-    _stats_counter: &StatsCounter,
+    stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
@@ -76,6 +76,7 @@ pub fn handle_input(
                         error!(info.logger(), "cannot add block to explorer: {}", err)
                     });
             };
+            stats_counter.add_block_recv_cnt(1);
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
             let future = process_block_announcement(
@@ -89,6 +90,7 @@ pub fn handle_input(
             future.wait().unwrap();
         }
         BlockMsg::NetworkBlock(block, reply) => {
+            stats_counter.add_block_recv_cnt(1);
             let future = process_network_block(blockchain.clone(), block, info.logger().clone());
             match future.wait() {
                 Err(e) => {
