@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 pub enum Entry<'a> {
     Globals(Globals),
-    Pots(Vec<pots::Entry>),
+    Pot(pots::Entry),
     Utxo(utxo::Entry<'a, Address>),
     OldUtxo(utxo::Entry<'a, legacy::OldAddress>),
     Account(
@@ -73,7 +73,7 @@ enum IterState<'a> {
     StakePools(
         imhamt::HamtIter<'a, crate::certificate::PoolId, crate::certificate::PoolRegistration>,
     ),
-    Pots,
+    Pots(pots::Entries<'a>),
     Done,
 }
 
@@ -149,14 +149,17 @@ impl<'a> Iterator for LedgerIterator<'a> {
             },
             IterState::StakePools(iter) => match iter.next() {
                 None => {
-                    self.state = IterState::Pots;
+                    self.state = IterState::Pots(self.ledger.pot.entries());
                     self.next()
                 }
                 Some(x) => Some(Entry::StakePool(x)),
             },
-            IterState::Pots => {
-                self.state = IterState::Done;
-                Some(Entry::Pots(self.ledger.pot.entries()))
+            IterState::Pots(iter) => match iter.next() {
+                None => { 
+                    self.state = IterState::Done;
+                    self.next()
+                }
+                Some(x) => Some(Entry::Pot(x))
             }
             IterState::Done => None,
         }
@@ -226,7 +229,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
                         .insert(pool_id.clone(), pool_state.clone())
                         .unwrap();
                 }
-                Entry::Pots(entries) => pots = pots::Pots::from_entries(&entries[..]),
+                Entry::Pot(ent) => pots.set_from_entry(&ent),
             }
         }
 

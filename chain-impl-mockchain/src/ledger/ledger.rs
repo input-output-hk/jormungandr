@@ -656,7 +656,7 @@ impl Ledger {
             .chain(new_utxo_values)
             .chain(Some(account_value))
             .chain(Some(multisig_value))
-            .chain(Some(self.pot.total_value()));
+            .chain(self.pot.values());
         Value::sum(all_utxo_values).map_err(|_| Error::Block0 {
             source: Block0Error::UtxoTotalValueTooBig,
         })?;
