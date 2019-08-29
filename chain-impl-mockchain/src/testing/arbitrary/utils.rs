@@ -1,5 +1,6 @@
-use quickcheck::{Arbitrary, Gen};
+use quickcheck::{Arbitrary, Gen, TestResult};
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::{
     cmp::{self, Eq, PartialEq},
     hash::Hash,
@@ -70,4 +71,37 @@ pub fn choose_random_indexes<G: Gen>(gen: &mut G, upper_bound: usize) -> HashSet
         arbitrary_indexes.insert(random_number);
     }
     arbitrary_indexes
+}
+
+/// Struct helps gather all verifications and then decide if test if failed or not. Currently it's tightly coupled
+/// with quickcheck crate
+pub struct Verify(Vec<TestResult>);
+
+impl Verify {
+    pub fn new() -> Self {
+        Verify(Vec::new())
+    }
+
+    pub fn verify_eq<A: PartialEq + Debug>(&mut self, expected: A, actual: A, desc: &str) {
+        let result = match expected == actual {
+            false => TestResult::error(format!(
+                "expected {} {:?}, but got {:?}",
+                desc, expected, actual
+            )),
+            true => TestResult::passed(),
+        };
+        self.0.push(result);
+    }
+
+    pub fn verify(&mut self, is_true: bool, desc: &str) {
+        let result = match is_true {
+            false => TestResult::error(format!("expected {} to be true, but got false", desc)),
+            true => TestResult::passed(),
+        };
+        self.0.push(result);
+    }
+
+    pub fn get_result(&self) -> TestResult {
+        self.0.iter().cloned().find(TestResult::is_failure).unwrap_or_else(TestResult::passed)
+    }
 }

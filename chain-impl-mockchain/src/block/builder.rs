@@ -151,3 +151,119 @@ impl BlockBuilder {
         self.make_block(Proof::GenesisPraos(genesis_praos_proof))
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::{BlockBuilder, BlockContents, BlockDate, BlockId, BlockVersion, ChainLength};
+    use crate::block::{
+        header::{Common, GenesisPraosProof, Header},
+        version::BlockVersion::{Ed25519Signed, KesVrfproof},
+        AnyBlockVersion, Block,
+    };
+    use crate::testing::arbitrary::utils::Verify;
+    use chain_core::property::BlockId as BlockIdProperty;
+    use chain_crypto::{testing::TestCryptoGen, Ed25519, SumEd25519_12};
+    use quickcheck::TestResult;
+    use quickcheck_macros::quickcheck;
+
+    #[quickcheck]
+    pub fn make_genesis_block(block_content: BlockContents) -> TestResult {
+        let mut builder = BlockBuilder::new();
+        builder.messages(block_content.iter().cloned());
+        let block = builder.make_genesis_block();
+
+        let (content_hash, content_size) = block_content.compute_hash_size();
+
+        let expected_common = Common {
+            any_block_version: AnyBlockVersion::Supported(BlockVersion::Genesis),
+            block_date: BlockDate::first(),
+            block_content_size: content_size as u32,
+            block_content_hash: content_hash,
+            block_parent_hash: BlockId::zero(),
+            chain_length: ChainLength(0),
+        };
+
+        verify_block(block, expected_common, block_content)
+    }
+
+    pub fn verify_block(
+        block: Block,
+        expected_common: Common,
+        expected_block_content: BlockContents,
+    ) -> TestResult {
+        let mut verify = Verify::new();
+        verify.verify_eq(
+            block.contents.clone(),
+            expected_block_content.clone(),
+            "block contents",
+        );
+        verify.verify_eq(
+            block.header.common.clone(),
+            expected_common.clone(),
+            "block header common",
+        );
+        verify.get_result()
+    }
+
+    #[quickcheck]
+    pub fn make_genesis_praos_block(
+        key_gen: TestCryptoGen,
+        parent_header: Header,
+        genesis_praos_proof: GenesisPraosProof,
+        block_content: BlockContents,
+    ) -> TestResult {
+        let (content_hash, content_size) = block_content.compute_hash_size();
+        let expected_common = Common {
+            any_block_version: AnyBlockVersion::Supported(KesVrfproof),
+            block_date: *parent_header.block_date(),
+            block_content_size: content_size as u32,
+            block_content_hash: content_hash,
+            block_parent_hash: parent_header.hash(),
+            chain_length: ChainLength(parent_header.chain_length().0 + 1),
+        };
+
+        let kes_signing_key = key_gen.secret_key::<SumEd25519_12>(0);
+
+        let mut builder = BlockBuilder::new();
+        builder.messages(block_content.iter().cloned());
+        builder.date(expected_common.block_date);
+        builder.chain_length(expected_common.chain_length);
+        builder.parent(parent_header.hash());
+        let block = builder.make_genesis_praos_block(
+            &genesis_praos_proof.node_id,
+            &kes_signing_key,
+            genesis_praos_proof.vrf_proof,
+        );
+
+        verify_block(block, expected_common, block_content)
+    }
+
+    #[quickcheck]
+    pub fn make_bft_block(
+        key_gen: TestCryptoGen,
+        parent_header: Header,
+        block_content: BlockContents,
+    ) -> TestResult {
+        let (content_hash, content_size) = block_content.compute_hash_size();
+        let expected_common = Common {
+            any_block_version: AnyBlockVersion::Supported(Ed25519Signed),
+            block_date: *parent_header.block_date(),
+            block_content_size: content_size as u32,
+            block_content_hash: content_hash,
+            block_parent_hash: parent_header.hash(),
+            chain_length: ChainLength(parent_header.chain_length().0 + 1),
+        };
+
+        let bft_signing_key = key_gen.secret_key::<Ed25519>(0);
+
+        let mut builder = BlockBuilder::new();
+        builder.messages(block_content.iter().cloned());
+        builder.date(expected_common.block_date);
+        builder.chain_length(expected_common.chain_length);
+        builder.parent(parent_header.hash());
+        let block = builder.make_bft_block(&bft_signing_key);
+
+        verify_block(block, expected_common, block_content)
+    }
+}
