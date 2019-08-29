@@ -307,6 +307,9 @@ pub fn iterate() {
                     id, info.serial, info.owners, info.keys,
                 );
             }
+            Entry::Pots(entries) => {
+                println!("Pots {:?}", entries)
+            }
         }
     }
 

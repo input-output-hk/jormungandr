@@ -1,8 +1,8 @@
 use super::ledger::{Error, Ledger, LedgerStaticParameters};
+use super::pots::{self, Pots};
 use crate::block::{BlockDate, ChainLength};
 use crate::config::ConfigParam;
 use crate::stake::DelegationState;
-use crate::value::*;
 use crate::{account, legacy, multisig, setting, update, utxo};
 use chain_addr::Address;
 use chain_time::TimeEra;
@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 pub enum Entry<'a> {
     Globals(Globals),
+    Pots(Vec<pots::Entry>),
     Utxo(utxo::Entry<'a, Address>),
     OldUtxo(utxo::Entry<'a, legacy::OldAddress>),
     Account(
@@ -72,6 +73,7 @@ enum IterState<'a> {
     StakePools(
         imhamt::HamtIter<'a, crate::certificate::PoolId, crate::certificate::PoolRegistration>,
     ),
+    Pots,
     Done,
 }
 
@@ -147,11 +149,15 @@ impl<'a> Iterator for LedgerIterator<'a> {
             },
             IterState::StakePools(iter) => match iter.next() {
                 None => {
-                    self.state = IterState::Done;
+                    self.state = IterState::Pots;
                     self.next()
                 }
                 Some(x) => Some(Entry::StakePool(x)),
             },
+            IterState::Pots => {
+                self.state = IterState::Done;
+                Some(Entry::Pots(self.ledger.pot.entries()))
+            }
             IterState::Done => None,
         }
     }
@@ -177,6 +183,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
         let mut multisig_declarations = vec![];
         let delegation = DelegationState::new();
         let mut globals = None;
+        let mut pots = Pots::zero();
 
         for entry in iter {
             match entry {
@@ -219,6 +226,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
                         .insert(pool_id.clone(), pool_state.clone())
                         .unwrap();
                 }
+                Entry::Pots(entries) => pots = pots::Pots::from_entries(&entries[..]),
             }
         }
 
@@ -236,7 +244,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
             date: globals.date,
             chain_length: globals.chain_length,
             era: globals.era,
-            pot: Value::zero(),
+            pot: pots,
         })
     }
 }

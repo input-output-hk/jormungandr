@@ -2,6 +2,7 @@
 //! current state and verify transactions.
 
 use super::check::{self, TxVerifyError, TxVerifyLimits};
+use super::pots::Pots;
 use crate::block::{
     BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext, HeaderHash,
 };
@@ -62,7 +63,7 @@ pub struct Ledger {
     pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
     pub(crate) era: TimeEra,
-    pub(crate) pot: Value,
+    pub(crate) pot: Pots,
 }
 
 custom_error! {
@@ -154,7 +155,7 @@ impl Ledger {
             date: BlockDate::first(),
             chain_length: ChainLength(0),
             era,
-            pot: Value::zero(),
+            pot: Pots::zero(),
         }
     }
 
@@ -655,7 +656,7 @@ impl Ledger {
             .chain(new_utxo_values)
             .chain(Some(account_value))
             .chain(Some(multisig_value))
-            .chain(Some(self.pot));
+            .chain(Some(self.pot.total_value()));
         Value::sum(all_utxo_values).map_err(|_| Error::Block0 {
             source: Block0Error::UtxoTotalValueTooBig,
         })?;
@@ -753,7 +754,7 @@ impl Ledger {
     }
 
     fn apply_tx_fee(mut self, fee: Value) -> Result<Self, Error> {
-        self.pot = (self.pot + fee).map_err(|error| Error::PotValueInvalid { error })?;
+        self.pot.append_fees(fee)?;
         Ok(self)
     }
 
