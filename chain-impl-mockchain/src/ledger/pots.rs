@@ -7,18 +7,21 @@ use crate::treasury::Treasury;
 pub struct Pots {
     pub(crate) fees: Value,
     pub(crate) treasury: Treasury,
+    pub(crate) rewards: Value,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum Entry {
     Fees(Value),
     Treasury(Value),
+    Rewards(Value),
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum EntryType {
     Fees,
     Treasury,
+    Rewards,
 }
 
 impl Entry {
@@ -26,6 +29,7 @@ impl Entry {
         match self {
             Entry::Fees(v) => *v,
             Entry::Treasury(v) => *v,
+            Entry::Rewards(v) => *v,
         }
     }
 
@@ -33,6 +37,7 @@ impl Entry {
         match self {
             Entry::Fees(_) => EntryType::Fees,
             Entry::Treasury(_) => EntryType::Treasury,
+            Entry::Rewards(_) => EntryType::Rewards,
         }
     }
 }
@@ -40,6 +45,7 @@ impl Entry {
 pub enum IterState {
     Fees,
     Treasury,
+    Rewards,
     Done,
 }
 
@@ -60,8 +66,12 @@ impl<'a> Iterator for Entries<'a> {
                 Some(Entry::Fees(self.pots.fees))
             }
             IterState::Treasury => {
-                self.it = IterState::Done;
+                self.it = IterState::Rewards;
                 Some(Entry::Treasury(self.pots.treasury.value()))
+            }
+            IterState::Rewards => {
+                self.it = IterState::Done;
+                Some(Entry::Rewards(self.pots.rewards))
             }
             IterState::Done => {
                 None
@@ -87,6 +97,7 @@ impl Pots {
         Pots {
             fees: Value::zero(),
             treasury: Treasury::initial(Value::zero()),
+            rewards: Value::zero(),
         }
     }
 
@@ -116,6 +127,7 @@ impl Pots {
         match e {
             Entry::Fees(v) => self.fees = *v,
             Entry::Treasury(v) => self.treasury = Treasury::initial(*v),
+            Entry::Rewards(v) => self.rewards = *v,
         }
     }
 }
