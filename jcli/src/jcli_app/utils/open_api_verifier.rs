@@ -9,7 +9,7 @@ use serde_json::Value;
 use std::env;
 use std::fs::File;
 use std::io;
-use valico::json_schema::{SchemaError, Scope, ValidationState};
+use valico::json_schema::{SchemaError as ValicoError, Scope, ValidationState};
 
 const BINARY_BODY_MIME: &'static Mime = &mime::APPLICATION_OCTET_STREAM;
 const JSON_BODY_MIME: &'static Mime = &mime::APPLICATION_JSON;
@@ -59,12 +59,18 @@ custom_error! { pub RequestMediaTypeError
     NotFound = "media type not found",
     SchemaRefError { source: RefError } = "error while reading schema reference",
     SchemaMissing = "schema is missing",
-    SchemaReadOnly = "schema has read_only flag set",
     SchemaBinaryInvalid = "schema does not match binary blob",
-    SchemaSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller } = "schema serialization failed",
-    SchemaIsNotValidJsonSchema { source: SchemaError } = "schema is not a valid JSON Schema",
-    RequestBodyNotValidJson { source: serde_json::Error, filler: CustomErrorFiller } = "request body is not a valid JSON",
-    SchemaJsonInvalid { report: ValidationState } = @{format_args!("schema does not match json: {:?}", report)},
+    SchemaJsonInvalid { source: SchemaError } = "failed to validate JSON with schema",
+}
+
+custom_error! { pub SchemaError
+    SchemaSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller }
+        = "schema serialization failed",
+    SchemaInvalid { source: ValicoError } = "schema is not valid",
+    ValueNotValidJson { source: serde_json::Error, filler: CustomErrorFiller }
+        = "value is not a valid JSON",
+    ValueValidationFailed { report: ValidationState }
+        = @{format_args!("value does not match schema: {:?}", report)},
 }
 
 custom_error! { pub RefError
@@ -245,24 +251,7 @@ fn verify_json_body(body_def: &RequestBody, json: &str) -> Result<(), RequestBod
 
 fn verify_json_media_type(body_def: &RequestBody, json: &str) -> Result<(), RequestMediaTypeError> {
     let schema = unpack_request_media_type_schema(body_def, JSON_BODY_MIME)?;
-    let schema_value = serde_json::to_value(schema).map_err(|source| {
-        RequestMediaTypeError::SchemaSerializationFailed {
-            source,
-            filler: CustomErrorFiller,
-        }
-    })?;
-    let mut scope = Scope::new();
-    let validator = scope.compile_and_return(schema_value, true)?;
-    let data: Value = serde_json::from_str(json).map_err(|source| {
-        RequestMediaTypeError::RequestBodyNotValidJson {
-            source,
-            filler: CustomErrorFiller,
-        }
-    })?;
-    let report = validator.validate(&data);
-    if !report.is_strictly_valid() {
-        return Err(RequestMediaTypeError::SchemaJsonInvalid { report });
-    }
+    verify_schema_json(schema, json)?;
     Ok(())
 }
 
@@ -276,9 +265,6 @@ fn unpack_request_media_type_schema<'a>(
         .ok_or_else(|| RequestMediaTypeError::NotFound)?;
     let schema = unpack_reference_or_opt(&media_type.schema)?
         .ok_or_else(|| RequestMediaTypeError::SchemaMissing)?;
-    if schema.schema_data.read_only {
-        return Err(RequestMediaTypeError::SchemaReadOnly);
-    }
     Ok(schema)
 }
 
@@ -287,6 +273,29 @@ fn verify_body_is_none(body: &RestApiRequestBody) -> Result<(), RequestBodyError
         RestApiRequestBody::None => Ok(()),
         _ => Err(RequestBodyError::UnexpectedBody),
     }
+}
+
+fn verify_schema_json(schema: &Schema, json: &str) -> Result<(), SchemaError> {
+    let value = serde_json::from_str(json).map_err(|source| SchemaError::ValueNotValidJson {
+        source,
+        filler: CustomErrorFiller,
+    })?;
+    validate_schema_value(schema, &value)
+}
+
+fn validate_schema_value(schema: &Schema, value: &Value) -> Result<(), SchemaError> {
+    let schema_value =
+        serde_json::to_value(schema).map_err(|source| SchemaError::SchemaSerializationFailed {
+            source,
+            filler: CustomErrorFiller,
+        })?;
+    let mut scope = Scope::new();
+    let validator = scope.compile_and_return(schema_value, true)?;
+    let report = validator.validate(value);
+    if !report.is_strictly_valid() {
+        Err(SchemaError::ValueValidationFailed { report })?
+    }
+    Ok(())
 }
 
 fn unpack_reference_or_opt<T>(
