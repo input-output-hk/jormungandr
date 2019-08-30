@@ -28,6 +28,7 @@ pub struct Settings {
     pub rest: Option<Rest>,
     pub mempool: Mempool,
     pub leadership: Leadership,
+    pub explorer: bool,
 }
 
 pub struct RawSettings {
@@ -116,6 +117,9 @@ impl RawSettings {
             (None, Some(hash)) => Block0Info::Hash(hash.clone()),
         };
 
+        let explorer = command_arguments.explorer_enabled
+            || config.explorer.map_or(false, |settings| settings.enabled);
+
         Ok(Settings {
             storage: storage,
             block_0: block0_info,
@@ -124,6 +128,7 @@ impl RawSettings {
             rest: config.rest,
             mempool: config.mempool,
             leadership: config.leadership,
+            explorer,
         })
     }
 }

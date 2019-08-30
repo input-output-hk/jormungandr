@@ -61,6 +61,10 @@ pub struct StartArguments {
     /// or from the network.
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
     pub block_0_hash: Option<HeaderHash>,
+
+    /// Start the explorer task and enable associated query endpoints.
+    #[structopt(long = "enable-explorer")]
+    pub explorer_enabled: bool,
 }
 
 #[derive(StructOpt, Debug)]
