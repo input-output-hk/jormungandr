@@ -155,12 +155,12 @@ impl<'a> Iterator for LedgerIterator<'a> {
                 Some(x) => Some(Entry::StakePool(x)),
             },
             IterState::Pots(iter) => match iter.next() {
-                None => { 
+                None => {
                     self.state = IterState::Done;
                     self.next()
                 }
-                Some(x) => Some(Entry::Pot(x))
-            }
+                Some(x) => Some(Entry::Pot(x)),
+            },
             IterState::Done => None,
         }
     }

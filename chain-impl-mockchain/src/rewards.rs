@@ -1,13 +1,13 @@
-use crate::value::Value;
 use crate::block::Epoch;
+use crate::value::Value;
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ReducingType {
     Linear,
     Halvening,
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Ratio {
     pub numerator: u64,
     pub denominator: u64,
@@ -20,17 +20,16 @@ pub enum TaxType {
 }
 
 /// Parameters for rewards calculation. This controls:
-/// 
+///
 /// * Rewards contributions
 /// * Treasury cuts
 #[derive(Debug, Clone)]
 pub struct Parameters {
-    /// Tax cut of the treasury which is applied straight after the reward pot 
+    /// Tax cut of the treasury which is applied straight after the reward pot
     /// is fully known
     treasury_tax: TaxType,
 
     //pool_owners_tax: TaxType,
-
     /// This is an initial_value for the linear or halvening function.
     /// In the case of the linear function it is the value that is going to be calculated
     /// from the contribution.
@@ -75,7 +74,7 @@ pub fn rewards_contribution_calculation(epoch: Epoch, params: &Parameters) -> Va
             // that it allow for integer computation and that the reduce_epoch_rate
             // should prevent growth to large amount of zones
             let rr = &params.rewards_reducement_ratio;
-            const SCALE : u128 = 10^18;
+            const SCALE: u128 = 10 ^ 18;
 
             let mut acc = params.rewards_initial_value as u128 * SCALE;
             for _ in 0..zone {
@@ -106,8 +105,9 @@ pub fn distribute(v: Value, params: &Parameters) -> Distribution {
             }
         }
         TaxType::RatioLimit(rr, olimit) => {
-            const SCALE : u128 = 10^9;
-            let out = ((((v.0 as u128 * SCALE) * rr.numerator as u128) / rr.denominator as u128) / SCALE) as u64;
+            const SCALE: u128 = 10 ^ 9;
+            let out = ((((v.0 as u128 * SCALE) * rr.numerator as u128) / rr.denominator as u128)
+                / SCALE) as u64;
             let treasury_cut = match olimit {
                 None => Value(out),
                 Some(limit) => Value(std::cmp::min(limit, out)),

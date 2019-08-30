@@ -1,6 +1,6 @@
 use crate::ledger::Error;
-use crate::value::{Value, ValueError};
 use crate::treasury::Treasury;
+use crate::value::{Value, ValueError};
 
 /// Special pots of money
 #[derive(Clone, PartialEq, Eq)]
@@ -73,9 +73,7 @@ impl<'a> Iterator for Entries<'a> {
                 self.it = IterState::Done;
                 Some(Entry::Rewards(self.pots.rewards))
             }
-            IterState::Done => {
-                None
-            }
+            IterState::Done => None,
         }
     }
 }
