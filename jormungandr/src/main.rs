@@ -1,4 +1,5 @@
 extern crate actix_net;
+extern crate actix_threadpool;
 extern crate actix_web;
 extern crate bincode;
 extern crate bytes;
@@ -33,6 +34,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use]
 extern crate slog;
+extern crate juniper;
 extern crate slog_async;
 #[cfg(feature = "gelf")]
 extern crate slog_gelf;
@@ -140,13 +142,19 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let explorer = {
         if bootstrapped_node.settings.explorer {
             let blockchain = blockchain.clone();
-            let mut explorer_task = explorer::Process::new();
-            let mut explorer_db = explorer::ExplorerDB::new();
+            let explorer_db = explorer::ExplorerDB::new();
 
-            let context = explorer_task.clone();
+            let mut explorer = explorer::Explorer::new(
+                explorer_db.clone(),
+                explorer::graphql::create_schema(),
+                blockchain.clone(),
+            );
+
+            // Context to give to the rest api
+            let context = explorer.clone();
 
             let task_msg_box = services.spawn_future_with_inputs("explorer", move |info, input| {
-                explorer_task.handle_input(info, input, &mut explorer_db, &blockchain)
+                explorer.handle_input(info, input)
             });
             Some((task_msg_box, context))
         } else {

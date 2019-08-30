@@ -2,6 +2,7 @@
 
 mod server;
 
+pub mod explorer;
 pub mod v0;
 
 pub use self::server::{Error, Server};
@@ -33,19 +34,31 @@ pub struct Context {
     pub leadership_logs: LeadershipLogs,
     pub server: Lock<Option<Server>>,
     pub enclave: Enclave,
-    pub explorer: Option<crate::explorer::Process>,
+    pub explorer: Option<crate::explorer::Explorer>,
 }
 
 pub fn start_rest_server(config: &Rest, mut context: Context) -> Result<Server, ConfigError> {
     let app_context = context.clone();
     let cors_cfg = config.cors.clone();
+    let explorer_enabled = app_context.explorer.is_some();
     let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
-        vec![build_app(
+        let mut apps = vec![build_app(
             app_context.clone(),
             "/api/v0",
             v0::resources(),
             &cors_cfg,
-        )]
+        )];
+
+        if explorer_enabled {
+            apps.push(build_app(
+                app_context.clone(),
+                "/explorer",
+                explorer::resources(),
+                &cors_cfg,
+            ))
+        }
+
+        apps
     })?;
     future::poll_fn(|| Ok(context.server.poll_lock()))
         .wait()

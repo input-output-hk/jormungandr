@@ -18,6 +18,7 @@ Midgard Serpent
 [dependencies]
 actix-net = "0.2.6"
 actix-web = { version = "0.7.18", default-features = false, features = [ "tls" ] }
+juniper = "0.13.1"
 bincode = "1.0.1"
 bytes = "0.4"
 chain-core      = { path = "../chain-deps/chain-core" }
@@ -51,6 +52,7 @@ slog-json = "2.3.0"
 slog-term = "2.4.0"
 structopt = "^0.2"
 tokio      = "^0.1.16"
+actix-threadpool = "0.1.2"
 
 [target.'cfg(unix)'.dependencies]
 slog-syslog = "0.12.0"
