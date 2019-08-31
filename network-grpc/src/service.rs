@@ -18,6 +18,7 @@ use network_core::{
 
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
+use futures::stream::Forward;
 use futures::try_ready;
 use tower_grpc::{self, Code, Request, Response, Status, Streaming};
 
@@ -258,192 +259,41 @@ where
     }
 }
 
-#[must_use = "futures do nothing unless polled"]
-pub struct PushHeadersFuture<T, S>
+pub struct RequestStreamForwarding<St, Si>
 where
-    T: Node,
+    St: Stream<Error = tower_grpc::Status>,
+    Si: Sink,
+    Si::SinkItem: FromProtobuf<St::Item>,
 {
-    stream: Option<RequestStream<<T::BlockService as BlockService>::Header, S>>,
-    service: T,
-    state: push_headers::State<T::BlockService>,
+    inner: Forward<RequestStream<Si::SinkItem, St>, Si>,
 }
 
-impl<T, S> PushHeadersFuture<T, S>
+impl<St, Si> RequestStreamForwarding<St, Si>
 where
-    T: Node,
+    St: Stream<Error = tower_grpc::Status>,
+    Si: Sink<SinkError = core_error::Error>,
+    Si::SinkItem: FromProtobuf<St::Item>,
 {
-    fn new(service: T, stream: S) -> Self {
-        PushHeadersFuture {
-            stream: Some(RequestStream::new(stream)),
-            service,
-            state: Default::default(),
+    fn new(stream: St, sink: Si) -> Self {
+        let stream = RequestStream::new(stream);
+        RequestStreamForwarding {
+            inner: stream.forward(sink),
         }
     }
 }
 
-mod push_headers {
-    use network_core::error::Error;
-    use network_core::server::block::BlockService;
-
-    pub struct State<BS: BlockService> {
-        accum: Vec<BS::Header>,
-        processing: Option<BS::OnPushedHeadersFuture>,
-    }
-
-    impl<BS: BlockService> Default for State<BS> {
-        fn default() -> Self {
-            State {
-                accum: Vec::with_capacity(BS::PUSH_HEADERS_CHUNK_SIZE),
-                processing: None,
-            }
-        }
-    }
-
-    impl<BS: BlockService> State<BS> {
-        pub fn processing(&mut self) -> Option<&mut BS::OnPushedHeadersFuture> {
-            self.processing.as_mut()
-        }
-
-        pub fn finish_processing(&mut self) {
-            self.processing = None;
-        }
-
-        pub fn process_headers(&mut self, service: &mut BS) -> bool {
-            debug_assert!(self.processing.is_none());
-            if self.accum.is_empty() {
-                false
-            } else {
-                let headers = self.accum.split_off(0);
-                let future = service.on_pushed_headers(Ok(headers));
-                self.processing = Some(future);
-                true
-            }
-        }
-
-        pub fn push_header(&mut self, service: &mut BS, header: BS::Header) {
-            self.accum.push(header);
-            if self.accum.len() >= BS::PUSH_HEADERS_CHUNK_SIZE {
-                self.process_headers(service);
-            }
-        }
-
-        pub fn process_error(&mut self, service: &mut BS, err: Error) {
-            self.processing = Some(service.on_pushed_headers(Err(err)));
-        }
-    }
-}
-
-impl<T, S> Future for PushHeadersFuture<T, S>
+impl<St, Si> Future for RequestStreamForwarding<St, Si>
 where
-    T: Node,
-    S: Stream<Error = tower_grpc::Status>,
-    <T::BlockService as BlockService>::Header: FromProtobuf<S::Item>,
+    St: Stream<Error = tower_grpc::Status>,
+    Si: Sink<SinkError = core_error::Error>,
+    Si::SinkItem: FromProtobuf<St::Item>,
 {
-    type Item = tower_grpc::Response<gen::node::PushHeadersResponse>;
-    type Error = tower_grpc::Status;
+    type Item = ();
+    type Error = core_error::Error;
 
-    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Status> {
-        let service = self.service.block_service().ok_or_else(|| {
-            tower_grpc::Status::new(tower_grpc::Code::Unimplemented, "not implemented")
-        })?;
-        loop {
-            if let Some(ref mut future) = self.state.processing() {
-                try_ready!(future.poll().map_err(error_into_grpc));
-                self.state.finish_processing();
-            }
-            let stream = match self.stream {
-                None => break,
-                Some(ref mut stream) => stream,
-            };
-            match stream.poll() {
-                Ok(Async::NotReady) => {
-                    // Use the pause in the stream to process the headers,
-                    // if any have been buffered.
-                    if self.state.process_headers(service) {
-                        continue;
-                    } else {
-                        return Ok(Async::NotReady);
-                    }
-                }
-                Ok(Async::Ready(Some(header))) => {
-                    self.state.push_header(service, header);
-                }
-                Ok(Async::Ready(None)) => {
-                    self.state.process_headers(service);
-                    self.stream = None;
-                }
-                Err(e) => {
-                    self.state.process_error(service, e);
-                    self.stream = None;
-                }
-            }
-        }
-        let res = gen::node::PushHeadersResponse {};
-        Ok(Async::Ready(tower_grpc::Response::new(res)))
-    }
-}
-
-#[must_use = "futures do nothing unless polled"]
-pub struct UploadBlocksFuture<T, S>
-where
-    T: Node,
-{
-    stream: Option<RequestStream<<T::BlockService as BlockService>::Block, S>>,
-    service: T,
-    processing: Option<<T::BlockService as BlockService>::OnUploadedBlockFuture>,
-}
-
-impl<T, S> UploadBlocksFuture<T, S>
-where
-    T: Node,
-{
-    fn new(service: T, stream: S) -> Self {
-        UploadBlocksFuture {
-            stream: Some(RequestStream::new(stream)),
-            service,
-            processing: None,
-        }
-    }
-}
-
-impl<T, S> Future for UploadBlocksFuture<T, S>
-where
-    T: Node,
-    S: Stream<Error = tower_grpc::Status>,
-    <T::BlockService as BlockService>::Block: FromProtobuf<S::Item>,
-{
-    type Item = tower_grpc::Response<gen::node::UploadBlocksResponse>;
-    type Error = tower_grpc::Status;
-
-    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Status> {
-        let service = self.service.block_service().ok_or_else(|| {
-            tower_grpc::Status::new(tower_grpc::Code::Unimplemented, "not implemented")
-        })?;
-        loop {
-            if let Some(ref mut future) = self.processing {
-                try_ready!(future.poll().map_err(error_into_grpc));
-                self.processing = None;
-            }
-            let stream = match self.stream {
-                None => break,
-                Some(ref mut stream) => stream,
-            };
-            match stream.poll() {
-                Ok(Async::NotReady) => return Ok(Async::NotReady),
-                Ok(Async::Ready(None)) => break,
-                Ok(Async::Ready(Some(block))) => {
-                    let future = service.on_uploaded_block(Ok(block));
-                    self.processing = Some(future);
-                }
-                Err(e) => {
-                    let future = service.on_uploaded_block(Err(e));
-                    self.processing = Some(future);
-                    self.stream = None;
-                }
-            }
-        }
-        let res = gen::node::UploadBlocksResponse {};
-        Ok(Async::Ready(tower_grpc::Response::new(res)))
+    fn poll(&mut self) -> Poll<Self::Item, core_error::Error> {
+        let _ = try_ready!(self.inner.poll());
+        Ok(Async::Ready(()))
     }
 }
 
@@ -554,8 +404,20 @@ where
         Self::GetFragmentsStream,
         <<T as Node>::ContentService as ContentService>::GetFragmentsFuture,
     >;
-    type PushHeadersFuture = PushHeadersFuture<T, Streaming<gen::node::Header>>;
-    type UploadBlocksFuture = UploadBlocksFuture<T, Streaming<gen::node::Block>>;
+    type PushHeadersFuture = ResponseFuture<
+        gen::node::PushHeadersResponse,
+        RequestStreamForwarding<
+            Streaming<gen::node::Header>,
+            <T::BlockService as BlockService>::PushHeadersSink,
+        >,
+    >;
+    type UploadBlocksFuture = ResponseFuture<
+        gen::node::UploadBlocksResponse,
+        RequestStreamForwarding<
+            Streaming<gen::node::Block>,
+            <T::BlockService as BlockService>::UploadBlocksSink,
+        >,
+    >;
     type BlockSubscriptionStream = ResponseStream<
         gen::node::BlockEvent,
         <<T as Node>::BlockService as BlockService>::BlockSubscription,
@@ -673,14 +535,18 @@ where
         &mut self,
         req: Request<Streaming<gen::node::Header>>,
     ) -> Self::PushHeadersFuture {
-        PushHeadersFuture::new(self.inner.clone(), req.into_inner())
+        let service = try_get_service!(self.inner.block_service());
+        let sink = service.get_push_headers_sink();
+        ResponseFuture::new(RequestStreamForwarding::new(req.into_inner(), sink))
     }
 
     fn upload_blocks(
         &mut self,
         req: Request<Streaming<gen::node::Block>>,
     ) -> Self::UploadBlocksFuture {
-        UploadBlocksFuture::new(self.inner.clone(), req.into_inner())
+        let service = try_get_service!(self.inner.block_service());
+        let sink = service.get_upload_blocks_sink();
+        ResponseFuture::new(RequestStreamForwarding::new(req.into_inner(), sink))
     }
 
     fn block_subscription(
