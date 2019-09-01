@@ -189,7 +189,12 @@ impl Settings {
                             serial,
                             management_threshold: 1,
                             start_validity: DurationSeconds(0).into(),
-                            owners: Vec::new(),
+                            owners: vec![
+                                chain_crypto::SecretKey::<chain_crypto::Ed25519>::generate(
+                                    context.rng_mut(),
+                                )
+                                .to_public(),
+                            ],
                             keys: GenesisPraosLeader {
                                 kes_public_key: kes_signing_key.identifier().into_public_key(),
                                 vrf_public_key: vrf_signing_key.identifier().into_public_key(),

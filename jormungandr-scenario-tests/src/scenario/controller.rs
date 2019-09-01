@@ -1,9 +1,10 @@
 use crate::{
     scenario::{settings::Settings, Blockchain, ContextChaCha, ErrorKind, Result, Topology},
-    style, Node, NodeBlock0, NodeController,
+    style, MemPoolCheck, Node, NodeBlock0, NodeController, Wallet,
 };
 use chain_impl_mockchain::block::HeaderHash;
 use indicatif::{MultiProgress, ProgressBar};
+use jormungandr_lib::interfaces::Value;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -21,7 +22,7 @@ pub struct ControllerBuilder {
 }
 
 pub struct Controller {
-    settings: Arc<Settings>,
+    settings: Settings,
 
     context: ContextChaCha,
 
@@ -102,6 +103,13 @@ impl ControllerBuilder {
             let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
 
             settings.dottify(file)?;
+
+            for wallet in settings.wallets.values() {
+                wallet.save_to(path)?;
+            }
+
+            let file = std::fs::File::create(&path.join("genesis.yaml"))?;
+            serde_yaml::to_writer(file, &settings.block0).unwrap();
         }
 
         Ok(())
@@ -121,7 +129,7 @@ impl Controller {
         let progress_bar = Arc::new(MultiProgress::new());
 
         Ok(Controller {
-            settings: Arc::new(settings),
+            settings: settings,
             context,
             block0_file,
             block0_hash,
@@ -130,6 +138,14 @@ impl Controller {
             runtime: runtime::Runtime::new()?,
             working_directory,
         })
+    }
+
+    pub fn wallet(&mut self, wallet: &str) -> Result<Wallet> {
+        if let Some(wallet) = self.settings.wallets.remove(wallet) {
+            Ok(wallet)
+        } else {
+            Err(ErrorKind::WalletNotFound(wallet.to_owned()).into())
+        }
     }
 
     pub fn spawn_node(&mut self, node_alias: &str, with_block0: bool) -> Result<NodeController> {
@@ -176,5 +192,21 @@ impl Controller {
         if let Some(thread) = self.progress_bar_thread {
             thread.join().unwrap()
         }
+    }
+
+    pub fn wallet_send_to(
+        &mut self,
+        from: &mut Wallet,
+        to: &Wallet,
+        via: &NodeController,
+        value: Value,
+    ) -> Result<MemPoolCheck> {
+        let block0_hash = &self.block0_hash;
+        let fees = &self.settings.block0.blockchain_configuration.linear_fees;
+        let address = to.address(chain_addr::Discrimination::Test);
+
+        let fragment = from.transaction_to(&block0_hash.clone().into(), fees, address, value)?;
+
+        Ok(via.send_fragment(fragment)?)
     }
 }

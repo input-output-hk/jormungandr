@@ -9,6 +9,7 @@ use jormungandr_lib::{
     interfaces::{Address, Value},
 };
 use rand_core::{CryptoRng, RngCore};
+use std::path::Path;
 
 error_chain! {
     foreign_links {
@@ -61,6 +62,17 @@ pub struct Wallet {
 }
 
 impl Wallet {
+    pub fn save_to<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
+        let dir = dir.as_ref().join(self.template().alias());
+
+        let file = std::fs::File::create(&dir)?;
+
+        match &self.inner {
+            Inner::Account(account) => account.save_to(file),
+            Inner::UTxO(_utxo) => unimplemented!(),
+        }
+    }
+
     pub fn generate_account<RNG>(template: WalletTemplate, rng: &mut RNG) -> Self
     where
         RNG: CryptoRng + RngCore,
@@ -97,6 +109,13 @@ impl Wallet {
 
     pub(crate) fn template(&self) -> &WalletTemplate {
         &self.template
+    }
+
+    pub fn confirm_transaction(&mut self) {
+        match &mut self.inner {
+            Inner::Account(account) => account.increment_counter(),
+            Inner::UTxO(_utxo) => unimplemented!(),
+        }
     }
 
     /// simple function to create a transaction with only one output to the given

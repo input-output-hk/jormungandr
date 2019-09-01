@@ -396,12 +396,25 @@ paths:
                     description: Node uptime in seconds
                     type: integer
                     minimum: 0
+                  lastBlockDate:
+                    description: The Epoch and slot Number of the block.
+                    type: string
+                  lastBlockHeight:
+                    description: The block number, in order, since the block0
+                    type: number
+                    minimum: 0
+                  lastBlockHash:
+                    description: The block hash, it's unique identifier in the blockchain.
+                    type: string
               example: |
                 {
                   "blockRecvCnt": 1102,
                   "lastBlockFees": 534,
                   "lastBlockSum": 51604,
                   "lastBlockTime": "2019-08-12T11:20:52.316544007+00:00",
+                  "lastBlockDate": "20.29",
+                  "lastBlockHeight": 202901,
+                  "lastBlockHash": "b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0",
                   "lastBlockTx": 2,
                   "txRecvCnt": 5440,
                   "uptime": 20032

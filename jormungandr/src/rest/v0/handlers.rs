@@ -91,17 +91,19 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
     let stats = context.stats_counter.clone();
     chain_tip_fut(&context)
         .and_then(move |tip| {
+            let header = tip.header().clone();
             context
                 .blockchain
                 .storage()
-                .get(tip.hash())
+                .get(header.hash())
                 .then(|res| match res {
                     Ok(Some(block)) => Ok(block.contents),
                     Ok(None) => Err(ErrorInternalServerError("Could not find block for tip")),
                     Err(e) => Err(ErrorInternalServerError(e)),
                 })
+                .map(move |contents| (contents, header))
         })
-        .and_then(move |contents| {
+        .and_then(move |(contents, tip_header)| {
             let mut block_tx_count = 0;
             let mut block_input_sum = Value::zero();
             let mut block_fee_sum = Value::zero();
@@ -129,6 +131,9 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
                 "txRecvCnt": stats.tx_recv_cnt(),
                 "blockRecvCnt": stats.block_recv_cnt(),
                 "uptime": stats.uptime_sec(),
+                "lastBlockHash": tip_header.hash().to_string(),
+                "lastBlockHeight": tip_header.chain_length().to_string(),
+                "lastBlockDate": tip_header.block_date().to_string(),
                 "lastBlockTime": stats.slot_start_time().map(SystemTime::from),
                 "lastBlockTx": block_tx_count,
                 "lastBlockSum": block_input_sum.0,
