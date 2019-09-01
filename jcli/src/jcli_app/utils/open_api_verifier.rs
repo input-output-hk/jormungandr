@@ -26,6 +26,14 @@ struct Verifier {
     path: String,
 }
 
+type PathWildcardValues<'a> = HashMap<&'a str, &'a str>;
+
+enum SegmentMatch<'a> {
+    None,
+    Exact,
+    Wildcard(&'a str),
+}
+
 custom_error! { pub Error
     VerificationFailed { source: VerifierError, path: String }
         = "verification with OpenAPI definition in '{path}' failed",
@@ -155,22 +163,37 @@ fn find_path_item<'a>(openapi: &'a OpenAPI, url: &str) -> Result<&'a PathItem, P
         .and_then(|(_, item)| unpack_reference_or(item).map_err(Into::into))
 }
 
-fn url_matches_path(url: &str, path: &str) -> bool {
-    let url_segments = url.trim_matches('/').rsplit('/');
-    let mut path_segments = path.trim_matches('/').rsplit('/');
-    let segments_eq = url_segments
-        .zip(path_segments.by_ref())
-        .all(url_segment_matches_path_segment);
-    let path_exhausted = path_segments.next().is_none();
-    segments_eq && path_exhausted
+fn url_matches_path<'a>(url: &'a str, path: &'a str) -> Option<PathWildcardValues<'a>> {
+    let mut url_segments = url.trim_matches('/').rsplit('/');
+    let path_segments = path.trim_matches('/').rsplit('/');
+    let mut wildcards = HashMap::new();
+    for path_segment in path_segments {
+        let url_segment = url_segments.next()?;
+        match url_segment_matches_path_segment(url_segment, path_segment) {
+            SegmentMatch::None => return None,
+            SegmentMatch::Exact => continue,
+            SegmentMatch::Wildcard(wildcard) => wildcards.insert(wildcard, url_segment),
+        };
+    }
+    Some(wildcards)
 }
 
-fn url_segment_matches_path_segment((url_segment, path_segment): (&str, &str)) -> bool {
-    path_segment_is_wildcard(path_segment) || path_segment == url_segment
+fn url_segment_matches_path_segment<'a>(
+    url_segment: &str,
+    path_segment: &'a str,
+) -> SegmentMatch<'a> {
+    match path_segment_wildcard_name(path_segment) {
+        Some(wildcard) => SegmentMatch::Wildcard(wildcard),
+        None if path_segment == url_segment => SegmentMatch::Exact,
+        None => SegmentMatch::None,
+    }
 }
 
-fn path_segment_is_wildcard(path_segment: &str) -> bool {
-    path_segment.starts_with('{') && path_segment.ends_with('}')
+fn path_segment_wildcard_name(path_segment: &str) -> Option<&str> {
+    match path_segment.starts_with('{') && path_segment.ends_with('}') {
+        true => Some(&path_segment[1..path_segment.len() - 1]),
+        false => None,
+    }
 }
 
 fn verify_method(
@@ -322,31 +345,61 @@ mod tests {
 
     #[test]
     fn url_matches_path_tests() {
-        assert_url_matches_path("abc", "abc");
-        refute_url_matches_path("abc", "def");
+        assert_url_matches_path(hashmap!(), "abc", "abc");
+        assert_url_matches_path(None, "abc", "def");
 
-        assert_url_matches_path("/abc/", "abc");
-        assert_url_matches_path("abc", "/abc/");
+        assert_url_matches_path(hashmap!(), "/abc/", "abc");
+        assert_url_matches_path(hashmap!(), "abc", "/abc/");
 
-        refute_url_matches_path("abc", "abc/def");
-        refute_url_matches_path("abc", "def/abc");
-        refute_url_matches_path("abc/def", "abc");
-        assert_url_matches_path("def/abc", "abc");
+        assert_url_matches_path(None, "abc", "abc/def");
+        assert_url_matches_path(None, "abc", "def/abc");
+        assert_url_matches_path(None, "abc/def", "abc");
+        assert_url_matches_path(hashmap!(), "def/abc", "abc");
 
-        assert_url_matches_path("abc", "{x}");
-        refute_url_matches_path("{x}", "abc");
-        assert_url_matches_path("abc/def/ghi", "abc/{x}/ghi");
+        assert_url_matches_path(hashmap!("x" => "abc"), "abc", "{x}");
+        assert_url_matches_path(None, "{x}", "abc");
+        assert_url_matches_path(hashmap!("x" => "def"), "abc/def/ghi", "abc/{x}/ghi");
+        assert_url_matches_path(
+            hashmap!("x" => "abc", "y" => "def", "z" => "ghi"),
+            "abc/def/ghi",
+            "{x}/{y}/{z}",
+        );
     }
 
-    fn assert_url_matches_path(url: &str, path: &str) {
-        let result = url_matches_path(url, path);
+    fn assert_url_matches_path<E>(expected: E, url: &str, path: &str)
+    where
+        E: Into<Option<PathWildcardValues<'static>>>,
+    {
+        let actual = url_matches_path(url, path);
 
-        assert!(result, "Url '{}' was not accepted for path '{}'", url, path);
+        assert_eq!(
+            expected.into(),
+            actual,
+            "Invalid result for URL '{}' and path '{}'",
+            url,
+            path
+        );
     }
 
-    fn refute_url_matches_path(url: &str, path: &str) {
-        let result = url_matches_path(url, path);
+    #[test]
+    fn path_segment_wildcard_name_tests() {
+        assert_path_segment_wildcard_name(None, "");
+        assert_path_segment_wildcard_name(None, "abc");
+        assert_path_segment_wildcard_name(None, "{abc");
+        assert_path_segment_wildcard_name(None, "abc}");
+        assert_path_segment_wildcard_name("abc", "{abc}");
+        assert_path_segment_wildcard_name("{abc}", "{{abc}}");
+        assert_path_segment_wildcard_name("", "{}");
+    }
 
-        assert!(!result, "Url '{}' was accepted for path '{}'", url, path);
+    fn assert_path_segment_wildcard_name(expected: impl Into<Option<&'static str>>, input: &str) {
+        let actual = path_segment_wildcard_name(input);
+
+        assert_eq!(
+            expected.into(),
+            actual,
+            "Invalid result for input '{}'",
+            input
+        );
     }
 }

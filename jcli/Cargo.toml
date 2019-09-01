@@ -47,6 +47,7 @@ default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
 
 [dev-dependencies]
+maplit = "1.0.2"
 mktemp = "0.4.0"
 
 [build-dependencies]
