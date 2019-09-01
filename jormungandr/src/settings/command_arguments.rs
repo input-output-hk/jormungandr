@@ -1,6 +1,5 @@
 use crate::settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES;
 use slog::FilterLevel;
-use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -11,34 +10,6 @@ use crate::{
 
 #[derive(StructOpt, Debug)]
 pub struct StartArguments {
-    /// The address to listen for inbound legacy protocol connections at.
-    /// The program will open a listening socket on the given address.
-    /// You might need to have special privileges to open the TCP socket
-    /// at this address.
-    #[structopt(long = "legacy-listen", parse(try_from_str))]
-    pub ntt_listen: Vec<SocketAddr>,
-
-    /// The address to listen for inbound gRPC connections at.
-    /// The program will open a listening socket on the given address.
-    /// You might need to have special privileges to open the TCP socket
-    /// at this address.
-    #[structopt(long = "grpc-listen", parse(try_from_str))]
-    pub grpc_listen: Vec<SocketAddr>,
-
-    /// List of the nodes to connect to using the legacy protocol.
-    /// These are the nodes we know we need to connect to and
-    /// start processing blocks, transactions and participate with.
-    ///
-    #[structopt(long = "legacy-connect", parse(try_from_str))]
-    pub ntt_connect: Vec<SocketAddr>,
-
-    /// List of the nodes to connect to using the grpc protocol.
-    /// These are the nodes we know we need to connect to and
-    /// start processing blocks, transactions and participate with.
-    ///
-    #[structopt(long = "grpc-connect", parse(try_from_str))]
-    pub grpc_connect: Vec<SocketAddr>,
-
     /// Path to the blockchain pool storage directory
     #[structopt(long = "storage", parse(from_os_str))]
     pub storage: Option<PathBuf>,
@@ -95,6 +66,15 @@ pub struct CommandLine {
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,
+
+    /// display full version details (software version, source version, targets and compiler used)
+    #[structopt(long = "full-version")]
+    pub full_version: bool,
+
+    /// display the sources version, allowing to check the source's hash used to compile this executable.
+    /// this option is useful for scripting retrieving the logs of the version of this application.
+    #[structopt(long = "source-version")]
+    pub source_version: bool,
 }
 
 impl CommandLine {

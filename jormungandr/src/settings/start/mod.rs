@@ -46,6 +46,14 @@ impl RawSettings {
         })
     }
 
+    pub fn full_version(&self) -> bool {
+        self.command_line.full_version
+    }
+
+    pub fn source_version(&self) -> bool {
+        self.command_line.source_version
+    }
+
     pub fn to_logger(&self) -> Result<Logger, logging::Error> {
         LogSettings {
             level: self.logger_level(),

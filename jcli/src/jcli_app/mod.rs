@@ -14,7 +14,24 @@ use structopt::StructOpt;
 /// Jormungandr CLI toolkit
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub enum JCli {
+pub struct JCli {
+    /// display full version details (software version, source version, targets and compiler used)
+    #[structopt(long = "full-version")]
+    full_version: bool,
+
+    /// display the sources version, allowing to check the source's hash used to compile this executable.
+    /// this option is useful for scripting retrieving the logs of the version of this application.
+    #[structopt(long = "source-version")]
+    source_version: bool,
+
+    #[structopt(subcommand)]
+    command: Option<JCliCommand>,
+}
+
+/// Jormungandr CLI toolkit
+#[derive(StructOpt)]
+#[structopt(rename_all = "kebab-case")]
+pub enum JCliCommand {
     /// Key Generation
     Key(key::Key),
     /// Address tooling and helper
@@ -37,16 +54,33 @@ pub enum JCli {
 
 impl JCli {
     pub fn exec(self) -> Result<(), Box<dyn Error>> {
+        use std::io::Write as _;
+        if self.full_version {
+            Ok(writeln!(std::io::stdout(), "{}", env!("FULL_VERSION"))?)
+        } else if self.source_version {
+            Ok(writeln!(std::io::stdout(), "{}", env!("SOURCE_VERSION"))?)
+        } else if let Some(cmd) = self.command {
+            cmd.exec()
+        } else {
+            writeln!(std::io::stderr(), "No command, try `--help'")?;
+            std::process::exit(1);
+        }
+    }
+}
+
+impl JCliCommand {
+    pub fn exec(self) -> Result<(), Box<dyn Error>> {
+        use self::JCliCommand::*;
         match self {
-            JCli::Key(key) => key.exec()?,
-            JCli::Address(address) => address.exec()?,
-            JCli::Genesis(genesis) => genesis.exec()?,
-            JCli::Rest(rest) => rest.exec()?,
-            JCli::Transaction(transaction) => transaction.exec()?,
-            JCli::Debug(debug) => debug.exec()?,
-            JCli::Certificate(certificate) => certificate.exec()?,
-            JCli::AutoCompletion(auto_completion) => auto_completion.exec::<Self>()?,
-            JCli::Utils(utils) => utils.exec()?,
+            Key(key) => key.exec()?,
+            Address(address) => address.exec()?,
+            Genesis(genesis) => genesis.exec()?,
+            Rest(rest) => rest.exec()?,
+            Transaction(transaction) => transaction.exec()?,
+            Debug(debug) => debug.exec()?,
+            Certificate(certificate) => certificate.exec()?,
+            AutoCompletion(auto_completion) => auto_completion.exec::<Self>()?,
+            Utils(utils) => utils.exec()?,
         };
         Ok(())
     }
