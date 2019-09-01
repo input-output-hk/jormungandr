@@ -19,6 +19,7 @@ extern crate structopt;
 #[macro_use(custom_error)]
 extern crate custom_error;
 extern crate strfmt;
+extern crate valico;
 
 mod jcli_app;
 

@@ -1,3 +1,5 @@
+use jcli_app::utils::rest_api::{RestApiRequestBody, RestApiResponse};
+use reqwest::Request;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -9,10 +11,24 @@ pub struct DebugFlag {
 }
 
 impl DebugFlag {
-    pub fn debug_writer(&self) -> Option<impl std::io::Write> {
-        match self.debug {
-            true => Some(std::io::stderr()),
-            false => None,
+    pub fn write_request(&self, request: &Request, body: &RestApiRequestBody) {
+        if !self.debug {
+            return;
+        }
+        eprintln!("{:#?}", request);
+        if body.has_body() {
+            eprintln!("Request body:\n{}", body)
+        }
+    }
+
+    pub fn write_response(&self, response: &RestApiResponse) {
+        if !self.debug {
+            return;
+        }
+        eprintln!("{:#?}", response.response());
+        let body = response.body();
+        if !body.is_empty() {
+            eprintln!("Response body:\n{}", body)
         }
     }
 }
