@@ -341,15 +341,19 @@ pub struct InitializedNode {
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
     let raw_settings = RawSettings::load(command_line)?;
+
+    if raw_settings.full_version() {
+        println!("{}", env!("FULL_VERSION"));
+        std::process::exit(0);
+    } else if raw_settings.source_version() {
+        println!("{}", env!("SOURCE_VERSION"));
+        std::process::exit(0);
+    }
+
     let logger = raw_settings.to_logger()?;
 
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
-    info!(
-        init_logger,
-        "Starting {} {}",
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION")
-    );
+    info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
     let settings = raw_settings.try_into_settings(&init_logger)?;
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
 

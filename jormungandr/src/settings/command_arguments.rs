@@ -66,6 +66,15 @@ pub struct CommandLine {
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,
+
+    /// display full version details (software version, source version, targets and compiler used)
+    #[structopt(long = "full-version")]
+    pub full_version: bool,
+
+    /// display the sources version, allowing to check the source's hash used to compile this executable.
+    /// this option is useful for scripting retrieving the logs of the version of this application.
+    #[structopt(long = "source-version")]
+    pub source_version: bool,
 }
 
 impl CommandLine {
