@@ -107,6 +107,9 @@ impl ControllerBuilder {
             for wallet in settings.wallets.values() {
                 wallet.save_to(path)?;
             }
+
+            let file = std::fs::File::create(&path.join("genesis.yaml"))?;
+            serde_yaml::to_writer(file, &settings.block0).unwrap();
         }
 
         Ok(())
