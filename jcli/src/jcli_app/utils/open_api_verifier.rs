@@ -1,11 +1,13 @@
 use jcli_app::utils::{rest_api::RestApiRequestBody, CustomErrorFiller};
 use mime::Mime;
 use openapiv3::{
-    OpenAPI, Operation, PathItem, ReferenceOr, RequestBody, Schema, SchemaKind, StringFormat,
-    StringType, Type, VariantOrUnknownOrEmpty,
+    OpenAPI, Operation, Parameter, ParameterData, ParameterSchemaOrContent, PathItem, PathStyle,
+    Paths, ReferenceOr, RequestBody, Schema, SchemaKind, StringFormat, StringType, Type,
+    VariantOrUnknownOrEmpty,
 };
 use reqwest::{Method, Request};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io;
@@ -54,7 +56,25 @@ custom_error! { pub PathError
 
 custom_error! { pub MethodError
     NotFound = "method not found",
+    RequestPathVerificationFailed { source: RequestPathError } = "failed to validate request path",
     RequestBodyVerificationFailed { source: RequestBodyError } = "failed to validate request body",
+}
+
+custom_error! { pub RequestPathError
+    RefError { source: RefError } = "error while reading reference",
+    ParamNotFound { name: String } = "parameter '{name}' not found in request URL",
+    ParamsUndocumented { names: Vec<String> }
+        = @{format_args!("parameters {:?} undocumented", names)},
+    RequestPathValueVerificationFailed { source: RequestPathValueError, name: String }
+        = "failed to validate request path value for parameter '{name}'",
+}
+
+custom_error! { pub RequestPathValueError
+    RefError { source: RefError } = "error while reading reference",
+    PathStyleUnsupported { style: PathStyle }
+        = @{format_args!("path style '{:?}' is not supported", style)},
+    ContentUnsupported = "content in path definition not supported",
+    SchemaInvalid { source: SchemaError } = "schema does not match path value",
 }
 
 custom_error! { pub RequestBodyError
@@ -77,6 +97,10 @@ custom_error! { pub SchemaError
     SchemaSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller }
         = "schema serialization failed",
     SchemaInvalid { source: ValicoError } = "schema is not valid",
+    SchemaNotSpecific = "only schemas with single specific type are supported",
+    SchemaNotPrimitive = "only schemas for primitive types are supported",
+    ValueNotValidPrimitive { source: serde_json::Error, filler: CustomErrorFiller }
+        = "value is not a valid primitive",
     ValueNotValidJson { source: serde_json::Error, filler: CustomErrorFiller }
         = "value is not a valid JSON",
     ValueValidationFailed { report: ValidationState }
@@ -147,20 +171,27 @@ fn verify_path(
     req: &Request,
     body: &RestApiRequestBody,
 ) -> Result<(), PathError> {
-    let path = find_path_item(openapi, req.url().path())?;
-    verify_method(path, req, body).map_err(|source| PathError::MethodVerificationFailed {
-        source,
-        method: req.method().to_string(),
+    let (wildcards, path_item) = find_path_item(&openapi.paths, req.url().path())?;
+    verify_method(wildcards, path_item, req, body).map_err(|source| {
+        PathError::MethodVerificationFailed {
+            source,
+            method: req.method().to_string(),
+        }
     })
 }
 
-fn find_path_item<'a>(openapi: &'a OpenAPI, url: &str) -> Result<&'a PathItem, PathError> {
-    openapi
-        .paths
+fn find_path_item<'a>(
+    paths: &'a Paths,
+    url: &'a str,
+) -> Result<(PathWildcardValues<'a>, &'a PathItem), PathError> {
+    let (wildcards, path_item_ref) = paths
         .iter()
-        .find(|(path, _)| url_matches_path(url, &path))
-        .ok_or_else(|| PathError::NotFound)
-        .and_then(|(_, item)| unpack_reference_or(item).map_err(Into::into))
+        .find_map(|(path, path_item_ref)| {
+            url_matches_path(url, &path).map(|wildcards| (wildcards, path_item_ref))
+        })
+        .ok_or_else(|| PathError::NotFound)?;
+    let path_item = unpack_reference_or(path_item_ref)?;
+    Ok((wildcards, path_item))
 }
 
 fn url_matches_path<'a>(url: &'a str, path: &'a str) -> Option<PathWildcardValues<'a>> {
@@ -197,11 +228,13 @@ fn path_segment_wildcard_name(path_segment: &str) -> Option<&str> {
 }
 
 fn verify_method(
-    path: &PathItem,
+    wildcards: PathWildcardValues,
+    path_item: &PathItem,
     req: &Request,
     body: &RestApiRequestBody,
 ) -> Result<(), MethodError> {
-    let operation = find_operation(path, req)?;
+    let operation = find_operation(path_item, req)?;
+    verify_request_path(wildcards, &operation.parameters)?;
     verify_request_body(&operation.request_body, body)?;
     Ok(())
 }
@@ -221,6 +254,55 @@ fn find_operation<'a>(path: &'a PathItem, req: &Request) -> Result<&'a Operation
     }
     .as_ref()
     .ok_or_else(|| MethodError::NotFound)
+}
+
+fn verify_request_path(
+    mut wildcards: PathWildcardValues,
+    param_refs: &Vec<ReferenceOr<Parameter>>,
+) -> Result<(), RequestPathError> {
+    for param_ref in param_refs {
+        let (param_data, style) = match unpack_reference_or(param_ref)? {
+            Parameter::Path {
+                parameter_data,
+                style,
+            } => (parameter_data, style),
+            _ => continue,
+        };
+        let name = &param_data.name;
+        let value = wildcards
+            .remove(&**name)
+            .ok_or_else(|| RequestPathError::ParamNotFound { name: name.clone() })?;
+        verify_request_path_value(value, param_data, style).map_err(|source| {
+            RequestPathError::RequestPathValueVerificationFailed {
+                source,
+                name: name.clone(),
+            }
+        })?;
+    }
+    let unchecked: Vec<_> = wildcards.keys().map(|key| key.to_string()).collect();
+    match unchecked.is_empty() {
+        true => Ok(()),
+        false => Err(RequestPathError::ParamsUndocumented { names: unchecked }),
+    }
+}
+
+fn verify_request_path_value(
+    value: &str,
+    param_data: &ParameterData,
+    style: &PathStyle,
+) -> Result<(), RequestPathValueError> {
+    match style {
+        PathStyle::Simple => Ok(()),
+        _ => Err(RequestPathValueError::PathStyleUnsupported {
+            style: style.clone(),
+        }),
+    }?;
+    let schema = match param_data.format {
+        ParameterSchemaOrContent::Schema(ref schema_ref) => unpack_reference_or(schema_ref)?,
+        ParameterSchemaOrContent::Content(_) => Err(RequestPathValueError::ContentUnsupported)?,
+    };
+    verify_schema_simple_string(schema, value)?;
+    Ok(())
 }
 
 fn verify_request_body(
@@ -306,6 +388,24 @@ fn verify_schema_json(schema: &Schema, json: &str) -> Result<(), SchemaError> {
         source,
         filler: CustomErrorFiller,
     })?;
+    validate_schema_value(schema, &value)
+}
+
+fn verify_schema_simple_string(schema: &Schema, simple: &str) -> Result<(), SchemaError> {
+    let schema_type = match schema.schema_kind {
+        SchemaKind::Type(ref schema_type) => schema_type,
+        _ => Err(SchemaError::SchemaNotSpecific)?,
+    };
+    let value = match schema_type {
+        Type::String(_) => Value::String(simple.to_string()),
+        Type::Boolean { .. } | Type::Integer(_) | Type::Number(_) => {
+            serde_json::from_str(simple).map_err(|source| SchemaError::ValueNotValidPrimitive {
+                source,
+                filler: CustomErrorFiller,
+            })?
+        }
+        Type::Array(_) | Type::Object(_) => Err(SchemaError::SchemaNotPrimitive)?,
+    };
     validate_schema_value(schema, &value)
 }
 
