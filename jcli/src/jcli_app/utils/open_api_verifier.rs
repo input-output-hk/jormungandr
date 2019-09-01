@@ -40,7 +40,8 @@ custom_error! { pub VerifierError
 custom_error! { pub PathError
     NotFound = "path not found",
     RefError { source: RefError } = "error while reading reference",
-    MethodVerificationFailed { source: MethodError, method: String } = "failed to validate method '{method}'",
+    MethodVerificationFailed { source: MethodError, method: String }
+        = "failed to validate method '{method}'",
 }
 
 custom_error! { pub MethodError
@@ -52,7 +53,8 @@ custom_error! { pub RequestBodyError
     RefError { source: RefError } = "error while reading reference",
     UnexpectedBody = "request should not have body",
     ExpectedBody = "request should have a body",
-    MediaTypeVerificationFailed { source: RequestMediaTypeError, mime: &'static Mime } = "failed to verify media type '{mime}'"
+    MediaTypeVerificationFailed { source: RequestMediaTypeError, mime: &'static Mime }
+        = "failed to verify media type '{mime}'"
 }
 
 custom_error! { pub RequestMediaTypeError
@@ -74,7 +76,8 @@ custom_error! { pub SchemaError
 }
 
 custom_error! { pub RefError
-    NotSupported { reference: String } = "references are not supported, found one pointing at '{reference}'",
+    NotSupported { reference: String }
+        = "references are not supported, found one pointing at '{reference}'",
 }
 
 impl OpenApiVerifier {
