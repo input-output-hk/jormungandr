@@ -3,7 +3,7 @@ use crate::{
     certificate::Certificate,
     fee::FeeAlgorithm,
     fragment::Fragment,
-    testing::address::AddressData,
+    testing::data::AddressData,
     testing::witness_builder,
     transaction::{AuthenticatedTransaction, Input, Output, Transaction, Witness},
     txbuilder::{self, GeneratedTransaction, OutputPolicy, TransactionBuilder},

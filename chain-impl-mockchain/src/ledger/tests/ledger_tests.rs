@@ -8,10 +8,10 @@ use crate::{
         Ledger,
     },
     testing::{
-        address::AddressData,
         arbitrary::{
             AccountStatesVerifier, ArbitraryValidTransactionData, NonZeroValue, UtxoVerifier,
         },
+        data::AddressData,
         ledger::{self, ConfigBuilder},
         tx_builder::TransactionBuilder,
     },

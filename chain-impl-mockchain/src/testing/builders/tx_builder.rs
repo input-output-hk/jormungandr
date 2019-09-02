@@ -3,7 +3,7 @@ use crate::{
     fee::LinearFee,
     fragment::Fragment,
     ledger::OutputAddress,
-    testing::{address::AddressData, witness_builder},
+    testing::{data::AddressData, witness_builder},
     transaction::{AuthenticatedTransaction, Input, NoExtra, Output, Transaction, Witness},
     txbuilder::{OutputPolicy, TransactionBuilder as Builder},
 };

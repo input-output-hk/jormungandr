@@ -2,7 +2,7 @@ use crate::{
     account::SpendingCounter,
     block::HeaderHash,
     key::EitherEd25519SecretKey,
-    testing::address::AddressData,
+    testing::data::AddressData,
     transaction::{TransactionSignDataHash, Witness},
 };
 use chain_addr::Kind;

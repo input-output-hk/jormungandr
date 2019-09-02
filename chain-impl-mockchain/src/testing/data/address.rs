@@ -7,7 +7,7 @@ use crate::{
 };
 use chain_addr::{Address, AddressReadable, Discrimination, Kind, KindType};
 use chain_crypto::{
-    bech32::Bech32, testing::TestCryptoGen, AsymmetricKey, Ed25519, Ed25519Extended, KeyPair,
+    testing::TestCryptoGen, AsymmetricKey, Ed25519, Ed25519Extended, KeyPair,
     PublicKey,
 };
 

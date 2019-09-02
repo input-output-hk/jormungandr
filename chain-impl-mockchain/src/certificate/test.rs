@@ -78,3 +78,16 @@ impl Arbitrary for PoolRegistration {
         }
     }
 }
+
+impl Arbitrary for Certificate {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let option = u8::arbitrary(g) % 4;
+        match option {
+            0 => Certificate::StakeDelegation(Arbitrary::arbitrary(g)),
+            1 => Certificate::OwnerStakeDelegation(Arbitrary::arbitrary(g)),
+            2 => Certificate::PoolRegistration(Arbitrary::arbitrary(g)),
+            3 => Certificate::PoolManagement(Arbitrary::arbitrary(g)),
+            _ => panic!("unimplemented"),
+        }
+    }
+}

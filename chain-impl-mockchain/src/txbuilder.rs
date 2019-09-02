@@ -95,8 +95,6 @@ impl<Extra> From<tx::Transaction<Address, Extra>> for TransactionBuilder<Extra> 
 }
 
 impl<Extra: Clone> TransactionBuilder<Extra> {
-    /// Create new transaction builder.
-
     /// Add additional input.
     ///
     /// Each input may extend the size of the required fee.
@@ -350,8 +348,9 @@ impl TransactionFinalizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::certificate::Certificate;
     use crate::fee::LinearFee;
-    use crate::transaction::{Input, NoExtra, INPUT_PTR_SIZE};
+    use crate::transaction::{Input, INPUT_PTR_SIZE};
     use chain_addr::Address;
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
@@ -423,10 +422,10 @@ mod tests {
         }
     }
 
-    fn validate_tx_balance(
+    fn validate_tx_balance<Extra>(
         expected: Value,
         fee: Value,
-        tx: tx::Transaction<Address, NoExtra>,
+        tx: tx::Transaction<Address, Extra>,
     ) -> TestResult {
         let actual = match tx.balance(fee) {
             Ok(Balance::Positive(value)) => value,
@@ -445,7 +444,7 @@ mod tests {
     }
 
     #[derive(Clone, Debug)]
-    struct ArbitraryInputs(Vec<Input>);
+    pub struct ArbitraryInputs(Vec<Input>);
 
     impl Arbitrary for ArbitraryInputs {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
@@ -460,7 +459,7 @@ mod tests {
     }
 
     #[derive(Clone, Debug)]
-    struct ArbitraryOutputs(Vec<(Address, Value)>);
+    pub struct ArbitraryOutputs(Vec<(Address, Value)>);
 
     impl Arbitrary for ArbitraryOutputs {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
@@ -535,4 +534,30 @@ mod tests {
             }
         }
     }
+
+    #[quickcheck]
+    pub fn cert_builder_never_creates_unbalanced_tx(
+        input: Input,
+        fee: LinearFee,
+        certificate: Certificate,
+    ) -> TestResult {
+        let mut builder = TransactionBuilder::new_payload(certificate);
+        builder.add_input(&input);
+        let fee_value = fee.calculate(&builder.tx).unwrap();
+        let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
+        let expected_balance_res = input.value - fee_value;
+        match (expected_balance_res, result) {
+            (Ok(expected_balance), Ok((builder_balance, tx))) => {
+                let result = validate_builder_balance(expected_balance, builder_balance);
+                if result.is_failure() {
+                    return result;
+                }
+                validate_tx_balance(expected_balance, fee_value, tx)
+            }
+            (Ok(_), Err(_)) => TestResult::error("Builder should not fail"),
+            (Err(_), Ok(_)) => TestResult::error("Builder should fail"),
+            (Err(_), Err(_)) => TestResult::passed(),
+        }
+    }
+
 }

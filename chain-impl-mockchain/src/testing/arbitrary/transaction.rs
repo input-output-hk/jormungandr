@@ -2,8 +2,8 @@ use super::ArbitraryAddressDataVec;
 use crate::{
     account::Ledger as AccountLedger,
     ledger::Ledger,
-    testing::address::{AddressData, AddressDataValue},
     testing::arbitrary::{utils as arbitrary_utils, AverageValue},
+    testing::data::{AddressData, AddressDataValue},
     transaction::{Input, Output},
     utxo::{self, Entry},
     value::*,

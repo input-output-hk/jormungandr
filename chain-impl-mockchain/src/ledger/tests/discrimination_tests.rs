@@ -2,7 +2,7 @@
 
 use crate::fragment::Fragment;
 use crate::testing::{
-    address::AddressData,
+    data::AddressData,
     arbitrary::KindTypeWithoutMultisig,
     ledger::{self, ConfigBuilder},
     tx_builder::TransactionBuilder,
