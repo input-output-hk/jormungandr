@@ -131,14 +131,14 @@ is stateless for
 * `UploadBlocks: (Stream<Block>)`
   * Uploads blocks in response to a `Solicit` event received via the
     `BlockSubscription` stream.
-* `GetMessages: ([Hash]) -> [Message]`
-  * Fetch one or multiple messages (block content items, such as transactions)
+* `GetFragments: ([Hash]) -> [Fragment]`
+  * Fetch one or multiple fragments (block content items, such as transactions)
     identified by the hashes.
-* `MessageSubscription: (Stream<Message>) -> Stream<Message>`
+* `FragmentSubscription: (Stream<Fragment>) -> Stream<Fragment>`
   * Establish a bidirectional subscription to send and receive new
     content for the block under construction.
-  * Used for submission of new messages submitted to the node by
-    application clients, and for relaying of message gossip on the network.
+  * Used for submission of new fragments submitted to the node by
+    application clients, and for relaying of fragment gossip on the network.
 * P2P Messages: see P2P messages section.
 
 The protobuf files describing these methods are available in the
