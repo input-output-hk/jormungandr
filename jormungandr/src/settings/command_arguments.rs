@@ -16,7 +16,7 @@ pub struct StartArguments {
 
     /// Set the node config (in YAML format) to use as general configuration
     #[structopt(long = "config", parse(from_os_str))]
-    pub node_config: PathBuf,
+    pub node_config: Option<PathBuf>,
 
     /// Set the secret node config (in YAML format). Can be given
     /// multiple times.

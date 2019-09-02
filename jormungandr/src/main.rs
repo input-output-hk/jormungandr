@@ -340,15 +340,16 @@ pub struct InitializedNode {
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
-    let raw_settings = RawSettings::load(command_line)?;
 
-    if raw_settings.full_version() {
+    if command_line.full_version {
         println!("{}", env!("FULL_VERSION"));
         std::process::exit(0);
-    } else if raw_settings.source_version() {
+    } else if command_line.source_version {
         println!("{}", env!("SOURCE_VERSION"));
         std::process::exit(0);
     }
+
+    let raw_settings = RawSettings::load(command_line)?;
 
     let logger = raw_settings.to_logger()?;
 
