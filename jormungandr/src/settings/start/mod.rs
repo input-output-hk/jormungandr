@@ -15,6 +15,7 @@ custom_error! {pub Error
    ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
    Config { source: serde_yaml::Error } = "Error while parsing the node configuration file: {source}",
    Rest { source: RestError } = "The Rest configuration is invalid: {source}",
+   MissingNodeConfig = "--config is mandatory to start the node",
    ExpectedBlock0Info = "Cannot start the node without the information to retrieve the genesis block",
    TooMuchBlock0Info = "Use only `--genesis-block-hash' or `--genesis-block'",
 }
@@ -38,20 +39,16 @@ pub struct RawSettings {
 
 impl RawSettings {
     pub fn load(command_line: CommandLine) -> Result<Self, Error> {
-        let config_file = File::open(&command_line.start_arguments.node_config)?;
+        let config_file = if let Some(node_config) = &command_line.start_arguments.node_config {
+            File::open(node_config)?
+        } else {
+            return Err(Error::MissingNodeConfig);
+        };
         let config = serde_yaml::from_reader(config_file)?;
         Ok(Self {
             command_line,
             config,
         })
-    }
-
-    pub fn full_version(&self) -> bool {
-        self.command_line.full_version
-    }
-
-    pub fn source_version(&self) -> bool {
-        self.command_line.source_version
     }
 
     pub fn to_logger(&self) -> Result<Logger, logging::Error> {
