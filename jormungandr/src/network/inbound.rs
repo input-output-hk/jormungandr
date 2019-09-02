@@ -3,74 +3,97 @@ use crate::utils::async_msg::MessageBox;
 use network_core::error as core_error;
 
 use futures::prelude::*;
-use futures::sink::Send;
+use futures::sink;
 use slog::Logger;
 
 use std::mem;
 
-pub struct InboundProcessing<Msg> {
+pub type MsgFunc<T, Msg> = fn(T, ReplyHandle<()>) -> Msg;
+
+pub struct InboundProcessing<T, Msg> {
     state: State<Msg>,
-    reply_future: Option<ReplyFuture<(), core_error::Error>>,
+    conv: MsgFunc<T, Msg>,
+    logger: Logger,
 }
 
 enum State<Msg> {
-    Sending(Send<MessageBox<Msg>>),
-    WaitingForReply,
-    Error(core_error::Error),
-    Gone,
+    Ready(MessageBox<Msg>),
+    Sending {
+        future: sink::Send<MessageBox<Msg>>,
+        reply: ReplyFuture<(), core_error::Error>,
+    },
+    WaitingReply {
+        reply: ReplyFuture<(), core_error::Error>,
+        mbox: MessageBox<Msg>,
+    },
+    Transitional,
 }
 
-impl<Msg> InboundProcessing<Msg> {
-    pub fn with_unary<F>(msg_box: MessageBox<Msg>, logger: Logger, f: F) -> Self
-    where
-        F: FnOnce(ReplyHandle<()>) -> Msg,
-    {
-        let (reply, reply_future) = intercom::unary_reply(logger);
-        let msg = f(reply);
-        let send = msg_box.send(msg);
-        InboundProcessing {
-            state: State::Sending(send),
-            reply_future: Some(reply_future),
-        }
-    }
-
-    pub fn error(err: core_error::Error) -> Self {
-        InboundProcessing {
-            state: State::Error(err),
-            reply_future: None,
-        }
-    }
-}
-
-impl<Msg> Future for InboundProcessing<Msg> {
-    type Item = ();
-    type Error = core_error::Error;
-
-    fn poll(&mut self) -> Poll<(), core_error::Error> {
+impl<Msg> State<Msg> {
+    fn poll_ready(&mut self) -> Poll<(), core_error::Error> {
         loop {
-            match self.state {
-                State::Sending(ref mut future) => {
-                    try_ready!(future.poll().map_err(|_| core_error::Error::new(
+            let mbox_from_send = match self {
+                State::Ready(_) => return Ok(().into()),
+                State::Sending { future, .. } => {
+                    let mbox = try_ready!(future.poll().map_err(|_| core_error::Error::new(
                         core_error::Code::Aborted,
                         "the node stopped processing incoming items",
                     )));
-                    self.state = State::WaitingForReply;
+                    Some(mbox)
                 }
-                State::WaitingForReply => {
-                    let future = self.reply_future.as_mut().unwrap();
-                    try_ready!(future.poll());
-                    self.state = State::Gone;
-                    return Ok(().into());
+                State::WaitingReply { reply, .. } => {
+                    try_ready!(reply.poll());
+                    None
                 }
-                State::Error(_) => {
-                    if let State::Error(e) = mem::replace(&mut self.state, State::Gone) {
-                        return Err(e);
-                    } else {
-                        unreachable!();
-                    }
-                }
-                State::Gone => panic!("polled a finished future"),
+                State::Transitional => unreachable!(),
+            };
+            *self = match mem::replace(self, State::Transitional) {
+                State::Ready(_) => unreachable!(),
+                State::Sending { reply, .. } => State::WaitingReply {
+                    reply,
+                    mbox: mbox_from_send.unwrap(),
+                },
+                State::WaitingReply { mbox, .. } => State::Ready(mbox),
+                State::Transitional => unreachable!(),
             }
         }
+    }
+}
+
+impl<T, Msg> InboundProcessing<T, Msg> {
+    pub fn with_unary(mbox: MessageBox<Msg>, logger: Logger, f: MsgFunc<T, Msg>) -> Self {
+        InboundProcessing {
+            state: State::Ready(mbox),
+            conv: f,
+            logger,
+        }
+    }
+}
+
+impl<T, Msg> Sink for InboundProcessing<T, Msg> {
+    type SinkItem = T;
+    type SinkError = core_error::Error;
+
+    fn start_send(&mut self, item: T) -> StartSend<T, Self::SinkError> {
+        match self.state.poll_ready()? {
+            Async::NotReady => return Ok(AsyncSink::NotReady(item)),
+            Async::Ready(()) => {}
+        };
+        let mbox = match mem::replace(&mut self.state, State::Transitional) {
+            State::Ready(mbox) => mbox,
+            _ => unreachable!(),
+        };
+        let (reply_handle, reply_future) = intercom::unary_reply(self.logger.clone());
+        let msg = (self.conv)(item, reply_handle);
+        let future = mbox.send(msg);
+        self.state = State::Sending {
+            future,
+            reply: reply_future,
+        };
+        Ok(AsyncSink::Ready)
+    }
+
+    fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
+        self.state.poll_ready()
     }
 }
