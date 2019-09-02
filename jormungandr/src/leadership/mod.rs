@@ -162,13 +162,36 @@ impl LeadershipModule {
             .slot_to_systemtime(slot)
             .expect("The slot should always be in the given time frame here");
 
-        let now = std::time::Instant::now();
-        let duration = slot_system_time
-            .duration_since(std::time::SystemTime::now())
-            .unwrap();
-        let scheduled_time = now + duration;
+        let now = std::time::SystemTime::now();
 
-        let sa: SystemTime = (std::time::SystemTime::now() + duration).into();
+        let duration = match slot_system_time.duration_since(now) {
+            Err(error) => {
+                let logger = self.service_info.logger().new(o!(
+                    "now" => SystemTime::from(now).to_string(),
+                    "slot_system_time" => SystemTime::from(slot_system_time).to_string(),
+                    "reason" => error.to_string(),
+                    "epoch" => epoch,
+                ));
+                if let Ok(duration) = now.duration_since(slot_system_time) {
+                    crit!(
+                        logger,
+                        "system recorded a {}s delay. This could be due to a system suspension or hibernation, in order not to miss out on future leader elections please prevent your system from suspending or hibernating.",
+                        duration.as_secs(),
+                    )
+                }
+
+                unimplemented!(
+                    r###"The system just failed to compute an appropriate instant.
+This could be due to a system suspension or hibernation, in order not to miss out on future
+leader elections please prevent your system from suspending or hibernating.
+"###
+                );
+            }
+            Ok(duration) => duration,
+        };
+        let scheduled_time = std::time::Instant::now() + duration;
+
+        let sa: SystemTime = (now + duration).into();
         debug!(self.service_info.logger(), "scheduling new end of epoch"
         ; "scheduled at" => sa.to_string());
 
