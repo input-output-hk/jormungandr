@@ -48,14 +48,10 @@ impl Process {
         input: MessageQueue<TransactionMsg>,
     ) -> impl Future<Item = (), Error = ()> {
         service_info.spawn(self.start_pool_garbage_collector(service_info.logger().clone()));
-
-        let pool = self.pool.clone();
-        let pool_copy = self.pool;
-
         input.for_each(move |input| {
             match input {
                 TransactionMsg::ProposeTransaction(txids, reply) => {
-                    let logs = pool.logs().clone();
+                    let logs = self.pool.logs().clone();
 
                     A(A(logs.exists(txids).and_then(|rep| {
                         reply.reply_ok(rep);
@@ -63,8 +59,6 @@ impl Process {
                     })))
                 }
                 TransactionMsg::SendTransaction(origin, txs) => {
-                    // TODO? stats_counter.add_tx_recv_cnt(txs.len());
-
                     // Note that we cannot use apply_block here, since we don't have a valid context to which to apply
                     // those blocks. one valid tx in a given context, could be invalid in another. for example
                     // fee calculations, existence utxo / account solvency.
@@ -76,12 +70,12 @@ impl Process {
                     // for other message we don't want to receive them through this interface, and possibly
                     // put them in another pool.
 
-                    let mut pool_copy = pool_copy.clone();
+                    let mut pool = self.pool.clone();
                     let stats_counter = stats_counter.clone();
 
                     A(B(stream::iter_ok(txs).for_each(move |tx| {
                         let stats_counter = stats_counter.clone();
-                        pool_copy.insert(origin, tx).map(move |inserted| {
+                        pool.insert(origin, tx).map(move |inserted| {
                             if inserted {
                                 stats_counter.add_tx_recv_cnt(1)
                             }
