@@ -2,6 +2,7 @@ use crate::{
     blockcfg::{HeaderContentEvalContext, Ledger, LedgerParameters},
     fragment::{selection::FragmentSelectionAlgorithm, Fragment, Logs},
 };
+use chain_core::property::Fragment as _;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
 use std::time::Duration;
 use tokio::{prelude::*, sync::lock::Lock, timer};
@@ -30,8 +31,6 @@ impl Pool {
         origin: FragmentOrigin,
         fragment: Fragment,
     ) -> impl Future<Item = bool, Error = ()> {
-        use chain_core::property::Fragment as _;
-
         let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
         future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
@@ -77,17 +76,13 @@ impl Pool {
 }
 
 pub(super) mod internal {
-    use crate::fragment::{Fragment, FragmentId, PoolEntry};
-    use chain_core::property::Fragment as _;
+    use super::*;
+    use crate::fragment::{FragmentId, PoolEntry};
     use std::{
         collections::{hash_map::Entry, BTreeMap, HashMap, VecDeque},
         sync::Arc,
-        time::Duration,
     };
-    use tokio::{
-        prelude::*,
-        timer::{self, delay_queue, DelayQueue},
-    };
+    use tokio::timer::{delay_queue, DelayQueue};
 
     pub struct Pool {
         pub entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
