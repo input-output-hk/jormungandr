@@ -131,9 +131,6 @@ is stateless for
 * `UploadBlocks: (Stream<Block>)`
   * Uploads blocks in response to a `Solicit` event received via the
     `BlockSubscription` stream.
-* `GetFragments: ([Hash]) -> [Fragment]`
-  * Fetch one or multiple fragments (block content items, such as transactions)
-    identified by the hashes.
 * `FragmentSubscription: (Stream<Fragment>) -> Stream<Fragment>`
   * Establish a bidirectional subscription to send and receive new
     content for the block under construction.
