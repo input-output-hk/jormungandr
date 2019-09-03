@@ -18,6 +18,7 @@ custom_error! {pub Error
    MissingNodeConfig = "--config is mandatory to start the node",
    ExpectedBlock0Info = "Cannot start the node without the information to retrieve the genesis block",
    TooMuchBlock0Info = "Use only `--genesis-block-hash' or `--genesis-block'",
+   ListenAddressNotValid = "In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920",
 }
 
 /// Overall Settings for node
@@ -92,7 +93,7 @@ impl RawSettings {
             config,
         } = self;
         let command_arguments = &command_line.start_arguments;
-        let network = generate_network(&command_arguments, &config);
+        let network = generate_network(&command_arguments, &config)?;
 
         let storage = match (command_arguments.storage.as_ref(), config.storage) {
             (Some(path), _) => Some(path.clone()),
@@ -141,12 +142,21 @@ impl RawSettings {
 fn generate_network(
     _command_arguments: &StartArguments,
     config: &Config,
-) -> network::Configuration {
+) -> Result<network::Configuration, Error> {
     let p2p = &config.p2p;
-    network::Configuration {
+    let network = network::Configuration {
         public_id: p2p.public_id.clone(),
-        public_address: p2p.public_address.clone(),
-        listen: p2p.listen.clone(),
+        public_address: Some(p2p.public_address.clone()),
+        listen_address: match &p2p.listen_address {
+            None => None,
+            Some(v) => {
+                if let Some(addr) = v.to_socketaddr() {
+                    Some(addr)
+                } else {
+                    return Err(Error::ListenAddressNotValid);
+                }
+            }
+        },
         trusted_peers: p2p.trusted_peers.clone().unwrap_or(vec![]),
         protocol: Protocol::Grpc,
         subscriptions: config
@@ -155,5 +165,7 @@ fn generate_network(
             .clone()
             .unwrap_or(BTreeMap::new()),
         timeout: std::time::Duration::from_secs(15),
-    }
+    };
+
+    Ok(network)
 }
