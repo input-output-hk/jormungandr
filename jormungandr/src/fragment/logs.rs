@@ -22,6 +22,14 @@ impl Logs {
             .and_then(move |mut guard| future::ok(guard.insert(log)))
     }
 
+    /// Returns number of registered fragments
+    pub fn insert_all(
+        &mut self,
+        logs: impl IntoIterator<Item = FragmentLog>,
+    ) -> impl Future<Item = usize, Error = ()> {
+        let mut lock = self.0.clone();
+        future::poll_fn(move || Ok(lock.poll_lock()))
+            .and_then(move |mut guard| future::ok(guard.insert_all(logs)))
     }
 
     pub fn exists(
@@ -122,6 +130,12 @@ pub(super) mod internal {
             true
         }
 
+        /// Returns number of registered fragments
+        pub fn insert_all(&mut self, logs: impl IntoIterator<Item = FragmentLog>) -> usize {
+            logs.into_iter()
+                .map(|log| self.insert(log))
+                .filter(|was_modified| *was_modified)
+                .count()
         }
 
         pub fn modify(&mut self, fragment_id: &Hash, status: FragmentStatus) {
