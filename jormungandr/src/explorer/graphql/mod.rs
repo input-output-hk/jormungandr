@@ -1,7 +1,6 @@
 use crate::blockcfg::{self, FragmentId};
 use crate::blockchain::Blockchain;
 use chain_core::property::Block as _;
-use chain_core::property::Fragment;
 pub use juniper::http::GraphQLRequest;
 use juniper::EmptyMutation;
 use juniper::FieldError;
@@ -11,7 +10,6 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use crate::explorer::ExplorerDB;
-use crate::explorer::{Error, ErrorKind};
 use juniper::graphql_value;
 
 pub struct Block {

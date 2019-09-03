@@ -1,7 +1,7 @@
 pub mod graphql;
 
 use super::blockchain::{Blockchain, Ref};
-use crate::blockcfg::{Block, ChainLength, FragmentId, Header, HeaderHash};
+use crate::blockcfg::{ChainLength, FragmentId, Header, HeaderHash};
 use crate::blockchain::Multiverse;
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
