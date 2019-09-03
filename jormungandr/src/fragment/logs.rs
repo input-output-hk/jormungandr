@@ -15,12 +15,13 @@ impl Logs {
         Logs(Lock::new(internal::Logs::new(ttl)))
     }
 
-    pub fn insert(&mut self, log: FragmentLog) -> impl Future<Item = (), Error = ()> {
+    /// Returns true if fragment was registered
+    pub fn insert(&mut self, log: FragmentLog) -> impl Future<Item = bool, Error = ()> {
         let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock())).and_then(move |mut guard| {
-            guard.insert(log);
-            future::ok(())
-        })
+        future::poll_fn(move || Ok(lock.poll_lock()))
+            .and_then(move |mut guard| future::ok(guard.insert(log)))
+    }
+
     }
 
     pub fn exists(
@@ -76,7 +77,7 @@ pub(super) mod internal {
         interfaces::{FragmentLog, FragmentStatus},
     };
     use std::{
-        collections::HashMap,
+        collections::hash_map::{Entry, HashMap},
         time::{Duration, Instant},
     };
     use tokio::{
@@ -109,11 +110,18 @@ pub(super) mod internal {
                 .collect()
         }
 
-        pub fn insert(&mut self, log: FragmentLog) {
-            let fragment_id = log.fragment_id().clone();
-            let delay = self.expirations.insert(fragment_id.clone(), self.ttl);
+        /// Returns true if fragment was registered
+        pub fn insert(&mut self, log: FragmentLog) -> bool {
+            let fragment_id = *log.fragment_id();
+            let entry = match self.entries.entry(fragment_id) {
+                Entry::Occupied(_) => return false,
+                Entry::Vacant(entry) => entry,
+            };
+            let delay = self.expirations.insert(fragment_id, self.ttl);
+            entry.insert((log, delay));
+            true
+        }
 
-            self.entries.insert(fragment_id, (log, delay));
         }
 
         pub fn modify(&mut self, fragment_id: &Hash, status: FragmentStatus) {

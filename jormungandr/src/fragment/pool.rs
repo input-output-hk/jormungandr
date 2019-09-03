@@ -24,6 +24,7 @@ impl Pool {
         &self.logs
     }
 
+    /// Returns true if fragment was registered
     pub fn insert(
         &mut self,
         origin: FragmentOrigin,
@@ -46,7 +47,7 @@ impl Pool {
                             guard.insert(fragment);
 
                             let log = FragmentLog::new(id.into(), origin);
-                            logs.insert(log).map(|()| true)
+                            logs.insert(log)
                         },
                     ))
                 }
