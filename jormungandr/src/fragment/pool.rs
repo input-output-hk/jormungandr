@@ -79,15 +79,14 @@ pub(super) mod internal {
     use super::*;
     use crate::fragment::{FragmentId, PoolEntry};
     use std::{
-        collections::{hash_map::Entry, BTreeMap, HashMap, VecDeque},
+        collections::{hash_map::Entry, HashMap, VecDeque},
         sync::Arc,
     };
     use tokio::timer::{delay_queue, DelayQueue};
 
     pub struct Pool {
-        pub entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
-        pub entries_by_id: BTreeMap<FragmentId, Arc<PoolEntry>>,
-        pub entries_by_time: VecDeque<FragmentId>,
+        entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
+        entries_by_time: VecDeque<FragmentId>,
         expirations: DelayQueue<FragmentId>,
         ttl: Duration,
     }
@@ -96,7 +95,6 @@ pub(super) mod internal {
         pub fn new(ttl: Duration) -> Self {
             Pool {
                 entries: HashMap::new(),
-                entries_by_id: BTreeMap::new(),
                 entries_by_time: VecDeque::new(),
                 expirations: DelayQueue::new(),
                 ttl,
@@ -111,15 +109,13 @@ pub(super) mod internal {
             };
             let pool_entry = Arc::new(PoolEntry::new(&fragment));
             let delay = self.expirations.insert(fragment_id, self.ttl);
-            entry.insert((pool_entry.clone(), fragment, delay));
-            self.entries_by_id.insert(fragment_id, pool_entry);
+            entry.insert((pool_entry, fragment, delay));
             self.entries_by_time.push_back(fragment_id);
             true
         }
 
         pub fn remove(&mut self, fragment_id: &FragmentId) -> Option<Fragment> {
             if let Some((_, fragment, cache_key)) = self.entries.remove(fragment_id) {
-                self.entries_by_id.remove(fragment_id);
                 self.entries_by_time
                     .iter()
                     .position(|id| id == fragment_id)
@@ -133,6 +129,16 @@ pub(super) mod internal {
             }
         }
 
+        pub fn remove_oldest(&mut self) -> Option<Fragment> {
+            let fragment_id = self.entries_by_time.pop_front()?;
+            let (_, fragment, cache_key) = self
+                .entries
+                .remove(&fragment_id)
+                .expect("Pool lost fragment ID consistency");
+            self.expirations.remove(&cache_key);
+            Some(fragment)
+        }
+
         pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
             loop {
                 match self.expirations.poll()? {
@@ -140,7 +146,6 @@ pub(super) mod internal {
                     Async::Ready(None) => return Ok(Async::Ready(())),
                     Async::Ready(Some(entry)) => {
                         self.entries.remove(entry.get_ref());
-                        self.entries_by_id.remove(entry.get_ref());
                         self.entries_by_time
                             .iter()
                             .position(|id| id == entry.get_ref())
