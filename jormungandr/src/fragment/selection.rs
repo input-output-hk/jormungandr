@@ -58,10 +58,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         let mut ledger_simulation = ledger.clone();
 
         while let Some(fragment) = pool.remove_oldest() {
-            if total >= self.max_per_block {
-                break;
-            }
-
             let id = fragment.id();
             match ledger_simulation.apply_fragment(ledger_params, &fragment, metadata) {
                 Ok(ledger_new) => {
@@ -86,6 +82,9 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     };
                     logs.modify(&id.into(), FragmentStatus::Rejected { reason: error })
                 }
+            }
+            if total >= self.max_per_block {
+                break;
             }
         }
     }
