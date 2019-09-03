@@ -32,26 +32,17 @@ impl Pool {
     ) -> impl Future<Item = bool, Error = ()> {
         use chain_core::property::Fragment as _;
 
-        let id = fragment.id();
-        let mut lock = self.pool.clone();
+        let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
-
-        self.logs()
-            .exists(vec![id.clone()])
-            .and_then(move |exists| {
-                if exists[0] {
-                    future::Either::A(future::ok(false))
-                } else {
-                    future::Either::B(future::poll_fn(move || Ok(lock.poll_lock())).and_then(
-                        move |mut guard| {
-                            guard.insert(fragment);
-
-                            let log = FragmentLog::new(id.into(), origin);
-                            logs.insert(log)
-                        },
-                    ))
-                }
-            })
+        future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
+            let id = fragment.id();
+            if pool.insert(fragment) == false {
+                return future::Either::A(future::ok(false));
+            }
+            let fragment_log = FragmentLog::new(id.into(), origin);
+            let insert_future = logs.insert(fragment_log).map(|_| true);
+            future::Either::B(insert_future)
+        })
     }
 
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
@@ -87,8 +78,9 @@ impl Pool {
 
 pub(super) mod internal {
     use crate::fragment::{Fragment, FragmentId, PoolEntry};
+    use chain_core::property::Fragment as _;
     use std::{
-        collections::{BTreeMap, HashMap, VecDeque},
+        collections::{hash_map::Entry, BTreeMap, HashMap, VecDeque},
         sync::Arc,
         time::Duration,
     };
@@ -116,16 +108,18 @@ pub(super) mod internal {
             }
         }
 
-        pub fn insert(&mut self, fragment: Fragment) {
-            let entry = Arc::new(PoolEntry::new(&fragment));
-            let fragment_id = entry.fragment_ref().clone();
-            let delay = self.expirations.insert(fragment_id.clone(), self.ttl);
-
-            self.entries
-                .insert(fragment_id.clone(), (entry.clone(), fragment, delay));
-            self.entries_by_id
-                .insert(fragment_id.clone(), entry.clone());
+        pub fn insert(&mut self, fragment: Fragment) -> bool {
+            let fragment_id = fragment.id();
+            let entry = match self.entries.entry(fragment_id) {
+                Entry::Occupied(_) => return false,
+                Entry::Vacant(vacant) => vacant,
+            };
+            let pool_entry = Arc::new(PoolEntry::new(&fragment));
+            let delay = self.expirations.insert(fragment_id, self.ttl);
+            entry.insert((pool_entry.clone(), fragment, delay));
+            self.entries_by_id.insert(fragment_id, pool_entry);
             self.entries_by_time.push_back(fragment_id);
+            true
         }
 
         pub fn remove(&mut self, fragment_id: &FragmentId) -> Option<Fragment> {
