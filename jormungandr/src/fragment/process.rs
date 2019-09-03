@@ -70,17 +70,12 @@ impl Process {
                     // for other message we don't want to receive them through this interface, and possibly
                     // put them in another pool.
 
-                    let mut pool = self.pool.clone();
                     let stats_counter = stats_counter.clone();
-
-                    A(B(stream::iter_ok(txs).for_each(move |tx| {
-                        let stats_counter = stats_counter.clone();
-                        pool.insert(origin, tx).map(move |inserted| {
-                            if inserted {
-                                stats_counter.add_tx_recv_cnt(1)
-                            }
-                        })
-                    })))
+                    A(B(self
+                        .pool
+                        .clone()
+                        .insert_all(origin, txs)
+                        .map(move |count| stats_counter.add_tx_recv_cnt(count))))
                 }
                 TransactionMsg::GetTransactions(_txids, _handler) => {
                     // this function is no yet implemented, this is not handled in the

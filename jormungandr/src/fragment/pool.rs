@@ -44,6 +44,24 @@ impl Pool {
         })
     }
 
+    /// Returns number of registered fragments
+    pub fn insert_all(
+        &mut self,
+        origin: FragmentOrigin,
+        fragments: impl IntoIterator<Item = Fragment>,
+    ) -> impl Future<Item = usize, Error = ()> {
+        let mut pool_lock = self.pool.clone();
+        let mut logs = self.logs.clone();
+        future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
+            let fragment_ids = pool.insert_all(fragments);
+            let count = fragment_ids.len();
+            let fragment_logs = fragment_ids
+                .into_iter()
+                .map(move |id| FragmentLog::new(id.into(), origin));
+            logs.insert_all(fragment_logs).map(move |_| count)
+        })
+    }
+
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
         let mut lock = self.pool.clone();
         let purge_logs = self.logs.poll_purge();
@@ -101,6 +119,7 @@ pub(super) mod internal {
             }
         }
 
+        /// Returns true if fragment was registered
         pub fn insert(&mut self, fragment: Fragment) -> bool {
             let fragment_id = fragment.id();
             let entry = match self.entries.entry(fragment_id) {
@@ -112,6 +131,23 @@ pub(super) mod internal {
             entry.insert((pool_entry, fragment, delay));
             self.entries_by_time.push_back(fragment_id);
             true
+        }
+
+        /// Returns ids of registered fragments
+        pub fn insert_all(
+            &mut self,
+            fragments: impl IntoIterator<Item = Fragment>,
+        ) -> Vec<FragmentId> {
+            fragments
+                .into_iter()
+                .filter_map(|fragment| {
+                    let fragment_id = fragment.id();
+                    match self.insert(fragment) {
+                        true => Some(fragment_id),
+                        false => None,
+                    }
+                })
+                .collect()
         }
 
         pub fn remove(&mut self, fragment_id: &FragmentId) -> Option<Fragment> {
