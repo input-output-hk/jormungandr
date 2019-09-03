@@ -110,7 +110,7 @@ pub fn handle_input(
                 }
             }
         }
-        BlockMsg::ChainHeaders(headers, reply) => unimplemented!(),
+        BlockMsg::ChainHeaders(stream) => unimplemented!(),
     };
 
     Ok(())

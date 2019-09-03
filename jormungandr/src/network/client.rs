@@ -14,6 +14,7 @@ use network_core::client::block::BlockService;
 use network_core::client::gossip::GossipService;
 use network_core::client::p2p::P2pService;
 use network_core::client::{self as core_client, Client as _};
+use network_core::error as core_error;
 use network_core::gossip::Node;
 use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
@@ -238,21 +239,22 @@ where
                     warn!(err_logger, "PullHeaders request failed: {:?}", e);
                 })
                 .and_then(move |stream| {
-                    let err_logger = logger.clone();
-                    stream
+                    let err2_logger = logger.clone();
+                    let err3_logger = logger.clone();
+                    let (handle, sink) = intercom::stream_request::<Header, core_error::Error>(
+                        chain_pull::CHUNK_SIZE,
+                    );
+                    block_box
+                        .send(BlockMsg::ChainHeaders(handle))
                         .map_err(move |e| {
-                            warn!(err_logger, "PullHeaders response stream failed: {:?}", e);
+                            error!(err2_logger, "sending to block task failed: {:?}", e);
                         })
-                        .chunks(chain_pull::CHUNK_SIZE)
-                        .for_each(move |headers| {
-                            let err_logger = logger.clone();
-                            InboundProcessing::with_unary(
-                                block_box.clone(),
-                                logger.clone(),
-                                |reply| BlockMsg::ChainHeaders(headers, reply),
-                            )
-                            .map_err(move |e| {
-                                warn!(err_logger, "chain header validation failed: {:?}", e)
+                        .and_then(move |_| {
+                            stream.forward(sink).map(|_| {}).map_err(move |e| {
+                                warn!(
+                                    err3_logger,
+                                    "processing of PullHeaders response stream failed: {:?}", e
+                                );
                             })
                         })
                 }),
@@ -279,24 +281,27 @@ where
                     warn!(err_logger, "PullBlocksToTip request failed: {:?}", e);
                 })
                 .and_then(move |stream| {
-                    let err_logger = logger.clone();
+                    let stream_err_logger = logger.clone();
+                    let sink_err_logger = logger.clone();
                     stream
                         .map_err(move |e| {
                             warn!(
-                                err_logger,
+                                stream_err_logger,
                                 "PullBlocksToTip response stream failed: {:?}", e
                             );
                         })
-                        .for_each(move |block| {
-                            let err_logger = logger.clone();
+                        .forward(
                             InboundProcessing::with_unary(
                                 block_box.clone(),
                                 logger.clone(),
-                                |reply| BlockMsg::NetworkBlock(block, reply),
+                                |block, reply| BlockMsg::NetworkBlock(block, reply),
                             )
-                            .map_err(move |e| {
-                                warn!(err_logger, "pulled block validation failed: {:?}", e)
-                            })
+                            .sink_map_err(move |e| {
+                                warn!(sink_err_logger, "pulled block validation failed: {:?}", e)
+                            }),
+                        )
+                        .map(move |_| {
+                            debug!(logger, "PullBlocksToTip response processed");
                         })
                 }),
         );
@@ -323,21 +328,27 @@ where
                     );
                 })
                 .and_then(move |stream| {
-                    let err_logger = logger.clone();
+                    let stream_err_logger = logger.clone();
+                    let sink_err_logger = logger.clone();
                     stream
                         .map_err(move |e| {
-                            warn!(err_logger, "GetBlocks response stream failed: {:?}", e);
+                            warn!(
+                                stream_err_logger,
+                                "GetBlocks response stream failed: {:?}", e
+                            );
                         })
-                        .for_each(move |block| {
-                            let err_logger = logger.clone();
+                        .forward(
                             InboundProcessing::with_unary(
                                 block_box.clone(),
                                 logger.clone(),
-                                |reply| BlockMsg::NetworkBlock(block, reply),
+                                |block, reply| BlockMsg::NetworkBlock(block, reply),
                             )
-                            .map_err(move |e| {
-                                warn!(err_logger, "network block validation failed: {:?}", e)
-                            })
+                            .sink_map_err(move |e| {
+                                warn!(sink_err_logger, "network block validation failed: {:?}", e)
+                            }),
+                        )
+                        .map(move |_| {
+                            debug!(logger, "GetBlocks response processed");
                         })
                 }),
         );

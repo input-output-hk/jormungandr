@@ -30,6 +30,16 @@ impl Error {
         }
     }
 
+    pub fn canceled<T>(cause: T) -> Self
+    where
+        T: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Error {
+            code: core_error::Code::Canceled,
+            cause: cause.into(),
+        }
+    }
+
     pub fn failed_precondition<T>(cause: T) -> Self
     where
         T: Into<Box<dyn error::Error + Send + Sync>>,
@@ -252,6 +262,67 @@ where
     handler.close();
 }
 
+pub struct RequestSink<T, E> {
+    sender: mpsc::Sender<T>,
+    _phantom_error: PhantomData<E>,
+}
+
+fn convert_request_sender_error<T, E>(_err: mpsc::SendError<T>) -> E
+where
+    E: From<Error>,
+{
+    Error::canceled("request stream processing ended before all items were sent").into()
+}
+
+impl<T, E> Sink for RequestSink<T, E>
+where
+    E: From<Error>,
+{
+    type SinkItem = T;
+    type SinkError = E;
+
+    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
+        self.sender
+            .start_send(item)
+            .map_err(convert_request_sender_error)
+    }
+
+    fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
+        self.sender
+            .poll_complete()
+            .map_err(convert_request_sender_error)
+    }
+
+    fn close(&mut self) -> Poll<(), Self::SinkError> {
+        self.sender.close().map_err(convert_request_sender_error)
+    }
+}
+
+#[derive(Debug)]
+pub struct RequestStreamHandle<T> {
+    receiver: mpsc::Receiver<T>,
+}
+
+impl<T> Stream for RequestStreamHandle<T> {
+    type Item = T;
+    type Error = Error;
+
+    fn poll(&mut self) -> Poll<Option<T>, Error> {
+        let async_poll = self.receiver.poll().unwrap();
+        Ok(async_poll)
+    }
+}
+
+pub fn stream_request<T, E>(buffer: usize) -> (RequestStreamHandle<T>, RequestSink<T, E>) {
+    let (sender, receiver) = mpsc::channel(buffer);
+    let handle = RequestStreamHandle { receiver };
+    let sink = RequestSink {
+        sender,
+        _phantom_error: PhantomData,
+    };
+    (handle, sink)
+}
+
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg {
@@ -323,12 +394,10 @@ pub enum BlockMsg {
     /// sending `Ok`, or to cancel the incoming stream with an error sent in
     /// `Err`.
     NetworkBlock(Block, ReplyHandle<()>),
-    /// Headers for missing chain blocks have been received from the network
-    /// in response to a PullHeaders request
-    /// The reply handle must be used to enable continued streaming by
-    /// sending `Ok`, or to cancel the incoming stream with an error sent in
-    /// `Err`.
-    ChainHeaders(Vec<Header>, ReplyHandle<()>),
+    /// The stream of headers for missing chain blocks has been received
+    /// from the network in response to a PullHeaders request or a Missing
+    /// solicitation event.
+    ChainHeaders(RequestStreamHandle<Header>),
 }
 
 /// Propagation requests for the network task.
