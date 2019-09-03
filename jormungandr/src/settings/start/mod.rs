@@ -145,8 +145,11 @@ fn generate_network(
     let p2p = &config.p2p;
     network::Configuration {
         public_id: p2p.public_id.clone(),
-        public_address: p2p.public_address.clone(),
-        listen: p2p.listen.clone(),
+        public_address: Some(p2p.public_address.clone()),
+        listen_address: p2p
+            .listen_address
+            .clone()
+            .and_then(|addr| addr.to_socketaddr()),
         trusted_peers: p2p.trusted_peers.clone().unwrap_or(vec![]),
         protocol: Protocol::Grpc,
         subscriptions: config
