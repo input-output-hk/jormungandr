@@ -1,7 +1,7 @@
 pub mod graphql;
 
 use super::blockchain::{Blockchain, Ref};
-use crate::blockcfg::{Block, ChainLength, FragmentId};
+use crate::blockcfg::{Block, ChainLength, FragmentId, Header, HeaderHash};
 use crate::blockchain::Multiverse;
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
@@ -92,8 +92,8 @@ pub struct ExplorerDB {
     // This is kind of the same thing the multiverse holds (with Ref instead of BlockId)
     // FIXME: The constructor of `ChainLength` is private, so querying this thing could be
     // a problem
-    chain_length_to_hash: Lock<HashMap<ChainLength, Vec<Ref>>>,
-    transaction_to_block: Lock<HashMap<FragmentId, Ref>>,
+    chain_length_to_hash: Lock<HashMap<ChainLength, Vec<HeaderHash>>>,
+    transaction_to_block: Lock<HashMap<FragmentId, HeaderHash>>,
 }
 
 impl ExplorerDB {
@@ -122,7 +122,7 @@ impl ExplorerDB {
                 guard
                     .entry(chain_length)
                     .or_insert(Vec::new())
-                    .push(new_block_ref.clone());
+                    .push(new_block_ref.hash());
                 new_block_ref
             })
             // Store in the multiverse
@@ -145,7 +145,7 @@ impl ExplorerDB {
             .and_then(move |(block, mut guard)| {
                 if let Some(b) = block {
                     for fragment in b.contents.iter() {
-                        guard.insert(fragment.id(), new_block_ref.clone());
+                        guard.insert(fragment.id(), new_block_ref.hash());
                     }
                 } else {
                     return future::err(
@@ -156,19 +156,22 @@ impl ExplorerDB {
             })
     }
 
+    pub fn get_header(
+        &self,
+        hash: HeaderHash,
+    ) -> impl Future<Item = Option<Header>, Error = Infallible> {
+        //XXX: Probably the clone is not necessary
+        self.multiverse
+            .get(hash)
+            .map(|maybe_block_ref| maybe_block_ref.map(|r| (*r.header()).clone()))
+    }
+
     pub fn find_block_by_transaction(
         &self,
         transaction: FragmentId,
-        blockchain: Blockchain,
-    ) -> impl Future<Item = Option<Block>, Error = StorageError> {
+    ) -> impl Future<Item = Option<HeaderHash>, Error = StorageError> {
         let mut blocks = self.transaction_to_block.clone();
         future::poll_fn(move || Ok(blocks.poll_lock()))
-            .and_then(move |guard| Ok(guard.get(&transaction).map(|block_ref| block_ref.hash())))
-            .and_then(move |hash| {
-                future::poll_fn(move || match hash {
-                    Some(h) => blockchain.storage().get(h).poll(),
-                    None => Ok(Async::Ready(None)),
-                })
-            })
+            .and_then(move |guard| Ok(guard.get(&transaction).map(|h| (*h).clone())))
     }
 }
