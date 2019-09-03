@@ -2,6 +2,7 @@ use crate::{
     blockcfg::{HeaderContentEvalContext, Ledger, LedgerParameters},
     fragment::{selection::FragmentSelectionAlgorithm, Fragment, Logs},
 };
+use chain_core::property::Fragment as _;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
 use std::time::Duration;
 use tokio::{prelude::*, sync::lock::Lock, timer};
@@ -24,33 +25,41 @@ impl Pool {
         &self.logs
     }
 
+    /// Returns true if fragment was registered
     pub fn insert(
         &mut self,
         origin: FragmentOrigin,
         fragment: Fragment,
     ) -> impl Future<Item = bool, Error = ()> {
-        use chain_core::property::Fragment as _;
-
-        let id = fragment.id();
-        let mut lock = self.pool.clone();
+        let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
+        future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
+            let id = fragment.id();
+            if pool.insert(fragment) == false {
+                return future::Either::A(future::ok(false));
+            }
+            let fragment_log = FragmentLog::new(id.into(), origin);
+            let insert_future = logs.insert(fragment_log).map(|_| true);
+            future::Either::B(insert_future)
+        })
+    }
 
-        self.logs()
-            .exists(vec![id.clone()])
-            .and_then(move |exists| {
-                if exists[0] {
-                    future::Either::A(future::ok(false))
-                } else {
-                    future::Either::B(future::poll_fn(move || Ok(lock.poll_lock())).and_then(
-                        move |mut guard| {
-                            guard.insert(fragment);
-
-                            let log = FragmentLog::new(id.into(), origin);
-                            logs.insert(log).map(|()| true)
-                        },
-                    ))
-                }
-            })
+    /// Returns number of registered fragments
+    pub fn insert_all(
+        &mut self,
+        origin: FragmentOrigin,
+        fragments: impl IntoIterator<Item = Fragment>,
+    ) -> impl Future<Item = usize, Error = ()> {
+        let mut pool_lock = self.pool.clone();
+        let mut logs = self.logs.clone();
+        future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
+            let fragment_ids = pool.insert_all(fragments);
+            let count = fragment_ids.len();
+            let fragment_logs = fragment_ids
+                .into_iter()
+                .map(move |id| FragmentLog::new(id.into(), origin));
+            logs.insert_all(fragment_logs).map(move |_| count)
+        })
     }
 
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
@@ -85,21 +94,17 @@ impl Pool {
 }
 
 pub(super) mod internal {
-    use crate::fragment::{Fragment, FragmentId, PoolEntry};
+    use super::*;
+    use crate::fragment::{FragmentId, PoolEntry};
     use std::{
-        collections::{BTreeMap, HashMap, VecDeque},
+        collections::{hash_map::Entry, HashMap, VecDeque},
         sync::Arc,
-        time::Duration,
     };
-    use tokio::{
-        prelude::*,
-        timer::{self, delay_queue, DelayQueue},
-    };
+    use tokio::timer::{delay_queue, DelayQueue};
 
     pub struct Pool {
-        pub entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
-        pub entries_by_id: BTreeMap<FragmentId, Arc<PoolEntry>>,
-        pub entries_by_time: VecDeque<FragmentId>,
+        entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
+        entries_by_time: VecDeque<FragmentId>,
         expirations: DelayQueue<FragmentId>,
         ttl: Duration,
     }
@@ -108,28 +113,45 @@ pub(super) mod internal {
         pub fn new(ttl: Duration) -> Self {
             Pool {
                 entries: HashMap::new(),
-                entries_by_id: BTreeMap::new(),
                 entries_by_time: VecDeque::new(),
                 expirations: DelayQueue::new(),
                 ttl,
             }
         }
 
-        pub fn insert(&mut self, fragment: Fragment) {
-            let entry = Arc::new(PoolEntry::new(&fragment));
-            let fragment_id = entry.fragment_ref().clone();
-            let delay = self.expirations.insert(fragment_id.clone(), self.ttl);
-
-            self.entries
-                .insert(fragment_id.clone(), (entry.clone(), fragment, delay));
-            self.entries_by_id
-                .insert(fragment_id.clone(), entry.clone());
+        /// Returns true if fragment was registered
+        pub fn insert(&mut self, fragment: Fragment) -> bool {
+            let fragment_id = fragment.id();
+            let entry = match self.entries.entry(fragment_id) {
+                Entry::Occupied(_) => return false,
+                Entry::Vacant(vacant) => vacant,
+            };
+            let pool_entry = Arc::new(PoolEntry::new(&fragment));
+            let delay = self.expirations.insert(fragment_id, self.ttl);
+            entry.insert((pool_entry, fragment, delay));
             self.entries_by_time.push_back(fragment_id);
+            true
+        }
+
+        /// Returns ids of registered fragments
+        pub fn insert_all(
+            &mut self,
+            fragments: impl IntoIterator<Item = Fragment>,
+        ) -> Vec<FragmentId> {
+            fragments
+                .into_iter()
+                .filter_map(|fragment| {
+                    let fragment_id = fragment.id();
+                    match self.insert(fragment) {
+                        true => Some(fragment_id),
+                        false => None,
+                    }
+                })
+                .collect()
         }
 
         pub fn remove(&mut self, fragment_id: &FragmentId) -> Option<Fragment> {
             if let Some((_, fragment, cache_key)) = self.entries.remove(fragment_id) {
-                self.entries_by_id.remove(fragment_id);
                 self.entries_by_time
                     .iter()
                     .position(|id| id == fragment_id)
@@ -143,6 +165,16 @@ pub(super) mod internal {
             }
         }
 
+        pub fn remove_oldest(&mut self) -> Option<Fragment> {
+            let fragment_id = self.entries_by_time.pop_front()?;
+            let (_, fragment, cache_key) = self
+                .entries
+                .remove(&fragment_id)
+                .expect("Pool lost fragment ID consistency");
+            self.expirations.remove(&cache_key);
+            Some(fragment)
+        }
+
         pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
             loop {
                 match self.expirations.poll()? {
@@ -150,7 +182,6 @@ pub(super) mod internal {
                     Async::Ready(None) => return Ok(Async::Ready(())),
                     Async::Ready(Some(entry)) => {
                         self.entries.remove(entry.get_ref());
-                        self.entries_by_id.remove(entry.get_ref());
                         self.entries_by_time
                             .iter()
                             .position(|id| id == entry.get_ref())

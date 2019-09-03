@@ -4,6 +4,7 @@ use crate::{
     blockcfg::{BlockBuilder, HeaderContentEvalContext, Ledger, LedgerParameters},
     fragment::FragmentId,
 };
+use chain_core::property::Fragment as _;
 use jormungandr_lib::interfaces::FragmentStatus;
 
 pub enum SelectionOutput {
@@ -56,13 +57,8 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         let mut total = 0usize;
         let mut ledger_simulation = ledger.clone();
 
-        while let Some(id) = pool.entries_by_time.pop_front() {
-            if total >= self.max_per_block {
-                break;
-            }
-
-            let fragment = pool.remove(&id).unwrap();
-
+        while let Some(fragment) = pool.remove_oldest() {
+            let id = fragment.id();
             match ledger_simulation.apply_fragment(ledger_params, &fragment, metadata) {
                 Ok(ledger_new) => {
                     self.builder.message(fragment);
@@ -86,6 +82,9 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     };
                     logs.modify(&id.into(), FragmentStatus::Rejected { reason: error })
                 }
+            }
+            if total >= self.max_per_block {
+                break;
             }
         }
     }
