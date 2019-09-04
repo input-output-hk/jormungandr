@@ -371,23 +371,40 @@ pub fn bootstrap(
     blockchain: NewBlockchain,
     branch: Branch,
     logger: &Logger,
-) -> Result<(), bootstrap::Error> {
+) -> Result<bool, bootstrap::Error> {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
-    match first_trusted_peer_address(config) {
-        Some(address) => {
+
+    if config.trusted_peers.is_empty() {
+        warn!(logger, "No trusted peers joinable to bootstrap the network");
+    }
+
+    let mut bootstrapped = false;
+
+    for peer in config.trusted_peers.iter() {
+        let logger = logger.new(o!("network" => "bootstrap", "peer" => peer.address.to_string()));
+        if let Some(address) = peer.address.to_socketaddr() {
             let peer = Peer::new(address, Protocol::Grpc);
-            bootstrap::bootstrap_from_peer(peer, blockchain, branch, logger).map(|_tip| {
-                debug!(logger, "bootstrap complete");
-            })
-        }
-        None => {
-            warn!(logger, "no gRPC peers specified, skipping bootstrap");
-            // FIXME: could be an error case?
-            Ok(())
+            let res =
+                bootstrap::bootstrap_from_peer(peer, blockchain.clone(), branch.clone(), &logger);
+
+            match res {
+                Err(bootstrap::Error::Connect(err)) => {
+                    warn!(logger, "Unable to reach peer for initial bootstrap" ; "reason" => err.to_string());
+                }
+                Err(err) => {
+                    error!(logger, "with initial bootstrap" ; "reason" => err.to_string());
+                }
+                Ok(_) => {
+                    info!(logger, "initial bootstrap completed");
+                    bootstrapped = true;
+                }
+            }
         }
     }
+
+    Ok(bootstrapped)
 }
 
 /// Queries the trusted peers for a block identified with the hash.
