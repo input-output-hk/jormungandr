@@ -326,9 +326,7 @@ pub fn stream_request<T, E>(buffer: usize) -> (RequestStreamHandle<T>, RequestSi
 /// ...
 #[derive(Debug)]
 pub enum TransactionMsg {
-    ProposeTransaction(Vec<FragmentId>, ReplyHandle<Vec<bool>>),
     SendTransaction(FragmentOrigin, Vec<Fragment>),
-    GetTransactions(Vec<FragmentId>, ReplyStreamHandle<Fragment>),
 }
 
 /// Client messages, mainly requests from connected peers to our node.
