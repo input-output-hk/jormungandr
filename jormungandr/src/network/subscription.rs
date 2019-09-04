@@ -2,7 +2,11 @@ use super::{
     p2p::topology::{Node, NodeId},
     GlobalState, GlobalStateR,
 };
-use crate::{blockcfg::Header, intercom::BlockMsg, utils::async_msg::MessageBox};
+use crate::{
+    blockcfg::{Fragment, Header},
+    intercom::BlockMsg,
+    utils::async_msg::MessageBox,
+};
 use futures::prelude::*;
 use network_core::{error as core_error, gossip::Gossip};
 use slog::Logger;
@@ -39,6 +43,30 @@ pub fn process_block_announcement(
     block_box
         .try_send(BlockMsg::AnnouncedBlock(header, node_id))
         .unwrap();
+}
+
+pub fn process_fragments<S>(
+    inbound: S,
+    state: GlobalStateR,
+    logger: Logger,
+) -> tokio::executor::Spawn
+where
+    S: Stream<Item = Fragment, Error = core_error::Error> + Send + 'static,
+{
+    let err_logger = logger.clone();
+    tokio::spawn(
+        inbound
+            .for_each(move |fragment| {
+                // TODO: implement
+                Ok(())
+            })
+            .map_err(move |err| {
+                info!(
+                    err_logger,
+                    "fragment subscription stream failure: {:?}", err
+                );
+            }),
+    )
 }
 
 pub fn process_gossip<S>(inbound: S, state: GlobalStateR, logger: Logger) -> tokio::executor::Spawn
