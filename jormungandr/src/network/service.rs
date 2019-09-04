@@ -203,12 +203,15 @@ impl ContentService for NodeService {
     fn content_subscription<S>(
         &mut self,
         subscriber: Self::NodeId,
-        _inbound: S,
+        inbound: S,
     ) -> Self::ContentSubscriptionFuture
     where
-        S: Stream<Item = Self::Fragment, Error = core_error::Error>,
+        S: Stream<Item = Self::Fragment, Error = core_error::Error> + Send + 'static,
     {
-        unimplemented!()
+        subscription::process_fragments(inbound, self.global_state.clone(), self.logger().clone());
+
+        let subscription = self.global_state.peers.subscribe_to_fragments(subscriber);
+        future::ok(subscription)
     }
 }
 
