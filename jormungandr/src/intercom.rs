@@ -404,7 +404,7 @@ pub enum BlockMsg {
 #[derive(Clone, Debug)]
 pub enum PropagateMsg {
     Block(Header),
-    Message(Fragment),
+    Fragment(Fragment),
 }
 
 /// Messages to the network task.
