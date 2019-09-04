@@ -416,7 +416,7 @@ pub fn fetch_block(
 custom_error! {
     pub FetchBlockError
         NoTrustedPeers = "no trusted peers specified",
-        Connect { source: Box<Error> } = "connection to peer failed",
+        Connect { source: Box<dyn Error> } = "connection to peer failed",
         GetBlocks { source: core_error::Error } = "block request failed",
         NoBlocks = "no blocks in the stream",
 }
