@@ -53,6 +53,7 @@ where
     S: ContentService<Fragment = Fragment>,
     S: GossipService<Node = topology::Node>,
     S::UploadBlocksFuture: Send + 'static,
+    S::ContentSubscription: Send + 'static,
     S::GossipSubscription: Send + 'static,
 {
     fn subscribe(
@@ -80,11 +81,11 @@ where
             .and_then(
                 move |(mut service, mut peer_comms, block_req, content_req)| {
                     let gossip_req = service.gossip_subscription(peer_comms.subscribe_to_gossip());
-                    block_req
-                        .join(gossip_req)
-                        .map(move |(block_res, gossip_res)| {
-                            (service, peer_comms, block_res, gossip_res)
-                        })
+                    block_req.join3(content_req, gossip_req).map(
+                        move |(block_res, content_res, gossip_res)| {
+                            (service, peer_comms, block_res, content_res, gossip_res)
+                        },
+                    )
                 },
             )
             .map_err(move |err| {
@@ -95,7 +96,8 @@ where
                     service,
                     mut peer_comms,
                     (block_events, node_id),
-                    (gossip_sub, node_id_1),
+                    (fragment_sub, node_id_1),
+                    (gossip_sub, node_id_2),
                 )| {
                     if node_id != node_id_1 {
                         warn!(
@@ -104,10 +106,22 @@ where
                         );
                         return Err(());
                     }
+                    if node_id != node_id_2 {
+                        warn!(
+                            state.logger(),
+                            "peer subscription IDs do not match: {} != {}", node_id, node_id_2
+                        );
+                        return Err(());
+                    }
                     let logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
 
                     // Spin off processing tasks for subscriptions that can be
                     // managed with just the global state.
+                    subscription::process_fragments(
+                        fragment_sub,
+                        state.global.clone(),
+                        logger.clone(),
+                    );
                     subscription::process_gossip(gossip_sub, state.global.clone(), logger.clone());
 
                     // Plug the block solicitations and header pulls to be handled
