@@ -313,12 +313,19 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block_cache_ttl,
     )?;
 
-    network::bootstrap(
+    let bootstrapped = network::bootstrap(
         &settings.network,
         blockchain.clone(),
         blockchain_tip.clone(),
         &bootstrap_logger,
     )?;
+
+    if !bootstrapped {
+        // TODO, the node didn't manage to connect to any other nodes
+        // for the initial bootstrap, that may be an error however
+        // it is not necessarily an error, especially in the case the node is
+        // the first ever to wake
+    }
 
     Ok(BootstrappedNode {
         settings,
