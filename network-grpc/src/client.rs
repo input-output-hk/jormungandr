@@ -11,6 +11,7 @@ use crate::{
 
 use chain_core::property;
 use network_core::client::block::BlockService;
+use network_core::client::content::ContentService;
 use network_core::client::gossip::GossipService;
 use network_core::client::p2p::P2pService;
 use network_core::client::Client;
@@ -73,6 +74,19 @@ pub mod chain_bounds {
         <T as property::HasHeader>::Header: Header,
     {
     }
+
+    pub trait FragmentId: property::FragmentId + mempack::Readable {}
+
+    impl<T> FragmentId for T where T: property::FragmentId + mempack::Readable {}
+
+    pub trait Fragment: property::Fragment + mempack::Readable {}
+
+    impl<T> Fragment for T
+    where
+        T: property::Fragment + mempack::Readable,
+        <T as property::Fragment>::Id: FragmentId,
+    {
+    }
 }
 
 /// A trait that fixes the types of protocol entities and the bounds
@@ -84,6 +98,8 @@ pub trait ProtocolConfig {
     type Block: chain_bounds::Block
         + property::Block<Id = Self::BlockId, Date = Self::BlockDate>
         + property::HasHeader<Header = Self::Header>;
+    type FragmentId: chain_bounds::FragmentId;
+    type Fragment: chain_bounds::Fragment + property::Fragment<Id = Self::FragmentId>;
     type Node: gossip::Node<Id = Self::NodeId> + property::Serialize + property::Deserialize;
     type NodeId: gossip::NodeId + property::Serialize + property::Deserialize;
 }
@@ -418,6 +434,36 @@ where
     {
         let req = self.new_subscription_request(outbound);
         let future = self.service.block_subscription(req);
+        SubscriptionFuture::new(future)
+    }
+}
+
+impl<P> ContentService for Connection<P>
+where
+    P: ProtocolConfig,
+{
+    type Fragment = P::Fragment;
+
+    type GetFragmentsStream = ResponseStream<P::Fragment, gen::node::Fragment>;
+    type GetFragmentsFuture = ResponseStreamFuture<P::Fragment, gen::node::Fragment>;
+
+    type ContentSubscription = ResponseStream<P::Fragment, gen::node::Fragment>;
+    type ContentSubscriptionFuture =
+        SubscriptionFuture<P::Fragment, Self::NodeId, gen::node::Fragment>;
+
+    fn get_fragments(&mut self, ids: &[P::FragmentId]) -> Self::GetFragmentsFuture {
+        let ids = serialize_to_repeated_bytes(ids).unwrap();
+        let req = gen::node::FragmentIds { ids };
+        let future = self.service.get_fragments(Request::new(req));
+        ResponseStreamFuture::new(future)
+    }
+
+    fn content_subscription<Out>(&mut self, outbound: Out) -> Self::ContentSubscriptionFuture
+    where
+        Out: Stream<Item = P::Fragment> + Send + 'static,
+    {
+        let req = self.new_subscription_request(outbound);
+        let future = self.service.content_subscription(req);
         SubscriptionFuture::new(future)
     }
 }
