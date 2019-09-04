@@ -55,7 +55,7 @@ fn main() {
 
     introduction(&context);
 
-    scenario_2(context.derive());
+    scenario_point_to_point(context.derive());
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
@@ -130,6 +130,71 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) {
     std::thread::sleep(std::time::Duration::from_secs(1));
 
     node2.shutdown().unwrap();
+
+    controller.finalize();
+}
+
+pub fn scenario_point_to_point(mut context: Context<ChaChaRng>) {
+    let scenario_settings = prepare_scenario! {
+        "P2P",
+        &mut context,
+        topology [
+            "Leader4",
+            "Leader3" -> "Leader4",
+            "Leader2" -> "Leader3",
+            "Leader1" -> "Leader4",
+        ]
+        blockchain {
+            consensus = GenesisPraos,
+            number_of_slots_per_epoch = 60,
+            slot_duration = 1,
+            leaders = [ "Leader2" ],
+            initials = [
+                account "unassigned1" with   500_000_000,
+                account "delegated1" with  2_000_000_000 delegates to "Leader1",
+            ],
+        }
+    };
+
+    let mut controller = scenario_settings.build(context).unwrap();
+
+    controller.monitor_nodes();
+    let leader4 = controller.spawn_node("Leader4", true).unwrap();
+    thread::sleep(Duration::from_secs(3));
+    let leader3 = controller.spawn_node("Leader3", true).unwrap();
+    thread::sleep(Duration::from_secs(3));
+    let leader2 = controller.spawn_node("Leader2", true).unwrap();
+    thread::sleep(Duration::from_secs(3));
+    let leader1 = controller.spawn_node("Leader1", true).unwrap();
+    thread::sleep(Duration::from_secs(5));
+
+    let mut wallet1 = controller.wallet("unassigned1").unwrap();
+    let wallet2 = controller.wallet("delegated1").unwrap();
+
+    loop {
+        let check = controller
+            .wallet_send_to(&mut wallet1, &wallet2, &leader1, 5_000.into())
+            .unwrap();
+
+        thread::sleep(Duration::from_secs(1));
+
+        let status = leader1.wait_fragment(Duration::from_secs(2), check);
+
+        if let Ok(status) = status {
+            if status.is_in_a_block() {
+                wallet1.confirm_transaction();
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    leader4.shutdown().unwrap();
+    leader3.shutdown().unwrap();
+    leader2.shutdown().unwrap();
+    leader1.shutdown().unwrap();
 
     controller.finalize();
 }
