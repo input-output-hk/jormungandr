@@ -329,7 +329,7 @@ impl Node {
             &config_file.display().to_string(),
             "--secret",
             &config_secret.display().to_string(),
-            "--log-level=warn",
+            "--log-level=trace",
         ]);
 
         match block0 {
