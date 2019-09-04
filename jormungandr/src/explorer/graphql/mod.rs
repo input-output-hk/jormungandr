@@ -146,21 +146,21 @@ impl Transaction {
 
 #[derive(juniper::GraphQLObject)]
 struct TransactionInput {
-    amount: Lovelaces,
+    amount: Value,
     address: Address,
 }
 
 #[derive(juniper::GraphQLObject)]
 struct TransactionOutput {
-    amount: Lovelaces,
+    amount: Value,
     address: Address,
 }
 
 #[derive(juniper::GraphQLObject)]
 struct Address {
     delegation: StakePool,
-    total_send: Lovelaces,
-    total_received: Lovelaces,
+    total_send: Value,
+    total_received: Value,
 }
 
 #[derive(juniper::GraphQLObject)]
@@ -193,16 +193,16 @@ impl Status {
 
 #[derive(juniper::GraphQLObject)]
 struct FeeSettings {
-    constant: Lovelaces,
-    coefficient: Lovelaces,
-    certificate: Lovelaces,
+    constant: Value,
+    coefficient: Value,
+    certificate: Value,
 }
 
 #[derive(juniper::GraphQLScalarValue)]
 struct PoolId(String);
 
 #[derive(juniper::GraphQLScalarValue)]
-struct Lovelaces(String);
+struct Value(String);
 
 #[derive(juniper::GraphQLScalarValue)]
 struct EpochNumber(String);
@@ -243,7 +243,7 @@ struct StakeDistribution {
 #[derive(juniper::GraphQLObject)]
 struct PoolStakeDistribution {
     pool: StakePool,
-    delegated_stake: Lovelaces,
+    delegated_stake: Value,
 }
 
 #[derive(juniper::GraphQLScalarValue)]
