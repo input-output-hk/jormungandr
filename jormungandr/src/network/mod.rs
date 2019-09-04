@@ -268,7 +268,9 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
     );
     let res = match msg {
         PropagateMsg::Block(ref header) => state.peers.propagate_block(nodes, header.clone()),
-        PropagateMsg::Message(ref message) => state.peers.propagate_message(nodes, message.clone()),
+        PropagateMsg::Fragment(ref fragment) => {
+            state.peers.propagate_fragment(nodes, fragment.clone())
+        }
     };
     // If any nodes selected for propagation are not in the
     // active subscriptions map, connect to them and deliver
@@ -284,8 +286,8 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
                     PropagateMsg::Block(header) => handles
                         .try_send_block_announcement(header)
                         .map_err(|e| e.kind()),
-                    PropagateMsg::Message(message) => {
-                        handles.try_send_message(message).map_err(|e| e.kind())
+                    PropagateMsg::Fragment(fragment) => {
+                        handles.try_send_fragment(fragment).map_err(|e| e.kind())
                     }
                 },
             );
@@ -414,7 +416,7 @@ pub fn fetch_block(
 custom_error! {
     pub FetchBlockError
         NoTrustedPeers = "no trusted peers specified",
-        Connect { source: Box<Error> } = "connection to peer failed",
+        Connect { source: Box<dyn Error> } = "connection to peer failed",
         GetBlocks { source: core_error::Error } = "block request failed",
         NoBlocks = "no blocks in the stream",
 }

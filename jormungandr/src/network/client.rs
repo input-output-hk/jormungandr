@@ -6,11 +6,12 @@ use super::{
     subscription, Channels, ConnectionState, GlobalStateR,
 };
 use crate::{
-    blockcfg::{Block, Header, HeaderHash},
+    blockcfg::{Block, Fragment, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
 };
 use futures::prelude::*;
 use network_core::client::block::BlockService;
+use network_core::client::content::ContentService;
 use network_core::client::gossip::GossipService;
 use network_core::client::p2p::P2pService;
 use network_core::client::{self as core_client, Client as _};
@@ -49,6 +50,7 @@ where
     S: core_client::Client,
     S: P2pService<NodeId = topology::NodeId>,
     S: BlockService<Block = Block>,
+    S: ContentService<Fragment = Fragment>,
     S: GossipService<Node = topology::Node>,
     S::UploadBlocksFuture: Send + 'static,
     S::GossipSubscription: Send + 'static,
@@ -70,13 +72,21 @@ where
                     .map(move |service| (service, peer_comms, block_req))
             })
             .and_then(move |(mut service, mut peer_comms, block_req)| {
-                let gossip_req = service.gossip_subscription(peer_comms.subscribe_to_gossip());
-                block_req
-                    .join(gossip_req)
-                    .map(move |(block_res, gossip_res)| {
-                        (service, peer_comms, block_res, gossip_res)
-                    })
+                let content_req = service.content_subscription(peer_comms.subscribe_to_fragments());
+                service
+                    .ready()
+                    .map(move |service| (service, peer_comms, block_req, content_req))
             })
+            .and_then(
+                move |(mut service, mut peer_comms, block_req, content_req)| {
+                    let gossip_req = service.gossip_subscription(peer_comms.subscribe_to_gossip());
+                    block_req
+                        .join(gossip_req)
+                        .map(move |(block_res, gossip_res)| {
+                            (service, peer_comms, block_res, gossip_res)
+                        })
+                },
+            )
             .map_err(move |err| {
                 warn!(err_logger, "subscription request failed: {:?}", err);
             })
