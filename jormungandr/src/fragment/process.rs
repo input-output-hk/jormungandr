@@ -6,13 +6,7 @@ use crate::{
 };
 use slog::Logger;
 use std::time::Duration;
-use tokio::{
-    prelude::{
-        future::Either::{A, B},
-        *,
-    },
-    timer::Interval,
-};
+use tokio::{prelude::*, timer::Interval};
 
 pub struct Process {
     pool: Pool,

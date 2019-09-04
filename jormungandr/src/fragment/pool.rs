@@ -3,7 +3,12 @@ use crate::{
     fragment::{selection::FragmentSelectionAlgorithm, Fragment, Logs},
 };
 use chain_core::property::Fragment as _;
-use futures::future::Either::{A, B};
+use chain_impl_mockchain::transaction::{AuthenticatedTransaction, Balance};
+use chain_impl_mockchain::value::Value;
+use futures::future::{
+    self,
+    Either::{A, B},
+};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
 use std::time::Duration;
 use tokio::{prelude::*, sync::lock::Lock, timer};
@@ -32,9 +37,13 @@ impl Pool {
         origin: FragmentOrigin,
         fragment: Fragment,
     ) -> impl Future<Item = bool, Error = ()> {
+        if !is_fragment_valid(&fragment) {
+            return A(future::ok(false));
+        }
         let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
-        self.logs
+        B(self
+            .logs
             .exists(fragment.id())
             .and_then(move |exists_in_logs| {
                 if exists_in_logs {
@@ -51,35 +60,40 @@ impl Pool {
                         B(insert_future)
                     }),
                 )
-            })
+            }))
     }
 
     /// Returns number of registered fragments
     pub fn insert_all(
         &mut self,
         origin: FragmentOrigin,
-        fragments: Vec<Fragment>,
+        mut fragments: Vec<Fragment>,
     ) -> impl Future<Item = usize, Error = ()> {
+        fragments.retain(is_fragment_valid);
+        if fragments.is_empty() {
+            return A(future::ok(0));
+        }
         let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
         let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
-        self.logs
-            .exist_all(fragment_ids)
-            .and_then(move |exist_in_logs| {
+        let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
+        B(
+            fragments_exist_in_logs.and_then(move |fragments_exist_in_logs| {
                 future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
                     let new_fragments = fragments
                         .into_iter()
-                        .zip(exist_in_logs)
+                        .zip(fragments_exist_in_logs)
                         .filter(|(_, exists_in_logs)| !exists_in_logs)
                         .map(|(fragment, _)| fragment);
-                    let fragment_ids = pool.insert_all(new_fragments);
-                    let count = fragment_ids.len();
-                    let fragment_logs = fragment_ids
+                    let new_fragment_ids = pool.insert_all(new_fragments);
+                    let count = new_fragment_ids.len();
+                    let fragment_logs = new_fragment_ids
                         .into_iter()
                         .map(move |id| FragmentLog::new(id.into(), origin));
                     logs.insert_all(fragment_logs).map(move |_| count)
                 })
-            })
+            }),
+        )
     }
 
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
@@ -111,6 +125,17 @@ impl Pool {
                 future::ok(selection_alg)
             })
     }
+}
+
+fn is_fragment_valid(fragment: &Fragment) -> bool {
+    match fragment {
+        Fragment::Transaction(ref tx) => is_transaction_valid(tx),
+        _ => true,
+    }
+}
+
+fn is_transaction_valid<A, E>(tx: &AuthenticatedTransaction<A, E>) -> bool {
+    tx.transaction.verify_possibly_balanced().is_ok()
 }
 
 pub(super) mod internal {
