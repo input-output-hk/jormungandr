@@ -5,7 +5,7 @@
 //! transactions...);
 //!
 
-mod bootstrap;
+pub mod bootstrap;
 mod client;
 mod grpc;
 mod inbound;
