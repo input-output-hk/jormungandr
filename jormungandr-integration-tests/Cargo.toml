@@ -4,7 +4,7 @@ version = "0.3.3"
 authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
 edition = "2018"
 
-[dependencies]
+[dev-dependencies]
 chain-core           = { path = "../chain-deps/chain-core" }
 chain-crypto         = { path = "../chain-deps/chain-crypto" }
 chain-addr           = { path = "../chain-deps/chain-addr" }
@@ -26,8 +26,6 @@ mktemp = "0.4.0"
 lazy_static = "1.3"
 custom_error = "1.7"
 poldercast = { version = "0.3.1", features = [ "serde_derive" ] }
-
-[dev-dependencies]
 jormungandr = { path = "../jormungandr" }
 jcli = { path = "../jcli" }
 
