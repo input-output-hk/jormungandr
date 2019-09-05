@@ -1,6 +1,11 @@
-use crate::blockcfg::{self, FragmentId};
+mod error;
+use self::error::ErrorKind;
+use crate::blockcfg::{self, Fragment, FragmentId, Header, HeaderHash};
 use crate::blockchain::Blockchain;
-use chain_core::property::Block as _;
+use crate::explorer::{self, ExplorerDB};
+use chain_core::property::Fragment as _;
+use chain_impl_mockchain::fee::LinearFee;
+use juniper::graphql_value;
 pub use juniper::http::GraphQLRequest;
 use juniper::EmptyMutation;
 use juniper::FieldError;
@@ -9,13 +14,31 @@ use juniper::RootNode;
 use std::str::FromStr;
 use tokio::prelude::*;
 
-use crate::explorer::ExplorerDB;
-use juniper::graphql_value;
-
 pub struct Block {
-    hash: String,
-    date: BlockDate,
-    chain_length: ChainLength,
+    header: Header,
+}
+
+impl Block {
+    pub fn from_string_hash(hash: String, context: &Context) -> FieldResult<Block> {
+        let hash = HeaderHash::from_str(&hash)?;
+        Self::from_header_hash(hash, context)
+    }
+
+    pub fn from_header_hash(hash: HeaderHash, context: &Context) -> FieldResult<Block> {
+        let header = context
+            .db
+            .get_header(hash)
+            .wait()
+            // Err = Infallible
+            .unwrap()
+            // None -> Missing in the explorer (not indexed)
+            .ok_or(FieldError::new(
+                "Couldn't find block in explorer",
+                graphql_value!({ "internal_error": "Block is not in explorer" }),
+            ))?;
+
+        Ok(Block { header })
+    }
 }
 
 /// A Block
@@ -24,39 +47,64 @@ pub struct Block {
 )]
 impl Block {
     /// The Block unique identifier
-    pub fn hash(&self) -> &String {
-        &self.hash
+    pub fn hash(&self) -> String {
+        format!("{}", &self.header.hash())
     }
 
     /// Date the Block was included in the blockchain
-    pub fn date(&self) -> &BlockDate {
-        &self.date
+    pub fn date(&self, context: &Context) -> BlockDate {
+        self.header.block_date().into()
     }
 
     /// The transactions contained in the block
-    pub fn transactions(&self) -> Vec<&Transaction> {
-        unimplemented!()
+    pub fn transactions(&self, context: &Context) -> FieldResult<Vec<Transaction>> {
+        let block = context
+            .blockchain
+            .storage()
+            .get(self.header.hash())
+            .wait()?
+            .ok_or(FieldError::from(ErrorKind::InternalError(
+                "Transaction's block is not in storage (shouldn't happen)".to_owned(),
+            )))?;
+
+        let ids = block
+            .contents
+            .iter()
+            .filter(|fragment| match fragment {
+                Fragment::Transaction(_) => true,
+                Fragment::OwnerStakeDelegation(_) => true,
+                Fragment::StakeDelegation(_) => true,
+                Fragment::PoolRegistration(_) => true,
+                Fragment::PoolManagement(_) => true,
+                _ => false,
+            })
+            .map(|fragment| fragment.id());
+
+        Ok(ids.map(|id| Transaction { id }).collect())
     }
 
-    pub fn previous_block(&self) -> Option<&Block> {
-        unimplemented!()
+    pub fn previous_block(&self, context: &Context) -> FieldResult<Block> {
+        // XXX: Check what's the parent of the Block0
+        Block::from_header_hash((*self.header.block_parent_hash()).clone(), context)
     }
 
-    pub fn next_block(&self) -> Option<&Block> {
-        unimplemented!()
+    pub fn next_block(&self, context: &Context) -> FieldResult<Option<Block>> {
+        if let Some(header_hash) = context.db.get_next_block(self.header.hash()).wait()? {
+            Ok(Some(Block::from_header_hash(header_hash, context)?))
+        } else {
+            Ok(None)
+        }
     }
 
-    pub fn chain_length(&self) -> &ChainLength {
-        &self.chain_length
+    pub fn chain_length(&self) -> ChainLength {
+        self.header.chain_length().into()
     }
 }
 
 impl From<blockcfg::Block> for Block {
     fn from(block: blockcfg::Block) -> Block {
         Block {
-            hash: block.id().to_string(),
-            date: block.date().into(),
-            chain_length: ChainLength(u32::from(block.header.chain_length()).to_string()),
+            header: block.header,
         }
     }
 }
