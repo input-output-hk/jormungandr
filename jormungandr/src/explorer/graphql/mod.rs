@@ -347,7 +347,7 @@ impl Query {
         Block::from_string_hash(id, context)
     }
 
-    fn block(chain_length: ChainLength) -> FieldResult<Block> {
+    fn chain_length(chain_length: ChainLength) -> FieldResult<Block> {
         unimplemented!();
     }
 
