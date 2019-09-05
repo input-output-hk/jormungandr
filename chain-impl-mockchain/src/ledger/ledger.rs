@@ -243,7 +243,6 @@ impl Ledger {
 
         let mut ledger = Ledger::empty(settings, static_params, era);
 
-        let ledger_params = ledger.get_ledger_parameters();
 
         for content in content_iter {
             let fragment_id = content.hash();
@@ -259,19 +258,12 @@ impl Ledger {
                 Fragment::Transaction(authenticated_tx) => {
                     check::valid_block0_transaction_no_inputs(&authenticated_tx)?;
 
-                    let (new_utxos, new_accounts, new_multisig) =
-                        internal_apply_transaction_output(
-                            ledger.utxos,
-                            ledger.accounts,
-                            ledger.multisig,
-                            &ledger.static_params,
-                            &ledger_params,
-                            &fragment_id,
-                            &authenticated_tx.transaction.outputs,
-                        )?;
-                    ledger.utxos = new_utxos;
-                    ledger.accounts = new_accounts;
-                    ledger.multisig = new_multisig;
+                    ledger = internal_apply_transaction_output(
+                        ledger,
+                        &ledger_params,
+                        fragment_id,
+                        &authenticated_tx,
+                    )?;
                 }
                 Fragment::UpdateProposal(_) => {
                     return Err(Error::Block0 {
@@ -452,13 +444,8 @@ impl Ledger {
             .fees
             .calculate(&signed_tx.transaction)
             .ok_or(ValueError::Overflow)?;
-        internal_apply_transaction(
-            self,
-            &fragment_id,
-            signed_tx,
-            dyn_params,
-            fee,
-        ).map(|ledger| (ledger, fee))
+        internal_apply_transaction(self, *fragment_id, signed_tx, dyn_params, fee)
+            .map(|ledger| (ledger, fee))
     }
 
     pub fn apply_update(mut self, update: &update::UpdateProposal) -> Result<Self, Error> {
@@ -704,7 +691,7 @@ fn apply_old_declaration(
 /// Apply the transaction
 fn internal_apply_transaction<Extra: property::Serialize>(
     mut ledger: Ledger,
-    fragment_id: &FragmentId,
+    fragment_id: FragmentId,
     signed_tx: &AuthenticatedTransaction<Address, Extra>,
     dyn_params: &LedgerParameters,
     fee: Value,
@@ -713,19 +700,7 @@ fn internal_apply_transaction<Extra: property::Serialize>(
     verify_tx_strictly_balanced(&signed_tx.transaction, fee)?;
     ledger = internal_apply_transaction_input(ledger, signed_tx)?;
 
-    // add the new outputs
-    let (new_utxos, new_accounts, new_multisig) = internal_apply_transaction_output(
-        ledger.utxos,
-        ledger.accounts,
-        ledger.multisig,
-        &ledger.static_params,
-        dyn_params,
-        fragment_id,
-        &signed_tx.transaction.outputs,
-    )?;
-    ledger.utxos = new_utxos;
-    ledger.accounts = new_accounts;
-    ledger.multisig = new_multisig;
+    ledger = internal_apply_transaction_output(ledger, dyn_params, fragment_id, signed_tx)?;
 
     // add fee to pot
     ledger.pot = (ledger.pot + fee).map_err(|error| Error::PotValueInvalid { error })?;
@@ -733,7 +708,9 @@ fn internal_apply_transaction<Extra: property::Serialize>(
     Ok(ledger)
 }
 
-fn verify_tx_well_formed<Extra>(signed_tx: &AuthenticatedTransaction<Address, Extra>) -> Result<(), Error> {
+fn verify_tx_well_formed<Extra>(
+    signed_tx: &AuthenticatedTransaction<Address, Extra>,
+) -> Result<(), Error> {
     let inputs = &signed_tx.transaction.inputs;
     if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
         return Err(Error::TransactionHasTooManyInputs {
@@ -768,10 +745,15 @@ fn verify_tx_well_formed<Extra>(signed_tx: &AuthenticatedTransaction<Address, Ex
     Ok(())
 }
 
-fn verify_tx_strictly_balanced<Addr, Extra>(tx: &Transaction<Addr, Extra>, fee: Value) -> Result<(), Error> {
-    let total_input = tx.total_input()
+fn verify_tx_strictly_balanced<Addr, Extra>(
+    tx: &Transaction<Addr, Extra>,
+    fee: Value,
+) -> Result<(), Error> {
+    let total_input = tx
+        .total_input()
         .map_err(|e| Error::UtxoInputsTotal { error: e })?;
-    let total_output = tx.total_output()
+    let total_output = tx
+        .total_output()
         .and_then(|out| out + fee)
         .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
     if total_input != total_output {
@@ -784,9 +766,11 @@ fn verify_tx_strictly_balanced<Addr, Extra>(tx: &Transaction<Addr, Extra>, fee: 
 }
 
 fn verify_tx_possibly_balanced<Addr, Extra>(tx: &Transaction<Addr, Extra>) -> Result<(), Error> {
-    let total_input = tx.total_input()
+    let total_input = tx
+        .total_input()
         .map_err(|e| Error::UtxoInputsTotal { error: e })?;
-    let total_output = tx.total_output()
+    let total_output = tx
+        .total_output()
         .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
     if total_input < total_output {
         Err(Error::NotBalanced {
@@ -797,9 +781,17 @@ fn verify_tx_possibly_balanced<Addr, Extra>(tx: &Transaction<Addr, Extra>) -> Re
     Ok(())
 }
 
-fn internal_apply_transaction_input<Extra: property::Serialize>(mut ledger: Ledger, signed_tx: &AuthenticatedTransaction<Address, Extra>) -> Result<Ledger, Error> {
+fn internal_apply_transaction_input<Extra: property::Serialize>(
+    mut ledger: Ledger,
+    signed_tx: &AuthenticatedTransaction<Address, Extra>,
+) -> Result<Ledger, Error> {
     let sign_data_hash = signed_tx.transaction.hash();
-    for (input, witness) in signed_tx.transaction.inputs.iter().zip(signed_tx.witnesses.iter()) {
+    for (input, witness) in signed_tx
+        .transaction
+        .inputs
+        .iter()
+        .zip(signed_tx.witnesses.iter())
+    {
         match input.to_enum() {
             InputEnum::UtxoInput(utxo) => {
                 ledger = input_utxo_verify(ledger, &sign_data_hash, &utxo, witness)?
@@ -833,20 +825,17 @@ fn internal_apply_transaction_input<Extra: property::Serialize>(mut ledger: Ledg
     Ok(ledger)
 }
 
-fn internal_apply_transaction_output(
-    mut utxos: utxo::Ledger<Address>,
-    mut accounts: account::Ledger,
-    mut multisig: multisig::Ledger,
-    static_params: &LedgerStaticParameters,
+fn internal_apply_transaction_output<Extra>(
+    mut ledger: Ledger,
     _dyn_params: &LedgerParameters,
-    transaction_id: &FragmentId,
-    outputs: &[Output<Address>],
-) -> Result<(utxo::Ledger<Address>, account::Ledger, multisig::Ledger), Error> {
+    transaction_id: FragmentId,
+    signed_tx: &AuthenticatedTransaction<Address, Extra>,
+) -> Result<Ledger, Error> {
     let mut new_utxos = Vec::new();
-    for (index, output) in outputs.iter().enumerate() {
+    for (index, output) in signed_tx.transaction.outputs.iter().enumerate() {
         check::valid_output_value(&output)?;
 
-        if output.address.discrimination() != static_params.discrimination {
+        if output.address.discrimination() != ledger.static_params.discrimination {
             return Err(Error::InvalidDiscrimination);
         }
         match output.address.kind() {
@@ -856,31 +845,33 @@ fn internal_apply_transaction_output(
             Kind::Group(_, account_id) => {
                 let account_id = account_id.clone().into();
                 // TODO: probably faster to just call add_account and check for already exists error
-                if !accounts.exists(&account_id) {
-                    accounts = accounts.add_account(&account_id, Value::zero(), ())?;
+                if !ledger.accounts.exists(&account_id) {
+                    ledger.accounts =
+                        ledger
+                            .accounts
+                            .add_account(&account_id, Value::zero(), ())?;
                 }
                 new_utxos.push((index as u8, output.clone()));
             }
             Kind::Account(identifier) => {
                 // don't have a way to make a newtype ref from the ref so .clone()
                 let account = identifier.clone().into();
-                accounts = match accounts.add_value(&account, output.value) {
+                ledger.accounts = match ledger.accounts.add_value(&account, output.value) {
                     Ok(accounts) => accounts,
                     Err(account::LedgerError::NonExistent) => {
-                        accounts.add_account(&account, output.value, ())?
+                        ledger.accounts.add_account(&account, output.value, ())?
                     }
                     Err(error) => return Err(error.into()),
                 };
             }
             Kind::Multisig(identifier) => {
                 let identifier = multisig::Identifier::from(identifier.clone());
-                multisig = multisig.add_value(&identifier, output.value)?;
+                ledger.multisig = ledger.multisig.add_value(&identifier, output.value)?;
             }
         }
     }
-
-    utxos = utxos.add(transaction_id, &new_utxos)?;
-    Ok((utxos, accounts, multisig))
+    ledger.utxos = ledger.utxos.add(&transaction_id, &new_utxos)?;
+    Ok(ledger)
 }
 
 fn input_utxo_verify(
