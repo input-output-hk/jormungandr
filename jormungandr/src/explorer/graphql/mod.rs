@@ -276,8 +276,8 @@ impl Epoch {
             })
             .ok_or(
                 FieldError::new(
-                    "Epoch is not in storage",
-                    graphql_value!({ "internal_error": "Error is not in storage" }),
+                    "Epoch is not in explorer",
+                    graphql_value!({ "internal_error": "Error is not in explorer" }),
                 )
                 .into(),
             )
