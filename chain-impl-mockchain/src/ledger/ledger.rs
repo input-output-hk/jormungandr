@@ -709,90 +709,11 @@ fn internal_apply_transaction<Extra: property::Serialize>(
     dyn_params: &LedgerParameters,
     fee: Value,
 ) -> Result<Ledger, Error> {
-    let inputs = &signed_tx.transaction.inputs;
-    let outputs = &signed_tx.transaction.outputs;
-    let witnesses = &signed_tx.witnesses;
+    verify_tx_well_formed(signed_tx)?;
+    verify_tx_strictly_balanced(&signed_tx.transaction, fee)?;
+    ledger = internal_apply_transaction_input(ledger, signed_tx)?;
 
-    if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
-        return Err(Error::TransactionHasTooManyInputs {
-            expected: MAX_TRANSACTION_INPUTS_COUNT,
-            actual: inputs.len(),
-        });
-    }
-
-    if outputs.len() > MAX_TRANSACTION_OUTPUTS_COUNT {
-        return Err(Error::TransactionHasTooManyOutputs {
-            expected: MAX_TRANSACTION_OUTPUTS_COUNT,
-            actual: outputs.len(),
-        });
-    }
-
-    if witnesses.len() > MAX_TRANSACTION_WITNESSES_COUNT {
-        return Err(Error::TransactionHasTooManyWitnesses {
-            expected: MAX_TRANSACTION_WITNESSES_COUNT,
-            actual: witnesses.len(),
-        });
-    }
-
-    // 1. verify that number of signatures matches number of
-    // transactions
-    if inputs.len() != witnesses.len() {
-        return Err(Error::NotEnoughSignatures {
-            expected: inputs.len(),
-            actual: witnesses.len(),
-        });
-    }
-
-    // 2. validate inputs of transaction by gathering what we know of it,
-    // then verifying the associated witness
-    let sign_data_hash = signed_tx.transaction.hash();
-    for (input, witness) in inputs.iter().zip(witnesses.iter()) {
-        match input.to_enum() {
-            InputEnum::UtxoInput(utxo) => {
-                ledger = input_utxo_verify(ledger, &sign_data_hash, &utxo, witness)?
-            }
-            InputEnum::AccountInput(account_id, value) => {
-                match match_identifier_witness(&account_id, witness)? {
-                    MatchingIdentifierWitness::Single(account_id, witness) => {
-                        let single = input_single_account_verify(
-                            ledger.accounts,
-                            &ledger.static_params.block0_initial_hash,
-                            &sign_data_hash,
-                            &account_id,
-                            witness,
-                            value,
-                        )?;
-                        ledger.accounts = single;
-                    }
-                    MatchingIdentifierWitness::Multi(account_id, witness) => {
-                        let multi = input_multi_account_verify(
-                            ledger.multisig,
-                            &ledger.static_params.block0_initial_hash,
-                            &sign_data_hash,
-                            &account_id,
-                            witness,
-                            value,
-                        )?;
-                        ledger.multisig = multi;
-                    }
-                }
-            }
-        }
-    }
-
-    // 3. verify that transaction sum is zero.
-    let total_input = Value::sum(inputs.iter().map(|i| i.value))
-        .map_err(|e| Error::UtxoInputsTotal { error: e })?;
-    let total_output = Value::sum(outputs.iter().map(|i| i.value).chain(std::iter::once(fee)))
-        .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
-    if total_input != total_output {
-        return Err(Error::NotBalanced {
-            inputs: total_input,
-            outputs: total_output,
-        });
-    }
-
-    // 4. add the new outputs
+    // add the new outputs
     let (new_utxos, new_accounts, new_multisig) = internal_apply_transaction_output(
         ledger.utxos,
         ledger.accounts,
@@ -800,15 +721,115 @@ fn internal_apply_transaction<Extra: property::Serialize>(
         &ledger.static_params,
         dyn_params,
         fragment_id,
-        outputs,
+        &signed_tx.transaction.outputs,
     )?;
     ledger.utxos = new_utxos;
     ledger.accounts = new_accounts;
     ledger.multisig = new_multisig;
 
-    // 5. add fee to pot
+    // add fee to pot
     ledger.pot = (ledger.pot + fee).map_err(|error| Error::PotValueInvalid { error })?;
 
+    Ok(ledger)
+}
+
+fn verify_tx_well_formed<Extra>(signed_tx: &AuthenticatedTransaction<Address, Extra>) -> Result<(), Error> {
+    let inputs = &signed_tx.transaction.inputs;
+    if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
+        return Err(Error::TransactionHasTooManyInputs {
+            expected: MAX_TRANSACTION_INPUTS_COUNT,
+            actual: inputs.len(),
+        });
+    }
+
+    let outputs = &signed_tx.transaction.outputs;
+    if outputs.len() > MAX_TRANSACTION_OUTPUTS_COUNT {
+        return Err(Error::TransactionHasTooManyOutputs {
+            expected: MAX_TRANSACTION_OUTPUTS_COUNT,
+            actual: outputs.len(),
+        });
+    }
+
+    let witnesses = &signed_tx.witnesses;
+    if witnesses.len() > MAX_TRANSACTION_WITNESSES_COUNT {
+        return Err(Error::TransactionHasTooManyWitnesses {
+            expected: MAX_TRANSACTION_WITNESSES_COUNT,
+            actual: witnesses.len(),
+        });
+    }
+
+    if inputs.len() != witnesses.len() {
+        return Err(Error::NotEnoughSignatures {
+            expected: inputs.len(),
+            actual: witnesses.len(),
+        });
+    }
+
+    Ok(())
+}
+
+fn verify_tx_strictly_balanced<Addr, Extra>(tx: &Transaction<Addr, Extra>, fee: Value) -> Result<(), Error> {
+    let total_input = tx.total_input()
+        .map_err(|e| Error::UtxoInputsTotal { error: e })?;
+    let total_output = tx.total_output()
+        .and_then(|out| out + fee)
+        .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
+    if total_input != total_output {
+        Err(Error::NotBalanced {
+            inputs: total_input,
+            outputs: total_output,
+        })?;
+    };
+    Ok(())
+}
+
+fn verify_tx_possibly_balanced<Addr, Extra>(tx: &Transaction<Addr, Extra>) -> Result<(), Error> {
+    let total_input = tx.total_input()
+        .map_err(|e| Error::UtxoInputsTotal { error: e })?;
+    let total_output = tx.total_output()
+        .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
+    if total_input < total_output {
+        Err(Error::NotBalanced {
+            inputs: total_input,
+            outputs: total_output,
+        })?;
+    };
+    Ok(())
+}
+
+fn internal_apply_transaction_input<Extra: property::Serialize>(mut ledger: Ledger, signed_tx: &AuthenticatedTransaction<Address, Extra>) -> Result<Ledger, Error> {
+    let sign_data_hash = signed_tx.transaction.hash();
+    for (input, witness) in signed_tx.transaction.inputs.iter().zip(signed_tx.witnesses.iter()) {
+        match input.to_enum() {
+            InputEnum::UtxoInput(utxo) => {
+                ledger = input_utxo_verify(ledger, &sign_data_hash, &utxo, witness)?
+            }
+            InputEnum::AccountInput(account_id, value) => {
+                match match_identifier_witness(&account_id, witness)? {
+                    MatchingIdentifierWitness::Single(account_id, witness) => {
+                        ledger.accounts = input_single_account_verify(
+                            ledger.accounts,
+                            &ledger.static_params.block0_initial_hash,
+                            &sign_data_hash,
+                            &account_id,
+                            witness,
+                            value,
+                        )?
+                    }
+                    MatchingIdentifierWitness::Multi(account_id, witness) => {
+                        ledger.multisig = input_multi_account_verify(
+                            ledger.multisig,
+                            &ledger.static_params.block0_initial_hash,
+                            &sign_data_hash,
+                            &account_id,
+                            witness,
+                            value,
+                        )?
+                    }
+                }
+            }
+        }
+    }
     Ok(ledger)
 }
 
