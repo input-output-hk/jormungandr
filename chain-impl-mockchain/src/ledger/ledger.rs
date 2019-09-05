@@ -111,7 +111,7 @@ custom_error! {
         TransactionHasTooManyInputs {expected: usize, actual: usize } = "Transaction has more than {expected} inputs ({actual})",
         TransactionHasTooManyOutputs {expected: usize, actual: usize } = "Transaction has more than {expected} outputs ({actual})",
         TransactionHasTooManyWitnesses {expected: usize, actual: usize } = "Transaction has more than {expected} witnesses ({actual})",
-        FeeCalculationError { error: ValueError } = "Error while computing the fees: {error}",
+        FeeCalculationError { source: ValueError } = "Error while computing the fees",
         PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
         UtxoInputsTotal { error: ValueError } = "Error while computing the transaction's total input: {error}",
         UtxoOutputsTotal { error: ValueError } = "Error while computing the transaction's total output: {error}",
@@ -452,10 +452,7 @@ impl Ledger {
         let fee = dyn_params
             .fees
             .calculate(&signed_tx.transaction)
-            .map(Ok)
-            .unwrap_or(Err(Error::FeeCalculationError {
-                error: ValueError::Overflow,
-            }))?;
+            .ok_or(ValueError::Overflow)?;
         self = internal_apply_transaction(
             self,
             dyn_params,
@@ -577,10 +574,7 @@ impl Ledger {
         let fee = dyn_params
             .fees
             .calculate(&auth_cert.transaction)
-            .map(Ok)
-            .unwrap_or(Err(Error::FeeCalculationError {
-                error: ValueError::Overflow,
-            }))?;
+            .ok_or(ValueError::Overflow)?;
         if fee != value {
             return Err(Error::NotBalanced {
                 inputs: value,
