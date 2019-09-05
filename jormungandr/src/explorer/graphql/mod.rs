@@ -157,28 +157,14 @@ impl Transaction {
             .db
             .find_block_by_transaction(self.id)
             .map_err(|err| FieldError::from(err))
-            .and_then(|hash_option| {
-                future::poll_fn(move || match hash_option {
-                    Some(hash) => context
-                        .blockchain
-                        .storage()
-                        .get(hash)
-                        .map_err(|err| FieldError::from(err))
-                        .poll(),
-                    None => Err(FieldError::new(
-                        "Couldn't find transaction in explorer",
-                        graphql_value!({ "internal_error": "Transaction is not in explorer" }),
-                    )),
-                })
-            })
             .wait()?;
 
         block_option
             .ok_or(FieldError::new(
-                "Couldn't find block in storage",
-                graphql_value!({ "internal_error": "Block is not in storage" }),
+                "Transaction is not in explorer",
+                graphql_value!({ "internal_error": "Transaction is not in explorer" }),
             ))
-            .map(|b| b.into())
+            .and_then(|h| Block::from_header_hash(h, context))
     }
 
     pub fn inputs(&self) -> Vec<TransactionInput> {
