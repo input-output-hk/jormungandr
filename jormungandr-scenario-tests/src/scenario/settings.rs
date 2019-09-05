@@ -57,20 +57,11 @@ pub struct Rest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
-    pub public_address: String,
-
-    /// the node identifier
-    pub id: poldercast::Id,
+    pub public_address: poldercast::Address,
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
-    pub trusted_peers: Vec<TrustedPeer>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TrustedPeer {
-    address: String,
-    id: poldercast::Id,
+    pub trusted_peers: Vec<poldercast::Address>,
 }
 
 /// Node Secret(s)
@@ -434,15 +425,11 @@ impl P2pConfig {
     {
         P2pConfig {
             public_address: context.generate_new_grpc_public_address(),
-            id: poldercast::Id::generate(&mut context.rng_mut()),
             trusted_peers: Vec::new(),
         }
     }
 
-    fn make_trusted_peer_setting(&self) -> TrustedPeer {
-        TrustedPeer {
-            id: self.id.clone(),
-            address: self.public_address.clone(),
-        }
+    fn make_trusted_peer_setting(&self) -> poldercast::Address {
+        self.public_address.clone()
     }
 }

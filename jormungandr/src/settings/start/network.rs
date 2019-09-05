@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, net::SocketAddr, str, time::Duration};
 
 use crate::{
     network::p2p::topology::NodeId,
-    settings::start::config::{Address, InterestLevel, Topic, TrustedPeer},
+    settings::start::config::{Address, InterestLevel, Topic},
 };
 
 /// Protocol to use for a connection.
@@ -57,7 +57,7 @@ pub struct Configuration {
     pub listen_address: Option<SocketAddr>,
 
     /// list of trusted addresses
-    pub trusted_peers: Vec<TrustedPeer>,
+    pub trusted_peers: Vec<poldercast::Address>,
 
     /// the protocol to utilise for the p2p network
     pub protocol: Protocol,

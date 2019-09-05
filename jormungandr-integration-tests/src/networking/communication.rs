@@ -1,5 +1,4 @@
 use crate::common::configuration::genesis_model::Fund;
-use crate::common::configuration::node_config_model::Peer;
 use crate::common::jcli_wrapper;
 use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
 use crate::common::startup;
@@ -20,10 +19,7 @@ pub fn two_nodes_communication() {
     let _leader_jormungandr = startup::start_jormungandr_node_as_leader(&mut leader_config);
 
     let mut trusted_node_config = startup::ConfigurationBuilder::new()
-        .with_trusted_peers(vec![Peer {
-            id: 1,
-            address: leader_config.node_config.p2p.public_address.clone(),
-        }])
+        .with_trusted_peers(vec![leader_config.node_config.p2p.public_address.clone()])
         .with_block_hash(leader_config.genesis_block_hash.clone())
         .build();
 

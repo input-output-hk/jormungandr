@@ -113,7 +113,7 @@ where
                         );
                         return Err(());
                     }
-                    let logger = state.logger().new(o!("node_id" => node_id.0.as_u128()));
+                    let logger = state.logger().new(o!("node_id" => node_id.to_string()));
 
                     // Spin off processing tasks for subscriptions that can be
                     // managed with just the global state.

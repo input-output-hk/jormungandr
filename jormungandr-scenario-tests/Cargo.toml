@@ -20,7 +20,7 @@ chain-addr           = { path = "../chain-deps/chain-addr" }
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-time           = { path = "../chain-deps/chain-time" }
 jormungandr-lib = { path = "../jormungandr-lib" }
-poldercast = { version = "0.3.1", features = [ "serde_derive" ] }
+poldercast = { version = "0.4.0", features = [ "serde_derive" ] }
 rand = "0.6"
 rand_core = "0.3"
 rand_chacha = "0.1"

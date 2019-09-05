@@ -1,4 +1,4 @@
-use crate::common::configuration::node_config_model::{Log, Peer};
+use crate::common::configuration::node_config_model::Log;
 use crate::common::startup;
 
 #[test]
@@ -20,10 +20,7 @@ pub fn test_jormungandr_passive_node_starts_successfully() {
     let _jormungandr_leader = startup::start_jormungandr_node_as_leader(&mut leader_config);
 
     let mut passive_config = startup::ConfigurationBuilder::new()
-        .with_trusted_peers(vec![Peer {
-            id: 1,
-            address: leader_config.node_config.p2p.public_address.clone(),
-        }])
+        .with_trusted_peers(vec![leader_config.node_config.p2p.public_address.clone()])
         .with_block_hash(leader_config.genesis_block_hash)
         .build();
 

@@ -71,7 +71,7 @@ pub struct P2pConfig {
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
-    pub trusted_peers: Option<Vec<TrustedPeer>>,
+    pub trusted_peers: Option<Vec<poldercast::Address>>,
     /// the topic subscriptions
     ///
     /// When connecting to different nodes we will expose these too in order to
@@ -109,12 +109,6 @@ pub struct Topic(pub poldercast::Topic);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterestLevel(pub poldercast::InterestLevel);
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TrustedPeer {
-    pub address: Address,
-    pub id: NodeId,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Explorer {

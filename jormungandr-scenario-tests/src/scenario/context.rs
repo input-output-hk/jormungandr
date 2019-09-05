@@ -130,7 +130,7 @@ impl<RNG: RngCore> Context<RNG> {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port_number)
     }
 
-    pub fn generate_new_grpc_public_address(&mut self) -> String {
+    pub fn generate_new_grpc_public_address(&mut self) -> poldercast::Address {
         use std::net::{IpAddr, Ipv4Addr};
 
         let port_number = self
@@ -140,6 +140,8 @@ impl<RNG: RngCore> Context<RNG> {
         let address = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
         format!("/ip4/{}/tcp/{}", address, port_number)
+            .parse()
+            .unwrap()
     }
 
     /// retrieve the original seed of the pseudo random generator
