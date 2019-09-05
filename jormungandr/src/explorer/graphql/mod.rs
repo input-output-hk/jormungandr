@@ -344,7 +344,7 @@ pub struct Query;
 )]
 impl Query {
     fn block(id: String, context: &Context) -> FieldResult<Block> {
-        unimplemented!();
+        Block::from_string_hash(id, context)
     }
 
     fn block(chain_length: ChainLength) -> FieldResult<Block> {
@@ -352,23 +352,22 @@ impl Query {
     }
 
     fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {
-        // This call blocks the current thread (the call to wait), but it won't block the node's
-        // thread, as queries are only executed in an exclusive runtime
         let id = FragmentId::from_str(&id)?;
 
         Ok(Transaction { id })
     }
 
-    pub fn epoch(id: EpochNumber) -> FieldResult<Epoch> {
-        unimplemented!();
+    pub fn epoch(id: EpochNumber, context: &Context) -> FieldResult<Epoch> {
+        let epoch_number = id.0.parse::<blockcfg::Epoch>()?;
+        Epoch::new(epoch_number, context)
     }
 
     pub fn stake_pool(id: PoolId) -> FieldResult<StakePool> {
         unimplemented!();
     }
 
-    pub fn status() -> FieldResult<Status> {
-        unimplemented!();
+    pub fn status(context: &Context) -> FieldResult<Status> {
+        Status::new(context)
     }
 }
 
