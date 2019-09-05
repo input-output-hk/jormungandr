@@ -258,12 +258,8 @@ impl Ledger {
                 Fragment::Transaction(authenticated_tx) => {
                     check::valid_block0_transaction_no_inputs(&authenticated_tx)?;
 
-                    ledger = internal_apply_transaction_output(
-                        ledger,
-                        &ledger_params,
-                        fragment_id,
-                        &authenticated_tx,
-                    )?;
+                    ledger =
+                        internal_apply_transaction_output(ledger, fragment_id, &authenticated_tx)?;
                 }
                 Fragment::UpdateProposal(_) => {
                     return Err(Error::Block0 {
@@ -431,7 +427,7 @@ impl Ledger {
     }
 
     pub fn apply_transaction<Extra>(
-        self,
+        mut self,
         fragment_id: &FragmentId,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
         dyn_params: &LedgerParameters,
@@ -440,12 +436,13 @@ impl Ledger {
         Extra: property::Serialize,
         LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
     {
-        let fee = dyn_params
-            .fees
-            .calculate(&signed_tx.transaction)
-            .ok_or(ValueError::Overflow)?;
-        internal_apply_transaction(self, *fragment_id, signed_tx, dyn_params, fee)
-            .map(|ledger| (ledger, fee))
+        verify_tx_well_formed(signed_tx)?;
+        let fee = calculate_fee(signed_tx, dyn_params)?;
+        verify_tx_strictly_balanced(&signed_tx.transaction, fee)?;
+        self = internal_apply_transaction_input(self, signed_tx)?;
+        self = internal_apply_transaction_output(self, *fragment_id, signed_tx)?;
+        self = internal_apply_transaction_fee(self, fee)?;
+        Ok((self, fee))
     }
 
     pub fn apply_update(mut self, update: &update::UpdateProposal) -> Result<Self, Error> {
@@ -688,26 +685,18 @@ fn apply_old_declaration(
     Ok(utxos)
 }
 
-/// Apply the transaction
-fn internal_apply_transaction<Extra: property::Serialize>(
-    mut ledger: Ledger,
-    fragment_id: FragmentId,
+fn calculate_fee<Extra>(
     signed_tx: &AuthenticatedTransaction<Address, Extra>,
     dyn_params: &LedgerParameters,
-    fee: Value,
-) -> Result<Ledger, Error> {
-    verify_tx_well_formed(signed_tx)?;
-    verify_tx_strictly_balanced(&signed_tx.transaction, fee)?;
-    ledger = internal_apply_transaction_input(ledger, signed_tx)?;
-
-    ledger = internal_apply_transaction_output(ledger, dyn_params, fragment_id, signed_tx)?;
-
-    // add fee to pot
-    ledger.pot = (ledger.pot + fee).map_err(|error| Error::PotValueInvalid { error })?;
-
-    Ok(ledger)
+) -> Result<Value, Error>
+where
+    LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
+{
+    dyn_params
+        .fees
+        .calculate(&signed_tx.transaction)
+        .ok_or_else(|| ValueError::Overflow.into())
 }
-
 fn verify_tx_well_formed<Extra>(
     signed_tx: &AuthenticatedTransaction<Address, Extra>,
 ) -> Result<(), Error> {
@@ -827,8 +816,7 @@ fn internal_apply_transaction_input<Extra: property::Serialize>(
 
 fn internal_apply_transaction_output<Extra>(
     mut ledger: Ledger,
-    _dyn_params: &LedgerParameters,
-    transaction_id: FragmentId,
+    fragment_id: FragmentId,
     signed_tx: &AuthenticatedTransaction<Address, Extra>,
 ) -> Result<Ledger, Error> {
     let mut new_utxos = Vec::new();
@@ -870,7 +858,12 @@ fn internal_apply_transaction_output<Extra>(
             }
         }
     }
-    ledger.utxos = ledger.utxos.add(&transaction_id, &new_utxos)?;
+    ledger.utxos = ledger.utxos.add(&fragment_id, &new_utxos)?;
+    Ok(ledger)
+}
+
+fn internal_apply_transaction_fee(mut ledger: Ledger, fee: Value) -> Result<Ledger, Error> {
+    ledger.pot = (ledger.pot + fee).map_err(|error| Error::PotValueInvalid { error })?;
     Ok(ledger)
 }
 
