@@ -8,6 +8,12 @@ pub struct ByteBuilder<T> {
     phantom: PhantomData<T>,
 }
 
+impl<T> From<ByteBuilder<T>> for Vec<u8> {
+    fn from(bb: ByteBuilder<T>) -> Vec<u8> {
+        bb.buffer
+    }
+}
+
 impl<T> ByteBuilder<T> {
     /// Create an unconstrained Builder
     pub fn new() -> Self {
@@ -98,5 +104,10 @@ impl<T> ByteBuilder<T> {
     /// Finalize the buffer and return a fixed ByteArray of T
     pub fn finalize(self) -> ByteArray<T> {
         ByteArray::from_vec(self.buffer)
+    }
+
+    /// Finalize the buffer and return a fixed ByteArray of T
+    pub fn finalize_as_vec(self) -> Vec<u8> {
+        self.buffer
     }
 }
