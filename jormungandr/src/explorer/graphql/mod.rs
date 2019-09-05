@@ -110,7 +110,7 @@ impl From<blockcfg::Block> for Block {
 }
 
 struct BlockDate {
-    epoch: Epoch,
+    epoch: blockcfg::Epoch,
     slot: Slot,
 }
 
@@ -119,8 +119,8 @@ struct BlockDate {
     Context = Context
 )]
 impl BlockDate {
-    pub fn epoch(&self) -> &Epoch {
-        &self.epoch
+    pub fn epoch(&self, context: &Context) -> FieldResult<Epoch> {
+        Epoch::new(self.epoch, context)
     }
 
     pub fn slot(&self) -> &Slot {
@@ -128,12 +128,10 @@ impl BlockDate {
     }
 }
 
-impl From<blockcfg::BlockDate> for BlockDate {
-    fn from(date: blockcfg::BlockDate) -> BlockDate {
+impl From<&blockcfg::BlockDate> for BlockDate {
+    fn from(date: &blockcfg::BlockDate) -> BlockDate {
         BlockDate {
-            epoch: Epoch {
-                id: EpochNumber(format!("{}", date.epoch)),
-            },
+            epoch: date.epoch,
             slot: Slot(format!("{}", date.slot_id)),
         }
     }
@@ -256,30 +254,54 @@ struct Value(String);
 struct EpochNumber(String);
 
 struct Epoch {
-    id: EpochNumber,
+    id: blockcfg::Epoch,
+    epoch_data: explorer::EpochData,
+}
+
+impl Epoch {
+    fn new(epoch_number: blockcfg::Epoch, context: &Context) -> FieldResult<Epoch> {
+        context
+            .db
+            .get_epoch_data(epoch_number)
+            .wait()?
+            .map(|epoch_data| Epoch {
+                id: epoch_number,
+                epoch_data,
+            })
+            .ok_or(
+                FieldError::new(
+                    "Epoch is not in storage",
+                    graphql_value!({ "internal_error": "Error is not in storage" }),
+                )
+                .into(),
+            )
+    }
 }
 
 #[juniper::object(
     Context = Context
 )]
 impl Epoch {
-    pub fn id(&self) -> &EpochNumber {
-        &self.id
+    pub fn id(&self) -> EpochNumber {
+        EpochNumber(format!("{}", &self.id))
     }
 
     /// Not yet implemented
-    pub fn stake_distribution(&self) -> StakeDistribution {
+    pub fn stake_distribution(&self) -> Option<StakeDistribution> {
         unimplemented!()
     }
 
     /// Not yet implemented
-    pub fn blocks(&self) -> Vec<Block> {
-        unimplemented!()
+    pub fn blocks(&self, context: &Context) -> FieldResult<Vec<Block>> {
+        unimplemented!();
     }
 
-    /// Not yet implemented
-    pub fn total_blocks(&self) -> i32 {
-        unimplemented!()
+    pub fn total_blocks(&self, context: &Context) -> FieldResult<BlockCount> {
+        Ok(BlockCount(format!("{}", self.epoch_data.total_blocks)))
+    }
+
+    pub fn fee_settings(&self, context: &Context) -> FieldResult<FeeSettings> {
+        Ok(self.epoch_data.fees.into())
     }
 }
 
