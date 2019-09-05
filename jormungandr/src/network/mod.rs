@@ -84,15 +84,13 @@ type GlobalStateR = Arc<GlobalState>;
 impl GlobalState {
     /// the network global state
     pub fn new(block0_hash: HeaderHash, config: Configuration, logger: Logger) -> Self {
-        let node_id = config.public_id.unwrap_or(topology::NodeId::generate());
-        info!(logger, "our node id: {}", node_id);
         let node_address = config
             .public_address
             .clone()
             .expect("only support the full nodes for now")
             .0
             .into();
-        let mut node = topology::Node::new(node_id, node_address);
+        let mut node = topology::Node::new(node_address);
 
         // TODO: load the subscriptions from the config
         node.add_message_subscription(topology::InterestLevel::High);
@@ -101,9 +99,11 @@ impl GlobalState {
         let mut topology = P2pTopology::new(node.clone(), logger.clone());
         topology.set_poldercast_modules();
         topology.add_module(topology::modules::TrustedPeers::new_with(
-            config.trusted_peers.iter().cloned().map(|trusted_peer| {
-                poldercast::Node::new(trusted_peer.id.0, trusted_peer.address.0)
-            }),
+            config
+                .trusted_peers
+                .iter()
+                .cloned()
+                .map(|trusted_peer| poldercast::Node::new(trusted_peer)),
         ));
 
         GlobalState {
@@ -364,7 +364,7 @@ fn first_trusted_peer_address(config: &Configuration) -> Option<SocketAddr> {
     config
         .trusted_peers
         .iter()
-        .filter_map(|peer| peer.address.to_socketaddr())
+        .filter_map(|peer| peer.to_socketaddr())
         .next()
 }
 
@@ -385,8 +385,8 @@ pub fn bootstrap(
     let mut bootstrapped = false;
 
     for peer in config.trusted_peers.iter() {
-        let logger = logger.new(o!("network" => "bootstrap", "peer" => peer.address.to_string()));
-        if let Some(address) = peer.address.to_socketaddr() {
+        let logger = logger.new(o!("network" => "bootstrap", "peer" => peer.to_string()));
+        if let Some(address) = peer.to_socketaddr() {
             let peer = Peer::new(address, Protocol::Grpc);
             let res =
                 bootstrap::bootstrap_from_peer(peer, blockchain.clone(), branch.clone(), &logger);

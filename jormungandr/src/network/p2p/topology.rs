@@ -49,8 +49,8 @@ impl gossip::NodeId for NodeId {}
 
 impl Node {
     #[inline]
-    pub fn new(id: NodeId, address: Address) -> Self {
-        Node(poldercast::Node::new(id.0, address))
+    pub fn new(address: Address) -> Self {
+        Node(poldercast::Node::new(address))
     }
 
     pub fn add_message_subscription(&mut self, interest_level: InterestLevel) {
@@ -64,16 +64,9 @@ impl Node {
     }
 }
 
-impl NodeId {
-    #[inline]
-    pub fn generate() -> Self {
-        NodeId(poldercast::Id::generate(&mut rand::thread_rng()))
-    }
-}
-
 impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0.as_u128())
+        write!(f, "{}", u64::from(self.0))
     }
 }
 
@@ -139,9 +132,9 @@ impl P2pTopology {
     /// set all the default poldercast modules (Rings, Vicinity and Cyclon)
     pub fn set_poldercast_modules(&mut self) {
         let mut topology = self.lock.write().unwrap();
-        topology.add_module(Rings::new());
-        topology.add_module(Vicinity::new());
-        topology.add_module(Cyclon::new());
+        topology.add_module(Rings::default());
+        topology.add_module(Vicinity::default());
+        topology.add_module(Cyclon::default());
     }
 
     /// Returns a list of neighbors selected in this turn

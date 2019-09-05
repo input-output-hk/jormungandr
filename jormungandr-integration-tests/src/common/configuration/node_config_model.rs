@@ -18,15 +18,9 @@ pub struct Rest {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Peer2Peer {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub trusted_peers: Option<Vec<Peer>>,
+    pub trusted_peers: Option<Vec<String>>,
     pub public_address: String,
     pub topics_of_interest: TopicsOfInterest,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Peer {
-    pub id: i32,
-    pub address: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
