@@ -18,7 +18,7 @@ p2p:
 
 ## P2P configuration
 
-- *trusted_peers*: (optional) the list of nodes to connect to in order to
+- *trusted_peers*: (optional) the list of nodes' [multiaddr][multiaddr] to connect to in order to
     bootstrap the p2p topology (and bootstrap our local blockchain);
 - *public_id*: (optional) the public identifier send to the other nodes in the
     p2p network. If not set it will be randomly generated.

@@ -33,8 +33,7 @@ rest:
 
 p2p:
   trusted_peers:
-    - id: 1
-      address: "/ip4/104.24.28.11/tcp/8299"
+    - "/ip4/104.24.28.11/tcp/8299"
   public_address: "/ip4/u.v.x.y/tcp/8299"
   topics_of_interest:
     messages: low
@@ -67,7 +66,7 @@ Description of the fields:
       - `allowed_origins`: (optional) allowed origins, if none provided, echos request origin
       - `max_age_secs`: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled
 - `p2p`: P2P network settings
-    - `trusted_peers`: (optional) the list of nodes to connect to in order to
+    - `trusted_peers`: (optional) the list of nodes's [multiaddr][multiaddr] to connect to in order to
       bootstrap the P2P topology (and bootstrap our local blockchain);
     - `public_id`: (optional) the public identifier sent to the other nodes
       in the P2P network. If not set it will be randomly generated.
