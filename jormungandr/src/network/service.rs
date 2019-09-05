@@ -49,8 +49,7 @@ impl Node for NodeService {
     }
 
     fn content_service(&mut self) -> Option<&mut Self::ContentService> {
-        // Not implemented yet
-        None
+        Some(self)
     }
 
     fn gossip_service(&mut self) -> Option<&mut Self::GossipService> {
