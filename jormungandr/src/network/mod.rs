@@ -401,6 +401,7 @@ pub fn bootstrap(
                 Ok(_) => {
                     info!(logger, "initial bootstrap completed");
                     bootstrapped = true;
+                    break;
                 }
             }
         }
