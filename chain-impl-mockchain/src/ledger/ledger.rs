@@ -439,7 +439,7 @@ impl Ledger {
     }
 
     pub fn apply_transaction<Extra>(
-        mut self,
+        self,
         fragment_id: &FragmentId,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
         dyn_params: &LedgerParameters,
@@ -448,22 +448,17 @@ impl Ledger {
         Extra: property::Serialize,
         LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
     {
-        let sign_data_hash = signed_tx.transaction.hash();
         let fee = dyn_params
             .fees
             .calculate(&signed_tx.transaction)
             .ok_or(ValueError::Overflow)?;
-        self = internal_apply_transaction(
+        internal_apply_transaction(
             self,
-            dyn_params,
             &fragment_id,
-            &sign_data_hash,
-            &signed_tx.transaction.inputs[..],
-            &signed_tx.transaction.outputs[..],
-            &signed_tx.witnesses[..],
+            signed_tx,
+            dyn_params,
             fee,
-        )?;
-        Ok((self, fee))
+        ).map(|ledger| (ledger, fee))
     }
 
     pub fn apply_update(mut self, update: &update::UpdateProposal) -> Result<Self, Error> {
@@ -707,16 +702,17 @@ fn apply_old_declaration(
 }
 
 /// Apply the transaction
-fn internal_apply_transaction(
+fn internal_apply_transaction<Extra: property::Serialize>(
     mut ledger: Ledger,
-    dyn_params: &LedgerParameters,
     fragment_id: &FragmentId,
-    sign_data_hash: &TransactionSignDataHash,
-    inputs: &[Input],
-    outputs: &[Output<Address>],
-    witnesses: &[Witness],
+    signed_tx: &AuthenticatedTransaction<Address, Extra>,
+    dyn_params: &LedgerParameters,
     fee: Value,
 ) -> Result<Ledger, Error> {
+    let inputs = &signed_tx.transaction.inputs;
+    let outputs = &signed_tx.transaction.outputs;
+    let witnesses = &signed_tx.witnesses;
+
     if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
         return Err(Error::TransactionHasTooManyInputs {
             expected: MAX_TRANSACTION_INPUTS_COUNT,
@@ -749,10 +745,11 @@ fn internal_apply_transaction(
 
     // 2. validate inputs of transaction by gathering what we know of it,
     // then verifying the associated witness
+    let sign_data_hash = signed_tx.transaction.hash();
     for (input, witness) in inputs.iter().zip(witnesses.iter()) {
         match input.to_enum() {
             InputEnum::UtxoInput(utxo) => {
-                ledger = input_utxo_verify(ledger, sign_data_hash, &utxo, witness)?
+                ledger = input_utxo_verify(ledger, &sign_data_hash, &utxo, witness)?
             }
             InputEnum::AccountInput(account_id, value) => {
                 match match_identifier_witness(&account_id, witness)? {
@@ -760,7 +757,7 @@ fn internal_apply_transaction(
                         let single = input_single_account_verify(
                             ledger.accounts,
                             &ledger.static_params.block0_initial_hash,
-                            sign_data_hash,
+                            &sign_data_hash,
                             &account_id,
                             witness,
                             value,
@@ -771,7 +768,7 @@ fn internal_apply_transaction(
                         let multi = input_multi_account_verify(
                             ledger.multisig,
                             &ledger.static_params.block0_initial_hash,
-                            sign_data_hash,
+                            &sign_data_hash,
                             &account_id,
                             witness,
                             value,
