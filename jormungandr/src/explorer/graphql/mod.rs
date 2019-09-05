@@ -201,25 +201,35 @@ struct StakePool {
 }
 
 struct Status {
-    current_epoch: Epoch,
-    latest_block: Block,
-    fee: FeeSettings,
+    status: explorer::Status,
+}
+
+impl Status {
+    fn new(context: &Context) -> FieldResult<Status> {
+        Ok(Status {
+            status: context.db.get_current_status().wait()?,
+        })
+    }
 }
 
 #[juniper::object(
     Context = Context
 )]
 impl Status {
-    pub fn current_epoch(&self) -> &Epoch {
-        &self.current_epoch
+    pub fn current_epoch(&self, context: &Context) -> FieldResult<Epoch> {
+        Epoch::new(self.status.current_epoch, context)
     }
 
-    pub fn latest_block(&self) -> &Block {
-        &self.latest_block
-    }
-
-    pub fn fee_settings(&self) -> &FeeSettings {
-        &self.fee
+    pub fn latest_block(&self, context: &Context) -> FieldResult<Block> {
+        self.status
+            .latest_block
+            .ok_or(
+                // This shouldn't happen, it's here until latest_block is no more an option
+                FieldError::from(ErrorKind::InternalError(
+                    "Latest block is not initialized".to_owned(),
+                )),
+            )
+            .and_then(|h| Block::from_header_hash(h, context))
     }
 }
 
@@ -228,6 +238,16 @@ struct FeeSettings {
     constant: Value,
     coefficient: Value,
     certificate: Value,
+}
+
+impl From<LinearFee> for FeeSettings {
+    fn from(linear_fees: LinearFee) -> FeeSettings {
+        FeeSettings {
+            constant: Value(format!("{}", linear_fees.constant)),
+            coefficient: Value(format!("{}", linear_fees.coefficient)),
+            certificate: Value(format!("{}", linear_fees.certificate)),
+        }
+    }
 }
 
 #[derive(juniper::GraphQLScalarValue)]
@@ -307,6 +327,15 @@ struct Slot(String);
 
 #[derive(juniper::GraphQLScalarValue)]
 struct ChainLength(String);
+
+#[derive(juniper::GraphQLScalarValue)]
+struct BlockCount(String);
+
+impl From<blockcfg::ChainLength> for ChainLength {
+    fn from(chain_length: blockcfg::ChainLength) -> ChainLength {
+        ChainLength(format!("{}", u32::from(chain_length)))
+    }
+}
 
 pub struct Query;
 
