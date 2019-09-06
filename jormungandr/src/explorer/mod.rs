@@ -1,5 +1,6 @@
 pub mod graphql;
 
+use self::graphql::Context;
 use super::blockchain::{Blockchain, Ref};
 use crate::blockcfg::{ChainLength, FragmentId, Header, HeaderHash};
 use crate::blockchain::Multiverse;
@@ -34,7 +35,33 @@ pub struct Explorer {
     pub blockchain: Blockchain,
 }
 
-use self::graphql::Context;
+#[derive(Clone)]
+pub struct ExplorerDB {
+    multiverse: Multiverse<Ref>,
+    // XXX: A better locking strategy could be better, as locking the entire hashmaps
+    // is probably too much.
+    chain_length_to_hash: Lock<HashMap<ChainLength, Vec<HeaderHash>>>,
+    transaction_to_block: Lock<HashMap<FragmentId, HeaderHash>>,
+    epochs: Lock<HashMap<Epoch, EpochData>>,
+    next_block: Lock<HashMap<HeaderHash, HeaderHash>>,
+    status: Lock<Status>,
+}
+
+#[derive(Clone)]
+pub struct EpochData {
+    first_block: HeaderHash,
+    last_block: HeaderHash,
+    total_blocks: u32,
+    fees: LinearFee,
+}
+
+#[derive(Clone)]
+pub struct Status {
+    current_epoch: Epoch,
+    // FIXME: This is an Option because the current initialization is a dummy one
+    latest_block: Option<HeaderHash>,
+}
+
 impl Explorer {
     pub fn new(db: ExplorerDB, schema: graphql::Schema, blockchain: Blockchain) -> Explorer {
         Explorer {
@@ -84,16 +111,6 @@ impl Explorer {
         }
         future::ok::<(), ()>(())
     }
-}
-
-#[derive(Clone)]
-pub struct ExplorerDB {
-    multiverse: Multiverse<Ref>,
-    // This is kind of the same thing the multiverse holds (with Ref instead of BlockId)
-    // FIXME: The constructor of `ChainLength` is private, so querying this thing could be
-    // a problem
-    chain_length_to_hash: Lock<HashMap<ChainLength, Vec<HeaderHash>>>,
-    transaction_to_block: Lock<HashMap<FragmentId, HeaderHash>>,
 }
 
 impl ExplorerDB {
