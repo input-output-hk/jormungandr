@@ -53,7 +53,7 @@ impl Process {
                 TransactionMsg::ProposeTransaction(txids, reply) => {
                     let logs = self.pool.logs().clone();
 
-                    A(A(logs.exists(txids).and_then(|rep| {
+                    A(A(logs.exist_all(txids).and_then(|rep| {
                         reply.reply_ok(rep);
                         future::ok(())
                     })))
