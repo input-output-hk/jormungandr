@@ -3,8 +3,9 @@
 use crate::{
     fragment::{Fragment, FragmentId},
     ledger::{
+        check::TxVerifyError,
         Entry,
-        Error::{NotEnoughSignatures, TransactionHasTooManyOutputs},
+        Error::TransactionMalformed,
         Ledger,
     },
     testing::{
@@ -174,9 +175,11 @@ pub fn utxo_no_enough_signatures() {
 
     let fees = ledger.get_ledger_parameters();
     assert_err!(
-        NotEnoughSignatures {
-            actual: 0,
-            expected: 1
+        TransactionMalformed {
+            source: TxVerifyError::NumberOfSignaturesInvalid {
+                actual: 0,
+                expected: 1
+            }
         },
         ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
     )
@@ -211,9 +214,11 @@ pub fn transaction_with_more_than_253_outputs() {
 
     let fees = ledger.get_ledger_parameters();
     assert_err!(
-        TransactionHasTooManyOutputs {
-            expected: 254,
-            actual: 255
+        TransactionMalformed {
+            source: TxVerifyError::TooManyOutputs {
+                expected: 254,
+                actual: 255
+            }
         },
         ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
     )

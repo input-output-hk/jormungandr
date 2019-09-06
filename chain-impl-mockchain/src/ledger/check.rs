@@ -113,3 +113,59 @@ pub(super) fn valid_pool_update_certificate(
     )?;
     Ok(())
 }
+
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub TxVerifyError
+        TooManyInputs {expected: usize, actual: usize }
+            = "too many inputs, expected maximum of {expected}, but received {actual}",
+        TooManyOutputs {expected: usize, actual: usize }
+            = "too many outputs, expected maximum of {expected}, but received {actual}",
+        TooManyWitnesses {expected: usize, actual: usize }
+            = "too many witnesses, expected maximum of {expected}, but received {actual}",
+        NumberOfSignaturesInvalid { expected: usize, actual: usize }
+            = "invalid number of signatures, expected {expected}, but received {actual}",
+}
+
+pub struct TxVerifyLimits {
+    pub max_inputs_count: usize,
+    pub max_outputs_count: usize,
+    pub max_witnesses_count: usize,
+}
+
+impl<OutAddress, Extra> AuthenticatedTransaction<OutAddress, Extra> {
+    pub fn verify_well_formed(&self, limits: &TxVerifyLimits) -> Result<(), TxVerifyError> {
+        let inputs = &self.transaction.inputs;
+        if inputs.len() > limits.max_inputs_count {
+            return Err(TxVerifyError::TooManyInputs {
+                expected: limits.max_inputs_count,
+                actual: inputs.len(),
+            });
+        }
+
+        let outputs = &self.transaction.outputs;
+        if outputs.len() > limits.max_outputs_count {
+            return Err(TxVerifyError::TooManyOutputs {
+                expected: limits.max_outputs_count,
+                actual: outputs.len(),
+            });
+        }
+
+        let witnesses = &self.witnesses;
+        if witnesses.len() > limits.max_witnesses_count {
+            return Err(TxVerifyError::TooManyWitnesses {
+                expected: limits.max_witnesses_count,
+                actual: witnesses.len(),
+            });
+        }
+
+        if inputs.len() != witnesses.len() {
+            return Err(TxVerifyError::NumberOfSignaturesInvalid {
+                expected: inputs.len(),
+                actual: witnesses.len(),
+            });
+        }
+
+        Ok(())
+    }
+}

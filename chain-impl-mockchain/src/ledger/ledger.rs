@@ -1,7 +1,7 @@
 //! Mockchain ledger. Ledger exists in order to update the
 //! current state and verify transactions.
 
-use super::check;
+use super::check::{self, TxVerifyError, TxVerifyLimits};
 use crate::block::{
     BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext, HeaderHash,
 };
@@ -36,9 +36,11 @@ pub struct LedgerParameters {
 }
 
 //Limits for input/output transactions and witnesses
-const MAX_TRANSACTION_INPUTS_COUNT: usize = 256;
-const MAX_TRANSACTION_OUTPUTS_COUNT: usize = 254;
-const MAX_TRANSACTION_WITNESSES_COUNT: usize = 256;
+const TX_VERIFY_LIMITS: TxVerifyLimits = TxVerifyLimits {
+    max_inputs_count: 256,
+    max_outputs_count: 254,
+    max_witnesses_count: 256,
+};
 
 /// Overall ledger structure.
 ///
@@ -100,7 +102,6 @@ custom_error! {
     #[derive(Clone, PartialEq, Eq)]
     pub Error
         Config { source: config::Error } = "Invalid settings",
-        NotEnoughSignatures { actual: usize, expected: usize } = "Not enough signatures, expected {expected} signatures but received {actual}",
         UtxoValueNotMatching { expected: Value, value: Value } = "The UTxO value ({expected}) in the transaction does not match the actually state value: {value}",
         UtxoError { source: utxo::Error } = "Invalid UTxO",
         UtxoInvalidSignature { utxo: UtxoPointer, output: OutputAddress, witness: Witness } = "Transaction with invalid signature",
@@ -108,9 +109,7 @@ custom_error! {
         OldUtxoInvalidPublicKey { utxo: UtxoPointer, output: OutputOldAddress, witness: Witness } = "Old Transaction with invalid public key",
         AccountInvalidSignature { account: account::Identifier, witness: Witness } = "Account with invalid signature",
         MultisigInvalidSignature { multisig: multisig::Identifier, witness: Witness } = "Multisig with invalid signature",
-        TransactionHasTooManyInputs {expected: usize, actual: usize } = "Transaction has more than {expected} inputs ({actual})",
-        TransactionHasTooManyOutputs {expected: usize, actual: usize } = "Transaction has more than {expected} outputs ({actual})",
-        TransactionHasTooManyWitnesses {expected: usize, actual: usize } = "Transaction has more than {expected} witnesses ({actual})",
+        TransactionMalformed { source: TxVerifyError } = "Transaction malformed",
         FeeCalculationError { source: ValueError } = "Error while computing the fees",
         PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
         TransactionBalanceInvalid { source: BalanceError } = "Failed to validate transaction balance",
@@ -433,7 +432,7 @@ impl Ledger {
         Extra: property::Serialize,
         LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
     {
-        verify_tx_well_formed(signed_tx)?;
+        signed_tx.verify_well_formed(&TX_VERIFY_LIMITS)?;
         let fee = calculate_fee(signed_tx, dyn_params)?;
         signed_tx.transaction.verify_strictly_balanced(fee)?;
         self = self.apply_tx_inputs(signed_tx)?;
@@ -860,43 +859,6 @@ where
         .fees
         .calculate(&signed_tx.transaction)
         .ok_or_else(|| ValueError::Overflow.into())
-}
-
-fn verify_tx_well_formed<Extra>(
-    signed_tx: &AuthenticatedTransaction<Address, Extra>,
-) -> Result<(), Error> {
-    let inputs = &signed_tx.transaction.inputs;
-    if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
-        return Err(Error::TransactionHasTooManyInputs {
-            expected: MAX_TRANSACTION_INPUTS_COUNT,
-            actual: inputs.len(),
-        });
-    }
-
-    let outputs = &signed_tx.transaction.outputs;
-    if outputs.len() > MAX_TRANSACTION_OUTPUTS_COUNT {
-        return Err(Error::TransactionHasTooManyOutputs {
-            expected: MAX_TRANSACTION_OUTPUTS_COUNT,
-            actual: outputs.len(),
-        });
-    }
-
-    let witnesses = &signed_tx.witnesses;
-    if witnesses.len() > MAX_TRANSACTION_WITNESSES_COUNT {
-        return Err(Error::TransactionHasTooManyWitnesses {
-            expected: MAX_TRANSACTION_WITNESSES_COUNT,
-            actual: witnesses.len(),
-        });
-    }
-
-    if inputs.len() != witnesses.len() {
-        return Err(Error::NotEnoughSignatures {
-            expected: inputs.len(),
-            actual: witnesses.len(),
-        });
-    }
-
-    Ok(())
 }
 
 pub enum MatchingIdentifierWitness<'a> {
