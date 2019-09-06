@@ -1,9 +1,6 @@
 use std::{collections::BTreeMap, net::SocketAddr, str, time::Duration};
 
-use crate::{
-    network::p2p::topology::NodeId,
-    settings::start::config::{Address, InterestLevel, Topic},
-};
+use crate::settings::start::config::{Address, InterestLevel, Topic};
 
 /// Protocol to use for a connection.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -42,10 +39,6 @@ const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 /// The network static configuration settings
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Configuration {
-    /// Optional Node identifier. If not specified, a random identifier
-    /// is generated.
-    pub public_id: Option<NodeId>,
-
     /// Optional public IP address to advertise.
     /// Also used as the binding address unless the `listen` field
     /// is set with an address value.
