@@ -8,6 +8,24 @@ use std::boxed::Box;
 
 pub struct TransactionSignData(Box<[u8]>);
 
+type Filler = ();
+
+#[allow(unused_variables)]
+custom_error! {
+    #[derive(Clone, PartialEq, Eq)]
+    pub BalanceError
+        InputsTotalFailed { source: ValueError, filler: Filler } = @{{
+            let _ = (source, filler);
+            "failed to compute total input"
+        }},
+        OutputsTotalFailed { source: ValueError, filler: Filler } = @{{
+            let _ = (source, filler);
+            "failed to compute total output"
+        }},
+        NotBalanced { inputs: Value, outputs: Value }
+            = "transaction value not balanced, has inputs sum {inputs} and outputs sum {outputs}",
+}
+
 impl From<Vec<u8>> for TransactionSignData {
     fn from(v: Vec<u8>) -> TransactionSignData {
         TransactionSignData(v.into())
@@ -179,5 +197,32 @@ impl<A, Extra> Transaction<A, Extra> {
         } else {
             Ok(Balance::Zero)
         }
+    }
+
+    pub fn verify_strictly_balanced(&self, fee: Value) -> Result<(), BalanceError> {
+        let inputs = self
+            .total_input()
+            .map_err(|source| BalanceError::InputsTotalFailed { source, filler: () })?;
+        let outputs = self
+            .total_output()
+            .and_then(|out| out + fee)
+            .map_err(|source| BalanceError::OutputsTotalFailed { source, filler: () })?;
+        if inputs != outputs {
+            Err(BalanceError::NotBalanced { inputs, outputs })?;
+        };
+        Ok(())
+    }
+
+    pub fn verify_possibly_balanced(&self) -> Result<(), BalanceError> {
+        let inputs = self
+            .total_input()
+            .map_err(|source| BalanceError::InputsTotalFailed { source, filler: () })?;
+        let outputs = self
+            .total_output()
+            .map_err(|source| BalanceError::OutputsTotalFailed { source, filler: () })?;
+        if inputs < outputs {
+            Err(BalanceError::NotBalanced { inputs, outputs })?;
+        };
+        Ok(())
     }
 }

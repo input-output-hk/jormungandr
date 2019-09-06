@@ -113,8 +113,7 @@ custom_error! {
         TransactionHasTooManyWitnesses {expected: usize, actual: usize } = "Transaction has more than {expected} witnesses ({actual})",
         FeeCalculationError { source: ValueError } = "Error while computing the fees",
         PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
-        UtxoInputsTotal { error: ValueError } = "Error while computing the transaction's total input: {error}",
-        UtxoOutputsTotal { error: ValueError } = "Error while computing the transaction's total output: {error}",
+        TransactionBalanceInvalid { source: BalanceError } = "Failed to validate transaction balance",
         Block0 { source: Block0Error } = "Invalid Block0",
         Account { source: account::LedgerError } = "Error or Invalid account",
         Multisig { source: multisig::LedgerError } = "Error or Invalid multisig",
@@ -242,7 +241,6 @@ impl Ledger {
         }
 
         let mut ledger = Ledger::empty(settings, static_params, era);
-
 
         for content in content_iter {
             let fragment_id = content.hash();
@@ -438,7 +436,7 @@ impl Ledger {
     {
         verify_tx_well_formed(signed_tx)?;
         let fee = calculate_fee(signed_tx, dyn_params)?;
-        verify_tx_strictly_balanced(&signed_tx.transaction, fee)?;
+        signed_tx.transaction.verify_strictly_balanced(fee)?;
         self = internal_apply_transaction_input(self, signed_tx)?;
         self = internal_apply_transaction_output(self, *fragment_id, signed_tx)?;
         self = internal_apply_transaction_fee(self, fee)?;
@@ -731,42 +729,6 @@ fn verify_tx_well_formed<Extra>(
         });
     }
 
-    Ok(())
-}
-
-fn verify_tx_strictly_balanced<Addr, Extra>(
-    tx: &Transaction<Addr, Extra>,
-    fee: Value,
-) -> Result<(), Error> {
-    let total_input = tx
-        .total_input()
-        .map_err(|e| Error::UtxoInputsTotal { error: e })?;
-    let total_output = tx
-        .total_output()
-        .and_then(|out| out + fee)
-        .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
-    if total_input != total_output {
-        Err(Error::NotBalanced {
-            inputs: total_input,
-            outputs: total_output,
-        })?;
-    };
-    Ok(())
-}
-
-fn verify_tx_possibly_balanced<Addr, Extra>(tx: &Transaction<Addr, Extra>) -> Result<(), Error> {
-    let total_input = tx
-        .total_input()
-        .map_err(|e| Error::UtxoInputsTotal { error: e })?;
-    let total_output = tx
-        .total_output()
-        .map_err(|e| Error::UtxoOutputsTotal { error: e })?;
-    if total_input < total_output {
-        Err(Error::NotBalanced {
-            inputs: total_input,
-            outputs: total_output,
-        })?;
-    };
     Ok(())
 }
 
