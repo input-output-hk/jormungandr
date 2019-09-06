@@ -68,8 +68,6 @@ Description of the fields:
 - `p2p`: P2P network settings
     - `trusted_peers`: (optional) the list of nodes's [multiaddr][multiaddr] to connect to in order to
       bootstrap the P2P topology (and bootstrap our local blockchain);
-    - `public_id`: (optional) the public identifier sent to the other nodes
-      in the P2P network. If not set it will be randomly generated.
     - `public_address`: [multiaddr][multiaddr] string specifying address of the
       P2P service. This is the public address that will be distributed to other
       peers of the network that may find interest in participating to the
