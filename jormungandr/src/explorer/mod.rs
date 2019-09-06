@@ -15,6 +15,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::prelude::*;
 use tokio::sync::lock::{Lock, LockGuard};
+use self::graphql::Context;
 
 error_chain! {
     foreign_links {
@@ -35,7 +36,33 @@ pub struct Explorer {
     pub blockchain: Blockchain,
 }
 
-use self::graphql::Context;
+#[derive(Clone)]
+pub struct ExplorerDB {
+    multiverse: Multiverse<Ref>,
+    // XXX: A better locking strategy could be better, as locking the entire hashmaps
+    // is probably too much.
+    chain_length_to_hash: Lock<HashMap<ChainLength, Vec<HeaderHash>>>,
+    transaction_to_block: Lock<HashMap<FragmentId, HeaderHash>>,
+    epochs: Lock<HashMap<Epoch, EpochData>>,
+    next_block: Lock<HashMap<HeaderHash, HeaderHash>>,
+    status: Lock<Status>,
+}
+
+#[derive(Clone)]
+pub struct EpochData {
+    first_block: HeaderHash,
+    last_block: HeaderHash,
+    total_blocks: u32,
+    fees: LinearFee,
+}
+
+#[derive(Clone)]
+pub struct Status {
+    current_epoch: Epoch,
+    // FIXME: This is an Option because the current initialization is a dummy one
+    latest_block: Option<HeaderHash>,
+}
+
 impl Explorer {
     pub fn new(db: ExplorerDB, schema: graphql::Schema, blockchain: Blockchain) -> Explorer {
         Explorer {
@@ -85,33 +112,6 @@ impl Explorer {
         }
         future::ok::<(), ()>(())
     }
-}
-
-#[derive(Clone)]
-pub struct EpochData {
-    first_block: HeaderHash,
-    last_block: HeaderHash,
-    total_blocks: u32,
-    fees: LinearFee,
-}
-
-#[derive(Clone)]
-pub struct Status {
-    current_epoch: Epoch,
-    // FIXME: This is an Option because the current initialization is a dummy one
-    latest_block: Option<HeaderHash>,
-}
-
-#[derive(Clone)]
-pub struct ExplorerDB {
-    multiverse: Multiverse<Ref>,
-    // TODO: A better locking strategy could be better, as locking the entire hashmaps
-    // is probably too much. Perhaps some kind of non-blocking/future-aware RwLock
-    chain_length_to_hash: Lock<HashMap<ChainLength, Vec<HeaderHash>>>,
-    transaction_to_block: Lock<HashMap<FragmentId, HeaderHash>>,
-    epochs: Lock<HashMap<Epoch, EpochData>>,
-    next_block: Lock<HashMap<HeaderHash, HeaderHash>>,
-    status: Lock<Status>,
 }
 
 impl ExplorerDB {
