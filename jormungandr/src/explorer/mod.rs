@@ -1,5 +1,6 @@
 pub mod graphql;
 
+use self::graphql::Context;
 use super::blockchain::{Blockchain, Ref};
 use crate::blockcfg::{ChainLength, Epoch, FragmentId, Header, HeaderHash};
 use crate::blockchain::Multiverse;
@@ -15,7 +16,6 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::prelude::*;
 use tokio::sync::lock::{Lock, LockGuard};
-use self::graphql::Context;
 
 error_chain! {
     foreign_links {
