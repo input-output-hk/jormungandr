@@ -20,8 +20,6 @@ p2p:
 
 - *trusted_peers*: (optional) the list of nodes' [multiaddr][multiaddr] to connect to in order to
     bootstrap the p2p topology (and bootstrap our local blockchain);
-- *public_id*: (optional) the public identifier send to the other nodes in the
-    p2p network. If not set it will be randomly generated.
 - *public_address*: [multiaddr][multiaddr] the address to listen from and accept connection
     from. This is the public address that will be distributed to other peers
     of the network that may find interest into participating to the blockchain
