@@ -662,77 +662,7 @@ impl Ledger {
         })?;
         Ok(())
     }
-}
 
-fn apply_old_declaration(
-    fragment_id: &FragmentId,
-    mut utxos: utxo::Ledger<legacy::OldAddress>,
-    decl: &legacy::UtxoDeclaration,
-) -> Result<utxo::Ledger<legacy::OldAddress>, Error> {
-    assert!(decl.addrs.len() < 255);
-    let mut outputs = Vec::with_capacity(decl.addrs.len());
-    for (i, d) in decl.addrs.iter().enumerate() {
-        let output = Output {
-            address: d.0.clone(),
-            value: d.1,
-        };
-        outputs.push((i as u8, output))
-    }
-    utxos = utxos.add(&fragment_id, &outputs)?;
-    Ok(utxos)
-}
-
-fn calculate_fee<Extra>(
-    signed_tx: &AuthenticatedTransaction<Address, Extra>,
-    dyn_params: &LedgerParameters,
-) -> Result<Value, Error>
-where
-    LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
-{
-    dyn_params
-        .fees
-        .calculate(&signed_tx.transaction)
-        .ok_or_else(|| ValueError::Overflow.into())
-}
-
-fn verify_tx_well_formed<Extra>(
-    signed_tx: &AuthenticatedTransaction<Address, Extra>,
-) -> Result<(), Error> {
-    let inputs = &signed_tx.transaction.inputs;
-    if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
-        return Err(Error::TransactionHasTooManyInputs {
-            expected: MAX_TRANSACTION_INPUTS_COUNT,
-            actual: inputs.len(),
-        });
-    }
-
-    let outputs = &signed_tx.transaction.outputs;
-    if outputs.len() > MAX_TRANSACTION_OUTPUTS_COUNT {
-        return Err(Error::TransactionHasTooManyOutputs {
-            expected: MAX_TRANSACTION_OUTPUTS_COUNT,
-            actual: outputs.len(),
-        });
-    }
-
-    let witnesses = &signed_tx.witnesses;
-    if witnesses.len() > MAX_TRANSACTION_WITNESSES_COUNT {
-        return Err(Error::TransactionHasTooManyWitnesses {
-            expected: MAX_TRANSACTION_WITNESSES_COUNT,
-            actual: witnesses.len(),
-        });
-    }
-
-    if inputs.len() != witnesses.len() {
-        return Err(Error::NotEnoughSignatures {
-            expected: inputs.len(),
-            actual: witnesses.len(),
-        });
-    }
-
-    Ok(())
-}
-
-impl Ledger {
     fn apply_tx_inputs<Extra: property::Serialize>(
         mut self,
         signed_tx: &AuthenticatedTransaction<Address, Extra>,
@@ -899,6 +829,74 @@ impl Ledger {
             }
         }
     }
+}
+
+fn apply_old_declaration(
+    fragment_id: &FragmentId,
+    mut utxos: utxo::Ledger<legacy::OldAddress>,
+    decl: &legacy::UtxoDeclaration,
+) -> Result<utxo::Ledger<legacy::OldAddress>, Error> {
+    assert!(decl.addrs.len() < 255);
+    let mut outputs = Vec::with_capacity(decl.addrs.len());
+    for (i, d) in decl.addrs.iter().enumerate() {
+        let output = Output {
+            address: d.0.clone(),
+            value: d.1,
+        };
+        outputs.push((i as u8, output))
+    }
+    utxos = utxos.add(&fragment_id, &outputs)?;
+    Ok(utxos)
+}
+
+fn calculate_fee<Extra>(
+    signed_tx: &AuthenticatedTransaction<Address, Extra>,
+    dyn_params: &LedgerParameters,
+) -> Result<Value, Error>
+where
+    LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
+{
+    dyn_params
+        .fees
+        .calculate(&signed_tx.transaction)
+        .ok_or_else(|| ValueError::Overflow.into())
+}
+
+fn verify_tx_well_formed<Extra>(
+    signed_tx: &AuthenticatedTransaction<Address, Extra>,
+) -> Result<(), Error> {
+    let inputs = &signed_tx.transaction.inputs;
+    if inputs.len() > MAX_TRANSACTION_INPUTS_COUNT {
+        return Err(Error::TransactionHasTooManyInputs {
+            expected: MAX_TRANSACTION_INPUTS_COUNT,
+            actual: inputs.len(),
+        });
+    }
+
+    let outputs = &signed_tx.transaction.outputs;
+    if outputs.len() > MAX_TRANSACTION_OUTPUTS_COUNT {
+        return Err(Error::TransactionHasTooManyOutputs {
+            expected: MAX_TRANSACTION_OUTPUTS_COUNT,
+            actual: outputs.len(),
+        });
+    }
+
+    let witnesses = &signed_tx.witnesses;
+    if witnesses.len() > MAX_TRANSACTION_WITNESSES_COUNT {
+        return Err(Error::TransactionHasTooManyWitnesses {
+            expected: MAX_TRANSACTION_WITNESSES_COUNT,
+            actual: witnesses.len(),
+        });
+    }
+
+    if inputs.len() != witnesses.len() {
+        return Err(Error::NotEnoughSignatures {
+            expected: inputs.len(),
+            actual: witnesses.len(),
+        });
+    }
+
+    Ok(())
 }
 
 pub enum MatchingIdentifierWitness<'a> {
