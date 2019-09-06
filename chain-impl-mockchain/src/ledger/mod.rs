@@ -1,4 +1,4 @@
-mod check;
+pub mod check;
 pub mod iter;
 pub mod ledger;
 
