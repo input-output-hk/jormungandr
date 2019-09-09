@@ -4,6 +4,7 @@ use std::sync::Arc;
 /// list of pre-computed checkpoints from a given [`Ref`].
 ///
 /// [`Ref`]: ./struct.Ref.html
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Checkpoints(Vec<HeaderHash>);
 
 impl Checkpoints {
@@ -59,5 +60,11 @@ impl IntoIterator for Checkpoints {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl From<Checkpoints> for Vec<HeaderHash> {
+    fn from(checkpoints: Checkpoints) -> Self {
+        checkpoints.0
     }
 }
