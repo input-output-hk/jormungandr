@@ -13,8 +13,6 @@ use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub secret_files: Option<Vec<PathBuf>>,
-    pub legacy_peers: Option<Vec<SocketAddr>>,
-    pub grpc_peers: Option<Vec<SocketAddr>>,
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,
 
