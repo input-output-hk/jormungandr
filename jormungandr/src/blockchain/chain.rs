@@ -138,7 +138,7 @@ pub enum PreCheckedHeader {
         /// * `None` means the associated block is already in storage
         ///   but not already in the cache;
         /// * `Some(ref)` returns the local cached Ref of the block
-        cached_reference: Option<Ref>,
+        cached_reference: Option<Arc<Ref>>,
     },
 
     /// the parent is missing from the local storage
@@ -157,7 +157,7 @@ pub enum PreCheckedHeader {
 
         /// return the locally stored parent's Ref. Already cached in memory
         /// for future processing
-        parent_ref: Ref,
+        parent_ref: Arc<Ref>,
     },
 }
 
@@ -194,7 +194,7 @@ impl Blockchain {
         leadership: Arc<Leadership>,
         ledger_parameters: Arc<LedgerParameters>,
         previous_epoch_state: Option<Arc<Ref>>,
-    ) -> impl Future<Item = Ref, Error = Infallible> {
+    ) -> impl Future<Item = Arc<Ref>, Error = Infallible> {
         let chain_length = header.chain_length();
 
         let multiverse = self.ledgers.clone();
@@ -212,8 +212,9 @@ impl Blockchain {
                     header,
                     previous_epoch_state,
                 );
+                let reference = Arc::new(reference);
                 ref_cache
-                    .insert(header_hash, reference.clone())
+                    .insert(header_hash, Arc::clone(&reference))
                     .map(|()| reference)
             })
     }
@@ -232,7 +233,7 @@ impl Blockchain {
     pub fn get_ref(
         &mut self,
         header_hash: HeaderHash,
-    ) -> impl Future<Item = Option<Ref>, Error = Error> {
+    ) -> impl Future<Item = Option<Arc<Ref>>, Error = Error> {
         let get_ref_cache_future = self.ref_cache.get(header_hash.clone());
         let block_exists_future = self.storage.block_exists(header_hash);
 
@@ -347,7 +348,7 @@ impl Blockchain {
     pub fn post_check_header(
         &mut self,
         header: Header,
-        parent: Ref,
+        parent: Arc<Ref>,
     ) -> impl Future<Item = PostCheckedHeader, Error = Error> {
         let parent_ledger_state = parent.ledger().clone();
 
@@ -374,7 +375,7 @@ impl Blockchain {
     pub fn new_epoch_leadership_from(
         &mut self,
         epoch: Epoch,
-        parent: Ref,
+        parent: Arc<Ref>,
     ) -> (
         Arc<Leadership>,
         Arc<LedgerParameters>,
@@ -408,7 +409,7 @@ impl Blockchain {
 
             let leadership = Arc::new(Leadership::new(epoch, &epoch_state));
             let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
-            let previous_epoch_state = Some(Arc::new(parent));
+            let previous_epoch_state = Some(parent);
             (
                 leadership,
                 ledger_parameters,
@@ -429,7 +430,7 @@ impl Blockchain {
         &mut self,
         post_checked_header: PostCheckedHeader,
         block: &Block,
-    ) -> impl Future<Item = Ref, Error = Error> {
+    ) -> impl Future<Item = Arc<Ref>, Error = Error> {
         let header = post_checked_header.header;
         let block_id = header.hash();
         let epoch_leadership_schedule = post_checked_header.epoch_leadership_schedule;
@@ -470,7 +471,7 @@ impl Blockchain {
         &mut self,
         post_checked_header: PostCheckedHeader,
         block: Block,
-    ) -> impl Future<Item = Ref, Error = Error> {
+    ) -> impl Future<Item = Arc<Ref>, Error = Error> {
         let mut storage = self.storage.clone();
         self.apply_block(post_checked_header, &block)
             .and_then(move |block_ref| {

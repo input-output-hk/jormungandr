@@ -12,6 +12,7 @@ use tokio::runtime::current_thread;
 
 use std::error;
 use std::fmt::{self, Debug, Display};
+use std::sync::Arc;
 
 type ConnectError = network_grpc::client::ConnectError<std::io::Error>;
 
@@ -68,7 +69,7 @@ pub fn bootstrap_from_peer(
     blockchain: Blockchain,
     mut branch: Branch,
     logger: &Logger,
-) -> Result<Ref, Error> {
+) -> Result<Arc<Ref>, Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
     let bootstrap = grpc::connect(peer.address(), None)
         .map_err(Error::Connect)
@@ -89,10 +90,10 @@ pub fn bootstrap_from_peer(
 
 fn bootstrap_from_stream<S>(
     blockchain: Blockchain,
-    tip: Ref,
+    tip: Arc<Ref>,
     stream: S,
     logger: Logger,
-) -> impl Future<Item = Ref, Error = Error>
+) -> impl Future<Item = Arc<Ref>, Error = Error>
 where
     S: Stream<Item = Block, Error = NetworkError>,
     S::Error: Debug,
@@ -109,7 +110,7 @@ fn handle_block(
     mut blockchain: Blockchain,
     block: Block,
     logger: Logger,
-) -> impl Future<Item = Ref, Error = Error> {
+) -> impl Future<Item = Arc<Ref>, Error = Error> {
     let header = block.header();
     debug!(
         logger,

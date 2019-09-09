@@ -4,7 +4,7 @@ use crate::{
 };
 use chain_storage::{
     error::Error as StorageError,
-    store::{for_path_to_nth_ancestor, BlockInfo},
+    store::{for_path_to_nth_ancestor, BlockInfo, BlockStore},
 };
 use std::ops::Deref as _;
 use tokio::prelude::*;
