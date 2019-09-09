@@ -17,9 +17,7 @@ impl Logs {
 
     /// Returns true if fragment was registered
     pub fn insert(&mut self, log: FragmentLog) -> impl Future<Item = bool, Error = ()> {
-        let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock()))
-            .and_then(move |mut guard| future::ok(guard.insert(log)))
+        self.run_on_inner(move |inner| inner.insert(log))
     }
 
     /// Returns number of registered fragments
@@ -27,19 +25,19 @@ impl Logs {
         &mut self,
         logs: impl IntoIterator<Item = FragmentLog>,
     ) -> impl Future<Item = usize, Error = ()> {
-        let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock()))
-            .and_then(move |mut guard| future::ok(guard.insert_all(logs)))
+        self.run_on_inner(move |inner| inner.insert_all(logs))
     }
 
-    pub fn exists(
+    pub fn exists(&self, fragment_id: FragmentId) -> impl Future<Item = bool, Error = ()> {
+        self.run_on_inner(move |inner| inner.exists(fragment_id.into()))
+    }
+
+    pub fn exist_all(
         &self,
-        fragment_ids: Vec<FragmentId>,
+        fragment_ids: impl IntoIterator<Item = FragmentId>,
     ) -> impl Future<Item = Vec<bool>, Error = ()> {
-        let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock())).and_then(move |guard| {
-            future::ok(guard.exists(fragment_ids.into_iter().map(|fids| fids.into())))
-        })
+        let hashes = fragment_ids.into_iter().map(Into::into);
+        self.run_on_inner(move |inner| inner.exist_all(hashes))
     }
 
     pub fn modify(
@@ -47,19 +45,11 @@ impl Logs {
         fragment_id: FragmentId,
         status: FragmentStatus,
     ) -> impl Future<Item = (), Error = ()> {
-        let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock())).and_then(move |mut guard| {
-            guard.modify(&fragment_id.into(), status);
-            future::ok(())
-        })
+        self.run_on_inner(move |inner| inner.modify(&fragment_id.into(), status))
     }
 
     pub fn remove(&mut self, fragment_id: FragmentId) -> impl Future<Item = (), Error = ()> {
-        let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock())).and_then(move |mut guard| {
-            guard.remove(&fragment_id.into());
-            future::ok(())
-        })
+        self.run_on_inner(move |inner| inner.remove(&fragment_id.into()))
     }
 
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
@@ -68,9 +58,15 @@ impl Logs {
     }
 
     pub fn logs(&self) -> impl Future<Item = Vec<FragmentLog>, Error = ()> {
-        let mut lock = self.0.clone();
-        future::poll_fn(move || Ok(lock.poll_lock()))
-            .and_then(|guard| future::ok(guard.logs().cloned().collect()))
+        self.run_on_inner(move |inner| inner.logs().cloned().collect())
+    }
+
+    fn run_on_inner<O>(
+        &self,
+        run: impl FnOnce(&mut internal::Logs) -> O,
+    ) -> impl Future<Item = O, Error = ()> {
+        self.inner()
+            .and_then(move |mut guard| future::ok(run(&mut *guard)))
     }
 
     pub(super) fn inner<E>(&self) -> impl Future<Item = LockGuard<internal::Logs>, Error = E> {
@@ -108,13 +104,14 @@ pub(super) mod internal {
             }
         }
 
-        pub fn exists<I>(&self, fragment_ids: I) -> Vec<bool>
-        where
-            I: IntoIterator<Item = Hash>,
-        {
+        pub fn exists(&self, fragment_id: Hash) -> bool {
+            self.entries.contains_key(&fragment_id)
+        }
+
+        pub fn exist_all(&self, fragment_ids: impl IntoIterator<Item = Hash>) -> Vec<bool> {
             fragment_ids
                 .into_iter()
-                .map(|id| self.entries.contains_key(&id))
+                .map(|fragment_id| self.exists(fragment_id))
                 .collect()
         }
 
