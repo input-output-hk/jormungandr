@@ -1,5 +1,5 @@
 use crate::{
-    network::p2p::topology::{NodeId, NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC},
+    network::p2p::topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
@@ -10,6 +10,7 @@ use slog::FilterLevel;
 use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     pub secret_files: Option<Vec<PathBuf>>,
     pub legacy_peers: Option<Vec<SocketAddr>>,
@@ -31,6 +32,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ConfigLogSettings {
     #[serde(with = "filter_level_opt_serde")]
     pub level: Option<FilterLevel>,
@@ -39,6 +41,7 @@ pub struct ConfigLogSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Rest {
     pub listen: SocketAddr,
     pub pkcs12: Option<PathBuf>,
@@ -47,6 +50,7 @@ pub struct Rest {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Cors {
     /// If none provided, echos request origin
     #[serde(default)]
@@ -56,10 +60,8 @@ pub struct Cors {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct P2pConfig {
-    /// The P2P node identifier
-    pub public_id: Option<NodeId>,
-
     /// The public address to which other peers may connect to
     pub public_address: Address,
 
@@ -81,6 +83,7 @@ pub struct P2pConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Leadership {
     /// LeadershipLog time to live, it is for information purposes, we log all the Leadership
     /// event logs in a cache. The log will be discarded at the end of the ttl.
@@ -90,6 +93,7 @@ pub struct Leadership {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Mempool {
     /// time to live in the mempool before being discarded. If the value is not applied
     /// in a block within this duration it will be discarded.
@@ -111,6 +115,7 @@ pub struct Topic(pub poldercast::Topic);
 pub struct InterestLevel(pub poldercast::InterestLevel);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Explorer {
     pub enabled: bool,
 }
