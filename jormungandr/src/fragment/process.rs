@@ -6,13 +6,7 @@ use crate::{
 };
 use slog::Logger;
 use std::time::Duration;
-use tokio::{
-    prelude::{
-        future::Either::{A, B},
-        *,
-    },
-    timer::Interval,
-};
+use tokio::{prelude::*, timer::Interval};
 
 pub struct Process {
     pool: Pool,
@@ -50,14 +44,6 @@ impl Process {
         service_info.spawn(self.start_pool_garbage_collector(service_info.logger().clone()));
         input.for_each(move |input| {
             match input {
-                TransactionMsg::ProposeTransaction(txids, reply) => {
-                    let logs = self.pool.logs().clone();
-
-                    A(A(logs.exist_all(txids).and_then(|rep| {
-                        reply.reply_ok(rep);
-                        future::ok(())
-                    })))
-                }
                 TransactionMsg::SendTransaction(origin, txs) => {
                     // Note that we cannot use apply_block here, since we don't have a valid context to which to apply
                     // those blocks. one valid tx in a given context, could be invalid in another. for example
@@ -71,15 +57,10 @@ impl Process {
                     // put them in another pool.
 
                     let stats_counter = stats_counter.clone();
-                    A(B(self
-                        .pool
+                    self.pool
                         .clone()
                         .insert_all(origin, txs)
-                        .map(move |count| stats_counter.add_tx_recv_cnt(count))))
-                }
-                TransactionMsg::GetTransactions(_txids, _handler) => {
-                    // this function is no yet implemented, this is not handled in the
-                    B(future::ok(unimplemented!()))
+                        .map(move |count| stats_counter.add_tx_recv_cnt(count))
                 }
             }
         })
