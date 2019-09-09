@@ -60,7 +60,7 @@ pub fn handle_input(
             });
         }
         BlockMsg::LeadershipBlock(block) => {
-            let future = process_leadership_block(info.logger(), blockchain.clone(), block);
+            let future = process_leadership_block(info.logger(), blockchain.clone(), block.clone());
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
             process_new_ref(
@@ -79,7 +79,7 @@ pub fn handle_input(
             if let Some(msg_box) = explorer_msg_box {
                 /*
                 msg_box
-                    .try_send(ExplorerMsg::NewBlock(new_block_ref))
+                    .try_send(ExplorerMsg::NewBlock(block))
                     .unwrap_or_else(|err| {
                         error!(info.logger(), "cannot add block to explorer: {}", err)
                     });

@@ -1,6 +1,6 @@
 use crate::blockcfg::{Block, Epoch, Fragment, FragmentId, Header, HeaderHash};
 use crate::network::p2p::topology::NodeId;
-use blockchain::{Checkpoints, Ref};
+use blockchain::Checkpoints;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
 use jormungandr_lib::interfaces::{BlockDate, FragmentOrigin};
@@ -421,7 +421,7 @@ pub enum NetworkMsg {
 
 /// Messages to the explorer task
 pub enum ExplorerMsg {
-    NewBlock(Ref),
+    NewBlock(Block),
 }
 
 #[cfg(test)]

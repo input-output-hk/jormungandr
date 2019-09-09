@@ -3,12 +3,14 @@ extern crate actix_threadpool;
 extern crate actix_web;
 extern crate bincode;
 extern crate bytes;
+extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate chain_storage_sqlite;
 extern crate chain_time;
+extern crate imhamt;
 #[macro_use]
 extern crate custom_error;
 #[macro_use]
