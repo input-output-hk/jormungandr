@@ -31,9 +31,14 @@ impl Checkpoints {
                 }
             }
 
-            ignore_prev += 1;
+            let hash = current_ref.hash();
 
-            checkpoints.push(current_ref.hash());
+            // prevent the `from`'s parent to appear twice in the event the parent is also
+            // the last block of the previous epoch.
+            if checkpoints[checkpoints.len()] != hash {
+                ignore_prev += 1;
+                checkpoints.push(hash);
+            }
         }
 
         Checkpoints(checkpoints)
