@@ -440,7 +440,7 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
         0,
         &100.into(),
         &receiver,
-        &50.into(),
+        &100.into(),
         &sender,
         &block0_hash,
     );
@@ -502,7 +502,7 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
     jcli_wrapper::assert_transaction_rejected(
         &transaction_message,
         &jormungandr_rest_address,
-        "Inputs, outputs and fees are not balanced, transaction with 100 input and 50 output",
+        "Failed to validate transaction balance: transaction value not balanced, has inputs sum 100 and outputs sum 50",
     );
 }
 
