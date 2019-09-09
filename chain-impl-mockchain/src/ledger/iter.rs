@@ -149,7 +149,7 @@ impl<'a> Iterator for LedgerIterator<'a> {
             },
             IterState::StakePools(iter) => match iter.next() {
                 None => {
-                    self.state = IterState::Pots(self.ledger.pot.entries());
+                    self.state = IterState::Pots(self.ledger.pots.entries());
                     self.next()
                 }
                 Some(x) => Some(Entry::StakePool(x)),
@@ -247,7 +247,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
             date: globals.date,
             chain_length: globals.chain_length,
             era: globals.era,
-            pot: pots,
+            pots: pots,
         })
     }
 }
