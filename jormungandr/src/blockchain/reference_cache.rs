@@ -121,11 +121,15 @@ impl RefCacheData {
         }
     }
 
-    fn poll_purge(&mut self) -> Poll<(), timer::Error> {
-        while let Some(entry) = try_ready!(self.expirations.poll()) {
-            self.entries.remove(entry.get_ref());
+    pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
+        loop {
+            match self.expirations.poll()? {
+                Async::NotReady => return Ok(Async::Ready(())),
+                Async::Ready(None) => return Ok(Async::Ready(())),
+                Async::Ready(Some(entry)) => {
+                    self.entries.remove(entry.get_ref());
+                }
+            }
         }
-
-        Ok(Async::Ready(()))
     }
 }
