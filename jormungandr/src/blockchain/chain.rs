@@ -53,7 +53,7 @@ use crate::{
     blockcfg::{
         Block, Block0Error, Epoch, Header, HeaderHash, Leadership, Ledger, LedgerParameters,
     },
-    blockchain::{Branch, Branches, Multiverse, Ref, RefCache, Storage},
+    blockchain::{Branch, Branches, Checkpoints, Multiverse, Ref, RefCache, Storage},
     start_up::NodeStorage,
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
@@ -722,11 +722,11 @@ impl Blockchain {
     pub fn get_checkpoints(
         &self,
         branch: Branch,
-    ) -> impl Future<Item = Vec<HeaderHash>, Error = Error> {
+    ) -> impl Future<Item = Checkpoints, Error = Error> {
         let storage = self.storage.clone();
         branch
             .get_ref()
             .map_err(|_| unreachable!())
-            .and_then(move |tip| storage.get_checkpoints(tip.hash()).map_err(|e| e.into()))
+            .map(Checkpoints::new_from)
     }
 }

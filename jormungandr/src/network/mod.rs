@@ -252,7 +252,7 @@ fn handle_network_input(
             Ok(())
         }
         NetworkMsg::PullHeaders { node_id, from, to } => {
-            state.peers.pull_headers(node_id, from, to);
+            state.peers.pull_headers(node_id, from.into(), to);
             Ok(())
         }
     })

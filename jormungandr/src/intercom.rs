@@ -1,6 +1,6 @@
 use crate::blockcfg::{Block, Epoch, Fragment, FragmentId, Header, HeaderHash};
 use crate::network::p2p::topology::NodeId;
-use blockchain::Ref;
+use blockchain::{Checkpoints, Ref};
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
 use jormungandr_lib::interfaces::FragmentOrigin;
@@ -415,7 +415,7 @@ pub enum NetworkMsg {
     GetNextBlock(NodeId, HeaderHash),
     PullHeaders {
         node_id: NodeId,
-        from: Vec<HeaderHash>,
+        from: Checkpoints,
         to: HeaderHash,
     },
 }
