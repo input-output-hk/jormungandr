@@ -7,6 +7,9 @@ extern crate chain_time;
 extern crate gtmpl;
 extern crate hex;
 extern crate jormungandr_lib;
+#[cfg(test)]
+#[macro_use]
+extern crate maplit;
 extern crate mime;
 extern crate openapiv3;
 extern crate rand;
