@@ -1,5 +1,5 @@
 use crate::{blockcfg::HeaderHash, blockchain::Ref};
-use std::{collections::HashMap, convert::Infallible, time::Duration};
+use std::{collections::HashMap, convert::Infallible, sync::Arc, time::Duration};
 use tokio::{
     prelude::*,
     sync::lock::Lock,
@@ -22,7 +22,7 @@ pub struct RefCache {
 
 /// cache of already loaded in-memory block `Ref`
 struct RefCacheData {
-    entries: HashMap<HeaderHash, (Ref, delay_queue::Key)>,
+    entries: HashMap<HeaderHash, (Arc<Ref>, delay_queue::Key)>,
     expirations: DelayQueue<HeaderHash>,
 
     ttl: Duration,
@@ -47,7 +47,7 @@ impl RefCache {
     pub fn insert(
         &self,
         key: HeaderHash,
-        value: Ref,
+        value: Arc<Ref>,
     ) -> impl Future<Item = (), Error = Infallible> {
         let mut inner = self.inner.clone();
         future::poll_fn(move || Ok(inner.poll_lock()))
@@ -65,11 +65,11 @@ impl RefCache {
     ///
     /// No error possible yet
     ///
-    pub fn get(&self, key: HeaderHash) -> impl Future<Item = Option<Ref>, Error = Infallible> {
+    pub fn get(&self, key: HeaderHash) -> impl Future<Item = Option<Arc<Ref>>, Error = Infallible> {
         let mut inner = self.inner.clone();
 
         future::poll_fn(move || Ok(inner.poll_lock()))
-            .map(move |mut guard| guard.get(&key).cloned())
+            .map(move |mut guard| guard.get(&key).map(Arc::clone))
     }
 
     /// return a future to remove a specific [`Ref`] from the cache.
@@ -99,13 +99,13 @@ impl RefCacheData {
         }
     }
 
-    fn insert(&mut self, key: HeaderHash, value: Ref) {
+    fn insert(&mut self, key: HeaderHash, value: Arc<Ref>) {
         let delay = self.expirations.insert(key.clone(), self.ttl);
 
         self.entries.insert(key, (value, delay));
     }
 
-    fn get(&mut self, key: &HeaderHash) -> Option<&Ref> {
+    fn get(&mut self, key: &HeaderHash) -> Option<&Arc<Ref>> {
         if let Some((v, k)) = self.entries.get(key) {
             self.expirations.reset(k, self.ttl);
 
@@ -121,11 +121,15 @@ impl RefCacheData {
         }
     }
 
-    fn poll_purge(&mut self) -> Poll<(), timer::Error> {
-        while let Some(entry) = try_ready!(self.expirations.poll()) {
-            self.entries.remove(entry.get_ref());
+    pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
+        loop {
+            match self.expirations.poll()? {
+                Async::NotReady => return Ok(Async::Ready(())),
+                Async::Ready(None) => return Ok(Async::Ready(())),
+                Async::Ready(Some(entry)) => {
+                    self.entries.remove(entry.get_ref());
+                }
+            }
         }
-
-        Ok(Async::Ready(()))
     }
 }

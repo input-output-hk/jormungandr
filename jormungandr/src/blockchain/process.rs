@@ -16,7 +16,7 @@ use futures::future::Either;
 use slog::Logger;
 use tokio::{prelude::*, sync::mpsc::Sender};
 
-use std::convert::identity;
+use std::{convert::identity, sync::Arc};
 
 pub fn handle_input(
     info: &TokioServiceInfo,
@@ -70,11 +70,13 @@ pub fn handle_input(
                 });
 
             if let Some(msg_box) = explorer_msg_box {
+                /*
                 msg_box
                     .try_send(ExplorerMsg::NewBlock(new_block_ref))
                     .unwrap_or_else(|err| {
                         error!(info.logger(), "cannot add block to explorer: {}", err)
                     });
+                */
             };
             stats_counter.add_block_recv_cnt(1);
         }
@@ -152,7 +154,7 @@ pub fn process_leadership_block(
     logger: &Logger,
     mut blockchain: Blockchain,
     block: Block,
-) -> impl Future<Item = Ref, Error = Error> {
+) -> impl Future<Item = Arc<Ref>, Error = Error> {
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     let parent_hash = block.parent_id();
@@ -238,7 +240,7 @@ pub fn process_network_block(
     mut blockchain: Blockchain,
     block: Block,
     logger: Logger,
-) -> impl Future<Item = Option<Ref>, Error = Error> {
+) -> impl Future<Item = Option<Arc<Ref>>, Error = Error> {
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     blockchain

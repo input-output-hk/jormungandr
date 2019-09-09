@@ -19,6 +19,7 @@ use bytes::{Bytes, IntoBuf};
 use futures::{future, Future, IntoFuture, Stream};
 use std::convert::Infallible;
 use std::str::FromStr;
+use std::sync::Arc;
 
 pub use crate::rest::Context;
 
@@ -26,7 +27,7 @@ macro_rules! ActixFuture {
     () => { impl Future<Item = impl Responder + 'static, Error = impl Into<Error> + 'static> + 'static }
 }
 
-fn chain_tip_fut<'a>(context: &State<Context>) -> impl Future<Item = Ref, Error = Error> {
+fn chain_tip_fut<'a>(context: &State<Context>) -> impl Future<Item = Arc<Ref>, Error = Error> {
     context
         .blockchain_tip
         .get_ref()

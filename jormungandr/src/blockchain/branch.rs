@@ -1,7 +1,6 @@
 use crate::blockchain::Ref;
+use std::{convert::Infallible, sync::Arc};
 use tokio::{prelude::*, sync::lock::Lock};
-
-use std::convert::Infallible;
 
 #[derive(Clone)]
 pub struct Branches {
@@ -20,7 +19,7 @@ pub struct Branch {
 /// the data that is contained in a branch
 struct BranchData {
     /// reference to the block where the branch points to
-    reference: Ref,
+    reference: Arc<Ref>,
 
     last_updated: std::time::SystemTime,
 }
@@ -48,18 +47,21 @@ impl BranchesData {
 }
 
 impl Branch {
-    pub fn new(reference: Ref) -> Self {
+    pub fn new(reference: Arc<Ref>) -> Self {
         Branch {
             inner: Lock::new(BranchData::new(reference)),
         }
     }
 
-    pub fn get_ref(&self) -> impl Future<Item = Ref, Error = Infallible> {
+    pub fn get_ref(&self) -> impl Future<Item = Arc<Ref>, Error = Infallible> {
         let mut branch = self.inner.clone();
         future::poll_fn(move || Ok(branch.poll_lock())).map(|guard| guard.reference().clone())
     }
 
-    pub fn update_ref(&mut self, new_ref: Ref) -> impl Future<Item = Ref, Error = Infallible> {
+    pub fn update_ref(
+        &mut self,
+        new_ref: Arc<Ref>,
+    ) -> impl Future<Item = Arc<Ref>, Error = Infallible> {
         let mut branch = self.inner.clone();
         future::poll_fn(move || Ok(branch.poll_lock())).map(move |mut guard| guard.update(new_ref))
     }
@@ -68,21 +70,21 @@ impl Branch {
 impl BranchData {
     /// create the branch data with the current `last_updated` to
     /// the current time this function was called
-    fn new(reference: Ref) -> Self {
+    fn new(reference: Arc<Ref>) -> Self {
         BranchData {
             reference,
             last_updated: std::time::SystemTime::now(),
         }
     }
 
-    fn update(&mut self, reference: Ref) -> Ref {
+    fn update(&mut self, reference: Arc<Ref>) -> Arc<Ref> {
         let old_reference = std::mem::replace(&mut self.reference, reference);
         self.last_updated = std::time::SystemTime::now();
 
         old_reference
     }
 
-    fn reference(&self) -> &Ref {
-        &self.reference
+    fn reference(&self) -> Arc<Ref> {
+        Arc::clone(&self.reference)
     }
 }
