@@ -15,7 +15,6 @@ use chain_impl_mockchain::multiverse::GCRoot;
 use chain_impl_mockchain::transaction::{AuthenticatedTransaction, InputEnum};
 use imhamt;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::prelude::*;
@@ -109,10 +108,9 @@ impl ExplorerDB {
         let blocks = apply_block_to_blocks(Blocks::new(), &block0)?;
         let epochs = apply_block_to_epochs(Epochs::new(), &block0)?;
         let chain_lengths = apply_block_to_chain_lengths(ChainLengths::new(), &block0)?;
+        let transactions = apply_block_to_transactions(Transactions::new(), &block0)?;
 
-        // XXX: I think the block0 doesn't have transactions
-        let transactions = Transactions::new();
-        // TODO: Get this things from the Initial fragment?
+        // TODO: Initialize this
         let addresses = Addresses::new();
 
         let initial_state = State {
@@ -363,7 +361,6 @@ fn apply_transaction_to_addresses<T>(
     let mut addresses = addresses;
 
     for output in outputs {
-        let address = &output.address;
         addresses = addresses
             .insert_or_update(
                 output.address.clone(),
@@ -385,7 +382,7 @@ fn apply_transaction_to_addresses<T>(
 
     for input in inputs {
         match input.to_enum() {
-            InputEnum::AccountInput(id, _value) => {
+            InputEnum::AccountInput(_id, _value) => {
                 // TODO: How do I get an Address from an AccountIdentifier?
                 // Can I do it without knowing the Discrimination?
                 ();
