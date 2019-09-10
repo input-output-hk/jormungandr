@@ -1,4 +1,6 @@
-use super::{Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip};
+use super::{
+    compare_against, Blockchain, ComparisonResult, Error, ErrorKind, PreCheckedHeader, Ref, Tip,
+};
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash},
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg},
@@ -59,10 +61,13 @@ pub fn handle_input(
             let future = process_leadership_block(info.logger(), blockchain.clone(), block);
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
-            blockchain_tip
-                .update_ref(new_block_ref.clone())
-                .wait()
-                .unwrap();
+            process_new_ref(
+                blockchain.clone(),
+                blockchain_tip.clone(),
+                new_block_ref.clone(),
+            )
+            .wait()
+            .unwrap();
             network_msg_box
                 .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                 .unwrap_or_else(|err| {
@@ -101,7 +106,13 @@ pub fn handle_input(
                 Ok(maybe_updated) => {
                     if let Some(new_block_ref) = maybe_updated {
                         let header = new_block_ref.header().clone();
-                        blockchain_tip.update_ref(new_block_ref).wait().unwrap();
+                        process_new_ref(
+                            blockchain.clone(),
+                            blockchain_tip.clone(),
+                            new_block_ref.clone(),
+                        )
+                        .wait()
+                        .unwrap();
                         network_msg_box
                             .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                             .unwrap_or_else(|err| {
@@ -116,6 +127,39 @@ pub fn handle_input(
     };
 
     Ok(())
+}
+
+/// process a new candidate block on top of the blockchain, this function may:
+///
+/// * update the current tip if the candidate's parent is the current tip;
+/// * update a branch if the candidate parent is that branch's tip;
+/// * create a new branch if none of the above;
+///
+/// If the current tip is not the one being updated we will then trigger
+/// chain selection after updating that other branch as it may be possible that
+/// this branch just became more interesting for the current consensus algorithm.
+pub fn process_new_ref(
+    mut blockchain: Blockchain,
+    mut tip: Tip,
+    candidate: Arc<Ref>,
+) -> impl Future<Item = (), Error = Error> {
+    use tokio::prelude::future::Either::*;
+    tip.clone()
+        .get_ref()
+        .and_then(move |tip_ref| {
+            if &tip_ref.hash() == candidate.block_parent_hash() {
+                A(A(tip.update_ref(candidate).map(|_| ())))
+            } else {
+                match compare_against(blockchain.storage(), &tip_ref, &candidate) {
+                    ComparisonResult::PreferCurrent => A(B(future::ok(()))),
+                    ComparisonResult::PreferCandidate => B(blockchain
+                        .branches_mut()
+                        .apply_or_create(candidate)
+                        .and_then(move |branch| tip.swap(branch))),
+                }
+            }
+        })
+        .map_err(|_: std::convert::Infallible| unreachable!())
 }
 
 pub fn handle_end_of_epoch(

@@ -1,5 +1,6 @@
 mod branch;
 mod chain;
+mod chain_selection;
 mod checkpoints;
 mod multiverse;
 mod process;
@@ -11,6 +12,7 @@ mod tip;
 pub use self::{
     branch::{Branch, Branches},
     chain::{Blockchain, Error, ErrorKind, PreCheckedHeader},
+    chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
     multiverse::Multiverse,
     process::handle_input,
