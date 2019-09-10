@@ -29,7 +29,7 @@ use self::p2p::{
     topology::{self, P2pTopology},
 };
 use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{Blockchain as NewBlockchain, Branch};
+use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
@@ -371,7 +371,7 @@ fn first_trusted_peer_address(config: &Configuration) -> Option<SocketAddr> {
 pub fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
-    branch: Branch,
+    branch: Tip,
     logger: &Logger,
 ) -> Result<bool, bootstrap::Error> {
     if config.protocol != Protocol::Grpc {

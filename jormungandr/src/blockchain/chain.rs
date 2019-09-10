@@ -184,6 +184,14 @@ impl Blockchain {
         &self.storage
     }
 
+    pub fn branches(&self) -> &Branches {
+        &self.branches
+    }
+
+    pub fn branches_mut(&mut self) -> &mut Branches {
+        &mut self.branches
+    }
+
     /// create and store a reference of this leader to the new
     fn create_and_store_reference(
         &mut self,
@@ -723,7 +731,6 @@ impl Blockchain {
         &self,
         branch: Branch,
     ) -> impl Future<Item = Checkpoints, Error = Error> {
-        let storage = self.storage.clone();
         branch
             .get_ref()
             .map_err(|_| unreachable!())
