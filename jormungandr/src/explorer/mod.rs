@@ -4,7 +4,7 @@ pub mod graphql;
 use self::error::{Error, ErrorKind, Result};
 use self::graphql::Context;
 use super::blockchain::Blockchain;
-use crate::blockcfg::{Block, ChainLength, Epoch, Fragment, FragmentId, Header, HeaderHash};
+use crate::blockcfg::{Block, ChainLength, Epoch, Fragment, FragmentId, HeaderHash};
 use crate::blockchain::Multiverse;
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
@@ -13,13 +13,15 @@ use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse::GCRoot;
+use chain_impl_mockchain::transaction::InputEnum;
 use imhamt;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::convert::Infallible;
 use std::sync::Arc;
+use tokio::prelude::future::Either;
 use tokio::prelude::*;
-use tokio::sync::lock::Lock;
+use tokio::sync::lock::{Lock, LockGuard};
 
 #[derive(Clone)]
 pub struct Explorer {
@@ -91,7 +93,6 @@ impl Explorer {
 
         let mut explorer_db = self.db.clone();
         let logger = info.logger().clone();
-        let blockchain = self.blockchain.clone();
         match bquery {
             ExplorerMsg::NewBlock(block) => info.spawn(explorer_db.apply_block(block).then(
                 move |result| match result {
@@ -196,69 +197,76 @@ impl ExplorerDB {
     pub fn is_block_in_explorer(
         &self,
         hash: HeaderHash,
-    ) -> impl Future<Item = Option<Header>, Error = Infallible> {
+    ) -> impl Future<Item = bool, Error = Infallible> {
         //XXX: Probably the clone is not necessary
         self.multiverse
             .get(hash)
             .map(|state_option| state_option.is_some())
     }
 
-    pub fn find_block_by_transaction(
+    pub fn get_block(
         &self,
-        transaction: FragmentId,
-    ) -> impl Future<Item = Option<ExplorerBlock>, Error = Infallible> {
+        block_id: &HeaderHash,
+    ) -> impl Future<Item = Option<ExplorerBlock>, Error = Error> {
         let multiverse = self.multiverse.clone();
-        get_lock(&self.longest_chain_tip).and_then(move |maybe_tip| {
-            let tip = match *maybe_tip {
-                Some(ref tip) => tip.id(),
-                None => return future::Either::A(Ok(None).into_future()),
-            };
-
-            future::Either::B(multiverse.get(tip).and_then(move |maybe_state| {
-                let state = match maybe_state {
-                    Some(state) => state,
-                    None => return unreachable!(),
+        let block_id = block_id.clone();
+        get_lock(&self.longest_chain_tip)
+            .map_err(|_: Infallible| unreachable!())
+            .and_then(move |maybe_tip| {
+                let tip = match *maybe_tip {
+                    Some(ref tip) => tip.id(),
+                    None => return Either::A(Ok(None).into_future()),
                 };
 
-                Ok(state
-                    .transactions
-                    .lookup(&transaction)
-                    .and_then(|block_id| state.blocks.lookup(&block_id).map(|b| (*b).clone())))
-            }))
-        })
+                future::Either::B(
+                    multiverse
+                        .get(tip)
+                        .map_err(|_: Infallible| unreachable!())
+                        .and_then(move |maybe_state| {
+                            let state = match maybe_state {
+                                Some(state) => state,
+                                // this error shouldn't really happen
+                                None => {
+                                    return Err(Error::from(ErrorKind::LongestChainIsNotIndexed))
+                                }
+                            };
+
+                            Ok(state.blocks.lookup(&block_id).map(|b| (*b).clone()))
+                        }),
+                )
+            })
     }
 
-    pub fn get_header(
+    pub fn find_block_by_transaction(
         &self,
-        hash: HeaderHash,
-    ) -> impl Future<Item = Option<Header>, Error = Infallible> {
-        unimplemented!();
-        // Just to make it compile
-        Ok(None).into_future()
-    }
+        transaction: &FragmentId,
+    ) -> impl Future<Item = Option<HeaderHash>, Error = Error> {
+        let multiverse = self.multiverse.clone();
+        let transaction = transaction.clone();
+        get_lock(&self.longest_chain_tip)
+            .map_err(|_: Infallible| unreachable!())
+            .and_then(move |maybe_tip| {
+                let tip = match *maybe_tip {
+                    Some(ref tip) => tip.id(),
+                    None => return Either::A(Ok(None).into_future()),
+                };
 
-    pub fn get_next_block(
-        &self,
-        block_id: HeaderHash,
-    ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
-        unimplemented!();
-        // Just to make it compile
-        Ok(None).into_future()
-    }
+                future::Either::B(
+                    multiverse
+                        .get(tip)
+                        .map_err(|_: Infallible| unreachable!())
+                        .and_then(move |maybe_state| {
+                            let state = match maybe_state {
+                                Some(state) => state,
+                                None => {
+                                    return Err(Error::from(ErrorKind::LongestChainIsNotIndexed))
+                                }
+                            };
 
-    pub fn get_epoch_data(
-        &self,
-        epoch: Epoch,
-    ) -> impl Future<Item = Option<EpochData>, Error = Infallible> {
-        unimplemented!();
-        // Just to make it compile
-        Ok(None).into_future()
-    }
-
-    pub fn get_current_status(&self) -> impl Future<Item = (), Error = Infallible> {
-        unimplemented!();
-        // Just to make it compile
-        Ok(()).into_future()
+                            Ok(state.transactions.lookup(&transaction).map(|id| id.clone()))
+                        }),
+                )
+            })
     }
 }
 
@@ -337,8 +345,21 @@ fn apply_block_to_addresses(addresses: Addresses, block: &Block) -> Result<Addre
                         std::result::Result::<_, Infallible>::Ok(Some(new_set))
                     },
                 )
-                // FIXME: I still don't know when could this happen
+                // FIXME: I still don't know when a insert or update can fail
                 .unwrap();
+        }
+        for input in inputs {
+            match input.to_enum() {
+                InputEnum::AccountInput(id, _value) => {
+                    // TODO: How do I get an Address from an AccountIdentifier?
+                    // Can I do it without knowing the Discrimination?
+                    ();
+                }
+                InputEnum::UtxoInput(_) => {
+                    //TODO: Resolve utxos
+                    ();
+                }
+            }
         }
     }
 
@@ -366,6 +387,7 @@ fn apply_block_to_epochs(epochs: Epochs, block: &Block) -> Result<Epochs> {
             },
         )
         .map_err(|_: imhamt::InsertOrUpdateError<Infallible>| {
+            // FIXME: Can this happen?
             // I'm not sure in which case could this happen
             unimplemented!();
         })
