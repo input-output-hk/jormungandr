@@ -1,4 +1,3 @@
-use chain_core::property::HasFragments as _;
 pub use network_core::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
