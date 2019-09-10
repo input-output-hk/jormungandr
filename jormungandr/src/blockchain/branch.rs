@@ -38,11 +38,55 @@ impl Branches {
         future::poll_fn(move || Ok(branches.inner.poll_lock()))
             .map(move |mut guard| guard.add(branch))
     }
+
+    pub fn apply_or_create(
+        &mut self,
+        candidate: Arc<Ref>,
+    ) -> impl Future<Item = Branch, Error = Infallible> {
+        let mut branches = self.clone();
+        self.apply(Arc::clone(&candidate))
+            .and_then(move |opt_branch| {
+                if let Some(branch) = opt_branch {
+                    future::Either::A(future::ok(branch))
+                } else {
+                    future::Either::B(branches.create(candidate))
+                }
+            })
+    }
+
+    fn apply(
+        &mut self,
+        candidate: Arc<Ref>,
+    ) -> impl Future<Item = Option<Branch>, Error = Infallible> {
+        let mut branches = self.clone();
+        future::poll_fn(move || Ok(branches.inner.poll_lock()))
+            .and_then(move |mut guard| guard.apply(candidate))
+    }
+
+    fn create(&mut self, candidate: Arc<Ref>) -> impl Future<Item = Branch, Error = Infallible> {
+        let branch = Branch::new(candidate);
+        self.add(branch.clone()).map(move |()| branch)
+    }
 }
 
 impl BranchesData {
     fn add(&mut self, branch: Branch) {
         self.branches.push(branch)
+    }
+
+    pub fn apply(
+        &mut self,
+        candidate: Arc<Ref>,
+    ) -> impl Future<Item = Option<Branch>, Error = Infallible> {
+        stream::futures_unordered(
+            self.branches
+                .iter_mut()
+                .map(|branch| branch.continue_with(Arc::clone(&candidate))),
+        )
+        .filter_map(|updated| updated)
+        .into_future()
+        .map_err(|(e, _)| e)
+        .map(|(v, _)| v)
     }
 }
 
@@ -65,6 +109,17 @@ impl Branch {
         let mut branch = self.inner.clone();
         future::poll_fn(move || Ok(branch.poll_lock())).map(move |mut guard| guard.update(new_ref))
     }
+
+    fn continue_with(
+        &mut self,
+        candidate: Arc<Ref>,
+    ) -> impl Future<Item = Option<Self>, Error = Infallible> {
+        let clone_branch = self.clone();
+        let mut branch = self.inner.clone();
+        future::poll_fn(move || Ok(branch.poll_lock()))
+            .map(move |mut guard| guard.continue_with(candidate))
+            .map(move |r| if r { Some(clone_branch) } else { None })
+    }
 }
 
 impl BranchData {
@@ -86,5 +141,14 @@ impl BranchData {
 
     fn reference(&self) -> Arc<Ref> {
         Arc::clone(&self.reference)
+    }
+
+    fn continue_with(&mut self, candidate: Arc<Ref>) -> bool {
+        if &self.reference.hash() == candidate.block_parent_hash() {
+            let _parent = self.update(candidate);
+            true
+        } else {
+            false
+        }
     }
 }
