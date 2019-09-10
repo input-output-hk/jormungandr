@@ -182,11 +182,14 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     };
 
     let client_task = {
-        let storage = blockchain.storage().clone();
-        let blockchain_tip = blockchain_tip.clone();
+        let mut task_data = client::TaskData {
+            storage: blockchain.storage().clone(),
+            block0_hash: bootstrapped_node.block0_hash,
+            blockchain_tip: blockchain_tip.clone(),
+        };
 
         services.spawn_with_inputs("client-query", move |info, input| {
-            client::handle_input(info, &storage, &blockchain_tip, input)
+            client::handle_input(info, &mut task_data, input)
         })
     };
 
