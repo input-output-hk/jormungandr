@@ -184,6 +184,14 @@ impl Blockchain {
         &self.storage
     }
 
+    pub fn branches(&self) -> &Branches {
+        &self.branches
+    }
+
+    pub fn branches_mut(&mut self) -> &mut Branches {
+        &mut self.branches
+    }
+
     /// create and store a reference of this leader to the new
     fn create_and_store_reference(
         &mut self,
