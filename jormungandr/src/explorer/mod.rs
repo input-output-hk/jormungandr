@@ -19,7 +19,6 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::prelude::future::Either;
 use tokio::prelude::*;
 use tokio::sync::lock::{Lock, LockGuard};
 
@@ -27,13 +26,12 @@ use tokio::sync::lock::{Lock, LockGuard};
 pub struct Explorer {
     pub db: ExplorerDB,
     pub schema: Arc<graphql::Schema>,
-    pub blockchain: Blockchain,
 }
 
 #[derive(Clone)]
 pub struct ExplorerDB {
     multiverse: Multiverse<State>,
-    longest_chain_tip: Lock<Option<Block>>,
+    longest_chain_tip: Lock<Block>,
 }
 
 type ExplorerBlock = Block;
@@ -63,18 +61,16 @@ pub struct EpochData {
 }
 
 impl Explorer {
-    pub fn new(db: ExplorerDB, schema: graphql::Schema, blockchain: Blockchain) -> Explorer {
+    pub fn new(db: ExplorerDB, schema: graphql::Schema) -> Explorer {
         Explorer {
             db,
             schema: Arc::new(schema),
-            blockchain,
         }
     }
 
     pub fn context(&self) -> Context {
         Context {
             db: self.db.clone(),
-            blockchain: self.blockchain.clone(),
         }
     }
 
@@ -106,11 +102,38 @@ impl Explorer {
 }
 
 impl ExplorerDB {
-    pub fn new() -> Self {
-        Self {
-            multiverse: Multiverse::<State>::new(),
-            longest_chain_tip: Lock::new(None),
-        }
+    pub fn bootstrap(block0: Block) -> Result<Self> {
+        // TODO: Here we should load from Storage to the current Head
+
+        let blocks = apply_block_to_blocks(Blocks::new(), &block0)?;
+        let epochs = apply_block_to_epochs(Epochs::new(), &block0)?;
+        let chain_lengths = apply_block_to_chain_lengths(ChainLengths::new(), &block0)?;
+
+        // XXX: I think the block0 doesn't have transactions
+        let transactions = Transactions::new();
+        // TODO: Get this things from the Initial fragment?
+        let addresses = Addresses::new();
+
+        let initial_state = State {
+            blocks,
+            epochs,
+            chain_lengths,
+            transactions,
+            addresses,
+        };
+
+        let multiverse = Multiverse::<State>::new();
+        // This blocks the thread, but it's only on the node startup when the explorer
+        // is enabled
+        multiverse
+            .insert(block0.chain_length(), block0.id(), initial_state)
+            .wait()
+            .expect("The multiverse to be empty");
+
+        Ok(Self {
+            multiverse,
+            longest_chain_tip: Lock::new(block0),
+        })
     }
 
     pub fn apply_block(&mut self, block: Block) -> impl Future<Item = GCRoot, Error = Error> {
@@ -179,17 +202,10 @@ impl ExplorerDB {
         &mut self,
         new_block: Block,
     ) -> impl Future<Item = (), Error = Infallible> {
-        get_lock(&self.longest_chain_tip).and_then(|mut guard| {
-            match *guard {
-                Some(ref current) => {
-                    if new_block.header.chain_length() > current.header.chain_length() {
-                        *guard = Some(new_block);
-                    }
-                }
-                None => {
-                    *guard = Some(new_block);
-                }
-            };
+        get_lock(&self.longest_chain_tip).and_then(|mut current| {
+            if new_block.header.chain_length() > current.header.chain_length() {
+                *current = new_block;
+            }
             Ok(())
         })
     }
@@ -197,66 +213,29 @@ impl ExplorerDB {
     pub fn get_block(
         &self,
         block_id: &HeaderHash,
-    ) -> impl Future<Item = Option<ExplorerBlock>, Error = Error> {
+    ) -> impl Future<Item = Option<ExplorerBlock>, Error = Infallible> {
         let multiverse = self.multiverse.clone();
         let block_id = block_id.clone();
-        get_lock(&self.longest_chain_tip)
-            .map_err(|_: Infallible| unreachable!())
-            .and_then(move |maybe_tip| {
-                let tip = match *maybe_tip {
-                    Some(ref tip) => tip.id(),
-                    None => return Either::A(Ok(None).into_future()),
-                };
-
-                future::Either::B(
-                    multiverse
-                        .get(tip)
-                        .map_err(|_: Infallible| unreachable!())
-                        .and_then(move |maybe_state| {
-                            let state = match maybe_state {
-                                Some(state) => state,
-                                // this error shouldn't really happen
-                                None => {
-                                    return Err(Error::from(ErrorKind::LongestChainIsNotIndexed))
-                                }
-                            };
-
-                            Ok(state.blocks.lookup(&block_id).map(|b| (*b).clone()))
-                        }),
-                )
+        get_lock(&self.longest_chain_tip).and_then(move |tip| {
+            multiverse.get((*tip).id()).and_then(move |maybe_state| {
+                let state = maybe_state.expect("the longest chain to be indexed");
+                Ok(state.blocks.lookup(&block_id).map(|b| (*b).clone()))
             })
+        })
     }
 
     pub fn find_block_by_transaction(
         &self,
         transaction: &FragmentId,
-    ) -> impl Future<Item = Option<HeaderHash>, Error = Error> {
+    ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
         let multiverse = self.multiverse.clone();
         let transaction = transaction.clone();
-        get_lock(&self.longest_chain_tip)
-            .map_err(|_: Infallible| unreachable!())
-            .and_then(move |maybe_tip| {
-                let tip = match *maybe_tip {
-                    Some(ref tip) => tip.id(),
-                    None => return Either::A(Ok(None).into_future()),
-                };
-
-                future::Either::B(
-                    multiverse
-                        .get(tip)
-                        .map_err(|_: Infallible| unreachable!())
-                        .and_then(move |maybe_state| {
-                            let state = match maybe_state {
-                                Some(state) => state,
-                                None => {
-                                    return Err(Error::from(ErrorKind::LongestChainIsNotIndexed))
-                                }
-                            };
-
-                            Ok(state.transactions.lookup(&transaction).map(|id| id.clone()))
-                        }),
-                )
+        get_lock(&self.longest_chain_tip).and_then(move |tip| {
+            multiverse.get((*tip).id()).and_then(move |maybe_state| {
+                let state = maybe_state.expect("the longest chain to be indexed");
+                Ok(state.transactions.lookup(&transaction).map(|id| id.clone()))
             })
+        })
     }
 }
 
