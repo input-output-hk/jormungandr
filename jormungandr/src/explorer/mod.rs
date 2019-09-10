@@ -11,9 +11,8 @@ use crate::utils::task::{Input, TokioServiceInfo};
 use chain_addr::Address;
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse::GCRoot;
-use chain_impl_mockchain::transaction::InputEnum;
+use chain_impl_mockchain::transaction::{AuthenticatedTransaction, InputEnum};
 use imhamt;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
@@ -40,8 +39,10 @@ type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, V>;
 type Transactions = Hamt<FragmentId, HeaderHash>;
 type Blocks = Hamt<HeaderHash, ExplorerBlock>;
 type ChainLengths = Hamt<ChainLength, HeaderHash>;
-// FIXME: Probably using a Hamt<FragmentId, ()> would be better than HashSet?
-type Addresses = Hamt<Address, HashSet<FragmentId>>;
+
+type Set<T> = Hamt<T, ()>;
+
+type Addresses = Hamt<Address, Set<FragmentId>>;
 type Epochs = Hamt<Epoch, EpochData>;
 
 #[derive(Clone)]
@@ -270,66 +271,29 @@ fn apply_block_to_blocks(blocks: Blocks, block: &Block) -> Result<Blocks> {
 }
 
 fn apply_block_to_addresses(addresses: Addresses, block: &Block) -> Result<Addresses> {
-    // FIXME: Probably there is a cleaner way to do this
-    let txs = block.contents.iter().filter_map(|fragment| match fragment {
-        Fragment::Transaction(auth_tx) => Some((
-            fragment.id(),
-            &auth_tx.transaction.inputs,
-            &auth_tx.transaction.outputs,
-        )),
-        Fragment::OwnerStakeDelegation(auth_tx) => Some((
-            fragment.id(),
-            &auth_tx.transaction.inputs,
-            &auth_tx.transaction.outputs,
-        )),
-        Fragment::StakeDelegation(auth_tx) => Some((
-            fragment.id(),
-            &auth_tx.transaction.inputs,
-            &auth_tx.transaction.outputs,
-        )),
-        Fragment::PoolRegistration(auth_tx) => Some((
-            fragment.id(),
-            &auth_tx.transaction.inputs,
-            &auth_tx.transaction.outputs,
-        )),
-        Fragment::PoolManagement(auth_tx) => Some((
-            fragment.id(),
-            &auth_tx.transaction.inputs,
-            &auth_tx.transaction.outputs,
-        )),
-        _ => None,
-    });
-
     let mut addresses = addresses;
+    let fragments = block.contents.iter();
 
-    for (txid, inputs, outputs) in txs {
-        for output in outputs {
-            addresses = addresses
-                .insert_or_update(
-                    output.address.clone(),
-                    [txid].iter().cloned().collect(),
-                    |set| {
-                        let mut new_set: HashSet<FragmentId> = set.iter().cloned().collect();
-                        new_set.insert(txid);
-                        std::result::Result::<_, Infallible>::Ok(Some(new_set))
-                    },
-                )
-                // FIXME: I still don't know when a insert or update can fail
-                .unwrap();
-        }
-        for input in inputs {
-            match input.to_enum() {
-                InputEnum::AccountInput(id, _value) => {
-                    // TODO: How do I get an Address from an AccountIdentifier?
-                    // Can I do it without knowing the Discrimination?
-                    ();
-                }
-                InputEnum::UtxoInput(_) => {
-                    //TODO: Resolve utxos
-                    ();
-                }
+    for fragment in fragments {
+        let fragment_id = fragment.id();
+        addresses = match fragment {
+            Fragment::Transaction(auth_tx) => {
+                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
             }
-        }
+            Fragment::OwnerStakeDelegation(auth_tx) => {
+                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+            }
+            Fragment::StakeDelegation(auth_tx) => {
+                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+            }
+            Fragment::PoolRegistration(auth_tx) => {
+                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+            }
+            Fragment::PoolManagement(auth_tx) => {
+                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+            }
+            _ => addresses,
+        };
     }
 
     Ok(addresses)
@@ -356,9 +320,7 @@ fn apply_block_to_epochs(epochs: Epochs, block: &Block) -> Result<Epochs> {
             },
         )
         .map_err(|_: imhamt::InsertOrUpdateError<Infallible>| {
-            // FIXME: Can this happen?
-            // I'm not sure in which case could this happen
-            unimplemented!();
+            unreachable!();
         })
 }
 
@@ -388,4 +350,52 @@ fn is_transaction(fragment: &Fragment) -> bool {
         Fragment::PoolManagement(_) => true,
         _ => false,
     }
+}
+
+fn apply_transaction_to_addresses<T>(
+    addresses: Addresses,
+    txid: &FragmentId,
+    auth_tx: &AuthenticatedTransaction<Address, T>,
+) -> Addresses {
+    let outputs = &auth_tx.transaction.outputs;
+    let inputs = &auth_tx.transaction.inputs;
+
+    let mut addresses = addresses;
+
+    for output in outputs {
+        let address = &output.address;
+        addresses = addresses
+            .insert_or_update(
+                output.address.clone(),
+                Set::new().insert(txid.clone(), ()).unwrap(),
+                |set| {
+                    if set.contains_key(txid) {
+                        Ok(Some(set.clone()))
+                    } else {
+                        Ok::<Option<Set<FragmentId>>, Infallible>(Some(
+                            set.insert(txid.clone(), ())
+                                .expect("the address to not be in the set"),
+                        ))
+                    }
+                },
+            )
+            // This shouldn't happen
+            .unwrap();
+    }
+
+    for input in inputs {
+        match input.to_enum() {
+            InputEnum::AccountInput(id, _value) => {
+                // TODO: How do I get an Address from an AccountIdentifier?
+                // Can I do it without knowing the Discrimination?
+                ();
+            }
+            InputEnum::UtxoInput(_) => {
+                //TODO: Resolve utxos
+                ();
+            }
+        }
+    }
+
+    addresses
 }
