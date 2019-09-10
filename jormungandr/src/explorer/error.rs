@@ -25,5 +25,9 @@ error_chain! {
             description("tried to index already indexed chainlength in the given branch")
             display("chain length: {} is already indexed", chain_length)
         }
+        LongestChainIsNotIndexed {
+            description("the currently tracked longest branch is not indexed. this shouldn't happen")
+            display("explorer error: longest branch is not indexed")
+        }
     }
 }
