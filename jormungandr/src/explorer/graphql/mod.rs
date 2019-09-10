@@ -1,4 +1,4 @@
-use crate::blockcfg::{self, FragmentId};
+use crate::blockcfg::{self, FragmentId, HeaderHash};
 use crate::blockchain::Blockchain;
 use chain_core::property::Block as _;
 pub use juniper::http::GraphQLRequest;
@@ -93,6 +93,17 @@ impl From<blockcfg::BlockDate> for BlockDate {
 
 struct Transaction {
     id: FragmentId,
+    in_block: HeaderHash,
+}
+
+impl Transaction {
+    fn new(id: FragmentId, context: &Context) -> FieldResult<Option<Transaction>> {
+        let in_block_option = context.db.find_block_by_transaction(&id).wait()?;
+        Ok(in_block_option.map(|block_id| Transaction {
+            id,
+            in_block: block_id,
+        }))
+    }
 }
 
 /// A transaction in the blockchain
@@ -109,28 +120,14 @@ impl Transaction {
     pub fn block(&self, context: &Context) -> FieldResult<Block> {
         let block_option = context
             .db
-            .find_block_by_transaction(self.id)
+            .get_block(&self.in_block)
             .map_err(|err| FieldError::from(err))
-            .and_then(|hash_option| {
-                future::poll_fn(move || match hash_option {
-                    Some(hash) => context
-                        .blockchain
-                        .storage()
-                        .get(hash)
-                        .map_err(|err| FieldError::from(err))
-                        .poll(),
-                    None => Err(FieldError::new(
-                        "Couldn't find transaction in explorer",
-                        graphql_value!({ "internal_error": "Transaction is not in explorer" }),
-                    )),
-                })
-            })
             .wait()?;
 
         block_option
             .ok_or(FieldError::new(
-                "Couldn't find block in storage",
-                graphql_value!({ "internal_error": "Block is not in storage" }),
+                "Couldn't find block in explorer",
+                graphql_value!({ "internal_error": "Block is not in explorer" }),
             ))
             .map(|b| b.into())
     }
@@ -266,12 +263,12 @@ impl Query {
         unimplemented!();
     }
 
-    fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {
+    fn transaction(id: String, context: &Context) -> FieldResult<Option<Transaction>> {
         // This call blocks the current thread (the call to wait), but it won't block the node's
         // thread, as queries are only executed in an exclusive runtime
         let id = FragmentId::from_str(&id)?;
 
-        Ok(Transaction { id })
+        Transaction::new(id, context)
     }
 
     pub fn epoch(id: EpochNumber) -> FieldResult<Epoch> {
