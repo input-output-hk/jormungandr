@@ -77,14 +77,13 @@ pub fn handle_input(
                 });
 
             if let Some(msg_box) = explorer_msg_box {
-                /*
                 msg_box
                     .try_send(ExplorerMsg::NewBlock(block))
                     .unwrap_or_else(|err| {
                         error!(info.logger(), "cannot add block to explorer: {}", err)
                     });
-                */
             };
+
             stats_counter.add_block_recv_cnt(1);
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
