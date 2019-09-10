@@ -1,6 +1,6 @@
 use super::{grpc, BlockConfig};
 use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{Blockchain, Branch, Error as BlockchainError, PreCheckedHeader, Ref};
+use crate::blockchain::{Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
 use network_core::client::{block::BlockService, Client as _};
@@ -67,7 +67,7 @@ impl error::Error for Error {
 pub fn bootstrap_from_peer(
     peer: Peer,
     blockchain: Blockchain,
-    mut branch: Branch,
+    mut branch: Tip,
     logger: &Logger,
 ) -> Result<Arc<Ref>, Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);

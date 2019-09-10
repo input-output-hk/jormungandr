@@ -91,7 +91,7 @@ fn start() -> Result<(), start_up::Error> {
 pub struct BootstrappedNode {
     settings: Settings,
     blockchain: Blockchain,
-    blockchain_tip: blockchain::Branch,
+    blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
     new_epoch_announcements: tokio::sync::mpsc::Sender<self::leadership::NewEpochToSchedule>,
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,

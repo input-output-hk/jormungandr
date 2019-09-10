@@ -68,7 +68,7 @@ use crate::{
     blockcfg::{
         BlockBuilder, BlockDate, Epoch, HeaderContentEvalContext, Leadership, LedgerParameters,
     },
-    blockchain::Branch,
+    blockchain::Tip,
     fragment,
     intercom::BlockMsg,
     utils::{async_msg::MessageBox, task::TokioServiceInfo},
@@ -116,7 +116,7 @@ pub struct LeadershipModule {
     service_info: TokioServiceInfo,
     enclave: Enclave,
     fragment_pool: fragment::Pool,
-    tip: Branch,
+    tip: Tip,
     block_message: MessageBox<BlockMsg>,
     garbage_collection_interval: Duration,
 }
@@ -322,7 +322,7 @@ leader elections please prevent your system from suspending or hibernating.
         garbage_collection_interval: Duration,
         enclave: Enclave,
         fragment_pool: fragment::Pool,
-        tip_branch: Branch,
+        tip_branch: Tip,
         new_epoch_events: mpsc::Receiver<NewEpochToSchedule>,
         block_message: MessageBox<BlockMsg>,
     ) -> impl Future<Item = (), Error = Error> {
@@ -410,7 +410,7 @@ leader elections please prevent your system from suspending or hibernating.
 fn prepare_block(
     mut fragment_pool: fragment::Pool,
     date: BlockDate,
-    tip: Branch,
+    tip: Tip,
     epoch_parameters: Arc<LedgerParameters>,
 ) -> impl Future<Item = BlockBuilder, Error = Error> {
     use crate::fragment::selection::{FragmentSelectionAlgorithm as _, OldestFirst};

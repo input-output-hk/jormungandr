@@ -1,4 +1,4 @@
-use super::{Blockchain, Branch, Error, ErrorKind, PreCheckedHeader, Ref};
+use super::{Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip};
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash},
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg},
@@ -21,7 +21,7 @@ use std::{convert::identity, sync::Arc};
 pub fn handle_input(
     info: &TokioServiceInfo,
     blockchain: &mut Blockchain,
-    blockchain_tip: &mut Branch,
+    blockchain_tip: &mut Tip,
     stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
@@ -122,7 +122,7 @@ pub fn handle_end_of_epoch(
     logger: Logger,
     new_epoch_announcements: Sender<NewEpochToSchedule>,
     mut blockchain: Blockchain,
-    blockchain_tip: Branch,
+    blockchain_tip: Tip,
     epoch: Epoch,
 ) -> impl Future<Item = (), Error = Error> {
     debug!(logger, "preparing new epoch schedule" ; "epoch" => epoch);
@@ -191,7 +191,7 @@ pub fn process_leadership_block(
 
 pub fn process_block_announcement(
     mut blockchain: Blockchain,
-    branch: Branch,
+    blockchain_tip: Tip,
     header: Header,
     node_id: NodeId,
     mut network_msg_box: MessageBox<NetworkMsg>,
@@ -207,16 +207,20 @@ pub fn process_block_announcement(
             PreCheckedHeader::MissingParent { header, .. } => {
                 debug!(logger, "block is missing a locally stored parent");
                 let to = header.hash();
-                Either::B(blockchain.get_checkpoints(branch).map(move |from| {
-                    network_msg_box
-                        .try_send(NetworkMsg::PullHeaders { node_id, from, to })
-                        .unwrap_or_else(move |err| {
-                            error!(
-                                logger,
-                                "cannot send PullHeaders request to network: {}", err
-                            )
-                        });
-                }))
+                Either::B(
+                    blockchain
+                        .get_checkpoints(blockchain_tip.branch().clone())
+                        .map(move |from| {
+                            network_msg_box
+                                .try_send(NetworkMsg::PullHeaders { node_id, from, to })
+                                .unwrap_or_else(move |err| {
+                                    error!(
+                                        logger,
+                                        "cannot send PullHeaders request to network: {}", err
+                                    )
+                                });
+                        }),
+                )
             }
             PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
                 debug!(

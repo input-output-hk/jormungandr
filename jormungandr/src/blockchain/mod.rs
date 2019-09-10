@@ -6,6 +6,7 @@ mod process;
 mod reference;
 mod reference_cache;
 mod storage;
+mod tip;
 
 pub use self::{
     branch::{Branch, Branches},
@@ -16,4 +17,5 @@ pub use self::{
     reference::Ref,
     reference_cache::RefCache,
     storage::Storage,
+    tip::Tip,
 };

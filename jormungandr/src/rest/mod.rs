@@ -14,7 +14,7 @@ use futures::{future, Future};
 use std::convert::Infallible;
 use tokio::sync::lock::Lock;
 
-use crate::blockchain::{Blockchain, Branch};
+use crate::blockchain::{Blockchain, Tip};
 use crate::fragment::Logs;
 use crate::leadership::Logs as LeadershipLogs;
 use crate::secure::enclave::Enclave;
@@ -28,7 +28,7 @@ use crate::utils::async_msg::MessageBox;
 pub struct Context {
     pub stats_counter: StatsCounter,
     pub blockchain: Blockchain,
-    pub blockchain_tip: Branch,
+    pub blockchain_tip: Tip,
     pub transaction_task: MessageBox<TransactionMsg>,
     pub logs: Logs,
     pub leadership_logs: LeadershipLogs,

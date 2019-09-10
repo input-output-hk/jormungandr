@@ -1,5 +1,5 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
-use crate::blockchain::{Branch, Storage};
+use crate::blockchain::{Storage, Tip};
 use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
 use crate::utils::task::{Input, ThreadServiceInfo};
 use chain_core::property::HasHeader;
@@ -9,7 +9,7 @@ use tokio::prelude::*;
 pub struct TaskData {
     pub storage: Storage,
     pub block0_hash: HeaderHash,
-    pub blockchain_tip: Branch,
+    pub blockchain_tip: Tip,
 }
 
 pub fn handle_input(_info: &ThreadServiceInfo, task_data: &mut TaskData, input: Input<ClientMsg>) {
@@ -54,7 +54,7 @@ pub fn handle_input(_info: &ThreadServiceInfo, task_data: &mut TaskData, input: 
     }
 }
 
-fn handle_get_block_tip(blockchain_tip: &Branch) -> Result<Header, Error> {
+fn handle_get_block_tip(blockchain_tip: &Tip) -> Result<Header, Error> {
     let blockchain_tip = blockchain_tip.get_ref().wait().unwrap();
 
     Ok(blockchain_tip.header().clone())
@@ -176,7 +176,7 @@ fn handle_get_headers(
 fn handle_pull_blocks_to_tip(
     storage: &Storage,
     block0_hash: &HeaderHash,
-    blockchain_tip: &Branch,
+    blockchain_tip: &Tip,
     checkpoints: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
