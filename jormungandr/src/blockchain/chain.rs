@@ -723,7 +723,6 @@ impl Blockchain {
         &self,
         branch: Branch,
     ) -> impl Future<Item = Checkpoints, Error = Error> {
-        let storage = self.storage.clone();
         branch
             .get_ref()
             .map_err(|_| unreachable!())
