@@ -194,16 +194,6 @@ impl ExplorerDB {
         })
     }
 
-    pub fn is_block_in_explorer(
-        &self,
-        hash: HeaderHash,
-    ) -> impl Future<Item = bool, Error = Infallible> {
-        //XXX: Probably the clone is not necessary
-        self.multiverse
-            .get(hash)
-            .map(|state_option| state_option.is_some())
-    }
-
     pub fn get_block(
         &self,
         block_id: &HeaderHash,
