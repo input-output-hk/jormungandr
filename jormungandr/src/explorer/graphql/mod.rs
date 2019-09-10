@@ -1,5 +1,4 @@
 use crate::blockcfg::{self, FragmentId, HeaderHash};
-use crate::blockchain::Blockchain;
 use chain_core::property::Block as _;
 pub use juniper::http::GraphQLRequest;
 use juniper::EmptyMutation;
@@ -286,7 +285,6 @@ impl Query {
 
 pub struct Context {
     pub db: ExplorerDB,
-    pub blockchain: Blockchain,
 }
 
 impl juniper::Context for Context {}
