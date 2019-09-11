@@ -293,7 +293,7 @@ where
     type Item = ();
     type Error = core_error::Error;
 
-    fn poll(&mut self) -> Poll<Self::Item, core_error::Error> {
+    fn poll(&mut self) -> Poll<(), core_error::Error> {
         let _ = try_ready!(self.inner.poll());
         Ok(Async::Ready(()))
     }
