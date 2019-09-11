@@ -18,7 +18,7 @@ use network_core::{
 
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
-use futures::stream::Forward;
+use futures::stream::{Forward, Fuse};
 use futures::try_ready;
 use tower_grpc::{self, Code, Request, Response, Status, Streaming};
 
@@ -265,7 +265,7 @@ where
     Si: Sink,
     Si::SinkItem: FromProtobuf<St::Item>,
 {
-    inner: Forward<RequestStream<Si::SinkItem, St>, Si>,
+    inner: Forward<Fuse<RequestStream<Si::SinkItem, St>>, Si>,
 }
 
 impl<St, Si> RequestStreamForwarding<St, Si>
@@ -275,7 +275,9 @@ where
     Si::SinkItem: FromProtobuf<St::Item>,
 {
     fn new(stream: St, sink: Si) -> Self {
-        let stream = RequestStream::new(stream);
+        // Fuse the stream to work around
+        // https://github.com/rust-lang-nursery/futures-rs/pull/1864
+        let stream = RequestStream::new(stream).fuse();
         RequestStreamForwarding {
             inner: stream.forward(sink),
         }
