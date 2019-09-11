@@ -1,5 +1,5 @@
+use super::ExplorerBlock;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
-use chain_core::property::Block as _;
 pub use juniper::http::GraphQLRequest;
 use juniper::EmptyMutation;
 use juniper::FieldError;
@@ -50,12 +50,12 @@ impl Block {
     }
 }
 
-impl From<blockcfg::Block> for Block {
-    fn from(block: blockcfg::Block) -> Block {
+impl From<ExplorerBlock> for Block {
+    fn from(block: ExplorerBlock) -> Block {
         Block {
             hash: block.id().to_string(),
             date: block.date().into(),
-            chain_length: ChainLength(u32::from(block.header.chain_length()).to_string()),
+            chain_length: ChainLength(u32::from(block.chain_length()).to_string()),
         }
     }
 }
