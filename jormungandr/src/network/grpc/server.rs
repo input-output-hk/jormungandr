@@ -41,15 +41,15 @@ pub fn run_listen_socket(
                 })
                 .fold(server, move |mut server, stream| {
                     // received incoming connection
+                    let conn_logger =
+                        fold_logger.new(o!("peer_addr" => stream.peer_addr().unwrap()));
                     info!(
-                        fold_logger,
-                        "{} connected to {}",
-                        stream.peer_addr().unwrap(),
+                        conn_logger,
+                        "incoming P2P connection on {}",
                         stream.local_addr().unwrap(),
                     );
 
                     let conn = server.serve(stream);
-                    let conn_logger = fold_logger.clone();
                     tokio::spawn(conn.map_err(move |e| {
                         warn!(conn_logger, "incoming P2P connection error: {:?}", e)
                     }));
