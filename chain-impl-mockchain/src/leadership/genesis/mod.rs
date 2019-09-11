@@ -197,7 +197,7 @@ mod tests {
     use crate::certificate::{PoolId, PoolRegistration};
     use crate::ledger::Ledger;
     use crate::milli::Milli;
-    use crate::stake::PoolStakeDistribution;
+    use crate::stake::PoolStakeTotal;
     use crate::testing::ledger as ledger_mock;
     use crate::value::*;
 
@@ -313,7 +313,7 @@ mod tests {
         for (pool_id, (_, _, value)) in &pools {
             selection.distribution.to_pools.insert(
                 pool_id.clone(),
-                PoolStakeDistribution {
+                PoolStakeTotal {
                     total_stake: *value,
                 },
             );
@@ -408,7 +408,7 @@ mod tests {
         for (pool_id, (_, _, value)) in &pools {
             selection.distribution.to_pools.insert(
                 pool_id.clone(),
-                PoolStakeDistribution {
+                PoolStakeTotal {
                     total_stake: *value,
                 },
             );

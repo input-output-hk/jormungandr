@@ -18,11 +18,11 @@ pub struct StakeDistribution {
     pub dangling: Value,
     /// For each stake pool, the total stake value, and the value for the
     /// stake pool members.
-    pub to_pools: HashMap<PoolId, PoolStakeDistribution>,
+    pub to_pools: HashMap<PoolId, PoolStakeTotal>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PoolStakeDistribution {
+pub struct PoolStakeTotal {
     pub total_stake: Value,
 }
 
@@ -52,12 +52,12 @@ impl StakeDistribution {
         self.to_pools.get(poolid).map(|psd| psd.total_stake)
     }
 
-    pub fn get_distribution(&self, pool_id: &PoolId) -> Option<&PoolStakeDistribution> {
+    pub fn get_distribution(&self, pool_id: &PoolId) -> Option<&PoolStakeTotal> {
         self.to_pools.get(pool_id)
     }
 }
 
-pub fn distribution_add(p: &mut PoolStakeDistribution, v: Value) {
+pub fn distribution_add(p: &mut PoolStakeTotal, v: Value) {
     p.total_stake = (p.total_stake + v).expect("internal error: total amount of stake overflow")
 }
 
@@ -74,7 +74,7 @@ pub fn get_distribution(
 ) -> StakeDistribution {
     use std::iter::FromIterator;
 
-    let p0 = PoolStakeDistribution {
+    let p0 = PoolStakeTotal {
         total_stake: Value::zero(),
     };
     let mut dist = HashMap::from_iter(dstate.stake_pools.iter().map(|(id, _)| (id.clone(), p0)));
