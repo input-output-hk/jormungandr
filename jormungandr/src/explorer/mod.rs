@@ -3,16 +3,18 @@ pub mod graphql;
 
 use self::error::{Error, ErrorKind, Result};
 use self::graphql::Context;
-use super::blockchain::Blockchain;
-use crate::blockcfg::{Block, ChainLength, Epoch, Fragment, FragmentId, HeaderHash};
+use crate::blockcfg::{
+    Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
+    HeaderHash,
+};
 use crate::blockchain::Multiverse;
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
-use chain_addr::Address;
+use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::multiverse::GCRoot;
-use chain_impl_mockchain::transaction::{AuthenticatedTransaction, InputEnum};
+use chain_impl_mockchain::transaction::{InputEnum, Transaction};
 use imhamt;
 use std::collections::hash_map::DefaultHasher;
 use std::convert::Infallible;
@@ -30,6 +32,13 @@ pub struct Explorer {
 pub struct ExplorerDB {
     multiverse: Multiverse<State>,
     longest_chain_tip: Lock<Block>,
+    blockchain_config: BlockchainConfig,
+}
+
+#[derive(Clone)]
+struct BlockchainConfig {
+    discrimination: Discrimination,
+    consensus_version: ConsensusVersion,
 }
 
 type ExplorerBlock = Block;
@@ -121,6 +130,18 @@ impl ExplorerDB {
             addresses,
         };
 
+        let blockchain_config = BlockchainConfig::from_config_params(
+            block0
+                .contents
+                .iter()
+                .filter_map(|fragment| match fragment {
+                    Fragment::Initial(config_params) => Some(config_params),
+                    _ => None,
+                })
+                .next()
+                .expect("the Initial fragment to be present in the genesis block"),
+        );
+
         let multiverse = Multiverse::<State>::new();
         // This blocks the thread, but it's only on the node startup when the explorer
         // is enabled
@@ -132,6 +153,7 @@ impl ExplorerDB {
         Ok(Self {
             multiverse,
             longest_chain_tip: Lock::new(block0),
+            blockchain_config,
         })
     }
 
@@ -276,19 +298,19 @@ fn apply_block_to_addresses(addresses: Addresses, block: &Block) -> Result<Addre
         let fragment_id = fragment.id();
         addresses = match fragment {
             Fragment::Transaction(auth_tx) => {
-                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+                apply_transaction_to_addresses(addresses, &fragment_id, &auth_tx.transaction)
             }
             Fragment::OwnerStakeDelegation(auth_tx) => {
-                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+                apply_transaction_to_addresses(addresses, &fragment_id, &auth_tx.transaction)
             }
             Fragment::StakeDelegation(auth_tx) => {
-                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+                apply_transaction_to_addresses(addresses, &fragment_id, &auth_tx.transaction)
             }
             Fragment::PoolRegistration(auth_tx) => {
-                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+                apply_transaction_to_addresses(addresses, &fragment_id, &auth_tx.transaction)
             }
             Fragment::PoolManagement(auth_tx) => {
-                apply_transaction_to_addresses(addresses, &fragment_id, auth_tx)
+                apply_transaction_to_addresses(addresses, &fragment_id, &auth_tx.transaction)
             }
             _ => addresses,
         };
@@ -353,10 +375,10 @@ fn is_transaction(fragment: &Fragment) -> bool {
 fn apply_transaction_to_addresses<T>(
     addresses: Addresses,
     txid: &FragmentId,
-    auth_tx: &AuthenticatedTransaction<Address, T>,
+    tx: &Transaction<Address, T>,
 ) -> Addresses {
-    let outputs = &auth_tx.transaction.outputs;
-    let inputs = &auth_tx.transaction.inputs;
+    let outputs = &tx.outputs;
+    let inputs = &tx.inputs;
 
     let mut addresses = addresses;
 
@@ -395,4 +417,31 @@ fn apply_transaction_to_addresses<T>(
     }
 
     addresses
+}
+
+impl BlockchainConfig {
+    fn from_config_params(params: &ConfigParams) -> BlockchainConfig {
+        let discrimination = params
+            .iter()
+            .filter_map(|param| match param {
+                ConfigParam::Discrimination(discrimination) => Some(discrimination.clone()),
+                _ => None,
+            })
+            .next()
+            .expect("the discrimination to be present");
+
+        let consensus_version = params
+            .iter()
+            .filter_map(|param| match param {
+                ConfigParam::ConsensusVersion(version) => Some(version.clone()),
+                _ => None,
+            })
+            .next()
+            .expect("consensus version to be present");
+
+        BlockchainConfig {
+            discrimination,
+            consensus_version,
+        }
+    }
 }
