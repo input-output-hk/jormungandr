@@ -1,8 +1,10 @@
 pub mod error;
 pub mod graphql;
+mod set;
 
 use self::error::{Error, ErrorKind, Result};
 use self::graphql::Context;
+use self::set::HamtSet as Set;
 use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
     HeaderHash,
@@ -47,8 +49,6 @@ type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, V>;
 type Transactions = Hamt<FragmentId, HeaderHash>;
 type Blocks = Hamt<HeaderHash, ExplorerBlock>;
 type ChainLengths = Hamt<ChainLength, HeaderHash>;
-
-type Set<T> = Hamt<T, ()>;
 
 type Addresses = Hamt<Address, Set<FragmentId>>;
 type Epochs = Hamt<Epoch, EpochData>;
@@ -386,20 +386,13 @@ fn apply_transaction_to_addresses<T>(
         addresses = addresses
             .insert_or_update(
                 output.address.clone(),
-                Set::new().insert(txid.clone(), ()).unwrap(),
+                Set::new().add_element(txid.clone()),
                 |set| {
-                    if set.contains_key(txid) {
-                        Ok(Some(set.clone()))
-                    } else {
-                        Ok::<Option<Set<FragmentId>>, Infallible>(Some(
-                            set.insert(txid.clone(), ())
-                                .expect("the address to not be in the set"),
-                        ))
-                    }
+                    let new_set = set.add_element(txid.clone());
+                    Ok::<Option<Set<FragmentId>>, Infallible>(Some(new_set))
                 },
             )
-            // This shouldn't happen
-            .unwrap();
+            .expect("insert or update to always work")
     }
 
     for input in inputs {
