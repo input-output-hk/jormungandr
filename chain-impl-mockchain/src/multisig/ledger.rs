@@ -2,7 +2,7 @@ use imhamt::{Hamt, HamtIter, InsertError, RemoveError};
 use std::collections::hash_map::DefaultHasher;
 
 use super::declaration::{Declaration, DeclarationError, Identifier};
-use crate::accounting::account::{self, Iter, SpendingCounter};
+use crate::accounting::account::{self, DelegationType, Iter, SpendingCounter};
 use crate::certificate::PoolId;
 use crate::value::{Value, ValueError};
 
@@ -126,7 +126,7 @@ impl Ledger {
     pub fn set_delegation(
         &self,
         identifier: &Identifier,
-        delegation: Option<PoolId>,
+        delegation: DelegationType,
     ) -> Result<Self, LedgerError> {
         let new_accounts = self.accounts.set_delegation(identifier, delegation)?;
         Ok(Self {

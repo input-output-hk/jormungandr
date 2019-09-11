@@ -4,10 +4,36 @@ use imhamt::HamtIter;
 
 use super::LedgerError;
 
+/// Set the choice of delegation:
+/// 
+/// * No delegation
+/// * Full delegation of this account to a specific pool
+/// * Ratio of stake to multiple pools
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum DelegationType {
+    NonDelegated,
+    Full(PoolId),
+    Ratio(DelegationRatio),
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct DelegationRatio {
+    pub parts: u8,
+    pub pools: Vec<(PoolId, u8)>,
+}
+
+impl DelegationRatio {
+    pub fn is_valid(&self) -> bool {
+        // map to u32 before summing to make sure we don't overflow
+        let total: u32 = self.pools.iter().map(|x| x.1 as u32).sum();
+        self.parts > 0 && self.pools.len() > 0 && total == (self.parts as u32)
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AccountState<Extra> {
     pub counter: SpendingCounter,
-    pub delegation: Option<PoolId>,
+    pub delegation: DelegationType,
     pub value: Value,
     pub extra: Extra,
 }
@@ -17,14 +43,14 @@ impl<Extra> AccountState<Extra> {
     pub fn new(v: Value, e: Extra) -> Self {
         Self {
             counter: SpendingCounter(0),
-            delegation: None,
+            delegation: DelegationType::NonDelegated,
             value: v,
             extra: e,
         }
     }
 
     /// Get referencet to delegation setting
-    pub fn delegation(&self) -> &Option<PoolId> {
+    pub fn delegation(&self) -> &DelegationType {
         &self.delegation
     }
 
@@ -80,7 +106,7 @@ impl<Extra: Clone> AccountState<Extra> {
     }
 
     /// Set delegation
-    pub fn set_delegation(&self, delegation: Option<PoolId>) -> Self {
+    pub fn set_delegation(&self, delegation: DelegationType) -> Self {
         let mut st = self.clone();
         st.delegation = delegation;
         st
@@ -134,7 +160,7 @@ impl<'a, ID, Extra> Iterator for Iter<'a, ID, Extra> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AccountState, SpendingCounter};
+    use super::{AccountState, DelegationType, SpendingCounter};
     use crate::{certificate::PoolId, value::Value};
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
@@ -150,7 +176,7 @@ mod tests {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             AccountState {
                 counter: Arbitrary::arbitrary(gen),
-                delegation: Some(Arbitrary::arbitrary(gen)),
+                delegation: DelegationType::Full(Arbitrary::arbitrary(gen)),
                 value: Arbitrary::arbitrary(gen),
                 extra: (),
             }
@@ -237,10 +263,10 @@ mod tests {
                         }
                     }
                     ArbitraryAccountStateOp::Delegate(new_delegation) => {
-                        delegation = Some(new_delegation.clone());
+                        delegation = DelegationType::Full(new_delegation.clone());
                     }
                     ArbitraryAccountStateOp::RemoveDelegation => {
-                        delegation = None;
+                        delegation = DelegationType::NonDelegated;
                     }
                 }
             }
@@ -305,9 +331,9 @@ mod tests {
                     new_account_state
                 }
                 ArbitraryAccountStateOp::Delegate(stake_pool_id) => {
-                    account_state.set_delegation(Some(stake_pool_id))
+                    account_state.set_delegation(DelegationType::Full(stake_pool_id))
                 }
-                ArbitraryAccountStateOp::RemoveDelegation => account_state.set_delegation(None),
+                ArbitraryAccountStateOp::RemoveDelegation => account_state.set_delegation(DelegationType::NonDelegated),
             };
         }
         let expected_account_state =

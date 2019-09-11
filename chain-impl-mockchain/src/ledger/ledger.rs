@@ -3,6 +3,7 @@
 
 use super::check::{self, TxVerifyError, TxVerifyLimits};
 use super::pots::Pots;
+use crate::accounting::account::DelegationType;
 use crate::block::{
     BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext, HeaderHash,
 };
@@ -527,7 +528,7 @@ impl Ledger {
         if let Some(account_key) = auth_cert.account_id.to_single_account() {
             self.accounts = self
                 .accounts
-                .set_delegation(&account_key, Some(pool_id.clone()))?;
+                .set_delegation(&account_key, DelegationType::Full(pool_id.clone()))?;
         } else {
             return Err(DelegationError::StakeDelegationAccountIsInvalid(
                 auth_cert.account_id.clone(),
@@ -581,7 +582,7 @@ impl Ledger {
                 )?;
                 self.accounts = single.set_delegation(
                     &account_id,
-                    Some(auth_cert.transaction.extra.pool_id.clone()),
+                    DelegationType::Full(auth_cert.transaction.extra.pool_id.clone()),
                 )?;
             }
             MatchingIdentifierWitness::Multi(account_id, witness) => {
@@ -595,7 +596,7 @@ impl Ledger {
                 )?;
                 self.multisig = multi.set_delegation(
                     &account_id,
-                    Some(auth_cert.transaction.extra.pool_id.clone()),
+                    DelegationType::Full(auth_cert.transaction.extra.pool_id.clone()),
                 )?;
             }
         }
