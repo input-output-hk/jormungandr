@@ -7,6 +7,12 @@ use std::ops;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Value(pub u64);
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SplitValueIn {
+    pub parts: Value,
+    pub remaining: Value,
+}
+
 impl Value {
     pub fn zero() -> Self {
         Value(0)
@@ -33,6 +39,22 @@ impl Value {
             .checked_sub(other.0)
             .map(Value)
             .ok_or(ValueError::NegativeAmount)
+    }
+
+    pub fn scale(self, n: u32) -> Result<Value, ValueError> {
+        self.0
+            .checked_mul(n as u64)
+            .map(Value)
+            .ok_or(ValueError::Overflow)
+    }
+
+    /// Divide a value by n equals parts, with a potential remainder
+    pub fn split_in(self, n: u32) -> SplitValueIn {
+        let n = n as u64;
+        SplitValueIn {
+            parts: Value(self.0 / n),
+            remaining: Value(self.0 % n),
+        }
     }
 }
 
