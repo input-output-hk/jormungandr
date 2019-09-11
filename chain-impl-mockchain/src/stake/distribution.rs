@@ -1,5 +1,5 @@
-use crate::accounting::account::{AccountState, DelegationType};
 use crate::account;
+use crate::accounting::account::DelegationType;
 use crate::certificate::PoolId;
 use crate::{utxo, value::Value};
 use chain_addr::{Address, Kind};
@@ -30,12 +30,16 @@ pub struct PoolStakeInformation {
 
 impl PoolStakeInformation {
     pub fn add_value(&mut self, id: &account::Identifier, v: Value) {
-        let account_stake = self.stake_owners.accounts.entry(id.clone()).or_insert(Value::zero());
+        let account_stake = self
+            .stake_owners
+            .accounts
+            .entry(id.clone())
+            .or_insert(Value::zero());
         *account_stake = (*account_stake + v).expect("internal error: stake sum not valid");
-        self.total.total_stake = (self.total.total_stake + v).expect("internal error: total amount of stake overflow");
+        self.total.total_stake =
+            (self.total.total_stake + v).expect("internal error: total amount of stake overflow");
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PoolStakeTotal {
@@ -50,7 +54,7 @@ pub struct PoolStakeDistribution {
 impl PoolStakeDistribution {
     pub fn new() -> Self {
         Self {
-            accounts: HashMap::new()
+            accounts: HashMap::new(),
         }
     }
 
@@ -76,9 +80,7 @@ impl StakeDistribution {
 
     /// Return the total stake held by the eligible stake pools.
     pub fn total_stake(&self) -> Value {
-        Value::sum(self.to_pools
-            .iter()
-            .map(|(_, pool)| pool.total.total_stake))
+        Value::sum(self.to_pools.iter().map(|(_, pool)| pool.total.total_stake))
             .expect("cannot sum stake properly: internal error related to value")
     }
 
@@ -91,7 +93,12 @@ impl StakeDistribution {
     }
 }
 
-fn assign_account_value(sd: &mut StakeDistribution, account_identifier: &account::Identifier, delegation_type: &DelegationType, value: Value) {
+fn assign_account_value(
+    sd: &mut StakeDistribution,
+    account_identifier: &account::Identifier,
+    delegation_type: &DelegationType,
+    value: Value,
+) {
     match delegation_type {
         DelegationType::NonDelegated => sd.unassigned = (sd.unassigned + value).unwrap(),
         DelegationType::Full(ref pool_id) => {
@@ -114,8 +121,11 @@ fn assign_account_value(sd: &mut StakeDistribution, account_identifier: &account
                     match sd.to_pools.get_mut(pool_id) {
                         None => sd.dangling = (sd.dangling + value).unwrap(),
                         Some(pool_info) => {
-                            let pool_value = sin.parts.scale(*ratio as u32).expect("internal error: impossible overflow in ratio calculation");
-                            let pool_value = (pool_value+ r).unwrap();
+                            let pool_value = sin
+                                .parts
+                                .scale(*ratio as u32)
+                                .expect("internal error: impossible overflow in ratio calculation");
+                            let pool_value = (pool_value + r).unwrap();
                             r = Value::zero();
                             pool_info.add_value(&account_identifier, pool_value);
                         }
@@ -132,7 +142,6 @@ fn assign_account_value(sd: &mut StakeDistribution, account_identifier: &account
     }
 }
 
-
 /// Calculate the Stake Distribution where the source of stake is coming from utxos and accounts,
 /// and where the main targets is to calculate each value associated with *known* stake pools.
 ///
@@ -148,7 +157,7 @@ pub fn get_distribution(
 
     let p0 = PoolStakeInformation {
         total: PoolStakeTotal {
-            total_stake: Value::zero()
+            total_stake: Value::zero(),
         },
         stake_owners: PoolStakeDistribution::new(),
     };
@@ -156,11 +165,21 @@ pub fn get_distribution(
     let mut distribution = StakeDistribution {
         unassigned: Value::zero(),
         dangling: Value::zero(),
-        to_pools: HashMap::from_iter(dstate.stake_pools.iter().map(|(id, _)| (id.clone(), p0.clone()))),
+        to_pools: HashMap::from_iter(
+            dstate
+                .stake_pools
+                .iter()
+                .map(|(id, _)| (id.clone(), p0.clone())),
+        ),
     };
 
     for (identifier, account_state) in accounts.iter() {
-        assign_account_value(&mut distribution, identifier, &account_state.delegation(), account_state.value())
+        assign_account_value(
+            &mut distribution,
+            identifier,
+            &account_state.delegation(),
+            account_state.value(),
+        )
     }
 
     for output in utxos.values() {
@@ -176,7 +195,12 @@ pub fn get_distribution(
                 // is there an account linked to this
                 match accounts.get_state(&identifier) {
                     Err(_) => panic!("internal error: group's account should always be created"),
-                    Ok(st) => assign_account_value(&mut distribution, &identifier, &st.delegation(), output.value),
+                    Ok(st) => assign_account_value(
+                        &mut distribution,
+                        &identifier,
+                        &st.delegation(),
+                        output.value,
+                    ),
                 }
             }
             Kind::Single(_) => {

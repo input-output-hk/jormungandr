@@ -338,15 +338,16 @@ pub mod tests {
         }
 
         // set delegation to stake pool
-        ledger = match ledger.set_delegation(&account_id, DelegationType::Full(stake_pool_id.clone())) {
-            Ok(ledger) => ledger,
-            Err(err) => {
-                return TestResult::error(format!(
-                    "Error for id {} should be successful: {:?}",
-                    account_id, err
-                ))
-            }
-        };
+        ledger =
+            match ledger.set_delegation(&account_id, DelegationType::Full(stake_pool_id.clone())) {
+                Ok(ledger) => ledger,
+                Err(err) => {
+                    return TestResult::error(format!(
+                        "Error for id {} should be successful: {:?}",
+                        account_id, err
+                    ))
+                }
+            };
 
         // verify total value is still the same
         let test_result = test_total_value(

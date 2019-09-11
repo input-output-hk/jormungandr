@@ -282,7 +282,7 @@ mod tests {
         }
     }
 
-    type Pools = HashMap::<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>;
+    type Pools = HashMap<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>;
 
     fn make_leadership_with_pools(ledger: &Ledger, pools: &Pools) -> LeadershipData {
         let mut selection = LeadershipData::new(0, &ledger);
@@ -294,8 +294,10 @@ mod tests {
                     total: PoolStakeTotal {
                         total_stake: *value,
                     },
-                    stake_owners: PoolStakeDistribution { accounts: HashMap::new() },
-                }
+                    stake_owners: PoolStakeDistribution {
+                        accounts: HashMap::new(),
+                    },
+                },
             );
         }
         selection

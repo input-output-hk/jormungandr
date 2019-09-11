@@ -3,7 +3,6 @@ use std::collections::hash_map::DefaultHasher;
 
 use super::declaration::{Declaration, DeclarationError, Identifier};
 use crate::accounting::account::{self, DelegationType, Iter, SpendingCounter};
-use crate::certificate::PoolId;
 use crate::value::{Value, ValueError};
 
 #[derive(Clone, PartialEq, Eq)]

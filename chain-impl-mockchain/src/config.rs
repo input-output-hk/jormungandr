@@ -1,8 +1,7 @@
 use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
-use crate::{block::ConsensusVersion, fee::LinearFee};
 use crate::value::Value;
-use typed_bytes::ByteBuilder;
+use crate::{block::ConsensusVersion, fee::LinearFee};
 use chain_addr::Discrimination;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::packer::Codec;
@@ -11,6 +10,7 @@ use chain_crypto::PublicKey;
 use std::fmt::{self, Display, Formatter};
 use std::io::{self, Write};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+use typed_bytes::ByteBuilder;
 
 /// Possible errors
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -206,12 +206,8 @@ impl Readable for ConfigParam {
             Tag::KESUpdateSpeed => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::KESUpdateSpeed)
             }
-            Tag::Treasury => {
-                ConfigParamVariant::from_payload(bytes).map(ConfigParam::Treasury)
-            }
-            Tag::RewardPot => {
-                ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardPot)
-            }
+            Tag::Treasury => ConfigParamVariant::from_payload(bytes).map(ConfigParam::Treasury),
+            Tag::RewardPot => ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardPot),
             Tag::RewardParams => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardParams)
             }
@@ -277,7 +273,7 @@ impl ConfigParamVariant for Block0Date {
 
 impl ConfigParamVariant for RewardParams {
     fn to_payload(&self) -> Vec<u8> {
-        let bb : ByteBuilder<RewardParams> = match self {
+        let bb: ByteBuilder<RewardParams> = match self {
             RewardParams::Linear(start, num, denom) => {
                 ByteBuilder::new().u8(1).u64(*start).u64(*num).u64(*denom)
             }
@@ -517,8 +513,16 @@ mod test {
     impl Arbitrary for RewardParams {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             match bool::arbitrary(g) {
-                false => RewardParams::Linear(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-                true => RewardParams::Halving(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
+                false => RewardParams::Linear(
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                ),
+                true => RewardParams::Halving(
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                ),
             }
         }
     }

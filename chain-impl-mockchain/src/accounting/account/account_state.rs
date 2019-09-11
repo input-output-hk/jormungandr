@@ -5,7 +5,7 @@ use imhamt::HamtIter;
 use super::LedgerError;
 
 /// Set the choice of delegation:
-/// 
+///
 /// * No delegation
 /// * Full delegation of this account to a specific pool
 /// * Ratio of stake to multiple pools
@@ -333,7 +333,9 @@ mod tests {
                 ArbitraryAccountStateOp::Delegate(stake_pool_id) => {
                     account_state.set_delegation(DelegationType::Full(stake_pool_id))
                 }
-                ArbitraryAccountStateOp::RemoveDelegation => account_state.set_delegation(DelegationType::NonDelegated),
+                ArbitraryAccountStateOp::RemoveDelegation => {
+                    account_state.set_delegation(DelegationType::NonDelegated)
+                }
             };
         }
         let expected_account_state =
