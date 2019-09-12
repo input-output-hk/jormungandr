@@ -17,7 +17,7 @@ pub struct LogEntry {
     msg: String,
     level: String,
     ts: String,
-    task: String,
+    task: Option<String>,
 }
 
 impl JormungandrLogger {
@@ -40,9 +40,10 @@ impl JormungandrLogger {
     }
 
     pub fn get_created_blocks_counter(&self) -> usize {
+        let expected_task = Some("block".to_string());
         self.get_log_entries()
             .filter(|x| {
-                x.msg == "block added successfully to Node's blockchain" && x.task == "block"
+                x.msg == "block added successfully to Node's blockchain" && x.task == expected_task
             })
             .count()
     }

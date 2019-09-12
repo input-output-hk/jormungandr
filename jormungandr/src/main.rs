@@ -363,6 +363,11 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let logger = raw_settings.to_logger()?;
 
+    // The log crate is used by some libraries, e.g. tower-grpc.
+    // Set up forwarding from log to slog.
+    slog_scope::set_global_logger(logger.new(o!(log::KEY_SCOPE => "global"))).cancel_reset();
+    let _ = slog_stdlog::init().unwrap();
+
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
     let settings = raw_settings.try_into_settings(&init_logger)?;
