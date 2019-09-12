@@ -131,7 +131,7 @@ is stateless for
 * `UploadBlocks: (Stream<Block>)`
   * Uploads blocks in response to a `Solicit` event received via the
     `BlockSubscription` stream.
-* `FragmentSubscription: (Stream<Fragment>) -> Stream<Fragment>`
+* `ContentSubscription: (Stream<Fragment>) -> Stream<Fragment>`
   * Establish a bidirectional subscription to send and receive new
     content for the block under construction.
   * Used for submission of new fragments submitted to the node by
