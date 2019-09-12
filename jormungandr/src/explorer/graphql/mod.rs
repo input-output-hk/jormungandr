@@ -1,18 +1,19 @@
-use super::ExplorerBlock;
+mod error;
+use self::error::ErrorKind;
+use super::indexing::{ExplorerBlock, ExplorerTransaction};
 use crate::blockcfg::{self, FragmentId, HeaderHash};
+use chain_impl_mockchain::value;
 pub use juniper::http::GraphQLRequest;
 use juniper::EmptyMutation;
-use juniper::FieldError;
 use juniper::FieldResult;
 use juniper::RootNode;
 use std::str::FromStr;
 use tokio::prelude::*;
 
 use crate::explorer::ExplorerDB;
-use juniper::graphql_value;
 
 pub struct Block {
-    hash: String,
+    hash: HeaderHash,
     date: BlockDate,
     chain_length: ChainLength,
 }
@@ -23,8 +24,8 @@ pub struct Block {
 )]
 impl Block {
     /// The Block unique identifier
-    pub fn hash(&self) -> &String {
-        &self.hash
+    pub fn hash(&self) -> String {
+        format!("{}", self.hash)
     }
 
     /// Date the Block was included in the blockchain
@@ -33,8 +34,21 @@ impl Block {
     }
 
     /// The transactions contained in the block
-    pub fn transactions(&self) -> Vec<&Transaction> {
-        unimplemented!()
+    pub fn transactions(&self, context: &Context) -> FieldResult<Vec<Transaction>> {
+        Ok(context
+            .db
+            .get_block(&self.hash)
+            .wait()?
+            .ok_or(ErrorKind::InternalError(
+                "couldn't find block in explorer db".to_owned(),
+            ))?
+            .transactions
+            .iter()
+            .map(|(id, _tx)| Transaction {
+                id: id.clone(),
+                in_block: self.hash.clone(),
+            })
+            .collect())
     }
 
     pub fn previous_block(&self) -> Option<&Block> {
@@ -50,10 +64,10 @@ impl Block {
     }
 }
 
-impl From<ExplorerBlock> for Block {
-    fn from(block: ExplorerBlock) -> Block {
+impl From<&ExplorerBlock> for Block {
+    fn from(block: &ExplorerBlock) -> Block {
         Block {
-            hash: block.id().to_string(),
+            hash: block.id(),
             date: block.date().into(),
             chain_length: ChainLength(u32::from(block.chain_length()).to_string()),
         }
@@ -103,6 +117,26 @@ impl Transaction {
             in_block: block_id,
         }))
     }
+
+    fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
+        context.db.get_block(&self.in_block).wait()?.ok_or(
+            ErrorKind::InternalError(
+                "transaction is in explorer but couldn't find its block".to_owned(),
+            )
+            .into(),
+        )
+    }
+
+    fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
+        let block = self.get_block(context)?;
+        Ok(block
+            .transactions
+            .get(&self.id)
+            .ok_or(ErrorKind::InternalError(
+                "transaction was not found in respective block".to_owned(),
+            ))?
+            .clone())
+    }
 }
 
 /// A transaction in the blockchain
@@ -117,46 +151,107 @@ impl Transaction {
 
     /// The block this transaction is in
     pub fn block(&self, context: &Context) -> FieldResult<Block> {
-        let block_option = context
-            .db
-            .get_block(&self.in_block)
-            .map_err(|err| FieldError::from(err))
-            .wait()?;
-
-        block_option
-            .ok_or(FieldError::new(
-                "Couldn't find block in explorer",
-                graphql_value!({ "internal_error": "Block is not in explorer" }),
-            ))
-            .map(|b| b.into())
+        let block = self.get_block(context)?;
+        Ok(Block::from(&block))
     }
 
-    pub fn inputs(&self) -> Vec<TransactionInput> {
-        unimplemented!()
+    pub fn inputs(&self, context: &Context) -> FieldResult<Vec<TransactionInput>> {
+        let transaction = self.get_contents(context)?;
+        Ok(transaction
+            .inputs()
+            .iter()
+            .map(|input| TransactionInput {
+                address: Address::from(&input.address),
+                amount: Value::from(&input.value),
+            })
+            .collect())
     }
 
-    pub fn outputs(&self) -> Vec<TransactionOutput> {
-        unimplemented!()
+    pub fn outputs(&self, context: &Context) -> FieldResult<Vec<TransactionOutput>> {
+        let transaction = self.get_contents(context)?;
+        Ok(transaction
+            .outputs()
+            .iter()
+            .map(|input| TransactionOutput {
+                address: Address::from(&input.address),
+                amount: Value::from(&input.value),
+            })
+            .collect())
     }
 }
 
-#[derive(juniper::GraphQLObject)]
 struct TransactionInput {
     amount: Value,
     address: Address,
 }
 
-#[derive(juniper::GraphQLObject)]
+#[juniper::object(
+    Context = Context
+)]
+impl TransactionInput {
+    fn amount(&self) -> &Value {
+        &self.amount
+    }
+
+    fn address(&self) -> &Address {
+        &self.address
+    }
+}
+
 struct TransactionOutput {
     amount: Value,
     address: Address,
 }
 
-#[derive(juniper::GraphQLObject)]
+#[juniper::object(
+    Context = Context
+)]
+impl TransactionOutput {
+    fn amount(&self) -> &Value {
+        &self.amount
+    }
+
+    fn address(&self) -> &Address {
+        &self.address
+    }
+}
+
 struct Address {
-    delegation: StakePool,
-    total_send: Value,
-    total_received: Value,
+    id: chain_addr::Address,
+}
+
+impl From<&chain_addr::Address> for Address {
+    fn from(addr: &chain_addr::Address) -> Address {
+        Address { id: addr.clone() }
+    }
+}
+
+#[juniper::object(
+    Context = Context
+)]
+impl Address {
+    fn id(&self) -> String {
+        format!(
+            "{}",
+            chain_addr::AddressReadable::from_address("test", &self.id)
+        )
+    }
+
+    fn delegation() -> StakePool {
+        unimplemented!()
+    }
+
+    fn total_send() -> Value {
+        unimplemented!()
+    }
+
+    fn total_received() -> Value {
+        unimplemented!()
+    }
+
+    fn transactions() -> Vec<Transaction> {
+        unimplemented!()
+    }
 }
 
 #[derive(juniper::GraphQLObject)]
@@ -199,6 +294,12 @@ struct PoolId(String);
 
 #[derive(juniper::GraphQLScalarValue)]
 struct Value(String);
+
+impl From<&value::Value> for Value {
+    fn from(v: &value::Value) -> Value {
+        Value(format!("{}", v))
+    }
+}
 
 #[derive(juniper::GraphQLScalarValue)]
 struct EpochNumber(String);
@@ -263,8 +364,6 @@ impl Query {
     }
 
     fn transaction(id: String, context: &Context) -> FieldResult<Option<Transaction>> {
-        // This call blocks the current thread (the call to wait), but it won't block the node's
-        // thread, as queries are only executed in an exclusive runtime
         let id = FragmentId::from_str(&id)?;
 
         Transaction::new(id, context)
