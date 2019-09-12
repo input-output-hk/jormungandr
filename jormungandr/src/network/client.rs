@@ -274,7 +274,9 @@ where
                             error!(err2_logger, "sending to block task failed: {:?}", e);
                         })
                         .and_then(move |_| {
-                            stream.forward(sink).map(|_| {}).map_err(move |e| {
+                            // Remove the fuse once this is fixed:
+                            // https://github.com/rust-lang-nursery/futures-rs/pull/1864
+                            stream.fuse().forward(sink).map(|_| {}).map_err(move |e| {
                                 warn!(
                                     err3_logger,
                                     "processing of PullHeaders response stream failed: {:?}", e
@@ -314,6 +316,9 @@ where
                                 "PullBlocksToTip response stream failed: {:?}", e
                             );
                         })
+                        // Remove the fuse once this is fixed:
+                        // https://github.com/rust-lang-nursery/futures-rs/pull/1864
+                        .fuse()
                         .forward(
                             InboundProcessing::with_unary(
                                 block_box.clone(),
@@ -361,6 +366,9 @@ where
                                 "GetBlocks response stream failed: {:?}", e
                             );
                         })
+                        // Remove the fuse once this is fixed:
+                        // https://github.com/rust-lang-nursery/futures-rs/pull/1864
+                        .fuse()
                         .forward(
                             InboundProcessing::with_unary(
                                 block_box.clone(),
