@@ -42,7 +42,7 @@ In BFT the header also contains (768 bits = 96 bytes):
 * BFT Public Key of the leader (32 bytes)
 * BFT Signature (64 bytes)
 
-In Praos/Genesis the header also contains (616 bytes):
+In Praos/Genesis the header also contains (612 bytes):
 
 * VRF PubKey: 32 bytes (ristretto25519)
 * VRF Proof: 96 bytes (ristretto25519 DLEQs)
