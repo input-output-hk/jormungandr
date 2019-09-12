@@ -15,6 +15,8 @@ The node's network is 3 components:
 * Public client API (REST)
 * Control client API (REST)
 
+More detailed information [here](./network.md)
+
 ### Intercommunication API (GRPC)
 
 This interface is a binary, efficient interface using the protobuf format and

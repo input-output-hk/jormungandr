@@ -6,6 +6,7 @@
     - [Blockchain concepts](./concepts/blockchain.md)
     - [Stake](./concepts/stake.md)
     - [Node organisation](./concepts/node.md)
+    - [Network overview](./concepts/network.md)
 
 - [Quickstart](./quickstart/introduction.md)
     - [Command lines tools](./quickstart/01_command_line.md)
