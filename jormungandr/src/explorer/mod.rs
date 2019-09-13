@@ -54,6 +54,11 @@ struct State {
     chain_lengths: ChainLengths,
 }
 
+#[derive(Clone)]
+pub struct Settings {
+    pub address_bech32_prefix: String,
+}
+
 impl Explorer {
     pub fn new(db: ExplorerDB, schema: graphql::Schema) -> Explorer {
         Explorer {
@@ -65,6 +70,10 @@ impl Explorer {
     pub fn context(&self) -> Context {
         Context {
             db: self.db.clone(),
+            settings: Settings {
+                // FIXME: Hardcoded value. This could come from the node settings.
+                address_bech32_prefix: "ca".to_owned(),
+            },
         }
     }
 

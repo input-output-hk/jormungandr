@@ -11,6 +11,7 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use crate::explorer::ExplorerDB;
+use crate::explorer::Settings;
 
 pub struct Block {
     hash: HeaderHash,
@@ -230,10 +231,11 @@ impl From<&chain_addr::Address> for Address {
     Context = Context
 )]
 impl Address {
-    fn id(&self) -> String {
+    fn id(&self, context: &Context) -> String {
+        let prefix = &context.settings.address_bech32_prefix;
         format!(
             "{}",
-            chain_addr::AddressReadable::from_address("test", &self.id)
+            chain_addr::AddressReadable::from_address(prefix, &self.id)
         )
     }
 
@@ -359,7 +361,7 @@ impl Query {
         unimplemented!();
     }
 
-    fn block(chain_length: ChainLength) -> FieldResult<Block> {
+    fn chain_length(chain_length: ChainLength) -> FieldResult<Block> {
         unimplemented!();
     }
 
@@ -384,6 +386,7 @@ impl Query {
 
 pub struct Context {
     pub db: ExplorerDB,
+    pub settings: Settings,
 }
 
 impl juniper::Context for Context {}
