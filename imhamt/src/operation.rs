@@ -19,9 +19,3 @@ pub enum UpdateError<T> {
 pub enum ReplaceError {
     KeyNotFound,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InsertOrUpdateError<T> {
-    Insert(InsertError),
-    Update(UpdateError<T>),
-}
