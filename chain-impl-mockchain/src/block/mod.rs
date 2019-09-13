@@ -11,6 +11,7 @@ mod builder;
 mod header;
 mod headerraw;
 mod version;
+mod leaderlog;
 
 pub use self::version::{AnyBlockVersion, BlockVersion, ConsensusVersion};
 
@@ -22,6 +23,7 @@ pub use self::header::{
 };
 pub use self::headerraw::HeaderRaw;
 pub use self::version::*;
+pub use self::leaderlog::LeadersParticipationRecord;
 
 pub use crate::date::{BlockDate, BlockDateParseError, Epoch, SlotId};
 
