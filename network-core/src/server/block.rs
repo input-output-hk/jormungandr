@@ -76,11 +76,32 @@ pub trait BlockService: P2pService {
     /// implementation to produce a server-streamed response.
     type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error> + Send + 'static;
 
-    /// A sink object returned by the `get_push_headers_sink` method.
+    /// The application-provided sink object that receives and handles
+    /// a stream of block headers sent by the peer in response to a
+    /// `BlockEvent::Missing` solicitation.
     type PushHeadersSink: Sink<SinkItem = Self::Header, SinkError = Error> + Send + 'static;
 
-    /// A sink object returned by the `get_upload_blocks_sink` method.
+    /// The type of asyncrhonous futures returned by the
+    /// `get_push_headers_sink` method.
+    ///
+    /// The future resolves to a sink that will be used by the application
+    /// to handle the stream of incoming headers.
+    type GetPushHeadersSinkFuture: Future<Item = Self::PushHeadersSink, Error = Error>
+        + Send
+        + 'static;
+
+    /// The application-provided sink object that receives blocks
+    /// uploaded in response to a `BlockEvent::Solicit` solicitation.
     type UploadBlocksSink: Sink<SinkItem = Self::Block, SinkError = Error> + Send + 'static;
+
+    /// The type of asyncrhonous futures returned by the
+    /// `get_upload_blocks_sink` method.
+    ///
+    /// The future resolves to a sink that will be used by the application
+    /// to handle the incoming blocks.
+    type GetUploadBlocksSinkFuture: Future<Item = Self::UploadBlocksSink, Error = Error>
+        + Send
+        + 'static;
 
     /// The type of asynchronous stream that lets the client receive
     /// new block announcements and solicitation requests from the service.
@@ -135,12 +156,12 @@ pub trait BlockService: P2pService {
     /// Called by the protocol implementation to get a sink
     /// that receives and handles a stream of block headers sent by the peer
     /// in response to a `BlockEvent::Missing` solicitation.
-    fn get_push_headers_sink(&mut self) -> Self::PushHeadersSink;
+    fn get_push_headers_sink(&mut self) -> Self::GetPushHeadersSinkFuture;
 
     /// Called by the protocol implementation to get a sink
     /// that receives blocks uploaded in response to a `BlockEvent::Solicit`
     /// solicitation.
-    fn get_upload_blocks_sink(&mut self) -> Self::UploadBlocksSink;
+    fn get_upload_blocks_sink(&mut self) -> Self::GetUploadBlocksSinkFuture;
 
     /// Establishes a bidirectional subscription for announcing blocks.
     ///
