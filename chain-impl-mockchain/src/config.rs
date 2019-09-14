@@ -64,7 +64,7 @@ pub enum ConfigParam {
     LinearFee(LinearFee),
     ProposalExpiration(u32),
     KESUpdateSpeed(u32),
-    Treasury(Value),
+    TreasuryAdd(Value),
     RewardPot(Value),
     RewardParams(RewardParams),
 }
@@ -107,7 +107,7 @@ pub enum Tag {
     #[strum(to_string = "kes-update-speed")]
     KESUpdateSpeed = 16,
     #[strum(to_string = "treasury")]
-    Treasury = 17,
+    TreasuryAdd = 17,
     #[strum(to_string = "reward-pot")]
     RewardPot = 18,
     #[strum(to_string = "reward-params")]
@@ -131,7 +131,7 @@ impl Tag {
             14 => Some(Tag::LinearFee),
             15 => Some(Tag::ProposalExpiration),
             16 => Some(Tag::KESUpdateSpeed),
-            17 => Some(Tag::Treasury),
+            17 => Some(Tag::TreasuryAdd),
             18 => Some(Tag::RewardPot),
             19 => Some(Tag::RewardParams),
             _ => None,
@@ -158,7 +158,7 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::LinearFee(_) => Tag::LinearFee,
             ConfigParam::ProposalExpiration(_) => Tag::ProposalExpiration,
             ConfigParam::KESUpdateSpeed(_) => Tag::KESUpdateSpeed,
-            ConfigParam::Treasury(_) => Tag::Treasury,
+            ConfigParam::TreasuryAdd(_) => Tag::TreasuryAdd,
             ConfigParam::RewardPot(_) => Tag::RewardPot,
             ConfigParam::RewardParams(_) => Tag::RewardParams,
         }
@@ -206,7 +206,7 @@ impl Readable for ConfigParam {
             Tag::KESUpdateSpeed => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::KESUpdateSpeed)
             }
-            Tag::Treasury => ConfigParamVariant::from_payload(bytes).map(ConfigParam::Treasury),
+            Tag::TreasuryAdd => ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryAdd),
             Tag::RewardPot => ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardPot),
             Tag::RewardParams => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardParams)
@@ -236,7 +236,7 @@ impl property::Serialize for ConfigParam {
             ConfigParam::LinearFee(data) => data.to_payload(),
             ConfigParam::ProposalExpiration(data) => data.to_payload(),
             ConfigParam::KESUpdateSpeed(data) => data.to_payload(),
-            ConfigParam::Treasury(data) => data.to_payload(),
+            ConfigParam::TreasuryAdd(data) => data.to_payload(),
             ConfigParam::RewardPot(data) => data.to_payload(),
             ConfigParam::RewardParams(data) => data.to_payload(),
         };
@@ -542,7 +542,7 @@ mod test {
                 9 => ConfigParam::RemoveBftLeader(Arbitrary::arbitrary(g)),
                 10 => ConfigParam::LinearFee(Arbitrary::arbitrary(g)),
                 11 => ConfigParam::ProposalExpiration(Arbitrary::arbitrary(g)),
-                12 => ConfigParam::Treasury(Arbitrary::arbitrary(g)),
+                12 => ConfigParam::TreasuryAdd(Arbitrary::arbitrary(g)),
                 13 => ConfigParam::RewardPot(Arbitrary::arbitrary(g)),
                 14 => ConfigParam::RewardParams(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),

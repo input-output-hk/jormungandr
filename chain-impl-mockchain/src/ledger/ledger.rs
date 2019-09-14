@@ -203,7 +203,7 @@ impl Ledger {
                     ConfigParam::KESUpdateSpeed(n) => {
                         kes_update_speed = Some(*n);
                     }
-                    ConfigParam::Treasury(v) => {
+                    ConfigParam::TreasuryAdd(v) => {
                         pots.treasury = Treasury::initial(*v);
                     }
                     ConfigParam::RewardPot(v) => {

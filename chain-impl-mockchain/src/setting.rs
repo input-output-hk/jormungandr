@@ -65,7 +65,7 @@ impl Settings {
             match param {
                 ConfigParam::Block0Date(_)
                 | ConfigParam::Discrimination(_)
-                | ConfigParam::Treasury(_)
+                | ConfigParam::TreasuryAdd(_)
                 | ConfigParam::RewardPot(_)
                 | ConfigParam::KESUpdateSpeed(_) => {
                     return Err(Error::ReadOnlySetting);
