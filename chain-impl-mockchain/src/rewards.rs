@@ -99,7 +99,10 @@ pub fn treasury_cut(v: Value, treasury_tax: &TaxType) -> Result<TreasuryDistribu
 
     // subtract fix amount
     match left - treasury_tax.fixed {
-        Ok(left1) => { left = left1; tax = (tax + treasury_tax.fixed)?; }
+        Ok(left1) => {
+            left = left1;
+            tax = (tax + treasury_tax.fixed)?;
+        }
         Err(_) => {
             return Ok(TreasuryDistribution {
                 treasury: v,
@@ -114,16 +117,23 @@ pub fn treasury_cut(v: Value, treasury_tax: &TaxType) -> Result<TreasuryDistribu
         let olimit = treasury_tax.max_limit;
 
         const SCALE: u128 = 10 ^ 9;
-        let out = ((((left.0 as u128 * SCALE) * rr.numerator as u128) / rr.denominator.get() as u128)
-                / SCALE) as u64;
+        let out = ((((left.0 as u128 * SCALE) * rr.numerator as u128)
+            / rr.denominator.get() as u128)
+            / SCALE) as u64;
         let treasury_cut = match olimit {
             None => Value(out),
             Some(limit) => Value(std::cmp::min(limit.get(), out)),
         };
 
         match left - treasury_cut {
-            Ok(left2) => { left = left2; tax = (tax + treasury_cut)?; }
-            Err(_) => { left = Value::zero(); tax = (tax + left)?; }
+            Ok(left2) => {
+                left = left2;
+                tax = (tax + treasury_cut)?;
+            }
+            Err(_) => {
+                left = Value::zero();
+                tax = (tax + left)?;
+            }
         }
     };
 
@@ -147,12 +157,10 @@ mod tests {
                 if sum == v {
                     TestResult::passed()
                 } else {
-                    TestResult::error(format!("mismatch pools={} treasury={} expected={} got={} for {:?}",
-                        td.pools,
-                        td.treasury,
-                        v,
-                        sum,
-                        treasury_tax))
+                    TestResult::error(format!(
+                        "mismatch pools={} treasury={} expected={} got={} for {:?}",
+                        td.pools, td.treasury, v, sum, treasury_tax
+                    ))
                 }
             }
             Err(_) => TestResult::discard(),
@@ -168,7 +176,10 @@ mod tests {
 
             TaxType {
                 fixed,
-                ratio: Ratio { numerator, denominator: NonZeroU64::new(denominator).unwrap() },
+                ratio: Ratio {
+                    numerator,
+                    denominator: NonZeroU64::new(denominator).unwrap(),
+                },
                 max_limit,
             }
         }

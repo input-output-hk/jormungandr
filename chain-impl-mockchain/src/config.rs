@@ -1,7 +1,7 @@
 use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
-use crate::value::Value;
 use crate::rewards::{Ratio, TaxType};
+use crate::value::Value;
 use crate::{block::ConsensusVersion, fee::LinearFee};
 use chain_addr::Discrimination;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -212,8 +212,12 @@ impl Readable for ConfigParam {
             Tag::KESUpdateSpeed => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::KESUpdateSpeed)
             }
-            Tag::TreasuryAdd => ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryAdd),
-            Tag::TreasuryParams => ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryParams),
+            Tag::TreasuryAdd => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryAdd)
+            }
+            Tag::TreasuryParams => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryParams)
+            }
             Tag::RewardPot => ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardPot),
             Tag::RewardParams => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardParams)
@@ -281,11 +285,11 @@ impl ConfigParamVariant for Block0Date {
 
 impl ConfigParamVariant for TaxType {
     fn to_payload(&self) -> Vec<u8> {
-        let bb: ByteBuilder<TaxType> =
-            ByteBuilder::new().u64(self.fixed.0)
-                .u64(self.ratio.numerator)
-                .u64(self.ratio.denominator.get())
-                .u64(self.max_limit.map_or(0, |v| v.get()));
+        let bb: ByteBuilder<TaxType> = ByteBuilder::new()
+            .u64(self.fixed.0)
+            .u64(self.ratio.numerator)
+            .u64(self.ratio.denominator.get())
+            .u64(self.max_limit.map_or(0, |v| v.get()));
         bb.finalize_as_vec()
     }
 
@@ -297,11 +301,15 @@ impl ConfigParamVariant for TaxType {
         let num = rb.get_u64()?;
         let denom = rb.get_u64()?;
         let limit = rb.get_u64()?;
-        let denominator = NonZeroU64::new(denom).map_or_else(|| Err(Error::StructureInvalid), Ok)?;
+        let denominator =
+            NonZeroU64::new(denom).map_or_else(|| Err(Error::StructureInvalid), Ok)?;
         rb.expect_end()?;
         Ok(TaxType {
             fixed: value,
-            ratio: Ratio { numerator: num, denominator },
+            ratio: Ratio {
+                numerator: num,
+                denominator,
+            },
             max_limit: NonZeroU64::new(limit),
         })
     }
