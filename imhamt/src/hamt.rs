@@ -4,9 +4,7 @@ use super::node::{
     insert_rec, lookup_one, remove_eq_rec, remove_rec, replace_rec, size_rec, update_rec, Entry,
     LookupRet, Node, NodeIter,
 };
-pub use super::operation::{
-    InsertError, RemoveError, ReplaceError, UpdateError,
-};
+pub use super::operation::{InsertError, RemoveError, ReplaceError, UpdateError};
 use super::sharedref::SharedRef;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
@@ -124,8 +122,10 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
         match self.update(&k, f) {
             Ok(new_self) => Ok(new_self),
             Err(UpdateError::KeyNotFound) =>
-                // unwrap is safe: only error than can be raised is an EntryExist which is fundamentally impossible in this error case handling
-                Ok(self.insert(k, v).unwrap()),
+            // unwrap is safe: only error than can be raised is an EntryExist which is fundamentally impossible in this error case handling
+            {
+                Ok(self.insert(k, v).unwrap())
+            }
             Err(err) => Err(err),
         }
     }
@@ -134,7 +134,7 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
     ///
     /// If the element is not present, then V is added, otherwise the closure F is apply
     /// to the found element. If the closure returns None, then the key is deleted.
-    /// 
+    ///
     /// This is similar to 'insert_or_update' except the closure shouldn't be failing
     pub fn insert_or_update_simple<F>(&self, k: K, v: V, f: F) -> Self
     where
