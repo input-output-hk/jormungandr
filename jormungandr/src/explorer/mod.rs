@@ -11,7 +11,8 @@ use self::indexing::{
 use self::set::HamtSet as Set;
 
 use crate::blockcfg::{
-    Block, ConfigParam, ConfigParams, ConsensusVersion, Fragment, FragmentId, HeaderHash,
+    Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
+    HeaderHash,
 };
 use crate::blockchain::Multiverse;
 use crate::intercom::ExplorerMsg;
@@ -251,6 +252,36 @@ impl ExplorerDB {
             multiverse.get((*tip).id()).and_then(move |maybe_state| {
                 let state = maybe_state.expect("the longest chain to be indexed");
                 Ok(state.blocks.lookup(&block_id).map(|b| (*b).clone()))
+            })
+        })
+    }
+
+    pub fn get_epoch(
+        &self,
+        epoch: Epoch,
+    ) -> impl Future<Item = Option<EpochData>, Error = Infallible> {
+        let multiverse = self.multiverse.clone();
+        let epoch = epoch.clone();
+        get_lock(&self.longest_chain_tip).and_then(move |tip| {
+            multiverse.get((*tip).id()).and_then(move |maybe_state| {
+                let state = maybe_state.expect("the longest chain to be indexed");
+                Ok(state.epochs.lookup(&epoch).map(|e| (*e).clone()))
+            })
+        })
+    }
+
+    pub fn find_block_by_chain_length(
+        &self,
+        chain_length: ChainLength,
+    ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
+        let multiverse = self.multiverse.clone();
+        get_lock(&self.longest_chain_tip).and_then(move |tip| {
+            multiverse.get((*tip).id()).and_then(move |maybe_state| {
+                let state = maybe_state.expect("the longest chain to be indexed");
+                Ok(state
+                    .chain_lengths
+                    .lookup(&chain_length)
+                    .map(|b| (*b).clone()))
             })
         })
     }
