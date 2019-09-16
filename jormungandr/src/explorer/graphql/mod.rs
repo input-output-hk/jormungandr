@@ -1,12 +1,13 @@
 mod error;
 use self::error::ErrorKind;
-use super::indexing::{ExplorerBlock, ExplorerTransaction};
+use super::indexing::{EpochData, ExplorerBlock, ExplorerTransaction};
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use chain_impl_mockchain::value;
 pub use juniper::http::GraphQLRequest;
 use juniper::EmptyMutation;
 use juniper::FieldResult;
 use juniper::RootNode;
+use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 use tokio::prelude::*;
 
@@ -15,8 +16,26 @@ use crate::explorer::Settings;
 
 pub struct Block {
     hash: HeaderHash,
-    date: BlockDate,
-    chain_length: ChainLength,
+}
+
+impl Block {
+    fn from_string_hash(hash: String, db: &ExplorerDB) -> FieldResult<Block> {
+        let hash = HeaderHash::from_str(&hash)?;
+        let block = Block { hash };
+
+        block.get_explorer_block(db).map(|_| block)
+    }
+
+    fn from_valid_hash(hash: HeaderHash) -> Block {
+        Block { hash: hash.clone() }
+    }
+
+    fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
+        db.get_block(&self.hash).wait()?.ok_or(
+            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
+                .into(),
+        )
+    }
 }
 
 /// A Block
@@ -30,19 +49,15 @@ impl Block {
     }
 
     /// Date the Block was included in the blockchain
-    pub fn date(&self) -> &BlockDate {
-        &self.date
+    pub fn date(&self, context: &Context) -> FieldResult<BlockDate> {
+        self.get_explorer_block(&context.db)
+            .map(|b| b.date().into())
     }
 
     /// The transactions contained in the block
     pub fn transactions(&self, context: &Context) -> FieldResult<Vec<Transaction>> {
-        Ok(context
-            .db
-            .get_block(&self.hash)
-            .wait()?
-            .ok_or(ErrorKind::InternalError(
-                "couldn't find block in explorer db".to_owned(),
-            ))?
+        Ok(self
+            .get_explorer_block(&context.db)?
             .transactions
             .iter()
             .map(|(id, _tx)| Transaction {
@@ -60,18 +75,15 @@ impl Block {
         unimplemented!()
     }
 
-    pub fn chain_length(&self) -> &ChainLength {
-        &self.chain_length
+    pub fn chain_length(&self, context: &Context) -> FieldResult<ChainLength> {
+        self.get_explorer_block(&context.db)
+            .map(|block| block.chain_length().into())
     }
 }
 
 impl From<&ExplorerBlock> for Block {
     fn from(block: &ExplorerBlock) -> Block {
-        Block {
-            hash: block.id(),
-            date: block.date().into(),
-            chain_length: ChainLength(u32::from(block.chain_length()).to_string()),
-        }
+        Block::from_valid_hash(block.id().clone())
     }
 }
 
@@ -97,9 +109,7 @@ impl BlockDate {
 impl From<blockcfg::BlockDate> for BlockDate {
     fn from(date: blockcfg::BlockDate) -> BlockDate {
         BlockDate {
-            epoch: Epoch {
-                id: EpochNumber(format!("{}", date.epoch)),
-            },
+            epoch: Epoch { id: date.epoch },
             slot: Slot(format!("{}", date.slot_id)),
         }
     }
@@ -306,16 +316,43 @@ impl From<&value::Value> for Value {
 #[derive(juniper::GraphQLScalarValue)]
 struct EpochNumber(String);
 
+impl From<blockcfg::Epoch> for EpochNumber {
+    fn from(e: blockcfg::Epoch) -> EpochNumber {
+        EpochNumber(format!("{}", e))
+    }
+}
+
+impl TryFrom<EpochNumber> for blockcfg::Epoch {
+    type Error = std::num::ParseIntError;
+    fn try_from(e: EpochNumber) -> Result<blockcfg::Epoch, Self::Error> {
+        e.0.parse::<u32>()
+    }
+}
+
 struct Epoch {
-    id: EpochNumber,
+    id: blockcfg::Epoch,
+}
+
+impl Epoch {
+    fn from_epoch_number(id: EpochNumber, db: &ExplorerDB) -> FieldResult<Epoch> {
+        let epoch = Epoch { id: id.try_into()? };
+
+        epoch.get_epoch_data(db).map(|_| epoch)
+    }
+
+    fn get_epoch_data(&self, db: &ExplorerDB) -> FieldResult<EpochData> {
+        db.get_epoch(self.id.into()).wait()?.ok_or(
+            ErrorKind::InternalError("Couldn't get EpochData from ExplorerDB".to_owned()).into(),
+        )
+    }
 }
 
 #[juniper::object(
     Context = Context
 )]
 impl Epoch {
-    pub fn id(&self) -> &EpochNumber {
-        &self.id
+    pub fn id(&self) -> EpochNumber {
+        self.id.into()
     }
 
     /// Not yet implemented
@@ -324,13 +361,22 @@ impl Epoch {
     }
 
     /// Not yet implemented
-    pub fn blocks(&self) -> Vec<Block> {
+    pub fn blocks(&self) -> FieldResult<Vec<Block>> {
         unimplemented!()
     }
 
-    /// Not yet implemented
-    pub fn total_blocks(&self) -> i32 {
-        unimplemented!()
+    pub fn total_blocks(&self, context: &Context) -> FieldResult<BlockCount> {
+        self.get_epoch_data(&context.db)
+            .map(|data| data.total_blocks.into())
+    }
+}
+
+#[derive(juniper::GraphQLScalarValue)]
+struct BlockCount(String);
+
+impl From<u32> for BlockCount {
+    fn from(number: u32) -> BlockCount {
+        BlockCount(format!("{}", number))
     }
 }
 
@@ -351,6 +397,19 @@ struct Slot(String);
 #[derive(juniper::GraphQLScalarValue)]
 struct ChainLength(String);
 
+impl From<blockcfg::ChainLength> for ChainLength {
+    fn from(length: blockcfg::ChainLength) -> ChainLength {
+        ChainLength(u32::from(length).to_string())
+    }
+}
+
+impl TryFrom<ChainLength> for blockcfg::ChainLength {
+    type Error = std::num::ParseIntError;
+    fn try_from(length: ChainLength) -> Result<blockcfg::ChainLength, Self::Error> {
+        length.0.parse::<u32>().map(blockcfg::ChainLength::from)
+    }
+}
+
 pub struct Query;
 
 #[juniper::object(
@@ -358,11 +417,15 @@ pub struct Query;
 )]
 impl Query {
     fn block(id: String, context: &Context) -> FieldResult<Block> {
-        unimplemented!();
+        Block::from_string_hash(id, &context.db)
     }
 
-    fn chain_length(chain_length: ChainLength) -> FieldResult<Block> {
-        unimplemented!();
+    fn chain_length(chain_length: ChainLength, context: &Context) -> FieldResult<Option<Block>> {
+        Ok(context
+            .db
+            .find_block_by_chain_length(chain_length.try_into()?)
+            .wait()?
+            .map(Block::from_valid_hash))
     }
 
     fn transaction(id: String, context: &Context) -> FieldResult<Option<Transaction>> {
@@ -371,8 +434,8 @@ impl Query {
         Transaction::new(id, context)
     }
 
-    pub fn epoch(id: EpochNumber) -> FieldResult<Epoch> {
-        unimplemented!();
+    pub fn epoch(id: EpochNumber, context: &Context) -> FieldResult<Epoch> {
+        Epoch::from_epoch_number(id, &context.db)
     }
 
     pub fn stake_pool(id: PoolId) -> FieldResult<StakePool> {
