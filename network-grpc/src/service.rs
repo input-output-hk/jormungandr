@@ -18,7 +18,6 @@ use network_core::{
 
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
-use futures::stream::{Forward, Fuse};
 use futures::try_ready;
 use tower_grpc::{self, Code, Request, Response, Status, Streaming};
 
@@ -259,43 +258,80 @@ where
     }
 }
 
-pub struct RequestStreamForwarding<St, Si>
+#[must_use = "futures do nothing unless polled"]
+pub struct RequestStreamForwarding<St, F>
 where
     St: Stream<Error = tower_grpc::Status>,
-    Si: Sink,
-    Si::SinkItem: FromProtobuf<St::Item>,
+    F: Future,
+    F::Item: Sink,
+    <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
 {
-    inner: Forward<Fuse<RequestStream<Si::SinkItem, St>>, Si>,
+    state: stream_forward::State<St, F>,
 }
 
-impl<St, Si> RequestStreamForwarding<St, Si>
+impl<St, F> RequestStreamForwarding<St, F>
 where
     St: Stream<Error = tower_grpc::Status>,
-    Si: Sink<SinkError = core_error::Error>,
-    Si::SinkItem: FromProtobuf<St::Item>,
+    F: Future,
+    F::Item: Sink,
+    <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
 {
-    fn new(stream: St, sink: Si) -> Self {
-        // Fuse the stream to work around
-        // https://github.com/rust-lang-nursery/futures-rs/pull/1864
-        let stream = RequestStream::new(stream).fuse();
+    fn new(stream: St, future_sink: F) -> Self {
         RequestStreamForwarding {
-            inner: stream.forward(sink),
+            state: stream_forward::State::WaitingSink(future_sink, stream),
         }
     }
 }
 
-impl<St, Si> Future for RequestStreamForwarding<St, Si>
+impl<St, F> Future for RequestStreamForwarding<St, F>
 where
     St: Stream<Error = tower_grpc::Status>,
-    Si: Sink<SinkError = core_error::Error>,
-    Si::SinkItem: FromProtobuf<St::Item>,
+    F: Future<Error = core_error::Error>,
+    F::Item: Sink<SinkError = core_error::Error>,
+    <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
 {
     type Item = ();
     type Error = core_error::Error;
 
     fn poll(&mut self) -> Poll<(), core_error::Error> {
-        let _ = try_ready!(self.inner.poll());
-        Ok(Async::Ready(()))
+        use stream_forward::State::*;
+
+        loop {
+            let sink = match &mut self.state {
+                Forwarding(future) => {
+                    let _ = try_ready!(future.poll());
+                    return Ok(Async::Ready(()));
+                }
+                WaitingSink(future_sink, _) => try_ready!(future_sink.poll()),
+                Intermediate => unreachable!(),
+            };
+            if let WaitingSink(_, stream) = mem::replace(&mut self.state, Intermediate) {
+                // Fuse the stream to work around
+                // https://github.com/rust-lang-nursery/futures-rs/pull/1864
+                let stream = RequestStream::new(stream).fuse();
+                self.state = Forwarding(stream.forward(sink));
+            } else {
+                unreachable!()
+            }
+        }
+    }
+}
+
+mod stream_forward {
+    use super::{FromProtobuf, RequestStream};
+    use futures::prelude::*;
+    use futures::stream::{Forward, Fuse};
+
+    pub enum State<St, F>
+    where
+        St: Stream<Error = tower_grpc::Status>,
+        F: Future,
+        F::Item: Sink,
+        <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
+    {
+        WaitingSink(F, St),
+        Forwarding(Forward<Fuse<RequestStream<<F::Item as Sink>::SinkItem, St>>, F::Item>),
+        Intermediate,
     }
 }
 
@@ -410,14 +446,14 @@ where
         gen::node::PushHeadersResponse,
         RequestStreamForwarding<
             Streaming<gen::node::Header>,
-            <T::BlockService as BlockService>::PushHeadersSink,
+            <T::BlockService as BlockService>::GetPushHeadersSinkFuture,
         >,
     >;
     type UploadBlocksFuture = ResponseFuture<
         gen::node::UploadBlocksResponse,
         RequestStreamForwarding<
             Streaming<gen::node::Block>,
-            <T::BlockService as BlockService>::UploadBlocksSink,
+            <T::BlockService as BlockService>::GetUploadBlocksSinkFuture,
         >,
     >;
     type BlockSubscriptionStream = ResponseStream<
@@ -538,8 +574,8 @@ where
         req: Request<Streaming<gen::node::Header>>,
     ) -> Self::PushHeadersFuture {
         let service = try_get_service!(self.inner.block_service());
-        let sink = service.get_push_headers_sink();
-        ResponseFuture::new(RequestStreamForwarding::new(req.into_inner(), sink))
+        let future_sink = service.get_push_headers_sink();
+        ResponseFuture::new(RequestStreamForwarding::new(req.into_inner(), future_sink))
     }
 
     fn upload_blocks(
@@ -547,8 +583,8 @@ where
         req: Request<Streaming<gen::node::Block>>,
     ) -> Self::UploadBlocksFuture {
         let service = try_get_service!(self.inner.block_service());
-        let sink = service.get_upload_blocks_sink();
-        ResponseFuture::new(RequestStreamForwarding::new(req.into_inner(), sink))
+        let future_sink = service.get_upload_blocks_sink();
+        ResponseFuture::new(RequestStreamForwarding::new(req.into_inner(), future_sink))
     }
 
     fn block_subscription(
