@@ -25,6 +25,7 @@ pub struct ExplorerBlock {
     id: HeaderHash,
     date: BlockDate,
     chain_length: ChainLength,
+    parent_hash: HeaderHash,
 }
 
 #[derive(Clone)]
@@ -128,6 +129,7 @@ impl ExplorerBlock {
             transactions,
             chain_length,
             date: *block.header.block_date(),
+            parent_hash: block.parent_id(),
         }
     }
 
