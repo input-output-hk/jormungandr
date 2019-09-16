@@ -4,10 +4,11 @@ use super::{
 };
 use crate::{
     blockcfg::{Fragment, Header},
-    intercom::BlockMsg,
+    intercom::{BlockMsg, TransactionMsg},
     utils::async_msg::MessageBox,
 };
 use futures::prelude::*;
+use jormungandr_lib::interfaces::FragmentOrigin;
 use network_core::{error as core_error, gossip::Gossip};
 use slog::Logger;
 
@@ -48,6 +49,7 @@ pub fn process_block_announcement(
 pub fn process_fragments<S>(
     inbound: S,
     state: GlobalStateR,
+    mut transaction_box: MessageBox<TransactionMsg>,
     logger: Logger,
 ) -> tokio::executor::Spawn
 where
@@ -57,7 +59,8 @@ where
     tokio::spawn(
         inbound
             .for_each(move |fragment| {
-                // TODO: implement
+                let msg = TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment]);
+                transaction_box.try_send(msg).unwrap();
                 Ok(())
             })
             .map_err(move |err| {

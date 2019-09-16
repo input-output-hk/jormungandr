@@ -120,6 +120,7 @@ where
                     subscription::process_fragments(
                         fragment_sub,
                         state.global.clone(),
+                        channels.transaction_box.clone(),
                         logger.clone(),
                     );
                     subscription::process_gossip(gossip_sub, state.global.clone(), logger.clone());
