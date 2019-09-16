@@ -7,6 +7,7 @@ use crate::{
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::transaction::AuthenticatedTransaction;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
+use slog::Logger;
 use std::time::Duration;
 use tokio::{
     prelude::{
@@ -45,6 +46,7 @@ impl Pool {
         &mut self,
         origin: FragmentOrigin,
         fragment: Fragment,
+        logger: Logger,
     ) -> impl Future<Item = bool, Error = ()> {
         if !is_fragment_valid(&fragment) {
             return A(future::ok(false));
@@ -68,9 +70,9 @@ impl Pool {
                         let fragment_log = FragmentLog::new(fragment.id().into(), origin);
                         let network_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
                         let send_future = logs.insert(fragment_log).and_then(move |_| {
-                            network_msg_box
-                                .send(network_msg)
-                                .map_err(|_| unimplemented!()) //TODO
+                            network_msg_box.send(network_msg).map_err(move |err| {
+                                error!(logger, "cannot propagate fragment to network: {}", err)
+                            })
                         });
                         B(send_future.map(|_| true))
                     }),
@@ -83,6 +85,7 @@ impl Pool {
         &mut self,
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
+        logger: Logger,
     ) -> impl Future<Item = usize, Error = ()> {
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
@@ -112,7 +115,9 @@ impl Pool {
                         .fold(network_msg_box, |network_msg_box, fragment_msg| {
                             network_msg_box.send(fragment_msg)
                         })
-                        .map_err(|_| unimplemented!()) //TODO
+                        .map_err(move |err: <MessageBox<_> as Sink>::SinkError| {
+                            error!(logger, "cannot propagate fragment to network: {}", err)
+                        })
                         .and_then(move |_| logs.insert_all(fragment_logs))
                         .map(move |_| count)
                 })

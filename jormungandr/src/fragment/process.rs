@@ -63,7 +63,7 @@ impl Process {
                     let stats_counter = stats_counter.clone();
                     self.pool
                         .clone()
-                        .insert_and_propagate_all(origin, txs)
+                        .insert_and_propagate_all(origin, txs, service_info.logger().clone())
                         .map(move |count| stats_counter.add_tx_recv_cnt(count))
                 }
             }
