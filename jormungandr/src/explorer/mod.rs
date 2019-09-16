@@ -10,11 +10,12 @@ use self::indexing::{
 };
 use self::set::HamtSet as Set;
 
+use self::future::Either;
 use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
     HeaderHash,
 };
-use crate::blockchain::Multiverse;
+use crate::blockchain::{Blockchain, Multiverse};
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
 use chain_addr::Discrimination;
@@ -106,9 +107,7 @@ impl Explorer {
 }
 
 impl ExplorerDB {
-    pub fn bootstrap(block0: Block) -> Result<Self> {
-        // TODO: Here we should load from Storage to the current Head
-
+    pub fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents
@@ -152,11 +151,44 @@ impl ExplorerDB {
             .wait()
             .expect("The multiverse to be empty");
 
-        Ok(Self {
+        let block0_id = block0.id().clone();
+
+        let bootstraped_db = ExplorerDB {
             multiverse,
             longest_chain_tip: Lock::new(block0),
             blockchain_config,
-        })
+        };
+
+        blockchain
+            .storage()
+            // FIXME: Unhardcode the "HEAD"
+            .get_tag("HEAD".to_owned())
+            .map_err(|err| err.into())
+            .and_then(move |head_option| match head_option {
+                None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
+                    "Couldn't read the HEAD tag from storage".to_owned(),
+                )))),
+                Some(head) => Either::B(
+                    blockchain
+                        .storage()
+                        .stream_from_to(block0_id, head)
+                        .map_err(|err| Error::from(err)),
+                ),
+            })
+            .and_then(move |stream_option| match stream_option {
+                None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
+                    "Couldn't iterate from Block0 to HEAD".to_owned(),
+                )))),
+                Some(stream) => Either::B(future::ok(stream)),
+            })
+            .and_then(move |stream| {
+                stream
+                    .map_err(|err| Error::from(err))
+                    .fold(bootstraped_db, |mut db, block| {
+                        db.apply_block(block).and_then(|_gc_root| Ok(db))
+                    })
+            })
+            .wait()
     }
 
     pub fn apply_block(&mut self, block: Block) -> impl Future<Item = GCRoot, Error = Error> {

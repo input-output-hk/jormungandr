@@ -25,9 +25,9 @@ error_chain! {
             description("tried to index already indexed chainlength in the given branch")
             display("chain length: {} is already indexed", chain_length)
         }
-        BootstrapError {
+        BootstrapError(msg: String) {
             description("failed to initialize explorer's database from storage")
-            display("the explorer's database couldn't be initialized")
+            display("the explorer's database couldn't be initialized: {}", msg)
         }
     }
 }

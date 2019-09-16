@@ -330,7 +330,10 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     )?;
 
     let explorer_db = if settings.explorer {
-        Some(explorer::ExplorerDB::bootstrap(block0_explorer)?)
+        Some(explorer::ExplorerDB::bootstrap(
+            block0_explorer,
+            &blockchain,
+        )?)
     } else {
         None
     };
