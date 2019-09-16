@@ -1,6 +1,7 @@
 use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
 use crate::value::Value;
+use crate::rewards::{Ratio, TaxType};
 use crate::{block::ConsensusVersion, fee::LinearFee};
 use chain_addr::Discrimination;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -65,6 +66,7 @@ pub enum ConfigParam {
     ProposalExpiration(u32),
     KESUpdateSpeed(u32),
     TreasuryAdd(Value),
+    TreasuryParams(TaxType),
     RewardPot(Value),
     RewardParams(RewardParams),
 }
@@ -108,10 +110,12 @@ pub enum Tag {
     KESUpdateSpeed = 16,
     #[strum(to_string = "treasury")]
     TreasuryAdd = 17,
+    #[strum(to_string = "treasury-params")]
+    TreasuryParams = 18,
     #[strum(to_string = "reward-pot")]
-    RewardPot = 18,
+    RewardPot = 19,
     #[strum(to_string = "reward-params")]
-    RewardParams = 19,
+    RewardParams = 20,
 }
 
 impl Tag {
@@ -132,8 +136,9 @@ impl Tag {
             15 => Some(Tag::ProposalExpiration),
             16 => Some(Tag::KESUpdateSpeed),
             17 => Some(Tag::TreasuryAdd),
-            18 => Some(Tag::RewardPot),
-            19 => Some(Tag::RewardParams),
+            18 => Some(Tag::TreasuryParams),
+            19 => Some(Tag::RewardPot),
+            20 => Some(Tag::RewardParams),
             _ => None,
         }
     }
@@ -159,6 +164,7 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::ProposalExpiration(_) => Tag::ProposalExpiration,
             ConfigParam::KESUpdateSpeed(_) => Tag::KESUpdateSpeed,
             ConfigParam::TreasuryAdd(_) => Tag::TreasuryAdd,
+            ConfigParam::TreasuryParams(_) => Tag::TreasuryParams,
             ConfigParam::RewardPot(_) => Tag::RewardPot,
             ConfigParam::RewardParams(_) => Tag::RewardParams,
         }
@@ -207,6 +213,7 @@ impl Readable for ConfigParam {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::KESUpdateSpeed)
             }
             Tag::TreasuryAdd => ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryAdd),
+            Tag::TreasuryParams => ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryParams),
             Tag::RewardPot => ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardPot),
             Tag::RewardParams => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardParams)
@@ -237,6 +244,7 @@ impl property::Serialize for ConfigParam {
             ConfigParam::ProposalExpiration(data) => data.to_payload(),
             ConfigParam::KESUpdateSpeed(data) => data.to_payload(),
             ConfigParam::TreasuryAdd(data) => data.to_payload(),
+            ConfigParam::TreasuryParams(data) => data.to_payload(),
             ConfigParam::RewardPot(data) => data.to_payload(),
             ConfigParam::RewardParams(data) => data.to_payload(),
         };
@@ -268,6 +276,34 @@ impl ConfigParamVariant for Block0Date {
 
     fn from_payload(payload: &[u8]) -> Result<Self, Error> {
         u64::from_payload(payload).map(Block0Date)
+    }
+}
+
+impl ConfigParamVariant for TaxType {
+    fn to_payload(&self) -> Vec<u8> {
+        let bb: ByteBuilder<TaxType> =
+            ByteBuilder::new().u64(self.fixed.0)
+                .u64(self.ratio.numerator)
+                .u64(self.ratio.denominator.get())
+                .u64(self.max_limit.map_or(0, |v| v.get()));
+        bb.finalize_as_vec()
+    }
+
+    fn from_payload(payload: &[u8]) -> Result<Self, Error> {
+        use std::num::NonZeroU64;
+
+        let mut rb = ReadBuf::from(payload);
+        let value = rb.get_u64().map(Value)?;
+        let num = rb.get_u64()?;
+        let denom = rb.get_u64()?;
+        let limit = rb.get_u64()?;
+        let denominator = NonZeroU64::new(denom).map_or_else(|| Err(Error::StructureInvalid), Ok)?;
+        rb.expect_end()?;
+        Ok(TaxType {
+            fixed: value,
+            ratio: Ratio { numerator: num, denominator },
+            max_limit: NonZeroU64::new(limit),
+        })
     }
 }
 

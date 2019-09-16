@@ -10,6 +10,7 @@ use crate::{
     config::{ConfigParam, RewardParams},
     fee::LinearFee,
     leadership::{bft, genesis},
+    rewards,
 };
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -32,6 +33,7 @@ pub struct Settings {
     /// proposal_expiration + 1'. FIXME: make updateable.
     pub proposal_expiration: u32,
     pub reward_params: Option<RewardParams>,
+    pub treasury_params: Option<rewards::TaxType>,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -51,6 +53,7 @@ impl Settings {
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
             proposal_expiration: 100,
             reward_params: None,
+            treasury_params: None,
         }
     }
 
@@ -119,6 +122,9 @@ impl Settings {
                 ConfigParam::RewardParams(rp) => {
                     new_state.reward_params = Some(rp.clone());
                 }
+                ConfigParam::TreasuryParams(rp) => {
+                    new_state.treasury_params = Some(rp.clone());
+                }
             }
         }
 
@@ -147,6 +153,10 @@ impl Settings {
 
         match &self.reward_params {
             Some(p) => params.push(ConfigParam::RewardParams(p.clone())),
+            None => (),
+        };
+        match &self.treasury_params {
+            Some(p) => params.push(ConfigParam::TreasuryParams(p.clone())),
             None => (),
         };
 
