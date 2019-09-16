@@ -1,8 +1,11 @@
 use crate::{
     fragment::{Logs, Pool},
-    intercom::TransactionMsg,
+    intercom::{NetworkMsg, TransactionMsg},
     stats_counter::StatsCounter,
-    utils::{async_msg::MessageQueue, task::TokioServiceInfo},
+    utils::{
+        async_msg::{MessageBox, MessageQueue},
+        task::TokioServiceInfo,
+    },
 };
 use slog::Logger;
 use std::time::Duration;
@@ -19,10 +22,11 @@ impl Process {
         pool_ttl: Duration,
         logs_ttl: Duration,
         garbage_collection_interval: Duration,
+        network_msg_box: MessageBox<NetworkMsg>,
     ) -> Self {
         let logs = Logs::new(logs_ttl);
         Process {
-            pool: Pool::new(pool_ttl, logs.clone()),
+            pool: Pool::new(pool_ttl, logs.clone(), network_msg_box),
             logs,
             garbage_collection_interval,
         }
@@ -59,7 +63,7 @@ impl Process {
                     let stats_counter = stats_counter.clone();
                     self.pool
                         .clone()
-                        .insert_all(origin, txs)
+                        .insert_and_propagate_all(origin, txs)
                         .map(move |count| stats_counter.add_tx_recv_cnt(count))
                 }
             }

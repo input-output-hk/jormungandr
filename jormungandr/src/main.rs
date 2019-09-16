@@ -128,6 +128,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 .mempool
                 .garbage_collection_interval
                 .into(),
+            network_msgbox.clone(),
         );
 
         let pool = process.pool().clone();

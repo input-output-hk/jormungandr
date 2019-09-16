@@ -1,29 +1,38 @@
 use crate::{
     blockcfg::{HeaderContentEvalContext, Ledger, LedgerParameters},
     fragment::{selection::FragmentSelectionAlgorithm, Fragment, Logs},
+    intercom::{NetworkMsg, PropagateMsg},
+    utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::transaction::{AuthenticatedTransaction, Balance};
-use chain_impl_mockchain::value::Value;
-use futures::future::{
-    self,
-    Either::{A, B},
-};
+use chain_impl_mockchain::transaction::AuthenticatedTransaction;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
 use std::time::Duration;
-use tokio::{prelude::*, sync::lock::Lock, timer};
+use tokio::{
+    prelude::{
+        future::{
+            self,
+            Either::{A, B},
+        },
+        stream, Async, Future, Poll, Sink, Stream,
+    },
+    sync::lock::Lock,
+    timer,
+};
 
 #[derive(Clone)]
 pub struct Pool {
     logs: Logs,
     pool: Lock<internal::Pool>,
+    network_msg_box: MessageBox<NetworkMsg>,
 }
 
 impl Pool {
-    pub fn new(ttl: Duration, logs: Logs) -> Self {
+    pub fn new(ttl: Duration, logs: Logs, network_msg_box: MessageBox<NetworkMsg>) -> Self {
         Pool {
             logs,
             pool: Lock::new(internal::Pool::new(ttl)),
+            network_msg_box,
         }
     }
 
@@ -32,7 +41,7 @@ impl Pool {
     }
 
     /// Returns true if fragment was registered
-    pub fn insert(
+    pub fn insert_and_propagate(
         &mut self,
         origin: FragmentOrigin,
         fragment: Fragment,
@@ -42,6 +51,7 @@ impl Pool {
         }
         let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
+        let mut network_msg_box = self.network_msg_box.clone();
         B(self
             .logs
             .exists(fragment.id())
@@ -56,15 +66,20 @@ impl Pool {
                             None => return A(future::ok(false)),
                         };
                         let fragment_log = FragmentLog::new(fragment.id().into(), origin);
-                        let insert_future = logs.insert(fragment_log).map(|_| true);
-                        B(insert_future)
+                        let network_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
+                        let send_future = logs.insert(fragment_log).and_then(move |_| {
+                            network_msg_box
+                                .send(network_msg)
+                                .map_err(|_| unimplemented!()) //TODO
+                        });
+                        B(send_future.map(|_| true))
                     }),
                 )
             }))
     }
 
     /// Returns number of registered fragments
-    pub fn insert_all(
+    pub fn insert_and_propagate_all(
         &mut self,
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
@@ -75,6 +90,7 @@ impl Pool {
         }
         let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
+        let mut network_msg_box = self.network_msg_box.clone();
         let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
         let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
         B(
@@ -91,7 +107,14 @@ impl Pool {
                         .iter()
                         .map(move |fragment| FragmentLog::new(fragment.id().into(), origin))
                         .collect::<Vec<_>>();
-                    logs.insert_all(fragment_logs).map(move |_| count)
+                    stream::iter_ok(new_fragments)
+                        .map(|fragment| NetworkMsg::Propagate(PropagateMsg::Fragment(fragment)))
+                        .fold(network_msg_box, |network_msg_box, fragment_msg| {
+                            network_msg_box.send(fragment_msg)
+                        })
+                        .map_err(|_| unimplemented!()) //TODO
+                        .and_then(move |_| logs.insert_all(fragment_logs))
+                        .map(move |_| count)
                 })
             }),
         )
