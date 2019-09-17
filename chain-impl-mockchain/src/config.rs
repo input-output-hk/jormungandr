@@ -285,33 +285,14 @@ impl ConfigParamVariant for Block0Date {
 
 impl ConfigParamVariant for TaxType {
     fn to_payload(&self) -> Vec<u8> {
-        let bb: ByteBuilder<TaxType> = ByteBuilder::new()
-            .u64(self.fixed.0)
-            .u64(self.ratio.numerator)
-            .u64(self.ratio.denominator.get())
-            .u64(self.max_limit.map_or(0, |v| v.get()));
-        bb.finalize_as_vec()
+        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
     }
 
     fn from_payload(payload: &[u8]) -> Result<Self, Error> {
-        use std::num::NonZeroU64;
-
         let mut rb = ReadBuf::from(payload);
-        let value = rb.get_u64().map(Value)?;
-        let num = rb.get_u64()?;
-        let denom = rb.get_u64()?;
-        let limit = rb.get_u64()?;
-        let denominator =
-            NonZeroU64::new(denom).map_or_else(|| Err(Error::StructureInvalid), Ok)?;
+        let tax_type = TaxType::read_frombuf(&mut rb)?;
         rb.expect_end()?;
-        Ok(TaxType {
-            fixed: value,
-            ratio: Ratio {
-                numerator: num,
-                denominator,
-            },
-            max_limit: NonZeroU64::new(limit),
-        })
+        Ok(tax_type)
     }
 }
 
