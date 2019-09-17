@@ -30,8 +30,11 @@ impl TaxType {
     pub fn zero() -> Self {
         TaxType {
             fixed: Value(0),
-            ratio: Ratio { numerator: 0, denominator: NonZeroU64::new(1).unwrap() },
-            max_limit: None
+            ratio: Ratio {
+                numerator: 0,
+                denominator: NonZeroU64::new(1).unwrap(),
+            },
+            max_limit: None,
         }
     }
 

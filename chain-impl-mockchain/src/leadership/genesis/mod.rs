@@ -197,10 +197,10 @@ mod tests {
     use crate::certificate::{PoolId, PoolRegistration};
     use crate::ledger::Ledger;
     use crate::milli::Milli;
+    use crate::rewards::TaxType;
     use crate::stake::{PoolStakeDistribution, PoolStakeInformation, PoolStakeTotal};
     use crate::testing::ledger as ledger_mock;
     use crate::value::*;
-    use crate::rewards::TaxType;
 
     use chain_crypto::*;
     use chain_time::DurationSeconds;
