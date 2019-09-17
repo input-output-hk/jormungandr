@@ -41,45 +41,6 @@ impl Pool {
         &self.logs
     }
 
-    /// Returns true if fragment was registered
-    pub fn insert_and_propagate(
-        &mut self,
-        origin: FragmentOrigin,
-        fragment: Fragment,
-        logger: Logger,
-    ) -> impl Future<Item = bool, Error = ()> {
-        if !is_fragment_valid(&fragment) {
-            return A(future::ok(false));
-        }
-        let mut pool_lock = self.pool.clone();
-        let mut logs = self.logs.clone();
-        let mut network_msg_box = self.network_msg_box.clone();
-        B(self
-            .logs
-            .exists(fragment.id())
-            .and_then(move |exists_in_logs| {
-                if exists_in_logs {
-                    return A(future::ok(false));
-                }
-                B(
-                    future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
-                        let fragment = match pool.insert(fragment) {
-                            Some(fragment) => fragment,
-                            None => return A(future::ok(false)),
-                        };
-                        let fragment_log = FragmentLog::new(fragment.id().into(), origin);
-                        let network_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
-                        let send_future = logs.insert(fragment_log).and_then(move |_| {
-                            network_msg_box.send(network_msg).map_err(move |err| {
-                                error!(logger, "cannot propagate fragment to network: {}", err)
-                            })
-                        });
-                        B(send_future.map(|_| true))
-                    }),
-                )
-            }))
-    }
-
     /// Returns number of registered fragments
     pub fn insert_and_propagate_all(
         &mut self,
