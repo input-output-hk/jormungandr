@@ -10,11 +10,8 @@ use crate::{
     intercom::{self, BlockMsg, ClientMsg},
 };
 use futures::prelude::*;
-use network_core::client::block::BlockService;
-use network_core::client::content::ContentService;
-use network_core::client::gossip::GossipService;
-use network_core::client::p2p::P2pService;
 use network_core::client::{self as core_client, Client as _};
+use network_core::client::{BlockService, FragmentService, GossipService, P2pService};
 use network_core::error as core_error;
 use network_core::gossip::Node;
 use network_core::subscription::{BlockEvent, ChainPullRequest};
@@ -50,10 +47,10 @@ where
     S: core_client::Client,
     S: P2pService<NodeId = topology::NodeId>,
     S: BlockService<Block = Block>,
-    S: ContentService<Fragment = Fragment>,
+    S: FragmentService<Fragment = Fragment>,
     S: GossipService<Node = topology::Node>,
     S::UploadBlocksFuture: Send + 'static,
-    S::ContentSubscription: Send + 'static,
+    S::FragmentSubscription: Send + 'static,
     S::GossipSubscription: Send + 'static,
 {
     fn subscribe(
@@ -73,7 +70,8 @@ where
                     .map(move |service| (service, peer_comms, block_req))
             })
             .and_then(move |(mut service, mut peer_comms, block_req)| {
-                let content_req = service.content_subscription(peer_comms.subscribe_to_fragments());
+                let content_req =
+                    service.fragment_subscription(peer_comms.subscribe_to_fragments());
                 service
                     .ready()
                     .map(move |service| (service, peer_comms, block_req, content_req))

@@ -7,7 +7,7 @@ use crate::{
 use futures::prelude::*;
 use http::{HttpTryFrom, Uri};
 use hyper::client::connect::{Destination, HttpConnector};
-use network_core::client::{block::BlockService, Client as _};
+use network_core::client::{BlockService, Client as _};
 use network_grpc::client::{Connect, ConnectFuture};
 use slog::Logger;
 use std::net::SocketAddr;
