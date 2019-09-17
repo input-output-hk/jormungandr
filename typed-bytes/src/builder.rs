@@ -67,6 +67,23 @@ impl<T> ByteBuilder<T> {
         bb
     }
 
+    /// write an iterator of maximum 2^16 items using the closure F
+    ///
+    /// note that the buffer contains 2 bytes to represent the size
+    /// of the list
+    pub fn iter16<F, I>(self, mut l: I, f: F) -> Self
+    where
+        I: Iterator + ExactSizeIterator,
+        F: Fn(Self, &I::Item) -> Self,
+    {
+        assert!(l.len() < 65536);
+        let mut bb = self.u16(l.len() as u16);
+        while let Some(ref i) = l.next() {
+            bb = f(bb, i)
+        }
+        bb
+    }
+
     pub fn sub<F, U>(self, f: F) -> Self
     where
         F: Fn(ByteBuilder<U>) -> ByteBuilder<U>,
