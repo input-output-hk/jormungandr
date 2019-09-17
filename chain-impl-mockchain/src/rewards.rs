@@ -1,6 +1,8 @@
 use crate::block::Epoch;
 use crate::value::{Value, ValueError};
+use chain_core::mempack::{ReadBuf, ReadError};
 use std::num::NonZeroU64;
+use typed_bytes::ByteBuilder;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReducingType {
@@ -22,6 +24,52 @@ pub struct TaxType {
     pub ratio: Ratio,
     // Max limit of tax
     pub max_limit: Option<NonZeroU64>,
+}
+
+impl TaxType {
+    pub fn zero() -> Self {
+        TaxType {
+            fixed: Value(0),
+            ratio: Ratio { numerator: 0, denominator: NonZeroU64::new(1).unwrap() },
+            max_limit: None
+        }
+    }
+
+    pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
+        bb.u64(self.fixed.0)
+            .u64(self.ratio.numerator)
+            .u64(self.ratio.denominator.get())
+            .u64(self.max_limit.map_or(0, |v| v.get()))
+    }
+
+    pub fn read_frombuf(rb: &mut ReadBuf) -> Result<Self, ReadError> {
+        let fixed = rb.get_u64().map(Value)?;
+        let num = rb.get_u64()?;
+        let denom = rb.get_u64()?;
+        let limit = rb.get_u64()?;
+        let denominator = NonZeroU64::new(denom).map_or_else(
+            || {
+                Err(ReadError::StructureInvalid(
+                    "ratio fraction divisor invalid".to_string(),
+                ))
+            },
+            Ok,
+        )?;
+        if num > denom {
+            return Err(ReadError::StructureInvalid(
+                "ratio fraction invalid bigger than 1".to_string(),
+            ));
+        }
+
+        Ok(TaxType {
+            fixed,
+            ratio: Ratio {
+                numerator: num,
+                denominator,
+            },
+            max_limit: NonZeroU64::new(limit),
+        })
+    }
 }
 
 /// Parameters for rewards calculation. This controls:
