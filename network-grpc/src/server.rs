@@ -3,9 +3,7 @@ use crate::{
     service::{protocol_bounds, NodeService},
 };
 
-use network_core::server::{
-    block::BlockService, content::ContentService, gossip::GossipService, Node,
-};
+use network_core::server::{BlockService, FragmentService, GossipService, Node};
 
 use futures::prelude::*;
 use tokio_io::{AsyncRead, AsyncWrite};
@@ -33,7 +31,7 @@ where
     T: Node + Clone,
     <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Fragment: protocol_bounds::Fragment,
+    <T::FragmentService as FragmentService>::Fragment: protocol_bounds::Fragment,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     inner: tower_hyper::Server<
@@ -66,7 +64,7 @@ where
     T: Node + Clone + Send + 'static,
     <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Fragment: protocol_bounds::Fragment,
+    <T::FragmentService as FragmentService>::Fragment: protocol_bounds::Fragment,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     /// Creates a server instance around the node service implementation.

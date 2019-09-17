@@ -1,6 +1,6 @@
 use crate::{convert, gen, PROTOCOL_VERSION};
 use chain_core::property;
-use network_core::client::block::HandshakeError;
+use network_core::client::HandshakeError;
 
 use futures::prelude::*;
 

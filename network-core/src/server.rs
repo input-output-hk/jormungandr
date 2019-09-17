@@ -1,8 +1,12 @@
 //! Abstractions for the server-side network interface of a blockchain node.
 
-pub mod block;
-pub mod content;
-pub mod gossip;
+mod block;
+mod fragment;
+mod gossip;
+
+pub use block::BlockService;
+pub use fragment::FragmentService;
+pub use gossip::GossipService;
 
 use crate::gossip::NodeId;
 
@@ -18,21 +22,21 @@ use crate::gossip::NodeId;
 /// created to serve different requests from a single client.
 pub trait Node {
     /// The implementation of the block service.
-    type BlockService: block::BlockService;
+    type BlockService: BlockService;
 
     /// The implementation of the content service.
-    type ContentService: content::ContentService;
+    type FragmentService: FragmentService;
 
     /// The implementation of the gossip service.
-    type GossipService: gossip::GossipService;
+    type GossipService: GossipService;
 
     /// Instantiates the block service,
     /// if supported by this node.
     fn block_service(&mut self) -> Option<&mut Self::BlockService>;
 
-    /// Instantiates the content service,
+    /// Instantiates the fragment service,
     /// if supported by this node.
-    fn content_service(&mut self) -> Option<&mut Self::ContentService>;
+    fn fragment_service(&mut self) -> Option<&mut Self::FragmentService>;
 
     /// Instantiates the gossip service,
     /// if supported by this node.

@@ -1,9 +1,14 @@
 //! Abstractions for the client-side network interface of a blockchain node.
 
-pub mod block;
-pub mod content;
-pub mod gossip;
-pub mod p2p;
+mod block;
+mod fragment;
+mod gossip;
+mod p2p;
+
+pub use block::{BlockService, HandshakeError};
+pub use fragment::FragmentService;
+pub use gossip::GossipService;
+pub use p2p::P2pService;
 
 use crate::error::Error;
 
