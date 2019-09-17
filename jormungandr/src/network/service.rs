@@ -7,8 +7,10 @@ use super::{
 };
 use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
 use crate::intercom::{self, BlockMsg, ClientMsg, ReplyFuture, ReplyStream, RequestSink};
+use crate::utils::async_msg::MessageBox;
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
+use futures::sink;
 use network_core::{
     error as core_error,
     gossip::{Gossip, Node as _},
@@ -81,7 +83,9 @@ impl BlockService for NodeService {
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
     type PushHeadersSink = RequestSink<Header, core_error::Error>;
+    type GetPushHeadersSinkFuture = ChainHeadersSinkFuture;
     type UploadBlocksSink = InboundProcessing<Block, BlockMsg>;
+    type GetUploadBlocksSinkFuture = FutureResult<Self::UploadBlocksSink, core_error::Error>;
     type BlockSubscription = BlockEventSubscription;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
@@ -145,22 +149,16 @@ impl BlockService for NodeService {
         unimplemented!()
     }
 
-    fn get_push_headers_sink(&mut self) -> Self::PushHeadersSink {
-        let (handle, sink) = intercom::stream_request(chain_pull::CHUNK_SIZE);
-        // FIXME: incorporate this into the sink
-        self.channels
-            .block_box
-            .try_send(BlockMsg::ChainHeaders(handle))
-            .unwrap();
-        sink
+    fn get_push_headers_sink(&mut self) -> Self::GetPushHeadersSinkFuture {
+        ChainHeadersSinkFuture::new(self.channels.block_box.clone())
     }
 
-    fn get_upload_blocks_sink(&mut self) -> Self::UploadBlocksSink {
-        InboundProcessing::with_unary(
+    fn get_upload_blocks_sink(&mut self) -> Self::GetUploadBlocksSinkFuture {
+        future::ok(InboundProcessing::with_unary(
             self.channels.block_box.clone(),
             self.logger.clone(),
             |block, handle| BlockMsg::NetworkBlock(block, handle),
-        )
+        ))
     }
 
     fn block_subscription<In>(
@@ -184,6 +182,40 @@ impl BlockService for NodeService {
             .peers
             .subscribe_to_block_events(subscriber);
         future::ok(subscription)
+    }
+}
+
+#[must_use = "futures do nothing unless polled"]
+pub struct ChainHeadersSinkFuture {
+    inner: sink::Send<MessageBox<BlockMsg>>,
+    sink: Option<RequestSink<Header, core_error::Error>>,
+}
+
+impl ChainHeadersSinkFuture {
+    fn new(mbox: MessageBox<BlockMsg>) -> Self {
+        let (handle, sink) = intercom::stream_request(chain_pull::CHUNK_SIZE);
+        let inner = mbox.send(BlockMsg::ChainHeaders(handle));
+        ChainHeadersSinkFuture {
+            inner,
+            sink: Some(sink),
+        }
+    }
+}
+
+impl Future for ChainHeadersSinkFuture {
+    type Item = RequestSink<Header, core_error::Error>;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        try_ready!(self.inner.poll().map_err(|_| core_error::Error::new(
+            core_error::Code::Aborted,
+            "the node stopped processing incoming items",
+        )));
+        Ok(self
+            .sink
+            .take()
+            .expect("attempted to poll future after completion")
+            .into())
     }
 }
 
