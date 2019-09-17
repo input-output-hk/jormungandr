@@ -12,7 +12,7 @@ use typed_bytes::{ByteArray, ByteBuilder};
 pub type PoolId = DigestOf<Blake2b256, PoolRegistration>;
 
 /// signatures with indices
-pub type IndexSignatures<T> = Vec<(u8, Signature<ByteArray<T>, Ed25519>)>;
+pub type IndexSignatures<T> = Vec<(u16, Signature<ByteArray<T>, Ed25519>)>;
 
 /// Pool information
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub struct PoolRegistration {
     /// to keep track of the period of the expected key and the expiry
     pub start_validity: TimeOffsetSeconds,
     /// Management threshold for owners, this need to be <= #owners and > 0
-    pub management_threshold: u8,
+    pub management_threshold: u16,
     /// Owners of this pool
     pub owners: Vec<PublicKey<Ed25519>>,
     /// Genesis Praos keys
@@ -64,8 +64,8 @@ impl PoolRegistration {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.u128(self.serial)
             .u64(self.start_validity.into())
-            .u8(self.management_threshold)
-            .iter8(&mut self.owners.iter(), |bb, o| bb.bytes(o.as_ref()))
+            .u16(self.management_threshold)
+            .iter16(&mut self.owners.iter(), |bb, o| bb.bytes(o.as_ref()))
             .bytes(self.keys.vrf_public_key.as_ref())
             .bytes(self.keys.kes_public_key.as_ref())
     }
@@ -173,8 +173,8 @@ impl Readable for PoolRegistration {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let serial = buf.get_u128()?;
         let start_validity = DurationSeconds::from(buf.get_u64()?).into();
-        let management_threshold = buf.get_u8()?;
-        let owners_nb = buf.get_u8()?;
+        let management_threshold = buf.get_u16()?;
+        let owners_nb = buf.get_u16()?;
 
         let mut owners = Vec::with_capacity(owners_nb as usize);
         for _ in 0..owners_nb {
@@ -200,8 +200,8 @@ impl<T> PoolOwnersSigned<T> {
         F: Fn(&T, ByteBuilder<T>) -> ByteBuilder<T>,
     {
         bb.sub(|bbi| serialize_inner(&self.inner, bbi))
-            .iter8(&mut self.signatures.iter(), |bb, (i, s)| {
-                bb.u8(*i).bytes(s.as_ref())
+            .iter16(&mut self.signatures.iter(), |bb, (i, s)| {
+                bb.u16(*i).bytes(s.as_ref())
             })
     }
 
@@ -234,10 +234,10 @@ impl<T> PoolOwnersSigned<T> {
 impl<T: Readable> Readable for PoolOwnersSigned<T> {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let inner = T::read(buf)?;
-        let sigs_nb = buf.get_u8()? as usize;
+        let sigs_nb = buf.get_u16()? as usize;
         let mut signatures = Vec::new();
         for _ in 0..sigs_nb {
-            let nb = buf.get_u8()?;
+            let nb = buf.get_u16()?;
             let sig = deserialize_signature(buf)?;
             signatures.push((nb, sig))
         }
