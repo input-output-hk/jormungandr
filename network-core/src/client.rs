@@ -1,7 +1,7 @@
 //! Abstractions for the client-side network interface of a blockchain node.
 
 pub mod block;
-pub mod content;
+pub mod fragment;
 pub mod gossip;
 pub mod p2p;
 

@@ -12,7 +12,7 @@ use network_core::{
     error as core_error,
     gossip::NodeId,
     server::{
-        block::BlockService, content::ContentService, gossip::GossipService, Node, P2pService,
+        block::BlockService, fragment::FragmentService, gossip::GossipService, Node, P2pService,
     },
 };
 
@@ -394,7 +394,7 @@ where
     T: Node + Clone,
     <T::BlockService as BlockService>::Block: protocol_bounds::Block,
     <T::BlockService as BlockService>::Header: protocol_bounds::Header,
-    <T::ContentService as ContentService>::Fragment: protocol_bounds::Fragment,
+    <T::FragmentService as FragmentService>::Fragment: protocol_bounds::Fragment,
     <T::GossipService as GossipService>::Node: protocol_bounds::Node,
 {
     type HandshakeFuture = FutureResult<Response<gen::node::HandshakeResponse>, tower_grpc::Status>;
@@ -436,11 +436,11 @@ where
     >;
     type GetFragmentsStream = ResponseStream<
         gen::node::Fragment,
-        <<T as Node>::ContentService as ContentService>::GetFragmentsStream,
+        <<T as Node>::FragmentService as FragmentService>::GetFragmentsStream,
     >;
     type GetFragmentsFuture = ResponseFuture<
         Self::GetFragmentsStream,
-        <<T as Node>::ContentService as ContentService>::GetFragmentsFuture,
+        <<T as Node>::FragmentService as FragmentService>::GetFragmentsFuture,
     >;
     type PushHeadersFuture = ResponseFuture<
         gen::node::PushHeadersResponse,
@@ -465,14 +465,14 @@ where
         <T::BlockService as P2pService>::NodeId,
         <T::BlockService as BlockService>::BlockSubscriptionFuture,
     >;
-    type ContentSubscriptionStream = ResponseStream<
+    type FragmentSubscriptionStream = ResponseStream<
         gen::node::Fragment,
-        <<T as Node>::ContentService as ContentService>::ContentSubscription,
+        <<T as Node>::FragmentService as FragmentService>::FragmentSubscription,
     >;
-    type ContentSubscriptionFuture = SubscriptionFuture<
-        Self::ContentSubscriptionStream,
-        <T::ContentService as P2pService>::NodeId,
-        <T::ContentService as ContentService>::ContentSubscriptionFuture,
+    type FragmentSubscriptionFuture = SubscriptionFuture<
+        Self::FragmentSubscriptionStream,
+        <T::FragmentService as P2pService>::NodeId,
+        <T::FragmentService as FragmentService>::FragmentSubscriptionFuture,
     >;
     type GossipSubscriptionStream = ResponseStream<
         gen::node::Gossip,
@@ -559,7 +559,7 @@ where
     }
 
     fn get_fragments(&mut self, req: Request<gen::node::FragmentIds>) -> Self::GetFragmentsFuture {
-        let service = try_get_service!(self.inner.content_service());
+        let service = try_get_service!(self.inner.fragment_service());
         let tx_ids = match deserialize_repeated_bytes(&req.get_ref().ids) {
             Ok(tx_ids) => tx_ids,
             Err(e) => {
@@ -600,16 +600,16 @@ where
         )
     }
 
-    fn content_subscription(
+    fn fragment_subscription(
         &mut self,
         req: Request<Streaming<gen::node::Fragment>>,
-    ) -> Self::ContentSubscriptionFuture {
-        let service = try_get_service_sub!(self.inner.content_service());
+    ) -> Self::FragmentSubscriptionFuture {
+        let service = try_get_service_sub!(self.inner.fragment_service());
         let subscriber = try_decode_node_id!(&req);
         let stream = RequestStream::new(req.into_inner());
         SubscriptionFuture::new(
             service.node_id(),
-            service.content_subscription(subscriber, stream),
+            service.fragment_subscription(subscriber, stream),
         )
     }
 

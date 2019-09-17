@@ -10,7 +10,7 @@ use futures::prelude::*;
 /// Interface for the blockchain node service implementation responsible for
 /// validating and accepting transactions and other block contents, known
 /// together as fragments.
-pub trait ContentService: P2pService {
+pub trait FragmentService: P2pService {
     /// The data type to represent fragments constituting a block.
     type Fragment: Fragment;
 
@@ -29,13 +29,13 @@ pub trait ContentService: P2pService {
 
     /// The type of an asynchronous stream that provides fragments announced
     /// by the peer via the bidirectional subscription.
-    type ContentSubscription: Stream<Item = Self::Fragment, Error = Error> + Send + 'static;
+    type FragmentSubscription: Stream<Item = Self::Fragment, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `content_subscription`.
     ///
     /// The future resolves to a stream that will be used by the protocol
     /// implementation to produce a server-streamed response.
-    type ContentSubscriptionFuture: Future<Item = Self::ContentSubscription, Error = Error>
+    type FragmentSubscriptionFuture: Future<Item = Self::FragmentSubscription, Error = Error>
         + Send
         + 'static;
 
@@ -50,11 +50,11 @@ pub trait ContentService: P2pService {
     ///
     /// Returns a future resolving to an asynchronous stream
     /// that will be used by this node to send fragment announcements.
-    fn content_subscription<In>(
+    fn fragment_subscription<In>(
         &mut self,
         subscriber: Self::NodeId,
         inbound: In,
-    ) -> Self::ContentSubscriptionFuture
+    ) -> Self::FragmentSubscriptionFuture
     where
         In: Stream<Item = Self::Fragment, Error = Error> + Send + 'static;
 }

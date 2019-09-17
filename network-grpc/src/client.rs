@@ -11,7 +11,7 @@ use crate::{
 
 use chain_core::property;
 use network_core::client::block::BlockService;
-use network_core::client::content::ContentService;
+use network_core::client::fragment::FragmentService;
 use network_core::client::gossip::GossipService;
 use network_core::client::p2p::P2pService;
 use network_core::client::Client;
@@ -438,7 +438,7 @@ where
     }
 }
 
-impl<P> ContentService for Connection<P>
+impl<P> FragmentService for Connection<P>
 where
     P: ProtocolConfig,
 {
@@ -447,8 +447,8 @@ where
     type GetFragmentsStream = ResponseStream<P::Fragment, gen::node::Fragment>;
     type GetFragmentsFuture = ResponseStreamFuture<P::Fragment, gen::node::Fragment>;
 
-    type ContentSubscription = ResponseStream<P::Fragment, gen::node::Fragment>;
-    type ContentSubscriptionFuture =
+    type FragmentSubscription = ResponseStream<P::Fragment, gen::node::Fragment>;
+    type FragmentSubscriptionFuture =
         SubscriptionFuture<P::Fragment, Self::NodeId, gen::node::Fragment>;
 
     fn get_fragments(&mut self, ids: &[P::FragmentId]) -> Self::GetFragmentsFuture {
@@ -458,12 +458,12 @@ where
         ResponseStreamFuture::new(future)
     }
 
-    fn content_subscription<Out>(&mut self, outbound: Out) -> Self::ContentSubscriptionFuture
+    fn fragment_subscription<Out>(&mut self, outbound: Out) -> Self::FragmentSubscriptionFuture
     where
         Out: Stream<Item = P::Fragment> + Send + 'static,
     {
         let req = self.new_subscription_request(outbound);
-        let future = self.service.content_subscription(req);
+        let future = self.service.fragment_subscription(req);
         SubscriptionFuture::new(future)
     }
 }

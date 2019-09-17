@@ -136,7 +136,7 @@ service Node {
 
   // Establishes a bidirectional stream to exchange information on new
   // block fragments created or accepted by the peers.
-  rpc ContentSubscription(stream Fragment) returns (stream Fragment);
+  rpc FragmentSubscription(stream Fragment) returns (stream Fragment);
 
   // Establishes a bidirectional stream to exchange information on new
   // network peers.
