@@ -96,11 +96,11 @@ pub struct Parameters {
     reducing_epoch_rate: u64,
 }
 
-/// The reward to distribute to treasury and pools
+/// A value distributed between tax and remaining
 #[derive(Debug, Clone)]
-pub struct TreasuryDistribution {
-    pub treasury: Value,
-    pub pools: Value,
+pub struct TaxDistribution {
+    pub taxed: Value,
+    pub after_tax: Value,
 }
 
 /// Calculate the reward contribution from the parameters
@@ -140,29 +140,29 @@ pub fn rewards_contribution_calculation(epoch: Epoch, params: &Parameters) -> Va
     }
 }
 
-/// Distribute a pot of value to treasury and pools according to redistribution parameters
-pub fn treasury_cut(v: Value, treasury_tax: &TaxType) -> Result<TreasuryDistribution, ValueError> {
+/// Tax some value into the tax value and what is remaining
+pub fn tax_cut(v: Value, tax_type: &TaxType) -> Result<TaxDistribution, ValueError> {
     let mut left = v;
-    let mut tax = Value::zero();
+    let mut taxed = Value::zero();
 
     // subtract fix amount
-    match left - treasury_tax.fixed {
+    match left - tax_type.fixed {
         Ok(left1) => {
             left = left1;
-            tax = (tax + treasury_tax.fixed)?;
+            taxed = (taxed + tax_type.fixed)?;
         }
         Err(_) => {
-            return Ok(TreasuryDistribution {
-                treasury: v,
-                pools: Value::zero(),
+            return Ok(TaxDistribution {
+                taxed: v,
+                after_tax: Value::zero(),
             })
         }
     };
 
     // calculate and subtract ratio
     {
-        let rr = treasury_tax.ratio;
-        let olimit = treasury_tax.max_limit;
+        let rr = tax_type.ratio;
+        let olimit = tax_type.max_limit;
 
         const SCALE: u128 = 10 ^ 9;
         let out = ((((left.0 as u128 * SCALE) * rr.numerator as u128)
@@ -176,18 +176,18 @@ pub fn treasury_cut(v: Value, treasury_tax: &TaxType) -> Result<TreasuryDistribu
         match left - treasury_cut {
             Ok(left2) => {
                 left = left2;
-                tax = (tax + treasury_cut)?;
+                taxed = (taxed + treasury_cut)?;
             }
             Err(_) => {
                 left = Value::zero();
-                tax = (tax + left)?;
+                taxed = (taxed + left)?;
             }
         }
     };
 
-    Ok(TreasuryDistribution {
-        treasury: tax,
-        pools: left,
+    Ok(TaxDistribution {
+        taxed,
+        after_tax: left,
     })
 }
 
@@ -198,16 +198,16 @@ mod tests {
     use quickcheck_macros::quickcheck;
 
     #[quickcheck]
-    fn treasury_tax_sum_equal(v: Value, treasury_tax: TaxType) -> TestResult {
-        match treasury_cut(v, &treasury_tax) {
+    fn tax_cut_fully_accounted(v: Value, treasury_tax: TaxType) -> TestResult {
+        match tax_cut(v, &treasury_tax) {
             Ok(td) => {
-                let sum = (td.pools + td.treasury).unwrap();
+                let sum = (td.taxed + td.after_tax).unwrap();
                 if sum == v {
                     TestResult::passed()
                 } else {
                     TestResult::error(format!(
-                        "mismatch pools={} treasury={} expected={} got={} for {:?}",
-                        td.pools, td.treasury, v, sum, treasury_tax
+                        "mismatch taxed={} remaining={} expected={} got={} for {:?}",
+                        td.taxed, td.after_tax, v, sum, treasury_tax
                     ))
                 }
             }
