@@ -3,9 +3,7 @@ use crate::{
     service::{protocol_bounds, NodeService},
 };
 
-use network_core::server::{
-    block::BlockService, fragment::FragmentService, gossip::GossipService, Node,
-};
+use network_core::server::{BlockService, FragmentService, GossipService, Node};
 
 use futures::prelude::*;
 use tokio_io::{AsyncRead, AsyncWrite};

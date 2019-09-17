@@ -11,9 +11,7 @@ use chain_core::property;
 use network_core::{
     error as core_error,
     gossip::NodeId,
-    server::{
-        block::BlockService, fragment::FragmentService, gossip::GossipService, Node, P2pService,
-    },
+    server::{BlockService, FragmentService, GossipService, Node, P2pService},
 };
 
 use futures::future::{self, FutureResult};

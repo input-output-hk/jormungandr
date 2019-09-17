@@ -10,11 +10,7 @@ use crate::{
 };
 
 use chain_core::property;
-use network_core::client::block::BlockService;
-use network_core::client::fragment::FragmentService;
-use network_core::client::gossip::GossipService;
-use network_core::client::p2p::P2pService;
-use network_core::client::Client;
+use network_core::client::{BlockService, Client, FragmentService, GossipService, P2pService};
 use network_core::error as core_error;
 use network_core::gossip::{self, Gossip, NodeId};
 use network_core::subscription::BlockEvent;
