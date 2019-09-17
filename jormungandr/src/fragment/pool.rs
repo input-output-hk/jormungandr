@@ -1,29 +1,39 @@
 use crate::{
     blockcfg::{HeaderContentEvalContext, Ledger, LedgerParameters},
     fragment::{selection::FragmentSelectionAlgorithm, Fragment, Logs},
+    intercom::{NetworkMsg, PropagateMsg},
+    utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::transaction::{AuthenticatedTransaction, Balance};
-use chain_impl_mockchain::value::Value;
-use futures::future::{
-    self,
-    Either::{A, B},
-};
+use chain_impl_mockchain::transaction::AuthenticatedTransaction;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
+use slog::Logger;
 use std::time::Duration;
-use tokio::{prelude::*, sync::lock::Lock, timer};
+use tokio::{
+    prelude::{
+        future::{
+            self,
+            Either::{A, B},
+        },
+        stream, Async, Future, Poll, Sink, Stream,
+    },
+    sync::lock::Lock,
+    timer,
+};
 
 #[derive(Clone)]
 pub struct Pool {
     logs: Logs,
     pool: Lock<internal::Pool>,
+    network_msg_box: MessageBox<NetworkMsg>,
 }
 
 impl Pool {
-    pub fn new(ttl: Duration, logs: Logs) -> Self {
+    pub fn new(ttl: Duration, logs: Logs, network_msg_box: MessageBox<NetworkMsg>) -> Self {
         Pool {
             logs,
             pool: Lock::new(internal::Pool::new(ttl)),
+            network_msg_box,
         }
     }
 
@@ -31,43 +41,12 @@ impl Pool {
         &self.logs
     }
 
-    /// Returns true if fragment was registered
-    pub fn insert(
-        &mut self,
-        origin: FragmentOrigin,
-        fragment: Fragment,
-    ) -> impl Future<Item = bool, Error = ()> {
-        if !is_fragment_valid(&fragment) {
-            return A(future::ok(false));
-        }
-        let mut pool_lock = self.pool.clone();
-        let mut logs = self.logs.clone();
-        B(self
-            .logs
-            .exists(fragment.id())
-            .and_then(move |exists_in_logs| {
-                if exists_in_logs {
-                    return A(future::ok(false));
-                }
-                B(
-                    future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
-                        let id = fragment.id();
-                        if pool.insert(fragment) == false {
-                            return A(future::ok(false));
-                        }
-                        let fragment_log = FragmentLog::new(id.into(), origin);
-                        let insert_future = logs.insert(fragment_log).map(|_| true);
-                        B(insert_future)
-                    }),
-                )
-            }))
-    }
-
     /// Returns number of registered fragments
-    pub fn insert_all(
+    pub fn insert_and_propagate_all(
         &mut self,
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
+        logger: Logger,
     ) -> impl Future<Item = usize, Error = ()> {
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
@@ -75,6 +54,7 @@ impl Pool {
         }
         let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
+        let mut network_msg_box = self.network_msg_box.clone();
         let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
         let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
         B(
@@ -85,12 +65,22 @@ impl Pool {
                         .zip(fragments_exist_in_logs)
                         .filter(|(_, exists_in_logs)| !exists_in_logs)
                         .map(|(fragment, _)| fragment);
-                    let new_fragment_ids = pool.insert_all(new_fragments);
-                    let count = new_fragment_ids.len();
-                    let fragment_logs = new_fragment_ids
-                        .into_iter()
-                        .map(move |id| FragmentLog::new(id.into(), origin));
-                    logs.insert_all(fragment_logs).map(move |_| count)
+                    let new_fragments = pool.insert_all(new_fragments);
+                    let count = new_fragments.len();
+                    let fragment_logs = new_fragments
+                        .iter()
+                        .map(move |fragment| FragmentLog::new(fragment.id().into(), origin))
+                        .collect::<Vec<_>>();
+                    stream::iter_ok(new_fragments)
+                        .map(|fragment| NetworkMsg::Propagate(PropagateMsg::Fragment(fragment)))
+                        .fold(network_msg_box, |network_msg_box, fragment_msg| {
+                            network_msg_box.send(fragment_msg)
+                        })
+                        .map_err(move |err: <MessageBox<_> as Sink>::SinkError| {
+                            error!(logger, "cannot propagate fragment to network: {}", err)
+                        })
+                        .and_then(move |_| logs.insert_all(fragment_logs))
+                        .map(move |_| count)
                 })
             }),
         )
@@ -164,34 +154,28 @@ pub(super) mod internal {
             }
         }
 
-        /// Returns true if fragment was registered
-        pub fn insert(&mut self, fragment: Fragment) -> bool {
+        /// Returns clone of fragment if it was registered
+        pub fn insert(&mut self, fragment: Fragment) -> Option<Fragment> {
             let fragment_id = fragment.id();
             let entry = match self.entries.entry(fragment_id) {
-                Entry::Occupied(_) => return false,
+                Entry::Occupied(_) => return None,
                 Entry::Vacant(vacant) => vacant,
             };
             let pool_entry = Arc::new(PoolEntry::new(&fragment));
             let delay = self.expirations.insert(fragment_id, self.ttl);
-            entry.insert((pool_entry, fragment, delay));
+            entry.insert((pool_entry, fragment.clone(), delay));
             self.entries_by_time.push_back(fragment_id);
-            true
+            Some(fragment)
         }
 
-        /// Returns ids of registered fragments
+        /// Returns clones of registered fragments
         pub fn insert_all(
             &mut self,
             fragments: impl IntoIterator<Item = Fragment>,
-        ) -> Vec<FragmentId> {
+        ) -> Vec<Fragment> {
             fragments
                 .into_iter()
-                .filter_map(|fragment| {
-                    let fragment_id = fragment.id();
-                    match self.insert(fragment) {
-                        true => Some(fragment_id),
-                        false => None,
-                    }
-                })
+                .filter_map(|fragment| self.insert(fragment))
                 .collect()
         }
 

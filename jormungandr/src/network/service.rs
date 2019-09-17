@@ -235,7 +235,12 @@ impl FragmentService for NodeService {
     where
         S: Stream<Item = Self::Fragment, Error = core_error::Error> + Send + 'static,
     {
-        subscription::process_fragments(inbound, self.global_state.clone(), self.logger().clone());
+        subscription::process_fragments(
+            inbound,
+            self.global_state.clone(),
+            self.channels.transaction_box.clone(),
+            self.logger().clone(),
+        );
 
         let subscription = self.global_state.peers.subscribe_to_fragments(subscriber);
         future::ok(subscription)
