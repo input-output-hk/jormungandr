@@ -200,6 +200,7 @@ mod tests {
     use crate::stake::{PoolStakeDistribution, PoolStakeInformation, PoolStakeTotal};
     use crate::testing::ledger as ledger_mock;
     use crate::value::*;
+    use crate::rewards::TaxType;
 
     use chain_crypto::*;
     use chain_time::DurationSeconds;
@@ -220,6 +221,7 @@ mod tests {
             owners: vec![],
             start_validity: DurationSeconds::from(0).into(),
             management_threshold: 1,
+            rewards: TaxType::zero(),
             keys: GenesisPraosLeader {
                 vrf_public_key: pool_vrf_private_key.to_public(),
                 kes_public_key: pool_kes_public_key,

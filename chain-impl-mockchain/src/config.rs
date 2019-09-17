@@ -1,6 +1,6 @@
 use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
-use crate::rewards::{Ratio, TaxType};
+use crate::rewards::TaxType;
 use crate::value::Value;
 use crate::{block::ConsensusVersion, fee::LinearFee};
 use chain_addr::Discrimination;

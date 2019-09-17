@@ -1,5 +1,6 @@
 use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
+use crate::rewards::TaxType;
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
@@ -27,6 +28,8 @@ pub struct PoolRegistration {
     pub management_threshold: u16,
     /// Owners of this pool
     pub owners: Vec<PublicKey<Ed25519>>,
+    /// Rewarding
+    pub rewards: TaxType,
     /// Genesis Praos keys
     pub keys: GenesisPraosLeader,
 }
@@ -66,6 +69,7 @@ impl PoolRegistration {
             .u64(self.start_validity.into())
             .u16(self.management_threshold)
             .iter16(&mut self.owners.iter(), |bb, o| bb.bytes(o.as_ref()))
+            .sub(|sbb| self.rewards.serialize_in(sbb))
             .bytes(self.keys.vrf_public_key.as_ref())
             .bytes(self.keys.kes_public_key.as_ref())
     }
@@ -181,6 +185,7 @@ impl Readable for PoolRegistration {
             owners.push(deserialize_public_key(buf)?);
         }
 
+        let rewards = TaxType::read_frombuf(buf)?;
         let keys = GenesisPraosLeader::read(buf)?;
 
         let info = Self {
@@ -188,6 +193,7 @@ impl Readable for PoolRegistration {
             start_validity,
             management_threshold,
             owners,
+            rewards,
             keys,
         };
         Ok(info)
