@@ -3,7 +3,7 @@ use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
-use network_core::client::{block::BlockService, Client as _};
+use network_core::client::{BlockService, Client as _};
 use network_core::error::Error as NetworkError;
 use network_grpc::client::Connection;
 use slog::Logger;

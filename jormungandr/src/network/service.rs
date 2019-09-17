@@ -11,13 +11,9 @@ use crate::utils::async_msg::MessageBox;
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use futures::sink;
-use network_core::{
-    error as core_error,
-    gossip::{Gossip, Node as _},
-    server::{
-        block::BlockService, content::ContentService, gossip::GossipService, Node, P2pService,
-    },
-};
+use network_core::error as core_error;
+use network_core::gossip::{Gossip, Node as _};
+use network_core::server::{BlockService, FragmentService, GossipService, Node, P2pService};
 use slog::Logger;
 
 #[derive(Clone)]
@@ -43,14 +39,14 @@ impl NodeService {
 
 impl Node for NodeService {
     type BlockService = Self;
-    type ContentService = Self;
+    type FragmentService = Self;
     type GossipService = Self;
 
     fn block_service(&mut self) -> Option<&mut Self::BlockService> {
         Some(self)
     }
 
-    fn content_service(&mut self) -> Option<&mut Self::ContentService> {
+    fn fragment_service(&mut self) -> Option<&mut Self::FragmentService> {
         Some(self)
     }
 
@@ -219,23 +215,23 @@ impl Future for ChainHeadersSinkFuture {
     }
 }
 
-impl ContentService for NodeService {
+impl FragmentService for NodeService {
     type Fragment = Fragment;
     type FragmentId = FragmentId;
     type GetFragmentsStream = ReplyStream<Self::Fragment, core_error::Error>;
     type GetFragmentsFuture = ReplyFuture<Self::GetFragmentsStream, core_error::Error>;
-    type ContentSubscription = Subscription<Fragment>;
-    type ContentSubscriptionFuture = FutureResult<Self::ContentSubscription, core_error::Error>;
+    type FragmentSubscription = Subscription<Fragment>;
+    type FragmentSubscriptionFuture = FutureResult<Self::FragmentSubscription, core_error::Error>;
 
     fn get_fragments(&mut self, _ids: &[Self::FragmentId]) -> Self::GetFragmentsFuture {
         unimplemented!()
     }
 
-    fn content_subscription<S>(
+    fn fragment_subscription<S>(
         &mut self,
         subscriber: Self::NodeId,
         inbound: S,
-    ) -> Self::ContentSubscriptionFuture
+    ) -> Self::FragmentSubscriptionFuture
     where
         S: Stream<Item = Self::Fragment, Error = core_error::Error> + Send + 'static,
     {
