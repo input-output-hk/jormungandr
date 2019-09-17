@@ -304,10 +304,8 @@ where
                 Intermediate => unreachable!(),
             };
             if let WaitingSink(_, stream) = mem::replace(&mut self.state, Intermediate) {
-                // Fuse the stream to work around
-                // https://github.com/rust-lang-nursery/futures-rs/pull/1864
-                let stream = RequestStream::new(stream).fuse();
-                self.state = Forwarding(stream.forward(sink));
+                let stream = RequestStream::new(stream);
+                self.state = Forwarding(sink.send_all(stream));
             } else {
                 unreachable!()
             }
@@ -318,7 +316,7 @@ where
 mod stream_forward {
     use super::{FromProtobuf, RequestStream};
     use futures::prelude::*;
-    use futures::stream::{Forward, Fuse};
+    use futures::sink::SendAll;
 
     pub enum State<St, F>
     where
@@ -328,7 +326,7 @@ mod stream_forward {
         <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
     {
         WaitingSink(F, St),
-        Forwarding(Forward<Fuse<RequestStream<<F::Item as Sink>::SinkItem, St>>, F::Item>),
+        Forwarding(SendAll<F::Item, RequestStream<<F::Item as Sink>::SinkItem, St>>),
         Intermediate,
     }
 }
