@@ -66,12 +66,9 @@ impl Block {
             .collect())
     }
 
-    pub fn previous_block(&self) -> Option<&Block> {
-        unimplemented!()
-    }
-
-    pub fn next_block(&self) -> Option<&Block> {
-        unimplemented!()
+    pub fn previous_block(&self, context: &Context) -> FieldResult<Block> {
+        self.get_explorer_block(&context.db)
+            .map(|b| Block::from_valid_hash(b.parent_hash))
     }
 
     pub fn chain_length(&self, context: &Context) -> FieldResult<ChainLength> {
