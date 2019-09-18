@@ -273,9 +273,7 @@ where
                             error!(err2_logger, "sending to block task failed: {:?}", e);
                         })
                         .and_then(move |_| {
-                            // Remove the fuse once this is fixed:
-                            // https://github.com/rust-lang-nursery/futures-rs/pull/1864
-                            stream.fuse().forward(sink).map(|_| {}).map_err(move |e| {
+                            sink.send_all(stream).map(|_| {}).map_err(move |e| {
                                 warn!(
                                     err3_logger,
                                     "processing of PullHeaders response stream failed: {:?}", e
@@ -308,29 +306,24 @@ where
                 .and_then(move |stream| {
                     let stream_err_logger = logger.clone();
                     let sink_err_logger = logger.clone();
-                    stream
-                        .map_err(move |e| {
-                            warn!(
-                                stream_err_logger,
-                                "PullBlocksToTip response stream failed: {:?}", e
-                            );
-                        })
-                        // Remove the fuse once this is fixed:
-                        // https://github.com/rust-lang-nursery/futures-rs/pull/1864
-                        .fuse()
-                        .forward(
-                            InboundProcessing::with_unary(
-                                block_box.clone(),
-                                logger.clone(),
-                                |block, reply| BlockMsg::NetworkBlock(block, reply),
-                            )
-                            .sink_map_err(move |e| {
-                                warn!(sink_err_logger, "pulled block validation failed: {:?}", e)
-                            }),
-                        )
-                        .map(move |_| {
-                            debug!(logger, "PullBlocksToTip response processed");
-                        })
+                    let stream = stream.map_err(move |e| {
+                        warn!(
+                            stream_err_logger,
+                            "PullBlocksToTip response stream failed: {:?}", e
+                        );
+                    });
+                    InboundProcessing::with_unary(
+                        block_box.clone(),
+                        logger.clone(),
+                        |block, reply| BlockMsg::NetworkBlock(block, reply),
+                    )
+                    .sink_map_err(move |e| {
+                        warn!(sink_err_logger, "pulled block validation failed: {:?}", e)
+                    })
+                    .send_all(stream)
+                    .map(move |_| {
+                        debug!(logger, "PullBlocksToTip response processed");
+                    })
                 }),
         );
     }
@@ -358,29 +351,24 @@ where
                 .and_then(move |stream| {
                     let stream_err_logger = logger.clone();
                     let sink_err_logger = logger.clone();
-                    stream
-                        .map_err(move |e| {
-                            warn!(
-                                stream_err_logger,
-                                "GetBlocks response stream failed: {:?}", e
-                            );
-                        })
-                        // Remove the fuse once this is fixed:
-                        // https://github.com/rust-lang-nursery/futures-rs/pull/1864
-                        .fuse()
-                        .forward(
-                            InboundProcessing::with_unary(
-                                block_box.clone(),
-                                logger.clone(),
-                                |block, reply| BlockMsg::NetworkBlock(block, reply),
-                            )
-                            .sink_map_err(move |e| {
-                                warn!(sink_err_logger, "network block validation failed: {:?}", e)
-                            }),
-                        )
-                        .map(move |_| {
-                            debug!(logger, "GetBlocks response processed");
-                        })
+                    let stream = stream.map_err(move |e| {
+                        warn!(
+                            stream_err_logger,
+                            "GetBlocks response stream failed: {:?}", e
+                        );
+                    });
+                    InboundProcessing::with_unary(
+                        block_box.clone(),
+                        logger.clone(),
+                        |block, reply| BlockMsg::NetworkBlock(block, reply),
+                    )
+                    .sink_map_err(move |e| {
+                        warn!(sink_err_logger, "network block validation failed: {:?}", e)
+                    })
+                    .send_all(stream)
+                    .map(move |_| {
+                        debug!(logger, "GetBlocks response processed");
+                    })
                 }),
         );
     }
