@@ -1,5 +1,6 @@
 use super::{
     compare_against, Blockchain, ComparisonResult, Error, ErrorKind, PreCheckedHeader, Ref, Tip,
+    MAIN_BRANCH_TAG,
 };
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash},
@@ -144,22 +145,36 @@ pub fn process_new_ref(
     candidate: Arc<Ref>,
 ) -> impl Future<Item = (), Error = Error> {
     use tokio::prelude::future::Either::*;
+
+    let candidate_hash = candidate.hash();
+    let mut storage = blockchain.storage().clone();
+
     tip.clone()
         .get_ref()
         .and_then(move |tip_ref| {
             if &tip_ref.hash() == candidate.block_parent_hash() {
-                A(A(tip.update_ref(candidate).map(|_| ())))
+                A(A(tip.update_ref(candidate).map(|_| true)))
             } else {
                 match compare_against(blockchain.storage(), &tip_ref, &candidate) {
-                    ComparisonResult::PreferCurrent => A(B(future::ok(()))),
+                    ComparisonResult::PreferCurrent => A(B(future::ok(false))),
                     ComparisonResult::PreferCandidate => B(blockchain
                         .branches_mut()
                         .apply_or_create(candidate)
-                        .and_then(move |branch| tip.swap(branch))),
+                        .and_then(move |branch| tip.swap(branch))
+                        .map(|()| true)),
                 }
             }
         })
         .map_err(|_: std::convert::Infallible| unreachable!())
+        .and_then(move |tip_updated| {
+            if tip_updated {
+                A(storage
+                    .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
+                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip")))
+            } else {
+                B(future::ok(()))
+            }
+        })
 }
 
 pub fn handle_end_of_epoch(
@@ -242,7 +257,7 @@ pub fn process_block_announcement(
     logger: Logger,
 ) -> impl Future<Item = (), Error = Error> {
     blockchain
-        .pre_check_header(header)
+        .pre_check_header(header, false)
         .and_then(move |pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { .. } => {
                 debug!(logger, "block is already present");
@@ -292,7 +307,7 @@ pub fn process_network_block(
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     blockchain
-        .pre_check_header(header)
+        .pre_check_header(header, false)
         .and_then(move |pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { .. } => {
                 debug!(logger, "block is already present");
@@ -346,9 +361,8 @@ where
             unimplemented!()
         })
         .and_then(move |header| {
-            blockchain
-                .pre_check_header(header)
-                .and_then(move |pre_checked| match pre_checked {
+            blockchain.pre_check_header(header, false).and_then(
+                move |pre_checked| match pre_checked {
                     PreCheckedHeader::AlreadyPresent { .. } => {
                         // The block is already present. This may happen
                         // if the peer has started from an earlier checkpoint
@@ -368,7 +382,8 @@ where
                         // before pausing to retrieve blocks.
                         Ok(Some(header.hash()))
                     }
-                })
+                },
+            )
         })
         .filter_map(identity)
         .collect()

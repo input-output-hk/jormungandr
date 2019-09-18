@@ -11,7 +11,7 @@ mod tip;
 
 pub use self::{
     branch::{Branch, Branches},
-    chain::{Blockchain, Error, ErrorKind, PreCheckedHeader},
+    chain::{Blockchain, Error, ErrorKind, PreCheckedHeader, MAIN_BRANCH_TAG},
     chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
     multiverse::Multiverse,

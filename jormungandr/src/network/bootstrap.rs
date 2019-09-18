@@ -1,8 +1,11 @@
 use super::{grpc, BlockConfig};
 use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
+use crate::blockchain::{
+    Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
+};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
+use chain_storage::error::Error as StorageError;
 use network_core::client::{BlockService, Client as _};
 use network_core::error::Error as NetworkError;
 use network_grpc::client::Connection;
@@ -26,6 +29,7 @@ pub enum Error {
     BlockAlreadyPresent(HeaderHash),
     BlockMissingParent(HeaderHash),
     ApplyBlockFailed(BlockchainError),
+    StorageMainTagFailed(StorageError),
 }
 
 impl Display for Error {
@@ -44,6 +48,7 @@ impl Display for Error {
                 hash
             ),
             ApplyBlockFailed(_) => write!(f, "failed to apply block to the blockchain"),
+            StorageMainTagFailed(_) => write!(f, "failed to save the Tip's hash in the storage"),
         }
     }
 }
@@ -60,6 +65,7 @@ impl error::Error for Error {
             BlockAlreadyPresent(_) => None,
             BlockMissingParent(_) => None,
             ApplyBlockFailed(e) => Some(e),
+            StorageMainTagFailed(e) => Some(e),
         }
     }
 }
@@ -71,6 +77,9 @@ pub fn bootstrap_from_peer(
     logger: &Logger,
 ) -> Result<Arc<Ref>, Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
+
+    let mut storage = blockchain.storage().clone();
+
     let bootstrap = grpc::connect(peer.address(), None)
         .map_err(Error::Connect)
         .and_then(|client: Connection<BlockConfig>| client.ready().map_err(Error::ClientNotReady))
@@ -83,7 +92,18 @@ pub fn bootstrap_from_peer(
                 .map_err(Error::PullRequestFailed)
                 .and_then(|stream| bootstrap_from_stream(blockchain, tip, stream, logger.clone()))
         })
-        .and_then(move |tip| branch.update_ref(tip).map_err(|_| unreachable!()));
+        .and_then(move |tip| {
+            branch
+                .update_ref(Arc::clone(&tip))
+                .map_err(|_| unreachable!())
+                .map(|_prev_tip| tip)
+        })
+        .and_then(move |tip| {
+            storage
+                .put_tag(MAIN_BRANCH_TAG.to_owned(), tip.hash())
+                .map(|()| tip)
+                .map_err(Error::StorageMainTagFailed)
+        });
 
     current_thread::block_on_all(bootstrap)
 }
@@ -118,7 +138,7 @@ fn handle_block(
     );
     let mut end_blockchain = blockchain.clone();
     blockchain
-        .pre_check_header(header)
+        .pre_check_header(header, true)
         .map_err(Error::HeaderCheckFailed)
         .and_then(|pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { header, .. } => {

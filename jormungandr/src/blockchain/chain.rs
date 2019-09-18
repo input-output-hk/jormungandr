@@ -103,7 +103,7 @@ error_chain! {
     }
 }
 
-const MAIN_BRANCH_TAG: &str = "HEAD";
+pub const MAIN_BRANCH_TAG: &str = "HEAD";
 
 /// blockchain object, can be safely shared across multiple threads. However it is better not
 /// to as some operations may require a mutex.
@@ -274,11 +274,16 @@ impl Blockchain {
     fn load_header_parent(
         &mut self,
         header: Header,
+        force: bool,
     ) -> impl Future<Item = PreCheckedHeader, Error = Error> {
         let block_id = header.hash();
         let parent_block_id = header.block_parent_hash().clone();
 
-        let get_self_ref = self.get_ref(block_id.clone());
+        let get_self_ref = if force {
+            future::Either::B(future::ok(None))
+        } else {
+            future::Either::A(self.get_ref(block_id.clone()))
+        };
         let get_parent_ref = self.get_ref(parent_block_id);
 
         get_self_ref.and_then(|maybe_self_ref| {
@@ -314,13 +319,14 @@ impl Blockchain {
     pub fn pre_check_header(
         &mut self,
         header: Header,
+        force: bool,
     ) -> impl Future<Item = PreCheckedHeader, Error = Error> {
         // TODO: before loading the parent's header we can check
         //       the crypto of the header (i.e. check that they
         //       actually sign the header signing data against
         //       the public key).
 
-        self.load_header_parent(header)
+        self.load_header_parent(header, force)
             .and_then(|pre_check| match &pre_check {
                 PreCheckedHeader::HeaderWithCache {
                     ref header,
@@ -697,7 +703,7 @@ impl Blockchain {
                                 let returned = self4.clone();
 
                                 self4
-                                    .pre_check_header(header)
+                                    .pre_check_header(header, true)
                                     .and_then(move |pre_checked_header: PreCheckedHeader| {
                                         match pre_checked_header {
                                             PreCheckedHeader::HeaderWithCache {
