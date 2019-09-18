@@ -73,8 +73,8 @@ impl Explorer {
         Context {
             db: self.db.clone(),
             settings: Settings {
-                // FIXME: Hardcoded value. This could come from the node settings.
-                address_bech32_prefix: "ca".to_owned(),
+                // Hardcoded bech32 prefix
+                address_bech32_prefix: "addr".to_owned(),
             },
         }
     }
