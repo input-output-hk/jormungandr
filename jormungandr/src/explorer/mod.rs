@@ -15,7 +15,7 @@ use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
     HeaderHash,
 };
-use crate::blockchain::{Blockchain, Multiverse};
+use crate::blockchain::{Blockchain, Multiverse, MAIN_BRANCH_TAG};
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
 use chain_addr::Discrimination;
@@ -162,7 +162,7 @@ impl ExplorerDB {
         blockchain
             .storage()
             // FIXME: Unhardcode the "HEAD"
-            .get_tag("HEAD".to_owned())
+            .get_tag(MAIN_BRANCH_TAG.to_owned())
             .map_err(|err| err.into())
             .and_then(move |head_option| match head_option {
                 None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
