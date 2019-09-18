@@ -117,12 +117,18 @@ struct Transaction {
 }
 
 impl Transaction {
-    fn new(id: FragmentId, context: &Context) -> FieldResult<Option<Transaction>> {
-        let in_block_option = context.db.find_block_by_transaction(&id).wait()?;
-        Ok(in_block_option.map(|block_id| Transaction {
-            id,
-            in_block: block_id,
-        }))
+    fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
+        let in_block =
+            context
+                .db
+                .find_block_by_transaction(&id)
+                .wait()?
+                .ok_or(ErrorKind::NotFound(format!(
+                    "transaction not found: {}",
+                    &id,
+                )))?;
+
+        Ok(Transaction { id, in_block })
     }
 
     fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
@@ -227,6 +233,14 @@ struct Address {
     id: chain_addr::Address,
 }
 
+impl Address {
+    fn from_bech32(bech32: &String) -> FieldResult<Address> {
+        Ok(Address {
+            id: chain_addr::AddressReadable::from_string_anyprefix(bech32)?.to_address(),
+        })
+    }
+}
+
 impl From<&chain_addr::Address> for Address {
     fn from(addr: &chain_addr::Address) -> Address {
         Address { id: addr.clone() }
@@ -237,28 +251,28 @@ impl From<&chain_addr::Address> for Address {
     Context = Context
 )]
 impl Address {
+    /// The base32 representation of an address
     fn id(&self, context: &Context) -> String {
-        let prefix = &context.settings.address_bech32_prefix;
-        format!(
-            "{}",
-            chain_addr::AddressReadable::from_address(prefix, &self.id)
-        )
+        chain_addr::AddressReadable::from_address(&context.settings.address_bech32_prefix, &self.id)
+            .to_string()
     }
 
-    fn delegation() -> StakePool {
-        unimplemented!()
+    fn delegation() -> FieldResult<StakePool> {
+        Err(ErrorKind::Unimplemented.into())
     }
 
-    fn total_send() -> Value {
-        unimplemented!()
-    }
+    fn transactions(&self, context: &Context) -> FieldResult<Vec<Transaction>> {
+        let ids = context
+            .db
+            .get_transactions_by_address(&self.id)
+            .wait()?
+            .ok_or(ErrorKind::InternalError(
+                "Expected address to be indexed".to_owned(),
+            ))?;
 
-    fn total_received() -> Value {
-        unimplemented!()
-    }
-
-    fn transactions() -> Vec<Transaction> {
-        unimplemented!()
+        ids.iter()
+            .map(|id| Transaction::from_id(id.clone(), context))
+            .collect()
     }
 }
 
@@ -267,26 +281,30 @@ struct StakePool {
     id: PoolId,
 }
 
-struct Status {
-    current_epoch: Epoch,
-    latest_block: Block,
-    fee: FeeSettings,
-}
+struct Status {}
 
 #[juniper::object(
     Context = Context
 )]
 impl Status {
-    pub fn current_epoch(&self) -> &Epoch {
-        &self.current_epoch
+    pub fn current_epoch(&self) -> FieldResult<Epoch> {
+        // TODO: Would this be the Epoch of last block or a timeframe reference?
+        Err(ErrorKind::Unimplemented.into())
     }
 
-    pub fn latest_block(&self) -> &Block {
-        &self.latest_block
+    pub fn latest_block(&self, context: &Context) -> FieldResult<Block> {
+        context
+            .db
+            .get_latest_block_hash()
+            .and_then(|hash| context.db.get_block(&hash))
+            .wait()?
+            .ok_or(ErrorKind::InternalError("tip is not in explorer".to_owned()).into())
+            .map(|b| Block::from(&b))
     }
 
-    pub fn fee_settings(&self) -> &FeeSettings {
-        &self.fee
+    pub fn fee_settings(&self) -> FieldResult<FeeSettings> {
+        // TODO: Where can I get this?
+        Err(ErrorKind::Unimplemented.into())
     }
 }
 
@@ -352,13 +370,13 @@ impl Epoch {
     }
 
     /// Not yet implemented
-    pub fn stake_distribution(&self) -> StakeDistribution {
-        unimplemented!()
+    pub fn stake_distribution(&self) -> FieldResult<StakeDistribution> {
+        Err(ErrorKind::Unimplemented.into())
     }
 
     /// Not yet implemented
-    pub fn blocks(&self) -> FieldResult<Vec<Block>> {
-        unimplemented!()
+    pub fn blocks(&self, context: &Context) -> FieldResult<Vec<Block>> {
+        Err(ErrorKind::Unimplemented.into())
     }
 
     pub fn total_blocks(&self, context: &Context) -> FieldResult<BlockCount> {
@@ -416,30 +434,34 @@ impl Query {
         Block::from_string_hash(id, &context.db)
     }
 
-    fn chain_length(chain_length: ChainLength, context: &Context) -> FieldResult<Option<Block>> {
+    fn block_by_chain_length(length: ChainLength, context: &Context) -> FieldResult<Option<Block>> {
         Ok(context
             .db
-            .find_block_by_chain_length(chain_length.try_into()?)
+            .find_block_by_chain_length(length.try_into()?)
             .wait()?
             .map(Block::from_valid_hash))
     }
 
-    fn transaction(id: String, context: &Context) -> FieldResult<Option<Transaction>> {
+    fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {
         let id = FragmentId::from_str(&id)?;
 
-        Transaction::new(id, context)
+        Transaction::from_id(id, context)
     }
 
-    pub fn epoch(id: EpochNumber, context: &Context) -> FieldResult<Epoch> {
+    fn epoch(id: EpochNumber, context: &Context) -> FieldResult<Epoch> {
         Epoch::from_epoch_number(id, &context.db)
     }
 
+    fn address(bech32: String, context: &Context) -> FieldResult<Address> {
+        Address::from_bech32(&bech32)
+    }
+
     pub fn stake_pool(id: PoolId) -> FieldResult<StakePool> {
-        unimplemented!();
+        Err(ErrorKind::Unimplemented.into())
     }
 
     pub fn status() -> FieldResult<Status> {
-        unimplemented!();
+        Ok(Status {})
     }
 }
 
