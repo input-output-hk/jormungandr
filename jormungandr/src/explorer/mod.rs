@@ -131,9 +131,7 @@ impl ExplorerDB {
         let epochs = apply_block_to_epochs(Epochs::new(), &block)?;
         let chain_lengths = apply_block_to_chain_lengths(ChainLengths::new(), &block)?;
         let transactions = apply_block_to_transactions(Transactions::new(), &block)?;
-
-        // TODO: Initialize this
-        let addresses = Addresses::new();
+        let addresses = apply_block_to_addresses(Addresses::new(), &block)?;
 
         let initial_state = State {
             blocks,
