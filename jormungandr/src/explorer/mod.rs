@@ -18,7 +18,7 @@ use crate::blockcfg::{
 use crate::blockchain::{Blockchain, Multiverse, MAIN_BRANCH_TAG};
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
-use chain_addr::Discrimination;
+use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::multiverse::GCRoot;
@@ -37,7 +37,7 @@ pub struct Explorer {
 #[derive(Clone)]
 pub struct ExplorerDB {
     multiverse: Multiverse<State>,
-    longest_chain_tip: Lock<Block>,
+    longest_chain_tip: Lock<(HeaderHash, ChainLength)>,
     blockchain_config: BlockchainConfig,
 }
 
@@ -155,7 +155,7 @@ impl ExplorerDB {
 
         let bootstraped_db = ExplorerDB {
             multiverse,
-            longest_chain_tip: Lock::new(block0),
+            longest_chain_tip: Lock::new((block0.id(), block0.header.chain_length())),
             blockchain_config,
         };
 
@@ -266,11 +266,19 @@ impl ExplorerDB {
         &mut self,
         new_block: Block,
     ) -> impl Future<Item = (), Error = Infallible> {
-        get_lock(&self.longest_chain_tip).and_then(|mut current| {
-            if new_block.header.chain_length() > current.header.chain_length() {
-                *current = new_block;
+        get_lock(&self.longest_chain_tip).and_then(move |mut current| {
+            let (_current_hash, current_length) = *current;
+            if new_block.header.chain_length() > current_length {
+                *current = (new_block.id(), new_block.header.chain_length().clone());
             }
             Ok(())
+        })
+    }
+
+    pub fn get_latest_block_hash(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
+        get_lock(&self.longest_chain_tip).map(|guard| {
+            let (id, _length) = *guard;
+            id
         })
     }
 
@@ -278,56 +286,61 @@ impl ExplorerDB {
         &self,
         block_id: &HeaderHash,
     ) -> impl Future<Item = Option<ExplorerBlock>, Error = Infallible> {
-        let multiverse = self.multiverse.clone();
         let block_id = block_id.clone();
-        get_lock(&self.longest_chain_tip).and_then(move |tip| {
-            multiverse.get((*tip).id()).and_then(move |maybe_state| {
-                let state = maybe_state.expect("the longest chain to be indexed");
-                Ok(state.blocks.lookup(&block_id).map(|b| (*b).clone()))
-            })
-        })
+        self.with_latest_state(move |state| state.blocks.lookup(&block_id).map(|b| (*b).clone()))
     }
 
     pub fn get_epoch(
         &self,
         epoch: Epoch,
     ) -> impl Future<Item = Option<EpochData>, Error = Infallible> {
-        let multiverse = self.multiverse.clone();
         let epoch = epoch.clone();
-        get_lock(&self.longest_chain_tip).and_then(move |tip| {
-            multiverse.get((*tip).id()).and_then(move |maybe_state| {
-                let state = maybe_state.expect("the longest chain to be indexed");
-                Ok(state.epochs.lookup(&epoch).map(|e| (*e).clone()))
-            })
-        })
+        self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| (*e).clone()))
     }
 
     pub fn find_block_by_chain_length(
         &self,
         chain_length: ChainLength,
     ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
-        let multiverse = self.multiverse.clone();
-        get_lock(&self.longest_chain_tip).and_then(move |tip| {
-            multiverse.get((*tip).id()).and_then(move |maybe_state| {
-                let state = maybe_state.expect("the longest chain to be indexed");
-                Ok(state
-                    .chain_lengths
-                    .lookup(&chain_length)
-                    .map(|b| (*b).clone()))
-            })
+        self.with_latest_state(move |state| {
+            state
+                .chain_lengths
+                .lookup(&chain_length)
+                .map(|b| (*b).clone())
         })
     }
 
     pub fn find_block_by_transaction(
         &self,
-        transaction: &FragmentId,
+        transaction_id: &FragmentId,
     ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
+        let transaction_id = transaction_id.clone();
+        self.with_latest_state(move |state| {
+            state
+                .transactions
+                .lookup(&transaction_id)
+                .map(|id| id.clone())
+        })
+    }
+
+    pub fn get_transactions_by_address(
+        &self,
+        address: &Address,
+    ) -> impl Future<Item = Option<Set<FragmentId>>, Error = Infallible> {
+        let address = address.clone();
+        self.with_latest_state(move |state| state.addresses.lookup(&address).map(|set| set.clone()))
+    }
+
+    fn with_latest_state<T>(
+        &self,
+        f: impl Fn(State) -> T,
+    ) -> impl Future<Item = T, Error = Infallible> {
         let multiverse = self.multiverse.clone();
-        let transaction = transaction.clone();
         get_lock(&self.longest_chain_tip).and_then(move |tip| {
-            multiverse.get((*tip).id()).and_then(move |maybe_state| {
+            let (tip_hash, _length) = *tip;
+            multiverse.get(tip_hash).and_then(move |maybe_state| {
                 let state = maybe_state.expect("the longest chain to be indexed");
-                Ok(state.transactions.lookup(&transaction).map(|id| id.clone()))
+                Ok(f(state))
             })
         })
     }
