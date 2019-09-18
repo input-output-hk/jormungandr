@@ -17,10 +17,10 @@ the protocol and allow it.
 
 ## Type of queries
 
-The protocol allows to send multiple type of messages between nodes:
+The protocol allows to send multiple types of messages between nodes:
 
-* sync block to remote peer _Last Block_ (`tip`).
-* propose new fragment (new transactions, certificates, ...):
+* sync block to remote peer's _Last Block_ (`tip`).
+* propose new fragments (new transactions, certificates, ...):
   this is for the fragment propagation.
 * propose new blocks: for the block propagation.
 
