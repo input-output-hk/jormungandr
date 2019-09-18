@@ -22,25 +22,31 @@ pub fn process_block_announcements<S>(
 where
     S: Stream<Item = Header, Error = core_error::Error> + Send + 'static,
 {
-    let err_logger = logger.clone();
+    let stream_err_logger = logger.clone();
+    let sink_err_logger = logger.clone();
+    let stream = inbound
+        .map_err(move |err| {
+            info!(
+                stream_err_logger,
+                "block subscription stream failure: {:?}", err
+            );
+        })
+        .map(move |header| {
+            global_state.peers.bump_peer_for_block_fetch(node_id);
+            BlockMsg::AnnouncedBlock(header, node_id)
+        });
     tokio::spawn(
-        inbound
-            .map_err(move |err| {
-                info!(err_logger, "block subscription stream failure: {:?}", err);
+        block_box
+            .sink_map_err(move |_| {
+                error!(
+                    sink_err_logger,
+                    "failed to send block announcement to the block task"
+                );
             })
-            .fold(block_box, move |block_box, header| {
-                let err_logger = logger.clone();
-                global_state.peers.bump_peer_for_block_fetch(node_id);
-                block_box
-                    .send(BlockMsg::AnnouncedBlock(header, node_id))
-                    .map_err(move |_| {
-                        error!(
-                            err_logger,
-                            "failed to send block announcement to the block task"
-                        );
-                    })
-            })
-            .map(|_| {}),
+            .send_all(stream)
+            .map(move |_| {
+                debug!(logger, "block subscription ended");
+            }),
     )
 }
 
@@ -66,26 +72,28 @@ pub fn process_fragments<S>(
 where
     S: Stream<Item = Fragment, Error = core_error::Error> + Send + 'static,
 {
-    let err_logger = logger.clone();
+    let stream_err_logger = logger.clone();
+    let sink_err_logger = logger.clone();
+    let stream = inbound
+        .map_err(move |err| {
+            info!(
+                stream_err_logger,
+                "fragment subscription stream failure: {:?}", err
+            );
+        })
+        .map(|fragment| TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment]));
     tokio::spawn(
-        inbound
-            .map_err(move |err| {
-                info!(
-                    err_logger,
-                    "fragment subscription stream failure: {:?}", err
+        transaction_box
+            .sink_map_err(move |_| {
+                error!(
+                    sink_err_logger,
+                    "failed to send fragment to the transaction task"
                 );
             })
-            .fold(transaction_box, move |mbox, fragment| {
-                let err_logger = logger.clone();
-                let msg = TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment]);
-                mbox.send(msg).map_err(move |_| {
-                    error!(
-                        err_logger,
-                        "failed to send fragment to the gransaction task"
-                    );
-                })
-            })
-            .map(|_| {}),
+            .send_all(stream)
+            .map(move |_| {
+                debug!(logger, "fragment subscription ended");
+            }),
     )
 }
 
