@@ -16,24 +16,35 @@ pub fn process_block_announcements<S>(
     inbound: S,
     node_id: NodeId,
     global_state: GlobalStateR,
-    mut block_box: MessageBox<BlockMsg>,
+    block_box: MessageBox<BlockMsg>,
     logger: Logger,
 ) -> tokio::executor::Spawn
 where
     S: Stream<Item = Header, Error = core_error::Error> + Send + 'static,
 {
+    let err_logger = logger.clone();
     tokio::spawn(
         inbound
-            .for_each(move |header| {
-                process_block_announcement(header, node_id, &global_state, &mut block_box);
-                Ok(())
-            })
             .map_err(move |err| {
-                info!(logger, "block subscription stream failure: {:?}", err);
-            }),
+                info!(err_logger, "block subscription stream failure: {:?}", err);
+            })
+            .fold(block_box, move |block_box, header| {
+                let err_logger = logger.clone();
+                global_state.peers.bump_peer_for_block_fetch(node_id);
+                block_box
+                    .send(BlockMsg::AnnouncedBlock(header, node_id))
+                    .map_err(move |_| {
+                        error!(
+                            err_logger,
+                            "failed to send block announcement to the block task"
+                        );
+                    })
+            })
+            .map(|_| {}),
     )
 }
 
+// TODO: convert this function and all uses of it to async
 pub fn process_block_announcement(
     header: Header,
     node_id: NodeId,
