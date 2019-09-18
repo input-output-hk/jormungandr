@@ -257,7 +257,7 @@ pub fn process_block_announcement(
     logger: Logger,
 ) -> impl Future<Item = (), Error = Error> {
     blockchain
-        .pre_check_header(header)
+        .pre_check_header(header, false)
         .and_then(move |pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { .. } => {
                 debug!(logger, "block is already present");
@@ -307,7 +307,7 @@ pub fn process_network_block(
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     blockchain
-        .pre_check_header(header)
+        .pre_check_header(header, false)
         .and_then(move |pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { .. } => {
                 debug!(logger, "block is already present");
@@ -361,9 +361,8 @@ where
             unimplemented!()
         })
         .and_then(move |header| {
-            blockchain
-                .pre_check_header(header)
-                .and_then(move |pre_checked| match pre_checked {
+            blockchain.pre_check_header(header, false).and_then(
+                move |pre_checked| match pre_checked {
                     PreCheckedHeader::AlreadyPresent { .. } => {
                         // The block is already present. This may happen
                         // if the peer has started from an earlier checkpoint
@@ -383,7 +382,8 @@ where
                         // before pausing to retrieve blocks.
                         Ok(Some(header.hash()))
                     }
-                })
+                },
+            )
         })
         .filter_map(identity)
         .collect()

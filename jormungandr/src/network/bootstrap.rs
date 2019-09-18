@@ -138,7 +138,7 @@ fn handle_block(
     );
     let mut end_blockchain = blockchain.clone();
     blockchain
-        .pre_check_header(header)
+        .pre_check_header(header, true)
         .map_err(Error::HeaderCheckFailed)
         .and_then(|pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { header, .. } => {
