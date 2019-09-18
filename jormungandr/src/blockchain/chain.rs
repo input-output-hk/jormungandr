@@ -103,7 +103,7 @@ error_chain! {
     }
 }
 
-const MAIN_BRANCH_TAG: &str = "HEAD";
+pub const MAIN_BRANCH_TAG: &str = "HEAD";
 
 /// blockchain object, can be safely shared across multiple threads. However it is better not
 /// to as some operations may require a mutex.
