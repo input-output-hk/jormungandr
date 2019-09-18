@@ -1,4 +1,4 @@
-use imhamt::Hamt;
+use imhamt::{Hamt, HamtIter};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 
@@ -17,5 +17,19 @@ impl<T: Hash + PartialEq + Eq + Clone> HamtSet<T> {
         };
 
         HamtSet(new_hamt)
+    }
+
+    pub fn iter(&self) -> HamtSetIter<T> {
+        HamtSetIter(self.0.iter())
+    }
+}
+
+pub struct HamtSetIter<'a, K>(HamtIter<'a, K, ()>);
+
+impl<'a, K> Iterator for HamtSetIter<'a, K> {
+    type Item = &'a K;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(k, _v)| k)
     }
 }
