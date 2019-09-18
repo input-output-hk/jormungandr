@@ -22,10 +22,10 @@ pub type Epochs = Hamt<Epoch, EpochData>;
 #[derive(Clone)]
 pub struct ExplorerBlock {
     pub transactions: HashMap<FragmentId, ExplorerTransaction>,
-    id: HeaderHash,
-    date: BlockDate,
-    chain_length: ChainLength,
-    parent_hash: HeaderHash,
+    pub id: HeaderHash,
+    pub date: BlockDate,
+    pub chain_length: ChainLength,
+    pub parent_hash: HeaderHash,
 }
 
 #[derive(Clone)]
