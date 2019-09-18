@@ -59,8 +59,8 @@ pub fn process_block_announcement(
 
 pub fn process_fragments<S>(
     inbound: S,
-    state: GlobalStateR,
-    mut transaction_box: MessageBox<TransactionMsg>,
+    _state: GlobalStateR,
+    transaction_box: MessageBox<TransactionMsg>,
     logger: Logger,
 ) -> tokio::executor::Spawn
 where
@@ -69,17 +69,23 @@ where
     let err_logger = logger.clone();
     tokio::spawn(
         inbound
-            .for_each(move |fragment| {
-                let msg = TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment]);
-                transaction_box.try_send(msg).unwrap();
-                Ok(())
-            })
             .map_err(move |err| {
                 info!(
                     err_logger,
                     "fragment subscription stream failure: {:?}", err
                 );
-            }),
+            })
+            .fold(transaction_box, move |mbox, fragment| {
+                let err_logger = logger.clone();
+                let msg = TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment]);
+                mbox.send(msg).map_err(move |_| {
+                    error!(
+                        err_logger,
+                        "failed to send fragment to the gransaction task"
+                    );
+                })
+            })
+            .map(|_| {}),
     )
 }
 
