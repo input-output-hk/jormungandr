@@ -16,24 +16,41 @@ pub fn process_block_announcements<S>(
     inbound: S,
     node_id: NodeId,
     global_state: GlobalStateR,
-    mut block_box: MessageBox<BlockMsg>,
+    block_box: MessageBox<BlockMsg>,
     logger: Logger,
 ) -> tokio::executor::Spawn
 where
     S: Stream<Item = Header, Error = core_error::Error> + Send + 'static,
 {
+    let stream_err_logger = logger.clone();
+    let sink_err_logger = logger.clone();
+    let stream = inbound
+        .map_err(move |err| {
+            info!(
+                stream_err_logger,
+                "block subscription stream failure: {:?}", err
+            );
+        })
+        .map(move |header| {
+            global_state.peers.bump_peer_for_block_fetch(node_id);
+            BlockMsg::AnnouncedBlock(header, node_id)
+        });
     tokio::spawn(
-        inbound
-            .for_each(move |header| {
-                process_block_announcement(header, node_id, &global_state, &mut block_box);
-                Ok(())
+        block_box
+            .sink_map_err(move |_| {
+                error!(
+                    sink_err_logger,
+                    "failed to send block announcement to the block task"
+                );
             })
-            .map_err(move |err| {
-                info!(logger, "block subscription stream failure: {:?}", err);
+            .send_all(stream)
+            .map(move |_| {
+                debug!(logger, "block subscription ended");
             }),
     )
 }
 
+// TODO: convert this function and all uses of it to async
 pub fn process_block_announcement(
     header: Header,
     node_id: NodeId,
@@ -48,26 +65,34 @@ pub fn process_block_announcement(
 
 pub fn process_fragments<S>(
     inbound: S,
-    state: GlobalStateR,
-    mut transaction_box: MessageBox<TransactionMsg>,
+    _state: GlobalStateR,
+    transaction_box: MessageBox<TransactionMsg>,
     logger: Logger,
 ) -> tokio::executor::Spawn
 where
     S: Stream<Item = Fragment, Error = core_error::Error> + Send + 'static,
 {
-    let err_logger = logger.clone();
+    let stream_err_logger = logger.clone();
+    let sink_err_logger = logger.clone();
+    let stream = inbound
+        .map_err(move |err| {
+            info!(
+                stream_err_logger,
+                "fragment subscription stream failure: {:?}", err
+            );
+        })
+        .map(|fragment| TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment]));
     tokio::spawn(
-        inbound
-            .for_each(move |fragment| {
-                let msg = TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment]);
-                transaction_box.try_send(msg).unwrap();
-                Ok(())
-            })
-            .map_err(move |err| {
-                info!(
-                    err_logger,
-                    "fragment subscription stream failure: {:?}", err
+        transaction_box
+            .sink_map_err(move |_| {
+                error!(
+                    sink_err_logger,
+                    "failed to send fragment to the transaction task"
                 );
+            })
+            .send_all(stream)
+            .map(move |_| {
+                debug!(logger, "fragment subscription ended");
             }),
     )
 }
