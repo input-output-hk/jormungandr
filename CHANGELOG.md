@@ -1,5 +1,76 @@
 # Change Log
 
+## [v0.3.1415](https://github.com/input-output-hk/jormungandr/tree/v0.3.1415) (2019-09-18)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.3...v0.3.1415)
+
+**Implemented enhancements:**
+
+- Jormungandr configuration does not check unknown fields [\#759](https://github.com/input-output-hk/jormungandr/issues/759)
+- Extended info on --version [\#719](https://github.com/input-output-hk/jormungandr/issues/719)
+- Link network fragment subscription with fragment pool [\#784](https://github.com/input-output-hk/jormungandr/pull/784)
+- make sure we keep up to date the right branches on the different network [\#773](https://github.com/input-output-hk/jormungandr/pull/773)
+- Fragment validator [\#748](https://github.com/input-output-hk/jormungandr/pull/748)
+- Outline expected schema [\#739](https://github.com/input-output-hk/jormungandr/pull/739)
+- Versioning improvements for jcli and jörmungandr [\#730](https://github.com/input-output-hk/jormungandr/pull/730)
+- Add explorer mode startup config [\#702](https://github.com/input-output-hk/jormungandr/pull/702)
+
+**Fixed bugs:**
+
+- not yet implemented: method to load a Ref from the storage is not yet there [\#788](https://github.com/input-output-hk/jormungandr/issues/788)
+- Chain head storage tag not kept up to date [\#783](https://github.com/input-output-hk/jormungandr/issues/783)
+- Jormungandr configuration does not check unknown fields [\#759](https://github.com/input-output-hk/jormungandr/issues/759)
+- 'block subscription stream failure' when starting a Passive node connected to a Leader node [\#754](https://github.com/input-output-hk/jormungandr/issues/754)
+- Network error: Tree topology, PullBlocksToTip issue [\#745](https://github.com/input-output-hk/jormungandr/issues/745)
+- `--full-version` and `--source-version` fail since `--config \<node\_config\>` is mandatory [\#732](https://github.com/input-output-hk/jormungandr/issues/732)
+- Make sure the TIP's tag is updated in the storage too [\#790](https://github.com/input-output-hk/jormungandr/pull/790)
+- add missing break in the bootstrap function [\#753](https://github.com/input-output-hk/jormungandr/pull/753)
+
+**Closed issues:**
+
+- Leader node stops creating blocks [\#776](https://github.com/input-output-hk/jormungandr/issues/776)
+- Server Error when directing rest calls to public\_address instead of rest address [\#775](https://github.com/input-output-hk/jormungandr/issues/775)
+
+**Merged pull requests:**
+
+- Improve processing of inbound subscription streams [\#789](https://github.com/input-output-hk/jormungandr/pull/789)
+- network: Replace forward combinator with send\_all [\#787](https://github.com/input-output-hk/jormungandr/pull/787)
+- Update chain-deps: Rename content to fragment [\#786](https://github.com/input-output-hk/jormungandr/pull/786)
+- Update chain-deps for future-to-sink network API [\#782](https://github.com/input-output-hk/jormungandr/pull/782)
+- Rename FragmentSubscription to ContentSubscription in network docs [\#781](https://github.com/input-output-hk/jormungandr/pull/781)
+- Update chain-deps; fuse forwarded streams [\#780](https://github.com/input-output-hk/jormungandr/pull/780)
+- add network informations [\#779](https://github.com/input-output-hk/jormungandr/pull/779)
+- Plug in logging through log crate to slog [\#778](https://github.com/input-output-hk/jormungandr/pull/778)
+- Less scary connection error logging [\#777](https://github.com/input-output-hk/jormungandr/pull/777)
+- Fall back to block 0 when no starting checkpoints match [\#772](https://github.com/input-output-hk/jormungandr/pull/772)
+- remove pre-jormungandr configs [\#770](https://github.com/input-output-hk/jormungandr/pull/770)
+- provide better checkpoints than before [\#767](https://github.com/input-output-hk/jormungandr/pull/767)
+- Small update to improve perf and memory usage of blockchain cache [\#764](https://github.com/input-output-hk/jormungandr/pull/764)
+- config cleanup and validation [\#762](https://github.com/input-output-hk/jormungandr/pull/762)
+- Restore logs check [\#761](https://github.com/input-output-hk/jormungandr/pull/761)
+- \[Documentation\] Remove public\_id from docs [\#758](https://github.com/input-output-hk/jormungandr/pull/758)
+- Remove Id from the poldercast gossiping [\#757](https://github.com/input-output-hk/jormungandr/pull/757)
+- Offer content service on the server Node [\#755](https://github.com/input-output-hk/jormungandr/pull/755)
+- explicit compilation of the node and jcli [\#751](https://github.com/input-output-hk/jormungandr/pull/751)
+- make sure we don't build the integration tests dependencies unless needed [\#750](https://github.com/input-output-hk/jormungandr/pull/750)
+- go through the whole list of trusted peers on the network [\#749](https://github.com/input-output-hk/jormungandr/pull/749)
+- Process fragment subscription on the server side [\#747](https://github.com/input-output-hk/jormungandr/pull/747)
+- Add stub to process fragment subscription [\#743](https://github.com/input-output-hk/jormungandr/pull/743)
+- Update chain-deps, use ContentService to subscribe the client to fragments [\#740](https://github.com/input-output-hk/jormungandr/pull/740)
+- Fragment process clean up [\#737](https://github.com/input-output-hk/jormungandr/pull/737)
+- make the node use multiaddr for the listen\_addr [\#736](https://github.com/input-output-hk/jormungandr/pull/736)
+- Clean up fragment network API docs [\#735](https://github.com/input-output-hk/jormungandr/pull/735)
+- Update to upload sinks in network-core API [\#734](https://github.com/input-output-hk/jormungandr/pull/734)
+- fix issue with --full-version expecting the --config [\#733](https://github.com/input-output-hk/jormungandr/pull/733)
+- Openapi lvl4 [\#731](https://github.com/input-output-hk/jormungandr/pull/731)
+- Update stats and scenario testing [\#729](https://github.com/input-output-hk/jormungandr/pull/729)
+- Openapi validator lvl3 [\#728](https://github.com/input-output-hk/jormungandr/pull/728)
+- Add graphql server [\#727](https://github.com/input-output-hk/jormungandr/pull/727)
+- Cert update [\#726](https://github.com/input-output-hk/jormungandr/pull/726)
+- Openapi verifier lvl2 [\#725](https://github.com/input-output-hk/jormungandr/pull/725)
+- JCLI: add rest/v0/stake [\#722](https://github.com/input-output-hk/jormungandr/pull/722)
+- doc: renaming genesis to genesis\_praos [\#721](https://github.com/input-output-hk/jormungandr/pull/721)
+- capture the standard error output from the running nodes [\#718](https://github.com/input-output-hk/jormungandr/pull/718)
+
 ## [v0.3.3](https://github.com/input-output-hk/jormungandr/tree/v0.3.3) (2019-08-22)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.2...v0.3.3)
 
