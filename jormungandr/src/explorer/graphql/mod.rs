@@ -11,8 +11,7 @@ use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 use tokio::prelude::*;
 
-use crate::explorer::ExplorerDB;
-use crate::explorer::Settings;
+use crate::explorer::{ExplorerDB, Settings};
 
 pub struct Block {
     hash: HeaderHash,
@@ -44,7 +43,7 @@ impl Block {
 )]
 impl Block {
     /// The Block unique identifier
-    pub fn hash(&self) -> String {
+    pub fn id(&self) -> String {
         format!("{}", self.hash)
     }
 
