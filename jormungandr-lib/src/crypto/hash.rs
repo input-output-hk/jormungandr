@@ -99,6 +99,13 @@ impl From<[u8; 32]> for Hash {
     }
 }
 
+impl<T> From<DigestOf<Blake2b256, T>> for Hash {
+    fn from(d: DigestOf<Blake2b256, T>) -> Hash {
+        let x: [u8; 32] = d.into();
+        x.into()
+    }
+}
+
 impl From<Hash> for [u8; 32] {
     fn from(hash: Hash) -> [u8; 32] {
         hash.0.into()

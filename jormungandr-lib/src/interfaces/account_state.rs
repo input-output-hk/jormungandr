@@ -1,6 +1,56 @@
 use crate::{crypto::hash::Hash, interfaces::Value};
 use chain_impl_mockchain::accounting::account;
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct DelegationType {
+    pools: Vec<(Hash, u8)>,
+}
+
+impl From<account::DelegationType> for DelegationType {
+    fn from(dt: account::DelegationType) -> Self {
+        match dt {
+            account::DelegationType::NonDelegated => DelegationType { pools: Vec::new() },
+            account::DelegationType::Full(h) => DelegationType {
+                pools: vec![(h.into(), 1)],
+            },
+            account::DelegationType::Ratio(v) => DelegationType {
+                pools: v
+                    .pools
+                    .iter()
+                    .map(|(h, pp)| (h.clone().into(), *pp))
+                    .collect(),
+            },
+        }
+    }
+}
+
+impl From<DelegationType> for account::DelegationType {
+    fn from(dt: DelegationType) -> Self {
+        if dt.pools.len() == 0 {
+            account::DelegationType::NonDelegated
+        } else if dt.pools.len() == 1 {
+            account::DelegationType::Full(dt.pools[0].0.into_digest_of())
+        } else {
+            let v: u32 = dt.pools.iter().map(|(_, i)| (*i as u32)).sum();
+            match v.try_into() {
+                Err(_) => panic!("delegation type pool overflow"),
+                Ok(parts) => {
+                    let ratio = account::DelegationRatio {
+                        parts,
+                        pools: dt
+                            .pools
+                            .iter()
+                            .map(|(h, pp)| (h.into_digest_of(), *pp))
+                            .collect(),
+                    };
+                    account::DelegationType::Ratio(ratio)
+                }
+            }
+        }
+    }
+}
 
 /// represent the current state of an account in the ledger
 ///
@@ -9,9 +59,9 @@ use serde::{Deserialize, Serialize};
 ///
 /// [`UTxOInfo`]: ./struct.UTxOInfo.html
 ///
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AccountState {
-    delegation: Option<Hash>,
+    delegation: DelegationType,
     value: Value,
     counter: u32,
 }
@@ -22,7 +72,7 @@ impl AccountState {
     ///
     /// `None` means this account is not delegating its stake.
     #[inline]
-    pub fn delegation(&self) -> &Option<Hash> {
+    pub fn delegation(&self) -> &DelegationType {
         &self.delegation
     }
 
@@ -46,10 +96,7 @@ impl AccountState {
 impl<E> From<account::AccountState<E>> for AccountState {
     fn from(account: account::AccountState<E>) -> Self {
         AccountState {
-            delegation: account.delegation().clone().map(|h| {
-                let h: [u8; 32] = h.into();
-                h.into()
-            }),
+            delegation: account.delegation().clone().into(),
             value: account.value().into(),
             counter: account.get_counter(),
         }
@@ -59,10 +106,7 @@ impl<E> From<account::AccountState<E>> for AccountState {
 impl<'a, E> From<&'a account::AccountState<E>> for AccountState {
     fn from(account: &'a account::AccountState<E>) -> Self {
         AccountState {
-            delegation: account.delegation().clone().map(|h| {
-                let h: [u8; 32] = h.into();
-                h.into()
-            }),
+            delegation: account.delegation().clone().into(),
             value: account.value().into(),
             counter: account.get_counter(),
         }

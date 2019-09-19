@@ -2,6 +2,7 @@ use chain_crypto::{Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{Certificate, PoolRegistration},
     leadership::genesis::GenesisPraosLeader,
+    rewards,
 };
 use chain_time::DurationSeconds;
 use jcli_app::certificate::{write_cert, Error};
@@ -17,7 +18,7 @@ pub struct StakePoolRegistration {
     pub serial: u128,
     /// management threshold
     #[structopt(long = "management-threshold", name = "THRESHOLD")]
-    pub management_threshold: u8,
+    pub management_threshold: u16,
     /// start validity
     #[structopt(long = "start-validity", name = "SECONDS-SINCE-START")]
     pub start_validity: u64,
@@ -54,6 +55,7 @@ impl StakePoolRegistration {
             owners: self.owners.clone(),
             management_threshold: self.management_threshold,
             start_validity: DurationSeconds::from(self.start_validity).into(),
+            rewards: rewards::TaxType::zero(),
             keys: GenesisPraosLeader {
                 kes_public_key: self.kes_key,
                 vrf_public_key: self.vrf_key,
