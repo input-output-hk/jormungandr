@@ -132,9 +132,10 @@ fn handle_block(
     logger: Logger,
 ) -> impl Future<Item = Arc<Ref>, Error = Error> {
     let header = block.header();
-    debug!(
+    trace!(
         logger,
-        "received block from the bootstrap node: {:#?}", header
+        "received block from the bootstrap node: {:#?}",
+        header
     );
     let mut end_blockchain = blockchain.clone();
     blockchain

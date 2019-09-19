@@ -27,7 +27,9 @@ impl NodeService {
     pub fn new(channels: Channels, global_state: GlobalStateR) -> Self {
         NodeService {
             channels,
-            logger: global_state.logger().new(o!(::log::KEY_TASK => "server")),
+            logger: global_state
+                .logger()
+                .new(o!(::log::KEY_SUB_TASK => "server")),
             global_state,
         }
     }
