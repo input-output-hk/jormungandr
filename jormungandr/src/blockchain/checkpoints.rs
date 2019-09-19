@@ -35,7 +35,7 @@ impl Checkpoints {
 
             // prevent the `from`'s parent to appear twice in the event the parent is also
             // the last block of the previous epoch.
-            if checkpoints[checkpoints.len()] != hash {
+            if checkpoints[checkpoints.len() - 1] != hash {
                 ignore_prev += 1;
                 checkpoints.push(hash);
             }
