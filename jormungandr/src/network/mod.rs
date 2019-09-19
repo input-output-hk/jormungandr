@@ -385,7 +385,7 @@ pub fn bootstrap(
     let mut bootstrapped = false;
 
     for peer in config.trusted_peers.iter() {
-        let logger = logger.new(o!("network" => "bootstrap", "peer" => peer.to_string()));
+        let logger = logger.new(o!("peer" => peer.to_string()));
         if let Some(address) = peer.to_socketaddr() {
             let peer = Peer::new(address, Protocol::Grpc);
             let res =
