@@ -159,7 +159,6 @@ impl ExplorerDB {
 
         blockchain
             .storage()
-            // FIXME: Unhardcode the "HEAD"
             .get_tag(MAIN_BRANCH_TAG.to_owned())
             .map_err(|err| err.into())
             .and_then(move |head_option| match head_option {
