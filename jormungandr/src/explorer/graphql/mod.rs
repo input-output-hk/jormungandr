@@ -348,16 +348,14 @@ struct Epoch {
 }
 
 impl Epoch {
-    fn from_epoch_number(id: EpochNumber, db: &ExplorerDB) -> FieldResult<Epoch> {
-        let epoch = Epoch { id: id.try_into()? };
-
-        epoch.get_epoch_data(db).map(|_| epoch)
+    fn from_epoch_number(id: EpochNumber) -> FieldResult<Epoch> {
+        Ok(Epoch { id: id.try_into()? })
     }
 
-    fn get_epoch_data(&self, db: &ExplorerDB) -> FieldResult<EpochData> {
-        db.get_epoch(self.id.into()).wait()?.ok_or(
-            ErrorKind::InternalError("Couldn't get EpochData from ExplorerDB".to_owned()).into(),
-        )
+    fn get_epoch_data(&self, db: &ExplorerDB) -> Option<EpochData> {
+        db.get_epoch(self.id.into())
+            .wait()
+            .expect("Infallible to not happen")
     }
 }
 
@@ -375,23 +373,25 @@ impl Epoch {
     }
 
     /// Not yet implemented
+    // It is possible to compute this by getting the last block and going backwards
+    // so this could fill another requirement, like pagination
     pub fn blocks(&self, context: &Context) -> FieldResult<Vec<Block>> {
         Err(ErrorKind::Unimplemented.into())
     }
 
-    pub fn first_block(&self, context: &Context) -> FieldResult<Block> {
+    pub fn first_block(&self, context: &Context) -> Option<Block> {
         self.get_epoch_data(&context.db)
             .map(|data| Block::from_valid_hash(data.first_block))
     }
 
-    pub fn last_block(&self, context: &Context) -> FieldResult<Block> {
+    pub fn last_block(&self, context: &Context) -> Option<Block> {
         self.get_epoch_data(&context.db)
             .map(|data| Block::from_valid_hash(data.last_block))
     }
 
-    pub fn total_blocks(&self, context: &Context) -> FieldResult<BlockCount> {
+    pub fn total_blocks(&self, context: &Context) -> BlockCount {
         self.get_epoch_data(&context.db)
-            .map(|data| data.total_blocks.into())
+            .map_or(0.into(), |data| data.total_blocks.into())
     }
 }
 
@@ -459,7 +459,7 @@ impl Query {
     }
 
     fn epoch(id: EpochNumber, context: &Context) -> FieldResult<Epoch> {
-        Epoch::from_epoch_number(id, &context.db)
+        Epoch::from_epoch_number(id)
     }
 
     fn address(bech32: String, context: &Context) -> FieldResult<Address> {
