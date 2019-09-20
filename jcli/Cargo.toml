@@ -1,6 +1,6 @@
 [package]
 name = "jcli"
-version = "0.3.1415"
+version = "0.3.9999"
 authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
           , "Vincent Hanquez <vincent.hanquez@iohk.io>"
           , "Eelco Dolstra <edolstra@gmail.com>"

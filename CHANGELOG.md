@@ -1,5 +1,16 @@
 # Change Log
 
+## [v0.3.9999](https://github.com/input-output-hk/jormungandr/tree/v0.3.9999) (2019-09-20)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.1415...v0.3.9999)
+
+**Fixed bugs:**
+
+- fix silly bug in the checkpoint [\#794](https://github.com/input-output-hk/jormungandr/pull/794)
+
+**Merged pull requests:**
+
+- Logging fixes [\#793](https://github.com/input-output-hk/jormungandr/pull/793)
+
 ## [v0.3.1415](https://github.com/input-output-hk/jormungandr/tree/v0.3.1415) (2019-09-18)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.3...v0.3.1415)
 
