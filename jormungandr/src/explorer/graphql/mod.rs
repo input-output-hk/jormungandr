@@ -379,6 +379,16 @@ impl Epoch {
         Err(ErrorKind::Unimplemented.into())
     }
 
+    pub fn first_block(&self, context: &Context) -> FieldResult<Block> {
+        self.get_epoch_data(&context.db)
+            .map(|data| Block::from_valid_hash(data.first_block))
+    }
+
+    pub fn last_block(&self, context: &Context) -> FieldResult<Block> {
+        self.get_epoch_data(&context.db)
+            .map(|data| Block::from_valid_hash(data.last_block))
+    }
+
     pub fn total_blocks(&self, context: &Context) -> FieldResult<BlockCount> {
         self.get_epoch_data(&context.db)
             .map(|data| data.total_blocks.into())
