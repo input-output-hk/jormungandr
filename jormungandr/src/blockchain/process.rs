@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     blockcfg::{Block, Epoch, Header, HeaderHash},
-    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg},
+    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
     stats_counter::StatsCounter,
@@ -13,7 +13,7 @@ use crate::{
         task::{Input, TokioServiceInfo},
     },
 };
-use chain_core::property::{Block as _, HasHeader as _};
+use chain_core::property::{Block as _, Fragment as _, HasHeader as _};
 
 use futures::future::Either;
 use slog::Logger;
@@ -28,6 +28,7 @@ pub fn handle_input(
     stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
+    tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
     input: Input<BlockMsg>,
 ) -> Result<(), ()> {
@@ -99,6 +100,7 @@ pub fn handle_input(
         }
         BlockMsg::NetworkBlock(block, reply) => {
             stats_counter.add_block_recv_cnt(1);
+            let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
             let future = process_network_block(blockchain.clone(), block, info.logger().clone());
             match future.wait() {
                 Err(e) => {
@@ -107,6 +109,7 @@ pub fn handle_input(
                 Ok(maybe_updated) => {
                     if let Some(new_block_ref) = maybe_updated {
                         let header = new_block_ref.header().clone();
+                        let date = header.block_date().clone().into();
                         process_new_ref(
                             blockchain.clone(),
                             blockchain_tip.clone(),
@@ -114,6 +117,11 @@ pub fn handle_input(
                         )
                         .wait()
                         .unwrap();
+                        tx_msg_box
+                            .try_send(TransactionMsg::RemoveTransactions(fragment_ids, date))
+                            .unwrap_or_else(|err| {
+                                error!(info.logger(), "cannot remove fragments from pool: {}", err)
+                            });
                         network_msg_box
                             .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                             .unwrap_or_else(|err| {
