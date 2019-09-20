@@ -9,7 +9,13 @@ use crate::{
 };
 use slog::Logger;
 use std::time::Duration;
-use tokio::{prelude::*, timer::Interval};
+use tokio::{
+    prelude::{
+        future::Either::{A, B},
+        Future, Stream,
+    },
+    timer::Interval,
+};
 
 pub struct Process {
     pool: Pool,
@@ -61,10 +67,14 @@ impl Process {
                     // put them in another pool.
 
                     let stats_counter = stats_counter.clone();
-                    self.pool
+                    A(self
+                        .pool
                         .clone()
                         .insert_and_propagate_all(origin, txs, service_info.logger().clone())
-                        .map(move |count| stats_counter.add_tx_recv_cnt(count))
+                        .map(move |count| stats_counter.add_tx_recv_cnt(count)))
+                }
+                TransactionMsg::RemoveTransactions(fragment_ids, date) => {
+                    B(self.pool.clone().remove_added_to_block(fragment_ids, date))
                 }
             }
         })
