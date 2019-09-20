@@ -48,6 +48,18 @@ impl Logs {
         self.run_on_inner(move |inner| inner.modify(&fragment_id.into(), status))
     }
 
+    pub fn modify_all(
+        &mut self,
+        fragment_ids: impl IntoIterator<Item = FragmentId>,
+        status: FragmentStatus,
+    ) -> impl Future<Item = (), Error = ()> {
+        self.run_on_inner(move |inner| {
+            for fragment_id in fragment_ids {
+                inner.modify(&fragment_id.into(), status.clone())
+            }
+        })
+    }
+
     pub fn remove(&mut self, fragment_id: FragmentId) -> impl Future<Item = (), Error = ()> {
         self.run_on_inner(move |inner| inner.remove(&fragment_id.into()))
     }

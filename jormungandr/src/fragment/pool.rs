@@ -1,12 +1,12 @@
 use crate::{
     blockcfg::{HeaderContentEvalContext, Ledger, LedgerParameters},
-    fragment::{selection::FragmentSelectionAlgorithm, Fragment, Logs},
+    fragment::{selection::FragmentSelectionAlgorithm, Fragment, FragmentId, Logs},
     intercom::{NetworkMsg, PropagateMsg},
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::transaction::AuthenticatedTransaction;
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin};
+use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
 use std::time::Duration;
 use tokio::{
@@ -86,10 +86,26 @@ impl Pool {
         )
     }
 
+    pub fn remove_added_to_block(
+        &mut self,
+        fragment_ids: Vec<FragmentId>,
+        date: BlockDate,
+    ) -> impl Future<Item = (), Error = ()> {
+        let mut pool_lock = self.pool.clone();
+        let mut logs = self.logs.clone();
+        future::poll_fn(move || Ok(pool_lock.poll_lock()))
+            .map(move |mut pool| {
+                pool.remove_all(fragment_ids.iter().cloned());
+                fragment_ids
+            })
+            .and_then(move |fragment_ids| {
+                logs.modify_all(fragment_ids, FragmentStatus::InABlock { date })
+            })
+    }
+
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
         let mut lock = self.pool.clone();
         let purge_logs = self.logs.poll_purge();
-
         future::poll_fn(move || Ok(lock.poll_lock()))
             .and_then(move |mut guard| future::poll_fn(move || guard.poll_purge()))
             .and_then(move |()| purge_logs)
@@ -108,6 +124,7 @@ impl Pool {
         let mut lock = self.pool.clone();
         let logs = self.logs().clone();
 
+        // FIXME deadlock hazard, nested pool lock and logs lock
         future::poll_fn(move || Ok(lock.poll_lock()))
             .and_then(move |pool| logs.inner().map(|logs| (pool, logs)))
             .and_then(move |(mut pool, mut logs)| {
@@ -130,7 +147,7 @@ fn is_transaction_valid<A, E>(tx: &AuthenticatedTransaction<A, E>) -> bool {
 
 pub(super) mod internal {
     use super::*;
-    use crate::fragment::{FragmentId, PoolEntry};
+    use crate::fragment::PoolEntry;
     use std::{
         collections::{hash_map::Entry, HashMap, VecDeque},
         sync::Arc,
@@ -191,6 +208,13 @@ pub(super) mod internal {
                 Some(fragment)
             } else {
                 None
+            }
+        }
+
+        pub fn remove_all(&mut self, fragment_ids: impl IntoIterator<Item = FragmentId>) {
+            // TODO fix terrible performance, entries_by_time are linear searched N times
+            for fragment_id in fragment_ids {
+                self.remove(&fragment_id);
             }
         }
 

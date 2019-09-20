@@ -166,6 +166,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let block_task = {
         let mut blockchain = blockchain.clone();
         let mut blockchain_tip = blockchain_tip.clone();
+        let mut fragment_msgbox = fragment_msgbox.clone();
         let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
@@ -176,6 +177,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 &stats_counter,
                 &mut new_epoch_announcements,
                 &mut network_msgbox,
+                &mut fragment_msgbox,
                 &mut explorer_msg_box,
                 input,
             )
