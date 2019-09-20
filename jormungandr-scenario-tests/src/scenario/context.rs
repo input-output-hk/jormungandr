@@ -26,6 +26,8 @@ pub struct Seed([u8; 32]);
 /// scenario context with all the details to setup the necessary port number
 /// a pseudo random number generator (and its original seed).
 ///
+///
+#[derive(Clone)]
 pub struct Context<RNG: RngCore + Sized> {
     rng: RNG,
 

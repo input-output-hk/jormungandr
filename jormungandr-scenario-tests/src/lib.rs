@@ -9,6 +9,7 @@ mod programs;
 pub mod scenario;
 mod slog;
 pub mod style;
+pub mod test;
 mod wallet;
 
 pub use self::node::{MemPoolCheck, Node, NodeBlock0, NodeController, Status};

@@ -5,7 +5,7 @@ use chain_impl_mockchain::{
     fragment::{Fragment, FragmentId},
 };
 use indicatif::ProgressBar;
-use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
+use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus, Stats};
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
@@ -41,6 +41,9 @@ error_chain! {
         }
         InvalidFragmentLogs {
             description("Fragment logs in an invalid format")
+        }
+        InvalidNodeStats {
+            description("Node stats in an invalid format")
         }
 
         NodeStopped (status: Status) {
@@ -103,6 +106,7 @@ pub struct Node {
 
 const NODE_CONFIG: &str = "node_config.yaml";
 const NODE_SECRET: &str = "node_secret.yaml";
+const NODE_STORAGE: &str = "storage.db";
 
 impl NodeController {
     pub fn alias(&self) -> &NodeAlias {
@@ -264,6 +268,15 @@ impl NodeController {
         }
     }
 
+    pub fn stats(&self) -> Result<Stats> {
+        let stats = self.get("node/stats")?.text()?;
+        let stats: Stats =
+            serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
+        self.progress_bar
+            .log_info(format!("node stats ({:?})", stats));
+        Ok(stats)
+    }
+
     pub fn shutdown(&self) -> Result<bool> {
         let result = self.get("shutdown")?.text()?;
 
@@ -294,9 +307,10 @@ impl Node {
         context: &Context<R>,
         progress_bar: ProgressBar,
         alias: &str,
-        node_settings: &NodeSetting,
+        node_settings: &mut NodeSetting,
         block0: NodeBlock0,
         working_dir: &PathBuf,
+        persistent: bool,
     ) -> Result<Self> {
         let mut command = context.jormungandr().clone();
         let dir = working_dir.join(alias);
@@ -309,6 +323,11 @@ impl Node {
 
         let config_file = dir.join(NODE_CONFIG);
         let config_secret = dir.join(NODE_SECRET);
+
+        if persistent == true {
+            let path_to_storage = dir.join(NODE_STORAGE);
+            node_settings.config.storage = Some(path_to_storage);
+        }
 
         serde_yaml::to_writer(
             std::fs::File::create(&config_file)
@@ -329,7 +348,7 @@ impl Node {
             &config_file.display().to_string(),
             "--secret",
             &config_secret.display().to_string(),
-            "--log-level=warn",
+            "--log-level=info",
         ]);
 
         match block0 {
