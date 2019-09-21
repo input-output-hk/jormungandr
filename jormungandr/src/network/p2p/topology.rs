@@ -41,7 +41,11 @@ impl gossip::Node for Node {
 
     #[inline]
     fn address(&self) -> Option<SocketAddr> {
-        self.0.address().to_socketaddr()
+        if let Some(address) = self.0.address() {
+            address.to_socketaddr()
+        } else {
+            None
+        }
     }
 }
 
@@ -49,8 +53,14 @@ impl gossip::NodeId for NodeId {}
 
 impl Node {
     #[inline]
-    pub fn new(address: Address) -> Self {
-        Node(poldercast::Node::new(address))
+    pub fn new(address: Option<Address>) -> Self {
+        if let Some(address) = address {
+            Node(poldercast::Node::new_with(address))
+        } else {
+            Node(poldercast::Node::new(
+                &mut rand::rngs::OsRng::new().unwrap(),
+            ))
+        }
     }
 
     pub fn add_message_subscription(&mut self, interest_level: InterestLevel) {
