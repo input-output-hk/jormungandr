@@ -87,9 +87,17 @@ impl GlobalState {
         let node_address = config.public_address.clone().map(|addr| addr.0.into());
         let mut node = topology::Node::new(node_address);
 
+        use self::p2p::topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC};
+
         // TODO: load the subscriptions from the config
-        node.add_message_subscription(topology::InterestLevel::High);
-        node.add_block_subscription(topology::InterestLevel::High);
+        for (topic, interest) in config.subscriptions.iter() {
+            if topic.0 == NEW_BLOCKS_TOPIC.into() {
+                node.add_block_subscription(interest.0)
+            }
+            if topic.0 == NEW_MESSAGES_TOPIC.into() {
+                node.add_message_subscription(interest.0)
+            }
+        }
 
         let mut topology = P2pTopology::new(node.clone(), logger.clone());
         topology.set_poldercast_modules();
