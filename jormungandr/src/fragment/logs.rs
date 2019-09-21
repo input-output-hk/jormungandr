@@ -29,7 +29,7 @@ impl Logs {
     }
 
     pub fn exists(&self, fragment_id: FragmentId) -> impl Future<Item = bool, Error = ()> {
-        self.run_on_inner(move |inner| inner.exists(fragment_id.into()))
+        self.run_on_inner(move |inner| inner.exists(&fragment_id.into()))
     }
 
     pub fn exist_all(
@@ -116,14 +116,14 @@ pub(super) mod internal {
             }
         }
 
-        pub fn exists(&self, fragment_id: Hash) -> bool {
-            self.entries.contains_key(&fragment_id)
+        pub fn exists(&self, fragment_id: &Hash) -> bool {
+            self.entries.contains_key(fragment_id)
         }
 
         pub fn exist_all(&self, fragment_ids: impl IntoIterator<Item = Hash>) -> Vec<bool> {
             fragment_ids
                 .into_iter()
-                .map(|fragment_id| self.exists(fragment_id))
+                .map(|fragment_id| self.exists(&fragment_id))
                 .collect()
         }
 
