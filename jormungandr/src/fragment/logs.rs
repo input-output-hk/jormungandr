@@ -55,7 +55,10 @@ impl Logs {
     ) -> impl Future<Item = (), Error = ()> {
         self.run_on_inner(move |inner| {
             for fragment_id in fragment_ids {
-                inner.modify(&fragment_id.into(), status.clone())
+                let id = fragment_id.into();
+                if inner.exists(&id) {
+                    inner.modify(&id, status.clone())
+                }
             }
         })
     }
