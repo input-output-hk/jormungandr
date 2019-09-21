@@ -99,7 +99,6 @@ pub fn handle_input(
             future.wait().unwrap();
         }
         BlockMsg::NetworkBlock(block, reply) => {
-            stats_counter.add_block_recv_cnt(1);
             let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
             let future = process_network_block(blockchain.clone(), block, info.logger().clone());
             match future.wait() {
@@ -107,6 +106,7 @@ pub fn handle_input(
                     reply.reply_error(network_block_error_into_reply(e));
                 }
                 Ok(maybe_updated) => {
+                    stats_counter.add_block_recv_cnt(1);
                     if let Some(new_block_ref) = maybe_updated {
                         let header = new_block_ref.header().clone();
                         let date = header.block_date().clone().into();
