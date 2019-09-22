@@ -1,5 +1,6 @@
 use super::*;
 use crate::leadership::genesis::GenesisPraosLeader;
+use crate::rewards::TaxType;
 use chain_crypto::{testing, Ed25519};
 use chain_time::DurationSeconds;
 use quickcheck::{Arbitrary, Gen};
@@ -74,6 +75,7 @@ impl Arbitrary for PoolRegistration {
             management_threshold: 1,
             start_validity: start_validity.into(),
             owners: vec![pk],
+            rewards: TaxType::zero(),
             keys,
         }
     }

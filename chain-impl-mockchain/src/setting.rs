@@ -7,9 +7,10 @@ use crate::milli::Milli;
 use crate::update::Error;
 use crate::{
     block::ConsensusVersion,
-    config::ConfigParam,
+    config::{ConfigParam, RewardParams},
     fee::LinearFee,
     leadership::{bft, genesis},
+    rewards,
 };
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -31,6 +32,8 @@ pub struct Settings {
     /// it expires at the start of epoch 'epoch_p +
     /// proposal_expiration + 1'. FIXME: make updateable.
     pub proposal_expiration: u32,
+    pub reward_params: Option<RewardParams>,
+    pub treasury_params: Option<rewards::TaxType>,
 }
 
 pub const SLOTS_PERCENTAGE_RANGE: u8 = 100;
@@ -49,6 +52,8 @@ impl Settings {
             bft_leaders: Arc::new(Vec::new()),
             linear_fees: Arc::new(LinearFee::new(0, 0, 0)),
             proposal_expiration: 100,
+            reward_params: None,
+            treasury_params: None,
         }
     }
 
@@ -63,6 +68,8 @@ impl Settings {
             match param {
                 ConfigParam::Block0Date(_)
                 | ConfigParam::Discrimination(_)
+                | ConfigParam::TreasuryAdd(_)
+                | ConfigParam::RewardPot(_)
                 | ConfigParam::KESUpdateSpeed(_) => {
                     return Err(Error::ReadOnlySetting);
                 }
@@ -112,6 +119,12 @@ impl Settings {
                 ConfigParam::ProposalExpiration(d) => {
                     new_state.proposal_expiration = *d;
                 }
+                ConfigParam::RewardParams(rp) => {
+                    new_state.reward_params = Some(rp.clone());
+                }
+                ConfigParam::TreasuryParams(rp) => {
+                    new_state.treasury_params = Some(rp.clone());
+                }
             }
         }
 
@@ -137,6 +150,15 @@ impl Settings {
         }
         params.push(ConfigParam::LinearFee(*self.linear_fees));
         params.push(ConfigParam::ProposalExpiration(self.proposal_expiration));
+
+        match &self.reward_params {
+            Some(p) => params.push(ConfigParam::RewardParams(p.clone())),
+            None => (),
+        };
+        match &self.treasury_params {
+            Some(p) => params.push(ConfigParam::TreasuryParams(p.clone())),
+            None => (),
+        };
 
         debug_assert_eq!(self, &Settings::new().apply(&params).unwrap());
 

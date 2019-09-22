@@ -10,6 +10,7 @@ mod builder;
 //mod cstruct;
 mod header;
 mod headerraw;
+mod leaderlog;
 mod version;
 
 pub use self::version::{AnyBlockVersion, BlockVersion, ConsensusVersion};
@@ -21,6 +22,7 @@ pub use self::header::{
     GenesisPraosProof, Header, HeaderContentEvalContext, HeaderHash, KESSignature, Proof,
 };
 pub use self::headerraw::HeaderRaw;
+pub use self::leaderlog::LeadersParticipationRecord;
 pub use self::version::*;
 
 pub use crate::date::{BlockDate, BlockDateParseError, Epoch, SlotId};

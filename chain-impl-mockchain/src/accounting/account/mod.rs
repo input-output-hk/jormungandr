@@ -4,7 +4,6 @@
 //! which contains a non negative value representing your balance with the
 //! identifier of this account as key.
 
-use crate::certificate::PoolId;
 use crate::value::*;
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
@@ -70,7 +69,7 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
     pub fn set_delegation(
         &self,
         identifier: &ID,
-        delegation: Option<PoolId>,
+        delegation: DelegationType,
     ) -> Result<Self, LedgerError> {
         self.0
             .update(identifier, |st| Ok(Some(st.set_delegation(delegation))))
@@ -175,7 +174,7 @@ pub mod tests {
 
     use crate::{
         account::{Identifier, Ledger},
-        accounting::account::account_state::{AccountState, SpendingCounter},
+        accounting::account::account_state::{AccountState, DelegationType, SpendingCounter},
         certificate::{PoolId, PoolRegistration},
         testing::{arbitrary::utils as arbitrary_utils, arbitrary::AverageValue},
         value::Value,
@@ -277,7 +276,7 @@ pub mod tests {
                 let random_stake_pool =
                     arbitrary_utils::choose_random_item(&arbitrary_stake_pools, gen);
                 ledger = ledger
-                    .set_delegation(&account_id, Some(random_stake_pool.to_id()))
+                    .set_delegation(&account_id, DelegationType::Full(random_stake_pool.to_id()))
                     .unwrap();
             }
             ledger
@@ -339,15 +338,16 @@ pub mod tests {
         }
 
         // set delegation to stake pool
-        ledger = match ledger.set_delegation(&account_id, Some(stake_pool_id.clone())) {
-            Ok(ledger) => ledger,
-            Err(err) => {
-                return TestResult::error(format!(
-                    "Error for id {} should be successful: {:?}",
-                    account_id, err
-                ))
-            }
-        };
+        ledger =
+            match ledger.set_delegation(&account_id, DelegationType::Full(stake_pool_id.clone())) {
+                Ok(ledger) => ledger,
+                Err(err) => {
+                    return TestResult::error(format!(
+                        "Error for id {} should be successful: {:?}",
+                        account_id, err
+                    ))
+                }
+            };
 
         // verify total value is still the same
         let test_result = test_total_value(
@@ -383,7 +383,7 @@ pub mod tests {
             Ok(account_state) => {
                 let expected_account_state = AccountState {
                     counter: SpendingCounter::zero(),
-                    delegation: Some(stake_pool_id),
+                    delegation: DelegationType::Full(stake_pool_id),
                     value: Value(value.0 * 2),
                     extra: (),
                 };

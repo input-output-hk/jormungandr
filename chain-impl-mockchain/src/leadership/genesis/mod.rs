@@ -197,7 +197,8 @@ mod tests {
     use crate::certificate::{PoolId, PoolRegistration};
     use crate::ledger::Ledger;
     use crate::milli::Milli;
-    use crate::stake::PoolStakeDistribution;
+    use crate::rewards::TaxType;
+    use crate::stake::{PoolStakeDistribution, PoolStakeInformation, PoolStakeTotal};
     use crate::testing::ledger as ledger_mock;
     use crate::value::*;
 
@@ -220,6 +221,7 @@ mod tests {
             owners: vec![],
             start_validity: DurationSeconds::from(0).into(),
             management_threshold: 1,
+            rewards: TaxType::zero(),
             keys: GenesisPraosLeader {
                 vrf_public_key: pool_vrf_private_key.to_public(),
                 kes_public_key: pool_kes_public_key,
@@ -282,6 +284,27 @@ mod tests {
         }
     }
 
+    type Pools = HashMap<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>;
+
+    fn make_leadership_with_pools(ledger: &Ledger, pools: &Pools) -> LeadershipData {
+        let mut selection = LeadershipData::new(0, &ledger);
+
+        for (pool_id, (_, _, value)) in pools {
+            selection.distribution.to_pools.insert(
+                pool_id.clone(),
+                PoolStakeInformation {
+                    total: PoolStakeTotal {
+                        total_stake: *value,
+                    },
+                    stake_owners: PoolStakeDistribution {
+                        accounts: HashMap::new(),
+                    },
+                },
+            );
+        }
+        selection
+    }
+
     #[test]
     pub fn test_leader_election_is_consistent_with_stake_distribution() {
         let leader_election_parameters = LeaderElectionParameters::new();
@@ -308,16 +331,7 @@ mod tests {
             );
         }
 
-        let mut selection = LeadershipData::new(0, &ledger);
-
-        for (pool_id, (_, _, value)) in &pools {
-            selection.distribution.to_pools.insert(
-                pool_id.clone(),
-                PoolStakeDistribution {
-                    total_stake: *value,
-                },
-            );
-        }
+        let selection = make_leadership_with_pools(&ledger, &pools);
 
         let mut empty_slots = 0;
         let mut date = ledger.date();
@@ -387,7 +401,7 @@ mod tests {
         let (_genesis_hash, mut ledger) =
             ledger_mock::create_initial_fake_ledger(&vec![], config_params).unwrap();
 
-        let mut pools = HashMap::<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
+        let mut pools = Pools::new();
 
         let (big_pool_id, big_pool_vrf_private_key) = make_pool(&mut ledger);
         pools.insert(
@@ -403,16 +417,7 @@ mod tests {
             );
         }
 
-        let mut selection = LeadershipData::new(0, &ledger);
-
-        for (pool_id, (_, _, value)) in &pools {
-            selection.distribution.to_pools.insert(
-                pool_id.clone(),
-                PoolStakeDistribution {
-                    total_stake: *value,
-                },
-            );
-        }
+        let selection = make_leadership_with_pools(&ledger, &pools);
 
         let mut date = ledger.date();
 

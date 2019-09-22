@@ -1,5 +1,7 @@
 use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
+use crate::rewards::TaxType;
+use crate::value::Value;
 use crate::{block::ConsensusVersion, fee::LinearFee};
 use chain_addr::Discrimination;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -9,6 +11,7 @@ use chain_crypto::PublicKey;
 use std::fmt::{self, Display, Formatter};
 use std::io::{self, Write};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+use typed_bytes::ByteBuilder;
 
 /// Possible errors
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -34,6 +37,12 @@ impl Display for Error {
 
 impl std::error::Error for Error {}
 
+impl From<ReadError> for Error {
+    fn from(_: ReadError) -> Self {
+        Error::StructureInvalid
+    }
+}
+
 impl Into<ReadError> for Error {
     fn into(self) -> ReadError {
         ReadError::StructureInvalid(self.to_string())
@@ -56,6 +65,16 @@ pub enum ConfigParam {
     LinearFee(LinearFee),
     ProposalExpiration(u32),
     KESUpdateSpeed(u32),
+    TreasuryAdd(Value),
+    TreasuryParams(TaxType),
+    RewardPot(Value),
+    RewardParams(RewardParams),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RewardParams {
+    Linear(u64, u64, u64),
+    Halving(u64, u64, u64),
 }
 
 // Discriminants can NEVER be 1024 or higher
@@ -89,6 +108,14 @@ pub enum Tag {
     ProposalExpiration = 15,
     #[strum(to_string = "kes-update-speed")]
     KESUpdateSpeed = 16,
+    #[strum(to_string = "treasury")]
+    TreasuryAdd = 17,
+    #[strum(to_string = "treasury-params")]
+    TreasuryParams = 18,
+    #[strum(to_string = "reward-pot")]
+    RewardPot = 19,
+    #[strum(to_string = "reward-params")]
+    RewardParams = 20,
 }
 
 impl Tag {
@@ -108,6 +135,10 @@ impl Tag {
             14 => Some(Tag::LinearFee),
             15 => Some(Tag::ProposalExpiration),
             16 => Some(Tag::KESUpdateSpeed),
+            17 => Some(Tag::TreasuryAdd),
+            18 => Some(Tag::TreasuryParams),
+            19 => Some(Tag::RewardPot),
+            20 => Some(Tag::RewardParams),
             _ => None,
         }
     }
@@ -132,6 +163,10 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::LinearFee(_) => Tag::LinearFee,
             ConfigParam::ProposalExpiration(_) => Tag::ProposalExpiration,
             ConfigParam::KESUpdateSpeed(_) => Tag::KESUpdateSpeed,
+            ConfigParam::TreasuryAdd(_) => Tag::TreasuryAdd,
+            ConfigParam::TreasuryParams(_) => Tag::TreasuryParams,
+            ConfigParam::RewardPot(_) => Tag::RewardPot,
+            ConfigParam::RewardParams(_) => Tag::RewardParams,
         }
     }
 }
@@ -177,6 +212,16 @@ impl Readable for ConfigParam {
             Tag::KESUpdateSpeed => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::KESUpdateSpeed)
             }
+            Tag::TreasuryAdd => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryAdd)
+            }
+            Tag::TreasuryParams => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::TreasuryParams)
+            }
+            Tag::RewardPot => ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardPot),
+            Tag::RewardParams => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardParams)
+            }
         }
         .map_err(Into::into)
     }
@@ -202,6 +247,10 @@ impl property::Serialize for ConfigParam {
             ConfigParam::LinearFee(data) => data.to_payload(),
             ConfigParam::ProposalExpiration(data) => data.to_payload(),
             ConfigParam::KESUpdateSpeed(data) => data.to_payload(),
+            ConfigParam::TreasuryAdd(data) => data.to_payload(),
+            ConfigParam::TreasuryParams(data) => data.to_payload(),
+            ConfigParam::RewardPot(data) => data.to_payload(),
+            ConfigParam::RewardParams(data) => data.to_payload(),
         };
         let taglen = TagLen::new(tag, bytes.len()).ok_or_else(|| {
             io::Error::new(
@@ -231,6 +280,64 @@ impl ConfigParamVariant for Block0Date {
 
     fn from_payload(payload: &[u8]) -> Result<Self, Error> {
         u64::from_payload(payload).map(Block0Date)
+    }
+}
+
+impl ConfigParamVariant for TaxType {
+    fn to_payload(&self) -> Vec<u8> {
+        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
+
+    fn from_payload(payload: &[u8]) -> Result<Self, Error> {
+        let mut rb = ReadBuf::from(payload);
+        let tax_type = TaxType::read_frombuf(&mut rb)?;
+        rb.expect_end()?;
+        Ok(tax_type)
+    }
+}
+
+impl ConfigParamVariant for RewardParams {
+    fn to_payload(&self) -> Vec<u8> {
+        let bb: ByteBuilder<RewardParams> = match self {
+            RewardParams::Linear(start, num, denom) => {
+                ByteBuilder::new().u8(1).u64(*start).u64(*num).u64(*denom)
+            }
+            RewardParams::Halving(start, num, denom) => {
+                ByteBuilder::new().u8(2).u64(*start).u64(*num).u64(*denom)
+            }
+        };
+        bb.finalize_as_vec()
+    }
+
+    fn from_payload(payload: &[u8]) -> Result<Self, Error> {
+        let mut rb = ReadBuf::from(payload);
+        match rb.get_u8()? {
+            1 => {
+                let start = rb.get_u64()?;
+                let num = rb.get_u64()?;
+                let denom = rb.get_u64()?;
+                rb.expect_end()?;
+                Ok(RewardParams::Linear(start, num, denom))
+            }
+            2 => {
+                let start = rb.get_u64()?;
+                let num = rb.get_u64()?;
+                let denom = rb.get_u64()?;
+                rb.expect_end()?;
+                Ok(RewardParams::Halving(start, num, denom))
+            }
+            _ => Err(Error::InvalidTag),
+        }
+    }
+}
+
+impl ConfigParamVariant for Value {
+    fn to_payload(&self) -> Vec<u8> {
+        self.0.to_payload()
+    }
+
+    fn from_payload(payload: &[u8]) -> Result<Self, Error> {
+        u64::from_payload(payload).map(Value)
     }
 }
 
@@ -428,9 +535,26 @@ mod test {
         }
     }
 
+    impl Arbitrary for RewardParams {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            match bool::arbitrary(g) {
+                false => RewardParams::Linear(
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                ),
+                true => RewardParams::Halving(
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                ),
+            }
+        }
+    }
+
     impl Arbitrary for ConfigParam {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match u8::arbitrary(g) % 12 {
+            match u8::arbitrary(g) % 15 {
                 0 => ConfigParam::Block0Date(Arbitrary::arbitrary(g)),
                 1 => ConfigParam::Discrimination(Arbitrary::arbitrary(g)),
                 2 => ConfigParam::ConsensusVersion(Arbitrary::arbitrary(g)),
@@ -443,6 +567,9 @@ mod test {
                 9 => ConfigParam::RemoveBftLeader(Arbitrary::arbitrary(g)),
                 10 => ConfigParam::LinearFee(Arbitrary::arbitrary(g)),
                 11 => ConfigParam::ProposalExpiration(Arbitrary::arbitrary(g)),
+                12 => ConfigParam::TreasuryAdd(Arbitrary::arbitrary(g)),
+                13 => ConfigParam::RewardPot(Arbitrary::arbitrary(g)),
+                14 => ConfigParam::RewardParams(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),
             }
         }

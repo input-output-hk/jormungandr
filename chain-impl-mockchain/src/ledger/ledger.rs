@@ -2,15 +2,18 @@
 //! current state and verify transactions.
 
 use super::check::{self, TxVerifyError, TxVerifyLimits};
+use super::pots::Pots;
+use crate::accounting::account::DelegationType;
 use crate::block::{
     BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext, HeaderHash,
 };
-use crate::config::{self, ConfigParam};
+use crate::config::{self, ConfigParam, RewardParams};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::stake::{DelegationError, DelegationState, StakeDistribution};
 use crate::transaction::*;
+use crate::treasury::Treasury;
 use crate::value::*;
 use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
@@ -33,6 +36,7 @@ pub struct LedgerStaticParameters {
 #[derive(Clone)]
 pub struct LedgerParameters {
     pub fees: LinearFee,
+    pub reward_params: Option<RewardParams>,
 }
 
 //Limits for input/output transactions and witnesses
@@ -62,7 +66,7 @@ pub struct Ledger {
     pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
     pub(crate) era: TimeEra,
-    pub(crate) pot: Value,
+    pub(crate) pots: Pots,
 }
 
 custom_error! {
@@ -141,6 +145,7 @@ impl Ledger {
         settings: setting::Settings,
         static_params: LedgerStaticParameters,
         era: TimeEra,
+        pots: Pots,
     ) -> Self {
         Ledger {
             utxos: utxo::Ledger::new(),
@@ -154,7 +159,7 @@ impl Ledger {
             date: BlockDate::first(),
             chain_length: ChainLength(0),
             era,
-            pot: Value::zero(),
+            pots,
         }
     }
 
@@ -172,74 +177,82 @@ impl Ledger {
             }),
         }?;
 
-        let mut regular_ents = crate::fragment::ConfigParams::new();
-        let mut block0_start_time = None;
-        let mut slot_duration = None;
-        let mut discrimination = None;
-        let mut slots_per_epoch = None;
-        let mut kes_update_speed = None;
+        let mut ledger = {
+            let mut regular_ents = crate::fragment::ConfigParams::new();
+            let mut block0_start_time = None;
+            let mut slot_duration = None;
+            let mut discrimination = None;
+            let mut slots_per_epoch = None;
+            let mut kes_update_speed = None;
+            let mut pots = Pots::zero();
 
-        for param in init_ents.iter() {
-            match param {
-                ConfigParam::Block0Date(d) => {
-                    block0_start_time = Some(*d);
+            for param in init_ents.iter() {
+                match param {
+                    ConfigParam::Block0Date(d) => {
+                        block0_start_time = Some(*d);
+                    }
+                    ConfigParam::Discrimination(d) => {
+                        discrimination = Some(*d);
+                    }
+                    ConfigParam::SlotDuration(d) => {
+                        slot_duration = Some(*d);
+                    }
+                    ConfigParam::SlotsPerEpoch(n) => {
+                        slots_per_epoch = Some(*n);
+                    }
+                    ConfigParam::KESUpdateSpeed(n) => {
+                        kes_update_speed = Some(*n);
+                    }
+                    ConfigParam::TreasuryAdd(v) => {
+                        pots.treasury = Treasury::initial(*v);
+                    }
+                    ConfigParam::RewardPot(v) => {
+                        pots.rewards = *v;
+                    }
+                    _ => regular_ents.push(param.clone()),
                 }
-                ConfigParam::Discrimination(d) => {
-                    discrimination = Some(*d);
-                }
-                ConfigParam::SlotDuration(d) => {
-                    slot_duration = Some(*d);
-                }
-                ConfigParam::SlotsPerEpoch(n) => {
-                    slots_per_epoch = Some(*n);
-                }
-                ConfigParam::KESUpdateSpeed(n) => {
-                    kes_update_speed = Some(*n);
-                }
-                _ => regular_ents.push(param.clone()),
             }
-        }
 
-        // here we make sure those specific parameters are present, otherwise we returns a given error
-        let block0_start_time = block0_start_time.ok_or(Error::Block0 {
-            source: Block0Error::InitialMessageNoDate,
-        })?;
-        let discrimination = discrimination.ok_or(Error::Block0 {
-            source: Block0Error::InitialMessageNoDiscrimination,
-        })?;
-        let slot_duration = slot_duration.ok_or(Error::Block0 {
-            source: Block0Error::InitialMessageNoSlotDuration,
-        })?;
-        let slots_per_epoch = slots_per_epoch.ok_or(Error::Block0 {
-            source: Block0Error::InitialMessageNoSlotsPerEpoch,
-        })?;
-        let kes_update_speed = kes_update_speed.ok_or(Error::Block0 {
-            source: Block0Error::InitialMessageNoKesUpdateSpeed,
-        })?;
+            // here we make sure those specific parameters are present, otherwise we returns a given error
+            let block0_start_time = block0_start_time.ok_or(Error::Block0 {
+                source: Block0Error::InitialMessageNoDate,
+            })?;
+            let discrimination = discrimination.ok_or(Error::Block0 {
+                source: Block0Error::InitialMessageNoDiscrimination,
+            })?;
+            let slot_duration = slot_duration.ok_or(Error::Block0 {
+                source: Block0Error::InitialMessageNoSlotDuration,
+            })?;
+            let slots_per_epoch = slots_per_epoch.ok_or(Error::Block0 {
+                source: Block0Error::InitialMessageNoSlotsPerEpoch,
+            })?;
+            let kes_update_speed = kes_update_speed.ok_or(Error::Block0 {
+                source: Block0Error::InitialMessageNoKesUpdateSpeed,
+            })?;
 
-        let static_params = LedgerStaticParameters {
-            block0_initial_hash,
-            block0_start_time: block0_start_time,
-            discrimination: discrimination,
-            kes_update_speed: kes_update_speed,
+            let static_params = LedgerStaticParameters {
+                block0_initial_hash,
+                block0_start_time: block0_start_time,
+                discrimination: discrimination,
+                kes_update_speed: kes_update_speed,
+            };
+
+            let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(block0_start_time.0);
+            let timeline = Timeline::new(system_time);
+            let tf = TimeFrame::new(timeline, SlotDuration::from_secs(slot_duration as u32));
+            let slot0 = tf.slot0();
+
+            let era = TimeEra::new(slot0, Epoch(0), slots_per_epoch);
+
+            let settings = setting::Settings::new().apply(&regular_ents)?;
+
+            if settings.bft_leaders.is_empty() {
+                return Err(Error::Block0 {
+                    source: Block0Error::InitialMessageNoConsensusLeaderId,
+                });
+            }
+            Ledger::empty(settings, static_params, era, pots)
         };
-
-        let system_time = SystemTime::UNIX_EPOCH + Duration::from_secs(block0_start_time.0);
-        let timeline = Timeline::new(system_time);
-        let tf = TimeFrame::new(timeline, SlotDuration::from_secs(slot_duration as u32));
-        let slot0 = tf.slot0();
-
-        let era = TimeEra::new(slot0, Epoch(0), slots_per_epoch);
-
-        let settings = setting::Settings::new().apply(&regular_ents)?;
-
-        if settings.bft_leaders.is_empty() {
-            return Err(Error::Block0 {
-                source: Block0Error::InitialMessageNoConsensusLeaderId,
-            });
-        }
-
-        let mut ledger = Ledger::empty(settings, static_params, era);
 
         for content in content_iter {
             let fragment_id = content.hash();
@@ -515,7 +528,7 @@ impl Ledger {
         if let Some(account_key) = auth_cert.account_id.to_single_account() {
             self.accounts = self
                 .accounts
-                .set_delegation(&account_key, Some(pool_id.clone()))?;
+                .set_delegation(&account_key, DelegationType::Full(pool_id.clone()))?;
         } else {
             return Err(DelegationError::StakeDelegationAccountIsInvalid(
                 auth_cert.account_id.clone(),
@@ -569,7 +582,7 @@ impl Ledger {
                 )?;
                 self.accounts = single.set_delegation(
                     &account_id,
-                    Some(auth_cert.transaction.extra.pool_id.clone()),
+                    DelegationType::Full(auth_cert.transaction.extra.pool_id.clone()),
                 )?;
             }
             MatchingIdentifierWitness::Multi(account_id, witness) => {
@@ -583,7 +596,7 @@ impl Ledger {
                 )?;
                 self.multisig = multi.set_delegation(
                     &account_id,
-                    Some(auth_cert.transaction.extra.pool_id.clone()),
+                    DelegationType::Full(auth_cert.transaction.extra.pool_id.clone()),
                 )?;
             }
         }
@@ -607,6 +620,7 @@ impl Ledger {
     pub fn get_ledger_parameters(&self) -> LedgerParameters {
         LedgerParameters {
             fees: *self.settings.linear_fees,
+            reward_params: self.settings.reward_params.clone(),
         }
     }
 
@@ -655,7 +669,7 @@ impl Ledger {
             .chain(new_utxo_values)
             .chain(Some(account_value))
             .chain(Some(multisig_value))
-            .chain(Some(self.pot));
+            .chain(self.pots.values());
         Value::sum(all_utxo_values).map_err(|_| Error::Block0 {
             source: Block0Error::UtxoTotalValueTooBig,
         })?;
@@ -753,7 +767,7 @@ impl Ledger {
     }
 
     fn apply_tx_fee(mut self, fee: Value) -> Result<Self, Error> {
-        self.pot = (self.pot + fee).map_err(|error| Error::PotValueInvalid { error })?;
+        self.pots.append_fees(fee)?;
         Ok(self)
     }
 
