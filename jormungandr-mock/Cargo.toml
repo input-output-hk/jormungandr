@@ -1,0 +1,30 @@
+[package]
+name = "jormungandr_mock"
+version = "0.1.0"
+authors = ["dkijania <dariusz.kijania@iohk.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+grpc            = "~0.6"
+protobuf        = "~2"
+futures         = "~0.1"
+futures-cpupool = "~0.1"
+base64 = "0.10.1"
+hex = "0.3.2"
+chain-core      = { path = "../chain-deps/chain-core" }
+chain-crypto    = { path = "../chain-deps/chain-crypto" }
+chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
+chain-storage   = { path = "../chain-deps/chain-storage" }
+chain-storage-sqlite = { path = "../chain-deps/chain-storage-sqlite" }
+chain-time      = { path = "../chain-deps/chain-time" }
+rand_core = "0.3"
+rand_os = "0.1"
+
+[dev-dependencies]
+ed25519-bip32 = "0.1"
+rand_chacha = "0.1"
+
+[build-dependencies]
+protoc-rust = "2.0"
