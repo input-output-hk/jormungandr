@@ -1,5 +1,25 @@
 # Change Log
 
+## [v0.5.0](https://github.com/input-output-hk/jormungandr/tree/v0.5.0) (2019-09-23)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.9999...v0.5.0)
+
+**Implemented enhancements:**
+
+- Unreachable nodes should not be mentioned in gossiping protocol [\#796](https://github.com/input-output-hk/jormungandr/issues/796)
+- Allow non reachable nodes, use actual interests and fix in mempool's logs [\#800](https://github.com/input-output-hk/jormungandr/pull/800)
+- Remove fragments added to block from fragment pool V1 [\#798](https://github.com/input-output-hk/jormungandr/pull/798)
+
+**Fixed bugs:**
+
+- Fragment propagation on the network fails [\#742](https://github.com/input-output-hk/jormungandr/issues/742)
+
+**Merged pull requests:**
+
+- Get the trusted peer list from the CLI and make `--config` optional [\#805](https://github.com/input-output-hk/jormungandr/pull/805)
+- Fix URI formatting for IPv6 addresses [\#804](https://github.com/input-output-hk/jormungandr/pull/804)
+- change jormungandr to integrate with the incentive changes [\#802](https://github.com/input-output-hk/jormungandr/pull/802)
+- only update the block counter once the block has been validated [\#801](https://github.com/input-output-hk/jormungandr/pull/801)
+
 ## [v0.3.9999](https://github.com/input-output-hk/jormungandr/tree/v0.3.9999) (2019-09-20)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.1415...v0.3.9999)
 

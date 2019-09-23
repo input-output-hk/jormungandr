@@ -21,12 +21,12 @@ This is the general progress
 
 | Phases           | Progress       |
 | ---------------- | -------------- |
-| Ledger           | 90%            |
-| Network          | 40%            |
-| Incentive        | 0%             |
-| Stabilitisation  | 10%            |
+| Ledger           | 93%            |
+| Network          | 60%            |
+| Incentive        | 25%            |
+| Stabilitisation  | 15%            |
 | Security audit   | 0%             |
-| Perf improvement | 0%             |
+| Perf improvement | 1%             |
 
 
 Ledger
