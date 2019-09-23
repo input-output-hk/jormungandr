@@ -99,7 +99,8 @@ pub fn handle_input(
         }
         BlockMsg::NetworkBlock(block, reply) => {
             let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
-            let future = process_network_block(blockchain.clone(), block.clone(), info.logger().clone());
+            let future =
+                process_network_block(blockchain.clone(), block.clone(), info.logger().clone());
             match future.wait() {
                 Err(e) => {
                     reply.reply_error(network_block_error_into_reply(e));

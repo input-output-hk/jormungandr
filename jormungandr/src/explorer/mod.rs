@@ -22,7 +22,6 @@ use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::multiverse::GCRoot;
-use imhamt;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::prelude::*;
@@ -147,7 +146,7 @@ impl ExplorerDB {
         );
 
         let blocks = apply_block_to_blocks(Blocks::new(), &block)?;
-        let epochs = apply_block_to_epochs(Epochs::new(), &block)?;
+        let epochs = apply_block_to_epochs(Epochs::new(), &block);
         let chain_lengths = apply_block_to_chain_lengths(ChainLengths::new(), &block)?;
         let transactions = apply_block_to_transactions(Transactions::new(), &block)?;
         let addresses = apply_block_to_addresses(Addresses::new(), &block)?;
@@ -245,7 +244,7 @@ impl ExplorerDB {
                             apply_block_to_transactions(transactions, &explorer_block)?,
                             apply_block_to_blocks(blocks, &explorer_block)?,
                             apply_block_to_addresses(addresses, &explorer_block)?,
-                            apply_block_to_epochs(epochs, &explorer_block)?,
+                            apply_block_to_epochs(epochs, &explorer_block),
                             apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
                         ))
                     }
@@ -403,58 +402,50 @@ fn apply_block_to_addresses(addresses: Addresses, block: &ExplorerBlock) -> Resu
     for tx in transactions {
         let id = tx.id();
         for output in tx.outputs() {
-            addresses = addresses
-                .insert_or_update(
-                    output.address.clone(),
-                    Set::new().add_element(id.clone()),
-                    |set| {
-                        let new_set = set.add_element(id.clone());
-                        Ok::<Option<Set<FragmentId>>, Infallible>(Some(new_set))
-                    },
-                )
-                .expect("insert or update to always work")
+            addresses = addresses.insert_or_update_simple(
+                output.address.clone(),
+                Set::new().add_element(id.clone()),
+                |set| {
+                    let new_set = set.add_element(id.clone());
+                    Some(new_set)
+                },
+            )
         }
 
         for input in tx.inputs() {
-            addresses = addresses
-                .insert_or_update(
-                    input.address.clone(),
-                    Set::new().add_element(id.clone()),
-                    |set| {
-                        let new_set = set.add_element(id.clone());
-                        Ok::<Option<Set<FragmentId>>, Infallible>(Some(new_set))
-                    },
-                )
-                .expect("insert or update to always work")
+            addresses = addresses.insert_or_update_simple(
+                input.address.clone(),
+                Set::new().add_element(id.clone()),
+                |set| {
+                    let new_set = set.add_element(id.clone());
+                    Some(new_set)
+                },
+            )
         }
     }
 
     Ok(addresses)
 }
 
-fn apply_block_to_epochs(epochs: Epochs, block: &ExplorerBlock) -> Result<Epochs> {
+fn apply_block_to_epochs(epochs: Epochs, block: &ExplorerBlock) -> Epochs {
     let epoch_id = block.date().epoch;
     let block_id = block.id();
 
-    epochs
-        .insert_or_update(
-            epoch_id,
-            EpochData {
-                first_block: block_id,
+    epochs.insert_or_update_simple(
+        epoch_id,
+        EpochData {
+            first_block: block_id,
+            last_block: block_id,
+            total_blocks: 0,
+        },
+        |data| {
+            Some(EpochData {
                 last_block: block_id,
-                total_blocks: 0,
-            },
-            |data| {
-                Ok(Some(EpochData {
-                    last_block: block_id,
-                    total_blocks: data.total_blocks + 1,
-                    ..*data
-                }))
-            },
-        )
-        .map_err(|_: imhamt::InsertOrUpdateError<Infallible>| {
-            unreachable!();
-        })
+                total_blocks: data.total_blocks + 1,
+                ..*data
+            })
+        },
+    )
 }
 
 fn apply_block_to_chain_lengths(
