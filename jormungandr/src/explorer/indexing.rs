@@ -19,8 +19,10 @@ pub type ChainLengths = Hamt<ChainLength, HeaderHash>;
 pub type Addresses = Hamt<Address, Set<FragmentId>>;
 pub type Epochs = Hamt<Epoch, EpochData>;
 
+/// Block with unified inputs the metadata needed in the queries
 #[derive(Clone)]
 pub struct ExplorerBlock {
+    /// The HashMap allows for easy search when querying transactions by id
     pub transactions: HashMap<FragmentId, ExplorerTransaction>,
     pub id: HeaderHash,
     pub date: BlockDate,
@@ -35,6 +37,7 @@ pub struct ExplorerTransaction {
     outputs: Vec<ExplorerOutput>,
 }
 
+/// Unified Input representation for utxo and account inputs as used in the graphql API
 #[derive(Clone)]
 pub struct ExplorerInput {
     pub address: Address,
@@ -55,6 +58,11 @@ pub struct EpochData {
 }
 
 impl ExplorerBlock {
+    /// Map the given `Block` to the `ExplorerBlock`, transforming all the transactions
+    /// using the previous state to transform the utxo inputs to the form (Address, Amount)
+    /// and mapping the account inputs to addresses with the given discrimination
+    /// This function relies on the given block to be validated previously, and will panic
+    /// otherwise
     pub fn resolve_from(
         block: &Block,
         discrimination: Discrimination,
@@ -147,6 +155,11 @@ impl ExplorerBlock {
 }
 
 impl ExplorerTransaction {
+    /// Map the given AuthenticatedTransaction to the ExplorerTransaction API representation
+    /// type.
+    /// the fragment id is the associated to the given AuthenticatedTransaction before 'unwrapping'
+    /// The discrimination is needed to get addresses from account inputs.
+    /// The transactions and blocks are used to resolve utxo inputs
     pub fn from<T>(
         id: &FragmentId,
         auth_tx: &AuthenticatedTransaction<Address, T>,

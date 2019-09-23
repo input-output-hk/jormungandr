@@ -36,17 +36,28 @@ pub struct Explorer {
 
 #[derive(Clone)]
 pub struct ExplorerDB {
+    /// Structure that keeps all the known states to allow easy branch management
+    /// each new block is indexed by getting its previous `State` from the multiverse
+    /// and inserted a new updated one.
     multiverse: Multiverse<State>,
+    /// This keeps track of the longest chain seen until now. All the queries are
+    /// performed using the state of this branch, the HeaderHash is used as key for the
+    /// multiverse, and the ChainLength is used in the updating process.
     longest_chain_tip: Lock<(HeaderHash, ChainLength)>,
     blockchain_config: BlockchainConfig,
 }
 
 #[derive(Clone)]
 struct BlockchainConfig {
+    /// Used to construct `Address` from `AccountIndentifier` when processing transaction
+    /// inputs
     discrimination: Discrimination,
     consensus_version: ConsensusVersion,
 }
 
+/// Inmutable data structure used to represent the explorer's state at a given Block
+/// A new state can be obtained to from a Block and it's previous state, getting two
+/// independent states but with memory sharing to minimize resource utilization
 #[derive(Clone)]
 struct State {
     transactions: Transactions,
@@ -58,6 +69,10 @@ struct State {
 
 #[derive(Clone)]
 pub struct Settings {
+    /// This is the prefix that's used for the Address bech32 string representation in the
+    /// responses (in the queries any prefix can be used). base32 serialization could
+    /// also be used, but the `Address` struct doesn't have a deserialization method right
+    /// now
     pub address_bech32_prefix: String,
 }
 
@@ -97,6 +112,7 @@ impl Explorer {
         match bquery {
             ExplorerMsg::NewBlock(block) => info.spawn(explorer_db.apply_block(block).then(
                 move |result| match result {
+                    // XXX: There is no garbage collection now, so the GCRoot is not used
                     Ok(_gc_root) => Ok(()),
                     Err(err) => Err(error!(logger, "Explorer error: {}", err)),
                 },
@@ -107,6 +123,9 @@ impl Explorer {
 }
 
 impl ExplorerDB {
+    /// Apply all the blocks in the [block0, MAIN_BRANCH_TAG], also extract the static
+    /// Blockchain settings from the Block0 (Discrimination)
+    /// This function is only called once on the node's bootstrap phase
     pub fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
@@ -142,8 +161,6 @@ impl ExplorerDB {
         };
 
         let multiverse = Multiverse::<State>::new();
-        // This blocks the thread, but it's only on the node startup when the explorer
-        // is enabled
         multiverse
             .insert(block0.chain_length(), block0.id(), initial_state)
             .wait()
@@ -188,6 +205,11 @@ impl ExplorerDB {
             .wait()
     }
 
+    /// Try to add a new block to the indexes, this can fail if the parent of the block is
+    /// not processed. Also, update the longest seen chain with this block as tip if its
+    /// chain length is greater than the current.
+    /// This doesn't perform any validation on the given block and the previous state, it
+    /// is assumed that the Block is valid
     pub fn apply_block(&mut self, block: Block) -> impl Future<Item = GCRoot, Error = Error> {
         let previous_block = block.header.block_parent_hash();
         let chain_length = block.header.chain_length();
@@ -259,6 +281,7 @@ impl ExplorerDB {
             .and_then(|(gc_root, _)| Ok(gc_root))
     }
 
+    /// Compare the chain lengths of the current branch and the new_block and keep the greater
     fn update_longest_chain_tip(
         &mut self,
         new_block: Block,
@@ -328,6 +351,7 @@ impl ExplorerDB {
         self.with_latest_state(move |state| state.addresses.lookup(&address).map(|set| set.clone()))
     }
 
+    /// run given function with the longest branch's state
     fn with_latest_state<T>(
         &self,
         f: impl Fn(State) -> T,
