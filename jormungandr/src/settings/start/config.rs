@@ -12,7 +12,8 @@ use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    pub secret_files: Option<Vec<PathBuf>>,
+    #[serde(default)]
+    pub secret_files: Vec<PathBuf>,
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,
 
