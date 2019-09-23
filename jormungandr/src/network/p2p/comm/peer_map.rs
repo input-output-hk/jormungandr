@@ -95,16 +95,14 @@ impl PeerMap {
     }
 
     pub fn bump_peer_for_block_fetch(&mut self, id: NodeId) {
-        let node = self
-            .map
-            .get_mut(&id)
-            .expect("peer must be present in the map");
-        unsafe {
-            let node_ptr = node.as_mut().as_ptr();
-            if !self.block_cursor.is_last(node_ptr) {
-                self.block_cursor.on_unlink_node(node_ptr);
-                node.unlink();
-                self.block_cursor.push_last(node_ptr);
+        if let Some(node) = self.map.get_mut(&id) {
+            unsafe {
+                let node_ptr = node.as_mut().as_ptr();
+                if !self.block_cursor.is_last(node_ptr) {
+                    self.block_cursor.on_unlink_node(node_ptr);
+                    node.unlink();
+                    self.block_cursor.push_last(node_ptr);
+                }
             }
         }
     }
