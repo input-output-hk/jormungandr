@@ -61,7 +61,7 @@ pub struct Cors {
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
-    pub public_address: Address,
+    pub public_address: Option<Address>,
 
     /// The socket address to listen on, if different from the public address.
     /// The format is "{ip_address}:{port}".

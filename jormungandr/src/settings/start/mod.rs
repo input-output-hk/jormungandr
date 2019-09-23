@@ -145,7 +145,7 @@ fn generate_network(
 ) -> Result<network::Configuration, Error> {
     let p2p = &config.p2p;
     let network = network::Configuration {
-        public_address: Some(p2p.public_address.clone()),
+        public_address: p2p.public_address.clone(),
         listen_address: match &p2p.listen_address {
             None => None,
             Some(v) => {
