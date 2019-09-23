@@ -10,7 +10,7 @@ use hyper::client::connect::{Destination, HttpConnector};
 use network_core::client::{BlockService, Client as _};
 use network_grpc::client::{Connect, ConnectFuture};
 use slog::Logger;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::slice;
 use tokio::{executor::DefaultExecutor, runtime};
 
@@ -31,8 +31,12 @@ pub fn connect(
 }
 
 fn destination_uri(addr: SocketAddr) -> Uri {
-    let uri = format!("http://{}:{}", addr.ip(), addr.port());
-    HttpTryFrom::try_from(&uri).unwrap()
+    let ip = addr.ip();
+    let uri = match ip {
+        IpAddr::V4(ip) => format!("http://{}:{}", ip, addr.port()),
+        IpAddr::V6(ip) => format!("http://[{}]:{}", ip, addr.port()),
+    };
+    HttpTryFrom::try_from(uri).unwrap()
 }
 
 // Fetches a block from a network peer in a one-off, blocking call.
