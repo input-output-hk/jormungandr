@@ -418,6 +418,8 @@ struct PoolStakeDistribution {
 #[derive(juniper::GraphQLScalarValue)]
 struct Slot(String);
 
+/// Custom scalar type that represents a block's position in the blockchain.
+/// It's a either 0 (the genesis block) or a positive number in string representation.
 #[derive(juniper::GraphQLScalarValue)]
 struct ChainLength(String);
 
