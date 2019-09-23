@@ -15,7 +15,6 @@ custom_error! {pub Error
    ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
    Config { source: serde_yaml::Error } = "Error while parsing the node configuration file: {source}",
    Rest { source: RestError } = "The Rest configuration is invalid: {source}",
-   MissingNodeConfig = "--config is mandatory to start the node",
    ExpectedBlock0Info = "Cannot start the node without the information to retrieve the genesis block",
    TooMuchBlock0Info = "Use only `--genesis-block-hash' or `--genesis-block'",
    ListenAddressNotValid = "In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920",
@@ -40,12 +39,11 @@ pub struct RawSettings {
 
 impl RawSettings {
     pub fn load(command_line: CommandLine) -> Result<Self, Error> {
-        let config_file = if let Some(node_config) = &command_line.start_arguments.node_config {
-            File::open(node_config)?
+        let config = if let Some(node_config) = &command_line.start_arguments.node_config {
+            Some(serde_yaml::from_reader(File::open(node_config)?)?)
         } else {
-            return Err(Error::MissingNodeConfig);
+            None
         };
-        let config = serde_yaml::from_reader(config_file)?;
         Ok(Self {
             command_line,
             config,
