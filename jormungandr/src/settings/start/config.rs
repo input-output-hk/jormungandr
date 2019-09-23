@@ -12,7 +12,8 @@ use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    pub secret_files: Option<Vec<PathBuf>>,
+    #[serde(default)]
+    pub secret_files: Vec<PathBuf>,
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,
 
@@ -61,7 +62,7 @@ pub struct Cors {
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
-    pub public_address: Address,
+    pub public_address: Option<Address>,
 
     /// The socket address to listen on, if different from the public address.
     /// The format is "{ip_address}:{port}".

@@ -15,7 +15,6 @@ custom_error! {pub Error
    ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
    Config { source: serde_yaml::Error } = "Error while parsing the node configuration file: {source}",
    Rest { source: RestError } = "The Rest configuration is invalid: {source}",
-   MissingNodeConfig = "--config is mandatory to start the node",
    ExpectedBlock0Info = "Cannot start the node without the information to retrieve the genesis block",
    TooMuchBlock0Info = "Use only `--genesis-block-hash' or `--genesis-block'",
    ListenAddressNotValid = "In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920",
@@ -35,17 +34,16 @@ pub struct Settings {
 
 pub struct RawSettings {
     command_line: CommandLine,
-    config: Config,
+    config: Option<Config>,
 }
 
 impl RawSettings {
     pub fn load(command_line: CommandLine) -> Result<Self, Error> {
-        let config_file = if let Some(node_config) = &command_line.start_arguments.node_config {
-            File::open(node_config)?
+        let config = if let Some(node_config) = &command_line.start_arguments.node_config {
+            Some(serde_yaml::from_reader(File::open(node_config)?)?)
         } else {
-            return Err(Error::MissingNodeConfig);
+            None
         };
-        let config = serde_yaml::from_reader(config_file)?;
         Ok(Self {
             command_line,
             config,
@@ -63,21 +61,21 @@ impl RawSettings {
 
     fn logger_level(&self) -> FilterLevel {
         let cmd_level = self.command_line.log_level.clone();
-        let config_log = self.config.log.as_ref();
+        let config_log = self.config.as_ref().and_then(|cfg| cfg.log.as_ref());
         let config_level = config_log.and_then(|log| log.level.clone());
         cmd_level.or(config_level).unwrap_or(FilterLevel::Info)
     }
 
     fn logger_format(&self) -> LogFormat {
         let cmd_format = self.command_line.log_format.clone();
-        let config_log = self.config.log.as_ref();
+        let config_log = self.config.as_ref().and_then(|cfg| cfg.log.as_ref());
         let config_format = config_log.and_then(|logger| logger.format.clone());
         cmd_format.or(config_format).unwrap_or(LogFormat::Plain)
     }
 
     fn logger_output(&self) -> LogOutput {
         let cmd_output = self.command_line.log_output.clone();
-        let config_log = self.config.log.as_ref();
+        let config_log = self.config.as_ref().and_then(|cfg| cfg.log.as_ref());
         let config_output = config_log.and_then(|logger| logger.output.clone());
         cmd_output.or(config_output).unwrap_or(LogOutput::Stderr)
     }
@@ -95,21 +93,24 @@ impl RawSettings {
         let command_arguments = &command_line.start_arguments;
         let network = generate_network(&command_arguments, &config)?;
 
-        let storage = match (command_arguments.storage.as_ref(), config.storage) {
+        let storage = match (
+            command_arguments.storage.as_ref(),
+            config.as_ref().map_or(None, |cfg| cfg.storage.as_ref()),
+        ) {
             (Some(path), _) => Some(path.clone()),
             (None, Some(path)) => Some(path.clone()),
             (None, None) => None,
         };
 
         let mut secrets = command_arguments.secret.clone();
-        if let Some(secret_files) = config.secret_files {
+        if let Some(secret_files) = config.as_ref().map(|cfg| cfg.secret_files.clone()) {
             secrets.extend(secret_files);
         }
 
         if secrets.is_empty() {
             warn!(
                 logger,
-                "Node started without path to the stored secret keys"
+                "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"
             );
         };
 
@@ -124,28 +125,54 @@ impl RawSettings {
         };
 
         let explorer = command_arguments.explorer_enabled
-            || config.explorer.map_or(false, |settings| settings.enabled);
+            || config.as_ref().map_or(false, |cfg| {
+                cfg.explorer
+                    .as_ref()
+                    .map_or(false, |settings| settings.enabled)
+            });
 
         Ok(Settings {
             storage: storage,
             block_0: block0_info,
             network: network,
             secrets,
-            rest: config.rest,
-            mempool: config.mempool,
-            leadership: config.leadership,
+            rest: config.as_ref().map_or(None, |cfg| cfg.rest.clone()),
+            mempool: config
+                .as_ref()
+                .map_or(Mempool::default(), |cfg| cfg.mempool.clone()),
+            leadership: config
+                .as_ref()
+                .map_or(Leadership::default(), |cfg| cfg.leadership.clone()),
             explorer,
         })
     }
 }
 
 fn generate_network(
-    _command_arguments: &StartArguments,
-    config: &Config,
+    command_arguments: &StartArguments,
+    config: &Option<Config>,
 ) -> Result<network::Configuration, Error> {
-    let p2p = &config.p2p;
+    let mut p2p = if let Some(cfg) = config {
+        cfg.p2p.clone()
+    } else {
+        config::P2pConfig {
+            public_address: None,
+            listen_address: None,
+            trusted_peers: None,
+            topics_of_interest: None,
+        }
+    };
+
+    if p2p.trusted_peers.is_some() {
+        p2p.trusted_peers
+            .as_mut()
+            .map(|peers| peers.extend(command_arguments.trusted_peer.clone()));
+    } else if !command_arguments.trusted_peer.is_empty() {
+        p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
+    }
+
     let network = network::Configuration {
-        public_address: Some(p2p.public_address.clone()),
+        public_address: p2p.public_address.clone(),
         listen_address: match &p2p.listen_address {
             None => None,
             Some(v) => {
@@ -158,11 +185,7 @@ fn generate_network(
         },
         trusted_peers: p2p.trusted_peers.clone().unwrap_or(vec![]),
         protocol: Protocol::Grpc,
-        subscriptions: config
-            .p2p
-            .topics_of_interest
-            .clone()
-            .unwrap_or(BTreeMap::new()),
+        subscriptions: p2p.topics_of_interest.clone().unwrap_or(BTreeMap::new()),
         timeout: std::time::Duration::from_secs(15),
     };
 

@@ -27,6 +27,13 @@ pub struct StartArguments {
     #[structopt(long = "genesis-block", parse(try_from_str))]
     pub block_0_path: Option<PathBuf>,
 
+    /// set a trusted peer in the multiformat format (e.g.: '/ip4/192.168.0.1/tcp/8029')
+    ///
+    /// This is the trusted peer the node will connect to initially to download the initial
+    /// block0 and fast fetch missing blocks since last start of the node.
+    #[structopt(long = "trusted-peer", parse(try_from_str))]
+    pub trusted_peer: Vec<poldercast::Address>,
+
     /// set the genesis block hash (the hash of the block0) so we can retrieve the
     /// genesis block (and the blockchain configuration) from the existing storage
     /// or from the network.
