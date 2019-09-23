@@ -212,7 +212,7 @@ pub fn get_stake_distribution(context: State<Context>) -> ActixFuture!() {
             let pools: Vec<_> = stake
                 .to_pools
                 .iter()
-                .map(|(h, p)| (format!("{}", h), p.total_stake.0))
+                .map(|(h, p)| (format!("{}", h), p.total.total_stake.0))
                 .collect();
             Json(json!({
                 "epoch": last_epoch,

@@ -11,6 +11,7 @@ use chain_impl_mockchain::{
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
     fragment::config::ConfigParams,
+    value,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -104,6 +105,14 @@ pub struct BlockchainConfiguration {
     /// `slots_per_epoch`.
     #[serde(default)]
     pub epoch_stability_depth: Option<u32>,
+
+    /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
+    #[serde(default)]
+    pub treasury: Option<u64>,
+
+    /// Set the value of the reward pot. if omitted then the reward pot is empty
+    #[serde(default)]
+    pub rewards: Option<u64>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -151,6 +160,8 @@ impl BlockchainConfiguration {
             bft_slots_ratio: BFTSlotsRatio::default(),
             max_number_of_transactions_per_block: None,
             epoch_stability_depth: None,
+            treasury: None,
+            rewards: None,
         }
     }
 
@@ -171,6 +182,8 @@ impl BlockchainConfiguration {
         let mut bft_slots_ratio = None;
         let mut linear_fees = None;
         let mut kes_update_speed = None;
+        let mut treasury = None;
+        let mut rewards = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -218,6 +231,10 @@ impl BlockchainConfiguration {
                 ConfigParam::EpochStabilityDepth(param) => epoch_stability_depth
                     .replace(param)
                     .map(|_| "epoch_stability_depth"),
+                ConfigParam::TreasuryAdd(param) => treasury.replace(param.0).map(|_| "treasury"),
+                ConfigParam::TreasuryParams(_) => unimplemented!(),
+                ConfigParam::RewardPot(param) => rewards.replace(param.0).map(|_| "reward-pot"),
+                ConfigParam::RewardParams(_) => unimplemented!(),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -239,6 +256,8 @@ impl BlockchainConfiguration {
             epoch_stability_depth,
             consensus_leader_ids,
             max_number_of_transactions_per_block,
+            treasury,
+            rewards,
         })
     }
 
@@ -256,6 +275,8 @@ impl BlockchainConfiguration {
             bft_slots_ratio,
             max_number_of_transactions_per_block,
             epoch_stability_depth,
+            treasury,
+            rewards,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -278,6 +299,13 @@ impl BlockchainConfiguration {
 
         if let Some(epoch_stability_depth) = epoch_stability_depth {
             params.push(ConfigParam::EpochStabilityDepth(epoch_stability_depth));
+        }
+
+        if let Some(treasury) = treasury {
+            params.push(ConfigParam::TreasuryAdd(value::Value(treasury)));
+        }
+        if let Some(rewards) = rewards {
+            params.push(ConfigParam::RewardPot(value::Value(rewards)));
         }
 
         consensus_leader_ids
@@ -336,6 +364,8 @@ mod test {
                 bft_slots_ratio: BFTSlotsRatio::arbitrary(g),
                 max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
                 epoch_stability_depth: Arbitrary::arbitrary(g),
+                treasury: Arbitrary::arbitrary(g),
+                rewards: Arbitrary::arbitrary(g),
             }
         }
     }

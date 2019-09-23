@@ -6,7 +6,7 @@ use crate::{
     style, NodeAlias, Wallet, WalletAlias, WalletType,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
-use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
+use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee, rewards::TaxType};
 use chain_time::DurationSeconds;
 use jormungandr_lib::{
     crypto::{hash::Hash, key::SigningKey},
@@ -186,6 +186,7 @@ impl Settings {
                                 )
                                 .to_public(),
                             ],
+                            rewards: TaxType::zero(),
                             keys: GenesisPraosLeader {
                                 kes_public_key: kes_signing_key.identifier().into_public_key(),
                                 vrf_public_key: vrf_signing_key.identifier().into_public_key(),
