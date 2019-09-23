@@ -60,6 +60,9 @@ pub struct Configuration {
 
     /// the default value for the timeout for inactive connection
     pub timeout: Duration,
+
+    /// Whether to allow non-public IP addresses in gossip
+    pub allow_private_addresses: bool,
 }
 
 impl Peer {

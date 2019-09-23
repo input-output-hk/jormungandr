@@ -5,6 +5,7 @@ use super::{
 use crate::{
     blockcfg::{Fragment, Header},
     intercom::{BlockMsg, TransactionMsg},
+    settings::start::network::Configuration,
     utils::async_msg::MessageBox,
 };
 use futures::prelude::*;
@@ -105,12 +106,23 @@ where
     tokio::spawn(
         inbound
             .for_each(move |gossip| {
-                debug!(logger, "received gossip: {:?}", gossip);
-                state.topology.update(gossip.into_nodes());
+                trace!(logger, "received gossip: {:?}", gossip);
+                let nodes = gossip
+                    .into_nodes()
+                    .filter(|node| filter_gossip_node(node, &state.config));
+                state.topology.update(nodes);
                 Ok(())
             })
             .map_err(move |err| {
                 info!(err_logger, "gossip subscription stream failure: {:?}", err);
             }),
     )
+}
+
+fn filter_gossip_node(node: &Node, config: &Configuration) -> bool {
+    if config.allow_private_addresses {
+        node.has_valid_address()
+    } else {
+        node.is_global()
+    }
 }

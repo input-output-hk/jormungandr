@@ -81,6 +81,10 @@ pub struct P2pConfig {
     /// help the different modules of the P2P topology engine to determine the
     /// best possible neighborhood.
     pub topics_of_interest: Option<BTreeMap<Topic, InterestLevel>>,
+
+    /// Whether to allow non-public IP addresses on the network
+    #[serde(default)]
+    pub allow_private_addresses: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -128,6 +132,7 @@ impl Default for P2pConfig {
             listen_address: None,
             trusted_peers: None,
             topics_of_interest: None,
+            allow_private_addresses: false,
         }
     }
 }
