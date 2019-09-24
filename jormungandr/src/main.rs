@@ -397,8 +397,10 @@ fn main() {
 
     if let Err(error) = start() {
         eprintln!("{}", error);
-        if let Some(source) = error.source() {
-            eprintln!("{}", source);
+        let mut source = error.source();
+        while let Some(err) = source {
+            eprintln!(" |-> {}", err);
+            source = err.source();
         }
 
         // TODO: https://github.com/rust-lang/rust/issues/43301
