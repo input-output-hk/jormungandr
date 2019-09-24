@@ -25,6 +25,8 @@ pub struct Config {
     pub leadership: Leadership,
 
     pub rest: Option<Rest>,
+
+    #[serde(default)]
     pub p2p: P2pConfig,
 
     pub explorer: Option<Explorer>,
@@ -119,6 +121,16 @@ pub struct Explorer {
     pub enabled: bool,
 }
 
+impl Default for P2pConfig {
+    fn default() -> Self {
+        P2pConfig {
+            public_address: None,
+            listen_address: None,
+            trusted_peers: None,
+            topics_of_interest: None,
+        }
+    }
+}
 impl Default for Mempool {
     fn default() -> Self {
         Mempool {
