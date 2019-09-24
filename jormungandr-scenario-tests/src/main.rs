@@ -60,7 +60,7 @@ fn main() {
     introduction(&context);
 
     // tree(context.derive());
-    leader_leader::two_transaction_to_two_leaders(context.derive());
+    relay(context.derive());
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
