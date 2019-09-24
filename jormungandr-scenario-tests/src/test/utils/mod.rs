@@ -1,6 +1,6 @@
 use crate::{node::NodeController, scenario::Controller, wallet::Wallet, Context};
 use rand::RngCore;
-use std::time::Duration;
+use std::{thread, time::Duration};
 
 pub fn keep_sending_transaction_to_node_until_error(
     controller: &mut Controller,
@@ -24,6 +24,22 @@ pub fn keep_sending_transaction_to_node_until_error(
         } else {
             break;
         }
+    }
+}
+
+pub fn keep_sending_transaction_dispite_error(
+    n: u32,
+    controller: &mut Controller,
+    mut wallet1: &mut Wallet,
+    wallet2: &Wallet,
+    node: &NodeController,
+) {
+    for _ in 0..n {
+        let check = controller.wallet_send_to(&mut wallet1, &wallet2, &node, 1_000.into());
+        if let Err(err) = check {
+            println!("{:?}", err);
+        }
+        thread::sleep(Duration::from_secs(1));
     }
 }
 

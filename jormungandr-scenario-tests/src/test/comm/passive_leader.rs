@@ -30,7 +30,7 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) {
     controller.monitor_nodes();
     let leader = controller.spawn_leader_node(LEADER, false).unwrap();
     let passive = controller.spawn_passive_node(PASSIVE, false).unwrap();
-    thread::sleep(Duration::from_secs(10));
+    thread::sleep(Duration::from_secs(4));
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -72,12 +72,13 @@ pub fn leader_is_offline(mut context: Context<ChaChaRng>) {
     controller.monitor_nodes();
     let passive = controller.spawn_passive_node(PASSIVE, false).unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    thread::sleep(Duration::from_secs(2));
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
 
-    utils::keep_sending_transaction_to_node_until_error(
+    utils::keep_sending_transaction_dispite_error(
+        300000,
         &mut controller,
         &mut wallet1,
         &wallet2,
@@ -114,12 +115,12 @@ pub fn leader_is_online_with_delay(mut context: Context<ChaChaRng>) {
     controller.monitor_nodes();
     let passive = controller.spawn_passive_node(PASSIVE, false).unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    thread::sleep(Duration::from_secs(3));
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
 
-    utils::sending_transactions_to_node_sequentially(
+    utils::keep_sending_transaction_dispite_error(
         10,
         &mut controller,
         &mut wallet1,
@@ -127,9 +128,16 @@ pub fn leader_is_online_with_delay(mut context: Context<ChaChaRng>) {
         &passive,
     );
 
+    println!("Leader about to spawn");
+
     let leader = controller.spawn_leader_node(LEADER, true).unwrap();
 
-    utils::keep_sending_transaction_to_node_until_error(
+    thread::sleep(Duration::from_secs(3));
+
+    println!("Leader spawn");
+
+    utils::keep_sending_transaction_dispite_error(
+        400000,
         &mut controller,
         &mut wallet1,
         &wallet2,
@@ -183,6 +191,8 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) {
 
     leader.shutdown().unwrap();
 
+    println!("Shutdown Leader");
+
     utils::sending_transactions_to_node_sequentially(
         10,
         &mut controller,
@@ -190,6 +200,8 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) {
         &wallet2,
         &passive,
     );
+
+    println!("Leader Up");
 
     let leader = controller.spawn_leader_node(LEADER, true).unwrap();
 

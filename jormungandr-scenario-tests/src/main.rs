@@ -59,8 +59,8 @@ fn main() {
 
     introduction(&context);
 
-    tree(context.derive());
-    // passive_leader::transaction_to_passive(context.derive());
+    // tree(context.derive());
+    leader_leader::two_transaction_to_two_leaders(context.derive());
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
