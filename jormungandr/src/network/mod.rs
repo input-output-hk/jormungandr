@@ -175,18 +175,15 @@ pub fn run(params: TaskParams) {
 
     // open the port for listening/accepting other peers to connect too
     let listen = global_state.config.listen();
-    use futures::future::Either;
     let listener = if let Some(listen) = listen {
         match listen.protocol {
-            Protocol::Grpc => Either::A(grpc::run_listen_socket(
-                listen,
-                global_state.clone(),
-                channels.clone(),
-            )),
+            Protocol::Grpc => {
+                grpc::run_listen_socket(Some(listen), global_state.clone(), channels.clone())
+            }
             Protocol::Ntt => unimplemented!(),
         }
     } else {
-        Either::B(futures::future::ok(()))
+        grpc::run_listen_socket(None, global_state.clone(), channels.clone())
     };
 
     let addrs = global_state
