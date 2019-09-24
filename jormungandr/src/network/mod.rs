@@ -178,12 +178,20 @@ pub fn run(params: TaskParams) {
     let listener = if let Some(listen) = listen {
         match listen.protocol {
             Protocol::Grpc => {
-                grpc::run_listen_socket(Some(listen), global_state.clone(), channels.clone())
+                grpc::run_listen_socket(listen, global_state.clone(), channels.clone())
             }
             Protocol::Ntt => unimplemented!(),
         }
     } else {
-        grpc::run_listen_socket(None, global_state.clone(), channels.clone())
+        grpc::run_listen_socket(
+            crate::settings::start::network::Listen {
+                connection: "127.0.0.1".parse().unwrap(),
+                protocol: Protocol::Grpc,
+                timeout: Duration::from_secs(1),
+            },
+            global_state.clone(),
+            channels.clone(),
+        )
     };
 
     let addrs = global_state

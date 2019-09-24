@@ -4,15 +4,11 @@ use network_grpc::server::{self, Server};
 use tokio::prelude::*;
 
 pub fn run_listen_socket(
-    listen: Option<Listen>,
+    listen: Listen,
     state: GlobalStateR,
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
-    let sockaddr = if let Some(listen) = listen {
-        listen.address()
-    } else {
-        "127.0.0.1:5001".parse().unwrap()
-    };
+    let sockaddr = listen.address();
 
     info!(
         state.logger(),
