@@ -455,9 +455,12 @@ pub fn connect(
     let ready_err_logger = state.logger().clone();
     let handshake_err_logger = state.logger().clone();
     let block0_mismatch_logger = state.logger().clone();
+
+    // TODO: we need to filter the `addr` to prevent to connect to invalid address
+
     grpc::connect(addr, Some(state.global.as_ref().node.id()))
         .map_err(move |e| {
-            warn!(connect_err_logger, "error connecting to peer: {:?}", e);
+            debug!(connect_err_logger, "error connecting to peer: {:?}", e);
         })
         .and_then(move |conn| {
             conn.ready().map_err(move |e| {
