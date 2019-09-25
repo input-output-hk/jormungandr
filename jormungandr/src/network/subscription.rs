@@ -11,7 +11,7 @@ use crate::{
 use futures::prelude::*;
 use jormungandr_lib::interfaces::FragmentOrigin;
 use network_core::error as core_error;
-use network_core::gossip::{Gossip, Node as _};
+use network_core::gossip::Gossip;
 use slog::Logger;
 
 pub fn process_block_announcements<S>(
@@ -108,9 +108,12 @@ where
         inbound
             .for_each(move |gossip| {
                 trace!(logger, "received gossip: {:?}", gossip);
-                let nodes = gossip
+                let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip
                     .into_nodes()
-                    .filter(|node| filter_gossip_node(node, &state.config, &logger));
+                    .partition(|node| filter_gossip_node(node, &state.config));
+                if filtered_out.len() > 0 {
+                    debug!(logger, "nodes dropped from gossip: {:?}", filtered_out);
+                }
                 state.topology.update(nodes);
                 Ok(())
             })
@@ -120,27 +123,10 @@ where
     )
 }
 
-fn filter_gossip_node(node: &Node, config: &Configuration, logger: &Logger) -> bool {
-    let accepted = if config.allow_private_addresses {
+fn filter_gossip_node(node: &Node, config: &Configuration) -> bool {
+    if config.allow_private_addresses {
         node.has_valid_address()
     } else {
         node.is_global()
-    };
-    if !accepted {
-        if let Some(addr) = node.address() {
-            warn!(
-                logger,
-                "node {} has unacceptable IP address {}, pruned from gossip",
-                node.id(),
-                addr.ip()
-            );
-        } else {
-            debug!(
-                logger,
-                "node {} has no IP address, pruned from gossip",
-                node.id()
-            );
-        }
     }
-    accepted
 }
