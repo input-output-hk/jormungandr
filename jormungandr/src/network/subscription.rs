@@ -5,11 +5,13 @@ use super::{
 use crate::{
     blockcfg::{Fragment, Header},
     intercom::{BlockMsg, TransactionMsg},
+    settings::start::network::Configuration,
     utils::async_msg::MessageBox,
 };
 use futures::prelude::*;
 use jormungandr_lib::interfaces::FragmentOrigin;
-use network_core::{error as core_error, gossip::Gossip};
+use network_core::error as core_error;
+use network_core::gossip::Gossip;
 use slog::Logger;
 
 pub fn process_block_announcements<S>(
@@ -105,12 +107,26 @@ where
     tokio::spawn(
         inbound
             .for_each(move |gossip| {
-                debug!(logger, "received gossip: {:?}", gossip);
-                state.topology.update(gossip.into_nodes());
+                trace!(logger, "received gossip: {:?}", gossip);
+                let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip
+                    .into_nodes()
+                    .partition(|node| filter_gossip_node(node, &state.config));
+                if filtered_out.len() > 0 {
+                    debug!(logger, "nodes dropped from gossip: {:?}", filtered_out);
+                }
+                state.topology.update(nodes);
                 Ok(())
             })
             .map_err(move |err| {
                 info!(err_logger, "gossip subscription stream failure: {:?}", err);
             }),
     )
+}
+
+fn filter_gossip_node(node: &Node, config: &Configuration) -> bool {
+    if config.allow_private_addresses {
+        node.has_valid_address()
+    } else {
+        node.is_global()
+    }
 }

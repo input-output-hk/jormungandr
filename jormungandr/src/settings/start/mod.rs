@@ -182,6 +182,7 @@ fn generate_network(
         protocol: Protocol::Grpc,
         subscriptions: p2p.topics_of_interest.clone().unwrap_or(BTreeMap::new()),
         timeout: std::time::Duration::from_secs(15),
+        allow_private_addresses: p2p.allow_private_addresses,
     };
 
     Ok(network)

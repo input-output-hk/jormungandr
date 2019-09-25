@@ -9,7 +9,11 @@ use poldercast::Subscription;
 pub use poldercast::{Address, InterestLevel};
 use serde::{Deserialize, Serialize};
 use slog::Logger;
-use std::{collections::BTreeMap, fmt, io, net::SocketAddr, sync::RwLock};
+use std::collections::BTreeMap;
+use std::fmt;
+use std::io;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::RwLock;
 
 pub const NEW_MESSAGES_TOPIC: u32 = 0u32;
 pub const NEW_BLOCKS_TOPIC: u32 = 1u32;
@@ -71,6 +75,75 @@ impl Node {
     pub fn add_block_subscription(&mut self, interest_level: InterestLevel) {
         self.0
             .add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
+    }
+
+    pub fn has_valid_address(&self) -> bool {
+        let addr = match self.address() {
+            None => return false,
+            Some(addr) => addr,
+        };
+
+        match addr.ip() {
+            IpAddr::V4(ip) => {
+                if ip.is_unspecified() {
+                    return false;
+                }
+                if ip.is_broadcast() {
+                    return false;
+                }
+                if ip.is_multicast() {
+                    return false;
+                }
+                if ip.is_documentation() {
+                    return false;
+                }
+            }
+            IpAddr::V6(ip) => {
+                if ip.is_unspecified() {
+                    return false;
+                }
+                if ip.is_multicast() {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
+    pub fn is_global(&self) -> bool {
+        if !self.has_valid_address() {
+            return false;
+        }
+
+        let addr = match self.address() {
+            None => return false,
+            Some(addr) => addr,
+        };
+
+        match addr.ip() {
+            IpAddr::V4(ip) => {
+                if ip.is_private() {
+                    return false;
+                }
+                if ip.is_loopback() {
+                    return false;
+                }
+                if ip.is_link_local() {
+                    return false;
+                }
+            }
+            IpAddr::V6(ip) => {
+                if ip.is_loopback() {
+                    return false;
+                }
+                // FIXME: add more tests when Ipv6Addr convenience methods
+                // get stabilized:
+                // https://github.com/rust-lang/rust/issues/27709
+            }
+        }
+
+        true
     }
 }
 
