@@ -42,6 +42,7 @@ impl StatsCounter {
         self.stats
             .block_recv_cnt
             .fetch_add(count, Ordering::Relaxed);
+        self.set_slot_start_time(SecondsSinceUnixEpoch::now());
     }
 
     pub fn block_recv_cnt(&self) -> u64 {
