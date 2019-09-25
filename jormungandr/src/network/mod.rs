@@ -38,12 +38,10 @@ use crate::utils::{
 };
 use futures::prelude::*;
 use futures::stream;
-use network_core::{
-    error as core_error,
-    gossip::{Gossip, Node},
-};
+use network_core::gossip::{Gossip, Node};
+use rand::seq::SliceRandom;
 use slog::Logger;
-use std::{error::Error, iter, net::SocketAddr, sync::Arc, time::Duration};
+use std::{iter, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::timer::Interval;
 
 pub use self::bootstrap::Error as BootstrapError;
@@ -366,12 +364,15 @@ fn connect_and_propagate_with<F>(
     tokio::spawn(cf);
 }
 
-fn first_trusted_peer_address(config: &Configuration) -> Option<SocketAddr> {
-    config
+fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
+    let mut peers = config
         .trusted_peers
         .iter()
         .filter_map(|peer| peer.to_socketaddr())
-        .next()
+        .collect::<Vec<_>>();
+    let mut rng = rand::thread_rng();
+    peers.shuffle(&mut rng);
+    peers
 }
 
 pub fn bootstrap(
@@ -390,25 +391,22 @@ pub fn bootstrap(
 
     let mut bootstrapped = false;
 
-    for peer in config.trusted_peers.iter() {
-        let logger = logger.new(o!("peer" => peer.to_string()));
-        if let Some(address) = peer.to_socketaddr() {
-            let peer = Peer::new(address, Protocol::Grpc);
-            let res =
-                bootstrap::bootstrap_from_peer(peer, blockchain.clone(), branch.clone(), &logger);
+    for address in trusted_peers_shuffled(&config) {
+        let logger = logger.new(o!("peer_addr" => address.to_string()));
+        let peer = Peer::new(address, Protocol::Grpc);
+        let res = bootstrap::bootstrap_from_peer(peer, blockchain.clone(), branch.clone(), &logger);
 
-            match res {
-                Err(bootstrap::Error::Connect(err)) => {
-                    warn!(logger, "Unable to reach peer for initial bootstrap" ; "reason" => err.to_string());
-                }
-                Err(err) => {
-                    error!(logger, "with initial bootstrap" ; "reason" => err.to_string());
-                }
-                Ok(_) => {
-                    info!(logger, "initial bootstrap completed");
-                    bootstrapped = true;
-                    break;
-                }
+        match res {
+            Err(bootstrap::Error::Connect(err)) => {
+                warn!(logger, "Unable to reach peer for initial bootstrap" ; "reason" => err.to_string());
+            }
+            Err(err) => {
+                error!(logger, "with initial bootstrap" ; "reason" => err.to_string());
+            }
+            Ok(_) => {
+                info!(logger, "initial bootstrap completed");
+                bootstrapped = true;
+                break;
             }
         }
     }
@@ -428,19 +426,41 @@ pub fn fetch_block(
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
-    match first_trusted_peer_address(config) {
-        None => Err(FetchBlockError::NoTrustedPeers),
-        Some(address) => {
-            let peer = Peer::new(address, Protocol::Grpc);
-            grpc::fetch_block(peer, hash, logger)
+
+    if config.trusted_peers.is_empty() {
+        return Err(FetchBlockError::NoTrustedPeers);
+    }
+
+    let mut block = None;
+
+    let logger = logger.new(o!("block" => hash.to_string()));
+
+    for address in trusted_peers_shuffled(&config) {
+        let logger = logger.new(o!("peer_address" => address.to_string()));
+        let peer = Peer::new(address, Protocol::Grpc);
+        match grpc::fetch_block(peer, hash, &logger) {
+            Err(err) => {
+                error!(logger, "error downloading block" ; "reason" => err.to_string());
+            }
+            Ok(b) => {
+                info!(logger, "initial bootstrap completed");
+                block = Some(b);
+                break;
+            }
         }
+    }
+
+    if let Some(block) = block {
+        Ok(block)
+    } else {
+        Err(FetchBlockError::CouldNotDownloadBlock {
+            block: hash.to_owned(),
+        })
     }
 }
 
 custom_error! {
     pub FetchBlockError
         NoTrustedPeers = "no trusted peers specified",
-        Connect { source: Box<dyn Error> } = "connection to peer failed",
-        GetBlocks { source: core_error::Error } = "block request failed",
-        NoBlocks = "no blocks in the stream",
+        CouldNotDownloadBlock { block: HeaderHash } = "could not download block hash {block}",
 }
