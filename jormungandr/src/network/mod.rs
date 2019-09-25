@@ -366,14 +366,6 @@ fn connect_and_propagate_with<F>(
     tokio::spawn(cf);
 }
 
-fn first_trusted_peer_address(config: &Configuration) -> Option<SocketAddr> {
-    config
-        .trusted_peers
-        .iter()
-        .filter_map(|peer| peer.to_socketaddr())
-        .next()
-}
-
 pub fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
@@ -428,18 +420,45 @@ pub fn fetch_block(
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
-    match first_trusted_peer_address(config) {
-        None => Err(FetchBlockError::NoTrustedPeers),
-        Some(address) => {
+
+    if config.trusted_peers.is_empty() {
+        return Err(FetchBlockError::NoTrustedPeers);
+    }
+
+    let mut block = None;
+
+    let logger = logger.new(o!("block" => hash.to_string()));
+
+    for peer in config.trusted_peers.iter() {
+        let logger = logger.new(o!("peer" => peer.to_string()));
+        if let Some(address) = peer.to_socketaddr() {
             let peer = Peer::new(address, Protocol::Grpc);
-            grpc::fetch_block(peer, hash, logger)
+            match grpc::fetch_block(peer, hash, &logger) {
+                Err(err) => {
+                    error!(logger, "error downloading block" ; "reason" => err.to_string());
+                }
+                Ok(b) => {
+                    info!(logger, "initial bootstrap completed");
+                    block = Some(b);
+                    break;
+                }
+            }
         }
+    }
+
+    if let Some(block) = block {
+        Ok(block)
+    } else {
+        Err(FetchBlockError::CouldNotDownloadBlock {
+            block: hash.to_owned(),
+        })
     }
 }
 
 custom_error! {
     pub FetchBlockError
         NoTrustedPeers = "no trusted peers specified",
+        CouldNotDownloadBlock { block: HeaderHash } = "could not download block hash {block}",
         Connect { source: Box<dyn Error> } = "connection to peer failed",
         GetBlocks { source: core_error::Error } = "block request failed",
         NoBlocks = "no blocks in the stream",
