@@ -82,7 +82,8 @@ pub struct P2pConfig {
     /// best possible neighborhood.
     pub topics_of_interest: Option<BTreeMap<Topic, InterestLevel>>,
 
-    /// Whether to allow non-public IP addresses on the network
+    /// Whether to allow non-public IP addresses on the network.
+    /// The default is to not allow advertising non-public IP addresses.
     #[serde(default)]
     pub allow_private_addresses: bool,
 }
