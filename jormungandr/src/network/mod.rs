@@ -323,7 +323,7 @@ fn connect_and_propagate_with<F>(
     let addr = match node.address() {
         Some(addr) => addr,
         None => {
-            info!(
+            debug!(
                 state.logger(),
                 "ignoring P2P node without an IP address: {:?}", node
             );

@@ -155,12 +155,7 @@ fn generate_network(
     let mut p2p = if let Some(cfg) = config {
         cfg.p2p.clone()
     } else {
-        config::P2pConfig {
-            public_address: None,
-            listen_address: None,
-            trusted_peers: None,
-            topics_of_interest: None,
-        }
+        config::P2pConfig::default()
     };
 
     if p2p.trusted_peers.is_some() {
