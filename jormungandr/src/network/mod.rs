@@ -41,7 +41,6 @@ use futures::stream;
 use network_core::gossip::{Gossip, Node};
 use rand::seq::SliceRandom;
 use slog::Logger;
-use std::{error::Error, fmt};
 use std::{iter, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::timer::Interval;
 
@@ -427,45 +426,41 @@ pub fn fetch_block(
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
-    let mut peer_errors = Vec::new();
+
+    if config.trusted_peers.is_empty() {
+        return Err(FetchBlockError::NoTrustedPeers);
+    }
+
+    let mut block = None;
+
+    let logger = logger.new(o!("block" => hash.to_string()));
+
     for address in trusted_peers_shuffled(&config) {
+        let logger = logger.new(o!("peer_address" => address.to_string()));
         let peer = Peer::new(address, Protocol::Grpc);
-        let fetch_logger = logger.new(o!("peer_addr" => address));
-        match grpc::fetch_block(peer, hash, &fetch_logger) {
-            Ok(block) => return Ok(block),
-            Err(e) => {
-                warn!(fetch_logger, "failed to fetch block from peer");
-                peer_errors.push(e);
+        match grpc::fetch_block(peer, hash, &logger) {
+            Err(err) => {
+                error!(logger, "error downloading block" ; "reason" => err.to_string());
+            }
+            Ok(b) => {
+                info!(logger, "initial bootstrap completed");
+                block = Some(b);
+                break;
             }
         }
     }
-    Err(FetchBlockError::from_peer_errors(peer_errors))
-}
 
-#[derive(Debug)]
-pub struct FetchBlockError {
-    peer_errors: Vec<grpc::FetchBlockError>,
-}
-
-impl FetchBlockError {
-    pub fn from_peer_errors<I>(errors: I) -> Self
-    where
-        I: IntoIterator<Item = grpc::FetchBlockError>,
-    {
-        FetchBlockError {
-            peer_errors: errors.into_iter().collect(),
-        }
+    if let Some(block) = block {
+        Ok(block)
+    } else {
+        Err(FetchBlockError::CouldNotDownloadBlock {
+            block: hash.to_owned(),
+        })
     }
 }
 
-impl fmt::Display for FetchBlockError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.peer_errors.is_empty() {
-            f.write_str("no trusted peers specified")
-        } else {
-            f.write_str("failed to fetch block from trusted peers")
-        }
-    }
+custom_error! {
+    pub FetchBlockError
+        NoTrustedPeers = "no trusted peers specified",
+        CouldNotDownloadBlock { block: HeaderHash } = "could not download block hash {block}",
 }
-
-impl Error for FetchBlockError {}
