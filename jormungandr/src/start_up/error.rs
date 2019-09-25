@@ -1,5 +1,5 @@
 use crate::{
-    blockcfg, blockchain, network, secure,
+    blockcfg, blockchain, explorer, network, secure,
     settings::{self, logging},
 };
 use chain_storage::error::Error as StorageError;
@@ -22,6 +22,7 @@ custom_error! {pub Error
     NetworkBootstrapError { source: network::BootstrapError } = "Error while loading the blockchain from the network",
     NodeSecrets { source: secure::NodeSecretFromFileError} = "Error while loading the node's secrets.",
     Block0InFuture = "Block 0 is set to start in the future",
+    ExplorerBootstrapError { source: explorer::error::Error } = "Error while loading the explorer from storage",
 }
 
 impl Error {
@@ -39,6 +40,7 @@ impl Error {
             Error::NodeSecrets { .. } => 8,
             Error::FetchBlock0 { .. } => 9,
             Error::NetworkBootstrapError { .. } => 10,
+            Error::ExplorerBootstrapError { .. } => 11,
         }
     }
 }

@@ -3,12 +3,14 @@ extern crate actix_threadpool;
 extern crate actix_web;
 extern crate bincode;
 extern crate bytes;
+extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
 extern crate chain_storage_sqlite;
 extern crate chain_time;
+extern crate imhamt;
 #[macro_use]
 extern crate custom_error;
 #[macro_use]
@@ -96,6 +98,7 @@ pub struct BootstrappedNode {
     new_epoch_announcements: tokio::sync::mpsc::Sender<self::leadership::NewEpochToSchedule>,
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,
     logger: Logger,
+    explorer_db: Option<explorer::ExplorerDB>,
 }
 
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
@@ -142,14 +145,12 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let explorer = {
         if bootstrapped_node.settings.explorer {
-            let blockchain = blockchain.clone();
-            let explorer_db = explorer::ExplorerDB::new();
+            let explorer_db = bootstrapped_node
+                .explorer_db
+                .expect("explorer db to be bootstrapped");
 
-            let mut explorer = explorer::Explorer::new(
-                explorer_db.clone(),
-                explorer::graphql::create_schema(),
-                blockchain.clone(),
-            );
+            let mut explorer =
+                explorer::Explorer::new(explorer_db.clone(), explorer::graphql::create_schema());
 
             // Context to give to the rest api
             let context = explorer.clone();
@@ -309,6 +310,8 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let block0_hash = block0.header.hash();
 
+    let block0_explorer = block0.clone();
+
     // TODO: we should get this value from the configuration
     let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
 
@@ -326,6 +329,15 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         &bootstrap_logger,
     )?;
 
+    let explorer_db = if settings.explorer {
+        Some(explorer::ExplorerDB::bootstrap(
+            block0_explorer,
+            &blockchain,
+        )?)
+    } else {
+        None
+    };
+
     if !bootstrapped {
         // TODO, the node didn't manage to connect to any other nodes
         // for the initial bootstrap, that may be an error however
@@ -341,6 +353,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         new_epoch_announcements,
         new_epoch_notifier,
         logger,
+        explorer_db,
     })
 }
 

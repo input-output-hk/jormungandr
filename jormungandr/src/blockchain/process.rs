@@ -60,7 +60,7 @@ pub fn handle_input(
             });
         }
         BlockMsg::LeadershipBlock(block) => {
-            let future = process_leadership_block(info.logger(), blockchain.clone(), block);
+            let future = process_leadership_block(info.logger(), blockchain.clone(), block.clone());
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
             process_new_ref(
@@ -77,14 +77,13 @@ pub fn handle_input(
                 });
 
             if let Some(msg_box) = explorer_msg_box {
-                /*
                 msg_box
-                    .try_send(ExplorerMsg::NewBlock(new_block_ref))
+                    .try_send(ExplorerMsg::NewBlock(block))
                     .unwrap_or_else(|err| {
                         error!(info.logger(), "cannot add block to explorer: {}", err)
                     });
-                */
             };
+
             stats_counter.add_block_recv_cnt(1);
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
@@ -100,7 +99,8 @@ pub fn handle_input(
         }
         BlockMsg::NetworkBlock(block, reply) => {
             let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
-            let future = process_network_block(blockchain.clone(), block, info.logger().clone());
+            let future =
+                process_network_block(blockchain.clone(), block.clone(), info.logger().clone());
             match future.wait() {
                 Err(e) => {
                     reply.reply_error(network_block_error_into_reply(e));
@@ -127,6 +127,14 @@ pub fn handle_input(
                             .unwrap_or_else(|err| {
                                 error!(info.logger(), "cannot propagate block to network: {}", err)
                             });
+
+                        if let Some(msg_box) = explorer_msg_box {
+                            msg_box
+                                .try_send(ExplorerMsg::NewBlock(block))
+                                .unwrap_or_else(|err| {
+                                    error!(info.logger(), "cannot add block to explorer: {}", err)
+                                });
+                        };
                     }
                     reply.reply_ok(());
                 }
