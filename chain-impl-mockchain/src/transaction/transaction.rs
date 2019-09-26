@@ -226,3 +226,36 @@ impl<A, Extra> Transaction<A, Extra> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::{certificate::Certificate, value::Value};
+    use quickcheck::{Arbitrary, TestResult};
+    use quickcheck_macros::quickcheck;
+
+    #[quickcheck]
+    pub fn test_verify_strictly_balanced(
+        transaction: Transaction<Address, Certificate>,
+        fee: Value,
+    ) -> TestResult {
+        let total_input = Value::sum(transaction.inputs.iter().map(|input| input.value)).unwrap();
+        let total_output =
+            Value::sum(transaction.outputs.iter().map(|output| output.value)).unwrap();
+        let total_input_with_fee = total_output.checked_add(fee).unwrap();
+
+        let is_balanced_strictly = total_input == total_input_with_fee;
+
+        match (
+            transaction.verify_strictly_balanced(fee),
+            is_balanced_strictly,
+        ) {
+            (Ok(_), true) => TestResult::passed(),
+            (Ok(_), false) => TestResult::failed(),
+            (Err(_), true) => TestResult::failed(),
+            (Err(_), false) => TestResult::passed(),
+        }
+    }
+
+}

@@ -215,6 +215,7 @@ pub fn get_distribution(
 #[cfg(test)]
 mod tests {
     use crate::account;
+    use crate::accounting::account::DelegationType;
     use crate::stake::delegation::DelegationState;
     use crate::{
         account::{AccountAlg, Identifier},
@@ -415,7 +416,7 @@ mod tests {
             accounts = accounts
                 .set_delegation(
                     &Identifier::from(account_public_key.clone()),
-                    Some(id_active_pool.clone()),
+                    DelegationType::Full(id_active_pool.clone()),
                 )
                 .unwrap();
         }
@@ -438,7 +439,7 @@ mod tests {
         for (id, value) in stake_distribution_data.assigned_accounts.iter().cloned() {
             accounts = accounts.add_account(&id, value, ()).unwrap();
             accounts = accounts
-                .set_delegation(&id, Some(id_active_pool.clone()))
+                .set_delegation(&id, DelegationType::Full(id_active_pool.clone()))
                 .unwrap();
         }
 
@@ -448,14 +449,17 @@ mod tests {
             .add_account(&single_account.0.clone(), single_account.1, ())
             .unwrap();
         accounts = accounts
-            .set_delegation(&single_account.0.clone(), Some(id_active_pool.clone()))
+            .set_delegation(
+                &single_account.0.clone(),
+                DelegationType::Full(id_active_pool.clone()),
+            )
             .unwrap();
 
         // add accounts with retired stake pool
         for (id, value) in stake_distribution_data.dangling_accounts.iter().cloned() {
             accounts = accounts.add_account(&id, value, ()).unwrap();
             accounts = accounts
-                .set_delegation(&id, Some(id_retired_pool.clone()))
+                .set_delegation(&id, DelegationType::Full(id_retired_pool.clone()))
                 .unwrap();
         }
 
@@ -481,7 +485,7 @@ mod tests {
         let pools_total_stake = distribution
             .to_pools
             .values()
-            .map(|x| x.total_stake.0)
+            .map(|x| x.total.total_stake.0)
             .sum::<u64>();
         if pools_total_stake != stake_distribution_data.pools_total() {
             return TestResult::error(format!(

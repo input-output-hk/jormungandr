@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use crate::{
-    fragment::{Fragment, FragmentId},
+    fragment::Fragment,
     ledger::{
         check::TxVerifyError,
         Entry,
@@ -15,6 +15,7 @@ use crate::{
         data::AddressData,
         ledger::{self, ConfigBuilder},
         tx_builder::TransactionBuilder,
+        TestGen,
     },
     transaction::*,
     value::*,
@@ -93,7 +94,7 @@ fn calculate_total_funds_in_ledger(ledger: &Ledger) -> u64 {
 }
 
 #[quickcheck]
-pub fn total_funds_are_total_in_ledger(
+pub fn total_funds_are_const_in_ledger(
     mut transaction_data: ArbitraryValidTransactionData,
 ) -> TestResult {
     let message =
@@ -208,9 +209,7 @@ pub fn transaction_with_more_than_253_outputs() {
         .authenticate()
         .with_witness(&block0_hash, &faucet)
         .seal();
-    // here we have to build a random FragmentId, since the transaction is invalid,
-    // and will trigger an assert during Fragment -> Id calculation otherwise
-    let fragment_id = FragmentId::hash_bytes(&[1, 2, 3]);
+    let fragment_id = TestGen::hash();
 
     let fees = ledger.get_ledger_parameters();
     assert_err!(
@@ -221,7 +220,7 @@ pub fn transaction_with_more_than_253_outputs() {
             }
         },
         ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
-    )
+    );
 }
 
 #[test]

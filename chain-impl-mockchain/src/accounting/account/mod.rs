@@ -170,7 +170,7 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> std::iter::FromIterator<(ID, AccountSt
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
 
     use crate::{
         account::{Identifier, Ledger},
@@ -184,69 +184,7 @@ pub mod tests {
     use quickcheck_macros::quickcheck;
     use std::collections::HashSet;
     use std::iter;
-    #[quickcheck]
-    pub fn ledger_total_value_is_correct_after_remove_value(
-        id: Identifier,
-        account_state: AccountState<()>,
-        value_to_remove: Value,
-    ) -> TestResult {
-        let mut ledger = Ledger::new();
-        ledger = ledger
-            .add_account(&id, account_state.get_value(), ())
-            .unwrap();
-        let result = ledger.remove_value(&id, value_to_remove);
-        let expected_result = account_state.get_value() - value_to_remove;
-        match (result, expected_result) {
-            (Err(_), Err(_)) => verify_total_value(ledger, account_state.get_value()),
-            (Ok(_), Err(_)) => TestResult::failed(),
-            (Err(_), Ok(_)) => TestResult::failed(),
-            (Ok((ledger, _)), Ok(value)) => verify_total_value(ledger, value),
-        }
-    }
 
-    fn verify_total_value(ledger: Ledger, value: Value) -> TestResult {
-        match ledger.get_total_value().unwrap() == value {
-            true => TestResult::passed(),
-            false => TestResult::error(format!(
-                "Wrong total value got {:?}, while expecting {:?}",
-                ledger.get_total_value(),
-                value
-            )),
-        }
-    }
-
-    #[quickcheck]
-    pub fn ledger_removes_account_only_if_zeroed(
-        id: Identifier,
-        account_state: AccountState<()>,
-    ) -> TestResult {
-        let mut ledger = Ledger::new();
-        ledger = ledger
-            .add_account(&id, account_state.get_value(), ())
-            .unwrap();
-        let result = ledger.remove_account(&id);
-        let expected_result = account_state.get_value() == Value::zero();
-        match (result, expected_result) {
-            (Err(_), false) => verify_account_exists(&ledger, &id),
-            (Ok(_), false) => TestResult::failed(),
-            (Err(_), true) => TestResult::failed(),
-            (Ok(ledger), true) => verify_account_does_not_exist(&ledger, &id),
-        }
-    }
-
-    fn verify_account_exists(ledger: &Ledger, id: &Identifier) -> TestResult {
-        match ledger.exists(&id) {
-            true => TestResult::passed(),
-            false => TestResult::error(format!("Account ({:?}) not exists , while it should", &id)),
-        }
-    }
-
-    fn verify_account_does_not_exist(ledger: &Ledger, id: &Identifier) -> TestResult {
-        match ledger.exists(&id) {
-            true => TestResult::error(format!("Account ({:?}) exists , while it should not", &id)),
-            false => TestResult::passed(),
-        }
-    }
     impl Arbitrary for Ledger {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             let account_size = std::cmp::max(usize::arbitrary(gen), 1);
@@ -314,19 +252,16 @@ pub mod tests {
                 account_id
             ));
         }
-
-        // verify account exists
-        if !ledger.exists(&account_id) {
-            return TestResult::error(format!("Account with id {} should exist", account_id));
-        }
-
-        // verify account is listed amongst other
-        if !ledger.iter().any(|(x, _)| *x == account_id) {
-            return TestResult::error(format!(
-                "Account with id {} should be lister amongst other",
-                account_id
-            ));
-        }
+        assert!(
+            ledger.exists(&account_id),
+            "Account with id {} should exist",
+            account_id
+        );
+        assert!(
+            ledger.iter().any(|(x, _)| *x == account_id),
+            "Account with id {} should be listed amongst other",
+            account_id
+        );
 
         // verify total value was increased
         let test_result = test_total_value(
@@ -350,13 +285,11 @@ pub mod tests {
             };
 
         // verify total value is still the same
-        let test_result = test_total_value(
+        assert!(!test_total_value(
             (initial_total_value + value).unwrap(),
             ledger.get_total_value().unwrap(),
-        );
-        if test_result.is_error() {
-            return test_result;
-        }
+        )
+        .is_failure());
 
         // add value to account
         ledger = match ledger.add_value(&account_id, value.clone()) {
@@ -456,29 +389,20 @@ pub mod tests {
             }
         };
 
-        // verify accounts does not exists
-        if ledger.exists(&account_id) {
-            return TestResult::error(format!("Account with id {} should not exist", account_id));
-        }
+        assert!(!ledger.exists(&account_id), "account should not exist");
+        assert!(
+            !ledger.iter().any(|(x, _)| *x == account_id),
+            "Account with id {:?} should not be listed amongst accounts",
+            account_id
+        );
+        assert_eq!(
+            initial_total_value,
+            ledger.get_total_value().unwrap(),
+            "total funds is not equal to initial total_value"
+        );
 
-        // verify account is not listed amongst other accounts
-        if ledger.iter().any(|(x, _)| *x == account_id) {
-            return TestResult::error(format!(
-                "Account with id {} should not be listed amongst accounts",
-                account_id
-            ));
-        }
-
-        // verify total funds is equal to initial total_value
-        let test_result = test_total_value(initial_total_value, ledger.get_total_value().unwrap());
-        if test_result.is_error() {
-            return test_result;
-        }
-
-        match ledger.get_state(&account_id) {
-            Ok(_) => TestResult::error("Account state is should be none"),
-            Err(_) => TestResult::passed(),
-        }
+        //Account state is should be none
+        TestResult::from_bool(ledger.get_state(&account_id).is_err())
     }
 
     fn test_total_value(expected: Value, actual: Value) -> TestResult {
@@ -490,4 +414,72 @@ pub mod tests {
             )),
         }
     }
+
+    #[quickcheck]
+    pub fn ledger_total_value_is_correct_after_remove_value(
+        id: Identifier,
+        account_state: AccountState<()>,
+        value_to_remove: Value,
+    ) -> TestResult {
+        let mut ledger = Ledger::new();
+        ledger = ledger
+            .add_account(&id, account_state.get_value(), ())
+            .unwrap();
+        let result = ledger.remove_value(&id, value_to_remove);
+        let expected_result = account_state.get_value() - value_to_remove;
+        match (result, expected_result) {
+            (Err(_), Err(_)) => verify_total_value(ledger, account_state.get_value()),
+            (Ok(_), Err(_)) => TestResult::failed(),
+            (Err(_), Ok(_)) => TestResult::failed(),
+            (Ok((ledger, _)), Ok(value)) => verify_total_value(ledger, value),
+        }
+    }
+
+    fn verify_total_value(ledger: Ledger, value: Value) -> TestResult {
+        match ledger.get_total_value().unwrap() == value {
+            true => TestResult::passed(),
+            false => TestResult::error(format!(
+                "Wrong total value got {:?}, while expecting {:?}",
+                ledger.get_total_value(),
+                value
+            )),
+        }
+    }
+
+    #[quickcheck]
+    pub fn ledger_removes_account_only_if_zeroed(
+        id: Identifier,
+        account_state: AccountState<()>,
+    ) -> TestResult {
+        let mut ledger = Ledger::new();
+        ledger = ledger
+            .add_account(&id, account_state.get_value(), ())
+            .unwrap();
+        let result = ledger.remove_account(&id);
+        let expected_zero = account_state.get_value() == Value::zero();
+        match (result, expected_zero) {
+            (Err(_), false) => verify_account_exists(&ledger, &id),
+            (Ok(_), false) => TestResult::failed(),
+            (Err(_), true) => TestResult::failed(),
+            (Ok(ledger), true) => verify_account_does_not_exist(&ledger, &id),
+        }
+    }
+
+    fn verify_account_exists(ledger: &Ledger, id: &Identifier) -> TestResult {
+        match ledger.exists(&id) {
+            true => TestResult::passed(),
+            false => TestResult::error(format!(
+                "Account ({:?}) does not exist, while it should",
+                &id
+            )),
+        }
+    }
+
+    fn verify_account_does_not_exist(ledger: &Ledger, id: &Identifier) -> TestResult {
+        match ledger.exists(&id) {
+            true => TestResult::error(format!("Account ({:?}) exists, while it should not", &id)),
+            false => TestResult::passed(),
+        }
+    }
+
 }

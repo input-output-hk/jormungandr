@@ -213,7 +213,7 @@ impl Readable for Witness {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use chain_crypto::SecretKey;
+    use chain_crypto::{testing::arbitrary_secret_key, SecretKey};
     use quickcheck::{Arbitrary, Gen};
 
     #[derive(Clone)]
@@ -242,7 +242,16 @@ pub mod test {
 
     impl Arbitrary for Witness {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Witness::Utxo(SpendingSignature::arbitrary(g))
+            let opt = u8::arbitrary(g) % 3;
+            match opt {
+                0 => Witness::Utxo(SpendingSignature::arbitrary(g)),
+                1 => Witness::Account(SpendingSignature::arbitrary(g)),
+                2 => {
+                    let sk: SecretKey<Ed25519Bip32> = arbitrary_secret_key(g);
+                    Witness::OldUtxo(sk.to_public(), Signature::arbitrary(g))
+                }
+                _ => panic!("not implemented"),
+            }
         }
     }
 

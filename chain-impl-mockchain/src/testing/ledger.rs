@@ -12,7 +12,7 @@ use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
 use std::vec::Vec;
 
-use crate::testing::tx_builder::TransactionBuilder;
+use crate::testing::{data::AddressDataValue, tx_builder::TransactionBuilder};
 
 pub struct ConfigBuilder {
     slot_duration: u8,
@@ -117,4 +117,13 @@ pub fn create_initial_transactions(outputs: &Vec<Output<Address>>) -> Fragment {
     let mut builder = TransactionBuilder::new();
     let authenticator = builder.with_outputs(outputs.to_vec()).authenticate();
     authenticator.as_message()
+}
+
+pub fn create_fake_ledger_with_faucet(
+    faucets: &[AddressDataValue],
+    config_params: ConfigParams,
+) -> Result<(HeaderHash, Ledger), Error> {
+    let outputs: Vec<Output<Address>> = faucets.iter().map(|x| x.make_output()).collect();
+    let message = create_initial_transactions(&outputs);
+    create_initial_fake_ledger(&[message], config_params)
 }

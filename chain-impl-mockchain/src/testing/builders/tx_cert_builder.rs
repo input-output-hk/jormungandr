@@ -56,7 +56,10 @@ impl TransactionCertBuilder {
         Transaction {
             inputs: self.inputs.clone(),
             outputs: self.outputs.clone(),
-            extra: self.certificate.clone().expect("Cannot build transaction: Certificate in None"),
+            extra: self
+                .certificate
+                .clone()
+                .expect("Cannot build transaction: Certificate in None"),
         }
     }
 }

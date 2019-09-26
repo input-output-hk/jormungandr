@@ -1,5 +1,5 @@
 use crate::{
-    account::SpendingCounter,
+    account::{Identifier, SpendingCounter},
     key::EitherEd25519SecretKey,
     transaction::{Input, Output},
     utxo::Entry,
@@ -7,8 +7,7 @@ use crate::{
 };
 use chain_addr::{Address, AddressReadable, Discrimination, Kind, KindType};
 use chain_crypto::{
-    testing::TestCryptoGen, AsymmetricKey, Ed25519, Ed25519Extended, KeyPair,
-    PublicKey,
+    testing::TestCryptoGen, AsymmetricKey, Ed25519, Ed25519Extended, KeyPair, PublicKey,
 };
 
 use crate::quickcheck::RngCore;
@@ -94,18 +93,44 @@ impl AddressData {
         AddressData::new(single_sk, None, user_address)
     }
 
+    pub fn delegation_from(
+        primary_address: &AddressData,
+        delegation_address: &AddressData,
+    ) -> Self {
+        let single_sk = primary_address.private_key.clone();
+        let single_pk = primary_address.public_key();
+        let user_address = Address(
+            primary_address.discrimination().clone(),
+            Kind::Group(single_pk.clone(), delegation_address.public_key().clone()),
+        );
+        AddressData::new(single_sk, None, user_address)
+    }
+
+    pub fn delegation_for(address: &AddressData) -> Self {
+        AddressData::delegation_from(&AddressData::delegation(address.discrimination()), address)
+    }
+
     pub fn make_input(&self, value: Value, utxo: Option<Entry<Address>>) -> Input {
         match self.address.kind() {
             Kind::Account { .. } => {
                 Input::from_account_public_key(self.public_key(), value.clone())
             }
-            Kind::Single { .. } | Kind::Group { .. } | Kind::Multisig { .. } => {
+            Kind::Single { .. } | Kind::Group { .. } => {
                 Input::from_utxo_entry(utxo.expect(&format!(
                     "invalid state, utxo should be Some if Kind not Account {:?}",
                     &self.address
                 )))
             }
+            Kind::Multisig { .. } => unimplemented!(),
         }
+    }
+
+    pub fn delegation_id(&self) -> Identifier {
+        Identifier::from(self.delegation_key())
+    }
+
+    pub fn to_id(&self) -> Identifier {
+        Identifier::from(self.public_key())
     }
 
     pub fn make_output(&self, value: Value) -> Output<Address> {
@@ -182,11 +207,45 @@ impl AddressDataValue {
         }
     }
 
+    pub fn utxo(discrimination: Discrimination, value: Value) -> Self {
+        AddressDataValue {
+            address_data: AddressData::utxo(discrimination),
+            value: value,
+        }
+    }
+
+    pub fn account(discrimination: Discrimination, value: Value) -> Self {
+        AddressDataValue {
+            address_data: AddressData::account(discrimination),
+            value: value,
+        }
+    }
+
+    pub fn delegation(discrimination: Discrimination, value: Value) -> Self {
+        AddressDataValue {
+            address_data: AddressData::delegation(discrimination),
+            value: value,
+        }
+    }
+
+    pub fn to_id(&self) -> Identifier {
+        self.address_data.to_id()
+    }
+
+    pub fn private_key(&self) -> EitherEd25519SecretKey {
+        self.address_data.private_key.clone()
+    }
     pub fn make_input(&self, utxo: Option<Entry<Address>>) -> Input {
         self.address_data.make_input(self.value, utxo)
     }
 
     pub fn make_output(&self) -> Output<Address> {
         self.address_data.make_output(self.value)
+    }
+}
+
+impl Into<AddressData> for AddressDataValue {
+    fn into(self) -> AddressData {
+        self.address_data
     }
 }

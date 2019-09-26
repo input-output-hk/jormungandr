@@ -169,3 +169,88 @@ impl<OutAddress, Extra> AuthenticatedTransaction<OutAddress, Extra> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::certificate::Certificate;
+    use quickcheck::TestResult;
+    use quickcheck_macros::quickcheck;
+
+    #[quickcheck]
+    pub fn test_valid_block0_transaction_no_inputs(
+        auth_tx: AuthenticatedTransaction<Address, Certificate>,
+    ) -> TestResult {
+        let has_valid_inputs =
+            auth_tx.transaction.inputs.len() == 0 && auth_tx.witnesses.len() == 0;
+        let result = valid_block0_transaction_no_inputs(&auth_tx);
+        to_quickchek_result(result, has_valid_inputs)
+    }
+
+    #[quickcheck]
+    pub fn test_valid_block0_transaction_outputs(
+        auth_tx: AuthenticatedTransaction<Address, Certificate>,
+    ) -> TestResult {
+        let has_valid_outputs = auth_tx.transaction.outputs.len() == 0;
+
+        let result = valid_block0_transaction_no_outputs(&auth_tx);
+        to_quickchek_result(result, has_valid_outputs)
+    }
+
+    #[quickcheck]
+    pub fn test_valid_output_value(output: Output<Address>) -> TestResult {
+        let is_valid_output = output.value != Value::zero();
+        let result = valid_output_value(&output);
+        to_quickchek_result(result, is_valid_output)
+    }
+
+    #[quickcheck]
+    pub fn test_valid_pool_registration_certificate(
+        pool_registration: certificate::PoolRegistration,
+    ) -> TestResult {
+        let is_valid = pool_registration.management_threshold != 0
+            && (pool_registration.management_threshold as usize) <= pool_registration.owners.len()
+            && pool_registration.owners.len() < 256;
+        let result = valid_pool_registration_certificate(&pool_registration);
+        to_quickchek_result(result, is_valid)
+    }
+
+    #[quickcheck]
+    pub fn test_valid_stake_owner_delegation_transaction(
+        auth_cert: AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>,
+    ) -> TestResult {
+        let is_valid = auth_cert.witnesses.len() == 1
+            && auth_cert.transaction.inputs.len() == 1
+            && auth_cert.transaction.outputs.len() == 0;
+        let result = valid_stake_owner_delegation_transaction(&auth_cert);
+        to_quickchek_result(result, is_valid)
+    }
+
+    #[quickcheck]
+    pub fn test_valid_pool_retirement_certificate(
+        cert: certificate::PoolOwnersSigned<certificate::PoolRetirement>,
+    ) -> TestResult {
+        let is_valid = cert.signatures.len() > 0 && cert.signatures.len() < 256;
+        let result = valid_pool_retirement_certificate(&cert);
+        to_quickchek_result(result, is_valid)
+    }
+
+    fn to_quickchek_result(result: LedgerCheck, should_succeed: bool) -> TestResult {
+        match (result, should_succeed) {
+            (Ok(_), true) => TestResult::passed(),
+            (Ok(_), false) => TestResult::failed(),
+            (Err(_), true) => TestResult::failed(),
+            (Err(_), false) => TestResult::passed(),
+        }
+    }
+
+    #[quickcheck]
+    pub fn test_valid_pool_update_certificate(
+        cert: certificate::PoolOwnersSigned<certificate::PoolUpdate>,
+    ) -> TestResult {
+        let is_valid = cert.signatures.len() > 0 && cert.signatures.len() < 256;
+        let result = valid_pool_update_certificate(&cert);
+        to_quickchek_result(result, is_valid)
+    }
+}

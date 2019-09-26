@@ -1,19 +1,12 @@
 use crate::leadership::bft::LeaderId;
-use chain_crypto::{Ed25519Extended, SecretKey, KeyPair};
+use chain_crypto::{Ed25519Extended, KeyPair, SecretKey};
+use quickcheck::{Arbitrary, Gen};
 use std::fmt::{self, Debug};
-use quickcheck::{Arbitrary,Gen};
-
 
 #[derive(Clone)]
 pub struct LeaderPair {
     leader_id: LeaderId,
     leader_key: SecretKey<Ed25519Extended>,
-}
-
-impl PartialEq<LeaderPair> for LeaderPair {
-    fn eq(&self, other: &LeaderPair) -> bool {
-        self.id() == other.id()
-    }
 }
 
 impl Debug for LeaderPair {
@@ -43,9 +36,11 @@ impl LeaderPair {
 
 impl Arbitrary for LeaderPair {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        LeaderPair{
+        LeaderPair {
             leader_id: LeaderId::arbitrary(g),
-            leader_key: KeyPair::<Ed25519Extended>::arbitrary(g).private_key().clone(),
+            leader_key: KeyPair::<Ed25519Extended>::arbitrary(g)
+                .private_key()
+                .clone(),
         }
     }
 }

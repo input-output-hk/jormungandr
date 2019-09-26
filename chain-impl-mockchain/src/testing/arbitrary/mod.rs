@@ -5,8 +5,8 @@ pub mod transaction;
 pub mod update_proposal;
 pub mod utils;
 
-use crate::transaction::Output;
-use crate::value::Value;
+use crate::{transaction::Output, value::Value};
+
 use chain_addr::Address;
 use quickcheck::{Arbitrary, Gen};
 
