@@ -54,7 +54,6 @@ impl AddressData {
         }
     }
 
-
     pub fn from_discrimination_and_kind_type(
         discrimination: Discrimination,
         kind: &KindType,
@@ -151,6 +150,21 @@ impl AddressData {
 
     pub fn generate_key_pair<A: AsymmetricKey>() -> KeyPair<A> {
         TestCryptoGen(0).keypair::<A>(rand_os::OsRng::new().unwrap().next_u32())
+    }
+
+    pub fn delegation_for_account(
+        other: AddressData,
+        delegation_public_key: PublicKey<Ed25519>,
+    ) -> Self {
+        let user_address = Address(
+            other.address.discrimination().clone(),
+            Kind::Group(other.public_key().clone(), delegation_public_key.clone()),
+        );
+        AddressData::new(other.private_key, other.spending_counter, user_address)
+    }
+
+    fn generate_random_secret_key() -> EitherEd25519SecretKey {
+        EitherEd25519SecretKey::generate(rand_os::OsRng::new().unwrap())
     }
 }
 

@@ -6,6 +6,20 @@ use std::{
     hash::Hash,
 };
 
+pub fn split_vec<G: Gen, T>(source: &Vec<T>, gen: &mut G, number_of_splits: usize) -> Vec<Vec<T>>
+where
+    T: std::clone::Clone,
+{
+    let mut matrix: Vec<Vec<T>> = (0..number_of_splits)
+        .map(|_| Vec::with_capacity(number_of_splits))
+        .collect();
+    for x in source.iter().cloned() {
+        let index = usize::arbitrary(gen) % number_of_splits;
+        matrix.get_mut(index).unwrap().push(x.clone());
+    }
+    matrix
+}
+
 pub fn choose_random_vec_subset<G: Gen, T>(source: &Vec<T>, gen: &mut G) -> Vec<T>
 where
     T: std::clone::Clone,
