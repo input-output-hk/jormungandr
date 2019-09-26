@@ -19,6 +19,8 @@ custom_error! {pub Error
     OutputInvalid { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("invalid output file path '{}'", path.display()) }},
     InvalidCertificate { source: CertificateFromStrError } = "Invalid certificate",
+    ManagementThresholdInvalid { got: usize, max_expected: usize }
+        = "invalid management_threshold value, expected between at least 1 and {max_expected} but got {got}",
 }
 
 #[derive(StructOpt)]
