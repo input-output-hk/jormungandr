@@ -26,7 +26,8 @@ pub struct StakePoolRegistration {
     #[structopt(
         long = "owner",
         name = "PUBLIC_KEY",
-        parse(try_from_str = "parse_pub_key")
+        parse(try_from_str = "parse_pub_key"),
+        required = true
     )]
     pub owners: Vec<PublicKey<Ed25519>>,
     /// Public key of the block signing key
@@ -61,6 +62,14 @@ impl StakePoolRegistration {
                 vrf_public_key: self.vrf_key,
             },
         };
+
+        if self.management_threshold as usize > self.owners.len() {
+            return Err(Error::ManagementThresholdInvalid {
+                got: self.management_threshold as usize,
+                max_expected: self.owners.len(),
+            });
+        };
+
         let cert = Certificate::PoolRegistration(content);
         write_cert(self.output, CertificateType(cert))
     }
