@@ -1,6 +1,7 @@
 use super::ArbitraryAddressDataVec;
 use crate::{
     account::Ledger as AccountLedger,
+    fee::LinearFee,
     ledger::Ledger,
     testing::arbitrary::{utils as arbitrary_utils, AverageValue},
     testing::data::{AddressData, AddressDataValue},
@@ -18,6 +19,7 @@ pub struct ArbitraryValidTransactionData {
     pub addresses: Vec<AddressDataValue>,
     pub input_addresses: Vec<AddressDataValue>,
     pub output_addresses: Vec<AddressDataValue>,
+    pub fee: LinearFee,
 }
 
 impl Arbitrary for ArbitraryValidTransactionData {
@@ -37,12 +39,14 @@ impl Arbitrary for ArbitraryValidTransactionData {
             .cloned()
             .map(|x| x.value.0)
             .sum();
-        let output_addresses_values =
+        let (output_addresses_values, fee) =
             tx_data::choose_random_output_subset(&addresses_values, total_input_value, gen);
+
         ArbitraryValidTransactionData::new(
             addresses_values,
             input_addresses_values,
             output_addresses_values,
+            fee,
         )
     }
 }
@@ -52,11 +56,13 @@ impl ArbitraryValidTransactionData {
         addresses: Vec<AddressDataValue>,
         input_addresses_values: Vec<AddressDataValue>,
         output_addresses_values: Vec<AddressDataValue>,
+        fee: LinearFee,
     ) -> Self {
         ArbitraryValidTransactionData {
             addresses: addresses,
             input_addresses: input_addresses_values,
             output_addresses: output_addresses_values,
+            fee: fee,
         }
     }
 
@@ -76,7 +82,7 @@ impl ArbitraryValidTransactionData {
         source: &Vec<AddressDataValue>,
         total_input_funds: u64,
         gen: &mut G,
-    ) -> Vec<AddressDataValue> {
+    ) -> (Vec<AddressDataValue>, LinearFee) {
         let mut outputs: Vec<AddressData> = Vec::new();
         let mut funds_per_output: u64 = 0;
 
@@ -94,22 +100,23 @@ impl ArbitraryValidTransactionData {
 
         let output_address_len = outputs.len() as u64;
         let remainder = total_input_funds - (output_address_len * funds_per_output);
-        Self::distribute_values_for_outputs(outputs, funds_per_output, remainder)
+        let fee = LinearFee::new(remainder, 0, 0);
+        (
+            Self::distribute_values_for_outputs(outputs, funds_per_output),
+            fee,
+        )
     }
 
     fn distribute_values_for_outputs(
         outputs: Vec<AddressData>,
         funds_per_output: u64,
-        remainder: u64,
     ) -> Vec<AddressDataValue> {
-        let mut outputs: Vec<AddressDataValue> = outputs
+        outputs
             .iter()
             .cloned()
             .zip(iter::from_fn(|| Some(Value(funds_per_output))))
             .map(|(x, y)| AddressDataValue::new(x, y))
-            .collect();
-        outputs[0].value = Value(funds_per_output + remainder);
-        outputs
+            .collect()
     }
 
     fn find_utxo_for_address<'a>(

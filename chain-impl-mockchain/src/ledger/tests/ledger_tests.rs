@@ -1,5 +1,6 @@
 #![cfg(test)]
 
+use crate::fee::FeeAlgorithm;
 use crate::{
     fragment::Fragment,
     ledger::{
@@ -103,6 +104,7 @@ pub fn total_funds_are_const_in_ledger(
         &[message],
         ConfigBuilder::new()
             .with_discrimination(Discrimination::Test)
+            .with_fee(transaction_data.fee.clone())
             .build(),
     )
     .expect("ledger_failed");
@@ -128,10 +130,16 @@ pub fn total_funds_are_const_in_ledger(
 
         Ok((ledger, _)) => {
             let total_funds_after = calculate_total_funds_in_ledger(&ledger);
-            if total_funds_before != total_funds_after {
+            let fee = transaction_data
+                .fee
+                .calculate(&signed_tx.transaction)
+                .unwrap()
+                .0;
+
+            if total_funds_before != (total_funds_after + fee) {
                 return TestResult::error(format!(
-                    "Total funds in ledger before and after transaction is not equal {} <> {} ",
-                    total_funds_before, total_funds_after
+                    "Total funds in ledger before and (after transaction + fee) is not equal {} <> {} (fee: {:?})",
+                    total_funds_before, (total_funds_after + fee),transaction_data.fee
                 ));
             }
 

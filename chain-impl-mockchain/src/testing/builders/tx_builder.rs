@@ -54,8 +54,9 @@ impl TransactionBuilder {
         TransactionAuthenticator::new(transaction)
     }
 
-    pub fn authenticate_with_policy(
+    pub fn authenticate_with(
         &mut self,
+        fee_algorithm: LinearFee,
         output_policy: OutputPolicy,
     ) -> TransactionAuthenticator {
         let transaction = Transaction {
@@ -64,30 +65,13 @@ impl TransactionBuilder {
             extra: NoExtra,
         };
         let tx_builder = Builder::from(transaction);
-        let fee_algorithm = LinearFee::new(0, 0, 0);
         let (_, tx) = tx_builder
             .seal_with_output_policy(fee_algorithm, output_policy)
             .unwrap();
 
-        self.inputs = tx
-            .inputs
-            .clone()
-            .into_iter()
-            .map(|input| Input {
-                index_or_account: input.index_or_account,
-                value: input.value,
-                input_ptr: input.input_ptr,
-            })
-            .collect();
-        self.outputs = tx
-            .outputs
-            .clone()
-            .into_iter()
-            .map(|output| Output {
-                address: output.address,
-                value: output.value,
-            })
-            .collect();
+        self.inputs = tx.inputs.iter().cloned().collect();
+
+        self.outputs = tx.outputs.iter().cloned().collect();
 
         TransactionAuthenticator::new(tx)
     }

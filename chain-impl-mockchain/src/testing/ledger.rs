@@ -1,6 +1,7 @@
 use crate::block::ConsensusVersion;
 use crate::block::HeaderHash;
 use crate::config::ConfigParam;
+use crate::fee::LinearFee;
 use crate::fragment::config::ConfigParams;
 use crate::fragment::Fragment;
 use crate::leadership::bft::LeaderId;
@@ -19,6 +20,7 @@ pub struct ConfigBuilder {
     slots_per_epoch: u32,
     active_slots_coeff: Milli,
     discrimination: Discrimination,
+    linear_fee: Option<LinearFee>,
     leaders: Vec<LeaderId>,
 }
 
@@ -30,6 +32,7 @@ impl ConfigBuilder {
             active_slots_coeff: Milli::HALF,
             discrimination: Discrimination::Test,
             leaders: Vec::new(),
+            linear_fee: None,
         }
     }
 
@@ -45,6 +48,11 @@ impl ConfigBuilder {
 
     pub fn with_leaders(&mut self, leaders: &Vec<LeaderId>) -> &mut Self {
         self.leaders.extend(leaders.iter().cloned());
+        self
+    }
+
+    pub fn with_fee(&mut self, linear_fee: LinearFee) -> &mut Self {
+        self.linear_fee = Some(linear_fee);
         self
     }
 
@@ -76,6 +84,10 @@ impl ConfigBuilder {
         }
         for leader_id in self.leaders.iter().cloned() {
             ie.push(ConfigParam::AddBftLeader(leader_id));
+        }
+
+        if self.linear_fee.is_some() {
+            ie.push(ConfigParam::LinearFee(self.linear_fee.clone().unwrap()));
         }
 
         ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
