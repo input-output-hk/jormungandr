@@ -233,8 +233,6 @@ struct Node {
     next: Option<NonNull<Node>>,
 }
 
-unsafe impl Send for Node {}
-
 impl Node {
     fn new(id: NodeId, comms: PeerComms) -> Self {
         Node {
