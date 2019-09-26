@@ -1,5 +1,20 @@
 # Change Log
 
+## [v0.5.2](https://github.com/input-output-hk/jormungandr/tree/v0.5.2) (2019-09-26)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.1...v0.5.2)
+
+**Implemented enhancements:**
+
+- JCLI: management\_threshold validity [\#838](https://github.com/input-output-hk/jormungandr/pull/838)
+
+**Fixed bugs:**
+
+- Fix peer map pointer update bug [\#841](https://github.com/input-output-hk/jormungandr/pull/841)
+
+**Closed issues:**
+
+- improve jcli certificate new-stake-pool-certificate error handling [\#837](https://github.com/input-output-hk/jormungandr/issues/837)
+
 ## [v0.5.1](https://github.com/input-output-hk/jormungandr/tree/v0.5.1) (2019-09-26)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.0...v0.5.1)
 
