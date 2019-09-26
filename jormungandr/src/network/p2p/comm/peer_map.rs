@@ -250,12 +250,13 @@ impl Node {
     // Require a mutable borrow on self because this modifies
     // adjacent nodes.
     unsafe fn unlink(&mut self) {
-        if let Some(mut prev_ptr) = self.prev {
+        let prev = self.prev;
+        if let Some(mut prev_ptr) = prev {
             prev_ptr.as_mut().next = self.next;
             self.prev = None;
         }
         if let Some(mut next_ptr) = self.next {
-            next_ptr.as_mut().prev = self.prev;
+            next_ptr.as_mut().prev = prev;
             self.next = None;
         }
     }
