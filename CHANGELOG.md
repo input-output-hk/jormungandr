@@ -1,5 +1,37 @@
 # Change Log
 
+## [v0.5.1](https://github.com/input-output-hk/jormungandr/tree/v0.5.1) (2019-09-26)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.0...v0.5.1)
+
+**Implemented enhancements:**
+
+- Try trusted peers in random order [\#831](https://github.com/input-output-hk/jormungandr/pull/831)
+- general cleanup and display better error messages [\#830](https://github.com/input-output-hk/jormungandr/pull/830)
+- Filter private addresses from gossip [\#810](https://github.com/input-output-hk/jormungandr/pull/810)
+- Use imhamt and multiverse in explorer [\#771](https://github.com/input-output-hk/jormungandr/pull/771)
+
+**Fixed bugs:**
+
+- `lastBlockTime` parameter \(for jcli rest v0 node stats\) does not return any value  [\#834](https://github.com/input-output-hk/jormungandr/issues/834)
+- The node will not start if the first trusted-peer in the list is not reachable [\#824](https://github.com/input-output-hk/jormungandr/issues/824)
+- Node crash with "free\(\): invalid next size \(fast\)" [\#820](https://github.com/input-output-hk/jormungandr/issues/820)
+- Thread panicked/PoisonError while running local node connected to Nicolas's trusted-peer [\#818](https://github.com/input-output-hk/jormungandr/issues/818)
+- Error when fetching blocks from a peer [\#816](https://github.com/input-output-hk/jormungandr/issues/816)
+
+**Closed issues:**
+
+- Transaction for sending the stake-pool certificate is rejected with `Pool Registration certificate invalid` [\#836](https://github.com/input-output-hk/jormungandr/issues/836)
+- To many ConnectError messages in the logs for the same unreachable node [\#828](https://github.com/input-output-hk/jormungandr/issues/828)
+- IPv6 local nodes does not connect to IPv4 trusted peers [\#826](https://github.com/input-output-hk/jormungandr/issues/826)
+- Error while starting the node with the single `jormungandr` command [\#821](https://github.com/input-output-hk/jormungandr/issues/821)
+- Filter addresses that are not reachable [\#799](https://github.com/input-output-hk/jormungandr/issues/799)
+
+**Merged pull requests:**
+
+- set the slot start time to the correct value [\#835](https://github.com/input-output-hk/jormungandr/pull/835)
+- Make bump\_peer\_for\_block\_fetch miss non-fatal [\#811](https://github.com/input-output-hk/jormungandr/pull/811)
+- reduce the error level when peers have invalid addresses [\#807](https://github.com/input-output-hk/jormungandr/pull/807)
+
 ## [v0.5.0](https://github.com/input-output-hk/jormungandr/tree/v0.5.0) (2019-09-23)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.3.9999...v0.5.0)
 
