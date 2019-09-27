@@ -80,6 +80,8 @@ Description of the fields:
         Typical setting for a non-mining node: `low`. For a stakepool: `high`;
       - `blocks`: Notifications about new blocks.
         Typical setting for a non-mining node: `normal`. For a stakepool: `high`;
+- `explorer`: (optional) Explorer settings
+    - `enabled`: True or false
 
 [multiaddr]: https://github.com/multiformats/multiaddr
 
