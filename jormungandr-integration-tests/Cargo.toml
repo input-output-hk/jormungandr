@@ -1,7 +1,7 @@
 [package]
 name = "jormungandr-integration-tests"
 version = "0.5.2"
-authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
+authors = [ "dev@iohk.io" ]
 edition = "2018"
 
 [dev-dependencies]

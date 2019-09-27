@@ -1,12 +1,7 @@
 [package]
 name = "jormungandr"
 version = "0.5.2"
-authors = [ "Nicolas Di Prima <nicolas.diprima@iohk.io>"
-          , "Vincent Hanquez <vincent.hanquez@iohk.io>"
-          , "Eelco Dolstra <edolstra@gmail.com>"
-          , "Mikhail Zabaluev <mikhail.zabaluev@gmail.com>"
-          , "Alexander Vershilov <alexander.vershilov@gmail.com>"
-          ]
+authors = [ "dev@iohk.io" ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/input-output-hk/jormungandr"
 homepage = "https://github.com/input-output-hk/jormungandr#README.md"

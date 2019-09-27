@@ -87,7 +87,6 @@ impl GlobalState {
 
         use self::p2p::topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC};
 
-        // TODO: load the subscriptions from the config
         for (topic, interest) in config.subscriptions.iter() {
             if topic.0 == NEW_BLOCKS_TOPIC.into() {
                 node.add_block_subscription(interest.0)
