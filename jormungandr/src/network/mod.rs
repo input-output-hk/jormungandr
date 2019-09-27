@@ -401,7 +401,7 @@ pub fn bootstrap(
                 warn!(logger, "Unable to reach peer for initial bootstrap" ; "reason" => err.to_string());
             }
             Err(err) => {
-                error!(logger, "with initial bootstrap" ; "reason" => err.to_string());
+                warn!(logger, "with initial bootstrap" ; "reason" => err.to_string());
             }
             Ok(_) => {
                 info!(logger, "initial bootstrap completed");
@@ -440,7 +440,7 @@ pub fn fetch_block(
         let peer = Peer::new(address, Protocol::Grpc);
         match grpc::fetch_block(peer, hash, &logger) {
             Err(err) => {
-                error!(logger, "error downloading block" ; "reason" => err.to_string());
+                warn!(logger, "error downloading block" ; "reason" => err.to_string());
             }
             Ok(b) => {
                 info!(logger, "initial bootstrap completed");
