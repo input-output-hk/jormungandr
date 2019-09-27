@@ -298,7 +298,17 @@ pub mod modules {
             BTreeMap::new()
         }
         fn view(&self, _: &BTreeMap<Id, Node>, view: &mut BTreeMap<Id, Node>) {
-            view.extend(self.peers.iter().map(|node| (*node.id(), node.clone())))
+            const MAX_TRUSTED_PEER_VIEW: usize = 4;
+            let count = std::cmp::max(
+                MAX_TRUSTED_PEER_VIEW,
+                self.peers.len() - std::cmp::min(self.peers.len(), view.len()),
+            );
+            view.extend(
+                self.peers
+                    .iter()
+                    .take(count)
+                    .map(|node| (*node.id(), node.clone())),
+            )
         }
     }
 }
