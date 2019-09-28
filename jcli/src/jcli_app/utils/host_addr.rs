@@ -5,7 +5,7 @@ use structopt::StructOpt;
 pub struct HostAddr {
     /// node API address. Must always have `http://` or `https://` prefix.
     /// E.g. `-h http://127.0.0.1`, `--host https://node.com:8443/cardano/api`
-    #[structopt(short, long)]
+    #[structopt(short, long, env = "JORMUNGANDR_RESTAPI_URL")]
     host: Url,
 }
 
