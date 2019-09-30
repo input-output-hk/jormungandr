@@ -3,7 +3,8 @@ use super::{
     inbound::InboundProcessing,
     p2p::comm::{PeerComms, Subscription},
     p2p::topology,
-    subscription, Channels, ConnectionState, GlobalStateR,
+    subscription::{self, SendingBlockMsg},
+    Channels, ConnectionState, GlobalStateR,
 };
 use crate::{
     blockcfg::{Block, Fragment, Header, HeaderHash},
@@ -30,6 +31,7 @@ where
     block_events: S::BlockSubscription,
     block_solicitations: Subscription<Vec<HeaderHash>>,
     chain_pulls: Subscription<ChainPullRequest<HeaderHash>>,
+    sending_block_msg: Option<SendingBlockMsg>,
 }
 
 impl<S: BlockService> Client<S> {
@@ -138,6 +140,7 @@ where
                         block_events,
                         block_solicitations,
                         chain_pulls,
+                        sending_block_msg: None,
                     };
                     Ok((client, peer_comms))
                 },
@@ -155,12 +158,13 @@ where
         match event {
             BlockEvent::Announce(header) => {
                 debug!(self.logger, "received block event Announce");
-                subscription::process_block_announcement(
+                let future = subscription::process_block_announcement(
                     header,
                     self.remote_node_id,
                     &self.global_state,
-                    &mut self.channels.block_box,
+                    self.channels.block_box.clone(),
                 );
+                self.sending_block_msg = Some(future);
             }
             BlockEvent::Solicit(block_ids) => {
                 debug!(self.logger, "received block event Solicit");
@@ -397,18 +401,37 @@ where
                 warn!(self.logger, "gRPC client error: {:?}", e);
             }));
             let mut streams_ready = false;
-            let block_event_polled = self.block_events.poll().map_err(|e| {
-                info!(self.logger, "block subscription stream failure: {:?}", e);
-            })?;
-            match block_event_polled {
-                Async::NotReady => {}
-                Async::Ready(None) => {
-                    debug!(self.logger, "block subscription stream terminated");
-                    return Ok(().into());
+            if let Some(ref mut future) = self.sending_block_msg {
+                // Drive sending of a message to block task to completion
+                // before polling more events from the block subscription
+                // stream.
+                let send_polled = future.poll().map_err(|e| {
+                    error!(
+                        self.logger,
+                        "failed to send message to the block task";
+                        "reason" => %e
+                    );
+                })?;
+                match send_polled {
+                    Async::NotReady => {}
+                    Async::Ready(_) => {
+                        self.sending_block_msg = None;
+                    }
                 }
-                Async::Ready(Some(event)) => {
-                    streams_ready = true;
-                    self.process_block_event(event);
+            } else {
+                let block_event_polled = self.block_events.poll().map_err(|e| {
+                    info!(self.logger, "block subscription stream failure: {:?}", e);
+                })?;
+                match block_event_polled {
+                    Async::NotReady => {}
+                    Async::Ready(None) => {
+                        debug!(self.logger, "block subscription stream terminated");
+                        return Ok(().into());
+                    }
+                    Async::Ready(Some(event)) => {
+                        streams_ready = true;
+                        self.process_block_event(event);
+                    }
                 }
             }
             // Block solicitations and chain pulls are special:
