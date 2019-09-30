@@ -1,5 +1,13 @@
 # Change Log
 
+## [v0.5.4](https://github.com/input-output-hk/jormungandr/tree/v0.5.4) (2019-09-30)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.3...v0.5.4)
+
+**Fixed bugs:**
+
+- Crash panicked at internal error entered unreachable code [\#865](https://github.com/input-output-hk/jormungandr/issues/865)
+- update poldercast to 0.7.1 [\#866](https://github.com/input-output-hk/jormungandr/pull/866)
+
 ## [v0.5.3](https://github.com/input-output-hk/jormungandr/tree/v0.5.3) (2019-09-30)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.2...v0.5.3)
 
