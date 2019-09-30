@@ -20,7 +20,6 @@ use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
 use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
-use chain_core::property::Fragment as _;
 use chain_impl_mockchain::multiverse::GCRoot;
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -43,11 +42,11 @@ pub struct ExplorerDB {
     /// performed using the state of this branch, the HeaderHash is used as key for the
     /// multiverse, and the ChainLength is used in the updating process.
     longest_chain_tip: Lock<(HeaderHash, ChainLength)>,
-    blockchain_config: BlockchainConfig,
+    pub blockchain_config: BlockchainConfig,
 }
 
 #[derive(Clone)]
-struct BlockchainConfig {
+pub struct BlockchainConfig {
     /// Used to construct `Address` from `AccountIndentifier` when processing transaction
     /// inputs
     discrimination: Discrimination,

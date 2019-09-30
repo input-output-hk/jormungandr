@@ -7,6 +7,7 @@ use crate::blockcfg::{Block, BlockDate, ChainLength, Epoch, Fragment, FragmentId
 use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
+use chain_impl_mockchain::certificate::Certificate;
 use chain_impl_mockchain::transaction::{AuthenticatedTransaction, InputEnum, Witness};
 use chain_impl_mockchain::value::Value;
 
@@ -32,9 +33,10 @@ pub struct ExplorerBlock {
 
 #[derive(Clone)]
 pub struct ExplorerTransaction {
-    id: FragmentId,
-    inputs: Vec<ExplorerInput>,
-    outputs: Vec<ExplorerOutput>,
+    pub id: FragmentId,
+    pub inputs: Vec<ExplorerInput>,
+    pub outputs: Vec<ExplorerOutput>,
+    pub certificate: Option<Certificate>,
 }
 
 /// Unified Input representation for utxo and account inputs as used in the graphql API
@@ -85,6 +87,8 @@ impl ExplorerBlock {
                             discrimination,
                             prev_transactions,
                             prev_blocks,
+                            //certificate
+                            None,
                         ),
                     )),
                     Fragment::OwnerStakeDelegation(auth_tx) => Some((
@@ -95,6 +99,9 @@ impl ExplorerBlock {
                             discrimination,
                             prev_transactions,
                             prev_blocks,
+                            Some(Certificate::OwnerStakeDelegation(
+                                auth_tx.transaction.extra.clone(),
+                            )),
                         ),
                     )),
                     Fragment::StakeDelegation(auth_tx) => Some((
@@ -105,6 +112,9 @@ impl ExplorerBlock {
                             discrimination,
                             prev_transactions,
                             prev_blocks,
+                            Some(Certificate::StakeDelegation(
+                                auth_tx.transaction.extra.clone(),
+                            )),
                         ),
                     )),
                     Fragment::PoolRegistration(auth_tx) => Some((
@@ -115,6 +125,9 @@ impl ExplorerBlock {
                             discrimination,
                             prev_transactions,
                             prev_blocks,
+                            Some(Certificate::PoolRegistration(
+                                auth_tx.transaction.extra.clone(),
+                            )),
                         ),
                     )),
                     Fragment::PoolManagement(auth_tx) => Some((
@@ -125,6 +138,9 @@ impl ExplorerBlock {
                             discrimination,
                             prev_transactions,
                             prev_blocks,
+                            Some(Certificate::PoolManagement(
+                                auth_tx.transaction.extra.clone(),
+                            )),
                         ),
                     )),
                     _ => None,
@@ -166,6 +182,7 @@ impl ExplorerTransaction {
         discrimination: Discrimination,
         transactions: &Transactions,
         blocks: &Blocks,
+        certificate: Option<Certificate>,
     ) -> ExplorerTransaction {
         let outputs = auth_tx.transaction.outputs.iter();
         let inputs = auth_tx.transaction.inputs.iter();
@@ -218,6 +235,7 @@ impl ExplorerTransaction {
             id: *id,
             inputs: new_inputs,
             outputs: new_outputs,
+            certificate,
         }
     }
 
