@@ -1,5 +1,32 @@
 # Change Log
 
+## [v0.5.3](https://github.com/input-output-hk/jormungandr/tree/v0.5.3) (2019-09-30)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.2...v0.5.3)
+
+**Implemented enhancements:**
+
+- accept host for jcli rest via env var [\#854](https://github.com/input-output-hk/jormungandr/issues/854)
+- Evict p2p peers after a failed client connection [\#862](https://github.com/input-output-hk/jormungandr/pull/862)
+- don't use all the trusted peers unless it is actually necessary [\#848](https://github.com/input-output-hk/jormungandr/pull/848)
+
+**Fixed bugs:**
+
+- Valgrind additional diagnostics during connection to cluster [\#833](https://github.com/input-output-hk/jormungandr/issues/833)
+- Node crash with "free\(\): invalid pointer" [\#819](https://github.com/input-output-hk/jormungandr/issues/819)
+
+**Closed issues:**
+
+- check address balance - rest request error [\#856](https://github.com/input-output-hk/jormungandr/issues/856)
+- Error downloading initial bootstrap from official trusted peers [\#843](https://github.com/input-output-hk/jormungandr/issues/843)
+- Unwrap fails in network::grpc::client::connect [\#803](https://github.com/input-output-hk/jormungandr/issues/803)
+
+**Merged pull requests:**
+
+- JCLI: accept rest host via env var [\#858](https://github.com/input-output-hk/jormungandr/pull/858)
+- some cleanup for future releases [\#847](https://github.com/input-output-hk/jormungandr/pull/847)
+- Lower bootstrap error log level to warnings [\#845](https://github.com/input-output-hk/jormungandr/pull/845)
+- Add quickstart explorer documentation page [\#809](https://github.com/input-output-hk/jormungandr/pull/809)
+
 ## [v0.5.2](https://github.com/input-output-hk/jormungandr/tree/v0.5.2) (2019-09-26)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.1...v0.5.2)
 
