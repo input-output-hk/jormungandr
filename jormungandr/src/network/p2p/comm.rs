@@ -216,6 +216,11 @@ impl Peers {
         map.insert_peer(id, comms)
     }
 
+    pub fn remove_peer(&self, id: topology::NodeId) -> bool {
+        let mut map = self.mutex.lock().unwrap();
+        map.remove_peer(id)
+    }
+
     pub fn subscribe_to_block_events(&self, id: topology::NodeId) -> BlockEventSubscription {
         let mut map = self.mutex.lock().unwrap();
         let handles = map.ensure_peer_comms(id);
