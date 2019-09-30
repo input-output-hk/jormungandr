@@ -260,6 +260,11 @@ impl P2pTopology {
             .into_iter()
             .map(|(_, v)| Node(v))
     }
+
+    pub fn evict_node(&self, id: NodeId) {
+        let mut topology = self.lock.write().unwrap();
+        topology.evict_node(id.0);
+    }
 }
 
 pub mod modules {

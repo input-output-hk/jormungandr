@@ -332,7 +332,11 @@ fn connect_and_propagate_with<F>(
     let node_id = node.id();
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
-    debug!(conn_state.logger(), "connecting to node {}", node_id);
+    let logger = conn_state
+        .logger()
+        .new(o!("node_id" => node_id.to_string()));
+    debug!(logger, "connecting to node");
+    let err_state = state.clone();
     let cf = client::connect(conn_state, channels.clone())
         .and_then(move |(client, mut comms)| {
             let connected_node_id = client.remote_node_id();
@@ -353,13 +357,18 @@ fn connect_and_propagate_with<F>(
                     client.logger(),
                     "peer responded with different node id: {}", connected_node_id
                 );
+                state.peers.remove_peer(node_id);
             };
 
             state.peers.insert_peer(connected_node_id, comms);
 
             Ok(client)
         })
-        .and_then(|client| client);
+        .and_then(|client| client)
+        .map_err(move |()| {
+            err_state.topology.evict_node(node_id);
+            debug!(logger, "evicted node");
+        });
     tokio::spawn(cf);
 }
 

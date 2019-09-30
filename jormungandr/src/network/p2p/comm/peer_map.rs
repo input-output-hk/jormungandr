@@ -82,6 +82,16 @@ impl PeerMap {
         }
     }
 
+    pub fn remove_peer(&mut self, id: NodeId) -> bool {
+        match self.entry(id) {
+            Some(entry) => {
+                entry.remove();
+                true
+            }
+            None => false,
+        }
+    }
+
     pub fn next_peer_for_block_fetch(&mut self) -> Option<(NodeId, &mut PeerComms)> {
         unsafe {
             match self.block_cursor.next() {
