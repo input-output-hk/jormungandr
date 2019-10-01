@@ -24,13 +24,10 @@ tokio-io = "0.1"
 tokio-tcp = "0.1"
 tokio-uds = "0.2"
 tower-hyper = "0.1.1"
-tower-grpc = "0.1"
+tower-grpc = "0.1.1"
+tower-request-modifier = "0.1"
 tower-service = "0.2"
 tower-util = "0.1"
-
-[dependencies.tower-request-modifier]
-git = "https://github.com/tower-rs/tower-http"
-rev = "707a91db820b736da2f3e950c94383cda0088f43"
 
 [build-dependencies]
 tower-grpc-build = { version = "0.1", features = ["tower-hyper"] }
