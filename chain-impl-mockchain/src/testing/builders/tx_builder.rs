@@ -5,8 +5,7 @@ use crate::{
     ledger::OutputAddress,
     testing::{data::AddressData, witness_builder},
     transaction::{
-        AuthenticatedTransaction, Input, NoExtra, Output, Transaction, TransactionSignDataHash,
-        Witness,
+        AuthenticatedTransaction, Input, NoExtra, Transaction, TransactionSignDataHash, Witness,
     },
     txbuilder::{OutputPolicy, TransactionBuilder as Builder},
 };

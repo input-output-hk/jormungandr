@@ -5,6 +5,7 @@ use crate::testing::{
     data::AddressData,
     arbitrary::KindTypeWithoutMultisig,
     ledger::{self, ConfigBuilder},
+    requests,
     tx_builder::TransactionBuilder,
 };
 use crate::transaction::*;
@@ -24,7 +25,7 @@ pub fn ledger_verifies_faucet_discrimination(
         &arbitrary_faucet_address_kind.0,
     );
 
-    let message = ledger::create_initial_transaction(Output::from_address(
+    let message = requests::create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(100),
     ));
@@ -66,7 +67,7 @@ pub fn ledger_verifies_transaction_discrimination(
     );
     let value = Value(100);
     let message =
-        ledger::create_initial_transaction(Output::from_address(faucet.address.clone(), value));
+        requests::create_initial_transaction(Output::from_address(faucet.address.clone(), value));
 
     let config = ConfigBuilder::new()
         .with_discrimination(arbitrary_input_disc)

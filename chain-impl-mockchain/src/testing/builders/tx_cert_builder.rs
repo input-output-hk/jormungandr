@@ -5,8 +5,10 @@ use crate::{
     fragment::Fragment,
     testing::data::AddressData,
     testing::witness_builder,
-    transaction::{AuthenticatedTransaction, Input, Output, Transaction, Witness},
-    txbuilder::{self, GeneratedTransaction, OutputPolicy, TransactionBuilder},
+    transaction::{
+        AuthenticatedTransaction, Input, Output, Transaction, TransactionSignDataHash, Witness,
+    },
+    txbuilder::{self, OutputPolicy, TransactionBuilder},
 };
 use chain_addr::Address;
 
@@ -36,13 +38,15 @@ impl TransactionCertBuilder {
         self.outputs = tx.outputs.clone();
     }
 
-    pub fn finalize<FA>(&mut self, fee_algorithm: FA, output_policy: OutputPolicy) -> &mut Self
+    pub fn seal<FA>(&mut self, fee_algorithm: FA, output_policy: OutputPolicy) -> &mut Self
     where
-        FA: FeeAlgorithm<Transaction<Address, Certificate>>,
+        FA: FeeAlgorithm<Transaction<Address, Option<Certificate>>>,
     {
         let transaction = self.build_transaction();
         let builder = TransactionBuilder::from(transaction);
-        let (_balance, tx) = builder.finalize(fee_algorithm, output_policy).unwrap();
+        let (_balance, tx) = builder
+            .seal_with_output_policy(fee_algorithm, output_policy)
+            .unwrap();
         self.update_tx(tx);
         self
     }
@@ -52,25 +56,22 @@ impl TransactionCertBuilder {
         TransactionCertAuthenticator::new(transaction)
     }
 
-    fn build_transaction(&self) -> Transaction<Address, Certificate> {
+    fn build_transaction(&self) -> Transaction<Address, Option<Certificate>> {
         Transaction {
             inputs: self.inputs.clone(),
             outputs: self.outputs.clone(),
-            extra: self
-                .certificate
-                .clone()
-                .expect("Cannot build transaction: Certificate in None"),
+            extra: self.certificate.clone(),
         }
     }
 }
 
 pub struct TransactionCertAuthenticator {
     witnesses: Vec<Witness>,
-    transaction: Transaction<Address, Certificate>,
+    transaction: Transaction<Address, Option<Certificate>>,
 }
 
 impl TransactionCertAuthenticator {
-    pub fn new(transaction: Transaction<Address, Certificate>) -> Self {
+    pub fn new(transaction: Transaction<Address, Option<Certificate>>) -> Self {
         TransactionCertAuthenticator {
             witnesses: Vec::new(),
             transaction: transaction,
@@ -81,21 +82,32 @@ impl TransactionCertAuthenticator {
         self.witnesses.push(witness_builder::make_witness(
             &block0,
             &address_data,
-            self.transaction.hash(),
+            self.hash(),
         ));
         self
     }
 
-    pub fn as_message(&self) -> Fragment {
-        let signed_tx = self.seal();
-        Fragment::Certificate(signed_tx)
+    pub fn hash(&self) -> TransactionSignDataHash {
+        txbuilder::TransactionFinalizer::new(self.transaction.clone()).get_tx_sign_data_hash()
     }
 
-    pub fn seal(&self) -> AuthenticatedTransaction<Address, Certificate> {
-        let cert_finalizer = txbuilder::TransactionFinalizer::new_cert(self.transaction.clone());
-        match cert_finalizer.build() {
-            Ok(GeneratedTransaction::Type2(auth)) => auth,
-            _ => panic!("internal error: this should be a certificate not transaction"),
+    pub fn as_message(&self) -> Fragment {
+        let cert_finalizer = self.build_finalizer();
+        cert_finalizer.to_fragment().unwrap()
+    }
+
+    pub fn finalize(&self) -> AuthenticatedTransaction<Address, Option<Certificate>> {
+        let cert_finalizer = self.build_finalizer();
+        cert_finalizer.finalize().unwrap()
+    }
+
+    fn build_finalizer(&self) -> txbuilder::TransactionFinalizer {
+        let mut cert_finalizer = txbuilder::TransactionFinalizer::new(self.transaction.clone());
+        for (index, witness) in self.witnesses.iter().cloned().enumerate() {
+            cert_finalizer
+                .set_witness(index, witness)
+                .expect("cannot set witness");
         }
+        cert_finalizer
     }
 }
