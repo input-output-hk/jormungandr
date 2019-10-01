@@ -18,9 +18,6 @@ use tokio::runtime;
 // Limit on the length of a task message queue
 const MESSAGE_QUEUE_LEN: usize = 1000;
 
-// Stack size of a task thread
-const TASK_STACK_SIZE: usize = 2 * 1024 * 1024;
-
 /// hold onto the different services created
 pub struct Services {
     logger: Logger,
@@ -166,9 +163,6 @@ impl Services {
     {
         let mut runtime = runtime::Builder::new()
             .keep_alive(None)
-            .core_threads(1)
-            .blocking_threads(1)
-            .stack_size(TASK_STACK_SIZE)
             .name_prefix(name)
             .build()
             .unwrap();
