@@ -301,5 +301,4 @@ pub mod test {
             Hash(Arbitrary::arbitrary(g))
         }
     }
-
 }

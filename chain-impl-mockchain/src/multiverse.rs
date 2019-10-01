@@ -376,5 +376,4 @@ mod test {
         let after = multiverse.nr_states();
         assert_eq!(before, after + 2);
     }
-
 }

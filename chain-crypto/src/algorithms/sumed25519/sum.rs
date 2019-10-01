@@ -928,5 +928,4 @@ mod bench {
     fn update128_depth16(b: &mut test::Bencher) {
         update_with_depth_skip(Depth(16), 2 ^ 16 - 1, b)
     }
-
 }

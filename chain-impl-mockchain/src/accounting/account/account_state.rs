@@ -375,5 +375,4 @@ mod tests {
             || (account_state.counter.0.checked_add(1).is_none()
                 && account_state.get_value() != value)
     }
-
 }

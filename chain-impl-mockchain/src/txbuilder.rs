@@ -559,5 +559,4 @@ mod tests {
             (Err(_), Err(_)) => TestResult::passed(),
         }
     }
-
 }

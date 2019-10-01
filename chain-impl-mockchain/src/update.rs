@@ -507,5 +507,4 @@ mod test {
         block_builder.date(date.next_epoch());
         block_builder.make_bft_block(block_signing_key)
     }
-
 }

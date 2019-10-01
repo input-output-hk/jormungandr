@@ -472,5 +472,4 @@ mod tests {
         assert_eq!(output_addresses, expected_output_addresses);
         assert_eq!(ledger.iter().count(), 0);
     }
-
 }

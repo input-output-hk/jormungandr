@@ -360,7 +360,6 @@ mod tests {
         }
         property_btreemap_eq(&reference, &h)
     }
-
 }
 
 #[cfg(test)]
