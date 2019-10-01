@@ -82,17 +82,37 @@ where
     type Block = B;
 
     fn put_block_internal(&mut self, block: &B, block_info: BlockInfo<B::Id>) -> Result<(), Error> {
-        let mut conn = self.pool.get().unwrap();
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|err| Error::BackendError(Box::new(err)))?;
 
-        let tx = conn.transaction().unwrap();
+        let tx = conn
+            .transaction()
+            .map_err(|err| Error::BackendError(Box::new(err)))?;
 
-        tx.prepare_cached("insert into Blocks (hash, block) values(?, ?)")
-            .unwrap()
+        let worked = tx
+            .prepare_cached("insert into Blocks (hash, block) values(?, ?)")
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .execute(&[
                 &block_info.block_hash.serialize_as_vec().unwrap()[..],
                 &block.serialize_as_vec().unwrap()[..],
             ])
-            .unwrap();
+            .map(|_| true)
+            .or_else(|err| match err {
+                rusqlite::Error::SqliteFailure(error, _) => {
+                    if error.code == rusqlite::ErrorCode::ConstraintViolation {
+                        Ok(false)
+                    } else {
+                        Err(err)
+                    }
+                }
+                _ => Err(err),
+            })
+            .map_err(|err| Error::BackendError(Box::new(err)))?;
+        if !worked {
+            return Err(Error::BlockAlreadyPresent);
+        }
 
         let parent = block_info
             .back_links
@@ -111,16 +131,18 @@ where
 
         tx
             .prepare_cached("insert into BlockInfo (hash, depth, parent, fast_distance, fast_hash) values(?, ?, ?, ?, ?)")
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .execute(&[
                 Value::Blob(block_info.block_hash.serialize_as_vec().unwrap()),
                 Value::Integer(block_info.depth as i64),
                 Value::Blob(parent.block_hash.serialize_as_vec().unwrap()),
                 fast_distance,
                 fast_hash,
-            ]).unwrap();
+            ])
+            .map_err(|err| Error::BackendError(Box::new(err)))?;
 
-        tx.commit().unwrap();
+        tx.commit()
+            .map_err(|err| Error::BackendError(Box::new(err)))?;
 
         Ok(())
     }
@@ -129,9 +151,9 @@ where
         let blk = self
             .pool
             .get()
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .prepare_cached("select block from Blocks where hash = ?")
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .query_row(&[&block_hash.serialize_as_vec().unwrap()[..]], |row| {
                 let x: Vec<u8> = row.get(0);
                 B::deserialize(&x[..]).unwrap()
@@ -149,11 +171,11 @@ where
     fn get_block_info(&self, block_hash: &B::Id) -> Result<BlockInfo<B::Id>, Error> {
         self.pool
             .get()
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .prepare_cached(
                 "select depth, parent, fast_distance, fast_hash from BlockInfo where hash = ?",
             )
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .query_row(&[&block_hash.serialize_as_vec().unwrap()[..]], |row| {
                 let mut back_links = vec![BackLink {
                     distance: 1,
@@ -186,9 +208,9 @@ where
         match self
             .pool
             .get()
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .prepare_cached("insert or replace into Tags (name, hash) values(?, ?)")
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .execute(&[
                 Value::Text(tag_name.to_string()),
                 Value::Blob(block_hash.serialize_as_vec().unwrap()),
@@ -207,9 +229,9 @@ where
         match self
             .pool
             .get()
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .prepare_cached("select hash from Tags where name = ?")
-            .unwrap()
+            .map_err(|err| Error::BackendError(Box::new(err)))?
             .query_row(&[&tag_name], |row| blob_to_hash(row.get(0)))
         {
             Ok(s) => Ok(Some(s)),

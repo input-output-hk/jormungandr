@@ -6,6 +6,7 @@ pub enum Error {
     CannotIterate,
     BackendError(Box<dyn std::error::Error + Send + Sync>),
     Block0InFuture,
+    BlockAlreadyPresent,
 }
 
 impl fmt::Display for Error {
@@ -13,8 +14,9 @@ impl fmt::Display for Error {
         match self {
             Error::BlockNotFound => write!(f, "block not found"),
             Error::CannotIterate => write!(f, "cannot iterate between the 2 given blocks"),
-            Error::BackendError(_) => write!(f, "miscellaneous storage error"),
+            Error::BackendError(err) => write!(f, "{}", err),
             Error::Block0InFuture => write!(f, "block0 is in the future"),
+            Error::BlockAlreadyPresent => write!(f, "Block already present in DB"),
         }
     }
 }
