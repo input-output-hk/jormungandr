@@ -203,3 +203,19 @@ fn get_nonce(os: &WitnessOutput) -> Nonce {
     nonce.copy_from_slice(out.as_ref());
     Nonce(nonce)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Nonce;
+    use quickcheck::{Arbitrary, Gen};
+    use std::iter;
+
+    impl Arbitrary for Nonce {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut nonce = [0; 32];
+            let nonce_vec: Vec<u8> = iter::from_fn(|| Some(u8::arbitrary(g))).take(32).collect();
+            nonce.copy_from_slice(&nonce_vec);
+            Nonce(nonce)
+        }
+    }
+}

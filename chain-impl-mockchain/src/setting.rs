@@ -165,3 +165,15 @@ impl Settings {
         params
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Settings;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Settings {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Settings::new()
+        }
+    }
+}

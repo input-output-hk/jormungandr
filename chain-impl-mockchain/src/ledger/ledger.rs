@@ -969,7 +969,7 @@ mod tests {
     use chain_addr::Discrimination;
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
-    use std::iter;
+    use std::{fmt, iter};
 
     impl Arbitrary for LedgerStaticParameters {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -988,6 +988,42 @@ mod tests {
                 fees: Arbitrary::arbitrary(g),
                 reward_params: Arbitrary::arbitrary(g),
             }
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct ArbitraryEmptyLedger(Ledger);
+
+    impl Arbitrary for ArbitraryEmptyLedger {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut ledger = Ledger::empty(
+                Arbitrary::arbitrary(g),
+                Arbitrary::arbitrary(g),
+                Arbitrary::arbitrary(g),
+                Arbitrary::arbitrary(g),
+            );
+
+            ledger.date = Arbitrary::arbitrary(g);
+            ledger.chain_length = Arbitrary::arbitrary(g);
+            ArbitraryEmptyLedger(ledger)
+        }
+    }
+
+    impl fmt::Debug for ArbitraryEmptyLedger {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("Ledger")
+                .field("chain_length", &self.0.chain_length())
+                .field("settings", &self.0.settings)
+                .field("date", &self.0.date())
+                .field("era", &self.0.era())
+                .field("static_params", &self.0.get_static_parameters().clone())
+                .finish()
+        }
+    }
+
+    impl Into<Ledger> for ArbitraryEmptyLedger {
+        fn into(self) -> Ledger {
+            self.0
         }
     }
 

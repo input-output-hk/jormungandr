@@ -129,3 +129,19 @@ impl Pots {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Pots;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Pots {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Pots {
+                fees: Arbitrary::arbitrary(g),
+                treasury: Arbitrary::arbitrary(g),
+                rewards: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+}
