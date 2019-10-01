@@ -153,9 +153,6 @@ impl Services {
     }
 
     /// Spawn the given Future in a new dedicated runtime
-    ///
-    /// * utilising one thread only;
-    /// * 2MiB stack size max
     pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
@@ -185,10 +182,6 @@ impl Services {
 
     /// Spawn a tokio service that will await messages and will be executed
     /// sequentially for every received inputs
-    ///
-    /// * utilising one thread only;
-    /// * 2MiB stack size max
-    ///
     pub fn spawn_future_with_inputs<F, Msg, T>(
         &mut self,
         name: &'static str,
