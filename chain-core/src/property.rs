@@ -381,5 +381,4 @@ pub mod testing {
         };
         TestResult::from_bool(buf.expect_end().is_ok() && decoded_t == t)
     }
-
 }

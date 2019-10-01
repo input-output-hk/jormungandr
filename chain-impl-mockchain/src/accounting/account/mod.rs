@@ -481,5 +481,4 @@ mod tests {
             false => TestResult::passed(),
         }
     }
-
 }
