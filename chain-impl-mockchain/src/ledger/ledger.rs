@@ -1028,6 +1028,25 @@ mod tests {
     }
 
     #[quickcheck]
+    pub fn apply_empty_block_prop_test(
+        context: HeaderContentEvalContext,
+        ledger: ArbitraryEmptyLedger,
+    ) -> TestResult {
+        let ledger: Ledger = ledger.into();
+
+        let should_succeed =
+            context.chain_length == ledger.chain_length.next() && context.block_date > ledger.date;
+
+        let result = ledger.apply_block(&ledger.get_ledger_parameters(), Vec::new(), &context);
+        match (result, should_succeed) {
+            (Ok(_), true) => TestResult::passed(),
+            (Ok(_), false) => TestResult::error("should pass"),
+            (Err(err), true) => TestResult::error(format!("unexpected error: {}", err)),
+            (Err(_), false) => TestResult::passed(),
+        }
+    }
+
+    #[quickcheck]
     pub fn match_identifier_witness_prop_test(
         id: AccountIdentifier,
         witness: Witness,
