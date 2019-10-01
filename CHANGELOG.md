@@ -1,5 +1,29 @@
 # Change Log
 
+## [v0.5.5](https://github.com/input-output-hk/jormungandr/tree/v0.5.5) (2019-10-01)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.4...v0.5.5)
+
+**Implemented enhancements:**
+
+- add more logging information and comfort for users [\#880](https://github.com/input-output-hk/jormungandr/pull/880)
+- be more liberal with the node's resources and trust default values [\#874](https://github.com/input-output-hk/jormungandr/pull/874)
+- stop the node if we detect a panic in a runtime [\#873](https://github.com/input-output-hk/jormungandr/pull/873)
+
+**Fixed bugs:**
+
+- Panic in ReplyStreamHandle methods when the receiver stream is closed by the client [\#864](https://github.com/input-output-hk/jormungandr/issues/864)
+- Panic at Result::unwrap\(\) [\#850](https://github.com/input-output-hk/jormungandr/issues/850)
+- Don't panic when intercom reply is cancelled [\#876](https://github.com/input-output-hk/jormungandr/pull/876)
+
+**Closed issues:**
+
+- Compiling jormungandr builds two versions of SHA2 libraries [\#875](https://github.com/input-output-hk/jormungandr/issues/875)
+
+**Merged pull requests:**
+
+- Update chain-deps and poldercast [\#877](https://github.com/input-output-hk/jormungandr/pull/877)
+- Eliminate a panic on block task message box [\#870](https://github.com/input-output-hk/jormungandr/pull/870)
+
 ## [v0.5.4](https://github.com/input-output-hk/jormungandr/tree/v0.5.4) (2019-09-30)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.3...v0.5.4)
 
