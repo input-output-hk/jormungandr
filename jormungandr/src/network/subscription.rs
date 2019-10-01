@@ -9,6 +9,7 @@ use crate::{
     utils::async_msg::MessageBox,
 };
 use futures::prelude::*;
+use futures::sink;
 use jormungandr_lib::interfaces::FragmentOrigin;
 use network_core::error as core_error;
 use network_core::gossip::Gossip;
@@ -57,12 +58,30 @@ pub fn process_block_announcement(
     header: Header,
     node_id: NodeId,
     global_state: &GlobalState,
-    block_box: &mut MessageBox<BlockMsg>,
-) {
+    block_box: MessageBox<BlockMsg>,
+) -> SendingBlockMsg {
     global_state.peers.bump_peer_for_block_fetch(node_id);
-    block_box
-        .try_send(BlockMsg::AnnouncedBlock(header, node_id))
-        .unwrap();
+    let future = block_box.send(BlockMsg::AnnouncedBlock(header, node_id));
+    SendingBlockMsg { inner: future }
+}
+
+#[must_use = "futures do nothing unless polled"]
+pub struct SendingBlockMsg {
+    inner: sink::Send<MessageBox<BlockMsg>>,
+}
+
+impl Future for SendingBlockMsg {
+    type Item = MessageBox<BlockMsg>;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        self.inner.poll().map_err(|_e| {
+            core_error::Error::new(
+                core_error::Code::Aborted,
+                "the node stopped processing blocks",
+            )
+        })
+    }
 }
 
 pub fn process_fragments<S>(
