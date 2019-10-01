@@ -13,7 +13,7 @@ use crate::{
         task::{Input, TokioServiceInfo},
     },
 };
-use chain_core::property::{Block as _, Fragment as _, HasHeader as _};
+use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 
 use futures::future::Either;
 use slog::Logger;
@@ -60,10 +60,18 @@ pub fn handle_input(
             });
         }
         BlockMsg::LeadershipBlock(block) => {
-            let future = process_leadership_block(info.logger(), blockchain.clone(), block.clone());
+            let logger = info.logger().new(o!(
+                "hash" => block.header.hash().to_string(),
+                "parent" => block.header.parent_id().to_string(),
+                "date" => block.header.block_date().to_string()));
+
+            let future =
+                process_leadership_block(logger.clone(), blockchain.clone(), block.clone());
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
+
             process_new_ref(
+                logger.clone(),
                 blockchain.clone(),
                 blockchain_tip.clone(),
                 new_block_ref.clone(),
@@ -72,16 +80,12 @@ pub fn handle_input(
             .unwrap();
             network_msg_box
                 .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-                .unwrap_or_else(|err| {
-                    error!(info.logger(), "cannot propagate block to network: {}", err)
-                });
+                .unwrap_or_else(|err| error!(logger, "cannot propagate block to network: {}", err));
 
             if let Some(msg_box) = explorer_msg_box {
                 msg_box
                     .try_send(ExplorerMsg::NewBlock(block))
-                    .unwrap_or_else(|err| {
-                        error!(info.logger(), "cannot add block to explorer: {}", err)
-                    });
+                    .unwrap_or_else(|err| error!(logger, "cannot add block to explorer: {}", err));
             };
 
             stats_counter.add_block_recv_cnt(1);
@@ -99,8 +103,12 @@ pub fn handle_input(
         }
         BlockMsg::NetworkBlock(block, reply) => {
             let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
-            let future =
-                process_network_block(blockchain.clone(), block.clone(), info.logger().clone());
+            let logger = info.logger().new(o!(
+                "hash" => block.header.hash().to_string(),
+                "parent" => block.header.parent_id().to_string(),
+                "date" => block.header.block_date().to_string()));
+
+            let future = process_network_block(blockchain.clone(), block.clone(), logger.clone());
             match future.wait() {
                 Err(e) => {
                     reply.reply_error(network_block_error_into_reply(e));
@@ -111,6 +119,7 @@ pub fn handle_input(
                         let header = new_block_ref.header().clone();
                         let date = header.block_date().clone().into();
                         process_new_ref(
+                            logger.clone(),
                             blockchain.clone(),
                             blockchain_tip.clone(),
                             new_block_ref.clone(),
@@ -120,19 +129,19 @@ pub fn handle_input(
                         tx_msg_box
                             .try_send(TransactionMsg::RemoveTransactions(fragment_ids, date))
                             .unwrap_or_else(|err| {
-                                error!(info.logger(), "cannot remove fragments from pool: {}", err)
+                                error!(logger, "cannot remove fragments from pool: {}", err)
                             });
                         network_msg_box
                             .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                             .unwrap_or_else(|err| {
-                                error!(info.logger(), "cannot propagate block to network: {}", err)
+                                error!(logger, "cannot propagate block to network: {}", err)
                             });
 
                         if let Some(msg_box) = explorer_msg_box {
                             msg_box
                                 .try_send(ExplorerMsg::NewBlock(block))
                                 .unwrap_or_else(|err| {
-                                    error!(info.logger(), "cannot add block to explorer: {}", err)
+                                    error!(logger, "cannot add block to explorer: {}", err)
                                 });
                         };
                     }
@@ -156,6 +165,7 @@ pub fn handle_input(
 /// chain selection after updating that other branch as it may be possible that
 /// this branch just became more interesting for the current consensus algorithm.
 pub fn process_new_ref(
+    logger: Logger,
     mut blockchain: Blockchain,
     mut tip: Tip,
     candidate: Arc<Ref>,
@@ -169,15 +179,22 @@ pub fn process_new_ref(
         .get_ref()
         .and_then(move |tip_ref| {
             if &tip_ref.hash() == candidate.block_parent_hash() {
+                info!(logger, "update current branch tip");
                 A(A(tip.update_ref(candidate).map(|_| true)))
             } else {
                 match compare_against(blockchain.storage(), &tip_ref, &candidate) {
-                    ComparisonResult::PreferCurrent => A(B(future::ok(false))),
-                    ComparisonResult::PreferCandidate => B(blockchain
-                        .branches_mut()
-                        .apply_or_create(candidate)
-                        .and_then(move |branch| tip.swap(branch))
-                        .map(|()| true)),
+                    ComparisonResult::PreferCurrent => {
+                        info!(logger, "create new branch");
+                        A(B(future::ok(false)))
+                    }
+                    ComparisonResult::PreferCandidate => {
+                        info!(logger, "switching to new candidate branch");
+                        B(blockchain
+                            .branches_mut()
+                            .apply_or_create(candidate)
+                            .and_then(move |branch| tip.swap(branch))
+                            .map(|()| true))
+                    }
                 }
             }
         })
@@ -226,18 +243,13 @@ pub fn handle_end_of_epoch(
 }
 
 pub fn process_leadership_block(
-    logger: &Logger,
+    logger: Logger,
     mut blockchain: Blockchain,
     block: Block,
 ) -> impl Future<Item = Arc<Ref>, Error = Error> {
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     let parent_hash = block.parent_id();
-
-    let logger = logger.new(o!(
-        "hash" => header.hash().to_string(),
-        "parent" => parent_hash.to_string(),
-        "date" => header.block_date().to_string()));
     let logger1 = logger.clone();
     // This is a trusted block from the leadership task,
     // so we can skip pre-validation.
@@ -297,7 +309,10 @@ pub fn process_block_announcement(
                         }),
                 )
             }
-            PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+            PreCheckedHeader::HeaderWithCache {
+                header,
+                parent_ref: _,
+            } => {
                 debug!(
                     logger,
                     "Announced block has a locally stored parent, fetch it"
@@ -342,7 +357,7 @@ pub fn process_network_block(
                         end_blockchain.apply_and_store_block(post_checked, block)
                     })
                     .map(move |block_ref| {
-                        debug!(logger, "block successfully applied");
+                        info!(logger, "block successfully applied");
                         Some(block_ref)
                     });
                 Either::B(post_check_and_apply)
