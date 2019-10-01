@@ -109,7 +109,9 @@ fn handle_get_headers_range(
             Err(err) => return Err(Error::from(err)),
             Ok(info) => {
                 let (block, _) = storage.get_block(&info.block_hash)?;
-                reply.send(block.header());
+                if let Err(_) = reply.send(block.header()) {
+                    break;
+                }
                 header_count += 1;
                 if header_count >= MAX_HEADERS {
                     break;
@@ -135,7 +137,9 @@ fn handle_get_blocks_range(
     for x in store::iterate_range(&*storage, &from, &to)? {
         let info = x?;
         let (blk, _) = storage.get_block(&info.block_hash)?;
-        reply.send(blk);
+        if let Err(_) = reply.send(blk) {
+            break;
+        }
     }
 
     Ok(())
@@ -148,7 +152,9 @@ fn handle_get_blocks(
 ) -> Result<(), Error> {
     for id in ids.into_iter() {
         if let Some(blk) = storage.get(id).wait()? {
-            reply.send(blk);
+            if let Err(_) = reply.send(blk) {
+                break;
+            }
         } else {
             // TODO: reply this hash was not found?
         }
@@ -164,7 +170,9 @@ fn handle_get_headers(
 ) -> Result<(), Error> {
     for id in ids.into_iter() {
         if let Some(blk) = storage.get(id).wait()? {
-            reply.send(blk.header());
+            if let Err(_) = reply.send(blk.header()) {
+                break;
+            }
         } else {
             // TODO: reply this hash was not found?
         }
@@ -188,7 +196,9 @@ fn handle_pull_blocks_to_tip(
     for x in store::iterate_range(&*storage, &from, &tip.hash())? {
         let info = x?;
         let (blk, _) = storage.get_block(&info.block_hash)?;
-        reply.send(blk);
+        if let Err(_) = reply.send(blk) {
+            break;
+        }
     }
 
     Ok(())

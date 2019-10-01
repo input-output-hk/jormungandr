@@ -135,18 +135,16 @@ pub struct ReplyHandle<T> {
 
 impl<T> ReplyHandle<T> {
     pub fn reply(self, result: Result<T, Error>) {
-        match self.sender.send(result) {
-            Ok(()) => {}
-            Err(_) => panic!("failed to send result"),
-        }
+        // Ignoring a send error: it means the result is no longer needed
+        let _ = self.sender.send(result);
     }
 
     pub fn reply_ok(self, response: T) {
-        self.reply(Ok(response));
+        self.reply(Ok(response))
     }
 
     pub fn reply_error(self, error: Error) {
-        self.reply(Err(error));
+        self.reply(Err(error))
     }
 }
 
@@ -194,17 +192,32 @@ pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>) 
 }
 
 #[derive(Debug)]
+pub struct ReplySendError;
+
+impl fmt::Display for ReplySendError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "failed to send reply")
+    }
+}
+
+impl error::Error for ReplySendError {}
+
+#[derive(Debug)]
 pub struct ReplyStreamHandle<T> {
     sender: mpsc::UnboundedSender<Result<T, Error>>,
 }
 
 impl<T> ReplyStreamHandle<T> {
-    pub fn send(&mut self, item: T) {
-        self.sender.unbounded_send(Ok(item)).unwrap()
+    pub fn send(&mut self, item: T) -> Result<(), ReplySendError> {
+        self.send_result(Ok(item))
     }
 
-    pub fn send_error(&mut self, error: Error) {
-        self.sender.unbounded_send(Err(error)).unwrap()
+    pub fn send_error(&mut self, error: Error) -> Result<(), ReplySendError> {
+        self.send_result(Err(error))
+    }
+
+    fn send_result(&mut self, res: Result<T, Error>) -> Result<(), ReplySendError> {
+        self.sender.unbounded_send(res).map_err(|_| ReplySendError)
     }
 
     pub fn close(self) {
@@ -256,7 +269,9 @@ where
     match f(&mut handler) {
         Ok(()) => {}
         Err(e) => {
-            handler.send_error(e);
+            if let Err(_) = handler.send_error(e) {
+                return;
+            }
         }
     };
     handler.close();
