@@ -100,6 +100,7 @@ impl From<chain_storage::error::Error> for Error {
             CannotIterate => core_error::Code::Internal,
             BackendError(_) => core_error::Code::Internal,
             Block0InFuture => core_error::Code::Internal,
+            BlockAlreadyPresent => core_error::Code::Internal,
         };
         Error {
             code,

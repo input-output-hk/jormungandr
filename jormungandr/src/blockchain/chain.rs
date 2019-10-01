@@ -491,7 +491,10 @@ impl Blockchain {
             .and_then(move |block_ref| {
                 storage
                     .put_block(block)
-                    .map_err(|e| e.into())
+                    .or_else(|err| match err {
+                        StorageError::BlockAlreadyPresent => Ok(()),
+                        err => Err(err.into()),
+                    })
                     .and_then(move |()| Ok(block_ref))
             })
     }

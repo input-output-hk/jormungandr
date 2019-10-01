@@ -174,7 +174,19 @@ impl Services {
             executor: executor,
         };
 
-        runtime.spawn(f(future_service_info));
+        use std::panic::AssertUnwindSafe;
+
+        let future = AssertUnwindSafe(f(future_service_info))
+            .catch_unwind()
+            .map(|_| ())
+            .map_err(|err| {
+                if let Some(string) = err.downcast_ref::<String>() {
+                    eprintln!("{}", string);
+                }
+                std::process::exit(66);
+            });
+
+        runtime.spawn(future);
 
         let task = Service::new_runtime(name, runtime, now);
         self.services.push(task);
