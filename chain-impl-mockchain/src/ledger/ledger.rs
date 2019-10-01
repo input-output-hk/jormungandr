@@ -1033,7 +1033,6 @@ mod tests {
         ledger: ArbitraryEmptyLedger,
     ) -> TestResult {
         let ledger: Ledger = ledger.into();
-
         let should_succeed =
             context.chain_length == ledger.chain_length.next() && context.block_date > ledger.date;
 
