@@ -208,6 +208,32 @@ enum ErrorKind<T> {
     InvalidOrigin(http::Error),
 }
 
+impl<T> ConnectError<T> {
+    /// If the error is due to a failure to establish the transport connection,
+    /// returns the underlying connection error. Otherwise, returns `None`.
+    pub fn connect_error(&self) -> Option<&T> {
+        use tower_hyper::client::ConnectError::*;
+
+        if let ErrorKind::Http(Connect(e)) = &self.0 {
+            Some(e)
+        } else {
+            None
+        }
+    }
+
+    /// If the error is due to a failed HTTP/2 handshake,
+    /// returns the HTTP/2 protocol error. Otherwise, returns `None`.
+    pub fn http_error(&self) -> Option<&hyper::Error> {
+        use tower_hyper::client::ConnectError::*;
+
+        if let ErrorKind::Http(Handshake(e)) = &self.0 {
+            Some(e)
+        } else {
+            None
+        }
+    }
+}
+
 impl<T> fmt::Display for ConnectError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
