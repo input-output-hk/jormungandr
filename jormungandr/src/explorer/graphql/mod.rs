@@ -1,15 +1,19 @@
 mod error;
+mod scalars;
 use self::error::ErrorKind;
 use super::indexing::{EpochData, ExplorerBlock, ExplorerTransaction};
 use crate::blockcfg::{self, FragmentId, HeaderHash};
-use chain_impl_mockchain::value;
+use chain_impl_mockchain::certificate;
 pub use juniper::http::GraphQLRequest;
-use juniper::EmptyMutation;
-use juniper::FieldResult;
-use juniper::RootNode;
-use std::convert::{TryFrom, TryInto};
+use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
+use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::str::FromStr;
 use tokio::prelude::*;
+
+use self::scalars::{
+    BlockCount, ChainLength, EpochNumber, PoolId, PublicKey, Serial, Slot, TimeOffsetSeconds, Value,
+};
 
 use crate::explorer::{ExplorerDB, Settings};
 
@@ -191,6 +195,14 @@ impl Transaction {
             })
             .collect())
     }
+
+    pub fn certificate(&self, context: &Context) -> FieldResult<Option<Certificate>> {
+        let transaction = self.get_contents(context)?;
+        match transaction.certificate {
+            Some(c) => Certificate::try_from(c).map(Some).map_err(|e| e.into()),
+            None => Ok(None),
+        }
+    }
 }
 
 struct TransactionInput {
@@ -257,7 +269,7 @@ impl Address {
             .to_string()
     }
 
-    fn delegation() -> FieldResult<StakePool> {
+    fn delegation() -> FieldResult<Pool> {
         Err(ErrorKind::Unimplemented.into())
     }
 
@@ -276,9 +288,170 @@ impl Address {
     }
 }
 
-#[derive(juniper::GraphQLObject)]
-struct StakePool {
+/*--------------------------------------------*/
+/*------------------Certificates-------------*/
+/*------------------------------------------*/
+
+struct StakeDelegation {
+    delegation: certificate::StakeDelegation,
+}
+
+impl From<certificate::StakeDelegation> for StakeDelegation {
+    fn from(delegation: certificate::StakeDelegation) -> StakeDelegation {
+        StakeDelegation { delegation }
+    }
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl StakeDelegation {
+    // FIXME: Maybe a new Account type would be better?
+    pub fn account(&self, context: &Context) -> FieldResult<Address> {
+        let discrimination = context.db.blockchain_config.discrimination;
+        self.delegation
+            .account_id
+            .to_single_account()
+            .ok_or(
+                // TODO: Multisig address?
+                ErrorKind::Unimplemented.into(),
+            )
+            .map(|single| {
+                chain_addr::Address(discrimination, chain_addr::Kind::Account(single.into()))
+            })
+            .map(|addr| Address::from(&addr))
+    }
+
+    pub fn pool(&self, context: &Context) -> Pool {
+        Pool {
+            id: PoolId(format!("{}", self.delegation.pool_id)),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct PoolRegistration {
+    registration: certificate::PoolRegistration,
+}
+
+impl From<certificate::PoolRegistration> for PoolRegistration {
+    fn from(registration: certificate::PoolRegistration) -> PoolRegistration {
+        PoolRegistration { registration }
+    }
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl PoolRegistration {
+    pub fn pool(&self, context: &Context) -> Pool {
+        Pool {
+            id: PoolId(format!("{}", self.registration.to_id())),
+        }
+    }
+
+    /// A random value, for user purpose similar to a UUID.
+    /// it may not be unique over a blockchain, so shouldn't be used a unique identifier
+    pub fn serial(&self) -> Serial {
+        self.registration.serial.into()
+    }
+
+    /// Beginning of validity for this pool, this is used
+    /// to keep track of the period of the expected key and the expiry
+    pub fn start_validity(&self) -> TimeOffsetSeconds {
+        self.registration.start_validity.into()
+    }
+
+    /// Management threshold for owners, this need to be <= #owners and > 0
+    pub fn management_threshold(&self) -> i32 {
+        // XXX: u16 fits in i32, but maybe some kind of custom scalar is better?
+        self.registration.management_threshold.into()
+    }
+
+    /// Owners of this pool
+    pub fn owners(&self) -> Vec<PublicKey> {
+        self.registration
+            .owners
+            .iter()
+            .map(PublicKey::from)
+            .collect()
+    }
+
+    // TODO: rewards
+    // TODO: keys
+}
+
+struct OwnerStakeDelegation {
+    owner_stake_delegation: certificate::OwnerStakeDelegation,
+}
+
+impl From<certificate::OwnerStakeDelegation> for OwnerStakeDelegation {
+    fn from(owner_stake_delegation: certificate::OwnerStakeDelegation) -> OwnerStakeDelegation {
+        OwnerStakeDelegation {
+            owner_stake_delegation,
+        }
+    }
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl OwnerStakeDelegation {
+    fn pool(&self) -> Pool {
+        Pool {
+            id: PoolId(format!("{}", self.owner_stake_delegation.pool_id)),
+        }
+    }
+}
+
+enum Certificate {
+    StakeDelegation(StakeDelegation),
+    OwnerStakeDelegation(OwnerStakeDelegation),
+    PoolRegistration(PoolRegistration),
+    // TODO: PoolManagement
+}
+
+impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
+    type Error = error::Error;
+    fn try_from(
+        original: chain_impl_mockchain::certificate::Certificate,
+    ) -> Result<Certificate, Self::Error> {
+        match original {
+            certificate::Certificate::StakeDelegation(c) => {
+                Ok(Certificate::StakeDelegation(StakeDelegation::from(c)))
+            }
+            certificate::Certificate::OwnerStakeDelegation(c) => Ok(
+                Certificate::OwnerStakeDelegation(OwnerStakeDelegation::from(c)),
+            ),
+            certificate::Certificate::PoolRegistration(c) => {
+                Ok(Certificate::PoolRegistration(PoolRegistration::from(c)))
+            }
+            certificate::Certificate::PoolManagement(_) => Err(ErrorKind::Unimplemented.into()),
+        }
+    }
+}
+
+graphql_union!(Certificate: Context |&self| {
+    // the left hand side of the `instance_resolvers` match-like structure is the one
+    // that's used to match in the graphql query with the `__typename` field
+    instance_resolvers: |_| {
+        &StakeDelegation => match *self { Certificate::StakeDelegation(ref c) => Some(c), _ => None },
+        &OwnerStakeDelegation => match *self { Certificate::OwnerStakeDelegation(ref c) => Some(c), _ => None },
+        &PoolRegistration => match *self { Certificate::PoolRegistration(ref c) => Some(c), _ => None },
+    }
+});
+
+struct Pool {
     id: PoolId,
+}
+
+#[juniper::object(
+    Context = Context
+)]
+impl Pool {
+    pub fn id(&self) -> &PoolId {
+        &self.id
+    }
 }
 
 struct Status {}
@@ -313,34 +486,6 @@ struct FeeSettings {
     constant: Value,
     coefficient: Value,
     certificate: Value,
-}
-
-#[derive(juniper::GraphQLScalarValue)]
-struct PoolId(String);
-
-#[derive(juniper::GraphQLScalarValue)]
-struct Value(String);
-
-impl From<&value::Value> for Value {
-    fn from(v: &value::Value) -> Value {
-        Value(format!("{}", v))
-    }
-}
-
-#[derive(juniper::GraphQLScalarValue)]
-struct EpochNumber(String);
-
-impl From<blockcfg::Epoch> for EpochNumber {
-    fn from(e: blockcfg::Epoch) -> EpochNumber {
-        EpochNumber(format!("{}", e))
-    }
-}
-
-impl TryFrom<EpochNumber> for blockcfg::Epoch {
-    type Error = std::num::ParseIntError;
-    fn try_from(e: EpochNumber) -> Result<blockcfg::Epoch, Self::Error> {
-        e.0.parse::<u32>()
-    }
 }
 
 struct Epoch {
@@ -395,44 +540,34 @@ impl Epoch {
     }
 }
 
-#[derive(juniper::GraphQLScalarValue)]
-struct BlockCount(String);
-
-impl From<u32> for BlockCount {
-    fn from(number: u32) -> BlockCount {
-        BlockCount(format!("{}", number))
-    }
-}
-
-#[derive(juniper::GraphQLObject)]
 struct StakeDistribution {
     pools: Vec<PoolStakeDistribution>,
 }
 
-#[derive(juniper::GraphQLObject)]
-struct PoolStakeDistribution {
-    pool: StakePool,
-    delegated_stake: Value,
-}
-
-#[derive(juniper::GraphQLScalarValue)]
-struct Slot(String);
-
-/// Custom scalar type that represents a block's position in the blockchain.
-/// It's a either 0 (the genesis block) or a positive number in string representation.
-#[derive(juniper::GraphQLScalarValue)]
-struct ChainLength(String);
-
-impl From<blockcfg::ChainLength> for ChainLength {
-    fn from(length: blockcfg::ChainLength) -> ChainLength {
-        ChainLength(u32::from(length).to_string())
+#[juniper::object(
+    Context = Context,
+)]
+impl StakeDistribution {
+    pub fn pools(&self) -> &Vec<PoolStakeDistribution> {
+        &self.pools
     }
 }
 
-impl TryFrom<ChainLength> for blockcfg::ChainLength {
-    type Error = std::num::ParseIntError;
-    fn try_from(length: ChainLength) -> Result<blockcfg::ChainLength, Self::Error> {
-        length.0.parse::<u32>().map(blockcfg::ChainLength::from)
+struct PoolStakeDistribution {
+    pool: Pool,
+    delegated_stake: Value,
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl PoolStakeDistribution {
+    pub fn pool(&self) -> &Pool {
+        &self.pool
+    }
+
+    pub fn delegated_stake(&self) -> &Value {
+        &self.delegated_stake
     }
 }
 
@@ -468,7 +603,7 @@ impl Query {
         Address::from_bech32(&bech32)
     }
 
-    pub fn stake_pool(id: PoolId) -> FieldResult<StakePool> {
+    pub fn stake_pool(id: PoolId) -> FieldResult<Pool> {
         Err(ErrorKind::Unimplemented.into())
     }
 
