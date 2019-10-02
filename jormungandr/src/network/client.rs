@@ -89,7 +89,7 @@ where
                 },
             )
             .map_err(move |err| {
-                warn!(err_logger, "subscription request failed: {:?}", err);
+                info!(err_logger, "subscription request failed: {:?}", err);
             })
             .and_then(
                 move |(
@@ -185,7 +185,7 @@ where
                             debug!(done_logger, "finished uploading blocks to {}", node_id);
                         })
                         .map_err(move |err| {
-                            warn!(err_logger, "UploadBlocks request failed: {:?}", err);
+                            info!(err_logger, "UploadBlocks request failed: {:?}", err);
                         }),
                 );
             }
@@ -217,7 +217,7 @@ where
                     debug!(done_logger, "finished pushing headers to {}", node_id);
                 })
                 .map_err(move |err| {
-                    warn!(err_logger, "PushHeaders request failed: {:?}", err);
+                    info!(err_logger, "PushHeaders request failed: {:?}", err);
                 }),
         );
     }
@@ -240,7 +240,7 @@ where
                     debug!(done_logger, "finished pushing blocks to {}", node_id);
                 })
                 .map_err(move |err| {
-                    warn!(err_logger, "UploadBlocks request failed: {:?}", err);
+                    info!(err_logger, "UploadBlocks request failed: {:?}", err);
                 }),
         );
     }
@@ -263,7 +263,7 @@ where
             self.service
                 .pull_headers(&req.from, &req.to)
                 .map_err(move |e| {
-                    warn!(err_logger, "PullHeaders request failed: {:?}", e);
+                    info!(err_logger, "PullHeaders request failed: {:?}", e);
                 })
                 .and_then(move |stream| {
                     let err2_logger = logger.clone();
@@ -305,13 +305,13 @@ where
             self.service
                 .pull_blocks_to_tip(&req.from)
                 .map_err(move |e| {
-                    warn!(err_logger, "PullBlocksToTip request failed: {:?}", e);
+                    info!(err_logger, "PullBlocksToTip request failed: {:?}", e);
                 })
                 .and_then(move |stream| {
                     let stream_err_logger = logger.clone();
                     let sink_err_logger = logger.clone();
                     let stream = stream.map_err(move |e| {
-                        warn!(
+                        info!(
                             stream_err_logger,
                             "PullBlocksToTip response stream failed: {:?}", e
                         );
@@ -347,7 +347,7 @@ where
             self.service
                 .get_blocks(block_ids)
                 .map_err(move |e| {
-                    warn!(
+                    info!(
                         err_logger,
                         "GetBlocks request (solicitation) failed: {:?}", e
                     );
@@ -356,7 +356,7 @@ where
                     let stream_err_logger = logger.clone();
                     let sink_err_logger = logger.clone();
                     let stream = stream.map_err(move |e| {
-                        warn!(
+                        info!(
                             stream_err_logger,
                             "GetBlocks response stream failed: {:?}", e
                         );
@@ -398,7 +398,7 @@ where
             // Drive any pending activity of the gRPC client until it is ready
             // to process another request.
             try_ready!(self.service.poll_ready().map_err(|e| {
-                warn!(self.logger, "gRPC client error: {:?}", e);
+                warn!(self.logger, "P2P client error: {:?}", e);
             }));
             let mut streams_ready = false;
             if let Some(ref mut future) = self.sending_block_msg {
@@ -483,7 +483,7 @@ pub fn connect(
 
     grpc::connect(addr, Some(state.global.as_ref().node.id()))
         .map_err(move |e| {
-            debug!(connect_err_logger, "error connecting to peer: {:?}", e);
+            info!(connect_err_logger, "error connecting to peer: {:?}", e);
         })
         .and_then(move |conn| {
             conn.ready().map_err(move |e| {
@@ -496,7 +496,7 @@ pub fn connect(
         .and_then(move |mut conn| {
             conn.handshake()
                 .map_err(move |e| {
-                    warn!(handshake_err_logger, "protocol handshake failed: {:?}", e);
+                    info!(handshake_err_logger, "protocol handshake failed: {:?}", e);
                 })
                 .and_then(move |block0| {
                     if block0 == expected_block0 {
