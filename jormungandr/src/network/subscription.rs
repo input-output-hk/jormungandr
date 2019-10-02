@@ -29,7 +29,7 @@ where
     let sink_err_logger = logger.clone();
     let stream = inbound
         .map_err(move |err| {
-            info!(
+            debug!(
                 stream_err_logger,
                 "block subscription stream failure: {:?}", err
             );
@@ -97,7 +97,7 @@ where
     let sink_err_logger = logger.clone();
     let stream = inbound
         .map_err(move |err| {
-            info!(
+            debug!(
                 stream_err_logger,
                 "fragment subscription stream failure: {:?}", err
             );
@@ -137,7 +137,7 @@ where
                 Ok(())
             })
             .map_err(move |err| {
-                info!(err_logger, "gossip subscription stream failure: {:?}", err);
+                debug!(err_logger, "gossip subscription stream failure: {:?}", err);
             }),
     )
 }

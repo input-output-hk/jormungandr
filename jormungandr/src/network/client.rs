@@ -420,7 +420,7 @@ where
                 }
             } else {
                 let block_event_polled = self.block_events.poll().map_err(|e| {
-                    info!(self.logger, "block subscription stream failure: {:?}", e);
+                    debug!(self.logger, "block subscription stream failure: {:?}", e);
                 })?;
                 match block_event_polled {
                     Async::NotReady => {}
