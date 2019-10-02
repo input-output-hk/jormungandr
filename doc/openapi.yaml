@@ -429,7 +429,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock]
+                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, slotDuration, slotsPerEpoch]
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -468,6 +468,14 @@ paths:
                     description: Maximum number of transactions in block
                     type: integer
                     minimum: 0
+                  slotDuration:
+                    description: Slot duration in seconds
+                    type: integer
+                    minimum: 0
+                  slotsPerEpoch:
+                    description: Number of slots per epoch
+                    type: integer
+                    minimum: 0
               example: |
                 {
                   "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
@@ -479,7 +487,9 @@ paths:
                     "coefficient": 1,
                     "constant": 2
                   },
-                  "maxTxsPerBlock": 100
+                  "maxTxsPerBlock": 100,
+                  "slotDuration": 10,
+                  "slotsPerEpoch": 60
                 }
   /api/v0/shutdown:
     get:

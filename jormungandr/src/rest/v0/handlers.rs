@@ -235,6 +235,11 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
         let consensus_version = ledger.consensus_version();
         let current_params = blockchain_tip.epoch_ledger_parameters();
         let fees = current_params.fees;
+        let slot_duration = blockchain_tip.time_frame().slot_duration();
+        let slots_per_epoch = blockchain_tip
+            .epoch_leadership_schedule()
+            .era()
+            .slots_per_epoch();
         Json(json!({
             "block0Hash": static_params.block0_initial_hash.to_string(),
             "block0Time": SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
@@ -246,6 +251,8 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
                 "certificate": fees.certificate,
             },
             "maxTxsPerBlock": 255, // TODO?
+            "slotDuration": slot_duration,
+            "slotsPerEpoch": slots_per_epoch,
         }))
     })
 }
