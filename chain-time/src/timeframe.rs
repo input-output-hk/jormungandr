@@ -52,7 +52,7 @@ impl TimeFrame {
     ///
     /// ```text
     ///
-    /// 0        1        2        3        4        5                  
+    /// 0        1        2        3        4        5
     /// x--------x--------x--------x--------x--------x  frame ticking at per_slot
     ///
     /// ^
@@ -73,7 +73,7 @@ impl TimeFrame {
     /// Note this also change the beginning of this time frame, to start
     ///
     /// ```text
-    /// 0        1        2        3        4        5                  
+    /// 0        1        2        3        4        5
     /// x--------x--------┳--------x--------x--------x  frame ticking at SlotDuration::from_secs(9)
     ///                   |
     ///                   ┕---x---x---x---x---x         returned frame
@@ -136,6 +136,11 @@ impl TimeFrame {
             None => None,
             Some(sd) => Some(self.timeline.0 + Duration::from_secs(sd * self.slot_duration.0)),
         }
+    }
+
+    /// Returns slot duration value.
+    pub fn slot_duration(&self) -> u64 {
+        self.slot_duration.0
     }
 }
 
