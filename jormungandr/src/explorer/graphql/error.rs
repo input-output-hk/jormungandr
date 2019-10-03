@@ -12,5 +12,9 @@ error_chain! {
             description("feature not implemented yet"),
             display("unimplemented")
         }
+        ArgumentError(msg: String) {
+            description("invalid argument in query"),
+            display("invalid argument: {}", msg)
+        }
     }
 }

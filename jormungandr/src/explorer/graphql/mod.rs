@@ -1,5 +1,7 @@
+mod connections;
 mod error;
 mod scalars;
+use self::connections::{BlockConnection, BlockCursor};
 use self::error::ErrorKind;
 use super::indexing::{EpochData, ExplorerBlock, ExplorerTransaction};
 use crate::blockcfg::{self, FragmentId, HeaderHash};
@@ -520,8 +522,41 @@ impl Epoch {
     /// Not yet implemented
     // It is possible to compute this by getting the last block and going backwards
     // so this could fill another requirement, like pagination
-    pub fn blocks(&self, context: &Context) -> FieldResult<Vec<Block>> {
-        Err(ErrorKind::Unimplemented.into())
+    pub fn blocks(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<BlockCursor>,
+        after: Option<BlockCursor>,
+        context: &Context,
+    ) -> FieldResult<Option<BlockConnection>> {
+        let epoch_data = match self.get_epoch_data(&context.db) {
+            Some(epoch_data) => epoch_data,
+            None => return Ok(None),
+        };
+
+        let lower_bound = context
+            .db
+            .get_block(&epoch_data.first_block)
+            .map(|block| BlockCursor::from(block.expect("The block to be indexed").chain_length))
+            .wait()?;
+
+        let upper_bound = context
+            .db
+            .get_block(&epoch_data.last_block)
+            .map(|block| BlockCursor::from(block.expect("The block to be indexed").chain_length))
+            .wait()?;
+
+        BlockConnection::new(
+            lower_bound,
+            upper_bound,
+            first,
+            last,
+            before,
+            after,
+            &context.db,
+        )
+        .map(Some)
     }
 
     pub fn first_block(&self, context: &Context) -> Option<Block> {
@@ -587,6 +622,38 @@ impl Query {
             .find_block_by_chain_length(length.try_into()?)
             .wait()?
             .map(Block::from_valid_hash))
+    }
+
+    /// query all the blocks in a paginated view
+    fn all_blocks(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<BlockCursor>,
+        after: Option<BlockCursor>,
+        context: &Context,
+    ) -> FieldResult<BlockConnection> {
+        let longest_chain = context
+            .db
+            .get_latest_block_hash()
+            .and_then(|hash| context.db.get_block(&hash))
+            .wait()?
+            .ok_or(ErrorKind::InternalError(
+                "tip is not in explorer".to_owned(),
+            ))
+            .map(|block| block.chain_length)?;
+
+        let block0 = blockcfg::ChainLength::from(0u32);
+
+        BlockConnection::new(
+            block0.into(),
+            longest_chain.into(),
+            first,
+            last,
+            before,
+            after,
+            &context.db,
+        )
     }
 
     fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {
