@@ -53,7 +53,6 @@ where
     )
 }
 
-// TODO: convert this function and all uses of it to async
 pub fn process_block_announcement(
     header: Header,
     node_id: NodeId,
