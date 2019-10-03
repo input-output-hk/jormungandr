@@ -11,6 +11,8 @@ pub struct BlockCursor(blockcfg::ChainLength);
 juniper::graphql_scalar!(BlockCursor where Scalar = <S> {
     description: "Opaque cursor to use in block pagination"
 
+    // FIXME: Cursors are recommended to be opaque, but I'm not sure it is worth to
+    // obfuscate its representation
     resolve(&self) -> Value {
         Value::scalar(self.0.to_string())
     }

@@ -519,9 +519,7 @@ impl Epoch {
         Err(ErrorKind::Unimplemented.into())
     }
 
-    /// Not yet implemented
-    // It is possible to compute this by getting the last block and going backwards
-    // so this could fill another requirement, like pagination
+    /// Get a paginated view of all the blocks in this epoch
     pub fn blocks(
         &self,
         first: Option<i32>,
