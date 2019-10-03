@@ -204,9 +204,9 @@ pub struct Peers {
 }
 
 impl Peers {
-    pub fn new(logger: Logger) -> Self {
+    pub fn new(capacity: usize, logger: Logger) -> Self {
         Peers {
-            mutex: Mutex::new(peer_map::PeerMap::new()),
+            mutex: Mutex::new(peer_map::PeerMap::new(capacity)),
             logger,
         }
     }
@@ -216,9 +216,9 @@ impl Peers {
         map.insert_peer(id, comms)
     }
 
-    pub fn remove_peer(&self, id: topology::NodeId) -> bool {
+    pub fn remove_peer(&self, id: topology::NodeId) {
         let mut map = self.mutex.lock().unwrap();
-        map.remove_peer(id)
+        map.remove_peer(id);
     }
 
     pub fn subscribe_to_block_events(&self, id: topology::NodeId) -> BlockEventSubscription {

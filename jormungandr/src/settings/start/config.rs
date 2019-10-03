@@ -82,6 +82,10 @@ pub struct P2pConfig {
     /// best possible neighborhood.
     pub topics_of_interest: Option<BTreeMap<Topic, InterestLevel>>,
 
+    /// Limit on the number of simultaneous connections.
+    /// If not specified, an internal default limit is used.
+    pub max_connections: Option<usize>,
+
     /// Whether to allow non-public IP addresses on the network.
     /// The default is to not allow advertising non-public IP addresses.
     #[serde(default)]
@@ -133,6 +137,7 @@ impl Default for P2pConfig {
             listen_address: None,
             trusted_peers: None,
             topics_of_interest: None,
+            max_connections: None,
             allow_private_addresses: false,
         }
     }

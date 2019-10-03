@@ -181,6 +181,9 @@ fn generate_network(
         trusted_peers: p2p.trusted_peers.clone().unwrap_or(vec![]),
         protocol: Protocol::Grpc,
         subscriptions: p2p.topics_of_interest.clone().unwrap_or(BTreeMap::new()),
+        max_connections: p2p
+            .max_connections
+            .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
         allow_private_addresses: p2p.allow_private_addresses,
     };
