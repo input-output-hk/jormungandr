@@ -122,6 +122,10 @@ impl Storage {
         })
     }
 
+    /// Return values:
+    /// - `Ok(Some(stream))` - `from` is ancestor of `to`, returns blocks between them
+    /// - `Ok(None)` - `from` is not ancestor of `to`
+    /// - `Err(error)` - `from` or `to` was not found
     pub fn stream_from_to(
         &self,
         from: HeaderHash,

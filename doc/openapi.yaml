@@ -94,7 +94,9 @@ paths:
                 type: string
                 format: binary
         400:
-          description: Block with given ID was not found
+          description: Block ID malformed
+        404:
+          description: Block with given ID was not found in chain of the tip
   /api/v0/fragment/logs:
     get:
       description: Gets logs from node message pool
