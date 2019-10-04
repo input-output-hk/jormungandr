@@ -79,7 +79,9 @@ Description of the fields:
       - `messages`: Transactions and other ledger entries.
         Typical setting for a non-mining node: `low`. For a stakepool: `high`;
       - `blocks`: Notifications about new blocks.
-        Typical setting for a non-mining node: `normal`. For a stakepool: `high`;
+        Typical setting for a non-mining node: `normal`. For a stakepool: `high`.
+    - `max_connections`: The maximum number of simultaneous P2P connections
+      this node should maintain.
 - `explorer`: (optional) Explorer settings
     - `enabled`: True or false
 

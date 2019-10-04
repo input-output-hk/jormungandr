@@ -31,6 +31,8 @@ p2p:
     - *messages*: notify other peers this node is interested about Transactions
     typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
     - *blocks*: notify other peers this node is interested about new Blocs.
-    typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`;
+    typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`.
+- `max_connections`: the maximum number of P2P connections this node should
+    maintain. If not specified, an internal limit is used by default.
 
 [multiaddr]: https://github.com/multiformats/multiaddr
