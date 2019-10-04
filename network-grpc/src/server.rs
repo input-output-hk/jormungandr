@@ -7,12 +7,12 @@ use network_core::server::{BlockService, FragmentService, GossipService, Node};
 
 use futures::prelude::*;
 use tokio_io::{AsyncRead, AsyncWrite};
-use tokio_tcp::{TcpListener, TcpStream};
+use tokio_tcp::{self as tcp, TcpListener, TcpStream};
 use tower_grpc::codegen::server::grpc::Never as NeverError;
 use tower_hyper::server::Http;
 
 #[cfg(unix)]
-use tokio_uds::{UnixListener, UnixStream};
+use tokio_uds::{self as uds, UnixListener, UnixStream};
 
 use std::io;
 use std::net::SocketAddr;
@@ -93,15 +93,11 @@ where
 /// objects representing accepted TCP connections from clients.
 /// The TCP_NODELAY option is disabled on the returned sockets as
 /// necessary for the HTTP/2 protocol.
-pub fn listen(
-    addr: &SocketAddr,
-) -> Result<impl Stream<Item = TcpStream, Error = io::Error>, io::Error> {
+pub fn listen(addr: &SocketAddr) -> Result<TcpListen, io::Error> {
     let listener = TcpListener::bind(&addr)?;
-    let stream = listener.incoming().and_then(|sock| {
-        sock.set_nodelay(true)?;
-        Ok(sock)
-    });
-    Ok(stream)
+    Ok(TcpListen {
+        incoming: listener.incoming(),
+    })
 }
 
 /// Sets up a listening Unix socket bound to the specified path.
@@ -113,4 +109,72 @@ pub fn listen_unix<P: AsRef<Path>>(
 ) -> Result<impl Stream<Item = UnixStream, Error = io::Error>, io::Error> {
     let listener = UnixListener::bind(path)?;
     Ok(listener.incoming())
+}
+
+// Returns true if the error is per-connection, meaning that it's still
+// possible to listen and accept connections on the same socket
+// after this error.
+// Code inspired by crate tk-listen under the terms of
+// Apache-2.0 and MIT licenses.
+fn connection_error(e: &io::Error) -> bool {
+    use io::ErrorKind::*;
+
+    match e.kind() {
+        ConnectionAborted | ConnectionReset | ConnectionRefused => true,
+        _ => false,
+    }
+}
+
+pub struct TcpListen {
+    incoming: tcp::Incoming,
+}
+
+impl Stream for TcpListen {
+    type Item = TcpStream;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Option<TcpStream>, io::Error> {
+        loop {
+            match self.incoming.poll() {
+                Ok(Async::Ready(Some(sock))) => {
+                    sock.set_nodelay(true)?;
+                    return Ok(Async::Ready(Some(sock)));
+                }
+                Ok(poll_out) => return Ok(poll_out),
+                Err(e) => {
+                    if connection_error(&e) {
+                        continue;
+                    } else {
+                        return Err(e);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(unix)]
+pub struct UnixListen {
+    incoming: uds::Incoming,
+}
+
+#[cfg(unix)]
+impl Stream for UnixListen {
+    type Item = UnixStream;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Option<UnixStream>, io::Error> {
+        loop {
+            match self.incoming.poll() {
+                Ok(poll_out) => return Ok(poll_out),
+                Err(e) => {
+                    if connection_error(&e) {
+                        continue;
+                    } else {
+                        return Err(e);
+                    }
+                }
+            }
+        }
+    }
 }
