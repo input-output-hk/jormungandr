@@ -368,9 +368,13 @@ fn connect_and_propagate_with<F>(
             Ok(client)
         })
         .and_then(|client| client)
-        .map_err(move |()| {
-            err_state.topology.evict_node(node_id);
-            debug!(logger, "evicted node");
+        .then(move |res| {
+            info!(logger, "client P2P connection closed");
+            if let Err(()) = res {
+                err_state.topology.evict_node(node_id);
+                debug!(logger, "evicted node");
+            }
+            Ok(())
         });
     tokio::spawn(cf);
 }
