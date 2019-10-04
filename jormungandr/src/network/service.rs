@@ -239,6 +239,7 @@ impl FragmentService for NodeService {
     {
         subscription::process_fragments(
             inbound,
+            subscriber,
             self.global_state.clone(),
             self.channels.transaction_box.clone(),
             self.logger().clone(),

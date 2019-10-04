@@ -25,8 +25,8 @@ impl PeerMap {
         }
     }
 
-    pub fn peer_comms(&mut self, id: NodeId) -> Option<&mut PeerComms> {
-        self.map.get_mut(&id)
+    pub fn refresh_peer_comms(&mut self, id: NodeId) -> Option<&mut PeerComms> {
+        self.map.get_refresh(&id)
     }
 
     pub fn ensure_peer_comms(&mut self, id: NodeId) -> &mut PeerComms {
@@ -50,12 +50,6 @@ impl PeerMap {
             .iter_mut()
             .next_back()
             .map(|(&id, comms)| (id, comms))
-    }
-
-    pub fn bump_peer_for_block_fetch(&mut self, id: NodeId) {
-        // It's OK for the entry to be missing because it might have been
-        // removed by the time peer's traffic is processed.
-        let _ = self.map.get_refresh(&id);
     }
 
     fn evict_if_full(&mut self) {

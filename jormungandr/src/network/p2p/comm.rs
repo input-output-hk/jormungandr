@@ -339,9 +339,9 @@ impl Peers {
         }
     }
 
-    pub fn bump_peer_for_block_fetch(&self, node_id: topology::NodeId) {
+    pub fn refresh_peer(&self, node_id: topology::NodeId) {
         let mut map = self.mutex.lock().unwrap();
-        map.bump_peer_for_block_fetch(node_id);
+        map.refresh_peer_comms(node_id);
     }
 
     pub fn fetch_blocks(&self, hashes: Vec<HeaderHash>) {
@@ -366,12 +366,11 @@ impl Peers {
 
     pub fn solicit_blocks(&self, node_id: topology::NodeId, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
-        match map.entry(node_id) {
-            Some(mut entry) => {
+        match map.refresh_peer_comms(node_id) {
+            Some(comms) => {
                 debug!(self.logger, "sending block solicitation to {}", node_id;
                        "hashes" => ?hashes);
-                entry
-                    .comms()
+                comms
                     .block_solicitations
                     .try_send(hashes)
                     .unwrap_or_else(|e| {
@@ -380,7 +379,7 @@ impl Peers {
                             "block solicitation from {} failed: {:?}", node_id, e
                         );
                         debug!(self.logger, "unsubscribing peer {}", node_id);
-                        entry.remove();
+                        map.remove_peer(node_id);
                     });
             }
             None => {
@@ -395,12 +394,11 @@ impl Peers {
 
     pub fn pull_headers(&self, node_id: topology::NodeId, from: Vec<HeaderHash>, to: HeaderHash) {
         let mut map = self.mutex.lock().unwrap();
-        match map.entry(node_id) {
-            Some(mut entry) => {
+        match map.refresh_peer_comms(node_id) {
+            Some(comms) => {
                 debug!(self.logger, "pulling headers from {}", node_id;
                        "from" => ?from, "to" => ?to);
-                entry
-                    .comms()
+                comms
                     .chain_pulls
                     .try_send(ChainPullRequest { from, to })
                     .unwrap_or_else(|e| {
@@ -409,7 +407,7 @@ impl Peers {
                             "sending header pull solicitation to {} failed: {:?}", node_id, e
                         );
                         debug!(self.logger, "unsubscribing peer {}", node_id);
-                        entry.remove();
+                        map.remove_peer(node_id);
                     });
             }
             None => {
