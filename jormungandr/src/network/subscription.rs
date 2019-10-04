@@ -35,7 +35,7 @@ where
             );
         })
         .map(move |header| {
-            global_state.peers.bump_peer_for_block_fetch(node_id);
+            global_state.peers.refresh_peer(node_id);
             BlockMsg::AnnouncedBlock(header, node_id)
         });
     tokio::spawn(
@@ -53,14 +53,13 @@ where
     )
 }
 
-// TODO: convert this function and all uses of it to async
 pub fn process_block_announcement(
     header: Header,
     node_id: NodeId,
     global_state: &GlobalState,
     block_box: MessageBox<BlockMsg>,
 ) -> SendingBlockMsg {
-    global_state.peers.bump_peer_for_block_fetch(node_id);
+    global_state.peers.refresh_peer(node_id);
     let future = block_box.send(BlockMsg::AnnouncedBlock(header, node_id));
     SendingBlockMsg { inner: future }
 }
@@ -86,7 +85,8 @@ impl Future for SendingBlockMsg {
 
 pub fn process_fragments<S>(
     inbound: S,
-    _state: GlobalStateR,
+    node_id: NodeId,
+    global_state: GlobalStateR,
     transaction_box: MessageBox<TransactionMsg>,
     logger: Logger,
 ) -> tokio::executor::Spawn
@@ -102,7 +102,10 @@ where
                 "fragment subscription stream failure: {:?}", err
             );
         })
-        .map(|fragment| TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment]));
+        .map(move |fragment| {
+            global_state.peers.refresh_peer(node_id);
+            TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment])
+        });
     tokio::spawn(
         transaction_box
             .sink_map_err(move |_| {

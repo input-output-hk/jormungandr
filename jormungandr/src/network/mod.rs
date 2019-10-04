@@ -14,6 +14,7 @@ mod service;
 mod subscription;
 
 // Constants
+
 mod chain_pull {
     // Size of chunks to split processing of chain pull streams.
     // Apart from sizing data chunks for intercom messages, it also
@@ -106,12 +107,14 @@ impl GlobalState {
                 .map(|trusted_peer| poldercast::Node::new_with(trusted_peer)),
         ));
 
+        let peers = Peers::new(config.max_connections, logger.clone());
+
         GlobalState {
             block0_hash,
             config,
             topology,
             node,
-            peers: Peers::new(logger.clone()),
+            peers,
             logger,
         }
     }

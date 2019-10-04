@@ -33,6 +33,10 @@ pub struct Listen {
     pub timeout: Duration,
 }
 
+/// The limit on the number of simultaneous P2P connections
+/// used unless the corresponding configuration option is specified.
+pub const DEFAULT_MAX_CONNECTIONS: usize = 256;
+
 const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 
 ///
@@ -57,6 +61,9 @@ pub struct Configuration {
 
     /// the topic we are interested to hear about
     pub subscriptions: BTreeMap<Topic, InterestLevel>,
+
+    /// Maximum allowed number of peer connections.
+    pub max_connections: usize,
 
     /// the default value for the timeout for inactive connection
     pub timeout: Duration,

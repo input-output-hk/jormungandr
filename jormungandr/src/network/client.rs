@@ -119,6 +119,7 @@ where
                     // managed with just the global state.
                     subscription::process_fragments(
                         fragment_sub,
+                        node_id,
                         state.global.clone(),
                         channels.transaction_box.clone(),
                         logger.clone(),

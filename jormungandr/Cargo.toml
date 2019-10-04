@@ -12,6 +12,7 @@ Midgard Serpent
 
 [dependencies]
 actix-net = "0.2.6"
+actix-threadpool = "0.1.2"
 actix-web = { version = "0.7.18", default-features = false, features = [ "tls" ] }
 juniper = "0.13.1"
 bincode = "1.0.1"
@@ -32,6 +33,7 @@ humantime = "1.2"
 hyper = "0.12"
 jormungandr-lib = { path = "../jormungandr-lib" }
 lazy_static = "1.3"
+linked-hash-map = "0.5"
 native-tls = "0.2.2"
 network-core    = { path = "../chain-deps/network-core" }
 network-grpc    = { path = "../chain-deps/network-grpc" }
@@ -51,7 +53,6 @@ slog-stdlog = "4.0"
 slog-term = "2.4.0"
 structopt = "^0.2"
 tokio      = "^0.1.16"
-actix-threadpool = "0.1.2"
 
 [build-dependencies]
 versionisator = "1.0"
