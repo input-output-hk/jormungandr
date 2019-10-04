@@ -399,7 +399,7 @@ where
             // Drive any pending activity of the gRPC client until it is ready
             // to process another request.
             try_ready!(self.service.poll_ready().map_err(|e| {
-                warn!(self.logger, "P2P client error: {:?}", e);
+                info!(self.logger, "P2P client connection error: {:?}", e);
             }));
             let mut streams_ready = false;
             if let Some(ref mut future) = self.sending_block_msg {
