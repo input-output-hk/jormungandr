@@ -487,8 +487,9 @@ pub fn connect(
                 info!(connect_err_logger, "error connecting to peer"; "reason" => %e);
             } else if let Some(e) = e.http_error() {
                 info!(connect_err_logger, "HTTP/2 handshake error"; "reason" => %e);
+            } else {
+                warn!(connect_err_logger, "error while connecting to peer"; "error" => ?e);
             }
-            warn!(connect_err_logger, "error while connecting to peer"; "error" => ?e);
         })
         .and_then(move |conn| {
             conn.ready().map_err(move |e| {
