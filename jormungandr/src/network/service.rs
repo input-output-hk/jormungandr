@@ -172,7 +172,7 @@ impl BlockService for NodeService {
             subscriber,
             self.global_state.clone(),
             self.channels.block_box.clone(),
-            self.logger().clone(),
+            self.logger().new(o!("node_id" => subscriber.to_string())),
         );
 
         let subscription = self
@@ -242,7 +242,7 @@ impl FragmentService for NodeService {
             subscriber,
             self.global_state.clone(),
             self.channels.transaction_box.clone(),
-            self.logger().clone(),
+            self.logger().new(o!("node_id" => subscriber.to_string())),
         );
 
         let subscription = self.global_state.peers.subscribe_to_fragments(subscriber);
@@ -263,7 +263,11 @@ impl GossipService for NodeService {
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        subscription::process_gossip(inbound, self.global_state.clone(), self.logger().clone());
+        subscription::process_gossip(
+            inbound,
+            self.global_state.clone(),
+            self.logger().new(o!("node_id" => subscriber.to_string())),
+        );
 
         let subscription = self.global_state.peers.subscribe_to_gossip(subscriber);
         future::ok(subscription)
