@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 pub struct BlockCursor(blockcfg::ChainLength);
 
 juniper::graphql_scalar!(BlockCursor where Scalar = <S> {
-    description: "Opaque cursor to use in block pagination"
+    description: "Opaque cursor to use in block pagination, a client should not rely in its representation"
 
     // FIXME: Cursors are recommended to be opaque, but I'm not sure it is worth to
     // obfuscate its representation
@@ -87,6 +87,7 @@ impl BlockEdge {
         &self.node
     }
 
+    /// A cursor for use in pagination
     pub fn cursor(&self) -> &BlockCursor {
         &self.cursor
     }
@@ -110,12 +111,16 @@ impl BlockConnection {
         &self.edges
     }
 
+    /// A count of the total number of objects in this connection, ignoring pagination.
     pub fn total_count(&self) -> &BlockCount {
         &self.total_count
     }
 }
 
 impl BlockConnection {
+    // The lower and upper bound are used to define all the blocks this connection will show
+    // In particular, they are used to paginate Epoch blocks from first block in epoch to
+    // last.
     pub fn new(
         lower_bound: BlockCursor,
         upper_bound: BlockCursor,
