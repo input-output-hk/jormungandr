@@ -50,18 +50,24 @@ pub fn run_listen_socket(
                     );
 
                     let conn = server.serve(stream);
-                    tokio::spawn(conn.map_err(move |e| {
-                        use network_grpc::server::Error;
+                    tokio::spawn(
+                        conn.then(move |res| {
+                            use network_grpc::server::Error;
 
-                        match e {
-                            Error::Protocol(e) => {
-                                info!(conn_logger, "incoming P2P HTTP/2 connection error"; "reason" => %e)
+                            match res {
+                                Ok(()) => {
+                                    info!(conn_logger, "incoming P2P connection closed");
+                                }
+                                Err(Error::Protocol(e)) => {
+                                    info!(conn_logger, "incoming P2P HTTP/2 connection error"; "reason" => %e);
+                                }
+                                Err(e) => {
+                                    warn!(conn_logger, "incoming P2P connection failed"; "error" => ?e);
+                                }
                             }
-                            _ => {
-                                warn!(conn_logger, "incoming P2P connection failed"; "error" => ?e);
-                            }
-                        }
-                    }));
+                            Ok(())
+                        })
+                    );
 
                     future::ok(server)
                 })
