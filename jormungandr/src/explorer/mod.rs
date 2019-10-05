@@ -349,6 +349,29 @@ impl ExplorerDB {
         self.with_latest_state(move |state| state.addresses.lookup(&address).map(|set| set.clone()))
     }
 
+    // Get the hashes of all blocks in the range [from, to)
+    // the ChainLength is returned to for easy of use in the case where
+    // `to` is greater than the max
+    pub fn get_block_hash_range(
+        &self,
+        from: ChainLength,
+        to: ChainLength,
+    ) -> impl Future<Item = Vec<(HeaderHash, ChainLength)>, Error = Infallible> {
+        let from = u32::from(from);
+        let to = u32::from(to);
+
+        self.with_latest_state(move |state| {
+            (from..to)
+                .filter_map(|i| {
+                    state
+                        .chain_lengths
+                        .lookup(&i.into())
+                        .map(|b| ((*b).clone(), i.into()))
+                })
+                .collect()
+        })
+    }
+
     /// run given function with the longest branch's state
     fn with_latest_state<T>(
         &self,
