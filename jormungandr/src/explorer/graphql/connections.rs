@@ -6,6 +6,7 @@ use futures::Future;
 use juniper::{FieldResult, ParseScalarResult, ParseScalarValue, Value};
 use std::convert::TryFrom;
 
+#[derive(Clone)]
 pub struct BlockCursor(blockcfg::ChainLength);
 
 juniper::graphql_scalar!(BlockCursor where Scalar = <S> {
@@ -188,7 +189,7 @@ impl BlockConnection {
 
         let has_next_page = to < upper_bound;
         let has_previous_page = from > lower_bound;
-        let edges = db
+        let edges: Vec<_> = db
             .get_block_hash_range(from.into(), (to + 1).into())
             .wait()?
             .iter()
@@ -198,13 +199,19 @@ impl BlockConnection {
             })
             .collect();
 
+        let start_cursor = edges.first().expect("to be at least 1 edge").cursor.clone();
+        let end_cursor = edges
+            .last()
+            .map(|e| e.cursor.clone())
+            .unwrap_or(start_cursor.clone());
+
         Ok(BlockConnection {
             edges,
             page_info: PageInfo {
                 has_next_page,
                 has_previous_page,
-                start_cursor: lower_bound.into(),
-                end_cursor: upper_bound.into(),
+                start_cursor,
+                end_cursor,
             },
             total_count: (upper_bound - lower_bound).into(),
         })
