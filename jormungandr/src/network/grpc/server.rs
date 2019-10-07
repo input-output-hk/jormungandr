@@ -1,6 +1,8 @@
 use super::super::{service::NodeService, Channels, GlobalStateR};
 use crate::settings::start::network::Listen;
 use network_grpc::server::{self, Server};
+
+use futures::future::Either;
 use tokio::prelude::*;
 
 pub fn run_listen_socket(
@@ -21,7 +23,7 @@ pub fn run_listen_socket(
                 state.logger(),
                 "Error while listening on {}: {}", sockaddr, error
             );
-            unimplemented!()
+            Either::A(future::err(()))
         }
         Ok(listener_stream) => {
             let fold_logger = state.logger().clone();
@@ -29,7 +31,7 @@ pub fn run_listen_socket(
             let node_server = NodeService::new(channels, state);
             let server = Server::new(node_server);
 
-            listener_stream
+            let future = listener_stream
                 .map_err(move |err| {
                     // error while receiving an incoming connection
                     // here we might need to log the error and try
@@ -79,7 +81,9 @@ pub fn run_listen_socket(
 
                     Ok(server)
                 })
-                .map(|_| ())
+                .map(|_| ());
+
+            Either::B(future)
         }
     }
 }
