@@ -139,8 +139,13 @@ pub trait BlockStore {
         for_path_to_nth_ancestor(self, block_hash, distance, |_| {})
     }
 
-    /// Determine whether block 'ancestor' is an ancestor block
-    /// 'descendent'. If so, return the chain distance between them.
+    /// Determine whether block 'ancestor' is an ancestor of block 'descendent'
+    ///
+    /// Returned values:
+    /// - `Ok(Some(dist))` - `ancestor` is ancestor of `descendent`
+    ///     and there are `dist` blocks between them
+    /// - `Ok(None)` - `ancestor` is not ancestor of `descendent`
+    /// - `Err(error)` - `ancestor` or `descendent` was not found
     fn is_ancestor(
         &self,
         ancestor: &<Self::Block as Block>::Id,
