@@ -146,6 +146,15 @@ impl JCLITransactionWrapper {
         )
     }
 
+    pub fn assert_add_certificate(&mut self, certificate: &str) -> &mut Self {
+        let output = process_utils::run_process_and_get_output(
+            self.commands
+                .get_add_certificate_command(&certificate, &self.staging_file_path),
+        );
+        process_assert::assert_process_exited_successfully(output);
+        self
+    }
+
     pub fn assert_add_account(&mut self, account_addr: &str, amount: &Value) -> &mut Self {
         let output =
             process_utils::run_process_and_get_output(self.commands.get_add_account_command(
