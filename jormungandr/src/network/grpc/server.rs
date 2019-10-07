@@ -41,8 +41,16 @@ pub fn run_listen_socket(
                 })
                 .fold(server, move |mut server, stream| {
                     // received incoming connection
-                    let conn_logger =
-                        fold_logger.new(o!("peer_addr" => stream.peer_addr().unwrap()));
+                    let conn_logger = match stream.peer_addr() {
+                        Ok(addr) => fold_logger.new(o!("peer_addr" => addr)),
+                        Err(e) => {
+                            debug!(
+                                fold_logger,
+                                "connection rejected because peer address can't be obtained";
+                                "reason" => %e);
+                            return Ok(server)
+                        },
+                    };
                     info!(
                         conn_logger,
                         "incoming P2P connection on {}",
@@ -69,7 +77,7 @@ pub fn run_listen_socket(
                         })
                     );
 
-                    future::ok(server)
+                    Ok(server)
                 })
                 .map(|_| ())
         }
