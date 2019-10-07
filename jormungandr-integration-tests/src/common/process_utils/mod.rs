@@ -114,12 +114,12 @@ pub fn run_process_until_exited_successfully(
 pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
     mut command: Command,
     is_output_ok: F,
-    timeout: u64,
-    max_attempts: i32,
+    sleep_between_attempt: u64,
+    max_attempts: u64,
     command_description: &str,
     error_description: &str,
 ) -> Result<(), ProcessError> {
-    let one_second = time::Duration::from_millis(&timeout * 1000);
+    let sleep_between_attempt_duration = time::Duration::from_millis(&sleep_between_attempt * 1000);
     let mut attempts = max_attempts.clone();
 
     println!("Running command {:?} in loop", command);
@@ -146,20 +146,20 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
 
         println!(
             "non-zero status with message(). waiting {} s and trying again ({} of {})",
-            &timeout,
+            &sleep_between_attempt,
             &max_attempts - &attempts + 1,
             &max_attempts
         );
 
         attempts = attempts - 1;
-        thread::sleep(one_second);
+        thread::sleep(sleep_between_attempt_duration);
     }
 
     if attempts <= 0 {
         return Err(ProcessError::ProcessExited {
             message: format!(
                 "{} (tried to connect {} times with {} s interval)",
-                &error_description, &max_attempts, &timeout
+                &error_description, &max_attempts, &sleep_between_attempt
             ),
         });
     }

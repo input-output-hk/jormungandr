@@ -23,7 +23,7 @@ pub fn two_nodes_communication() {
         .with_block_hash(leader_config.genesis_block_hash.clone())
         .build();
 
-    let _trusted_jormungandr = startup::start_jormungandr_node_as_slave(&mut trusted_node_config);
+    let _trusted_jormungandr = startup::start_jormungandr_node_as_passive(&mut trusted_node_config);
     let leader_jormungandr_rest_address = leader_config.get_node_address();
     let trusted_jormungandr_rest_address = trusted_node_config.get_node_address();
 
