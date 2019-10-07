@@ -8,6 +8,12 @@ pub struct DelegationType {
     pools: Vec<(Hash, u8)>,
 }
 
+impl DelegationType {
+    pub fn pools(&self) -> Vec<(Hash, u8)> {
+        self.pools.clone()
+    }
+}
+
 impl From<account::DelegationType> for DelegationType {
     fn from(dt: account::DelegationType) -> Self {
         match dt {
