@@ -2,8 +2,8 @@ use crate::common::configuration::genesis_model::{Fund, GenesisYaml, Initial};
 use crate::common::configuration::jormungandr_config::JormungandrConfig;
 use crate::common::file_utils;
 use crate::common::jcli_wrapper;
-use crate::common::jcli_wrapper::Discrimination;
 use crate::common::startup;
+use chain_addr::Discrimination;
 
 #[test]
 pub fn test_genesis_block_is_built_from_corect_yaml() {

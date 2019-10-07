@@ -1,7 +1,7 @@
 use crate::common::configuration::genesis_model::Fund;
 use crate::common::jcli_wrapper;
-use crate::common::jcli_wrapper::Discrimination;
 use crate::common::startup;
+use chain_addr::Discrimination;
 
 #[test]
 pub fn test_correct_utxos_are_read_from_node() {

@@ -19,11 +19,7 @@ use super::process_utils::output_extensions::ProcessOutput;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-#[derive(PartialEq)]
-pub enum Discrimination {
-    Production,
-    Test,
-}
+use chain_addr::Discrimination;
 
 pub fn assert_genesis_encode(
     genesis_yaml_file_path: &PathBuf,

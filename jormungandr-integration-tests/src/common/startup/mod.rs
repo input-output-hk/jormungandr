@@ -13,14 +13,13 @@ use jormungandr_lib::interfaces::UTxOInfo;
 use std::path::PathBuf;
 
 use crate::common::jcli_wrapper;
-use crate::common::jcli_wrapper::Discrimination;
+use chain_addr::Discrimination;
 
 pub use self::configuration_builder::ConfigurationBuilder;
 
 pub use self::starter::{
     assert_start_jormungandr_node_as_passive_fail, start_jormungandr_node,
     start_jormungandr_node_as_leader, start_jormungandr_node_as_passive,
-    start_jormungandr_node_as_slave,
 };
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
