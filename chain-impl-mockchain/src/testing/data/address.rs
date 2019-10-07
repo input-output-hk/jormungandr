@@ -19,7 +19,7 @@ use std::fmt::{self, Debug};
 ///
 #[derive(Clone)]
 pub struct AddressData {
-    private_key: EitherEd25519SecretKey,
+    pub private_key: EitherEd25519SecretKey,
     pub spending_counter: Option<SpendingCounter>,
     pub address: Address,
 }
@@ -41,6 +41,7 @@ impl PartialEq for AddressData {
 }
 
 impl AddressData {
+
     pub fn new(
         private_key: EitherEd25519SecretKey,
         spending_counter: Option<SpendingCounter>,
