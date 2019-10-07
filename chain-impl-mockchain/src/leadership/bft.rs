@@ -98,21 +98,3 @@ impl From<PublicKey<BftVerificationAlg>> for LeaderId {
         LeaderId(v)
     }
 }
-
-#[cfg(test)]
-pub mod test {
-    use super::*;
-    use chain_crypto::SecretKey;
-    use quickcheck::{Arbitrary, Gen};
-
-    impl Arbitrary for LeaderId {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut seed = [0; 32];
-            for byte in seed.iter_mut() {
-                *byte = Arbitrary::arbitrary(g);
-            }
-            let sk: SecretKey<Ed25519> = Arbitrary::arbitrary(g);
-            LeaderId(sk.to_public())
-        }
-    }
-}

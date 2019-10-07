@@ -8,6 +8,12 @@ use std::time::{Duration, SystemTime};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Slot(pub(crate) u64);
 
+impl Into<Slot> for u64 {
+    fn into(self) -> Slot {
+        Slot(self)
+    }
+}
+
 impl From<Slot> for u64 {
     fn from(s: Slot) -> u64 {
         s.0
