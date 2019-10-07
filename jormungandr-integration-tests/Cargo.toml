@@ -5,10 +5,10 @@ authors = [ "dev@iohk.io" ]
 edition = "2018"
 
 [dev-dependencies]
-chain-core           = { path = "../chain-deps/chain-core" }
-chain-crypto         = { path = "../chain-deps/chain-crypto" }
-chain-addr           = { path = "../chain-deps/chain-addr" }
-chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
+chain-core           = { path = "../chain-deps/chain-core", features=["property-test-api"]}
+chain-crypto         = { path = "../chain-deps/chain-crypto", features=["property-test-api"]}
+chain-addr           = { path = "../chain-deps/chain-addr", features=["property-test-api"]}
+chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain", features=["property-test-api"]}
 jormungandr-lib = { path = "../jormungandr-lib" }
 rand = "0.6"
 rand_core = "0.3"
@@ -31,3 +31,4 @@ jcli = { path = "../jcli" }
 
 [features]
 soak-test = []
+testnet = []
