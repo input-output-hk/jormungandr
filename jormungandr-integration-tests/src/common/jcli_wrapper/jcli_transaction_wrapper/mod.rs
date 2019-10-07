@@ -55,7 +55,11 @@ impl JCLITransactionWrapper {
             )
             .assert_add_output(&receiver.get_address(), output_amount)
             .assert_finalize()
-            .seal_with_witness_default(&sender.get_private_key(), &receiver.get_address_type())
+            .seal_with_witness_default(
+                &sender.get_private_key(),
+                &receiver.get_address_type(),
+                sender.get_spending_key(),
+            )
             .assert_to_message()
     }
 
@@ -72,7 +76,11 @@ impl JCLITransactionWrapper {
             .assert_add_input(transaction_id, transaction_index, input_amount)
             .assert_add_output(&receiver.get_address(), &output_amount)
             .assert_finalize()
-            .seal_with_witness_default(&sender.get_private_key(), &receiver.get_address_type())
+            .seal_with_witness_default(
+                &sender.get_private_key(),
+                &receiver.get_address_type(),
+                sender.get_spending_key(),
+            )
             .assert_to_message()
     }
 
@@ -219,8 +227,9 @@ impl JCLITransactionWrapper {
         &mut self,
         private_key: &str,
         transaction_type: &str,
+        spending_key: Option<u64>,
     ) -> &mut Self {
-        let witness = self.create_witness_from_key(&private_key, &transaction_type);
+        let witness = self.create_witness_from_key(&private_key, &transaction_type, spending_key);
         self.assert_make_witness(&witness);
         self.assert_add_witness(&witness);
         self
@@ -230,15 +239,20 @@ impl JCLITransactionWrapper {
         &mut self,
         address: &T,
     ) -> &mut Self {
-        self.seal_with_witness_default(&address.get_private_key(), &address.get_address_type())
+        self.seal_with_witness_default(
+            &address.get_private_key(),
+            &address.get_address_type(),
+            address.get_spending_key(),
+        )
     }
 
     pub fn seal_with_witness_default(
         &mut self,
         private_key: &str,
         transaction_type: &str,
+        spending_key: Option<u64>,
     ) -> &mut Self {
-        let witness = self.create_witness_from_key(&private_key, &transaction_type);
+        let witness = self.create_witness_from_key(&private_key, &transaction_type, spending_key);
         self.seal_with_witness(&witness);
         self
     }
@@ -256,7 +270,7 @@ impl JCLITransactionWrapper {
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 &witness.addr_type,
-                &witness.spending_account_counter,
+                witness.spending_account_counter,
                 &witness.file,
                 &witness.private_key_path,
             ));
@@ -270,7 +284,7 @@ impl JCLITransactionWrapper {
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 &witness.addr_type,
-                &witness.spending_account_counter,
+                witness.spending_account_counter,
                 &witness.file,
                 &witness.private_key_path,
             ),
@@ -278,21 +292,26 @@ impl JCLITransactionWrapper {
         );
     }
 
-    pub fn create_witness_from_key(&self, private_key: &str, addr_type: &str) -> Witness {
+    pub fn create_witness_from_key(
+        &self,
+        private_key: &str,
+        addr_type: &str,
+        spending_key: Option<u64>,
+    ) -> Witness {
         let transaction_id = self.get_transaction_id();
         let witness = Witness::new(
             &self.genesis_hash,
             &transaction_id,
             &addr_type,
             private_key,
-            &0,
+            spending_key,
         );
         witness
     }
 
-    pub fn create_witness_default(&self, addr_type: &str) -> Witness {
+    pub fn create_witness_default(&self, addr_type: &str, spending_key: Option<u64>) -> Witness {
         let private_key = jcli_wrapper::assert_key_generate_default();
-        self.create_witness_from_key(&private_key, &addr_type)
+        self.create_witness_from_key(&private_key, &addr_type, spending_key)
     }
 
     pub fn assert_add_witness_fail(&mut self, witness: &Witness, expected_part: &str) -> () {

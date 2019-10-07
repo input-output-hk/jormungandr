@@ -52,12 +52,7 @@ pub fn create_new_account_address() -> Account {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     let address = jcli_wrapper::assert_address_account(&public_key, Discrimination::Test);
-    let account = Account {
-        private_key,
-        public_key,
-        address,
-    };
-    account
+    Account::new(&private_key, &public_key, &address)
 }
 
 pub fn create_new_delegation_address() -> Delegation {
