@@ -1,5 +1,37 @@
 # Change Log
 
+## [v0.5.6](https://github.com/input-output-hk/jormungandr/tree/v0.5.6) (2019-10-07)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.5...v0.5.6)
+
+**Implemented enhancements:**
+
+- \(enhancement\) Enhance the output of `rest v0 settings get` command [\#884](https://github.com/input-output-hk/jormungandr/issues/884)
+- Fix panic on short-lived incoming connections [\#899](https://github.com/input-output-hk/jormungandr/pull/899)
+- Add paginated blocks query as a BlockConnection [\#889](https://github.com/input-output-hk/jormungandr/pull/889)
+- Jormungandr: enrich rest get\_settings [\#887](https://github.com/input-output-hk/jormungandr/pull/887)
+- Add certificate query for transaction [\#878](https://github.com/input-output-hk/jormungandr/pull/878)
+
+**Fixed bugs:**
+
+- Errors reported in logs on 0.5.4 [\#867](https://github.com/input-output-hk/jormungandr/issues/867)
+- Return HTTP 400 from next\_id when block is not in tip chain [\#894](https://github.com/input-output-hk/jormungandr/pull/894)
+
+**Closed issues:**
+
+- 500 Internal Server error querying next-id [\#888](https://github.com/input-output-hk/jormungandr/issues/888)
+- Connection refused \(os error 111\) [\#886](https://github.com/input-output-hk/jormungandr/issues/886)
+- My local node/stake pool did not create any block [\#840](https://github.com/input-output-hk/jormungandr/issues/840)
+
+**Merged pull requests:**
+
+- Handle listening error in run\_listen\_socket [\#901](https://github.com/input-output-hk/jormungandr/pull/901)
+- bump our full version generator library to include the proper target ARCH and OS [\#898](https://github.com/input-output-hk/jormungandr/pull/898)
+- Ignore per-connection accept\(\) errors [\#896](https://github.com/input-output-hk/jormungandr/pull/896)
+- Log termination of P2P connections [\#892](https://github.com/input-output-hk/jormungandr/pull/892)
+- Network improvements: less noisy logging, evict peers more actively [\#891](https://github.com/input-output-hk/jormungandr/pull/891)
+- Implement connection limit [\#890](https://github.com/input-output-hk/jormungandr/pull/890)
+- Less spammy network logging [\#885](https://github.com/input-output-hk/jormungandr/pull/885)
+
 ## [v0.5.5](https://github.com/input-output-hk/jormungandr/tree/v0.5.5) (2019-10-01)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.4...v0.5.5)
 
