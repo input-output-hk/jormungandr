@@ -46,4 +46,4 @@ maplit = "1.0.2"
 mktemp = "0.4.0"
 
 [build-dependencies]
-versionisator = "1.0"
+versionisator = "1.0.2"
