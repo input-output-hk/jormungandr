@@ -408,3 +408,11 @@ pub fn assert_get_rest_settings(host: &str) -> SettingsDto {
     let settings: SettingsDto = serde_yaml::from_str(&content).expect("Failed to parse settings");
     settings
 }
+
+pub fn assert_rest_get_stake_pools(host: &str) -> Vec<String> {
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_stake_pools_command(&host));
+    let content = output.as_lossy_string();
+    process_assert::assert_process_exited_successfully(output);
+    serde_yaml::from_str(&content).expect("Failed to parse settings")
+}

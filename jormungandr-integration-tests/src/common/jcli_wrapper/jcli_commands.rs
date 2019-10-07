@@ -297,3 +297,15 @@ pub fn get_rest_settings_command(host: &str) -> Command {
         .arg(&host);
     command
 }
+
+pub fn get_stake_pools_command(host: &str) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("stake-pools")
+        .arg("get")
+        .arg("--host")
+        .arg(&host);
+    command
+}
