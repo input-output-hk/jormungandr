@@ -20,6 +20,7 @@ pub struct Peer2Peer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trusted_peers: Option<Vec<String>>,
     pub public_address: String,
+    pub listen_address: String,
     pub topics_of_interest: TopicsOfInterest,
 }
 
@@ -38,6 +39,8 @@ pub struct NodeConfig {
     pub rest: Option<Rest>,
     pub p2p: Peer2Peer,
 }
+
+const DEFAULT_HOST: &str = "127.0.0.1";
 
 impl NodeConfig {
     pub fn serialize(node_config: &NodeConfig) -> PathBuf {
@@ -58,11 +61,20 @@ impl NodeConfig {
                 format: Some("json".to_string()),
             }),
             rest: Some(Rest {
-                listen: format!("127.0.0.1:{}", rest_port.to_string()),
+                listen: format!("{}:{}", DEFAULT_HOST, rest_port.to_string()),
             }),
             p2p: Peer2Peer {
                 trusted_peers: None,
-                public_address: format!("/ip4/127.0.0.1/tcp/{}", public_address_port.to_string()),
+                public_address: format!(
+                    "/ip4/{}/tcp/{}",
+                    DEFAULT_HOST,
+                    public_address_port.to_string()
+                ),
+                listen_address: format!(
+                    "/ip4/{}/tcp/{}",
+                    DEFAULT_HOST,
+                    public_address_port.to_string()
+                ),
                 topics_of_interest: TopicsOfInterest {
                     messages: String::from("high"),
                     blocks: String::from("high"),
