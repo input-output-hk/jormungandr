@@ -34,8 +34,8 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
         .assert_add_output(&receiver.address, &utxo.associated_fund())
         .assert_finalize();
 
-    let witness1 = transaction_wrapper.create_witness_default("utxo");
-    let witness2 = transaction_wrapper.create_witness_default("utxo");
+    let witness1 = transaction_wrapper.create_witness_default("utxo", None);
+    let witness2 = transaction_wrapper.create_witness_default("utxo", None);
 
     transaction_wrapper
         .assert_make_witness(&witness1)
@@ -109,7 +109,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &utxo.associated_fund())
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
@@ -135,7 +135,7 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &utxo.associated_fund())
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     let transaction_id =
@@ -188,7 +188,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &transfer_amount)
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     // assert account received funds
@@ -228,7 +228,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &transfer_amount)
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
@@ -255,7 +255,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &transfer_amount)
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
@@ -282,7 +282,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &transfer_amount)
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
@@ -308,7 +308,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &utxo.associated_fund())
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
@@ -334,7 +334,7 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
         .assert_add_account(&sender.address, &transfer_amount)
         .assert_add_output(&receiver.address, &transfer_amount)
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "account")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
@@ -360,7 +360,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
         .assert_add_account(&sender.address, &transfer_amount)
         .assert_add_output(&receiver.address, &transfer_amount)
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "account")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
 }
@@ -386,7 +386,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &transfer_amount)
         .assert_finalize()
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
@@ -536,7 +536,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
                 certificate: 0,
             },
         )
-        .seal_with_witness_default(&sender.private_key, "utxo")
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr_rest_address);
