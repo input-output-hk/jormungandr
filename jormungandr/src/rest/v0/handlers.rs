@@ -177,8 +177,8 @@ pub fn get_block_next_id(
                     .stream_from_to(block_id, tip.hash())
                     .then(|res| match res {
                         Ok(Some(stream)) => Ok(stream.map_err(ErrorInternalServerError)),
-                        Ok(None) => Err(ErrorInternalServerError("Tip block is parent of a block")),
-                        Err(e) => Err(ErrorBadRequest(e)),
+                        Ok(None) => Err(ErrorNotFound("Block is not in chain of the tip")),
+                        Err(e) => Err(ErrorNotFound(e)),
                     })
             })
         })
