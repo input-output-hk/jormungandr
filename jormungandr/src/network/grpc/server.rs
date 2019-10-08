@@ -1,8 +1,7 @@
-use super::super::{service::NodeService, Channels, GlobalStateR};
+use super::super::{service::NodeService, Channels, GlobalStateR, ListenError};
 use crate::settings::start::network::Listen;
 use network_grpc::server::{self, Server};
 
-use futures::future::Either;
 use tk_listen::ListenExt;
 use tokio::prelude::*;
 
@@ -10,7 +9,7 @@ pub fn run_listen_socket(
     listen: Listen,
     state: GlobalStateR,
     channels: Channels,
-) -> impl Future<Item = (), Error = ()> {
+) -> Result<impl Future<Item = (), Error = ()>, ListenError> {
     let sockaddr = listen.address();
 
     info!(
@@ -19,13 +18,7 @@ pub fn run_listen_socket(
     );
 
     match server::listen(&sockaddr) {
-        Err(error) => {
-            error!(
-                state.logger(),
-                "Error while listening on {}: {}", sockaddr, error
-            );
-            Either::A(future::err(()))
-        }
+        Err(e) => Err(ListenError { cause: e, sockaddr }),
         Ok(listener_stream) => {
             let max_connections = state.config.max_connections;
             let fold_logger = state.logger().clone();
@@ -87,7 +80,7 @@ pub fn run_listen_socket(
                 })
                 .listen(max_connections);
 
-            Either::B(future)
+            Ok(future)
         }
     }
 }

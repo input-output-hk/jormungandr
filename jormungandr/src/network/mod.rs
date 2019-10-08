@@ -42,10 +42,35 @@ use futures::stream;
 use network_core::gossip::{Gossip, Node};
 use rand::seq::SliceRandom;
 use slog::Logger;
-use std::{iter, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::timer::Interval;
 
+use std::error;
+use std::fmt;
+use std::io;
+use std::iter;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
+
 pub use self::bootstrap::Error as BootstrapError;
+
+#[derive(Debug)]
+pub struct ListenError {
+    cause: io::Error,
+    sockaddr: SocketAddr,
+}
+
+impl fmt::Display for ListenError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "failed to listen for connections on {}", self.sockaddr)
+    }
+}
+
+impl error::Error for ListenError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        Some(&self.cause)
+    }
+}
 
 type Connection = SocketAddr;
 
@@ -160,7 +185,7 @@ pub struct TaskParams {
     pub logger: Logger,
 }
 
-pub fn run(params: TaskParams) {
+pub fn start(params: TaskParams) -> Result<impl Future<Item = (), Error = ()>, ListenError> {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
@@ -182,7 +207,7 @@ pub fn run(params: TaskParams) {
                 listen,
                 global_state.clone(),
                 channels.clone(),
-            )),
+            )?),
             Protocol::Ntt => unimplemented!(),
         }
     } else {
@@ -236,7 +261,7 @@ pub fn run(params: TaskParams) {
             Ok(())
         });
 
-    tokio::run(listener.join4(connections, handle_cmds, gossip).map(|_| ()));
+    Ok(listener.join4(connections, handle_cmds, gossip).map(|_| ()))
 }
 
 fn handle_network_input(

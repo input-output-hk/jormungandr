@@ -274,6 +274,13 @@ impl TokioServiceInfo {
         &self.logger
     }
 
+    /// Extract the service's logger, dropping the rest of the
+    /// `TokioServiceInfo` instance.
+    #[inline]
+    pub fn into_logger(self) -> Logger {
+        self.logger
+    }
+
     /// spawn a future within the service's tokio executor
     pub fn spawn<F>(&self, future: F)
     where
