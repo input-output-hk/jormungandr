@@ -1,11 +1,20 @@
 use super::commands::CertificateCommands;
 
-use crate::common::file_assert;
-use crate::common::file_utils;
-use crate::common::process_assert;
-use crate::common::process_utils;
-use crate::common::process_utils::output_extensions::ProcessOutput;
+use crate::common::{
+    file_assert, file_utils, process_assert,
+    process_utils::{self, output_extensions::ProcessOutput},
+};
+
+use chain_crypto::{Ed25519, SecretKey};
+use chain_impl_mockchain::{
+    certificate::PoolId, key::EitherEd25519SecretKey,
+    testing::builders::cert_builder::build_stake_pool_retirement_cert,
+};
+use jcli::jcli_app::utils::key_parser::parse_ed25519_secret_key;
 use std::path::PathBuf;
+use std::str::FromStr;
+
+use jormungandr_lib::interfaces::Certificate;
 
 #[derive(Debug)]
 pub struct JCLICertificateWrapper {
@@ -30,27 +39,25 @@ impl JCLICertificateWrapper {
         certification
     }
 
-    pub fn assert_new_stake_key_registration(&self, delegation_key: &str) -> String {
-        println!("Running new stake key registration...");
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_stake_key_registration_command(&delegation_key),
-        );
-        let certification = output.as_single_line();
-        process_assert::assert_process_exited_successfully(output);
-        certification
-    }
-
     pub fn assert_new_stake_pool_registration(
         &self,
         kes_key: &str,
         serial_id: &str,
         vrf_key: &str,
+        start_validity: u32,
+        management_threshold: u32,
+        owner_pk: &str,
     ) -> String {
         println!("Running new stake pool registration...");
         let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_stake_pool_registration_command(&kes_key, &serial_id, &vrf_key),
+            self.commands.get_stake_pool_registration_command(
+                &kes_key,
+                &serial_id,
+                &vrf_key,
+                start_validity,
+                management_threshold,
+                owner_pk,
+            ),
         );
         let certification = output.as_single_line();
         process_assert::assert_process_exited_successfully(output);
@@ -93,9 +100,18 @@ impl JCLICertificateWrapper {
         node_id: &str,
         pool_vrf_pk: &str,
         stake_key_file: &PathBuf,
+        start_validity: u32,
+        management_threshold: u32,
+        owner_pk: &str,
     ) -> PathBuf {
-        let stake_pool_cert =
-            self.assert_new_stake_pool_registration(&pool_kes_pk, &node_id, &pool_vrf_pk);
+        let stake_pool_cert = self.assert_new_stake_pool_registration(
+            &pool_kes_pk,
+            &node_id,
+            &pool_vrf_pk,
+            start_validity,
+            management_threshold,
+            owner_pk,
+        );
         let stake_pool_cert_file =
             file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_cert);
 
@@ -128,5 +144,18 @@ impl JCLICertificateWrapper {
             &stake_delegation_signcert_file,
         );
         file_utils::read_file(&stake_delegation_signcert_file)
+    }
+
+    pub fn assert_new_signed_stake_pool_retirement(
+        &self,
+        stake_pool_id: &str,
+        private_key: &str,
+    ) -> String {
+        let pool_id = PoolId::from_str(&stake_pool_id).unwrap();
+        let start_validity = 0u64;
+        let signature = parse_ed25519_secret_key(&private_key).unwrap();
+        let certificate =
+            build_stake_pool_retirement_cert(pool_id, start_validity, &vec![signature]);
+        format!("{}", Certificate(certificate).to_bech32().unwrap())
     }
 }

@@ -65,14 +65,11 @@ pub fn get_start_jormungandr_as_slave_node_command(
 pub fn get_start_jormungandr_as_passive_node_command(
     config_path: &PathBuf,
     genesis_block_hash: &String,
-    secret_path: &PathBuf,
     log_file_path: &PathBuf,
 ) -> Command {
     let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
     set_json_logger(&mut command);
     command
-        .arg("--secret")
-        .arg(secret_path.as_os_str())
         .arg("--config")
         .arg(config_path.as_os_str())
         .arg("--genesis-block-hash")

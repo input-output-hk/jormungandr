@@ -45,9 +45,19 @@ pub struct BlockchainConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LinearFees {
-    pub constant: u32,
-    pub coefficient: u32,
-    pub certificate: u32,
+    pub constant: u64,
+    pub coefficient: u64,
+    pub certificate: u64,
+}
+
+impl From<chain_impl_mockchain::fee::LinearFee> for LinearFees {
+    fn from(fees: chain_impl_mockchain::fee::LinearFee) -> LinearFees {
+        LinearFees {
+            constant: fees.constant,
+            coefficient: fees.coefficient,
+            certificate: fees.certificate,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

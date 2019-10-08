@@ -6,7 +6,8 @@ mod debug;
 mod key;
 mod rest;
 mod transaction;
-mod utils;
+
+pub mod utils;
 
 use std::error::Error;
 use structopt::StructOpt;

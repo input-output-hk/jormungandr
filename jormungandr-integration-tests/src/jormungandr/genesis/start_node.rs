@@ -28,6 +28,9 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
         "1010101010",
         &pool_vrf.public_key,
         &stake_key_file,
+        0,
+        1,
+        &stake_key_pub,
     );
     let stake_pool_signcert = file_utils::read_file(&stake_pool_signcert_file);
 
@@ -89,6 +92,9 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         "1010101010",
         &pool_vrf.public_key,
         &stake_key_file,
+        0,
+        1,
+        &faucet.public_key,
     );
     let stake_pool_signcert = file_utils::read_file(&stake_pool_signcert_file);
 

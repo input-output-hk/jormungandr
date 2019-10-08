@@ -28,21 +28,14 @@ impl CertificateCommands {
         command
     }
 
-    pub fn get_stake_key_registration_command(&self, delegation_key: &str) -> Command {
-        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
-        command
-            .arg("certificate")
-            .arg("new")
-            .arg("stake-key-registration")
-            .arg(&delegation_key);
-        command
-    }
-
     pub fn get_stake_pool_registration_command(
         &self,
         kes_key: &str,
         serial_id: &str,
         vrf_key: &str,
+        start_validity: u32,
+        management_threshold: u32,
+        owner_pk: &str,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command
@@ -55,13 +48,12 @@ impl CertificateCommands {
             .arg(&vrf_key)
             .arg("--serial")
             .arg(&serial_id)
-            // The following are hardcoded, but will need testing
             .arg("--start-validity")
-            .arg("0")
+            .arg(&start_validity.to_string())
             .arg("--management-threshold")
-            .arg("1")
+            .arg(&management_threshold.to_string())
             .arg("--owner")
-            .arg("ed25519_pk12tx2erdy6m3xntfsgf8t2cyscjv0ls73974ma6a4rwfs3v2aup9q3qys5m");
+            .arg(&owner_pk);
         command
     }
 

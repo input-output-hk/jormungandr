@@ -33,7 +33,7 @@ mod tests {
                 staging_file: Some(temp_staging_file.clone()),
             },
         };
-        new.exec().expect(" error while executing New action");;
+        new.exec().expect(" error while executing New action");
 
         assert_eq!(
             temp_staging_file.is_file(),

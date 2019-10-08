@@ -14,9 +14,14 @@ custom_error! {pub StartupError
     JormungandrNotLaunched{ source: ProcessError } = "could not start jormungandr",
 }
 
+const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
+const DEFAULT_MAX_ATTEMPTS: u64 = 6;
+
 fn try_to_start_jormungandr_node(
     command: &mut Command,
     config: JormungandrConfig,
+    sleep_between_attempts: u64,
+    max_attempts: u64,
 ) -> Result<Child, StartupError> {
     println!("Starting jormungandr node...");
     let process = command
@@ -26,8 +31,8 @@ fn try_to_start_jormungandr_node(
     let proces_start_result = process_utils::run_process_until_response_matches(
         jcli_wrapper::jcli_commands::get_rest_stats_command(&config.get_node_address()),
         &is_node_up,
-        2,
-        5,
+        sleep_between_attempts,
+        max_attempts,
         "get stats from jormungandr node",
         "jormungandr node is not up",
     );
@@ -41,14 +46,18 @@ fn try_to_start_jormungandr_node(
 fn start_jormungandr_node_sync_with_retry(
     command: &mut Command,
     config: &mut JormungandrConfig,
+    timeout: u64,
+    max_attempts: u64,
 ) -> JormungandrProcess {
-    let first_attempt = try_to_start_jormungandr_node(command, config.clone());
+    let first_attempt =
+        try_to_start_jormungandr_node(command, config.clone(), timeout, max_attempts);
     match first_attempt {
         Ok(guard) => return JormungandrProcess::from_config(guard, config.clone()),
         _ => println!("failed to start jormungandr node. retrying.."),
     };
     config.refresh_node_dynamic_params();
-    let second_attempt = try_to_start_jormungandr_node(command, config.clone());
+    let second_attempt =
+        try_to_start_jormungandr_node(command, config.clone(), timeout, max_attempts);
 
     match second_attempt {
         Ok(guard) => return JormungandrProcess::from_config(guard, config.clone()),
@@ -79,7 +88,12 @@ pub fn start_jormungandr_node(config: &mut JormungandrConfig) -> JormungandrProc
     );
 
     println!("Starting node with configuration : {:?}", &config);
-    let process = start_jormungandr_node_sync_with_retry(&mut command, config);
+    let process = start_jormungandr_node_sync_with_retry(
+        &mut command,
+        config,
+        DEFAULT_SLEEP_BETWEEN_ATTEMPTS,
+        DEFAULT_MAX_ATTEMPTS,
+    );
     process
 }
 
@@ -97,7 +111,12 @@ pub fn restart_jormungandr_node_as_leader(process: &mut JormungandrProcess) -> J
         &config.log_file_path,
     );
 
-    match try_to_start_jormungandr_node(&mut command, config.clone()) {
+    match try_to_start_jormungandr_node(
+        &mut command,
+        config.clone(),
+        DEFAULT_SLEEP_BETWEEN_ATTEMPTS,
+        DEFAULT_MAX_ATTEMPTS,
+    ) {
         Ok(guard) => return JormungandrProcess::from_config(guard, config.clone()),
         Err(e) => {
             let log_file_content = file_utils::read_file(&config.log_file_path);
@@ -114,19 +133,12 @@ pub fn start_jormungandr_node_as_leader(config: &mut JormungandrConfig) -> Jormu
         &config.log_file_path,
     );
     println!("Starting node with configuration : {:?}", &config);
-    let process = start_jormungandr_node_sync_with_retry(&mut command, config);
-    process
-}
-
-pub fn start_jormungandr_node_as_slave(config: &mut JormungandrConfig) -> JormungandrProcess {
-    let mut command = commands::get_start_jormungandr_as_slave_node_command(
-        &config.node_config_path,
-        &config.genesis_block_hash,
-        &config.log_file_path,
+    let process = start_jormungandr_node_sync_with_retry(
+        &mut command,
+        config,
+        DEFAULT_SLEEP_BETWEEN_ATTEMPTS,
+        DEFAULT_MAX_ATTEMPTS,
     );
-
-    println!("Starting node with configuration : {:?}", &config);
-    let process = start_jormungandr_node_sync_with_retry(&mut command, config);
     process
 }
 
@@ -134,10 +146,31 @@ pub fn start_jormungandr_node_as_passive(config: &mut JormungandrConfig) -> Jorm
     let mut command = commands::get_start_jormungandr_as_passive_node_command(
         &config.node_config_path,
         &config.genesis_block_hash,
-        &config.secret_model_path,
         &config.log_file_path,
     );
-    let process = start_jormungandr_node_sync_with_retry(&mut command, config);
+    println!("Starting node with configuration : {:?}", &config);
+    let process = start_jormungandr_node_sync_with_retry(
+        &mut command,
+        config,
+        DEFAULT_SLEEP_BETWEEN_ATTEMPTS,
+        DEFAULT_MAX_ATTEMPTS,
+    );
+    process
+}
+
+pub fn start_jormungandr_node_as_passive_with_timeout(
+    config: &mut JormungandrConfig,
+    timeout: u64,
+    max_attempts: u64,
+) -> JormungandrProcess {
+    let mut command = commands::get_start_jormungandr_as_passive_node_command(
+        &config.node_config_path,
+        &config.genesis_block_hash,
+        &config.log_file_path,
+    );
+    println!("Starting node with configuration : {:?}", &config);
+    let process =
+        start_jormungandr_node_sync_with_retry(&mut command, config, timeout, max_attempts);
     process
 }
 
@@ -148,7 +181,6 @@ pub fn assert_start_jormungandr_node_as_passive_fail(
     let command = commands::get_start_jormungandr_as_passive_node_command(
         &config.node_config_path,
         &config.genesis_block_hash,
-        &config.secret_model_path,
         &config.log_file_path,
     );
 

@@ -13,14 +13,13 @@ use jormungandr_lib::interfaces::UTxOInfo;
 use std::path::PathBuf;
 
 use crate::common::jcli_wrapper;
-use crate::common::jcli_wrapper::Discrimination;
+use chain_addr::Discrimination;
 
 pub use self::configuration_builder::ConfigurationBuilder;
 
 pub use self::starter::{
     assert_start_jormungandr_node_as_passive_fail, start_jormungandr_node,
     start_jormungandr_node_as_leader, start_jormungandr_node_as_passive,
-    start_jormungandr_node_as_slave,
 };
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
@@ -53,12 +52,7 @@ pub fn create_new_account_address() -> Account {
     let private_key = jcli_wrapper::assert_key_generate_default();
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     let address = jcli_wrapper::assert_address_account(&public_key, Discrimination::Test);
-    let account = Account {
-        private_key,
-        public_key,
-        address,
-    };
-    account
+    Account::new(&private_key, &public_key, &address)
 }
 
 pub fn create_new_delegation_address() -> Delegation {

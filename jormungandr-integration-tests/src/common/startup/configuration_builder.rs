@@ -9,6 +9,8 @@ use crate::common::jcli_wrapper;
 pub struct ConfigurationBuilder {
     funds: Vec<Fund>,
     trusted_peers: Option<Vec<String>>,
+    public_address: Option<String>,
+    listen_address: Option<String>,
     block0_hash: Option<String>,
     block0_consensus: Option<String>,
     log: Option<Log>,
@@ -30,6 +32,8 @@ impl ConfigurationBuilder {
             certs: vec![],
             consensus_leader_ids: vec![],
             trusted_peers: None,
+            listen_address: None,
+            public_address: None,
             block0_hash: None,
             block0_consensus: Some("bft".to_string()),
             slots_per_epoch: None,
@@ -115,6 +119,16 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_public_address(&mut self, public_address: String) -> &mut Self {
+        self.public_address = Some(public_address.clone());
+        self
+    }
+
+    pub fn with_listen_address(&mut self, listen_address: String) -> &mut Self {
+        self.listen_address = Some(listen_address.clone());
+        self
+    }
+
     pub fn with_block_hash(&mut self, block0_hash: String) -> &mut Self {
         self.block0_hash = Some(block0_hash.clone());
         self
@@ -122,6 +136,14 @@ impl ConfigurationBuilder {
 
     pub fn build(&self) -> JormungandrConfig {
         let mut node_config = NodeConfig::new();
+
+        if let Some(listen_address) = &self.listen_address {
+            node_config.p2p.listen_address = listen_address.to_string();
+        }
+        if let Some(public_address) = &self.public_address {
+            node_config.p2p.public_address = public_address.to_string();
+        }
+
         node_config.p2p.trusted_peers = self.trusted_peers.clone();
         node_config.log = self.log.clone();
         let node_config_path = NodeConfig::serialize(&node_config);

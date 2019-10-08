@@ -1,6 +1,6 @@
 use crate::common::jcli_wrapper;
-use crate::common::jcli_wrapper::Discrimination;
 use crate::common::process_assert;
+use chain_addr::Discrimination;
 #[test]
 pub fn test_account_address_made_of_incorrect_ed25519_extended_key() {
     let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
