@@ -18,6 +18,7 @@ pub struct Info {
     pub fee: common::CommonFees,
 
     /// write the info in the given file or print it to the standard output
+    #[structopt(long = "output")]
     pub output: Option<PathBuf>,
 
     /// formatting for the output to displays
@@ -33,10 +34,13 @@ pub struct Info {
     pub format: String,
 
     /// display only the inputs of type UTxO
+    #[structopt(long = "only-utxos")]
     pub only_utxos: bool,
     /// display only the inputs of type Account
+    #[structopt(long = "only-accounts")]
     pub only_accounts: bool,
     /// display only the outputs
+    #[structopt(long = "only-outputs")]
     pub only_outputs: bool,
 
     /// formatting for the UTxO inputs of the transaction. This format
@@ -44,7 +48,11 @@ pub struct Info {
     ///
     /// available variables: txid, index and value.
     ///
-    #[structopt(alias = "utxo", default_value = " - {txid}:{index} {value}\n")]
+    #[structopt(
+        long = "format-utxo-input",
+        alias = "utxo",
+        default_value = " - {txid}:{index} {value}\n"
+    )]
     pub format_utxo_input: String,
 
     /// formatting for the Account inputs of the transaction. This format
@@ -52,14 +60,22 @@ pub struct Info {
     ///
     /// available variables: account and value.
     ///
-    #[structopt(alias = "account", default_value = " - {account} {value}\n")]
+    #[structopt(
+        long = "format-account-input",
+        alias = "account",
+        default_value = " - {account} {value}\n"
+    )]
     pub format_account_input: String,
 
     /// Display the outputs of the transaction, this function will be called
     /// for every outputs of the transaction
     ///
     /// available variables: address and value.
-    #[structopt(alias = "output", default_value = " + {address} {value}\n")]
+    #[structopt(
+        long = "format-output",
+        alias = "output",
+        default_value = " + {address} {value}\n"
+    )]
     pub format_output: String,
 
     /// set the address prefix to use when displaying the addresses
