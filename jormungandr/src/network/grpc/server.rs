@@ -3,6 +3,7 @@ use crate::settings::start::network::Listen;
 use network_grpc::server::{self, Server};
 
 use futures::future::Either;
+use tk_listen::ListenExt;
 use tokio::prelude::*;
 
 pub fn run_listen_socket(
@@ -26,22 +27,21 @@ pub fn run_listen_socket(
             Either::A(future::err(()))
         }
         Ok(listener_stream) => {
+            let max_connections = state.config.max_connections;
             let fold_logger = state.logger().clone();
             let err_logger = state.logger().clone();
             let node_server = NodeService::new(channels, state);
-            let server = Server::new(node_server);
+            let mut server = Server::new(node_server);
 
             let future = listener_stream
                 .map_err(move |err| {
-                    // error while receiving an incoming connection
-                    // here we might need to log the error and try
-                    // to listen again on the sockaddr
+                    // Fatal error while receiving an incoming connection
                     error!(
                         err_logger,
                         "Error while accepting connection on {}: {:?}", sockaddr, err
                     );
                 })
-                .fold(server, move |mut server, stream| {
+                .filter_map(move |stream| {
                     // received incoming connection
                     let conn_logger = match stream.peer_addr() {
                         Ok(addr) => fold_logger.new(o!("peer_addr" => addr)),
@@ -50,8 +50,8 @@ pub fn run_listen_socket(
                                 fold_logger,
                                 "connection rejected because peer address can't be obtained";
                                 "reason" => %e);
-                            return Ok(server)
-                        },
+                            return None;
+                        }
                     };
                     info!(
                         conn_logger,
@@ -59,29 +59,33 @@ pub fn run_listen_socket(
                         stream.local_addr().unwrap(),
                     );
 
-                    let conn = server.serve(stream);
-                    tokio::spawn(
-                        conn.then(move |res| {
-                            use network_grpc::server::Error;
+                    let conn = server.serve(stream).then(move |res| {
+                        use network_grpc::server::Error;
 
-                            match res {
-                                Ok(()) => {
-                                    info!(conn_logger, "incoming P2P connection closed");
-                                }
-                                Err(Error::Protocol(e)) => {
-                                    info!(conn_logger, "incoming P2P HTTP/2 connection error"; "reason" => %e);
-                                }
-                                Err(e) => {
-                                    warn!(conn_logger, "incoming P2P connection failed"; "error" => ?e);
-                                }
+                        match res {
+                            Ok(()) => {
+                                info!(conn_logger, "incoming P2P connection closed");
                             }
-                            Ok(())
-                        })
-                    );
-
-                    Ok(server)
+                            Err(Error::Protocol(e)) => {
+                                info!(
+                                    conn_logger,
+                                    "incoming P2P HTTP/2 connection error";
+                                    "reason" => %e,
+                                );
+                            }
+                            Err(e) => {
+                                warn!(
+                                    conn_logger,
+                                    "incoming P2P connection failed";
+                                    "error" => ?e,
+                                );
+                            }
+                        }
+                        Ok(())
+                    });
+                    Some(conn)
                 })
-                .map(|_| ());
+                .listen(max_connections);
 
             Either::B(future)
         }
