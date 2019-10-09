@@ -181,9 +181,15 @@ impl Header {
     }
 }
 
+impl ChainLength {
+    pub fn increase(&self) -> Self {
+        ChainLength(self.0.checked_add(1).unwrap())
+    }
+}
+
 impl property::ChainLength for ChainLength {
     fn next(&self) -> Self {
-        ChainLength(self.0.checked_add(1).unwrap())
+        self.increase()
     }
 }
 
