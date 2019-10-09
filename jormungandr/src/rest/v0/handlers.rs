@@ -152,8 +152,14 @@ pub fn get_block_id(context: State<Context>, block_id_hex: Path<String>) -> Acti
                 .storage()
                 .get(block_id)
                 .map_err(|e| ErrorInternalServerError(e))
+                .and_then(|block_opt| {
+                    block_opt
+                        .ok_or_else(|| ErrorNotFound("Block not found"))?
+                        .serialize_as_vec()
+                        .map_err(ErrorInternalServerError)
+                        .map(Bytes::from)
+                })
         })
-        .map(|block| Bytes::from(block.unwrap().serialize_as_vec().unwrap()))
 }
 
 fn parse_block_hash(hex: &str) -> Result<Hash, Error> {
