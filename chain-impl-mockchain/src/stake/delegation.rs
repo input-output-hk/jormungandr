@@ -130,7 +130,7 @@ impl DelegationState {
 mod tests {
 
     use super::DelegationState;
-    use crate::certificate::{PoolId, PoolRegistration};
+    use crate::certificate::PoolRegistration;
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
     use std::iter;

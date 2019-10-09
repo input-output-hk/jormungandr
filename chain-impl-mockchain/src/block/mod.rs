@@ -1,12 +1,12 @@
 //! Representation of the block in the mockchain.
 use crate::fragment::{Fragment, FragmentRaw};
-use crate::key::Hash;
 use chain_core::mempack::{read_from_raw, ReadBuf, ReadError, Readable};
-use chain_core::property::{self, Serialize};
+use chain_core::property;
 
 use std::slice;
 
 mod builder;
+mod content;
 //mod cstruct;
 mod header;
 mod headerraw;
@@ -16,10 +16,13 @@ mod version;
 pub use self::version::{AnyBlockVersion, BlockVersion, ConsensusVersion};
 
 pub use self::builder::BlockBuilder;
+pub use self::content::{
+    BlockContentHash, BlockContentSize, BlockContents, Contents, ContentsBuilder,
+};
 
 pub use self::header::{
-    BftProof, BftSignature, BlockContentHash, BlockContentSize, BlockId, ChainLength, Common,
-    GenesisPraosProof, Header, HeaderContentEvalContext, HeaderHash, KESSignature, Proof,
+    BftProof, BftSignature, BlockId, ChainLength, Common, GenesisPraosProof, Header,
+    HeaderContentEvalContext, HeaderHash, KESSignature, Proof,
 };
 pub use self::headerraw::HeaderRaw;
 pub use self::leaderlog::LeadersParticipationRecord;
@@ -43,43 +46,12 @@ impl PartialEq for Block {
 }
 impl Eq for Block {}
 
-#[derive(Debug, Clone)]
-pub struct BlockContents(Vec<Fragment>);
-
-impl PartialEq for BlockContents {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.compute_hash_size() == rhs.compute_hash_size()
-    }
-}
-impl Eq for BlockContents {}
-
-impl BlockContents {
-    #[inline]
-    pub fn new(messages: Vec<Fragment>) -> Self {
-        BlockContents(messages)
-    }
-    #[inline]
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a Fragment> {
-        self.0.iter()
-    }
-    pub fn compute_hash_size(&self) -> (BlockContentHash, usize) {
-        let mut bytes = Vec::with_capacity(4096);
-
-        for message in self.iter() {
-            message.to_raw().serialize(&mut bytes).unwrap();
-        }
-
-        let hash = Hash::hash_bytes(&bytes);
-        (hash, bytes.len())
-    }
-}
-
 impl Block {
     pub fn is_consistent(&self) -> bool {
         let (content_hash, content_size) = self.contents.compute_hash_size();
 
         &content_hash == self.header.block_content_hash()
-            && content_size == self.header.common.block_content_size as usize
+            && content_size == self.header.common.block_content_size
     }
 
     pub fn fragments<'a>(&'a self) -> slice::Iter<'a, Fragment> {
@@ -145,7 +117,7 @@ impl property::Deserialize for Block {
         let header = read_from_raw::<Header>(header_raw.as_ref())?;
 
         let mut serialized_content_size = header.common.block_content_size;
-        let mut contents = BlockContents(Vec::with_capacity(4));
+        let mut contents = ContentsBuilder::new();
 
         while serialized_content_size > 0 {
             let message_raw = FragmentRaw::deserialize(&mut reader)?;
@@ -155,14 +127,14 @@ impl property::Deserialize for Block {
 
             let message = Fragment::from_raw(&message_raw)
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
-            contents.0.push(message);
+            contents.push(message);
 
             serialized_content_size -= message_size as u32;
         }
 
         Ok(Block {
             header: header,
-            contents: contents,
+            contents: contents.into(),
         })
     }
 }
@@ -174,7 +146,7 @@ impl Readable for Block {
         let header = Header::read(&mut header_buf)?;
 
         let mut remaining_content_size = header.common.block_content_size;
-        let mut contents = BlockContents(Vec::with_capacity(4));
+        let mut contents = ContentsBuilder::new();
 
         while remaining_content_size > 0 {
             let message_size = buf.get_u16()?;
@@ -183,14 +155,14 @@ impl Readable for Block {
             // return error here if message serialize sized is bigger than remaining size
 
             let message = Fragment::read(&mut message_buf)?;
-            contents.0.push(message);
+            contents.push(message);
 
             remaining_content_size -= 2 + message_size as u32;
         }
 
         Ok(Block {
             header: header,
-            contents: contents,
+            contents: contents.into(),
         })
     }
 }
@@ -241,14 +213,15 @@ mod test {
         }
     }
 
-    impl Arbitrary for BlockContents {
+    impl Arbitrary for Contents {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let len = u8::arbitrary(g) % 12;
-            BlockContents(
-                std::iter::repeat_with(|| Arbitrary::arbitrary(g))
-                    .take(len as usize)
-                    .collect(),
-            )
+            let fragments: Vec<Fragment> = std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                .take(len as usize)
+                .collect();
+            let mut content = ContentsBuilder::new();
+            content.push_many(fragments);
+            content.into()
         }
     }
     impl Arbitrary for Block {

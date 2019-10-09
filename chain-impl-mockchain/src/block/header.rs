@@ -1,3 +1,4 @@
+use super::content::{BlockContentHash, BlockContentSize};
 use crate::block::{
     headerraw::HeaderRaw,
     version::{AnyBlockVersion, BlockVersion},
@@ -17,9 +18,7 @@ use chain_crypto::{
 };
 
 pub type HeaderHash = Hash;
-pub type BlockContentHash = Hash;
 pub type BlockId = Hash;
-pub type BlockContentSize = u32;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Common {

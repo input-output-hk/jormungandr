@@ -259,7 +259,7 @@ impl Multiverse<Ledger> {
 #[cfg(test)]
 mod test {
     use super::Multiverse;
-    use crate::block::{Block, BlockBuilder, ConsensusVersion};
+    use crate::block::{Block, BlockBuilder, ConsensusVersion, Contents, ContentsBuilder};
     use crate::config::{Block0Date, ConfigParam};
     use crate::fragment::{ConfigParams, Fragment};
     use crate::leadership::bft::LeaderId;
@@ -302,7 +302,6 @@ mod test {
 
         let mut store = chain_storage::memory::MemoryBlockStore::new();
 
-        let mut genesis_block = BlockBuilder::new();
         let mut ents = ConfigParams::new();
         ents.push(ConfigParam::Discrimination(Discrimination::Test));
         ents.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
@@ -314,8 +313,11 @@ mod test {
             Milli::HALF,
         ));
         ents.push(ConfigParam::SlotsPerEpoch(NUM_BLOCK_PER_EPOCH));
-        genesis_block.message(Fragment::Initial(ents));
-        let genesis_block = genesis_block.make_genesis_block();
+
+        let mut genesis_content = ContentsBuilder::new();
+        genesis_content.push(Fragment::Initial(ents));
+
+        let genesis_block = BlockBuilder::new(genesis_content.into()).make_genesis_block();
         let mut date = genesis_block.date();
         let genesis_state = Ledger::new(genesis_block.id(), genesis_block.fragments()).unwrap();
         assert_eq!(genesis_state.chain_length().0, 0);
@@ -327,7 +329,7 @@ mod test {
         let mut parent = genesis_block.id();
         let mut ids = vec![];
         for i in 1..10001 {
-            let mut block = BlockBuilder::new();
+            let mut block = BlockBuilder::new(Contents::empty());
             block.chain_length(state.chain_length.next());
             block.parent(parent);
             date = date.next(&era);

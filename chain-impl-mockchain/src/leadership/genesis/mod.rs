@@ -545,9 +545,7 @@ mod tests {
             .is_err());
     }
 
-    use crate::block::Block;
-    use crate::block::{BlockBuilder, Header};
-    use crate::testing::data::stake_pool::StakePool;
+    use crate::block::{BlockBuilder, Contents};
     use chain_core::property::ChainLength;
 
     #[test]
@@ -597,7 +595,7 @@ mod tests {
             .expect("cannot register stake pool");
         let selection = LeadershipData::new(date.epoch, &ledger);
         let rng = rand_os::OsRng::new().unwrap();
-        let mut block_builder = BlockBuilder::new();
+        let mut block_builder = BlockBuilder::new(Contents::empty());
         block_builder.date(date);
         block_builder.chain_length(ledger.chain_length().next());
         let block = block_builder.make_bft_block(&SecretKey::generate(rng));

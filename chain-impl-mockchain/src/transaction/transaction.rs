@@ -232,7 +232,7 @@ mod tests {
 
     use super::*;
     use crate::{certificate::Certificate, value::Value};
-    use quickcheck::{Arbitrary, TestResult};
+    use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
 
     #[quickcheck]
