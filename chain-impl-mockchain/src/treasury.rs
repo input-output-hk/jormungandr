@@ -26,3 +26,15 @@ impl Treasury {
         self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Treasury;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Treasury {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Treasury::initial(Arbitrary::arbitrary(g))
+        }
+    }
+}

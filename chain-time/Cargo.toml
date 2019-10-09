@@ -6,3 +6,12 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+cfg-if = "0.1"
+quickcheck = { version = "0.8", optional = true }
+
+[features]
+property-test-api = ["quickcheck"]
+
+[dev-dependencies]
+quickcheck = "0.8"
+quickcheck_macros = "0.8.0"
