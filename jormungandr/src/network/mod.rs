@@ -43,6 +43,7 @@ use futures::stream;
 use network_core::gossip::{Gossip, Node};
 use rand::seq::SliceRandom;
 use slog::Logger;
+use tokio::runtime::TaskExecutor;
 use tokio::timer::Interval;
 
 use std::error;
@@ -101,6 +102,7 @@ pub struct GlobalState {
     pub topology: P2pTopology,
     pub node: topology::Node,
     pub peers: Peers,
+    pub executor: TaskExecutor,
     pub logger: Logger,
 }
 
@@ -108,7 +110,12 @@ type GlobalStateR = Arc<GlobalState>;
 
 impl GlobalState {
     /// the network global state
-    pub fn new(block0_hash: HeaderHash, config: Configuration, logger: Logger) -> Self {
+    pub fn new(
+        block0_hash: HeaderHash,
+        config: Configuration,
+        executor: TaskExecutor,
+        logger: Logger,
+    ) -> Self {
         let node_address = config.public_address.clone().map(|addr| addr.0.into());
         let mut node = topology::Node::new(node_address);
 
@@ -141,12 +148,20 @@ impl GlobalState {
             topology,
             node,
             peers,
+            executor,
             logger,
         }
     }
 
     pub fn logger(&self) -> &Logger {
         &self.logger
+    }
+
+    pub fn spawn<F>(&self, f: F)
+    where
+        F: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        self.executor.spawn(f)
     }
 }
 
@@ -194,11 +209,11 @@ pub fn start(
     // * the ID needs to be consistent between restart;
     let input = params.input;
     let channels = params.channels;
-    let logger = service_info.logger().clone();
     let global_state = Arc::new(GlobalState::new(
         params.block0_hash,
         params.config,
-        logger.clone(),
+        service_info.executor().clone(),
+        service_info.logger().clone(),
     ));
 
     // open the port for listening/accepting other peers to connect too
@@ -211,7 +226,7 @@ pub fn start(
                     Ok(future) => Either::A(future),
                     Err(e) => {
                         error!(
-                            logger,
+                            service_info.logger(),
                             "failed to listen for P2P connections at {}", listen.connection;
                             "reason" => %e);
                         Either::B(future::err(()))
@@ -261,7 +276,7 @@ pub fn start(
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
-    let gossip_err_logger = logger.clone();
+    let gossip_err_logger = global_state.logger.clone();
     // TODO: get gossip propagation interval from configuration
     let gossip = Interval::new_interval(Duration::from_secs(10))
         .map_err(move |e| {
@@ -375,6 +390,7 @@ fn connect_and_propagate_with<F>(
         .logger()
         .new(o!("node_id" => node_id.to_string()));
     debug!(logger, "connecting to node");
+    let spawn_state = state.clone();
     let err_state = state.clone();
     let cf = client::connect(conn_state, channels.clone())
         .and_then(move |(client, mut comms)| {
@@ -412,7 +428,7 @@ fn connect_and_propagate_with<F>(
             }
             Ok(())
         });
-    tokio::spawn(cf);
+    spawn_state.spawn(cf);
 }
 
 fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {

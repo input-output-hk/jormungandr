@@ -21,10 +21,10 @@ pub fn process_block_announcements<S>(
     global_state: GlobalStateR,
     block_box: MessageBox<BlockMsg>,
     logger: Logger,
-) -> tokio::executor::Spawn
-where
+) where
     S: Stream<Item = Header, Error = core_error::Error> + Send + 'static,
 {
+    let state = global_state.clone();
     let stream_err_logger = logger.clone();
     let sink_err_logger = logger.clone();
     let stream = inbound
@@ -35,10 +35,10 @@ where
             );
         })
         .map(move |header| {
-            global_state.peers.refresh_peer(node_id);
+            state.peers.refresh_peer(node_id);
             BlockMsg::AnnouncedBlock(header, node_id)
         });
-    tokio::spawn(
+    global_state.spawn(
         block_box
             .sink_map_err(move |_| {
                 error!(
@@ -50,7 +50,7 @@ where
             .map(move |_| {
                 debug!(logger, "block subscription ended");
             }),
-    )
+    );
 }
 
 pub fn process_block_announcement(
@@ -89,10 +89,10 @@ pub fn process_fragments<S>(
     global_state: GlobalStateR,
     transaction_box: MessageBox<TransactionMsg>,
     logger: Logger,
-) -> tokio::executor::Spawn
-where
+) where
     S: Stream<Item = Fragment, Error = core_error::Error> + Send + 'static,
 {
+    let state = global_state.clone();
     let stream_err_logger = logger.clone();
     let sink_err_logger = logger.clone();
     let stream = inbound
@@ -103,10 +103,10 @@ where
             );
         })
         .map(move |fragment| {
-            global_state.peers.refresh_peer(node_id);
+            state.peers.refresh_peer(node_id);
             TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment])
         });
-    tokio::spawn(
+    global_state.spawn(
         transaction_box
             .sink_map_err(move |_| {
                 error!(
@@ -118,15 +118,16 @@ where
             .map(move |_| {
                 debug!(logger, "fragment subscription ended");
             }),
-    )
+    );
 }
 
-pub fn process_gossip<S>(inbound: S, state: GlobalStateR, logger: Logger) -> tokio::executor::Spawn
+pub fn process_gossip<S>(inbound: S, global_state: GlobalStateR, logger: Logger)
 where
     S: Stream<Item = Gossip<Node>, Error = core_error::Error> + Send + 'static,
 {
+    let state = global_state.clone();
     let err_logger = logger.clone();
-    tokio::spawn(
+    global_state.spawn(
         inbound
             .for_each(move |gossip| {
                 trace!(logger, "received gossip: {:?}", gossip);
@@ -142,7 +143,7 @@ where
             .map_err(move |err| {
                 debug!(err_logger, "gossip subscription stream failure: {:?}", err);
             }),
-    )
+    );
 }
 
 fn filter_gossip_node(node: &Node, config: &Configuration) -> bool {

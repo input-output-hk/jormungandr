@@ -179,7 +179,7 @@ where
                 let node_id = self.remote_node_id;
                 let done_logger = self.logger.clone();
                 let err_logger = self.logger.clone();
-                tokio::spawn(
+                self.global_state.spawn(
                     self.service
                         .upload_blocks(stream)
                         .map(move |_| {
@@ -211,7 +211,7 @@ where
         let node_id = self.remote_node_id;
         let done_logger = self.logger.clone();
         let err_logger = self.logger.clone();
-        tokio::spawn(
+        self.global_state.spawn(
             self.service
                 .push_headers(stream)
                 .map(move |_| {
@@ -234,7 +234,7 @@ where
         let node_id = self.remote_node_id;
         let done_logger = self.logger.clone();
         let err_logger = self.logger.clone();
-        tokio::spawn(
+        self.global_state.spawn(
             self.service
                 .upload_blocks(stream)
                 .map(move |_| {
@@ -260,7 +260,7 @@ where
         let block_box = self.channels.block_box.clone();
         let logger = self.logger.clone();
         let err_logger = logger.clone();
-        tokio::spawn(
+        self.global_state.spawn(
             self.service
                 .pull_headers(&req.from, &req.to)
                 .map_err(move |e| {
@@ -302,7 +302,7 @@ where
         let block_box = self.channels.block_box.clone();
         let logger = self.logger.clone();
         let err_logger = logger.clone();
-        tokio::spawn(
+        self.global_state.spawn(
             self.service
                 .pull_blocks_to_tip(&req.from)
                 .map_err(move |e| {
@@ -344,7 +344,7 @@ where
         let block_box = self.channels.block_box.clone();
         let logger = self.logger.clone();
         let err_logger = logger.clone();
-        tokio::spawn(
+        self.global_state.spawn(
             self.service
                 .get_blocks(block_ids)
                 .map_err(move |e| {

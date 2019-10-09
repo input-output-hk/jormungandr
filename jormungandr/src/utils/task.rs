@@ -13,7 +13,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::prelude::*;
-use tokio::runtime;
+use tokio::runtime::{self, TaskExecutor};
 
 // Limit on the length of a task message queue
 const MESSAGE_QUEUE_LEN: usize = 1000;
@@ -266,6 +266,12 @@ impl TokioServiceInfo {
     #[inline]
     pub fn name(&self) -> &'static str {
         self.name
+    }
+
+    /// Access the service's executor
+    #[inline]
+    pub fn executor(&self) -> &TaskExecutor {
+        &self.executor
     }
 
     /// access the service's logger
