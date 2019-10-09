@@ -220,7 +220,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             };
             network::start(info, params)
                 // FIXME: more graceful error reporting
-                .expect("p2p network failure")
+                .map_err(|e| panic!(e))
         });
     }
 

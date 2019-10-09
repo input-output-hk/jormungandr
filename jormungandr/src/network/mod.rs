@@ -37,6 +37,7 @@ use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::{TaskMessageBox, TokioServiceInfo},
 };
+use futures::future;
 use futures::prelude::*;
 use futures::stream;
 use network_core::gossip::{Gossip, Node};
@@ -187,7 +188,7 @@ pub struct TaskParams {
 pub fn start(
     service_info: TokioServiceInfo,
     params: TaskParams,
-) -> Result<impl Future<Item = (), Error = ()>, ListenError> {
+) -> impl Future<Item = (), Error = ()> {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
@@ -205,15 +206,22 @@ pub fn start(
     use futures::future::Either;
     let listener = if let Some(listen) = listen {
         match listen.protocol {
-            Protocol::Grpc => Either::A(grpc::run_listen_socket(
-                listen,
-                global_state.clone(),
-                channels.clone(),
-            )?),
+            Protocol::Grpc => {
+                match grpc::run_listen_socket(&listen, global_state.clone(), channels.clone()) {
+                    Ok(future) => Either::A(future),
+                    Err(e) => {
+                        error!(
+                            logger,
+                            "failed to listen for P2P connections at {}", listen.connection;
+                            "reason" => %e);
+                        Either::B(future::err(()))
+                    }
+                }
+            }
             Protocol::Ntt => unimplemented!(),
         }
     } else {
-        Either::B(futures::future::ok(()))
+        Either::B(future::ok(()))
     };
 
     let addrs = global_state
@@ -264,7 +272,7 @@ pub fn start(
             Ok(())
         });
 
-    Ok(listener.join4(connections, handle_cmds, gossip).map(|_| ()))
+    listener.join4(connections, handle_cmds, gossip).map(|_| ())
 }
 
 fn handle_network_input(

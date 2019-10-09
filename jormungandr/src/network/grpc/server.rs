@@ -6,7 +6,7 @@ use tk_listen::ListenExt;
 use tokio::prelude::*;
 
 pub fn run_listen_socket(
-    listen: Listen,
+    listen: &Listen,
     state: GlobalStateR,
     channels: Channels,
 ) -> Result<impl Future<Item = (), Error = ()>, ListenError> {
