@@ -265,3 +265,20 @@ mod test {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "with-bench")]
+mod bench {
+    use test::Bencher;
+
+    /*
+    #[bench]
+    pub fn serialization(&b: &mut Bencher) -> Self {
+        let bc = BlockContent::new();
+
+        b.iter(|| {
+
+        })
+    }
+    */
+}
