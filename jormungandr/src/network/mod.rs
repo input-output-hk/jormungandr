@@ -35,7 +35,7 @@ use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, Transaction
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
-    task::TaskMessageBox,
+    task::{TaskMessageBox, TokioServiceInfo},
 };
 use futures::prelude::*;
 use futures::stream;
@@ -182,16 +182,18 @@ pub struct TaskParams {
     pub block0_hash: HeaderHash,
     pub input: MessageQueue<NetworkMsg>,
     pub channels: Channels,
-    pub logger: Logger,
 }
 
-pub fn start(params: TaskParams) -> Result<impl Future<Item = (), Error = ()>, ListenError> {
+pub fn start(
+    service_info: TokioServiceInfo,
+    params: TaskParams,
+) -> Result<impl Future<Item = (), Error = ()>, ListenError> {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
     let input = params.input;
     let channels = params.channels;
-    let logger = params.logger;
+    let logger = service_info.logger().clone();
     let global_state = Arc::new(GlobalState::new(
         params.block0_hash,
         params.config,
@@ -226,7 +228,7 @@ pub fn start(params: TaskParams) -> Result<impl Future<Item = (), Error = ()>, L
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
         info!(conn_state.logger(), "connecting to initial gossip peer");
-        tokio::spawn(
+        service_info.spawn(
             client::connect(conn_state, conn_channels.clone())
                 .and_then(move |(client, mut comms)| {
                     // TODO
@@ -245,7 +247,8 @@ pub fn start(params: TaskParams) -> Result<impl Future<Item = (), Error = ()>, L
                     Ok(client)
                 })
                 .and_then(|client| client),
-        )
+        );
+        Ok(())
     });
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());

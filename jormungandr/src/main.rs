@@ -217,9 +217,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 block0_hash,
                 input: network_queue,
                 channels,
-                logger: info.into_logger(),
             };
-            network::start(params)
+            network::start(info, params)
                 // FIXME: more graceful error reporting
                 .expect("p2p network failure")
         });
