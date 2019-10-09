@@ -47,6 +47,8 @@ pub struct NodeConfig {
     pub rest: Rest,
 
     pub p2p: P2pConfig,
+
+    pub explorer: Explorer,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +64,11 @@ pub struct P2pConfig {
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Vec<poldercast::Address>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Explorer {
+    pub enabled: bool,
 }
 
 /// Node Secret(s)
@@ -404,6 +411,7 @@ impl NodeConfig {
         NodeConfig {
             rest: Rest::prepare(context),
             p2p: P2pConfig::prepare(context),
+            explorer: Explorer { enabled: true },
         }
     }
 }

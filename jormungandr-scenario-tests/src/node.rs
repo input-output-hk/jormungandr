@@ -1,3 +1,4 @@
+use crate::graphql::{ExplorerTransaction, GraphQLQuery, GraphQLResponse};
 use crate::{scenario::settings::NodeSetting, style, Context, NodeAlias};
 use bawawa::{Control, Process};
 use chain_impl_mockchain::{
@@ -5,8 +6,10 @@ use chain_impl_mockchain::{
     fragment::{Fragment, FragmentId},
 };
 use indicatif::ProgressBar;
+use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
 use rand_core::RngCore;
+use std::convert::TryFrom;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -21,6 +24,7 @@ error_chain! {
         Io(std::io::Error);
         Reqwest(reqwest::Error);
         BlockFormatError(chain_core::mempack::ReadError);
+        JsonError(serde_json::error::Error);
     }
 
     errors {
@@ -55,7 +59,8 @@ error_chain! {
 }
 
 pub struct MemPoolCheck {
-    fragment_id: FragmentId,
+    // FIXME: Probably this shouldn't be pub, maybe as_ref?
+    pub fragment_id: FragmentId,
 }
 
 pub enum NodeBlock0 {
@@ -117,13 +122,30 @@ impl NodeController {
         self.status() == Status::Running
     }
 
-    fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::Response> {
+    fn post(&self, path: &str, body: impl Into<reqwest::Body>) -> Result<reqwest::Response> {
         self.progress_bar.log_info(format!("POST '{}'", path));
 
         let client = reqwest::Client::new();
         let res = client
             .post(&format!("{}/{}", self.base_url(), path))
             .body(body)
+            .send();
+
+        match res {
+            Err(err) => {
+                self.progress_bar
+                    .log_err(format!("Failed to send request {}", &err));
+                Err(err.into())
+            }
+            Ok(r) => Ok(r),
+        }
+    }
+
+    fn query_explorer(&self, query: GraphQLQuery) -> Result<reqwest::Response> {
+        let client = reqwest::Client::new();
+        let res = client
+            .post(&format!("{}", self.base_explorer_url()))
+            .json(&query)
             .send();
 
         match res {
@@ -151,6 +173,13 @@ impl NodeController {
 
     fn base_url(&self) -> String {
         format!("http://{}/api/v0", self.settings.config.rest.listen.clone())
+    }
+
+    fn base_explorer_url(&self) -> String {
+        format!(
+            "http://{}/explorer/graphql",
+            self.settings.config.rest.listen.clone()
+        )
     }
 
     pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck> {
@@ -262,6 +291,16 @@ impl NodeController {
             }
             std::thread::sleep(duration);
         }
+    }
+
+    pub fn get_explorer_transaction(&self, fragment_id: FragmentId) -> Result<ExplorerTransaction> {
+        let query = ExplorerTransaction::build_query(fragment_id);
+
+        let response = self.query_explorer(query);
+
+        let response: GraphQLResponse = serde_json::from_str(&response?.text()?)?;
+
+        ExplorerTransaction::try_from(response).map_err(|e| e.into())
     }
 
     pub fn shutdown(&self) -> Result<bool> {

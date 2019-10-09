@@ -55,7 +55,45 @@ fn main() {
 
     introduction(&context);
 
-    scenario_2(context.derive());
+    // FIXME: Can be abstracted as a macro? Maybe a procedural one (attributes?)
+    let tests = vec![
+        Test {
+            func: Box::new(move |context| explorer_get_transaction(context)),
+            name: "test explorer transaction".to_owned(),
+            ignore: false,
+        },
+        Test {
+            func: Box::new(move |context| scenario_1(context)),
+            name: "scenario 1".to_owned(),
+            ignore: false,
+        },
+        Test {
+            func: Box::new(move |context| scenario_2(context)),
+            name: "scenario 2".to_owned(),
+            ignore: true,
+        },
+    ];
+
+    for test in tests.iter().filter(|t| !t.ignore) {
+        let context = context.derive();
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || (test.func)(context))) {
+            Ok(()) => println!("{} PASSED", test.name),
+            Err(e) => {
+                println!("{} FAILED", test.name);
+
+                let msg = e
+                    .downcast_ref::<String>()
+                    .map(|e| &**e)
+                    .or_else(|| e.downcast_ref::<&'static str>().map(|e| *e))
+                    .unwrap_or("Unknown");
+
+                println!("Cause: {}", msg);
+
+                // Return a non 0 exit status
+                std::process::exit(1);
+            }
+        }
+    }
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
@@ -196,4 +234,67 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) {
     passive1.shutdown().unwrap();
 
     controller.finalize();
+}
+
+pub fn explorer_get_transaction(mut context: Context<ChaChaRng>) {
+    let scenario_settings = prepare_scenario! {
+        "Testing the explorer",
+        &mut context,
+        topology [
+            "Leader1",
+        ]
+        blockchain {
+            consensus = GenesisPraos,
+            number_of_slots_per_epoch = 60,
+            slot_duration = 1,
+            leaders = [ "Leader1" ],
+            initials = [
+                account "unassigned1" with   500_000_000,
+                account "unassigned2" with   100_000_000,
+                account "delegated1" with  2_000_000_000 delegates to "Leader1",
+            ],
+        }
+    };
+
+    let mut controller = scenario_settings.build(context).unwrap();
+
+    let leader1 = controller.spawn_node("Leader1", true).unwrap();
+    thread::sleep(Duration::from_secs(1));
+
+    controller.monitor_nodes();
+
+    let mut wallet1 = controller.wallet("unassigned1").unwrap();
+    let wallet2 = controller.wallet("delegated1").unwrap();
+
+    let check = controller
+        .wallet_send_to(&mut wallet1, &wallet2, &leader1, 5_000.into())
+        .unwrap();
+
+    let id = check.fragment_id;
+
+    thread::sleep(Duration::from_secs(1));
+
+    let leader_status = leader1.wait_fragment(Duration::from_secs(2), check);
+
+    if let Ok(status) = leader_status {
+        if status.is_in_a_block() {
+            wallet1.confirm_transaction();
+            assert!(
+                leader1.get_explorer_transaction(id).is_ok(),
+                "transaction not found in explorer"
+            );
+        }
+    }
+
+    thread::sleep(Duration::from_secs(1));
+
+    leader1.shutdown().unwrap();
+
+    controller.finalize();
+}
+
+pub struct Test {
+    pub func: Box<dyn Fn(Context<ChaChaRng>)>,
+    pub name: String,
+    pub ignore: bool,
 }

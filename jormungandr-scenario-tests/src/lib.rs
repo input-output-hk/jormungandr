@@ -7,6 +7,7 @@ pub mod node;
 mod programs;
 #[macro_use]
 pub mod scenario;
+mod graphql;
 mod slog;
 pub mod style;
 mod wallet;
