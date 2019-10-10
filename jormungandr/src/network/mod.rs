@@ -35,17 +35,44 @@ use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, Transaction
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
-    task::TaskMessageBox,
+    task::{TaskMessageBox, TokioServiceInfo},
 };
+use futures::future;
 use futures::prelude::*;
 use futures::stream;
 use network_core::gossip::{Gossip, Node};
 use rand::seq::SliceRandom;
 use slog::Logger;
-use std::{iter, net::SocketAddr, sync::Arc, time::Duration};
+use tokio::runtime::TaskExecutor;
 use tokio::timer::Interval;
 
+use std::error;
+use std::fmt;
+use std::io;
+use std::iter;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
+
 pub use self::bootstrap::Error as BootstrapError;
+
+#[derive(Debug)]
+pub struct ListenError {
+    cause: io::Error,
+    sockaddr: SocketAddr,
+}
+
+impl fmt::Display for ListenError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "failed to listen for connections on {}", self.sockaddr)
+    }
+}
+
+impl error::Error for ListenError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        Some(&self.cause)
+    }
+}
 
 type Connection = SocketAddr;
 
@@ -75,6 +102,7 @@ pub struct GlobalState {
     pub topology: P2pTopology,
     pub node: topology::Node,
     pub peers: Peers,
+    pub executor: TaskExecutor,
     pub logger: Logger,
 }
 
@@ -82,7 +110,12 @@ type GlobalStateR = Arc<GlobalState>;
 
 impl GlobalState {
     /// the network global state
-    pub fn new(block0_hash: HeaderHash, config: Configuration, logger: Logger) -> Self {
+    pub fn new(
+        block0_hash: HeaderHash,
+        config: Configuration,
+        executor: TaskExecutor,
+        logger: Logger,
+    ) -> Self {
         let node_address = config.public_address.clone().map(|addr| addr.0.into());
         let mut node = topology::Node::new(node_address);
 
@@ -115,12 +148,20 @@ impl GlobalState {
             topology,
             node,
             peers,
+            executor,
             logger,
         }
     }
 
     pub fn logger(&self) -> &Logger {
         &self.logger
+    }
+
+    pub fn spawn<F>(&self, f: F)
+    where
+        F: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        self.executor.spawn(f)
     }
 }
 
@@ -157,20 +198,22 @@ pub struct TaskParams {
     pub block0_hash: HeaderHash,
     pub input: MessageQueue<NetworkMsg>,
     pub channels: Channels,
-    pub logger: Logger,
 }
 
-pub fn run(params: TaskParams) {
+pub fn start(
+    service_info: TokioServiceInfo,
+    params: TaskParams,
+) -> impl Future<Item = (), Error = ()> {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
     let input = params.input;
     let channels = params.channels;
-    let logger = params.logger;
     let global_state = Arc::new(GlobalState::new(
         params.block0_hash,
         params.config,
-        logger.clone(),
+        service_info.executor().clone(),
+        service_info.logger().clone(),
     ));
 
     // open the port for listening/accepting other peers to connect too
@@ -178,15 +221,22 @@ pub fn run(params: TaskParams) {
     use futures::future::Either;
     let listener = if let Some(listen) = listen {
         match listen.protocol {
-            Protocol::Grpc => Either::A(grpc::run_listen_socket(
-                listen,
-                global_state.clone(),
-                channels.clone(),
-            )),
+            Protocol::Grpc => {
+                match grpc::run_listen_socket(&listen, global_state.clone(), channels.clone()) {
+                    Ok(future) => Either::A(future),
+                    Err(e) => {
+                        error!(
+                            service_info.logger(),
+                            "failed to listen for P2P connections at {}", listen.connection;
+                            "reason" => %e);
+                        Either::B(future::err(()))
+                    }
+                }
+            }
             Protocol::Ntt => unimplemented!(),
         }
     } else {
-        Either::B(futures::future::ok(()))
+        Either::B(future::ok(()))
     };
 
     let addrs = global_state
@@ -201,7 +251,7 @@ pub fn run(params: TaskParams) {
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
         info!(conn_state.logger(), "connecting to initial gossip peer");
-        tokio::spawn(
+        service_info.spawn(
             client::connect(conn_state, conn_channels.clone())
                 .and_then(move |(client, mut comms)| {
                     // TODO
@@ -220,12 +270,13 @@ pub fn run(params: TaskParams) {
                     Ok(client)
                 })
                 .and_then(|client| client),
-        )
+        );
+        Ok(())
     });
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
-    let gossip_err_logger = logger.clone();
+    let gossip_err_logger = global_state.logger.clone();
     // TODO: get gossip propagation interval from configuration
     let gossip = Interval::new_interval(Duration::from_secs(10))
         .map_err(move |e| {
@@ -236,7 +287,7 @@ pub fn run(params: TaskParams) {
             Ok(())
         });
 
-    tokio::run(listener.join4(connections, handle_cmds, gossip).map(|_| ()));
+    listener.join4(connections, handle_cmds, gossip).map(|_| ())
 }
 
 fn handle_network_input(
@@ -339,6 +390,7 @@ fn connect_and_propagate_with<F>(
         .logger()
         .new(o!("node_id" => node_id.to_string()));
     debug!(logger, "connecting to node");
+    let spawn_state = state.clone();
     let err_state = state.clone();
     let cf = client::connect(conn_state, channels.clone())
         .and_then(move |(client, mut comms)| {
@@ -376,7 +428,7 @@ fn connect_and_propagate_with<F>(
             }
             Ok(())
         });
-    tokio::spawn(cf);
+    spawn_state.spawn(cf);
 }
 
 fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {

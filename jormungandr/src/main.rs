@@ -211,15 +211,16 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             block_box: block_msgbox,
         };
 
-        services.spawn("network", move |info| {
+        services.spawn_future("network", move |info| {
             let params = network::TaskParams {
                 config,
                 block0_hash,
                 input: network_queue,
                 channels,
-                logger: info.into_logger(),
             };
-            network::run(params);
+            network::start(info, params)
+                // FIXME: more graceful error reporting
+                .map_err(|e| panic!(e))
         });
     }
 

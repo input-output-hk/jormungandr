@@ -97,9 +97,8 @@ pub fn start_jormungandr_node(config: &mut JormungandrConfig) -> JormungandrProc
     process
 }
 
-pub fn restart_jormungandr_node_as_leader(process: &mut JormungandrProcess) -> JormungandrProcess {
+pub fn restart_jormungandr_node_as_leader(process: JormungandrProcess) -> JormungandrProcess {
     let mut config = process.config.clone();
-    config.refresh_node_dynamic_params();
     std::mem::drop(process);
 
     println!("Starting node with configuration : {:?}", &config);

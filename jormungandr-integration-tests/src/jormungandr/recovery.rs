@@ -38,7 +38,7 @@ pub fn test_node_recovers_from_node_restart() {
         &jormungandr_rest_address,
     );
 
-    let _jormungandr_after_restart = starter::restart_jormungandr_node_as_leader(&mut jormungandr);
+    let jormungandr = starter::restart_jormungandr_node_as_leader(jormungandr);
 
     let actual_settings = jcli_wrapper::assert_get_rest_settings(&jormungandr_rest_address);
     let actual_utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
