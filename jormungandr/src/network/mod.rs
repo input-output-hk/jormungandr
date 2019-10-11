@@ -414,6 +414,7 @@ fn connect_and_propagate_with<F>(
                     "peer responded with different node id: {}", connected_node_id
                 );
                 state.peers.remove_peer(node_id);
+                state.topology.evict_node(node_id);
             };
 
             state.peers.insert_peer(connected_node_id, comms);
