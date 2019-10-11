@@ -12,7 +12,7 @@ use futures::prelude::*;
 use futures::sink;
 use jormungandr_lib::interfaces::FragmentOrigin;
 use network_core::error as core_error;
-use network_core::gossip::Gossip;
+use network_core::gossip::{Gossip, Node as _};
 use slog::Logger;
 
 pub fn process_block_announcements<S>(
@@ -131,9 +131,11 @@ where
         inbound
             .for_each(move |gossip| {
                 trace!(logger, "received gossip: {:?}", gossip);
-                let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip
-                    .into_nodes()
-                    .partition(|node| filter_gossip_node(node, &state.config));
+                let (nodes, filtered_out): (Vec<_>, Vec<_>) =
+                    gossip.into_nodes().partition(|node| {
+                        filter_gossip_node(node, &state.config)
+                            || (node.id() == node_id && node.address().is_none())
+                    });
                 if filtered_out.len() > 0 {
                     debug!(logger, "nodes dropped from gossip: {:?}", filtered_out);
                 }

@@ -84,6 +84,10 @@ impl Node {
 }
 
 impl NodeData {
+    pub fn poldercast_address(&self) -> &Option<poldercast::Address> {
+        self.0.address()
+    }
+
     pub fn has_valid_address(&self) -> bool {
         let addr = match self.address() {
             None => return false,
