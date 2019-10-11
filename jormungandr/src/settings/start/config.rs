@@ -178,7 +178,24 @@ impl Default for Leadership {
 impl std::str::FromStr for TrustedPeer {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        unimplemented!()
+        let mut split = s.split('@');
+
+        let address = if let Some(address) = split.next() {
+            address
+                .parse::<poldercast::Address>()
+                .map(Address)
+                .map_err(|e| e.to_string())?
+        } else {
+            return Err("Missing address component".to_owned());
+        };
+
+        let id = if let Some(id) = split.next() {
+            Identifier::from_bech32_str(id).map_err(|e| e.to_string())?
+        } else {
+            return Err("Missing id component".to_owned());
+        };
+
+        Ok(TrustedPeer { address, id })
     }
 }
 
