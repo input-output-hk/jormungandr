@@ -193,10 +193,17 @@ impl ProvenOutputSeed {
         dleq::verify(&dleq, &self.dleq_proof)
     }
 
-    pub fn to_bytes(&self, output: &mut [u8]) {
+    pub fn to_buffer(&self, output: &mut [u8]) {
         assert_eq!(output.len(), PROOF_SIZE);
         output[0..32].copy_from_slice(self.u.0.compress().as_bytes());
         self.dleq_proof.to_bytes(&mut output[32..96]);
+    }
+
+    pub fn bytes(&self) -> [u8; PROOF_SIZE] {
+        let mut output = [0u8; PROOF_SIZE];
+        output[0..32].copy_from_slice(self.u.0.compress().as_bytes());
+        self.dleq_proof.to_bytes(&mut output[32..96]);
+        output
     }
 
     pub fn from_bytes_unverified(bytes: &[u8]) -> Option<Self> {

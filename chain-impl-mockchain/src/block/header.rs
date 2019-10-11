@@ -231,7 +231,7 @@ impl property::Serialize for Header {
                 {
                     let mut buf =
                         [0; <Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE];
-                    genesis_praos_proof.vrf_proof.to_bytes(&mut buf);
+                    genesis_praos_proof.vrf_proof.to_buffer(&mut buf);
                     writer.write_all(&buf)?;
                 }
                 serialize_signature(&genesis_praos_proof.kes_proof.0, writer)?;
