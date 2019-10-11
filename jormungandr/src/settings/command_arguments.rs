@@ -1,5 +1,6 @@
 use crate::settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES;
 use slog::FilterLevel;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -46,6 +47,14 @@ pub struct StartArguments {
 }
 
 #[derive(StructOpt, Debug)]
+pub struct RestArguments {
+    /// REST API listening address.
+    /// If not configured anywhere, defaults to REST API being disabled
+    #[structopt(long = "rest-listen")]
+    pub listen: Option<SocketAddr>,
+}
+
+#[derive(StructOpt, Debug)]
 #[structopt(
     name = "jormungandr",
     raw(setting = "structopt::clap::AppSettings::ColoredHelp")
@@ -70,6 +79,9 @@ pub struct CommandLine {
     /// If not configured anywhere, defaults to "stderr".
     #[structopt(long = "log-output", parse(try_from_str))]
     pub log_output: Option<LogOutput>,
+
+    #[structopt(flatten)]
+    pub rest_arguments: RestArguments,
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,

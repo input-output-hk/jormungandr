@@ -80,12 +80,31 @@ impl RawSettings {
         cmd_output.or(config_output).unwrap_or(LogOutput::Stderr)
     }
 
+    fn rest_config(&self) -> Option<Rest> {
+        let cmd_listen_opt = self.command_line.rest_arguments.listen.clone();
+        let config_rest_opt = self.config.as_ref().and_then(|cfg| cfg.rest.as_ref());
+        match (config_rest_opt, cmd_listen_opt) {
+            (Some(config_rest), Some(cmd_listen)) => Some(Rest {
+                listen: cmd_listen,
+                ..config_rest.clone()
+            }),
+            (Some(config_rest), None) => Some(config_rest.clone()),
+            (None, Some(cmd_listen)) => Some(Rest {
+                listen: cmd_listen,
+                pkcs12: None,
+                cors: None,
+            }),
+            (None, None) => None,
+        }
+    }
+
     /// Load the settings
     /// - from the command arguments
     /// - from the config
     ///
     /// This function will print&exit if anything is not as it should be.
     pub fn try_into_settings(self, logger: &Logger) -> Result<Settings, Error> {
+        let rest = self.rest_config();
         let RawSettings {
             command_line,
             config,
@@ -114,7 +133,7 @@ impl RawSettings {
             );
         };
 
-        let block0_info = match (
+        let block_0 = match (
             &command_arguments.block_0_path,
             &command_arguments.block_0_hash,
         ) {
@@ -132,11 +151,11 @@ impl RawSettings {
             });
 
         Ok(Settings {
-            storage: storage,
-            block_0: block0_info,
-            network: network,
+            storage,
+            block_0,
+            network,
             secrets,
-            rest: config.as_ref().map_or(None, |cfg| cfg.rest.clone()),
+            rest,
             mempool: config
                 .as_ref()
                 .map_or(Mempool::default(), |cfg| cfg.mempool.clone()),
