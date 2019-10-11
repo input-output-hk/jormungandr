@@ -1,4 +1,5 @@
 use crate::blockcfg::{Block, Epoch, Fragment, FragmentId, Header, HeaderHash};
+use crate::network::p2p::comm::PeerStats;
 use crate::network::p2p::topology::NodeId;
 use blockchain::Checkpoints;
 use futures::prelude::*;
@@ -423,7 +424,7 @@ pub enum PropagateMsg {
 }
 
 /// Messages to the network task.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum NetworkMsg {
     Propagate(PropagateMsg),
     GetBlocks(Vec<HeaderHash>),
@@ -433,6 +434,7 @@ pub enum NetworkMsg {
         from: Checkpoints,
         to: HeaderHash,
     },
+    PeerStats(ReplyHandle<Vec<(NodeId, PeerStats)>>),
 }
 
 /// Messages to the explorer task
