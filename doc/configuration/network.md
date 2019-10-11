@@ -19,11 +19,14 @@ p2p:
 ## P2P configuration
 
 - `trusted_peers`: (optional) the list of nodes' [multiaddr][multiaddr] to connect to in order to
-    bootstrap the p2p topology (and bootstrap our local blockchain);
+    bootstrap the p2p topology (and bootstrap our local blockchain) with the associated `public_id`.
 - `public_address`: [multiaddr][multiaddr] the address to listen from and accept connection
     from. This is the public address that will be distributed to other peers
     of the network that may find interest into participating to the blockchain
     dissemination with the node;
+- `private_id`: a cryptographic secret key of type `Ed25519`. See [`jcli key`] for more info
+  on how to generate a key. If not set, a random key will be generated.
+  The associated public key is the node's unique identifier on the network.
 - `listen_address`: (optional) [multiaddr][multiaddr] specifies the address the node
     will listen to to receive p2p connection. Can be left empty and the node will listen
     to whatever value was given to `public_address`.
@@ -36,3 +39,5 @@ p2p:
     maintain. If not specified, an internal limit is used by default.
 
 [multiaddr]: https://github.com/multiformats/multiaddr
+
+[`jcli key`]: ../jcli/key.md

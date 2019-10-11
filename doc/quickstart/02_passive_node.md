@@ -33,11 +33,8 @@ rest:
 
 p2p:
   trusted_peers:
-    - "/ip4/104.24.28.11/tcp/8299"
-  public_address: "/ip4/u.v.x.y/tcp/8299"
-  topics_of_interest:
-    messages: low
-    blocks: normal
+    - address: "/ip4/104.24.28.11/tcp/8299"
+      id: ed25519_pk14uednfkcqq2u2w4uhy7saahyqapn78huu8fj7tv84rqeer78hcvs8h6r6u
 ```
 
 Description of the fields:
@@ -66,8 +63,9 @@ Description of the fields:
       - `allowed_origins`: (optional) allowed origins, if none provided, echos request origin
       - `max_age_secs`: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled
 - `p2p`: P2P network settings
-    - `trusted_peers`: (optional) the list of nodes's [multiaddr][multiaddr] to connect to in order to
-      bootstrap the P2P topology (and bootstrap our local blockchain);
+    - `trusted_peers`: (optional) the list of nodes's [multiaddr][multiaddr] with their associated `public_id`
+      to connect to in order to bootstrap the P2P topology (and bootstrap our local blockchain);
+    - `private_id`: the node's private key ([`Ed25519`]) that will be used to identify this node to the network
     - `public_address`: [multiaddr][multiaddr] string specifying address of the
       P2P service. This is the public address that will be distributed to other
       peers of the network that may find interest in participating to the
@@ -106,3 +104,5 @@ or, in case you only have the yaml file
 ```sh
 cat genesis.yaml | jcli genesis encode | jcli genesis hash
 ```
+
+[`Ed25519`]: ../jcli/key.md
