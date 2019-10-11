@@ -1,14 +1,14 @@
 use crate::common::configuration::{
     genesis_model::{Fund, GenesisYaml, Initial, LinearFees},
     jormungandr_config::JormungandrConfig,
-    node_config_model::{Log, NodeConfig},
+    node_config_model::{Log, NodeConfig, TrustedPeer},
     secret_model::SecretModel,
 };
 use crate::common::file_utils;
 use crate::common::jcli_wrapper;
 pub struct ConfigurationBuilder {
     funds: Vec<Fund>,
-    trusted_peers: Option<Vec<String>>,
+    trusted_peers: Option<Vec<TrustedPeer>>,
     public_address: Option<String>,
     listen_address: Option<String>,
     block0_hash: Option<String>,
@@ -114,7 +114,7 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_trusted_peers(&mut self, trusted_peers: Vec<String>) -> &mut Self {
+    pub fn with_trusted_peers(&mut self, trusted_peers: Vec<TrustedPeer>) -> &mut Self {
         self.trusted_peers = Some(trusted_peers.clone());
         self
     }
