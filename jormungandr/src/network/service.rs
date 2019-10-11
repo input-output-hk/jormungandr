@@ -61,7 +61,7 @@ impl P2pService for NodeService {
     type NodeId = topology::NodeId;
 
     fn node_id(&self) -> topology::NodeId {
-        self.global_state.node.id()
+        self.global_state.topology.node().id()
     }
 }
 
@@ -251,8 +251,8 @@ impl FragmentService for NodeService {
 }
 
 impl GossipService for NodeService {
-    type Node = topology::Node;
-    type GossipSubscription = Subscription<Gossip<topology::Node>>;
+    type Node = topology::NodeData;
+    type GossipSubscription = Subscription<Gossip<topology::NodeData>>;
     type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
 
     fn gossip_subscription<In>(

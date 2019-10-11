@@ -3,7 +3,8 @@ use crate::{
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
-use jormungandr_lib::time::Duration;
+use chain_crypto::Ed25519;
+use jormungandr_lib::{crypto::key::SigningKey, time::Duration};
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
@@ -60,7 +61,7 @@ pub struct Cors {
     pub max_age_secs: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
@@ -71,6 +72,8 @@ pub struct P2pConfig {
     /// The IP address can be specified as 0.0.0.0 or :: to listen on
     /// all network interfaces.
     pub listen_address: Option<Address>,
+
+    pub private_id: Option<SigningKey<Ed25519>>,
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
@@ -135,6 +138,7 @@ impl Default for P2pConfig {
         P2pConfig {
             public_address: None,
             listen_address: None,
+            private_id: None,
             trusted_peers: None,
             topics_of_interest: None,
             max_connections: None,

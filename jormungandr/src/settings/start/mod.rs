@@ -7,6 +7,9 @@ use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
+use chain_crypto::Ed25519;
+use jormungandr_lib::crypto::key::SigningKey;
+use poldercast::PrivateId;
 use slog::{FilterLevel, Logger};
 
 use std::{collections::BTreeMap, fs::File, path::PathBuf};
@@ -166,8 +169,22 @@ fn generate_network(
         p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
     }
 
+    let private_id = if let Some(b) = config.as_ref().and_then(|cfg| cfg.p2p.private_id.as_ref()) {
+        use bech32::FromBase32 as _;
+
+        let (_, data) = bech32::decode(&b.to_bech32_str()).unwrap();
+        let data = Vec::<u8>::from_base32(&data).unwrap();
+        let mut bytes = [0; 32];
+        bytes.copy_from_slice(&data);
+        PrivateId::from(bytes)
+    } else {
+        let mut rng = rand::rngs::OsRng::new().unwrap();
+        PrivateId::generate(&mut rng)
+    };
+
     let network = network::Configuration {
         public_address: p2p.public_address.clone(),
+        private_id,
         listen_address: match &p2p.listen_address {
             None => None,
             Some(v) => {

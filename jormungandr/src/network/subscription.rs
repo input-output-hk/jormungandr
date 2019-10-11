@@ -1,5 +1,5 @@
 use super::{
-    p2p::topology::{Node, NodeId},
+    p2p::topology::{NodeData, NodeId},
     GlobalState, GlobalStateR,
 };
 use crate::{
@@ -123,7 +123,7 @@ pub fn process_fragments<S>(
 
 pub fn process_gossip<S>(inbound: S, node_id: NodeId, global_state: GlobalStateR, logger: Logger)
 where
-    S: Stream<Item = Gossip<Node>, Error = core_error::Error> + Send + 'static,
+    S: Stream<Item = Gossip<NodeData>, Error = core_error::Error> + Send + 'static,
 {
     let state = global_state.clone();
     let err_logger = logger.clone();
@@ -152,7 +152,7 @@ where
     );
 }
 
-fn filter_gossip_node(node: &Node, config: &Configuration) -> bool {
+fn filter_gossip_node(node: &NodeData, config: &Configuration) -> bool {
     if config.allow_private_addresses {
         node.has_valid_address()
     } else {

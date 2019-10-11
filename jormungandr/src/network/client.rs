@@ -50,7 +50,7 @@ where
     S: P2pService<NodeId = topology::NodeId>,
     S: BlockService<Block = Block>,
     S: FragmentService<Fragment = Fragment>,
-    S: GossipService<Node = topology::Node>,
+    S: GossipService<Node = topology::NodeData>,
     S::UploadBlocksFuture: Send + 'static,
     S::FragmentSubscription: Send + 'static,
     S::GossipSubscription: Send + 'static,
@@ -487,7 +487,7 @@ pub fn connect(
 
     // TODO: we need to filter the `addr` to prevent to connect to invalid address
 
-    grpc::connect(addr, Some(state.global.as_ref().node.id()))
+    grpc::connect(addr, Some(state.global.as_ref().topology.node().id()))
         .map_err(move |e| {
             if let Some(e) = e.connect_error() {
                 info!(connect_err_logger, "error connecting to peer"; "reason" => %e);
