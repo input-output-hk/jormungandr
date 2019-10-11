@@ -265,6 +265,7 @@ impl GossipService for NodeService {
     {
         subscription::process_gossip(
             inbound,
+            subscriber,
             self.global_state.clone(),
             self.logger().new(o!("node_id" => subscriber.to_string())),
         );

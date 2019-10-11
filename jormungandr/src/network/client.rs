@@ -124,7 +124,12 @@ where
                         channels.transaction_box.clone(),
                         logger.clone(),
                     );
-                    subscription::process_gossip(gossip_sub, state.global.clone(), logger.clone());
+                    subscription::process_gossip(
+                        gossip_sub,
+                        node_id,
+                        state.global.clone(),
+                        logger.clone(),
+                    );
 
                     // Plug the block solicitations and header pulls to be handled
                     // via client requests.

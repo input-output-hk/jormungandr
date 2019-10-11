@@ -35,7 +35,7 @@ pub fn process_block_announcements<S>(
             );
         })
         .map(move |header| {
-            state.peers.refresh_peer(node_id);
+            state.peers.refresh_peer_on_block(node_id);
             BlockMsg::AnnouncedBlock(header, node_id)
         });
     global_state.spawn(
@@ -59,7 +59,7 @@ pub fn process_block_announcement(
     global_state: &GlobalState,
     block_box: MessageBox<BlockMsg>,
 ) -> SendingBlockMsg {
-    global_state.peers.refresh_peer(node_id);
+    global_state.peers.refresh_peer_on_block(node_id);
     let future = block_box.send(BlockMsg::AnnouncedBlock(header, node_id));
     SendingBlockMsg { inner: future }
 }
@@ -103,7 +103,7 @@ pub fn process_fragments<S>(
             );
         })
         .map(move |fragment| {
-            state.peers.refresh_peer(node_id);
+            state.peers.refresh_peer_on_fragment(node_id);
             TransactionMsg::SendTransaction(FragmentOrigin::Network, vec![fragment])
         });
     global_state.spawn(
@@ -121,7 +121,7 @@ pub fn process_fragments<S>(
     );
 }
 
-pub fn process_gossip<S>(inbound: S, global_state: GlobalStateR, logger: Logger)
+pub fn process_gossip<S>(inbound: S, node_id: NodeId, global_state: GlobalStateR, logger: Logger)
 where
     S: Stream<Item = Gossip<Node>, Error = core_error::Error> + Send + 'static,
 {
@@ -136,6 +136,12 @@ where
                     .partition(|node| filter_gossip_node(node, &state.config));
                 if filtered_out.len() > 0 {
                     debug!(logger, "nodes dropped from gossip: {:?}", filtered_out);
+                }
+                if !state.peers.refresh_peer_on_gossip(node_id) {
+                    debug!(
+                        logger,
+                        "received gossip from node {} that is not in the peer map", node_id
+                    );
                 }
                 state.topology.update(nodes);
                 Ok(())
