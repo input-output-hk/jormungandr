@@ -1,11 +1,13 @@
 use crate::ByteArray;
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 
 /// A dynamically created buffer for T
 #[derive(Clone)]
 pub struct ByteBuilder<T> {
     buffer: Vec<u8>,
     phantom: PhantomData<T>,
+    expected: Option<NonZeroUsize>,
 }
 
 impl<T> From<ByteBuilder<T>> for Vec<u8> {
@@ -20,14 +22,16 @@ impl<T> ByteBuilder<T> {
         ByteBuilder {
             buffer: Vec::new(),
             phantom: PhantomData,
+            expected: None,
         }
     }
 
     /// Create a builder of fixed size
-    pub fn new_fixed(size: usize) -> Self {
+    pub fn new_fixed(size: NonZeroUsize) -> Self {
         ByteBuilder {
-            buffer: Vec::with_capacity(size),
+            buffer: Vec::with_capacity(size.get()),
             phantom: PhantomData,
+            expected: Some(size),
         }
     }
 
@@ -38,6 +42,7 @@ impl<T> ByteBuilder<T> {
         ByteBuilder {
             buffer: buf,
             phantom: self.phantom,
+            expected: self.expected,
         }
     }
     /// Append bytes in the builder
@@ -47,6 +52,7 @@ impl<T> ByteBuilder<T> {
         ByteBuilder {
             buffer: buf,
             phantom: self.phantom,
+            expected: self.expected,
         }
     }
 
@@ -91,10 +97,12 @@ impl<T> ByteBuilder<T> {
         let res = f(ByteBuilder {
             buffer: self.buffer,
             phantom: PhantomData,
+            expected: None,
         });
         ByteBuilder {
             buffer: res.buffer,
             phantom: self.phantom,
+            expected: self.expected,
         }
     }
 
@@ -120,7 +128,20 @@ impl<T> ByteBuilder<T> {
 
     /// Finalize the buffer and return a fixed ByteArray of T
     pub fn finalize(self) -> ByteArray<T> {
-        ByteArray::from_vec(self.buffer)
+        match self.expected {
+            None => ByteArray::from_vec(self.buffer),
+            Some(expected_sz) => {
+                if expected_sz.get() == self.buffer.len() {
+                    ByteArray::from_vec(self.buffer)
+                } else {
+                    panic!(
+                        "internal-error: bytebuilder: expected size {} but got {}",
+                        expected_sz.get(),
+                        self.buffer.len()
+                    )
+                }
+            }
+        }
     }
 
     /// Finalize the buffer and return a fixed ByteArray of T
