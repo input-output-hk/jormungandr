@@ -7,7 +7,7 @@ use std::slice;
 
 mod builder;
 mod content;
-//mod cstruct;
+mod cstruct;
 mod header;
 mod headerraw;
 mod leaderlog;

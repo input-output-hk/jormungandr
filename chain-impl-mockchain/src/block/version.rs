@@ -1,3 +1,5 @@
+use super::cstruct;
+use std::num::NonZeroUsize;
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,12 +67,38 @@ impl BlockVersion {
         }
     }
 
+    pub fn to_u16(self) -> u16 {
+        match self {
+            BlockVersion::Genesis => 0,
+            BlockVersion::Ed25519Signed => 1,
+            BlockVersion::KesVrfproof => 2,
+        }
+    }
+
     pub fn get_consensus(self) -> Option<ConsensusVersion> {
         match self {
             BlockVersion::Genesis => None,
             BlockVersion::Ed25519Signed => Some(ConsensusVersion::Bft),
             BlockVersion::KesVrfproof => Some(ConsensusVersion::GenesisPraos),
         }
+    }
+
+    pub const fn get_size(self) -> NonZeroUsize {
+        const SIZE: [NonZeroUsize; 3] = [
+            unsafe { NonZeroUsize::new_unchecked(cstruct::BLOCK_COMMON_SIZE) },
+            unsafe { NonZeroUsize::new_unchecked(cstruct::BLOCK_BFT_SIZE) },
+            unsafe { NonZeroUsize::new_unchecked(cstruct::BLOCK_GP_SIZE) },
+        ];
+        SIZE[self as usize]
+    }
+
+    pub const fn get_auth_size(self) -> NonZeroUsize {
+        const SIZE: [NonZeroUsize; 3] = [
+            unsafe { NonZeroUsize::new_unchecked(cstruct::BLOCK_COMMON_SIZE) },
+            unsafe { NonZeroUsize::new_unchecked(cstruct::BLOCK_BFT_AUTHED_SIZE) },
+            unsafe { NonZeroUsize::new_unchecked(cstruct::BLOCK_GP_AUTHED_SIZE) },
+        ];
+        SIZE[self as usize]
     }
 }
 
