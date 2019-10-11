@@ -62,7 +62,7 @@ impl Block {
 impl property::Block for Block {
     type Id = BlockId;
     type Date = BlockDate;
-    type Version = AnyBlockVersion;
+    type Version = BlockVersion;
     type ChainLength = ChainLength;
 
     /// Identifier of the block, currently the hash of the

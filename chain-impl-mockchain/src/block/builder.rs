@@ -38,7 +38,7 @@ impl BlockBuilder {
             common: Common {
                 block_content_size,
                 block_content_hash,
-                any_block_version: BlockVersion::Genesis.into(),
+                block_version: BlockVersion::Genesis.into(),
                 block_parent_hash: BlockId::zero(),
                 block_date: BlockDate::first(),
                 chain_length: ChainLength(0),
@@ -79,7 +79,7 @@ impl BlockBuilder {
         let (content_hash, content_size) = self.contents.compute_hash_size();
         self.common.block_content_hash = content_hash;
         self.common.block_content_size = content_size as u32;
-        self.common.any_block_version = block_version.into();
+        self.common.block_version = block_version;
         self
     }
 
@@ -135,8 +135,7 @@ mod tests {
     use crate::block::{
         content::ContentsBuilder,
         header::{Common, GenesisPraosProof, Header},
-        version::BlockVersion::{Ed25519Signed, KesVrfproof},
-        AnyBlockVersion, Block,
+        Block,
     };
     use crate::testing::arbitrary::utils::Verify;
     use chain_core::property::BlockId as BlockIdProperty;
@@ -155,7 +154,7 @@ mod tests {
         let (content_hash, content_size) = block_content.compute_hash_size();
 
         let expected_common = Common {
-            any_block_version: AnyBlockVersion::Supported(BlockVersion::Genesis),
+            block_version: BlockVersion::Genesis,
             block_date: BlockDate::first(),
             block_content_size: content_size as u32,
             block_content_hash: content_hash,
@@ -194,7 +193,7 @@ mod tests {
     ) -> TestResult {
         let (content_hash, content_size) = block_content.compute_hash_size();
         let expected_common = Common {
-            any_block_version: AnyBlockVersion::Supported(KesVrfproof),
+            block_version: BlockVersion::KesVrfproof,
             block_date: *parent_header.block_date(),
             block_content_size: content_size as u32,
             block_content_hash: content_hash,
@@ -228,7 +227,7 @@ mod tests {
     ) -> TestResult {
         let (content_hash, content_size) = block_content.compute_hash_size();
         let expected_common = Common {
-            any_block_version: AnyBlockVersion::Supported(Ed25519Signed),
+            block_version: BlockVersion::Ed25519Signed,
             block_date: *parent_header.block_date(),
             block_content_size: content_size as u32,
             block_content_hash: content_hash,

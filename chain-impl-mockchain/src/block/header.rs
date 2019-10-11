@@ -16,13 +16,14 @@ use chain_core::{
 use chain_crypto::{
     self, Curve25519_2HashDH, Ed25519, Signature, SumEd25519_12, VerifiableRandomFunction,
 };
+use typed_bytes::ByteBuilder;
 
 pub type HeaderHash = Hash;
 pub type BlockId = Hash;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Common {
-    pub any_block_version: AnyBlockVersion,
+    pub block_version: BlockVersion,
     pub block_date: BlockDate,
     pub block_content_size: BlockContentSize,
     pub block_content_hash: BlockContentHash,
@@ -116,8 +117,8 @@ impl std::fmt::Display for ChainLength {
 
 impl Header {
     #[inline]
-    pub fn block_version(&self) -> AnyBlockVersion {
-        self.common.any_block_version
+    pub fn block_version(&self) -> BlockVersion {
+        self.common.block_version
     }
 
     #[inline]
@@ -201,7 +202,7 @@ impl property::Serialize for Common {
 
         let mut codec = Codec::new(writer);
 
-        codec.put_u16(self.any_block_version.into())?;
+        codec.put_u16(self.block_version.to_u16())?;
         codec.put_u32(self.block_content_size)?;
         codec.put_u32(self.block_date.epoch)?;
         codec.put_u32(self.block_date.slot_id)?;
@@ -241,72 +242,106 @@ impl property::Serialize for Header {
     }
 }
 
-impl Readable for Common {
-    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let any_block_version = buf.get_u16().map(Into::into)?;
-        let block_content_size = buf.get_u32()?;
-        let epoch = buf.get_u32()?;
-        let slot_id = buf.get_u32()?;
-        let chain_length = buf.get_u32().map(ChainLength)?;
-        let block_content_hash = Hash::read(buf)?;
-        let block_parent_hash = Hash::read(buf)?;
+impl Header {
+    // serialize the authenticated part of the header, which as a rule of thumb
+    // is everything except the final signature
+    fn serialize_auth_part(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
+        let bb = bb
+            .u16(self.common.block_version.to_u16())
+            .u32(self.common.block_content_size)
+            .u32(self.common.block_date.epoch)
+            .u32(self.common.block_date.slot_id)
+            .u32(self.common.chain_length.0)
+            .bytes(self.common.block_content_hash.as_ref())
+            .bytes(self.common.block_parent_hash.as_ref());
+        match &self.proof {
+            Proof::None => bb,
+            Proof::Bft(bft_proof) => bb.bytes(bft_proof.leader_id.0.as_ref()),
+            Proof::GenesisPraos(gp_proof) => bb
+                .bytes(gp_proof.node_id.as_ref())
+                .bytes(&gp_proof.vrf_proof.bytes()),
+        }
+    }
 
-        let block_date = BlockDate { epoch, slot_id };
-        Ok(Common {
-            any_block_version,
-            block_content_size,
-            block_date,
-            chain_length,
-            block_content_hash,
-            block_parent_hash,
-        })
+    // Build a serialized version of the full header without size
+    pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
+        let bb = self.serialize_auth_part(bb);
+        match &self.proof {
+            Proof::None => bb,
+            Proof::Bft(bft_proof) => bb.bytes(bft_proof.signature.0.as_ref()),
+            Proof::GenesisPraos(gp_proof) => bb.bytes(gp_proof.kes_proof.0.as_ref()),
+        }
+    }
+
+    // Build the data required for signing a block
+    pub fn auth(&self) -> Box<[u8]> {
+        let bb = ByteBuilder::new_fixed(self.common.block_version.get_auth_size());
+        let out = self.serialize_auth_part(bb).finalize_as_vec();
+        out.into()
     }
 }
 
 impl Readable for Header {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let common = Common::read(buf)?;
+        let any_block_version = buf.get_u16().map(Into::into)?;
+        match any_block_version {
+            AnyBlockVersion::Unsupported(version) => Err(ReadError::UnknownTag(version as u32)),
+            AnyBlockVersion::Supported(block_version) => {
+                let block_content_size = buf.get_u32()?;
+                let epoch = buf.get_u32()?;
+                let slot_id = buf.get_u32()?;
+                let chain_length = buf.get_u32().map(ChainLength)?;
+                let block_content_hash = Hash::read(buf)?;
+                let block_parent_hash = Hash::read(buf)?;
+                let block_date = BlockDate { epoch, slot_id };
 
-        let proof = match common.any_block_version {
-            AnyBlockVersion::Supported(BlockVersion::Genesis) => Proof::None,
-            AnyBlockVersion::Supported(BlockVersion::Ed25519Signed) => {
-                // BFT
-                let leader_id = deserialize_public_key(buf).map(bft::LeaderId)?;
-                let signature = deserialize_signature(buf).map(BftSignature)?;
-                Proof::Bft(BftProof {
-                    leader_id,
-                    signature,
-                })
+                let common = Common {
+                    block_version,
+                    block_content_size,
+                    block_date,
+                    chain_length,
+                    block_content_hash,
+                    block_parent_hash,
+                };
+
+                let proof = match block_version {
+                    BlockVersion::Genesis => Proof::None,
+                    BlockVersion::Ed25519Signed => {
+                        // BFT
+                        let leader_id = deserialize_public_key(buf).map(bft::LeaderId)?;
+                        let signature = deserialize_signature(buf).map(BftSignature)?;
+                        Proof::Bft(BftProof {
+                            leader_id,
+                            signature,
+                        })
+                    }
+                    BlockVersion::KesVrfproof => {
+                        let node_id = <[u8; 32]>::read(buf)?.into();
+                        let vrf_proof = {
+                            let bytes = <[u8;<Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE]>::read(buf)?;
+
+                            <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput::from_bytes_unverified(&bytes)
+                                .ok_or(ReadError::StructureInvalid("VRF Proof".to_string()))
+                        }?;
+                        let kes_proof = deserialize_signature(buf).map(KESSignature)?;
+
+                        Proof::GenesisPraos(GenesisPraosProof {
+                            node_id: node_id,
+                            vrf_proof: vrf_proof,
+                            kes_proof: kes_proof,
+                        })
+                    }
+                };
+                Ok(Header { common, proof })
             }
-            AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => {
-                let node_id = <[u8; 32]>::read(buf)?.into();
-                let vrf_proof = {
-                    let bytes = <[u8;<Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE]>::read(buf)?;
-
-                    <Curve25519_2HashDH as VerifiableRandomFunction>::VerifiedRandomOutput::from_bytes_unverified(&bytes)
-                        .ok_or(ReadError::StructureInvalid("VRF Proof".to_string()))
-                }?;
-                let kes_proof = deserialize_signature(buf).map(KESSignature)?;
-
-                Proof::GenesisPraos(GenesisPraosProof {
-                    node_id: node_id,
-                    vrf_proof: vrf_proof,
-                    kes_proof: kes_proof,
-                })
-            }
-            AnyBlockVersion::Unsupported(version) => {
-                return Err(ReadError::UnknownTag(version as u32));
-            }
-        };
-
-        Ok(Header { common, proof })
+        }
     }
 }
 
 impl property::Header for Header {
     type Id = HeaderHash;
     type Date = BlockDate;
-    type Version = AnyBlockVersion;
+    type Version = BlockVersion;
     type ChainLength = ChainLength;
 
     fn id(&self) -> Self::Id {
@@ -340,9 +375,9 @@ mod test {
         }
     }
 
-    impl Arbitrary for AnyBlockVersion {
+    impl Arbitrary for BlockVersion {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            AnyBlockVersion::from(u16::arbitrary(g) % 3)
+            BlockVersion::from_u16(u16::arbitrary(g) % 3).unwrap()
         }
     }
 
@@ -355,7 +390,7 @@ mod test {
     impl Arbitrary for Common {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Common {
-                any_block_version: Arbitrary::arbitrary(g),
+                block_version: Arbitrary::arbitrary(g),
                 block_date: Arbitrary::arbitrary(g),
                 block_content_size: Arbitrary::arbitrary(g),
                 block_content_hash: Arbitrary::arbitrary(g),
@@ -413,15 +448,10 @@ mod test {
     impl Arbitrary for Header {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let common = Common::arbitrary(g);
-            let proof = match common.any_block_version {
-                AnyBlockVersion::Supported(BlockVersion::Genesis) => Proof::None,
-                AnyBlockVersion::Supported(BlockVersion::Ed25519Signed) => {
-                    Proof::Bft(Arbitrary::arbitrary(g))
-                }
-                AnyBlockVersion::Supported(BlockVersion::KesVrfproof) => {
-                    Proof::GenesisPraos(Arbitrary::arbitrary(g))
-                }
-                AnyBlockVersion::Unsupported(_) => unreachable!(),
+            let proof = match common.block_version {
+                BlockVersion::Genesis => Proof::None,
+                BlockVersion::Ed25519Signed => Proof::Bft(Arbitrary::arbitrary(g)),
+                BlockVersion::KesVrfproof => Proof::GenesisPraos(Arbitrary::arbitrary(g)),
             };
             Header {
                 common: common,

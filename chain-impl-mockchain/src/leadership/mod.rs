@@ -1,5 +1,5 @@
 use crate::{
-    block::{AnyBlockVersion, BlockDate, BlockVersion, ConsensusVersion, Header},
+    block::{BlockDate, BlockVersion, ConsensusVersion, Header},
     certificate::PoolId,
     date::Epoch,
     ledger::{Ledger, LedgerParameters},
@@ -83,7 +83,7 @@ pub struct Leadership {
 
 impl LeadershipConsensus {
     #[inline]
-    fn verify_version(&self, block_version: AnyBlockVersion) -> Verification {
+    fn verify_version(&self, block_version: BlockVersion) -> Verification {
         match self {
             LeadershipConsensus::Bft(_) if block_version == BlockVersion::Ed25519Signed => {
                 Verification::Success
