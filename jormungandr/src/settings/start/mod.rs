@@ -178,7 +178,7 @@ fn generate_network(
         bytes.copy_from_slice(&data);
         PrivateId::from(bytes)
     } else {
-        let mut rng = rand::rngs::OsRng::new().unwrap();
+        let mut rng = rand::thread_rng();
         PrivateId::generate(&mut rng)
     };
 
