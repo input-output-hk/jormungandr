@@ -4,7 +4,10 @@ use crate::{
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
 use chain_crypto::Ed25519;
-use jormungandr_lib::{crypto::key::SigningKey, time::Duration};
+use jormungandr_lib::{
+    crypto::key::{Identifier, SigningKey},
+    time::Duration,
+};
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
@@ -77,7 +80,7 @@ pub struct P2pConfig {
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
-    pub trusted_peers: Option<Vec<poldercast::Address>>,
+    pub trusted_peers: Option<Vec<TrustedPeer>>,
     /// the topic subscriptions
     ///
     /// When connecting to different nodes we will expose these too in order to
@@ -93,6 +96,13 @@ pub struct P2pConfig {
     /// The default is to not allow advertising non-public IP addresses.
     #[serde(default)]
     pub allow_private_addresses: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrustedPeer {
+    pub address: Address,
+    pub id: Identifier<Ed25519>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -162,6 +172,13 @@ impl Default for Leadership {
             log_ttl: Duration::new(3600, 0),
             garbage_collection_interval: Duration::new(3600 / 4, 0),
         }
+    }
+}
+
+impl std::str::FromStr for TrustedPeer {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        unimplemented!()
     }
 }
 

@@ -132,11 +132,9 @@ impl GlobalState {
         let mut topology = P2pTopology::new(node, logger.clone());
         topology.set_poldercast_modules();
         topology.add_module(topology::modules::TrustedPeers::new_with(
-            config
-                .trusted_peers
-                .iter()
-                .cloned()
-                .map(|trusted_peer| poldercast::NodeData::new_with([0; 32].into(), trusted_peer)),
+            config.trusted_peers.iter().cloned().map(|trusted_peer| {
+                poldercast::NodeData::new_with(trusted_peer.id, trusted_peer.address)
+            }),
         ));
 
         let peers = Peers::new(config.max_connections, logger.clone());
@@ -438,7 +436,7 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
     let mut peers = config
         .trusted_peers
         .iter()
-        .filter_map(|peer| peer.to_socketaddr())
+        .filter_map(|peer| peer.address.to_socketaddr())
         .collect::<Vec<_>>();
     let mut rng = rand::thread_rng();
     peers.shuffle(&mut rng);

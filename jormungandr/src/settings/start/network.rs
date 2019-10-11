@@ -57,7 +57,7 @@ pub struct Configuration {
     pub listen_address: Option<SocketAddr>,
 
     /// list of trusted addresses
-    pub trusted_peers: Vec<poldercast::Address>,
+    pub trusted_peers: Vec<TrustedPeer>,
 
     /// the protocol to utilise for the p2p network
     pub protocol: Protocol,
@@ -73,6 +73,29 @@ pub struct Configuration {
 
     /// Whether to allow non-public IP addresses in gossip
     pub allow_private_addresses: bool,
+}
+
+#[derive(Clone)]
+pub struct TrustedPeer {
+    pub address: poldercast::Address,
+    pub id: poldercast::Id,
+}
+
+impl From<super::config::TrustedPeer> for TrustedPeer {
+    fn from(tp: super::config::TrustedPeer) -> Self {
+        use bech32::FromBase32 as _;
+
+        let (_, data) = bech32::decode(&tp.id.to_bech32_str()).unwrap();
+        let data = Vec::<u8>::from_base32(&data).unwrap();
+        let mut bytes = [0; 32];
+        bytes.copy_from_slice(&data);
+        let id = poldercast::Id::from(bytes);
+
+        TrustedPeer {
+            address: tp.address.0,
+            id,
+        }
+    }
 }
 
 impl Peer {

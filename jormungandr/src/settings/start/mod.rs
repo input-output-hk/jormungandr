@@ -1,4 +1,4 @@
-mod config;
+pub mod config;
 pub mod network;
 
 use self::config::{Config, Leadership, Mempool};
@@ -169,7 +169,7 @@ fn generate_network(
         p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
     }
 
-    let private_id = if let Some(b) = config.as_ref().and_then(|cfg| cfg.p2p.private_id.as_ref()) {
+    let private_id = if let Some(b) = p2p.private_id.as_ref() {
         use bech32::FromBase32 as _;
 
         let (_, data) = bech32::decode(&b.to_bech32_str()).unwrap();
@@ -195,7 +195,13 @@ fn generate_network(
                 }
             }
         },
-        trusted_peers: p2p.trusted_peers.clone().unwrap_or(vec![]),
+        trusted_peers: p2p
+            .trusted_peers
+            .clone()
+            .unwrap_or(vec![])
+            .into_iter()
+            .map(Into::into)
+            .collect(),
         protocol: Protocol::Grpc,
         subscriptions: p2p.topics_of_interest.clone().unwrap_or(BTreeMap::new()),
         max_connections: p2p
