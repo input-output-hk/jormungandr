@@ -1,4 +1,4 @@
-use super::PeerComms;
+use super::{PeerComms, PeerStats};
 use crate::network::p2p::topology::NodeId;
 
 use linked_hash_map::LinkedHashMap;
@@ -50,6 +50,13 @@ impl PeerMap {
             .iter_mut()
             .next_back()
             .map(|(&id, comms)| (id, comms))
+    }
+
+    pub fn stats(&self) -> Vec<(NodeId, PeerStats)> {
+        self.map
+            .iter()
+            .map(|(id, comms)| (*id, comms.stats.clone()))
+            .collect()
     }
 
     fn evict_if_full(&mut self) {

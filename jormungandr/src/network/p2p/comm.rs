@@ -10,6 +10,7 @@ use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
 
 use std::sync::Mutex;
+use std::time::SystemTime;
 
 // Buffer size determines the number of stream items pending processing that
 // can be buffered before back pressure is applied to the inbound half of
@@ -145,6 +146,7 @@ pub struct PeerComms {
     chain_pulls: CommHandle<ChainPullRequest<HeaderHash>>,
     fragments: CommHandle<Fragment>,
     gossip: CommHandle<Gossip<topology::Node>>,
+    stats: PeerStats,
 }
 
 impl PeerComms {
@@ -192,6 +194,13 @@ impl PeerComms {
     pub fn subscribe_to_gossip(&mut self) -> Subscription<Gossip<topology::Node>> {
         self.gossip.subscribe()
     }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct PeerStats {
+    last_block_received: Option<SystemTime>,
+    last_fragment_received: Option<SystemTime>,
+    last_gossip_received: Option<SystemTime>,
 }
 
 /// The collection of currently connected peer nodes.
@@ -339,9 +348,37 @@ impl Peers {
         }
     }
 
-    pub fn refresh_peer(&self, node_id: topology::NodeId) {
+    pub fn refresh_peer_on_block(&self, node_id: topology::NodeId) -> bool {
         let mut map = self.mutex.lock().unwrap();
-        map.refresh_peer_comms(node_id);
+        match map.refresh_peer_comms(node_id) {
+            Some(comms) => {
+                comms.stats.last_block_received = Some(SystemTime::now());
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn refresh_peer_on_fragment(&self, node_id: topology::NodeId) -> bool {
+        let mut map = self.mutex.lock().unwrap();
+        match map.refresh_peer_comms(node_id) {
+            Some(comms) => {
+                comms.stats.last_fragment_received = Some(SystemTime::now());
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn refresh_peer_on_gossip(&self, node_id: topology::NodeId) -> bool {
+        let mut map = self.mutex.lock().unwrap();
+        match map.refresh_peer_comms(node_id) {
+            Some(comms) => {
+                comms.stats.last_gossip_received = Some(SystemTime::now());
+                true
+            }
+            None => false,
+        }
     }
 
     pub fn fetch_blocks(&self, hashes: Vec<HeaderHash>) {
@@ -418,5 +455,10 @@ impl Peers {
                 );
             }
         }
+    }
+
+    pub fn stats(&self) -> Vec<(topology::NodeId, PeerStats)> {
+        let mut map = self.mutex.lock().unwrap();
+        map.stats()
     }
 }
