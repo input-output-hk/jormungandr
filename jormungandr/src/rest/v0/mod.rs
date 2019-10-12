@@ -29,6 +29,9 @@ pub fn resources() -> Vec<(
         ("/leaders/{leader_id}", &|r| {
             r.delete().with(handlers::delete_leaders)
         }),
+        ("/network/stats", &|r| {
+            r.get().with_async(handlers::get_network_stats)
+        }),
         ("/settings", &|r| r.get().with_async(handlers::get_settings)),
         ("/stake", &|r| {
             r.get().with_async(handlers::get_stake_distribution)

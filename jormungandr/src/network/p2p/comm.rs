@@ -203,6 +203,20 @@ pub struct PeerStats {
     last_gossip_received: Option<SystemTime>,
 }
 
+impl PeerStats {
+    pub fn last_block_received(&self) -> Option<SystemTime> {
+        self.last_block_received.clone()
+    }
+
+    pub fn last_fragment_received(&self) -> Option<SystemTime> {
+        self.last_fragment_received.clone()
+    }
+
+    pub fn last_gossip_received(&self) -> Option<SystemTime> {
+        self.last_gossip_received.clone()
+    }
+}
+
 /// The collection of currently connected peer nodes.
 ///
 /// This object uses internal locking and is shared between
