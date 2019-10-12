@@ -18,10 +18,17 @@ pub struct Rest {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Peer2Peer {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub trusted_peers: Option<Vec<String>>,
+    pub trusted_peers: Option<Vec<TrustedPeer>>,
     pub public_address: String,
+    pub private_id: String,
     pub listen_address: String,
     pub topics_of_interest: TopicsOfInterest,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TrustedPeer {
+    pub address: String,
+    pub id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -53,6 +60,10 @@ impl NodeConfig {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
         let storage_file = file_utils::get_path_in_temp("storage");
+        let private_id =
+            jormungandr_lib::crypto::key::SigningKey::<chain_crypto::Ed25519>::generate(
+                &mut rand::rngs::OsRng::new().unwrap(),
+            );
 
         NodeConfig {
             storage: Some(String::from(storage_file.as_os_str().to_str().unwrap())),
@@ -70,6 +81,7 @@ impl NodeConfig {
                     DEFAULT_HOST,
                     public_address_port.to_string()
                 ),
+                private_id: private_id.to_bech32_str(),
                 listen_address: format!(
                     "/ip4/{}/tcp/{}",
                     DEFAULT_HOST,

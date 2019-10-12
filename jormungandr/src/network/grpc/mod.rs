@@ -14,6 +14,6 @@ impl network_grpc::client::ProtocolConfig for BlockConfig {
     type BlockDate = BlockDate;
     type Fragment = Fragment;
     type FragmentId = FragmentId;
-    type Node = p2p::Node;
+    type Node = p2p::NodeData;
     type NodeId = p2p::NodeId;
 }

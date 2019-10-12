@@ -3,7 +3,11 @@ use crate::{
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
-use jormungandr_lib::time::Duration;
+use chain_crypto::Ed25519;
+use jormungandr_lib::{
+    crypto::key::{Identifier, SigningKey},
+    time::Duration,
+};
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
@@ -60,7 +64,7 @@ pub struct Cors {
     pub max_age_secs: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
@@ -72,9 +76,11 @@ pub struct P2pConfig {
     /// all network interfaces.
     pub listen_address: Option<Address>,
 
+    pub private_id: Option<SigningKey<Ed25519>>,
+
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
-    pub trusted_peers: Option<Vec<poldercast::Address>>,
+    pub trusted_peers: Option<Vec<TrustedPeer>>,
     /// the topic subscriptions
     ///
     /// When connecting to different nodes we will expose these too in order to
@@ -90,6 +96,13 @@ pub struct P2pConfig {
     /// The default is to not allow advertising non-public IP addresses.
     #[serde(default)]
     pub allow_private_addresses: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrustedPeer {
+    pub address: Address,
+    pub id: Identifier<Ed25519>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -135,6 +148,7 @@ impl Default for P2pConfig {
         P2pConfig {
             public_address: None,
             listen_address: None,
+            private_id: None,
             trusted_peers: None,
             topics_of_interest: None,
             max_connections: None,
@@ -158,6 +172,30 @@ impl Default for Leadership {
             log_ttl: Duration::new(3600, 0),
             garbage_collection_interval: Duration::new(3600 / 4, 0),
         }
+    }
+}
+
+impl std::str::FromStr for TrustedPeer {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut split = s.split('@');
+
+        let address = if let Some(address) = split.next() {
+            address
+                .parse::<poldercast::Address>()
+                .map(Address)
+                .map_err(|e| e.to_string())?
+        } else {
+            return Err("Missing address component".to_owned());
+        };
+
+        let id = if let Some(id) = split.next() {
+            Identifier::from_bech32_str(id).map_err(|e| e.to_string())?
+        } else {
+            return Err("Missing id component".to_owned());
+        };
+
+        Ok(TrustedPeer { address, id })
     }
 }
 

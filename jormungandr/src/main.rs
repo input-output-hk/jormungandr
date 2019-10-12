@@ -1,6 +1,7 @@
 extern crate actix_net;
 extern crate actix_threadpool;
 extern crate actix_web;
+extern crate bech32;
 extern crate bincode;
 extern crate bytes;
 extern crate chain_addr;

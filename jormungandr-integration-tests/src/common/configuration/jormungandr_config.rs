@@ -16,6 +16,7 @@ pub struct JormungandrConfig {
     pub node_config: NodeConfig,
     pub secret_model: SecretModel,
     pub log_file_path: PathBuf,
+    pub public_id: String,
 }
 
 impl JormungandrConfig {
@@ -38,6 +39,12 @@ impl JormungandrConfig {
     }
 
     pub fn from(genesis_yaml: GenesisYaml, node_config: NodeConfig) -> Self {
+        use chain_crypto::Ed25519;
+        use jormungandr_lib::crypto::key::SigningKey;
+
+        let prv = SigningKey::<Ed25519>::from_bech32_str(&node_config.p2p.private_id).unwrap();
+        let p = prv.identifier();
+
         JormungandrConfig {
             genesis_block_path: PathBuf::from(""),
             genesis_block_hash: String::from(""),
@@ -47,6 +54,7 @@ impl JormungandrConfig {
             genesis_yaml: genesis_yaml,
             node_config: node_config,
             secret_model: SecretModel::empty(),
+            public_id: p.to_bech32_str(),
         }
     }
 }

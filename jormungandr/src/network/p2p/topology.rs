@@ -29,13 +29,15 @@ impl From<bincode::Error> for Error {
     }
 }
 
-#[derive(Clone, Debug)]
 pub struct Node(poldercast::Node);
+
+#[derive(Clone, Debug)]
+pub struct NodeData(poldercast::NodeData);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct NodeId(pub poldercast::Id);
 
-impl gossip::Node for Node {
+impl gossip::Node for NodeData {
     type Id = NodeId;
 
     #[inline]
@@ -56,25 +58,34 @@ impl gossip::Node for Node {
 impl gossip::NodeId for NodeId {}
 
 impl Node {
-    #[inline]
-    pub fn new(address: Option<Address>) -> Self {
-        if let Some(address) = address {
-            Node(poldercast::Node::new_with(address))
+    pub fn new(private_id: poldercast::PrivateId, address: Option<Address>) -> Self {
+        Node(if let Some(address) = address {
+            poldercast::Node::new_with(private_id, address)
         } else {
-            Node(poldercast::Node::new(
-                &mut rand::rngs::OsRng::new().unwrap(),
-            ))
-        }
+            poldercast::Node::new(private_id)
+        })
+    }
+
+    pub fn data(&self) -> NodeData {
+        NodeData(self.0.data().clone())
     }
 
     pub fn add_message_subscription(&mut self, interest_level: InterestLevel) {
         self.0
+            .data_mut()
             .add_subscription(Subscription::new(NEW_MESSAGES_TOPIC.into(), interest_level));
     }
 
     pub fn add_block_subscription(&mut self, interest_level: InterestLevel) {
         self.0
+            .data_mut()
             .add_subscription(Subscription::new(NEW_BLOCKS_TOPIC.into(), interest_level));
+    }
+}
+
+impl NodeData {
+    pub fn poldercast_address(&self) -> &Option<poldercast::Address> {
+        self.0.address()
     }
 
     pub fn has_valid_address(&self) -> bool {
@@ -149,7 +160,7 @@ impl Node {
 
 impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", u64::from(self.0))
+        self.0.fmt(f)
     }
 }
 
@@ -159,7 +170,7 @@ pub struct P2pTopology {
     logger: Logger,
 }
 
-impl property::Serialize for Node {
+impl property::Serialize for NodeData {
     type Error = Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -167,12 +178,13 @@ impl property::Serialize for Node {
     }
 }
 
-impl property::Deserialize for Node {
+impl property::Deserialize for NodeData {
     type Error = Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let inner = bincode::deserialize_from(reader)?;
-        Ok(Node(inner))
+        bincode::deserialize_from(reader)
+            .map(NodeData)
+            .map_err(Into::into)
     }
 }
 
@@ -222,16 +234,16 @@ impl P2pTopology {
 
     /// Returns a list of neighbors selected in this turn
     /// to contact for event dissemination.
-    pub fn view(&self) -> impl Iterator<Item = Node> {
+    pub fn view(&self) -> impl Iterator<Item = NodeData> {
         let topology = self.lock.read().unwrap();
-        topology.view().into_iter().map(Node)
+        topology.view().into_iter().map(NodeData)
     }
 
     /// this is the function to utilise when we receive a gossip in order
     /// to update the P2P Topology internal state
     pub fn update<I>(&self, new_nodes: I)
     where
-        I: IntoIterator<Item = Node>,
+        I: IntoIterator<Item = NodeData>,
     {
         let tree = new_nodes
             .into_iter()
@@ -240,7 +252,7 @@ impl P2pTopology {
         self.update_tree(tree)
     }
 
-    fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::Node>) {
+    fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::NodeData>) {
         // Poldercast API should be better than this
         debug!(self.logger, "updating P2P local topology");
         self.lock.write().unwrap().update(new_nodes)
@@ -248,7 +260,7 @@ impl P2pTopology {
 
     /// this is the function to utilise in order to select gossips to share
     /// with a given node
-    pub fn select_gossips(&self, gossip_recipient: &Node) -> impl Iterator<Item = Node> {
+    pub fn select_gossips(&self, gossip_recipient: &NodeData) -> impl Iterator<Item = NodeData> {
         debug!(
             self.logger,
             "selecting gossips for {}",
@@ -258,26 +270,30 @@ impl P2pTopology {
         topology
             .select_gossips(&gossip_recipient.0)
             .into_iter()
-            .map(|(_, v)| Node(v))
+            .map(|(_, v)| NodeData(v))
     }
 
     pub fn evict_node(&self, id: NodeId) {
         let mut topology = self.lock.write().unwrap();
         topology.evict_node(id.0);
     }
+
+    pub fn node(&self) -> NodeData {
+        NodeData(self.lock.read().unwrap().node().data().clone())
+    }
 }
 
 pub mod modules {
-    use poldercast::{topology::Module, Id, Node};
+    use poldercast::{topology::Module, Id, NodeData};
     use std::collections::BTreeMap;
 
     pub struct TrustedPeers {
-        peers: Vec<Node>,
+        peers: Vec<NodeData>,
     }
     impl TrustedPeers {
         pub fn new_with<I>(nodes: I) -> Self
         where
-            I: IntoIterator<Item = Node>,
+            I: IntoIterator<Item = NodeData>,
         {
             TrustedPeers {
                 peers: nodes.into_iter().collect(),
@@ -289,20 +305,20 @@ pub mod modules {
         fn name(&self) -> &'static str {
             "trusted-peers"
         }
-        fn update(&mut self, _our_node: &Node, _known_nodes: &BTreeMap<Id, Node>) {
+        fn update(&mut self, _our_node: &NodeData, _known_nodes: &BTreeMap<Id, NodeData>) {
             // DO NOTHING
         }
         fn select_gossips(
             &self,
-            _our_node: &Node,
-            _gossip_recipient: &Node,
-            _known_nodes: &BTreeMap<Id, Node>,
-        ) -> BTreeMap<Id, Node> {
+            _our_node: &NodeData,
+            _gossip_recipient: &NodeData,
+            _known_nodes: &BTreeMap<Id, NodeData>,
+        ) -> BTreeMap<Id, NodeData> {
             // Never gossip about our trusted nodes, this could breach network
             // trust
             BTreeMap::new()
         }
-        fn view(&self, _: &BTreeMap<Id, Node>, view: &mut BTreeMap<Id, Node>) {
+        fn view(&self, _: &BTreeMap<Id, NodeData>, view: &mut BTreeMap<Id, NodeData>) {
             const MAX_TRUSTED_PEER_VIEW: usize = 4;
             let count = std::cmp::max(
                 MAX_TRUSTED_PEER_VIEW,

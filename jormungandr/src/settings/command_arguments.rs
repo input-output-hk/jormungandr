@@ -1,4 +1,4 @@
-use crate::settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES;
+use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
 use slog::FilterLevel;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -33,7 +33,7 @@ pub struct StartArguments {
     /// This is the trusted peer the node will connect to initially to download the initial
     /// block0 and fast fetch missing blocks since last start of the node.
     #[structopt(long = "trusted-peer", parse(try_from_str))]
-    pub trusted_peer: Vec<poldercast::Address>,
+    pub trusted_peer: Vec<TrustedPeer>,
 
     /// set the genesis block hash (the hash of the block0) so we can retrieve the
     /// genesis block (and the blockchain configuration) from the existing storage
