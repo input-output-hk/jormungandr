@@ -31,7 +31,7 @@ jobs:
           command: cargo install cargo-audit
       - run:
           name: Print version information
-          command: cargo audit -- --version
+          command: cargo audit --version
       - run:
           name: Check cargo audit
           command: cargo audit
