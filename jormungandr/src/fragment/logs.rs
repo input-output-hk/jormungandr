@@ -56,9 +56,7 @@ impl Logs {
         self.run_on_inner(move |inner| {
             for fragment_id in fragment_ids {
                 let id = fragment_id.into();
-                if inner.exists(&id) {
-                    inner.modify(&id, status.clone())
-                }
+                inner.modify(&id, status.clone())
             }
         })
     }
@@ -93,7 +91,7 @@ impl Logs {
 pub(super) mod internal {
     use jormungandr_lib::{
         crypto::hash::Hash,
-        interfaces::{FragmentLog, FragmentStatus},
+        interfaces::{FragmentLog, FragmentOrigin, FragmentStatus},
     };
     use std::{
         collections::hash_map::{Entry, HashMap},
@@ -151,12 +149,25 @@ pub(super) mod internal {
         }
 
         pub fn modify(&mut self, fragment_id: &Hash, status: FragmentStatus) {
-            if let Some((ref mut log, ref key)) = self.entries.get_mut(fragment_id) {
-                log.modify(status);
+            match self.entries.entry(fragment_id.clone()) {
+                Entry::Occupied(mut entry) => {
+                    entry.get_mut().0.modify(status);
 
-                self.expirations.reset_at(key, Instant::now() + self.ttl);
-            } else {
-                unimplemented!()
+                    self.expirations
+                        .reset_at(&entry.get().1, Instant::now() + self.ttl);
+                }
+                Entry::Vacant(entry) => {
+                    // while a log modification, if the log was not already present in the
+                    // logs it means we received it from the a new block from the network.
+                    // we can mark the status of the transaction so newly received transaction
+                    // be stored.
+
+                    let delay = self.expirations.insert(*fragment_id, self.ttl);
+                    entry.insert((
+                        FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network),
+                        delay,
+                    ));
+                }
             }
         }
 
