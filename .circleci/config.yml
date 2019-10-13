@@ -35,6 +35,9 @@ jobs:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
+          name: Install Cargo Audit
+          command: cargo install cargo-audit
+      - run:
           name: Print Cargo Audit Version
           command: cargo audit --version
       - run:
