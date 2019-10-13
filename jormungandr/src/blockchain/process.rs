@@ -3,7 +3,7 @@ use super::{
     MAIN_BRANCH_TAG,
 };
 use crate::{
-    blockcfg::{Block, Epoch, Header, HeaderHash},
+    blockcfg::{Block, Epoch, FragmentId, Header, HeaderHash},
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
+use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::future::Either;
 use slog::Logger;
@@ -70,6 +71,12 @@ pub fn handle_input(
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
 
+            update_mempool(
+                tx_msg_box,
+                block.fragments().map(|f| f.id()).collect(),
+                &header,
+            )
+            .unwrap_or_else(|()| error!(logger, "cannot remove fragments from pool"));
             process_new_ref(
                 logger.clone(),
                 blockchain.clone(),
@@ -117,7 +124,6 @@ pub fn handle_input(
                     stats_counter.add_block_recv_cnt(1);
                     if let Some(new_block_ref) = maybe_updated {
                         let header = new_block_ref.header().clone();
-                        let date = header.block_date().clone().into();
                         process_new_ref(
                             logger.clone(),
                             blockchain.clone(),
@@ -126,11 +132,9 @@ pub fn handle_input(
                         )
                         .wait()
                         .unwrap();
-                        tx_msg_box
-                            .try_send(TransactionMsg::RemoveTransactions(fragment_ids, date))
-                            .unwrap_or_else(|err| {
-                                error!(logger, "cannot remove fragments from pool: {}", err)
-                            });
+                        update_mempool(tx_msg_box, fragment_ids, &header).unwrap_or_else(|()| {
+                            error!(logger, "cannot remove fragments from pool")
+                        });
                         network_msg_box
                             .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                             .unwrap_or_else(|err| {
@@ -149,10 +153,23 @@ pub fn handle_input(
                 }
             }
         }
-        BlockMsg::ChainHeaders(stream) => unimplemented!(),
+        BlockMsg::ChainHeaders(_stream) => unimplemented!(),
     };
 
     Ok(())
+}
+
+fn update_mempool(
+    tx_msg_box: &mut MessageBox<TransactionMsg>,
+    fragment_ids: Vec<FragmentId>,
+    header: &Header,
+) -> Result<(), ()> {
+    let hash = header.hash().into();
+    let date = header.block_date().clone().into();
+    let status = FragmentStatus::InABlock { date, block: hash };
+    tx_msg_box
+        .try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
+        .map_err(|_| ())
 }
 
 /// process a new candidate block on top of the blockchain, this function may:

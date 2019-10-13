@@ -247,10 +247,10 @@ impl NodeController {
                         ));
                         return Ok(status);
                     }
-                    InABlock { date } => {
+                    InABlock { date, block } => {
                         self.progress_bar.log_info(format!(
-                            "Fragment '{}' in block: {}",
-                            check.fragment_id, date
+                            "Fragment '{}' in block: {} ({})",
+                            check.fragment_id, block, date
                         ));
                         return Ok(status);
                     }

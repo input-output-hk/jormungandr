@@ -4,7 +4,7 @@ use crate::network::p2p::topology::NodeId;
 use blockchain::Checkpoints;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
-use jormungandr_lib::interfaces::{BlockDate, FragmentOrigin};
+use jormungandr_lib::interfaces::{FragmentOrigin, FragmentStatus};
 use network_core::error as core_error;
 use slog::Logger;
 use std::{
@@ -344,7 +344,7 @@ pub fn stream_request<T, E>(buffer: usize) -> (RequestStreamHandle<T>, RequestSi
 #[derive(Debug)]
 pub enum TransactionMsg {
     SendTransaction(FragmentOrigin, Vec<Fragment>),
-    RemoveTransactions(Vec<FragmentId>, BlockDate),
+    RemoveTransactions(Vec<FragmentId>, FragmentStatus),
 }
 
 /// Client messages, mainly requests from connected peers to our node.

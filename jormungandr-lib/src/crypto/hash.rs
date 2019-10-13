@@ -24,6 +24,11 @@ impl Hash {
         key::Hash::from(self.0)
     }
 
+    pub fn from_hash(key: key::Hash) -> Self {
+        let bytes: [u8; 32] = key.into();
+        Self::from(bytes)
+    }
+
     pub fn into_digest(self) -> Digest<Blake2b256> {
         self.0.into()
     }
