@@ -17,7 +17,6 @@ pub use self::kes_update_speed::KESUpdateSpeed;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
 pub use self::slots_duration::SlotDuration;
-use chain_core::property::HasFragments as _;
 use chain_impl_mockchain::{
     block::{Block, BlockBuilder},
     fragment::Fragment,
