@@ -20,6 +20,22 @@ jobs:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
 
+  cargo_audit:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run:
+          name: Install Cargo Audit
+          command: cargo install cargo-audit
+      - run:
+          name: Print version information
+          command: cargo audit -- --version
+      - run:
+          name: Check cargo audit
+          command: cargo audit
+
   rustfmt:
     docker:
       - image: rust:latest
@@ -122,6 +138,7 @@ workflows:
     jobs:
       - cargo_fetch
       - rustfmt
+      - cargo_audit
       - test_debug:
           requires:
             - rustfmt
