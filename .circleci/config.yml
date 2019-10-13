@@ -14,6 +14,9 @@ jobs:
             - cargo-v3-{{ checksum "Cargo.toml" }}
             - cargo-v3-
       - run: cargo fetch
+      - run:
+          name: Install Cargo Audit
+          command: cargo install cargo-audit
       - save_cache:
           key: cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
@@ -26,14 +29,16 @@ jobs:
     working_directory: /mnt/crate
     steps:
       - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
       - run:
-          name: Install Cargo Audit
-          command: cargo install cargo-audit
-      - run:
-          name: Print version information
+          name: Print Cargo Audit Version
           command: cargo audit --version
       - run:
-          name: Check cargo audit
+          name: Check Cargo Audit
           command: cargo audit
 
   rustfmt:
@@ -138,7 +143,9 @@ workflows:
     jobs:
       - cargo_fetch
       - rustfmt
-      - cargo_audit
+      - cargo_audit:
+          requires:
+            - cargo_fetch
       - test_debug:
           requires:
             - rustfmt
