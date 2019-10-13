@@ -14,9 +14,6 @@ jobs:
             - cargo-v3-{{ checksum "Cargo.toml" }}
             - cargo-v3-
       - run: cargo fetch
-      - run:
-          name: Install Cargo Audit
-          command: cargo install cargo-audit
       - save_cache:
           key: cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
           paths:
