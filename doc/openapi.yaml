@@ -150,10 +150,14 @@ paths:
                           properties:
                             InABlock:
                               type: object
-                              required: [date]
+                              required: [date, block]
                               properties:
                                 date:
                                   description: Epoch and slot ID of block containing fragment separated with a dot
+                                  type: string
+                                  pattern: '[0-9]+\.[0-9]+'
+                                block:
+                                  description: Block hash where the fragment was last seen
                                   type: string
                                   pattern: '[0-9]+\.[0-9]+'
               examples:
@@ -193,7 +197,8 @@ paths:
                         "last_updated_at": "2019-08-12T11:21:12.017821060+00:00",
                         "status": {
                           "InABlock": {
-                            "date": "114237.32"
+                            "date": "114237.32",
+                            "block": "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174",
                           }
                         }
                       }
