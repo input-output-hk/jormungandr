@@ -63,13 +63,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 Ok(ledger_new) => {
                     self.builder.message(fragment);
 
-                    logs.modify(
-                        &id.into(),
-                        FragmentStatus::InABlock {
-                            date: metadata.block_date.into(),
-                        },
-                    );
-
                     total += 1;
                     ledger_simulation = ledger_new;
                 }

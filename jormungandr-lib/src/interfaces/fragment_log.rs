@@ -26,7 +26,7 @@ pub enum FragmentStatus {
     /// the fragment has been rejected and won't be added in a block
     Rejected { reason: String },
     /// The fragment has been added in a block
-    InABlock { date: BlockDate },
+    InABlock { date: BlockDate, block: Hash },
 }
 
 /// the log associated to a given fragment

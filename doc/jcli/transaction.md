@@ -170,10 +170,13 @@ You can check if the transaction was accepted by checking the node logs, for exa
   received_at: "2019-06-11T15:37:09.469101162Z"
   received_from: Rest
   status:
-    InABlock: "4.707"
+    InABlock:
+      date: "4.707"
+      block: "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174"
 ```
 
-Where the InABlock status means that the transaction was accepted in the block with date "4.707".
+Where the InABlock status means that the transaction was accepted in the block with date "4.707"
+and for block `d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174`.
 
 The status here could also be: 
 

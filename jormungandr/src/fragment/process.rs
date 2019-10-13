@@ -73,9 +73,10 @@ impl Process {
                         .insert_and_propagate_all(origin, txs, service_info.logger().clone())
                         .map(move |count| stats_counter.add_tx_recv_cnt(count)))
                 }
-                TransactionMsg::RemoveTransactions(fragment_ids, date) => {
-                    B(self.pool.clone().remove_added_to_block(fragment_ids, date))
-                }
+                TransactionMsg::RemoveTransactions(fragment_ids, status) => B(self
+                    .pool
+                    .clone()
+                    .remove_added_to_block(fragment_ids, status)),
             }
         })
     }

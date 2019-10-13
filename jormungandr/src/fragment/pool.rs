@@ -6,7 +6,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::transaction::AuthenticatedTransaction;
-use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentOrigin, FragmentStatus};
+use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
 use std::time::Duration;
 use tokio::{
@@ -89,7 +89,7 @@ impl Pool {
     pub fn remove_added_to_block(
         &mut self,
         fragment_ids: Vec<FragmentId>,
-        date: BlockDate,
+        status: FragmentStatus,
     ) -> impl Future<Item = (), Error = ()> {
         let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
@@ -98,9 +98,7 @@ impl Pool {
                 pool.remove_all(fragment_ids.iter().cloned());
                 fragment_ids
             })
-            .and_then(move |fragment_ids| {
-                logs.modify_all(fragment_ids, FragmentStatus::InABlock { date })
-            })
+            .and_then(move |fragment_ids| logs.modify_all(fragment_ids, status))
     }
 
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
