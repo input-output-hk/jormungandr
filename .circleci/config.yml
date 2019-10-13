@@ -20,6 +20,27 @@ jobs:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
 
+  cargo_audit:
+    docker:
+      - image: rust:latest
+    working_directory: /mnt/crate
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - restore_cache:
+          keys:
+            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Install Cargo Audit
+          command: cargo install cargo-audit
+      - run:
+          name: Print Cargo Audit Version
+          command: cargo audit --version
+      - run:
+          name: Check Cargo Audit
+          command: cargo audit
+
   rustfmt:
     docker:
       - image: rust:latest
@@ -122,6 +143,9 @@ workflows:
     jobs:
       - cargo_fetch
       - rustfmt
+      - cargo_audit:
+          requires:
+            - cargo_fetch
       - test_debug:
           requires:
             - rustfmt
