@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr-scenario-tests"
-version = "0.6.0-rc1"
+version = "0.6.0"
 authors = [ "dev@iohk.io" ]
 edition = "2018"
 

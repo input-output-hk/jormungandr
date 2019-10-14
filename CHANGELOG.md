@@ -1,7 +1,7 @@
 # Change Log
 
-## [v0.6.0-rc1](https://github.com/input-output-hk/jormungandr/tree/v0.6.0-rc1) (2019-10-14)
-[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.6...v0.6.0-rc1)
+## [v0.6.0](https://github.com/input-output-hk/jormungandr/tree/v0.6.0) (2019-10-14)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.6...v0.6.0)
 
 **Implemented enhancements:**
 
