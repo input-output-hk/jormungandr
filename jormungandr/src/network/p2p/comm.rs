@@ -458,7 +458,7 @@ impl Peers {
     }
 
     pub fn stats(&self) -> Vec<(topology::NodeId, PeerStats)> {
-        let mut map = self.mutex.lock().unwrap();
+        let map = self.mutex.lock().unwrap();
         map.stats()
     }
 }
