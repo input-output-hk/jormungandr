@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
+use error_chain::ChainedError as _;
 use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::future::Either;
@@ -51,7 +52,7 @@ pub fn handle_input(
             explorer_msg_box,
             input,
         )
-        .map_err(|err| error!(info.logger(), "Cannot process block event" ; "reason" => %err )),
+        .map_err(|err| error!(info.logger(), "Cannot process block event" ; "reason" => %err.display_chain() )),
     )
 }
 
