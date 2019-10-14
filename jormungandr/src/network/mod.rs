@@ -247,23 +247,24 @@ pub fn start(
         let conn_state = ConnectionState::new(state.clone(), &peer);
         let state = state.clone();
         info!(conn_state.logger(), "connecting to initial gossip peer");
+        let (mut comms, connecting) = client::connect(conn_state, conn_channels.clone());
         service_info.spawn(
-            client::connect(conn_state, conn_channels.clone())
-                .and_then(move |(client, mut comms)| {
-                    // TODO
+            connecting
+                .and_then(move |client| {
                     let node_id = client.remote_node_id();
                     let gossip = Gossip::from_nodes(iter::once(state.topology.node()));
-                    match comms.try_send_gossip(gossip) {
-                        Ok(()) => state.peers.insert_peer(node_id, comms),
-                        Err(e) => {
-                            warn!(
-                                client.logger(),
-                                "gossiping to peer failed just after connection: {:?}", e
-                            );
-                            return Err(());
-                        }
+                    if let Err(e) = comms.try_send_gossip(gossip) {
+                        info!(
+                            client.logger(),
+                            "gossiping to peer failed just after connection: {:?}", e
+                        );
+                        return Err(());
                     }
-                    Ok(client)
+                    state.peers.insert_peer(node_id, comms);
+                    let after_logger = client.logger().clone();
+                    Ok(client.map(move |()| {
+                        info!(after_logger, "client P2P connection closed");
+                    }))
                 })
                 .and_then(|client| client),
         );
@@ -336,19 +337,10 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
     if let Err(unreached_nodes) = res {
         for node in unreached_nodes {
             let msg = msg.clone();
-            connect_and_propagate_with(
-                node,
-                state.clone(),
-                channels.clone(),
-                |handles| match msg {
-                    PropagateMsg::Block(header) => handles
-                        .try_send_block_announcement(header)
-                        .map_err(|e| e.kind()),
-                    PropagateMsg::Fragment(fragment) => {
-                        handles.try_send_fragment(fragment).map_err(|e| e.kind())
-                    }
-                },
-            );
+            connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| match msg {
+                PropagateMsg::Block(header) => comms.try_send_block_announcement(header).unwrap(),
+                PropagateMsg::Fragment(fragment) => comms.try_send_fragment(fragment).unwrap(),
+            });
         }
     }
 }
@@ -359,8 +351,8 @@ fn send_gossip(state: GlobalStateR, channels: Channels) {
         debug!(state.logger(), "sending gossip to node {}", node.id());
         let res = state.peers.propagate_gossip_to(node.id(), gossip);
         if let Err(gossip) = res {
-            connect_and_propagate_with(node, state.clone(), channels.clone(), |handles| {
-                handles.try_send_gossip(gossip).map_err(|e| e.kind())
+            connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| {
+                comms.try_send_gossip(gossip).unwrap()
             });
         }
     }
@@ -370,9 +362,9 @@ fn connect_and_propagate_with<F>(
     node: topology::NodeData,
     state: GlobalStateR,
     channels: Channels,
-    once_connected: F,
+    use_comms: F,
 ) where
-    F: FnOnce(&mut PeerComms) -> Result<(), p2p::comm::ErrorKind> + Send + 'static,
+    F: FnOnce(&mut PeerComms),
 {
     let addr = match node.address() {
         Some(addr) => addr,
@@ -391,45 +383,37 @@ fn connect_and_propagate_with<F>(
         .logger()
         .new(o!("node_id" => node_id.to_string()));
     debug!(logger, "connecting to node");
+    let (mut comms, connecting) = client::connect(conn_state, channels.clone());
+    use_comms(&mut comms);
+    state.peers.insert_peer(node_id, comms);
     let spawn_state = state.clone();
-    let err_state = state.clone();
-    let cf = client::connect(conn_state, channels.clone())
-        .and_then(move |(client, mut comms)| {
+    let conn_err_state = state.clone();
+    let cf = connecting
+        .map_err(move |()| {
+            conn_err_state.peers.remove_peer(node_id);
+            conn_err_state.topology.evict_node(node_id);
+        })
+        .and_then(move |client| {
             let connected_node_id = client.remote_node_id();
-            if connected_node_id == node_id {
-                let res = once_connected(&mut comms);
-                match res {
-                    Ok(()) => (),
-                    Err(e) => {
-                        info!(
-                            client.logger(),
-                            "propagation to peer failed just after connection: {:?}", e
-                        );
-                        return Err(());
-                    }
-                }
-            } else {
+            if connected_node_id != node_id {
                 info!(
                     client.logger(),
                     "peer responded with different node id: {}", connected_node_id
                 );
-                state.peers.remove_peer(node_id);
                 state.topology.evict_node(node_id);
+                if let Some(comms) = state.peers.remove_peer(node_id) {
+                    state.peers.insert_peer(connected_node_id, comms);
+                } else {
+                    warn!(client.logger(), "peer no longer in map after connecting");
+                }
             };
-
-            state.peers.insert_peer(connected_node_id, comms);
-
-            Ok(client)
+            let after_logger = client.logger().clone();
+            let future = client.map(move |()| {
+                info!(after_logger, "client P2P connection closed");
+            });
+            Ok(future)
         })
-        .and_then(|client| client)
-        .then(move |res| {
-            info!(logger, "client P2P connection closed");
-            if let Err(()) = res {
-                err_state.topology.evict_node(node_id);
-                debug!(logger, "evicted node");
-            }
-            Ok(())
-        });
+        .and_then(|client| client);
     spawn_state.spawn(cf);
 }
 
