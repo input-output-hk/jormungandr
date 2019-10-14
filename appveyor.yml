@@ -46,8 +46,8 @@ test_script:
 
 before_deploy:
   # TODO Update this to build the artifacts that matter to you
-  - cargo rustc --target %TARGET% --release -p jormungandr -- -C lto
-  - cargo rustc --target %TARGET% --release -p jcli -- -C lto
+  - cargo rustc --target %TARGET% --release -p jormungandr --bin jormungandr -- -C lto
+  - cargo rustc --target %TARGET% --release -p jcli        --bin jcli        -- -C lto
   - ps: ci\before_deploy.ps1
 
 deploy:
