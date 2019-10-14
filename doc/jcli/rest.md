@@ -395,3 +395,32 @@ stake:
       - 1000000000000                                                    # staked value
   unassigned: 0 # Total value stored in accounts, but not assigned to any pool
 ```
+
+## Network stats
+
+Fetches network stats
+
+```
+jcli rest v0 network stats get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+
+
+YAML printed on success
+
+```yaml
+---
+  # hex-encoded node ID
+- nodeId: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+  # timestamp of last time block was received from node if ever (optional)
+  lastBlockReceived: "2019-10-14T00:45:57.419496113+00:00"
+  # timestamp of last time fragment was received from node if ever (optional)
+  lastFragmentReceived: "2019-10-14T00:45:58.419496150+00:00"
+  # timestamp of last time gossip was received from node if ever (optional)
+  lastGossipReceived: "2019-10-14T00:45:59.419496188+00:00"
+```
