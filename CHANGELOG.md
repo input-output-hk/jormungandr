@@ -1,5 +1,48 @@
 # Change Log
 
+## [v0.6.0-rc1](https://github.com/input-output-hk/jormungandr/tree/v0.6.0-rc1) (2019-10-14)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.6...v0.6.0-rc1)
+
+**Implemented enhancements:**
+
+- Information and statistics per network peer [\#846](https://github.com/input-output-hk/jormungandr/issues/846)
+- The user experience is low after using the single command to start the node [\#825](https://github.com/input-output-hk/jormungandr/issues/825)
+- Network stats [\#939](https://github.com/input-output-hk/jormungandr/pull/939)
+- Fix and improvements in the fragment logs handling [\#931](https://github.com/input-output-hk/jormungandr/pull/931)
+- Add --rest-listen-address Jormungandr CLI arg [\#925](https://github.com/input-output-hk/jormungandr/pull/925)
+- Fix REST server panic when get\_block\_id gets nonexistent block ID [\#912](https://github.com/input-output-hk/jormungandr/pull/912)
+- JCLI: transaction info - remove args positionality [\#910](https://github.com/input-output-hk/jormungandr/pull/910)
+- Put a hard limit on incoming p2p connections [\#909](https://github.com/input-output-hk/jormungandr/pull/909)
+
+**Fixed bugs:**
+
+- task: leadership thread 'leadership2' panicked  \(node continue to run\) [\#930](https://github.com/input-output-hk/jormungandr/issues/930)
+- Suspected file descriptor leak \(ERRO Error while accepting connection on 0.0.0.0:3000: Os\) [\#923](https://github.com/input-output-hk/jormungandr/issues/923)
+- Querying the node for an inexisting block data, panics! [\#859](https://github.com/input-output-hk/jormungandr/issues/859)
+- initial bootstrap completedthread 'network, ' panicked at 'not yet implementedpeer\_addr' [\#849](https://github.com/input-output-hk/jormungandr/issues/849)
+- leadership module does not purge logs. [\#842](https://github.com/input-output-hk/jormungandr/issues/842)
+- Fix and improvements in the fragment logs handling [\#931](https://github.com/input-output-hk/jormungandr/pull/931)
+- Fix REST server panic when get\\_block\\_id gets nonexistent block ID [\#912](https://github.com/input-output-hk/jormungandr/pull/912)
+- Fix end and start cursors in block connection [\#904](https://github.com/input-output-hk/jormungandr/pull/904)
+
+**Closed issues:**
+
+- /api/v0/account/{account\_id}  truncating address resulting in 404 not found [\#908](https://github.com/input-output-hk/jormungandr/issues/908)
+
+**Merged pull requests:**
+
+- Reuse pending client connections [\#940](https://github.com/input-output-hk/jormungandr/pull/940)
+- add PeerStats's creation time [\#938](https://github.com/input-output-hk/jormungandr/pull/938)
+- general code improvements [\#937](https://github.com/input-output-hk/jormungandr/pull/937)
+- Don't advise build from master but from latest release tag. [\#934](https://github.com/input-output-hk/jormungandr/pull/934)
+- dropping \*BSD builds [\#933](https://github.com/input-output-hk/jormungandr/pull/933)
+- add cargo audit in our circle ci jobs [\#929](https://github.com/input-output-hk/jormungandr/pull/929)
+- update dependencies [\#928](https://github.com/input-output-hk/jormungandr/pull/928)
+- Fix node that do not sync when no Public Address is set [\#926](https://github.com/input-output-hk/jormungandr/pull/926)
+- Per-peer statistics on items received via subscription channels [\#921](https://github.com/input-output-hk/jormungandr/pull/921)
+- Make network task startup fail on listen failure [\#911](https://github.com/input-output-hk/jormungandr/pull/911)
+- \[Testnet\] E2E test for stake pool [\#900](https://github.com/input-output-hk/jormungandr/pull/900)
+
 ## [v0.5.6](https://github.com/input-output-hk/jormungandr/tree/v0.5.6) (2019-10-07)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.5...v0.5.6)
 
