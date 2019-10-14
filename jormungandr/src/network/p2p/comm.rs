@@ -228,6 +228,10 @@ impl PeerStats {
         self.last_gossip_received.clone()
     }
 
+    pub fn connection_established(&self) -> SystemTime {
+        self.created
+    }
+
     pub fn last_activity(&self) -> SystemTime {
         use std::cmp::max;
 

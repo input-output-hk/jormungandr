@@ -383,6 +383,10 @@ paths:
                       description: Hex-encoded node ID
                       type: string
                       pattern: '[0-9a-fA-F]+'
+                    establishedAt:
+                      description: Timestamp from when the connection was established at
+                      type: string
+                      format: date-time
                     lastBlockReceived:
                       description: Timestamp of last time block was received from node if ever
                       type: string
@@ -399,6 +403,7 @@ paths:
                 [
                   {
                     "nodeId": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+                    "establishedAt": "2019-10-14T06:24:12.010231281+00:00",
                     "lastBlockReceived": "2019-10-14T07:54:32.014432772+00:00",
                     "lastFragmentReceived": "2019-10-14T07:54:33.014432831+00:00",
                     "lastGossipReceived": "2019-10-14T07:54:34.014432887+00:00"
