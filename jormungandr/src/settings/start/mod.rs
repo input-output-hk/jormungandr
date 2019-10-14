@@ -7,8 +7,6 @@ use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
-use chain_crypto::Ed25519;
-use jormungandr_lib::crypto::key::SigningKey;
 use poldercast::PrivateId;
 use slog::{FilterLevel, Logger};
 
