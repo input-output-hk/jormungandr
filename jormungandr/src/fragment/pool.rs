@@ -54,7 +54,7 @@ impl Pool {
         }
         let mut pool_lock = self.pool.clone();
         let mut logs = self.logs.clone();
-        let mut network_msg_box = self.network_msg_box.clone();
+        let network_msg_box = self.network_msg_box.clone();
         let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
         let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
         B(

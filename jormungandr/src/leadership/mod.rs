@@ -339,7 +339,9 @@ leader elections please prevent your system from suspending or hibernating.
             garbage_collection_interval,
         };
 
-        leadership_module.spawn_log_purge();
+        leadership_module
+            .service_info
+            .spawn(leadership_module.spawn_log_purge());
 
         future::loop_fn(
             (leadership_module, scheduler_future, new_epoch_future),

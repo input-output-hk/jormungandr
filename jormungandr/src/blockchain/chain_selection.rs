@@ -29,8 +29,8 @@ pub fn compare_against(storage: &Storage, current: &Ref, candidate: &Ref) -> Com
 fn check_rollback_up_to(
     // TODO: missing max depth parameter
     _: &Storage,
-    ref1: &Ref,
-    ref2: &Ref,
+    _ref1: &Ref,
+    _ref2: &Ref,
 ) -> bool {
     true
 }
