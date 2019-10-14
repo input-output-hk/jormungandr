@@ -318,18 +318,29 @@ pub mod modules {
             // trust
             BTreeMap::new()
         }
-        fn view(&self, _: &BTreeMap<Id, NodeData>, view: &mut BTreeMap<Id, NodeData>) {
+        fn view(&self, known_nodes: &BTreeMap<Id, NodeData>, view: &mut BTreeMap<Id, NodeData>) {
             const MAX_TRUSTED_PEER_VIEW: usize = 4;
-            let count = std::cmp::max(
-                MAX_TRUSTED_PEER_VIEW,
-                self.peers.len() - std::cmp::min(self.peers.len(), view.len()),
-            );
-            view.extend(
-                self.peers
-                    .iter()
-                    .take(count)
-                    .map(|node| (*node.id(), node.clone())),
-            )
+            use rand::seq::SliceRandom;
+
+            let mut rng = rand::thread_rng();
+
+            let mut peers = self.peers.clone();
+            peers.shuffle(&mut rng);
+
+            for peer in peers.into_iter().take(MAX_TRUSTED_PEER_VIEW) {
+                // if we received a gossip from the node, then prefer taking the node
+                // with the appropriate node data as it may have updated its IP address
+                // as received from a gossip
+                let peer = if let Some(known_peer) = known_nodes.get(peer.id()) {
+                    known_peer.clone()
+                } else {
+                    // otherwise use the peer from the trusted list
+                    peer
+                };
+
+                // insert only if not already present
+                view.entry(*peer.id()).or_insert(peer);
+            }
         }
     }
 }
