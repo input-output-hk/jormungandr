@@ -417,6 +417,8 @@ YAML printed on success
 ---
   # hex-encoded node ID
 - nodeId: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+  # timestamp of when the connection was established
+  establishedAt: "2019-10-14T06:24:12.010231281+00:00"
   # timestamp of last time block was received from node if ever (optional)
   lastBlockReceived: "2019-10-14T00:45:57.419496113+00:00"
   # timestamp of last time fragment was received from node if ever (optional)

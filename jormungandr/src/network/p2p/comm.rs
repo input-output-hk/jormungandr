@@ -196,11 +196,23 @@ impl PeerComms {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct PeerStats {
+    created: SystemTime,
     last_block_received: Option<SystemTime>,
     last_fragment_received: Option<SystemTime>,
     last_gossip_received: Option<SystemTime>,
+}
+
+impl Default for PeerStats {
+    fn default() -> Self {
+        PeerStats {
+            created: SystemTime::now(),
+            last_block_received: None,
+            last_fragment_received: None,
+            last_gossip_received: None,
+        }
+    }
 }
 
 impl PeerStats {
@@ -214,6 +226,23 @@ impl PeerStats {
 
     pub fn last_gossip_received(&self) -> Option<SystemTime> {
         self.last_gossip_received.clone()
+    }
+
+    pub fn connection_established(&self) -> SystemTime {
+        self.created
+    }
+
+    pub fn last_activity(&self) -> SystemTime {
+        use std::cmp::max;
+
+        let last_block_received = self.last_block_received.unwrap_or(self.created);
+        let last_fragment_received = self.last_fragment_received.unwrap_or(self.created);
+        let last_gossip_received = self.last_gossip_received.unwrap_or(self.created);
+
+        max(
+            last_block_received,
+            max(last_fragment_received, last_gossip_received),
+        )
     }
 }
 

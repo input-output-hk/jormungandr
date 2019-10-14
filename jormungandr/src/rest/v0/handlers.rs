@@ -338,6 +338,7 @@ pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
                 .into_iter()
                 .map(|(node_id, stats)| json! ({
                     "nodeId": node_id.to_string(),
+                    "establishedAt": SystemTime::from(stats.connection_established()),
                     "lastBlockReceived": stats.last_block_received().map(SystemTime::from),
                     "lastFragmentReceived": stats.last_fragment_received().map(SystemTime::from),
                     "lastGossipReceived": stats.last_gossip_received().map(SystemTime::from),
