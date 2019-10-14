@@ -377,7 +377,7 @@ paths:
                 items:
                   description: Node stats
                   type: object
-                  required: [nodeId]
+                  required: [nodeId, establishedAt]
                   properties:
                     nodeId:
                       description: Hex-encoded node ID
