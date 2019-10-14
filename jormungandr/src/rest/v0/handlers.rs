@@ -13,7 +13,9 @@ use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
 use chain_impl_mockchain::value::{Value, ValueError};
 
 use crate::blockchain::Ref;
-use crate::intercom::TransactionMsg;
+use crate::intercom::{self, NetworkMsg, TransactionMsg};
+use crate::network::p2p::comm::PeerStats;
+use crate::network::p2p::topology::NodeId;
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
 use futures::{future, Future, IntoFuture, Stream};
@@ -319,4 +321,28 @@ pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
             .collect::<Vec<_>>();
         Json(stake_pool_ids)
     })
+}
+
+pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
+    let (reply_handle, reply_future) =
+        intercom::unary_reply::<_, intercom::Error>(context.logger.clone());
+    context
+        .network_task
+        .clone()
+        .try_send(NetworkMsg::PeerStats(reply_handle))
+        .map_err(ErrorInternalServerError)
+        .into_future()
+        .and_then(move |_| reply_future.map_err(ErrorInternalServerError))
+        .map(|peer_stats| {
+            let network_stats = peer_stats
+                .into_iter()
+                .map(|(node_id, stats)| json! ({
+                    "nodeId": node_id.to_string(),
+                    "lastBlockReceived": stats.last_block_received().map(SystemTime::from),
+                    "lastFragmentReceived": stats.last_fragment_received().map(SystemTime::from),
+                    "lastGossipReceived": stats.last_gossip_received().map(SystemTime::from),
+                }))
+                .collect::<Vec<_>>();
+            Json(network_stats)
+        })
 }

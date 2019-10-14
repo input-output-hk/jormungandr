@@ -363,6 +363,50 @@ paths:
           description: Success
         400:
           description: Message is malformed
+  /api/v0/network/stats:
+    get:
+      description: Fetches network stats
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: List of nodes
+                type: array
+                items:
+                  description: Node stats
+                  type: object
+                  required: [nodeId]
+                  properties:
+                    nodeId:
+                      description: Hex-encoded node ID
+                      type: string
+                      pattern: '[0-9a-fA-F]+'
+                    lastBlockReceived:
+                      description: Timestamp of last time block was received from node if ever
+                      type: string
+                      format: date-time
+                    lastFragmentReceived:
+                      description: Timestamp of last time fragment was received from node if ever
+                      type: string
+                      format: date-time
+                    lastGossipReceived:
+                      description: Timestamp of last time gossip was received from node if ever
+                      type: string
+                      format: date-time
+              example: |
+                [
+                  {
+                    "nodeId": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+                    "lastBlockReceived": "2019-10-14T07:54:32.014432772+00:00",
+                    "lastFragmentReceived": "2019-10-14T07:54:33.014432831+00:00",
+                    "lastGossipReceived": "2019-10-14T07:54:34.014432887+00:00"
+                  },
+                  {
+                    "nodeId": "02f1e1d1c1b1a191817161514131211101f0e0d0c0b0a0908070605040302010"
+                  }
+                ]
   /api/v0/node/stats:
     get:
       description: Fetches node stats

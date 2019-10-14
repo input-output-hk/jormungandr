@@ -11,6 +11,7 @@ use actix_web::dev::Resource;
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
 use futures::{future, Future};
+use slog::Logger;
 use std::convert::Infallible;
 use tokio::sync::lock::Lock;
 
@@ -21,14 +22,16 @@ use crate::secure::enclave::Enclave;
 use crate::settings::start::{Cors as CorsConfig, Error as ConfigError, Rest};
 use crate::stats_counter::StatsCounter;
 
-use crate::intercom::TransactionMsg;
+use crate::intercom::{NetworkMsg, TransactionMsg};
 use crate::utils::async_msg::MessageBox;
 
 #[derive(Clone)]
 pub struct Context {
+    pub logger: Logger,
     pub stats_counter: StatsCounter,
     pub blockchain: Blockchain,
     pub blockchain_tip: Tip,
+    pub network_task: MessageBox<NetworkMsg>,
     pub transaction_task: MessageBox<TransactionMsg>,
     pub logs: Logs,
     pub leadership_logs: LeadershipLogs,

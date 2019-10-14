@@ -170,6 +170,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let block_task = {
         let mut blockchain = blockchain.clone();
         let mut blockchain_tip = blockchain_tip.clone();
+        let mut network_msgbox = network_msgbox.clone();
         let mut fragment_msgbox = fragment_msgbox.clone();
         let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         let stats_counter = stats_counter.clone();
@@ -264,10 +265,16 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let rest_server = match bootstrapped_node.settings.rest {
         Some(rest) => {
+            let logger = bootstrapped_node
+                .logger
+                .new(o!(::log::KEY_TASK => "rest"))
+                .into_erased();
             let context = rest::Context {
+                logger,
                 stats_counter,
                 blockchain,
                 blockchain_tip,
+                network_task: network_msgbox,
                 transaction_task: fragment_msgbox,
                 logs: pool_logs,
                 leadership_logs,
