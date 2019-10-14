@@ -196,11 +196,23 @@ impl PeerComms {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct PeerStats {
+    created: SystemTime,
     last_block_received: Option<SystemTime>,
     last_fragment_received: Option<SystemTime>,
     last_gossip_received: Option<SystemTime>,
+}
+
+impl Default for PeerStats {
+    fn default() -> Self {
+        PeerStats {
+            created: SystemTime::now(),
+            last_block_received: None,
+            last_fragment_received: None,
+            last_gossip_received: None,
+        }
+    }
 }
 
 impl PeerStats {
