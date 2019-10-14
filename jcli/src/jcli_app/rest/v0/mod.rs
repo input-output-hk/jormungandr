@@ -2,6 +2,7 @@ mod account;
 mod block;
 mod leaders;
 mod message;
+mod network;
 mod node;
 mod settings;
 mod shutdown;
@@ -24,6 +25,8 @@ pub enum V0 {
     Leaders(leaders::Leaders),
     /// Message sending
     Message(message::Message),
+    /// Network information
+    Network(network::Network),
     /// Node information
     Node(node::Node),
     /// Node settings
@@ -47,6 +50,7 @@ impl V0 {
             V0::Block(block) => block.exec(),
             V0::Leaders(leaders) => leaders.exec(),
             V0::Message(message) => message.exec(),
+            V0::Network(network) => network.exec(),
             V0::Node(node) => node.exec(),
             V0::Settings(settings) => settings.exec(),
             V0::Stake(stake) => stake.exec(),
