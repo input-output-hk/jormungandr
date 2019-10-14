@@ -227,6 +227,19 @@ impl PeerStats {
     pub fn last_gossip_received(&self) -> Option<SystemTime> {
         self.last_gossip_received.clone()
     }
+
+    pub fn last_activity(&self) -> SystemTime {
+        use std::cmp::max;
+
+        let last_block_received = self.last_block_received.unwrap_or(self.created);
+        let last_fragment_received = self.last_fragment_received.unwrap_or(self.created);
+        let last_gossip_received = self.last_gossip_received.unwrap_or(self.created);
+
+        max(
+            last_block_received,
+            max(last_fragment_received, last_gossip_received),
+        )
+    }
 }
 
 /// The collection of currently connected peer nodes.
