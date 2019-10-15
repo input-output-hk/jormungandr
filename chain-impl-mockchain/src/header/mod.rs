@@ -10,6 +10,7 @@ pub use crate::date::{BlockDate, Epoch, SlotId};
 
 pub use builder::{
     header_builder, HeaderBftBuilder, HeaderBuilder, HeaderBuilderNew, HeaderGenesisPraosBuilder,
+    HeaderSetConsensusSignature,
 };
 pub use components::{BftSignature, ChainLength, HeaderId, KESSignature, VrfProof};
 pub use deconstruct::{BftProof, Common, GenesisPraosProof, Proof};
