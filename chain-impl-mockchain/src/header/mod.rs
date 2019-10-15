@@ -6,6 +6,8 @@ mod eval;
 mod header;
 mod version;
 
+pub use crate::date::BlockDate;
+
 pub use builder::{
     header_builder, HeaderBftBuilder, HeaderBuilder, HeaderBuilderNew, HeaderGenesisPraosBuilder,
 };
