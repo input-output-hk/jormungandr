@@ -62,7 +62,7 @@ pub struct Leader {
 pub enum LeaderOutput {
     None,
     Bft(bft::LeaderId),
-    GenesisPraos(genesis::Witness),
+    GenesisPraos(PoolId, genesis::Witness),
 }
 
 pub enum LeadershipConsensus {
@@ -122,7 +122,10 @@ impl LeadershipConsensus {
                 None => Ok(LeaderOutput::None),
                 Some(ref gen_leader) => {
                     match genesis_praos.leader(&gen_leader.node_id, &gen_leader.vrf_key, date) {
-                        Ok(Some(witness)) => Ok(LeaderOutput::GenesisPraos(witness)),
+                        Ok(Some(witness)) => Ok(LeaderOutput::GenesisPraos(
+                            gen_leader.node_id.clone(),
+                            witness,
+                        )),
                         _ => Ok(LeaderOutput::None),
                     }
                 }
