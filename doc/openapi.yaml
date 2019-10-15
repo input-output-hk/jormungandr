@@ -553,7 +553,7 @@ paths:
       responses:
         200:
           description: Success
-  /api/v0/stake_pools:
+  /api/v0/stake-pools:
     get:
       description: Gets stake pool IDs
       responses:
