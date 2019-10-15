@@ -47,6 +47,12 @@ impl From<cstruct::GpKesSignature> for KESSignature {
     }
 }
 
+impl From<Signature<HeaderAuth, SumEd25519_12>> for KESSignature {
+    fn from(sig: Signature<HeaderAuth, SumEd25519_12>) -> KESSignature {
+        KESSignature(sig)
+    }
+}
+
 impl KESSignature {
     pub fn verify(&self, pk: &PublicKey<SumEd25519_12>, data: &[u8]) -> Verification {
         self.0.verify_slice(pk, data)
