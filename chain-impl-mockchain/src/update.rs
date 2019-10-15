@@ -503,7 +503,6 @@ mod test {
         block_signing_key: &SecretKey<Ed25519>,
     ) -> Block {
         let contents = Contents::empty();
-        let pk = block_signing_key.to_public();
         let header = HeaderBuilderNew::new(BlockVersion::Ed25519Signed, &contents)
             .set_parent(block0_hash, ledger.chain_length.increase())
             .set_date(date.next_epoch())
