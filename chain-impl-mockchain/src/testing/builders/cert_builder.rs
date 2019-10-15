@@ -1,10 +1,11 @@
 use crate::{
     account::Identifier,
     certificate::{
-        Certificate, PoolId, PoolManagement, PoolOwnersSigned, PoolRegistration, PoolRetirement,
-        StakeDelegation,
+        Certificate, OwnerStakeDelegation, PoolId, PoolManagement, PoolOwnersSigned,
+        PoolRegistration, PoolRetirement, StakeDelegation,
     },
     key::EitherEd25519SecretKey,
+    legacy::UtxoDeclaration,
     testing::data::AddressData,
     transaction::AccountIdentifier,
 };
@@ -25,6 +26,12 @@ pub fn build_stake_delegation_cert(
 
 pub fn build_stake_pool_registration_cert(stake_pool: &PoolRegistration) -> Certificate {
     Certificate::PoolRegistration(stake_pool.clone())
+}
+
+pub fn build_owner_stake_delegation(stake_pool: PoolId) -> Certificate {
+    Certificate::OwnerStakeDelegation(OwnerStakeDelegation {
+        pool_id: stake_pool,
+    })
 }
 
 pub fn build_stake_pool_retirement_cert(
