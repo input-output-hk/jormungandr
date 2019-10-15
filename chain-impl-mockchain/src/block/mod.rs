@@ -5,6 +5,7 @@ use chain_core::property;
 
 use std::slice;
 
+mod builder;
 mod header;
 mod headerraw;
 mod leaderlog;
@@ -18,6 +19,8 @@ pub use crate::header::{
     BftProof, BftSignature, Common, GenesisPraosProof, Header, HeaderContentEvalContext, HeaderId,
     KESSignature, Proof,
 };
+
+pub use builder::builder;
 
 pub use crate::header::{BlockVersion, ChainLength};
 
