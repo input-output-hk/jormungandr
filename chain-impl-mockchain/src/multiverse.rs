@@ -322,10 +322,7 @@ mod test {
         genesis_content.push(Fragment::Initial(ents));
         let genesis_content = genesis_content.into();
 
-        let mut date = BlockDate {
-            epoch: 0,
-            slot_id: 0,
-        };
+        let mut date = BlockDate::first();
         let genesis_header = HeaderBuilderNew::new(BlockVersion::Genesis, &genesis_content)
             .set_genesis()
             .set_date(date)
