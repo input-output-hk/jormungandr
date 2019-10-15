@@ -70,6 +70,12 @@ impl From<cstruct::BftSignature> for BftSignature {
     }
 }
 
+impl From<Signature<HeaderAuth, Ed25519>> for BftSignature {
+    fn from(sig: Signature<HeaderAuth, Ed25519>) -> BftSignature {
+        BftSignature(sig)
+    }
+}
+
 #[derive(Clone)]
 pub struct VrfProof(pub(super) cstruct::GpVrfProof);
 
