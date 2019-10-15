@@ -167,7 +167,9 @@ impl LeadershipData {
                         .verify(&pool_info.keys.vrf_public_key, &proof);
 
                         if vrf_nonce.is_none() {
-                            return Verification::Failure(Error::new(ErrorKind::InvalidLeaderProof));
+                            return Verification::Failure(Error::new(
+                                ErrorKind::InvalidLeaderProof,
+                            ));
                         }
 
                         let auth = block_header.as_auth_slice();
