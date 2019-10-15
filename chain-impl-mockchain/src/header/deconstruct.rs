@@ -2,7 +2,7 @@ use super::components::{BftSignature, ChainLength, HeaderId, KESSignature, VrfPr
 use super::version::BlockVersion;
 use crate::certificate::PoolId;
 use crate::date::BlockDate;
-use crate::fragment::{BlockContentSize, BlockContentHash};
+use crate::fragment::{BlockContentHash, BlockContentSize};
 use crate::leadership;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

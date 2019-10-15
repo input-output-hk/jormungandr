@@ -50,8 +50,8 @@ pub const HEADER_GP_SIZE: usize = HEADER_OFFSET_GP_KES_SIG + size_of::<GpKesSign
 
 pub const HEADER_GP_AUTHED_SIZE: usize = HEADER_OFFSET_GP_KES_SIG;
 
-pub const HEADER_MIN_KNOWN_SIZE : usize = HEADER_COMMON_SIZE;
-pub const HEADER_MAX_KNOWN_SIZE : usize = HEADER_GP_SIZE;
+pub const HEADER_MIN_KNOWN_SIZE: usize = HEADER_COMMON_SIZE;
+pub const HEADER_MAX_KNOWN_SIZE: usize = HEADER_GP_SIZE;
 
 // ************************************************************************
 // Header union construction & accessors
@@ -148,14 +148,16 @@ impl Header {
     pub fn set_date_slotid(&mut self, s: DateSlotid) {
         let sbuf = s.to_be_bytes();
         unsafe {
-            self.unsigned[HEADER_OFFSET_DATE_SLOTID..HEADER_OFFSET_HEIGHT].copy_from_slice(&sbuf[..])
+            self.unsigned[HEADER_OFFSET_DATE_SLOTID..HEADER_OFFSET_HEIGHT]
+                .copy_from_slice(&sbuf[..])
         }
     }
 
     pub fn set_height(&mut self, s: Height) {
         let sbuf = s.to_be_bytes();
         unsafe {
-            self.unsigned[HEADER_OFFSET_HEIGHT..HEADER_OFFSET_CONTENT_HASH].copy_from_slice(&sbuf[..])
+            self.unsigned[HEADER_OFFSET_HEIGHT..HEADER_OFFSET_CONTENT_HASH]
+                .copy_from_slice(&sbuf[..])
         }
     }
 
@@ -176,7 +178,8 @@ impl Header {
     pub fn set_bft_leader_id(&mut self, s: &BftLeaderId) {
         assert_eq!(self.version(), VERSION_BFT);
         unsafe {
-            self.bft[HEADER_OFFSET_BFT_LEADER_ID..HEADER_OFFSET_BFT_SIGNATURE].copy_from_slice(&s[..])
+            self.bft[HEADER_OFFSET_BFT_LEADER_ID..HEADER_OFFSET_BFT_SIGNATURE]
+                .copy_from_slice(&s[..])
         }
     }
 
@@ -260,23 +263,32 @@ impl<'a> HeaderSlice<'a> {
         match hdr.version() {
             VERSION_UNSIGNED => {
                 if len != HEADER_COMMON_SIZE {
-                    return Err(HeaderError::SizeMismatch { expected: HEADER_COMMON_SIZE, got: len });
+                    return Err(HeaderError::SizeMismatch {
+                        expected: HEADER_COMMON_SIZE,
+                        got: len,
+                    });
                 }
                 Ok(hdr)
             }
             VERSION_BFT => {
                 if len != HEADER_BFT_SIZE {
-                    return Err(HeaderError::SizeMismatch { expected: HEADER_BFT_SIZE, got: len });
+                    return Err(HeaderError::SizeMismatch {
+                        expected: HEADER_BFT_SIZE,
+                        got: len,
+                    });
                 }
                 Ok(hdr)
             }
             VERSION_GP => {
                 if len != HEADER_GP_SIZE {
-                    return Err(HeaderError::SizeMismatch { expected: HEADER_GP_SIZE, got: len });
+                    return Err(HeaderError::SizeMismatch {
+                        expected: HEADER_GP_SIZE,
+                        got: len,
+                    });
                 }
                 Ok(hdr)
             }
-            _ => Err(HeaderError::UnknownVersion)
+            _ => Err(HeaderError::UnknownVersion),
         }
     }
 

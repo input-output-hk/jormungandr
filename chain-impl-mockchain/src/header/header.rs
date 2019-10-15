@@ -1,11 +1,11 @@
-use super::cstruct;
 use super::components::{ChainLength, HeaderId, VrfProof};
-use super::deconstruct::{Common, Proof, BftProof, GenesisPraosProof};
-use super::version::BlockVersion;
+use super::cstruct;
+use super::deconstruct::{BftProof, Common, GenesisPraosProof, Proof};
 use super::eval::HeaderContentEvalContext;
+use super::version::BlockVersion;
 
-use crate::date::BlockDate;
 use crate::certificate::PoolId;
+use crate::date::BlockDate;
 use crate::fragment::{BlockContentHash, BlockContentSize};
 use crate::leadership;
 
@@ -30,7 +30,7 @@ pub struct HeaderBft(pub(super) cstruct::Header);
 pub enum Header {
     Unsigned(HeaderUnsigned),
     GenesisPraos(HeaderGenesisPraos),
-    BFT(HeaderBft),   
+    BFT(HeaderBft),
 }
 
 impl HeaderUnsigned {
@@ -193,9 +193,9 @@ impl Header {
         let nonce = match self.block_version() {
             BlockVersion::KesVrfproof => {
                 let vrf_proof = VrfProof(self.get_cstruct().gp_vrf_proof());
-                vrf_proof.to_vrf_proof().and_then(|p|
-                    Some(leadership::genesis::witness_to_nonce(&p))
-                )
+                vrf_proof
+                    .to_vrf_proof()
+                    .and_then(|p| Some(leadership::genesis::witness_to_nonce(&p)))
             }
             _ => None,
         };
@@ -220,18 +220,15 @@ impl Debug for Header {
             .field("parent_hash", &hs.parent_hash_ref());
         let r = match self {
             Header::Unsigned(_) => r,
-            Header::BFT(_) => {
-                r.field("bft-leader-id", &hs.bft_leader_id())
-                    .field("bft-sig", &hs.bft_signature_ref())
-            }
-            Header::GenesisPraos(_) => {
-                r.field("pool-id", &hs.gp_node_id())
-                    .field("vrf-proof", &hs.gp_vrf_proof_ref())
-                    .field("kes-sig", &hs.gp_kes_signature_ref())
-            }
+            Header::BFT(_) => r
+                .field("bft-leader-id", &hs.bft_leader_id())
+                .field("bft-sig", &hs.bft_signature_ref()),
+            Header::GenesisPraos(_) => r
+                .field("pool-id", &hs.gp_node_id())
+                .field("vrf-proof", &hs.gp_vrf_proof_ref())
+                .field("kes-sig", &hs.gp_kes_signature_ref()),
         };
-        r.field("self_hash", &self.id())
-            .finish()
+        r.field("self_hash", &self.id()).finish()
     }
 }
 
@@ -261,9 +258,12 @@ impl Readable for Header {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::header::{BftProof, GenesisPraosProof, Common, KESSignature, BftSignature};
+    use crate::header::{BftProof, BftSignature, Common, GenesisPraosProof, KESSignature};
     use crate::leadership;
-    use chain_crypto::{self, SecretKey, AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12, VerifiableRandomFunction};
+    use chain_crypto::{
+        self, AsymmetricKey, Curve25519_2HashDH, Ed25519, SecretKey, SumEd25519_12,
+        VerifiableRandomFunction,
+    };
     use lazy_static::lazy_static;
     use quickcheck::{Arbitrary, Gen, TestResult};
     quickcheck! {
@@ -277,7 +277,6 @@ mod test {
             BlockVersion::from_u16(u16::arbitrary(g) % 3).unwrap()
         }
     }
-
 
     impl Arbitrary for Common {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -342,21 +341,29 @@ mod test {
             use super::super::builder::HeaderBuilderNew;
 
             let common = Common::arbitrary(g);
-            let hdrbuilder = HeaderBuilderNew::new_raw(common.block_version, &common.block_content_hash, common.block_content_size)
-                .set_parent(&common.block_parent_hash, common.chain_length)
-                .set_date(common.block_date);
+            let hdrbuilder = HeaderBuilderNew::new_raw(
+                common.block_version,
+                &common.block_content_hash,
+                common.block_content_size,
+            )
+            .set_parent(&common.block_parent_hash, common.chain_length)
+            .set_date(common.block_date);
             let header = match common.block_version {
                 BlockVersion::Genesis => hdrbuilder.to_unsigned_header().unwrap().generalize(),
                 BlockVersion::Ed25519Signed => {
-                    let bft_proof : BftProof = Arbitrary::arbitrary(g);
-                    hdrbuilder.to_bft_builder().unwrap()
+                    let bft_proof: BftProof = Arbitrary::arbitrary(g);
+                    hdrbuilder
+                        .to_bft_builder()
+                        .unwrap()
                         .set_consensus_data(&bft_proof.leader_id)
                         .set_signature(bft_proof.signature)
                         .generalize()
                 }
                 BlockVersion::KesVrfproof => {
-                    let gp_proof : GenesisPraosProof = Arbitrary::arbitrary(g);
-                    hdrbuilder.to_genesis_praos_builder().unwrap()
+                    let gp_proof: GenesisPraosProof = Arbitrary::arbitrary(g);
+                    hdrbuilder
+                        .to_genesis_praos_builder()
+                        .unwrap()
                         .set_consensus_data(&gp_proof.node_id, &gp_proof.vrf_proof.into())
                         .set_signature(gp_proof.kes_proof)
                         .generalize()

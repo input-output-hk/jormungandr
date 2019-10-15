@@ -10,16 +10,14 @@ mod headerraw;
 mod leaderlog;
 
 //pub use self::builder::BlockBuilder;
-pub use crate::fragment::{
-    BlockContentHash, BlockContentSize, Contents, ContentsBuilder,
-};
+pub use crate::fragment::{BlockContentHash, BlockContentSize, Contents, ContentsBuilder};
 
-pub use crate::header::{
-    BftProof, BftSignature, HeaderId, Common, GenesisPraosProof, Header,
-    HeaderContentEvalContext, KESSignature, Proof,
-};
 pub use self::headerraw::HeaderRaw;
 pub use self::leaderlog::LeadersParticipationRecord;
+pub use crate::header::{
+    BftProof, BftSignature, Common, GenesisPraosProof, Header, HeaderContentEvalContext, HeaderId,
+    KESSignature, Proof,
+};
 
 pub use crate::header::{BlockVersion, ChainLength};
 
@@ -211,7 +209,6 @@ impl ConsensusVersion {
             BlockVersion::KesVrfproof => Some(ConsensusVersion::GenesisPraos),
         }
     }
-
 }
 
 #[cfg(test)]
@@ -271,15 +268,19 @@ mod test {
             let header = match ver {
                 BlockVersion::Genesis => hdrbuilder.to_unsigned_header().unwrap().generalize(),
                 BlockVersion::Ed25519Signed => {
-                    let bft_proof : BftProof = Arbitrary::arbitrary(g);
-                    hdrbuilder.to_bft_builder().unwrap()
+                    let bft_proof: BftProof = Arbitrary::arbitrary(g);
+                    hdrbuilder
+                        .to_bft_builder()
+                        .unwrap()
                         .set_consensus_data(&bft_proof.leader_id)
                         .set_signature(bft_proof.signature)
                         .generalize()
                 }
                 BlockVersion::KesVrfproof => {
-                    let gp_proof : GenesisPraosProof = Arbitrary::arbitrary(g);
-                    hdrbuilder.to_genesis_praos_builder().unwrap()
+                    let gp_proof: GenesisPraosProof = Arbitrary::arbitrary(g);
+                    hdrbuilder
+                        .to_genesis_praos_builder()
+                        .unwrap()
                         .set_consensus_data(&gp_proof.node_id, &gp_proof.vrf_proof.into())
                         .set_signature(gp_proof.kes_proof)
                         .generalize()

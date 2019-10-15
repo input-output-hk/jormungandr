@@ -150,7 +150,11 @@ impl LeadershipData {
                         };
 
                         let proof = match genesis_praos_proof.vrf_proof.to_vrf_proof() {
-                            None => return Verification::Failure(Error::new(ErrorKind::InvalidLeaderProof)),
+                            None => {
+                                return Verification::Failure(Error::new(
+                                    ErrorKind::InvalidLeaderProof,
+                                ))
+                            }
                             Some(p) => p,
                         };
 
@@ -160,17 +164,16 @@ impl LeadershipData {
                             slot_id: block_header.block_date().slot_id,
                             active_slots_coeff: self.active_slots_coeff,
                         }
-                        .verify(
-                            &pool_info.keys.vrf_public_key,
-                            &proof,
-                        );
+                        .verify(&pool_info.keys.vrf_public_key, &proof);
 
                         if vrf_nonce.is_none() {
-                            return Verification::Failure(Error::new(ErrorKind::InvalidLeaderProof))
+                            return Verification::Failure(Error::new(ErrorKind::InvalidLeaderProof));
                         }
 
                         let auth = block_header.as_auth_slice();
-                        let valid = genesis_praos_proof.kes_proof.verify(&pool_info.keys.kes_public_key, auth);
+                        let valid = genesis_praos_proof
+                            .kes_proof
+                            .verify(&pool_info.keys.kes_public_key, auth);
 
                         if valid == SigningVerification::Failed {
                             Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature))
@@ -185,7 +188,6 @@ impl LeadershipData {
         }
     }
 }
-
 
 impl Readable for GenesisPraosLeader {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
@@ -202,8 +204,8 @@ impl Readable for GenesisPraosLeader {
 mod tests {
     use super::*;
     use crate::certificate::PoolId;
-    use crate::ledger::Ledger;
     use crate::header::HeaderId;
+    use crate::ledger::Ledger;
     use crate::milli::Milli;
     use crate::stake::{PoolStakeDistribution, PoolStakeInformation, PoolStakeTotal};
     use crate::testing::{
@@ -547,8 +549,8 @@ mod tests {
             .is_err());
     }
 
-    use crate::header::{BlockVersion, HeaderBuilderNew};
     use crate::fragment::Contents;
+    use crate::header::{BlockVersion, HeaderBuilderNew};
     use chain_core::property::ChainLength;
 
     #[test]

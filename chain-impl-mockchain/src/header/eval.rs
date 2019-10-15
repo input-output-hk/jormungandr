@@ -1,6 +1,6 @@
+use super::components::ChainLength;
 use crate::date::BlockDate;
 use crate::leadership;
-use super::components::ChainLength;
 
 /// This is the data extracted from a header related to content evaluation
 #[derive(Debug, Clone)]

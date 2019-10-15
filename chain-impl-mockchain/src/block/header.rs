@@ -1,5 +1,5 @@
-use crate::header::{BlockVersion, ChainLength, HeaderId, Header};
 use crate::date::BlockDate;
+use crate::header::{BlockVersion, ChainLength, Header, HeaderId};
 use chain_core::property;
 
 impl property::ChainLength for ChainLength {

@@ -1,7 +1,7 @@
 use super::cstruct;
 use crate::key::Hash;
-use chain_crypto::{Signature, Verification, PublicKey, SumEd25519_12, Ed25519};
 use chain_crypto::algorithms::vrf::ProvenOutputSeed;
+use chain_crypto::{Ed25519, PublicKey, Signature, SumEd25519_12, Verification};
 use std::fmt::{self, Debug};
 
 pub type HeaderId = Hash; // TODO: change to DigestOf<Blake2b256, Header>
@@ -41,7 +41,9 @@ pub struct KESSignature(pub(crate) Signature<HeaderAuth, SumEd25519_12>);
 
 impl From<cstruct::GpKesSignature> for KESSignature {
     fn from(b: cstruct::GpKesSignature) -> KESSignature {
-        KESSignature(Signature::from_binary(&b[..]).expect("internal error: KES signature length invalid"))
+        KESSignature(
+            Signature::from_binary(&b[..]).expect("internal error: KES signature length invalid"),
+        )
     }
 }
 
@@ -56,7 +58,9 @@ pub struct BftSignature(pub(crate) Signature<HeaderAuth, Ed25519>);
 
 impl From<cstruct::BftSignature> for BftSignature {
     fn from(b: cstruct::BftSignature) -> BftSignature {
-        BftSignature(Signature::from_binary(&b[..]).expect("internal error: BFT signature length invalid"))
+        BftSignature(
+            Signature::from_binary(&b[..]).expect("internal error: BFT signature length invalid"),
+        )
     }
 }
 

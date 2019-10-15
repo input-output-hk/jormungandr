@@ -1,15 +1,15 @@
-use super::cstruct;
-use super::version::BlockVersion;
 use super::components::{ChainLength, HeaderId, VrfProof};
+use super::cstruct;
 use super::header::{HeaderBft, HeaderGenesisPraos, HeaderUnsigned};
+use super::version::BlockVersion;
 
-use crate::block::{KESSignature, BftSignature};
-use crate::fragment::{BlockContentHash, BlockContentSize, Contents};
-use crate::leadership;
+use crate::block::{BftSignature, KESSignature};
 use crate::certificate::PoolId;
 use crate::date::BlockDate;
+use crate::fragment::{BlockContentHash, BlockContentSize, Contents};
+use crate::leadership;
 
-use chain_crypto::{SecretKey, SumEd25519_12, Ed25519};
+use chain_crypto::{Ed25519, SecretKey, SumEd25519_12};
 use std::marker::PhantomData;
 
 /// Finalized BFT Header
@@ -61,7 +61,7 @@ pub type HeaderBuilderNew = HeaderBuilder<HeaderSetParenting>;
 
 impl HeaderBuilderNew {
     /// Create a new Header builder starting from the full content.
-    /// 
+    ///
     /// This doesn't need the content directly, but only uses the content to calculate
     /// the content hash and the content size, and make sure this is consistent
     pub fn new(version: BlockVersion, contents: &Contents) -> Self {
@@ -69,7 +69,11 @@ impl HeaderBuilderNew {
     }
 
     /// recommended to use new(), this is only for test
-    pub fn new_raw(version: BlockVersion, content_hash: &BlockContentHash, content_size: BlockContentSize) -> Self {
+    pub fn new_raw(
+        version: BlockVersion,
+        content_hash: &BlockContentHash,
+        content_size: BlockContentSize,
+    ) -> Self {
         header_builder_raw(version, content_hash, content_size)
     }
 }
@@ -203,5 +207,4 @@ impl HeaderGenesisPraosBuilder<HeaderSetConsensusSignature> {
         let signature = kes_signing_key.sign_slice(data);
         self.set_signature(KESSignature(signature))
     }
-
 }

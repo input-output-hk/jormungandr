@@ -3,13 +3,15 @@ mod components;
 mod cstruct;
 mod deconstruct;
 mod eval;
-mod version;
 mod header;
+mod version;
 
+pub use builder::{
+    header_builder, HeaderBftBuilder, HeaderBuilder, HeaderBuilderNew, HeaderGenesisPraosBuilder,
+};
+pub use components::{BftSignature, ChainLength, HeaderId, KESSignature, VrfProof};
+pub use deconstruct::{BftProof, Common, GenesisPraosProof, Proof};
+pub use header::{Header, HeaderBft, HeaderGenesisPraos, HeaderUnsigned};
 pub use version::{AnyBlockVersion, BlockVersion};
-pub use components::{ChainLength, HeaderId, BftSignature, KESSignature, VrfProof};
-pub use deconstruct::{Common, Proof, BftProof, GenesisPraosProof};
-pub use header::{HeaderBft, HeaderGenesisPraos, HeaderUnsigned, Header};
-pub use builder::{header_builder, HeaderBuilder, HeaderBuilderNew, HeaderBftBuilder, HeaderGenesisPraosBuilder};
 
 pub use eval::HeaderContentEvalContext;

@@ -260,10 +260,10 @@ impl Multiverse<Ledger> {
 mod test {
     use super::Multiverse;
     use crate::block::{Block, ConsensusVersion, Contents, ContentsBuilder};
-    use crate::header::{BlockVersion, HeaderBuilderNew};
-    use crate::date::BlockDate;
     use crate::config::{Block0Date, ConfigParam};
+    use crate::date::BlockDate;
     use crate::fragment::{ConfigParams, Fragment};
+    use crate::header::{BlockVersion, HeaderBuilderNew};
     use crate::leadership::bft::LeaderId;
     use crate::ledger::Ledger;
     use crate::milli::Milli;
@@ -322,11 +322,16 @@ mod test {
         genesis_content.push(Fragment::Initial(ents));
         let genesis_content = genesis_content.into();
 
-        let mut date = BlockDate { epoch: 0, slot_id: 0 };
+        let mut date = BlockDate {
+            epoch: 0,
+            slot_id: 0,
+        };
         let genesis_header = HeaderBuilderNew::new(BlockVersion::Genesis, &genesis_content)
-                                .set_genesis()
-                                .set_date(date)
-                                .to_unsigned_header().unwrap().generalize();
+            .set_genesis()
+            .set_date(date)
+            .to_unsigned_header()
+            .unwrap()
+            .generalize();
         let genesis_block = Block {
             header: genesis_header,
             contents: genesis_content,

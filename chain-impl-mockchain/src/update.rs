@@ -423,9 +423,9 @@ mod test {
 
     use crate::{
         block::Block,
-        ledger::ledger::Ledger,
-        header::{BlockVersion, HeaderId, HeaderBuilderNew},
         fragment::Contents,
+        header::{BlockVersion, HeaderBuilderNew, HeaderId},
+        ledger::ledger::Ledger,
         testing::arbitrary::update_proposal::UpdateProposalData,
         testing::ledger as mock_ledger,
         update::{
@@ -511,9 +511,6 @@ mod test {
             .unwrap()
             .sign_using(block_signing_key)
             .generalize();
-        Block {
-            header,
-            contents,
-        }
+        Block { header, contents }
     }
 }

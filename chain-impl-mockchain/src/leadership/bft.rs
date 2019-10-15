@@ -14,8 +14,8 @@ pub type BftVerificationAlg = Ed25519;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeaderId(pub(crate) PublicKey<BftVerificationAlg>);
 
-impl From<[u8;32]> for LeaderId {
-    fn from(v: [u8;32]) -> LeaderId {
+impl From<[u8; 32]> for LeaderId {
+    fn from(v: [u8; 32]) -> LeaderId {
         LeaderId(PublicKey::from_binary(&v[..]).expect("leader-id invalid format"))
     }
 }
