@@ -9,6 +9,7 @@ use network_core::gossip::{Gossip, Node};
 use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
 
+use std::mem;
 use std::sync::Mutex;
 use std::time::SystemTime;
 
@@ -85,27 +86,47 @@ impl<T> Default for CommHandle<T> {
 }
 
 impl<T> CommHandle<T> {
+    /// Creates a handle with an item waiting to be sent,
+    /// in expectation for a subscription to be established.
+    pub fn pending(item: T) -> Self {
+        CommHandle {
+            state: SubscriptionState::Pending(item),
+        }
+    }
+
     /// Returns a stream to use as an outbound half of the
     /// subscription stream.
     ///
     /// If this method is called again on the same handle,
     /// the previous subscription is closed and its stream is terminated.
     pub fn subscribe(&mut self) -> Subscription<T> {
-        let (tx, rx) = mpsc::channel(BUFFER_LEN);
-        self.state = SubscriptionState::Subscribed(tx);
+        use self::SubscriptionState::*;
+
+        let (mut tx, rx) = mpsc::channel(BUFFER_LEN);
+        let old_state = mem::replace(&mut self.state, NotSubscribed);
+        if let Pending(item) = old_state {
+            tx.try_send(item).unwrap();
+        }
+        self.state = Subscribed(tx);
         Subscription { inner: rx }
     }
 
-    // Try sending the item to the subscriber.
+    // Try sending an item to the subscriber.
     // Sending is done as best effort: if the stream buffer is full due to a
     // blockage downstream, a `StreamOverflow` error is
     // returned and the item is dropped.
+    // If the subscription is in the pending state with an item already waiting
+    // to be sent, the new item replaces the previous pending item.
     pub fn try_send(&mut self, item: T) -> Result<(), PropagateError<T>> {
         match self.state {
             SubscriptionState::NotSubscribed => Err(PropagateError {
                 kind: ErrorKind::NotSubscribed,
                 item,
             }),
+            SubscriptionState::Pending(ref mut pending) => {
+                *pending = item;
+                Ok(())
+            }
             SubscriptionState::Subscribed(ref mut sender) => sender.try_send(item).map_err(|e| {
                 if e.is_disconnected() {
                     PropagateError {
@@ -130,6 +151,7 @@ impl<T> CommHandle<T> {
 
 enum SubscriptionState<T> {
     NotSubscribed,
+    Pending(T),
     Subscribed(mpsc::Sender<T>),
 }
 
