@@ -6,7 +6,7 @@ mod eval;
 mod header;
 mod version;
 
-pub use crate::date::BlockDate;
+pub use crate::date::{BlockDate, Epoch, SlotId};
 
 pub use builder::{
     header_builder, HeaderBftBuilder, HeaderBuilder, HeaderBuilderNew, HeaderGenesisPraosBuilder,
