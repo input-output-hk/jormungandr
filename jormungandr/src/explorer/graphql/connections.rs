@@ -1,8 +1,7 @@
 use super::error::ErrorKind;
 use super::scalars::BlockCount;
-use super::{Block, Context, ExplorerDB};
-use blockcfg;
-use futures::Future;
+use super::{Block, Context};
+use blockcfg::{self, HeaderHash};
 use juniper::{FieldResult, ParseScalarResult, ParseScalarValue, Value};
 use std::convert::TryFrom;
 
@@ -44,6 +43,12 @@ impl From<BlockCursor> for u32 {
 impl From<blockcfg::ChainLength> for BlockCursor {
     fn from(length: blockcfg::ChainLength) -> BlockCursor {
         BlockCursor(length)
+    }
+}
+
+impl From<BlockCursor> for blockcfg::ChainLength {
+    fn from(c: BlockCursor) -> blockcfg::ChainLength {
+        c.0.into()
     }
 }
 
@@ -122,30 +127,31 @@ impl BlockConnection {
     // The lower and upper bound are used to define all the blocks this connection will show
     // In particular, they are used to paginate Epoch blocks from first block in epoch to
     // last.
-    pub fn new(
-        lower_bound: BlockCursor,
-        upper_bound: BlockCursor,
+    pub fn new<I>(
+        lower_bound: u32,
+        upper_bound: u32,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<BlockCursor>,
-        after: Option<BlockCursor>,
-        db: &ExplorerDB,
-    ) -> FieldResult<BlockConnection> {
+        before: Option<u32>,
+        after: Option<u32>,
+        get_block_range: impl Fn(I, I) -> Vec<(HeaderHash, I)>,
+    ) -> FieldResult<BlockConnection>
+    where
+        u32: From<I>,
+        I: From<u32> + Clone,
+    {
         use std::cmp::{max, min};
-
-        let lower_bound = u32::from(lower_bound);
-        let upper_bound = u32::from(upper_bound);
 
         // Compute the required range of blocks in two variables: [from, to]
         // Both ends are inclusive
         let mut from = match after {
-            Some(cursor) => u32::from(cursor) + 1,
+            Some(cursor) => cursor + 1,
             // If `after` is not set, start from the beginning
             None => lower_bound,
         };
 
         let mut to = match before {
-            Some(cursor) => u32::from(cursor) - 1,
+            Some(cursor) => cursor - 1,
             // If `before` is not set, start from the beginning
             None => upper_bound,
         };
@@ -160,9 +166,9 @@ impl BlockConnection {
             } else {
                 to = min(
                     from.checked_add(u32::try_from(first).unwrap())
+                        .map(|n| n - 1)
                         .or(Some(to))
-                        .unwrap()
-                        - 1,
+                        .unwrap(),
                     to,
                 );
             }
@@ -177,11 +183,10 @@ impl BlockConnection {
                 .into());
             } else {
                 from = max(
-                    u32::from(to)
-                        .checked_sub(u32::try_from(last).unwrap())
+                    to.checked_sub(u32::try_from(last).unwrap())
+                        .map(|n| n + 1)
                         .or(Some(from))
-                        .unwrap()
-                        + 1,
+                        .unwrap(),
                     from,
                 );
             }
@@ -189,13 +194,11 @@ impl BlockConnection {
 
         let has_next_page = to < upper_bound;
         let has_previous_page = from > lower_bound;
-        let edges: Vec<_> = db
-            .get_block_hash_range(from.into(), (to + 1).into())
-            .wait()?
+        let edges: Vec<_> = get_block_range(from.into(), (to + 1).into())
             .iter()
-            .map(|(hash, chain_length)| BlockEdge {
+            .map(|(hash, block_pagination_identifier)| BlockEdge {
                 node: Block::from_valid_hash(*hash),
-                cursor: (*chain_length).into(),
+                cursor: BlockCursor::from(u32::from(block_pagination_identifier.clone())),
             })
             .collect();
 

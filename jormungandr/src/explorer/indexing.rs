@@ -7,7 +7,9 @@ use crate::blockcfg::{Block, BlockDate, ChainLength, Epoch, Fragment, FragmentId
 use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::certificate::Certificate;
+use chain_impl_mockchain::block::Proof;
+use chain_impl_mockchain::certificate::{Certificate, PoolId};
+use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{AuthenticatedTransaction, InputEnum, Witness};
 use chain_impl_mockchain::value::Value;
 
@@ -20,6 +22,16 @@ pub type ChainLengths = Hamt<ChainLength, HeaderHash>;
 pub type Addresses = Hamt<Address, Set<FragmentId>>;
 pub type Epochs = Hamt<Epoch, EpochData>;
 
+// Use a Hamt to store a sequence, the indexes can be used for pagination
+#[derive(Clone)]
+pub struct PersistentSequence<T> {
+    // Could be usize, but it's only used to store blocks for now
+    len: u32,
+    elements: Hamt<u32, T>,
+}
+
+pub type StakePools = Hamt<PoolId, PersistentSequence<HeaderHash>>;
+
 /// Block with unified inputs the metadata needed in the queries
 #[derive(Clone)]
 pub struct ExplorerBlock {
@@ -29,6 +41,14 @@ pub struct ExplorerBlock {
     pub date: BlockDate,
     pub chain_length: ChainLength,
     pub parent_hash: HeaderHash,
+    pub producer: BlockProducer,
+}
+
+#[derive(Clone)]
+pub enum BlockProducer {
+    None,
+    StakePool(PoolId),
+    BftLeader(bft::LeaderId),
 }
 
 #[derive(Clone)]
@@ -148,12 +168,23 @@ impl ExplorerBlock {
             })
             .collect();
 
+        let producer = match block.header.proof() {
+            Proof::GenesisPraos(_proof) => {
+                // Unwrap is safe in this pattern match
+                BlockProducer::StakePool(block.header.get_stakepool_id().unwrap().clone())
+            }
+            // TODO: I think there are no accesors for this
+            Proof::Bft(_proof) => unimplemented!(),
+            Proof::None => BlockProducer::None,
+        };
+
         ExplorerBlock {
             id,
             transactions,
             chain_length,
             date: *block.header.block_date(),
             parent_hash: block.parent_id(),
+            producer,
         }
     }
 
@@ -167,6 +198,10 @@ impl ExplorerBlock {
 
     pub fn chain_length(&self) -> ChainLength {
         self.chain_length
+    }
+
+    pub fn producer(&self) -> &BlockProducer {
+        &self.producer
     }
 }
 
@@ -249,5 +284,30 @@ impl ExplorerTransaction {
 
     pub fn outputs(&self) -> &Vec<ExplorerOutput> {
         &self.outputs
+    }
+}
+
+impl<T> PersistentSequence<T> {
+    pub fn new() -> Self {
+        PersistentSequence {
+            len: 0,
+            elements: Hamt::new(),
+        }
+    }
+
+    pub fn append(&self, t: T) -> Self {
+        let len = self.len + 1;
+        PersistentSequence {
+            len,
+            elements: self.elements.insert(len - 1, t).unwrap(),
+        }
+    }
+
+    pub fn get(&self, i: u32) -> Option<&T> {
+        self.elements.lookup(&i)
+    }
+
+    pub fn len(&self) -> u32 {
+        self.len
     }
 }
