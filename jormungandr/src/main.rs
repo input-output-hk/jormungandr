@@ -111,7 +111,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let mut services = Services::new(bootstrapped_node.logger.clone());
 
     // initialize the network propagation channel
-    let (mut network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+    let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
     let mut new_epoch_announcements = bootstrapped_node.new_epoch_announcements;
     let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;

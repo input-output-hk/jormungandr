@@ -1,7 +1,7 @@
 use super::{grpc, BlockConfig};
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{
-    Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
+    self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
@@ -29,7 +29,7 @@ pub enum Error {
     BlockAlreadyPresent(HeaderHash),
     BlockMissingParent(HeaderHash),
     ApplyBlockFailed(BlockchainError),
-    StorageMainTagFailed(StorageError),
+    ChainSelectionFailed(blockchain::ProcessError),
 }
 
 impl Display for Error {
@@ -48,7 +48,7 @@ impl Display for Error {
                 hash
             ),
             ApplyBlockFailed(_) => write!(f, "failed to apply block to the blockchain"),
-            StorageMainTagFailed(_) => write!(f, "failed to save the Tip's hash in the storage"),
+            ChainSelectionFailed(_) => write!(f, "failed to select the new tip"),
         }
     }
 }
@@ -65,7 +65,7 @@ impl error::Error for Error {
             BlockAlreadyPresent(_) => None,
             BlockMissingParent(_) => None,
             ApplyBlockFailed(e) => Some(e),
-            StorageMainTagFailed(e) => Some(e),
+            ChainSelectionFailed(e) => Some(e),
         }
     }
 }
@@ -73,12 +73,12 @@ impl error::Error for Error {
 pub fn bootstrap_from_peer(
     peer: Peer,
     blockchain: Blockchain,
-    mut branch: Tip,
+    branch: Tip,
     logger: &Logger,
 ) -> Result<Arc<Ref>, Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let mut storage = blockchain.storage().clone();
+    let blockchain2 = blockchain.clone();
 
     let bootstrap = grpc::connect(peer.address(), None)
         .map_err(Error::Connect)
@@ -93,16 +93,9 @@ pub fn bootstrap_from_peer(
                 .and_then(|stream| bootstrap_from_stream(blockchain, tip, stream, logger.clone()))
         })
         .and_then(move |tip| {
-            branch
-                .update_ref(Arc::clone(&tip))
-                .map_err(|_| unreachable!())
-                .map(|_prev_tip| tip)
-        })
-        .and_then(move |tip| {
-            storage
-                .put_tag(MAIN_BRANCH_TAG.to_owned(), tip.hash())
+            blockchain::process_new_ref(logger.clone(), blockchain2, branch, tip.clone())
+                .map_err(Error::ChainSelectionFailed)
                 .map(|()| tip)
-                .map_err(Error::StorageMainTagFailed)
         });
 
     current_thread::block_on_all(bootstrap)
