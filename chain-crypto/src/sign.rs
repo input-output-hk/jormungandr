@@ -53,7 +53,7 @@ where
     fn sign(key: &Self::Secret, msg: &[u8]) -> <Self::PubAlg as VerificationAlgorithm>::Signature;
 }
 
-pub struct Signature<T, A: VerificationAlgorithm> {
+pub struct Signature<T: ?Sized, A: VerificationAlgorithm> {
     signdata: A::Signature,
     phantom: PhantomData<T>,
 }
@@ -140,6 +140,14 @@ impl<A: VerificationAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
     pub fn verify(&self, publickey: &key::PublicKey<A>, object: &T) -> Verification {
         <A as VerificationAlgorithm>::verify_bytes(&publickey.0, &self.signdata, object.as_ref())
     }
+
+}
+
+impl<A: VerificationAlgorithm, T: ?Sized> Signature<T, A> {
+    #[must_use]
+    pub fn verify_slice(&self, publickey: &key::PublicKey<A>, slice: &[u8]) -> Verification {
+        <A as VerificationAlgorithm>::verify_bytes(&publickey.0, &self.signdata, slice)
+    }
 }
 
 /*
@@ -161,6 +169,13 @@ where
     pub fn sign<T: AsRef<[u8]>>(&self, object: &T) -> Signature<T, A::PubAlg> {
         Signature {
             signdata: <A as SigningAlgorithm>::sign(&self.0, object.as_ref()),
+            phantom: PhantomData,
+        }
+    }
+
+    pub fn sign_slice<T: ?Sized>(&self, slice: &[u8]) -> Signature<T, A::PubAlg> {
+        Signature {
+            signdata: <A as SigningAlgorithm>::sign(&self.0, slice),
             phantom: PhantomData,
         }
     }
