@@ -1,5 +1,21 @@
 # Change Log
 
+## [v0.6.1](https://github.com/input-output-hk/jormungandr/tree/v0.6.1) (2019-10-15)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.0...v0.6.1)
+
+**Implemented enhancements:**
+
+- Accept sensitive parameters for jormungandr via environment variables. [\#935](https://github.com/input-output-hk/jormungandr/issues/935)
+- treat the network blocks just like every other blocks even at bootstrap [\#949](https://github.com/input-output-hk/jormungandr/pull/949)
+
+**Fixed bugs:**
+
+- ERRO cannot propagate block to network: send failed because channel is full [\#861](https://github.com/input-output-hk/jormungandr/issues/861)
+
+**Closed issues:**
+
+- Does not compile on Ubuntu 18.04.3 LTS \(rustc 1.36\) [\#948](https://github.com/input-output-hk/jormungandr/issues/948)
+
 ## [v0.6.0](https://github.com/input-output-hk/jormungandr/tree/v0.6.0) (2019-10-14)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.5.6...v0.6.0)
 
