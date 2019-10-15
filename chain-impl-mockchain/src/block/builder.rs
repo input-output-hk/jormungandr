@@ -1,12 +1,12 @@
 //! block builder tooling and more
 //!
 
-use super::content::Contents;
 use super::{
-    BftProof, Block, BlockContents, BlockDate, BlockId, BlockVersion, ChainLength, Common,
-    GenesisPraosProof, Header, KESSignature, Proof,
+    BftProof, Block, BlockDate, BlockId, BlockVersion, ChainLength,
+    Common, GenesisPraosProof, Header, KESSignature, Proof,
 };
 use crate::certificate::PoolId;
+use crate::fragment::Contents;
 use crate::key::make_signature;
 use crate::leadership;
 use chain_crypto::{
@@ -15,7 +15,7 @@ use chain_crypto::{
 
 pub struct BlockBuilder {
     pub common: Common,
-    pub contents: BlockContents,
+    pub contents: Contents,
 }
 
 impl From<Block> for BlockBuilder {
@@ -131,12 +131,10 @@ impl BlockBuilder {
 #[cfg(test)]
 mod tests {
 
-    use super::{BlockBuilder, BlockDate, BlockId, BlockVersion, ChainLength, Contents};
-    use crate::block::{
-        content::ContentsBuilder,
-        header::{Common, GenesisPraosProof, Header},
-        Block,
-    };
+    use super::{BlockBuilder, BlockDate, BlockId, BlockVersion, ChainLength};
+    use crate::fragment::{ContentsBuilder, Contents};
+    use crate::block::Block;
+    use crate::header::{Common, GenesisPraosProof, Header};
     use crate::testing::arbitrary::utils::Verify;
     use chain_core::property::BlockId as BlockIdProperty;
     use chain_crypto::{testing::TestCryptoGen, Ed25519, SumEd25519_12};

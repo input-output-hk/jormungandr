@@ -1,5 +1,5 @@
 use crate::{
-    block::{ConsensusVersion, HeaderHash},
+    block::{ConsensusVersion, HeaderId},
     config::ConfigParam,
     fee::LinearFee,
     fragment::{config::ConfigParams, Fragment},
@@ -104,8 +104,8 @@ impl ConfigBuilder {
 pub fn create_initial_fake_ledger(
     initial_msgs: &[Fragment],
     config_params: ConfigParams,
-) -> Result<(HeaderHash, Ledger), Error> {
-    let block0_hash = HeaderHash::hash_bytes(&[1, 2, 3]);
+) -> Result<(HeaderId, Ledger), Error> {
+    let block0_hash = HeaderId::hash_bytes(&[1, 2, 3]);
 
     let mut messages = Vec::new();
     messages.push(Fragment::Initial(config_params));
@@ -133,7 +133,7 @@ pub fn create_initial_transactions(outputs: &Vec<Output<Address>>) -> Fragment {
 pub fn create_fake_ledger_with_faucet(
     faucets: &[AddressDataValue],
     config_params: ConfigParams,
-) -> Result<(HeaderHash, Ledger), Error> {
+) -> Result<(HeaderId, Ledger), Error> {
     let outputs: Vec<Output<Address>> = faucets.iter().map(|x| x.make_output()).collect();
     let message = create_initial_transactions(&outputs);
     create_initial_fake_ledger(&[message], config_params)

@@ -5,28 +5,23 @@ use chain_core::property;
 
 use std::slice;
 
-mod builder;
-mod content;
-mod cstruct;
 mod header;
 mod headerraw;
 mod leaderlog;
-mod version;
 
-pub use self::version::{AnyBlockVersion, BlockVersion, ConsensusVersion};
-
-pub use self::builder::BlockBuilder;
-pub use self::content::{
-    BlockContentHash, BlockContentSize, BlockContents, Contents, ContentsBuilder,
+//pub use self::builder::BlockBuilder;
+pub use crate::fragment::{
+    BlockContentHash, BlockContentSize, Contents, ContentsBuilder,
 };
 
-pub use self::header::{
-    BftProof, BftSignature, BlockId, ChainLength, Common, GenesisPraosProof, Header,
-    HeaderContentEvalContext, HeaderHash, KESSignature, Proof,
+pub use crate::header::{
+    BftProof, BftSignature, HeaderId, Common, GenesisPraosProof, Header,
+    HeaderContentEvalContext, KESSignature, Proof,
 };
 pub use self::headerraw::HeaderRaw;
 pub use self::leaderlog::LeadersParticipationRecord;
-pub use self::version::*;
+
+pub use crate::header::{BlockVersion, ChainLength};
 
 pub use crate::date::{BlockDate, BlockDateParseError, Epoch, SlotId};
 
@@ -36,7 +31,7 @@ pub use crate::date::{BlockDate, BlockDateParseError, Epoch, SlotId};
 #[derive(Debug, Clone)]
 pub struct Block {
     pub header: Header,
-    pub contents: BlockContents,
+    pub contents: Contents,
 }
 
 impl PartialEq for Block {
@@ -50,17 +45,17 @@ impl Block {
     pub fn is_consistent(&self) -> bool {
         let (content_hash, content_size) = self.contents.compute_hash_size();
 
-        &content_hash == self.header.block_content_hash()
-            && content_size == self.header.common.block_content_size
+        &content_hash == &self.header.block_content_hash()
+            && content_size == self.header.block_content_size()
     }
 
-    pub fn fragments<'a>(&'a self) -> slice::Iter<'a, Fragment> {
-        self.contents.0.iter()
+    pub fn fragments<'a>(&'a self) -> impl Iterator<Item = &'a Fragment> {
+        self.contents.iter()
     }
 }
 
 impl property::Block for Block {
-    type Id = BlockId;
+    type Id = HeaderId;
     type Date = BlockDate;
     type Version = BlockVersion;
     type ChainLength = ChainLength;
@@ -73,12 +68,12 @@ impl property::Block for Block {
 
     /// Id of the parent block.
     fn parent_id(&self) -> Self::Id {
-        *self.header.block_parent_hash()
+        self.header.block_parent_hash()
     }
 
     /// Date of the block.
     fn date(&self) -> Self::Date {
-        *self.header.block_date()
+        self.header.block_date()
     }
 
     fn version(&self) -> Self::Version {
@@ -116,7 +111,7 @@ impl property::Deserialize for Block {
         let header_raw = HeaderRaw::deserialize(&mut reader)?;
         let header = read_from_raw::<Header>(header_raw.as_ref())?;
 
-        let mut serialized_content_size = header.common.block_content_size;
+        let mut serialized_content_size = header.block_content_size();
         let mut contents = ContentsBuilder::new();
 
         while serialized_content_size > 0 {
@@ -145,7 +140,7 @@ impl Readable for Block {
         let mut header_buf = buf.split_to(header_size)?;
         let header = Header::read(&mut header_buf)?;
 
-        let mut remaining_content_size = header.common.block_content_size;
+        let mut remaining_content_size = header.block_content_size();
         let mut contents = ContentsBuilder::new();
 
         while remaining_content_size > 0 {
@@ -171,7 +166,7 @@ impl<'a> property::HasFragments<'a> for &'a Block {
     type Fragment = Fragment;
     type Fragments = slice::Iter<'a, Fragment>;
     fn fragments(self) -> Self::Fragments {
-        self.fragments()
+        self.contents.iter_slice()
     }
 }
 
@@ -182,10 +177,48 @@ impl property::HasHeader for Block {
     }
 }
 
+use strum_macros::{Display, EnumString, IntoStaticStr};
+
+#[derive(
+    Debug, Clone, Copy, Display, EnumString, IntoStaticStr, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+pub enum ConsensusVersion {
+    #[strum(to_string = "bft")]
+    Bft = 1,
+    #[strum(to_string = "genesis")]
+    GenesisPraos = 2,
+}
+
+impl ConsensusVersion {
+    pub fn from_u16(v: u16) -> Option<Self> {
+        match v {
+            1 => Some(ConsensusVersion::Bft),
+            2 => Some(ConsensusVersion::GenesisPraos),
+            _ => None,
+        }
+    }
+    pub fn supported_block_versions(self) -> &'static [BlockVersion] {
+        match self {
+            ConsensusVersion::Bft => &[BlockVersion::Ed25519Signed],
+            ConsensusVersion::GenesisPraos => &[BlockVersion::KesVrfproof],
+        }
+    }
+
+    pub fn from_block_version(block_version: BlockVersion) -> Option<ConsensusVersion> {
+        match block_version {
+            BlockVersion::Genesis => None,
+            BlockVersion::Ed25519Signed => Some(ConsensusVersion::Bft),
+            BlockVersion::KesVrfproof => Some(ConsensusVersion::GenesisPraos),
+        }
+    }
+
+}
+
 #[cfg(test)]
 mod test {
 
     use super::*;
+    use crate::header::HeaderBuilderNew;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     quickcheck! {
@@ -224,13 +257,34 @@ mod test {
             content.into()
         }
     }
+
     impl Arbitrary for Block {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let content = BlockContents::arbitrary(g);
-            let (hash, size) = content.compute_hash_size();
-            let mut header = Header::arbitrary(g);
-            header.common.block_content_size = size as u32;
-            header.common.block_content_hash = hash;
+            let content = Contents::arbitrary(g);
+            let ver = BlockVersion::arbitrary(g);
+            let parent_hash = Arbitrary::arbitrary(g);
+            let chain_length = Arbitrary::arbitrary(g);
+            let date = Arbitrary::arbitrary(g);
+            let hdrbuilder = HeaderBuilderNew::new(ver, &content)
+                .set_parent(&parent_hash, chain_length)
+                .set_date(date);
+            let header = match ver {
+                BlockVersion::Genesis => hdrbuilder.to_unsigned_header().unwrap().generalize(),
+                BlockVersion::Ed25519Signed => {
+                    let bft_proof : BftProof = Arbitrary::arbitrary(g);
+                    hdrbuilder.to_bft_builder().unwrap()
+                        .set_consensus_data(&bft_proof.leader_id)
+                        .set_signature(bft_proof.signature)
+                        .generalize()
+                }
+                BlockVersion::KesVrfproof => {
+                    let gp_proof : GenesisPraosProof = Arbitrary::arbitrary(g);
+                    hdrbuilder.to_genesis_praos_builder().unwrap()
+                        .set_consensus_data(&gp_proof.node_id, &gp_proof.vrf_proof.into())
+                        .set_signature(gp_proof.kes_proof)
+                        .generalize()
+                }
+            };
             Block {
                 header: header,
                 contents: content,

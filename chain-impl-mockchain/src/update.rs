@@ -422,8 +422,10 @@ mod test {
     }
 
     use crate::{
-        block::{Block, BlockBuilder, Contents, HeaderHash},
+        block::Block,
         ledger::ledger::Ledger,
+        header::{BlockVersion, HeaderId, HeaderBuilderNew},
+        fragment::Contents,
         testing::arbitrary::update_proposal::UpdateProposalData,
         testing::ledger as mock_ledger,
         update::{
@@ -431,7 +433,6 @@ mod test {
             UpdateVote,
         },
     };
-    use chain_core::property::ChainLength;
     use chain_crypto::{Ed25519, SecretKey};
 
     #[quickcheck]
@@ -463,7 +464,7 @@ mod test {
         // trigger proposal process (build block)
         let block = build_block(
             &ledger,
-            block0_hash,
+            &block0_hash,
             date.next_epoch(),
             &update_proposal_data.block_signing_key,
         );
@@ -497,14 +498,22 @@ mod test {
 
     fn build_block(
         ledger: &Ledger,
-        block0_hash: HeaderHash,
+        block0_hash: &HeaderId,
         date: BlockDate,
         block_signing_key: &SecretKey<Ed25519>,
     ) -> Block {
-        let mut block_builder = BlockBuilder::new(Contents::empty());
-        block_builder.chain_length(ledger.chain_length.next());
-        block_builder.parent(block0_hash);
-        block_builder.date(date.next_epoch());
-        block_builder.make_bft_block(block_signing_key)
+        let contents = Contents::empty();
+        let pk = block_signing_key.to_public();
+        let header = HeaderBuilderNew::new(BlockVersion::Ed25519Signed, &contents)
+            .set_parent(block0_hash, ledger.chain_length.increase())
+            .set_date(date.next_epoch())
+            .to_bft_builder()
+            .unwrap()
+            .sign_using(block_signing_key)
+            .generalize();
+        Block {
+            header,
+            contents,
+        }
     }
 }

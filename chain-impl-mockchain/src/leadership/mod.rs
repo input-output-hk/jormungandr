@@ -18,6 +18,7 @@ pub enum ErrorKind {
     IncompatibleLeadershipMode,
     InvalidLeader,
     InvalidLeaderSignature,
+    InvalidLeaderProof,
     InvalidBlockMessage,
     InvalidStateUpdate,
 }
@@ -257,6 +258,7 @@ impl std::fmt::Display for ErrorKind {
             }
             ErrorKind::InvalidLeader => write!(f, "Block has unexpected block leader"),
             ErrorKind::InvalidLeaderSignature => write!(f, "Block signature is invalid"),
+            ErrorKind::InvalidLeaderProof => write!(f, "Block proof is invalid"),
             ErrorKind::InvalidBlockMessage => write!(f, "Invalid block message"),
             ErrorKind::InvalidStateUpdate => write!(f, "Invalid State Update"),
         }

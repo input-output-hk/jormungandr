@@ -4,7 +4,7 @@ use crate::{
     block::{BlockDate, Header, Proof},
     certificate::PoolId,
     date::Epoch,
-    key::{deserialize_public_key, verify_signature},
+    key::deserialize_public_key,
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
     stake::{self, StakeDistribution},
@@ -133,7 +133,7 @@ impl LeadershipData {
 
         let stake_snapshot = &self.distribution;
 
-        match &block_header.proof() {
+        match block_header.proof() {
             Proof::GenesisPraos(ref genesis_praos_proof) => {
                 let node_id = &genesis_praos_proof.node_id;
                 match (
@@ -149,7 +149,12 @@ impl LeadershipData {
                             total: total_stake,
                         };
 
-                        let _ = VrfEvaluator {
+                        let proof = match genesis_praos_proof.vrf_proof.to_vrf_proof() {
+                            None => return Verification::Failure(Error::new(ErrorKind::InvalidLeaderProof)),
+                            Some(p) => p,
+                        };
+
+                        let vrf_nonce = VrfEvaluator {
                             stake: percent_stake,
                             nonce: &self.epoch_nonce,
                             slot_id: block_header.block_date().slot_id,
@@ -157,14 +162,15 @@ impl LeadershipData {
                         }
                         .verify(
                             &pool_info.keys.vrf_public_key,
-                            &genesis_praos_proof.vrf_proof,
+                            &proof,
                         );
 
-                        let valid = verify_signature(
-                            &genesis_praos_proof.kes_proof.0,
-                            &pool_info.keys.kes_public_key,
-                            &block_header.common,
-                        );
+                        if vrf_nonce.is_none() {
+                            return Verification::Failure(Error::new(ErrorKind::InvalidLeaderProof))
+                        }
+
+                        let auth = block_header.as_auth_slice();
+                        let valid = genesis_praos_proof.kes_proof.verify(&pool_info.keys.kes_public_key, auth);
 
                         if valid == SigningVerification::Failed {
                             Verification::Failure(Error::new(ErrorKind::InvalidLeaderSignature))
@@ -179,6 +185,7 @@ impl LeadershipData {
         }
     }
 }
+
 
 impl Readable for GenesisPraosLeader {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
@@ -196,6 +203,7 @@ mod tests {
     use super::*;
     use crate::certificate::PoolId;
     use crate::ledger::Ledger;
+    use crate::header::HeaderId;
     use crate::milli::Milli;
     use crate::stake::{PoolStakeDistribution, PoolStakeInformation, PoolStakeTotal};
     use crate::testing::{
@@ -539,7 +547,8 @@ mod tests {
             .is_err());
     }
 
-    use crate::block::{BlockBuilder, Contents};
+    use crate::header::{BlockVersion, HeaderBuilderNew};
+    use crate::fragment::Contents;
     use chain_core::property::ChainLength;
 
     #[test]
@@ -589,12 +598,16 @@ mod tests {
             .expect("cannot register stake pool");
         let selection = LeadershipData::new(date.epoch, &ledger);
         let rng = rand_os::OsRng::new().unwrap();
-        let mut block_builder = BlockBuilder::new(Contents::empty());
-        block_builder.date(date);
-        block_builder.chain_length(ledger.chain_length().next());
-        let block = block_builder.make_bft_block(&SecretKey::generate(rng));
+        let sk = &SecretKey::generate(rng);
+        let header = HeaderBuilderNew::new(BlockVersion::Ed25519Signed, &Contents::empty())
+            .set_parent(&HeaderId::zero_hash(), ledger.chain_length().next())
+            .set_date(date)
+            .to_bft_builder()
+            .unwrap()
+            .sign_using(sk)
+            .generalize();
 
-        assert!(selection.verify(&block.header).failure());
+        assert!(selection.verify(&header).failure());
     }
 
     #[test]

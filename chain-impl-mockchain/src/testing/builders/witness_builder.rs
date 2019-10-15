@@ -1,6 +1,6 @@
 use crate::{
     account::SpendingCounter,
-    block::HeaderHash,
+    header::HeaderId,
     key::EitherEd25519SecretKey,
     testing::data::AddressData,
     transaction::{TransactionSignDataHash, Witness},
@@ -8,7 +8,7 @@ use crate::{
 use chain_addr::Kind;
 
 pub fn make_witness(
-    block0: &HeaderHash,
+    block0: &HeaderId,
     addres_data: &AddressData,
     transaction_hash: TransactionSignDataHash,
 ) -> Witness {
@@ -24,7 +24,7 @@ pub fn make_witness(
 }
 
 pub fn make_utxo_witness(
-    block0: &HeaderHash,
+    block0: &HeaderId,
     secret_key: &EitherEd25519SecretKey,
     transaction_hash: &TransactionSignDataHash,
 ) -> Witness {
@@ -32,7 +32,7 @@ pub fn make_utxo_witness(
 }
 
 pub fn make_account_witness(
-    block0: &HeaderHash,
+    block0: &HeaderId,
     spending_counter: &SpendingCounter,
     secret_key: &EitherEd25519SecretKey,
     transaction_hash: &TransactionSignDataHash,

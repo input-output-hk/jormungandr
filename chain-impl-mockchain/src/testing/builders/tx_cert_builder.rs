@@ -1,8 +1,8 @@
 use crate::{
-    block::HeaderHash,
     certificate::Certificate,
     fee::FeeAlgorithm,
     fragment::Fragment,
+    header::HeaderId,
     testing::data::AddressData,
     testing::witness_builder,
     transaction::{
@@ -78,7 +78,7 @@ impl TransactionCertAuthenticator {
         }
     }
 
-    pub fn with_witness(&mut self, block0: &HeaderHash, address_data: &AddressData) -> &mut Self {
+    pub fn with_witness(&mut self, block0: &HeaderId, address_data: &AddressData) -> &mut Self {
         self.witnesses.push(witness_builder::make_witness(
             &block0,
             &address_data,

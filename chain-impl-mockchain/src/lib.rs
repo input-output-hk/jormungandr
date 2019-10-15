@@ -18,6 +18,7 @@ pub mod milli;
 pub mod error;
 pub mod fee;
 pub mod key;
+pub mod header;
 pub mod leadership;
 pub mod ledger;
 pub mod multisig;
