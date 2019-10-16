@@ -18,7 +18,7 @@ pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
 pub use self::slots_duration::SlotDuration;
 use chain_impl_mockchain::{
-    block::{Block, BlockBuilder},
+    block::{Block, BlockBuilder, ContentsBuilder},
     fragment::Fragment,
 };
 use serde::{Deserialize, Serialize};
@@ -67,11 +67,12 @@ impl Block0Configuration {
     }
 
     pub fn to_block(&self) -> Block {
-        let mut builder = BlockBuilder::new();
-        builder.message(Fragment::Initial(
+        let mut content_builder = ContentsBuilder::new();
+        content_builder.push(Fragment::Initial(
             self.blockchain_configuration.clone().into(),
         ));
-        builder.messages(self.initial.iter().map(Fragment::from));
+        content_builder.push_many(self.initial.iter().map(Fragment::from));
+        let builder = BlockBuilder::new(content_builder.into());
         builder.make_genesis_block()
     }
 }

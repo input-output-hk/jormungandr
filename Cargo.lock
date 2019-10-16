@@ -454,6 +454,7 @@ dependencies = [
  "chain-storage 0.1.0",
  "chain-time 0.1.0",
  "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ed25519-bip32 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "imhamt 0.1.0",
  "quickcheck 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -484,6 +485,9 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
+dependencies = [
+ "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "chrono"
