@@ -1,5 +1,5 @@
 use crate::{
-    block::HeaderHash,
+    block::HeaderId,
     fee::LinearFee,
     fragment::Fragment,
     ledger::OutputAddress,
@@ -95,7 +95,7 @@ impl TransactionAuthenticator {
 
     pub fn with_witnesses(
         &mut self,
-        block0: &HeaderHash,
+        block0: &HeaderId,
         addreses_data: &Vec<AddressData>,
     ) -> &mut Self {
         for address in addreses_data {
@@ -104,7 +104,7 @@ impl TransactionAuthenticator {
         self
     }
 
-    pub fn with_witness(&mut self, block0: &HeaderHash, address_data: &AddressData) -> &mut Self {
+    pub fn with_witness(&mut self, block0: &HeaderId, address_data: &AddressData) -> &mut Self {
         self.witnesses.push(witness_builder::make_witness(
             &block0,
             &address_data,

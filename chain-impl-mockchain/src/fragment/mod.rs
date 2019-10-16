@@ -1,4 +1,5 @@
 pub mod config;
+mod content;
 mod raw;
 
 use crate::legacy;
@@ -8,6 +9,8 @@ use chain_core::property;
 
 pub use config::ConfigParams;
 pub use raw::{FragmentId, FragmentRaw};
+
+pub use content::{BlockContentHash, BlockContentSize, Contents, ContentsBuilder};
 
 use crate::{
     certificate,

@@ -259,9 +259,11 @@ impl Multiverse<Ledger> {
 #[cfg(test)]
 mod test {
     use super::Multiverse;
-    use crate::block::{Block, BlockBuilder, ConsensusVersion, Contents, ContentsBuilder};
+    use crate::block::{Block, ConsensusVersion, Contents, ContentsBuilder};
     use crate::config::{Block0Date, ConfigParam};
+    use crate::date::BlockDate;
     use crate::fragment::{ConfigParams, Fragment};
+    use crate::header::{BlockVersion, HeaderBuilderNew};
     use crate::leadership::bft::LeaderId;
     use crate::ledger::Ledger;
     use crate::milli::Milli;
@@ -302,6 +304,8 @@ mod test {
 
         let mut store = chain_storage::memory::MemoryBlockStore::new();
 
+        let block_ver = BlockVersion::Ed25519Signed;
+
         let mut ents = ConfigParams::new();
         ents.push(ConfigParam::Discrimination(Discrimination::Test));
         ents.push(ConfigParam::ConsensusVersion(ConsensusVersion::Bft));
@@ -316,33 +320,47 @@ mod test {
 
         let mut genesis_content = ContentsBuilder::new();
         genesis_content.push(Fragment::Initial(ents));
+        let genesis_content = genesis_content.into();
 
-        let genesis_block = BlockBuilder::new(genesis_content.into()).make_genesis_block();
-        let mut date = genesis_block.date();
-        let genesis_state = Ledger::new(genesis_block.id(), genesis_block.fragments()).unwrap();
+        let mut date = BlockDate::first();
+        let genesis_header = HeaderBuilderNew::new(BlockVersion::Genesis, &genesis_content)
+            .set_genesis()
+            .set_date(date)
+            .to_unsigned_header()
+            .unwrap()
+            .generalize();
+        let genesis_block = Block {
+            header: genesis_header,
+            contents: genesis_content,
+        };
+        let genesis_state = Ledger::new(genesis_block.id(), genesis_block.contents.iter()).unwrap();
         assert_eq!(genesis_state.chain_length().0, 0);
         store.put_block(&genesis_block).unwrap();
-        multiverse.add(genesis_block.id(), genesis_state.clone());
+        multiverse.add(genesis_block.header.id(), genesis_state.clone());
 
         let mut state = genesis_state;
         let mut _root = None;
         let mut parent = genesis_block.id();
         let mut ids = vec![];
         for i in 1..10001 {
-            let mut block = BlockBuilder::new(Contents::empty());
-            block.chain_length(state.chain_length.next());
-            block.parent(parent);
             date = date.next(&era);
-            block.date(date);
-            let block = block.make_bft_block(&leader_key);
+            let contents = Contents::empty();
+            let header = HeaderBuilderNew::new(block_ver, &contents)
+                .set_parent(&parent, state.chain_length.next())
+                .set_date(date)
+                .to_bft_builder()
+                .unwrap()
+                .sign_using(&leader_key)
+                .generalize();
+            let block = Block { header, contents };
             state = apply_block(&state, &block);
             assert_eq!(state.chain_length().0, i);
             assert_eq!(state.date, block.date());
             store.put_block(&block).unwrap();
             _root = Some(multiverse.add(block.id(), state.clone()));
             multiverse.gc();
-            ids.push(block.id());
-            parent = block.id();
+            ids.push(block.header.id());
+            parent = block.header.id();
             assert!(
                 multiverse.nr_states()
                     <= super::SUFFIX_TO_KEEP as usize + ((i as f32).log2()) as usize
