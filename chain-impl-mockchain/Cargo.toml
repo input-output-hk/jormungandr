@@ -27,11 +27,12 @@ strum_macros = "0.15.0"
 custom_error = "1.6"
 cfg-if = "0.1"
 quickcheck = { version = "0.8", optional = true }
+ed25519-bip32 = { version = "0.1", optional = true }
 
 cardano-legacy-address = { path= "../cardano-legacy-address" }
 
 [features]
-property-test-api = ["quickcheck"]
+property-test-api = ["quickcheck", "ed25519-bip32"]
 with-bench = []
 
 [dev-dependencies]

@@ -36,9 +36,11 @@ pub mod value;
 extern crate cfg_if;
 
 cfg_if! {
-   if #[cfg(test)] {
+    if #[cfg(test)] {
         pub mod testing;
+        extern crate ed25519_bip32;
     } else if #[cfg(feature = "property-test-api")] {
         pub mod testing;
+        extern crate ed25519_bip32;
     }
 }
