@@ -140,7 +140,6 @@ impl<A: VerificationAlgorithm, T: AsRef<[u8]>> Signature<T, A> {
     pub fn verify(&self, publickey: &key::PublicKey<A>, object: &T) -> Verification {
         <A as VerificationAlgorithm>::verify_bytes(&publickey.0, &self.signdata, object.as_ref())
     }
-
 }
 
 impl<A: VerificationAlgorithm, T: ?Sized> Signature<T, A> {
