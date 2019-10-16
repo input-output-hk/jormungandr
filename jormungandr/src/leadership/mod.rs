@@ -66,8 +66,8 @@ pub use self::logs::{LeadershipLogHandle, Logs};
 pub use self::schedule::{Schedule, Schedules};
 use crate::{
     blockcfg::{
-        BlockBuilder, Contents, Epoch, HeaderContentEvalContext, Leadership, Ledger,
-        LedgerParameters,
+        Block, BlockDate, BlockVersion, Contents, Epoch, HeaderBuilderNew,
+        HeaderContentEvalContext, LeaderOutput, Leadership, Ledger, LedgerParameters,
     },
     blockchain::Tip,
     fragment,
@@ -160,11 +160,53 @@ impl LeadershipModule {
                         .join(future::ok(next))
                 })
                 .and_then(move |(contents, (parent_id, chain_length, date))| {
-                    let mut bb = BlockBuilder::new(contents);
-                    bb.date(date).parent(parent_id).chain_length(chain_length);
-                    enclave
-                        .query_block_finalize(bb, leader_event)
-                        .map_err(|_| unimplemented!())
+                    let ver = match leader_event.output {
+                        LeaderOutput::None => BlockVersion::Genesis,
+                        LeaderOutput::Bft(_) => BlockVersion::Ed25519Signed,
+                        LeaderOutput::GenesisPraos(..) => BlockVersion::KesVrfproof,
+                    };
+                    let hdr_builder = HeaderBuilderNew::new(ver, &contents)
+                        .set_parent(&parent_id, chain_length)
+                        .set_date(date);
+                    match leader_event.output {
+                        LeaderOutput::None => {
+                            let header = hdr_builder.to_unsigned_header().unwrap().generalize();
+                            future::Either::A(future::ok(Block { header, contents }))
+                        }
+                        LeaderOutput::Bft(leader_id) => {
+                            let final_builder = hdr_builder
+                                .to_bft_builder()
+                                .unwrap()
+                                .set_consensus_data(&leader_id);
+                            future::Either::B(future::Either::A(
+                                enclave
+                                    .query_header_bft_finalize(final_builder, leader_event.id)
+                                    .map(|h| Block {
+                                        header: h.generalize(),
+                                        contents,
+                                    })
+                                    .map_err(|_| unimplemented!()),
+                            ))
+                        }
+                        LeaderOutput::GenesisPraos(node_id, vrfproof) => {
+                            let final_builder = hdr_builder
+                                .to_genesis_praos_builder()
+                                .unwrap()
+                                .set_consensus_data(&node_id, &vrfproof.into());
+                            future::Either::B(future::Either::B(
+                                enclave
+                                    .query_header_genesis_praos_finalize(
+                                        final_builder,
+                                        leader_event.id,
+                                    )
+                                    .map(|h| Block {
+                                        header: h.generalize(),
+                                        contents,
+                                    })
+                                    .map_err(|_| unimplemented!()),
+                            ))
+                        }
+                    }
                 })
                 .and_then(|block| {
                     sender
@@ -437,7 +479,6 @@ fn prepare_block(
     use crate::fragment::selection::{FragmentSelectionAlgorithm as _, OldestFirst};
 
     let selection_algorithm = OldestFirst::new(250 /* TODO!! */);
-
     fragment_pool
         .select(
             ledger.as_ref().clone(),

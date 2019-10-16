@@ -1,8 +1,9 @@
 use crate::{scenario::settings::NodeSetting, style, Context, NodeAlias};
 use bawawa::{Control, Process};
 use chain_impl_mockchain::{
-    block::{Block, HeaderHash},
+    block::Block,
     fragment::{Fragment, FragmentId},
+    header::HeaderId,
 };
 use indicatif::ProgressBar;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
@@ -59,7 +60,7 @@ pub struct MemPoolCheck {
 }
 
 pub enum NodeBlock0 {
-    Hash(HeaderHash),
+    Hash(HeaderId),
     File(PathBuf),
 }
 
@@ -179,7 +180,7 @@ impl NodeController {
         })
     }
 
-    pub fn get_tip(&self) -> Result<HeaderHash> {
+    pub fn get_tip(&self) -> Result<HeaderId> {
         let hash = self.get("tip")?.text()?;
 
         let hash = hash.parse().chain_err(|| ErrorKind::InvalidHeaderHash)?;
@@ -189,7 +190,7 @@ impl NodeController {
         Ok(hash)
     }
 
-    pub fn get_block(&self, header_hash: &HeaderHash) -> Result<Block> {
+    pub fn get_block(&self, header_hash: &HeaderId) -> Result<Block> {
         use chain_core::mempack::{ReadBuf, Readable as _};
 
         let mut resp = self.get(&format!("block/{}", header_hash))?;

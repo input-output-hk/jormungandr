@@ -62,7 +62,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             match ledger_simulation.apply_fragment(ledger_params, &fragment, metadata) {
                 Ok(ledger_new) => {
                     self.builder.push(fragment);
-
                     total += 1;
                     ledger_simulation = ledger_new;
                 }

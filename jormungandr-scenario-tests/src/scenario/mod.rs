@@ -13,7 +13,8 @@ pub use self::{
     wallet::{Wallet, WalletAlias, WalletType},
 };
 pub use chain_impl_mockchain::{
-    block::{Block, ConsensusVersion, HeaderHash},
+    block::{Block, ConsensusVersion},
+    header::HeaderId,
     value::Value,
 };
 pub use jormungandr_lib::interfaces::{NumberOfSlotsPerEpoch, SlotDuration};
