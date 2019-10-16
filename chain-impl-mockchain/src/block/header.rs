@@ -1,3 +1,4 @@
+use super::content::{BlockContentHash, BlockContentSize};
 use crate::block::{
     headerraw::HeaderRaw,
     version::{AnyBlockVersion, BlockVersion},
@@ -17,9 +18,7 @@ use chain_crypto::{
 };
 
 pub type HeaderHash = Hash;
-pub type BlockContentHash = Hash;
 pub type BlockId = Hash;
-pub type BlockContentSize = u32;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Common {
@@ -181,9 +180,15 @@ impl Header {
     }
 }
 
+impl ChainLength {
+    pub fn increase(&self) -> Self {
+        ChainLength(self.0.checked_add(1).unwrap())
+    }
+}
+
 impl property::ChainLength for ChainLength {
     fn next(&self) -> Self {
-        ChainLength(self.0.checked_add(1).unwrap())
+        self.increase()
     }
 }
 
@@ -226,7 +231,7 @@ impl property::Serialize for Header {
                 {
                     let mut buf =
                         [0; <Curve25519_2HashDH as VerifiableRandomFunction>::VERIFIED_RANDOM_SIZE];
-                    genesis_praos_proof.vrf_proof.to_bytes(&mut buf);
+                    genesis_praos_proof.vrf_proof.to_buffer(&mut buf);
                     writer.write_all(&buf)?;
                 }
                 serialize_signature(&genesis_praos_proof.kes_proof.0, writer)?;

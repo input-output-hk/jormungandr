@@ -7,6 +7,8 @@ use crate::key::{
 use crate::vrf::{VRFVerification, VerifiableRandomFunction};
 use rand_core::{CryptoRng, RngCore};
 
+pub use vrf::ProvenOutputSeed;
+
 /// VRF
 pub struct Curve25519_2HashDH;
 

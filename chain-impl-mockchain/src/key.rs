@@ -214,6 +214,10 @@ impl<T: Clone, A: VerificationAlgorithm> Clone for Signed<T, A> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash(crypto::Blake2b256);
 impl Hash {
+    /// All 0 hash used as a special hash
+    pub fn zero_hash() -> Self {
+        Hash(crypto::Blake2b256::from([0; crypto::Blake2b256::HASH_SIZE]))
+    }
     pub fn hash_bytes(bytes: &[u8]) -> Self {
         Hash(crypto::Blake2b256::new(bytes))
     }
@@ -231,6 +235,12 @@ impl From<[u8; 32]> for Hash {
 impl From<Hash> for [u8; 32] {
     fn from(h: Hash) -> Self {
         h.0.into()
+    }
+}
+
+impl<'a> From<&'a Hash> for &'a [u8; 32] {
+    fn from(h: &'a Hash) -> Self {
+        (&h.0).into()
     }
 }
 

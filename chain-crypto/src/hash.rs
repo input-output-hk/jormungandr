@@ -89,6 +89,11 @@ macro_rules! define_hash_object {
                 bytes.0
             }
         }
+        impl<'a> From<&'a $hash_ty> for &'a [u8; $hash_size] {
+            fn from(bytes: &'a $hash_ty) -> Self {
+                &bytes.0
+            }
+        }
         impl From<[u8; Self::HASH_SIZE]> for $hash_ty {
             fn from(bytes: [u8; Self::HASH_SIZE]) -> Self {
                 $constructor(bytes)

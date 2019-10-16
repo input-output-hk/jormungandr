@@ -180,6 +180,13 @@ macro_rules! define_from_instances {
                 digest.0
             }
         }
+
+        impl<'a> From<&'a Digest<$hash_ty>> for &'a [u8; $hash_size] {
+            fn from(digest: &'a Digest<$hash_ty>) -> Self {
+                &digest.0
+            }
+        }
+
         impl From<[u8; $hash_size]> for Digest<$hash_ty> {
             fn from(bytes: [u8; $hash_size]) -> Self {
                 Digest(bytes)
@@ -423,11 +430,18 @@ macro_rules! typed_define_from_instances {
                 digest.inner.into()
             }
         }
+        impl<'a, T> From<&'a DigestOf<$hash_ty, T>> for &'a [u8; $hash_size] {
+            fn from(digest: &'a DigestOf<$hash_ty, T>) -> Self {
+                (&digest.inner).into()
+            }
+        }
+
         impl<T> From<[u8; $hash_size]> for DigestOf<$hash_ty, T> {
             fn from(bytes: [u8; $hash_size]) -> Self {
                 Digest::from(bytes).into()
             }
         }
+
         impl<T> From<$hash_ty> for DigestOf<$hash_ty, T> {
             fn from(bytes: $hash_ty) -> Self {
                 let out: [u8; $hash_size] = bytes.into();

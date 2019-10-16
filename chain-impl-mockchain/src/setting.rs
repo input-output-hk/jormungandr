@@ -172,7 +172,7 @@ mod tests {
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Settings {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary<G: Gen>(_: &mut G) -> Self {
             Settings::new()
         }
     }

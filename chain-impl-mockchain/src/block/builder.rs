@@ -1,15 +1,14 @@
 //! block builder tooling and more
 //!
 
-use crate::block::{
-    BftProof, Block, BlockContentHash, BlockContents, BlockDate, BlockId, BlockVersion,
-    ChainLength, Common, Fragment, GenesisPraosProof, Header, KESSignature, Proof,
+use super::content::Contents;
+use super::{
+    BftProof, Block, BlockContents, BlockDate, BlockId, BlockVersion, ChainLength, Common,
+    GenesisPraosProof, Header, KESSignature, Proof,
 };
 use crate::certificate::PoolId;
 use crate::key::make_signature;
 use crate::leadership;
-use crate::transaction::{AuthenticatedTransaction, NoExtra};
-use chain_addr::Address;
 use chain_crypto::{
     Curve25519_2HashDH, Ed25519, SecretKey, SumEd25519_12, VerifiableRandomFunction,
 };
@@ -31,18 +30,20 @@ impl From<Block> for BlockBuilder {
 /// block builder to build and finalize the construction of a block
 impl BlockBuilder {
     /// default setting, equivalent to writing a genesis block (the empty block)
-    pub fn new() -> BlockBuilder {
+    pub fn new(contents: Contents) -> BlockBuilder {
         use chain_core::property::BlockId;
+
+        let (block_content_hash, block_content_size) = contents.compute_hash_size();
         BlockBuilder {
             common: Common {
-                block_content_size: 0,
-                block_content_hash: BlockContentHash::zero(),
+                block_content_size,
+                block_content_hash,
                 any_block_version: BlockVersion::Genesis.into(),
                 block_parent_hash: BlockId::zero(),
                 block_date: BlockDate::first(),
                 chain_length: ChainLength(0),
             },
-            contents: BlockContents::new(Vec::new()),
+            contents,
         }
     }
 
@@ -61,31 +62,6 @@ impl BlockBuilder {
     /// set the parent hash
     pub fn parent(&mut self, block_parent_hash: BlockId) -> &mut Self {
         self.common.block_parent_hash = block_parent_hash;
-        self
-    }
-
-    /// set a transaction in the block to build
-    ///
-    /// Equivalent to call `block_builder.message(Fragment::Transaction(transaction))`
-    pub fn transaction(
-        &mut self,
-        signed_transaction: AuthenticatedTransaction<Address, NoExtra>,
-    ) -> &mut Self {
-        self.message(Fragment::Transaction(signed_transaction))
-    }
-
-    /// add a message in the block to build
-    pub fn message(&mut self, message: Fragment) -> &mut Self {
-        self.contents.0.push(message);
-        self
-    }
-
-    /// set multiple messages in the block to build
-    pub fn messages<I>(&mut self, messages: I) -> &mut Self
-    where
-        I: IntoIterator<Item = Fragment>,
-    {
-        self.contents.0.extend(messages);
         self
     }
 
@@ -155,8 +131,9 @@ impl BlockBuilder {
 #[cfg(test)]
 mod tests {
 
-    use super::{BlockBuilder, BlockContents, BlockDate, BlockId, BlockVersion, ChainLength};
+    use super::{BlockBuilder, BlockDate, BlockId, BlockVersion, ChainLength, Contents};
     use crate::block::{
+        content::ContentsBuilder,
         header::{Common, GenesisPraosProof, Header},
         version::BlockVersion::{Ed25519Signed, KesVrfproof},
         AnyBlockVersion, Block,
@@ -168,9 +145,11 @@ mod tests {
     use quickcheck_macros::quickcheck;
 
     #[quickcheck]
-    pub fn make_genesis_block(block_content: BlockContents) -> TestResult {
-        let mut builder = BlockBuilder::new();
-        builder.messages(block_content.iter().cloned());
+    pub fn make_genesis_block(block_content: Contents) -> TestResult {
+        let mut contents = ContentsBuilder::new();
+        contents.push_many(block_content.iter().cloned());
+
+        let builder = BlockBuilder::new(contents.into());
         let block = builder.make_genesis_block();
 
         let (content_hash, content_size) = block_content.compute_hash_size();
@@ -190,7 +169,7 @@ mod tests {
     pub fn verify_block(
         block: Block,
         expected_common: Common,
-        expected_block_content: BlockContents,
+        expected_block_content: Contents,
     ) -> TestResult {
         let mut verify = Verify::new();
         verify.verify_eq(
@@ -211,7 +190,7 @@ mod tests {
         key_gen: TestCryptoGen,
         parent_header: Header,
         genesis_praos_proof: GenesisPraosProof,
-        block_content: BlockContents,
+        block_content: Contents,
     ) -> TestResult {
         let (content_hash, content_size) = block_content.compute_hash_size();
         let expected_common = Common {
@@ -225,8 +204,10 @@ mod tests {
 
         let kes_signing_key = key_gen.secret_key::<SumEd25519_12>(0);
 
-        let mut builder = BlockBuilder::new();
-        builder.messages(block_content.iter().cloned());
+        let mut contents = ContentsBuilder::new();
+        contents.push_many(block_content.iter().cloned());
+
+        let mut builder = BlockBuilder::new(contents.into());
         builder.date(expected_common.block_date);
         builder.chain_length(expected_common.chain_length);
         builder.parent(parent_header.hash());
@@ -243,7 +224,7 @@ mod tests {
     pub fn make_bft_block(
         key_gen: TestCryptoGen,
         parent_header: Header,
-        block_content: BlockContents,
+        block_content: Contents,
     ) -> TestResult {
         let (content_hash, content_size) = block_content.compute_hash_size();
         let expected_common = Common {
@@ -257,8 +238,10 @@ mod tests {
 
         let bft_signing_key = key_gen.secret_key::<Ed25519>(0);
 
-        let mut builder = BlockBuilder::new();
-        builder.messages(block_content.iter().cloned());
+        let mut contents = ContentsBuilder::new();
+        contents.push_many(block_content.iter().cloned());
+
+        let mut builder = BlockBuilder::new(contents.into());
         builder.date(expected_common.block_date);
         builder.chain_length(expected_common.chain_length);
         builder.parent(parent_header.hash());

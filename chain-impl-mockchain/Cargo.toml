@@ -32,6 +32,7 @@ cardano-legacy-address = { path= "../cardano-legacy-address" }
 
 [features]
 property-test-api = ["quickcheck"]
+with-bench = []
 
 [dev-dependencies]
 quickcheck = "0.8"

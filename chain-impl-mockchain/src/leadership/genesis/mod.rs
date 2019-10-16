@@ -495,10 +495,7 @@ mod tests {
 
     #[test]
     pub fn leadership_leader_no_stake() {
-        let date = BlockDate {
-            epoch: 0,
-            slot_id: 0,
-        };
+        let date = BlockDate::first();
         let (_genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
             &vec![],
             ledger_mock::ConfigBuilder::new().build(),
@@ -522,10 +519,7 @@ mod tests {
 
     #[test]
     pub fn leadership_leader_zero_stake() {
-        let date = BlockDate {
-            epoch: 0,
-            slot_id: 0,
-        };
+        let date = BlockDate::first();
         let (_genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
             &vec![],
             ledger_mock::ConfigBuilder::new().build(),
@@ -545,9 +539,7 @@ mod tests {
             .is_err());
     }
 
-    use crate::block::Block;
-    use crate::block::{BlockBuilder, Header};
-    use crate::testing::data::stake_pool::StakePool;
+    use crate::block::{BlockBuilder, Contents};
     use chain_core::property::ChainLength;
 
     #[test]
@@ -597,7 +589,7 @@ mod tests {
             .expect("cannot register stake pool");
         let selection = LeadershipData::new(date.epoch, &ledger);
         let rng = rand_os::OsRng::new().unwrap();
-        let mut block_builder = BlockBuilder::new();
+        let mut block_builder = BlockBuilder::new(Contents::empty());
         block_builder.date(date);
         block_builder.chain_length(ledger.chain_length().next());
         let block = block_builder.make_bft_block(&SecretKey::generate(rng));
@@ -607,10 +599,7 @@ mod tests {
 
     #[test]
     pub fn leadership_verify_no_stake() {
-        let date = BlockDate {
-            epoch: 0,
-            slot_id: 0,
-        };
+        let date = BlockDate::first();
         let (genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
             &vec![],
             ledger_mock::ConfigBuilder::new().build(),
@@ -634,10 +623,7 @@ mod tests {
 
     #[test]
     pub fn leadership_verify_zero_stake() {
-        let date = BlockDate {
-            epoch: 0,
-            slot_id: 0,
-        };
+        let date = BlockDate::first();
         let (genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
             &vec![],
             ledger_mock::ConfigBuilder::new().build(),
@@ -663,10 +649,7 @@ mod tests {
 
     #[test]
     pub fn leadership_verify_non_existing_pool() {
-        let date = BlockDate {
-            epoch: 0,
-            slot_id: 0,
-        };
+        let date = BlockDate::first();
         let (genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
             &vec![],
             ledger_mock::ConfigBuilder::new().build(),

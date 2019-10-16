@@ -1,5 +1,5 @@
 use crate::certificate::{PoolId, PoolRegistration};
-use chain_crypto::{Curve25519_2HashDH, KeyPair, SecretKey, SumEd25519_12};
+use chain_crypto::{Curve25519_2HashDH, KeyPair, SumEd25519_12};
 
 #[derive(Clone, Debug)]
 pub struct StakePool {

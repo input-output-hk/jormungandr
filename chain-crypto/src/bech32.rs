@@ -39,7 +39,7 @@ pub enum Error {
         expected: &'static str,
         actual: String,
     },
-    DataInvalid(Box<StdError + Send + Sync + 'static>),
+    DataInvalid(Box<dyn StdError + Send + Sync + 'static>),
 }
 
 impl Error {
