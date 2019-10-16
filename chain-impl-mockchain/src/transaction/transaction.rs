@@ -1,4 +1,5 @@
 use super::transfer::*;
+use super::payload::Payload;
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
@@ -60,6 +61,8 @@ impl Readable for NoExtra {
     fn read<'a>(_: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         Ok(NoExtra)
     }
+}
+impl Payload for NoExtra {
 }
 
 /// Transaction, transaction maps old unspent tokens into the

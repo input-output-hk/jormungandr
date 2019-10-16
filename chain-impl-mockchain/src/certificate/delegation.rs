@@ -1,5 +1,5 @@
 use crate::certificate::PoolId;
-use crate::transaction::AccountIdentifier;
+use crate::transaction::{AccountIdentifier, Payload};
 
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
@@ -49,6 +49,9 @@ impl Readable for OwnerStakeDelegation {
     }
 }
 
+impl Payload for OwnerStakeDelegation {
+}
+
 impl property::Serialize for StakeDelegation {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
@@ -70,6 +73,9 @@ impl Readable for StakeDelegation {
             pool_id,
         })
     }
+}
+
+impl Payload for StakeDelegation {
 }
 
 #[cfg(test)]

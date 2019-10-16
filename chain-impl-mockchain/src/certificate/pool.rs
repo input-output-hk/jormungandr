@@ -1,6 +1,7 @@
 use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
+use crate::transaction::Payload;
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
@@ -165,6 +166,9 @@ impl Readable for PoolManagement {
     }
 }
 
+impl Payload for PoolManagement {
+}
+
 impl property::Serialize for PoolRegistration {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
@@ -198,6 +202,9 @@ impl Readable for PoolRegistration {
         };
         Ok(info)
     }
+}
+
+impl Payload for PoolRegistration {
 }
 
 impl<T> PoolOwnersSigned<T> {
