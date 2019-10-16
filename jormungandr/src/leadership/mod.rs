@@ -66,7 +66,8 @@ pub use self::logs::{LeadershipLogHandle, Logs};
 pub use self::schedule::{Schedule, Schedules};
 use crate::{
     blockcfg::{
-        BlockBuilder, BlockDate, Epoch, HeaderContentEvalContext, Leadership, LedgerParameters,
+        BlockBuilder, Contents, Epoch, HeaderContentEvalContext, Leadership, Ledger,
+        LedgerParameters,
     },
     blockchain::Tip,
     fragment,
@@ -134,15 +135,33 @@ impl LeadershipModule {
         let log_awake = schedule.log.mark_wake();
         let log_finish = schedule.log.mark_finished();
 
+        let tip_reference = tip
+            .get_ref()
+            .map_err(|_: std::convert::Infallible| unreachable!());
+
         self.service_info.spawn(
             log_awake
                 .map_err(|()| unreachable!())
-                .and_then(move |()| {
+                .join(tip_reference)
+                .and_then(move |((), tip_reference)| {
                     info!(logger, "leader event starting");
 
-                    prepare_block(fragment_pool, date, tip, ledger_parameters)
+                    let parent_id = tip_reference.hash().clone();
+                    let chain_length = tip_reference.chain_length().increase();
+                    let ledger = tip_reference.ledger();
+
+                    let eval_context = HeaderContentEvalContext {
+                        block_date: date,
+                        chain_length,
+                        nonce: None,
+                    };
+                    let next = (parent_id, chain_length, date);
+                    prepare_block(fragment_pool, eval_context, ledger, ledger_parameters)
+                        .join(future::ok(next))
                 })
-                .and_then(move |bb| {
+                .and_then(move |(contents, (parent_id, chain_length, date))| {
+                    let mut bb = BlockBuilder::new(contents);
+                    bb.date(date).parent(parent_id).chain_length(chain_length);
                     enclave
                         .query_block_finalize(bb, leader_event)
                         .map_err(|_| unimplemented!())
@@ -411,41 +430,21 @@ leader elections please prevent your system from suspending or hibernating.
 
 fn prepare_block(
     mut fragment_pool: fragment::Pool,
-    date: BlockDate,
-    tip: Tip,
+    eval_context: HeaderContentEvalContext,
+    ledger: &Arc<Ledger>,
     epoch_parameters: Arc<LedgerParameters>,
-) -> impl Future<Item = BlockBuilder, Error = Error> {
+) -> impl Future<Item = Contents, Error = Error> {
     use crate::fragment::selection::{FragmentSelectionAlgorithm as _, OldestFirst};
 
     let selection_algorithm = OldestFirst::new(250 /* TODO!! */);
 
-    tip.get_ref()
-        .map_err(|_: std::convert::Infallible| unreachable!())
-        .and_then(move |tip_reference| {
-            use chain_core::property::ChainLength as _;
-
-            let parent_id = tip_reference.hash().clone();
-            let chain_length = tip_reference.chain_length().next();
-            let ledger = tip_reference.ledger();
-
-            let metadata = HeaderContentEvalContext {
-                block_date: date,
-                chain_length,
-                nonce: None,
-            };
-
-            fragment_pool
-                .select(
-                    ledger.as_ref().clone(),
-                    metadata,
-                    epoch_parameters.as_ref().clone(),
-                    selection_algorithm,
-                )
-                .map(|selection_algorithm| selection_algorithm.finalize())
-                .map(move |mut bb| {
-                    bb.date(date).parent(parent_id).chain_length(chain_length);
-                    bb
-                })
-                .map_err(|()| ErrorKind::FragmentSelectionFailed.into())
-        })
+    fragment_pool
+        .select(
+            ledger.as_ref().clone(),
+            eval_context,
+            epoch_parameters.as_ref().clone(),
+            selection_algorithm,
+        )
+        .map(|selection_algorithm| selection_algorithm.finalize())
+        .map_err(|()| ErrorKind::FragmentSelectionFailed.into())
 }
