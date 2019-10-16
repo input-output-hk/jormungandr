@@ -73,6 +73,7 @@ branches:
     # Release tags
     - /^v\d+\.\d+\.\d+.*$/
     - master
+    - master-next
 
 notifications:
   - provider: Email
