@@ -64,7 +64,6 @@ use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::thread;
 use std::time::Duration;
-use tokio::sync::lock::Lock;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -102,6 +101,7 @@ pub struct BootstrappedNode {
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,
     logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
+    rest_server: Option<(rest::Server, rest::Context)>,
 }
 
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
@@ -263,13 +263,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    let rest_server = match bootstrapped_node.settings.rest {
-        Some(rest) => {
+    let rest_server = match bootstrapped_node.rest_server {
+        Some((server, context)) => {
             let logger = bootstrapped_node
                 .logger
                 .new(o!(::log::KEY_TASK => "rest"))
                 .into_erased();
-            let context = rest::Context {
+            let full_context = rest::FullContext {
                 logger,
                 stats_counter,
                 blockchain,
@@ -278,11 +278,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 transaction_task: fragment_msgbox,
                 logs: pool_logs,
                 leadership_logs,
-                server: Lock::new(None),
                 enclave,
                 explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
             };
-            Some(rest::start_rest_server(&rest, context)?)
+            context.set_full(full_context);
+            Some(server)
         }
         None => None,
     };
@@ -314,6 +314,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block0,
         storage,
         logger,
+        rest_server,
     } = initialized_node;
     let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
@@ -365,6 +366,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         new_epoch_notifier,
         logger,
         explorer_db,
+        rest_server,
     })
 }
 
@@ -373,6 +375,7 @@ pub struct InitializedNode {
     pub block0: blockcfg::Block,
     pub storage: start_up::NodeStorage,
     pub logger: Logger,
+    pub rest_server: Option<(rest::Server, rest::Context)>,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -398,6 +401,16 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
     let settings = raw_settings.try_into_settings(&init_logger)?;
+
+    let rest_server = match &settings.rest {
+        Some(rest) => {
+            let context = rest::Context::new();
+            let server = rest::start_rest_server(rest, settings.explorer, context.clone())?;
+            Some((server, context))
+        }
+        None => None,
+    };
+
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
@@ -413,6 +426,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         block0,
         storage,
         logger,
+        rest_server,
     })
 }
 
