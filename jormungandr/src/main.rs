@@ -64,7 +64,6 @@ use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::thread;
 use std::time::Duration;
-use tokio::sync::lock::Lock;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -269,7 +268,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 .logger
                 .new(o!(::log::KEY_TASK => "rest"))
                 .into_erased();
-            let context = rest::Context {
+            let full_context = rest::FullContext {
                 logger,
                 stats_counter,
                 blockchain,
@@ -278,11 +277,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 transaction_task: fragment_msgbox,
                 logs: pool_logs,
                 leadership_logs,
-                server: Lock::new(None),
                 enclave,
                 explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
             };
-            Some(rest::start_rest_server(&rest, context)?)
+            let context = rest::Context::new();
+            context.set_full(full_context);
+            let explorer_enabled = bootstrapped_node.settings.explorer;
+            Some(rest::start_rest_server(&rest, explorer_enabled, context)?)
         }
         None => None,
     };
