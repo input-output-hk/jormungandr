@@ -25,6 +25,10 @@ impl JormungandrLogger {
         JormungandrLogger { log_file_path }
     }
 
+    pub fn get_error_indicators() -> Vec<&'static str> {
+        vec!["panicked", "|->"]
+    }
+
     pub fn get_log_content(&self) -> String {
         file_utils::read_file(&self.log_file_path)
     }
@@ -39,6 +43,20 @@ impl JormungandrLogger {
         lines.filter(move |x| self.is_error_line_or_invalid(x))
     }
 
+    pub fn contains_error(&self) -> bool {
+        Self::get_error_indicators()
+            .iter()
+            .any(|x| self.get_log_content().contains(x))
+    }
+
+    pub fn print_raw_log(&self) {
+        println!("{}", self.get_log_content());
+    }
+
+    pub fn contains_message(&self, message: &str) -> bool {
+        self.get_log_entries().any(|x| x.msg.contains(message))
+    }
+
     pub fn get_created_blocks_counter(&self) -> usize {
         let expected_task = Some("block".to_string());
         self.get_log_entries()
@@ -49,7 +67,10 @@ impl JormungandrLogger {
     }
 
     fn is_error_line(&self, line: &String) -> bool {
-        self.parse_line_as_entry(&line).level == "ERROR"
+        match self.try_parse_line_as_entry(&line) {
+            Ok(entry) => entry.level == "ERROR",
+            Err(_) => false,
+        }
     }
 
     fn is_error_line_or_invalid(&self, line: &String) -> bool {
@@ -57,15 +78,6 @@ impl JormungandrLogger {
             Ok(entry) => entry.level == "ERROR",
             Err(_) => true,
         }
-    }
-
-    fn parse_line_as_entry(&self, line: &String) -> LogEntry {
-        self.try_parse_line_as_entry(line).unwrap_or_else(|error| panic!(
-            "Cannot parse log line into json '{}': {}. Please ensure json logger is used for node. Full log content: {}",
-            &line,
-            error,
-            self.get_log_content()
-        ))
     }
 
     fn try_parse_line_as_entry(&self, line: &String) -> Result<LogEntry, impl std::error::Error> {
@@ -81,7 +93,8 @@ impl JormungandrLogger {
 
     fn get_log_entries(&self) -> impl Iterator<Item = LogEntry> + '_ {
         self.get_lines_from_log()
-            .map(move |x| self.parse_line_as_entry(&x))
+            .map(move |x| self.try_parse_line_as_entry(&x))
+            .filter_map(Result::ok)
     }
 
     pub fn print_error_and_invalid_logs(&self) {
