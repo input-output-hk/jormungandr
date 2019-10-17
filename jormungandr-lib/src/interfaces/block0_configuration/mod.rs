@@ -18,11 +18,12 @@ pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
 pub use self::slots_duration::SlotDuration;
 use chain_impl_mockchain::{
-    block::{Block, BlockBuilder, ContentsBuilder},
-    fragment::Fragment,
+    block::{self, Block},
+    fragment::{ContentsBuilder, Fragment},
+    header::{BlockDate, BlockVersion, Header},
 };
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom as _;
+use std::convert::{Infallible, TryFrom as _};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -72,8 +73,17 @@ impl Block0Configuration {
             self.blockchain_configuration.clone().into(),
         ));
         content_builder.push_many(self.initial.iter().map(Fragment::from));
-        let builder = BlockBuilder::new(content_builder.into());
-        builder.make_genesis_block()
+        let content = content_builder.into();
+        block::builder(BlockVersion::Genesis, content, |hdr| {
+            let r: Result<Header, Infallible> = Ok(hdr
+                .set_genesis()
+                .set_date(BlockDate::first())
+                .to_unsigned_header()
+                .expect("internal error cannot build unsigned block")
+                .generalize());
+            r
+        })
+        .expect("internal error: block builder cannot return error")
     }
 }
 

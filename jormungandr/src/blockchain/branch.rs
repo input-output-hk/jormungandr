@@ -144,7 +144,7 @@ impl BranchData {
     }
 
     fn continue_with(&mut self, candidate: Arc<Ref>) -> bool {
-        if &self.reference.hash() == candidate.block_parent_hash() {
+        if self.reference.hash() == candidate.block_parent_hash() {
             let _parent = self.update(candidate);
             true
         } else {

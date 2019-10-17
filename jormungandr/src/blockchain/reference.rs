@@ -70,12 +70,12 @@ impl Ref {
     }
 
     /// access the reference's parent hash
-    pub fn block_parent_hash(&self) -> &HeaderHash {
+    pub fn block_parent_hash(&self) -> HeaderHash {
         self.header().block_parent_hash()
     }
 
     /// retrieve the block date of the `Ref`
-    pub fn block_date(&self) -> &BlockDate {
+    pub fn block_date(&self) -> BlockDate {
         self.header().block_date()
     }
 
