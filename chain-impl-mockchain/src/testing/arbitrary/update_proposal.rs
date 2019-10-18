@@ -5,11 +5,9 @@ use crate::{
     fee::LinearFee,
     fragment::config::ConfigParams,
     leadership::bft::LeaderId,
-    testing::arbitrary::utils as arbitrary_utils,
-    update::{
-        SignedUpdateProposal, SignedUpdateVote, UpdateProposal, UpdateProposalWithProposer,
-        UpdateVote,
-    },
+    testing::builders::SignedProposalBuilder,
+    testing::{arbitrary::utils as arbitrary_utils, builders::update_builder::ProposalBuilder},
+    update::{SignedUpdateProposal, SignedUpdateVote, UpdateVote},
 };
 use chain_crypto::{Ed25519, Ed25519Extended, SecretKey};
 use quickcheck::{Arbitrary, Gen};
@@ -65,7 +63,6 @@ impl Arbitrary for UpdateProposalData {
         let proposer_id = arbitrary_utils::choose_random_item(&leaders_ids, gen);
 
         //create proposal
-        let mut update_proposal = UpdateProposal::new();
         let unique_arbitrary_settings: Vec<ConfigParam> = vec![
             ConfigParam::SlotsPerEpoch(u32::arbitrary(gen)),
             ConfigParam::SlotDuration(u8::arbitrary(gen)),
@@ -76,22 +73,17 @@ impl Arbitrary for UpdateProposalData {
             ConfigParam::ProposalExpiration(u32::arbitrary(gen)),
         ];
 
-        for config_param in
-            arbitrary_utils::choose_random_vec_subset(&unique_arbitrary_settings, gen)
-        {
-            update_proposal.changes.push(config_param);
-        }
+        let update_proposal = ProposalBuilder::new()
+            .with_proposal_changes(arbitrary_utils::choose_random_vec_subset(
+                &unique_arbitrary_settings,
+                gen,
+            ))
+            .build();
 
-        //add proposer
-        let update_proposal_with_proposer = UpdateProposalWithProposer {
-            proposal: update_proposal,
-            proposer_id: proposer_id.clone(),
-        };
-
-        //sign proposal
-        let signed_update_proposal = SignedUpdateProposal {
-            proposal: update_proposal_with_proposer,
-        };
+        let signed_update_proposal = SignedProposalBuilder::new()
+            .with_proposal_update(update_proposal)
+            .with_proposer_id(proposer_id.clone())
+            .build();
 
         //generate proposal header
         let proposal_id = Hash::arbitrary(gen);

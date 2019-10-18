@@ -118,7 +118,7 @@ impl UpdateState {
                     settings = settings.apply(&proposal_state.proposal.changes)?;
                     expired_ids.push(proposal_id.clone());
                 } else if proposal_state.proposal_date.epoch + settings.proposal_expiration
-                    > new_date.epoch
+                    < new_date.epoch
                 {
                     expired_ids.push(proposal_id.clone());
                 }
@@ -374,6 +374,26 @@ impl Readable for SignedUpdateVote {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{
+        block::{Block, BlockBuilder, Contents, HeaderHash},
+        config::ConfigParam,
+        fragment::config::ConfigParams,
+        ledger::ledger::Ledger,
+        testing::{
+            arbitrary::update_proposal::UpdateProposalData,
+            builders::update_builder::{ProposalBuilder, SignedProposalBuilder, UpdateVoteBuilder},
+            data::LeaderPair,
+            ledger as mock_ledger, TestGen,
+        },
+        update::{
+            SignedUpdateProposal, SignedUpdateVote, UpdateProposal, UpdateProposalWithProposer,
+            UpdateVote,
+        },
+    };
+    use chain_addr::Discrimination;
+    use chain_core::property::ChainLength;
+    use chain_crypto::{Ed25519, SecretKey};
+
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
 
@@ -421,77 +441,338 @@ mod test {
         }
     }
 
-    use crate::{
-        block::{Block, BlockBuilder, Contents, HeaderHash},
-        ledger::ledger::Ledger,
-        testing::arbitrary::update_proposal::UpdateProposalData,
-        testing::ledger as mock_ledger,
-        update::{
-            SignedUpdateProposal, SignedUpdateVote, UpdateProposal, UpdateProposalWithProposer,
-            UpdateVote,
-        },
-    };
-    use chain_core::property::ChainLength;
-    use chain_crypto::{Ed25519, SecretKey};
-
-    #[quickcheck]
-    pub fn ledger_adopt_settings_from_update_proposal(
-        update_proposal_data: UpdateProposalData,
-    ) -> TestResult {
-        let config = mock_ledger::ConfigBuilder::new()
-            .with_leaders(&update_proposal_data.leaders_ids())
+    fn apply_update_proposal(
+        update_state: UpdateState,
+        proposal_id: UpdateProposalId,
+        config_param: &ConfigParam,
+        proposer: &LeaderPair,
+        settings: &Settings,
+        block_date: BlockDate,
+    ) -> Result<UpdateState, Error> {
+        let update_proposal = ProposalBuilder::new()
+            .with_proposal_change(config_param.clone())
             .build();
 
-        let (block0_hash, mut ledger) =
-            mock_ledger::create_initial_fake_ledger(&[], config).unwrap();
+        let signed_update_proposal = SignedProposalBuilder::new()
+            .with_proposal_update(update_proposal)
+            .with_proposer_id(proposer.leader_id.clone())
+            .build();
 
-        // apply proposal
-        let date = ledger.date();
-        ledger = ledger
-            .apply_update_proposal(
-                update_proposal_data.proposal_id,
-                &update_proposal_data.proposal,
-                date,
+        update_state.apply_proposal(proposal_id, &signed_update_proposal, &settings, block_date)
+    }
+
+    fn apply_update_vote(
+        update_state: UpdateState,
+        proposal_id: UpdateProposalId,
+        proposer: &LeaderPair,
+        settings: &Settings,
+    ) -> Result<UpdateState, Error> {
+        let signed_update_vote = UpdateVoteBuilder::new()
+            .with_proposal_id(proposal_id)
+            .with_voter_id(proposer.id())
+            .build();
+
+        update_state.apply_vote(&signed_update_vote, &settings)
+    }
+
+    #[test]
+    pub fn apply_proposal_with_unknown_proposer_should_return_error() {
+        // data
+        let unknown_leader = TestGen::leader_pair();
+        let block_date = BlockDate::first();
+        let proposal_id = TestGen::hash();
+        let config_param = ConfigParam::SlotsPerEpoch(100);
+        //setup
+        let update_state = UpdateState::new();
+        let settings = Settings::new();
+
+        assert_eq!(
+            apply_update_proposal(
+                update_state,
+                proposal_id,
+                &config_param,
+                &unknown_leader,
+                &settings,
+                block_date
             )
-            .unwrap();
-
-        // apply votes
-        for vote in update_proposal_data.votes.iter() {
-            ledger = ledger.apply_update_vote(&vote).unwrap();
-        }
-
-        // trigger proposal process (build block)
-        let block = build_block(
-            &ledger,
-            block0_hash,
-            date.next_epoch(),
-            &update_proposal_data.block_signing_key,
+            .is_err(),
+            true
         );
-        let header_meta = block.header.to_content_eval_context();
-        ledger = ledger
-            .apply_block(
-                &ledger.get_ledger_parameters(),
-                block.contents.iter(),
-                &header_meta,
+    }
+
+    #[test]
+    pub fn apply_duplicated_proposal_should_return_error() {
+        // data
+        let proposal_id = TestGen::hash();
+        let block_date = BlockDate::first();
+        let config_param = ConfigParam::SlotsPerEpoch(100);
+        //setup
+        let mut update_state = UpdateState::new();
+
+        let leaders = TestGen::leaders_pairs()
+            .take(5)
+            .collect::<Vec<LeaderPair>>();
+        let proposer = leaders.iter().next().clone().unwrap();
+        let settings = TestGen::settings(leaders.clone());
+
+        update_state = apply_update_proposal(
+            update_state,
+            proposal_id,
+            &config_param,
+            proposer,
+            &settings,
+            block_date,
+        )
+        .expect("failed while applying first proposal");
+
+        assert_eq!(
+            apply_update_proposal(
+                update_state,
+                proposal_id,
+                &config_param,
+                proposer,
+                &settings,
+                block_date
             )
-            .unwrap();
+            .is_err(),
+            true
+        );
+    }
 
-        // assert
-        let actual_params = ledger.settings.to_config_params();
-        let expected_params = update_proposal_data.proposal_settings();
+    #[test]
+    pub fn test_add_vote_for_non_existing_proposal_should_return_error() {
+        let mut update_state = UpdateState::new();
+        let proposal_id = TestGen::hash();
+        let unknown_proposal_id = TestGen::hash();
+        let block_date = BlockDate::first();
+        let config_param = ConfigParam::SlotsPerEpoch(100);
+        let leaders = TestGen::leaders_pairs()
+            .take(5)
+            .collect::<Vec<LeaderPair>>();
+        let proposer = leaders.iter().next().clone().unwrap();
+        let settings = TestGen::settings(leaders.clone());
 
-        let mut all_settings_equal = true;
-        for expected_param in expected_params.iter() {
-            if !actual_params.iter().any(|x| x == expected_param) {
-                all_settings_equal = false;
-                break;
+        // Apply proposal
+        update_state = apply_update_proposal(
+            update_state,
+            proposal_id,
+            &config_param,
+            proposer,
+            &settings,
+            block_date,
+        )
+        .expect("failed while applying first proposal");
+
+        // Apply vote for unknown proposal
+        assert_eq!(
+            apply_update_vote(update_state, unknown_proposal_id, proposer, &settings).is_err(),
+            true
+        );
+    }
+
+    #[test]
+    pub fn test_add_duplicated_vote_should_return_error() {
+        let mut update_state = UpdateState::new();
+        let proposal_id = TestGen::hash();
+        let block_date = BlockDate::first();
+        let config_param = ConfigParam::SlotsPerEpoch(100);
+
+        let leaders = TestGen::leaders_pairs()
+            .take(5)
+            .collect::<Vec<LeaderPair>>();
+        let proposer = leaders.iter().next().clone().unwrap();
+        let settings = TestGen::settings(leaders.clone());
+
+        update_state = apply_update_proposal(
+            update_state,
+            proposal_id,
+            &config_param,
+            proposer,
+            &settings,
+            block_date,
+        )
+        .expect("failed while applying proposal");
+
+        // Apply vote
+        update_state = apply_update_vote(update_state, proposal_id, proposer, &settings)
+            .expect("failed while applying first vote");
+
+        // Apply duplicated vote
+        assert_eq!(
+            apply_update_vote(update_state, proposal_id, proposer, &settings).is_err(),
+            true
+        );
+    }
+
+    #[test]
+    pub fn test_add_vote_from_unknown_voter_should_return_error() {
+        let mut update_state = UpdateState::new();
+        let proposal_id = TestGen::hash();
+        let unknown_leader = TestGen::leader_pair();
+        let block_date = BlockDate::first();
+        let config_param = ConfigParam::SlotsPerEpoch(100);
+
+        let leaders = TestGen::leaders_pairs()
+            .take(5)
+            .collect::<Vec<LeaderPair>>();
+        let proposer = leaders.iter().next().clone().unwrap();
+        let settings = TestGen::settings(leaders.clone());
+
+        update_state = apply_update_proposal(
+            update_state,
+            proposal_id,
+            &config_param,
+            proposer,
+            &settings,
+            block_date,
+        )
+        .expect("failed while applying proposal");
+
+        // Apply vote for unknown leader
+        assert_eq!(
+            apply_update_vote(update_state, proposal_id, &unknown_leader, &settings).is_err(),
+            true
+        );
+    }
+
+    #[test]
+    pub fn process_proposals_for_readonly_setting_should_return_error() {
+        let mut update_state = UpdateState::new();
+        let proposal_id = TestGen::hash();
+        let proposer = TestGen::leader_pair();
+        let block_date = BlockDate::first();
+        let readonly_setting = ConfigParam::Discrimination(Discrimination::Test);
+
+        let settings = TestGen::settings(vec![proposer.clone()]);
+
+        update_state = apply_update_proposal(
+            update_state,
+            proposal_id,
+            &readonly_setting,
+            &proposer,
+            &settings,
+            block_date,
+        )
+        .expect("failed while applying proposal");
+
+        // Apply vote
+        update_state = apply_update_vote(update_state, proposal_id, &proposer, &settings)
+            .expect("failed while applying vote");
+
+        assert_eq!(
+            update_state
+                .process_proposals(settings, block_date, block_date.next_epoch())
+                .is_err(),
+            true
+        );
+    }
+
+    #[test]
+    pub fn process_proposal_is_ordered() {
+        let mut update_state = UpdateState::new();
+        let first_proposal_id = TestGen::hash();
+        let second_proposal_id = TestGen::hash();
+        let first_proposer = TestGen::leader_pair();
+        let second_proposer = TestGen::leader_pair();
+        let block_date = BlockDate::first();
+        let first_update = ConfigParam::SlotsPerEpoch(100);
+        let second_update = ConfigParam::SlotsPerEpoch(200);
+
+        let settings = TestGen::settings(vec![first_proposer.clone(), second_proposer.clone()]);
+
+        // Apply proposal
+        update_state = apply_update_proposal(
+            update_state,
+            first_proposal_id,
+            &first_update,
+            &first_proposer,
+            &settings,
+            block_date,
+        )
+        .expect("failed while applying proposal");
+
+        // Apply vote
+        update_state =
+            apply_update_vote(update_state, first_proposal_id, &first_proposer, &settings)
+                .expect("failed while applying vote");
+
+        // Apply vote
+        update_state =
+            apply_update_vote(update_state, first_proposal_id, &second_proposer, &settings)
+                .expect("failed while applying vote");
+
+        // Apply proposal
+        update_state = apply_update_proposal(
+            update_state,
+            second_proposal_id,
+            &second_update,
+            &second_proposer,
+            &settings,
+            block_date,
+        )
+        .expect("failed while applying proposal");
+
+        // Apply vote
+        update_state =
+            apply_update_vote(update_state, second_proposal_id, &first_proposer, &settings)
+                .expect("failed while applying vote");
+
+        // Apply vote
+        update_state = apply_update_vote(
+            update_state,
+            second_proposal_id,
+            &second_proposer,
+            &settings,
+        )
+        .expect("failed while applying vote");
+
+        let last_proposal_id = update_state.proposals.keys().cloned().last().unwrap();
+
+        let (update_state, settings) = update_state
+            .process_proposals(settings, block_date, block_date.next_epoch())
+            .expect("error while processing proposal");
+
+        match first_proposal_id == last_proposal_id {
+            true => {
+                assert_eq!(settings.slots_per_epoch, 100);
+            }
+            false => {
+                assert_eq!(settings.slots_per_epoch, 200);
             }
         }
 
-        match all_settings_equal {
-            false => TestResult::error(format!("Error: proposed update reached required votes, but proposal was NOT updated, Expected: {:?} vs Actual: {:?}",
-                                expected_params,actual_params)),
-            true => TestResult::passed(),
+        assert_eq!(update_state.proposals.len(), 0);
+    }
+
+    #[derive(Debug, Copy, Clone)]
+    pub struct ExpiryBlockDate {
+        pub block_date: BlockDate,
+        pub proposal_expiration: u32,
+    }
+
+    impl ExpiryBlockDate {
+        pub fn block_date(&self) -> BlockDate {
+            self.block_date.clone()
+        }
+
+        pub fn proposal_expiration(&self) -> u32 {
+            self.proposal_expiration
+        }
+
+        pub fn get_last_epoch(&self) -> u32 {
+            self.block_date().epoch + self.proposal_expiration() + 1
+        }
+    }
+
+    impl Arbitrary for ExpiryBlockDate {
+        fn arbitrary<G: Gen>(gen: &mut G) -> Self {
+            let mut block_date = BlockDate::arbitrary(gen);
+            block_date.epoch = block_date.epoch % 10;
+            let proposal_expiration = u32::arbitrary(gen) % 10;
+            ExpiryBlockDate {
+                block_date,
+                proposal_expiration,
+            }
         }
     }
 
@@ -506,5 +787,60 @@ mod test {
         block_builder.parent(block0_hash);
         block_builder.date(date.next_epoch());
         block_builder.make_bft_block(block_signing_key)
+    }
+
+    #[quickcheck]
+    pub fn rejected_proposals_are_removed_after_expiration_period(
+        expiry_block_data: ExpiryBlockDate,
+    ) -> TestResult {
+        let proposal_date = expiry_block_data.block_date();
+        let proposal_expiration = expiry_block_data.proposal_expiration();
+
+        let mut update_state = UpdateState::new();
+        let proposal_id = TestGen::hash();
+        let proposer = TestGen::leader_pair();
+        let update = ConfigParam::SlotsPerEpoch(100);
+
+        let mut settings = TestGen::settings(vec![proposer.clone()]);
+        settings.proposal_expiration = proposal_expiration;
+
+        // Apply proposal
+        update_state = apply_update_proposal(
+            update_state,
+            proposal_id,
+            &update,
+            &proposer,
+            &settings,
+            proposal_date,
+        )
+        .expect("failed while applying proposal");
+
+        let mut current_block_date = BlockDate::first();
+
+        // Traverse through epoch and check if proposal is still in queue
+        // if proposal expiration period is not exceeded after that
+        // proposal should be removed from proposal collection
+        for _i in 0..expiry_block_data.get_last_epoch() {
+            let (update_state, _settings) = update_state
+                .clone()
+                .process_proposals(
+                    settings.clone(),
+                    current_block_date,
+                    current_block_date.next_epoch(),
+                )
+                .expect("error while processing proposal");
+
+            match proposal_date.epoch + proposal_expiration <= current_block_date.epoch {
+                true => {
+                    assert_eq!(update_state.proposals.len(), 0);
+                }
+                false => {
+                    assert_eq!(update_state.proposals.len(), 1);
+                }
+            }
+            current_block_date = current_block_date.next_epoch()
+        }
+
+        TestResult::passed()
     }
 }

@@ -5,8 +5,8 @@ use std::fmt::{self, Debug};
 
 #[derive(Clone)]
 pub struct LeaderPair {
-    leader_id: LeaderId,
-    leader_key: SecretKey<Ed25519Extended>,
+    pub leader_id: LeaderId,
+    pub leader_key: SecretKey<Ed25519Extended>,
 }
 
 impl Debug for LeaderPair {
