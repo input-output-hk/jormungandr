@@ -16,11 +16,17 @@ use crate::blockchain::Ref;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
-use futures::{Future, IntoFuture, Stream};
+use futures::{
+    future::{
+        self,
+        Either::{A, B},
+    },
+    Future, IntoFuture, Stream,
+};
 use std::str::FromStr;
 use std::sync::Arc;
 
-pub use crate::rest::{Context, FullContext};
+pub use crate::rest::{Context, FullContext, NodeState};
 
 macro_rules! ActixFuture {
     () => { impl Future<Item = impl Responder + 'static, Error = impl Into<Error> + 'static> + 'static }
@@ -96,61 +102,85 @@ pub fn get_tip(context: State<Context>) -> ActixFuture!() {
     chain_tip_fut(&context).map(|tip| tip.hash().to_string())
 }
 
+#[derive(Serialize)]
+struct NodeStatsDto {
+    state: NodeState,
+    #[serde(flatten)]
+    stats: Option<serde_json::Value>,
+}
+
 pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
-    context
-        .try_full_fut()
-        .and_then(|context| chain_tip_fut_raw(&*context).map(|tip| (context, tip)))
-        .and_then(move |(context, tip)| {
-            let header = tip.header().clone();
-            context
-                .blockchain
-                .storage()
-                .get(header.hash())
-                .then(|res| match res {
-                    Ok(Some(block)) => Ok(block.contents),
-                    Ok(None) => Err(ErrorInternalServerError("Could not find block for tip")),
-                    Err(e) => Err(ErrorInternalServerError(e)),
+    match context.try_full() {
+        Ok(context) => {
+            let stats_json_fut = chain_tip_fut_raw(&*context)
+                .map(|tip| (context, tip))
+                .and_then(move |(context, tip)| {
+                    let header = tip.header().clone();
+                    context
+                        .blockchain
+                        .storage()
+                        .get(header.hash())
+                        .then(|res| match res {
+                            Ok(Some(block)) => Ok(block.contents),
+                            Ok(None) => {
+                                Err(ErrorInternalServerError("Could not find block for tip"))
+                            }
+                            Err(e) => Err(ErrorInternalServerError(e)),
+                        })
+                        .map(move |contents| (context, contents, header))
                 })
-                .map(move |contents| (context, contents, header))
+                .and_then(move |(context, contents, tip_header)| {
+                    let mut block_tx_count = 0;
+                    let mut block_input_sum = Value::zero();
+                    let mut block_fee_sum = Value::zero();
+                    contents
+                        .iter()
+                        .filter_map(|fragment| match fragment {
+                            Fragment::Transaction(tx) => Some(&tx.transaction),
+                            _ => None,
+                        })
+                        .map(|tx| {
+                            let input_sum = Value::sum(tx.inputs.iter().map(|input| input.value))?;
+                            let output_sum =
+                                Value::sum(tx.outputs.iter().map(|input| input.value))?;
+                            // Input < output implies minting, so no fee
+                            let fee = (input_sum - output_sum).unwrap_or(Value::zero());
+                            block_tx_count += 1;
+                            block_input_sum = (block_input_sum + input_sum)?;
+                            block_fee_sum = (block_fee_sum + fee)?;
+                            Ok(())
+                        })
+                        .collect::<Result<(), ValueError>>()
+                        .map_err(|e| {
+                            ErrorInternalServerError(format!(
+                                "Block value calculation error: {}",
+                                e
+                            ))
+                        })?;
+                    let stats = &context.stats_counter;
+                    Ok(Some(json!({
+                        "txRecvCnt": stats.tx_recv_cnt(),
+                        "blockRecvCnt": stats.block_recv_cnt(),
+                        "uptime": stats.uptime_sec(),
+                        "lastBlockHash": tip_header.hash().to_string(),
+                        "lastBlockHeight": tip_header.chain_length().to_string(),
+                        "lastBlockDate": tip_header.block_date().to_string(),
+                        "lastBlockTime": stats.slot_start_time().map(SystemTime::from),
+                        "lastBlockTx": block_tx_count,
+                        "lastBlockSum": block_input_sum.0,
+                        "lastBlockFees": block_fee_sum.0,
+                    })))
+                });
+            A(stats_json_fut)
+        }
+        Err(_) => B(future::ok(None)),
+    }
+    .map(move |stats| {
+        Json(NodeStatsDto {
+            state: context.node_state(),
+            stats,
         })
-        .and_then(move |(context, contents, tip_header)| {
-            let mut block_tx_count = 0;
-            let mut block_input_sum = Value::zero();
-            let mut block_fee_sum = Value::zero();
-            contents
-                .iter()
-                .filter_map(|fragment| match fragment {
-                    Fragment::Transaction(tx) => Some(&tx.transaction),
-                    _ => None,
-                })
-                .map(|tx| {
-                    let input_sum = Value::sum(tx.inputs.iter().map(|input| input.value))?;
-                    let output_sum = Value::sum(tx.outputs.iter().map(|input| input.value))?;
-                    // Input < output implies minting, so no fee
-                    let fee = (input_sum - output_sum).unwrap_or(Value::zero());
-                    block_tx_count += 1;
-                    block_input_sum = (block_input_sum + input_sum)?;
-                    block_fee_sum = (block_fee_sum + fee)?;
-                    Ok(())
-                })
-                .collect::<Result<(), ValueError>>()
-                .map_err(|e| {
-                    ErrorInternalServerError(format!("Block value calculation error: {}", e))
-                })?;
-            let stats = &context.stats_counter;
-            Ok(Json(json!({
-                "txRecvCnt": stats.tx_recv_cnt(),
-                "blockRecvCnt": stats.block_recv_cnt(),
-                "uptime": stats.uptime_sec(),
-                "lastBlockHash": tip_header.hash().to_string(),
-                "lastBlockHeight": tip_header.chain_length().to_string(),
-                "lastBlockDate": tip_header.block_date().to_string(),
-                "lastBlockTime": stats.slot_start_time().map(SystemTime::from),
-                "lastBlockTx": block_tx_count,
-                "lastBlockSum": block_input_sum.0,
-                "lastBlockFees": block_fee_sum.0,
-            })))
-        })
+    })
 }
 
 pub fn get_block_id(context: State<Context>, block_id_hex: Path<String>) -> ActixFuture!() {

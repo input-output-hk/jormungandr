@@ -98,7 +98,7 @@ pub struct FullContext {
     pub explorer: Option<crate::explorer::Explorer>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum NodeState {
     StartingRestServer,
     PreparingStorage,
