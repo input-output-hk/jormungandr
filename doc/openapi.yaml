@@ -422,16 +422,25 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, txRecvCnt, uptime]
+                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
                     type: integer
                     minimum: 0
+                  lastBlockDate:
+                    description: The Epoch and slot Number of the block
+                    type: string
                   lastBlockFees:
                     description: Sum of all fee values in all transactions in last block
                     type: integer
                     minimum: 0
+                  lastBlockHash:
+                    description: The block hash, it's unique identifier in the blockchain
+                    type: string
+                  lastBlockHeight:
+                    description: The block number, in order, since the block0
+                    type: number
                   lastBlockSum:
                     description: Sum of all input values in all transactions in last block
                     type: integer
@@ -444,6 +453,10 @@ paths:
                     description: Number of transactions in last block
                     type: integer
                     minimum: 0
+                  state:
+                    description: State of the node
+                    type: string
+                    enum: [StartingRestServer, PreparingStorage, PreparingBlock0, Bootstrapping, StartingWorkers, Running]
                   txRecvCnt:
                     description: Number of transactions received by node
                     type: integer
@@ -452,26 +465,17 @@ paths:
                     description: Node uptime in seconds
                     type: integer
                     minimum: 0
-                  lastBlockDate:
-                    description: The Epoch and slot Number of the block.
-                    type: string
-                  lastBlockHeight:
-                    description: The block number, in order, since the block0
-                    type: number
-                    minimum: 0
-                  lastBlockHash:
-                    description: The block hash, it's unique identifier in the blockchain.
-                    type: string
               example: |
                 {
                   "blockRecvCnt": 1102,
+                  "lastBlockDate": "20.29",
                   "lastBlockFees": 534,
+                  "lastBlockHash": "b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0",
+                  "lastBlockHeight": 202901,
                   "lastBlockSum": 51604,
                   "lastBlockTime": "2019-08-12T11:20:52.316544007+00:00",
-                  "lastBlockDate": "20.29",
-                  "lastBlockHeight": 202901,
-                  "lastBlockHash": "b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0",
                   "lastBlockTx": 2,
+                  "state": "Running",
                   "txRecvCnt": 5440,
                   "uptime": 20032
                 }
