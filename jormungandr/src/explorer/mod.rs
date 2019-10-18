@@ -32,6 +32,14 @@ pub struct Explorer {
     pub schema: Arc<graphql::Schema>,
 }
 
+struct Branch {
+    id: HeaderHash,
+    length: ChainLength,
+}
+
+#[derive(Clone)]
+struct Tip(Lock<Branch>);
+
 #[derive(Clone)]
 pub struct ExplorerDB {
     /// Structure that keeps all the known states to allow easy branch management
@@ -41,7 +49,7 @@ pub struct ExplorerDB {
     /// This keeps track of the longest chain seen until now. All the queries are
     /// performed using the state of this branch, the HeaderHash is used as key for the
     /// multiverse, and the ChainLength is used in the updating process.
-    longest_chain_tip: Lock<(HeaderHash, ChainLength)>,
+    longest_chain_tip: Tip,
     pub blockchain_config: BlockchainConfig,
 }
 
@@ -168,7 +176,10 @@ impl ExplorerDB {
 
         let bootstraped_db = ExplorerDB {
             multiverse,
-            longest_chain_tip: Lock::new((block0.id(), block0.header.chain_length())),
+            longest_chain_tip: Tip::new(Branch {
+                id: block0.id(),
+                length: block0.header.chain_length(),
+            }),
             blockchain_config,
         };
 
@@ -213,45 +224,37 @@ impl ExplorerDB {
         let chain_length = block.header.chain_length();
         let block_id = block.header.hash();
         let multiverse = self.multiverse.clone();
-        let block1 = block.clone();
-        let block2 = block.clone();
+        let current_tip = self.longest_chain_tip.clone();
         let discrimination = self.blockchain_config.discrimination.clone();
 
         multiverse
             .get(*previous_block)
             .map_err(|_: Infallible| unreachable!())
-            .and_then(move |maybe_previous_state| {
-                let block = block1;
-                match maybe_previous_state {
-                    Some(state) => {
-                        let State {
-                            transactions,
-                            blocks,
-                            addresses,
-                            epochs,
-                            chain_lengths,
-                        } = state;
+            .and_then(move |maybe_previous_state| match maybe_previous_state {
+                Some(state) => {
+                    let State {
+                        transactions,
+                        blocks,
+                        addresses,
+                        epochs,
+                        chain_lengths,
+                    } = state;
 
-                        let explorer_block = ExplorerBlock::resolve_from(
-                            &block,
-                            discrimination,
-                            &transactions,
-                            &blocks,
-                        );
+                    let explorer_block =
+                        ExplorerBlock::resolve_from(&block, discrimination, &transactions, &blocks);
 
-                        Ok((
-                            apply_block_to_transactions(transactions, &explorer_block)?,
-                            apply_block_to_blocks(blocks, &explorer_block)?,
-                            apply_block_to_addresses(addresses, &explorer_block)?,
-                            apply_block_to_epochs(epochs, &explorer_block),
-                            apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
-                        ))
-                    }
-                    None => Err(Error::from(ErrorKind::AncestorNotFound(format!(
-                        "{}",
-                        block.id()
-                    )))),
+                    Ok((
+                        apply_block_to_transactions(transactions, &explorer_block)?,
+                        apply_block_to_blocks(blocks, &explorer_block)?,
+                        apply_block_to_addresses(addresses, &explorer_block)?,
+                        apply_block_to_epochs(epochs, &explorer_block),
+                        apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
+                    ))
                 }
+                None => Err(Error::from(ErrorKind::AncestorNotFound(format!(
+                    "{}",
+                    block.id()
+                )))),
             })
             .and_then(
                 move |(transactions, blocks, addresses, epochs, chain_lengths)| {
@@ -270,34 +273,22 @@ impl ExplorerDB {
                             },
                         )
                         .map_err(|_: Infallible| unreachable!())
+                        .map(move |gc_root| (gc_root, block_id, chain_length))
                 },
             )
-            .join(
-                self.update_longest_chain_tip(block2)
-                    .map_err(|_: Infallible| unreachable!()),
-            )
-            .and_then(|(gc_root, _)| Ok(gc_root))
-    }
-
-    /// Compare the chain lengths of the current branch and the new_block and keep the greater
-    fn update_longest_chain_tip(
-        &mut self,
-        new_block: Block,
-    ) -> impl Future<Item = (), Error = Infallible> {
-        get_lock(&self.longest_chain_tip).and_then(move |mut current| {
-            let (_current_hash, current_length) = *current;
-            if new_block.header.chain_length() > current_length {
-                *current = (new_block.id(), new_block.header.chain_length().clone());
-            }
-            Ok(())
-        })
+            .and_then(move |(gc_root, block_id, chain_length)| {
+                current_tip
+                    .compare_and_replace(Branch {
+                        id: block_id,
+                        length: chain_length,
+                    })
+                    .map_err(|_: Infallible| unreachable!())
+                    .map(|_| gc_root)
+            })
     }
 
     pub fn get_latest_block_hash(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
-        get_lock(&self.longest_chain_tip).map(|guard| {
-            let (id, _length) = *guard;
-            id
-        })
+        self.longest_chain_tip.blockid()
     }
 
     pub fn get_block(
@@ -378,9 +369,8 @@ impl ExplorerDB {
         f: impl Fn(State) -> T,
     ) -> impl Future<Item = T, Error = Infallible> {
         let multiverse = self.multiverse.clone();
-        get_lock(&self.longest_chain_tip).and_then(move |tip| {
-            let (tip_hash, _length) = *tip;
-            multiverse.get(tip_hash).and_then(move |maybe_state| {
+        self.get_latest_block_hash().and_then(move |branch_id| {
+            multiverse.get(branch_id).and_then(move |maybe_state| {
                 let state = maybe_state.expect("the longest chain to be indexed");
                 Ok(f(state))
             })
@@ -510,5 +500,28 @@ impl BlockchainConfig {
             discrimination,
             consensus_version,
         }
+    }
+}
+
+impl Tip {
+    fn new(branch: Branch) -> Tip {
+        Tip(Lock::new(branch))
+    }
+
+    fn compare_and_replace(&self, other: Branch) -> impl Future<Item = (), Error = Infallible> {
+        get_lock(&self.0).and_then(move |mut current| {
+            // Probably a different thing is needed for the == case
+            if other.length > (*current).length {
+                *current = Branch {
+                    id: other.id,
+                    length: other.length,
+                };
+            }
+            Ok(())
+        })
+    }
+
+    fn blockid(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
+        get_lock(&self.0).map(|guard| (*guard).id)
     }
 }
