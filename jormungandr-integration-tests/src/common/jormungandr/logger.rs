@@ -97,6 +97,13 @@ impl JormungandrLogger {
             .filter_map(Result::ok)
     }
 
+    pub fn message_logged_multiple_times(&self, message: &str, count: usize) -> bool {
+        self.get_log_entries()
+            .filter(|x| x.msg.contains(message))
+            .count()
+            == count
+    }
+
     pub fn print_error_and_invalid_logs(&self) {
         let error_lines: Vec<_> = self.get_lines_with_error_and_invalid().collect();
         if !error_lines.is_empty() {
