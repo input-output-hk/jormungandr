@@ -3,9 +3,12 @@ mod error;
 mod scalars;
 use self::connections::{BlockConnection, BlockCursor};
 use self::error::ErrorKind;
-use super::indexing::{EpochData, ExplorerBlock, ExplorerTransaction};
+use super::indexing::{
+    BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction, PersistentSequence,
+};
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use chain_impl_mockchain::certificate;
+use chain_impl_mockchain::leadership::bft;
 pub use juniper::http::GraphQLRequest;
 use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
 use std::convert::TryFrom;
@@ -81,7 +84,49 @@ impl Block {
         self.get_explorer_block(&context.db)
             .map(|block| block.chain_length().into())
     }
+
+    // TODO: Rename this?
+    pub fn leader(&self, context: &Context) -> FieldResult<Option<Leader>> {
+        self.get_explorer_block(&context.db)
+            .map(|block| match block.producer() {
+                BlockProducer::StakePool(pool) => {
+                    Some(Leader::StakePool(Pool::from_valid_id(pool.clone())))
+                }
+                BlockProducer::BftLeader(id) => {
+                    Some(Leader::BftLeader(BftLeader { id: id.clone() }))
+                }
+                BlockProducer::None => None,
+            })
+    }
 }
+
+struct BftLeader {
+    id: bft::LeaderId,
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl BftLeader {
+    // FIXME: Don't use String
+    fn id(&self) -> String {
+        // FIXME: How to print this
+        let id = &self.id;
+        unimplemented!()
+    }
+}
+
+enum Leader {
+    StakePool(Pool),
+    BftLeader(BftLeader),
+}
+
+graphql_union!(Leader: Context |&self| {
+    instance_resolvers: |_| {
+        &Pool => match *self { Leader::StakePool(ref c) => Some(c), _ => None },
+        &BftLeader => match *self { Leader::BftLeader(ref c) => Some(c), _ => None },
+    }
+});
 
 impl From<&ExplorerBlock> for Block {
     fn from(block: &ExplorerBlock) -> Block {
@@ -325,9 +370,7 @@ impl StakeDelegation {
     }
 
     pub fn pool(&self, context: &Context) -> Pool {
-        Pool {
-            id: PoolId(format!("{}", self.delegation.pool_id)),
-        }
+        Pool::from_valid_id(self.delegation.pool_id.clone())
     }
 }
 
@@ -347,9 +390,7 @@ impl From<certificate::PoolRegistration> for PoolRegistration {
 )]
 impl PoolRegistration {
     pub fn pool(&self, context: &Context) -> Pool {
-        Pool {
-            id: PoolId(format!("{}", self.registration.to_id())),
-        }
+        Pool::from_valid_id(self.registration.to_id())
     }
 
     /// A random value, for user purpose similar to a UUID.
@@ -400,9 +441,7 @@ impl From<certificate::OwnerStakeDelegation> for OwnerStakeDelegation {
 )]
 impl OwnerStakeDelegation {
     fn pool(&self) -> Pool {
-        Pool {
-            id: PoolId(format!("{}", self.owner_stake_delegation.pool_id)),
-        }
+        Pool::from_valid_id(self.owner_stake_delegation.pool_id.clone())
     }
 }
 
@@ -444,15 +483,73 @@ graphql_union!(Certificate: Context |&self| {
 });
 
 struct Pool {
-    id: PoolId,
+    id: certificate::PoolId,
+    blocks: Option<PersistentSequence<HeaderHash>>,
+}
+
+impl Pool {
+    fn from_string_id(id: &String, db: &ExplorerDB) -> FieldResult<Pool> {
+        let id = certificate::PoolId::from_str(&id)?;
+        let blocks = db
+            .get_stake_pool_blocks(&id)
+            .wait()
+            .unwrap()
+            .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+        Ok(Pool {
+            id,
+            blocks: Some(blocks),
+        })
+    }
+
+    fn from_valid_id(id: certificate::PoolId) -> Pool {
+        Pool { id, blocks: None }
+    }
 }
 
 #[juniper::object(
     Context = Context
 )]
 impl Pool {
-    pub fn id(&self) -> &PoolId {
-        &self.id
+    pub fn id(&self) -> PoolId {
+        PoolId(format!("{}", &self.id))
+    }
+
+    pub fn blocks(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<BlockCursor>,
+        after: Option<BlockCursor>,
+        context: &Context,
+    ) -> FieldResult<BlockConnection> {
+        let blocks = match &self.blocks {
+            Some(b) => b.clone(),
+            None => context
+                .db
+                .get_stake_pool_blocks(&self.id)
+                .wait()
+                .unwrap()
+                .ok_or(ErrorKind::InternalError(
+                    "Stake pool in block is not indexed".to_owned(),
+                ))?,
+        };
+
+        let lower_bound = 0u32;
+        let upper_bound = blocks.len();
+
+        BlockConnection::new(
+            lower_bound,
+            upper_bound,
+            first,
+            last,
+            before.map(u32::from),
+            after.map(u32::from),
+            |from: u32, to: u32| {
+                (from..to)
+                    .filter_map(|i| blocks.get(i.into()).map(|h| ((*h).clone(), i.into())))
+                    .collect()
+            },
+        )
     }
 }
 
@@ -536,23 +633,23 @@ impl Epoch {
         let lower_bound = context
             .db
             .get_block(&epoch_data.first_block)
-            .map(|block| BlockCursor::from(block.expect("The block to be indexed").chain_length))
+            .map(|block| block.expect("The block to be indexed").chain_length)
             .wait()?;
 
         let upper_bound = context
             .db
             .get_block(&epoch_data.last_block)
-            .map(|block| BlockCursor::from(block.expect("The block to be indexed").chain_length))
+            .map(|block| block.expect("The block to be indexed").chain_length)
             .wait()?;
 
         BlockConnection::new(
-            lower_bound,
-            upper_bound,
+            u32::from(lower_bound),
+            u32::from(upper_bound),
             first,
             last,
-            before,
-            after,
-            &context.db,
+            before.map(u32::from),
+            after.map(u32::from),
+            |a, b| context.db.get_block_hash_range(a, b).wait().unwrap(),
         )
         .map(Some)
     }
@@ -641,16 +738,16 @@ impl Query {
             ))
             .map(|block| block.chain_length)?;
 
-        let block0 = blockcfg::ChainLength::from(0u32);
+        let block0 = 0u32;
 
         BlockConnection::new(
-            block0.into(),
+            block0,
             longest_chain.into(),
             first,
             last,
-            before,
-            after,
-            &context.db,
+            before.map(u32::from),
+            after.map(u32::from),
+            |a, b| context.db.get_block_hash_range(a, b).wait().unwrap(),
         )
     }
 
@@ -668,8 +765,8 @@ impl Query {
         Address::from_bech32(&bech32)
     }
 
-    pub fn stake_pool(id: PoolId) -> FieldResult<Pool> {
-        Err(ErrorKind::Unimplemented.into())
+    pub fn stake_pool(id: PoolId, context: &Context) -> FieldResult<Pool> {
+        Pool::from_string_id(&id.0, &context.db)
     }
 
     pub fn status() -> FieldResult<Status> {
