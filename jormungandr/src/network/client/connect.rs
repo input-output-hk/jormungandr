@@ -338,9 +338,13 @@ where
     T: GossipService<Node = topology::NodeData>,
 {
     // Poll and resolve the request futures that are in progress
-    drive_subscription(&mut req.blocks, &mut sub.block_events, &mut sub.node_id)?;
-    drive_subscription(&mut req.fragments, &mut sub.fragments, &mut sub.node_id)?;
-    drive_subscription(&mut req.gossip, &mut sub.gossip, &mut sub.node_id)?;
+    let not_ready_1 = drive_subscription(&mut req.blocks, &mut sub.block_events, &mut sub.node_id)?;
+    let not_ready_2 = drive_subscription(&mut req.fragments, &mut sub.fragments, &mut sub.node_id)?;
+    let not_ready_3 = drive_subscription(&mut req.gossip, &mut sub.gossip, &mut sub.node_id)?;
+
+    if not_ready_1 && not_ready_2 && not_ready_3 {
+        return Ok(Async::NotReady);
+    }
 
     if let Some(inbound) = sub.try_complete() {
         // All done
@@ -372,7 +376,7 @@ fn drive_subscription<R, S, E>(
     req: &mut Option<R>,
     sub: &mut Option<S>,
     discovered_node_id: &mut Option<topology::NodeId>,
-) -> Result<(), ConnectError<E>>
+) -> Result<bool, ConnectError<E>>
 where
     R: Future<Item = (S, topology::NodeId), Error = core_error::Error>,
     E: error::Error + 'static,
@@ -381,13 +385,18 @@ where
         let polled = future
             .poll()
             .map_err(|e| ConnectError::Subscription { source: e })?;
-        if let Async::Ready((stream, node_id)) = polled {
-            *req = None;
-            handle_subscription_node_id(discovered_node_id, node_id)?;
-            *sub = Some(stream);
+        match polled {
+            Async::Ready((stream, node_id)) => {
+                *req = None;
+                handle_subscription_node_id(discovered_node_id, node_id)?;
+                *sub = Some(stream);
+                Ok(false)
+            }
+            Async::NotReady => Ok(true),
         }
+    } else {
+        Ok(false)
     }
-    Ok(())
 }
 
 fn handle_subscription_node_id<E>(
