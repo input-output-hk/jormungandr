@@ -71,28 +71,33 @@ where
         inbound: connect::InboundSubscriptions<S>,
         comms: &mut PeerComms,
     ) -> Self {
+        let remote_node_id = inbound.node_id;
+        let logger = builder
+            .logger
+            .new(o!("node_id" => remote_node_id.to_string()));
+
         // Spin off processing tasks for subscriptions that can be
         // managed with just the global state.
         subscription::process_fragments(
             inbound.fragments,
-            inbound.node_id,
+            remote_node_id,
             global_state.clone(),
             builder.channels.transaction_box.clone(),
-            builder.logger.clone(),
+            logger.clone(),
         );
         subscription::process_gossip(
             inbound.gossip,
-            inbound.node_id,
+            remote_node_id,
             global_state.clone(),
-            builder.logger.clone(),
+            logger.clone(),
         );
 
         Client {
             service: inner,
-            logger: builder.logger,
+            logger,
             global_state,
             channels: builder.channels,
-            remote_node_id: inbound.node_id,
+            remote_node_id,
             block_events: inbound.block_events,
             block_solicitations: comms.subscribe_to_block_solicitations(),
             chain_pulls: comms.subscribe_to_chain_pulls(),
