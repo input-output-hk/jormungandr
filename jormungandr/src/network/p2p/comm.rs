@@ -548,10 +548,7 @@ impl Peers {
                 .block_solicitations
                 .try_send(hashes)
                 .unwrap_or_else(|e| {
-                    debug!(
-                        self.logger,
-                        "block solicitation from {} failed: {:?}", node_id, e
-                    );
+                    debug!(self.logger, "block fetch from {} failed: {:?}", node_id, e);
                     debug!(self.logger, "unsubscribing peer {}", node_id);
                     map.remove_peer(node_id);
                 });
