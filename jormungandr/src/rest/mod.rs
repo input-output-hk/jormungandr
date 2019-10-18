@@ -8,7 +8,7 @@ pub mod v0;
 pub use self::server::{Error, Server};
 
 use actix_web::dev::Resource;
-use actix_web::error::{Error as ActixError, ErrorInternalServerError, ErrorServiceUnavailable};
+use actix_web::error::{Error as ActixError, ErrorServiceUnavailable};
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
 use futures::{Future, IntoFuture};
@@ -59,12 +59,12 @@ impl Context {
         *self.server.write().expect("Context server poisoned") = Some(Arc::new(server));
     }
 
-    pub fn server(&self) -> Result<Arc<Server>, ActixError> {
+    pub fn server(&self) -> Arc<Server> {
         self.server
             .read()
             .expect("Context server poisoned")
             .clone()
-            .ok_or_else(|| ErrorInternalServerError("Server not set in context"))
+            .expect("Context server not set")
     }
 }
 
@@ -85,8 +85,8 @@ pub struct FullContext {
 pub fn start_rest_server(
     config: &Rest,
     explorer_enabled: bool,
-    context: Context,
-) -> Result<Server, ConfigError> {
+    context: &Context,
+) -> Result<(), ConfigError> {
     let app_context = context.clone();
     let cors_cfg = config.cors.clone();
     let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
@@ -108,8 +108,8 @@ pub fn start_rest_server(
 
         apps
     })?;
-    context.set_server(server.clone());
-    Ok(server)
+    context.set_server(server);
+    Ok(())
 }
 
 fn build_app<S, P, R>(state: S, prefix: P, resources: R, cors_cfg: &Option<CorsConfig>) -> App<S>
