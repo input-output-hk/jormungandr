@@ -9,7 +9,7 @@ use http::{HttpTryFrom, Uri};
 use hyper::client::connect::{Destination, HttpConnector};
 use network_core::client::{BlockService, Client as _};
 use network_core::error as core_error;
-use network_grpc::client::{Connect, ConnectError, ConnectFuture};
+use network_grpc::client::{Connect, ConnectError};
 use slog::Logger;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
@@ -51,11 +51,10 @@ impl Error for FetchBlockError {
 }
 
 pub type Connection = network_grpc::client::Connection<BlockConfig>;
+pub type ConnectFuture =
+    network_grpc::client::ConnectFuture<BlockConfig, HttpConnector, DefaultExecutor>;
 
-pub fn connect(
-    addr: SocketAddr,
-    node_id: Option<NodeId>,
-) -> ConnectFuture<BlockConfig, HttpConnector, DefaultExecutor> {
+pub fn connect(addr: SocketAddr, node_id: Option<NodeId>) -> ConnectFuture {
     let uri = destination_uri(addr);
     let mut connector = HttpConnector::new(2);
     connector.set_nodelay(true);

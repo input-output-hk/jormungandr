@@ -175,10 +175,7 @@ impl BlockService for NodeService {
             self.logger().new(o!("node_id" => subscriber.to_string())),
         );
 
-        let subscription = self
-            .global_state
-            .peers
-            .subscribe_to_block_events(subscriber);
+        let subscription = self.global_state.peers.serve_block_events(subscriber);
         future::ok(subscription)
     }
 }
@@ -245,7 +242,7 @@ impl FragmentService for NodeService {
             self.logger().new(o!("node_id" => subscriber.to_string())),
         );
 
-        let subscription = self.global_state.peers.subscribe_to_fragments(subscriber);
+        let subscription = self.global_state.peers.serve_fragments(subscriber);
         future::ok(subscription)
     }
 }
@@ -270,7 +267,7 @@ impl GossipService for NodeService {
             self.logger().new(o!("node_id" => subscriber.to_string())),
         );
 
-        let subscription = self.global_state.peers.subscribe_to_gossip(subscriber);
+        let subscription = self.global_state.peers.serve_gossip(subscriber);
         future::ok(subscription)
     }
 }

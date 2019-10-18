@@ -1,22 +1,26 @@
+mod connect;
+
 use super::{
-    chain_pull, grpc,
+    chain_pull,
     inbound::InboundProcessing,
     p2p::comm::{PeerComms, Subscription},
     p2p::topology,
     subscription::{self, SendingBlockMsg},
-    Channels, ConnectionState, GlobalStateR,
+    Channels, GlobalStateR,
 };
 use crate::{
     blockcfg::{Block, Fragment, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
 };
-use futures::prelude::*;
-use network_core::client::{self as core_client, Client as _};
+use network_core::client as core_client;
 use network_core::client::{BlockService, FragmentService, GossipService, P2pService};
 use network_core::error as core_error;
-use network_core::gossip::{Gossip, Node};
 use network_core::subscription::{BlockEvent, ChainPullRequest};
+
+use futures::prelude::*;
 use slog::Logger;
+
+pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 
 #[must_use = "Client must be polled"]
 pub struct Client<S>
@@ -34,12 +38,9 @@ where
     sending_block_msg: Option<SendingBlockMsg>,
 }
 
-struct EarlyOutbound {
-    pub block_announcements: Subscription<Header>,
-    pub fragments: Subscription<Fragment>,
-    pub gossip: Subscription<Gossip<topology::NodeData>>,
-    pub block_solicitations: Subscription<Vec<HeaderHash>>,
-    pub chain_pulls: Subscription<ChainPullRequest<HeaderHash>>,
+struct ClientBuilder {
+    pub logger: Logger,
+    pub channels: Channels,
 }
 
 impl<S: BlockService> Client<S> {
@@ -63,95 +64,45 @@ where
     S::FragmentSubscription: Send + 'static,
     S::GossipSubscription: Send + 'static,
 {
-    fn subscribe(
-        service: S,
-        state: ConnectionState,
-        outbound: EarlyOutbound,
-        channels: Channels,
-    ) -> impl Future<Item = Self, Error = ()> {
-        let block_announcements = outbound.block_announcements;
-        let fragments = outbound.fragments;
-        let gossip = outbound.gossip;
-        let block_solicitations = outbound.block_solicitations;
-        let chain_pulls = outbound.chain_pulls;
-        let err_logger = state.logger().clone();
-        service
-            .ready()
-            .and_then(move |mut service| {
-                let block_req = service.block_subscription(block_announcements);
-                service.ready().map(move |service| (service, block_req))
-            })
-            .and_then(move |(mut service, block_req)| {
-                let content_req = service.fragment_subscription(fragments);
-                service
-                    .ready()
-                    .map(move |service| (service, block_req, content_req))
-            })
-            .and_then(move |(mut service, block_req, content_req)| {
-                let gossip_req = service.gossip_subscription(gossip);
-                block_req.join3(content_req, gossip_req).map(
-                    move |(block_res, content_res, gossip_res)| {
-                        (service, block_res, content_res, gossip_res)
-                    },
-                )
-            })
-            .map_err(move |err| {
-                info!(err_logger, "subscription request failed: {:?}", err);
-            })
-            .and_then(
-                move |(
-                    service,
-                    (block_events, node_id),
-                    (fragment_sub, node_id_1),
-                    (gossip_sub, node_id_2),
-                )| {
-                    if node_id != node_id_1 {
-                        warn!(
-                            state.logger(),
-                            "peer subscription IDs do not match: {} != {}", node_id, node_id_1
-                        );
-                        return Err(());
-                    }
-                    if node_id != node_id_2 {
-                        warn!(
-                            state.logger(),
-                            "peer subscription IDs do not match: {} != {}", node_id, node_id_2
-                        );
-                        return Err(());
-                    }
-                    let logger = state.logger().new(o!("node_id" => node_id.to_string()));
+    fn new(
+        inner: S,
+        builder: ClientBuilder,
+        global_state: GlobalStateR,
+        inbound: connect::InboundSubscriptions<S>,
+        comms: &mut PeerComms,
+    ) -> Self {
+        let remote_node_id = inbound.node_id;
+        let logger = builder
+            .logger
+            .new(o!("node_id" => remote_node_id.to_string()));
 
-                    // Spin off processing tasks for subscriptions that can be
-                    // managed with just the global state.
-                    subscription::process_fragments(
-                        fragment_sub,
-                        node_id,
-                        state.global.clone(),
-                        channels.transaction_box.clone(),
-                        logger.clone(),
-                    );
-                    subscription::process_gossip(
-                        gossip_sub,
-                        node_id,
-                        state.global.clone(),
-                        logger.clone(),
-                    );
+        // Spin off processing tasks for subscriptions that can be
+        // managed with just the global state.
+        subscription::process_fragments(
+            inbound.fragments,
+            remote_node_id,
+            global_state.clone(),
+            builder.channels.transaction_box.clone(),
+            logger.clone(),
+        );
+        subscription::process_gossip(
+            inbound.gossip,
+            remote_node_id,
+            global_state.clone(),
+            logger.clone(),
+        );
 
-                    // Resolve with the client instance.
-                    let client = Client {
-                        service,
-                        logger,
-                        global_state: state.global,
-                        channels,
-                        remote_node_id: node_id,
-                        block_events,
-                        block_solicitations,
-                        chain_pulls,
-                        sending_block_msg: None,
-                    };
-                    Ok(client)
-                },
-            )
+        Client {
+            service: inner,
+            logger,
+            global_state,
+            channels: builder.channels,
+            remote_node_id,
+            block_events: inbound.block_events,
+            block_solicitations: comms.subscribe_to_block_solicitations(),
+            chain_pulls: comms.subscribe_to_chain_pulls(),
+            sending_block_msg: None,
+        }
     }
 }
 
@@ -473,71 +424,4 @@ where
             }
         }
     }
-}
-
-pub fn connect(
-    state: ConnectionState,
-    channels: Channels,
-) -> (
-    PeerComms,
-    impl Future<Item = Client<grpc::Connection>, Error = ()>,
-) {
-    let addr = state.connection;
-    let expected_block0 = state.global.block0_hash;
-    let connect_err_logger = state.logger().clone();
-    let ready_err_logger = state.logger().clone();
-    let handshake_err_logger = state.logger().clone();
-    let block0_mismatch_logger = state.logger().clone();
-    let mut peer_comms = PeerComms::new();
-    let outbound = EarlyOutbound {
-        block_announcements: peer_comms.subscribe_to_block_announcements(),
-        fragments: peer_comms.subscribe_to_fragments(),
-        gossip: peer_comms.subscribe_to_gossip(),
-        block_solicitations: peer_comms.subscribe_to_block_solicitations(),
-        chain_pulls: peer_comms.subscribe_to_chain_pulls(),
-    };
-
-    let future = grpc::connect(addr, Some(state.global.as_ref().topology.node().id()))
-        .map_err(move |e| {
-            if let Some(e) = e.connect_error() {
-                info!(connect_err_logger, "error connecting to peer"; "reason" => %e);
-            } else if let Some(e) = e.http_error() {
-                info!(connect_err_logger, "HTTP/2 handshake error"; "reason" => %e);
-            } else {
-                warn!(connect_err_logger, "error while connecting to peer"; "error" => ?e);
-            }
-        })
-        .and_then(move |conn| {
-            conn.ready().map_err(move |e| {
-                warn!(
-                    ready_err_logger,
-                    "gRPC client error after connecting: {:?}", e
-                );
-            })
-        })
-        .and_then(move |mut conn| {
-            conn.handshake()
-                .map_err(move |e| {
-                    info!(handshake_err_logger, "protocol handshake failed: {:?}", e);
-                })
-                .and_then(move |block0| {
-                    if block0 == expected_block0 {
-                        Ok(conn)
-                    } else {
-                        warn!(
-                            block0_mismatch_logger,
-                            "block 0 hash {} in handshake is not expected {}",
-                            block0,
-                            expected_block0
-                        );
-                        Err(())
-                    }
-                })
-        })
-        .and_then(move |conn| Client::subscribe(conn, state, outbound, channels))
-        .inspect(|client| {
-            debug!(client.logger(), "connected to peer");
-        });
-
-    (peer_comms, future)
 }

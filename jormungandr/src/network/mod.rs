@@ -39,7 +39,6 @@ use crate::utils::{
 };
 use futures::future;
 use futures::prelude::*;
-use futures::stream;
 use network_core::gossip::{Gossip, Node};
 use rand::seq::SliceRandom;
 use slog::Logger;
@@ -235,41 +234,14 @@ pub fn start(
         Either::B(future::ok(()))
     };
 
-    let addrs = global_state
-        .topology
-        .view()
-        .filter_map(|paddr| paddr.address())
-        .collect::<Vec<_>>();
-    let state = global_state.clone();
-    let conn_channels = channels.clone();
-    let connections = stream::iter_ok(addrs).for_each(move |addr| {
-        let peer = Peer::new(addr, Protocol::Grpc);
-        let conn_state = ConnectionState::new(state.clone(), &peer);
-        let state = state.clone();
-        info!(conn_state.logger(), "connecting to initial gossip peer");
-        let (mut comms, connecting) = client::connect(conn_state, conn_channels.clone());
-        service_info.spawn(
-            connecting
-                .and_then(move |client| {
-                    let node_id = client.remote_node_id();
-                    let gossip = Gossip::from_nodes(iter::once(state.topology.node()));
-                    if let Err(e) = comms.try_send_gossip(gossip) {
-                        info!(
-                            client.logger(),
-                            "gossiping to peer failed just after connection: {:?}", e
-                        );
-                        return Err(());
-                    }
-                    state.peers.insert_peer(node_id, comms);
-                    let after_logger = client.logger().clone();
-                    Ok(client.map(move |()| {
-                        info!(after_logger, "client P2P connection closed");
-                    }))
-                })
-                .and_then(|client| client),
-        );
-        Ok(())
-    });
+    let initial_nodes = global_state.topology.view();
+    let self_node = global_state.topology.node();
+    for node in initial_nodes {
+        connect_and_propagate_with(node, global_state.clone(), channels.clone(), |comms| {
+            let gossip = Gossip::from_nodes(iter::once(self_node.clone()));
+            comms.set_pending_gossip(gossip);
+        });
+    }
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
@@ -284,7 +256,7 @@ pub fn start(
             Ok(())
         });
 
-    listener.join4(connections, handle_cmds, gossip).map(|_| ())
+    listener.join3(handle_cmds, gossip).map(|_| ())
 }
 
 fn handle_network_input(
@@ -338,8 +310,8 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
         for node in unreached_nodes {
             let msg = msg.clone();
             connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| match msg {
-                PropagateMsg::Block(header) => comms.try_send_block_announcement(header).unwrap(),
-                PropagateMsg::Fragment(fragment) => comms.try_send_fragment(fragment).unwrap(),
+                PropagateMsg::Block(header) => comms.set_pending_block_announcement(header),
+                PropagateMsg::Fragment(fragment) => comms.set_pending_fragment(fragment),
             });
         }
     }
@@ -352,7 +324,7 @@ fn send_gossip(state: GlobalStateR, channels: Channels) {
         let res = state.peers.propagate_gossip_to(node.id(), gossip);
         if let Err(gossip) = res {
             connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| {
-                comms.try_send_gossip(gossip).unwrap()
+                comms.set_pending_gossip(gossip)
             });
         }
     }
@@ -362,7 +334,7 @@ fn connect_and_propagate_with<F>(
     node: topology::NodeData,
     state: GlobalStateR,
     channels: Channels,
-    use_comms: F,
+    modify_comms: F,
 ) where
     F: FnOnce(&mut PeerComms),
 {
@@ -379,17 +351,17 @@ fn connect_and_propagate_with<F>(
     let node_id = node.id();
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
-    let logger = conn_state
+    let conn_logger = conn_state
         .logger()
         .new(o!("node_id" => node_id.to_string()));
-    debug!(logger, "connecting to node");
-    let (mut comms, connecting) = client::connect(conn_state, channels.clone());
-    use_comms(&mut comms);
-    state.peers.insert_peer(node_id, comms);
+    info!(conn_logger, "connecting to peer");
+    let (handle, connecting) = client::connect(conn_state, channels.clone());
+    state.peers.connecting_with(node_id, handle, modify_comms);
     let spawn_state = state.clone();
     let conn_err_state = state.clone();
     let cf = connecting
-        .map_err(move |()| {
+        .map_err(move |e| {
+            info!(conn_logger, "failed to connect to peer"; "reason" => %e);
             conn_err_state.peers.remove_peer(node_id);
             conn_err_state.topology.evict_node(node_id);
         })
@@ -398,7 +370,7 @@ fn connect_and_propagate_with<F>(
             if connected_node_id != node_id {
                 info!(
                     client.logger(),
-                    "peer responded with different node id: {}", connected_node_id
+                    "peer node ID differs from the expected {}", node_id
                 );
                 state.topology.evict_node(node_id);
                 if let Some(comms) = state.peers.remove_peer(node_id) {
@@ -408,12 +380,11 @@ fn connect_and_propagate_with<F>(
                 }
             };
             let after_logger = client.logger().clone();
-            let future = client.map(move |()| {
+            client.then(move |_| {
                 info!(after_logger, "client P2P connection closed");
-            });
-            Ok(future)
-        })
-        .and_then(|client| client);
+                Ok(())
+            })
+        });
     spawn_state.spawn(cf);
 }
 

@@ -2,13 +2,17 @@ mod peer_map;
 
 use super::topology;
 use crate::blockcfg::{Block, Fragment, Header, HeaderHash};
+use crate::network::client::ConnectHandle;
 use futures::prelude::*;
-use futures::{stream, sync::mpsc};
+use futures::stream;
+use futures::sync::mpsc;
 use network_core::error as core_error;
 use network_core::gossip::{Gossip, Node};
 use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
 
+use std::fmt;
+use std::mem;
 use std::sync::Mutex;
 use std::time::SystemTime;
 
@@ -39,6 +43,19 @@ pub enum ErrorKind {
     SubscriptionClosed,
     StreamOverflow,
     Unexpected,
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::ErrorKind::*;
+        let msg = match self {
+            NotSubscribed => "not subscribed",
+            SubscriptionClosed => "subscription has been closed",
+            StreamOverflow => "too many items queued",
+            Unexpected => "unexpected error (should never occur?)",
+        };
+        f.write_str(msg)
+    }
 }
 
 /// Stream used as the outbound half of a subscription stream.
@@ -85,27 +102,77 @@ impl<T> Default for CommHandle<T> {
 }
 
 impl<T> CommHandle<T> {
+    /// Creates a handle with an item waiting to be sent,
+    /// in expectation for a subscription to be established.
+    pub fn pending(item: T) -> Self {
+        CommHandle {
+            state: SubscriptionState::Pending(item),
+        }
+    }
+
+    pub fn clear_pending(&mut self) {
+        if let SubscriptionState::Pending(_) = self.state {
+            self.state = SubscriptionState::NotSubscribed;
+        }
+    }
+
+    /// Updates this handle with the subscription state from another
+    /// handle. This happens when another connection is established
+    /// to the same peer. This method is used instead of replacing
+    /// the handle to send a potential pending item over the new subscription.
+    pub fn update(&mut self, newer: CommHandle<T>) {
+        match mem::replace(&mut self.state, newer.state) {
+            SubscriptionState::Pending(item) => {
+                // If there is an error sending the pending item,
+                // it is silently dropped. Logging infrastructure to debug
+                // this would be nice.
+                let _ = self.try_send(item);
+            }
+            _ => {}
+        }
+    }
+
     /// Returns a stream to use as an outbound half of the
     /// subscription stream.
     ///
     /// If this method is called again on the same handle,
     /// the previous subscription is closed and its stream is terminated.
     pub fn subscribe(&mut self) -> Subscription<T> {
-        let (tx, rx) = mpsc::channel(BUFFER_LEN);
-        self.state = SubscriptionState::Subscribed(tx);
+        use self::SubscriptionState::*;
+
+        let (mut tx, rx) = mpsc::channel(BUFFER_LEN);
+        if let Pending(item) = mem::replace(&mut self.state, NotSubscribed) {
+            tx.try_send(item).unwrap();
+        }
+        self.state = Subscribed(tx);
         Subscription { inner: rx }
     }
 
-    // Try sending the item to the subscriber.
+    pub fn is_subscribed(&self) -> bool {
+        use self::SubscriptionState::*;
+
+        match self.state {
+            Subscribed(_) => true,
+            NotSubscribed | Pending(_) => false,
+        }
+    }
+
+    // Try sending an item to the subscriber.
     // Sending is done as best effort: if the stream buffer is full due to a
-    // blockage downstream, a `StreamOverflow` error is
-    // returned and the item is dropped.
+    // blockage downstream, a `StreamOverflow` error is returned and
+    // the item is dropped.
+    // If the subscription is in the pending state with an item already waiting
+    // to be sent, the new item replaces the previous pending item.
     pub fn try_send(&mut self, item: T) -> Result<(), PropagateError<T>> {
         match self.state {
             SubscriptionState::NotSubscribed => Err(PropagateError {
                 kind: ErrorKind::NotSubscribed,
                 item,
             }),
+            SubscriptionState::Pending(ref mut pending) => {
+                *pending = item;
+                Ok(())
+            }
             SubscriptionState::Subscribed(ref mut sender) => sender.try_send(item).map_err(|e| {
                 if e.is_disconnected() {
                     PropagateError {
@@ -130,6 +197,7 @@ impl<T> CommHandle<T> {
 
 enum SubscriptionState<T> {
     NotSubscribed,
+    Pending(T),
     Subscribed(mpsc::Sender<T>),
 }
 
@@ -146,12 +214,42 @@ pub struct PeerComms {
     chain_pulls: CommHandle<ChainPullRequest<HeaderHash>>,
     fragments: CommHandle<Fragment>,
     gossip: CommHandle<Gossip<topology::NodeData>>,
-    stats: PeerStats,
 }
 
 impl PeerComms {
     pub fn new() -> PeerComms {
         Default::default()
+    }
+
+    pub fn update(&mut self, newer: PeerComms) {
+        // If there would be a need to tell the old connection that
+        // it is replaced in any better way than just dropping all its
+        // communiction handles, this is the place to do it.
+        self.block_announcements.update(newer.block_announcements);
+        self.fragments.update(newer.fragments);
+        self.gossip.update(newer.gossip);
+        self.block_solicitations.update(newer.block_solicitations);
+        self.chain_pulls.update(newer.chain_pulls);
+    }
+
+    pub fn clear_pending(&mut self) {
+        self.block_announcements.clear_pending();
+        self.fragments.clear_pending();
+        self.gossip.clear_pending();
+        self.block_solicitations.clear_pending();
+        self.chain_pulls.clear_pending();
+    }
+
+    pub fn set_pending_block_announcement(&mut self, header: Header) {
+        self.block_announcements = CommHandle::pending(header);
+    }
+
+    pub fn set_pending_fragment(&mut self, fragment: Fragment) {
+        self.fragments = CommHandle::pending(fragment);
+    }
+
+    pub fn set_pending_gossip(&mut self, gossip: Gossip<topology::NodeData>) {
+        self.gossip = CommHandle::pending(gossip);
     }
 
     pub fn try_send_block_announcement(
@@ -193,6 +291,18 @@ impl PeerComms {
 
     pub fn subscribe_to_gossip(&mut self) -> Subscription<Gossip<topology::NodeData>> {
         self.gossip.subscribe()
+    }
+
+    pub fn block_announcements_subscribed(&self) -> bool {
+        self.block_announcements.is_subscribed()
+    }
+
+    pub fn fragments_subscribed(&self) -> bool {
+        self.fragments.is_subscribed()
+    }
+
+    pub fn gossip_subscribed(&self) -> bool {
+        self.gossip.is_subscribed()
     }
 }
 
@@ -268,14 +378,23 @@ impl Peers {
         map.insert_peer(id, comms)
     }
 
+    pub fn connecting_with<F>(&self, id: topology::NodeId, handle: ConnectHandle, modify_comms: F)
+    where
+        F: FnOnce(&mut PeerComms),
+    {
+        let mut map = self.mutex.lock().unwrap();
+        let comms = map.add_connecting(id, handle);
+        modify_comms(comms);
+    }
+
     pub fn remove_peer(&self, id: topology::NodeId) -> Option<PeerComms> {
         let mut map = self.mutex.lock().unwrap();
         map.remove_peer(id)
     }
 
-    pub fn subscribe_to_block_events(&self, id: topology::NodeId) -> BlockEventSubscription {
+    pub fn serve_block_events(&self, id: topology::NodeId) -> BlockEventSubscription {
         let mut map = self.mutex.lock().unwrap();
-        let handles = map.ensure_peer_comms(id);
+        let handles = map.server_comms(id);
         let announce_events: BlockEventAnnounceStream = handles
             .block_announcements
             .subscribe()
@@ -291,18 +410,15 @@ impl Peers {
             .select(missing_events)
     }
 
-    pub fn subscribe_to_fragments(&self, id: topology::NodeId) -> Subscription<Fragment> {
+    pub fn serve_fragments(&self, id: topology::NodeId) -> Subscription<Fragment> {
         let mut map = self.mutex.lock().unwrap();
-        let handles = map.ensure_peer_comms(id);
+        let handles = map.server_comms(id);
         handles.fragments.subscribe()
     }
 
-    pub fn subscribe_to_gossip(
-        &self,
-        id: topology::NodeId,
-    ) -> Subscription<Gossip<topology::NodeData>> {
+    pub fn serve_gossip(&self, id: topology::NodeId) -> Subscription<Gossip<topology::NodeData>> {
         let mut map = self.mutex.lock().unwrap();
-        let handles = map.ensure_peer_comms(id);
+        let handles = map.server_comms(id);
         handles.gossip.subscribe()
     }
 
@@ -320,12 +436,12 @@ impl Peers {
             .filter(|node| {
                 let id = node.id();
                 if let Some(mut entry) = map.entry(id) {
-                    match f(entry.comms()) {
+                    match f(entry.updated_comms()) {
                         Ok(()) => false,
                         Err(e) => {
                             debug!(
                                 self.logger,
-                                "propagation to peer {} failed: {:?}",
+                                "propagation to peer {} failed: {}",
                                 id,
                                 e.kind()
                             );
@@ -372,7 +488,7 @@ impl Peers {
         let mut map = self.mutex.lock().unwrap();
         if let Some(mut entry) = map.entry(target) {
             let res = {
-                let handles = entry.comms();
+                let handles = entry.updated_comms();
                 handles.try_send_gossip(gossip)
             };
             res.map_err(|e| {
@@ -393,9 +509,9 @@ impl Peers {
 
     pub fn refresh_peer_on_block(&self, node_id: topology::NodeId) -> bool {
         let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer_comms(node_id) {
-            Some(comms) => {
-                comms.stats.last_block_received = Some(SystemTime::now());
+        match map.refresh_peer(node_id) {
+            Some(stats) => {
+                stats.last_block_received = Some(SystemTime::now());
                 true
             }
             None => false,
@@ -404,9 +520,9 @@ impl Peers {
 
     pub fn refresh_peer_on_fragment(&self, node_id: topology::NodeId) -> bool {
         let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer_comms(node_id) {
-            Some(comms) => {
-                comms.stats.last_fragment_received = Some(SystemTime::now());
+        match map.refresh_peer(node_id) {
+            Some(stats) => {
+                stats.last_fragment_received = Some(SystemTime::now());
                 true
             }
             None => false,
@@ -415,9 +531,9 @@ impl Peers {
 
     pub fn refresh_peer_on_gossip(&self, node_id: topology::NodeId) -> bool {
         let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer_comms(node_id) {
-            Some(comms) => {
-                comms.stats.last_gossip_received = Some(SystemTime::now());
+        match map.refresh_peer(node_id) {
+            Some(stats) => {
+                stats.last_gossip_received = Some(SystemTime::now());
                 true
             }
             None => false,
@@ -446,7 +562,7 @@ impl Peers {
 
     pub fn solicit_blocks(&self, node_id: topology::NodeId, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer_comms(node_id) {
+        match map.peer_comms(node_id) {
             Some(comms) => {
                 debug!(self.logger, "sending block solicitation to {}", node_id;
                        "hashes" => ?hashes);
@@ -474,7 +590,7 @@ impl Peers {
 
     pub fn pull_headers(&self, node_id: topology::NodeId, from: Vec<HeaderHash>, to: HeaderHash) {
         let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer_comms(node_id) {
+        match map.peer_comms(node_id) {
             Some(comms) => {
                 debug!(self.logger, "pulling headers from {}", node_id;
                        "from" => ?from, "to" => ?to);
