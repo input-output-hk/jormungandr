@@ -1,5 +1,30 @@
 # Change Log
 
+## [v0.6.2](https://github.com/input-output-hk/jormungandr/tree/v0.6.2) (2019-10-18)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.1...v0.6.2)
+
+**Implemented enhancements:**
+
+- Start REST server before bootstrap [\#977](https://github.com/input-output-hk/jormungandr/pull/977)
+- Add --rest-listen-address Jormungandr CLI arg [\#925](https://github.com/input-output-hk/jormungandr/pull/925)
+
+**Fixed bugs:**
+
+- The existential terror of non existence - a soliloquy.  [\#941](https://github.com/input-output-hk/jormungandr/issues/941)
+
+**Closed issues:**
+
+- Not receiving block v0.6.1 [\#973](https://github.com/input-output-hk/jormungandr/issues/973)
+- Error while parsing the node configuration file [\#971](https://github.com/input-output-hk/jormungandr/issues/971)
+- Trusted peer responded with different node id [\#965](https://github.com/input-output-hk/jormungandr/issues/965)
+- Jormungandr 0.6.1 // windows10 // public ip // from binaries : Thread Panicked Error [\#962](https://github.com/input-output-hk/jormungandr/issues/962)
+
+**Merged pull requests:**
+
+- Rework pending client connections [\#981](https://github.com/input-output-hk/jormungandr/pull/981)
+- Breaking Change: header update in performance and security [\#964](https://github.com/input-output-hk/jormungandr/pull/964)
+- update ContentBuilder/BlockBuilder interface [\#963](https://github.com/input-output-hk/jormungandr/pull/963)
+
 ## [v0.6.1](https://github.com/input-output-hk/jormungandr/tree/v0.6.1) (2019-10-15)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.0...v0.6.1)
 
