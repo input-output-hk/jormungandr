@@ -1,4 +1,5 @@
 mod asyncable_drain;
+pub mod stream;
 
 pub use self::asyncable_drain::AsyncableDrain;
 

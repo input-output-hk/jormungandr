@@ -7,6 +7,7 @@ use super::{
 };
 use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
 use crate::intercom::{self, BlockMsg, ClientMsg, ReplyFuture, ReplyStream, RequestSink};
+use crate::log::stream::{Log, LoggingStream};
 use crate::utils::async_msg::MessageBox;
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
@@ -84,7 +85,7 @@ impl BlockService for NodeService {
     type GetPushHeadersSinkFuture = ChainHeadersSinkFuture;
     type UploadBlocksSink = InboundProcessing<Block, BlockMsg>;
     type GetUploadBlocksSinkFuture = FutureResult<Self::UploadBlocksSink, core_error::Error>;
-    type BlockSubscription = BlockEventSubscription;
+    type BlockSubscription = LoggingStream<BlockEventSubscription>;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn block0(&mut self) -> HeaderHash {
@@ -167,15 +168,20 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
+        let logger = self.logger().new(o!("node_id" => subscriber.to_string()));
         subscription::process_block_announcements(
             inbound,
             subscriber,
             self.global_state.clone(),
             self.channels.block_box.clone(),
-            self.logger().new(o!("node_id" => subscriber.to_string())),
+            logger.clone(),
         );
 
-        let subscription = self.global_state.peers.serve_block_events(subscriber);
+        let subscription = self
+            .global_state
+            .peers
+            .serve_block_events(subscriber)
+            .log(logger, "sending block event");
         future::ok(subscription)
     }
 }
