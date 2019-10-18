@@ -380,12 +380,11 @@ fn connect_and_propagate_with<F>(
                 }
             };
             let after_logger = client.logger().clone();
-            let future = client.map(move |()| {
+            client.then(move |_| {
                 info!(after_logger, "client P2P connection closed");
-            });
-            Ok(future)
-        })
-        .and_then(|client| client);
+                Ok(())
+            })
+        });
     spawn_state.spawn(cf);
 }
 
