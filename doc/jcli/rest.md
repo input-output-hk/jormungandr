@@ -33,9 +33,28 @@ YAML printed on success
 
 ```yaml
 ---
-blockRecvCnt: 7 # Blocks received by node
-txRecvCnt: 90   # Transactions received by node
-uptime: 2101    # Node uptitme in seconds
+# Number of blocks received by node
+blockRecvCnt: 1102
+# The Epoch and slot Number of the block (optional)
+lastBlockDate: "20.29"
+# Sum of all fee values in all transactions in last block
+lastBlockFees: 534
+# The block hash, it's unique identifier in the blockchain (optional)
+lastBlockHash: b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0
+# The block number, in order, since the block0 (optional)
+lastBlockHeight: 202901
+# Sum of all input values in all transactions in last block
+lastBlockSum: 51604
+# When last block was created, not set if none was created yet (optional)
+lastBlockTime: 2019-08-12T11:20:52.316544007+00:00
+# Number of transactions in last block
+lastBlockTx: 2
+# State of the node
+state: Running
+# Number of transactions received by node
+txRecvCnt: 5440
+# Node uptime in seconds
+uptime: 20032
 ```
 
 ## Whole UTXO
