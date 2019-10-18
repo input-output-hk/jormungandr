@@ -35,7 +35,7 @@ pub fn connect(
         channels,
         logger: state.logger,
     });
-    let cf = grpc::connect(addr, Some(node_id));
+    let cf = grpc::connect(addr, Some(node_id), state.global.executor.clone());
     let handle = ConnectHandle { receiver };
     let future = ConnectFuture {
         sender: Some(sender),

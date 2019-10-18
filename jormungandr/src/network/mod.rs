@@ -418,14 +418,19 @@ pub fn bootstrap(
     for address in trusted_peers_shuffled(&config) {
         let logger = logger.new(o!("peer_addr" => address.to_string()));
         let peer = Peer::new(address, Protocol::Grpc);
-        let res = bootstrap::bootstrap_from_peer(peer, blockchain.clone(), branch.clone(), &logger);
+        let res = bootstrap::bootstrap_from_peer(
+            peer,
+            blockchain.clone(),
+            branch.clone(),
+            logger.clone(),
+        );
 
         match res {
-            Err(bootstrap::Error::Connect(err)) => {
-                warn!(logger, "Unable to reach peer for initial bootstrap" ; "reason" => err.to_string());
+            Err(bootstrap::Error::Connect { source: e }) => {
+                warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
             }
-            Err(err) => {
-                warn!(logger, "with initial bootstrap" ; "reason" => err.to_string());
+            Err(e) => {
+                warn!(logger, "initial bootstrap failed"; "error" => ?e);
             }
             Ok(_) => {
                 info!(logger, "initial bootstrap completed");
@@ -444,7 +449,7 @@ pub fn bootstrap(
 /// to retrieve the genesis block.
 pub fn fetch_block(
     config: &Configuration,
-    hash: &HeaderHash,
+    hash: HeaderHash,
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     if config.protocol != Protocol::Grpc {
@@ -463,8 +468,11 @@ pub fn fetch_block(
         let logger = logger.new(o!("peer_address" => address.to_string()));
         let peer = Peer::new(address, Protocol::Grpc);
         match grpc::fetch_block(peer, hash, &logger) {
-            Err(err) => {
-                warn!(logger, "error downloading block" ; "reason" => err.to_string());
+            Err(grpc::FetchBlockError::Connect { source: e }) => {
+                warn!(logger, "unable to reach peer for block download"; "reason" => %e);
+            }
+            Err(e) => {
+                warn!(logger, "failed to download block"; "error" => ?e);
             }
             Ok(b) => {
                 info!(logger, "initial bootstrap completed");
