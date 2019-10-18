@@ -55,6 +55,7 @@ extern crate tokio;
 use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::Blockchain,
+    rest::NodeState,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -108,6 +109,10 @@ const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
+    if let Some(context) = bootstrapped_node.rest_context.as_ref() {
+        context.set_node_state(NodeState::StartingWorkers)
+    }
+
     let mut services = Services::new(bootstrapped_node.logger.clone());
 
     // initialize the network propagation channel
@@ -282,6 +287,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
             };
             rest_context.set_full(full_context);
+            rest_context.set_node_state(NodeState::Running);
             Some(rest_context.server())
         }
         None => None,
@@ -316,6 +322,11 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         logger,
         rest_context,
     } = initialized_node;
+
+    if let Some(context) = rest_context.as_ref() {
+        context.set_node_state(NodeState::Bootstrapping)
+    }
+
     let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
     let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
@@ -411,10 +422,16 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         None => None,
     };
 
+    if let Some(context) = rest_context.as_ref() {
+        context.set_node_state(NodeState::PreparingStorage)
+    }
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
 
+    if let Some(context) = rest_context.as_ref() {
+        context.set_node_state(NodeState::PreparingBlock0)
+    }
     let block0 = start_up::prepare_block_0(
         &settings,
         &storage,

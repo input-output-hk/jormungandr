@@ -29,6 +29,7 @@ use crate::utils::async_msg::MessageBox;
 pub struct Context {
     full: Arc<RwLock<Option<Arc<FullContext>>>>,
     server: Arc<RwLock<Option<Arc<Server>>>>,
+    node_state: Arc<RwLock<NodeState>>,
 }
 
 impl Context {
@@ -36,6 +37,7 @@ impl Context {
         Context {
             full: Default::default(),
             server: Default::default(),
+            node_state: Arc::new(RwLock::new(NodeState::StartingRestServer)),
         }
     }
 
@@ -66,6 +68,20 @@ impl Context {
             .clone()
             .expect("Context server not set")
     }
+
+    pub fn set_node_state(&self, node_state: NodeState) {
+        *self
+            .node_state
+            .write()
+            .expect("Context node state poisoned") = node_state;
+    }
+
+    pub fn node_state(&self) -> NodeState {
+        self.node_state
+            .read()
+            .expect("Context node state poisoned")
+            .clone()
+    }
 }
 
 #[derive(Clone)]
@@ -80,6 +96,16 @@ pub struct FullContext {
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
     pub explorer: Option<crate::explorer::Explorer>,
+}
+
+#[derive(Clone, Debug)]
+pub enum NodeState {
+    StartingRestServer,
+    PreparingStorage,
+    PreparingBlock0,
+    Bootstrapping,
+    StartingWorkers,
+    Running,
 }
 
 pub fn start_rest_server(
