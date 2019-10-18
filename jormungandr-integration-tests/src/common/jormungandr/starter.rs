@@ -17,8 +17,8 @@ use std::{
 };
 custom_error! {pub StartupError
     JormungandrNotLaunched{ source: ProcessError } = "could not start jormungandr due to process issue",
-    Timeout{ timeout: u64 } = "node wasn't properly bootstrap after {timeout} s",
-    ErrorInLogsFound { log_file_path: String }= "error(s) in log: {log_file_path} detected"
+    Timeout{ timeout: u64, log_content: String } = "node wasn't properly bootstrap after {timeout} s. Log file: {log_content}",
+    ErrorInLogsFound { log_content: String }= "error(s) in log detected: {log_content} "
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
@@ -204,7 +204,9 @@ pub fn start_jormungandr_node_as_passive_with_log_verification(
     start_jormungandr_node_as_passive_with_timeout_and_log_checks(
         &config,
         timeout_value,
-        |logger: &JormungandrLogger| logger.contains_message("initial bootstrap completed"),
+        |logger: &JormungandrLogger| {
+            logger.message_logged_multiple_times("initial bootstrap completed", 2)
+        },
         |logger: &JormungandrLogger| logger.contains_error(),
     )
 }
@@ -239,6 +241,7 @@ where
         if start.elapsed() > timeout {
             return Err(StartupError::Timeout {
                 timeout: timeout_value,
+                log_content: file_utils::read_file(&config.log_file_path),
             });
         }
         if stop_func(&logger) {
@@ -247,12 +250,7 @@ where
         if error_func(&logger) {
             logger.print_raw_log();
             return Err(StartupError::ErrorInLogsFound {
-                log_file_path: config
-                    .log_file_path
-                    .as_os_str()
-                    .to_str()
-                    .unwrap()
-                    .to_owned(),
+                log_content: file_utils::read_file(&config.log_file_path),
             });
         }
         process_utils::sleep(5u64);
