@@ -1,11 +1,33 @@
 # Change Log
 
+> Place holder for 0.7.x
+
+- Add node state to REST node stats [\#986](https://github.com/input-output-hk/jormungandr/pull/986)
+- Change the start up order for node processes [\#857](https://github.com/input-output-hk/jormungandr/issues/857)
+- Breaking Change: header update in performance and security [\#964](https://github.com/input-output-hk/jormungandr/pull/964)
+- Start REST server before bootstrap [\#977](https://github.com/input-output-hk/jormungandr/pull/977)
+
+## [v0.6.3](https://github.com/input-output-hk/jormungandr/tree/v0.6.3) (2019-10-18)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.2...v0.6.3)
+
+**Implemented enhancements:**
+
+- network: Get rid of DefaultExecutor [\#985](https://github.com/input-output-hk/jormungandr/pull/985)
+- Add block search by stake pool [\#960](https://github.com/input-output-hk/jormungandr/pull/960)
+
+**Fixed bugs:**
+
+- Update longest chain only after successful insert [\#984](https://github.com/input-output-hk/jormungandr/pull/984)
+
+**Merged pull requests:**
+
+- doc: private\_id is optional, used for trusted peers [\#959](https://github.com/input-output-hk/jormungandr/pull/959)
+
 ## [v0.6.2](https://github.com/input-output-hk/jormungandr/tree/v0.6.2) (2019-10-18)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.1...v0.6.2)
 
 **Implemented enhancements:**
 
-- Start REST server before bootstrap [\#977](https://github.com/input-output-hk/jormungandr/pull/977)
 - Add --rest-listen-address Jormungandr CLI arg [\#925](https://github.com/input-output-hk/jormungandr/pull/925)
 
 **Fixed bugs:**
@@ -22,7 +44,6 @@
 **Merged pull requests:**
 
 - Rework pending client connections [\#981](https://github.com/input-output-hk/jormungandr/pull/981)
-- Breaking Change: header update in performance and security [\#964](https://github.com/input-output-hk/jormungandr/pull/964)
 - update ContentBuilder/BlockBuilder interface [\#963](https://github.com/input-output-hk/jormungandr/pull/963)
 
 ## [v0.6.1](https://github.com/input-output-hk/jormungandr/tree/v0.6.1) (2019-10-15)
