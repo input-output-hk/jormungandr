@@ -7,6 +7,17 @@
 - Breaking Change: header update in performance and security [\#964](https://github.com/input-output-hk/jormungandr/pull/964)
 - Start REST server before bootstrap [\#977](https://github.com/input-output-hk/jormungandr/pull/977)
 
+## [v0.6.4](https://github.com/input-output-hk/jormungandr/tree/v0.6.4) (2019-10-19)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.3...v0.6.4)
+
+**Closed issues:**
+
+- panicking jormungandr 6.3 [\#989](https://github.com/input-output-hk/jormungandr/issues/989)
+
+**Merged pull requests:**
+
+- Fix busy looping in connect [\#992](https://github.com/input-output-hk/jormungandr/pull/992)
+
 ## [v0.6.3](https://github.com/input-output-hk/jormungandr/tree/v0.6.3) (2019-10-18)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.2...v0.6.3)
 
