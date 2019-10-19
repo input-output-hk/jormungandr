@@ -358,7 +358,7 @@ where
             try_ready!(self.service.poll_ready().map_err(|e| {
                 info!(self.logger, "P2P client connection error: {:?}", e);
             }));
-            let mut streams_ready = false;
+            let mut ready = false;
             if let Some(ref mut future) = self.sending_block_msg {
                 // Drive sending of a message to block task to completion
                 // before polling more events from the block subscription
@@ -373,6 +373,7 @@ where
                 match send_polled {
                     Async::NotReady => {}
                     Async::Ready(_) => {
+                        ready = true;
                         self.sending_block_msg = None;
                     }
                 }
@@ -387,7 +388,7 @@ where
                         return Ok(().into());
                     }
                     Async::Ready(Some(event)) => {
-                        streams_ready = true;
+                        ready = true;
                         self.process_block_event(event);
                     }
                 }
@@ -402,7 +403,7 @@ where
                     return Ok(().into());
                 }
                 Async::Ready(Some(block_ids)) => {
-                    streams_ready = true;
+                    ready = true;
                     self.solicit_blocks(&block_ids);
                 }
             }
@@ -413,13 +414,13 @@ where
                     return Ok(().into());
                 }
                 Async::Ready(Some(req)) => {
-                    streams_ready = true;
+                    ready = true;
                     // FIXME: implement two-stage chain pull processing
                     // in the blockchain task and use pull_headers here.
                     self.pull_blocks_to_tip(req);
                 }
             }
-            if !streams_ready {
+            if !ready {
                 return Ok(Async::NotReady);
             }
         }
