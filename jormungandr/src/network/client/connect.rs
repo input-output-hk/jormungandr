@@ -125,11 +125,7 @@ where
     Connecting(F),
     BeforeHandshake,
     Handshake(<F::Item as BlockService>::HandshakeFuture),
-    Subscribing {
-        req: SubscriptionRequests<F::Item>,
-        sub: InboundSubscriptionStaging<F::Item>,
-        comms: PeerComms,
-    },
+    Subscribing(SubscriptionStaging<F::Item>),
     Done,
 }
 
@@ -163,42 +159,6 @@ where
     pub block_events: <T as BlockService>::BlockSubscription,
     pub fragments: <T as FragmentService>::FragmentSubscription,
     pub gossip: <T as GossipService>::GossipSubscription,
-}
-
-struct InboundSubscriptionStaging<T>
-where
-    T: BlockService + FragmentService + GossipService,
-{
-    pub node_id: Option<topology::NodeId>,
-    pub block_events: Option<<T as BlockService>::BlockSubscription>,
-    pub fragments: Option<<T as FragmentService>::FragmentSubscription>,
-    pub gossip: Option<<T as GossipService>::GossipSubscription>,
-}
-
-impl<T> InboundSubscriptionStaging<T>
-where
-    T: BlockService + FragmentService + GossipService,
-{
-    fn new() -> Self {
-        InboundSubscriptionStaging {
-            node_id: None,
-            block_events: None,
-            fragments: None,
-            gossip: None,
-        }
-    }
-
-    fn try_complete(&mut self) -> Option<InboundSubscriptions<T>> {
-        match (&self.block_events, &self.fragments, &self.gossip) {
-            (&Some(_), &Some(_), &Some(_)) => Some(InboundSubscriptions {
-                node_id: self.node_id.take().expect("remote node ID should be known"),
-                block_events: self.block_events.take().unwrap(),
-                fragments: self.fragments.take().unwrap(),
-                gossip: self.gossip.take().unwrap(),
-            }),
-            _ => None,
-        }
-    }
 }
 
 fn poll_client_ready<T, E>(client: &mut T) -> Poll<(), ConnectError<E>>
@@ -258,31 +218,24 @@ where
                         .poll()
                         .map_err(|e| ConnectError::Handshake { source: e }));
                     self.match_block0(block0)?;
-                    State::Subscribing {
-                        req: SubscriptionRequests::new(),
-                        sub: InboundSubscriptionStaging::new(),
-                        comms: PeerComms::new(),
-                    }
+                    State::Subscribing(SubscriptionStaging::new())
                 }
-                State::Subscribing {
-                    ref mut req,
-                    ref mut sub,
-                    ref mut comms,
-                } => {
+                State::Subscribing(ref mut staging) => {
                     let client = self.client.as_mut().expect("client must be connected");
-                    match try_ready!(poll_subscribe(client, req, sub, comms)) {
+                    match try_ready!(staging.poll_complete(client)) {
                         None => continue,
                         Some(inbound) => {
                             // After subscribing is complete, set up the client and
                             // send its communication handles to be received by
                             // ClientHandle::try_complete().
-                            let mut comms = if let State::Subscribing { comms, .. } =
-                                mem::replace(&mut self.state, State::Done)
-                            {
-                                comms
-                            } else {
-                                unreachable!()
-                            };
+                            let mut comms =
+                                if let State::Subscribing(SubscriptionStaging { comms, .. }) =
+                                    mem::replace(&mut self.state, State::Done)
+                                {
+                                    comms
+                                } else {
+                                    unreachable!()
+                                };
                             let client = Client::new(
                                 self.client.take().expect("client must be connected"),
                                 self.builder.take().unwrap(),
@@ -323,55 +276,121 @@ where
     }
 }
 
-fn poll_subscribe<T, E>(
-    client: &mut T,
-    req: &mut SubscriptionRequests<T>,
-    sub: &mut InboundSubscriptionStaging<T>,
-    comms: &mut PeerComms,
-) -> Poll<Option<InboundSubscriptions<T>>, ConnectError<E>>
+struct SubscriptionStaging<T>
 where
-    E: error::Error + 'static,
+    T: BlockService + FragmentService + GossipService,
+{
+    pub node_id: Option<topology::NodeId>,
+    pub block_events: Option<<T as BlockService>::BlockSubscription>,
+    pub fragments: Option<<T as FragmentService>::FragmentSubscription>,
+    pub gossip: Option<<T as GossipService>::GossipSubscription>,
+    pub req: SubscriptionRequests<T>,
+    pub comms: PeerComms,
+}
+
+impl<T> SubscriptionStaging<T>
+where
+    T: BlockService + FragmentService + GossipService,
+{
+    fn new() -> Self {
+        SubscriptionStaging {
+            node_id: None,
+            block_events: None,
+            fragments: None,
+            gossip: None,
+            req: SubscriptionRequests::new(),
+            comms: PeerComms::new(),
+        }
+    }
+
+    fn try_complete(&mut self) -> Option<InboundSubscriptions<T>> {
+        match (&self.block_events, &self.fragments, &self.gossip) {
+            (&Some(_), &Some(_), &Some(_)) => Some(InboundSubscriptions {
+                node_id: self.node_id.take().expect("remote node ID should be known"),
+                block_events: self.block_events.take().unwrap(),
+                fragments: self.fragments.take().unwrap(),
+                gossip: self.gossip.take().unwrap(),
+            }),
+            _ => None,
+        }
+    }
+}
+
+impl<T> SubscriptionStaging<T>
+where
     T: core_client::Client,
     T: P2pService<NodeId = topology::NodeId>,
     T: BlockService<Block = Block>,
     T: FragmentService<Fragment = Fragment>,
     T: GossipService<Node = topology::NodeData>,
 {
-    // Poll and resolve the request futures that are in progress
-    drive_subscription(&mut req.blocks, &mut sub.block_events, &mut sub.node_id)?;
-    drive_subscription(&mut req.fragments, &mut sub.fragments, &mut sub.node_id)?;
-    drive_subscription(&mut req.gossip, &mut sub.gossip, &mut sub.node_id)?;
+    fn poll_complete<E>(
+        &mut self,
+        client: &mut T,
+    ) -> Poll<Option<InboundSubscriptions<T>>, ConnectError<E>>
+    where
+        E: error::Error + 'static,
+    {
+        let mut ready = Async::NotReady;
 
-    if let Some(inbound) = sub.try_complete() {
-        // All done
-        return Ok(Some(inbound).into());
-    }
+        // Poll and resolve the request futures that are in progress
+        drive_subscribe_request(
+            &mut self.req.blocks,
+            &mut self.block_events,
+            &mut self.node_id,
+            &mut ready,
+        )?;
+        drive_subscribe_request(
+            &mut self.req.fragments,
+            &mut self.fragments,
+            &mut self.node_id,
+            &mut ready,
+        )?;
+        drive_subscribe_request(
+            &mut self.req.gossip,
+            &mut self.gossip,
+            &mut self.node_id,
+            &mut ready,
+        )?;
 
-    // Make subscription requests if the client is ready
-    if !comms.block_announcements_subscribed() {
-        try_ready!(poll_client_ready(client));
-        let outbound = comms.subscribe_to_block_announcements();
-        req.blocks = Some(client.block_subscription(outbound));
-    }
-    if !comms.fragments_subscribed() {
-        try_ready!(poll_client_ready(client));
-        let outbound = comms.subscribe_to_fragments();
-        req.fragments = Some(client.fragment_subscription(outbound));
-    }
-    if !comms.gossip_subscribed() {
-        try_ready!(poll_client_ready(client));
-        let outbound = comms.subscribe_to_gossip();
-        req.gossip = Some(client.gossip_subscription(outbound));
-    }
+        if let Some(inbound) = self.try_complete() {
+            // All done
+            return Ok(Some(inbound).into());
+        }
 
-    // Call this again for the next iteration
-    Ok(None.into())
+        // Initiate subscription requests, but wait if the client is not ready
+        // before any one of the requests.
+        if !self.comms.block_announcements_subscribed() {
+            try_ready!(poll_client_ready(client));
+            ready = Async::Ready(());
+            let outbound = self.comms.subscribe_to_block_announcements();
+            self.req.blocks = Some(client.block_subscription(outbound));
+        }
+        if !self.comms.fragments_subscribed() {
+            try_ready!(poll_client_ready(client));
+            ready = Async::Ready(());
+            let outbound = self.comms.subscribe_to_fragments();
+            self.req.fragments = Some(client.fragment_subscription(outbound));
+        }
+        if !self.comms.gossip_subscribed() {
+            try_ready!(poll_client_ready(client));
+            ready = Async::Ready(());
+            let outbound = self.comms.subscribe_to_gossip();
+            self.req.gossip = Some(client.gossip_subscription(outbound));
+        }
+
+        // If progress was made, return Ready(None) to call this again
+        // for the next iteration.
+        // Otherwise, return NotReady to bubble up from the poll.
+        Ok(ready.map(|()| None))
+    }
 }
 
-fn drive_subscription<R, S, E>(
+fn drive_subscribe_request<R, S, E>(
     req: &mut Option<R>,
     sub: &mut Option<S>,
     discovered_node_id: &mut Option<topology::NodeId>,
+    ready: &mut Async<()>,
 ) -> Result<(), ConnectError<E>>
 where
     R: Future<Item = (S, topology::NodeId), Error = core_error::Error>,
@@ -381,13 +400,17 @@ where
         let polled = future
             .poll()
             .map_err(|e| ConnectError::Subscription { source: e })?;
-        if let Async::Ready((stream, node_id)) = polled {
-            *req = None;
-            handle_subscription_node_id(discovered_node_id, node_id)?;
-            *sub = Some(stream);
+        match polled {
+            Async::NotReady => {}
+            Async::Ready((stream, node_id)) => {
+                *req = None;
+                handle_subscription_node_id(discovered_node_id, node_id)?;
+                *sub = Some(stream);
+                *ready = Async::Ready(());
+            }
         }
     }
-    Ok(())
+    Ok(().into())
 }
 
 fn handle_subscription_node_id<E>(
