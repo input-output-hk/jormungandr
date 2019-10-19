@@ -113,9 +113,9 @@ where
     S::UploadBlocksFuture: Send + 'static,
 {
     fn process_block_event(&mut self, event: BlockEvent<S::Block>) {
+        debug!(self.logger, "received block event"; "item" => ?event);
         match event {
             BlockEvent::Announce(header) => {
-                debug!(self.logger, "received block event Announce");
                 let future = subscription::process_block_announcement(
                     header,
                     self.remote_node_id,
@@ -125,7 +125,6 @@ where
                 self.sending_block_msg = Some(future);
             }
             BlockEvent::Solicit(block_ids) => {
-                debug!(self.logger, "received block event Solicit");
                 let (reply_handle, stream) = intercom::stream_reply::<
                     Block,
                     network_core::error::Error,
@@ -148,7 +147,6 @@ where
                 );
             }
             BlockEvent::Missing(req) => {
-                debug!(self.logger, "received block event Missing");
                 self.push_missing_blocks(req);
             }
         }
