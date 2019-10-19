@@ -1,3 +1,4 @@
+mod input;
 mod transaction;
 mod transfer;
 mod utxo;
@@ -9,6 +10,7 @@ use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
 use chain_core::property;
 
 // to remove..
+pub use input::*;
 pub use transaction::*;
 pub use transfer::*;
 pub use utxo::*;
