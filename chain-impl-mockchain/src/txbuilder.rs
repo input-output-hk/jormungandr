@@ -110,22 +110,22 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
     }
 
     /// Calculate the fees on a given fee algorithm for the current transaction
-    pub fn estimate_fee<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    pub fn estimate_fee<F: FeeAlgorithm<Extra>>(
         &self,
         fee_algorithm: F,
     ) -> Result<Value, ValueError> {
         fee_algorithm
-            .calculate(&self.tx)
+            .calculate(&self.tx.extra, &self.tx.inputs, &self.tx.outputs)
             .ok_or(ValueError::Overflow)
     }
 
     /// Get balance including current feee.
-    pub fn get_balance<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    pub fn get_balance<F: FeeAlgorithm<Extra>>(
         &self,
         fee_algorithm: F,
     ) -> Result<Balance, ValueError> {
         let fee = fee_algorithm
-            .calculate(&self.tx)
+            .calculate(&self.tx.extra, &self.tx.inputs, &self.tx.outputs)
             .ok_or(ValueError::Overflow)?;
         self.tx.balance(fee)
     }
@@ -141,7 +141,7 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
     }
 
     /// Seal the transaction checking that the transaction fits the fee algorithm
-    pub fn seal<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    pub fn seal<F: FeeAlgorithm<Extra>>(
         self,
         fee_algorithm: F,
     ) -> Result<tx::Transaction<Address, Extra>, Error> {
@@ -157,7 +157,7 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
     ///
     /// Along with the transaction, this return the balance unassigned to output policy
     /// if any
-    pub fn seal_with_output_policy<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    pub fn seal_with_output_policy<F: FeeAlgorithm<Extra>>(
         mut self,
         fee_algorithm: F,
         policy: OutputPolicy,
@@ -165,7 +165,7 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
         // calculate initial fee, maybe we can fit it without any
         // additional calculations.
         let fee = fee_algorithm
-            .calculate(&self.tx)
+            .calculate(&self.tx.extra, &self.tx.inputs, &self.tx.outputs)
             .ok_or(Error::MathErr(ValueError::Overflow))?;
         let pos = match self.tx.balance(fee) {
             Ok(Balance::Negative(_)) => return Err(Error::TxNotEnoughTotalInput),
@@ -198,7 +198,7 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
                     value: Value(0),
                 });
                 let fee = fee_algorithm
-                    .calculate(&tx)
+                    .calculate(&self.tx.extra, &self.tx.inputs, &self.tx.outputs)
                     .ok_or(Error::MathErr(ValueError::Overflow))?;
                 match tx.balance(fee) {
                     Ok(Balance::Positive(value)) => {
@@ -363,7 +363,7 @@ mod tests {
         fee: LinearFee,
     ) -> TestResult {
         let builder = builder_ios(&inputs, &outputs);
-        let fee_value = fee.calculate(&builder.tx).unwrap();
+        let fee_value = fee.calculate(&builder.tx.extra, &builder.tx.inputs, &builder.tx.outputs).unwrap();
 
         let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
 
@@ -539,7 +539,7 @@ mod tests {
     ) -> TestResult {
         let mut builder = TransactionBuilder::new_payload(certificate);
         builder.add_input(&input);
-        let fee_value = fee.calculate(&builder.tx).unwrap();
+        let fee_value = fee.calculate(&builder.tx.extra, &builder.tx.inputs, &builder.tx.outputs).unwrap();
         let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
         let expected_balance_res = input.value() - fee_value;
         match (expected_balance_res, result) {

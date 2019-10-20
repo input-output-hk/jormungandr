@@ -40,7 +40,7 @@ impl TransactionCertBuilder {
 
     pub fn seal<FA>(&mut self, fee_algorithm: FA, output_policy: OutputPolicy) -> &mut Self
     where
-        FA: FeeAlgorithm<Transaction<Address, Option<Certificate>>>,
+        FA: FeeAlgorithm<Option<Certificate>>,
     {
         let transaction = self.build_transaction();
         let builder = TransactionBuilder::from(transaction);

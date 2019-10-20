@@ -133,7 +133,7 @@ pub fn total_funds_are_const_in_ledger(
             let total_funds_after = calculate_total_funds_in_ledger(&ledger);
             let fee = transaction_data
                 .fee
-                .calculate(&signed_tx.transaction)
+                .calculate_tx(&signed_tx.transaction)
                 .unwrap()
                 .0;
 

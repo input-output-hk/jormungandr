@@ -442,7 +442,7 @@ impl Ledger {
     ) -> Result<(Self, Value), Error>
     where
         Extra: property::Serialize,
-        LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
+        LinearFee: FeeAlgorithm<Extra>,
     {
         signed_tx.verify_well_formed(&TX_VERIFY_LIMITS)?;
         let fee = calculate_fee(signed_tx, dyn_params)?;
@@ -560,7 +560,7 @@ impl Ledger {
 
         let fee = dyn_params
             .fees
-            .calculate(&auth_cert.transaction)
+            .calculate_tx(&auth_cert.transaction)
             .ok_or(ValueError::Overflow)?;
         if fee != value {
             return Err(Error::NotBalanced {
@@ -865,11 +865,11 @@ fn calculate_fee<Extra>(
     dyn_params: &LedgerParameters,
 ) -> Result<Value, Error>
 where
-    LinearFee: FeeAlgorithm<Transaction<Address, Extra>>,
+    LinearFee: FeeAlgorithm<Extra>,
 {
     dyn_params
         .fees
-        .calculate(&signed_tx.transaction)
+        .calculate_tx(&signed_tx.transaction)
         .ok_or_else(|| ValueError::Overflow.into())
 }
 

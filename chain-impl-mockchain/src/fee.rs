@@ -26,6 +26,10 @@ impl LinearFee {
 
 pub trait FeeAlgorithm<P> {
     fn calculate(&self, part: &P, inputs: &[tx::Input], output: &[tx::Output<Address>]) -> Option<Value>;
+
+    fn calculate_tx(&self, tx: &tx::Transaction<Address, P>) -> Option<Value> {
+        self.calculate(&tx.extra, &tx.inputs, &tx.outputs)
+    }
 }
 
 impl<'a, P, FA: FeeAlgorithm<P>> FeeAlgorithm<P> for &'a FA {
@@ -35,7 +39,7 @@ impl<'a, P, FA: FeeAlgorithm<P>> FeeAlgorithm<P> for &'a FA {
 }
 
 impl FeeAlgorithm<tx::NoExtra> for LinearFee {
-    fn calculate(&self, p: &tx::NoExtra, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+    fn calculate(&self, _: &tx::NoExtra, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
         let msz = (inputs.len() as u64).checked_add(outputs.len() as u64)?;
         let fee = self
             .coefficient
