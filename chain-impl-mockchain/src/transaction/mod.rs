@@ -1,9 +1,9 @@
 mod input;
+mod payload;
 mod transaction;
 mod transfer;
 mod utxo;
 mod witness;
-mod payload;
 
 use chain_addr::Address;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
@@ -11,11 +11,11 @@ use chain_core::property;
 
 // to remove..
 pub use input::*;
+pub use payload::Payload;
 pub use transaction::*;
 pub use transfer::*;
 pub use utxo::*;
 pub use witness::*;
-pub use payload::Payload;
 
 /// Each transaction must be signed in order to be executed
 /// by the ledger. `SignedTransaction` represents such a transaction.
@@ -25,7 +25,9 @@ pub struct AuthenticatedTransaction<OutAddress, Extra> {
     pub witnesses: Vec<Witness>,
 }
 
-impl<Extra: Payload + property::Serialize> property::Serialize for AuthenticatedTransaction<Address, Extra> {
+impl<Extra: Payload + property::Serialize> property::Serialize
+    for AuthenticatedTransaction<Address, Extra>
+{
     type Error = Extra::Error;
 
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Extra::Error> {

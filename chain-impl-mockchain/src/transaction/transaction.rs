@@ -1,6 +1,6 @@
 use super::input::*;
-use super::transfer::*;
 use super::payload::Payload;
+use super::transfer::*;
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
@@ -63,8 +63,7 @@ impl Readable for NoExtra {
         Ok(NoExtra)
     }
 }
-impl Payload for NoExtra {
-}
+impl Payload for NoExtra {}
 
 /// Transaction, transaction maps old unspent tokens into the
 /// set of the new addresses.
@@ -183,7 +182,7 @@ impl<A, Extra> Transaction<A, Extra> {
     }
 
     pub fn total_input(&self) -> Result<Value, ValueError> {
-        Value::sum(self.inputs.iter().map(|input| input.value))
+        Value::sum(self.inputs.iter().map(|input| input.value()))
     }
 
     pub fn total_output(&self) -> Result<Value, ValueError> {
@@ -244,7 +243,7 @@ mod tests {
         transaction: Transaction<Address, Certificate>,
         fee: Value,
     ) -> TestResult {
-        let total_input = Value::sum(transaction.inputs.iter().map(|input| input.value)).unwrap();
+        let total_input = Value::sum(transaction.inputs.iter().map(|input| input.value())).unwrap();
         let total_output =
             Value::sum(transaction.outputs.iter().map(|output| output.value)).unwrap();
         let total_input_with_fee = total_output.checked_add(fee).unwrap();

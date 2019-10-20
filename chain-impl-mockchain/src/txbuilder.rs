@@ -401,7 +401,7 @@ mod tests {
         outputs: &ArbitraryOutputs,
         fee: Value,
     ) -> Result<Value, ValueError> {
-        let input_sum = Value::sum(inputs.0.iter().map(|input| input.value)).unwrap();
+        let input_sum = Value::sum(inputs.0.iter().map(|input| input.value())).unwrap();
         let output_sum = Value::sum(outputs.0.iter().map(|output| output.1)).unwrap();
         (input_sum - output_sum).and_then(|balance| balance - fee)
     }
@@ -476,11 +476,7 @@ mod tests {
     fn arbitrary_input(gen: &mut impl Gen, value: u64) -> Input {
         let mut input_ptr = [0; INPUT_PTR_SIZE];
         gen.fill_bytes(&mut input_ptr);
-        Input {
-            index_or_account: u8::arbitrary(gen),
-            value: Value(value),
-            input_ptr,
-        }
+        Input::new(u8::arbitrary(gen), Value(value), input_ptr)
     }
 
     fn split_value(gen: &mut impl Gen, value: u64, parts: u16) -> Vec<u64> {
@@ -545,7 +541,7 @@ mod tests {
         builder.add_input(&input);
         let fee_value = fee.calculate(&builder.tx).unwrap();
         let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
-        let expected_balance_res = input.value - fee_value;
+        let expected_balance_res = input.value() - fee_value;
         match (expected_balance_res, result) {
             (Ok(expected_balance), Ok((builder_balance, tx))) => {
                 let result = validate_builder_balance(expected_balance, builder_balance);

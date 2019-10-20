@@ -1,3 +1,1 @@
-
-pub trait Payload {
-}
+pub trait Payload {}

@@ -166,8 +166,7 @@ impl Readable for PoolManagement {
     }
 }
 
-impl Payload for PoolManagement {
-}
+impl Payload for PoolManagement {}
 
 impl property::Serialize for PoolRegistration {
     type Error = std::io::Error;
@@ -204,8 +203,7 @@ impl Readable for PoolRegistration {
     }
 }
 
-impl Payload for PoolRegistration {
-}
+impl Payload for PoolRegistration {}
 
 impl<T> PoolOwnersSigned<T> {
     pub fn serialize_in<F>(&self, serialize_inner: F, bb: ByteBuilder<Self>) -> ByteBuilder<Self>

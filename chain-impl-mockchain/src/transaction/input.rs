@@ -50,16 +50,15 @@ impl From<[u8; INPUT_PTR_SIZE]> for AccountIdentifier {
     }
 }
 
-
 /// Generalized input which have a specific input value, and
 /// either contains an account reference or a TransactionSignDataHash+index
 ///
 /// This uniquely refer to a specific source of value.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Input {
-    pub index_or_account: u8,
-    pub value: Value,
-    pub input_ptr: [u8; INPUT_PTR_SIZE],
+    index_or_account: u8,
+    value: Value,
+    input_ptr: [u8; INPUT_PTR_SIZE],
 }
 
 pub enum InputType {
@@ -79,6 +78,18 @@ pub enum InputEnum {
 }
 
 impl Input {
+    pub fn new(index_or_account: u8, value: Value, input_ptr: [u8; INPUT_PTR_SIZE]) -> Self {
+        Input {
+            index_or_account,
+            value,
+            input_ptr,
+        }
+    }
+
+    pub fn value(&self) -> Value {
+        self.value
+    }
+
     pub fn get_type(&self) -> InputType {
         if self.index_or_account == 0xff {
             InputType::Account
