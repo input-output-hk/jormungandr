@@ -34,8 +34,8 @@ Note:
 * On Linux and macOS: add `${HOME}/.cargo/bin` into your `PATH`.
 * Make sure the C compiler toolchain is installed and, on Unix (e.g. macOS),
   the compiler and linker executable `cc` is found in `PATH`.
-* On Linux with systemd: to enable logging to journald replace step 6
-  with `cargo install --path . --features systemd`.
+* On Linux with systemd: to enable logging to journald replace step 8
+  with `cargo install --path jormungandr --features systemd`.
 * The build requires the [Protocol Buffers][protobuf] compiler:
   - On Linux environments without glibc such as Alpine, the protobuf compiler
     `protoc` needs to be installed and found in `PATH` or otherwise
