@@ -37,21 +37,20 @@ pub fn build_owner_stake_delegation(stake_pool: PoolId) -> Certificate {
 pub fn build_stake_pool_retirement_cert(
     pool_id: PoolId,
     start_validity: u64,
-    owners_private_keys: &Vec<EitherEd25519SecretKey>,
+    //owners_private_keys: &Vec<EitherEd25519SecretKey>,
 ) -> Certificate {
     let retirement = PoolRetirement {
         pool_id: pool_id,
         retirement_time: DurationSeconds(start_validity).into(),
     };
 
+    /*
     let mut signatures = Vec::new();
     for (i, owner) in owners_private_keys.iter().enumerate() {
         let byte_array = retirement.serialize_in(ByteBuilder::new()).finalize();
         signatures.push((i as u16, owner.sign(&byte_array)));
     }
+    */
 
-    Certificate::PoolManagement(PoolManagement::Retirement(PoolOwnersSigned {
-        inner: retirement,
-        signatures: signatures,
-    }))
+    Certificate::PoolManagement(PoolManagement::Retirement(retirement))
 }

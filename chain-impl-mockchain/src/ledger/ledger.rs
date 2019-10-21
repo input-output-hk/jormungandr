@@ -492,22 +492,27 @@ impl Ledger {
             certificate::PoolManagement::Retirement(ret) => {
                 check::valid_pool_retirement_certificate(ret)?;
 
-                let reg = self.delegation.stake_pool_get(&ret.inner.pool_id)?;
+                let reg = self.delegation.stake_pool_get(&ret.pool_id)?;
+                /*
                 if ret.verify(reg, certificate::PoolRetirement::serialize_in)
                     == Verification::Failed
                 {
                     return Err(Error::CertificateInvalidSignature);
                 }
-                self.delegation = self.delegation.deregister_stake_pool(&ret.inner.pool_id)?;
+                */
+                self.delegation = self.delegation.deregister_stake_pool(&ret.pool_id)?;
                 Ok(self)
             }
             certificate::PoolManagement::Update(update) => {
                 check::valid_pool_update_certificate(update)?;
-                let reg = self.delegation.stake_pool_get(&update.inner.pool_id)?;
+
+                let reg = self.delegation.stake_pool_get(&update.pool_id)?;
+                /*
                 if update.verify(reg, certificate::PoolUpdate::serialize_in) == Verification::Failed
                 {
                     return Err(Error::CertificateInvalidSignature);
                 }
+                */
                 // TODO do things
                 Err(Error::PoolUpdateNotAllowedYet)
             }

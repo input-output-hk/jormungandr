@@ -60,8 +60,8 @@ pub struct PoolOwnersSigned<T> {
 
 #[derive(Debug, Clone)]
 pub enum PoolManagement {
-    Update(PoolOwnersSigned<PoolUpdate>),
-    Retirement(PoolOwnersSigned<PoolRetirement>),
+    Update(PoolUpdate),
+    Retirement(PoolRetirement),
 }
 
 impl PoolRegistration {
@@ -130,13 +130,13 @@ impl Readable for PoolRetirement {
 impl PoolManagement {
     pub fn serialize(&self) -> ByteArray<Self> {
         match self {
-            PoolManagement::Update(os) => ByteBuilder::new()
+            PoolManagement::Update(u) => ByteBuilder::new()
                 .u8(1)
-                .sub(|bb| os.serialize_in(|u, bbi| u.serialize_in(bbi), bb))
+                .sub(|bb| u.serialize_in(bb))
                 .finalize(),
-            PoolManagement::Retirement(os) => ByteBuilder::new()
+            PoolManagement::Retirement(u) => ByteBuilder::new()
                 .u8(2)
-                .sub(|bb| os.serialize_in(|u, bbi| u.serialize_in(bbi), bb))
+                .sub(|bb| u.serialize_in(bb))
                 .finalize(),
         }
     }
@@ -154,11 +154,11 @@ impl Readable for PoolManagement {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         match buf.get_u8()? {
             1 => {
-                let pos = PoolOwnersSigned::read(buf)?;
+                let pos = PoolUpdate::read(buf)?;
                 Ok(PoolManagement::Update(pos))
             }
             2 => {
-                let pos = PoolOwnersSigned::read(buf)?;
+                let pos = PoolRetirement::read(buf)?;
                 Ok(PoolManagement::Retirement(pos))
             }
             tag => Err(ReadError::UnknownTag(tag as u32)),
