@@ -74,11 +74,16 @@ impl AddressData {
     }
 
     pub fn account(discrimination: Discrimination) -> Self {
+        AddressData::account_with_spending_counter(discrimination,0u32)
+    }
+
+    pub fn account_with_spending_counter(discrimination: Discrimination, spending_counter: u32) -> Self {
         let (sk, pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
         let sk = EitherEd25519SecretKey::Extended(sk);
         let user_address = Address(discrimination.clone(), Kind::Account(pk.clone()));
-        AddressData::new(sk, Some(SpendingCounter::zero()), user_address)
+        AddressData::new(sk, Some(spending_counter.into()), user_address)
     }
+
 
     pub fn delegation(discrimination: Discrimination) -> Self {
         let (single_sk, single_pk) =
@@ -152,6 +157,13 @@ impl AddressData {
             Kind::Group(_, delegation_key) => delegation_key,
             Kind::Account(public_key) => public_key,
             _ => panic!("wrong kind of address to to get delegation key"),
+        }
+    }
+
+    pub fn confirm_transaction(&mut self) {
+        if let Some(spending_counter) = self.spending_counter {
+            let counter: u32 = spending_counter.into();
+            self.spending_counter = Some((counter + 1).into());
         }
     }
 

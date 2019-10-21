@@ -204,6 +204,20 @@ mod tests {
         }
     }
 
+    #[quickcheck]
+    pub fn account_sub_is_consistent(
+        init_value: Value,
+        sub_value: Value,
+        counter: u32,
+    ) -> TestResult {
+        let mut account_state = AccountState::new(init_value, ());
+        account_state.counter = counter.into();
+        TestResult::from_bool(
+            should_sub_fail(account_state.clone(), sub_value)
+                == account_state.sub(sub_value).is_err(),
+        )
+    }
+
     #[derive(Clone, Debug)]
     pub struct ArbitraryOperationChain(pub Vec<ArbitraryAccountStateOp>);
 
