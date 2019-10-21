@@ -46,6 +46,10 @@ impl JormungandrProcess {
             error_lines
         );
     }
+
+    pub fn rest_address(&self) -> String {
+        self.config.get_node_address()
+    }
 }
 
 impl Drop for JormungandrProcess {
