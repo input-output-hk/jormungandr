@@ -5,6 +5,13 @@ authors = [ "dev@iohk.io" ]
 edition = "2018"
 
 [dependencies]
+grpc            = "0.6.1"
+protobuf        = "~2"
+futures         = "~0.1"
+futures-cpupool = "~0.1"
+base64 = "0.10.1"
+bytes = "0.4"
+hex = "0.3.2"
 chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
@@ -55,7 +62,9 @@ custom_error = "1.7"
 ed25519-bip32 = "0.1"
 poldercast = { version = "*", features = [ "serde_derive" ] }
 
-
 [features]
 soak-test = []
 testnet = []
+
+[build-dependencies]
+protoc-rust = "2.0"
