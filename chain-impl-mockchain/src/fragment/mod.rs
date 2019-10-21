@@ -33,7 +33,8 @@ pub enum Fragment {
     OwnerStakeDelegation(AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>),
     StakeDelegation(AuthenticatedTransaction<Address, certificate::StakeDelegation>),
     PoolRegistration(AuthenticatedTransaction<Address, certificate::PoolRegistration>),
-    PoolManagement(AuthenticatedTransaction<Address, certificate::PoolManagement>),
+    PoolRetirement(AuthenticatedTransaction<Address, certificate::PoolRetirement>),
+    PoolUpdate(AuthenticatedTransaction<Address, certificate::PoolUpdate>),
     UpdateProposal(SignedUpdateProposal),
     UpdateVote(SignedUpdateVote),
 }
@@ -54,9 +55,10 @@ pub(super) enum FragmentTag {
     OwnerStakeDelegation = 3,
     StakeDelegation = 4,
     PoolRegistration = 5,
-    PoolManagement = 6,
-    UpdateProposal = 7,
-    UpdateVote = 8,
+    PoolRetirement = 6,
+    PoolUpdate = 7,
+    UpdateProposal = 8,
+    UpdateVote = 9,
 }
 
 impl FragmentTag {
@@ -68,9 +70,10 @@ impl FragmentTag {
             3 => Some(FragmentTag::OwnerStakeDelegation),
             4 => Some(FragmentTag::StakeDelegation),
             5 => Some(FragmentTag::PoolRegistration),
-            6 => Some(FragmentTag::PoolManagement),
-            7 => Some(FragmentTag::UpdateProposal),
-            8 => Some(FragmentTag::UpdateVote),
+            6 => Some(FragmentTag::PoolRetirement),
+            7 => Some(FragmentTag::PoolRetirement),
+            8 => Some(FragmentTag::UpdateProposal),
+            9 => Some(FragmentTag::UpdateVote),
             _ => None,
         }
     }
@@ -86,7 +89,8 @@ impl Fragment {
             Fragment::OwnerStakeDelegation(_) => FragmentTag::OwnerStakeDelegation,
             Fragment::StakeDelegation(_) => FragmentTag::StakeDelegation,
             Fragment::PoolRegistration(_) => FragmentTag::PoolRegistration,
-            Fragment::PoolManagement(_) => FragmentTag::PoolManagement,
+            Fragment::PoolRetirement(_) => FragmentTag::PoolRetirement,
+            Fragment::PoolUpdate(_) => FragmentTag::PoolUpdate,
             Fragment::UpdateProposal(_) => FragmentTag::UpdateProposal,
             Fragment::UpdateVote(_) => FragmentTag::UpdateVote,
         }
@@ -106,7 +110,8 @@ impl Fragment {
             Fragment::OwnerStakeDelegation(od) => od.serialize(&mut codec).unwrap(),
             Fragment::StakeDelegation(od) => od.serialize(&mut codec).unwrap(),
             Fragment::PoolRegistration(atx) => atx.serialize(&mut codec).unwrap(),
-            Fragment::PoolManagement(pm) => pm.serialize(&mut codec).unwrap(),
+            Fragment::PoolRetirement(pm) => pm.serialize(&mut codec).unwrap(),
+            Fragment::PoolUpdate(pm) => pm.serialize(&mut codec).unwrap(),
             Fragment::UpdateProposal(proposal) => proposal.serialize(&mut codec).unwrap(),
             Fragment::UpdateVote(vote) => vote.serialize(&mut codec).unwrap(),
         }
@@ -144,8 +149,11 @@ impl Readable for Fragment {
             Some(FragmentTag::PoolRegistration) => {
                 AuthenticatedTransaction::read(buf).map(Fragment::PoolRegistration)
             }
-            Some(FragmentTag::PoolManagement) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::PoolManagement)
+            Some(FragmentTag::PoolRetirement) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::PoolRetirement)
+            }
+            Some(FragmentTag::PoolUpdate) => {
+                AuthenticatedTransaction::read(buf).map(Fragment::PoolUpdate)
             }
             Some(FragmentTag::UpdateProposal) => {
                 SignedUpdateProposal::read(buf).map(Fragment::UpdateProposal)
@@ -188,15 +196,16 @@ mod test {
 
     impl Arbitrary for Fragment {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match g.next_u32() % 9 {
+            match g.next_u32() % 10 {
                 0 => Fragment::Initial(Arbitrary::arbitrary(g)),
                 1 => Fragment::OldUtxoDeclaration(Arbitrary::arbitrary(g)),
                 2 => Fragment::Transaction(Arbitrary::arbitrary(g)),
                 3 => Fragment::OwnerStakeDelegation(Arbitrary::arbitrary(g)),
                 4 => Fragment::StakeDelegation(Arbitrary::arbitrary(g)),
                 5 => Fragment::PoolRegistration(Arbitrary::arbitrary(g)),
-                6 => Fragment::PoolManagement(Arbitrary::arbitrary(g)),
-                7 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
+                6 => Fragment::PoolRetirement(Arbitrary::arbitrary(g)),
+                //7 => Fragment::PoolUpdate(Arbitrary::arbitrary(g)),
+                8 => Fragment::UpdateProposal(Arbitrary::arbitrary(g)),
                 _ => Fragment::UpdateVote(Arbitrary::arbitrary(g)),
             }
         }

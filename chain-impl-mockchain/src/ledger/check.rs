@@ -86,9 +86,7 @@ pub(super) fn valid_pool_registration_certificate(
     Ok(())
 }
 
-pub(super) fn valid_pool_owner_signature<T>(
-    pos: &certificate::PoolOwnersSigned<T>
-) -> LedgerCheck {
+pub(super) fn valid_pool_owner_signature<T>(pos: &certificate::PoolOwnersSigned<T>) -> LedgerCheck {
     if_cond_fail_with!(
         pos.signatures.len() == 0,
         Error::CertificateInvalidSignature
@@ -100,15 +98,11 @@ pub(super) fn valid_pool_owner_signature<T>(
     Ok(())
 }
 
-pub(super) fn valid_pool_retirement_certificate(
-    cert: &certificate::PoolRetirement,
-) -> LedgerCheck {
+pub(super) fn valid_pool_retirement_certificate(cert: &certificate::PoolRetirement) -> LedgerCheck {
     Ok(())
 }
 
-pub(super) fn valid_pool_update_certificate(
-    cert: &certificate::PoolUpdate,
-) -> LedgerCheck {
+pub(super) fn valid_pool_update_certificate(cert: &certificate::PoolUpdate) -> LedgerCheck {
     Ok(())
 }
 
@@ -225,8 +219,7 @@ mod tests {
         to_quickchek_result(result, is_valid)
     }
 
-
-/*
+    /*
     #[quickcheck]
     pub fn test_valid_pool_retirement_certificate(
         cert: certificate::PoolOwnersSigned<T>,
@@ -253,5 +246,4 @@ mod tests {
             (Err(_), false) => TestResult::passed(),
         }
     }
-
 }

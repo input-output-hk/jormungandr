@@ -263,7 +263,8 @@ impl TransactionFinalizer {
             None => self.tx.clone().replace_extra(tx::NoExtra).hash(),
             Some(c) => match c {
                 Certificate::PoolRegistration(c) => self.tx.clone().replace_extra(c.clone()).hash(),
-                Certificate::PoolManagement(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::PoolRetirement(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::PoolUpdate(c) => self.tx.clone().replace_extra(c.clone()).hash(),
                 Certificate::StakeDelegation(c) => self.tx.clone().replace_extra(c.clone()).hash(),
                 Certificate::OwnerStakeDelegation(c) => {
                     self.tx.clone().replace_extra(c.clone()).hash()
@@ -319,12 +320,19 @@ impl TransactionFinalizer {
                     };
                     Ok(Fragment::PoolRegistration(atx))
                 }
-                Certificate::PoolManagement(c) => {
+                Certificate::PoolRetirement(c) => {
                     let atx = tx::AuthenticatedTransaction {
                         transaction: tx.transaction.clone().replace_extra(c.clone()),
                         witnesses: tx.witnesses,
                     };
-                    Ok(Fragment::PoolManagement(atx))
+                    Ok(Fragment::PoolRetirement(atx))
+                }
+                Certificate::PoolUpdate(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::PoolUpdate(atx))
                 }
                 Certificate::StakeDelegation(c) => {
                     let atx = tx::AuthenticatedTransaction {
@@ -363,7 +371,9 @@ mod tests {
         fee: LinearFee,
     ) -> TestResult {
         let builder = builder_ios(&inputs, &outputs);
-        let fee_value = fee.calculate(&builder.tx.extra, &builder.tx.inputs, &builder.tx.outputs).unwrap();
+        let fee_value = fee
+            .calculate(&builder.tx.extra, &builder.tx.inputs, &builder.tx.outputs)
+            .unwrap();
 
         let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
 
@@ -539,7 +549,9 @@ mod tests {
     ) -> TestResult {
         let mut builder = TransactionBuilder::new_payload(certificate);
         builder.add_input(&input);
-        let fee_value = fee.calculate(&builder.tx.extra, &builder.tx.inputs, &builder.tx.outputs).unwrap();
+        let fee_value = fee
+            .calculate(&builder.tx.extra, &builder.tx.inputs, &builder.tx.outputs)
+            .unwrap();
         let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
         let expected_balance_res = input.value() - fee_value;
         match (expected_balance_res, result) {

@@ -1,16 +1,13 @@
 use crate::{
     account::Identifier,
     certificate::{
-        Certificate, OwnerStakeDelegation, PoolId, PoolManagement, PoolOwnersSigned,
+        Certificate, OwnerStakeDelegation, PoolId,
         PoolRegistration, PoolRetirement, StakeDelegation,
     },
-    key::EitherEd25519SecretKey,
-    legacy::UtxoDeclaration,
     testing::data::AddressData,
     transaction::AccountIdentifier,
 };
 use chain_time::units::DurationSeconds;
-use typed_bytes::ByteBuilder;
 
 pub fn build_stake_delegation_cert(
     stake_pool: &PoolRegistration,
@@ -52,5 +49,5 @@ pub fn build_stake_pool_retirement_cert(
     }
     */
 
-    Certificate::PoolManagement(PoolManagement::Retirement(retirement))
+    Certificate::PoolRetirement(retirement)
 }

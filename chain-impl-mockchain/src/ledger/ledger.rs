@@ -294,7 +294,12 @@ impl Ledger {
                     check::valid_block0_transaction_no_outputs(&tx)?;
                     ledger = ledger.apply_pool_registration(&tx.transaction.extra)?;
                 }
-                Fragment::PoolManagement(_) => {
+                Fragment::PoolRetirement(_) => {
+                    return Err(Error::Block0 {
+                        source: Block0Error::HasPoolManagement,
+                    });
+                }
+                Fragment::PoolUpdate(_) => {
                     return Err(Error::Block0 {
                         source: Block0Error::HasPoolManagement,
                     });
@@ -410,14 +415,22 @@ impl Ledger {
                 new_ledger =
                     new_ledger_.apply_pool_registration(&authenticated_tx.transaction.extra)?;
             }
-            Fragment::PoolManagement(authenticated_tx) => {
+            Fragment::PoolRetirement(authenticated_tx) => {
                 let (new_ledger_, _fee) = new_ledger.apply_transaction(
                     &fragment_id,
                     &authenticated_tx,
                     &ledger_params,
                 )?;
                 new_ledger =
-                    new_ledger_.apply_pool_management(&authenticated_tx.transaction.extra)?;
+                    new_ledger_.apply_pool_retirement(&authenticated_tx.transaction.extra)?;
+            }
+            Fragment::PoolUpdate(authenticated_tx) => {
+                let (new_ledger_, _fee) = new_ledger.apply_transaction(
+                    &fragment_id,
+                    &authenticated_tx,
+                    &ledger_params,
+                )?;
+                new_ledger = new_ledger_.apply_pool_update(&authenticated_tx.transaction.extra)?;
             }
             Fragment::UpdateProposal(update_proposal) => {
                 new_ledger = new_ledger.apply_update_proposal(
@@ -484,39 +497,35 @@ impl Ledger {
         Ok(self)
     }
 
-    pub fn apply_pool_management(
+    pub fn apply_pool_retirement(
         mut self,
-        auth_cert: &certificate::PoolManagement,
+        auth_cert: &certificate::PoolRetirement,
     ) -> Result<Self, Error> {
-        match auth_cert {
-            certificate::PoolManagement::Retirement(ret) => {
-                check::valid_pool_retirement_certificate(ret)?;
+        check::valid_pool_retirement_certificate(auth_cert)?;
 
-                let reg = self.delegation.stake_pool_get(&ret.pool_id)?;
-                /*
-                if ret.verify(reg, certificate::PoolRetirement::serialize_in)
-                    == Verification::Failed
-                {
-                    return Err(Error::CertificateInvalidSignature);
-                }
-                */
-                self.delegation = self.delegation.deregister_stake_pool(&ret.pool_id)?;
-                Ok(self)
-            }
-            certificate::PoolManagement::Update(update) => {
-                check::valid_pool_update_certificate(update)?;
-
-                let reg = self.delegation.stake_pool_get(&update.pool_id)?;
-                /*
-                if update.verify(reg, certificate::PoolUpdate::serialize_in) == Verification::Failed
-                {
-                    return Err(Error::CertificateInvalidSignature);
-                }
-                */
-                // TODO do things
-                Err(Error::PoolUpdateNotAllowedYet)
-            }
+        let reg = self.delegation.stake_pool_get(&auth_cert.pool_id)?;
+        /*
+        if ret.verify(reg, certificate::PoolRetirement::serialize_in)
+            == Verification::Failed
+        {
+            return Err(Error::CertificateInvalidSignature);
         }
+        */
+        self.delegation = self.delegation.deregister_stake_pool(&auth_cert.pool_id)?;
+        Ok(self)
+    }
+    pub fn apply_pool_update(mut self, auth_cert: &certificate::PoolUpdate) -> Result<Self, Error> {
+        check::valid_pool_update_certificate(auth_cert)?;
+
+        let reg = self.delegation.stake_pool_get(&auth_cert.pool_id)?;
+        /*
+        if update.verify(reg, certificate::PoolUpdate::serialize_in) == Verification::Failed
+        {
+            return Err(Error::CertificateInvalidSignature);
+        }
+        */
+        // TODO do things
+        Err(Error::PoolUpdateNotAllowedYet)
     }
 
     pub fn apply_stake_delegation(

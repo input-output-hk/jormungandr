@@ -58,12 +58,6 @@ pub struct PoolOwnersSigned<T> {
     pub signatures: IndexSignatures<T>,
 }
 
-#[derive(Debug, Clone)]
-pub enum PoolManagement {
-    Update(PoolUpdate),
-    Retirement(PoolRetirement),
-}
-
 impl PoolRegistration {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.u128(self.serial)
@@ -92,6 +86,10 @@ impl PoolUpdate {
             .bytes(self.updated_keys.vrf_public_key.as_ref())
             .bytes(self.updated_keys.kes_public_key.as_ref())
     }
+
+    pub fn serialize(&self) -> ByteArray<Self> {
+        self.serialize_in(ByteBuilder::new()).finalize()
+    }
 }
 
 impl Readable for PoolUpdate {
@@ -114,6 +112,10 @@ impl PoolRetirement {
         bb.bytes(self.pool_id.as_ref())
             .u64(self.retirement_time.into())
     }
+
+    pub fn serialize(&self) -> ByteArray<Self> {
+        self.serialize_in(ByteBuilder::new()).finalize()
+    }
 }
 
 impl Readable for PoolRetirement {
@@ -127,13 +129,14 @@ impl Readable for PoolRetirement {
     }
 }
 
-impl PoolManagement {
+/*
+impl PoolUpdate {
     pub fn serialize(&self) -> ByteArray<Self> {
-        match self {
-            PoolManagement::Update(u) => ByteBuilder::new()
-                .u8(1)
-                .sub(|bb| u.serialize_in(bb))
-                .finalize(),
+        ByteBuilder::new().serialize_in(bb).finalize()
+    }
+}
+
+impl PoolRetirement {
             PoolManagement::Retirement(u) => ByteBuilder::new()
                 .u8(2)
                 .sub(|bb| u.serialize_in(bb))
@@ -141,8 +144,9 @@ impl PoolManagement {
         }
     }
 }
+*/
 
-impl property::Serialize for PoolManagement {
+impl property::Serialize for PoolUpdate {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
         writer.write_all(self.serialize().as_slice())?;
@@ -150,23 +154,17 @@ impl property::Serialize for PoolManagement {
     }
 }
 
-impl Readable for PoolManagement {
-    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        match buf.get_u8()? {
-            1 => {
-                let pos = PoolUpdate::read(buf)?;
-                Ok(PoolManagement::Update(pos))
-            }
-            2 => {
-                let pos = PoolRetirement::read(buf)?;
-                Ok(PoolManagement::Retirement(pos))
-            }
-            tag => Err(ReadError::UnknownTag(tag as u32)),
-        }
+impl property::Serialize for PoolRetirement {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        writer.write_all(self.serialize().as_slice())?;
+        Ok(())
     }
 }
 
-impl Payload for PoolManagement {}
+impl Payload for PoolUpdate {}
+
+impl Payload for PoolRetirement {}
 
 impl property::Serialize for PoolRegistration {
     type Error = std::io::Error;

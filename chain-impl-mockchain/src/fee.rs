@@ -1,5 +1,6 @@
 use crate::certificate::{
-    Certificate, OwnerStakeDelegation, PoolManagement, PoolRegistration, StakeDelegation,
+    Certificate, OwnerStakeDelegation, PoolRegistration, PoolRetirement, PoolUpdate,
+    StakeDelegation,
 };
 use crate::transaction as tx;
 use crate::value::Value;
@@ -25,7 +26,12 @@ impl LinearFee {
 }
 
 pub trait FeeAlgorithm<P> {
-    fn calculate(&self, part: &P, inputs: &[tx::Input], output: &[tx::Output<Address>]) -> Option<Value>;
+    fn calculate(
+        &self,
+        part: &P,
+        inputs: &[tx::Input],
+        output: &[tx::Output<Address>],
+    ) -> Option<Value>;
 
     fn calculate_tx(&self, tx: &tx::Transaction<Address, P>) -> Option<Value> {
         self.calculate(&tx.extra, &tx.inputs, &tx.outputs)
@@ -33,13 +39,23 @@ pub trait FeeAlgorithm<P> {
 }
 
 impl<'a, P, FA: FeeAlgorithm<P>> FeeAlgorithm<P> for &'a FA {
-    fn calculate(&self, part: &P, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+    fn calculate(
+        &self,
+        part: &P,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
         (*self).calculate(part, inputs, outputs)
     }
 }
 
 impl FeeAlgorithm<tx::NoExtra> for LinearFee {
-    fn calculate(&self, _: &tx::NoExtra, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+    fn calculate(
+        &self,
+        _: &tx::NoExtra,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
         let msz = (inputs.len() as u64).checked_add(outputs.len() as u64)?;
         let fee = self
             .coefficient
@@ -50,7 +66,12 @@ impl FeeAlgorithm<tx::NoExtra> for LinearFee {
 }
 
 impl FeeAlgorithm<PoolRegistration> for LinearFee {
-    fn calculate(&self, _: &PoolRegistration, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+    fn calculate(
+        &self,
+        _: &PoolRegistration,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
         let msz = (inputs.len() as u64).checked_add(outputs.len() as u64)?;
         let fee = self
             .coefficient
@@ -61,8 +82,30 @@ impl FeeAlgorithm<PoolRegistration> for LinearFee {
     }
 }
 
-impl FeeAlgorithm<PoolManagement> for LinearFee {
-    fn calculate(&self, _: &PoolManagement, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+impl FeeAlgorithm<PoolUpdate> for LinearFee {
+    fn calculate(
+        &self,
+        _: &PoolUpdate,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
+        let msz = (inputs.len() as u64).checked_add(outputs.len() as u64)?;
+        let fee = self
+            .coefficient
+            .checked_mul(msz)?
+            .checked_add(self.constant)?
+            .checked_add(self.certificate)?;
+        Some(Value(fee))
+    }
+}
+
+impl FeeAlgorithm<PoolRetirement> for LinearFee {
+    fn calculate(
+        &self,
+        _: &PoolRetirement,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
         let msz = (inputs.len() as u64).checked_add(outputs.len() as u64)?;
         let fee = self
             .coefficient
@@ -74,7 +117,12 @@ impl FeeAlgorithm<PoolManagement> for LinearFee {
 }
 
 impl FeeAlgorithm<OwnerStakeDelegation> for LinearFee {
-    fn calculate(&self, _: &OwnerStakeDelegation, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+    fn calculate(
+        &self,
+        _: &OwnerStakeDelegation,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
         let msz = (inputs.len() as u64).checked_add(outputs.len() as u64)?;
         let fee = self
             .coefficient
@@ -86,7 +134,12 @@ impl FeeAlgorithm<OwnerStakeDelegation> for LinearFee {
 }
 
 impl FeeAlgorithm<StakeDelegation> for LinearFee {
-    fn calculate(&self, _: &StakeDelegation, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+    fn calculate(
+        &self,
+        _: &StakeDelegation,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
         let msz = (inputs.len() as u64).checked_add(outputs.len() as u64)?;
         let fee = self
             .coefficient
@@ -98,9 +151,15 @@ impl FeeAlgorithm<StakeDelegation> for LinearFee {
 }
 
 impl FeeAlgorithm<Certificate> for LinearFee {
-    fn calculate(&self, cert: &Certificate, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+    fn calculate(
+        &self,
+        cert: &Certificate,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
         match cert {
-            Certificate::PoolManagement(c) => self.calculate(c, inputs, outputs),
+            Certificate::PoolUpdate(c) => self.calculate(c, inputs, outputs),
+            Certificate::PoolRetirement(c) => self.calculate(c, inputs, outputs),
             Certificate::PoolRegistration(c) => self.calculate(c, inputs, outputs),
             Certificate::StakeDelegation(c) => self.calculate(c, inputs, outputs),
             Certificate::OwnerStakeDelegation(c) => self.calculate(c, inputs, outputs),
@@ -109,7 +168,12 @@ impl FeeAlgorithm<Certificate> for LinearFee {
 }
 
 impl FeeAlgorithm<Option<Certificate>> for LinearFee {
-    fn calculate(&self, cert: &Option<Certificate>, inputs: &[tx::Input], outputs: &[tx::Output<Address>]) -> Option<Value> {
+    fn calculate(
+        &self,
+        cert: &Option<Certificate>,
+        inputs: &[tx::Input],
+        outputs: &[tx::Output<Address>],
+    ) -> Option<Value> {
         match cert {
             None => self.calculate(&tx::NoExtra, inputs, outputs),
             Some(c) => self.calculate(c, inputs, outputs),
