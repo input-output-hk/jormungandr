@@ -7,6 +7,9 @@ use crate::common::{
 use chain_impl_mockchain::{
     certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
 };
+
+extern crate jcli;
+
 use jcli::jcli_app::utils::key_parser::parse_ed25519_secret_key;
 use std::path::PathBuf;
 use std::str::FromStr;
