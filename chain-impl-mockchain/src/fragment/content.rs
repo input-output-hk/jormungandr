@@ -1,17 +1,16 @@
 use crate::fragment::Fragment;
 use crate::key::Hash;
 use chain_core::property::Serialize;
+use std::slice;
 
 pub type BlockContentHash = Hash;
 pub type BlockContentSize = u32;
 
-#[derive(Debug, Clone)]
-pub struct Contents(pub(super) Box<[Fragment]>);
-
 /// Block Contents
 ///
 /// To create this structure, make a ContentsBuilder and use into()
-pub type BlockContents = Contents;
+#[derive(Debug, Clone)]
+pub struct Contents(pub(super) Box<[Fragment]>);
 
 impl PartialEq for Contents {
     fn eq(&self, rhs: &Self) -> bool {
@@ -33,6 +32,11 @@ impl Contents {
 
     #[inline]
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a Fragment> {
+        self.0.iter()
+    }
+
+    #[inline]
+    pub fn iter_slice<'a>(&'a self) -> slice::Iter<'a, Fragment> {
         self.0.iter()
     }
 

@@ -1,5 +1,7 @@
 use crate::{
-    block::{Block, BlockBuilder, HeaderHash, Contents},
+    block::Block,
+    fragment::Contents,
+    header::{BlockVersion, HeaderId, HeaderBuilderNew},
     date::BlockDate,
     ledger::ledger::Ledger,
     testing::arbitrary::update_proposal::UpdateProposalData,
@@ -77,13 +79,17 @@ pub fn ledger_adopt_settings_from_update_proposal(
 
 fn build_block(
     ledger: &Ledger,
-    block0_hash: HeaderHash,
+    block0_hash: HeaderId,
     date: BlockDate,
     block_signing_key: &SecretKey<Ed25519>,
 ) -> Block {
-    let mut block_builder = BlockBuilder::new(Contents::empty());
-    block_builder.chain_length(ledger.chain_length.next());
-    block_builder.parent(block0_hash);
-    block_builder.date(date.next_epoch());
-    block_builder.make_bft_block(block_signing_key)
+    let contents = Contents::empty();
+    let header = HeaderBuilderNew::new(BlockVersion::Ed25519Signed, &contents)
+        .set_parent(&block0_hash, ledger.chain_length.next())
+        .set_date(date.next_epoch())
+        .to_bft_builder()
+        .unwrap()
+        .sign_using(block_signing_key)
+        .generalize();
+    Block { header, contents }
 }

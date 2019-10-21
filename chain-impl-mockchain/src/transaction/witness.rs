@@ -1,6 +1,6 @@
 use super::transaction::*;
 use crate::account;
-use crate::block::HeaderHash;
+use crate::header::HeaderId;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
     EitherEd25519SecretKey, SpendingPublicKey, SpendingSignature,
@@ -56,7 +56,7 @@ impl std::fmt::Display for Witness {
 pub struct WitnessUtxoData(Vec<u8>);
 
 impl WitnessUtxoData {
-    pub fn new(block0: &HeaderHash, transaction_id: &TransactionSignDataHash) -> Self {
+    pub fn new(block0: &HeaderId, transaction_id: &TransactionSignDataHash) -> Self {
         let mut v = Vec::with_capacity(65);
         v.extend_from_slice(block0.as_ref());
         v.extend_from_slice(transaction_id.as_ref());
@@ -74,7 +74,7 @@ pub struct WitnessAccountData(Vec<u8>);
 
 impl WitnessAccountData {
     pub fn new(
-        block0: &HeaderHash,
+        block0: &HeaderId,
         transaction_id: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
     ) -> Self {
@@ -97,7 +97,7 @@ pub struct WitnessMultisigData(Vec<u8>);
 
 impl WitnessMultisigData {
     pub fn new(
-        block0: &HeaderHash,
+        block0: &HeaderId,
         transaction_id: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
     ) -> Self {
@@ -119,7 +119,7 @@ impl AsRef<[u8]> for WitnessMultisigData {
 impl Witness {
     /// Creates new `Witness` value.
     pub fn new_utxo(
-        block0: &HeaderHash,
+        block0: &HeaderId,
         sign_data_hash: &TransactionSignDataHash,
         secret_key: &EitherEd25519SecretKey,
     ) -> Self {
@@ -129,7 +129,7 @@ impl Witness {
     }
 
     pub fn new_account(
-        block0: &HeaderHash,
+        block0: &HeaderId,
         sign_data_hash: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
         secret_key: &EitherEd25519SecretKey,
@@ -143,7 +143,7 @@ impl Witness {
     pub fn verify_utxo(
         &self,
         public_key: &SpendingPublicKey,
-        block0: &HeaderHash,
+        block0: &HeaderId,
         sign_data_hash: &TransactionSignDataHash,
     ) -> Verification {
         match self {
@@ -260,7 +260,7 @@ pub mod test {
         /// ```
         /// \forall w=Witness(tx) => w.verifies(tx)
         /// ```
-        fn prop_witness_verifies_own_tx(sk: TransactionSigningKey, tx:TransactionSignDataHash, block0: HeaderHash) -> bool {
+        fn prop_witness_verifies_own_tx(sk: TransactionSigningKey, tx:TransactionSignDataHash, block0: HeaderId) -> bool {
             let pk = sk.0.to_public();
             let witness = Witness::new_utxo(&block0, &tx, &sk.0);
             witness.verify_utxo(&pk, &block0, &tx) == Verification::Success

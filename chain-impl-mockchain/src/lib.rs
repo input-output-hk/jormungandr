@@ -17,6 +17,7 @@ pub mod milli;
 // pub mod environment;
 pub mod error;
 pub mod fee;
+pub mod header;
 pub mod key;
 pub mod leadership;
 pub mod ledger;

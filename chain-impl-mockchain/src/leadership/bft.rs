@@ -14,6 +14,12 @@ pub type BftVerificationAlg = Ed25519;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeaderId(pub(crate) PublicKey<BftVerificationAlg>);
 
+impl From<[u8; 32]> for LeaderId {
+    fn from(v: [u8; 32]) -> LeaderId {
+        LeaderId(PublicKey::from_binary(&v[..]).expect("leader-id invalid format"))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BftRoundRobinIndex(u64);
 
@@ -48,7 +54,7 @@ impl LeadershipData {
 
     pub(crate) fn verify(&self, block_header: &Header) -> Verification {
         match &block_header.proof() {
-            Proof::Bft(bft_proof) => match self.get_leader_at(*block_header.block_date()) {
+            Proof::Bft(bft_proof) => match self.get_leader_at(block_header.block_date()) {
                 Ok(leader_at) => {
                     if bft_proof.leader_id != leader_at {
                         Verification::Failure(Error::new(ErrorKind::InvalidLeader))

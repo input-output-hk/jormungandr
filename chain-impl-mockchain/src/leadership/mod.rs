@@ -1,5 +1,5 @@
 use crate::{
-    block::{AnyBlockVersion, BlockDate, BlockVersion, ConsensusVersion, Header},
+    block::{BlockDate, BlockVersion, ConsensusVersion, Header},
     certificate::PoolId,
     date::Epoch,
     ledger::{Ledger, LedgerParameters},
@@ -18,6 +18,7 @@ pub enum ErrorKind {
     IncompatibleLeadershipMode,
     InvalidLeader,
     InvalidLeaderSignature,
+    InvalidLeaderProof,
     InvalidBlockMessage,
     InvalidStateUpdate,
 }
@@ -61,7 +62,7 @@ pub struct Leader {
 pub enum LeaderOutput {
     None,
     Bft(bft::LeaderId),
-    GenesisPraos(genesis::Witness),
+    GenesisPraos(PoolId, genesis::Witness),
 }
 
 pub enum LeadershipConsensus {
@@ -83,7 +84,7 @@ pub struct Leadership {
 
 impl LeadershipConsensus {
     #[inline]
-    fn verify_version(&self, block_version: AnyBlockVersion) -> Verification {
+    fn verify_version(&self, block_version: BlockVersion) -> Verification {
         match self {
             LeadershipConsensus::Bft(_) if block_version == BlockVersion::Ed25519Signed => {
                 Verification::Success
@@ -121,7 +122,10 @@ impl LeadershipConsensus {
                 None => Ok(LeaderOutput::None),
                 Some(ref gen_leader) => {
                     match genesis_praos.leader(&gen_leader.node_id, &gen_leader.vrf_key, date) {
-                        Ok(Some(witness)) => Ok(LeaderOutput::GenesisPraos(witness)),
+                        Ok(Some(witness)) => Ok(LeaderOutput::GenesisPraos(
+                            gen_leader.node_id.clone(),
+                            witness,
+                        )),
                         _ => Ok(LeaderOutput::None),
                     }
                 }
@@ -257,6 +261,7 @@ impl std::fmt::Display for ErrorKind {
             }
             ErrorKind::InvalidLeader => write!(f, "Block has unexpected block leader"),
             ErrorKind::InvalidLeaderSignature => write!(f, "Block signature is invalid"),
+            ErrorKind::InvalidLeaderProof => write!(f, "Block proof is invalid"),
             ErrorKind::InvalidBlockMessage => write!(f, "Invalid block message"),
             ErrorKind::InvalidStateUpdate => write!(f, "Invalid State Update"),
         }
