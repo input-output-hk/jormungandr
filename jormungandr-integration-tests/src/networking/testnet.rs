@@ -12,7 +12,7 @@ use crate::{
             self, certificate::wrapper::JCLICertificateWrapper,
             jcli_transaction_wrapper::JCLITransactionWrapper,
         },
-        jormungandr::starter::start_jormungandr_node_as_passive_with_log_verification,
+        jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
         process_utils, startup,
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
@@ -83,34 +83,36 @@ pub fn e2e_stake_pool() {
         },
     ];
 
-    let mut config = startup::ConfigurationBuilder::new()
+    let config = ConfigurationBuilder::new()
         .with_block_hash(block0_hash.to_string())
         .with_trusted_peers(trusted_peers)
         .with_public_address(public_address.to_string())
         .with_listen_address(listen_address.to_string())
         .build();
 
-    let jormungandr_rest_address = config.get_node_address();
-    let jormungandr =
-        start_jormungandr_node_as_passive_with_log_verification(&mut config, 300).unwrap();
+    let jormungandr = Starter::new()
+        .config(config)
+        .verify_by(StartupVerificationMode::Log)
+        .start()
+        .unwrap();
 
     //register stake pool
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
         "1234",
         &block0_hash,
-        &jormungandr_rest_address,
+        &jormungandr.rest_address(),
     );
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
         &block0_hash,
-        &jormungandr_rest_address,
+        &jormungandr.rest_address(),
     );
     retire_stake_pool(
         &stake_pool_id,
         &mut actor_account,
         &block0_hash,
-        &jormungandr_rest_address,
+        &jormungandr.rest_address(),
     );
 }

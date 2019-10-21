@@ -1,7 +1,10 @@
-use crate::common::configuration::{genesis_model::Fund, secret_model::SecretModel};
-use crate::common::file_utils;
-use crate::common::jcli_wrapper::certificate::wrapper::JCLICertificateWrapper;
-use crate::common::startup;
+use crate::common::{
+    configuration::{genesis_model::Fund, secret_model::SecretModel},
+    file_utils,
+    jcli_wrapper::certificate::wrapper::JCLICertificateWrapper,
+    jormungandr::{ConfigurationBuilder, Starter},
+    startup,
+};
 
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
@@ -42,7 +45,7 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
         &stake_key_file,
     );
 
-    let mut config = startup::ConfigurationBuilder::new()
+    let mut config = ConfigurationBuilder::new()
         .with_block0_consensus("genesis_praos")
         .with_bft_slots_ratio("0".to_owned())
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
@@ -63,7 +66,7 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
     let secret_file = SecretModel::serialize(&secret);
     config.secret_model = secret;
     config.secret_model_path = secret_file;
-    let _jormungandr = startup::start_jormungandr_node(&mut config);
+    let _jormungandr = Starter::new().config(config).start().unwrap();
 }
 
 #[test]
@@ -106,7 +109,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         &stake_key_file,
     );
 
-    let mut config = startup::ConfigurationBuilder::new()
+    let mut config = ConfigurationBuilder::new()
         .with_block0_consensus("genesis_praos")
         .with_bft_slots_ratio("0".to_owned())
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
@@ -127,5 +130,6 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     let secret_file = SecretModel::serialize(&secret);
     config.secret_model = secret;
     config.secret_model_path = secret_file;
-    let _jormungandr = startup::start_jormungandr_node(&mut config);
+
+    let _jormungandr = Starter::new().config(config).start().unwrap();
 }

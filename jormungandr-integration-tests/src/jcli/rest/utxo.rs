@@ -1,6 +1,8 @@
-use crate::common::configuration::genesis_model::Fund;
-use crate::common::jcli_wrapper;
-use crate::common::startup;
+use crate::common::{
+    configuration::genesis_model::Fund,
+    jcli_wrapper,
+    jormungandr::{starter::Starter, ConfigurationBuilder},
+};
 use chain_addr::Discrimination;
 
 #[test]
@@ -36,12 +38,13 @@ pub fn test_correct_utxos_are_read_from_node() {
         },
     ];
 
-    let mut config = startup::ConfigurationBuilder::new()
+    let config = ConfigurationBuilder::new()
         .with_funds(funds.clone())
         .build();
-    let jormungandr_rest_address = config.get_node_address();
-    let _jormungandr = startup::start_jormungandr_node(&mut config);
-    let mut content = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
+
+    let jormungandr = Starter::new().config(config).start().unwrap();
+
+    let mut content = jcli_wrapper::assert_rest_utxo_get(&jormungandr.rest_address());
 
     funds.sort_by_key(|fund| fund.address.clone());
     content.sort_by_key(|utxo| utxo.address().to_string());
