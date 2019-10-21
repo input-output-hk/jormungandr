@@ -4,14 +4,21 @@ use self::custom_error::custom_error;
 use crate::common::configuration::jormungandr_config::JormungandrConfig;
 use crate::common::file_utils;
 use crate::common::jcli_wrapper;
-use crate::common::jormungandr::{commands, process::JormungandrProcess};
+use crate::common::jormungandr::{
+    commands, logger::JormungandrLogger, process::JormungandrProcess,
+};
 
 use crate::common::process_assert;
 use crate::common::process_utils::{self, output_extensions::ProcessOutput, ProcessError};
-use std::process::{Child, Command, Output};
-
+use std::{
+    path::PathBuf,
+    process::{Child, Command, Output},
+    time::{Duration, Instant},
+};
 custom_error! {pub StartupError
-    JormungandrNotLaunched{ source: ProcessError } = "could not start jormungandr",
+    JormungandrNotLaunched{ source: ProcessError } = "could not start jormungandr due to process issue",
+    Timeout{ timeout: u64, log_content: String } = "node wasn't properly bootstrap after {timeout} s. Log file: {log_content}",
+    ErrorInLogsFound { log_content: String }= "error(s) in log detected: {log_content} "
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
@@ -39,7 +46,11 @@ fn try_to_start_jormungandr_node(
 
     match proces_start_result {
         Ok(_) => return Ok(process),
-        Err(e) => return Err(StartupError::JormungandrNotLaunched { source: e }),
+        Err(e) => {
+            let logger = JormungandrLogger::new(config.log_file_path.clone());
+            logger.print_error_and_invalid_logs();
+            return Err(StartupError::JormungandrNotLaunched { source: e });
+        }
     }
 }
 
@@ -184,4 +195,64 @@ pub fn assert_start_jormungandr_node_as_passive_fail(
     );
 
     process_assert::assert_process_failed_and_matches_message(command, &expected_msg);
+}
+
+pub fn start_jormungandr_node_as_passive_with_log_verification(
+    config: &JormungandrConfig,
+    timeout_value: u64,
+) -> Result<JormungandrProcess, StartupError> {
+    start_jormungandr_node_as_passive_with_timeout_and_log_checks(
+        &config,
+        timeout_value,
+        |logger: &JormungandrLogger| {
+            logger.message_logged_multiple_times("initial bootstrap completed", 2)
+        },
+        |logger: &JormungandrLogger| logger.contains_error(),
+    )
+}
+
+fn start_jormungandr_node_as_passive_with_timeout_and_log_checks<F: 'static, G: 'static>(
+    config: &JormungandrConfig,
+    timeout_value: u64,
+    stop_func: F,
+    error_func: G,
+) -> Result<JormungandrProcess, StartupError>
+where
+    F: Fn(&JormungandrLogger) -> bool,
+    G: Fn(&JormungandrLogger) -> bool,
+{
+    let mut command = commands::get_start_jormungandr_as_passive_node_command(
+        &config.node_config_path,
+        &config.genesis_block_hash,
+        &config.log_file_path,
+    );
+
+    println!("Starting node with configuration : {:?}", &config);
+    let process = command
+        .spawn()
+        .expect("failed to execute 'start jormungandr node'");
+
+    let logger = JormungandrLogger::new(config.log_file_path.clone());
+
+    let start = Instant::now();
+    let timeout = Duration::from_secs(timeout_value);
+
+    loop {
+        if start.elapsed() > timeout {
+            return Err(StartupError::Timeout {
+                timeout: timeout_value,
+                log_content: file_utils::read_file(&config.log_file_path),
+            });
+        }
+        if stop_func(&logger) {
+            return Ok(JormungandrProcess::from_config(process, config.clone()));
+        }
+        if error_func(&logger) {
+            logger.print_raw_log();
+            return Err(StartupError::ErrorInLogsFound {
+                log_content: file_utils::read_file(&config.log_file_path),
+            });
+        }
+        process_utils::sleep(5u64);
+    }
 }
