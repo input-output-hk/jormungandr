@@ -5,6 +5,7 @@ use super::{
 use crate::{
     blockcfg::{Fragment, Header},
     intercom::{BlockMsg, TransactionMsg},
+    log::stream::Log,
     settings::start::network::Configuration,
     utils::async_msg::MessageBox,
 };
@@ -26,13 +27,15 @@ pub fn process_block_announcements<S>(
     let sink = BlockAnnouncementProcessor::new(block_box, node_id, global_state.clone(), logger);
     let logger = sink.logger.clone();
     let stream_err_logger = logger.clone();
-    let stream = inbound.map_err(move |e| {
-        debug!(
-            stream_err_logger,
-            "block subscription stream failure";
-            "error" => ?e,
-        );
-    });
+    let stream = inbound
+        .map_err(move |e| {
+            debug!(
+                stream_err_logger,
+                "block subscription stream failure";
+                "error" => ?e,
+            );
+        })
+        .trace(logger.clone(), "received block announcement");
     global_state.spawn(sink.send_all(stream).map(move |_| {
         debug!(logger, "block subscription ended by the peer");
     }));
@@ -58,6 +61,7 @@ pub fn process_fragments<S>(
                 "error" => ?e,
             );
         })
+        .trace(logger.clone(), "received fragment")
         // TODO: chunkify the fragment stream non-greedily
         .map(|fragment| vec![fragment]);
     global_state.spawn(sink.send_all(stream).map(move |_| {
@@ -81,6 +85,7 @@ where
                     "error" => ?e,
                 );
             })
+            .trace(logger.clone(), "received gossip")
             .for_each(move |gossip| {
                 processor.process_item(gossip);
                 Ok(())
@@ -170,7 +175,6 @@ impl GossipProcessor {
     }
 
     pub fn process_item(&self, gossip: Gossip<NodeData>) {
-        trace!(self.logger, "received gossip: {:?}", gossip);
         let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip.into_nodes().partition(|node| {
             filter_gossip_node(node, &self.global_state.config)
                 || (node.id() == self.node_id && node.address().is_none())
@@ -181,7 +185,7 @@ impl GossipProcessor {
         if !self.global_state.peers.refresh_peer_on_gossip(self.node_id) {
             debug!(
                 self.logger,
-                "received gossip from node {} that is not in the peer map", self.node_id
+                "received gossip from node that is not in the peer map",
             );
         }
         self.global_state.topology.update(nodes);

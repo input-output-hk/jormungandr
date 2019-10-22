@@ -185,7 +185,13 @@ where
                 return Ok(Disconnect.into());
             }
         };
-        debug!(self.logger, "received block event"; "item" => ?event);
+        trace!(
+            self.logger,
+            "received block event";
+            "stream" => "block_events",
+            "direction" => "in",
+            "item" => ?event,
+        );
         match event {
             BlockEvent::Announce(header) => {
                 self.incoming_block_announcement = Some(header);
@@ -451,7 +457,13 @@ where
         }));
         match maybe_fragment {
             Some(fragment) => {
-                trace!(self.logger, "received fragment"; "item" => ?fragment);
+                trace!(
+                    self.logger,
+                    "received fragment";
+                    "stream" => "fragments",
+                    "direction" => "in",
+                    "item" => ?fragment,
+                );
                 self.incoming_fragments.push(fragment);
                 Ok(Continue.into())
             }
@@ -481,6 +493,13 @@ where
         }));
         match maybe_gossip {
             Some(gossip) => {
+                trace!(
+                    self.logger,
+                    "received gossip";
+                    "stream" => "gossip",
+                    "direction" => "in",
+                    "item" => ?gossip,
+                );
                 self.gossip_processor.process_item(gossip);
                 Ok(Continue.into())
             }
