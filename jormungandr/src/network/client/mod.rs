@@ -543,7 +543,10 @@ where
             // Drive any pending activity of the gRPC client until it is ready
             // to process another request.
             try_ready!(self.service.poll_ready().map_err(|e| {
-                info!(self.logger, "P2P client connection error: {:?}", e);
+                info!(
+                    self.logger,
+                    "client connection broke down";
+                    "error" => ?e);
             }));
 
             let mut progress = Progress(None);
@@ -585,7 +588,10 @@ where
             match progress {
                 Progress(None) => return Ok(Async::NotReady),
                 Progress(Some(Continue)) => continue,
-                Progress(Some(Disconnect)) => return Ok(().into()),
+                Progress(Some(Disconnect)) => {
+                    info!(self.logger, "disconnecting client");
+                    return Ok(().into());
+                }
             }
         }
     }

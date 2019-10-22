@@ -383,11 +383,7 @@ fn connect_and_propagate_with<F>(
                     warn!(client.logger(), "peer no longer in map after connecting");
                 }
             };
-            let after_logger = client.logger().clone();
-            client.then(move |_| {
-                info!(after_logger, "client P2P connection closed");
-                Ok(())
-            })
+            client
         });
     spawn_state.spawn(cf);
 }
