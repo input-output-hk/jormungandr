@@ -92,6 +92,7 @@ pub fn load_blockchain(
     use tokio::prelude::*;
 
     let mut blockchain = Blockchain::new(storage, block_cache_ttl);
+    let mut blockchain_clone = blockchain.clone();
 
     let main_branch: Branch = match blockchain.load_from_block0(block0.clone()).wait() {
         Err(error) => match error.kind() {
@@ -107,7 +108,6 @@ pub fn load_blockchain(
         .and_then(move |reference| {
             let time_frame = reference.time_frame();
             let current_known_leadership = reference.epoch_leadership_schedule();
-            let current_known_state = reference.ledger();
 
             let slot = time_frame
                 .slot_at(&std::time::SystemTime::now())
@@ -117,13 +117,15 @@ pub fn load_blockchain(
                 .era()
                 .from_slot_to_era(slot)
                 .unwrap();
-            let new_schedule = Leadership::new(date.epoch.0, &current_known_state);
+
+            let (new_schedule, new_parameters, time_frame, _) =
+                blockchain_clone.new_epoch_leadership_from(date.epoch.0, reference);
 
             epoch_event
                 .send(NewEpochToSchedule {
-                    new_schedule: Arc::new(new_schedule),
-                    new_parameters: reference.epoch_ledger_parameters().clone(),
-                    time_frame: reference.time_frame().as_ref().clone(),
+                    new_schedule,
+                    new_parameters,
+                    time_frame: (*time_frame).clone(),
                 })
                 .into_future()
         })
