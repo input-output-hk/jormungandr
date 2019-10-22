@@ -1,11 +1,14 @@
-use crate::common::configuration::{
-    genesis_model::{Fund, GenesisYaml, Initial, LinearFees},
-    jormungandr_config::JormungandrConfig,
-    node_config_model::{Log, NodeConfig, TrustedPeer},
-    secret_model::SecretModel,
+use crate::common::{
+    configuration::{
+        genesis_model::{Fund, GenesisYaml, Initial, LinearFees},
+        jormungandr_config::JormungandrConfig,
+        node_config_model::{Log, NodeConfig, TrustedPeer},
+        secret_model::SecretModel,
+    },
+    file_utils, jcli_wrapper,
+    startup::build_genesis_block,
 };
-use crate::common::file_utils;
-use crate::common::jcli_wrapper;
+
 pub struct ConfigurationBuilder {
     funds: Vec<Fund>,
     trusted_peers: Option<Vec<TrustedPeer>>,
@@ -178,7 +181,7 @@ impl ConfigurationBuilder {
         genesis_model.blockchain_configuration.linear_fees = self.linear_fees.clone();
         let certs = self.certs.iter().cloned().map(Initial::Cert);
         genesis_model.initial.extend(certs);
-        let path_to_output_block = super::build_genesis_block(&genesis_model);
+        let path_to_output_block = build_genesis_block(&genesis_model);
 
         let mut config = JormungandrConfig::from(genesis_model, node_config);
 

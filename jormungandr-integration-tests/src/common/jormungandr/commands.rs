@@ -8,23 +8,6 @@ fn set_json_logger(command: &mut Command) {
     command.arg("--log-format").arg("json");
 }
 
-pub fn get_start_jormungandr_node_command(
-    config_path: &PathBuf,
-    genesis_block_path: &PathBuf,
-    log_file_path: &PathBuf,
-) -> Command {
-    let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
-    set_json_logger(&mut command);
-    command
-        .arg("--config")
-        .arg(config_path.as_os_str())
-        .arg("--genesis-block")
-        .arg(genesis_block_path.as_os_str())
-        .stderr(get_stdio_from_log_file(&log_file_path));
-    println!("Running start jormungandr command: {:?}", &command);
-    command
-}
-
 pub fn get_start_jormungandr_as_leader_node_command(
     config_path: &PathBuf,
     genesis_block_path: &PathBuf,
@@ -40,23 +23,6 @@ pub fn get_start_jormungandr_as_leader_node_command(
         .arg(config_path.as_os_str())
         .arg("--genesis-block")
         .arg(genesis_block_path.as_os_str())
-        .stderr(get_stdio_from_log_file(&log_file_path));
-    println!("Running start jormungandr command: {:?}", &command);
-    command
-}
-
-pub fn get_start_jormungandr_as_slave_node_command(
-    config_path: &PathBuf,
-    genesis_block_hash: &str,
-    log_file_path: &PathBuf,
-) -> Command {
-    let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
-    set_json_logger(&mut command);
-    command
-        .arg("--config")
-        .arg(config_path.as_os_str())
-        .arg("--genesis-block-hash")
-        .arg(&genesis_block_hash)
         .stderr(get_stdio_from_log_file(&log_file_path));
     println!("Running start jormungandr command: {:?}", &command);
     command

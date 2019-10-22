@@ -4,11 +4,8 @@ use crate::common::{
     file_assert, file_utils, process_assert,
     process_utils::{self, output_extensions::ProcessOutput},
 };
-
-use chain_crypto::{Ed25519, SecretKey};
 use chain_impl_mockchain::{
-    certificate::PoolId, key::EitherEd25519SecretKey,
-    testing::builders::cert_builder::build_stake_pool_retirement_cert,
+    certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
 };
 use jcli::jcli_app::utils::key_parser::parse_ed25519_secret_key;
 use std::path::PathBuf;

@@ -1,14 +1,12 @@
-use crate::common::configuration::node_config_model::NodeConfig;
-use crate::common::jcli_wrapper;
-use crate::common::process_assert;
-use crate::common::startup;
+use crate::common::{
+    configuration::node_config_model::NodeConfig, jcli_wrapper, jormungandr::starter::Starter,
+    process_assert,
+};
 
 #[test]
 pub fn test_correct_id_is_returned_for_block_tip_if_only_genesis_block_exists() {
-    let mut config = startup::ConfigurationBuilder::new().build();
-    let jormungandr_rest_address = config.get_node_address();
-    let _jormungandr = startup::start_jormungandr_node(&mut config);
-    let block_id = jcli_wrapper::assert_rest_get_block_tip(&jormungandr_rest_address);
+    let jormungandr = Starter::new().start().unwrap();
+    let block_id = jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
 
     assert_ne!(&block_id, "", "empty block hash");
 }

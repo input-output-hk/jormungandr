@@ -1,26 +1,15 @@
-mod configuration_builder;
-
-use crate::common::configuration::genesis_model::GenesisYaml;
-
-use crate::common::data::{
-    address::{Account, AddressDataProvider, Delegation, Utxo},
-    keys::KeyPair,
+use crate::common::{
+    configuration::genesis_model::GenesisYaml,
+    data::{
+        address::{Account, AddressDataProvider, Delegation, Utxo},
+        keys::KeyPair,
+    },
+    file_utils, jcli_wrapper,
 };
 
-use crate::common::file_utils;
-use crate::common::jormungandr::starter;
+use chain_addr::Discrimination;
 use jormungandr_lib::interfaces::UTxOInfo;
 use std::path::PathBuf;
-
-use crate::common::jcli_wrapper;
-use chain_addr::Discrimination;
-
-pub use self::configuration_builder::ConfigurationBuilder;
-
-pub use self::starter::{
-    assert_start_jormungandr_node_as_passive_fail, start_jormungandr_node,
-    start_jormungandr_node_as_leader, start_jormungandr_node_as_passive,
-};
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
     let path_to_output_block = build_genesis_block(&genesis_yaml);
@@ -105,8 +94,4 @@ pub fn get_utxo_for_address<T: AddressDataProvider>(
             &utxo_address.get_address(),
             &utxo_address.get_address_type()
         ))
-}
-
-pub fn assert_node_is_up(address: &str) {
-    jcli_wrapper::assert_rest_stats(&address);
 }
