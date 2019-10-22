@@ -2,7 +2,7 @@ use crate::{
     scenario::{settings::Settings, Blockchain, ContextChaCha, ErrorKind, Result, Topology},
     style, MemPoolCheck, Node, NodeBlock0, NodeController, Wallet,
 };
-use chain_impl_mockchain::block::HeaderHash;
+use chain_impl_mockchain::header::HeaderId;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::interfaces::Value;
 use std::{
@@ -29,7 +29,7 @@ pub struct Controller {
     working_directory: PathBuf,
 
     block0_file: PathBuf,
-    block0_hash: HeaderHash,
+    block0_hash: HeaderId,
 
     progress_bar: Arc<MultiProgress>,
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,

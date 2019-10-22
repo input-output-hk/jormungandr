@@ -8,12 +8,12 @@ pub mod v0;
 pub use self::server::{Error, Server};
 
 use actix_web::dev::Resource;
+use actix_web::error::{Error as ActixError, ErrorServiceUnavailable};
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
-use futures::{future, Future};
+use futures::{Future, IntoFuture};
 use slog::Logger;
-use std::convert::Infallible;
-use tokio::sync::lock::Lock;
+use std::sync::{Arc, RwLock};
 
 use crate::blockchain::{Blockchain, Tip};
 use crate::fragment::Logs;
@@ -27,6 +27,65 @@ use crate::utils::async_msg::MessageBox;
 
 #[derive(Clone)]
 pub struct Context {
+    full: Arc<RwLock<Option<Arc<FullContext>>>>,
+    server: Arc<RwLock<Option<Arc<Server>>>>,
+    node_state: Arc<RwLock<NodeState>>,
+}
+
+impl Context {
+    pub fn new() -> Self {
+        Context {
+            full: Default::default(),
+            server: Default::default(),
+            node_state: Arc::new(RwLock::new(NodeState::StartingRestServer)),
+        }
+    }
+
+    pub fn set_full(&self, full_context: FullContext) {
+        *self.full.write().expect("Context state poisoned") = Some(Arc::new(full_context));
+    }
+
+    pub fn try_full_fut(&self) -> impl Future<Item = Arc<FullContext>, Error = ActixError> {
+        self.try_full().into_future()
+    }
+
+    pub fn try_full(&self) -> Result<Arc<FullContext>, ActixError> {
+        self.full
+            .read()
+            .expect("Context state poisoned")
+            .clone()
+            .ok_or_else(|| ErrorServiceUnavailable("Full REST context not available yet"))
+    }
+
+    fn set_server(&self, server: Server) {
+        *self.server.write().expect("Context server poisoned") = Some(Arc::new(server));
+    }
+
+    pub fn server(&self) -> Arc<Server> {
+        self.server
+            .read()
+            .expect("Context server poisoned")
+            .clone()
+            .expect("Context server not set")
+    }
+
+    pub fn set_node_state(&self, node_state: NodeState) {
+        *self
+            .node_state
+            .write()
+            .expect("Context node state poisoned") = node_state;
+    }
+
+    pub fn node_state(&self) -> NodeState {
+        self.node_state
+            .read()
+            .expect("Context node state poisoned")
+            .clone()
+    }
+}
+
+#[derive(Clone)]
+pub struct FullContext {
     pub logger: Logger,
     pub stats_counter: StatsCounter,
     pub blockchain: Blockchain,
@@ -35,15 +94,27 @@ pub struct Context {
     pub transaction_task: MessageBox<TransactionMsg>,
     pub logs: Logs,
     pub leadership_logs: LeadershipLogs,
-    pub server: Lock<Option<Server>>,
     pub enclave: Enclave,
     pub explorer: Option<crate::explorer::Explorer>,
 }
 
-pub fn start_rest_server(config: &Rest, mut context: Context) -> Result<Server, ConfigError> {
+#[derive(Clone, Debug, Serialize)]
+pub enum NodeState {
+    StartingRestServer,
+    PreparingStorage,
+    PreparingBlock0,
+    Bootstrapping,
+    StartingWorkers,
+    Running,
+}
+
+pub fn start_rest_server(
+    config: &Rest,
+    explorer_enabled: bool,
+    context: &Context,
+) -> Result<(), ConfigError> {
     let app_context = context.clone();
     let cors_cfg = config.cors.clone();
-    let explorer_enabled = app_context.explorer.is_some();
     let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
         let mut apps = vec![build_app(
             app_context.clone(),
@@ -63,11 +134,8 @@ pub fn start_rest_server(config: &Rest, mut context: Context) -> Result<Server, 
 
         apps
     })?;
-    future::poll_fn(|| Ok(context.server.poll_lock()))
-        .wait()
-        .unwrap_or_else(|e: Infallible| match e {})
-        .replace(server.clone());
-    Ok(server)
+    context.set_server(server);
+    Ok(())
 }
 
 fn build_app<S, P, R>(state: S, prefix: P, resources: R, cors_cfg: &Option<CorsConfig>) -> App<S>

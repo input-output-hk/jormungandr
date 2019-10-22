@@ -182,7 +182,7 @@ impl ExplorerBlock {
             id,
             transactions,
             chain_length,
-            date: *block.header.block_date(),
+            date: block.header.block_date(),
             parent_hash: block.parent_id(),
             producer,
         }

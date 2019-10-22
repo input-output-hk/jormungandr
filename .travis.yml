@@ -94,6 +94,7 @@ branches:
     # release tags
     - /^v\d+\.\d+\.\d+.*$/
     - master
+    - master-next
 
 notifications:
   email:

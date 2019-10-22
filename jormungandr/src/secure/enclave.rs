@@ -1,5 +1,7 @@
-use crate::blockcfg::{BlockBuilder, BlockDate};
-use chain_impl_mockchain::block::Block;
+use crate::blockcfg::{
+    BlockDate, HeaderBft, HeaderBftBuilder, HeaderGenesisPraos, HeaderGenesisPraosBuilder,
+    HeaderSetConsensusSignature, SlotId,
+};
 use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::collections::BTreeMap;
@@ -62,7 +64,7 @@ impl Enclave {
         &self,
         leadership: &Leadership,
         leader_id: &LeaderId,
-        slot: u32,
+        slot: SlotId,
     ) -> Option<LeaderEvent> {
         let leaders = self.leaders.read().unwrap();
         if leaders.len() == 0 {
@@ -117,30 +119,35 @@ impl Enclave {
         output
     }
 
-    pub fn create_block(&self, block: BlockBuilder, event: LeaderEvent) -> Option<Block> {
+    pub fn create_header_genesis_praos(
+        &self,
+        header_builder: HeaderGenesisPraosBuilder<HeaderSetConsensusSignature>,
+        id: LeaderId,
+    ) -> Option<HeaderGenesisPraos> {
         let leaders = self.leaders.read().unwrap();
-        let leader = leaders.get(&event.id)?;
-        let block = match event.output {
-            LeaderOutput::None => unreachable!("Output::None are supposed to be filtered out"),
-            LeaderOutput::Bft(_) => {
-                if let Some(ref leader) = &leader.bft_leader {
-                    block.make_bft_block(&leader.sig_key)
-                } else {
-                    unreachable!("the leader was elected for BFT signing block, we expect it has the signing key")
-                }
-            }
-            LeaderOutput::GenesisPraos(witness) => {
-                if let Some(genesis_leader) = &leader.genesis_leader {
-                    block.make_genesis_praos_block(
-                        &genesis_leader.node_id,
-                        &genesis_leader.sig_key,
-                        witness,
-                    )
-                } else {
-                    unreachable!("the leader was elected for Genesis Praos signing block, we expect it has the signing key")
-                }
-            }
-        };
-        Some(block)
+        let leader = leaders.get(&id)?;
+        if let Some(genesis_leader) = &leader.genesis_leader {
+            let data = header_builder.get_authenticated_data();
+            let signature = genesis_leader.sig_key.sign_slice(data);
+            Some(header_builder.set_signature(signature.into()))
+        } else {
+            None
+        }
+    }
+
+    pub fn create_header_bft(
+        &self,
+        header_builder: HeaderBftBuilder<HeaderSetConsensusSignature>,
+        id: LeaderId,
+    ) -> Option<HeaderBft> {
+        let leaders = self.leaders.read().unwrap();
+        let leader = leaders.get(&id)?;
+        if let Some(ref leader) = &leader.bft_leader {
+            let data = header_builder.get_authenticated_data();
+            let signature = leader.sig_key.sign_slice(data);
+            Some(header_builder.set_signature(signature.into()))
+        } else {
+            None
+        }
     }
 }

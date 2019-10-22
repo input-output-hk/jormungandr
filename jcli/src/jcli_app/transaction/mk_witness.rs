@@ -3,7 +3,7 @@ use chain_core::property::Serialize as _;
 use chain_crypto::{AsymmetricKey, Ed25519Bip32, SecretKey};
 use chain_impl_mockchain::{
     account::SpendingCounter,
-    block::HeaderHash,
+    header::HeaderId,
     transaction::{TransactionSignDataHash, Witness},
 };
 use jcli_app::transaction::Error;
@@ -32,7 +32,7 @@ pub struct MkWitness {
 
     /// the hash of the block0, the first block of the blockchain
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
-    pub genesis_block_hash: HeaderHash,
+    pub genesis_block_hash: HeaderId,
 
     /// value is mandatory is `--type=account' It is the counter for
     /// every time the account is being utilized.

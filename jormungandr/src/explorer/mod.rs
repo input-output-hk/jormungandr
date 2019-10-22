@@ -233,7 +233,7 @@ impl ExplorerDB {
         let discrimination = self.blockchain_config.discrimination.clone();
 
         multiverse
-            .get(*previous_block)
+            .get(previous_block)
             .map_err(|_: Infallible| unreachable!())
             .and_then(move |maybe_previous_state| match maybe_previous_state {
                 Some(state) => {

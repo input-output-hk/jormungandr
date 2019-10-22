@@ -56,6 +56,7 @@ extern crate tokio;
 use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::Blockchain,
+    rest::NodeState,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -65,7 +66,6 @@ use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::thread;
 use std::time::Duration;
-use tokio::sync::lock::Lock;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -103,12 +103,17 @@ pub struct BootstrappedNode {
     new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,
     logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
+    rest_context: Option<rest::Context>,
 }
 
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
+    if let Some(context) = bootstrapped_node.rest_context.as_ref() {
+        context.set_node_state(NodeState::StartingWorkers)
+    }
+
     let mut services = Services::new(bootstrapped_node.logger.clone());
 
     // initialize the network propagation channel
@@ -264,13 +269,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    let rest_server = match bootstrapped_node.settings.rest {
-        Some(rest) => {
+    let rest_server = match bootstrapped_node.rest_context {
+        Some(rest_context) => {
             let logger = bootstrapped_node
                 .logger
                 .new(o!(::log::KEY_TASK => "rest"))
                 .into_erased();
-            let context = rest::Context {
+            let full_context = rest::FullContext {
                 logger,
                 stats_counter,
                 blockchain,
@@ -279,11 +284,12 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 transaction_task: fragment_msgbox,
                 logs: pool_logs,
                 leadership_logs,
-                server: Lock::new(None),
                 enclave,
                 explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
             };
-            Some(rest::start_rest_server(&rest, context)?)
+            rest_context.set_full(full_context);
+            rest_context.set_node_state(NodeState::Running);
+            Some(rest_context.server())
         }
         None => None,
     };
@@ -315,7 +321,13 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block0,
         storage,
         logger,
+        rest_context,
     } = initialized_node;
+
+    if let Some(context) = rest_context.as_ref() {
+        context.set_node_state(NodeState::Bootstrapping)
+    }
+
     let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
     let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
@@ -366,6 +378,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         new_epoch_notifier,
         logger,
         explorer_db,
+        rest_context,
     })
 }
 
@@ -374,6 +387,7 @@ pub struct InitializedNode {
     pub block0: blockcfg::Block,
     pub storage: start_up::NodeStorage,
     pub logger: Logger,
+    pub rest_context: Option<rest::Context>,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -399,10 +413,26 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
     let settings = raw_settings.try_into_settings(&init_logger)?;
+
+    let rest_context = match &settings.rest {
+        Some(rest) => {
+            let context = rest::Context::new();
+            rest::start_rest_server(rest, settings.explorer, &context)?;
+            Some(context)
+        }
+        None => None,
+    };
+
+    if let Some(context) = rest_context.as_ref() {
+        context.set_node_state(NodeState::PreparingStorage)
+    }
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
 
+    if let Some(context) = rest_context.as_ref() {
+        context.set_node_state(NodeState::PreparingBlock0)
+    }
     let block0 = start_up::prepare_block_0(
         &settings,
         &storage,
@@ -414,6 +444,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         block0,
         storage,
         logger,
+        rest_context,
     })
 }
 

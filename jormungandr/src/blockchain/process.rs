@@ -231,7 +231,7 @@ pub fn process_new_ref(
     tip.clone()
         .get_ref()
         .and_then(move |tip_ref| {
-            if &tip_ref.hash() == candidate.block_parent_hash() {
+            if tip_ref.hash() == candidate.block_parent_hash() {
                 info!(logger, "update current branch tip");
                 A(A(tip.update_ref(candidate).map(|_| true)))
             } else {

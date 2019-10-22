@@ -1,18 +1,22 @@
 pub use network_core::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
-    block::{
-        Block, BlockBuilder, BlockDate, ChainLength, ConsensusVersion, Contents, ContentsBuilder,
-        Epoch, Header, HeaderContentEvalContext, HeaderHash, SlotId,
-    },
+    block::{Block, ConsensusVersion},
     config::{self, Block0Date, ConfigParam},
-    fragment::{ConfigParams, Fragment, FragmentId},
+    fragment::{ConfigParams, Contents, ContentsBuilder, Fragment, FragmentId},
+    header::{
+        BlockDate, BlockVersion, ChainLength, Epoch, Header, HeaderBft, HeaderBftBuilder,
+        HeaderBuilder, HeaderBuilderNew, HeaderContentEvalContext, HeaderGenesisPraos,
+        HeaderGenesisPraosBuilder, HeaderId, HeaderSetConsensusSignature, SlotId,
+    },
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
     multiverse::Multiverse,
     value::{Value, ValueError},
 };
 use std::time::{Duration, SystemTime};
+
+pub type HeaderHash = HeaderId;
 
 custom_error! {pub Block0Error
     CannotParseEntity{source: config::Error} = "Block0 Initial settings: {source}",

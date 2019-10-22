@@ -20,10 +20,13 @@ pub fn graphiql(_context: State<Context>) -> impl Responder {
 
 pub fn graphql(context: State<Context>, data: Json<GraphQLRequest>) -> ActixFuture!() {
     context
-        .explorer
-        .clone()
-        .ok_or(ErrorServiceUnavailable("Explorer not enabled"))
-        .into_future()
+        .try_full_fut()
+        .and_then(|context| {
+            context
+                .explorer
+                .clone()
+                .ok_or(ErrorServiceUnavailable("Explorer not enabled"))
+        })
         .and_then(move |explorer| {
             // Run the query in a threadpool, as Juniper is synchronous
             actix_threadpool::run(move || {

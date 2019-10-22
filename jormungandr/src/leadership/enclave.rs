@@ -1,11 +1,15 @@
 use crate::{
-    blockcfg::{Block, BlockBuilder, Leadership},
+    blockcfg::{
+        HeaderBft, HeaderBftBuilder, HeaderGenesisPraos, HeaderGenesisPraosBuilder,
+        HeaderSetConsensusSignature, Leadership,
+    },
     secure::enclave::Enclave as SecureEnclave,
 };
 use std::sync::Arc;
 use tokio::{prelude::*, sync::lock::Lock};
 
 pub use crate::secure::enclave::LeaderEvent;
+use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 
 error_chain! {}
 
@@ -51,15 +55,36 @@ impl Enclave {
     ///
     /// TODO: for now we are querying the whole with the block builder but on the long
     ///       run we will only need the block signing data.
-    pub fn query_block_finalize(
+    pub fn query_header_bft_finalize(
         &self,
-        block_builder: BlockBuilder,
-        event: LeaderEvent,
-    ) -> impl Future<Item = Block, Error = Error> {
+        block_builder: HeaderBftBuilder<HeaderSetConsensusSignature>,
+        id: LeaderId,
+    ) -> impl Future<Item = HeaderBft, Error = Error> {
         let mut inner = self.inner.clone();
 
         future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
-            if let Some(block) = guard.create_block(block_builder, event) {
+            if let Some(block) = guard.create_header_bft(block_builder, id) {
+                future::ok(block)
+            } else {
+                future::err("Leader is not in the enclave to sign the block".into())
+            }
+        })
+    }
+
+    /// ask the leader associated to the `LeaderEvent` to finalize the given
+    /// block by providing the proof.
+    ///
+    /// TODO: for now we are querying the whole with the block builder but on the long
+    ///       run we will only need the block signing data.
+    pub fn query_header_genesis_praos_finalize(
+        &self,
+        block_builder: HeaderGenesisPraosBuilder<HeaderSetConsensusSignature>,
+        id: LeaderId,
+    ) -> impl Future<Item = HeaderGenesisPraos, Error = Error> {
+        let mut inner = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
+            if let Some(block) = guard.create_header_genesis_praos(block_builder, id) {
                 future::ok(block)
             } else {
                 future::err("Leader is not in the enclave to sign the block".into())
