@@ -4,6 +4,7 @@ mod transaction;
 mod transfer;
 mod utxo;
 mod witness;
+mod builder;
 
 use chain_addr::Address;
 use chain_core::mempack::{read_vec, ReadBuf, ReadError, Readable};
