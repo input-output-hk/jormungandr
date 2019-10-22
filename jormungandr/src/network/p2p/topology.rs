@@ -254,18 +254,13 @@ impl P2pTopology {
 
     fn update_tree(&self, new_nodes: BTreeMap<poldercast::Id, poldercast::NodeData>) {
         // Poldercast API should be better than this
-        debug!(self.logger, "updating P2P local topology");
+        debug!(self.logger, "updating P2P topology");
         self.lock.write().unwrap().update(new_nodes)
     }
 
     /// this is the function to utilise in order to select gossips to share
     /// with a given node
     pub fn select_gossips(&self, gossip_recipient: &NodeData) -> impl Iterator<Item = NodeData> {
-        debug!(
-            self.logger,
-            "selecting gossips for {}",
-            gossip_recipient.id()
-        );
         let mut topology = self.lock.write().unwrap();
         topology
             .select_gossips(&gossip_recipient.0)
