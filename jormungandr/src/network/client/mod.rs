@@ -1,16 +1,17 @@
 mod connect;
 
 use super::{
-    chain_pull,
+    chunk_sizes,
     inbound::InboundProcessing,
     p2p::comm::{PeerComms, Subscription},
     p2p::topology,
-    subscription::{self, SendingBlockMsg},
+    subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
     Channels, GlobalStateR,
 };
 use crate::{
     blockcfg::{Block, Fragment, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
+    utils::task::TaskMessageBox,
 };
 use network_core::client as core_client;
 use network_core::client::{BlockService, FragmentService, GossipService, P2pService};
@@ -25,17 +26,21 @@ pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 #[must_use = "Client must be polled"]
 pub struct Client<S>
 where
-    S: BlockService,
+    S: BlockService + FragmentService + GossipService,
 {
     service: S,
     logger: Logger,
     global_state: GlobalStateR,
-    channels: Channels,
-    remote_node_id: topology::NodeId,
-    block_events: S::BlockSubscription,
+    inbound: InboundSubscriptions<S>,
     block_solicitations: Subscription<Vec<HeaderHash>>,
     chain_pulls: Subscription<ChainPullRequest<HeaderHash>>,
-    sending_block_msg: Option<SendingBlockMsg>,
+    block_sink: BlockAnnouncementProcessor,
+    fragment_sink: FragmentProcessor,
+    gossip_processor: GossipProcessor,
+    incoming_block_announcement: Option<Header>,
+    incoming_fragments: Vec<Fragment>,
+    // FIXME: kill it with fire
+    client_box: TaskMessageBox<ClientMsg>,
 }
 
 struct ClientBuilder {
@@ -43,9 +48,12 @@ struct ClientBuilder {
     pub channels: Channels,
 }
 
-impl<S: BlockService> Client<S> {
+impl<S> Client<S>
+where
+    S: BlockService + FragmentService + GossipService,
+{
     pub fn remote_node_id(&self) -> topology::NodeId {
-        self.remote_node_id
+        self.inbound.node_id
     }
 
     pub fn logger(&self) -> &Logger {
@@ -60,15 +68,12 @@ where
     S: BlockService<Block = Block>,
     S: FragmentService<Fragment = Fragment>,
     S: GossipService<Node = topology::NodeData>,
-    S::UploadBlocksFuture: Send + 'static,
-    S::FragmentSubscription: Send + 'static,
-    S::GossipSubscription: Send + 'static,
 {
     fn new(
         inner: S,
         builder: ClientBuilder,
         global_state: GlobalStateR,
-        inbound: connect::InboundSubscriptions<S>,
+        inbound: InboundSubscriptions<S>,
         comms: &mut PeerComms,
     ) -> Self {
         let remote_node_id = inbound.node_id;
@@ -76,32 +81,65 @@ where
             .logger
             .new(o!("node_id" => remote_node_id.to_string()));
 
-        // Spin off processing tasks for subscriptions that can be
-        // managed with just the global state.
-        subscription::process_fragments(
-            inbound.fragments,
+        let block_sink = BlockAnnouncementProcessor::new(
+            builder.channels.block_box,
             remote_node_id,
             global_state.clone(),
-            builder.channels.transaction_box.clone(),
-            logger.clone(),
+            &logger,
         );
-        subscription::process_gossip(
-            inbound.gossip,
+        let fragment_sink = FragmentProcessor::new(
+            builder.channels.transaction_box,
             remote_node_id,
             global_state.clone(),
-            logger.clone(),
+            &logger,
         );
+        let gossip_processor = GossipProcessor::new(remote_node_id, global_state.clone(), &logger);
 
         Client {
             service: inner,
             logger,
             global_state,
-            channels: builder.channels,
-            remote_node_id,
-            block_events: inbound.block_events,
+            inbound,
             block_solicitations: comms.subscribe_to_block_solicitations(),
             chain_pulls: comms.subscribe_to_chain_pulls(),
-            sending_block_msg: None,
+            block_sink,
+            fragment_sink,
+            gossip_processor,
+            client_box: builder.channels.client_box,
+            incoming_block_announcement: None,
+            incoming_fragments: Vec::new(),
+        }
+    }
+}
+
+struct InboundSubscriptions<S>
+where
+    S: BlockService + FragmentService + GossipService,
+{
+    pub node_id: topology::NodeId,
+    pub block_events: <S as BlockService>::BlockSubscription,
+    pub fragments: <S as FragmentService>::FragmentSubscription,
+    pub gossip: <S as GossipService>::GossipSubscription,
+}
+
+#[derive(Copy, Clone)]
+enum ProcessingOutcome {
+    Continue,
+    Disconnect,
+}
+
+struct Progress(pub Option<ProcessingOutcome>);
+
+impl Progress {
+    fn update(&mut self, async_outcome: Async<ProcessingOutcome>) {
+        use self::ProcessingOutcome::*;
+        if let Async::Ready(outcome) = async_outcome {
+            match (self.0, outcome) {
+                (None, outcome) | (Some(Continue), outcome) => {
+                    self.0 = Some(outcome);
+                }
+                (Some(Disconnect), _) => {}
+            }
         }
     }
 }
@@ -109,40 +147,70 @@ where
 impl<S> Client<S>
 where
     S: BlockService<Block = Block>,
+    S: FragmentService + GossipService,
     S::PushHeadersFuture: Send + 'static,
     S::UploadBlocksFuture: Send + 'static,
 {
-    fn process_block_event(&mut self, event: BlockEvent<S::Block>) {
+    fn process_block_event(&mut self) -> Poll<ProcessingOutcome, ()> {
+        use self::ProcessingOutcome::*;
+
+        // Drive sending of a message to block task to completion
+        // before polling more events from the block subscription
+        // stream.
+        if let Some(header) = self.incoming_block_announcement.take() {
+            match self.block_sink.start_send(header)? {
+                AsyncSink::Ready => {}
+                AsyncSink::NotReady(header) => {
+                    self.incoming_block_announcement = Some(header);
+                    return Ok(Async::NotReady);
+                }
+            }
+        } else {
+            // Ignoring possible NotReady return here: due to the following
+            // try_ready!() invocation, this function cannot return Continue
+            // while no progress has been made.
+            self.block_sink.poll_complete()?;
+        }
+        let maybe_event = try_ready!(self.inbound.block_events.poll().map_err(|e| {
+            debug!(
+                self.logger,
+                "block subscription stream failure";
+                "error" => %e,
+            );
+        }));
+        let event = match maybe_event {
+            Some(event) => event,
+            None => {
+                debug!(self.logger, "block event subscription ended by the peer");
+                return Ok(Disconnect.into());
+            }
+        };
         debug!(self.logger, "received block event"; "item" => ?event);
         match event {
             BlockEvent::Announce(header) => {
-                let future = subscription::process_block_announcement(
-                    header,
-                    self.remote_node_id,
-                    &self.global_state,
-                    self.channels.block_box.clone(),
-                );
-                self.sending_block_msg = Some(future);
+                self.incoming_block_announcement = Some(header);
             }
             BlockEvent::Solicit(block_ids) => {
                 let (reply_handle, stream) = intercom::stream_reply::<
                     Block,
                     network_core::error::Error,
                 >(self.logger.clone());
-                self.channels
-                    .client_box
+                self.client_box
                     .send_to(ClientMsg::GetBlocks(block_ids, reply_handle));
-                let node_id = self.remote_node_id;
                 let done_logger = self.logger.clone();
                 let err_logger = self.logger.clone();
                 self.global_state.spawn(
                     self.service
                         .upload_blocks(stream)
                         .map(move |_| {
-                            debug!(done_logger, "finished uploading blocks to {}", node_id);
+                            debug!(done_logger, "finished uploading blocks");
                         })
-                        .map_err(move |err| {
-                            info!(err_logger, "UploadBlocks request failed: {:?}", err);
+                        .map_err(move |e| {
+                            info!(
+                                err_logger,
+                                "UploadBlocks request failed";
+                                "error" => ?e,
+                            );
                         }),
                 );
             }
@@ -150,6 +218,7 @@ where
                 self.push_missing_blocks(req);
             }
         }
+        Ok(Continue.into())
     }
 
     // FIXME: use this to handle BlockEvent::Missing events when two-stage
@@ -158,22 +227,22 @@ where
     fn push_missing_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
         let (reply_handle, stream) =
             intercom::stream_reply::<Header, network_core::error::Error>(self.logger.clone());
-        self.channels.client_box.send_to(ClientMsg::GetHeadersRange(
-            req.from,
-            req.to,
-            reply_handle,
-        ));
-        let node_id = self.remote_node_id;
+        self.client_box
+            .send_to(ClientMsg::GetHeadersRange(req.from, req.to, reply_handle));
         let done_logger = self.logger.clone();
         let err_logger = self.logger.clone();
         self.global_state.spawn(
             self.service
                 .push_headers(stream)
                 .map(move |_| {
-                    debug!(done_logger, "finished pushing headers to {}", node_id);
+                    debug!(done_logger, "finished pushing headers");
                 })
-                .map_err(move |err| {
-                    info!(err_logger, "PushHeaders request failed: {:?}", err);
+                .map_err(move |e| {
+                    info!(
+                        err_logger,
+                        "PushHeaders request failed";
+                        "error" => ?e,
+                    );
                 }),
         );
     }
@@ -183,20 +252,22 @@ where
     fn push_missing_blocks(&mut self, req: ChainPullRequest<HeaderHash>) {
         let (reply_handle, stream) =
             intercom::stream_reply::<Block, network_core::error::Error>(self.logger.clone());
-        self.channels
-            .client_box
+        self.client_box
             .send_to(ClientMsg::PullBlocksToTip(req.from, reply_handle));
-        let node_id = self.remote_node_id;
         let done_logger = self.logger.clone();
         let err_logger = self.logger.clone();
         self.global_state.spawn(
             self.service
                 .upload_blocks(stream)
                 .map(move |_| {
-                    debug!(done_logger, "finished pushing blocks to {}", node_id);
+                    debug!(done_logger, "finished pushing blocks");
                 })
-                .map_err(move |err| {
-                    info!(err_logger, "UploadBlocks request failed: {:?}", err);
+                .map_err(move |e| {
+                    info!(
+                        err_logger,
+                        "UploadBlocks request failed";
+                        "error" => ?e,
+                    );
                 }),
         );
     }
@@ -205,6 +276,7 @@ where
 impl<S> Client<S>
 where
     S: BlockService<Block = Block>,
+    S: FragmentService + GossipService,
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
 {
@@ -212,7 +284,7 @@ where
     // chain pull processing is implemented in the blockchain task.
     #[allow(dead_code)]
     fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
-        let block_box = self.channels.block_box.clone();
+        let block_box = self.block_sink.message_box();
         let logger = self.logger.clone();
         let err_logger = logger.clone();
         self.global_state.spawn(
@@ -225,7 +297,7 @@ where
                     let err2_logger = logger.clone();
                     let err3_logger = logger.clone();
                     let (handle, sink) = intercom::stream_request::<Header, core_error::Error>(
-                        chain_pull::CHUNK_SIZE,
+                        chunk_sizes::CHAIN_PULL,
                     );
                     block_box
                         .send(BlockMsg::ChainHeaders(handle))
@@ -248,13 +320,14 @@ where
 impl<S> Client<S>
 where
     S: BlockService<Block = Block>,
+    S: FragmentService + GossipService,
     S::PullBlocksToTipFuture: Send + 'static,
     S::PullBlocksStream: Send + 'static,
 {
     // Temporary support for pulling chain blocks without two-stage
     // retrieval.
     fn pull_blocks_to_tip(&mut self, req: ChainPullRequest<HeaderHash>) {
-        let block_box = self.channels.block_box.clone();
+        let block_box = self.block_sink.message_box();
         let logger = self.logger.clone();
         let err_logger = logger.clone();
         self.global_state.spawn(
@@ -292,11 +365,12 @@ where
 impl<S> Client<S>
 where
     S: BlockService<Block = Block>,
+    S: FragmentService + GossipService,
     S::GetBlocksFuture: Send + 'static,
     S::GetBlocksStream: Send + 'static,
 {
     fn solicit_blocks(&mut self, block_ids: &[HeaderHash]) {
-        let block_box = self.channels.block_box.clone();
+        let block_box = self.block_sink.message_box();
         let logger = self.logger.clone();
         let err_logger = logger.clone();
         self.global_state.spawn(
@@ -334,10 +408,97 @@ where
     }
 }
 
+impl<S> Client<S>
+where
+    S: FragmentService<Fragment = Fragment>,
+    S: BlockService + GossipService,
+{
+    fn process_fragments(&mut self) -> Poll<ProcessingOutcome, ()> {
+        use self::ProcessingOutcome::*;
+
+        // Drive sending of a message to fragment task to completion
+        // before polling more events from the fragment subscription
+        // stream.
+        if !self.incoming_fragments.is_empty() {
+            match self
+                .fragment_sink
+                .start_send(self.incoming_fragments.split_off(0))?
+            {
+                AsyncSink::Ready => {}
+                AsyncSink::NotReady(fragments) => {
+                    self.incoming_fragments = fragments;
+                    return Ok(Async::NotReady);
+                }
+            }
+        }
+        if self.incoming_fragments.len() >= chunk_sizes::FRAGMENTS {
+            // Apply back pressure until the sink is ready
+            try_ready!(self.fragment_sink.poll_complete());
+            return Ok(Continue.into());
+        } else {
+            // Ignoring possible NotReady return here: due to the following
+            // try_ready!() invocation, this function cannot return Continue
+            // while no progress has been made.
+            self.fragment_sink.poll_complete()?;
+        }
+
+        let maybe_fragment = try_ready!(self.inbound.fragments.poll().map_err(|e| {
+            debug!(
+                self.logger,
+                "fragment stream failure";
+                "error" => %e,
+            );
+        }));
+        match maybe_fragment {
+            Some(fragment) => {
+                trace!(self.logger, "received fragment"; "item" => ?fragment);
+                self.incoming_fragments.push(fragment);
+                Ok(Continue.into())
+            }
+            None => {
+                debug!(self.logger, "fragment subscription ended by the peer");
+                Ok(Disconnect.into())
+            }
+        }
+    }
+}
+
+impl<S> Client<S>
+where
+    S: P2pService<NodeId = topology::NodeId>,
+    S: GossipService<Node = topology::NodeData>,
+    S: BlockService + FragmentService,
+{
+    fn process_gossip(&mut self) -> Poll<ProcessingOutcome, ()> {
+        use self::ProcessingOutcome::*;
+
+        let maybe_gossip = try_ready!(self.inbound.gossip.poll().map_err(|e| {
+            debug!(
+                self.logger,
+                "gossip stream failure";
+                "error" => %e,
+            );
+        }));
+        match maybe_gossip {
+            Some(gossip) => {
+                self.gossip_processor.process_item(gossip);
+                Ok(Continue.into())
+            }
+            None => {
+                debug!(self.logger, "gossip subscription ended by the peer");
+                Ok(Disconnect.into())
+            }
+        }
+    }
+}
+
 impl<S> Future for Client<S>
 where
     S: core_client::Client,
+    S: P2pService<NodeId = topology::NodeId>,
     S: BlockService<Block = Block>,
+    S: FragmentService<Fragment = Fragment>,
+    S: GossipService<Node = topology::NodeData>,
     S::GetBlocksFuture: Send + 'static,
     S::GetBlocksStream: Send + 'static,
     S::PullBlocksToTipFuture: Send + 'static,
@@ -350,76 +511,55 @@ where
     type Item = ();
     type Error = ();
     fn poll(&mut self) -> Poll<(), ()> {
+        use self::ProcessingOutcome::*;
+
         loop {
             // Drive any pending activity of the gRPC client until it is ready
             // to process another request.
             try_ready!(self.service.poll_ready().map_err(|e| {
                 info!(self.logger, "P2P client connection error: {:?}", e);
             }));
-            let mut ready = false;
-            if let Some(ref mut future) = self.sending_block_msg {
-                // Drive sending of a message to block task to completion
-                // before polling more events from the block subscription
-                // stream.
-                let send_polled = future.poll().map_err(|e| {
-                    error!(
-                        self.logger,
-                        "failed to send message to the block task";
-                        "reason" => %e
-                    );
-                })?;
-                match send_polled {
-                    Async::NotReady => {}
-                    Async::Ready(_) => {
-                        ready = true;
-                        self.sending_block_msg = None;
-                    }
-                }
-            } else {
-                let block_event_polled = self.block_events.poll().map_err(|e| {
-                    debug!(self.logger, "block subscription stream failure: {:?}", e);
-                })?;
-                match block_event_polled {
-                    Async::NotReady => {}
-                    Async::Ready(None) => {
-                        debug!(self.logger, "block subscription stream terminated");
-                        return Ok(().into());
-                    }
-                    Async::Ready(Some(event)) => {
-                        ready = true;
-                        self.process_block_event(event);
-                    }
-                }
-            }
+
+            let mut progress = Progress(None);
+
+            progress.update(self.process_block_event()?);
+            progress.update(self.process_fragments()?);
+            progress.update(self.process_gossip()?);
+
             // Block solicitations and chain pulls are special:
             // they are handled with client requests on the client side,
             // but on the server side, they are fed into the block event stream.
-            match self.block_solicitations.poll().unwrap() {
-                Async::NotReady => {}
-                Async::Ready(None) => {
-                    debug!(self.logger, "outbound block solicitation stream closed");
-                    return Ok(().into());
+            progress.update(self.block_solicitations.poll().unwrap().map(|maybe_item| {
+                match maybe_item {
+                    Some(block_ids) => {
+                        self.solicit_blocks(&block_ids);
+                        Continue
+                    }
+                    None => {
+                        debug!(self.logger, "outbound block solicitation stream closed");
+                        Disconnect
+                    }
                 }
-                Async::Ready(Some(block_ids)) => {
-                    ready = true;
-                    self.solicit_blocks(&block_ids);
+            }));
+            progress.update(self.chain_pulls.poll().unwrap().map(|maybe_item| {
+                match maybe_item {
+                    Some(req) => {
+                        // FIXME: implement two-stage chain pull processing
+                        // in the blockchain task and use pull_headers here.
+                        self.pull_blocks_to_tip(req);
+                        Continue
+                    }
+                    None => {
+                        debug!(self.logger, "outbound header pull stream closed");
+                        Disconnect
+                    }
                 }
-            }
-            match self.chain_pulls.poll().unwrap() {
-                Async::NotReady => {}
-                Async::Ready(None) => {
-                    debug!(self.logger, "outbound header pull stream closed");
-                    return Ok(().into());
-                }
-                Async::Ready(Some(req)) => {
-                    ready = true;
-                    // FIXME: implement two-stage chain pull processing
-                    // in the blockchain task and use pull_headers here.
-                    self.pull_blocks_to_tip(req);
-                }
-            }
-            if !ready {
-                return Ok(Async::NotReady);
+            }));
+
+            match progress {
+                Progress(None) => return Ok(Async::NotReady),
+                Progress(Some(Continue)) => continue,
+                Progress(Some(Disconnect)) => return Ok(().into()),
             }
         }
     }
