@@ -65,6 +65,8 @@ impl Readable for NoExtra {
 }
 impl Payload for NoExtra {
     const HAS_DATA : bool = false;
+    const HAS_AUTH : bool = false;
+    type Auth = ();
 }
 
 /// Transaction, transaction maps old unspent tokens into the
