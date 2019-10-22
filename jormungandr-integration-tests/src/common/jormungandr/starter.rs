@@ -36,23 +36,37 @@ pub enum OnFail {
     Panic,
 }
 
+#[derive(Clone, Debug, Copy)]
+pub enum Role {
+    Passive,
+    Leader,
+}
+
 pub trait StartupVerification {
     fn stop(&self) -> bool;
     fn success(&self) -> bool;
 }
 
 #[derive(Clone, Debug)]
-pub struct RestStartupVerification(JormungandrConfig);
+pub struct RestStartupVerification {
+    config: JormungandrConfig,
+}
+
+impl RestStartupVerification {
+    pub fn new(config: JormungandrConfig) -> Self {
+        RestStartupVerification { config }
+    }
+}
 
 impl StartupVerification for RestStartupVerification {
     fn stop(&self) -> bool {
-        let logger = JormungandrLogger::new(self.0.log_file_path.clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger.contains_error()
     }
 
     fn success(&self) -> bool {
         let output = process_utils::run_process_and_get_output(
-            jcli_commands::get_rest_stats_command(&self.0.get_node_address()),
+            jcli_commands::get_rest_stats_command(&self.config.get_node_address()),
         );
 
         let content_result = output.try_as_single_node_yaml();
@@ -73,15 +87,23 @@ impl StartupVerification for RestStartupVerification {
 }
 
 #[derive(Clone, Debug)]
-pub struct LogStartupVerification(JormungandrConfig);
+pub struct LogStartupVerification {
+    config: JormungandrConfig,
+}
+
+impl LogStartupVerification {
+    pub fn new(config: JormungandrConfig) -> Self {
+        LogStartupVerification { config }
+    }
+}
 
 impl StartupVerification for LogStartupVerification {
     fn stop(&self) -> bool {
-        let logger = JormungandrLogger::new(self.0.log_file_path.clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger.message_logged_multiple_times("initial bootstrap completed", 2)
     }
     fn success(&self) -> bool {
-        let logger = JormungandrLogger::new(self.0.log_file_path.clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger.contains_error()
     }
 }
@@ -89,7 +111,7 @@ impl StartupVerification for LogStartupVerification {
 pub struct Starter {
     timeout: Duration,
     sleep: u64,
-    passive: bool,
+    role: Role,
     verification_mode: StartupVerificationMode,
     on_fail: OnFail,
     config: JormungandrConfig,
@@ -100,7 +122,7 @@ impl Starter {
         Starter {
             timeout: Duration::from_secs(300),
             sleep: 2,
-            passive: false,
+            role: Role::Leader,
             verification_mode: StartupVerificationMode::Rest,
             on_fail: OnFail::Panic,
             config: ConfigurationBuilder::new().build(),
@@ -113,7 +135,7 @@ impl Starter {
     }
 
     pub fn passive(&mut self) -> &mut Self {
-        self.passive = true;
+        self.role = Role::Passive;
         self
     }
 
@@ -174,22 +196,22 @@ impl Starter {
     }
 
     fn success(&self) -> bool {
-        let rest_verifier = RestStartupVerification(self.config.clone());
-        let log_verifier = LogStartupVerification(self.config.clone());
-
         match self.verification_mode {
-            StartupVerificationMode::Rest => rest_verifier.success(),
-            StartupVerificationMode::Log => log_verifier.success(),
+            StartupVerificationMode::Rest => {
+                RestStartupVerification::new(self.config.clone()).success()
+            }
+            StartupVerificationMode::Log => {
+                LogStartupVerification::new(self.config.clone()).success()
+            }
         }
     }
 
     fn stop(&self) -> bool {
-        let rest_verifier = RestStartupVerification(self.config.clone());
-        let log_verifier = LogStartupVerification(self.config.clone());
-
         match self.verification_mode {
-            StartupVerificationMode::Rest => rest_verifier.stop(),
-            StartupVerificationMode::Log => log_verifier.stop(),
+            StartupVerificationMode::Rest => {
+                RestStartupVerification::new(self.config.clone()).stop()
+            }
+            StartupVerificationMode::Log => LogStartupVerification::new(self.config.clone()).stop(),
         }
     }
 
@@ -220,13 +242,13 @@ impl Starter {
     }
 
     fn get_command(&self, config: &JormungandrConfig) -> Command {
-        match self.passive {
-            true => commands::get_start_jormungandr_as_passive_node_command(
+        match self.role {
+            Role::Passive => commands::get_start_jormungandr_as_passive_node_command(
                 &config.node_config_path,
                 &config.genesis_block_hash,
                 &config.log_file_path,
             ),
-            false => commands::get_start_jormungandr_as_leader_node_command(
+            Role::Leader => commands::get_start_jormungandr_as_leader_node_command(
                 &config.node_config_path,
                 &config.genesis_block_path,
                 &config.secret_model_path,
