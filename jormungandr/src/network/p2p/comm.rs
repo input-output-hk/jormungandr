@@ -441,11 +441,10 @@ impl Peers {
                         Err(e) => {
                             debug!(
                                 self.logger,
-                                "propagation to peer {} failed: {}",
-                                id,
-                                e.kind()
+                                "propagation to peer failed, unsubscribing peer";
+                                "node_id" => %id,
+                                "reason" => %e.kind()
                             );
-                            debug!(self.logger, "unsubscribing peer {}", id);
                             entry.remove();
                             true
                         }
@@ -467,6 +466,11 @@ impl Peers {
         nodes: Vec<topology::NodeData>,
         header: Header,
     ) -> Result<(), Vec<topology::NodeData>> {
+        debug!(
+            self.logger,
+            "propagating block";
+            "hash" => %header.hash(),
+        );
         self.propagate_with(nodes, |handles| {
             handles.try_send_block_announcement(header.clone())
         })
@@ -477,6 +481,10 @@ impl Peers {
         nodes: Vec<topology::NodeData>,
         fragment: Fragment,
     ) -> Result<(), Vec<topology::NodeData>> {
+        debug!(
+            self.logger,
+            "propagating fragment";
+        );
         self.propagate_with(nodes, |handles| handles.try_send_fragment(fragment.clone()))
     }
 
@@ -485,6 +493,11 @@ impl Peers {
         target: topology::NodeId,
         gossip: Gossip<topology::NodeData>,
     ) -> Result<(), Gossip<topology::NodeData>> {
+        debug!(
+            self.logger,
+            "sending gossip";
+            "node_id" => %target,
+        );
         let mut map = self.mutex.lock().unwrap();
         if let Some(mut entry) = map.entry(target) {
             let res = {
@@ -494,11 +507,10 @@ impl Peers {
             res.map_err(|e| {
                 debug!(
                     self.logger,
-                    "gossip propagation to peer {} failed: {:?}",
-                    target,
-                    e.kind()
+                    "gossip propagation to peer failed, unsubscribing peer";
+                    "node_id" => %target,
+                    "reason" => %e.kind(),
                 );
-                debug!(self.logger, "unsubscribing peer {}", target);
                 entry.remove();
                 e.into_item()
             })

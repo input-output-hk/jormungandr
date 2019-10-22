@@ -185,12 +185,20 @@ where
                 return Ok(Disconnect.into());
             }
         };
-        debug!(self.logger, "received block event"; "item" => ?event);
+        trace!(
+            self.logger,
+            "received block event";
+            "stream" => "block_events",
+            "direction" => "in",
+            "item" => ?event,
+        );
         match event {
             BlockEvent::Announce(header) => {
+                info!(self.logger, "received block announcement"; "hash" => %header.hash());
                 self.incoming_block_announcement = Some(header);
             }
             BlockEvent::Solicit(block_ids) => {
+                debug!(self.logger, "peer requests {} blocks", block_ids.len());
                 let (reply_handle, stream) = intercom::stream_reply::<
                     Block,
                     network_core::error::Error,
@@ -215,6 +223,11 @@ where
                 );
             }
             BlockEvent::Missing(req) => {
+                debug!(
+                    self.logger,
+                    "peer requests missing part of the chain";
+                    "checkpoints" => ?req.from,
+                    "to" => ?req.to);
                 self.push_missing_blocks(req);
             }
         }
@@ -451,7 +464,13 @@ where
         }));
         match maybe_fragment {
             Some(fragment) => {
-                trace!(self.logger, "received fragment"; "item" => ?fragment);
+                trace!(
+                    self.logger,
+                    "received fragment";
+                    "stream" => "fragments",
+                    "direction" => "in",
+                    "item" => ?fragment,
+                );
                 self.incoming_fragments.push(fragment);
                 Ok(Continue.into())
             }
@@ -481,6 +500,13 @@ where
         }));
         match maybe_gossip {
             Some(gossip) => {
+                trace!(
+                    self.logger,
+                    "received gossip";
+                    "stream" => "gossip",
+                    "direction" => "in",
+                    "item" => ?gossip,
+                );
                 self.gossip_processor.process_item(gossip);
                 Ok(Continue.into())
             }
@@ -517,7 +543,10 @@ where
             // Drive any pending activity of the gRPC client until it is ready
             // to process another request.
             try_ready!(self.service.poll_ready().map_err(|e| {
-                info!(self.logger, "P2P client connection error: {:?}", e);
+                info!(
+                    self.logger,
+                    "client connection broke down";
+                    "error" => ?e);
             }));
 
             let mut progress = Progress(None);
@@ -559,7 +588,10 @@ where
             match progress {
                 Progress(None) => return Ok(Async::NotReady),
                 Progress(Some(Continue)) => continue,
-                Progress(Some(Disconnect)) => return Ok(().into()),
+                Progress(Some(Disconnect)) => {
+                    info!(self.logger, "disconnecting client");
+                    return Ok(().into());
+                }
             }
         }
     }

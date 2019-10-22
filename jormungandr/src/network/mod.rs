@@ -296,11 +296,6 @@ fn handle_network_input(
 fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
     trace!(state.logger(), "to propagate: {:?}", &msg);
     let nodes = state.topology.view().collect::<Vec<_>>();
-    debug!(
-        state.logger(),
-        "will propagate to: {:?}",
-        nodes.iter().map(|node| node.id()).collect::<Vec<_>>()
-    );
     let res = match msg {
         PropagateMsg::Block(ref header) => state.peers.propagate_block(nodes, header.clone()),
         PropagateMsg::Fragment(ref fragment) => {
@@ -311,6 +306,11 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
     // active subscriptions map, connect to them and deliver
     // the item.
     if let Err(unreached_nodes) = res {
+        debug!(
+            state.logger(),
+            "{} of the peers selected for propagation have not been reached, will try to connect",
+            unreached_nodes.len(),
+        );
         for node in unreached_nodes {
             let msg = msg.clone();
             connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| match msg {
@@ -324,7 +324,6 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
 fn send_gossip(state: GlobalStateR, channels: Channels) {
     for node in state.topology.view() {
         let gossip = Gossip::from_nodes(state.topology.select_gossips(&node));
-        debug!(state.logger(), "sending gossip to node {}", node.id());
         let res = state.peers.propagate_gossip_to(node.id(), gossip);
         if let Err(gossip) = res {
             connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| {
@@ -383,11 +382,7 @@ fn connect_and_propagate_with<F>(
                     warn!(client.logger(), "peer no longer in map after connecting");
                 }
             };
-            let after_logger = client.logger().clone();
-            client.then(move |_| {
-                info!(after_logger, "client P2P connection closed");
-                Ok(())
-            })
+            client
         });
     spawn_state.spawn(cf);
 }

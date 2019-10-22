@@ -40,6 +40,15 @@ impl NodeService {
     }
 }
 
+impl NodeService
+where
+    Self: P2pService,
+{
+    fn subscription_logger(&self, subscriber: <Self as P2pService>::NodeId) -> Logger {
+        self.logger.new(o!("node_id" => subscriber.to_string()))
+    }
+}
+
 impl Node for NodeService {
     type BlockService = Self;
     type FragmentService = Self;
@@ -85,7 +94,7 @@ impl BlockService for NodeService {
     type GetPushHeadersSinkFuture = ChainHeadersSinkFuture;
     type UploadBlocksSink = InboundProcessing<Block, BlockMsg>;
     type GetUploadBlocksSinkFuture = FutureResult<Self::UploadBlocksSink, core_error::Error>;
-    type BlockSubscription = LoggingStream<BlockEventSubscription>;
+    type BlockSubscription = LoggingStream<'static, BlockEventSubscription>;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn block0(&mut self) -> HeaderHash {
@@ -168,7 +177,8 @@ impl BlockService for NodeService {
     where
         In: Stream<Item = Self::Header, Error = core_error::Error> + Send + 'static,
     {
-        let logger = self.logger().new(o!("node_id" => subscriber.to_string()));
+        let logger = self.subscription_logger(subscriber);
+
         subscription::process_block_announcements(
             inbound,
             subscriber,
@@ -181,7 +191,10 @@ impl BlockService for NodeService {
             .global_state
             .peers
             .serve_block_events(subscriber)
-            .log(logger, "sending block event");
+            .trace(
+                logger.new(o!("stream" => "block_announcements", "direction" => "out")),
+                "sending block event",
+            );
         future::ok(subscription)
     }
 }
@@ -225,7 +238,7 @@ impl FragmentService for NodeService {
     type FragmentId = FragmentId;
     type GetFragmentsStream = ReplyStream<Self::Fragment, core_error::Error>;
     type GetFragmentsFuture = ReplyFuture<Self::GetFragmentsStream, core_error::Error>;
-    type FragmentSubscription = Subscription<Fragment>;
+    type FragmentSubscription = LoggingStream<'static, Subscription<Fragment>>;
     type FragmentSubscriptionFuture = FutureResult<Self::FragmentSubscription, core_error::Error>;
 
     fn get_fragments(&mut self, _ids: &[Self::FragmentId]) -> Self::GetFragmentsFuture {
@@ -240,22 +253,27 @@ impl FragmentService for NodeService {
     where
         S: Stream<Item = Self::Fragment, Error = core_error::Error> + Send + 'static,
     {
+        let logger = self.subscription_logger(subscriber);
+
         subscription::process_fragments(
             inbound,
             subscriber,
             self.global_state.clone(),
             self.channels.transaction_box.clone(),
-            &self.logger().new(o!("node_id" => subscriber.to_string())),
+            &logger,
         );
 
-        let subscription = self.global_state.peers.serve_fragments(subscriber);
+        let subscription = self.global_state.peers.serve_fragments(subscriber).trace(
+            logger.new(o!("stream" => "fragments", "direction" => "out")),
+            "sending fragment",
+        );
         future::ok(subscription)
     }
 }
 
 impl GossipService for NodeService {
     type Node = topology::NodeData;
-    type GossipSubscription = Subscription<Gossip<topology::NodeData>>;
+    type GossipSubscription = LoggingStream<'static, Subscription<Gossip<topology::NodeData>>>;
     type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
 
     fn gossip_subscription<In>(
@@ -266,14 +284,14 @@ impl GossipService for NodeService {
     where
         In: Stream<Item = Gossip<Self::Node>, Error = core_error::Error> + Send + 'static,
     {
-        subscription::process_gossip(
-            inbound,
-            subscriber,
-            self.global_state.clone(),
-            &self.logger().new(o!("node_id" => subscriber.to_string())),
-        );
+        let logger = self.subscription_logger(subscriber);
 
-        let subscription = self.global_state.peers.serve_gossip(subscriber);
+        subscription::process_gossip(inbound, subscriber, self.global_state.clone(), &logger);
+
+        let subscription = self.global_state.peers.serve_gossip(subscriber).trace(
+            logger.new(o!("stream" => "gossip", "direction" => "out")),
+            "sending gossip",
+        );
         future::ok(subscription)
     }
 }
