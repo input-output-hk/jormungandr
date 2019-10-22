@@ -18,7 +18,7 @@ use cryptoxide::sha3::Sha3;
 use ed25519_bip32::XPub;
 
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     fmt,
     io::{BufRead, Write},
 };
@@ -108,7 +108,7 @@ impl cbor_event::de::Deserialize for Attributes {
         while len > 0 {
             let key = reader.unsigned_integer()?;
             match key {
-                ATTRIBUTE_NAME_TAG_DERIVATION => derivation_path = Some(reader.deserialize()?),
+                ATTRIBUTE_NAME_TAG_DERIVATION => derivation_path = Some(reader.bytes()?),
                 ATTRIBUTE_NAME_TAG_NETWORK_MAGIC => {
                     // Yes, this is an integer encoded as CBOR encoded as Bytes in CBOR.
                     let bytes = reader.bytes()?;
@@ -202,7 +202,6 @@ impl ::std::str::FromStr for Addr {
     type Err = ParseExtendedAddrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let bytes = base58::decode(s).map_err(ParseExtendedAddrError::Base58Error)?;
-
         Self::try_from(&bytes[..]).map_err(ParseExtendedAddrError::EncodingError)
     }
 }
@@ -235,10 +234,12 @@ impl cbor_event::de::Deserialize for Addr {
     }
 }
 
+const EXTENDED_ADDR_LEN: usize = 28;
+
 /// A valid cardano address deconstructed
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ExtendedAddr {
-    pub addr: [u8; 28],
+    pub addr: [u8; EXTENDED_ADDR_LEN],
     pub attributes: Attributes,
 }
 impl ExtendedAddr {
@@ -305,7 +306,8 @@ impl cbor_event::se::Serialize for ExtendedAddr {
         &self,
         serializer: &'se mut Serializer<W>,
     ) -> cbor_event::Result<&'se mut Serializer<W>> {
-        cbor::util::encode_with_crc32_(&(&self.addr, &self.attributes, &PubKeyTag()), serializer)?;
+        let addr_bytes = cbor_event::Value::Bytes(self.addr.to_vec());
+        cbor::util::encode_with_crc32_(&(&addr_bytes, &self.attributes, &PubKeyTag()), serializer)?;
         Ok(serializer)
     }
 }
@@ -314,7 +316,14 @@ impl cbor_event::de::Deserialize for ExtendedAddr {
         let bytes = cbor::util::raw_with_crc32(reader)?;
         let mut raw = Deserializer::from(std::io::Cursor::new(bytes));
         raw.tuple(3, "ExtendedAddr")?;
-        let addr = cbor_event::de::Deserialize::deserialize(&mut raw)?;
+        let addr_bytes = raw.bytes()?;
+        let addr = addr_bytes.as_slice().try_into().map_err(|_| {
+            cbor_event::Error::WrongLen(
+                addr_bytes.len() as u64,
+                cbor_event::Len::Len(EXTENDED_ADDR_LEN as u64),
+                "invalid extended address length",
+            )
+        })?;
         let attributes = cbor_event::de::Deserialize::deserialize(&mut raw)?;
         let _addr_type: PubKeyTag = cbor_event::de::Deserialize::deserialize(&mut raw)?;
 
