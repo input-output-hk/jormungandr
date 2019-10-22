@@ -78,6 +78,7 @@ pub enum InputEnum {
 }
 
 impl Input {
+    pub fn bytes(&self) -> [u8; 41] {
     pub fn new(index_or_account: u8, value: Value, input_ptr: [u8; INPUT_PTR_SIZE]) -> Self {
         Input {
             index_or_account,
