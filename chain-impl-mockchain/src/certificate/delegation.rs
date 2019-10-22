@@ -49,7 +49,9 @@ impl Readable for OwnerStakeDelegation {
     }
 }
 
-impl Payload for OwnerStakeDelegation {}
+impl Payload for OwnerStakeDelegation {
+    const HAS_DATA : bool = true;
+}
 
 impl property::Serialize for StakeDelegation {
     type Error = std::io::Error;
@@ -74,7 +76,9 @@ impl Readable for StakeDelegation {
     }
 }
 
-impl Payload for StakeDelegation {}
+impl Payload for StakeDelegation {
+    const HAS_DATA : bool = true;
+}
 
 #[cfg(test)]
 mod test {

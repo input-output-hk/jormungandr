@@ -162,9 +162,13 @@ impl property::Serialize for PoolRetirement {
     }
 }
 
-impl Payload for PoolUpdate {}
+impl Payload for PoolUpdate {
+    const HAS_DATA : bool = true;
+}
 
-impl Payload for PoolRetirement {}
+impl Payload for PoolRetirement {
+    const HAS_DATA : bool = true;
+}
 
 impl property::Serialize for PoolRegistration {
     type Error = std::io::Error;
@@ -201,7 +205,9 @@ impl Readable for PoolRegistration {
     }
 }
 
-impl Payload for PoolRegistration {}
+impl Payload for PoolRegistration {
+    const HAS_DATA : bool = true;
+}
 
 impl<T> PoolOwnersSigned<T> {
     pub fn serialize_in<F>(&self, serialize_inner: F, bb: ByteBuilder<Self>) -> ByteBuilder<Self>

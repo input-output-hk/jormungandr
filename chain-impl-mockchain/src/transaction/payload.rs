@@ -1,1 +1,3 @@
-pub trait Payload {}
+pub trait Payload {
+    const HAS_DATA : bool;
+}

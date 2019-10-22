@@ -63,7 +63,9 @@ impl Readable for NoExtra {
         Ok(NoExtra)
     }
 }
-impl Payload for NoExtra {}
+impl Payload for NoExtra {
+    const HAS_DATA : bool = false;
+}
 
 /// Transaction, transaction maps old unspent tokens into the
 /// set of the new addresses.
