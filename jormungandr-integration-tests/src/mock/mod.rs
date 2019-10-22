@@ -5,12 +5,9 @@ extern crate grpc;
 extern crate hex;
 extern crate protobuf;
 
-pub mod proto;
-#[cfg(test)]
-pub mod testing;
-
 pub mod client;
 pub mod convert;
+pub mod proto;
 pub mod server;
 
 pub use client::JormungandrClient;
