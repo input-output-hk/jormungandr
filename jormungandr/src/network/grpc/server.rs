@@ -48,7 +48,7 @@ pub fn run_listen_socket(
                     };
                     info!(
                         conn_logger,
-                        "incoming P2P connection on {}",
+                        "incoming connection on {}",
                         stream.local_addr().unwrap(),
                     );
 
@@ -57,19 +57,19 @@ pub fn run_listen_socket(
 
                         match res {
                             Ok(()) => {
-                                info!(conn_logger, "incoming P2P connection closed");
+                                info!(conn_logger, "incoming connection closed");
                             }
                             Err(Error::Protocol(e)) => {
                                 info!(
                                     conn_logger,
-                                    "incoming P2P HTTP/2 connection error";
+                                    "incoming HTTP/2 connection error";
                                     "reason" => %e,
                                 );
                             }
                             Err(e) => {
                                 warn!(
                                     conn_logger,
-                                    "incoming P2P connection failed";
+                                    "incoming connection failed";
                                     "error" => ?e,
                                 );
                             }
