@@ -26,6 +26,7 @@ pub fn process_block_announcements<S>(
 {
     let sink = BlockAnnouncementProcessor::new(block_box, node_id, global_state.clone(), logger);
     let logger = sink.logger.clone();
+    let inspect_logger = logger.clone();
     let stream_err_logger = logger.clone();
     let stream = inbound
         .map_err(move |e| {
@@ -35,7 +36,10 @@ pub fn process_block_announcements<S>(
                 "error" => ?e,
             );
         })
-        .trace(logger.clone(), "received block announcement");
+        .trace(logger.clone(), "received header of announced block")
+        .inspect(move |header| {
+            info!(inspect_logger, "received block announcement"; "hash" => %header.hash());
+        });
     global_state.spawn(sink.send_all(stream).map(move |_| {
         debug!(logger, "block subscription ended by the peer");
     }));

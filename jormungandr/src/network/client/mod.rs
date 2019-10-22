@@ -194,9 +194,11 @@ where
         );
         match event {
             BlockEvent::Announce(header) => {
+                info!(self.logger, "received block announcement"; "hash" => %header.hash());
                 self.incoming_block_announcement = Some(header);
             }
             BlockEvent::Solicit(block_ids) => {
+                debug!(self.logger, "peer requests {} blocks", block_ids.len());
                 let (reply_handle, stream) = intercom::stream_reply::<
                     Block,
                     network_core::error::Error,
@@ -221,6 +223,11 @@ where
                 );
             }
             BlockEvent::Missing(req) => {
+                debug!(
+                    self.logger,
+                    "peer requests missing part of the chain";
+                    "checkpoints" => ?req.from,
+                    "to" => ?req.to);
                 self.push_missing_blocks(req);
             }
         }
