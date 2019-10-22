@@ -1,6 +1,7 @@
 use crate::certificate::PoolId;
 use crate::transaction::{AccountIdentifier, Payload};
 
+use chain_crypto::{Ed25519, Signature};
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
@@ -51,6 +52,8 @@ impl Readable for OwnerStakeDelegation {
 
 impl Payload for OwnerStakeDelegation {
     const HAS_DATA : bool = true;
+    const HAS_AUTH : bool = false;
+    type Auth = ();
 }
 
 impl property::Serialize for StakeDelegation {
@@ -78,6 +81,8 @@ impl Readable for StakeDelegation {
 
 impl Payload for StakeDelegation {
     const HAS_DATA : bool = true;
+    const HAS_AUTH : bool = true;
+    type Auth = Signature<[u8], Ed25519>;
 }
 
 #[cfg(test)]

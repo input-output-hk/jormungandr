@@ -146,10 +146,14 @@ impl property::Serialize for PoolRetirement {
 
 impl Payload for PoolUpdate {
     const HAS_DATA : bool = true;
+    const HAS_AUTH : bool = true;
+    type Auth = PoolOwnersSigned<[u8]>;
 }
 
 impl Payload for PoolRetirement {
     const HAS_DATA : bool = true;
+    const HAS_AUTH : bool = true;
+    type Auth = PoolOwnersSigned<[u8]>;
 }
 
 impl property::Serialize for PoolRegistration {
@@ -189,14 +193,16 @@ impl Readable for PoolRegistration {
 
 impl Payload for PoolRegistration {
     const HAS_DATA : bool = true;
+    const HAS_AUTH : bool = true;
+    type Auth = PoolOwnersSigned<[u8]>;
 }
 
 impl<T> PoolOwnersSigned<T> {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self>
     {
         bb.iter16(&mut self.signatures.iter(), |bb, (i, s)| {
-                bb.u16(*i).bytes(s.as_ref())
-            })
+            bb.u16(*i).bytes(s.as_ref())
+        })
     }
 
     pub fn verify<F>(&self, pool_info: &PoolRegistration, verify_data: &[u8]) -> Verification
