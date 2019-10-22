@@ -85,7 +85,7 @@ impl BlockService for NodeService {
     type GetPushHeadersSinkFuture = ChainHeadersSinkFuture;
     type UploadBlocksSink = InboundProcessing<Block, BlockMsg>;
     type GetUploadBlocksSinkFuture = FutureResult<Self::UploadBlocksSink, core_error::Error>;
-    type BlockSubscription = LoggingStream<BlockEventSubscription>;
+    type BlockSubscription = LoggingStream<'static, BlockEventSubscription>;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
     fn block0(&mut self) -> HeaderHash {
@@ -181,7 +181,7 @@ impl BlockService for NodeService {
             .global_state
             .peers
             .serve_block_events(subscriber)
-            .log(logger, "sending block event");
+            .debug(logger, "sending block event");
         future::ok(subscription)
     }
 }
