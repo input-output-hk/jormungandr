@@ -35,13 +35,12 @@ impl Arbitrary for PoolUpdate {
 impl<A: Arbitrary> Arbitrary for PoolOwnersSigned<A> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let signatoree = Arbitrary::arbitrary(g);
-        let inner = Arbitrary::arbitrary(g);
         let mut signatures = Vec::new();
         for i in 0..signatoree {
             let s = Arbitrary::arbitrary(g);
             signatures.push((i, s));
         }
-        PoolOwnersSigned { inner, signatures }
+        PoolOwnersSigned { signatures }
     }
 }
 

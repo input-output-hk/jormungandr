@@ -53,8 +53,7 @@ pub struct PoolRetirement {
 
 /// Representant of a structure signed by a pool's owners
 #[derive(Debug, Clone)]
-pub struct PoolOwnersSigned<T> {
-    pub inner: T,
+pub struct PoolOwnersSigned<T: ?Sized> {
     pub signatures: IndexSignatures<T>,
 }
 
@@ -129,23 +128,6 @@ impl Readable for PoolRetirement {
     }
 }
 
-/*
-impl PoolUpdate {
-    pub fn serialize(&self) -> ByteArray<Self> {
-        ByteBuilder::new().serialize_in(bb).finalize()
-    }
-}
-
-impl PoolRetirement {
-            PoolManagement::Retirement(u) => ByteBuilder::new()
-                .u8(2)
-                .sub(|bb| u.serialize_in(bb))
-                .finalize(),
-        }
-    }
-}
-*/
-
 impl property::Serialize for PoolUpdate {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
@@ -210,23 +192,15 @@ impl Payload for PoolRegistration {
 }
 
 impl<T> PoolOwnersSigned<T> {
-    pub fn serialize_in<F>(&self, serialize_inner: F, bb: ByteBuilder<Self>) -> ByteBuilder<Self>
-    where
-        F: Fn(&T, ByteBuilder<T>) -> ByteBuilder<T>,
+    pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self>
     {
-        bb.sub(|bbi| serialize_inner(&self.inner, bbi))
-            .iter16(&mut self.signatures.iter(), |bb, (i, s)| {
+        bb.iter16(&mut self.signatures.iter(), |bb, (i, s)| {
                 bb.u16(*i).bytes(s.as_ref())
             })
     }
 
-    pub fn verify<F>(&self, pool_info: &PoolRegistration, serialize_inner: F) -> Verification
-    where
-        F: Fn(&T, ByteBuilder<T>) -> ByteBuilder<T>,
+    pub fn verify<F>(&self, pool_info: &PoolRegistration, verify_data: &[u8]) -> Verification
     {
-        let ba = ByteBuilder::new()
-            .sub(|bb| serialize_inner(&self.inner, bb))
-            .finalize();
         let signatories = self.signatures.len();
 
         if signatories < pool_info.management_threshold as usize {
@@ -238,7 +212,7 @@ impl<T> PoolOwnersSigned<T> {
                 return Verification::Failed;
             }
             let pk = &pool_info.owners[*i as usize];
-            if sig.verify(pk, &ba) == Verification::Failed {
+            if sig.verify_slice(pk, verify_data) == Verification::Failed {
                 return Verification::Failed;
             }
         }
@@ -246,9 +220,8 @@ impl<T> PoolOwnersSigned<T> {
     }
 }
 
-impl<T: Readable> Readable for PoolOwnersSigned<T> {
+impl<T> Readable for PoolOwnersSigned<T> {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let inner = T::read(buf)?;
         let sigs_nb = buf.get_u16()? as usize;
         let mut signatures = Vec::new();
         for _ in 0..sigs_nb {
@@ -256,6 +229,6 @@ impl<T: Readable> Readable for PoolOwnersSigned<T> {
             let sig = deserialize_signature(buf)?;
             signatures.push((nb, sig))
         }
-        Ok(PoolOwnersSigned { inner, signatures })
+        Ok(PoolOwnersSigned { signatures })
     }
 }
