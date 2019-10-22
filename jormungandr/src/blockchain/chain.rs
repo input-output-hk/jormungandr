@@ -696,7 +696,7 @@ impl Blockchain {
                     .and_then(move |block_stream| {
                         block_stream
                             .map_err(|e| {
-                                Error::with_chain(e, "Error while iterating between bloc0 and HEAD")
+                                Error::with_chain(e, "Error while iterating between block0 and HEAD")
                             })
                             .fold((branch, self4), move |(branch, mut self4), block: Block| {
                                 let header = block.header.clone();
