@@ -79,6 +79,13 @@ pub enum InputEnum {
 
 impl Input {
     pub fn bytes(&self) -> [u8; 41] {
+        let mut out = [0u8; 41];
+        out[0] = self.index_or_account;
+        out[1..9].copy_from_slice(&self.value.0.to_be_bytes());
+        out[9..].copy_from_slice(&self.input_ptr);
+        out
+    }
+
     pub fn new(index_or_account: u8, value: Value, input_ptr: [u8; INPUT_PTR_SIZE]) -> Self {
         Input {
             index_or_account,
