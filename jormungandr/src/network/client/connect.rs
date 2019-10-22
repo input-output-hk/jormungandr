@@ -3,7 +3,7 @@ use super::super::{
     p2p::{comm::PeerComms, topology},
     Channels, ConnectionState,
 };
-use super::{Client, ClientBuilder, GlobalStateR};
+use super::{Client, ClientBuilder, GlobalStateR, InboundSubscriptions};
 use crate::blockcfg::{Block, Fragment, HeaderHash};
 use network_core::client::{self as core_client};
 use network_core::client::{BlockService, FragmentService, GossipService, P2pService};
@@ -151,16 +151,6 @@ where
     }
 }
 
-pub struct InboundSubscriptions<T>
-where
-    T: BlockService + FragmentService + GossipService,
-{
-    pub node_id: topology::NodeId,
-    pub block_events: <T as BlockService>::BlockSubscription,
-    pub fragments: <T as FragmentService>::FragmentSubscription,
-    pub gossip: <T as GossipService>::GossipSubscription,
-}
-
 fn poll_client_ready<T, E>(client: &mut T) -> Poll<(), ConnectError<E>>
 where
     T: core_client::Client,
@@ -180,9 +170,6 @@ where
     F::Item: BlockService<Block = Block>,
     F::Item: FragmentService<Fragment = Fragment>,
     F::Item: GossipService<Node = topology::NodeData>,
-    <F::Item as BlockService>::UploadBlocksFuture: Send + 'static,
-    <F::Item as FragmentService>::FragmentSubscription: Send + 'static,
-    <F::Item as GossipService>::GossipSubscription: Send + 'static,
 {
     type Item = Client<F::Item>;
     type Error = ConnectError<F::Error>;

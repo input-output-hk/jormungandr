@@ -15,14 +15,18 @@ mod subscription;
 
 // Constants
 
-mod chain_pull {
+mod chunk_sizes {
     // Size of chunks to split processing of chain pull streams.
     // Apart from sizing data chunks for intercom messages, it also
     // determines how many blocks will be requested per each GetBlocks request
     // distributed between different peers.
     //
     // This may need to be made into a configuration parameter.
-    pub const CHUNK_SIZE: usize = 32;
+    pub const CHAIN_PULL: usize = 32;
+
+    // The maximum number of fragments to buffer from an incoming subscription
+    // while waiting for the fragment task to become ready to process them.
+    pub const FRAGMENTS: usize = 128;
 }
 
 use self::p2p::{

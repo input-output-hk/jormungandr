@@ -1,5 +1,5 @@
 use super::{
-    chain_pull,
+    chunk_sizes,
     inbound::InboundProcessing,
     p2p::comm::{BlockEventSubscription, Subscription},
     p2p::topology,
@@ -174,7 +174,7 @@ impl BlockService for NodeService {
             subscriber,
             self.global_state.clone(),
             self.channels.block_box.clone(),
-            logger.clone(),
+            &logger,
         );
 
         let subscription = self
@@ -194,7 +194,7 @@ pub struct ChainHeadersSinkFuture {
 
 impl ChainHeadersSinkFuture {
     fn new(mbox: MessageBox<BlockMsg>) -> Self {
-        let (handle, sink) = intercom::stream_request(chain_pull::CHUNK_SIZE);
+        let (handle, sink) = intercom::stream_request(chunk_sizes::CHAIN_PULL);
         let inner = mbox.send(BlockMsg::ChainHeaders(handle));
         ChainHeadersSinkFuture {
             inner,
@@ -245,7 +245,7 @@ impl FragmentService for NodeService {
             subscriber,
             self.global_state.clone(),
             self.channels.transaction_box.clone(),
-            self.logger().new(o!("node_id" => subscriber.to_string())),
+            &self.logger().new(o!("node_id" => subscriber.to_string())),
         );
 
         let subscription = self.global_state.peers.serve_fragments(subscriber);
@@ -270,7 +270,7 @@ impl GossipService for NodeService {
             inbound,
             subscriber,
             self.global_state.clone(),
-            self.logger().new(o!("node_id" => subscriber.to_string())),
+            &self.logger().new(o!("node_id" => subscriber.to_string())),
         );
 
         let subscription = self.global_state.peers.serve_gossip(subscriber);
