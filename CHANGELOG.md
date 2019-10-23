@@ -1,7 +1,19 @@
 # Change Log
 
-> Place holder for 0.7.x
+## [v0.7.0-rc1](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc1) (2019-10-23)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.5...v0.7.0-rc1)
 
+**Fixed bugs:**
+
+- Cannot encode genesis.yaml with legacy\_funds entry [\#968](https://github.com/input-output-hk/jormungandr/issues/968)
+- Update chain-deps [\#1013](https://github.com/input-output-hk/jormungandr/pull/1013)
+- Old gossip may cause the node to connect to self [\#1016](https://github.com/input-output-hk/jormungandr/issues/1016)
+
+**Merged pull requests:**
+
+- Safe guard against connecting to self by mistake [\#1019](https://github.com/input-output-hk/jormungandr/pull/1019)
+- Logging improvements in the network task [\#1014](https://github.com/input-output-hk/jormungandr/pull/1014)
+- \[Tests\] Extract common folder from test configuration [\#914](https://github.com/input-output-hk/jormungandr/pull/914)
 - Add node state to REST node stats [\#986](https://github.com/input-output-hk/jormungandr/pull/986)
 - Change the start up order for node processes [\#857](https://github.com/input-output-hk/jormungandr/issues/857)
 - Breaking Change: header update in performance and security [\#964](https://github.com/input-output-hk/jormungandr/pull/964)
