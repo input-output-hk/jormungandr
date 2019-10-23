@@ -2678,7 +2678,7 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x08announce\x18\x01\x20\x01(\x0b2\x17.iohk.chain.node.HeaderH\0R\x08ann\
     ounce\x125\n\x07solicit\x18\x02\x20\x01(\x0b2\x19.iohk.chain.node.BlockI\
     dsH\0R\x07solicit\x12?\n\x07missing\x18\x03\x20\x01(\x0b2#.iohk.chain.no\
-    de.PullHeadersRequestH\0R\x07missingB\x06\n\x04item2\xb3\x07\n\x04Node\
+    de.PullHeadersRequestH\0R\x07missingB\x06\n\x04item2\xb4\x07\n\x04Node\
     \x12R\n\tHandshake\x12!.iohk.chain.node.HandshakeRequest\x1a\".iohk.chai\
     n.node.HandshakeResponse\x12@\n\x03Tip\x12\x1b.iohk.chain.node.TipReques\
     t\x1a\x1c.iohk.chain.node.TipResponse\x12E\n\tGetBlocks\x12\x19.iohk.cha\
@@ -2693,10 +2693,10 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     hk.chain.node.PushHeadersResponse(\x01\x12O\n\x0cUploadBlocks\x12\x16.io\
     hk.chain.node.Block\x1a%.iohk.chain.node.UploadBlocksResponse(\x01\x12M\
     \n\x11BlockSubscription\x12\x17.iohk.chain.node.Header\x1a\x1b.iohk.chai\
-    n.node.BlockEvent(\x010\x01\x12O\n\x13ContentSubscription\x12\x19.iohk.c\
-    hain.node.Fragment\x1a\x19.iohk.chain.node.Fragment(\x010\x01\x12J\n\x12\
-    GossipSubscription\x12\x17.iohk.chain.node.Gossip\x1a\x17.iohk.chain.nod\
-    e.Gossip(\x010\x01b\x06proto3\
+    n.node.BlockEvent(\x010\x01\x12P\n\x14FragmentSubscription\x12\x19.iohk.\
+    chain.node.Fragment\x1a\x19.iohk.chain.node.Fragment(\x010\x01\x12J\n\
+    \x12GossipSubscription\x12\x17.iohk.chain.node.Gossip\x1a\x17.iohk.chain\
+    .node.Gossip(\x010\x01b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {
