@@ -352,6 +352,11 @@ fn connect_and_propagate_with<F>(
         }
     };
     let node_id = node.id();
+    assert_ne!(
+        node_id,
+        state.topology.node().id(),
+        "the topology should not tell the node to connect to itself",
+    );
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let conn_logger = conn_state
@@ -376,14 +381,23 @@ fn connect_and_propagate_with<F>(
                     "peer node ID differs from the expected {}", node_id
                 );
                 state.topology.evict_node(node_id);
+                if connected_node_id == state.topology.node().id() {
+                    warn!(
+                        client.logger(),
+                        "expected node {} but connected to self", node_id
+                    );
+                    state.peers.remove_peer(node_id);
+                    return Err(());
+                }
                 if let Some(comms) = state.peers.remove_peer(node_id) {
                     state.peers.insert_peer(connected_node_id, comms);
                 } else {
                     warn!(client.logger(), "peer no longer in map after connecting");
                 }
-            };
-            client
-        });
+            }
+            Ok(client)
+        })
+        .and_then(|client| client);
     spawn_state.spawn(cf);
 }
 
