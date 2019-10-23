@@ -6,7 +6,7 @@ use std::env;
 fn main() {
     // generate grpc mock
 
-    protoc_rust::run(protoc_rust::Args {
+    /*protoc_rust::run(protoc_rust::Args {
         out_dir: "src/mock/proto",
         input: &["../../chain-libs/network-grpc/proto/node.proto"],
         includes: &["../../chain-libs/network-grpc/proto"],
@@ -14,7 +14,7 @@ fn main() {
             ..Default::default()
         },
     })
-    .expect("protoc");
+    .expect("protoc");*/
 
     let jor_cli_name = option_env!("JOR_CLI_NAME").unwrap_or("jcli");
     let jormungandr_name = option_env!("JORMUNGANDR_NAME").unwrap_or("jormungandr");
