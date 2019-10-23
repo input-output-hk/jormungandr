@@ -16,10 +16,31 @@ use chain_core::property::Serialize;
 use chain_impl_mockchain as chain;
 use chain_impl_mockchain::{
     block::{Block as ChainBlock, Header as ChainHeader},
-    fragment::Fragment as ChainFragment,
     key::Hash,
 };
 use protobuf::RepeatedField;
+
+#[macro_export]
+macro_rules! response_to_vec {
+    ( $e:expr ) => {{
+        $e.into_future()
+            .wait_drop_metadata()
+            .unwrap()
+            .into_iter()
+            .map(|x| read_into(x.get_content()))
+            .collect()
+    }};
+}
+
+#[macro_export]
+macro_rules! response_to_err {
+    ( $e:expr ) => {{
+        $e.into_future()
+            .wait_drop_metadata()
+            .err()
+            .expect("response is not an error")
+    }};
+}
 
 pub struct JormungandrClient {
     client: NodeClient,
@@ -44,17 +65,7 @@ impl JormungandrClient {
         }
     }
 
-    pub fn get_blocks(&self, blocks_id: &Vec<Hash>) -> Vec<ChainBlock> {
-        self.get_blocks_stream(blocks_id)
-            .into_future()
-            .wait_drop_metadata()
-            .unwrap()
-            .into_iter()
-            .map(|x| read_into(x.get_content()))
-            .collect()
-    }
-
-    fn get_blocks_stream(&self, blocks_id: &Vec<Hash>) -> grpc::StreamingResponse<Block> {
+    pub fn get_blocks(&self, blocks_id: &Vec<Hash>) -> grpc::StreamingResponse<Block> {
         let block_ids_u8 = blocks_id
             .iter()
             .map(|x| x.as_ref().iter().cloned().collect())
@@ -65,17 +76,7 @@ impl JormungandrClient {
             .get_blocks(grpc::RequestOptions::new(), block_id)
     }
 
-    pub fn get_headers(&self, blocks_id: &Vec<Hash>) -> Vec<ChainHeader> {
-        self.get_headers_stream(blocks_id)
-            .into_future()
-            .wait_drop_metadata()
-            .unwrap()
-            .into_iter()
-            .map(|x| read_into(x.get_content()))
-            .collect()
-    }
-
-    fn get_headers_stream(&self, blocks_id: &Vec<Hash>) -> grpc::StreamingResponse<Header> {
+    pub fn get_headers(&self, blocks_id: &Vec<Hash>) -> grpc::StreamingResponse<Header> {
         let block_ids_u8 = blocks_id
             .iter()
             .map(|x| x.as_ref().iter().cloned().collect())
@@ -106,7 +107,7 @@ impl JormungandrClient {
         read_into(&tip.get_block_header())
     }
 
-    pub fn upload_blocks_internal(
+    pub fn upload_blocks(
         &self,
         chain_block: ChainBlock,
     ) -> Result<(Metadata, UploadBlocksResponse, Metadata)> {
@@ -121,26 +122,7 @@ impl JormungandrClient {
         resp.wait()
     }
 
-    pub fn upload_blocks(&self, chain_block: ChainBlock) -> UploadBlocksResponse {
-        let (_, response, _) = self.upload_blocks_internal(chain_block).unwrap();
-        response
-    }
-
-    pub fn upload_blocks_err(&self, chain_block: ChainBlock) -> grpc::Error {
-        self.upload_blocks_internal(chain_block).err().unwrap()
-    }
-
-    pub fn pull_blocks_to_tip(&self, from: Hash) -> Vec<ChainBlock> {
-        self.pull_blocks_to_tip_stream(from)
-            .into_future()
-            .wait_drop_metadata()
-            .unwrap()
-            .into_iter()
-            .map(|x| read_into(x.get_content()))
-            .collect()
-    }
-
-    pub fn pull_blocks_to_tip_stream(&self, from: Hash) -> grpc::StreamingResponse<Block> {
+    pub fn pull_blocks_to_tip(&self, from: Hash) -> grpc::StreamingResponse<Block> {
         let mut request = PullBlocksToTipRequest::new();
         request.set_from(RepeatedField::from_vec(vec![from.as_ref().to_vec()]));
 
@@ -148,25 +130,7 @@ impl JormungandrClient {
             .pull_blocks_to_tip(grpc::RequestOptions::new(), request)
     }
 
-    pub fn pull_headers(&self, from: Option<Hash>, to: Option<Hash>) -> Vec<ChainHeader> {
-        self.pull_headers_stream(from, to)
-            .into_future()
-            .wait_drop_metadata()
-            .unwrap()
-            .into_iter()
-            .map(|x| read_into(x.get_content()))
-            .collect()
-    }
-
-    pub fn pull_headers_get_err(&self, from: Option<Hash>, to: Option<Hash>) -> grpc::Error {
-        self.pull_headers_stream(from, to)
-            .into_future()
-            .wait_drop_metadata()
-            .err()
-            .unwrap()
-    }
-
-    fn pull_headers_stream(
+    pub fn pull_headers(
         &self,
         from: Option<Hash>,
         to: Option<Hash>,
@@ -183,16 +147,7 @@ impl JormungandrClient {
             .pull_headers(grpc::RequestOptions::new(), request)
     }
 
-    pub fn push_header(&self, chain_header: chain::block::Header) -> PushHeadersResponse {
-        let (_, push_headers_response, _) = self.push_header_internal(chain_header).unwrap();
-        push_headers_response
-    }
-
-    pub fn push_header_err(&self, chain_header: chain::block::Header) -> grpc::Error {
-        self.push_header_internal(chain_header).err().unwrap()
-    }
-
-    fn push_header_internal(
+    pub fn push_header(
         &self,
         chain_header: chain::block::Header,
     ) -> Result<(Metadata, PushHeadersResponse, Metadata)> {
@@ -205,25 +160,7 @@ impl JormungandrClient {
         resp.wait()
     }
 
-    pub fn get_fragments(&self, ids: Vec<Hash>) -> Vec<ChainFragment> {
-        self.get_fragments_stream(ids)
-            .into_future()
-            .wait_drop_metadata()
-            .unwrap()
-            .into_iter()
-            .map(|x| read_into(x.get_content()))
-            .collect()
-    }
-
-    pub fn get_fragments_err(&self, ids: Vec<Hash>) -> grpc::Error {
-        self.get_fragments_stream(ids)
-            .into_future()
-            .wait_drop_metadata()
-            .err()
-            .unwrap()
-    }
-
-    pub fn get_fragments_stream(&self, ids: Vec<Hash>) -> grpc::StreamingResponse<Fragment> {
+    pub fn get_fragments(&self, ids: Vec<Hash>) -> grpc::StreamingResponse<Fragment> {
         let mut fragment_ids = FragmentIds::new();
         let encoded_hashes: Vec<Vec<u8>> = ids.iter().map(|hash| hash.as_ref().to_vec()).collect();
         fragment_ids.set_ids(RepeatedField::from_vec(encoded_hashes));

@@ -1,10 +1,3 @@
-extern crate base64;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate grpc;
-extern crate hex;
-extern crate protobuf;
-
 use chain_core::property::FromStr;
 use chain_impl_mockchain::key::Hash;
 use jormungandr_integration_tests::mock::{
