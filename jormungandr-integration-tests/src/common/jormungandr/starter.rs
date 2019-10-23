@@ -139,6 +139,11 @@ impl Starter {
         self
     }
 
+    pub fn role(&mut self, role: Role) -> &mut Self {
+        self.role = role;
+        self
+    }
+
     pub fn verify_by(&mut self, verification_mode: StartupVerificationMode) -> &mut Self {
         self.verification_mode = verification_mode;
         self
@@ -258,12 +263,13 @@ impl Starter {
     }
 }
 
-pub fn restart_jormungandr_node_as_leader(process: JormungandrProcess) -> JormungandrProcess {
+pub fn restart_jormungandr_node(process: JormungandrProcess, role: Role) -> JormungandrProcess {
     let config = process.config.clone();
     std::mem::drop(process);
 
     Starter::new()
         .config(config)
+        .role(role)
         .start()
         .expect("Jormungandr restart failed")
 }
