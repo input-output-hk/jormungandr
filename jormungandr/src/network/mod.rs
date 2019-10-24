@@ -333,14 +333,7 @@ fn send_gossip(state: GlobalStateR, channels: Channels) {
     }
 }
 
-fn connect_and_propagate_with<F>(
-    node: topology::NodeData,
-    state: GlobalStateR,
-    channels: Channels,
-    modify_comms: F,
-) where
-    F: FnOnce(&mut PeerComms),
-{
+fn sanity_check_peer(node: &topology::NodeData, state: &GlobalState) -> Result<SocketAddr, ()> {
     let addr = match node.address() {
         Some(addr) => addr,
         None => {
@@ -348,7 +341,7 @@ fn connect_and_propagate_with<F>(
                 state.logger(),
                 "ignoring P2P node without an IP address: {:?}", node
             );
-            return;
+            return Err(());
         }
     };
     let node_id = node.id();
@@ -359,8 +352,51 @@ fn connect_and_propagate_with<F>(
             state.logger(),
             "topology tells the node to connect to itself",
         );
-        return;
+        return Err(());
     }
+    if let Some(public_addr) = state.topology.node().address() {
+        if addr == public_addr {
+            info!(
+                state.logger(),
+                "topology has another node with the same address {} \
+                 as the public address of this node, \
+                 possibly from gossip about an old configuration of this node",
+                addr,
+            );
+            return Err(());
+        }
+    }
+    if let Some(listen) = state.config.listen() {
+        if addr == listen.address() {
+            info!(
+                state.logger(),
+                "topology has another node with the same address {} \
+                 as this node is listening on, \
+                 possibly from gossip about an old configuration of this node",
+                addr,
+            );
+            return Err(());
+        }
+    }
+    Ok(addr)
+}
+
+fn connect_and_propagate_with<F>(
+    node: topology::NodeData,
+    state: GlobalStateR,
+    channels: Channels,
+    modify_comms: F,
+) where
+    F: FnOnce(&mut PeerComms),
+{
+    let node_id = node.id();
+    let addr = match sanity_check_peer(&node, &state) {
+        Ok(addr) => addr,
+        Err(()) => {
+            state.topology.evict_node(node_id);
+            return;
+        }
+    };
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let conn_logger = conn_state
