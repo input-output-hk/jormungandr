@@ -11,10 +11,11 @@ pub mod convert;
 pub mod proto;
 pub mod server;
 
-use chain_core::mempack::{ReadBuf, Readable};
 pub use client::JormungandrClient;
 pub use convert::*;
 pub use server::JormungandrServerImpl;
+
+use chain_core::mempack::{ReadBuf, Readable};
 
 pub fn read_into<T: Readable>(bytes: &[u8]) -> T {
     let mut buf = ReadBuf::from(bytes);
