@@ -265,6 +265,12 @@ pub fn assert_rest_account_get_stats(address: &str, host: &str) -> AccountState 
     serde_yaml::from_str(&content).unwrap()
 }
 
+pub fn assert_rest_shutdown(host: &str) {
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_rest_shutdown_command(&host));
+    process_assert::assert_process_exited_successfully(output);
+}
+
 pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_rest_get_block_command(&block_id, &host),
