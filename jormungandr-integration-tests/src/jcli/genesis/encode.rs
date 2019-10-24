@@ -1,9 +1,12 @@
-use crate::common::configuration::genesis_model::{Fund, GenesisYaml, Initial};
-use crate::common::configuration::jormungandr_config::JormungandrConfig;
-use crate::common::file_utils;
-use crate::common::jcli_wrapper;
-use crate::common::startup;
+use crate::common::{
+    configuration::{
+        genesis_model::{Fund, GenesisYaml, Initial},
+        jormungandr_config::JormungandrConfig,
+    },
+    file_utils, jcli_wrapper, startup,
+};
 use chain_addr::Discrimination;
+use jormungandr_lib::interfaces::Value;
 
 #[test]
 pub fn test_genesis_block_is_built_from_corect_yaml() {
@@ -62,6 +65,44 @@ pub fn test_genesis_for_prod_with_wrong_discrimination_fail_to_build() {
 pub fn test_genesis_without_initial_funds_is_built_successfully() {
     let mut config = JormungandrConfig::new();
     config.genesis_yaml.initial.clear();
+    let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
+    let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
+    jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
+}
+
+#[test]
+pub fn test_genesis_with_many_initial_funds_is_built_successfully() {
+    let mut config = JormungandrConfig::new();
+    let address_1 = startup::create_new_account_address();
+    let address_2 = startup::create_new_account_address();
+    let initial_funds = Initial::Fund(vec![
+        Fund {
+            value: 100.into(),
+            address: address_1.address,
+        },
+        Fund {
+            value: 100.into(),
+            address: address_2.address,
+        },
+    ]);
+    config.genesis_yaml.initial.push(initial_funds);
+    let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
+    let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
+    jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
+}
+
+#[test]
+pub fn test_genesis_with_legacy_funds_is_built_successfully() {
+    let mut config = JormungandrConfig::new();
+    let legacy_funds = Initial::LegacyFund(
+            vec![
+                Fund{
+                    value: 100.into(),
+                    address: "DdzFFzCqrht5TM5GznWhJ3GTpKawtJuA295F8igwXQXyt2ih1TL1XKnZqRBQBoLpyYVKfNKgCXPBUYruUneC83KjGK6QNAoBSqRJovbG".to_string()
+                },
+            ]
+        );
+    config.genesis_yaml.initial.push(legacy_funds);
     let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
