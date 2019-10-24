@@ -3,7 +3,7 @@
 use crate::testing::{
     arbitrary::OutputsWithoutMultisig,
     ledger::{self, ConfigBuilder},
-    requests,
+    builders::create_initial_transactions,
 };
 use crate::{transaction::Output, value::Value};
 use chain_addr::{Address, Discrimination};
@@ -15,7 +15,7 @@ pub fn ledger_verifies_value_of_initial_funds(
     mut arbitrary_outputs: OutputsWithoutMultisig,
 ) -> TestResult {
     arbitrary_outputs.set_discrimination(Discrimination::Test);
-    let message = requests::create_initial_transactions(&arbitrary_outputs.0);
+    let message = create_initial_transactions(&arbitrary_outputs.0);
     let result = ledger::create_initial_fake_ledger(
         &[message],
         ConfigBuilder::new()

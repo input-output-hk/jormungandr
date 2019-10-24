@@ -11,9 +11,9 @@ use crate::{
         },
         data::AddressData,
         ledger::{self, ConfigBuilder},
-        requests,
         tx_builder::TransactionBuilder,
         TestGen,
+        builders::{create_initial_transactions,create_initial_transaction}
     },
     transaction::*,
     value::*,
@@ -51,7 +51,7 @@ pub fn ledger_accepts_correct_transaction(
     receiver: AddressData,
     value: NonZeroValue,
 ) -> TestResult {
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         value.into(),
     ));
@@ -97,7 +97,7 @@ pub fn total_funds_are_const_in_ledger(
     mut transaction_data: ArbitraryValidTransactionData,
 ) -> TestResult {
     let message =
-        requests::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
+        create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
     let (block0_hash, ledger) = ledger::create_initial_fake_ledger(
         &[message],
         ConfigBuilder::new()
@@ -166,7 +166,7 @@ pub fn utxo_no_enough_signatures() {
     let faucet = AddressData::utxo(Discrimination::Test);
     let receiver = AddressData::utxo(Discrimination::Test);
 
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(42000),
     ));
@@ -201,7 +201,7 @@ pub fn transaction_with_more_than_253_outputs() {
         outputs.push(Output::from_address(receiver.address.clone(), Value(1)));
     }
 
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(256),
     ));
@@ -235,7 +235,7 @@ pub fn duplicated_utxo_transaction() {
     let faucet = AddressData::utxo(Discrimination::Test);
     let receiver = AddressData::utxo(Discrimination::Test);
     let value = Value(100);
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         value,
     ));
@@ -268,7 +268,7 @@ pub fn transaction_with_nonexisting_utxo_input() {
     let faucet = AddressData::utxo(Discrimination::Test);
     let receiver = AddressData::utxo(Discrimination::Test);
     let value = Value(100);
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         value,
     ));
@@ -305,7 +305,7 @@ pub fn transaction_nonexisting_account_input() {
     let receiver = AddressData::utxo(Discrimination::Test);
     let value = Value(100);
 
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         value,
     ));
@@ -332,7 +332,7 @@ pub fn transaction_nonexisting_account_input() {
 pub fn duplicated_account_transaction() {
     let faucet = AddressData::account(Discrimination::Test);
     let receiver = AddressData::account(Discrimination::Test);
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(200),
     ));
@@ -358,7 +358,7 @@ pub fn duplicated_account_transaction() {
 pub fn repeated_account_transaction() {
     let mut faucet = AddressData::account(Discrimination::Test);
     let receiver = AddressData::account(Discrimination::Test);
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(200),
     ));
@@ -395,7 +395,7 @@ pub fn repeated_account_transaction() {
 pub fn transaction_with_incorrect_account_spending_counter() {
     let faucet = AddressData::account(Discrimination::Test);
     let receiver = AddressData::account_with_spending_counter(Discrimination::Test, 1);
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(200),
     ));

@@ -217,44 +217,53 @@ impl AddressDataValue {
     pub fn new(address_data: AddressData, value: Value) -> Self {
         AddressDataValue {
             address_data: address_data,
-            value: value,
+            value: value
         }
     }
 
     pub fn utxo(discrimination: Discrimination, value: Value) -> Self {
-        AddressDataValue {
-            address_data: AddressData::utxo(discrimination),
-            value: value,
-        }
+        AddressDataValue::new(AddressData::utxo(discrimination),value)
     }
 
     pub fn account(discrimination: Discrimination, value: Value) -> Self {
-        AddressDataValue {
-            address_data: AddressData::account(discrimination),
-            value: value,
-        }
+        AddressDataValue::new(AddressData::account(discrimination),value)
     }
 
     pub fn delegation(discrimination: Discrimination, value: Value) -> Self {
-        AddressDataValue {
-            address_data: AddressData::delegation(discrimination),
-            value: value,
-        }
+        AddressDataValue::new(AddressData::delegation(discrimination),value)
     }
 
     pub fn to_id(&self) -> Identifier {
         self.address_data.to_id()
     }
 
+    pub fn public_key(&self) -> PublicKey<Ed25519> {
+        self.address_data.public_key()
+    }
+
     pub fn private_key(&self) -> EitherEd25519SecretKey {
         self.address_data.private_key.clone()
     }
+
     pub fn make_input(&self, utxo: Option<Entry<Address>>) -> Input {
-        self.address_data.make_input(self.value, utxo)
+        self.make_input_with_value(utxo,self.value)
+    }
+
+    pub fn make_input_with_value(&self, utxo: Option<Entry<Address>>, value: Value) -> Input {
+        self.address_data.make_input(value, utxo)
     }
 
     pub fn make_output(&self) -> Output<Address> {
-        self.address_data.make_output(self.value)
+        self.make_output_with_value(self.value)
+    }
+
+    pub fn make_output_with_value(&self, value: Value) -> Output<Address> {
+        self.address_data.make_output(value)
+    }
+
+    pub fn increment_spending_counter(&mut self) {
+        let counter: u32 = self.address_data.spending_counter.unwrap().into();
+        self.address_data.spending_counter = Some((counter + 1u32).into());
     }
 }
 
