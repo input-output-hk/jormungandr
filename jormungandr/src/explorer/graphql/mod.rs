@@ -1,11 +1,10 @@
 mod connections;
 mod error;
 mod scalars;
-use self::connections::{BlockConnection, BlockCursor};
+use self::connections::{BlockConnection, TransactionConnection};
 use self::error::ErrorKind;
-use super::indexing::{
-    BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction, PersistentSequence,
-};
+use super::indexing::{BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction};
+use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
@@ -17,11 +16,13 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, PoolId, PublicKey, Serial, Slot, TimeOffsetSeconds, Value,
+    BlockCount, ChainLength, EpochNumber, IndexCursor, PoolId, PublicKey, Serial, Slot,
+    TimeOffsetSeconds, Value,
 };
 
 use crate::explorer::{ExplorerDB, Settings};
 
+#[derive(Clone)]
 pub struct Block {
     hash: HeaderHash,
 }
@@ -63,16 +64,54 @@ impl Block {
     }
 
     /// The transactions contained in the block
-    pub fn transactions(&self, context: &Context) -> FieldResult<Vec<Transaction>> {
-        Ok(self
-            .get_explorer_block(&context.db)?
-            .transactions
-            .iter()
-            .map(|(id, _tx)| Transaction {
-                id: id.clone(),
-                in_block: self.hash.clone(),
-            })
-            .collect())
+    pub fn transactions(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
+        context: &Context,
+    ) -> FieldResult<TransactionConnection> {
+        let explorer_block = self.get_explorer_block(&context.db)?;
+        let mut transactions: Vec<&ExplorerTransaction> =
+            explorer_block.transactions.values().collect();
+
+        // TODO: This may be expensive at some point, but I can't rely in
+        // the HashMap's order (also, I'm assuming the order in the block matters)
+        transactions
+            .as_mut_slice()
+            .sort_unstable_by_key(|tx| tx.offset_in_block);
+
+        let lower_bound = 0u32;
+        let upper_bound = transactions.len().checked_sub(1).or(Some(0)).unwrap();
+
+        TransactionConnection::new(
+            lower_bound,
+            upper_bound
+                .try_into()
+                .expect("less than 2^32 transactions per block"),
+            first,
+            last,
+            before,
+            after,
+            |from: u32, to: u32| {
+                use std::cmp::min;
+                transactions[usize::try_from(from).unwrap()
+                    ..min(
+                        transactions.len(),
+                        usize::try_from(to.checked_add(1).unwrap()).unwrap(),
+                    )]
+                    .iter()
+                    .enumerate()
+                    .map(|(i, tx)| {
+                        (
+                            tx.id().clone(),
+                            i.try_into().expect("less than 2^32 transactions per block"),
+                        )
+                    })
+                    .collect::<Vec<(FragmentId, u32)>>()
+            },
+        )
     }
 
     pub fn previous_block(&self, context: &Context) -> FieldResult<Block> {
@@ -162,28 +201,42 @@ impl From<blockcfg::BlockDate> for BlockDate {
     }
 }
 
+#[derive(Clone)]
 struct Transaction {
     id: FragmentId,
-    in_block: HeaderHash,
+    in_block: Option<HeaderHash>,
 }
 
 impl Transaction {
     fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let in_block =
-            context
-                .db
-                .find_block_by_transaction(&id)
-                .wait()?
-                .ok_or(ErrorKind::NotFound(format!(
-                    "transaction not found: {}",
-                    &id,
-                )))?;
+        let in_block = Self::get_in_block(&id, context).ok_or(ErrorKind::NotFound(format!(
+            "transaction not found: {}",
+            &id,
+        )))?;
 
-        Ok(Transaction { id, in_block })
+        Ok(Transaction {
+            id,
+            in_block: Some(in_block),
+        })
+    }
+
+    fn from_valid_id(id: FragmentId) -> Transaction {
+        Transaction { id, in_block: None }
+    }
+
+    fn get_in_block(id: &HeaderHash, context: &Context) -> Option<HeaderHash> {
+        context.db.find_block_by_transaction(&id).wait().unwrap()
     }
 
     fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
-        context.db.get_block(&self.in_block).wait()?.ok_or(
+        let block_id = match self.in_block {
+            Some(block_id) => block_id,
+            None => Self::get_in_block(&self.id, context).ok_or(ErrorKind::InternalError(
+                "Transaction's block was not found".to_owned(),
+            ))?,
+        };
+
+        context.db.get_block(&block_id).wait()?.ok_or(
             ErrorKind::InternalError(
                 "transaction is in explorer but couldn't find its block".to_owned(),
             )
@@ -320,8 +373,15 @@ impl Address {
         Err(ErrorKind::Unimplemented.into())
     }
 
-    fn transactions(&self, context: &Context) -> FieldResult<Vec<Transaction>> {
-        let ids = context
+    fn transactions(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
+        context: &Context,
+    ) -> FieldResult<TransactionConnection> {
+        let transactions = context
             .db
             .get_transactions_by_address(&self.id)
             .wait()?
@@ -329,9 +389,22 @@ impl Address {
                 "Expected address to be indexed".to_owned(),
             ))?;
 
-        ids.iter()
-            .map(|id| Transaction::from_id(id.clone(), context))
-            .collect()
+        let lower_bound = 0u32;
+        let upper_bound = transactions.len();
+
+        TransactionConnection::new(
+            lower_bound,
+            upper_bound,
+            first,
+            last,
+            before,
+            after,
+            |from: u32, to: u32| {
+                (from..to)
+                    .filter_map(|i| transactions.get(i.into()).map(|h| ((*h).clone(), i.into())))
+                    .collect()
+            },
+        )
     }
 }
 
@@ -520,8 +593,8 @@ impl Pool {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<BlockCursor>,
-        after: Option<BlockCursor>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<BlockConnection> {
         let blocks = match &self.blocks {
@@ -544,11 +617,11 @@ impl Pool {
             upper_bound,
             first,
             last,
-            before.map(u32::from),
-            after.map(u32::from),
+            before,
+            after,
             |from: u32, to: u32| {
                 (from..to)
-                    .filter_map(|i| blocks.get(i.into()).map(|h| ((*h).clone(), i.into())))
+                    .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
                     .collect()
             },
         )
@@ -623,8 +696,8 @@ impl Epoch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<BlockCursor>,
-        after: Option<BlockCursor>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<Option<BlockConnection>> {
         let epoch_data = match self.get_epoch_data(&context.db) {
@@ -635,23 +708,36 @@ impl Epoch {
         let lower_bound = context
             .db
             .get_block(&epoch_data.first_block)
-            .map(|block| block.expect("The block to be indexed").chain_length)
+            .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
             .wait()?;
 
         let upper_bound = context
             .db
             .get_block(&epoch_data.last_block)
-            .map(|block| block.expect("The block to be indexed").chain_length)
+            .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
             .wait()?;
 
         BlockConnection::new(
-            u32::from(lower_bound),
-            u32::from(upper_bound),
+            0,
+            // This is to make the cursors start from 0 and not from the first block's ChainLength
+            upper_bound
+                .checked_sub(lower_bound)
+                .expect("pagination upper_bound to be greater or equal than lower_bound"),
             first,
             last,
-            before.map(u32::from),
-            after.map(u32::from),
-            |a, b| context.db.get_block_hash_range(a, b).wait().unwrap(),
+            before,
+            after,
+            |a: u32, b: u32| {
+                context
+                    .db
+                    .get_block_hash_range((a + lower_bound).into(), (b + lower_bound).into())
+                    .wait()
+                    // Error = Infallible
+                    .unwrap()
+                    .iter()
+                    .map(|(hash, index)| (hash.clone(), u32::from(index.clone()) - lower_bound))
+                    .collect()
+            },
         )
         .map(Some)
     }
@@ -726,8 +812,8 @@ impl Query {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<BlockCursor>,
-        after: Option<BlockCursor>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<BlockConnection> {
         let longest_chain = context
@@ -747,8 +833,8 @@ impl Query {
             longest_chain.into(),
             first,
             last,
-            before.map(u32::from),
-            after.map(u32::from),
+            before,
+            after,
             |a, b| context.db.get_block_hash_range(a, b).wait().unwrap(),
         )
     }

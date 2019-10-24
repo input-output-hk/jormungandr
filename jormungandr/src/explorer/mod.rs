@@ -1,15 +1,14 @@
 pub mod error;
 pub mod graphql;
 mod indexing;
-mod set;
+mod persistent_sequence;
 
 use self::error::{Error, ErrorKind, Result};
 use self::graphql::Context;
 use self::indexing::{
-    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerBlock, PersistentSequence,
-    StakePools, Transactions,
+    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerBlock, StakePools, Transactions,
 };
-use self::set::HamtSet as Set;
+use self::persistent_sequence::PersistentSequence;
 
 use self::future::Either;
 use crate::blockcfg::{
@@ -343,7 +342,7 @@ impl ExplorerDB {
     pub fn get_transactions_by_address(
         &self,
         address: &Address,
-    ) -> impl Future<Item = Option<Set<FragmentId>>, Error = Infallible> {
+    ) -> impl Future<Item = Option<PersistentSequence<FragmentId>>, Error = Infallible> {
         let address = address.clone();
         self.with_latest_state(move |state| state.addresses.lookup(&address).map(|set| set.clone()))
     }
@@ -432,9 +431,9 @@ fn apply_block_to_addresses(addresses: Addresses, block: &ExplorerBlock) -> Resu
         for output in tx.outputs() {
             addresses = addresses.insert_or_update_simple(
                 output.address.clone(),
-                Set::new().add_element(id.clone()),
+                PersistentSequence::new().append(id.clone()),
                 |set| {
-                    let new_set = set.add_element(id.clone());
+                    let new_set = set.append(id.clone());
                     Some(new_set)
                 },
             )
@@ -443,9 +442,9 @@ fn apply_block_to_addresses(addresses: Addresses, block: &ExplorerBlock) -> Resu
         for input in tx.inputs() {
             addresses = addresses.insert_or_update_simple(
                 input.address.clone(),
-                Set::new().add_element(id.clone()),
+                PersistentSequence::new().append(id.clone()),
                 |set| {
-                    let new_set = set.add_element(id.clone());
+                    let new_set = set.append(id.clone());
                     Some(new_set)
                 },
             )
