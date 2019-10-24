@@ -352,11 +352,15 @@ fn connect_and_propagate_with<F>(
         }
     };
     let node_id = node.id();
-    assert_ne!(
-        node_id,
-        state.topology.node().id(),
-        "the topology should not tell the node to connect to itself",
-    );
+    // TODO: turn this into an assertion once poldercast is fixed
+    // to never do this.
+    if node_id == state.topology.node().id() {
+        warn!(
+            state.logger(),
+            "topology tells the node to connect to itself",
+        );
+        return;
+    }
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let conn_logger = conn_state
