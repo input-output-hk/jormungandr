@@ -40,3 +40,19 @@ The options are
 standard output will be used
 
 <data> - path to file with data to sign, if no value is passed, standard input will be used
+
+
+## Verifying signed data
+
+Verify signed data with public key. Supported key formats are: ed25519, ed25519bip32 and
+sumed25519_12.
+
+```
+jcli key verify <options> <data>
+```
+
+The options are
+- --public-key <public_key> - path to file with bech32-encoded public key
+- --signature <signature> - path to file with signature
+
+<data> - path to file with data to sign, if no value is passed, standard input will be used

@@ -25,6 +25,3 @@ extern crate strfmt;
 extern crate valico;
 
 pub mod jcli_app;
-
-use std::error::Error;
-use structopt::StructOpt;
