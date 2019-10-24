@@ -24,3 +24,19 @@ and to extract the associated public key:
 $ echo ed25519_sk1cvac48ddf2rpk9na94nv2zqhj74j0j8a99q33gsqdvalkrz6ar9srnhvmt | jcli key to-public
 ed25519_pk1z2ffur59cq7t806nc9y2g64wa60pg5m6e9cmrhxz9phppaxk5d4sn8nsqg
 ```
+
+## Signing data
+
+Sign data with private key. Supported key formats are: ed25519, ed25519bip32, ed25519extended and
+sumed25519_12.
+
+```
+jcli key sign <options> <data>
+```
+
+The options are
+- --secret-key <secret_key> - path to file with bech32-encoded secret key
+- -o, --output <output> - path to file to write signature into, if no value is passed,
+standard output will be used
+
+<data> - path to file with data to sign, if no value is passed, standard input will be used
