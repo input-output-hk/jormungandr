@@ -2,96 +2,99 @@
 
 use crate::{
     common::{
-        configuration::{
-            genesis_model::{Fund, LinearFees},
-            node_config_model::TrustedPeer,
-        },
+        configuration::{jormungandr_config::JormungandrConfig, node_config_model::TrustedPeer},
         data::address::Account,
-        file_utils,
-        jcli_wrapper::{
-            self, certificate::wrapper::JCLICertificateWrapper,
-            jcli_transaction_wrapper::JCLITransactionWrapper,
-        },
+        jcli_wrapper,
         jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
-        process_utils, startup,
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
 };
-
 use chain_addr::Discrimination;
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{Certificate, Value},
-};
-use std::{env, str::FromStr, time::SystemTime};
+use std::env;
+use std::time::Duration;
 
-fn create_account_from_secret_key(private_key: String) -> Account {
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
-    Account::new(&private_key, &public_key, &address)
+#[derive(Clone, Debug)]
+pub struct TestnetConfig {
+    actor_account: Account,
+    block0_hash: String,
+    public_ip: String,
+    public_port: String,
+    trusted_peers: Vec<TrustedPeer>,
+}
+
+impl TestnetConfig {
+    pub fn new() -> Self {
+        let actor_account_private_key = env::var("ACCOUNT_SK").expect("ACCOUNT_SK env is not set");
+        let block0_hash = env::var("BLOCK0_HASH").expect("BLOCK0_HASH env is not set");
+        let public_ip = env::var("PUBLIC_IP").expect("PUBLIC_IP env is not set");
+        let public_port = env::var("PUBLIC_PORT").expect("PUBLIC_PORT env is not set");
+        let actor_account =
+            Self::create_account_from_secret_key(actor_account_private_key.to_string());
+        let trusted_peers = Self::initialize_trusted_peers();
+
+        TestnetConfig {
+            actor_account,
+            block0_hash,
+            public_ip,
+            public_port,
+            trusted_peers,
+        }
+    }
+
+    fn create_account_from_secret_key(private_key: String) -> Account {
+        let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
+        let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
+        Account::new(&private_key, &public_key, &address)
+    }
+
+    fn initialize_trusted_peers() -> Vec<TrustedPeer> {
+        let mut trusted_peers = Vec::new();
+        for i in 1..10 {
+            let trusted_peer_address = env::var(format!("TRUSTED_PEER_{}_ADDRESS", i));
+            let trusted_peer_id = env::var(format!("TRUSTED_PEER_{}_ID", i));
+
+            if trusted_peer_address.is_err() || trusted_peer_id.is_err() {
+                break;
+            }
+
+            trusted_peers.push(TrustedPeer {
+                address: trusted_peer_address.unwrap(),
+                id: trusted_peer_id.unwrap(),
+            });
+        }
+        println!("{:?}", trusted_peers);
+
+        trusted_peers
+    }
+
+    pub fn make_config(&self) -> JormungandrConfig {
+        ConfigurationBuilder::new()
+            .with_block_hash(self.block0_hash.to_string())
+            .with_trusted_peers(self.trusted_peers.clone())
+            .with_public_address(format!("/ip4/{}/tcp/{}", self.public_ip, self.public_port))
+            .with_listen_address(format!("/ip4/0.0.0.0/tcp/{}", self.public_port))
+            .build()
+    }
+
+    pub fn block0_hash(&self) -> String {
+        self.block0_hash.clone()
+    }
+
+    pub fn actor_account(&self) -> Account {
+        self.actor_account.clone()
+    }
 }
 
 #[test]
 pub fn e2e_stake_pool() {
-    let actor_account_private_key = env::var("ACCOUNT_SK");
-    let block0_hash = env::var("BLOCK0_HASH");
-    let public_address = env::var("PUBLIC_ADDRESS");
-    let listen_address = env::var("LISTEN_ADDRESS");
-
-    if actor_account_private_key.is_err()
-        || block0_hash.is_err()
-        || public_address.is_err()
-        || listen_address.is_err()
-    {
-        panic!("Test requires environment variables to be set: [ACCOUNT_SK,BLOCK0_HASH,PUBLIC_ADDRESS,LISTEN_ADDRESS]");
-    }
-
-    let block0_hash = block0_hash.unwrap();
-    let public_address = public_address.unwrap();
-    let listen_address = listen_address.unwrap();
-    let mut actor_account =
-        create_account_from_secret_key(actor_account_private_key.unwrap().to_string());
-
-    let trusted_peers = vec![
-        TrustedPeer {
-            address: "/ip4/3.115.194.22/tcp/3000".to_string(),
-            id: "ed25519_pk1npsal4j9p9nlfs0fsmfjyga9uqk5gcslyuvxy6pexxr0j34j83rsf98wl2".to_string(),
-        },
-        TrustedPeer {
-            address: "/ip4/13.113.10.64/tcp/3000".to_string(),
-            id: "ed25519_pk16pw2st5wgx4558c6temj8tzv0pqc37qqjpy53fstdyzwxaypveys3qcpfl".to_string(),
-        },
-        TrustedPeer {
-            address: "/ip4/52.57.214.174/tcp/3000".to_string(),
-            id: "ed25519_pk1v4cj0edgmp8f2m5gex85jglrs2ruvu4z7xgy8fvhr0ma2lmyhtyszxtejz".to_string(),
-        },
-        TrustedPeer {
-            address: "/ip4/3.120.96.93/tcp/3000".to_string(),
-            id: "ed25519_pk10gmg0zkxpuzkghxc39n3a646pdru6xc24rch987cgw7zq5pmytmszjdmvh".to_string(),
-        },
-        TrustedPeer {
-            address: "/ip4/52.28.134.8/tcp/3000".to_string(),
-            id: "ed25519_pk1unu66eej6h6uxv4j4e9crfarnm6jknmtx9eknvq5vzsqpq6a9vxqr78xrw".to_string(),
-        },
-        TrustedPeer {
-            address: "/ip4/13.52.208.132/tcp/3000".to_string(),
-            id: "ed25519_pk15ppd5xlg6tylamskqkxh4rzum26w9acph8gzg86w4dd9a88qpjms26g5q9".to_string(),
-        },
-        TrustedPeer {
-            address: "/ip4/54.153.19.202/tcp/3000".to_string(),
-            id: "ed25519_pk1j9nj2u0amlg28k27pw24hre0vtyp3ge0xhq6h9mxwqeur48u463s0crpfk".to_string(),
-        },
-    ];
-
-    let config = ConfigurationBuilder::new()
-        .with_block_hash(block0_hash.to_string())
-        .with_trusted_peers(trusted_peers)
-        .with_public_address(public_address.to_string())
-        .with_listen_address(listen_address.to_string())
-        .build();
+    let testnet_config = TestnetConfig::new();
+    let mut actor_account = testnet_config.actor_account();
+    let block0_hash = testnet_config.block0_hash();
 
     let jormungandr = Starter::new()
-        .config(config)
+        .config(testnet_config.make_config())
+        .timeout(Duration::from_secs(1000))
+        .passive()
         .verify_by(StartupVerificationMode::Log)
         .start()
         .unwrap();
