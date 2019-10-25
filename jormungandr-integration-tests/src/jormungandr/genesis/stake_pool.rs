@@ -42,8 +42,8 @@ pub fn create_delegate_retire_stake_pool() {
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
         "1234",
-        &jormungandr.rest_address(),
         &block0_hash,
+        &jormungandr.rest_address(),
     );
     delegate_stake(
         &mut actor_account,
@@ -62,8 +62,8 @@ pub fn create_delegate_retire_stake_pool() {
 pub fn create_new_stake_pool(
     account: &mut Account,
     node_id: &str,
-    jormungandr_rest_address: &str,
     genesis_block_hash: &str,
+    jormungandr_rest_address: &str,
 ) -> String {
     let kes_secret_key = jcli_wrapper::assert_key_generate("Curve25519_2HashDH");
     let kes_public_key = jcli_wrapper::assert_key_to_public_default(&kes_secret_key);
