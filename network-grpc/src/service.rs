@@ -1,16 +1,23 @@
+mod request_stream;
+mod response_future;
+mod response_stream;
+mod subscription_future;
+
+use request_stream::RequestStream;
+use response_future::ResponseFuture;
+use response_stream::ResponseStream;
+use subscription_future::SubscriptionFuture;
+
 use crate::{
     convert::{
-        decode_node_id, deserialize_bytes, deserialize_repeated_bytes, encode_node_id,
-        error_from_grpc, error_into_grpc, serialize_to_bytes, FromProtobuf, IntoProtobuf,
+        decode_node_id, deserialize_bytes, deserialize_repeated_bytes, error_into_grpc,
+        serialize_to_bytes, FromProtobuf,
     },
     gen, PROTOCOL_VERSION,
 };
 
-use chain_core::property;
-
 use network_core::{
     error as core_error,
-    gossip::NodeId,
     server::{BlockService, FragmentService, GossipService, Node, P2pService},
 };
 
@@ -19,7 +26,7 @@ use futures::prelude::*;
 use futures::try_ready;
 use tower_grpc::{self, Code, Request, Response, Status, Streaming};
 
-use std::{marker::PhantomData, mem};
+use std::mem;
 
 #[derive(Clone, Debug)]
 pub struct NodeService<T> {
@@ -29,230 +36,6 @@ pub struct NodeService<T> {
 impl<T: Node> NodeService<T> {
     pub fn new(node: T) -> Self {
         NodeService { inner: node }
-    }
-}
-
-#[must_use = "futures do nothing unless polled"]
-pub enum ResponseFuture<T, F> {
-    Pending(F),
-    Failed(Status),
-    Finished(PhantomData<T>),
-}
-
-impl<T, F> ResponseFuture<T, F>
-where
-    F: Future,
-    F::Item: IntoProtobuf<T>,
-{
-    fn new(future: F) -> Self {
-        ResponseFuture::Pending(future)
-    }
-}
-
-impl<T, F> ResponseFuture<T, F> {
-    fn error(status: Status) -> Self {
-        ResponseFuture::Failed(status)
-    }
-
-    fn unimplemented() -> Self {
-        ResponseFuture::Failed(Status::new(Code::Unimplemented, "not implemented"))
-    }
-}
-
-#[must_use = "futures do nothing unless polled"]
-pub enum SubscriptionFuture<T, Id, F> {
-    Normal {
-        inner: ResponseFuture<T, F>,
-        node_id: Id,
-    },
-    Failed(Status),
-    Finished,
-}
-
-impl<T, Id, F> SubscriptionFuture<T, Id, F>
-where
-    Id: NodeId,
-    F: Future,
-    F::Item: IntoProtobuf<T>,
-{
-    fn new(node_id: Id, future: F) -> Self {
-        SubscriptionFuture::Normal {
-            inner: ResponseFuture::new(future),
-            node_id,
-        }
-    }
-}
-
-impl<T, Id, F> SubscriptionFuture<T, Id, F> {
-    fn error(status: Status) -> Self {
-        SubscriptionFuture::Failed(status)
-    }
-
-    fn unimplemented() -> Self {
-        SubscriptionFuture::Failed(Status::new(Code::Unimplemented, "not implemented"))
-    }
-}
-
-fn poll_and_convert_response<T, F>(
-    future: &mut F,
-) -> Poll<tower_grpc::Response<T>, tower_grpc::Status>
-where
-    F: Future<Error = core_error::Error>,
-    F::Item: IntoProtobuf<T>,
-{
-    match future.poll() {
-        Ok(Async::NotReady) => Ok(Async::NotReady),
-        Ok(Async::Ready(res)) => {
-            let item = res.into_message()?;
-            let response = tower_grpc::Response::new(item);
-            Ok(Async::Ready(response))
-        }
-        Err(e) => Err(error_into_grpc(e)),
-    }
-}
-
-fn poll_and_convert_stream<T, S>(stream: &mut S) -> Poll<Option<T>, tower_grpc::Status>
-where
-    S: Stream<Error = core_error::Error>,
-    S::Item: IntoProtobuf<T>,
-{
-    match stream.poll() {
-        Ok(Async::NotReady) => Ok(Async::NotReady),
-        Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
-        Ok(Async::Ready(Some(item))) => {
-            let item = item.into_message()?;
-            Ok(Async::Ready(Some(item)))
-        }
-        Err(e) => Err(error_into_grpc(e)),
-    }
-}
-
-impl<T, F> Future for ResponseFuture<T, F>
-where
-    F: Future<Error = core_error::Error>,
-    F::Item: IntoProtobuf<T>,
-{
-    type Item = tower_grpc::Response<T>;
-    type Error = tower_grpc::Status;
-
-    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Status> {
-        if let ResponseFuture::Pending(f) = self {
-            let res = poll_and_convert_response(f);
-            if let Ok(Async::NotReady) = res {
-                return Ok(Async::NotReady);
-            }
-            *self = ResponseFuture::Finished(PhantomData);
-            res
-        } else {
-            match mem::replace(self, ResponseFuture::Finished(PhantomData)) {
-                ResponseFuture::Pending(_) => unreachable!(),
-                ResponseFuture::Failed(status) => Err(status),
-                ResponseFuture::Finished(_) => panic!("polled a finished response"),
-            }
-        }
-    }
-}
-
-impl<T, Id, F> Future for SubscriptionFuture<T, Id, F>
-where
-    Id: NodeId + property::Serialize,
-    F: Future<Error = core_error::Error>,
-    F::Item: IntoProtobuf<T>,
-{
-    type Item = tower_grpc::Response<T>;
-    type Error = tower_grpc::Status;
-
-    fn poll(&mut self) -> Poll<Self::Item, tower_grpc::Status> {
-        if let SubscriptionFuture::Normal { inner, node_id } = self {
-            let mut res = try_ready!(inner.poll());
-            encode_node_id(node_id, res.metadata_mut())?;
-            Ok(Async::Ready(res))
-        } else {
-            match mem::replace(self, SubscriptionFuture::Finished) {
-                SubscriptionFuture::Normal { .. } => unreachable!(),
-                SubscriptionFuture::Failed(status) => Err(status),
-                SubscriptionFuture::Finished => panic!("polled a finished subscription future"),
-            }
-        }
-    }
-}
-
-#[must_use = "streams do nothing unless polled"]
-pub struct ResponseStream<T, S> {
-    inner: S,
-    _phantom: PhantomData<T>,
-}
-
-impl<T, S> ResponseStream<T, S>
-where
-    S: Stream,
-    S::Item: IntoProtobuf<T>,
-{
-    pub fn new(stream: S) -> Self {
-        ResponseStream {
-            inner: stream,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<T, S> Stream for ResponseStream<T, S>
-where
-    S: Stream<Error = core_error::Error>,
-    S::Item: IntoProtobuf<T>,
-{
-    type Item = T;
-    type Error = tower_grpc::Status;
-
-    fn poll(&mut self) -> Poll<Option<T>, tower_grpc::Status> {
-        poll_and_convert_stream(&mut self.inner)
-    }
-}
-
-impl<S, T> IntoProtobuf<ResponseStream<T, S>> for S
-where
-    S: Stream,
-    S::Item: IntoProtobuf<T>,
-{
-    fn into_message(self) -> Result<ResponseStream<T, S>, tower_grpc::Status> {
-        let stream = ResponseStream::new(self);
-        Ok(stream)
-    }
-}
-
-#[must_use = "streams do nothing unless polled"]
-pub struct RequestStream<T, S> {
-    inner: S,
-    _phantom: PhantomData<T>,
-}
-
-impl<T, S> RequestStream<T, S> {
-    fn new(inner: S) -> Self {
-        RequestStream {
-            inner,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<T, S> Stream for RequestStream<T, S>
-where
-    S: Stream<Error = tower_grpc::Status>,
-    T: FromProtobuf<S::Item>,
-{
-    type Item = T;
-    type Error = core_error::Error;
-
-    fn poll(&mut self) -> Poll<Option<T>, core_error::Error> {
-        match self.inner.poll() {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
-            Ok(Async::Ready(Some(msg))) => {
-                let item = T::from_message(msg)?;
-                Ok(Async::Ready(Some(item)))
-            }
-            Err(e) => Err(error_from_grpc(e)),
-        }
     }
 }
 
