@@ -1,14 +1,15 @@
 use bech32::{u5, Bech32, FromBase32, ToBase32};
 use chain_crypto::{
-    AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519, Ed25519Bip32, Ed25519Extended,
-    SumEd25519_12,
+    bech32::Bech32 as _, AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519,
+    Ed25519Bip32, Ed25519Extended, SecretKey, SigningAlgorithm, SumEd25519_12, Verification,
+    VerificationAlgorithm,
 };
 use hex::FromHexError;
 use jcli_app::utils::io;
 use rand::{rngs::EntropyRng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 use structopt::{clap::arg_enum, StructOpt};
@@ -18,13 +19,19 @@ custom_error! { pub Error
     Bech32 { source: bech32::Error } = "invalid Bech32",
     Hex { source: FromHexError } = "invalid Hexadecimal",
     SecretKey { source: chain_crypto::SecretKeyError } = "invalid secret key",
+    PublicKey { source: chain_crypto::PublicKeyError } = "invalid public key",
+    Signature { source: chain_crypto::SignatureError } = "invalid signature",
     Rand { source: rand::Error } = "error while using random source",
     InvalidSeed { seed_len: usize } = "invalid seed length, expected 32 bytes but received {seed_len}",
     InvalidInput { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
     InvalidOutput { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("invalid output file path '{}'", path.display()) }},
-    UnknownBech32PrivKeyHrp { hrp: String } = "unrecognized private key bech32 HRP: {hrp}",
+    UnknownBech32PrivKeyHrp { hrp: String } = "unrecognized private key bech32 HRP: '{hrp}'",
+    UnknownBech32PubKeyHrp { hrp: String } = "unrecognized public key bech32 HRP: '{hrp}'",
+    UnexpectedBech32SignHrp { actual_hrp: String, expected_hrp: String }
+        = "signature bech32 has invalid HRP: '{actual_hrp}', expected: '{expected_hrp}'",
+    SignatureVerification = "signature verification failed",
 }
 
 #[derive(StructOpt, Debug)]
@@ -38,6 +45,10 @@ pub enum Key {
     FromBytes(FromBytes),
     /// get the bytes out of a private key
     ToBytes(ToBytes),
+    /// sign data with private key
+    Sign(Sign),
+    /// verify signed data with public key
+    Verify(Verify),
 }
 
 #[derive(StructOpt, Debug)]
@@ -100,6 +111,38 @@ pub struct ToPublic {
 }
 
 #[derive(StructOpt, Debug)]
+pub struct Sign {
+    /// path to file with bech32-encoded secret key
+    ///
+    /// supported key formats are: ed25519, ed25519bip32, ed25519extended and sumed25519_12
+    #[structopt(long = "secret-key")]
+    secret_key: PathBuf,
+
+    /// path to file to write signature into, if no value is passed, standard output will be used
+    #[structopt(long = "output", short = "o")]
+    output: Option<PathBuf>,
+
+    /// path to file with data to sign, if no value is passed, standard input will be used
+    data: Option<PathBuf>,
+}
+
+#[derive(StructOpt, Debug)]
+pub struct Verify {
+    /// path to file with bech32-encoded public key
+    ///
+    /// supported key formats are: ed25519, ed25519bip32 and sumed25519_12
+    #[structopt(long = "public-key")]
+    public_key: PathBuf,
+
+    /// path to file with signature
+    #[structopt(long = "signature")]
+    signature: PathBuf,
+
+    /// path to file with signed data, if no value is passed, standard input will be used
+    data: Option<PathBuf>,
+}
+
+#[derive(StructOpt, Debug)]
 struct OutputFile {
     /// output the key to the given file or to stdout if not provided
     #[structopt(name = "OUTPUT_FILE")]
@@ -133,6 +176,8 @@ impl Key {
             Key::ToPublic(args) => args.exec(),
             Key::ToBytes(args) => args.exec(),
             Key::FromBytes(args) => args.exec(),
+            Key::Sign(args) => args.exec(),
+            Key::Verify(args) => args.exec(),
         }
     }
 }
@@ -154,7 +199,7 @@ impl Generate {
 
 impl ToPublic {
     fn exec(self) -> Result<(), Error> {
-        let bech32 = read_bech32(self.input_key)?;
+        let bech32 = read_bech32(&self.input_key)?;
         let data = bech32.data();
         let pub_key_bech32 = match bech32.hrp() {
             Ed25519::SECRET_BECH32_HRP => gen_pub_key::<Ed25519>(data),
@@ -174,7 +219,7 @@ impl ToPublic {
 
 impl ToBytes {
     fn exec(self) -> Result<(), Error> {
-        let bech32 = read_bech32(self.input_key)?;
+        let bech32 = read_bech32(&self.input_key)?;
 
         match bech32.hrp() {
             Ed25519::PUBLIC_BECH32_HRP
@@ -199,7 +244,7 @@ impl ToBytes {
 
 impl FromBytes {
     fn exec(self) -> Result<(), Error> {
-        let bytes = read_hex(self.input_bytes)?;
+        let bytes = read_hex(&self.input_bytes)?;
 
         let priv_key_bech32 = match self.key_type {
             GenPrivKeyType::Ed25519 => bytes_to_priv_key::<Ed25519>(&bytes)?,
@@ -214,24 +259,81 @@ impl FromBytes {
     }
 }
 
-fn read_hex<P: AsRef<Path>>(path: Option<P>) -> Result<Vec<u8>, Error> {
-    hex::decode(read_line(path)?.trim()).map_err(Into::into)
+impl Sign {
+    fn exec(self) -> Result<(), Error> {
+        let secret_bech32 = read_bech32(&self.secret_key)?;
+        let secret_bytes = Vec::<u8>::from_base32(secret_bech32.data())?;
+        match secret_bech32.hrp() {
+            Ed25519::SECRET_BECH32_HRP => self.sign::<Ed25519>(&secret_bytes),
+            Ed25519Bip32::SECRET_BECH32_HRP => self.sign::<Ed25519Bip32>(&secret_bytes),
+            Ed25519Extended::SECRET_BECH32_HRP => self.sign::<Ed25519Extended>(&secret_bytes),
+            SumEd25519_12::SECRET_BECH32_HRP => self.sign::<SumEd25519_12>(&secret_bytes),
+            other => Err(Error::UnknownBech32PrivKeyHrp {
+                hrp: other.to_string(),
+            }),
+        }
+    }
+
+    fn sign<A>(self, secret_bytes: &[u8]) -> Result<(), Error>
+    where
+        A: SigningAlgorithm,
+        <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
+    {
+        let secret = SecretKey::<A>::from_binary(secret_bytes)?;
+        let mut data = Vec::new();
+        io::open_file_read(&self.data)?.read_to_end(&mut data)?;
+        let signature = secret.sign(&data);
+        io::open_file_write(&self.output)?.write_all(signature.to_bech32_str().as_ref())?;
+        Ok(())
+    }
 }
 
-fn read_bech32<P: AsRef<Path>>(path: Option<P>) -> Result<Bech32, Error> {
-    read_line(path)?.trim().parse().map_err(Into::into)
+impl Verify {
+    fn exec(self) -> Result<(), Error> {
+        let public_bech32 = read_bech32(&self.public_key)?;
+        let public_bytes = Vec::<u8>::from_base32(public_bech32.data())?;
+        match public_bech32.hrp() {
+            Ed25519::PUBLIC_BECH32_HRP => self.verify::<Ed25519>(&public_bytes),
+            Ed25519Bip32::PUBLIC_BECH32_HRP => self.verify::<Ed25519Bip32>(&public_bytes),
+            SumEd25519_12::PUBLIC_BECH32_HRP => self.verify::<SumEd25519_12>(&public_bytes),
+            other => Err(Error::UnknownBech32PubKeyHrp {
+                hrp: other.to_string(),
+            }),
+        }
+    }
+
+    fn verify<A>(self, public_bytes: &[u8]) -> Result<(), Error>
+    where
+        A: SigningAlgorithm,
+        <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
+    {
+        let public = A::PubAlg::public_from_binary(&public_bytes)?;
+        let sign_bech32 = read_bech32(&self.signature)?;
+        if sign_bech32.hrp() != A::PubAlg::SIGNATURE_BECH32_HRP {
+            return Err(Error::UnexpectedBech32SignHrp {
+                actual_hrp: sign_bech32.hrp().to_string(),
+                expected_hrp: A::PubAlg::SIGNATURE_BECH32_HRP.to_string(),
+            });
+        }
+        let sign_bytes = Vec::<u8>::from_base32(sign_bech32.data())?;
+        let sign = A::PubAlg::signature_from_bytes(&sign_bytes)?;
+        let mut data = Vec::new();
+        io::open_file_read(&self.data)?.read_to_end(&mut data)?;
+        match A::PubAlg::verify_bytes(&public, &sign, &data) {
+            Verification::Success => Ok(()),
+            Verification::Failed => Err(Error::SignatureVerification),
+        }?;
+        println!("Success");
+        Ok(())
+    }
 }
 
-fn read_line<P: AsRef<Path>>(path: Option<P>) -> Result<String, Error> {
-    let input = io::open_file_read(&path).map_err(|source| Error::InvalidInput {
-        source,
-        path: path
-            .map(|path| path.as_ref().to_owned())
-            .unwrap_or_default(),
-    })?;
-    let mut line = String::new();
-    BufReader::new(input).read_line(&mut line)?;
-    Ok(line)
+fn read_hex<P: AsRef<Path>>(path: &Option<P>) -> Result<Vec<u8>, Error> {
+    hex::decode(io::read_line(path)?).map_err(Into::into)
+}
+
+fn read_bech32<'a>(path: impl Into<Option<&'a PathBuf>>) -> Result<Bech32, Error> {
+    io::read_line(&path.into())?.parse().map_err(Into::into)
 }
 
 fn gen_priv_key<K: AsymmetricKey>(seed: Option<Seed>) -> Result<Bech32, Error> {
