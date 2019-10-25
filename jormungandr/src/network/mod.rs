@@ -15,7 +15,7 @@ mod subscription;
 
 // Constants
 
-mod chunk_sizes {
+mod buffer_sizes {
     // Size of chunks to split processing of chain pull streams.
     // Apart from sizing data chunks for intercom messages, it also
     // determines how many blocks will be requested per each GetBlocks request

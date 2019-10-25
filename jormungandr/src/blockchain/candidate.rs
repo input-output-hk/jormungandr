@@ -1,5 +1,6 @@
-use super::{BlockCache, Error, ErrorKind, Storage};
+use super::{Error, ErrorKind, Storage};
 use crate::blockcfg::{Block, Header, HeaderHash};
+use crate::utils::async_msg::MessageQueue;
 use chain_core::property::{ChainLength as _, HasHeader};
 
 use futures::future::{self, Either, Loop};
@@ -120,7 +121,7 @@ impl CandidateRepo {
 
     fn splice_headers(
         &self,
-        headers: Vec<Header>,
+        header_stream: MessageQueue<Header>,
     ) -> impl Future<Item = Option<SplicedHeaderChain>, Error = Error> {
         struct State {
             headers: Vec<Header>,
@@ -222,7 +223,7 @@ impl CandidateRepo {
 
     pub fn advance_branch(
         &self,
-        headers: Vec<Header>,
+        header_stream: MessageQueue<Header>,
     ) -> impl Future<Item = Vec<HeaderHash>, Error = Error> {
         let branches = self.branches.clone();
         let block_cache = self.block_cache.clone();

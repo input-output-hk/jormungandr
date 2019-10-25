@@ -1,9 +1,9 @@
 mod connect;
 
 use super::{
-    chunk_sizes,
+    buffer_sizes,
     inbound::InboundProcessing,
-    p2p::comm::{PeerComms, Subscription},
+    p2p::comm::{OutboundSubscription, PeerComms},
     p2p::topology,
     subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
     Channels, GlobalStateR,
@@ -32,13 +32,13 @@ where
     logger: Logger,
     global_state: GlobalStateR,
     inbound: InboundSubscriptions<S>,
-    block_solicitations: Subscription<Vec<HeaderHash>>,
-    chain_pulls: Subscription<ChainPullRequest<HeaderHash>>,
+    block_solicitations: OutboundSubscription<Vec<HeaderHash>>,
+    chain_pulls: OutboundSubscription<ChainPullRequest<HeaderHash>>,
     block_sink: BlockAnnouncementProcessor,
     fragment_sink: FragmentProcessor,
     gossip_processor: GossipProcessor,
     incoming_block_announcement: Option<Header>,
-    incoming_fragments: Vec<Fragment>,
+    incoming_fragment: Option<Fragment>,
     // FIXME: kill it with fire
     client_box: TaskMessageBox<ClientMsg>,
 }
@@ -85,15 +85,19 @@ where
             builder.channels.block_box,
             remote_node_id,
             global_state.clone(),
-            &logger,
+            logger.new(o!("stream" => "block_events", "direction" => "in")),
         );
         let fragment_sink = FragmentProcessor::new(
             builder.channels.transaction_box,
             remote_node_id,
             global_state.clone(),
-            &logger,
+            logger.new(o!("stream" => "fragments", "direction" => "in")),
         );
-        let gossip_processor = GossipProcessor::new(remote_node_id, global_state.clone(), &logger);
+        let gossip_processor = GossipProcessor::new(
+            remote_node_id,
+            global_state.clone(),
+            logger.new(o!("stream" => "gossip", "direction" => "in")),
+        );
 
         Client {
             service: inner,
@@ -107,7 +111,7 @@ where
             gossip_processor,
             client_box: builder.channels.client_box,
             incoming_block_announcement: None,
-            incoming_fragments: Vec::new(),
+            incoming_fragment: None,
         }
     }
 }
@@ -158,7 +162,7 @@ where
         // before polling more events from the block subscription
         // stream.
         if let Some(header) = self.incoming_block_announcement.take() {
-            match self.block_sink.start_send(header)? {
+            match self.block_sink.start_send(header).map_err(|_| ())? {
                 AsyncSink::Ready => {}
                 AsyncSink::NotReady(header) => {
                     self.incoming_block_announcement = Some(header);
@@ -169,13 +173,13 @@ where
             // Ignoring possible NotReady return here: due to the following
             // try_ready!() invocation, this function cannot return Continue
             // while no progress has been made.
-            self.block_sink.poll_complete()?;
+            self.block_sink.poll_complete().map_err(|_| ())?;
         }
         let maybe_event = try_ready!(self.inbound.block_events.poll().map_err(|e| {
             debug!(
                 self.logger,
                 "block subscription stream failure";
-                "error" => %e,
+                "error" => ?e,
             );
         }));
         let event = match maybe_event {
@@ -195,6 +199,7 @@ where
         match event {
             BlockEvent::Announce(header) => {
                 info!(self.logger, "received block announcement"; "hash" => %header.hash());
+                debug_assert!(self.incoming_block_announcement.is_none());
                 self.incoming_block_announcement = Some(header);
             }
             BlockEvent::Solicit(block_ids) => {
@@ -264,7 +269,7 @@ where
     // retrieval.
     fn push_missing_blocks(&mut self, req: ChainPullRequest<HeaderHash>) {
         let (reply_handle, stream) =
-            intercom::stream_reply::<Block, network_core::error::Error>(self.logger.clone());
+            intercom::stream_reply::<Block, core_error::Error>(self.logger.clone());
         self.client_box
             .send_to(ClientMsg::PullBlocksToTip(req.from, reply_handle));
         let done_logger = self.logger.clone();
@@ -293,38 +298,51 @@ where
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
 {
-    // FIXME: use this to handle chain pull requests when two-stage
-    // chain pull processing is implemented in the blockchain task.
-    #[allow(dead_code)]
     fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
         let block_box = self.block_sink.message_box();
-        let logger = self.logger.clone();
-        let err_logger = logger.clone();
+        let logger = self.logger.new(o!("request" => "PullHeaders"));
+        let req_err_logger = logger.clone();
+        let res_logger = logger.clone();
+        let (handle, sink) = intercom::stream_request::<Header, (), core_error::Error>(
+            buffer_sizes::CHAIN_PULL,
+            logger.clone(),
+        );
+        // TODO: make sure that back pressure on the number of requests
+        // in flight, imposed through self.service.poll_ready(),
+        // prevents unlimited spawning of these tasks.
+        // https://github.com/input-output-hk/jormungandr/issues/1034
+        self.global_state.spawn(
+            block_box
+                .send(BlockMsg::ChainHeaders(handle))
+                .map_err(move |e| {
+                    error!(
+                        logger,
+                        "failed to enqueue request for processing";
+                        "reason" => %e,
+                    );
+                })
+                .map(|_mbox| ()),
+        );
         self.global_state.spawn(
             self.service
                 .pull_headers(&req.from, &req.to)
                 .map_err(move |e| {
-                    info!(err_logger, "PullHeaders request failed: {:?}", e);
+                    info!(
+                        req_err_logger,
+                        "request failed";
+                        "reason" => %e,
+                    );
                 })
                 .and_then(move |stream| {
-                    let err2_logger = logger.clone();
-                    let err3_logger = logger.clone();
-                    let (handle, sink) = intercom::stream_request::<Header, core_error::Error>(
-                        chunk_sizes::CHAIN_PULL,
-                    );
-                    block_box
-                        .send(BlockMsg::ChainHeaders(handle))
+                    sink.send_all(stream)
                         .map_err(move |e| {
-                            error!(err2_logger, "sending to block task failed: {:?}", e);
+                            info!(
+                                res_logger,
+                                "response stream failed";
+                                "reason" => %e,
+                            );
                         })
-                        .and_then(move |_| {
-                            sink.send_all(stream).map(|_| {}).map_err(move |e| {
-                                warn!(
-                                    err3_logger,
-                                    "processing of PullHeaders response stream failed: {:?}", e
-                                );
-                            })
-                        })
+                        .map(|_| ())
                 }),
         );
     }
@@ -432,27 +450,19 @@ where
         // Drive sending of a message to fragment task to completion
         // before polling more events from the fragment subscription
         // stream.
-        if !self.incoming_fragments.is_empty() {
-            match self
-                .fragment_sink
-                .start_send(self.incoming_fragments.split_off(0))?
-            {
+        if let Some(fragment) = self.incoming_fragment.take() {
+            match self.fragment_sink.start_send(fragment).map_err(|_| ())? {
                 AsyncSink::Ready => {}
-                AsyncSink::NotReady(fragments) => {
-                    self.incoming_fragments = fragments;
+                AsyncSink::NotReady(fragment) => {
+                    self.incoming_fragment = Some(fragment);
                     return Ok(Async::NotReady);
                 }
             }
-        }
-        if self.incoming_fragments.len() >= chunk_sizes::FRAGMENTS {
-            // Apply back pressure until the sink is ready
-            try_ready!(self.fragment_sink.poll_complete());
-            return Ok(Continue.into());
         } else {
             // Ignoring possible NotReady return here: due to the following
             // try_ready!() invocation, this function cannot return Continue
             // while no progress has been made.
-            self.fragment_sink.poll_complete()?;
+            self.fragment_sink.poll_complete().map_err(|_| ())?;
         }
 
         let maybe_fragment = try_ready!(self.inbound.fragments.poll().map_err(|e| {
@@ -471,7 +481,8 @@ where
                     "direction" => "in",
                     "item" => ?fragment,
                 );
-                self.incoming_fragments.push(fragment);
+                debug_assert!(self.incoming_fragment.is_none());
+                self.incoming_fragment = Some(fragment);
                 Ok(Continue.into())
             }
             None => {
@@ -570,20 +581,21 @@ where
                     }
                 }
             }));
-            progress.update(self.chain_pulls.poll().unwrap().map(|maybe_item| {
-                match maybe_item {
-                    Some(req) => {
-                        // FIXME: implement two-stage chain pull processing
-                        // in the blockchain task and use pull_headers here.
-                        self.pull_blocks_to_tip(req);
-                        Continue
-                    }
-                    None => {
-                        debug!(self.logger, "outbound header pull stream closed");
-                        Disconnect
-                    }
-                }
-            }));
+            progress.update(
+                self.chain_pulls
+                    .poll()
+                    .unwrap()
+                    .map(|maybe_item| match maybe_item {
+                        Some(req) => {
+                            self.pull_headers(req);
+                            Continue
+                        }
+                        None => {
+                            debug!(self.logger, "outbound header pull stream closed");
+                            Disconnect
+                        }
+                    }),
+            );
 
             match progress {
                 Progress(None) => return Ok(Async::NotReady),
