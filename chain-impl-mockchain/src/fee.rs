@@ -1,6 +1,5 @@
 use crate::certificate::{
-    Certificate, OwnerStakeDelegation, PoolRegistration, PoolRetirement, PoolUpdate,
-    StakeDelegation,
+    OwnerStakeDelegation, PoolRegistration, PoolRetirement, PoolUpdate, StakeDelegation,
 };
 use crate::transaction as tx;
 use crate::value::Value;
@@ -25,7 +24,7 @@ impl LinearFee {
     }
 }
 
-pub trait FeeAlgorithm<P> {
+pub trait FeeAlgorithm<P: tx::Payload> {
     fn calculate(
         &self,
         part: &P,
@@ -33,12 +32,14 @@ pub trait FeeAlgorithm<P> {
         output: &[tx::Output<Address>],
     ) -> Option<Value>;
 
-    fn calculate_tx(&self, tx: &tx::Transaction<Address, P>) -> Option<Value> {
-        self.calculate(&tx.extra, &tx.inputs, &tx.outputs)
+    fn calculate_tx(&self, tx: &tx::Transaction<P>) -> Option<Value> {
+        let inputs: Vec<_> = tx.as_slice().inputs().iter().collect();
+        let outputs: Vec<_> = tx.as_slice().outputs().iter().collect();
+        self.calculate(&tx.as_slice().payload().into_owned(), &inputs, &outputs)
     }
 }
 
-impl<'a, P, FA: FeeAlgorithm<P>> FeeAlgorithm<P> for &'a FA {
+impl<'a, P: tx::Payload, FA: FeeAlgorithm<P>> FeeAlgorithm<P> for &'a FA {
     fn calculate(
         &self,
         part: &P,
@@ -150,6 +151,7 @@ impl FeeAlgorithm<StakeDelegation> for LinearFee {
     }
 }
 
+/*
 impl FeeAlgorithm<Certificate> for LinearFee {
     fn calculate(
         &self,
@@ -180,6 +182,7 @@ impl FeeAlgorithm<Option<Certificate>> for LinearFee {
         }
     }
 }
+*/
 
 #[cfg(any(test, feature = "property-test-api"))]
 mod test {

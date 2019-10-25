@@ -6,13 +6,13 @@ use crate::{
     leadership::bft::LeaderId,
     ledger::{Error, Ledger},
     milli::Milli,
-    transaction::Output,
+    transaction::{Output, TxBuilder},
 };
 use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
 use std::vec::Vec;
 
-use crate::testing::{data::AddressDataValue, tx_builder::TransactionBuilder};
+use crate::testing::{data::AddressDataValue};
 
 pub struct ConfigBuilder {
     slot_duration: u8,
@@ -119,15 +119,16 @@ pub fn create_initial_fake_ledger(
 }
 
 pub fn create_initial_transaction(output: Output<Address>) -> Fragment {
-    let mut builder = TransactionBuilder::new();
-    let authenticator = builder.with_output(output).authenticate();
-    authenticator.as_message()
+    create_initial_transactions(&vec![output])
 }
 
 pub fn create_initial_transactions(outputs: &Vec<Output<Address>>) -> Fragment {
-    let mut builder = TransactionBuilder::new();
-    let authenticator = builder.with_outputs(outputs.to_vec()).authenticate();
-    authenticator.as_message()
+    let tx = TxBuilder::new()
+        .set_nopayload()
+        .set_ios(&[], outputs)
+        .set_witnesses(&[])
+        .set_payload_auth(&());
+    Fragment::Transaction(tx)
 }
 
 pub fn create_fake_ledger_with_faucet(

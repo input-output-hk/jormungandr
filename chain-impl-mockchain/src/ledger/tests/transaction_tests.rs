@@ -11,8 +11,6 @@ use crate::{
         },
         data::AddressData,
         ledger::{self, ConfigBuilder},
-        requests,
-        tx_builder::TransactionBuilder,
         TestGen,
     },
     transaction::*,
@@ -97,7 +95,7 @@ pub fn total_funds_are_const_in_ledger(
     mut transaction_data: ArbitraryValidTransactionData,
 ) -> TestResult {
     let message =
-        requests::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
+        ledger::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
     let (block0_hash, ledger) = ledger::create_initial_fake_ledger(
         &[message],
         ConfigBuilder::new()

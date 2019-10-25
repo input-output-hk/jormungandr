@@ -52,9 +52,17 @@ pub struct PoolRetirement {
 }
 
 /// Representant of a structure signed by a pool's owners
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PoolOwnersSigned<T: ?Sized> {
     pub signatures: IndexSignatures<T>,
+}
+
+impl<T: ?Sized> Clone for PoolOwnersSigned<T> {
+    fn clone(&self) -> Self {
+        PoolOwnersSigned {
+            signatures: self.signatures.clone(),
+        }
+    }
 }
 
 impl PoolRegistration {
@@ -145,15 +153,27 @@ impl property::Serialize for PoolRetirement {
 }
 
 impl Payload for PoolUpdate {
-    const HAS_DATA : bool = true;
-    const HAS_AUTH : bool = true;
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = true;
     type Auth = PoolOwnersSigned<[u8]>;
+    fn to_bytes(&self) -> Vec<u8> {
+        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
+    fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
+        auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
 }
 
 impl Payload for PoolRetirement {
-    const HAS_DATA : bool = true;
-    const HAS_AUTH : bool = true;
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = true;
     type Auth = PoolOwnersSigned<[u8]>;
+    fn to_bytes(&self) -> Vec<u8> {
+        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
+    fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
+        auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
 }
 
 impl property::Serialize for PoolRegistration {
@@ -192,21 +212,26 @@ impl Readable for PoolRegistration {
 }
 
 impl Payload for PoolRegistration {
-    const HAS_DATA : bool = true;
-    const HAS_AUTH : bool = true;
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = true;
     type Auth = PoolOwnersSigned<[u8]>;
+    fn to_bytes(&self) -> Vec<u8> {
+        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
+
+    fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
+        auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
 }
 
-impl<T> PoolOwnersSigned<T> {
-    pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self>
-    {
+impl<T: ?Sized> PoolOwnersSigned<T> {
+    pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.iter16(&mut self.signatures.iter(), |bb, (i, s)| {
             bb.u16(*i).bytes(s.as_ref())
         })
     }
 
-    pub fn verify<F>(&self, pool_info: &PoolRegistration, verify_data: &[u8]) -> Verification
-    {
+    pub fn verify<F>(&self, pool_info: &PoolRegistration, verify_data: &[u8]) -> Verification {
         let signatories = self.signatures.len();
 
         if signatories < pool_info.management_threshold as usize {
@@ -226,7 +251,7 @@ impl<T> PoolOwnersSigned<T> {
     }
 }
 
-impl<T> Readable for PoolOwnersSigned<T> {
+impl<T: ?Sized> Readable for PoolOwnersSigned<T> {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let sigs_nb = buf.get_u16()? as usize;
         let mut signatures = Vec::new();

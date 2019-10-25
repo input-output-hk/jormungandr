@@ -17,46 +17,6 @@ use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use std::{error, fmt};
 
-/// Possible error for the builder.
-#[derive(Debug, Clone)]
-pub enum Error {
-    TxInvalidNoInput,
-    TxInvalidNoOutput,
-    TxNotEnoughTotalInput,
-    TxTooMuchTotalInput,
-    MathErr(ValueError),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::TxInvalidNoInput => write!(f, "transaction has no inputs"),
-            Error::TxInvalidNoOutput => write!(f, "transaction has no outputs"),
-            Error::TxNotEnoughTotalInput => write!(f, "not enough input for making transaction"),
-            Error::TxTooMuchTotalInput => write!(f, "too muny input value for making transaction"),
-            Error::MathErr(v) => write!(f, "error in arithmetics {:?}", v),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-}
-
-/// Output policy to be used in transaction. This policy is used then
-/// there is positive balance on in the OUTPUT+FEE-INPUT. Policy
-/// explains how to use that balance. Rember that policy application
-/// may change the amount of the fee.
-#[derive(Debug, Clone)]
-pub enum OutputPolicy {
-    /// Send all extra balance to the given address.
-    One(Address),
-    /// Forget everything, do not try to return money.
-    Forget,
-}
-
 #[derive(Clone, Debug)]
 /// Transaction builder is an object to construct
 /// a transaction with iterative steps (inputs, outputs)
@@ -286,9 +246,7 @@ impl TransactionFinalizer {
     ///
     /// This doesn't guarantee that the cryptographic witnesses are valid
     /// or that the transaction is valid on any chain.
-    pub fn finalize(
-        self,
-    ) -> Result<tx::AuthenticatedTransaction<Address, Option<Certificate>>, BuildError> {
+    pub fn finalize(self) -> Result<tx::Transaction<Option<Certificate>>, BuildError> {
         let mut witnesses_flatten = Vec::new();
         for (i, w) in self.witnesses.iter().enumerate() {
             match w {

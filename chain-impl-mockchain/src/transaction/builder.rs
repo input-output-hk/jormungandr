@@ -1,29 +1,37 @@
-use std::marker::PhantomData;
-use super::payload::Payload;
 use super::input::Input;
+use super::payload::{NoExtra, Payload};
+use super::transaction::{Transaction, TransactionStruct};
 use super::transfer::Output;
-use super::transaction::NoExtra;
 use super::witness::Witness;
 use chain_addr::Address;
+use std::marker::PhantomData;
 
 /// A Transaction builder with an associated state machine
 pub struct TxBuilderState<T> {
     data: Vec<u8>,
+    tstruct: TransactionStruct,
     phantom: PhantomData<T>,
 }
 
+impl<T> Clone for TxBuilderState<T> {
+    fn clone(&self) -> Self {
+        TxBuilderState {
+            data: self.data.clone(),
+            tstruct: self.tstruct.clone(),
+            phantom: self.phantom,
+        }
+    }
+}
+
 pub enum SetPayload {}
-pub struct SetIOs<P: Payload>(PhantomData<P>);
-pub struct SetWitnesses<P: Payload>(PhantomData<P>);
+pub struct SetIOs<P>(PhantomData<P>);
+pub struct SetWitnesses<P>(PhantomData<P>);
 pub struct SetAuthData<P: Payload>(PhantomData<P>);
-pub enum Finished {}
 
 pub type TxBuilder = TxBuilderState<SetPayload>;
 
-pub struct TData(Box<[u8]>);
-
 // TODO not supported yet
-pub const FRAGMENT_OVERHEAD : usize = 0;
+pub const FRAGMENT_OVERHEAD: usize = 0;
 
 impl TxBuilder {
     /// Create a new Tx builder
@@ -35,43 +43,38 @@ impl TxBuilder {
         }
         TxBuilderState {
             data,
+            tstruct: TransactionStruct {
+                sz: 0,
+                nb_inputs: 0,
+                nb_outputs: 0,
+                inputs: 0,
+                outputs: 0,
+                witnesses: 0,
+                payload_auth: 0,
+            },
             phantom: PhantomData,
         }
     }
 }
 
-struct Hole(usize);
-
-fn push_size_hole(data: &mut Vec<u8>) -> Hole {
-    let pos = data.len();
-    data.push(0);
-    data.push(0);
-    Hole(pos)
+impl<State> TxBuilderState<State> {
+    fn current_pos(&self) -> usize {
+        self.data.len() - FRAGMENT_OVERHEAD
+    }
 }
-
-fn fill_hole(data: &mut Vec<u8>, hole: Hole, sz: u16) {
-    let bytes = u16::to_le_bytes(sz);
-    data[hole.0] = bytes[0];
-    data[hole.0 + 1] = bytes[1];
-}
-
-fn fill_hole_diff(data: &mut Vec<u8>, hole: Hole) {
-    let diff = data.len() - (hole.0 + 2);
-    fill_hole(data, hole, diff as u16)
-}
-
-//fn current_pos()
 
 impl TxBuilderState<SetPayload> {
     /// Set the payload of this transaction
-    pub fn set_payload<P: Payload>(self, payload: &P) -> TxBuilderState<SetIOs<P>> {
-        let mut data = self.data;
+    pub fn set_payload<P: Payload>(mut self, payload: &P) -> TxBuilderState<SetIOs<P>> {
         if P::HAS_DATA {
-            let hole = push_size_hole(&mut data);
-            unimplemented!();
-            fill_hole_diff(&mut data, hole);
+            self.data.extend_from_slice(&payload.to_bytes());
         }
-        TxBuilderState { data, phantom: PhantomData }
+
+        TxBuilderState {
+            data: self.data,
+            tstruct: self.tstruct,
+            phantom: PhantomData,
+        }
     }
 
     pub fn set_nopayload(self) -> TxBuilderState<SetIOs<NoExtra>> {
@@ -79,60 +82,91 @@ impl TxBuilderState<SetPayload> {
     }
 }
 
-impl<P: Payload> TxBuilderState<SetIOs<P>> {
+impl<P> TxBuilderState<SetIOs<P>> {
     /// Set the inputs and outputs of this transaction
-    pub fn set_ios(self, inputs: &[Input], outputs: &[Output<Address>]) -> TxBuilderState<SetWitnesses<P>> {
+    pub fn set_ios(
+        mut self,
+        inputs: &[Input],
+        outputs: &[Output<Address>],
+    ) -> TxBuilderState<SetWitnesses<P>> {
         assert!(inputs.len() < 255);
         assert!(outputs.len() < 255);
-        let mut data = self.data;
-        data.push(inputs.len() as u8);
-        data.push(outputs.len() as u8);
+
+        let nb_inputs = inputs.len() as u8;
+        let nb_outputs = outputs.len() as u8;
+
+        self.data.push(nb_inputs);
+        self.data.push(nb_outputs);
+
+        self.tstruct.nb_inputs = nb_inputs;
+        self.tstruct.nb_outputs = nb_outputs;
+
+        self.tstruct.inputs = self.current_pos();
 
         for i in inputs {
-            data.extend_from_slice(&i.bytes());
+            self.data.extend_from_slice(&i.bytes());
         }
+
+        self.tstruct.outputs = self.current_pos();
 
         for o in outputs {
-            // TODO push output
+            self.data.extend_from_slice(&o.address.to_bytes());
+            self.data.extend_from_slice(&o.value.bytes());
         }
 
-        TxBuilderState { data, phantom: PhantomData }
+        TxBuilderState {
+            data: self.data,
+            tstruct: self.tstruct,
+            phantom: PhantomData,
+        }
     }
-
 }
 
-impl<P: Payload> TxBuilderState<SetWitnesses<P>> {
+impl<P> TxBuilderState<SetWitnesses<P>> {
     /// Get the authenticated data consisting of the payload and the input/outputs
-    pub fn get_auth_data<'a>(&'a self) -> &'a [u8] {
+    pub fn get_auth_data_for_witness<'a>(&'a self) -> &'a [u8] {
         &self.data[FRAGMENT_OVERHEAD..]
     }
 
     /// Set the witnesses of the transaction. There's need to be 1 witness per inputs,
     /// although it is not enforced by this construction
-    pub fn set_witnesses(self, witnesses: &[Witness]) -> TxBuilderState<SetAuthData<P>> {
-        let mut data = self.data;
-        unimplemented!();
-        TxBuilderState { data, phantom: PhantomData }
+    ///
+    /// Note that the same number of witnesses as the number of inputs need to be added here,
+    /// otherwise an assert will raise.
+    pub fn set_witnesses(mut self, witnesses: &[Witness]) -> TxBuilderState<SetAuthData<P>>
+    where
+        P: Payload,
+    {
+        assert_eq!(witnesses.len(), self.tstruct.nb_inputs as usize);
+        self.tstruct.witnesses = self.current_pos();
+        for w in witnesses {
+            self.data.extend_from_slice(&w.to_bytes())
+        }
+        TxBuilderState {
+            data: self.data,
+            tstruct: self.tstruct,
+            phantom: PhantomData,
+        }
     }
 }
 
 impl<P: Payload> TxBuilderState<SetAuthData<P>> {
+    /// Get the authenticated data related to possible overall data for transaction and payload binding
     pub fn get_auth_data<'a>(&'a self) -> &'a [u8] {
         &self.data[FRAGMENT_OVERHEAD..]
     }
-    //pub fn build_no_auth_data(self) -> TData {
-    //    TData(self.0.into())
-    //}
 
-    /// Set the authenticated data 
-    pub fn set_auth_data(self, auth_data: &P::Auth) -> TxBuilderState<Finished> {
-        let mut data = self.data;
-        TxBuilderState { data, phantom: PhantomData }
-    }
-}
-
-impl TxBuilderState<Finished> {
-    pub fn build(self) -> TData {
-        TData(self.data.into())
+    /// Set the authenticated data
+    pub fn set_payload_auth(mut self, auth_data: &P::Auth) -> Transaction<P> {
+        self.tstruct.payload_auth = self.current_pos();
+        if P::HAS_DATA && P::HAS_AUTH {
+            self.data.extend_from_slice(&P::auth_to_bytes(auth_data))
+        }
+        self.tstruct.sz = self.current_pos();
+        Transaction {
+            data: self.data.into(),
+            tstruct: self.tstruct,
+            phantom: PhantomData,
+        }
     }
 }

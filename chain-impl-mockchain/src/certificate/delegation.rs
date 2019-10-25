@@ -1,11 +1,12 @@
+use crate::accounting::account::DelegationType;
 use crate::certificate::PoolId;
-use crate::transaction::{AccountIdentifier, Payload};
+use crate::transaction::{AccountIdentifier, Payload, TransactionBindingSignature};
 
-use chain_crypto::{Ed25519, Signature};
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
 };
+use chain_crypto::Ed25519;
 use typed_bytes::ByteBuilder;
 
 /// A self delegation to a specific StakePoolId.
@@ -21,6 +22,10 @@ impl OwnerStakeDelegation {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.bytes(self.pool_id.as_ref())
     }
+
+    pub fn get_delegation_type(&self) -> DelegationType {
+        DelegationType::Full(self.pool_id.clone())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,6 +38,10 @@ impl StakeDelegation {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.bytes(self.account_id.as_ref())
             .bytes(self.pool_id.as_ref())
+    }
+
+    pub fn get_delegation_type(&self) -> DelegationType {
+        DelegationType::Full(self.pool_id.clone())
     }
 }
 
@@ -51,9 +60,15 @@ impl Readable for OwnerStakeDelegation {
 }
 
 impl Payload for OwnerStakeDelegation {
-    const HAS_DATA : bool = true;
-    const HAS_AUTH : bool = false;
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = false;
     type Auth = ();
+    fn to_bytes(&self) -> Vec<u8> {
+        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
+    fn auth_to_bytes(_: &Self::Auth) -> Vec<u8> {
+        Vec::with_capacity(0)
+    }
 }
 
 impl property::Serialize for StakeDelegation {
@@ -80,9 +95,16 @@ impl Readable for StakeDelegation {
 }
 
 impl Payload for StakeDelegation {
-    const HAS_DATA : bool = true;
-    const HAS_AUTH : bool = true;
-    type Auth = Signature<[u8], Ed25519>;
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = true;
+    type Auth = TransactionBindingSignature<Ed25519>;
+    fn to_bytes(&self) -> Vec<u8> {
+        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
+
+    fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
+        auth.as_ref().to_owned()
+    }
 }
 
 #[cfg(test)]

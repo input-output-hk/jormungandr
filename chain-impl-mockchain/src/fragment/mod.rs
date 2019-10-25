@@ -3,7 +3,6 @@ mod content;
 mod raw;
 
 use crate::legacy;
-use chain_addr::Address;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 
@@ -14,7 +13,7 @@ pub use content::{BlockContentHash, BlockContentSize, Contents, ContentsBuilder}
 
 use crate::{
     certificate,
-    transaction::{AuthenticatedTransaction, NoExtra},
+    transaction::{NoExtra, Transaction},
     update::{SignedUpdateProposal, SignedUpdateVote},
 };
 
@@ -29,12 +28,12 @@ pub(super) type MessageTag = FragmentTag;
 pub enum Fragment {
     Initial(ConfigParams),
     OldUtxoDeclaration(legacy::UtxoDeclaration),
-    Transaction(AuthenticatedTransaction<Address, NoExtra>),
-    OwnerStakeDelegation(AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>),
-    StakeDelegation(AuthenticatedTransaction<Address, certificate::StakeDelegation>),
-    PoolRegistration(AuthenticatedTransaction<Address, certificate::PoolRegistration>),
-    PoolRetirement(AuthenticatedTransaction<Address, certificate::PoolRetirement>),
-    PoolUpdate(AuthenticatedTransaction<Address, certificate::PoolUpdate>),
+    Transaction(Transaction<NoExtra>),
+    OwnerStakeDelegation(Transaction<certificate::OwnerStakeDelegation>),
+    StakeDelegation(Transaction<certificate::StakeDelegation>),
+    PoolRegistration(Transaction<certificate::PoolRegistration>),
+    PoolRetirement(Transaction<certificate::PoolRetirement>),
+    PoolUpdate(Transaction<certificate::PoolUpdate>),
     UpdateProposal(SignedUpdateProposal),
     UpdateVote(SignedUpdateVote),
 }
@@ -137,24 +136,20 @@ impl Readable for Fragment {
             Some(FragmentTag::OldUtxoDeclaration) => {
                 legacy::UtxoDeclaration::read(buf).map(Fragment::OldUtxoDeclaration)
             }
-            Some(FragmentTag::Transaction) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::Transaction)
-            }
+            Some(FragmentTag::Transaction) => Transaction::read(buf).map(Fragment::Transaction),
             Some(FragmentTag::OwnerStakeDelegation) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::OwnerStakeDelegation)
+                Transaction::read(buf).map(Fragment::OwnerStakeDelegation)
             }
             Some(FragmentTag::StakeDelegation) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::StakeDelegation)
+                Transaction::read(buf).map(Fragment::StakeDelegation)
             }
             Some(FragmentTag::PoolRegistration) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::PoolRegistration)
+                Transaction::read(buf).map(Fragment::PoolRegistration)
             }
             Some(FragmentTag::PoolRetirement) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::PoolRetirement)
+                Transaction::read(buf).map(Fragment::PoolRetirement)
             }
-            Some(FragmentTag::PoolUpdate) => {
-                AuthenticatedTransaction::read(buf).map(Fragment::PoolUpdate)
-            }
+            Some(FragmentTag::PoolUpdate) => Transaction::read(buf).map(Fragment::PoolUpdate),
             Some(FragmentTag::UpdateProposal) => {
                 SignedUpdateProposal::read(buf).map(Fragment::UpdateProposal)
             }

@@ -82,6 +82,10 @@ impl<'a> ReadBuf<'a> {
         }
     }
 
+    pub fn position(&self) -> usize {
+        self.offset
+    }
+
     fn left(&self) -> usize {
         self.data.len() - self.offset
     }
@@ -200,6 +204,19 @@ impl<'a> ReadBuf<'a> {
 
 pub trait Readable: Sized {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError>;
+
+    fn read_validate<'a>(buf: &mut ReadBuf<'a>) -> Result<(), ReadError> {
+        Self::read(buf).map(|_| ())
+    }
+}
+
+impl Readable for () {
+    fn read<'a>(_: &mut ReadBuf<'a>) -> Result<(), ReadError> {
+        Ok(())
+    }
+    fn read_validate<'a>(buf: &mut ReadBuf<'a>) -> Result<(), ReadError> {
+        Self::read(buf)
+    }
 }
 
 macro_rules! read_prim_impl {

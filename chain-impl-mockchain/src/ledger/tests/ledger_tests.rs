@@ -15,8 +15,6 @@ use crate::{
         },
         data::AddressData,
         ledger::{self, ConfigBuilder},
-        requests,
-        tx_builder::TransactionBuilder,
         TestGen,
     },
     transaction::*,
@@ -100,7 +98,7 @@ pub fn total_funds_are_const_in_ledger(
     mut transaction_data: ArbitraryValidTransactionData,
 ) -> TestResult {
     let message =
-        requests::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
+        ledger::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
     let (block0_hash, ledger) = ledger::create_initial_fake_ledger(
         &[message],
         ConfigBuilder::new()
@@ -114,9 +112,9 @@ pub fn total_funds_are_const_in_ledger(
     let outputs = transaction_data.make_outputs();
     let input_addresses = transaction_data.input_addresses();
 
-    let signed_tx = TransactionBuilder::new()
-        .with_inputs(inputs)
-        .with_outputs(outputs)
+    let signed_tx = TxBuilder::new()
+        .set_nopayload()
+        .set_ios(&inputs, &outputs)
         .authenticate()
         .with_witnesses(&block0_hash, &input_addresses)
         .seal();
@@ -165,38 +163,7 @@ pub fn total_funds_are_const_in_ledger(
 }
 
 #[test]
-pub fn utxo_no_enough_signatures() {
-    let faucet = AddressData::utxo(Discrimination::Test);
-    let receiver = AddressData::utxo(Discrimination::Test);
-
-    let message = requests::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(42000),
-    ));
-    let (_, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-    let mut utxos = ledger.utxos();
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo_entry(utxos.next().unwrap()))
-        .with_output(Output::from_address(receiver.address.clone(), Value(1)))
-        .authenticate()
-        .seal();
-    let fragment_id = Fragment::Transaction(signed_tx.clone()).hash();
-
-    let fees = ledger.get_ledger_parameters();
-    assert_err!(
-        TransactionMalformed {
-            source: TxVerifyError::NumberOfSignaturesInvalid {
-                actual: 0,
-                expected: 1
-            }
-        },
-        ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
-    )
-}
-
-#[test]
-pub fn transaction_with_more_than_253_outputs() {
+pub fn transaction_with_255_outputs() {
     let faucet = AddressData::utxo(Discrimination::Test);
     let mut outputs = vec![];
     for _ in 0..=254 {
@@ -204,7 +171,7 @@ pub fn transaction_with_more_than_253_outputs() {
         outputs.push(Output::from_address(receiver.address.clone(), Value(1)));
     }
 
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = ledger::create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(256),
     ));
@@ -212,12 +179,12 @@ pub fn transaction_with_more_than_253_outputs() {
     let (block0_hash, ledger) =
         ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
     let mut utxos = ledger.utxos();
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo_entry(utxos.next().unwrap()))
-        .with_outputs(outputs)
-        .authenticate()
-        .with_witness(&block0_hash, &faucet)
-        .seal();
+    let signed_tx = TxBuilder::new()
+        .set_nopayload()
+        .set_ios(&[Input::from_utxo_entry(utxos.next().unwrap())], &outputs)
+        .set_witnesses(&[])
+        // .with_witness(&block0_hash, &faucet)
+        .set_payload_auth(&());
     let fragment_id = TestGen::hash();
 
     let fees = ledger.get_ledger_parameters();
@@ -228,7 +195,7 @@ pub fn transaction_with_more_than_253_outputs() {
                 actual: 255
             }
         },
-        ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
+        ledger.apply_transaction(&fragment_id, &signed_tx.as_slice(), &fees)
     );
 }
 
@@ -236,7 +203,7 @@ pub fn transaction_with_more_than_253_outputs() {
 pub fn iterate() {
     let faucet = AddressData::utxo(Discrimination::Test);
 
-    let message = requests::create_initial_transaction(Output::from_address(
+    let message = ledger::create_initial_transaction(Output::from_address(
         faucet.address.clone(),
         Value(42000),
     ));

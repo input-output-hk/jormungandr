@@ -17,17 +17,17 @@ macro_rules! if_cond_fail_with(
 type LedgerCheck = Result<(), Error>;
 
 // Check that a specific block0 transaction has no inputs and no witnesses
-pub(super) fn valid_block0_transaction_no_inputs<Extra>(
-    tx: &AuthenticatedTransaction<Address, Extra>,
+pub(super) fn valid_block0_transaction_no_inputs<'a, Extra>(
+    tx: &TransactionSlice<'a, Extra>,
 ) -> LedgerCheck {
     if_cond_fail_with!(
-        tx.transaction.inputs.len() != 0,
+        tx.nb_inputs() != 0,
         Error::Block0 {
             source: Block0Error::TransactionHasInput
         }
     )?;
     if_cond_fail_with!(
-        tx.witnesses.len() != 0,
+        tx.nb_inputs() != 0,
         Error::Block0 {
             source: Block0Error::TransactionHasWitnesses
         }
@@ -35,11 +35,11 @@ pub(super) fn valid_block0_transaction_no_inputs<Extra>(
 }
 
 // Check that a specific block0 transaction has no outputs
-pub(super) fn valid_block0_transaction_no_outputs<Extra>(
-    tx: &AuthenticatedTransaction<Address, Extra>,
+pub(super) fn valid_block0_transaction_no_outputs<'a, Extra>(
+    tx: &TransactionSlice<'a, Extra>,
 ) -> LedgerCheck {
     if_cond_fail_with!(
-        tx.transaction.outputs.len() != 0,
+        tx.nb_outputs() != 0,
         Error::Block0 {
             source: Block0Error::TransactionHasOutput
         }
@@ -57,13 +57,13 @@ pub(super) fn valid_output_value(output: &Output<Address>) -> LedgerCheck {
 }
 
 /// check that the transaction input/outputs/witnesses is valid for stake_owner_delegation
-pub(super) fn valid_stake_owner_delegation_transaction(
-    auth_cert: &AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>,
+pub(super) fn valid_stake_owner_delegation_transaction<'a>(
+    auth_cert: &TransactionSlice<'a, certificate::OwnerStakeDelegation>,
 ) -> LedgerCheck {
     if_cond_fail_with!(
-        auth_cert.transaction.inputs.len() != 1
-            || auth_cert.witnesses.len() != 1
-            || auth_cert.transaction.outputs.len() != 0,
+        auth_cert.inputs().nb_inputs() != 1
+            || auth_cert.witnesses().nb_witnesses() != 1
+            || auth_cert.outputs().nb_outputs() != 0,
         Error::OwnerStakeDelegationInvalidTransaction
     )
 }
@@ -109,84 +109,49 @@ pub(super) fn valid_pool_update_certificate(cert: &certificate::PoolUpdate) -> L
 custom_error! {
     #[derive(Clone, PartialEq, Eq)]
     pub TxVerifyError
-        TooManyInputs {expected: usize, actual: usize }
-            = "too many inputs, expected maximum of {expected}, but received {actual}",
-        TooManyOutputs {expected: usize, actual: usize }
+        TooManyOutputs {expected: u8, actual: u8 }
             = "too many outputs, expected maximum of {expected}, but received {actual}",
-        TooManyWitnesses {expected: usize, actual: usize }
-            = "too many witnesses, expected maximum of {expected}, but received {actual}",
-        NumberOfSignaturesInvalid { expected: usize, actual: usize }
-            = "invalid number of signatures, expected {expected}, but received {actual}",
 }
 
-pub struct TxVerifyLimits {
-    pub max_inputs_count: usize,
-    pub max_outputs_count: usize,
-    pub max_witnesses_count: usize,
-}
-
-impl<OutAddress, Extra> AuthenticatedTransaction<OutAddress, Extra> {
-    pub fn verify_well_formed(&self, limits: &TxVerifyLimits) -> Result<(), TxVerifyError> {
-        let inputs = &self.transaction.inputs;
-        if inputs.len() > limits.max_inputs_count {
-            return Err(TxVerifyError::TooManyInputs {
-                expected: limits.max_inputs_count,
-                actual: inputs.len(),
-            });
-        }
-
-        let outputs = &self.transaction.outputs;
-        if outputs.len() > limits.max_outputs_count {
-            return Err(TxVerifyError::TooManyOutputs {
-                expected: limits.max_outputs_count,
-                actual: outputs.len(),
-            });
-        }
-
-        let witnesses = &self.witnesses;
-        if witnesses.len() > limits.max_witnesses_count {
-            return Err(TxVerifyError::TooManyWitnesses {
-                expected: limits.max_witnesses_count,
-                actual: witnesses.len(),
-            });
-        }
-
-        if inputs.len() != witnesses.len() {
-            return Err(TxVerifyError::NumberOfSignaturesInvalid {
-                expected: inputs.len(),
-                actual: witnesses.len(),
-            });
-        }
-
-        Ok(())
+pub(super) fn valid_transaction_ios_number<'a, P>(
+    tx: &TransactionSlice<'a, P>,
+) -> Result<(), TxVerifyError> {
+    if tx.nb_outputs() >= 255 {
+        return Err(TxVerifyError::TooManyOutputs {
+            expected: 255,
+            actual: tx.nb_outputs(),
+        });
     }
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    use crate::certificate::Certificate;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
 
-    #[quickcheck]
-    pub fn test_valid_block0_transaction_no_inputs(
-        auth_tx: AuthenticatedTransaction<Address, Certificate>,
-    ) -> TestResult {
-        let has_valid_inputs =
-            auth_tx.transaction.inputs.len() == 0 && auth_tx.witnesses.len() == 0;
-        let result = valid_block0_transaction_no_inputs(&auth_tx);
+    fn test_valid_block0_transaction_no_inputs_for<P: Payload>(tx: Transaction<P>) -> TestResult {
+        let has_valid_inputs = tx.nb_inputs() == 0 && tx.nb_witnesses() == 0;
+        let result = valid_block0_transaction_no_inputs(&tx.as_slice());
         to_quickchek_result(result, has_valid_inputs)
     }
 
     #[quickcheck]
-    pub fn test_valid_block0_transaction_outputs(
-        auth_tx: AuthenticatedTransaction<Address, Certificate>,
+    pub fn test_valid_block0_transaction_no_inputs(
+        tx: Transaction<certificate::OwnerStakeDelegation>,
     ) -> TestResult {
-        let has_valid_outputs = auth_tx.transaction.outputs.len() == 0;
+        test_valid_block0_transaction_no_inputs_for(tx)
+    }
 
-        let result = valid_block0_transaction_no_outputs(&auth_tx);
+    #[quickcheck]
+    pub fn test_valid_block0_transaction_outputs(
+        tx: Transaction<certificate::OwnerStakeDelegation>,
+    ) -> TestResult {
+        let has_valid_outputs = tx.nb_outputs() == 0;
+
+        let result = valid_block0_transaction_no_outputs(&tx.as_slice());
         to_quickchek_result(result, has_valid_outputs)
     }
 
@@ -210,12 +175,10 @@ mod tests {
 
     #[quickcheck]
     pub fn test_valid_stake_owner_delegation_transaction(
-        auth_cert: AuthenticatedTransaction<Address, certificate::OwnerStakeDelegation>,
+        tx: Transaction<certificate::OwnerStakeDelegation>,
     ) -> TestResult {
-        let is_valid = auth_cert.witnesses.len() == 1
-            && auth_cert.transaction.inputs.len() == 1
-            && auth_cert.transaction.outputs.len() == 0;
-        let result = valid_stake_owner_delegation_transaction(&auth_cert);
+        let is_valid = tx.nb_witnesses() == 1 && tx.nb_inputs() == 1 && tx.nb_outputs() == 0;
+        let result = valid_stake_owner_delegation_transaction(&tx.as_slice());
         to_quickchek_result(result, is_valid)
     }
 

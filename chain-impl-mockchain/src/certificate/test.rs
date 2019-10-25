@@ -32,7 +32,7 @@ impl Arbitrary for PoolUpdate {
     }
 }
 
-impl<A: Arbitrary> Arbitrary for PoolOwnersSigned<A> {
+impl<A: Send + 'static + ?Sized> Arbitrary for PoolOwnersSigned<A> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let signatoree = Arbitrary::arbitrary(g);
         let mut signatures = Vec::new();

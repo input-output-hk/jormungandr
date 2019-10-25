@@ -10,6 +10,8 @@ use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_crypto::PublicKey;
 
+pub const INPUT_SIZE: usize = 41;
+
 pub const INPUT_PTR_SIZE: usize = 32;
 
 /// This is either an single account or a multisig account depending on the witness type
@@ -77,9 +79,20 @@ pub enum InputEnum {
     UtxoInput(UtxoPointer),
 }
 
+impl From<[u8; INPUT_SIZE]> for Input {
+    fn from(data: [u8; INPUT_SIZE]) -> Input {
+        use std::convert::TryFrom;
+        let index_or_account = data[0];
+        let value = Value::try_from(&data[1..9]).unwrap();
+        let mut input_ptr = [0u8; INPUT_PTR_SIZE];
+        input_ptr.copy_from_slice(&data[9..]);
+        Input::new(index_or_account, value, input_ptr)
+    }
+}
+
 impl Input {
-    pub fn bytes(&self) -> [u8; 41] {
-        let mut out = [0u8; 41];
+    pub fn bytes(&self) -> [u8; INPUT_SIZE] {
+        let mut out = [0u8; INPUT_SIZE];
         out[0] = self.index_or_account;
         out[1..9].copy_from_slice(&self.value.0.to_be_bytes());
         out[9..].copy_from_slice(&self.input_ptr);

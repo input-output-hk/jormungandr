@@ -6,7 +6,6 @@ use crate::{
         UpdateProposalWithProposer, UpdateVote,
     },
 };
-use chain_crypto::{Ed25519Extended, SecretKey};
 
 pub fn build_proposal(
     proposer_id: LeaderId,
