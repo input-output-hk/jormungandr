@@ -1,7 +1,9 @@
 use crate::intercom::{self, ReplyFuture, ReplyHandle};
 use crate::utils::async_msg::MessageBox;
 use network_core::error as core_error;
+use network_core::server::request_stream::{MapResponse, ProcessingError};
 
+use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use futures::sink;
 use slog::Logger;
@@ -95,5 +97,66 @@ impl<T, Msg> Sink for InboundProcessing<T, Msg> {
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
         self.state.poll_ready()
+    }
+}
+
+fn impl_on_stream_termination(
+    res: Result<(), ProcessingError>,
+    logger: &Logger,
+) -> FutureResult<(), core_error::Error> {
+    match res {
+        Ok(()) => {
+            debug!(logger, "request stream closed by the peer");
+            future::ok(())
+        }
+        Err(e) => {
+            debug!(
+                logger,
+                "request stream failed";
+                "error" => ?e,
+            );
+            future::err(core_error::Error::new(
+                core_error::Code::Canceled,
+                "not completely processed due to request stream failure",
+            ))
+        }
+    }
+}
+
+impl<T, Msg> MapResponse for InboundProcessing<T, Msg> {
+    type Response = ();
+    type ResponseFuture = FutureResult<(), core_error::Error>;
+
+    fn on_stream_termination(&mut self, res: Result<(), ProcessingError>) -> Self::ResponseFuture {
+        match res {
+            Ok(()) => {
+                debug!(self.logger, "request stream closed by the peer");
+                future::ok(())
+            }
+            Err(e) => {
+                debug!(
+                    self.logger,
+                    "request stream failed";
+                    "error" => ?e,
+                );
+                future::err(core_error::Error::new(
+                    core_error::Code::Canceled,
+                    "not completely processed due to request stream failure",
+                ))
+            }
+        }
+    }
+}
+
+// Hack: impl for a type from another module
+impl<T, R> MapResponse for intercom::RequestSink<T, R, core_error::Error>
+where
+    R: Send + 'static,
+{
+    type Response = R;
+    type ResponseFuture = ReplyFuture<R, core_error::Error>;
+
+    fn on_stream_termination(&mut self, res: Result<(), ProcessingError>) -> Self::ResponseFuture {
+        self.take_reply_future()
     }
 }

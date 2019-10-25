@@ -1,15 +1,15 @@
 use super::{
-    chain, compare_against, Blockchain, CandidateRepo, ComparisonResult, PreCheckedHeader, Ref,
-    Tip, MAIN_BRANCH_TAG,
+    chain, compare_against, Blockchain, CandidateRepo, ComparisonResult, Error, ErrorKind,
+    PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
 use crate::{
-    blockcfg::{Block, Epoch, FragmentId, Header, HeaderHash},
+    blockcfg::{Block, Epoch, FragmentId, Header},
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
     stats_counter::StatsCounter,
     utils::{
-        async_msg::MessageBox,
+        async_msg::{self, MessageBox},
         task::{Input, TokioServiceInfo},
     },
 };
@@ -21,13 +21,7 @@ use futures::future::Either;
 use slog::Logger;
 use tokio::{prelude::*, sync::mpsc::Sender};
 
-use std::{convert::identity, sync::Arc};
-
-error_chain! {
-    links {
-        Chain(chain::Error, chain::ErrorKind);
-    }
-}
+use std::sync::Arc;
 
 pub fn handle_input(
     info: &TokioServiceInfo,
@@ -69,7 +63,7 @@ pub fn run_handle_input(
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
     input: Input<BlockMsg>,
-) -> Result<()> {
+) -> Result<(), Error> {
     let bquery = match input {
         Input::Shutdown => {
             // TODO: is there some work to do here to clean up the
@@ -108,7 +102,7 @@ pub fn run_handle_input(
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
 
-            update_mempool(
+            try_request_fragment_removal(
                 tx_msg_box,
                 block.fragments().map(|f| f.id()).collect(),
                 &header,
@@ -172,11 +166,11 @@ pub fn run_handle_input(
                             logger.clone(),
                             blockchain.clone(),
                             blockchain_tip.clone(),
-                            new_block_ref.clone(),
+                            new_block_ref,
                         )
                         .wait()
                         .unwrap();
-                        update_mempool(tx_msg_box, fragment_ids, &header).unwrap_or_else(|err| {
+                        try_request_fragment_removal(tx_msg_box, fragment_ids, &header).unwrap_or_else(|err| {
                             error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
                         });
                         network_msg_box
@@ -218,17 +212,15 @@ pub fn run_handle_input(
     Ok(())
 }
 
-fn update_mempool(
+fn try_request_fragment_removal(
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     fragment_ids: Vec<FragmentId>,
     header: &Header,
-) -> Result<()> {
+) -> Result<(), async_msg::TrySendError<TransactionMsg>> {
     let hash = header.hash().into();
     let date = header.block_date().clone().into();
     let status = FragmentStatus::InABlock { date, block: hash };
-    tx_msg_box
-        .try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
-        .chain_err(|| "Unable to send Mempool update")
+    tx_msg_box.try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
 }
 
 /// process a new candidate block on top of the blockchain, this function may:
@@ -411,7 +403,7 @@ pub fn process_network_block(
     candidate_repo: CandidateRepo,
     block: Block,
     logger: Logger,
-) -> impl Future<Item = Option<Ref>, Error = chain::Error> {
+) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
     use futures::future::Either::{A, B};
 
     let mut end_blockchain = blockchain.clone();
