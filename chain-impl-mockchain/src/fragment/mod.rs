@@ -70,7 +70,7 @@ impl FragmentTag {
             4 => Some(FragmentTag::StakeDelegation),
             5 => Some(FragmentTag::PoolRegistration),
             6 => Some(FragmentTag::PoolRetirement),
-            7 => Some(FragmentTag::PoolRetirement),
+            7 => Some(FragmentTag::PoolUpdate),
             8 => Some(FragmentTag::UpdateProposal),
             9 => Some(FragmentTag::UpdateVote),
             _ => None,
