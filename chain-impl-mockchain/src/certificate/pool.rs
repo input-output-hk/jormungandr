@@ -231,7 +231,7 @@ impl<T: ?Sized> PoolOwnersSigned<T> {
         })
     }
 
-    pub fn verify<F>(&self, pool_info: &PoolRegistration, verify_data: &[u8]) -> Verification {
+    pub fn verify(&self, pool_info: &PoolRegistration, verify_data: &[u8]) -> Verification {
         let signatories = self.signatures.len();
 
         if signatories < pool_info.management_threshold as usize {
