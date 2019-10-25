@@ -70,30 +70,86 @@ mod test {
 
     use std::fmt::Display;
 
-    fn check_eq<X: Eq+Display>(s1: &str, x1: X, s2: &str, x2: X, s: &str) -> Result<(), String> {
+    fn check_eq<X: Eq + Display>(s1: &str, x1: X, s2: &str, x2: X, s: &str) -> Result<(), String> {
         if x1 == x2 {
             Ok(())
         } else {
-            Err(format!("{} and {} have different number of {} : {} != {}", s1, s2, x1, x2, s))
+            Err(format!(
+                "{} and {} have different number of {} : {} != {}",
+                s1, s2, x1, x2, s
+            ))
         }
     }
 
     #[quickcheck]
     pub fn check_transaction_accessor_consistent(tx: Transaction<NoExtra>) -> TestResult {
         let slice = tx.as_slice();
-        let res = check_eq("tx", tx.nb_inputs(), "tx-slice", slice.nb_inputs(), "inputs")
-            .and_then(|()| check_eq("tx", tx.nb_inputs(), "tx-inputs-slice", slice.inputs().nb_inputs(), "inputs"))
-            .and_then(|()| check_eq("tx", tx.nb_inputs() as usize, "tx-inputs-slice-iter", slice.inputs().iter().count(), "inputs"))
-            .and_then(|()| check_eq("tx", tx.nb_outputs(), "tx-outputs-slice", slice.outputs().nb_outputs(), "outputs"))
-            .and_then(|()| check_eq("tx", tx.nb_outputs() as usize, "tx-outputs-slice-iter", slice.outputs().iter().count(), "outputs"))
-            .and_then(|()| check_eq("tx", tx.nb_witnesses(), "tx-witness-slice", slice.witnesses().nb_witnesses(), "witnesses"))
-            .and_then(|()| check_eq("tx", tx.nb_witnesses() as usize, "tx-witness-slice-iter", slice.witnesses().iter().count(), "witnesses"));
+        let res = check_eq(
+            "tx",
+            tx.nb_inputs(),
+            "tx-slice",
+            slice.nb_inputs(),
+            "inputs",
+        )
+        .and_then(|()| {
+            check_eq(
+                "tx",
+                tx.nb_inputs(),
+                "tx-inputs-slice",
+                slice.inputs().nb_inputs(),
+                "inputs",
+            )
+        })
+        .and_then(|()| {
+            check_eq(
+                "tx",
+                tx.nb_inputs() as usize,
+                "tx-inputs-slice-iter",
+                slice.inputs().iter().count(),
+                "inputs",
+            )
+        })
+        .and_then(|()| {
+            check_eq(
+                "tx",
+                tx.nb_outputs(),
+                "tx-outputs-slice",
+                slice.outputs().nb_outputs(),
+                "outputs",
+            )
+        })
+        .and_then(|()| {
+            check_eq(
+                "tx",
+                tx.nb_outputs() as usize,
+                "tx-outputs-slice-iter",
+                slice.outputs().iter().count(),
+                "outputs",
+            )
+        })
+        .and_then(|()| {
+            check_eq(
+                "tx",
+                tx.nb_witnesses(),
+                "tx-witness-slice",
+                slice.witnesses().nb_witnesses(),
+                "witnesses",
+            )
+        })
+        .and_then(|()| {
+            check_eq(
+                "tx",
+                tx.nb_witnesses() as usize,
+                "tx-witness-slice-iter",
+                slice.witnesses().iter().count(),
+                "witnesses",
+            )
+        });
         match res {
             Ok(()) => TestResult::passed(),
             Err(e) => TestResult::error(e),
         }
     }
-
 
     impl Arbitrary for UtxoPointer {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
