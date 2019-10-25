@@ -121,6 +121,8 @@ fn connection_error(e: &io::Error) -> bool {
 
     match e.kind() {
         ConnectionAborted | ConnectionReset | ConnectionRefused => true,
+        #[cfg(target_os = "macos")]
+        InvalidInput => true,
         _ => false,
     }
 }
