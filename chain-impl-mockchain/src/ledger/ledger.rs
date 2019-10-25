@@ -63,7 +63,6 @@ pub struct Ledger {
 custom_error! {
     #[derive(Clone, PartialEq, Eq)]
     pub Block0Error
-        OnlyMessageReceived = "Old UTxOs and Initial Message are not valid in a normal block",
         TransactionHasInput = "Transaction should not have inputs in a block0",
         TransactionHasOutput = "Transaction should not have outputs in a block0",
         TransactionHasWitnesses = "Transaction should not have witnesses in a block0",
@@ -109,6 +108,7 @@ custom_error! {
         PraosActiveSlotsCoeffInvalid { error: ActiveSlotsCoeffError } = "Praos active slot coefficient invalid: {error}",
         TransactionBalanceInvalid { source: BalanceError } = "Failed to validate transaction balance",
         Block0 { source: Block0Error } = "Invalid Block0",
+        Block0OnlyFragmentReceived = "Old UTxOs and Initial Message are not valid in a normal block",
         Account { source: account::LedgerError } = "Error or Invalid account",
         Multisig { source: multisig::LedgerError } = "Error or Invalid multisig",
         NotBalanced { inputs: Value, outputs: Value } = "Inputs, outputs and fees are not balanced, transaction with {inputs} input and {outputs} output",
@@ -129,6 +129,10 @@ custom_error! {
         PotValueInvalid { error: ValueError } = "Ledger pot value invalid: {error}",
         PoolRegistrationInvalid = "Pool Registration certificate invalid",
         PoolUpdateNotAllowedYet = "Pool Update not allowed yet",
+        StakeDelegationSignatureFailed = "Stake Delegation payload signature failed",
+        PoolRetirementSignatureFailed = "Pool Retirement payload signature failed",
+        PoolUpdateSignatureFailed = "Pool update payload signature failed",
+        UpdateNotAllowedYet = "Update not yet allowed",
 }
 
 impl Ledger {
@@ -369,16 +373,8 @@ impl Ledger {
 
         let fragment_id = content.hash();
         match content {
-            Fragment::Initial(_) => {
-                return Err(Error::Block0 {
-                    source: Block0Error::OnlyMessageReceived,
-                })
-            }
-            Fragment::OldUtxoDeclaration(_) => {
-                return Err(Error::Block0 {
-                    source: Block0Error::OnlyMessageReceived,
-                });
-            }
+            Fragment::Initial(_) => return Err(Error::Block0OnlyFragmentReceived),
+            Fragment::OldUtxoDeclaration(_) => return Err(Error::Block0OnlyFragmentReceived),
             Fragment::Transaction(tx) => {
                 let tx = tx.as_slice();
                 let (new_ledger_, _fee) =
@@ -393,29 +389,63 @@ impl Ledger {
             }
             Fragment::StakeDelegation(tx) => {
                 let tx = tx.as_slice();
+                let payload = tx.payload().into_owned();
+                match payload.account_id.to_single_account() {
+                    None => {
+                        return Err(DelegationError::StakeDelegationAccountIsInvalid(
+                            payload.account_id.clone(),
+                        )
+                        .into());
+                    }
+                    Some(account_pk) => {
+                        let signature = tx.payload_auth().into_owned();
+                        let verified = signature
+                            .verify_slice(&account_pk.into(), tx.transaction_binding_auth_data());
+                        if verified == Verification::Failed {
+                            return Err(Error::StakeDelegationSignatureFailed);
+                        }
+                    }
+                }
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
-                new_ledger = new_ledger_.apply_stake_delegation(&tx.payload().into_owned())?;
+                new_ledger = new_ledger_.apply_stake_delegation(&payload)?;
             }
             Fragment::PoolRegistration(tx) => {
                 let tx = tx.as_slice();
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
-                new_ledger = new_ledger_.apply_pool_registration(&tx.payload().into_owned())?;
+                new_ledger = new_ledger_.apply_pool_registration_signcheck(
+                    &tx.payload().into_owned(),
+                    tx.transaction_binding_auth_data(),
+                    tx.payload_auth().into_owned(),
+                )?;
             }
             Fragment::PoolRetirement(tx) => {
                 let tx = tx.as_slice();
+
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
-                new_ledger = new_ledger_.apply_pool_retirement(&tx.payload().into_owned())?;
+                new_ledger = new_ledger_.apply_pool_retirement(
+                    &tx.payload().into_owned(),
+                    tx.transaction_binding_auth_data(),
+                    tx.payload_auth().into_owned(),
+                )?;
             }
             Fragment::PoolUpdate(tx) => {
                 let tx = tx.as_slice();
+
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
-                new_ledger = new_ledger_.apply_pool_update(&tx.payload().into_owned())?;
+                new_ledger = new_ledger_.apply_pool_update(
+                    &tx.payload().into_owned(),
+                    tx.transaction_binding_auth_data(),
+                    tx.payload_auth().into_owned(),
+                )?;
             }
             Fragment::UpdateProposal(update_proposal) => {
+                if true {
+                    return Err(Error::UpdateNotAllowedYet);
+                }
                 new_ledger = new_ledger.apply_update_proposal(
                     fragment_id,
                     &update_proposal,
@@ -423,6 +453,9 @@ impl Ledger {
                 )?;
             }
             Fragment::UpdateVote(vote) => {
+                if true {
+                    return Err(Error::UpdateNotAllowedYet);
+                }
                 new_ledger = new_ledger.apply_update_vote(&vote)?;
             }
         }
@@ -471,42 +504,63 @@ impl Ledger {
         Ok(self)
     }
 
+    pub fn apply_pool_registration_signcheck<'a>(
+        self,
+        cert: &certificate::PoolRegistration,
+        bad: TransactionBindingAuthData<'a>,
+        sig: certificate::PoolOwnersSigned<[u8]>,
+    ) -> Result<Self, Error> {
+        check::valid_pool_registration_certificate(cert)?;
+        check::valid_pool_owner_signature(&sig)?;
+
+        if sig.verify(cert, bad.0) == Verification::Failed {
+            return Err(Error::PoolRetirementSignatureFailed);
+        }
+
+        self.apply_pool_registration(cert)
+    }
+
     pub fn apply_pool_registration(
         mut self,
         cert: &certificate::PoolRegistration,
     ) -> Result<Self, Error> {
         check::valid_pool_registration_certificate(cert)?;
+
         self.delegation = self.delegation.register_stake_pool(cert.clone())?;
         Ok(self)
     }
 
-    pub fn apply_pool_retirement(
+    pub fn apply_pool_retirement<'a>(
         mut self,
         auth_cert: &certificate::PoolRetirement,
+        bad: TransactionBindingAuthData<'a>,
+        sig: certificate::PoolOwnersSigned<[u8]>,
     ) -> Result<Self, Error> {
         check::valid_pool_retirement_certificate(auth_cert)?;
+        check::valid_pool_owner_signature(&sig)?;
 
         let reg = self.delegation.stake_pool_get(&auth_cert.pool_id)?;
-        /*
-        if ret.verify(reg, certificate::PoolRetirement::serialize_in)
-            == Verification::Failed
-        {
-            return Err(Error::CertificateInvalidSignature);
+        if sig.verify(reg, bad.0) == Verification::Failed {
+            return Err(Error::PoolRetirementSignatureFailed);
         }
-        */
+
         self.delegation = self.delegation.deregister_stake_pool(&auth_cert.pool_id)?;
         Ok(self)
     }
-    pub fn apply_pool_update(mut self, auth_cert: &certificate::PoolUpdate) -> Result<Self, Error> {
+
+    pub fn apply_pool_update<'a>(
+        self,
+        auth_cert: &certificate::PoolUpdate,
+        bad: TransactionBindingAuthData<'a>,
+        sig: certificate::PoolOwnersSigned<[u8]>,
+    ) -> Result<Self, Error> {
         check::valid_pool_update_certificate(auth_cert)?;
+        check::valid_pool_owner_signature(&sig)?;
 
         let reg = self.delegation.stake_pool_get(&auth_cert.pool_id)?;
-        /*
-        if update.verify(reg, certificate::PoolUpdate::serialize_in) == Verification::Failed
-        {
-            return Err(Error::CertificateInvalidSignature);
+        if sig.verify(reg, bad.0) == Verification::Failed {
+            return Err(Error::PoolUpdateSignatureFailed);
         }
-        */
         // TODO do things
         Err(Error::PoolUpdateNotAllowedYet)
     }
@@ -937,7 +991,6 @@ fn input_multi_account_verify<'a>(
 #[cfg(test)]
 mod tests {
     /*
-
     use super::*;
     use crate::{
         account::{Identifier, SpendingCounter},

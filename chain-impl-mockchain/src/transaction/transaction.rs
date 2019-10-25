@@ -58,8 +58,9 @@ pub struct UnverifiedTransactionSlice<'a, P> {
     phantom: PhantomData<P>,
 }
 
-pub struct TransactionAuthData<'a>(&'a [u8]);
-pub struct TransactionBindingAuthData<'a>(&'a [u8]);
+pub struct TransactionAuthData<'a>(pub &'a [u8]);
+
+pub struct TransactionBindingAuthData<'a>(pub &'a [u8]);
 pub struct InputsSlice<'a>(u8, &'a [u8]);
 pub struct OutputsSlice<'a>(u8, &'a [u8]);
 pub struct WitnessesSlice<'a>(u8, &'a [u8]);
@@ -410,8 +411,8 @@ impl<'a, P> TransactionSlice<'a, P> {
         Digest::digest(self.transaction_auth_data().0).into()
     }
 
-    pub fn transaction_binding_auth_data(&self) -> TransactionAuthData<'a> {
-        TransactionAuthData(&self.data[0..self.tstruct.payload_auth])
+    pub fn transaction_binding_auth_data(&self) -> TransactionBindingAuthData<'a> {
+        TransactionBindingAuthData(&self.data[0..self.tstruct.payload_auth])
     }
 
     pub fn payload(&self) -> PayloadSlice<'a, P> {
@@ -456,7 +457,7 @@ impl<'a, P> TransactionSlice<'a, P> {
         InputsWitnessesSlice(self.inputs(), self.witnesses())
     }
 
-    pub fn payload_auth(&self) -> PayloadAuthSlice<'a, P::Auth>
+    pub fn payload_auth(&self) -> PayloadAuthSlice<'a, P>
     where
         P: Payload,
     {

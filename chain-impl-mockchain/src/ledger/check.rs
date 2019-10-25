@@ -86,7 +86,9 @@ pub(super) fn valid_pool_registration_certificate(
     Ok(())
 }
 
-pub(super) fn valid_pool_owner_signature<T>(pos: &certificate::PoolOwnersSigned<T>) -> LedgerCheck {
+pub(super) fn valid_pool_owner_signature<T: ?Sized>(
+    pos: &certificate::PoolOwnersSigned<T>,
+) -> LedgerCheck {
     if_cond_fail_with!(
         pos.signatures.len() == 0,
         Error::CertificateInvalidSignature

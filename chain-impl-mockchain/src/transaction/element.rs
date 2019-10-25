@@ -1,7 +1,10 @@
 use crate::key::deserialize_signature;
+use crate::transaction::TransactionBindingAuthData;
 use crate::value::{Value, ValueError};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
-use chain_crypto::{digest::DigestOf, Blake2b256, Signature, VerificationAlgorithm};
+use chain_crypto::{
+    digest::DigestOf, Blake2b256, PublicKey, Signature, Verification, VerificationAlgorithm,
+};
 
 pub struct TransactionSignData(Box<[u8]>);
 
@@ -24,6 +27,16 @@ pub struct TransactionBindingSignature<A: VerificationAlgorithm>(pub(super) Sign
 impl<A: VerificationAlgorithm> Clone for TransactionBindingSignature<A> {
     fn clone(&self) -> Self {
         TransactionBindingSignature(self.0.clone())
+    }
+}
+
+impl<A: VerificationAlgorithm> TransactionBindingSignature<A> {
+    pub fn verify_slice<'a>(
+        &self,
+        pk: &PublicKey<A>,
+        data: TransactionBindingAuthData<'a>,
+    ) -> Verification {
+        self.0.verify_slice(pk, data.0)
     }
 }
 
