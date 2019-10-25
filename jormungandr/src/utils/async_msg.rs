@@ -2,14 +2,17 @@
 //! asynchronous reading.
 
 use futures::prelude::*;
-use futures::sync::mpsc::{self, Receiver, SendError, Sender, TrySendError};
+use futures::sync::mpsc::{self, Receiver, Sender};
+pub use futures::sync::mpsc::{SendError, TrySendError};
 
 /// The output end of an in-memory FIFO channel.
+#[derive(Debug)]
 pub struct MessageBox<Msg>(Sender<Msg>);
 
 /// The input end of an in-memory FIFO channel.
 /// This can be read asynchronously in a Tokio task using its
 /// Stream implementation.
+#[derive(Debug)]
 pub struct MessageQueue<Msg>(Receiver<Msg>);
 
 /// Constructs an in-memory channel and returns the output and input halves.
