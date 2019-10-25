@@ -62,8 +62,6 @@ impl TestnetConfig {
                 id: trusted_peer_id.unwrap(),
             });
         }
-        println!("{:?}", trusted_peers);
-
         trusted_peers
     }
 
