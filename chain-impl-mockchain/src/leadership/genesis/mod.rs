@@ -212,7 +212,7 @@ mod tests {
     use crate::stake::{PoolStakeDistribution, PoolStakeInformation, PoolStakeTotal};
     use crate::testing::{
         builders::{GenesisPraosBlockBuilder, StakePoolBuilder},
-        ledger as ledger_mock,
+        ConfigBuilder, LedgerBuilder,
     };
     use crate::value::*;
 
@@ -313,13 +313,14 @@ mod tests {
     pub fn test_leader_election_is_consistent_with_stake_distribution() {
         let leader_election_parameters = LeaderElectionParameters::new();
 
-        let config_params = ledger_mock::ConfigBuilder::new()
+        let cb = ConfigBuilder::new(0)
             .with_slots_per_epoch(leader_election_parameters.slots_per_epoch)
-            .with_active_slots_coeff(leader_election_parameters.active_slots_coeff_as_milli())
-            .build();
+            .with_active_slots_coeff(leader_election_parameters.active_slots_coeff_as_milli());
 
-        let (_genesis_hash, mut ledger) =
-            ledger_mock::create_initial_fake_ledger(&vec![], config_params).unwrap();
+        let mut ledger = LedgerBuilder::from_config(cb)
+            .build()
+            .expect("cannot build test ledger")
+            .ledger;
 
         let mut pools = HashMap::<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
 
@@ -397,13 +398,14 @@ mod tests {
         let slots_per_epoch = 200000;
         let active_slots_coeff = 0.1;
         let active_slots_coeff_as_milli = Milli::from_millis((active_slots_coeff * 1000.0) as u64);
-        let config_params = ledger_mock::ConfigBuilder::new()
+        let cb = ConfigBuilder::new(0)
             .with_slots_per_epoch(slots_per_epoch)
-            .with_active_slots_coeff(active_slots_coeff_as_milli)
-            .build();
+            .with_active_slots_coeff(active_slots_coeff_as_milli);
 
-        let (_genesis_hash, mut ledger) =
-            ledger_mock::create_initial_fake_ledger(&vec![], config_params).unwrap();
+        let mut ledger = LedgerBuilder::from_config(cb)
+            .build()
+            .expect("cannot build test ledger")
+            .ledger;
 
         let mut pools = Pools::new();
 
@@ -486,11 +488,10 @@ mod tests {
             epoch: 1u32,
             slot_id: 0u32,
         };
-        let (_genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
-            &vec![],
-            ledger_mock::ConfigBuilder::new().build(),
-        )
-        .unwrap();
+        let ledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .build()
+            .expect("cannot build test ledger")
+            .ledger;
 
         let stake_pool = StakePoolBuilder::new().build();
         ledger
@@ -508,11 +509,10 @@ mod tests {
     #[test]
     pub fn leadership_leader_no_stake() {
         let date = BlockDate::first();
-        let (_genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
-            &vec![],
-            ledger_mock::ConfigBuilder::new().build(),
-        )
-        .unwrap();
+        let ledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .build()
+            .expect("cannot build test ledger")
+            .ledger;
 
         let stake_pool = StakePoolBuilder::new().build();
         ledger
@@ -532,11 +532,10 @@ mod tests {
     #[test]
     pub fn leadership_leader_zero_stake() {
         let date = BlockDate::first();
-        let (_genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
-            &vec![],
-            ledger_mock::ConfigBuilder::new().build(),
-        )
-        .unwrap();
+        let ledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .build()
+            .expect("cannot build test ledger")
+            .ledger;
 
         let stake_pool = StakePoolBuilder::new().build();
         ledger
@@ -561,11 +560,10 @@ mod tests {
             epoch: 1,
             slot_id: 0,
         };
-        let (genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
-            &vec![],
-            ledger_mock::ConfigBuilder::new().build(),
-        )
-        .unwrap();
+        let testledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .build()
+            .expect("cannot build test ledger");
+        let ledger = testledger.ledger;
 
         let stake_pool = StakePoolBuilder::new().build();
         ledger
@@ -577,7 +575,7 @@ mod tests {
         let block = GenesisPraosBlockBuilder::new()
             .with_date(date)
             .with_chain_length(ledger.chain_length())
-            .with_parent_id(genesis_hash)
+            .with_parent_id(testledger.block0_hash)
             .build(&stake_pool, ledger.era());
 
         assert!(selection.verify(&block.header).failure());
@@ -589,11 +587,10 @@ mod tests {
             epoch: 1,
             slot_id: 0,
         };
-        let (_genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
-            &vec![],
-            ledger_mock::ConfigBuilder::new().build(),
-        )
-        .unwrap();
+        let ledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .build()
+            .expect("cannot build test ledger")
+            .ledger;
 
         let stake_pool = StakePoolBuilder::new().build();
         ledger
@@ -617,11 +614,10 @@ mod tests {
     #[test]
     pub fn leadership_verify_no_stake() {
         let date = BlockDate::first();
-        let (genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
-            &vec![],
-            ledger_mock::ConfigBuilder::new().build(),
-        )
-        .unwrap();
+        let testledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .build()
+            .expect("cannot build test ledger");
+        let ledger = testledger.ledger;
 
         let stake_pool = StakePoolBuilder::new().build();
         ledger
@@ -633,7 +629,7 @@ mod tests {
         let block = GenesisPraosBlockBuilder::new()
             .with_date(date)
             .with_chain_length(ledger.chain_length())
-            .with_parent_id(genesis_hash)
+            .with_parent_id(testledger.block0_hash)
             .build(&stake_pool, ledger.era());
         assert!(selection.verify(&block.header).failure());
     }
@@ -641,11 +637,10 @@ mod tests {
     #[test]
     pub fn leadership_verify_zero_stake() {
         let date = BlockDate::first();
-        let (genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
-            &vec![],
-            ledger_mock::ConfigBuilder::new().build(),
-        )
-        .unwrap();
+        let testledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .build()
+            .expect("cannot build test ledger");
+        let ledger = testledger.ledger;
 
         let stake_pool = StakePoolBuilder::new().build();
         ledger
@@ -658,7 +653,7 @@ mod tests {
         let block = GenesisPraosBlockBuilder::new()
             .with_date(date)
             .with_chain_length(ledger.chain_length())
-            .with_parent_id(genesis_hash)
+            .with_parent_id(testledger.block0_hash)
             .build(&stake_pool, ledger.era());
 
         assert!(selection.verify(&block.header).failure());
@@ -667,11 +662,10 @@ mod tests {
     #[test]
     pub fn leadership_verify_non_existing_pool() {
         let date = BlockDate::first();
-        let (genesis_hash, ledger) = ledger_mock::create_initial_fake_ledger(
-            &vec![],
-            ledger_mock::ConfigBuilder::new().build(),
-        )
-        .unwrap();
+        let testledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .build()
+            .expect("cannot build test ledger");
+        let ledger = testledger.ledger;
 
         let stake_pool = StakePoolBuilder::new().build();
         let selection = LeadershipData::new(date.epoch, &ledger);
@@ -679,7 +673,7 @@ mod tests {
         let block = GenesisPraosBlockBuilder::new()
             .with_date(date)
             .with_chain_length(ledger.chain_length())
-            .with_parent_id(genesis_hash)
+            .with_parent_id(testledger.block0_hash)
             .build(&stake_pool, ledger.era());
 
         assert!(selection.verify(&block.header).failure());

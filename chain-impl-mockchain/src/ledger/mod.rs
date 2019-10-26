@@ -1,8 +1,8 @@
 pub mod check;
+mod info;
 pub mod iter;
 pub mod ledger;
 mod pots;
-mod info;
 
 pub use iter::*;
 pub use ledger::*;

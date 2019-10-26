@@ -120,7 +120,7 @@ pub(super) fn valid_transaction_ios_number<'a, P>(
 ) -> Result<(), TxVerifyError> {
     if tx.nb_outputs() >= 255 {
         return Err(TxVerifyError::TooManyOutputs {
-            expected: 255,
+            expected: 254,
             actual: tx.nb_outputs(),
         });
     }

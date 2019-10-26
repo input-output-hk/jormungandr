@@ -257,28 +257,11 @@ mod tests {
 
     use crate::{
         ledger::{Entry, Ledger},
-        testing::{
-            data::AddressData,
-            ledger::{self, ConfigBuilder},
-        },
-        transaction::Output,
+        testing::{ConfigBuilder, LedgerBuilder},
         value::Value,
     };
-    use chain_addr::Discrimination;
 
-    #[test]
-    pub fn iterate() {
-        let faucet = AddressData::utxo(Discrimination::Test);
-
-        let message = ledger::create_initial_transaction(Output::from_address(
-            faucet.address.clone(),
-            Value(42000),
-        ));
-        let (_block0_hash, ledger) =
-            ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
-        // FIXME: generate arbitrary ledger
-
+    fn print_from_iter(ledger: &Ledger) {
         for item in ledger.iter() {
             match item {
                 Entry::Globals(globals) => {
@@ -354,10 +337,20 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    pub fn iterate() {
+        let testledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
+            .faucet(Value(42000))
+            .build()
+            .expect("cannot build test ledger");
+
+        let ledger = testledger.ledger;
 
         let ledger2: Result<Ledger, _> = ledger.iter().collect();
         let ledger2 = ledger2.unwrap();
 
-        assert!(ledger == ledger2);
+        assert!(ledger == ledger2)
     }
 }
