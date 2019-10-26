@@ -803,7 +803,9 @@ impl Ledger {
                 }
             }
         }
-        self.utxos = self.utxos.add(&fragment_id, &new_utxos)?;
+        if new_utxos.len() > 0 {
+            self.utxos = self.utxos.add(&fragment_id, &new_utxos)?;
+        }
         Ok(self)
     }
 

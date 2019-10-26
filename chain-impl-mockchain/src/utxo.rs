@@ -136,6 +136,10 @@ impl<OutAddress> Ledger<OutAddress> {
                 output: output,
             })
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<'a, V> Iterator for Values<'a, V> {
@@ -187,12 +191,12 @@ impl<'a, V> Iterator for Iter<'a, V> {
         }
     }
 }
-
 impl<OutAddress: Clone> Ledger<OutAddress> {
     /// Create a new empty UTXO Ledger
     pub fn new() -> Self {
         Ledger(Hamt::new())
     }
+
 
     /// Add new outputs associated with a specific transaction
     ///
@@ -202,6 +206,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
         tid: &FragmentId,
         outs: &[(TransactionIndex, Output<OutAddress>)],
     ) -> Result<Self, Error> {
+        assert!(outs.len() > 0);
         assert!(outs.len() < 255);
         let b = TransactionUnspents::from_outputs(outs);
         let next = self.0.insert(tid.clone(), b)?;
