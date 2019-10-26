@@ -258,7 +258,6 @@ mod tests {
     use crate::{
         ledger::{Entry, Ledger},
         testing::{
-            builders::create_initial_transaction,
             data::AddressData,
             ledger::{self, ConfigBuilder},
         },
@@ -271,8 +270,10 @@ mod tests {
     pub fn iterate() {
         let faucet = AddressData::utxo(Discrimination::Test);
 
-        let message =
-            create_initial_transaction(Output::from_address(faucet.address.clone(), Value(42000)));
+        let message = ledger::create_initial_transaction(Output::from_address(
+            faucet.address.clone(),
+            Value(42000),
+        ));
         let (_block0_hash, ledger) =
             ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
 

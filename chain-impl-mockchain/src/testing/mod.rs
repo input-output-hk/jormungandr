@@ -2,7 +2,8 @@ pub mod arbitrary;
 pub mod builders;
 pub mod data;
 pub mod ledger;
-pub mod verifiers;
+pub mod requests;
+
 pub use arbitrary::*;
 pub use builders::*;
 
