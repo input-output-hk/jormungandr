@@ -194,6 +194,15 @@ impl LedgerBuilder {
         self.fragment(Fragment::Transaction(tx))
     }
 
+    pub fn prefill_outputs(self, outputs: &[Output<Address>]) -> Self {
+        let tx = TxBuilder::new()
+            .set_nopayload()
+            .set_ios(&[], outputs)
+            .set_witnesses(&[])
+            .set_payload_auth(&());
+        self.fragment(Fragment::Transaction(tx))
+    }
+
     pub fn faucet(mut self, faucet_value: Value) -> Self {
         self.faucet_value = Some(faucet_value);
         self
