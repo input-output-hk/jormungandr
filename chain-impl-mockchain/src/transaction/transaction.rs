@@ -60,6 +60,12 @@ pub struct UnverifiedTransactionSlice<'a, P> {
 
 pub struct TransactionAuthData<'a>(pub &'a [u8]);
 
+impl<'a> TransactionAuthData<'a> {
+    pub fn hash(&self) -> TransactionSignDataHash {
+        Digest::digest(self.0).into()
+    }
+}
+
 pub struct TransactionBindingAuthData<'a>(pub &'a [u8]);
 pub struct InputsSlice<'a>(u8, &'a [u8]);
 pub struct OutputsSlice<'a>(u8, &'a [u8]);

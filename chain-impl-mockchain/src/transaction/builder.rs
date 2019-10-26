@@ -1,6 +1,8 @@
 use super::input::Input;
 use super::payload::{NoExtra, Payload};
-use super::transaction::{Transaction, TransactionStruct};
+use super::transaction::{
+    Transaction, TransactionAuthData, TransactionBindingAuthData, TransactionStruct,
+};
 use super::transfer::Output;
 use super::witness::Witness;
 use chain_addr::Address;
@@ -124,8 +126,8 @@ impl<P> TxBuilderState<SetIOs<P>> {
 
 impl<P> TxBuilderState<SetWitnesses<P>> {
     /// Get the authenticated data consisting of the payload and the input/outputs
-    pub fn get_auth_data_for_witness<'a>(&'a self) -> &'a [u8] {
-        &self.data[FRAGMENT_OVERHEAD..]
+    pub fn get_auth_data_for_witness<'a>(&'a self) -> TransactionAuthData<'a> {
+        TransactionAuthData(&self.data[FRAGMENT_OVERHEAD..])
     }
 
     /// Set the witnesses of the transaction. There's need to be 1 witness per inputs,
@@ -152,8 +154,8 @@ impl<P> TxBuilderState<SetWitnesses<P>> {
 
 impl<P: Payload> TxBuilderState<SetAuthData<P>> {
     /// Get the authenticated data related to possible overall data for transaction and payload binding
-    pub fn get_auth_data<'a>(&'a self) -> &'a [u8] {
-        &self.data[FRAGMENT_OVERHEAD..]
+    pub fn get_auth_data<'a>(&'a self) -> TransactionBindingAuthData<'a> {
+        TransactionBindingAuthData(&self.data[FRAGMENT_OVERHEAD..])
     }
 
     /// Set the authenticated data
