@@ -197,7 +197,6 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
         Ledger(Hamt::new())
     }
 
-
     /// Add new outputs associated with a specific transaction
     ///
     /// Error if the transaction already exist

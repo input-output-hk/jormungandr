@@ -19,10 +19,26 @@ impl Ledger {
         } = self;
 
         vec![
-            format!("utxos   : #{} Total={:?}", utxos.iter().count(), Value::sum(utxos.iter().map(|x| x.output.value))),
-            format!("oldutxos: #{} Total={:?}", oldutxos.iter().count(), Value::sum(oldutxos.iter().map(|x| x.output.value))),
-            format!("accounts: #{} Total={:?}", accounts.iter().count(), Value::sum(accounts.iter().map(|x| x.1.value))),
-            format!("multisig: #{} Total={:?}", multisig.iter_accounts().count(), Value::sum(multisig.iter_accounts().map(|x| x.1.value))),
+            format!(
+                "utxos   : #{} Total={:?}",
+                utxos.iter().count(),
+                Value::sum(utxos.iter().map(|x| x.output.value))
+            ),
+            format!(
+                "oldutxos: #{} Total={:?}",
+                oldutxos.iter().count(),
+                Value::sum(oldutxos.iter().map(|x| x.output.value))
+            ),
+            format!(
+                "accounts: #{} Total={:?}",
+                accounts.iter().count(),
+                Value::sum(accounts.iter().map(|x| x.1.value))
+            ),
+            format!(
+                "multisig: #{} Total={:?}",
+                multisig.iter_accounts().count(),
+                Value::sum(multisig.iter_accounts().map(|x| x.1.value))
+            ),
         ]
     }
 

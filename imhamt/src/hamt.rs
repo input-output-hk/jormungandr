@@ -36,7 +36,6 @@ impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
     pub fn size(&self) -> usize {
         size_rec(&self.root)
     }
-
 }
 
 impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
