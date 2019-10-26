@@ -8,7 +8,7 @@ use crate::key::{
 use crate::multisig;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Bip32, PublicKey, Signature, Verification};
+use chain_crypto::{Ed25519Bip32, PublicKey, SecretKey, Signature, Verification};
 
 /// Structure that proofs that certain user agrees with
 /// some data. This structure is used to sign `Transaction`
@@ -126,6 +126,15 @@ impl Witness {
         let wud = WitnessUtxoData::new(block0, sign_data_hash);
         let sig = secret_key.sign(&wud);
         Witness::Utxo(sig)
+    }
+
+    pub fn new_old_utxo(
+        block0: &HeaderId,
+        sign_data_hash: &TransactionSignDataHash,
+        secret_key: SecretKey<Ed25519Bip32>,
+    ) -> Self {
+        let wud = WitnessUtxoData::new(block0, sign_data_hash);
+        Witness::OldUtxo(secret_key.to_public(), secret_key.sign(&wud))
     }
 
     pub fn new_account(
