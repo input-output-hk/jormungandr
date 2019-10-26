@@ -32,6 +32,14 @@ impl<K, V> Node<K, V> {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.bitmap.is_empty()
+    }
+
+    pub fn number_children(&self) -> usize {
+        self.bitmap.present()
+    }
+
     /*
     pub fn singleton(idx: LevelIndex, child: Entry<K, V>) -> Self {
         Node {
