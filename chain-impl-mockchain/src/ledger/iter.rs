@@ -351,6 +351,8 @@ mod tests {
         let ledger2: Result<Ledger, _> = ledger.iter().collect();
         let ledger2 = ledger2.unwrap();
 
+        print_from_iter(&ledger);
+
         assert!(ledger == ledger2)
     }
 }
