@@ -1,6 +1,6 @@
 //! Block service abstraction.
 
-use super::P2pService;
+use super::{request_stream, P2pService};
 use crate::{error::Error, subscription::BlockEvent};
 
 use chain_core::property::{Block, BlockDate, BlockId, HasHeader, Header};
@@ -76,41 +76,36 @@ pub trait BlockService: P2pService {
     /// implementation to produce a server-streamed response.
     type GetHeadersFuture: Future<Item = Self::GetHeadersStream, Error = Error> + Send + 'static;
 
-    /// The application-provided sink object that receives and handles
-    /// a stream of block headers sent by the peer in response to a
-    /// `BlockEvent::Missing` solicitation.
-    type PushHeadersSink: Sink<SinkItem = Self::Header, SinkError = Error> + Send + 'static;
-
-    /// The type of asyncrhonous futures returned by the
-    /// `get_push_headers_sink` method.
-    ///
-    /// The future resolves to a sink that will be used by the application
-    /// to handle the stream of incoming headers.
-    type GetPushHeadersSinkFuture: Future<Item = Self::PushHeadersSink, Error = Error>
+    /// The application-provided object that receives and handles
+    /// a stream of block headers, usually sent by the peer in response to a
+    /// `BlockEvent::Missing` event pushed by this server.
+    type PushHeadersSink: Sink<SinkItem = Self::Header, SinkError = Error>
+        + request_stream::MapResponse<Response = ()>
         + Send
         + 'static;
 
-    /// The application-provided sink object that receives blocks
-    /// uploaded in response to a `BlockEvent::Solicit` solicitation.
-    type UploadBlocksSink: Sink<SinkItem = Self::Block, SinkError = Error> + Send + 'static;
-
-    /// The type of asyncrhonous futures returned by the
-    /// `get_upload_blocks_sink` method.
-    ///
-    /// The future resolves to a sink that will be used by the application
-    /// to handle the incoming blocks.
-    type GetUploadBlocksSinkFuture: Future<Item = Self::UploadBlocksSink, Error = Error>
+    /// The type of an application-provided object that receives and handles
+    /// a block upload request, usually in response to a
+    /// `BlockEvent::Solicit` event pushed by this server.
+    type UploadBlocksSink: Sink<SinkItem = Self::Block, SinkError = Error>
+        + request_stream::MapResponse<Response = ()>
         + Send
         + 'static;
 
-    /// The type of asynchronous stream that lets the client receive
-    /// new block announcements and solicitation requests from the service.
-    type BlockSubscription: Stream<Item = BlockEvent<Self::Block>, Error = Error> + Send + 'static;
+    /// The type of a bidirectional subscription object that is used as:
+    ///
+    /// - a stream for outbound block announcements and solicitation requests;
+    /// - a sink for inbound block announcements.
+    type BlockSubscription: Stream<Item = BlockEvent<Self::Block>, Error = Error>
+        + Sink<SinkItem = Self::Header, SinkError = Error>
+        + request_stream::MapResponse<Response = ()>
+        + Send
+        + 'static;
 
     /// The type of asynchronous futures returned by method `block_subscription`.
     ///
-    /// The future resolves to a stream that will be used by the protocol
-    /// implementation to produce a server-streamed response.
+    /// The future, when successful, resolves to a subscription object
+    /// for bidirectional streaming.
     type BlockSubscriptionFuture: Future<Item = Self::BlockSubscription, Error = Error>
         + Send
         + 'static;
@@ -153,30 +148,27 @@ pub trait BlockService: P2pService {
     /// to the server's tip.
     fn pull_headers_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullHeadersFuture;
 
-    /// Called by the protocol implementation to get a sink
-    /// that receives and handles a stream of block headers sent by the peer
-    /// in response to a `BlockEvent::Missing` solicitation.
-    fn get_push_headers_sink(&mut self) -> Self::GetPushHeadersSinkFuture;
+    /// Called by the protocol implementation to handle a stream
+    /// of block headers sent by the peer in response to a
+    /// `BlockEvent::Missing` solicitation.
+    ///
+    /// Returns a sink object.
+    fn push_headers(&mut self) -> Self::PushHeadersSink;
 
-    /// Called by the protocol implementation to get a sink
-    /// that receives blocks uploaded in response to a `BlockEvent::Solicit`
-    /// solicitation.
-    fn get_upload_blocks_sink(&mut self) -> Self::GetUploadBlocksSinkFuture;
+    /// Called by the protocol implementation to handle blocks uploaded
+    /// by the peer in response to a `BlockEvent::Solicit` solicitation.
+    ///
+    /// Returns a a sink object.
+    fn upload_blocks(&mut self) -> Self::UploadBlocksSink;
 
     /// Establishes a bidirectional subscription for announcing blocks.
     ///
     /// The network protocol implementation passes the node identifier of
-    /// the sender and an asynchronous stream that will provide the inbound
-    /// announcements.
+    /// the sender node.
     ///
-    /// Returns a future resolving to an asynchronous stream
-    /// that will be used by this node to send block announcements
-    /// and solicitations.
-    fn block_subscription<In>(
-        &mut self,
-        subscriber: Self::NodeId,
-        inbound: In,
-    ) -> Self::BlockSubscriptionFuture
-    where
-        In: Stream<Item = Self::Header, Error = Error> + Send + 'static;
+    /// The implementation of the method returns a future, resolving
+    /// to an object that serves as both an asynchronous stream used by this
+    /// node to send block announcements and solicitations,
+    /// and as an asynchrounous sink for incoming block announcements.
+    fn block_subscription(&mut self, subscriber: Self::NodeId) -> Self::BlockSubscriptionFuture;
 }

@@ -1,32 +1,24 @@
 mod request_stream;
 mod response_future;
 mod response_stream;
-mod subscription_future;
+mod subscription;
 
-use request_stream::RequestStream;
 use response_future::ResponseFuture;
 use response_stream::ResponseStream;
-use subscription_future::SubscriptionFuture;
+use subscription::{Subscription, SubscriptionFuture};
 
 use crate::{
     convert::{
         decode_node_id, deserialize_bytes, deserialize_repeated_bytes, error_into_grpc,
-        serialize_to_bytes, FromProtobuf,
+        serialize_to_bytes,
     },
     gen, PROTOCOL_VERSION,
 };
 
-use network_core::{
-    error as core_error,
-    server::{BlockService, FragmentService, GossipService, Node, P2pService},
-};
+use network_core::server::{BlockService, FragmentService, GossipService, Node, P2pService};
 
 use futures::future::{self, FutureResult};
-use futures::prelude::*;
-use futures::try_ready;
 use tower_grpc::{self, Code, Request, Response, Status, Streaming};
-
-use std::mem;
 
 #[derive(Clone, Debug)]
 pub struct NodeService<T> {
@@ -39,85 +31,19 @@ impl<T: Node> NodeService<T> {
     }
 }
 
-#[must_use = "futures do nothing unless polled"]
-pub struct RequestStreamForwarding<St, F>
-where
-    St: Stream<Error = tower_grpc::Status>,
-    F: Future,
-    F::Item: Sink,
-    <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
-{
-    state: stream_forward::State<St, F>,
-}
-
-impl<St, F> RequestStreamForwarding<St, F>
-where
-    St: Stream<Error = tower_grpc::Status>,
-    F: Future,
-    F::Item: Sink,
-    <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
-{
-    fn new(stream: St, future_sink: F) -> Self {
-        RequestStreamForwarding {
-            state: stream_forward::State::WaitingSink(future_sink, stream),
-        }
-    }
-}
-
-impl<St, F> Future for RequestStreamForwarding<St, F>
-where
-    St: Stream<Error = tower_grpc::Status>,
-    F: Future<Error = core_error::Error>,
-    F::Item: Sink<SinkError = core_error::Error>,
-    <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
-{
-    type Item = ();
-    type Error = core_error::Error;
-
-    fn poll(&mut self) -> Poll<(), core_error::Error> {
-        use stream_forward::State::*;
-
-        loop {
-            let sink = match &mut self.state {
-                Forwarding(future) => {
-                    let _ = try_ready!(future.poll());
-                    return Ok(Async::Ready(()));
-                }
-                WaitingSink(future_sink, _) => try_ready!(future_sink.poll()),
-                Intermediate => unreachable!(),
-            };
-            if let WaitingSink(_, stream) = mem::replace(&mut self.state, Intermediate) {
-                let stream = RequestStream::new(stream);
-                self.state = Forwarding(sink.send_all(stream));
-            } else {
-                unreachable!()
-            }
-        }
-    }
-}
-
-mod stream_forward {
-    use super::{FromProtobuf, RequestStream};
-    use futures::prelude::*;
-    use futures::sink::SendAll;
-
-    pub enum State<St, F>
-    where
-        St: Stream<Error = tower_grpc::Status>,
-        F: Future,
-        F::Item: Sink,
-        <F::Item as Sink>::SinkItem: FromProtobuf<St::Item>,
-    {
-        WaitingSink(F, St),
-        Forwarding(SendAll<F::Item, RequestStream<<F::Item as Sink>::SinkItem, St>>),
-        Intermediate,
-    }
-}
-
 macro_rules! try_get_service {
     ($opt_ref:expr) => {
         match $opt_ref {
             None => return ResponseFuture::unimplemented(),
+            Some(service) => service,
+        }
+    };
+}
+
+macro_rules! try_get_service_push {
+    ($opt_ref:expr) => {
+        match $opt_ref {
+            None => return request_stream::Processing::unimplemented(),
             Some(service) => service,
         }
     };
@@ -221,44 +147,46 @@ where
         Self::GetFragmentsStream,
         <<T as Node>::FragmentService as FragmentService>::GetFragmentsFuture,
     >;
-    type PushHeadersFuture = ResponseFuture<
+    type PushHeadersFuture = request_stream::Processing<
+        Streaming<gen::node::Header>,
+        <T::BlockService as BlockService>::PushHeadersSink,
         gen::node::PushHeadersResponse,
-        RequestStreamForwarding<
-            Streaming<gen::node::Header>,
-            <T::BlockService as BlockService>::GetPushHeadersSinkFuture,
-        >,
     >;
-    type UploadBlocksFuture = ResponseFuture<
+    type UploadBlocksFuture = request_stream::Processing<
+        Streaming<gen::node::Block>,
+        <T::BlockService as BlockService>::UploadBlocksSink,
         gen::node::UploadBlocksResponse,
-        RequestStreamForwarding<
-            Streaming<gen::node::Block>,
-            <T::BlockService as BlockService>::GetUploadBlocksSinkFuture,
-        >,
     >;
-    type BlockSubscriptionStream = ResponseStream<
+    type BlockSubscriptionStream = Subscription<
         gen::node::BlockEvent,
-        <<T as Node>::BlockService as BlockService>::BlockSubscription,
+        Streaming<gen::node::Header>,
+        <T::BlockService as BlockService>::BlockSubscription,
     >;
     type BlockSubscriptionFuture = SubscriptionFuture<
-        Self::BlockSubscriptionStream,
+        gen::node::BlockEvent,
+        Streaming<gen::node::Header>,
         <T::BlockService as P2pService>::NodeId,
         <T::BlockService as BlockService>::BlockSubscriptionFuture,
     >;
-    type FragmentSubscriptionStream = ResponseStream<
+    type FragmentSubscriptionStream = Subscription<
         gen::node::Fragment,
-        <<T as Node>::FragmentService as FragmentService>::FragmentSubscription,
+        Streaming<gen::node::Fragment>,
+        <T::FragmentService as FragmentService>::FragmentSubscription,
     >;
     type FragmentSubscriptionFuture = SubscriptionFuture<
-        Self::FragmentSubscriptionStream,
+        gen::node::Fragment,
+        Streaming<gen::node::Fragment>,
         <T::FragmentService as P2pService>::NodeId,
         <T::FragmentService as FragmentService>::FragmentSubscriptionFuture,
     >;
-    type GossipSubscriptionStream = ResponseStream<
+    type GossipSubscriptionStream = Subscription<
         gen::node::Gossip,
-        <<T as Node>::GossipService as GossipService>::GossipSubscription,
+        Streaming<gen::node::Gossip>,
+        <T::GossipService as GossipService>::GossipSubscription,
     >;
     type GossipSubscriptionFuture = SubscriptionFuture<
-        Self::GossipSubscriptionStream,
+        gen::node::Gossip,
+        Streaming<gen::node::Gossip>,
         <T::GossipService as P2pService>::NodeId,
         <T::GossipService as GossipService>::GossipSubscriptionFuture,
     >;
@@ -352,18 +280,18 @@ where
         &mut self,
         req: Request<Streaming<gen::node::Header>>,
     ) -> Self::PushHeadersFuture {
-        let service = try_get_service!(self.inner.block_service());
-        let future_sink = service.get_push_headers_sink();
-        ResponseFuture::new(RequestStreamForwarding::new(req.into_inner(), future_sink))
+        let service = try_get_service_push!(self.inner.block_service());
+        let future_sink = service.push_headers();
+        request_stream::Processing::new(req.into_inner(), future_sink)
     }
 
     fn upload_blocks(
         &mut self,
         req: Request<Streaming<gen::node::Block>>,
     ) -> Self::UploadBlocksFuture {
-        let service = try_get_service!(self.inner.block_service());
-        let future_sink = service.get_upload_blocks_sink();
-        ResponseFuture::new(RequestStreamForwarding::new(req.into_inner(), future_sink))
+        let service = try_get_service_push!(self.inner.block_service());
+        let future_sink = service.upload_blocks();
+        request_stream::Processing::new(req.into_inner(), future_sink)
     }
 
     fn block_subscription(
@@ -372,10 +300,10 @@ where
     ) -> Self::BlockSubscriptionFuture {
         let service = try_get_service_sub!(self.inner.block_service());
         let subscriber = try_decode_node_id!(&req);
-        let stream = RequestStream::new(req.into_inner());
         SubscriptionFuture::new(
             service.node_id(),
-            service.block_subscription(subscriber, stream),
+            req.into_inner(),
+            service.block_subscription(subscriber),
         )
     }
 
@@ -385,10 +313,11 @@ where
     ) -> Self::FragmentSubscriptionFuture {
         let service = try_get_service_sub!(self.inner.fragment_service());
         let subscriber = try_decode_node_id!(&req);
-        let stream = RequestStream::new(req.into_inner());
+        let inbound = req.into_inner();
         SubscriptionFuture::new(
             service.node_id(),
-            service.fragment_subscription(subscriber, stream),
+            inbound,
+            service.fragment_subscription(subscriber),
         )
     }
 
@@ -398,10 +327,11 @@ where
     ) -> Self::GossipSubscriptionFuture {
         let service = try_get_service_sub!(self.inner.gossip_service());
         let subscriber = try_decode_node_id!(&req);
-        let stream = RequestStream::new(req.into_inner());
+        let inbound = req.into_inner();
         SubscriptionFuture::new(
             service.node_id(),
-            service.gossip_subscription(subscriber, stream),
+            inbound,
+            service.gossip_subscription(subscriber),
         )
     }
 }

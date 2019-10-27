@@ -12,11 +12,7 @@ pub struct ResponseStream<T, S> {
     _phantom: PhantomData<T>,
 }
 
-impl<T, S> ResponseStream<T, S>
-where
-    S: Stream,
-    S::Item: IntoProtobuf<T>,
-{
+impl<T, S> ResponseStream<T, S> {
     pub fn new(stream: S) -> Self {
         ResponseStream {
             inner: stream,
@@ -34,22 +30,22 @@ where
     type Error = Status;
 
     fn poll(&mut self) -> Poll<Option<T>, Status> {
-        poll_and_convert_stream(&mut self.inner)
+        poll_and_convert(&mut self.inner)
     }
 }
 
-fn poll_and_convert_stream<T, S>(stream: &mut S) -> Poll<Option<T>, Status>
+pub fn poll_and_convert<T, S>(stream: &mut S) -> Poll<Option<T>, Status>
 where
     S: Stream<Error = core_error::Error>,
     S::Item: IntoProtobuf<T>,
 {
     match stream.poll() {
         Ok(Async::NotReady) => Ok(Async::NotReady),
-        Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
         Ok(Async::Ready(Some(item))) => {
             let item = item.into_message()?;
             Ok(Async::Ready(Some(item)))
         }
+        Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
         Err(e) => Err(error_into_grpc(e)),
     }
 }

@@ -14,17 +14,11 @@ pub enum ResponseFuture<T, F> {
     Finished(PhantomData<T>),
 }
 
-impl<T, F> ResponseFuture<T, F>
-where
-    F: Future,
-    F::Item: IntoProtobuf<T>,
-{
+impl<T, F> ResponseFuture<T, F> {
     pub fn new(future: F) -> Self {
         ResponseFuture::Pending(future)
     }
-}
 
-impl<T, F> ResponseFuture<T, F> {
     pub fn error(status: Status) -> Self {
         ResponseFuture::Failed(status)
     }
