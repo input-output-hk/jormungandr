@@ -22,28 +22,6 @@ use chain_addr::Discrimination;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
-macro_rules! assert_err {
-    ($left: expr, $right: expr) => {
-        match &($left) {
-            left_val => match &($right) {
-                Err(e) => {
-                    if !(e == left_val) {
-                        panic!(
-                            "assertion failed: error mismatch \
-                             (left: `{:?}, right: `{:?}`)",
-                            *left_val, *e
-                        )
-                    }
-                }
-                Ok(_) => panic!(
-                    "assertion failed: expected error {:?} but got success",
-                    *left_val
-                ),
-            },
-        }
-    };
-}
-
 /*
 #[test]
 pub fn transaction_with_more_than_253_outputs() {
@@ -105,11 +83,10 @@ pub fn duplicated_account_transaction() {
     match result {
         Err(err) => panic!("first transaction should be succesful but {}", err),
         Ok((ledger, _)) => {
-            match ledger.apply_transaction(&fragment_id, &tx.as_slice(), &fees) {
-                Err(ledger::Error::AccountInvalidSignature {..}) => {},
-                Err(e) => panic!("duplicated transaction not accepted but unexpected error {}", e),
-                Ok(_) => panic!("duplicated transaction accepted"),
-            }
+            assert_err_match!(
+                ledger::Error::AccountInvalidSignature{..},
+                ledger.apply_transaction(&fragment_id, &tx.as_slice(), &fees)
+            );
         }
     }
 }

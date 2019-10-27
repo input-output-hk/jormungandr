@@ -24,28 +24,6 @@ use chain_addr::Discrimination;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
-macro_rules! assert_err {
-    ($left: expr, $right: expr) => {
-        match &($left) {
-            left_val => match &($right) {
-                Err(e) => {
-                    if !(e == left_val) {
-                        panic!(
-                            "assertion failed: error mismatch \
-                             (left: `{:?}, right: `{:?}`)",
-                            *left_val, *e
-                        )
-                    }
-                }
-                Ok(_) => panic!(
-                    "assertion failed: expected error {:?} but got success",
-                    *left_val
-                ),
-            },
-        }
-    };
-}
-
 #[quickcheck]
 pub fn ledger_accepts_correct_transaction(
     faucet: AddressData,
