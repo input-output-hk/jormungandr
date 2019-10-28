@@ -92,12 +92,12 @@ where
 {
     #[error("connection has been canceled")]
     Canceled,
-    #[error("connection failed: {source}")]
-    Connect { source: E },
+    #[error("connection failed")]
+    Connect(#[source] E),
     #[error("client connection unable to send requests")]
-    ClientNotReady { source: core_error::Error },
-    #[error("protocol handshake failed: {source}")]
-    Handshake { source: core_client::HandshakeError },
+    ClientNotReady(#[source] core_error::Error),
+    #[error("protocol handshake failed: {0}")]
+    Handshake(#[source] core_client::HandshakeError),
     #[error(
         "genesis block hash {peer_responded} reported by the peer is not the expected {expected}"
     )]
@@ -106,7 +106,7 @@ where
         peer_responded: HeaderHash,
     },
     #[error("subscription request failed")]
-    Subscription { source: core_error::Error },
+    Subscription(#[source] core_error::Error),
     #[error(
         "node identifier {peer_responded} reported by the peer is not the expected {expected}"
     )]
@@ -156,9 +156,7 @@ where
     T: core_client::Client,
     E: error::Error + 'static,
 {
-    client
-        .poll_ready()
-        .map_err(|e| ConnectError::ClientNotReady { source: e })
+    client.poll_ready().map_err(ConnectError::ClientNotReady)
 }
 
 impl<F> Future for ConnectFuture<F>
@@ -189,9 +187,7 @@ where
 
             let new_state = match self.state {
                 State::Connecting(ref mut future) => {
-                    let client = try_ready!(future
-                        .poll()
-                        .map_err(|e| ConnectError::Connect { source: e }));
+                    let client = try_ready!(future.poll().map_err(ConnectError::Connect));
                     self.client = Some(client);
                     State::BeforeHandshake
                 }
@@ -201,9 +197,7 @@ where
                     State::Handshake(client.handshake())
                 }
                 State::Handshake(ref mut future) => {
-                    let block0 = try_ready!(future
-                        .poll()
-                        .map_err(|e| ConnectError::Handshake { source: e }));
+                    let block0 = try_ready!(future.poll().map_err(ConnectError::Handshake));
                     self.match_block0(block0)?;
                     State::Subscribing(SubscriptionStaging::new())
                 }
@@ -384,9 +378,7 @@ where
     E: error::Error + 'static,
 {
     if let Some(future) = req {
-        let polled = future
-            .poll()
-            .map_err(|e| ConnectError::Subscription { source: e })?;
+        let polled = future.poll().map_err(ConnectError::Subscription)?;
         match polled {
             Async::NotReady => {}
             Async::Ready((stream, node_id)) => {
