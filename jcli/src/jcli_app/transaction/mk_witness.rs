@@ -1,6 +1,5 @@
 use bech32::{Bech32, ToBase32 as _};
 use chain_core::property::Serialize as _;
-use chain_crypto::{AsymmetricKey, Ed25519Bip32, SecretKey};
 use chain_impl_mockchain::{
     account::SpendingCounter,
     header::HeaderId,
@@ -64,11 +63,6 @@ impl std::str::FromStr for WitnessType {
 }
 
 impl MkWitness {
-    fn secret<A: AsymmetricKey>(&self) -> Result<SecretKey<A>, Error> {
-        let sk = read_secret_key_from_file(&self.secret)?;
-        Ok(sk)
-    }
-
     pub fn exec(self) -> Result<(), Error> {
         let witness = match self.witness_type {
             WitnessType::UTxO => {
@@ -76,10 +70,8 @@ impl MkWitness {
                 Witness::new_utxo(&self.genesis_block_hash, &self.sign_data_hash, &secret_key)
             }
             WitnessType::OldUTxO => {
-                // TODO unimplemented!()
-                let _secret_key: SecretKey<Ed25519Bip32> = self.secret()?;
-                Err(Error::MakeWitnessLegacyUtxoUnsupported)?;
-                unimplemented!()
+                let secret_key = read_secret_key_from_file(&self.secret)?;
+                Witness::new_old_utxo(&self.genesis_block_hash, &self.sign_data_hash, secret_key)
             }
             WitnessType::Account => {
                 let account_spending_counter = self
