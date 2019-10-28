@@ -22,17 +22,6 @@ where
     buffered: Option<S::SinkItem>,
 }
 
-#[must_use = "futures do nothing unless polled"]
-pub enum Processing<In, S, R>
-where
-    S: Sink + MapResponse,
-{
-    Forwarding(Forward<In, S>),
-    PendingResponse(S::ResponseFuture),
-    Failed(Status),
-    Finished(PhantomData<R>),
-}
-
 impl<In: Stream, S: Sink> Forward<In, S> {
     pub fn new(inbound: In, sink: S) -> Self {
         Forward {
@@ -53,7 +42,7 @@ impl<In, S: Sink> Forward<In, S> {
     pub fn break_up(&mut self) -> S {
         self.sink
             .take()
-            .expect("can't break down stream forwarding twice")
+            .expect("can't break up stream forwarding twice")
     }
 }
 
@@ -133,6 +122,22 @@ where
         let shutdown = sink.on_stream_termination(terminated);
         Ok(Some((sink, shutdown)).into())
     }
+
+    pub fn poll_step_infallible(&mut self) -> Async<Option<(S, S::ResponseFuture)>> {
+        self.poll_step()
+            .unwrap_or_else(|_: Infallible| unsafe { unreachable_unchecked() })
+    }
+}
+
+#[must_use = "futures do nothing unless polled"]
+pub enum Processing<In, S, R>
+where
+    S: Sink + MapResponse,
+{
+    Forwarding(Forward<In, S>),
+    PendingResponse(S::ResponseFuture),
+    Failed(Status),
+    Finished(PhantomData<R>),
 }
 
 impl<In, S, R> Processing<In, S, R>
@@ -165,7 +170,7 @@ where
         use Processing::*;
         loop {
             match self {
-                Forwarding(forward) => match forward.poll_step().unwrap() {
+                Forwarding(forward) => match forward.poll_step_infallible() {
                     Async::NotReady => return Ok(Async::NotReady),
                     Async::Ready(None) => {}
                     Async::Ready(Some((_sink, shutdown))) => {

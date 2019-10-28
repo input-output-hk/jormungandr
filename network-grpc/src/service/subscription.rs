@@ -11,6 +11,7 @@ use tower_grpc::{self, Code, Status};
 use std::marker::PhantomData;
 use std::mem;
 
+#[must_use = "streams to nothing unless polled"]
 pub struct Subscription<T, In, S>
 where
     S: Sink + MapResponse,
@@ -69,7 +70,7 @@ where
 {
     fn process_inbound(&mut self) -> Poll<Option<()>, Status> {
         match &mut self.state {
-            State::Full(forward) => match forward.poll_step().unwrap() {
+            State::Full(forward) => match forward.poll_step_infallible() {
                 Async::NotReady => Ok(Async::NotReady),
                 Async::Ready(None) => Ok(None.into()),
                 Async::Ready(Some((outbound, shutdown))) => {
@@ -103,7 +104,7 @@ where
                 *outbound = None;
             }
             State::OutboundGone { .. } => {
-                unreachable!("should not poll None more than once from the outbound stream",)
+                unreachable!("should not poll None more than once from the outbound stream")
             }
         }
     }
