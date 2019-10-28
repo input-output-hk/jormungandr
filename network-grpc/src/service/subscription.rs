@@ -61,6 +61,11 @@ where
     }
 }
 
+enum InboundOutcome {
+    Continue,
+    Closed,
+}
+
 impl<T, In, S> Subscription<T, In, S>
 where
     In: Stream<Error = Status>,
@@ -68,26 +73,28 @@ where
     S: MapResponse,
     S::SinkItem: FromProtobuf<In::Item>,
 {
-    fn process_inbound(&mut self) -> Poll<Option<()>, Status> {
+    fn process_inbound(&mut self) -> Poll<InboundOutcome, Status> {
+        use InboundOutcome::{Closed, Continue};
+
         match &mut self.state {
             State::Full(forward) => match forward.poll_step_infallible() {
                 Async::NotReady => Ok(Async::NotReady),
-                Async::Ready(None) => Ok(None.into()),
+                Async::Ready(None) => Ok(Continue.into()),
                 Async::Ready(Some((outbound, shutdown))) => {
                     self.state = State::InboundClosed {
                         outbound: Some(outbound),
                         shutdown,
                     };
-                    Ok(None.into())
+                    Ok(Continue.into())
                 }
             },
             State::InboundClosed { shutdown, .. } => {
                 try_ready!(shutdown.poll().map_err(error_into_grpc));
-                Ok(Some(()).into())
+                Ok(Closed.into())
             }
             State::OutboundGone { sink } => {
                 try_ready!(sink.close().map_err(error_into_grpc));
-                Ok(Some(()).into())
+                Ok(Closed.into())
             }
         }
     }
@@ -123,6 +130,8 @@ where
     type Error = Status;
 
     fn poll(&mut self) -> Poll<Option<T>, Status> {
+        use InboundOutcome::{Closed, Continue};
+
         loop {
             if let Some(stream) = self.state.outbound_stream() {
                 match response_stream::poll_and_convert(stream)? {
@@ -136,8 +145,8 @@ where
                         // don't worry if it's not ready as we have an
                         // item to return.
                         match self.process_inbound()? {
-                            Async::Ready(Some(())) => return Ok(None.into()),
-                            Async::NotReady | Async::Ready(None) => {}
+                            Async::Ready(Closed) => return Ok(None.into()),
+                            Async::NotReady | Async::Ready(Continue) => {}
                         }
                         return Ok(Some(item).into());
                     }
@@ -151,8 +160,8 @@ where
                 }
             }
             match try_ready!(self.process_inbound()) {
-                None => continue,
-                Some(()) => return Ok(None.into()),
+                Continue => continue,
+                Closed => return Ok(None.into()),
             }
         }
     }
