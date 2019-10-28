@@ -12,8 +12,8 @@ pub struct SettingsDto {
     #[serde(with = "LinearFeeDef")]
     pub fees: LinearFee,
     pub max_txs_per_block: u32,
-    pub slot_duration: u64,
-    pub slots_per_epoch: u32,
+    pub slot_duration: Option<u64>,
+    pub slots_per_epoch: Option<u32>,
 }
 
 impl PartialEq<SettingsDto> for SettingsDto {

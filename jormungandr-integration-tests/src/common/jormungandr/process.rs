@@ -1,5 +1,5 @@
 use super::logger::JormungandrLogger;
-use crate::common::configuration::jormungandr_config::JormungandrConfig;
+use crate::common::{configuration::jormungandr_config::JormungandrConfig, jcli_wrapper};
 use std::path::PathBuf;
 use std::process::Child;
 
@@ -33,6 +33,10 @@ impl JormungandrProcess {
             logger: JormungandrLogger::new(log_file_path.clone()),
             config: config,
         }
+    }
+
+    pub fn shutdown(&self) {
+        jcli_wrapper::assert_rest_shutdown(&self.config.get_node_address());
     }
 
     pub fn assert_no_errors_in_log(&self) {

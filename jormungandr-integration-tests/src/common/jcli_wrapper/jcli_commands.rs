@@ -60,6 +60,19 @@ pub fn get_rest_stats_command(host: &str) -> Command {
 }
 
 /// Get rest stat command.
+pub fn get_rest_shutdown_command(host: &str) -> Command {
+    let mut command = get_jcli_command();
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("shutdown")
+        .arg("get")
+        .arg("-h")
+        .arg(&host);
+    command
+}
+
+/// Get rest stat command.
 pub fn get_rest_account_stats_command(address: &str, host: &str) -> Command {
     let mut command = get_jcli_command();
     command

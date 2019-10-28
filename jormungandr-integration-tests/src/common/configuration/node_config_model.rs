@@ -95,6 +95,14 @@ impl NodeConfig {
         }
     }
 
+    pub fn get_p2p_port(&self) -> u16 {
+        let tokens: Vec<&str> = self.p2p.public_address.as_str().split("/").collect();
+        let port_str = tokens
+            .get(4)
+            .expect("cannot extract port from p2p.public_address");
+        port_str.parse().unwrap()
+    }
+
     pub fn regenerate_ports(&mut self) {
         self.rest.as_mut().unwrap().listen =
             format!("127.0.0.1:{}", super::get_available_port().to_string()).to_string();
