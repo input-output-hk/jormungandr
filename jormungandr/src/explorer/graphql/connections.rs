@@ -150,7 +150,7 @@ where
 
         let has_next_page = to < upper_bound;
         let has_previous_page = from > lower_bound;
-        let edges: Vec<_> = get_node_range(I::from(from), I::from(to + 1))
+        let edges: Vec<_> = get_node_range(I::from(from), I::from(to))
             .iter()
             .map(|(hash, node_pagination_identifier)| {
                 E::new(
@@ -176,9 +176,7 @@ where
             },
             total_count: (upper_bound
                 .checked_sub(lower_bound)
-                .expect("upper_bound to be >= than lower_bound")
-                .checked_add(1)
-                .unwrap())
+                .expect("upper_bound to be >= than lower_bound"))
             .into(),
         })
     }
@@ -277,13 +275,13 @@ fn compute_range_boundaries(
     // Compute the required range of blocks in two variables: [from, to]
     // Both ends are inclusive
     let mut from = match after {
-        Some(cursor) => cursor + 1,
+        Some(cursor) => max(cursor + 1, lower_bound),
         // If `after` is not set, start from the beginning
         None => lower_bound,
     };
 
     let mut to = match before {
-        Some(cursor) => cursor - 1,
+        Some(cursor) => min(cursor - 1, upper_bound),
         // If `before` is not set, start from the beginning
         None => upper_bound,
     };
@@ -298,8 +296,7 @@ fn compute_range_boundaries(
             to = min(
                 from.checked_add(u32::try_from(first).unwrap())
                     .map(|n| n - 1)
-                    .or(Some(to))
-                    .unwrap(),
+                    .unwrap_or(to),
                 to,
             );
         }
@@ -315,8 +312,7 @@ fn compute_range_boundaries(
             from = max(
                 to.checked_sub(u32::try_from(last).unwrap())
                     .map(|n| n + 1)
-                    .or(Some(from))
-                    .unwrap(),
+                    .unwrap_or(from),
                 from,
             );
         }

@@ -326,7 +326,7 @@ impl ExplorerDB {
         })
     }
 
-    pub fn find_block_by_transaction(
+    pub fn find_block_hash_by_transaction(
         &self,
         transaction_id: &FragmentId,
     ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {

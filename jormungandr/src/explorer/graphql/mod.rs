@@ -83,7 +83,7 @@ impl Block {
             .sort_unstable_by_key(|tx| tx.offset_in_block);
 
         let lower_bound = 0u32;
-        let upper_bound = transactions.len().checked_sub(1).unwrap_or(0);
+        let upper_bound = transactions.len();
 
         TransactionConnection::new(
             lower_bound,
@@ -100,12 +100,10 @@ impl Block {
                 let from = usize::try_from(from).unwrap();
                 let to = usize::try_from(to).unwrap();
 
-                transactions[from..min(transactions.len(), to.checked_add(1).unwrap())]
-                    .iter()
-                    .enumerate()
-                    .map(|(i, tx)| {
+                (from..to)
+                    .map(|i| {
                         (
-                            tx.id().clone(),
+                            transactions[i].id().clone(),
                             i.try_into()
                                 .expect("tried to paginate more than 2^32 elements"),
                         )
@@ -205,36 +203,53 @@ impl From<blockcfg::BlockDate> for BlockDate {
 #[derive(Clone)]
 struct Transaction {
     id: FragmentId,
-    in_block: Option<HeaderHash>,
+    block_hash: Option<HeaderHash>,
 }
 
 impl Transaction {
     fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let in_block = Self::get_in_block(&id, context).ok_or(ErrorKind::NotFound(format!(
-            "transaction not found: {}",
-            &id,
-        )))?;
+        let block_hash = context
+            .db
+            .find_block_hash_by_transaction(&id)
+            .wait()
+            .unwrap()
+            .ok_or(ErrorKind::NotFound(format!(
+                "transaction not found: {}",
+                &id,
+            )))?;
 
         Ok(Transaction {
             id,
-            in_block: Some(in_block),
+            block_hash: Some(block_hash),
         })
     }
 
     fn from_valid_id(id: FragmentId) -> Transaction {
-        Transaction { id, in_block: None }
+        Transaction {
+            id,
+            block_hash: None,
+        }
     }
 
-    fn get_in_block(id: &HeaderHash, context: &Context) -> Option<HeaderHash> {
-        context.db.find_block_by_transaction(&id).wait().unwrap()
+    fn get_block_hash(id: &HeaderHash, context: &Context) -> Option<HeaderHash> {
+        context
+            .db
+            .find_block_hash_by_transaction(&id)
+            .wait()
+            .unwrap()
     }
 
     fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
-        let block_id = match self.in_block {
+        let block_id = match self.block_hash {
             Some(block_id) => block_id,
-            None => Self::get_in_block(&self.id, context).ok_or(ErrorKind::InternalError(
-                "Transaction's block was not found".to_owned(),
-            ))?,
+            None => context
+                .db
+                .find_block_hash_by_transaction(&self.id)
+                .wait()
+                .unwrap()
+                .ok_or(ErrorKind::InternalError(
+                    "Transaction's block was not found".to_owned(),
+                ))?,
         };
 
         context.db.get_block(&block_id).wait()?.ok_or(
@@ -831,7 +846,7 @@ impl Query {
 
         BlockConnection::new(
             block0,
-            longest_chain.into(),
+            u32::from(longest_chain) + 1,
             first,
             last,
             before,
