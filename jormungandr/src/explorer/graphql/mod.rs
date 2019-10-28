@@ -96,17 +96,18 @@ impl Block {
             after,
             |from: u32, to: u32| {
                 use std::cmp::min;
-                transactions[usize::try_from(from).unwrap()
-                    ..min(
-                        transactions.len(),
-                        usize::try_from(to.checked_add(1).unwrap()).unwrap(),
-                    )]
+
+                let from = usize::try_from(from).unwrap();
+                let to = usize::try_from(to).unwrap();
+
+                transactions[from..min(transactions.len(), to.checked_add(1).unwrap())]
                     .iter()
                     .enumerate()
                     .map(|(i, tx)| {
                         (
                             tx.id().clone(),
-                            i.try_into().expect("tried to paginate more than 2^32 elements"),
+                            i.try_into()
+                                .expect("tried to paginate more than 2^32 elements"),
                         )
                     })
                     .collect::<Vec<(FragmentId, u32)>>()
