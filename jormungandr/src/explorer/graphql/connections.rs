@@ -174,7 +174,12 @@ where
                 start_cursor,
                 end_cursor,
             },
-            total_count: (upper_bound - lower_bound).into(),
+            total_count: (upper_bound
+                .checked_sub(lower_bound)
+                .expect("upper_bound to be >= than lower_bound")
+                .checked_add(1)
+                .unwrap())
+            .into(),
         })
     }
 }
