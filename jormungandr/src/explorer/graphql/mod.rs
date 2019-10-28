@@ -89,7 +89,7 @@ impl Block {
             lower_bound,
             upper_bound
                 .try_into()
-                .expect("less than 2^32 transactions per block"),
+                .expect("tried to paginate more than 2^32 elements"),
             first,
             last,
             before,
@@ -106,7 +106,7 @@ impl Block {
                     .map(|(i, tx)| {
                         (
                             tx.id().clone(),
-                            i.try_into().expect("less than 2^32 transactions per block"),
+                            i.try_into().expect("tried to paginate more than 2^32 elements"),
                         )
                     })
                     .collect::<Vec<(FragmentId, u32)>>()
