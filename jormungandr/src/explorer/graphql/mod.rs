@@ -83,7 +83,7 @@ impl Block {
             .sort_unstable_by_key(|tx| tx.offset_in_block);
 
         let lower_bound = 0u32;
-        let upper_bound = transactions.len().checked_sub(1).or(Some(0)).unwrap();
+        let upper_bound = transactions.len().checked_sub(1).unwrap_or(0);
 
         TransactionConnection::new(
             lower_bound,
