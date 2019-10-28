@@ -1,6 +1,6 @@
 //! Blockchain content service abstraction.
 
-use super::P2pService;
+use super::{request_stream, P2pService};
 use crate::error::Error;
 
 use chain_core::property::{Fragment, FragmentId};
@@ -27,14 +27,20 @@ pub trait FragmentService: P2pService {
     /// implementation to produce a server-streamed response.
     type GetFragmentsFuture: Future<Item = Self::GetFragmentsStream, Error = Error> + Send + 'static;
 
-    /// The type of an asynchronous stream that provides fragments announced
-    /// by the peer via the bidirectional subscription.
-    type FragmentSubscription: Stream<Item = Self::Fragment, Error = Error> + Send + 'static;
+    /// The type of a bidirectional subscription object that is used as:
+    ///
+    /// - a stream for outbound fragments;
+    /// - a sink for inbound fragments.
+    type FragmentSubscription: Stream<Item = Self::Fragment, Error = Error>
+        + Sink<SinkItem = Self::Fragment, SinkError = Error>
+        + request_stream::MapResponse<Response = ()>
+        + Send
+        + 'static;
 
     /// The type of asynchronous futures returned by method `content_subscription`.
     ///
-    /// The future resolves to a stream that will be used by the protocol
-    /// implementation to produce a server-streamed response.
+    /// The future, when successful, resolves to a subscription object
+    /// for bidirectional streaming.
     type FragmentSubscriptionFuture: Future<Item = Self::FragmentSubscription, Error = Error>
         + Send
         + 'static;
@@ -42,19 +48,18 @@ pub trait FragmentService: P2pService {
     /// Get all transactions by their id.
     fn get_fragments(&mut self, ids: &[Self::FragmentId]) -> Self::GetFragmentsFuture;
 
-    /// Establishes a bidirectional subscription for announcing new fragments.
+    /// Establishes a bidirectional subscription for exchanging new block
+    /// fragments.
     ///
     /// The network protocol implementation passes the node identifier of
-    /// the sender and an asynchronous stream that will provide the inbound
-    /// announcements.
+    /// the sender node.
     ///
-    /// Returns a future resolving to an asynchronous stream
-    /// that will be used by this node to send fragment announcements.
-    fn fragment_subscription<In>(
+    /// The implementation of the method returns a future, resolving
+    /// to an object that serves as both an asynchronous stream for
+    /// outbound fragment messages, and as an asynchrounous sink for inbound
+    /// fragment messages.
+    fn fragment_subscription(
         &mut self,
         subscriber: Self::NodeId,
-        inbound: In,
-    ) -> Self::FragmentSubscriptionFuture
-    where
-        In: Stream<Item = Self::Fragment, Error = Error> + Send + 'static;
+    ) -> Self::FragmentSubscriptionFuture;
 }
