@@ -3,10 +3,10 @@ use crate::{
     block::{ConsensusVersion, HeaderId},
     config::ConfigParam,
     fee::LinearFee,
-    fragment::{config::ConfigParams, Fragment},
+    fragment::{config::ConfigParams, Fragment, FragmentId},
     key::EitherEd25519SecretKey,
     leadership::bft::LeaderId,
-    ledger::{Error, Ledger},
+    ledger::{Error, Ledger, LedgerParameters},
     milli::Milli,
     transaction::{Input, Output, TxBuilder, TransactionAuthData, Witness},
     value::Value,
@@ -14,6 +14,7 @@ use crate::{
 use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
 use std::vec::Vec;
+use std::collections::HashMap;
 
 //use crate::testing::{data::AddressDataValue};
 
@@ -114,6 +115,7 @@ pub struct LedgerBuilder {
     cfg_params: ConfigParams,
     fragments: Vec<Fragment>,
     faucet_value: Option<Value>,
+    utxo_declaration: Vec<UtxoDeclaration>,
     seed: u64,
 }
 
@@ -144,6 +146,25 @@ impl Faucet {
     }
 }
 
+pub type UtxoDeclaration = Output<Address>;
+
+pub struct UtxoDb {
+    db: HashMap<(FragmentId, u8), UtxoDeclaration>,
+}
+
+impl UtxoDb {
+    pub fn find_fragments(&self, decl: &UtxoDeclaration) -> Vec<(FragmentId, u8)> {
+        self.db
+            .iter()
+            .filter_map(|(k,v)| if v == decl { Some(k.clone()) } else { None })
+            .collect()
+    }
+
+    pub fn get(&self, key: &(FragmentId, u8)) -> Option<&UtxoDeclaration> {
+        self.db.get(key)
+    }
+}
+
 impl LedgerBuilder {
     pub fn from_config(mut cfg_builder: ConfigBuilder) -> Self {
         cfg_builder.normalize();
@@ -153,6 +174,7 @@ impl LedgerBuilder {
             cfg_builder,
             cfg_params,
             faucet_value: None,
+            utxo_declaration: Vec::new(),
             fragments: Vec::new(),
         }
     }
@@ -208,6 +230,11 @@ impl LedgerBuilder {
         self
     }
 
+    pub fn utxos(mut self, decls: &[UtxoDeclaration]) -> Self {
+        self.utxo_declaration.extend_from_slice(decls);
+        self 
+    }
+
     pub fn build(mut self) -> Result<TestLedger, Error> {
         let block0_hash = HeaderId::hash_bytes(&[1, 2, 3]);
 
@@ -222,13 +249,46 @@ impl LedgerBuilder {
             }
         };
 
+        let utxodb = if self.utxo_declaration.len() > 0 {
+            let mut db = HashMap::new();
+
+            // TODO subdivide utxo_declaration in group of 254 elements
+            // and repeatdly create fragment
+            assert!(self.utxo_declaration.len() > 254);
+            let group = self.utxo_declaration;
+            {
+                let tx = TxBuilder::new()
+                    .set_nopayload()
+                    .set_ios(&[], &group)
+                    .set_witnesses(&[])
+                    .set_payload_auth(&());
+                let fragment = Fragment::Transaction(tx);
+                let fragment_id = fragment.hash();
+
+                for (idx, o) in group.iter().enumerate() {
+                    let m = db.insert((fragment_id.clone(), idx as u8), o.clone());
+                    assert!(m.is_none());
+                }
+
+                self.fragments.push(fragment);
+            }
+            UtxoDb { db }
+        } else {
+            UtxoDb { db: HashMap::new() }
+        };
+
         let cfg = self.cfg_params.clone();
 
         let mut fragments = Vec::new();
         fragments.push(Fragment::Initial(self.cfg_params));
         fragments.extend_from_slice(&self.fragments);
 
-        Ledger::new(block0_hash, &fragments).map(|ledger| TestLedger { cfg, faucet, ledger, block0_hash })
+        Ledger::new(block0_hash, &fragments).map(|ledger| {
+            let parameters = ledger.get_ledger_parameters();
+            TestLedger {
+                cfg, faucet, ledger, block0_hash, utxodb, parameters,
+            }
+        })
     }
 }
 
@@ -237,4 +297,29 @@ pub struct TestLedger {
     pub cfg: ConfigParams,
     pub faucet: Option<Faucet>,
     pub ledger: Ledger,
+    pub parameters: LedgerParameters,
+    pub utxodb: UtxoDb,
+}
+
+impl TestLedger {
+    pub fn apply_transaction(&mut self, fragment: Fragment)
+        -> Result<(), Error>
+    {
+        let fragment_id = fragment.hash();
+        match fragment {
+            Fragment::Transaction(tx) => {
+                match self.ledger.clone().apply_transaction(&fragment_id, &tx.as_slice(), &self.parameters) {
+                    Err(err) => Err(err),
+                    Ok((ledger, _)) => {
+                        // TODO more bookkeeping for accounts and utxos
+                        self.ledger = ledger;
+                        Ok(())
+                    }
+                }
+            }
+            _ => {
+                panic!("test ledger apply transaction only supports transaction type for now")
+            }
+        }
+    }
 }

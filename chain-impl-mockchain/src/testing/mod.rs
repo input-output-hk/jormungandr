@@ -5,7 +5,10 @@ pub mod ledger;
 
 pub use arbitrary::*;
 pub use builders::*;
-pub use ledger::{ConfigBuilder, LedgerBuilder, Faucet, TestLedger};
+pub use data::KeysDb;
+pub use ledger::{ConfigBuilder, LedgerBuilder, Faucet, TestLedger, UtxoDb};
+
+pub use chain_crypto::testing::TestCryptoGen;
 
 use crate::key::Hash;
 use crate::{

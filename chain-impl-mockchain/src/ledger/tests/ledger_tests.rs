@@ -1,3 +1,4 @@
+/*
 #![cfg(test)]
 
 use crate::fee::FeeAlgorithm;
@@ -139,40 +140,4 @@ pub fn total_funds_are_const_in_ledger(
         }
     }
 }
-
-#[test]
-pub fn transaction_with_255_outputs() {
-    let faucet = AddressData::utxo(Discrimination::Test);
-    let mut outputs = vec![];
-    for _ in 0..=254 {
-        let receiver = AddressData::utxo(Discrimination::Test);
-        outputs.push(Output::from_address(receiver.address.clone(), Value(1)));
-    }
-
-    let message = ledger::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(256),
-    ));
-
-    let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-    let mut utxos = ledger.utxos();
-    let signed_tx = TxBuilder::new()
-        .set_nopayload()
-        .set_ios(&[Input::from_utxo_entry(utxos.next().unwrap())], &outputs)
-        .set_witnesses(&[])
-        // .with_witness(&block0_hash, &faucet)
-        .set_payload_auth(&());
-    let fragment_id = TestGen::hash();
-
-    let fees = ledger.get_ledger_parameters();
-    assert_err!(
-        TransactionMalformed {
-            source: TxVerifyError::TooManyOutputs {
-                expected: 254,
-                actual: 255
-            }
-        },
-        ledger.apply_transaction(&fragment_id, &signed_tx.as_slice(), &fees)
-    );
-}
+*/

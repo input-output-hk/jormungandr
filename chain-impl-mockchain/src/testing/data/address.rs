@@ -161,10 +161,7 @@ impl AddressData {
     }
 
     pub fn confirm_transaction(&mut self) {
-        if let Some(spending_counter) = self.spending_counter {
-            let counter: u32 = spending_counter.into();
-            self.spending_counter = Some((counter + 1).into());
-        }
+        self.spending_counter = self.spending_counter.map(|sp| sp.increment().unwrap())
     }
 
     pub fn private_key(&self) -> EitherEd25519SecretKey {

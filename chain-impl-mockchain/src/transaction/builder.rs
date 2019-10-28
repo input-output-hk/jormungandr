@@ -86,13 +86,19 @@ impl TxBuilderState<SetPayload> {
 
 impl<P> TxBuilderState<SetIOs<P>> {
     /// Set the inputs and outputs of this transaction
+    ///
+    /// This cannot accept more than 255 inputs, 255 outputs, since
+    /// the length is encoded as u8, and hence will assert.
+    ///
+    /// Note that further restriction apply to the ledger,
+    /// which only accept up to 254 outputs
     pub fn set_ios(
         mut self,
         inputs: &[Input],
         outputs: &[Output<Address>],
     ) -> TxBuilderState<SetWitnesses<P>> {
-        assert!(inputs.len() < 255);
-        assert!(outputs.len() < 255);
+        assert!(inputs.len() < 256);
+        assert!(outputs.len() < 256);
 
         let nb_inputs = inputs.len() as u8;
         let nb_outputs = outputs.len() as u8;
