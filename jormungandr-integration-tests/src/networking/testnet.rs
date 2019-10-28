@@ -43,7 +43,7 @@ impl TestnetConfig {
 
     fn create_account_from_secret_key(private_key: String) -> Account {
         let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-        let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
+        let address = jcli_wrapper::assert_address_account(&public_key, Discrimination::Test);
         Account::new(&private_key, &public_key, &address)
     }
 
