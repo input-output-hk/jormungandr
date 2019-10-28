@@ -159,15 +159,6 @@ impl Default for P2pConfig {
         }
     }
 }
-impl Default for Mempool {
-    fn default() -> Self {
-        Mempool {
-            fragment_ttl: Duration::new(30 * 60, 0),
-            log_ttl: Duration::new(3600, 0),
-            garbage_collection_interval: Duration::new(3600 / 4, 0),
-        }
-    }
-}
 
 impl Default for Leadership {
     fn default() -> Self {
