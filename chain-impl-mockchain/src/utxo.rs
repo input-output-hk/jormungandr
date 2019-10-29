@@ -142,21 +142,17 @@ impl<'a, V> Iterator for Values<'a, V> {
     type Item = &'a Output<V>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match &mut self.unspents_iter {
-            None => match self.hamt_iter.next() {
-                None => None,
-                Some(unspent) => {
-                    self.unspents_iter = Some((unspent.1).0.iter());
-                    self.next()
-                }
-            },
-            Some(o) => match o.next() {
-                None => {
-                    self.unspents_iter = None;
-                    self.next()
-                }
-                Some(x) => Some(x.1),
-            },
+        loop {
+            match &mut self.unspents_iter {
+                None => match self.hamt_iter.next() {
+                    None => return None,
+                    Some(unspent) => self.unspents_iter = Some((unspent.1).0.iter()),
+                },
+                Some(o) => match o.next() {
+                    None => self.unspents_iter = None,
+                    Some(x) => return Some(x.1),
+                },
+            }
         }
     }
 }
@@ -165,25 +161,23 @@ impl<'a, V> Iterator for Iter<'a, V> {
     type Item = Entry<'a, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match &mut self.unspents_iter {
-            None => match self.hamt_iter.next() {
-                None => None,
-                Some(unspent) => {
-                    self.unspents_iter = Some((unspent.0, (unspent.1).0.iter()));
-                    self.next()
-                }
-            },
-            Some((id, o)) => match o.next() {
-                None => {
-                    self.unspents_iter = None;
-                    self.next()
-                }
-                Some(x) => Some(Entry {
-                    fragment_id: id.clone(),
-                    output_index: *x.0,
-                    output: x.1,
-                }),
-            },
+        loop {
+            match &mut self.unspents_iter {
+                None => match self.hamt_iter.next() {
+                    None => return None,
+                    Some(unspent) => self.unspents_iter = Some((unspent.0, (unspent.1).0.iter())),
+                },
+                Some((id, o)) => match o.next() {
+                    None => self.unspents_iter = None,
+                    Some(x) => {
+                        return Some(Entry {
+                            fragment_id: id.clone(),
+                            output_index: *x.0,
+                            output: x.1,
+                        })
+                    }
+                },
+            }
         }
     }
 }
