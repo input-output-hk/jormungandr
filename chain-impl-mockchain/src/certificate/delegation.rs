@@ -1,12 +1,11 @@
 use crate::accounting::account::DelegationType;
 use crate::certificate::PoolId;
-use crate::transaction::{AccountIdentifier, Payload, TransactionBindingSignature};
+use crate::transaction::{AccountBindingSignature, AccountIdentifier, Payload};
 
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
 };
-use chain_crypto::Ed25519;
 use typed_bytes::ByteBuilder;
 
 /// A self delegation to a specific StakePoolId.
@@ -97,7 +96,7 @@ impl Readable for StakeDelegation {
 impl Payload for StakeDelegation {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = true;
-    type Auth = TransactionBindingSignature<Ed25519>;
+    type Auth = AccountBindingSignature;
     fn to_bytes(&self) -> Vec<u8> {
         self.serialize_in(ByteBuilder::new()).finalize_as_vec()
     }

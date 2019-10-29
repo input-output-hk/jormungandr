@@ -44,7 +44,7 @@ pub type AuthenticatedTransaction<P> = Transaction<P>;
 
 #[cfg(test)]
 mod test {
-    use super::element::TransactionBindingSignature;
+    use super::element::AccountBindingSignature;
     use super::*;
     use crate::certificate::OwnerStakeDelegation;
     use chain_crypto::VerificationAlgorithm;
@@ -202,13 +202,9 @@ mod test {
         }
     }
 
-    impl<A: VerificationAlgorithm> Arbitrary for TransactionBindingSignature<A>
-    where
-        <A as VerificationAlgorithm>::Signature: std::marker::Send,
-        A: 'static,
-    {
+    impl Arbitrary for AccountBindingSignature {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            TransactionBindingSignature(Arbitrary::arbitrary(g))
+            AccountBindingSignature(Arbitrary::arbitrary(g))
         }
     }
 }

@@ -20,7 +20,7 @@ pub enum Certificate {
     PoolUpdate(PoolUpdate),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum SignedCertificate {
     StakeDelegation(StakeDelegation, <StakeDelegation as Payload>::Auth),
     OwnerStakeDelegation(

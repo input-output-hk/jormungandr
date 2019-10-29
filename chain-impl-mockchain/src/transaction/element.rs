@@ -2,9 +2,7 @@ use crate::key::deserialize_signature;
 use crate::transaction::TransactionBindingAuthData;
 use crate::value::{Value, ValueError};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
-use chain_crypto::{
-    digest::DigestOf, Blake2b256, PublicKey, Signature, Verification, VerificationAlgorithm,
-};
+use chain_crypto::{digest::DigestOf, Blake2b256, Ed25519, PublicKey, Signature, Verification};
 
 pub struct TransactionSignData(Box<[u8]>);
 
@@ -22,33 +20,28 @@ impl AsRef<[u8]> for TransactionSignData {
 
 pub type TransactionSignDataHash = DigestOf<Blake2b256, TransactionSignData>;
 
-pub struct TransactionBindingSignature<A: VerificationAlgorithm>(pub(super) Signature<u32, A>);
+#[derive(Debug, Clone)]
+pub struct AccountBindingSignature(pub(super) Signature<u32, Ed25519>);
 
-impl<A: VerificationAlgorithm> Clone for TransactionBindingSignature<A> {
-    fn clone(&self) -> Self {
-        TransactionBindingSignature(self.0.clone())
-    }
-}
-
-impl<A: VerificationAlgorithm> TransactionBindingSignature<A> {
+impl AccountBindingSignature {
     pub fn verify_slice<'a>(
         &self,
-        pk: &PublicKey<A>,
+        pk: &PublicKey<Ed25519>,
         data: TransactionBindingAuthData<'a>,
     ) -> Verification {
         self.0.verify_slice(pk, data.0)
     }
 }
 
-impl<A: VerificationAlgorithm> AsRef<[u8]> for TransactionBindingSignature<A> {
+impl AsRef<[u8]> for AccountBindingSignature {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-impl<A: VerificationAlgorithm> Readable for TransactionBindingSignature<A> {
+impl Readable for AccountBindingSignature {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        deserialize_signature(buf).map(TransactionBindingSignature)
+        deserialize_signature(buf).map(AccountBindingSignature)
     }
 }
 
