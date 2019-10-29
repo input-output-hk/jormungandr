@@ -10,7 +10,7 @@ use chain_core::property::Fragment as _;
 use chain_impl_mockchain::block::Proof;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::leadership::bft;
-use chain_impl_mockchain::transaction::{AuthenticatedTransaction, InputEnum, Witness};
+use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, V>;
@@ -98,73 +98,78 @@ impl ExplorerBlock {
         let transactions = fragments
             .filter_map(|fragment| {
                 let fragment_id = fragment.id();
-                match fragment {
-                    Fragment::Transaction(auth_tx) => Some((
-                        fragment_id,
-                        ExplorerTransaction::from(
+                let metx = match fragment {
+                    Fragment::Transaction(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
                             &fragment_id,
-                            auth_tx,
+                            &tx,
                             discrimination,
                             prev_transactions,
                             prev_blocks,
-                            //certificate
                             None,
-                        ),
-                    )),
-                    Fragment::OwnerStakeDelegation(auth_tx) => Some((
-                        fragment_id,
-                        ExplorerTransaction::from(
+                        ))
+                    }
+                    Fragment::OwnerStakeDelegation(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
                             &fragment_id,
-                            auth_tx,
+                            &tx,
                             discrimination,
                             prev_transactions,
                             prev_blocks,
                             Some(Certificate::OwnerStakeDelegation(
-                                auth_tx.transaction.extra.clone(),
+                                tx.payload().into_payload(),
                             )),
-                        ),
-                    )),
-                    Fragment::StakeDelegation(auth_tx) => Some((
-                        fragment_id,
-                        ExplorerTransaction::from(
+                        ))
+                    }
+                    Fragment::StakeDelegation(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
                             &fragment_id,
-                            auth_tx,
+                            &tx,
                             discrimination,
                             prev_transactions,
                             prev_blocks,
-                            Some(Certificate::StakeDelegation(
-                                auth_tx.transaction.extra.clone(),
-                            )),
-                        ),
-                    )),
-                    Fragment::PoolRegistration(auth_tx) => Some((
-                        fragment_id,
-                        ExplorerTransaction::from(
+                            Some(Certificate::StakeDelegation(tx.payload().into_payload())),
+                        ))
+                    }
+                    Fragment::PoolRegistration(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
                             &fragment_id,
-                            auth_tx,
+                            &tx,
                             discrimination,
                             prev_transactions,
                             prev_blocks,
-                            Some(Certificate::PoolRegistration(
-                                auth_tx.transaction.extra.clone(),
-                            )),
-                        ),
-                    )),
-                    Fragment::PoolManagement(auth_tx) => Some((
-                        fragment_id,
-                        ExplorerTransaction::from(
+                            Some(Certificate::PoolRegistration(tx.payload().into_payload())),
+                        ))
+                    }
+                    Fragment::PoolRetirement(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
                             &fragment_id,
-                            auth_tx,
+                            &tx,
                             discrimination,
                             prev_transactions,
                             prev_blocks,
-                            Some(Certificate::PoolManagement(
-                                auth_tx.transaction.extra.clone(),
-                            )),
-                        ),
-                    )),
+                            Some(Certificate::PoolRetirement(tx.payload().into_payload())),
+                        ))
+                    }
+                    Fragment::PoolUpdate(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
+                            &fragment_id,
+                            &tx,
+                            discrimination,
+                            prev_transactions,
+                            prev_blocks,
+                            Some(Certificate::PoolUpdate(tx.payload().into_payload())),
+                        ))
+                    }
                     _ => None,
-                }
+                };
+                metx.map(|etx| (fragment_id, etx))
             })
             .collect();
 
@@ -211,17 +216,17 @@ impl ExplorerTransaction {
     /// the fragment id is the associated to the given AuthenticatedTransaction before 'unwrapping'
     /// The discrimination is needed to get addresses from account inputs.
     /// The transactions and blocks are used to resolve utxo inputs
-    pub fn from<T>(
+    pub fn from<'a, T>(
         id: &FragmentId,
-        auth_tx: &AuthenticatedTransaction<Address, T>,
+        tx: &TransactionSlice<'a, T>,
         discrimination: Discrimination,
         transactions: &Transactions,
         blocks: &Blocks,
         certificate: Option<Certificate>,
     ) -> ExplorerTransaction {
-        let outputs = auth_tx.transaction.outputs.iter();
-        let inputs = auth_tx.transaction.inputs.iter();
-        let witnesses = auth_tx.witnesses.iter();
+        let outputs = tx.outputs().iter();
+        let inputs = tx.inputs().iter();
+        let witnesses = tx.witnesses().iter();
 
         let new_outputs = outputs
             .map(|output| ExplorerOutput {

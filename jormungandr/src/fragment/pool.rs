@@ -5,7 +5,7 @@ use crate::{
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::transaction::AuthenticatedTransaction;
+use chain_impl_mockchain::transaction::Transaction;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
 use std::time::Duration;
@@ -134,13 +134,24 @@ impl Pool {
 
 fn is_fragment_valid(fragment: &Fragment) -> bool {
     match fragment {
+        // never valid in the pool, only acceptable in genesis
+        Fragment::Initial(_) => false,
+        Fragment::OldUtxoDeclaration(_) => false,
+        // general transactions stuff
         Fragment::Transaction(ref tx) => is_transaction_valid(tx),
-        _ => true,
+        Fragment::StakeDelegation(ref tx) => is_transaction_valid(tx),
+        Fragment::OwnerStakeDelegation(ref tx) => is_transaction_valid(tx),
+        Fragment::PoolRegistration(ref tx) => is_transaction_valid(tx),
+        Fragment::PoolRetirement(ref tx) => is_transaction_valid(tx),
+        // disabled for now
+        Fragment::PoolUpdate(_) => false,
+        Fragment::UpdateProposal(_) => false,
+        Fragment::UpdateVote(_) => false,
     }
 }
 
-fn is_transaction_valid<A, E>(tx: &AuthenticatedTransaction<A, E>) -> bool {
-    tx.transaction.verify_possibly_balanced().is_ok()
+fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
+    tx.verify_possibly_balanced().is_ok()
 }
 
 pub(super) mod internal {

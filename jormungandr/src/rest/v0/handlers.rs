@@ -136,13 +136,13 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
                     contents
                         .iter()
                         .filter_map(|fragment| match fragment {
-                            Fragment::Transaction(tx) => Some(&tx.transaction),
+                            Fragment::Transaction(tx) => Some(tx),
                             _ => None,
                         })
                         .map(|tx| {
-                            let input_sum = Value::sum(tx.inputs.iter().map(|input| input.value))?;
-                            let output_sum =
-                                Value::sum(tx.outputs.iter().map(|input| input.value))?;
+                            let input_sum = tx.total_input()?;
+                            let output_sum = tx.total_output()?;
+                            //    Value::sum(tx.outputs.iter().map(|input| input.value))?;
                             // Input < output implies minting, so no fee
                             let fee = (input_sum - output_sum).unwrap_or(Value::zero());
                             block_tx_count += 1;
