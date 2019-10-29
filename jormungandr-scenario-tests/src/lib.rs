@@ -10,8 +10,9 @@ pub mod scenario;
 mod slog;
 pub mod style;
 mod wallet;
-
-pub use self::node::{MemPoolCheck, Node, NodeBlock0, NodeController, Status};
+pub use self::node::{
+    LeadershipMode, MemPoolCheck, Node, NodeBlock0, NodeController, PersistenceMode, Status,
+};
 pub use self::programs::prepare_command;
 pub use self::scenario::{Context, Controller, NodeAlias, Seed, WalletAlias, WalletType};
 pub use self::slog::{Error as SlogCodecError, SlogCodec};

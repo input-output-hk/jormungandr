@@ -69,6 +69,18 @@ pub enum NodeBlock0 {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum LeadershipMode {
+    Leader,
+    Passive,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum PersistenceMode {
+    Persistent,
+    InMemory,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Status {
     Running,
     Failure,
@@ -109,6 +121,7 @@ pub struct Node {
 
 const NODE_CONFIG: &str = "node_config.yaml";
 const NODE_SECRET: &str = "node_secret.yaml";
+const NODE_STORAGE: &str = "storage.db";
 
 impl NodeController {
     pub fn alias(&self) -> &NodeAlias {
@@ -329,9 +342,10 @@ impl Node {
         context: &Context<R>,
         progress_bar: ProgressBar,
         alias: &str,
-        node_settings: &NodeSetting,
+        node_settings: &mut NodeSetting,
         block0: NodeBlock0,
         working_dir: &PathBuf,
+        peristence_mode: PersistenceMode,
     ) -> Result<Self> {
         let mut command = context.jormungandr().clone();
         let dir = working_dir.join(alias);
@@ -344,6 +358,11 @@ impl Node {
 
         let config_file = dir.join(NODE_CONFIG);
         let config_secret = dir.join(NODE_SECRET);
+
+        if peristence_mode == PersistenceMode::Persistent {
+            let path_to_storage = dir.join(NODE_STORAGE);
+            node_settings.config.storage = Some(path_to_storage);
+        }
 
         serde_yaml::to_writer(
             std::fs::File::create(&config_file)
