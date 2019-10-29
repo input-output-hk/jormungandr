@@ -7,8 +7,15 @@ extern crate hex;
 extern crate protobuf;
 
 use crate::mock::{
-    grpc::*,
-    proto::{node::*, node_grpc::*},
+    grpc::{ClientStubExt, Error as GrpcError, Metadata},
+    proto::{
+        node::{
+            Block, BlockIds, Fragment, FragmentIds, HandshakeRequest, HandshakeResponse, Header,
+            PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest,
+            UploadBlocksResponse,
+        },
+        node_grpc::{Node, NodeClient, NodeServer},
+    },
     read_into,
 };
 use chain_core::property::FromStr;
@@ -42,6 +49,19 @@ macro_rules! response_to_err {
     }};
 }
 
+error_chain! {
+    errors {
+        InvalidRequest (message: String) {
+            display("request failed with message {}", message),
+        }
+
+        InvalidAddressFormat (address: String) {
+            display("could not parse address '{}'. HINT: accepted format example: /ip4/127.0.0.1/tcp/9000", address),
+        }
+
+    }
+}
+
 pub struct JormungandrClient {
     client: NodeClient,
     host: String,
@@ -55,6 +75,23 @@ impl Clone for JormungandrClient {
 }
 
 impl JormungandrClient {
+    pub fn from_address(address: &str) -> Result<Self> {
+        let elements: Vec<&str> = address.split("/").collect();
+
+        let host = elements.get(2);
+        let port = elements.get(4);
+
+        if host.is_none() || port.is_none() {
+            return Err(ErrorKind::InvalidAddressFormat(address.to_owned()).into());
+        }
+
+        let port: u16 = port
+            .unwrap()
+            .parse()
+            .map_err(|_err| ErrorKind::InvalidAddressFormat(address.to_owned()))?;
+        Ok(Self::new(host.unwrap(), port))
+    }
+
     pub fn new(host: &str, port: u16) -> Self {
         let client_conf = Default::default();
         let client = NodeClient::new_plain(host, port, client_conf).unwrap();
@@ -120,6 +157,7 @@ impl JormungandrClient {
             grpc::StreamingRequest::single(block),
         );
         resp.wait()
+            .map_err(|err| ErrorKind::InvalidRequest(err.to_string()).into())
     }
 
     pub fn pull_blocks_to_tip(&self, from: Hash) -> grpc::StreamingResponse<Block> {
@@ -158,6 +196,7 @@ impl JormungandrClient {
             grpc::StreamingRequest::single(header),
         );
         resp.wait()
+            .map_err(|err| ErrorKind::InvalidRequest(err.to_string()).into())
     }
 
     pub fn get_fragments(&self, ids: Vec<Hash>) -> grpc::StreamingResponse<Fragment> {
