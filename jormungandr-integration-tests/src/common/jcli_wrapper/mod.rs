@@ -14,10 +14,8 @@ use super::configuration::genesis_model::GenesisYaml;
 use super::file_assert;
 use super::file_utils;
 use super::process_assert;
-use super::process_utils;
-use super::process_utils::output_extensions::ProcessOutput;
-use std::collections::BTreeMap;
-use std::path::PathBuf;
+use super::process_utils::{self, output_extensions::ProcessOutput, Wait};
+use std::{collections::BTreeMap, path::PathBuf};
 
 use chain_addr::Discrimination;
 
@@ -291,18 +289,29 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
 
 pub fn assert_transaction_in_block(transaction_message: &str, host: &str) -> Hash {
     let fragment_id = assert_post_transaction(&transaction_message, &host);
-    wait_until_transaction_processed(fragment_id, &host);
+    wait_until_transaction_processed(fragment_id, &host, &Default::default());
+    assert_transaction_log_shows_in_block(fragment_id, &host);
+    fragment_id.clone()
+}
+
+pub fn assert_transaction_in_block_with_wait(
+    transaction_message: &str,
+    host: &str,
+    wait: &Wait,
+) -> Hash {
+    let fragment_id = assert_post_transaction(&transaction_message, &host);
+    wait_until_transaction_processed(fragment_id, &host, wait);
     assert_transaction_log_shows_in_block(fragment_id, &host);
     fragment_id.clone()
 }
 
 pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_reason: &str) {
     let fragment_id = assert_post_transaction(&transaction_message, &host);
-    wait_until_transaction_processed(fragment_id, &host);
+    wait_until_transaction_processed(fragment_id, &host, &Default::default());
     assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
 }
 
-pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str) {
+pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str, wait: &Wait) {
     process_utils::run_process_until_response_matches(
         jcli_commands::get_rest_message_log_command(&host),
         |output| {
@@ -314,8 +323,8 @@ pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str) {
                 None => false,
             }
         },
-        1,
-        5,
+        wait.sleep().as_secs(),
+        wait.attempts(),
         "Waiting for last transaction to be inBlock or rejected",
         "transaction is pending for too long",
     )

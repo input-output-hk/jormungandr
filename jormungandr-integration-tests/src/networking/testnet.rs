@@ -6,6 +6,7 @@ use crate::{
         data::address::Account,
         jcli_wrapper,
         jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
+        process_utils::WaitBuilder,
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
 };
@@ -97,23 +98,31 @@ pub fn e2e_stake_pool() {
         .start()
         .unwrap();
 
+    let long_wait = WaitBuilder::new()
+        .tries(100)
+        .sleep_between_tries(60)
+        .build();
+
     //register stake pool
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
         "1234",
         &block0_hash,
         &jormungandr.rest_address(),
+        &long_wait,
     );
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
         &block0_hash,
         &jormungandr.rest_address(),
+        &long_wait,
     );
     retire_stake_pool(
         &stake_pool_id,
         &mut actor_account,
         &block0_hash,
         &jormungandr.rest_address(),
+        &long_wait,
     );
 }
