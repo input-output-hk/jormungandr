@@ -1480,6 +1480,7 @@ dependencies = [
  "chain-time 0.1.0",
  "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519-bip32 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-cpupool 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "galvanic-test 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
