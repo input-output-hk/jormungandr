@@ -6,7 +6,11 @@ use chain_impl_mockchain::{
     header::HeaderId,
 };
 use indicatif::ProgressBar;
+use jormungandr_integration_tests::mock::{client::JormungandrClient, read_into};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
+
+#[macro_use]
+use jormungandr_integration_tests::response_to_vec;
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
@@ -81,6 +85,7 @@ struct ProgressBarController {
 #[derive(Clone)]
 pub struct NodeController {
     alias: NodeAlias,
+    grpc_client: JormungandrClient,
     settings: NodeSetting,
     progress_bar: ProgressBarController,
     status: Arc<Mutex<Status>>,
@@ -180,7 +185,7 @@ impl NodeController {
         })
     }
 
-    pub fn get_tip(&self) -> Result<HeaderId> {
+    pub fn tip(&self) -> Result<HeaderId> {
         let hash = self.get("tip")?.text()?;
 
         let hash = hash.parse().chain_err(|| ErrorKind::InvalidHeaderHash)?;
@@ -190,7 +195,32 @@ impl NodeController {
         Ok(hash)
     }
 
-    pub fn get_block(&self, header_hash: &HeaderId) -> Result<Block> {
+    pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
+        let response = self.grpc_client.pull_blocks_to_tip(from);
+        Ok(response_to_vec!(response))
+    }
+
+    pub fn all_blocks_hashes(&self) -> Result<Vec<HeaderId>> {
+        let genesis_hash = self
+            .genesis_block_hash()
+            .expect("Cannot download genesis hash");
+        self.blocks_hashes_to_tip(genesis_hash)
+    }
+
+    pub fn blocks_hashes_to_tip(&self, from: HeaderId) -> Result<Vec<HeaderId>> {
+        Ok(self
+            .blocks_to_tip(from)
+            .unwrap()
+            .iter()
+            .map(|x| x.header.hash())
+            .collect())
+    }
+
+    pub fn genesis_block_hash(&self) -> Result<HeaderId> {
+        Ok(self.grpc_client.get_genesis_block_hash())
+    }
+
+    pub fn block(&self, header_hash: &HeaderId) -> Result<Block> {
         use chain_core::mempack::{ReadBuf, Readable as _};
 
         let mut resp = self.get(&format!("block/{}", header_hash))?;
@@ -283,8 +313,12 @@ impl Node {
     }
 
     pub fn controller(&self) -> NodeController {
+        let p2p_address = format!("{}", self.node_settings.config().p2p.public_address);
+
         NodeController {
             alias: self.alias().clone(),
+            grpc_client: JormungandrClient::from_address(&p2p_address)
+                .expect("cannot setup grpc client"),
             settings: self.node_settings.clone(),
             status: self.status.clone(),
             progress_bar: self.progress_bar.clone(),

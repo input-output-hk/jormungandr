@@ -14,11 +14,12 @@ error-chain = "0.12"
 tokio = "0.1"
 reqwest = "0.9"
 mktemp = "0.4.0"
-chain-core           = { path = "../chain-deps/chain-core" }
-chain-crypto         = { path = "../chain-deps/chain-crypto" }
-chain-addr           = { path = "../chain-deps/chain-addr" }
-chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
-chain-time           = { path = "../chain-deps/chain-time" }
+chain-core           = { path = "../chain-deps/chain-core", features = [ "property-test-api" ] }
+chain-crypto         = { path = "../chain-deps/chain-crypto", features = [ "property-test-api" ] }
+chain-addr           = { path = "../chain-deps/chain-addr", features = [ "property-test-api" ] }
+chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain", features = [ "property-test-api" ] }
+chain-time           = { path = "../chain-deps/chain-time"}
+jormungandr-integration-tests = { path = "../jormungandr-integration-tests"}
 jormungandr-lib = { path = "../jormungandr-lib" }
 poldercast = "0.9"
 rand = "0.6"
