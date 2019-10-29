@@ -7,7 +7,7 @@ use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
-use chain_impl_mockchain::fragment::Fragment;
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
 use chain_impl_mockchain::value::{Value, ValueError};
@@ -73,7 +73,11 @@ pub fn get_account_state(context: State<Context>, account_id_hex: Path<String>) 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
     PublicKey::<AccountAlg>::from_str(id_hex)
         .map(Into::into)
-        .map_err(|e| ErrorBadRequest(e))
+        .map_err(ErrorBadRequest)
+}
+
+fn parse_fragment_id(id_hex: &str) -> Result<FragmentId, Error> {
+    FragmentId::from_str(id_hex).map_err(ErrorBadRequest)
 }
 
 pub fn get_message_logs(context: State<Context>) -> ActixFuture!() {
@@ -393,4 +397,27 @@ pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
                 Json(network_stats)
             })
     })
+}
+
+pub fn get_utxo(context: State<Context>, path_params: Path<(String, u8)>) -> ActixFuture!() {
+    let (fragment_id_hex, output_index) = path_params.into_inner();
+    parse_fragment_id(&fragment_id_hex)
+        .into_future()
+        .and_then(move |fragment_id| {
+            chain_tip_fut(&context).and_then(move |tip_reference| {
+                let output = tip_reference
+                    .ledger()
+                    .utxo_out(fragment_id, output_index)
+                    .ok_or_else(|| {
+                        ErrorNotFound(format!(
+                            "no UTxO found for address '{}' on index {}",
+                            fragment_id_hex, output_index
+                        ))
+                    })?;
+                Ok(Json(json!({
+                    "address": Address::from(output.address.clone()),
+                    "value": output.value.0,
+                })))
+            })
+        })
 }
