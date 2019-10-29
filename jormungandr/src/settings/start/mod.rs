@@ -8,7 +8,6 @@ use crate::rest::Error as RestError;
 use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
 use jormungandr_lib::interfaces::Mempool;
-use poldercast::PrivateId;
 use slog::{FilterLevel, Logger};
 use std::{fs::File, path::PathBuf};
 
