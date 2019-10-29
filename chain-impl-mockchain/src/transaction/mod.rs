@@ -12,7 +12,7 @@ use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 
 // to remove..
-pub use builder::TxBuilder;
+pub use builder::{SetAuthData, SetIOs, SetPayload, SetWitnesses, TxBuilder};
 pub use element::*;
 pub use input::*;
 pub use io::{Error, InputOutput, InputOutputBuilder, OutputPolicy};
