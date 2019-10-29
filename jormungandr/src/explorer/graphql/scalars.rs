@@ -41,7 +41,7 @@ pub struct TimeOffsetSeconds(pub String);
 pub struct IndexCursor(pub u32);
 
 juniper::graphql_scalar!(IndexCursor where Scalar = <S> {
-    description: ""
+    description: "Non-opaque cursor that can be used for offset-based pagination"
 
     resolve(&self) -> Value {
         juniper::Value::scalar(self.0.to_string())
