@@ -1,10 +1,10 @@
-use crate::interfaces::{Address, Certificate, OldAddress, Value};
+use crate::interfaces::{Address, OldAddress, SignedCertificate, Value};
 use chain_addr;
 use chain_impl_mockchain::{
     certificate,
     fragment::Fragment,
     legacy::UtxoDeclaration,
-    transaction::{AuthenticatedTransaction, NoExtra, Output, Transaction},
+    transaction::{NoExtra, Output, Payload, Transaction, TransactionSlice, TxBuilder},
 };
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Initial {
     Fund(Vec<InitialUTxO>),
-    Cert(Certificate),
+    Cert(SignedCertificate),
     LegacyFund(Vec<LegacyUTxO>),
 }
 
@@ -21,6 +21,15 @@ pub enum Initial {
 pub struct InitialUTxO {
     pub address: Address,
     pub value: Value,
+}
+
+impl InitialUTxO {
+    pub fn to_output(&self) -> Output<chain_addr::Address> {
+        Output {
+            address: self.address.clone().into(),
+            value: self.value.into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,15 +51,21 @@ pub fn try_initials_vec_from_messages<'a>(
     let mut inits = Vec::new();
     for message in messages {
         match message {
-            Fragment::Transaction(tx) => try_extend_inits_with_tx(&mut inits, tx)?,
+            Fragment::Transaction(tx) => try_extend_inits_with_tx(&mut inits, &tx.as_slice())?,
             Fragment::OldUtxoDeclaration(utxo) => extend_inits_with_legacy_utxo(&mut inits, utxo),
             Fragment::PoolRegistration(tx) => {
-                let cert = certificate::Certificate::PoolRegistration(tx.transaction.extra.clone());
-                inits.push(Initial::Cert(Certificate(cert)))
+                let tx = tx.as_slice();
+                let cert = tx.payload().into_payload();
+                let auth = tx.payload_auth().into_payload_auth();
+                let cert = certificate::SignedCertificate::PoolRegistration(cert, auth);
+                inits.push(Initial::Cert(cert.into()))
             }
             Fragment::StakeDelegation(tx) => {
-                let cert = certificate::Certificate::StakeDelegation(tx.transaction.extra.clone());
-                inits.push(Initial::Cert(Certificate(cert)))
+                let tx = tx.as_slice();
+                let cert = tx.payload().into_payload();
+                let auth = tx.payload_auth().into_payload_auth();
+                let cert = certificate::SignedCertificate::StakeDelegation(cert, auth);
+                inits.push(Initial::Cert(cert.into()))
             }
             _ => return Err(Error::Block0MessageUnexpected),
         }
@@ -58,14 +73,14 @@ pub fn try_initials_vec_from_messages<'a>(
     Ok(inits)
 }
 
-fn try_extend_inits_with_tx(
+fn try_extend_inits_with_tx<'a>(
     initials: &mut Vec<Initial>,
-    tx: &AuthenticatedTransaction<chain_addr::Address, NoExtra>,
+    tx: &TransactionSlice<'a, NoExtra>,
 ) -> Result<(), Error> {
-    if !tx.transaction.inputs.is_empty() {
+    if tx.nb_inputs() != 0 {
         return Err(Error::InitUtxoHasInput);
     }
-    let inits_iter = tx.transaction.outputs.iter().map(|output| InitialUTxO {
+    let inits_iter = tx.outputs().iter().map(|output| InitialUTxO {
         address: output.address.clone().into(),
         value: output.value.into(),
     });
@@ -74,43 +89,59 @@ fn try_extend_inits_with_tx(
 }
 
 fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDeclaration) {
+    if utxo_decl.addrs.len() == 0 {
+        panic!("old utxo declaration has no element")
+    }
+    if utxo_decl.addrs.len() >= 255 {
+        panic!(
+            "old utxo declaration has too many element {}",
+            utxo_decl.addrs.len()
+        )
+    }
+
     let inits_iter = utxo_decl.addrs.iter().map(|(address, value)| LegacyUTxO {
         address: address.clone().into(),
         value: value.clone().into(),
     });
-    initials.push(Initial::LegacyFund(inits_iter.collect()))
+    let inits: Vec<_> = inits_iter.collect();
+    initials.push(Initial::LegacyFund(inits))
 }
 
 impl<'a> From<&'a Initial> for Fragment {
     fn from(initial: &'a Initial) -> Fragment {
         match initial {
             Initial::Fund(utxo) => pack_utxo_in_message(&utxo),
-            Initial::Cert(cert) => pack_certificate_in_message(&cert),
+            Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(&cert),
             Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(&utxo),
         }
     }
 }
 
 fn pack_utxo_in_message(v: &[InitialUTxO]) -> Fragment {
-    let outputs = v
-        .iter()
-        .map(|utxo| Output {
-            address: utxo.address.clone().into(),
-            value: utxo.value.into(),
-        })
-        .collect();
+    let outputs: Vec<_> = v.iter().map(|utxo| utxo.to_output()).collect();
 
-    Fragment::Transaction(AuthenticatedTransaction {
-        transaction: Transaction {
-            inputs: vec![],
-            outputs: outputs,
-            extra: NoExtra,
-        },
-        witnesses: vec![],
-    })
+    if outputs.len() == 0 {
+        panic!("cannot create a singular transaction fragment with 0 output")
+    }
+    if outputs.len() >= 255 {
+        panic!("cannot create a singular transaction fragment with more than 254 outputs ({} requested). spread outputs to another fragment", outputs.len())
+    }
+
+    let tx = TxBuilder::new()
+        .set_nopayload()
+        .set_ios(&[], &outputs[..])
+        .set_witnesses(&[])
+        .set_payload_auth(&());
+    Fragment::Transaction(tx)
 }
 
 fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
+    if v.len() == 0 {
+        panic!("cannot create a singular legacy declaration fragment with 0 declaration")
+    }
+    if v.len() >= 255 {
+        panic!("cannot create a singular legacy declaration fragment with more than 254 declarations ({} requested). spread declarations to another fragment", v.len())
+    }
     let addrs = v
         .iter()
         .map(|utxo| (utxo.address.clone().into(), utxo.value.into()))
@@ -118,29 +149,27 @@ fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
     Fragment::OldUtxoDeclaration(UtxoDeclaration { addrs: addrs })
 }
 
-fn empty_auth_tx<Payload: Clone>(
-    payload: &Payload,
-) -> AuthenticatedTransaction<chain_addr::Address, Payload> {
-    AuthenticatedTransaction {
-        transaction: Transaction {
-            inputs: vec![],
-            outputs: vec![],
-            extra: payload.clone(),
-        },
-        witnesses: vec![],
-    }
+fn empty_auth_tx<P: Payload>(payload: &P, payload_auth: &P::Auth) -> Transaction<P> {
+    Transaction::block0_payload(payload, payload_auth)
 }
 
-fn pack_certificate_in_message(cert: &Certificate) -> Fragment {
+fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Fragment {
     match &cert.0 {
-        certificate::Certificate::StakeDelegation(c) => Fragment::StakeDelegation(empty_auth_tx(c)),
-        certificate::Certificate::OwnerStakeDelegation(c) => {
-            Fragment::OwnerStakeDelegation(empty_auth_tx(c))
+        certificate::SignedCertificate::StakeDelegation(c, a) => {
+            Fragment::StakeDelegation(empty_auth_tx(c, a))
         }
-        certificate::Certificate::PoolRegistration(c) => {
-            Fragment::PoolRegistration(empty_auth_tx(c))
+        certificate::SignedCertificate::OwnerStakeDelegation(c, a) => {
+            Fragment::OwnerStakeDelegation(empty_auth_tx(c, a))
         }
-        certificate::Certificate::PoolManagement(c) => Fragment::PoolManagement(empty_auth_tx(c)),
+        certificate::SignedCertificate::PoolRegistration(c, a) => {
+            Fragment::PoolRegistration(empty_auth_tx(c, a))
+        }
+        certificate::SignedCertificate::PoolRetirement(c, a) => {
+            Fragment::PoolRetirement(empty_auth_tx(c, a))
+        }
+        certificate::SignedCertificate::PoolUpdate(c, a) => {
+            Fragment::PoolUpdate(empty_auth_tx(c, a))
+        }
     }
 }
 
@@ -156,7 +185,7 @@ mod test {
             G: Gen,
         {
             let number_entries =
-                usize::arbitrary(g) % ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
+                1 + (usize::arbitrary(g) % ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT);
             match u8::arbitrary(g) % 2 {
                 0 => Initial::Fund(
                     std::iter::repeat_with(|| Arbitrary::arbitrary(g))
