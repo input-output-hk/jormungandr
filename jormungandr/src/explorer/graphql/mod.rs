@@ -95,8 +95,6 @@ impl Block {
             before,
             after,
             |from: u32, to: u32| {
-                use std::cmp::min;
-
                 let from = usize::try_from(from).unwrap();
                 let to = usize::try_from(to).unwrap();
 
@@ -229,14 +227,6 @@ impl Transaction {
             id,
             block_hash: None,
         }
-    }
-
-    fn get_block_hash(id: &HeaderHash, context: &Context) -> Option<HeaderHash> {
-        context
-            .db
-            .find_block_hash_by_transaction(&id)
-            .wait()
-            .unwrap()
     }
 
     fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {

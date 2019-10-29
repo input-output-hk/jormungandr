@@ -43,42 +43,6 @@ impl BlockEdge {
 #[juniper::object(
     Context = Context
 )]
-impl BlockConnection {
-    pub fn page_info(&self) -> &PageInfo {
-        &self.0.page_info
-    }
-
-    pub fn edges(&self) -> &Vec<BlockEdge> {
-        &self.0.edges
-    }
-
-    /// A count of the total number of objects in this connection, ignoring pagination.
-    pub fn total_count(&self) -> &BlockCount {
-        &self.0.total_count
-    }
-}
-
-#[juniper::object(
-    Context = Context
-)]
-impl TransactionConnection {
-    pub fn page_info(&self) -> &PageInfo {
-        &self.0.page_info
-    }
-
-    pub fn edges(&self) -> &Vec<TransactionEdge> {
-        &self.0.edges
-    }
-
-    /// A count of the total number of objects in this connection, ignoring pagination.
-    pub fn total_count(&self) -> &TransactionCount {
-        &self.0.total_count
-    }
-}
-
-#[juniper::object(
-    Context = Context
-)]
 impl TransactionEdge {
     pub fn node(&self) -> &Transaction {
         &self.node
@@ -103,10 +67,7 @@ pub struct Connection<E, C> {
     total_count: C,
 }
 
-pub struct BlockConnection(Connection<BlockEdge, BlockCount>);
-pub struct TransactionConnection(Connection<TransactionEdge, TransactionCount>);
-
-struct TransactionEdge {
+pub struct TransactionEdge {
     node: Transaction,
     cursor: IndexCursor,
 }
@@ -182,56 +143,44 @@ where
     }
 }
 
+pub type BlockConnection = Connection<BlockEdge, BlockCount>;
+pub type TransactionConnection = Connection<TransactionEdge, TransactionCount>;
+
+#[juniper::object(
+    Context = Context,
+    name = "BlockConnection"
+)]
 impl BlockConnection {
-    // The lower and upper bound are used to define all the blocks this connection will show
-    // In particular, they are used to paginate Epoch blocks from first block in epoch to
-    // last.
-    pub fn new<I>(
-        lower_bound: u32,
-        upper_bound: u32,
-        first: Option<i32>,
-        last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-        get_block_range: impl Fn(I, I) -> Vec<(HeaderHash, I)>,
-    ) -> FieldResult<BlockConnection>
-    where
-        I: From<u32> + Clone,
-        u32: From<I>,
-    {
-        Connection::new(
-            lower_bound,
-            upper_bound,
-            first,
-            last,
-            before,
-            after,
-            get_block_range,
-        )
-        .map(BlockConnection)
+    pub fn page_info(&self) -> &PageInfo {
+        &self.page_info
+    }
+
+    pub fn edges(&self) -> &Vec<BlockEdge> {
+        &self.edges
+    }
+
+    /// A count of the total number of objects in this connection, ignoring pagination.
+    pub fn total_count(&self) -> &BlockCount {
+        &self.total_count
     }
 }
 
+#[juniper::object(
+    Context = Context,
+    name = "TransactionConnection"
+)]
 impl TransactionConnection {
-    pub fn new(
-        lower_bound: u32,
-        upper_bound: u32,
-        first: Option<i32>,
-        last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-        get_transaction_range: impl Fn(u32, u32) -> Vec<(HeaderHash, u32)>,
-    ) -> FieldResult<TransactionConnection> {
-        Connection::new(
-            lower_bound,
-            upper_bound,
-            first,
-            last,
-            before,
-            after,
-            get_transaction_range,
-        )
-        .map(TransactionConnection)
+    pub fn page_info(&self) -> &PageInfo {
+        &self.page_info
+    }
+
+    pub fn edges(&self) -> &Vec<TransactionEdge> {
+        &self.edges
+    }
+
+    /// A count of the total number of objects in this connection, ignoring pagination.
+    pub fn total_count(&self) -> &TransactionCount {
+        &self.total_count
     }
 }
 
