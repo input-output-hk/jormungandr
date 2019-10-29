@@ -1,5 +1,24 @@
 # Change Log
 
+## [v0.7.0-rc2](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc2) (2019-10-29)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc1...v0.7.0-rc2)
+
+**Implemented enhancements:**
+
+- Add old UTXO support to make-witness [\#1036](https://github.com/input-output-hk/jormungandr/pull/1036)
+
+**Closed issues:**
+
+- Failed compiling from source on NixOS [\#1026](https://github.com/input-output-hk/jormungandr/issues/1026)
+- Old address transaction witness [\#1005](https://github.com/input-output-hk/jormungandr/issues/1005)
+
+**Merged pull requests:**
+
+- Drill down on connect errors in logs [\#1041](https://github.com/input-output-hk/jormungandr/pull/1041)
+- \[Tests\] Testnet testcase fix [\#1032](https://github.com/input-output-hk/jormungandr/pull/1032)
+- \[Tests\] Extract trusted peers definition outside script into env var [\#1029](https://github.com/input-output-hk/jormungandr/pull/1029)
+- \[Tests\] Jormungandr Grpc mock tests [\#1021](https://github.com/input-output-hk/jormungandr/pull/1021)
+
 ## [v0.7.0-rc1](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc1) (2019-10-23)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.6.5...v0.7.0-rc1)
 
