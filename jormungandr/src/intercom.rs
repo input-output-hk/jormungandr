@@ -164,22 +164,21 @@ where
     type Error = E;
 
     fn poll(&mut self) -> Poll<T, E> {
-        let item = match self.receiver.poll() {
-            Ok(Async::NotReady) => {
-                return Ok(Async::NotReady);
+        match self.receiver.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(Ok(item))) => {
+                debug!(self.logger, "request processed");
+                Ok(Async::Ready(item))
             }
-            Ok(Async::Ready(Ok(item))) => item,
             Ok(Async::Ready(Err(e))) => {
-                warn!(self.logger, "error processing request: {:?}", e);
-                return Err(Error::from(e).into());
+                info!(self.logger, "error processing request"; "reason" => %e);
+                Err(e.into())
             }
             Err(oneshot::Canceled) => {
                 warn!(self.logger, "response canceled by the processing task");
-                return Err(Error::from(oneshot::Canceled).into());
+                Err(Error::from(oneshot::Canceled).into())
             }
-        };
-
-        Ok(Async::Ready(item))
+        }
     }
 }
 
