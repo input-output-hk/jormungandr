@@ -5,9 +5,8 @@ use std::collections::hash_map::DefaultHasher;
 // XXX: Maybe there is a better data structure for this?
 #[derive(Clone)]
 pub struct PersistentSequence<T> {
-    // Could be usize, but it's only used to store blocks and transactions for now
-    len: u32,
-    elements: Hamt<DefaultHasher, u32, T>,
+    len: u64,
+    elements: Hamt<DefaultHasher, u64, T>,
 }
 
 impl<T> PersistentSequence<T> {
@@ -26,11 +25,11 @@ impl<T> PersistentSequence<T> {
         }
     }
 
-    pub fn get(&self, i: u32) -> Option<&T> {
-        self.elements.lookup(&i)
+    pub fn get<I: Into<u64>>(&self, i: I) -> Option<&T> {
+        self.elements.lookup(&i.into())
     }
 
-    pub fn len(&self) -> u32 {
+    pub fn len(&self) -> u64 {
         self.len
     }
 }

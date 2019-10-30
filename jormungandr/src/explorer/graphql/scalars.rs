@@ -1,9 +1,10 @@
+use super::error::ErrorKind;
 use crate::blockcfg;
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value;
 use juniper;
 use juniper::{ParseScalarResult, ParseScalarValue};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(juniper::GraphQLScalarValue)]
 pub struct Slot(pub String);
@@ -24,6 +25,7 @@ pub struct EpochNumber(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
 pub struct BlockCount(pub String);
+
 #[derive(juniper::GraphQLScalarValue)]
 pub struct TransactionCount(pub String);
 
@@ -38,7 +40,7 @@ pub struct TimeOffsetSeconds(pub String);
 
 // u32 should be enough to count blocks and transactions (the only two cases for now)
 #[derive(Clone)]
-pub struct IndexCursor(pub u32);
+pub struct IndexCursor(pub u64);
 
 juniper::graphql_scalar!(IndexCursor where Scalar = <S> {
     description: "Non-opaque cursor that can be used for offset-based pagination"
@@ -49,7 +51,7 @@ juniper::graphql_scalar!(IndexCursor where Scalar = <S> {
 
     from_input_value(v: &InputValue) -> Option<IndexCursor> {
         v.as_scalar_value::<String>()
-         .and_then(|s| s.parse::<u32>().ok())
+         .and_then(|s| s.parse::<u64>().ok())
          .map(IndexCursor)
     }
 
@@ -94,6 +96,12 @@ impl TryFrom<EpochNumber> for blockcfg::Epoch {
     }
 }
 
+impl From<u64> for BlockCount {
+    fn from(number: u64) -> BlockCount {
+        BlockCount(format!("{}", number))
+    }
+}
+
 impl From<u32> for BlockCount {
     fn from(number: u32) -> BlockCount {
         BlockCount(format!("{}", number))
@@ -118,32 +126,55 @@ impl From<chain_time::TimeOffsetSeconds> for TimeOffsetSeconds {
     }
 }
 
-impl From<u32> for TransactionCount {
-    fn from(n: u32) -> TransactionCount {
-        TransactionCount(format!("{}", u32::from(n)))
+impl From<u64> for TransactionCount {
+    fn from(n: u64) -> TransactionCount {
+        TransactionCount(format!("{}", n))
     }
 }
 
 impl From<u32> for IndexCursor {
     fn from(number: u32) -> IndexCursor {
-        IndexCursor(number)
+        IndexCursor(number.into())
     }
 }
 
-impl From<IndexCursor> for u32 {
-    fn from(number: IndexCursor) -> u32 {
+impl TryFrom<IndexCursor> for u32 {
+    type Error = ErrorKind;
+    fn try_from(c: IndexCursor) -> Result<u32, Self::Error> {
+        c.0.try_into().map_err(|_| {
+            ErrorKind::InvalidCursor(
+                "block's pagination cursor is greater than maximum 2^32".to_owned(),
+            )
+        })
+    }
+}
+
+impl From<IndexCursor> for u64 {
+    fn from(number: IndexCursor) -> u64 {
         number.0.into()
+    }
+}
+
+impl From<u64> for IndexCursor {
+    fn from(number: u64) -> IndexCursor {
+        IndexCursor(number.into())
     }
 }
 
 impl From<blockcfg::ChainLength> for IndexCursor {
     fn from(length: blockcfg::ChainLength) -> IndexCursor {
-        IndexCursor(length.into())
+        IndexCursor(u32::from(length).into())
     }
 }
 
-impl From<IndexCursor> for blockcfg::ChainLength {
-    fn from(c: IndexCursor) -> blockcfg::ChainLength {
-        c.0.into()
+impl TryFrom<IndexCursor> for blockcfg::ChainLength {
+    type Error = ErrorKind;
+    fn try_from(c: IndexCursor) -> Result<blockcfg::ChainLength, Self::Error> {
+        let inner: u32 = c.0.try_into().map_err(|_| {
+            ErrorKind::InvalidCursor(
+                "block's pagination cursor is greater than maximum ChainLength".to_owned(),
+            )
+        })?;
+        Ok(blockcfg::ChainLength::from(inner))
     }
 }

@@ -1,7 +1,7 @@
 mod connections;
 mod error;
 mod scalars;
-use self::connections::{BlockConnection, TransactionConnection};
+use self::connections::{BlockConnection, PaginationArguments, TransactionConnection};
 use self::error::ErrorKind;
 use super::indexing::{BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction};
 use super::persistent_sequence::PersistentSequence;
@@ -85,15 +85,20 @@ impl Block {
         let lower_bound = 0u32;
         let upper_bound = transactions.len();
 
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
         TransactionConnection::new(
             lower_bound,
             upper_bound
                 .try_into()
                 .expect("tried to paginate more than 2^32 elements"),
-            first,
-            last,
-            before,
-            after,
+            pagination_arguments,
             |from: u32, to: u32| {
                 let from = usize::try_from(from).unwrap();
                 let to = usize::try_from(to).unwrap();
@@ -121,7 +126,6 @@ impl Block {
             .map(|block| block.chain_length().into())
     }
 
-    // TODO: Rename this?
     pub fn leader(&self, context: &Context) -> FieldResult<Option<Leader>> {
         self.get_explorer_block(&context.db)
             .map(|block| match block.producer() {
@@ -395,19 +399,24 @@ impl Address {
                 "Expected address to be indexed".to_owned(),
             ))?;
 
-        let lower_bound = 0u32;
-        let upper_bound = transactions.len();
+        let lower_bound = 0u64;
+        let upper_bound: u64 = transactions.len();
+
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u64::from),
+            after: after.map(u64::from),
+        }
+        .validate()?;
 
         TransactionConnection::new(
             lower_bound,
             upper_bound,
-            first,
-            last,
-            before,
-            after,
-            |from: u32, to: u32| {
+            pagination_arguments,
+            |from: u64, to: u64| {
                 (from..to)
-                    .filter_map(|i| transactions.get(i.into()).map(|h| ((*h).clone(), i.into())))
+                    .filter_map(|i| transactions.get(i).map(|h| ((*h).clone(), i.into())))
                     .collect()
             },
         )
@@ -618,13 +627,20 @@ impl Pool {
         let lower_bound = 0u32;
         let upper_bound = blocks.len();
 
-        BlockConnection::new(
-            lower_bound,
-            upper_bound,
+        let pagination_arguments = PaginationArguments {
             first,
             last,
-            before,
-            after,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        BlockConnection::new(
+            lower_bound,
+            upper_bound
+                .try_into()
+                .expect("Tried to paginate more than 2^32 blocks"),
+            pagination_arguments,
             |from: u32, to: u32| {
                 (from..to)
                     .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
@@ -723,16 +739,21 @@ impl Epoch {
             .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
             .wait()?;
 
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
         BlockConnection::new(
             0,
             // This is to make the cursors start from 0 and not from the first block's ChainLength
             upper_bound
                 .checked_sub(lower_bound)
                 .expect("pagination upper_bound to be greater or equal than lower_bound"),
-            first,
-            last,
-            before,
-            after,
+            pagination_arguments,
             |a: u32, b: u32| {
                 context
                     .db
@@ -760,7 +781,7 @@ impl Epoch {
 
     pub fn total_blocks(&self, context: &Context) -> BlockCount {
         self.get_epoch_data(&context.db)
-            .map_or(0.into(), |data| data.total_blocks.into())
+            .map_or(0u32.into(), |data| data.total_blocks.into())
     }
 }
 
@@ -834,14 +855,28 @@ impl Query {
 
         let block0 = 0u32;
 
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
         BlockConnection::new(
             block0,
             u32::from(longest_chain) + 1,
-            first,
-            last,
-            before,
-            after,
-            |a, b| context.db.get_block_hash_range(a, b).wait().unwrap(),
+            pagination_arguments,
+            |a, b| {
+                context
+                    .db
+                    .get_block_hash_range(a.into(), b.into())
+                    .wait()
+                    .unwrap()
+                    .iter_mut()
+                    .map(|(hash, chain_length)| (hash.clone(), u32::from(*chain_length)))
+                    .collect()
+            },
         )
     }
 

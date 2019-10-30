@@ -16,5 +16,9 @@ error_chain! {
             description("invalid argument in query"),
             display("invalid argument: {}", msg)
         }
+        InvalidCursor(msg: String) {
+            description("invalid cursor in pagination query"),
+            display("invalid cursor in pagination query: {}", msg)
+        }
     }
 }
