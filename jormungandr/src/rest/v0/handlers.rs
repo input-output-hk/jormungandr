@@ -45,14 +45,6 @@ fn chain_tip_fut_raw<'a>(context: &FullContext) -> impl Future<Item = Arc<Ref>, 
         .map_err(|infallible| match infallible {})
 }
 
-pub fn get_utxos(context: State<Context>) -> ActixFuture!() {
-    chain_tip_fut(&context).map(|tip_reference| {
-        let utxos = tip_reference.ledger().utxos();
-        let utxos = utxos.map(UTxOInfo::from).collect::<Vec<_>>();
-        Json(utxos)
-    })
-}
-
 pub fn get_account_state(context: State<Context>, account_id_hex: Path<String>) -> ActixFuture!() {
     parse_account_id(&account_id_hex)
         .into_future()
