@@ -20,6 +20,18 @@ pub enum Certificate {
     PoolUpdate(PoolUpdate),
 }
 
+impl Certificate {
+    pub fn need_auth(&self) -> bool {
+        match self {
+            Certificate::PoolRegistration(_) => <PoolRegistration as Payload>::HAS_AUTH,
+            Certificate::PoolUpdate(_) => <PoolUpdate as Payload>::HAS_AUTH,
+            Certificate::PoolRetirement(_) => <PoolRetirement as Payload>::HAS_AUTH,
+            Certificate::StakeDelegation(_) => <StakeDelegation as Payload>::HAS_AUTH,
+            Certificate::OwnerStakeDelegation(_) => <OwnerStakeDelegation as Payload>::HAS_AUTH,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum SignedCertificate {
     StakeDelegation(StakeDelegation, <StakeDelegation as Payload>::Auth),
