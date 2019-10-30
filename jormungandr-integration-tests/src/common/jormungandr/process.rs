@@ -54,6 +54,10 @@ impl JormungandrProcess {
     pub fn rest_address(&self) -> String {
         self.config.get_node_address()
     }
+
+    pub fn config(&self) -> JormungandrConfig {
+        self.config.clone()
+    }
 }
 
 impl Drop for JormungandrProcess {
