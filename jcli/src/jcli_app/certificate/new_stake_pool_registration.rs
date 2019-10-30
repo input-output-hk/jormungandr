@@ -7,8 +7,8 @@ use chain_impl_mockchain::{
 use chain_time::DurationSeconds;
 use jcli_app::certificate::{write_cert, Error};
 use jcli_app::utils::key_parser::parse_pub_key;
-use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::path::PathBuf;
+use std::ops::Deref;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -71,6 +71,6 @@ impl StakePoolRegistration {
         };
 
         let cert = Certificate::PoolRegistration(content);
-        write_cert(self.output, CertificateType(cert))
+        write_cert(self.output.as_ref().map(|x| x.deref()), cert.into())
     }
 }

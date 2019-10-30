@@ -1,8 +1,9 @@
 use jcli_app::utils::{io, key_parser};
-use jormungandr_lib::interfaces::{Certificate as CertificateType, CertificateFromStrError};
+use jormungandr_lib::interfaces::{self, CertificateFromStrError};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::ops::Deref;
 use structopt::StructOpt;
 
 mod get_stake_pool_id;
@@ -21,6 +22,12 @@ custom_error! {pub Error
     InvalidCertificate { source: CertificateFromStrError } = "Invalid certificate",
     ManagementThresholdInvalid { got: usize, max_expected: usize }
         = "invalid management_threshold value, expected between at least 1 and {max_expected} but got {got}",
+    NoSigningKeys = "No signing keys specified (use -k or --key to specify)",
+    ExpectingOnlyOneSigningKey { got: usize }
+        = "expecting only one signing keys but got {got}",
+    OwnerStakeDelegationDoesntNeedSignature = "owner stake delegation does not need a signature",
+    KeyNotFound { index: usize }
+        = "secret key number {index} matching the expected public key has not been found",
 }
 
 #[derive(StructOpt)]
@@ -76,7 +83,7 @@ impl NewArgs {
 
 impl PrintArgs {
     pub fn exec(self) -> Result<(), Error> {
-        let cert = read_cert(self.input)?;
+        let cert = read_cert(self.input.as_ref().map(|x| x.deref()))?;
         println!("{:?}", cert);
         Ok(())
     }
@@ -95,32 +102,39 @@ impl Certificate {
     }
 }
 
-fn read_cert(input: Option<PathBuf>) -> Result<CertificateType, Error> {
+fn read_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
     use std::str::FromStr as _;
 
     let cert_str = read_input(input)?;
-    let cert = CertificateType::from_str(&cert_str.trim_end())?;
+    let cert = interfaces::Certificate::from_str(&cert_str.trim_end())?;
     Ok(cert)
 }
 
-fn read_input(input: Option<PathBuf>) -> Result<String, Error> {
+fn read_input(input: Option<&Path>) -> Result<String, Error> {
     let reader = io::open_file_read(&input).map_err(|source| Error::InputInvalid {
         source,
-        path: input.unwrap_or_default(),
+        path: input.map(|x| x.to_path_buf()).unwrap_or_default(),
     })?;
     let mut input_str = String::new();
     BufReader::new(reader).read_line(&mut input_str)?;
     Ok(input_str)
 }
 
-fn write_cert(output: Option<PathBuf>, cert: CertificateType) -> Result<(), Error> {
+fn write_cert(output: Option<&Path>, cert: interfaces::Certificate) -> Result<(), Error> {
     write_output(output, cert)
 }
 
-fn write_output(output: Option<PathBuf>, data: impl Display) -> Result<(), Error> {
+fn write_signed_cert(
+    output: Option<&Path>,
+    signedcert: interfaces::SignedCertificate,
+) -> Result<(), Error> {
+    write_output(output, signedcert)
+}
+
+fn write_output(output: Option<&Path>, data: impl Display) -> Result<(), Error> {
     let mut writer = io::open_file_write(&output).map_err(|source| Error::OutputInvalid {
         source,
-        path: output.unwrap_or_default(),
+        path: output.map(|x| x.to_path_buf()).unwrap_or_default(),
     })?;
     writeln!(writer, "{}", data)?;
     Ok(())

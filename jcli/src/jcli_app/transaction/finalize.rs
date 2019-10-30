@@ -1,4 +1,4 @@
-use chain_impl_mockchain::txbuilder::OutputPolicy;
+use chain_impl_mockchain::transaction::OutputPolicy;
 use jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
@@ -26,7 +26,7 @@ impl Finalize {
             Some(change) => OutputPolicy::One(change.into()),
         };
 
-        let _balance = transaction.finalize(fee_algo, output_policy)?;
+        let _balance = transaction.balance_inputs_outputs(&fee_algo, output_policy)?;
 
         self.common.store(&transaction)?;
         Ok(())

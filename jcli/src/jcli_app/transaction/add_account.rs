@@ -1,5 +1,5 @@
 use chain_addr::{Address, Kind};
-use chain_impl_mockchain::transaction::{AccountIdentifier, Input, InputEnum};
+use chain_impl_mockchain::transaction::AccountIdentifier;
 use jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
@@ -30,10 +30,10 @@ impl AddAccount {
             Kind::Multisig(_) => return Err(Error::AccountAddressMultisig),
         };
 
-        transaction.add_input(Input::from_enum(InputEnum::AccountInput(
-            account_id,
-            self.value.into(),
-        )))?;
+        transaction.add_input(interfaces::TransactionInput {
+            input: interfaces::TransactionInputType::Account(account_id.into()),
+            value: self.value.into(),
+        })?;
 
         self.common.store(&transaction)
     }

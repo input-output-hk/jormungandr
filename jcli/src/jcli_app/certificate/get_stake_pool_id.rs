@@ -2,6 +2,7 @@ use chain_impl_mockchain::certificate::Certificate;
 use jcli_app::certificate::{read_cert, write_output, Error};
 use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::path::PathBuf;
+use std::ops::Deref;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -15,10 +16,10 @@ pub struct GetStakePoolId {
 
 impl GetStakePoolId {
     pub fn exec(self) -> Result<(), Error> {
-        let cert: CertificateType = read_cert(self.input)?.into();
+        let cert: CertificateType = read_cert(self.input.as_ref().map(|x| x.deref()))?.into();
         match cert.0 {
             Certificate::PoolRegistration(stake_pool_info) => {
-                write_output(self.output, stake_pool_info.to_id())
+                write_output(self.output.as_ref().map(|x| x.deref()), stake_pool_info.to_id())
             }
             _ => Err(Error::NotStakePoolRegistration),
         }
