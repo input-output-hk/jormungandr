@@ -47,7 +47,6 @@ mod test {
     use super::element::AccountBindingSignature;
     use super::*;
     use crate::certificate::OwnerStakeDelegation;
-    use chain_crypto::VerificationAlgorithm;
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
 
