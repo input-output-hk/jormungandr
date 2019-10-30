@@ -58,6 +58,25 @@ pub enum OutputPolicy {
 }
 
 impl InputOutputBuilder {
+    /// Create a new empty builder
+    pub fn empty() -> InputOutputBuilder {
+        InputOutputBuilder {
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+        }
+    }
+
+    /// Create a builder from a given sequence of inputs and outputs
+    pub fn new<'a, IITER, OITER>(inputs: IITER, outputs: OITER) -> InputOutputBuilder
+    where
+        IITER: Iterator<Item = &'a Input>,
+        OITER: Iterator<Item = &'a Output<Address>>,
+    {
+        let inputs = inputs.cloned().collect();
+        let outputs = outputs.cloned().collect();
+        InputOutputBuilder { inputs, outputs }
+    }
+
     /// Build the InputOutput from the Builder
     pub fn build(self) -> InputOutput {
         InputOutput {
@@ -104,7 +123,7 @@ impl InputOutputBuilder {
             .ok_or(ValueError::Overflow)
     }
 
-    /// Get balance including current feee.
+    /// Get balance including current fee.
     pub fn get_balance<P: Payload, F: FeeAlgorithm<P>>(
         &self,
         payload: &P,
