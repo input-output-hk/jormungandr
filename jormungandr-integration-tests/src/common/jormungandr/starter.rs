@@ -159,9 +159,9 @@ impl Starter {
     }
 
     pub fn start(&mut self) -> Result<JormungandrProcess, StartupError> {
-        let mut command = self.get_command(&self.config);
         let mut retry_counter = 1;
         loop {
+            let mut command = self.get_command(&self.config);
             println!("Starting node with configuration : {:?}", &self.config);
 
             let process = command
