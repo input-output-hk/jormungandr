@@ -144,7 +144,7 @@ impl InputOutputBuilder {
         payload: &P,
         fee_algorithm: F,
         policy: OutputPolicy,
-    ) -> Result<(Balance, InputOutput), Error> {
+    ) -> Result<(Balance, Vec<Output<Address>>, InputOutput), Error> {
         // calculate initial fee, maybe we can fit it without any
         // additional calculations.
         let fee = fee_algorithm
@@ -154,14 +154,14 @@ impl InputOutputBuilder {
             Ok(Balance::Negative(_)) => return Err(Error::TxNotEnoughTotalInput),
             Ok(Balance::Positive(v)) => v,
             Ok(Balance::Zero) => {
-                return Ok((Balance::Zero, self.build()));
+                return Ok((Balance::Zero, vec![], self.build()));
             }
             Err(err) => return Err(Error::MathErr(err)),
         };
         // we have more money in the inputs then fee and outputs
         // so we need to return some money back to us.
         match policy {
-            OutputPolicy::Forget => Ok((Balance::Positive(pos), self.build())),
+            OutputPolicy::Forget => Ok((Balance::Positive(pos), vec![], self.build())),
             // We will try to find the best matching value, for
             // this reason we will try to reduce the set using
             // value estimated by the current fee.
@@ -185,12 +185,13 @@ impl InputOutputBuilder {
                 match self.balance(fee) {
                     Ok(Balance::Positive(value)) => {
                         let _ = self.outputs.pop();
-                        self.outputs.push(Output { address, value });
-                        Ok((Balance::Zero, self.build()))
+                        let output = Output { address, value };
+                        self.outputs.push(output.clone());
+                        Ok((Balance::Zero, vec![output], self.build()))
                     }
                     _ => {
                         let _ = self.outputs.pop();
-                        Ok((Balance::Positive(pos), self.build()))
+                        Ok((Balance::Positive(pos), vec![], self.build()))
                     }
                 }
             }
