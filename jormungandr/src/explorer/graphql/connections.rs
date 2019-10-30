@@ -259,7 +259,6 @@ where
     if let Some(first) = pagination_arguments.first {
         to = min(
             from.checked_add(u64::try_from(first).unwrap())
-                .map(|n| n - 1)
                 .unwrap_or(to),
             to,
         );
@@ -269,7 +268,6 @@ where
     if let Some(last) = pagination_arguments.last {
         from = max(
             to.checked_sub(u64::try_from(last).unwrap())
-                .map(|n| n + 1)
                 .unwrap_or(from),
             from,
         );
