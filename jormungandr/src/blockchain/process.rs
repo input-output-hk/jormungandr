@@ -1,15 +1,15 @@
 use super::{
-    chain, compare_against, Blockchain, CandidateRepo, ComparisonResult, Error, ErrorKind,
-    PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
+    chain, compare_against, Blockchain, ComparisonResult, PreCheckedHeader, Ref, Tip,
+    MAIN_BRANCH_TAG,
 };
 use crate::{
-    blockcfg::{Block, Epoch, FragmentId, Header},
+    blockcfg::{Block, Epoch, FragmentId, Header, HeaderHash},
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     leadership::NewEpochToSchedule,
     network::p2p::topology::NodeId,
     stats_counter::StatsCounter,
     utils::{
-        async_msg::{self, MessageBox},
+        async_msg::MessageBox,
         task::{Input, TokioServiceInfo},
     },
 };
@@ -21,13 +21,18 @@ use futures::future::Either;
 use slog::Logger;
 use tokio::{prelude::*, sync::mpsc::Sender};
 
-use std::sync::Arc;
+use std::{convert::identity, sync::Arc};
+
+error_chain! {
+    links {
+        Chain(chain::Error, chain::ErrorKind);
+    }
+}
 
 pub fn handle_input(
     info: &TokioServiceInfo,
     blockchain: &mut Blockchain,
     blockchain_tip: &mut Tip,
-    candidate_repo: &CandidateRepo,
     stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
@@ -40,7 +45,6 @@ pub fn handle_input(
             info,
             blockchain,
             blockchain_tip,
-            candidate_repo,
             stats_counter,
             new_epoch_announcements,
             network_msg_box,
@@ -56,14 +60,13 @@ pub fn run_handle_input(
     info: &TokioServiceInfo,
     blockchain: &mut Blockchain,
     blockchain_tip: &mut Tip,
-    candidate_repo: &CandidateRepo,
     stats_counter: &StatsCounter,
     new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
     input: Input<BlockMsg>,
-) -> Result<(), Error> {
+) -> Result<()> {
     let bquery = match input {
         Input::Shutdown => {
             // TODO: is there some work to do here to clean up the
@@ -102,7 +105,7 @@ pub fn run_handle_input(
             let new_block_ref = future.wait().unwrap();
             let header = new_block_ref.header().clone();
 
-            try_request_fragment_removal(
+            update_mempool(
                 tx_msg_box,
                 block.fragments().map(|f| f.id()).collect(),
                 &header,
@@ -148,12 +151,7 @@ pub fn run_handle_input(
                 "parent" => block.header.parent_id().to_string(),
                 "date" => block.header.block_date().to_string()));
 
-            let future = process_network_block(
-                blockchain.clone(),
-                candidate_repo.clone(),
-                block.clone(),
-                logger.clone(),
-            );
+            let future = process_network_block(blockchain.clone(), block.clone(), logger.clone());
             match future.wait() {
                 Err(e) => {
                     reply.reply_error(network_block_error_into_reply(e));
@@ -166,11 +164,11 @@ pub fn run_handle_input(
                             logger.clone(),
                             blockchain.clone(),
                             blockchain_tip.clone(),
-                            new_block_ref,
+                            new_block_ref.clone(),
                         )
                         .wait()
                         .unwrap();
-                        try_request_fragment_removal(tx_msg_box, fragment_ids, &header).unwrap_or_else(|err| {
+                        update_mempool(tx_msg_box, fragment_ids, &header).unwrap_or_else(|err| {
                             error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
                         });
                         network_msg_box
@@ -191,36 +189,23 @@ pub fn run_handle_input(
                 }
             }
         }
-        BlockMsg::ChainHeaders(headers, reply) => {
-            let future = candidate_repo.advance_branch(headers);
-            match future.wait() {
-                Err(e) => {
-                    reply.reply_error(chain_header_error_into_reply(e));
-                }
-                Ok(hashes) => {
-                    network_msg_box
-                        .try_send(NetworkMsg::GetBlocks(hashes))
-                        .unwrap_or_else(|err| {
-                            error!(info.logger(), "cannot request blocks from network: {}", err)
-                        });
-                    reply.reply_ok(());
-                }
-            }
-        }
+        BlockMsg::ChainHeaders(_stream) => unimplemented!(),
     };
 
     Ok(())
 }
 
-fn try_request_fragment_removal(
+fn update_mempool(
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     fragment_ids: Vec<FragmentId>,
     header: &Header,
-) -> Result<(), async_msg::TrySendError<TransactionMsg>> {
+) -> Result<()> {
     let hash = header.hash().into();
     let date = header.block_date().clone().into();
     let status = FragmentStatus::InABlock { date, block: hash };
-    tx_msg_box.try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
+    tx_msg_box
+        .try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
+        .chain_err(|| "Unable to send Mempool update")
 }
 
 /// process a new candidate block on top of the blockchain, this function may:
@@ -332,7 +317,9 @@ pub fn process_leadership_block(
                     logger1,
                     "block from leader event does not have parent block in storage"
                 );
-                Either::B(future::err(ErrorKind::MissingParentBlock(header).into()))
+                Either::B(future::err(
+                    chain::ErrorKind::MissingParentBlockFromStorage(header).into(),
+                ))
             }
         })
         .and_then(move |post_checked| end_blockchain.apply_and_store_block(post_checked, block))
@@ -400,12 +387,9 @@ pub fn process_block_announcement(
 
 pub fn process_network_block(
     mut blockchain: Blockchain,
-    candidate_repo: CandidateRepo,
     block: Block,
     logger: Logger,
 ) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
-    use futures::future::Either::{A, B};
-
     let mut end_blockchain = blockchain.clone();
     let header = block.header();
     blockchain
@@ -413,29 +397,25 @@ pub fn process_network_block(
         .and_then(move |pre_checked| match pre_checked {
             PreCheckedHeader::AlreadyPresent { .. } => {
                 debug!(logger, "block is already present");
-                A(A(future::ok(None)))
+                Either::A(future::ok(None))
             }
-            PreCheckedHeader::MissingParent { .. } => {
-                debug!(
-                    logger,
-                    "block is missing a locally stored parent, putting to cache"
-                );
-                A(B(candidate_repo.cache_block(block).map(|()| None)))
+            PreCheckedHeader::MissingParent { header, .. } => {
+                debug!(logger, "block is missing a locally stored parent");
+                Either::A(future::err(
+                    chain::ErrorKind::MissingParentBlockFromStorage(header).into(),
+                ))
             }
             PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
                 let post_check_and_apply = blockchain
                     .post_check_header(header, parent_ref)
                     .and_then(move |post_checked| {
                         end_blockchain.apply_and_store_block(post_checked, block)
-                        // TODO: look up a branch starting with this block
-                        // in the candidate repo and apply all cached blocks
-                        // that follow up.
                     })
                     .map(move |block_ref| {
                         info!(logger, "block successfully applied");
                         Some(block_ref)
                     });
-                B(post_check_and_apply)
+                Either::B(post_check_and_apply)
             }
         })
 }
@@ -447,23 +427,51 @@ fn network_block_error_into_reply(err: chain::Error) -> intercom::Error {
         Storage(e) => intercom::Error::failed(e),
         Ledger(e) => intercom::Error::failed_precondition(e),
         Block0(e) => intercom::Error::failed(e),
-        MissingParentBlock(_) => intercom::Error::failed_precondition(err.to_string()),
-        BlockHeaderMissingParent(_) => intercom::Error::invalid_argument(err.to_string()),
+        MissingParentBlockFromStorage(_) => intercom::Error::failed_precondition(err.to_string()),
         BlockHeaderVerificationFailed(_) => intercom::Error::invalid_argument(err.to_string()),
         _ => intercom::Error::failed(err.to_string()),
     }
 }
 
-fn chain_header_error_into_reply(err: Error) -> intercom::Error {
-    use super::ErrorKind::*;
-
-    // TODO: more detailed error case matching
-    match err.0 {
-        Storage(e) => intercom::Error::failed(e),
-        Ledger(e) => intercom::Error::failed_precondition(e),
-        Block0(e) => intercom::Error::failed(e),
-        MissingParentBlock(_) => intercom::Error::failed_precondition(err.to_string()),
-        BlockHeaderVerificationFailed(_) => intercom::Error::invalid_argument(err.to_string()),
-        _ => intercom::Error::failed(err.to_string()),
-    }
+pub fn process_chain_headers_into_block_request<S>(
+    mut blockchain: Blockchain,
+    headers: S,
+    logger: Logger,
+) -> impl Future<Item = Vec<HeaderHash>, Error = Error>
+where
+    S: Stream<Item = Header>,
+{
+    headers
+        .map_err(|e| {
+            // TODO: map the incoming stream error to the result error
+            unimplemented!()
+        })
+        .and_then(move |header| {
+            blockchain.pre_check_header(header, false).and_then(
+                move |pre_checked| match pre_checked {
+                    PreCheckedHeader::AlreadyPresent { .. } => {
+                        // The block is already present. This may happen
+                        // if the peer has started from an earlier checkpoint
+                        // than our tip, so ignore this and proceed.
+                        Ok(None)
+                    }
+                    PreCheckedHeader::MissingParent { header, .. } => {
+                        // TODO: this fails on the first header after the
+                        // immediate descendant of the local tip. Need branch storage
+                        // that would store the whole header chain without blocks,
+                        // so that the chain can be pre-validated first and blocks
+                        // fetched afterwards in arbitrary order.
+                        Err(chain::ErrorKind::MissingParentBlockFromStorage(header).into())
+                    }
+                    PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+                        // TODO: limit the headers to the single epoch
+                        // before pausing to retrieve blocks.
+                        Ok(Some(header.hash()))
+                    }
+                },
+            )
+        })
+        .map_err(|err| Error::with_chain(err, "cannot chain block header into block requests"))
+        .filter_map(identity)
+        .collect()
 }

@@ -55,7 +55,7 @@ extern crate tokio;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
-    blockchain::{Blockchain, CandidateRepo},
+    blockchain::Blockchain,
     rest::NodeState,
     secure::enclave::Enclave,
     settings::start::Settings,
@@ -181,14 +181,12 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(3600);
-        let candidate_repo = CandidateRepo::new(blockchain.storage().clone(), block_cache_ttl);
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(
                 info,
                 &mut blockchain,
                 &mut blockchain_tip,
-                &candidate_repo,
                 &stats_counter,
                 &mut new_epoch_announcements,
                 &mut network_msgbox,
