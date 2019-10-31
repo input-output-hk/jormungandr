@@ -232,21 +232,41 @@ impl<T: ?Sized> PoolOwnersSigned<T> {
     }
 
     pub fn verify(&self, pool_info: &PoolRegistration, verify_data: &[u8]) -> Verification {
-        let signatories = self.signatures.len();
+        // fast track if we don't meet the management threshold already
+        if self.signatures.len() < pool_info.management_threshold as usize {
+            return Verification::Failed;
+        }
 
+        let mut present = vec![false; pool_info.owners.len()];
+        let mut signatories = 0;
+
+        for (i, sig) in self.signatures.iter() {
+            let i = *i as usize;
+            // Check for out of bounds indices
+            if i >= pool_info.owners.len() {
+                return Verification::Failed;
+            }
+
+            // Check if already seen this index, if yes we fail
+            if present[i] {
+                return Verification::Failed;
+            } else {
+                present[i] = true;
+            }
+
+            // Verify the cryptographic signature of a signatory
+            let pk = &pool_info.owners[i];
+            if sig.verify_slice(pk, verify_data) == Verification::Failed {
+                return Verification::Failed;
+            }
+            signatories += 1
+        }
+
+        // check if we seen enough unique signatures
         if signatories < pool_info.management_threshold as usize {
             return Verification::Failed;
         }
 
-        for (i, sig) in self.signatures.iter() {
-            if *i as usize >= pool_info.owners.len() {
-                return Verification::Failed;
-            }
-            let pk = &pool_info.owners[*i as usize];
-            if sig.verify_slice(pk, verify_data) == Verification::Failed {
-                return Verification::Failed;
-            }
-        }
         return Verification::Success;
     }
 }
