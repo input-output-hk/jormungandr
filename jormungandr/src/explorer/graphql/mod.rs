@@ -1,7 +1,10 @@
 mod connections;
 mod error;
 mod scalars;
-use self::connections::{BlockConnection, PaginationArguments, TransactionConnection};
+use self::connections::{
+    BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
+    TransactionConnection,
+};
 use self::error::ErrorKind;
 use super::indexing::{BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction};
 use super::persistent_sequence::PersistentSequence;
@@ -82,9 +85,6 @@ impl Block {
             .as_mut_slice()
             .sort_unstable_by_key(|tx| tx.offset_in_block);
 
-        let lower_bound = 0u32;
-        let upper_bound = transactions.len();
-
         let pagination_arguments = PaginationArguments {
             first,
             last,
@@ -93,25 +93,39 @@ impl Block {
         }
         .validate()?;
 
-        TransactionConnection::new(
-            lower_bound,
-            upper_bound
-                .try_into()
-                .expect("tried to paginate more than 2^32 elements"),
-            pagination_arguments,
-            |from: u32, to: u32| {
-                let from = usize::try_from(from).unwrap();
-                let to = usize::try_from(to).unwrap();
+        let boundaries = if transactions.len() > 0 {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u32,
+                upper_bound: transactions
+                    .len()
+                    .checked_sub(1)
+                    .unwrap()
+                    .try_into()
+                    .expect("tried to paginate more than 2^32 elements"),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
 
-                (from..to)
-                    .map(|i| {
-                        (
-                            transactions[i].id().clone(),
-                            i.try_into()
-                                .expect("tried to paginate more than 2^32 elements"),
-                        )
-                    })
-                    .collect::<Vec<(FragmentId, u32)>>()
+        TransactionConnection::new(
+            boundaries,
+            pagination_arguments,
+            |range: PaginationInterval<u32>| match range {
+                PaginationInterval::Empty => vec![],
+                PaginationInterval::Inclusive(range) => {
+                    let from = usize::try_from(range.lower_bound).unwrap();
+                    let to = usize::try_from(range.upper_bound).unwrap();
+
+                    (from..=to)
+                        .map(|i| {
+                            (
+                                transactions[i].id().clone(),
+                                i.try_into()
+                                    .expect("tried to paginate more than 2^32 elements"),
+                            )
+                        })
+                        .collect::<Vec<(FragmentId, u32)>>()
+                }
             },
         )
     }
@@ -399,8 +413,14 @@ impl Address {
                 "Expected address to be indexed".to_owned(),
             ))?;
 
-        let lower_bound = 0u64;
-        let upper_bound: u64 = transactions.len();
+        let boundaries = if transactions.len() > 0 {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u64,
+                upper_bound: transactions.len(),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
 
         let pagination_arguments = PaginationArguments {
             first,
@@ -411,13 +431,13 @@ impl Address {
         .validate()?;
 
         TransactionConnection::new(
-            lower_bound,
-            upper_bound,
+            boundaries,
             pagination_arguments,
-            |from: u64, to: u64| {
-                (from..to)
+            |range: PaginationInterval<u64>| match range {
+                PaginationInterval::Empty => vec![],
+                PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
                     .filter_map(|i| transactions.get(i).map(|h| ((*h).clone(), i.into())))
-                    .collect()
+                    .collect(),
             },
         )
     }
@@ -624,8 +644,17 @@ impl Pool {
                 ))?,
         };
 
-        let lower_bound = 0u32;
-        let upper_bound = blocks.len();
+        let bounds = if blocks.len() > 0 {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u32,
+                upper_bound: blocks
+                    .len()
+                    .try_into()
+                    .expect("Tried to paginate more than 2^32 blocks"),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
 
         let pagination_arguments = PaginationArguments {
             first,
@@ -635,18 +664,12 @@ impl Pool {
         }
         .validate()?;
 
-        BlockConnection::new(
-            lower_bound,
-            upper_bound
-                .try_into()
-                .expect("Tried to paginate more than 2^32 blocks"),
-            pagination_arguments,
-            |from: u32, to: u32| {
-                (from..to)
-                    .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
-                    .collect()
-            },
-        )
+        BlockConnection::new(bounds, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => vec![],
+            PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
+                .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
+                .collect(),
+        })
     }
 }
 
@@ -727,17 +750,24 @@ impl Epoch {
             None => return Ok(None),
         };
 
-        let lower_bound = context
+        let epoch_lower_bound = context
             .db
             .get_block(&epoch_data.first_block)
             .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
             .wait()?;
 
-        let upper_bound = context
+        let epoch_upper_bound = context
             .db
             .get_block(&epoch_data.last_block)
             .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
             .wait()?;
+
+        let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
+            lower_bound: epoch_lower_bound,
+            upper_bound: epoch_upper_bound
+                .checked_sub(epoch_lower_bound)
+                .expect("pagination upper_bound to be greater or equal than lower_bound"),
+        });
 
         let pagination_arguments = PaginationArguments {
             first,
@@ -747,25 +777,21 @@ impl Epoch {
         }
         .validate()?;
 
-        BlockConnection::new(
-            0,
-            // This is to make the cursors start from 0 and not from the first block's ChainLength
-            upper_bound
-                .checked_sub(lower_bound)
-                .expect("pagination upper_bound to be greater or equal than lower_bound"),
-            pagination_arguments,
-            |a: u32, b: u32| {
-                context
-                    .db
-                    .get_block_hash_range((a + lower_bound).into(), (b + lower_bound).into())
-                    .wait()
-                    // Error = Infallible
-                    .unwrap()
-                    .iter()
-                    .map(|(hash, index)| (hash.clone(), u32::from(index.clone()) - lower_bound))
-                    .collect()
-            },
-        )
+        BlockConnection::new(boundaries, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => unreachable!("No blocks found (not even genesis)"),
+            PaginationInterval::Inclusive(range) => context
+                .db
+                .get_block_hash_range(
+                    (range.lower_bound + epoch_lower_bound).into(),
+                    (range.upper_bound + epoch_lower_bound + 1).into(),
+                )
+                .wait()
+                // Error = Infallible
+                .unwrap()
+                .iter()
+                .map(|(hash, index)| (hash.clone(), u32::from(index.clone()) - epoch_lower_bound))
+                .collect(),
+        })
         .map(Some)
     }
 
@@ -855,6 +881,11 @@ impl Query {
 
         let block0 = 0u32;
 
+        let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
+            lower_bound: block0,
+            upper_bound: u32::from(longest_chain),
+        });
+
         let pagination_arguments = PaginationArguments {
             first,
             last,
@@ -863,21 +894,21 @@ impl Query {
         }
         .validate()?;
 
-        BlockConnection::new(
-            block0,
-            u32::from(longest_chain) + 1,
-            pagination_arguments,
-            |a, b| {
+        BlockConnection::new(boundaries, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => vec![],
+            PaginationInterval::Inclusive(range) => {
+                let a = range.lower_bound.into();
+                let b = range.upper_bound.checked_add(1).unwrap().into();
                 context
                     .db
-                    .get_block_hash_range(a.into(), b.into())
+                    .get_block_hash_range(a, b)
                     .wait()
                     .unwrap()
                     .iter_mut()
                     .map(|(hash, chain_length)| (hash.clone(), u32::from(*chain_length)))
                     .collect()
-            },
-        )
+            }
+        })
     }
 
     fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {

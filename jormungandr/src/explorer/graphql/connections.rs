@@ -143,10 +143,9 @@ where
     E::Node: Clone,
 {
     pub fn new<I>(
-        lower_bound: I,
-        upper_bound: I,
+        bounds: PaginationInterval<I>,
         pagination_arguments: ValidatedPaginationArguments<I>,
-        get_node_range: impl Fn(I, I) -> Vec<(E::Node, I)>,
+        get_node_range: impl Fn(PaginationInterval<I>) -> Vec<(E::Node, I)>,
     ) -> FieldResult<Connection<E, C>>
     where
         I: TryFrom<u64>,
@@ -154,23 +153,41 @@ where
         I: Clone,
         IndexCursor: From<I>,
     {
-        let lower_bound: u64 = lower_bound.into();
-        let upper_bound: u64 = upper_bound.into();
         let pagination_arguments = pagination_arguments.cursors_into::<u64>();
+        let bounds = bounds.bounds_into::<u64>();
 
-        let [from, to] = compute_range_boundaries(lower_bound, upper_bound, pagination_arguments)?;
+        let (page_interval, has_next_page, has_previous_page, total_count) = match bounds {
+            PaginationInterval::Empty => (PaginationInterval::Empty, false, false, 0.into()),
+            PaginationInterval::Inclusive(total_elements) => {
+                let InclusivePaginationInterval {
+                    upper_bound,
+                    lower_bound,
+                } = total_elements;
 
-        let has_next_page = to < upper_bound;
-        let has_previous_page = from > lower_bound;
+                let page = compute_range_boundaries(total_elements, pagination_arguments)?;
 
-        let index_from = I::try_from(from)
-            .map_err(|_| "page range is out of boundaries")
+                let has_next_page = page.upper_bound < upper_bound;
+                let has_previous_page = page.lower_bound > lower_bound;
+
+                let total_count = upper_bound
+                    .checked_sub(lower_bound)
+                    .expect("upper_bound should be >= than lower_bound")
+                    .into();
+                (
+                    PaginationInterval::Inclusive(page),
+                    has_next_page,
+                    has_previous_page,
+                    total_count,
+                )
+            }
+        };
+
+        let page_interval = page_interval
+            .bounds_try_into::<I>()
+            .map_err(|_| "computed page interval is outside pagination boundaries")
             .unwrap();
-        let index_to = I::try_from(to)
-            .map_err(|_| "page range is out of boundaries")
-            .unwrap();
 
-        let edges: Vec<_> = get_node_range(index_from, index_to)
+        let edges: Vec<_> = get_node_range(page_interval)
             .iter()
             .map(|(hash, node_pagination_identifier)| {
                 E::new((*hash).clone(), node_pagination_identifier.clone().into())
@@ -191,10 +208,7 @@ where
                 start_cursor,
                 end_cursor,
             },
-            total_count: (upper_bound
-                .checked_sub(lower_bound)
-                .expect("upper_bound to be >= than lower_bound"))
-            .into(),
+            total_count,
         })
     }
 }
@@ -231,13 +245,17 @@ impl Edge for BlockEdge {
 }
 
 fn compute_range_boundaries(
-    lower_bound: u64,
-    upper_bound: u64,
+    total_elements: InclusivePaginationInterval<u64>,
     pagination_arguments: ValidatedPaginationArguments<u64>,
-) -> FieldResult<[u64; 2]>
+) -> FieldResult<InclusivePaginationInterval<u64>>
 where
 {
     use std::cmp::{max, min};
+
+    let InclusivePaginationInterval {
+        upper_bound,
+        lower_bound,
+    } = total_elements;
 
     // Compute the required range of blocks in two variables: [from, to]
     // Both ends are inclusive
@@ -258,7 +276,8 @@ where
     // Move `to` enough values to make the result have `first` blocks
     if let Some(first) = pagination_arguments.first {
         to = min(
-            from.checked_add(u64::try_from(first).unwrap())
+            from.checked_add(u64::from(first))
+                .and_then(|n| n.checked_sub(1))
                 .unwrap_or(to),
             to,
         );
@@ -267,13 +286,17 @@ where
     // Move `from` enough values to make the result have `last` blocks
     if let Some(last) = pagination_arguments.last {
         from = max(
-            to.checked_sub(u64::try_from(last).unwrap())
+            to.checked_sub(u64::from(last))
+                .and_then(|n| n.checked_add(1))
                 .unwrap_or(from),
             from,
         );
     }
 
-    Ok([from, to])
+    Ok(InclusivePaginationInterval {
+        lower_bound: from,
+        upper_bound: to,
+    })
 }
 
 impl<I> PaginationArguments<I> {
@@ -328,6 +351,48 @@ impl<I> ValidatedPaginationArguments<I> {
             before: self.before.map(T::from),
             first: self.first,
             last: self.last,
+        }
+    }
+}
+
+pub enum PaginationInterval<I> {
+    Empty,
+    Inclusive(InclusivePaginationInterval<I>),
+}
+
+pub struct InclusivePaginationInterval<I> {
+    pub lower_bound: I,
+    pub upper_bound: I,
+}
+
+impl<I> PaginationInterval<I> {
+    fn bounds_into<T>(self) -> PaginationInterval<T>
+    where
+        T: From<I>,
+    {
+        match self {
+            Self::Empty => PaginationInterval::<T>::Empty,
+            Self::Inclusive(interval) => {
+                PaginationInterval::<T>::Inclusive(InclusivePaginationInterval::<T> {
+                    lower_bound: T::from(interval.lower_bound),
+                    upper_bound: T::from(interval.upper_bound),
+                })
+            }
+        }
+    }
+
+    fn bounds_try_into<T>(self) -> Result<PaginationInterval<T>, <T as TryFrom<I>>::Error>
+    where
+        T: TryFrom<I>,
+    {
+        match self {
+            Self::Empty => Ok(PaginationInterval::<T>::Empty),
+            Self::Inclusive(interval) => Ok(PaginationInterval::<T>::Inclusive(
+                InclusivePaginationInterval::<T> {
+                    lower_bound: T::try_from(interval.lower_bound)?,
+                    upper_bound: T::try_from(interval.upper_bound)?,
+                },
+            )),
         }
     }
 }
