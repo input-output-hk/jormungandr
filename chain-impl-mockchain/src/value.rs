@@ -29,6 +29,11 @@ impl Value {
     }
 
     #[inline]
+    pub fn saturating_add(self, other: Self) -> Self {
+        Value(self.0.saturating_add(other.0))
+    }
+
+    #[inline]
     pub fn checked_add(self, other: Self) -> Result<Self, ValueError> {
         self.0
             .checked_add(other.0)
