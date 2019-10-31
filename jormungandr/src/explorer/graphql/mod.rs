@@ -117,13 +117,7 @@ impl Block {
                     let to = usize::try_from(range.upper_bound).unwrap();
 
                     (from..=to)
-                        .map(|i| {
-                            (
-                                transactions[i].id().clone(),
-                                i.try_into()
-                                    .expect("tried to paginate more than 2^32 elements"),
-                            )
-                        })
+                        .map(|i| (transactions[i].id().clone(), i.try_into().unwrap()))
                         .collect::<Vec<(FragmentId, u32)>>()
                 }
             },
