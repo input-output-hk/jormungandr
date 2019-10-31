@@ -1,7 +1,8 @@
 use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
-use crate::transaction::Payload;
+use crate::transaction::{PayloadSlice, Payload};
+use super::CertificateSlice;
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
@@ -162,6 +163,9 @@ impl Payload for PoolUpdate {
     fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
         auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
     }
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
+    }
 }
 
 impl Payload for PoolRetirement {
@@ -173,6 +177,9 @@ impl Payload for PoolRetirement {
     }
     fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
         auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
     }
 }
 
@@ -221,6 +228,10 @@ impl Payload for PoolRegistration {
 
     fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
         auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    }
+
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
     }
 }
 
