@@ -1,6 +1,6 @@
 use crate::accounting::account::DelegationType;
-use crate::certificate::PoolId;
-use crate::transaction::{AccountBindingSignature, AccountIdentifier, Payload};
+use crate::certificate::{CertificateSlice, PoolId};
+use crate::transaction::{AccountBindingSignature, AccountIdentifier, Payload, PayloadSlice};
 
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
@@ -68,6 +68,9 @@ impl Payload for OwnerStakeDelegation {
     fn auth_to_bytes(_: &Self::Auth) -> Vec<u8> {
         Vec::with_capacity(0)
     }
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
+    }
 }
 
 impl property::Serialize for StakeDelegation {
@@ -103,6 +106,9 @@ impl Payload for StakeDelegation {
 
     fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
         auth.as_ref().to_owned()
+    }
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
     }
 }
 

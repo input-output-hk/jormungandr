@@ -3,6 +3,9 @@ use chain_core::{
     property,
 };
 
+use super::transaction::PayloadSlice;
+use crate::certificate::CertificateSlice;
+
 pub trait Payload: Readable {
     const HAS_DATA: bool;
     const HAS_AUTH: bool;
@@ -11,6 +14,8 @@ pub trait Payload: Readable {
     fn to_bytes(&self) -> Vec<u8>;
 
     fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8>;
+
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,5 +49,8 @@ impl Payload for NoExtra {
     }
     fn auth_to_bytes(_: &Self::Auth) -> Vec<u8> {
         Vec::with_capacity(0)
+    }
+    fn to_certificate_slice<'a>(_: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        None
     }
 }
