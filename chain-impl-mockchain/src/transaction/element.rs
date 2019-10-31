@@ -1,4 +1,4 @@
-use crate::key::deserialize_signature;
+use crate::key::{deserialize_signature, EitherEd25519SecretKey};
 use crate::transaction::TransactionBindingAuthData;
 use crate::value::{Value, ValueError};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -30,6 +30,10 @@ impl AccountBindingSignature {
         data: TransactionBindingAuthData<'a>,
     ) -> Verification {
         self.0.verify_slice(pk, data.0)
+    }
+
+    pub fn new<'a>(sk: &EitherEd25519SecretKey, data: TransactionBindingAuthData<'a>) -> Self {
+        AccountBindingSignature(sk.sign_slice(data.0))
     }
 }
 
