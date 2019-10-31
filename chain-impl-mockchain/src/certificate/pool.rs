@@ -2,13 +2,14 @@ use super::CertificateSlice;
 use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
-use crate::transaction::{Payload, PayloadSlice};
+use crate::transaction::{Payload, PayloadAuthData, PayloadData, PayloadSlice};
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
 };
 use chain_crypto::{digest::DigestOf, Blake2b256, Ed25519, PublicKey, Signature, Verification};
 use chain_time::{DurationSeconds, TimeOffsetSeconds};
+use std::marker::PhantomData;
 use typed_bytes::{ByteArray, ByteBuilder};
 
 /// Pool ID
@@ -157,11 +158,21 @@ impl Payload for PoolUpdate {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = true;
     type Auth = PoolOwnersSigned<[u8]>;
-    fn to_bytes(&self) -> Vec<u8> {
-        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
-    fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
-        auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(
+            auth.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
     fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
         Some(CertificateSlice::from(p))
@@ -172,11 +183,21 @@ impl Payload for PoolRetirement {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = true;
     type Auth = PoolOwnersSigned<[u8]>;
-    fn to_bytes(&self) -> Vec<u8> {
-        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
-    fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
-        auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(
+            auth.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
     fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
         Some(CertificateSlice::from(p))
@@ -222,12 +243,22 @@ impl Payload for PoolRegistration {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = true;
     type Auth = PoolOwnersSigned<[u8]>;
-    fn to_bytes(&self) -> Vec<u8> {
-        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
 
-    fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
-        auth.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(
+            auth.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
 
     fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {

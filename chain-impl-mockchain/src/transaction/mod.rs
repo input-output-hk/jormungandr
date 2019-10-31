@@ -16,7 +16,7 @@ pub use builder::{SetAuthData, SetIOs, SetPayload, SetWitnesses, TxBuilder, TxBu
 pub use element::*;
 pub use input::*;
 pub use io::{Error, InputOutput, InputOutputBuilder, OutputPolicy};
-pub use payload::{NoExtra, Payload};
+pub use payload::{NoExtra, Payload, PayloadAuthData, PayloadAuthSlice, PayloadData, PayloadSlice};
 pub use transaction::*;
 pub use transfer::*;
 pub use utxo::*;

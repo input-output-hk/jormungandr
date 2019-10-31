@@ -285,13 +285,13 @@ impl Ledger {
                     let tx = tx.as_slice();
                     check::valid_block0_transaction_no_inputs(&tx)?;
                     check::valid_block0_transaction_no_outputs(&tx)?;
-                    ledger = ledger.apply_stake_delegation(&tx.payload().into_owned())?;
+                    ledger = ledger.apply_stake_delegation(&tx.payload().into_payload())?;
                 }
                 Fragment::PoolRegistration(tx) => {
                     let tx = tx.as_slice();
                     check::valid_block0_transaction_no_inputs(&tx)?;
                     check::valid_block0_transaction_no_outputs(&tx)?;
-                    ledger = ledger.apply_pool_registration(&tx.payload().into_owned())?;
+                    ledger = ledger.apply_pool_registration(&tx.payload().into_payload())?;
                 }
                 Fragment::PoolRetirement(_) => {
                     return Err(Error::Block0 {
@@ -389,7 +389,7 @@ impl Ledger {
             }
             Fragment::StakeDelegation(tx) => {
                 let tx = tx.as_slice();
-                let payload = tx.payload().into_owned();
+                let payload = tx.payload().into_payload();
                 match payload.account_id.to_single_account() {
                     None => {
                         return Err(DelegationError::StakeDelegationAccountIsInvalid(
@@ -398,7 +398,7 @@ impl Ledger {
                         .into());
                     }
                     Some(account_pk) => {
-                        let signature = tx.payload_auth().into_owned();
+                        let signature = tx.payload_auth().into_payload_auth();
                         let verified = signature
                             .verify_slice(&account_pk.into(), tx.transaction_binding_auth_data());
                         if verified == Verification::Failed {
@@ -415,9 +415,9 @@ impl Ledger {
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_pool_registration_signcheck(
-                    &tx.payload().into_owned(),
+                    &tx.payload().into_payload(),
                     tx.transaction_binding_auth_data(),
-                    tx.payload_auth().into_owned(),
+                    tx.payload_auth().into_payload_auth(),
                 )?;
             }
             Fragment::PoolRetirement(tx) => {
@@ -426,9 +426,9 @@ impl Ledger {
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_pool_retirement(
-                    &tx.payload().into_owned(),
+                    &tx.payload().into_payload(),
                     tx.transaction_binding_auth_data(),
-                    tx.payload_auth().into_owned(),
+                    tx.payload_auth().into_payload_auth(),
                 )?;
             }
             Fragment::PoolUpdate(tx) => {
@@ -437,9 +437,9 @@ impl Ledger {
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_pool_update(
-                    &tx.payload().into_owned(),
+                    &tx.payload().into_payload(),
                     tx.transaction_binding_auth_data(),
-                    tx.payload_auth().into_owned(),
+                    tx.payload_auth().into_payload_auth(),
                 )?;
             }
             Fragment::UpdateProposal(update_proposal) => {
@@ -628,8 +628,10 @@ impl Ledger {
                     witness,
                     value,
                 )?;
-                self.accounts = single
-                    .set_delegation(&account_id, tx.payload().into_owned().get_delegation_type())?;
+                self.accounts = single.set_delegation(
+                    &account_id,
+                    tx.payload().into_payload().get_delegation_type(),
+                )?;
             }
             MatchingIdentifierWitness::Multi(account_id, witness) => {
                 let multi = input_multi_account_verify(
@@ -640,8 +642,10 @@ impl Ledger {
                     witness,
                     value,
                 )?;
-                self.multisig = multi
-                    .set_delegation(&account_id, tx.payload().into_owned().get_delegation_type())?;
+                self.multisig = multi.set_delegation(
+                    &account_id,
+                    tx.payload().into_payload().get_delegation_type(),
+                )?;
             }
         }
         Ok((self, value))

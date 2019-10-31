@@ -1,11 +1,14 @@
 use crate::accounting::account::DelegationType;
 use crate::certificate::{CertificateSlice, PoolId};
-use crate::transaction::{AccountBindingSignature, AccountIdentifier, Payload, PayloadSlice};
+use crate::transaction::{
+    AccountBindingSignature, AccountIdentifier, Payload, PayloadAuthData, PayloadData, PayloadSlice,
+};
 
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
 };
+use std::marker::PhantomData;
 use typed_bytes::ByteBuilder;
 
 /// A self delegation to a specific StakePoolId.
@@ -62,11 +65,16 @@ impl Payload for OwnerStakeDelegation {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = false;
     type Auth = ();
-    fn to_bytes(&self) -> Vec<u8> {
-        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
-    fn auth_to_bytes(_: &Self::Auth) -> Vec<u8> {
-        Vec::with_capacity(0)
+    fn payload_auth_data(_: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(Vec::with_capacity(0).into(), PhantomData)
     }
     fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
         Some(CertificateSlice::from(p))
@@ -100,12 +108,17 @@ impl Payload for StakeDelegation {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = true;
     type Auth = AccountBindingSignature;
-    fn to_bytes(&self) -> Vec<u8> {
-        self.serialize_in(ByteBuilder::new()).finalize_as_vec()
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
 
-    fn auth_to_bytes(auth: &Self::Auth) -> Vec<u8> {
-        auth.as_ref().to_owned()
+    fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(auth.as_ref().to_owned().into(), PhantomData)
     }
     fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
         Some(CertificateSlice::from(p))

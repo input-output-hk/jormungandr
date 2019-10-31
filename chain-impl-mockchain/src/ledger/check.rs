@@ -100,11 +100,11 @@ pub(super) fn valid_pool_owner_signature<T: ?Sized>(
     Ok(())
 }
 
-pub(super) fn valid_pool_retirement_certificate(cert: &certificate::PoolRetirement) -> LedgerCheck {
+pub(super) fn valid_pool_retirement_certificate(_: &certificate::PoolRetirement) -> LedgerCheck {
     Ok(())
 }
 
-pub(super) fn valid_pool_update_certificate(cert: &certificate::PoolUpdate) -> LedgerCheck {
+pub(super) fn valid_pool_update_certificate(_: &certificate::PoolUpdate) -> LedgerCheck {
     Ok(())
 }
 

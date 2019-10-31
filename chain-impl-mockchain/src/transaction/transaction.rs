@@ -1,10 +1,9 @@
 use super::builder::TxBuilder;
 use super::element::{Balance, BalanceError, TransactionSignDataHash};
 use super::input::{Input, INPUT_SIZE};
-use super::payload::Payload;
+use super::payload::{Payload, PayloadAuthSlice, PayloadSlice};
 use super::transfer::Output;
 use super::witness::Witness;
-use crate::certificate::CertificateSlice;
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use chain_core::mempack::{ReadBuf, Readable};
@@ -83,22 +82,6 @@ pub struct WitnessesSlice<'a>(u8, &'a [u8]);
 
 #[derive(Clone)]
 pub struct InputsWitnessesSlice<'a>(InputsSlice<'a>, WitnessesSlice<'a>);
-
-pub struct PayloadSlice<'a, P: ?Sized>(&'a [u8], PhantomData<P>);
-
-impl<'a, P> Clone for PayloadSlice<'a, P> {
-    fn clone(&self) -> PayloadSlice<'a, P> {
-        PayloadSlice(self.0.clone(), self.1.clone())
-    }
-}
-
-pub struct PayloadAuthSlice<'a, P: ?Sized>(&'a [u8], PhantomData<P>);
-
-impl<'a, P> Clone for PayloadAuthSlice<'a, P> {
-    fn clone(&self) -> PayloadAuthSlice<'a, P> {
-        PayloadAuthSlice(self.0.clone(), self.1.clone())
-    }
-}
 
 pub struct InputsIter<'a> {
     index: usize, // in number of inputs
@@ -234,24 +217,6 @@ impl<'a> InputsWitnessesSlice<'a> {
             iiter: self.0.iter(),
             witer: self.1.iter(),
         }
-    }
-}
-
-impl<'a, P: Payload> PayloadSlice<'a, P> {
-    pub fn into_owned(self) -> P {
-        P::read(&mut ReadBuf::from(self.0)).unwrap()
-    }
-}
-
-impl<'a, P: Payload> PayloadSlice<'a, P> {
-    pub fn to_certificate_slice(self) -> Option<CertificateSlice<'a>> {
-        <P as Payload>::to_certificate_slice(self)
-    }
-}
-
-impl<'a, P: Payload> PayloadAuthSlice<'a, P> {
-    pub fn into_owned(self) -> P::Auth {
-        P::Auth::read(&mut ReadBuf::from(self.0)).unwrap()
     }
 }
 

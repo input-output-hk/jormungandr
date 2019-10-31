@@ -51,12 +51,14 @@ impl<'a> From<PayloadSlice<'a, PoolUpdate>> for CertificateSlice<'a> {
 impl<'a> CertificateSlice<'a> {
     pub fn into_owned(self) -> Certificate {
         match self {
-            CertificateSlice::PoolRegistration(c) => Certificate::PoolRegistration(c.into_owned()),
-            CertificateSlice::PoolUpdate(c) => Certificate::PoolUpdate(c.into_owned()),
-            CertificateSlice::PoolRetirement(c) => Certificate::PoolRetirement(c.into_owned()),
-            CertificateSlice::StakeDelegation(c) => Certificate::StakeDelegation(c.into_owned()),
+            CertificateSlice::PoolRegistration(c) => {
+                Certificate::PoolRegistration(c.into_payload())
+            }
+            CertificateSlice::PoolUpdate(c) => Certificate::PoolUpdate(c.into_payload()),
+            CertificateSlice::PoolRetirement(c) => Certificate::PoolRetirement(c.into_payload()),
+            CertificateSlice::StakeDelegation(c) => Certificate::StakeDelegation(c.into_payload()),
             CertificateSlice::OwnerStakeDelegation(c) => {
-                Certificate::OwnerStakeDelegation(c.into_owned())
+                Certificate::OwnerStakeDelegation(c.into_payload())
             }
         }
     }

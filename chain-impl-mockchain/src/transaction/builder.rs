@@ -69,7 +69,7 @@ impl TxBuilderState<SetPayload> {
     /// Set the payload of this transaction
     pub fn set_payload<P: Payload>(mut self, payload: &P) -> TxBuilderState<SetIOs<P>> {
         if P::HAS_DATA {
-            self.data.extend_from_slice(&payload.to_bytes());
+            self.data.extend_from_slice(payload.payload_data().as_ref());
         }
 
         TxBuilderState {
@@ -168,7 +168,8 @@ impl<P: Payload> TxBuilderState<SetAuthData<P>> {
     pub fn set_payload_auth(mut self, auth_data: &P::Auth) -> Transaction<P> {
         self.tstruct.payload_auth = self.current_pos();
         if P::HAS_DATA && P::HAS_AUTH {
-            self.data.extend_from_slice(&P::auth_to_bytes(auth_data))
+            self.data
+                .extend_from_slice(<P as Payload>::payload_auth_data(auth_data).as_ref());
         }
         self.tstruct.sz = self.current_pos();
         Transaction {
