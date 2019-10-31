@@ -1,3 +1,4 @@
+use super::builder::TxBuilder;
 use super::element::{Balance, BalanceError, TransactionSignDataHash};
 use super::input::{Input, INPUT_SIZE};
 use super::payload::Payload;
@@ -338,6 +339,18 @@ impl<P> Transaction<P> {
 
     pub fn nb_inputs(&self) -> u8 {
         self.tstruct.nb_inputs
+    }
+
+    /// Create a specific block0 payload transaction
+    pub fn block0_payload(payload: &P, payload_auth: &P::Auth) -> Transaction<P>
+    where
+        P: Payload,
+    {
+        TxBuilder::new()
+            .set_payload(payload)
+            .set_ios(&[], &[])
+            .set_witnesses(&[])
+            .set_payload_auth(payload_auth)
     }
 
     // pretend that the construction doesn't enforce #inputs == #witness by
