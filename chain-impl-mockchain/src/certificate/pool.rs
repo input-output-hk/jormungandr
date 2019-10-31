@@ -247,7 +247,7 @@ impl<T: ?Sized> PoolOwnersSigned<T> {
                 return Verification::Failed;
             }
 
-            // Check if already seen this index, if yes we fail
+            // If already present, then we have a duplicate hence fail
             if present[i] {
                 return Verification::Failed;
             } else {
@@ -262,12 +262,13 @@ impl<T: ?Sized> PoolOwnersSigned<T> {
             signatories += 1
         }
 
-        // check if we seen enough unique signatures
+        // check if we seen enough unique signatures; it is a redundant check
+        // from the duplicated check + the threshold check
         if signatories < pool_info.management_threshold as usize {
             return Verification::Failed;
         }
 
-        return Verification::Success;
+        Verification::Success
     }
 }
 
