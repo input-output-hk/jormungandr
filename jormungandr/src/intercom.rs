@@ -1,6 +1,7 @@
 use crate::blockcfg::{Block, Epoch, Fragment, FragmentId, Header, HeaderHash};
 use crate::network::p2p::comm::PeerStats;
 use crate::network::p2p::topology::NodeId;
+use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use blockchain::Checkpoints;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
@@ -27,6 +28,16 @@ impl Error {
     {
         Error {
             code: core_error::Code::Internal,
+            cause: cause.into(),
+        }
+    }
+
+    pub fn aborted<T>(cause: T) -> Self
+    where
+        T: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Error {
+            code: core_error::Code::Aborted,
             cause: cause.into(),
         }
     }
@@ -164,22 +175,21 @@ where
     type Error = E;
 
     fn poll(&mut self) -> Poll<T, E> {
-        let item = match self.receiver.poll() {
-            Ok(Async::NotReady) => {
-                return Ok(Async::NotReady);
+        match self.receiver.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(Ok(item))) => {
+                debug!(self.logger, "request processed");
+                Ok(Async::Ready(item))
             }
-            Ok(Async::Ready(Ok(item))) => item,
             Ok(Async::Ready(Err(e))) => {
-                warn!(self.logger, "error processing request: {:?}", e);
-                return Err(Error::from(e).into());
+                info!(self.logger, "error processing request"; "reason" => %e);
+                Err(e.into())
             }
             Err(oneshot::Canceled) => {
                 warn!(self.logger, "response canceled by the processing task");
-                return Err(Error::from(oneshot::Canceled).into());
+                Err(Error::from(oneshot::Canceled).into())
             }
-        };
-
-        Ok(Async::Ready(item))
+        }
     }
 }
 
@@ -279,19 +289,57 @@ where
     handler.close();
 }
 
-pub struct RequestSink<T, E> {
-    sender: mpsc::Sender<T>,
-    _phantom_error: PhantomData<E>,
+#[derive(Debug)]
+pub struct RequestStreamHandle<T, R> {
+    receiver: MessageQueue<T>,
+    reply: ReplyHandle<R>,
 }
 
-fn convert_request_sender_error<T, E>(_err: mpsc::SendError<T>) -> E
+pub struct RequestSink<T, R, E> {
+    sender: MessageBox<T>,
+    reply_future: Option<ReplyFuture<R, E>>,
+    logger: Logger,
+}
+
+impl<T, R> RequestStreamHandle<T, R> {
+    pub fn stream(&mut self) -> &mut MessageQueue<T> {
+        &mut self.receiver
+    }
+
+    /// Drops the request stream and returns the reply handle.
+    pub fn into_reply(self) -> ReplyHandle<R> {
+        self.reply
+    }
+}
+
+impl<T, R, E> RequestSink<T, R, E> {
+    pub fn logger(&self) -> &Logger {
+        &self.logger
+    }
+
+    // This is for network which implements request_stream::MapResponse
+    // for this type.
+    pub fn take_reply_future(&mut self) -> ReplyFuture<R, E> {
+        self.reply_future
+            .take()
+            .expect("there can be only one waiting for the reply")
+    }
+}
+
+impl<T, R, E> RequestSink<T, R, E>
 where
     E: From<Error>,
 {
-    Error::canceled("request stream processing ended before all items were sent").into()
+    fn map_send_error(&self, err: mpsc::SendError<T>, msg: &'static str) -> E {
+        debug!(
+            self.logger,
+            "{}", msg;
+        );
+        Error::aborted("request stream processing ended before all items were sent").into()
+    }
 }
 
-impl<T, E> Sink for RequestSink<T, E>
+impl<T, R, E> Sink for RequestSink<T, R, E>
 where
     E: From<Error>,
 {
@@ -299,43 +347,45 @@ where
     type SinkError = E;
 
     fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
-        self.sender
-            .start_send(item)
-            .map_err(convert_request_sender_error)
+        self.sender.start_send(item).map_err(|e| {
+            self.map_send_error(
+                e,
+                "request stream processing ended before receiving some items",
+            )
+        })
     }
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
-        self.sender
-            .poll_complete()
-            .map_err(convert_request_sender_error)
+        self.sender.poll_complete().map_err(|e| {
+            self.map_send_error(
+                e,
+                "request stream processing ended before receiving some items",
+            )
+        })
     }
 
     fn close(&mut self) -> Poll<(), Self::SinkError> {
-        self.sender.close().map_err(convert_request_sender_error)
+        self.sender.close().map_err(|e| {
+            self.map_send_error(
+                e,
+                "request stream processing channel did not close gracefully, \
+                 the task possibly failed to receive some items",
+            )
+        })
     }
 }
 
-#[derive(Debug)]
-pub struct RequestStreamHandle<T> {
-    receiver: mpsc::Receiver<T>,
-}
-
-impl<T> Stream for RequestStreamHandle<T> {
-    type Item = T;
-    type Error = Error;
-
-    fn poll(&mut self) -> Poll<Option<T>, Error> {
-        let async_poll = self.receiver.poll().unwrap();
-        Ok(async_poll)
-    }
-}
-
-pub fn stream_request<T, E>(buffer: usize) -> (RequestStreamHandle<T>, RequestSink<T, E>) {
-    let (sender, receiver) = mpsc::channel(buffer);
-    let handle = RequestStreamHandle { receiver };
+pub fn stream_request<T, R, E>(
+    buffer: usize,
+    logger: Logger,
+) -> (RequestStreamHandle<T, R>, RequestSink<T, R, E>) {
+    let (sender, receiver) = async_msg::channel(buffer);
+    let (reply, reply_future) = unary_reply(logger.clone());
+    let handle = RequestStreamHandle { receiver, reply };
     let sink = RequestSink {
         sender,
-        _phantom_error: PhantomData,
+        reply_future: Some(reply_future),
+        logger,
     };
     (handle, sink)
 }
@@ -413,7 +463,7 @@ pub enum BlockMsg {
     /// The stream of headers for missing chain blocks has been received
     /// from the network in response to a PullHeaders request or a Missing
     /// solicitation event.
-    ChainHeaders(RequestStreamHandle<Header>),
+    ChainHeaders(RequestStreamHandle<Header, ()>),
 }
 
 /// Propagation requests for the network task.

@@ -179,6 +179,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let mut network_msgbox = network_msgbox.clone();
         let mut fragment_msgbox = fragment_msgbox.clone();
         let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
+        // TODO: we should get this value from the configuration
+        let block_cache_ttl: Duration = Duration::from_secs(3600);
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             blockchain::handle_input(

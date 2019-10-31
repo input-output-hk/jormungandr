@@ -59,11 +59,11 @@ impl fmt::Display for ErrorKind {
 }
 
 /// Stream used as the outbound half of a subscription stream.
-pub struct Subscription<T> {
+pub struct OutboundSubscription<T> {
     inner: mpsc::Receiver<T>,
 }
 
-impl<T> Stream for Subscription<T> {
+impl<T> Stream for OutboundSubscription<T> {
     type Item = T;
     type Error = core_error::Error;
 
@@ -72,13 +72,14 @@ impl<T> Stream for Subscription<T> {
     }
 }
 
-type BlockEventAnnounceStream = stream::Map<Subscription<Header>, fn(Header) -> BlockEvent<Block>>;
+type BlockEventAnnounceStream =
+    stream::Map<OutboundSubscription<Header>, fn(Header) -> BlockEvent<Block>>;
 
 type BlockEventSolicitStream =
-    stream::Map<Subscription<Vec<HeaderHash>>, fn(Vec<HeaderHash>) -> BlockEvent<Block>>;
+    stream::Map<OutboundSubscription<Vec<HeaderHash>>, fn(Vec<HeaderHash>) -> BlockEvent<Block>>;
 
 type BlockEventMissingStream = stream::Map<
-    Subscription<ChainPullRequest<HeaderHash>>,
+    OutboundSubscription<ChainPullRequest<HeaderHash>>,
     fn(ChainPullRequest<HeaderHash>) -> BlockEvent<Block>,
 >;
 
@@ -137,7 +138,7 @@ impl<T> CommHandle<T> {
     ///
     /// If this method is called again on the same handle,
     /// the previous subscription is closed and its stream is terminated.
-    pub fn subscribe(&mut self) -> Subscription<T> {
+    pub fn subscribe(&mut self) -> OutboundSubscription<T> {
         use self::SubscriptionState::*;
 
         let (mut tx, rx) = mpsc::channel(BUFFER_LEN);
@@ -145,7 +146,7 @@ impl<T> CommHandle<T> {
             tx.try_send(item).unwrap();
         }
         self.state = Subscribed(tx);
-        Subscription { inner: rx }
+        OutboundSubscription { inner: rx }
     }
 
     pub fn is_subscribed(&self) -> bool {
@@ -273,23 +274,25 @@ impl PeerComms {
         self.gossip.try_send(gossip)
     }
 
-    pub fn subscribe_to_block_announcements(&mut self) -> Subscription<Header> {
+    pub fn subscribe_to_block_announcements(&mut self) -> OutboundSubscription<Header> {
         self.block_announcements.subscribe()
     }
 
-    pub fn subscribe_to_block_solicitations(&mut self) -> Subscription<Vec<HeaderHash>> {
+    pub fn subscribe_to_block_solicitations(&mut self) -> OutboundSubscription<Vec<HeaderHash>> {
         self.block_solicitations.subscribe()
     }
 
-    pub fn subscribe_to_chain_pulls(&mut self) -> Subscription<ChainPullRequest<HeaderHash>> {
+    pub fn subscribe_to_chain_pulls(
+        &mut self,
+    ) -> OutboundSubscription<ChainPullRequest<HeaderHash>> {
         self.chain_pulls.subscribe()
     }
 
-    pub fn subscribe_to_fragments(&mut self) -> Subscription<Fragment> {
+    pub fn subscribe_to_fragments(&mut self) -> OutboundSubscription<Fragment> {
         self.fragments.subscribe()
     }
 
-    pub fn subscribe_to_gossip(&mut self) -> Subscription<Gossip<topology::NodeData>> {
+    pub fn subscribe_to_gossip(&mut self) -> OutboundSubscription<Gossip<topology::NodeData>> {
         self.gossip.subscribe()
     }
 
@@ -410,13 +413,16 @@ impl Peers {
             .select(missing_events)
     }
 
-    pub fn serve_fragments(&self, id: topology::NodeId) -> Subscription<Fragment> {
+    pub fn serve_fragments(&self, id: topology::NodeId) -> OutboundSubscription<Fragment> {
         let mut map = self.mutex.lock().unwrap();
         let handles = map.server_comms(id);
         handles.fragments.subscribe()
     }
 
-    pub fn serve_gossip(&self, id: topology::NodeId) -> Subscription<Gossip<topology::NodeData>> {
+    pub fn serve_gossip(
+        &self,
+        id: topology::NodeId,
+    ) -> OutboundSubscription<Gossip<topology::NodeData>> {
         let mut map = self.mutex.lock().unwrap();
         let handles = map.server_comms(id);
         handles.gossip.subscribe()
