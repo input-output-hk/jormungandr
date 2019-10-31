@@ -20,6 +20,36 @@ pub enum Certificate {
     PoolUpdate(PoolUpdate),
 }
 
+impl From<StakeDelegation> for Certificate {
+    fn from(cert: StakeDelegation) -> Certificate {
+        Certificate::StakeDelegation(cert)
+    }
+}
+
+impl From<OwnerStakeDelegation> for Certificate {
+    fn from(cert: OwnerStakeDelegation) -> Certificate {
+        Certificate::OwnerStakeDelegation(cert)
+    }
+}
+
+impl From<PoolRegistration> for Certificate {
+    fn from(cert: PoolRegistration) -> Certificate {
+        Certificate::PoolRegistration(cert)
+    }
+}
+
+impl From<PoolRetirement> for Certificate {
+    fn from(cert: PoolRetirement) -> Certificate {
+        Certificate::PoolRetirement(cert)
+    }
+}
+
+impl From<PoolUpdate> for Certificate {
+    fn from(cert: PoolUpdate) -> Certificate {
+        Certificate::PoolUpdate(cert)
+    }
+}
+
 impl Certificate {
     pub fn need_auth(&self) -> bool {
         match self {
