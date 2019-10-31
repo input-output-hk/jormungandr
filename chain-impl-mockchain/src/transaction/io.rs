@@ -1,4 +1,4 @@
-use super::{Balance, Input, Output, Payload};
+use super::{Balance, Input, Output, Payload, PayloadSlice};
 use crate::fee::FeeAlgorithm;
 use crate::value::{Value, ValueError};
 use chain_addr::Address;
@@ -22,6 +22,8 @@ pub struct InputOutput {
 pub enum Error {
     TxInvalidNoInput,
     TxInvalidNoOutput,
+    TxTooManyInputs,
+    TxTooManyOutputs,
     TxNotEnoughTotalInput,
     TxTooMuchTotalInput,
     MathErr(ValueError),
@@ -32,6 +34,8 @@ impl fmt::Display for Error {
         match self {
             Error::TxInvalidNoInput => write!(f, "transaction has no inputs"),
             Error::TxInvalidNoOutput => write!(f, "transaction has no outputs"),
+            Error::TxTooManyInputs => write!(f, "transaction has too many inputs"),
+            Error::TxTooManyOutputs => write!(f, "transaction has too many outputs"),
             Error::TxNotEnoughTotalInput => write!(f, "not enough input for making transaction"),
             Error::TxTooMuchTotalInput => write!(f, "too muny input value for making transaction"),
             Error::MathErr(v) => write!(f, "error in arithmetics {:?}", v),
@@ -88,15 +92,37 @@ impl InputOutputBuilder {
     /// Add additional input.
     ///
     /// Each input may extend the size of the required fee.
-    pub fn add_input(&mut self, input: &Input) {
-        self.inputs.push(input.clone())
+    pub fn add_input(&mut self, input: &Input) -> Result<(), Error> {
+        if self.inputs.len() == 256 {
+            return Err(Error::TxTooManyInputs)
+        }
+        self.inputs.push(input.clone());
+        Ok(())
     }
 
     /// Add additional output.
     ///
     /// Each output may extend the size of the required fee.
-    pub fn add_output(&mut self, address: Address, value: Value) {
-        self.outputs.push(Output { address, value })
+    pub fn add_output(&mut self, address: Address, value: Value) -> Result<(), Error> {
+        if self.outputs.len() == 256 {
+            return Err(Error::TxTooManyOutputs)
+        }
+        self.outputs.push(Output { address, value });
+        Ok(())
+    }
+
+    /// Remove input at the index specified starting from the oldest added input.
+    pub fn remove_input(&mut self, input: usize) {
+        if input < self.inputs.len() {
+            let _ = self.inputs.remove(input);
+        }
+    }
+
+    /// Remove output at the index specified starting from the oldest added output.
+    pub fn remove_output(&mut self, output: usize) {
+        if output < self.outputs.len() {
+            let _ = self.outputs.remove(output);
+        }
     }
 
     pub fn balance(&self, fee: Value) -> Result<Balance, ValueError> {
@@ -113,25 +139,22 @@ impl InputOutputBuilder {
     }
 
     /// Calculate the fees on a given fee algorithm for the current transaction
-    pub fn estimate_fee<P: Payload, F: FeeAlgorithm<P>>(
+    pub fn estimate_fee<'a, P: Payload, F: FeeAlgorithm>(
         &self,
-        payload: &P,
-        fee_algorithm: F,
-    ) -> Result<Value, ValueError> {
+        payload: PayloadSlice<'a, P>,
+        fee_algorithm: &F,
+    ) -> Value {
         fee_algorithm
-            .calculate(payload, &self.inputs, &self.outputs)
-            .ok_or(ValueError::Overflow)
+            .calculate(payload.to_certificate_slice(), self.inputs.len() as u8, self.outputs.len() as u8)
     }
 
     /// Get balance including current fee.
-    pub fn get_balance<P: Payload, F: FeeAlgorithm<P>>(
+    pub fn get_balance<'a, P: Payload, F: FeeAlgorithm>(
         &self,
-        payload: &P,
-        fee_algorithm: F,
+        payload: PayloadSlice<'a, P>,
+        fee_algorithm: &F,
     ) -> Result<Balance, ValueError> {
-        let fee = fee_algorithm
-            .calculate(payload, &self.inputs, &self.outputs)
-            .ok_or(ValueError::Overflow)?;
+        let fee = self.estimate_fee(payload, fee_algorithm);
         self.balance(fee)
     }
 
@@ -141,10 +164,10 @@ impl InputOutputBuilder {
     }
 
     /// Seal the transaction checking that the transaction fits the fee algorithm
-    pub fn seal<P: Payload, F: FeeAlgorithm<P>>(
+    pub fn seal<'a, P: Payload, F: FeeAlgorithm>(
         self,
-        payload: &P,
-        fee_algorithm: F,
+        payload: PayloadSlice<'a, P>,
+        fee_algorithm: &F,
     ) -> Result<InputOutput, Error> {
         match self.get_balance(payload, fee_algorithm) {
             Err(err) => Err(Error::MathErr(err)),
@@ -158,17 +181,15 @@ impl InputOutputBuilder {
     ///
     /// Along with the transaction, this return the balance unassigned to output policy
     /// if any
-    pub fn seal_with_output_policy<P: Payload, F: FeeAlgorithm<P>>(
+    pub fn seal_with_output_policy<'a, P: Payload, F: FeeAlgorithm>(
         mut self,
-        payload: &P,
-        fee_algorithm: F,
+        payload: PayloadSlice<'a, P>,
+        fee_algorithm: &F,
         policy: OutputPolicy,
     ) -> Result<(Balance, Vec<Output<Address>>, InputOutput), Error> {
         // calculate initial fee, maybe we can fit it without any
         // additional calculations.
-        let fee = fee_algorithm
-            .calculate(payload, &self.inputs, &self.outputs)
-            .ok_or(Error::MathErr(ValueError::Overflow))?;
+        let fee = self.estimate_fee(payload.clone(), fee_algorithm);
         let pos = match self.balance(fee) {
             Ok(Balance::Negative(_)) => return Err(Error::TxNotEnoughTotalInput),
             Ok(Balance::Positive(v)) => v,
@@ -194,13 +215,8 @@ impl InputOutputBuilder {
                 // hoping that it doesn't change fee count.
                 //
                 // Otherwise better estimation algorithm is needed.
-                self.outputs.push(Output {
-                    address: address.clone(),
-                    value: Value(0),
-                });
-                let fee = fee_algorithm
-                    .calculate(payload, &self.inputs, &self.outputs)
-                    .ok_or(Error::MathErr(ValueError::Overflow))?;
+                self.add_output(address.clone(), Value::zero())?;
+                let fee = self.estimate_fee(payload, fee_algorithm);
                 match self.balance(fee) {
                     Ok(Balance::Positive(value)) => {
                         let _ = self.outputs.pop();

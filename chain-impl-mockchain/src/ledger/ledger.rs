@@ -6,7 +6,7 @@ use super::pots::Pots;
 use crate::accounting::account::DelegationType;
 use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext};
 use crate::config::{self, ConfigParam, RewardParams};
-use crate::fee::{FeeAlgorithm, LinearFee};
+use crate::fee::{LinearFee, FeeAlgorithm};
 use crate::fragment::{Fragment, FragmentId};
 use crate::header::HeaderId;
 use crate::leadership::genesis::ActiveSlotsCoeffError;
@@ -471,10 +471,10 @@ impl Ledger {
     ) -> Result<(Self, Value), Error>
     where
         Extra: Payload,
-        LinearFee: FeeAlgorithm<Extra>,
+        LinearFee: FeeAlgorithm,
     {
         check::valid_transaction_ios_number(tx)?;
-        let fee = calculate_fee(tx, dyn_params)?;
+        let fee = calculate_fee(tx, dyn_params);
         tx.into_owned().verify_strictly_balanced(fee)?;
         self = self.apply_tx_inputs(tx)?;
         self = self.apply_tx_outputs(*fragment_id, tx.outputs())?;
@@ -610,10 +610,7 @@ impl Ledger {
             }
         };
 
-        let fee = dyn_params
-            .fees
-            .calculate_tx(&tx.into_owned())
-            .ok_or(ValueError::Overflow)?;
+        let fee = dyn_params.fees.calculate_tx(&tx.into_owned());
         if fee != value {
             return Err(Error::NotBalanced {
                 inputs: value,
@@ -905,17 +902,9 @@ fn apply_old_declaration(
     Ok(utxos)
 }
 
-fn calculate_fee<'a, Extra: Payload>(
-    tx: &TransactionSlice<'a, Extra>,
-    dyn_params: &LedgerParameters,
-) -> Result<Value, Error>
-where
-    LinearFee: FeeAlgorithm<Extra>,
+fn calculate_fee<'a, Extra: Payload>(tx: &TransactionSlice<'a, Extra>, dyn_params: &LedgerParameters) -> Value
 {
-    dyn_params
-        .fees
-        .calculate_tx(&tx.into_owned())
-        .ok_or_else(|| ValueError::Overflow.into())
+    dyn_params.fees.calculate_tx(&tx.into_owned())
 }
 
 pub enum MatchingIdentifierWitness<'a> {
