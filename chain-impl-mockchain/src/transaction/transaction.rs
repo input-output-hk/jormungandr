@@ -49,17 +49,18 @@ impl<P> PartialEq for Transaction<P> {
 }
 impl<P> Eq for Transaction<P> {}
 
-pub struct TransactionSlice<'a, P> {
+pub struct TransactionSlice<'a, P: ?Sized> {
     pub(super) data: &'a [u8],
     pub(super) tstruct: TransactionStruct,
     pub(super) phantom: PhantomData<P>,
 }
 
-pub struct UnverifiedTransactionSlice<'a, P> {
+pub struct UnverifiedTransactionSlice<'a, P: ?Sized> {
     data: &'a [u8],
     phantom: PhantomData<P>,
 }
 
+#[derive(Clone)]
 pub struct TransactionAuthData<'a>(pub &'a [u8]);
 
 impl<'a> TransactionAuthData<'a> {
@@ -68,13 +69,36 @@ impl<'a> TransactionAuthData<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct TransactionBindingAuthData<'a>(pub &'a [u8]);
+
+#[derive(Clone)]
 pub struct InputsSlice<'a>(u8, &'a [u8]);
+
+#[derive(Clone)]
 pub struct OutputsSlice<'a>(u8, &'a [u8]);
+
+#[derive(Clone)]
 pub struct WitnessesSlice<'a>(u8, &'a [u8]);
+
+#[derive(Clone)]
 pub struct InputsWitnessesSlice<'a>(InputsSlice<'a>, WitnessesSlice<'a>);
-pub struct PayloadSlice<'a, P>(&'a [u8], PhantomData<P>);
-pub struct PayloadAuthSlice<'a, P>(&'a [u8], PhantomData<P>);
+
+pub struct PayloadSlice<'a, P: ?Sized>(&'a [u8], PhantomData<P>);
+
+impl<'a, P> Clone for PayloadSlice<'a, P> {
+    fn clone(&self) -> PayloadSlice<'a, P> {
+        PayloadSlice(self.0.clone(), self.1.clone())
+    }
+}
+
+pub struct PayloadAuthSlice<'a, P: ?Sized>(&'a [u8], PhantomData<P>);
+
+impl<'a, P> Clone for PayloadAuthSlice<'a, P> {
+    fn clone(&self) -> PayloadAuthSlice<'a, P> {
+        PayloadAuthSlice(self.0.clone(), self.1.clone())
+    }
+}
 
 pub struct InputsIter<'a> {
     index: usize, // in number of inputs
