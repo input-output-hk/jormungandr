@@ -39,22 +39,3 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_re
         "node rejected request because of invalid parameters",
     );
 }
-
-#[test]
-pub fn test_next_id_is_empty_for_tip_block() {
-    let jormungandr = Starter::new().start().unwrap();
-
-    let block_id = jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
-    let mut next_block_id =
-        jcli_wrapper::assert_rest_get_next_block_id(&block_id, &1, &jormungandr.rest_address());
-
-    if next_block_id != "" {
-        next_block_id = jcli_wrapper::assert_rest_get_next_block_id(
-            &next_block_id,
-            &1,
-            &jormungandr.rest_address(),
-        );
-    }
-
-    assert_eq!(&next_block_id, "", "next id for tip block should be empty");
-}

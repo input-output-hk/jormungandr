@@ -1,6 +1,9 @@
+extern crate custom_error;
 extern crate regex;
 extern crate serde;
 extern crate serde_json;
+
+use self::custom_error::custom_error;
 
 use self::serde::{Deserialize, Serialize};
 use crate::common::file_utils;
@@ -9,6 +12,10 @@ use chain_impl_mockchain::key::Hash;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+
+custom_error! {pub LoggerError
+    LogFileDoesNotExists { log_file: String } = "{log_file}",
+}
 
 #[derive(Debug)]
 pub struct JormungandrLogger {
@@ -69,18 +76,20 @@ impl JormungandrLogger {
         lines.filter(move |x| self.is_error_line_or_invalid(x))
     }
 
-    pub fn contains_error(&self) -> bool {
-        Self::get_error_indicators()
+    pub fn contains_error(&self) -> Result<bool, LoggerError> {
+        self.verify_file_exists()?;
+        Ok(Self::get_error_indicators()
             .iter()
-            .any(|x| self.get_log_content().contains(x))
+            .any(|x| self.get_log_content().contains(x)))
     }
 
     pub fn print_raw_log(&self) {
         println!("{}", self.get_log_content());
     }
 
-    pub fn contains_message(&self, message: &str) -> bool {
-        self.get_log_entries().any(|x| x.msg.contains(message))
+    pub fn contains_message(&self, message: &str) -> Result<bool, LoggerError> {
+        self.verify_file_exists()?;
+        Ok(self.get_log_entries().any(|x| x.msg.contains(message)))
     }
 
     pub fn get_lines_with_warn(&self) -> impl Iterator<Item = String> + '_ {
@@ -148,11 +157,27 @@ impl JormungandrLogger {
             .filter_map(Result::ok)
     }
 
-    pub fn message_logged_multiple_times(&self, message: &str, count: usize) -> bool {
-        self.get_log_entries()
+    fn verify_file_exists(&self) -> Result<(), LoggerError> {
+        match self.log_file_path.exists() {
+            true => Ok(()),
+            false => Err(LoggerError::LogFileDoesNotExists {
+                log_file: self.log_file_path.to_str().unwrap().to_string(),
+            }),
+        }
+    }
+
+    pub fn message_logged_multiple_times(
+        &self,
+        message: &str,
+        count: usize,
+    ) -> Result<bool, LoggerError> {
+        self.verify_file_exists()?;
+
+        Ok(self
+            .get_log_entries()
             .filter(|x| x.msg.contains(message))
             .count()
-            == count
+            == count)
     }
 
     pub fn print_error_and_invalid_logs(&self) {

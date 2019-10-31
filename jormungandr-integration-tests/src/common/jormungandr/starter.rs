@@ -18,7 +18,8 @@ use std::{
 custom_error! {pub StartupError
     JormungandrNotLaunched{ source: ProcessError } = "could not start jormungandr due to process issue",
     Timeout{ timeout: u64, log_content: String } = "node wasn't properly bootstrap after {timeout} s. Log file: {log_content}",
-    ErrorInLogsFound { log_content: String }= "error(s) in log detected: {log_content} "
+    ErrorInLogsFound { log_content: String } = "error(s) in log detected: {log_content} ",
+    PortAlreadyInUse = "error(s) in log detected: port already in use "
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
@@ -32,8 +33,9 @@ pub enum StartupVerificationMode {
 
 #[derive(Clone, Debug, Copy)]
 pub enum OnFail {
-    Retry,
+    RetryOnce,
     Panic,
+    RetryUnlimitedOnPortOccupied,
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -61,7 +63,7 @@ impl RestStartupVerification {
 impl StartupVerification for RestStartupVerification {
     fn stop(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
-        logger.contains_error()
+        logger.contains_error().unwrap_or_else(|_| false)
     }
 
     fn success(&self) -> bool {
@@ -100,11 +102,13 @@ impl LogStartupVerification {
 impl StartupVerification for LogStartupVerification {
     fn stop(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
-        logger.message_logged_multiple_times("initial bootstrap completed", 2)
+        logger
+            .message_logged_multiple_times("initial bootstrap completed", 2)
+            .unwrap_or_else(|_| false)
     }
     fn success(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
-        logger.contains_error()
+        logger.contains_error().unwrap_or_else(|_| false)
     }
 }
 
@@ -124,7 +128,7 @@ impl Starter {
             sleep: 2,
             role: Role::Leader,
             verification_mode: StartupVerificationMode::Rest,
-            on_fail: OnFail::Panic,
+            on_fail: OnFail::RetryUnlimitedOnPortOccupied,
             config: ConfigurationBuilder::new().build(),
         }
     }
@@ -160,37 +164,44 @@ impl Starter {
     }
 
     pub fn start(&mut self) -> Result<JormungandrProcess, StartupError> {
-        let mut command = self.get_command(&self.config);
-        println!("Starting node with configuration : {:?}", &self.config);
+        let mut retry_counter = 1;
+        loop {
+            let mut command = self.get_command(&self.config);
+            println!("Starting node with configuration : {:?}", &self.config);
 
-        let process = command
-            .spawn()
-            .expect("failed to execute 'start jormungandr node'");
+            let process = command
+                .spawn()
+                .expect("failed to execute 'start jormungandr node'");
 
-        match (self.verify_is_up(process), self.on_fail) {
-            (Ok(jormungandr_process), _) => Ok(jormungandr_process),
-            (Err(err), OnFail::Panic) => {
-                panic!(format!(
-                    "Jormungandr node cannot start due to error: {}",
-                    err
-                ));
+            match (self.verify_is_up(process), self.on_fail) {
+                (Ok(jormungandr_process), _) => return Ok(jormungandr_process),
+
+                (
+                    Err(StartupError::PortAlreadyInUse { .. }),
+                    OnFail::RetryUnlimitedOnPortOccupied,
+                ) => {
+                    println!(
+                        "Port already in use error detected. Retrying with different port... "
+                    );
+                    self.config.refresh_node_dynamic_params();
+                }
+                (Err(err), OnFail::Panic) => {
+                    panic!(format!(
+                        "Jormungandr node cannot start due to error: {}",
+                        err
+                    ));
+                }
+                (Err(err), _) => {
+                    println!(
+                        "Jormungandr failed to start due to error {}. Retrying... ",
+                        err
+                    );
+                    retry_counter = retry_counter - 1;
+                }
             }
-            (Err(err), OnFail::Retry) => {
-                print!(
-                    "Jormungandr failed to start due to error {}. Retrying... ",
-                    err
-                );
-                self.config.refresh_node_dynamic_params();
-                println!(
-                    "Starting node again with configuration : {:?}",
-                    &self.config
-                );
 
-                let process = command
-                    .spawn()
-                    .expect("failed to execute 'start jormungandr node'");
-
-                self.verify_is_up(process)
+            if retry_counter < 0 {
+                panic!("Jormungandr node cannot start due despite retry attempts. see logs for more details");
             }
         }
     }
@@ -220,6 +231,18 @@ impl Starter {
         }
     }
 
+    fn custom_errors_found(&self) -> Result<(), StartupError> {
+        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
+        //Can not resume socket accept process: The parameter is incorrect. (os error 87)
+        match logger
+            .contains_message("error 87")
+            .unwrap_or_else(|_| false)
+        {
+            true => Err(StartupError::PortAlreadyInUse),
+            false => Ok(()),
+        }
+    }
+
     fn verify_is_up(&self, process: Child) -> Result<JormungandrProcess, StartupError> {
         let start = Instant::now();
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
@@ -242,6 +265,7 @@ impl Starter {
                     log_content: file_utils::read_file(&self.config.log_file_path),
                 });
             }
+            self.custom_errors_found()?;
             process_utils::sleep(self.sleep);
         }
     }
