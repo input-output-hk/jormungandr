@@ -1,5 +1,14 @@
 # Change Log
 
+## [v0.7.0-rc3](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc3) (2019-10-31)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc2...v0.7.0-rc3)
+
+**Merged pull requests:**
+
+- Update chain-deps for inbound streaming changes [\#1052](https://github.com/input-output-hk/jormungandr/pull/1052)
+- \[Tests\] add error\_chain to grpc mock [\#1045](https://github.com/input-output-hk/jormungandr/pull/1045)
+- \[Tests\] Recovery new testcase \(automation for \#1011\) [\#1017](https://github.com/input-output-hk/jormungandr/pull/1017)
+
 ## [v0.7.0-rc2](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc2) (2019-10-29)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc1...v0.7.0-rc2)
 

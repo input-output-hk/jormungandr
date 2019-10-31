@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr"
-version = "0.7.0-rc2"
+version = "0.7.0-rc3"
 authors = [ "dev@iohk.io" ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/input-output-hk/jormungandr"
