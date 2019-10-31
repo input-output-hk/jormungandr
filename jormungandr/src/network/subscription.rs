@@ -368,7 +368,7 @@ impl Sink for FragmentProcessor {
 
 impl FragmentProcessor {
     fn try_send_fragments(&mut self) -> Result<AsyncSink<()>, core_error::Error> {
-        let mut fragments = self.buffered_fragments.split_off(0);
+        let fragments = self.buffered_fragments.split_off(0);
         let polled = self
             .mbox
             .start_send(TransactionMsg::SendTransaction(

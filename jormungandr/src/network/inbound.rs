@@ -100,29 +100,6 @@ impl<T, Msg> Sink for InboundProcessing<T, Msg> {
     }
 }
 
-fn impl_on_stream_termination(
-    res: Result<(), ProcessingError>,
-    logger: &Logger,
-) -> FutureResult<(), core_error::Error> {
-    match res {
-        Ok(()) => {
-            debug!(logger, "request stream closed by the peer");
-            future::ok(())
-        }
-        Err(e) => {
-            debug!(
-                logger,
-                "request stream failed";
-                "error" => ?e,
-            );
-            future::err(core_error::Error::new(
-                core_error::Code::Canceled,
-                "not completely processed due to request stream failure",
-            ))
-        }
-    }
-}
-
 impl<T, Msg> MapResponse for InboundProcessing<T, Msg> {
     type Response = ();
     type ResponseFuture = FutureResult<(), core_error::Error>;
