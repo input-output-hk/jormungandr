@@ -4,8 +4,8 @@ use super::input::{Input, INPUT_SIZE};
 use super::payload::Payload;
 use super::transfer::Output;
 use super::witness::Witness;
-use crate::value::{Value, ValueError};
 use crate::certificate::CertificateSlice;
+use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use chain_core::mempack::{ReadBuf, Readable};
 use chain_crypto::digest::Digest;
@@ -241,7 +241,6 @@ impl<'a, P: Payload> PayloadSlice<'a, P> {
     pub fn into_owned(self) -> P {
         P::read(&mut ReadBuf::from(self.0)).unwrap()
     }
-
 }
 
 impl<'a, P: Payload> PayloadSlice<'a, P> {

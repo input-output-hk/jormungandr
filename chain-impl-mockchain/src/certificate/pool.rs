@@ -1,8 +1,8 @@
+use super::CertificateSlice;
 use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
-use crate::transaction::{PayloadSlice, Payload};
-use super::CertificateSlice;
+use crate::transaction::{Payload, PayloadSlice};
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,

@@ -33,9 +33,12 @@ pub trait FeeAlgorithm {
     }
 
     fn calculate_tx<P: tx::Payload>(&self, tx: &tx::Transaction<P>) -> Value {
-        self.calculate(tx.as_slice().payload().to_certificate_slice(), tx.nb_inputs(), tx.nb_outputs())
+        self.calculate(
+            tx.as_slice().payload().to_certificate_slice(),
+            tx.nb_inputs(),
+            tx.nb_outputs(),
+        )
     }
-
 }
 
 impl FeeAlgorithm for LinearFee {
@@ -43,7 +46,10 @@ impl FeeAlgorithm for LinearFee {
         Value(self.constant)
     }
     fn fees_for_inputs_outputs(&self, inputs: u8, outputs: u8) -> Value {
-        Value(self.coefficient.saturating_mul((inputs as u64) + (outputs as u64)))
+        Value(
+            self.coefficient
+                .saturating_mul((inputs as u64) + (outputs as u64)),
+        )
     }
     fn fees_for_certificate<'a>(&self, _: CertificateSlice<'a>) -> Value {
         Value(self.certificate)

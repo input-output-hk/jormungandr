@@ -94,7 +94,7 @@ impl InputOutputBuilder {
     /// Each input may extend the size of the required fee.
     pub fn add_input(&mut self, input: &Input) -> Result<(), Error> {
         if self.inputs.len() == 256 {
-            return Err(Error::TxTooManyInputs)
+            return Err(Error::TxTooManyInputs);
         }
         self.inputs.push(input.clone());
         Ok(())
@@ -105,7 +105,7 @@ impl InputOutputBuilder {
     /// Each output may extend the size of the required fee.
     pub fn add_output(&mut self, address: Address, value: Value) -> Result<(), Error> {
         if self.outputs.len() == 256 {
-            return Err(Error::TxTooManyOutputs)
+            return Err(Error::TxTooManyOutputs);
         }
         self.outputs.push(Output { address, value });
         Ok(())
@@ -144,8 +144,11 @@ impl InputOutputBuilder {
         payload: PayloadSlice<'a, P>,
         fee_algorithm: &F,
     ) -> Value {
-        fee_algorithm
-            .calculate(payload.to_certificate_slice(), self.inputs.len() as u8, self.outputs.len() as u8)
+        fee_algorithm.calculate(
+            payload.to_certificate_slice(),
+            self.inputs.len() as u8,
+            self.outputs.len() as u8,
+        )
     }
 
     /// Get balance including current fee.

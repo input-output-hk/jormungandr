@@ -55,7 +55,9 @@ impl<'a> CertificateSlice<'a> {
             CertificateSlice::PoolUpdate(c) => Certificate::PoolUpdate(c.into_owned()),
             CertificateSlice::PoolRetirement(c) => Certificate::PoolRetirement(c.into_owned()),
             CertificateSlice::StakeDelegation(c) => Certificate::StakeDelegation(c.into_owned()),
-            CertificateSlice::OwnerStakeDelegation(c) => Certificate::OwnerStakeDelegation(c.into_owned()),
+            CertificateSlice::OwnerStakeDelegation(c) => {
+                Certificate::OwnerStakeDelegation(c.into_owned())
+            }
         }
     }
 }

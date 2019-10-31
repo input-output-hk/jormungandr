@@ -6,7 +6,7 @@ use super::pots::Pots;
 use crate::accounting::account::DelegationType;
 use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext};
 use crate::config::{self, ConfigParam, RewardParams};
-use crate::fee::{LinearFee, FeeAlgorithm};
+use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
 use crate::header::HeaderId;
 use crate::leadership::genesis::ActiveSlotsCoeffError;
@@ -902,8 +902,10 @@ fn apply_old_declaration(
     Ok(utxos)
 }
 
-fn calculate_fee<'a, Extra: Payload>(tx: &TransactionSlice<'a, Extra>, dyn_params: &LedgerParameters) -> Value
-{
+fn calculate_fee<'a, Extra: Payload>(
+    tx: &TransactionSlice<'a, Extra>,
+    dyn_params: &LedgerParameters,
+) -> Value {
     dyn_params.fees.calculate_tx(&tx.into_owned())
 }
 
