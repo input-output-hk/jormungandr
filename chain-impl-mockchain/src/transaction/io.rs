@@ -71,14 +71,20 @@ impl InputOutputBuilder {
     }
 
     /// Create a builder from a given sequence of inputs and outputs
-    pub fn new<'a, IITER, OITER>(inputs: IITER, outputs: OITER) -> InputOutputBuilder
+    pub fn new<'a, IITER, OITER>(inputs: IITER, outputs: OITER) -> Result<InputOutputBuilder, Error>
     where
         IITER: Iterator<Item = &'a Input>,
         OITER: Iterator<Item = &'a Output<Address>>,
     {
-        let inputs = inputs.cloned().collect();
-        let outputs = outputs.cloned().collect();
-        InputOutputBuilder { inputs, outputs }
+        let inputs: Vec<_> = inputs.cloned().collect();
+        let outputs: Vec<_> = outputs.cloned().collect();
+        if inputs.len() > 255 {
+            return Err(Error::TxTooManyInputs);
+        }
+        if outputs.len() > 255 {
+            return Err(Error::TxTooManyOutputs);
+        }
+        Ok(InputOutputBuilder { inputs, outputs })
     }
 
     /// Build the InputOutput from the Builder
@@ -93,7 +99,7 @@ impl InputOutputBuilder {
     ///
     /// Each input may extend the size of the required fee.
     pub fn add_input(&mut self, input: &Input) -> Result<(), Error> {
-        if self.inputs.len() == 256 {
+        if self.inputs.len() == 255 {
             return Err(Error::TxTooManyInputs);
         }
         self.inputs.push(input.clone());
@@ -104,7 +110,7 @@ impl InputOutputBuilder {
     ///
     /// Each output may extend the size of the required fee.
     pub fn add_output(&mut self, address: Address, value: Value) -> Result<(), Error> {
-        if self.outputs.len() == 256 {
+        if self.outputs.len() == 255 {
             return Err(Error::TxTooManyOutputs);
         }
         self.outputs.push(Output { address, value });
@@ -159,6 +165,28 @@ impl InputOutputBuilder {
     ) -> Result<Balance, ValueError> {
         let fee = self.estimate_fee(payload, fee_algorithm);
         self.balance(fee)
+    }
+
+    /// Get balance including current fee.
+    pub fn get_balance_with_placeholders<'a, P: Payload, F: FeeAlgorithm>(
+        &self,
+        payload: PayloadSlice<'a, P>,
+        fee_algorithm: &F,
+        inputs_placeholders: u8,
+        outputs_placeholders: u8,
+    ) -> Result<Balance, Error> {
+        if self.inputs.len() + inputs_placeholders as usize >= 256 {
+            return Err(Error::TxTooManyInputs);
+        }
+        if self.outputs.len() + outputs_placeholders as usize >= 256 {
+            return Err(Error::TxTooManyOutputs);
+        }
+
+        let nb_inputs = self.inputs.len() as u8 + inputs_placeholders;
+        let nb_outputs = self.outputs.len() as u8 + outputs_placeholders;
+
+        let fee = fee_algorithm.calculate(payload.to_certificate_slice(), nb_inputs, nb_outputs);
+        self.balance(fee).map_err(Error::MathErr)
     }
 
     /// Get transaction balance without fee included.
