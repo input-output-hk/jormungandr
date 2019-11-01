@@ -213,20 +213,20 @@ if([System.IO.File]::Exists($MYCLI)){
 
 	$STAKEPOOLCERT = & $MYCLI certificate new stake-pool-registration --kes-key $POOL_KES_PK --vrf-key $POOL_VRF_PK --serial 1010101010 --management-threshold 1 --start-validity 0 --owner $LEADER_PK
 	echo $STAKEPOOLCERT | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.cert -Encoding Oem
-	$STAKEPOOLCERTSIGN = echo $STAKEPOOLCERT | & $MYCLI certificate sign $WORKDIR"\"$SECRET_PATH\stake_key.sk 
+	$STAKEPOOLCERTSIGN = echo $STAKEPOOLCERT | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\stake_key.sk 
 	echo $STAKEPOOLCERTSIGN | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.signcert -Encoding Oem
 	$STAKE_POOL_ID = echo $STAKEPOOLCERTSIGN | & $MYCLI certificate get-stake-pool-id
 	write-host "stake-pool-registration certificate: done" -ForegroundColor DarkGreen
 
 	$STAKEDELEGATION1 = & $MYCLI certificate new stake-delegation $STAKE_POOL_ID $FAUCET_PK 
 	echo $STAKEDELEGATION1 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation1.cert -Encoding Oem
-	$STAKEDELEGATIONSIGN1 = $STAKEDELEGATION1 | & $MYCLI certificate sign $WORKDIR"\"$SECRET_PATH\stake_key.sk 
+	$STAKEDELEGATIONSIGN1 = $STAKEDELEGATION1 | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\stake_key.sk 
 	echo $STAKEDELEGATIONSIGN1 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation1.signcert -Encoding Oem
 	write-host "stake-pool-delegation certificate 1: done" -ForegroundColor DarkGreen
 
 	$STAKEDELEGATION2 = & $MYCLI certificate new stake-delegation $STAKE_POOL_ID $FIXED_PK
 	echo $STAKEDELEGATION2 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation2.cert -Encoding Oem
-	$STAKEDELEGATIONSIGN2 = $STAKEDELEGATION2 | & $MYCLI certificate sign $WORKDIR"\"$SECRET_PATH\fixed_key.sk 
+	$STAKEDELEGATIONSIGN2 = $STAKEDELEGATION2 | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\fixed_key.sk 
 	echo $STAKEDELEGATIONSIGN2 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation2.signcert -Encoding Oem
 	write-host "stake-pool-delegation certificate 2: done" -ForegroundColor DarkGreen
 

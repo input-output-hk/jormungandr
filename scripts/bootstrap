@@ -183,7 +183,7 @@ $CLI certificate new stake-pool-registration \
     --vrf-key ${POOL_VRF_PK} \
     --serial 1010101010 > ${TMPDIR}/stake_pool.cert
 
-cat ${TMPDIR}/stake_pool.cert | $CLI certificate sign ${TMPDIR}/stake_key.sk > ${TMPDIR}/stake_pool.signcert
+cat ${TMPDIR}/stake_pool.cert | $CLI certificate sign -k ${TMPDIR}/stake_key.sk > ${TMPDIR}/stake_pool.signcert
 
 STAKE_POOL_ID=$(cat ${TMPDIR}/stake_pool.signcert | $CLI certificate get-stake-pool-id)
 STAKE_POOL_CERT=$(cat ${TMPDIR}/stake_pool.signcert)
@@ -191,13 +191,13 @@ STAKE_POOL_CERT=$(cat ${TMPDIR}/stake_pool.signcert)
 $CLI certificate new stake-delegation \
     ${STAKE_POOL_ID} \
     ${FAUCET_PK} > ${TMPDIR}/stake_delegation1.cert
-cat ${TMPDIR}/stake_delegation1.cert | $CLI certificate sign ${TMPDIR}/stake_key.sk > ${TMPDIR}/stake_delegation1.signcert
+cat ${TMPDIR}/stake_delegation1.cert | $CLI certificate sign -k ${TMPDIR}/stake_key.sk > ${TMPDIR}/stake_delegation1.signcert
 STAKE_DELEGATION_CERT1=$(cat ${TMPDIR}/stake_delegation1.signcert)
 
 $CLI certificate new stake-delegation \
     ${STAKE_POOL_ID} \
     ${FIXED_PK} > ${TMPDIR}/stake_delegation2.cert
-cat ${TMPDIR}/stake_delegation2.cert | $CLI certificate sign ${TMPDIR}/fixed_key.sk > ${TMPDIR}/stake_delegation2.signcert
+cat ${TMPDIR}/stake_delegation2.cert | $CLI certificate sign -k ${TMPDIR}/fixed_key.sk > ${TMPDIR}/stake_delegation2.signcert
 STAKE_DELEGATION_CERT2=$(cat ${TMPDIR}/stake_delegation2.signcert)
 
 
