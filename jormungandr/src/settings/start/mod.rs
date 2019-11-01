@@ -195,7 +195,10 @@ fn generate_network(
         profile.address(address.clone().0);
     }
 
-    for (topic, interest_level) in p2p.topics_of_interest.unwrap_or(BTreeMap::new()) {
+    for (topic, interest_level) in p2p
+        .topics_of_interest
+        .unwrap_or(config::default_interests())
+    {
         let sub = poldercast::Subscription {
             topic: topic.0,
             interest: interest_level.0,

@@ -139,6 +139,21 @@ pub struct Explorer {
     pub enabled: bool,
 }
 
+pub fn default_interests() -> BTreeMap<Topic, InterestLevel> {
+    use std::iter::FromIterator as _;
+
+    BTreeMap::from_iter(vec![
+        (
+            Topic(topic::MESSAGES),
+            InterestLevel(poldercast::InterestLevel::Low),
+        ),
+        (
+            Topic(topic::BLOCKS),
+            InterestLevel(poldercast::InterestLevel::Normal),
+        ),
+    ])
+}
+
 impl Default for P2pConfig {
     fn default() -> Self {
         P2pConfig {
