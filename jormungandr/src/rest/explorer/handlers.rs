@@ -2,7 +2,7 @@ use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorServiceUn
 use actix_web::{http, Json, Responder, State};
 use actix_web::{Error, HttpResponse};
 
-use futures::{Future, IntoFuture};
+use futures::Future;
 
 use crate::explorer::graphql::GraphQLRequest;
 pub use crate::rest::Context;
