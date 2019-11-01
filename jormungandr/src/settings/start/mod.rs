@@ -191,6 +191,10 @@ fn generate_network(
         profile.id(id.into());
     };
 
+    if let Some(address) = p2p.public_address {
+        profile.address(address.clone().0);
+    }
+
     for (topic, interest_level) in p2p.topics_of_interest.unwrap_or(BTreeMap::new()) {
         let sub = poldercast::Subscription {
             topic: topic.0,
