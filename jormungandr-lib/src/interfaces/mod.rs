@@ -20,7 +20,7 @@ pub use self::block0_configuration::*;
 pub use self::blockdate::BlockDate;
 pub use self::certificate::{
     Certificate, CertificateFromBech32Error, CertificateFromStrError, CertificateToBech32Error,
-    SignedCertificate,
+    SignedCertificate, CERTIFICATE_HRP, SIGNED_CERTIFICATE_HRP,
 };
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::leadership_log::{EnclaveLeaderId, LeadershipLog, LeadershipLogId};

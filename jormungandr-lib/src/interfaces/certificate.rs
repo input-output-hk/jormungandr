@@ -6,6 +6,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
 use typed_bytes::ByteBuilder;
 
+pub const SIGNED_CERTIFICATE_HRP: &str = "signedcert";
+pub const CERTIFICATE_HRP: &str = "cert";
+
 #[derive(Debug, Clone)]
 pub struct Certificate(pub certificate::Certificate);
 
@@ -200,13 +203,13 @@ impl Certificate {
     pub fn to_bech32(&self) -> Result<Bech32, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
         let bytes = self.serialize_as_vec()?;
-        Ok(Bech32::new("cert".to_string(), bytes.to_base32())?)
+        Ok(Bech32::new(CERTIFICATE_HRP.to_string(), bytes.to_base32())?)
     }
 
     pub fn from_bech32(bech32: &Bech32) -> Result<Self, CertificateFromBech32Error> {
-        if bech32.hrp() != "cert" {
+        if bech32.hrp() != CERTIFICATE_HRP {
             return Err(CertificateFromBech32Error::InvalidHRP {
-                expected: "cert".to_owned(),
+                expected: CERTIFICATE_HRP.to_owned(),
                 actual: bech32.hrp().to_owned(),
             });
         }
@@ -220,13 +223,16 @@ impl SignedCertificate {
     pub fn to_bech32(&self) -> Result<Bech32, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
         let bytes = self.serialize_as_vec()?;
-        Ok(Bech32::new("signedcert".to_string(), bytes.to_base32())?)
+        Ok(Bech32::new(
+            SIGNED_CERTIFICATE_HRP.to_string(),
+            bytes.to_base32(),
+        )?)
     }
 
     pub fn from_bech32(bech32: &Bech32) -> Result<Self, CertificateFromBech32Error> {
-        if bech32.hrp() != "signedcert" {
+        if bech32.hrp() != SIGNED_CERTIFICATE_HRP {
             return Err(CertificateFromBech32Error::InvalidHRP {
-                expected: "signedcert".to_owned(),
+                expected: SIGNED_CERTIFICATE_HRP.to_owned(),
                 actual: bech32.hrp().to_owned(),
             });
         }
