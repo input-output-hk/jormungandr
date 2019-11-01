@@ -11,6 +11,8 @@ mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod sign;
 
+pub(crate) use self::sign::{stake_delegation_account_binding_sign, pool_owner_sign};
+
 custom_error! {pub Error
     KeyInvalid { source: key_parser::Error } = "invalid private key",
     Io { source: std::io::Error } = "I/O Error",

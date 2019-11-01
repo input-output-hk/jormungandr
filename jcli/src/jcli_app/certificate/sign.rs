@@ -1,8 +1,9 @@
 use chain_impl_mockchain::certificate::{
-    Certificate, PoolOwnersSigned, PoolRegistration, SignedCertificate,
+    Certificate, PoolOwnersSigned, PoolRegistration, SignedCertificate, StakeDelegation,
 };
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
-use chain_impl_mockchain::transaction::{AccountBindingSignature, Payload, Transaction};
+use chain_impl_mockchain::transaction::{AccountBindingSignature, Payload, Transaction, TxBuilder, TxBuilderState, SetAuthData};
+use chain_crypto::{Ed25519, PublicKey};
 use jcli_app::certificate::{read_cert, read_input, write_signed_cert, Error};
 use jcli_app::utils::key_parser::{self, parse_ed25519_secret_key};
 use jormungandr_lib::interfaces;
@@ -44,33 +45,28 @@ impl Sign {
 
         let signedcert = match cert.into() {
             Certificate::StakeDelegation(s) => {
-                if keys_str.len() > 1 {
-                    return Err(Error::ExpectingOnlyOneSigningKey {
-                        got: keys_str.len(),
-                    });
-                }
-                let key_str = keys_str[0].clone();
-                let private_key = parse_ed25519_secret_key(key_str.trim())?;
-
-                // TODO check that it match the stake delegation account
-                // let pk = private_key.to_public();
-                let txbuilder = Transaction::block0_payload_builder(&s);
-                let sig = AccountBindingSignature::new(&private_key, &txbuilder.get_auth_data());
-
-                SignedCertificate::StakeDelegation(s, sig)
+                let builder = Transaction::block0_payload_builder(&s);
+                stake_delegation_account_binding_sign(s, &keys_str, builder)?
             }
             Certificate::PoolRegistration(s) => {
                 let sclone = s.clone();
-                pool_owner_sign(s, Some(sclone), &keys_str, |c, a| {
+                let txbuilder = Transaction::block0_payload_builder(&s);
+                pool_owner_sign(s, Some(sclone), &keys_str, txbuilder, |c, a| {
                     SignedCertificate::PoolRegistration(c, a)
                 })?
             }
-            Certificate::PoolRetirement(s) => pool_owner_sign(s, None, &keys_str, |c, a| {
-                SignedCertificate::PoolRetirement(c, a)
-            })?,
-            Certificate::PoolUpdate(s) => pool_owner_sign(s, None, &keys_str, |c, a| {
-                SignedCertificate::PoolUpdate(c, a)
-            })?,
+            Certificate::PoolRetirement(s) => {
+                let txbuilder = Transaction::block0_payload_builder(&s);
+                pool_owner_sign(s, None, &keys_str, txbuilder, |c, a| {
+                    SignedCertificate::PoolRetirement(c, a)
+                })?
+            }
+            Certificate::PoolUpdate(s) => {
+                let txbuilder = Transaction::block0_payload_builder(&s);
+                pool_owner_sign(s, None, &keys_str, txbuilder, |c, a| {
+                    SignedCertificate::PoolUpdate(c, a)
+                })?
+            }
             Certificate::OwnerStakeDelegation(_) => {
                 return Err(Error::OwnerStakeDelegationDoesntNeedSignature)
             }
@@ -79,10 +75,43 @@ impl Sign {
     }
 }
 
-fn pool_owner_sign<F, P: Payload>(
+pub(crate) fn stake_delegation_account_binding_sign(
+    delegation: StakeDelegation,
+    keys_str: &[String],
+    builder: TxBuilderState<SetAuthData<StakeDelegation>>,
+) -> Result<SignedCertificate, Error>
+{
+    if keys_str.len() > 1 {
+        return Err(Error::ExpectingOnlyOneSigningKey {
+            got: keys_str.len(),
+        });
+    }
+    let key_str = keys_str[0].clone();
+    let private_key = parse_ed25519_secret_key(key_str.trim())?;
+
+    // check that it match the stake delegation account
+    match delegation.account_id.to_single_account() {
+        None => {},
+        Some(acid) => {
+            let pk = private_key.to_public();
+            let cert_pk : PublicKey<Ed25519> = acid.into();
+            if &cert_pk != &pk {
+                return Err(Error::KeyNotFound { index: 0 })
+            }
+
+        }
+    }
+
+    let sig = AccountBindingSignature::new(&private_key, &builder.get_auth_data());
+
+    Ok(SignedCertificate::StakeDelegation(delegation, sig))
+}
+
+pub(crate) fn pool_owner_sign<F, P: Payload>(
     payload: P,
     mreg: Option<PoolRegistration>, // if present we verify the secret key against the expectations
     keys: &[String],
+    builder: TxBuilderState<SetAuthData<P>>,
     to_signed_certificate: F,
 ) -> Result<SignedCertificate, Error>
 where
@@ -121,8 +150,8 @@ where
         }
     };
 
-    let txbuilder = Transaction::block0_payload_builder(&payload);
-    let auth_data = txbuilder.get_auth_data();
+    //let txbuilder = Transaction::block0_payload_builder(&payload);
+    let auth_data = builder.get_auth_data();
 
     let mut sigs = Vec::new();
     for (i, key) in keys.iter() {
