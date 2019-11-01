@@ -32,7 +32,7 @@ impl AccountBindingSignature {
         self.0.verify_slice(pk, data.0)
     }
 
-    pub fn new<'a>(sk: &EitherEd25519SecretKey, data: TransactionBindingAuthData<'a>) -> Self {
+    pub fn new<'a>(sk: &EitherEd25519SecretKey, data: &TransactionBindingAuthData<'a>) -> Self {
         AccountBindingSignature(sk.sign_slice(data.0))
     }
 }
