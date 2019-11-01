@@ -198,10 +198,6 @@ impl AddressData {
         );
         AddressData::new(other.private_key, other.spending_counter, user_address)
     }
-
-    fn generate_random_secret_key() -> EitherEd25519SecretKey {
-        EitherEd25519SecretKey::generate(rand_os::OsRng::new().unwrap())
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
