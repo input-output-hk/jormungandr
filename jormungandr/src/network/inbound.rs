@@ -100,14 +100,10 @@ impl<T, Msg> Sink for InboundProcessing<T, Msg> {
     }
 }
 
-fn impl_on_stream_termination(
-    res: Result<(), ProcessingError>,
-    logger: &Logger,
-) -> FutureResult<(), core_error::Error> {
+fn log_stream_termination(logger: &Logger, res: &Result<(), ProcessingError>) {
     match res {
         Ok(()) => {
             debug!(logger, "request stream closed by the peer");
-            future::ok(())
         }
         Err(e) => {
             debug!(
@@ -115,10 +111,6 @@ fn impl_on_stream_termination(
                 "request stream failed";
                 "error" => ?e,
             );
-            future::err(core_error::Error::new(
-                core_error::Code::Canceled,
-                "not completely processed due to request stream failure",
-            ))
         }
     }
 }
@@ -128,23 +120,13 @@ impl<T, Msg> MapResponse for InboundProcessing<T, Msg> {
     type ResponseFuture = FutureResult<(), core_error::Error>;
 
     fn on_stream_termination(&mut self, res: Result<(), ProcessingError>) -> Self::ResponseFuture {
-        match res {
-            Ok(()) => {
-                debug!(self.logger, "request stream closed by the peer");
-                future::ok(())
-            }
-            Err(e) => {
-                debug!(
-                    self.logger,
-                    "request stream failed";
-                    "error" => ?e,
-                );
-                future::err(core_error::Error::new(
-                    core_error::Code::Canceled,
-                    "not completely processed due to request stream failure",
-                ))
-            }
-        }
+        log_stream_termination(&self.logger, &res);
+        future::result(res.map_err(|_| {
+            core_error::Error::new(
+                core_error::Code::Canceled,
+                "not completely processed due to request stream failure",
+            )
+        }))
     }
 }
 
@@ -157,6 +139,7 @@ where
     type ResponseFuture = ReplyFuture<R, core_error::Error>;
 
     fn on_stream_termination(&mut self, res: Result<(), ProcessingError>) -> Self::ResponseFuture {
+        log_stream_termination(self.logger(), &res);
         self.take_reply_future()
     }
 }
