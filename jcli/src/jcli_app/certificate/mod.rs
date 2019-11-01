@@ -28,6 +28,8 @@ custom_error! {pub Error
     OwnerStakeDelegationDoesntNeedSignature = "owner stake delegation does not need a signature",
     KeyNotFound { index: usize }
         = "secret key number {index} matching the expected public key has not been found",
+    ExpectedSignedOrNotCertificate = "Invalid input, expected Signed Certificate or just Certificate",
+    InvalidBech32 { source: bech32::Error } = "Invalid data",
 }
 
 #[derive(StructOpt)]
@@ -99,6 +101,38 @@ impl Certificate {
         }
 
         Ok(())
+    }
+}
+
+fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
+    use bech32::Bech32;
+
+    use std::str::FromStr as _;
+
+    let cert_str = read_input(input)?.trim_end().to_owned();
+    let bech32 = Bech32::from_str(&cert_str)?;
+
+    match bech32.hrp() {
+        interfaces::SIGNED_CERTIFICATE_HRP => {
+            use chain_impl_mockchain::certificate::{Certificate, SignedCertificate};
+            let signed_cert = interfaces::SignedCertificate::from_str(&cert_str)?;
+
+            let cert = match signed_cert.0 {
+                SignedCertificate::StakeDelegation(sd, _) => Certificate::StakeDelegation(sd),
+                SignedCertificate::OwnerStakeDelegation(osd, _) => {
+                    Certificate::OwnerStakeDelegation(osd)
+                }
+                SignedCertificate::PoolRegistration(pr, _) => Certificate::PoolRegistration(pr),
+                SignedCertificate::PoolRetirement(pr, _) => Certificate::PoolRetirement(pr),
+                SignedCertificate::PoolUpdate(pu, _) => Certificate::PoolUpdate(pu),
+            };
+
+            Ok(interfaces::Certificate(cert))
+        }
+        interfaces::CERTIFICATE_HRP => {
+            interfaces::Certificate::from_str(&cert_str).map_err(Error::from)
+        }
+        _ => Err(Error::ExpectedSignedOrNotCertificate),
     }
 }
 
