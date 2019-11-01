@@ -81,6 +81,7 @@ impl CertificateCommands {
         command
             .arg("certificate")
             .arg("sign")
+            .arg("-k")
             .arg(&signing_key.as_os_str())
             .arg(&input_file.as_os_str())
             .arg(&output_file.as_os_str());

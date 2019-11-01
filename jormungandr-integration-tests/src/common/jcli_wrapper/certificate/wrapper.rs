@@ -150,9 +150,8 @@ impl JCLICertificateWrapper {
     ) -> String {
         let pool_id = PoolId::from_str(&stake_pool_id).unwrap();
         let start_validity = 0u64;
-        let signature = parse_ed25519_secret_key(&private_key).unwrap();
-        let certificate =
-            build_stake_pool_retirement_cert(pool_id, start_validity, &vec![signature]);
+        //let signature = parse_ed25519_secret_key(&private_key).unwrap();
+        let certificate = build_stake_pool_retirement_cert(pool_id, start_validity); //, &vec![signature]);
         format!("{}", Certificate(certificate).to_bech32().unwrap())
     }
 }

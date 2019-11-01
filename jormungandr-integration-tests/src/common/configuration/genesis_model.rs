@@ -130,8 +130,15 @@ impl GenesisYaml {
             KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
         let leader_1_pk = leader_1.public_key().to_bech32_str();
         let leader_2_pk = leader_2.public_key().to_bech32_str();
-        let funds = Initial::Fund(initial_funds.iter().cloned().collect());
-        let legacy = Initial::LegacyFund(legacy_funds.iter().cloned().collect());
+
+        let mut initial = Vec::new();
+        if initial_funds.len() > 0 {
+            initial.push(Initial::Fund(initial_funds.iter().cloned().collect()))
+        }
+        if legacy_funds.len() > 0 {
+            initial.push(Initial::LegacyFund(legacy_funds.iter().cloned().collect()))
+        }
+
         GenesisYaml {
             blockchain_configuration: BlockchainConfig {
                 block0_date: Some(1554185140),
@@ -153,7 +160,7 @@ impl GenesisYaml {
                 },
                 kes_update_speed: 12 * 3600,
             },
-            initial: vec![funds, legacy],
+            initial,
         }
     }
 }
