@@ -9,7 +9,7 @@ use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
 use slog::{FilterLevel, Logger};
 
-use std::{collections::BTreeMap, fs::File, path::PathBuf};
+use std::{fs::File, path::PathBuf};
 
 custom_error! {pub Error
    ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
