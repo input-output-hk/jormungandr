@@ -1,13 +1,14 @@
-use crate::wallet::{ErrorKind, Result, ResultExt};
+use super::{ErrorKind, Result, ResultExt};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     account,
+    certificate::{PoolId, SignedCertificate, StakeDelegation},
     fee::{FeeAlgorithm, LinearFee},
     transaction::{
-        AccountIdentifier, Balance, Input, Transaction, TransactionSignDataHash, Witness,
+        AccountBindingSignature, AccountIdentifier, Balance, Input, InputOutputBuilder,
+        Payload, PayloadSlice,
+        TransactionSignDataHash, TxBuilder, Witness,
     },
-    txbuilder::{self, TransactionBuilder},
-    value::Value,
 };
 use jormungandr_lib::{
     crypto::{
@@ -75,6 +76,21 @@ impl Wallet {
         &self.signing_key
     }
 
+    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> SignedCertificate {
+        let stake_delegation = StakeDelegation {
+            account_id: self.stake_key(), // 2
+            pool_id,                      // 1
+        };
+        let txb = TxBuilder::new()
+            .set_payload(&stake_delegation)
+            .set_ios(&[], &[])
+            .set_witnesses(&[]);
+        let auth_data = txb.get_auth_data();
+
+        let sig = AccountBindingSignature::new(self.signing_key.as_ref(), &auth_data);
+        SignedCertificate::StakeDelegation(stake_delegation, sig)
+    }
+
     pub fn mk_witness(
         &self,
         block0_hash: &Hash,
@@ -88,18 +104,19 @@ impl Wallet {
         ))
     }
 
-    pub fn add_input<Extra: Clone>(
+    pub fn add_input<'a, Extra: Payload>(
         &self,
-        txbuilder: &mut TransactionBuilder<Extra>,
+        payload: PayloadSlice<'a, Extra>,
+        iobuilder: &mut InputOutputBuilder,
         fees: &LinearFee,
-    ) -> Result<txbuilder::OutputPolicy>
+    ) -> Result<()>
     where
-        LinearFee: FeeAlgorithm<Transaction<chain_addr::Address, Extra>>,
+        LinearFee: FeeAlgorithm,
     {
         let identifier: chain_impl_mockchain::account::Identifier =
             self.identifier().to_inner().into();
-        let balance = txbuilder
-            .get_balance(fees)
+        let balance = iobuilder
+            .get_balance_with_placeholders(payload, fees, 1, 0)
             .chain_err(|| ErrorKind::CannotComputeBalance)?;
         let value = match balance {
             Balance::Negative(value) => value,
@@ -109,14 +126,10 @@ impl Wallet {
             }
         };
 
-        // we are going to add an input
-        let value = (value + Value(fees.coefficient))
-            .chain_err(|| ErrorKind::CannotAddCostOfExtraInput(fees.coefficient))?;
-
         let input = Input::from_account_single(identifier, value);
 
-        txbuilder.add_input(&input);
+        iobuilder.add_input(&input).unwrap();
 
-        Ok(txbuilder::OutputPolicy::Forget)
+        Ok(())
     }
 }
