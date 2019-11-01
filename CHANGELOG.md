@@ -1,5 +1,21 @@
 # Change Log
 
+## [v0.7.0-rc4](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc4) (2019-11-01)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc3...v0.7.0-rc4)
+
+**Implemented enhancements:**
+
+- **BREAKING CHANGE**: Lay ground for policy management and update [\#1058](https://github.com/input-output-hk/jormungandr/pull/1058)
+
+**Closed issues:**
+
+- Passive node does not sync \(receive blocks\) - `v0.7.0-rc3` \(local cluster, 2 nodes\) [\#1057](https://github.com/input-output-hk/jormungandr/issues/1057)
+
+**Merged pull requests:**
+
+- Inbound streaming post-fixes [\#1055](https://github.com/input-output-hk/jormungandr/pull/1055)
+- \[Tests\] Jomungandr bootstrap fix [\#1050](https://github.com/input-output-hk/jormungandr/pull/1050)
+
 ## [v0.7.0-rc3](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc3) (2019-10-31)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc2...v0.7.0-rc3)
 

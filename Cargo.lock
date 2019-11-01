@@ -1534,7 +1534,7 @@ checksum = "501266b7edd0174f8530248f87f99c88fbe60ca4ef3dd486835b8d8d53136f7f"
 
 [[package]]
 name = "jcli"
-version = "0.7.0-rc3"
+version = "0.7.0-rc4"
 dependencies = [
  "bech32 0.6.0",
  "bincode",
@@ -1568,7 +1568,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr"
-version = "0.7.0-rc3"
+version = "0.7.0-rc4"
 dependencies = [
  "actix-net",
  "actix-threadpool",
@@ -1621,7 +1621,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-integration-tests"
-version = "0.7.0-rc3"
+version = "0.7.0-rc4"
 dependencies = [
  "assert_cmd",
  "assert_fs",
@@ -1667,7 +1667,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-lib"
-version = "0.7.0-rc3"
+version = "0.7.0-rc4"
 dependencies = [
  "bech32 0.6.0",
  "bincode",
@@ -1690,7 +1690,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-scenario-tests"
-version = "0.7.0-rc3"
+version = "0.7.0-rc4"
 dependencies = [
  "bawawa",
  "bytes",
