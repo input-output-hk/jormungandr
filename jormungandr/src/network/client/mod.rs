@@ -3,8 +3,10 @@ mod connect;
 use super::{
     buffer_sizes,
     inbound::InboundProcessing,
-    p2p::comm::{OutboundSubscription, PeerComms},
-    p2p::topology,
+    p2p::{
+        comm::{OutboundSubscription, PeerComms},
+        Gossip as NodeData, Id,
+    },
     subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
     Channels, GlobalStateR,
 };
@@ -52,7 +54,7 @@ impl<S> Client<S>
 where
     S: BlockService + FragmentService + GossipService,
 {
-    pub fn remote_node_id(&self) -> topology::NodeId {
+    pub fn remote_node_id(&self) -> Id {
         self.inbound.node_id
     }
 
@@ -64,10 +66,10 @@ where
 impl<S> Client<S>
 where
     S: core_client::Client,
-    S: P2pService<NodeId = topology::NodeId>,
+    S: P2pService<NodeId = Id>,
     S: BlockService<Block = Block>,
     S: FragmentService<Fragment = Fragment>,
-    S: GossipService<Node = topology::NodeData>,
+    S: GossipService<Node = NodeData>,
 {
     fn new(
         inner: S,
@@ -120,7 +122,7 @@ struct InboundSubscriptions<S>
 where
     S: BlockService + FragmentService + GossipService,
 {
-    pub node_id: topology::NodeId,
+    pub node_id: Id,
     pub block_events: <S as BlockService>::BlockSubscription,
     pub fragments: <S as FragmentService>::FragmentSubscription,
     pub gossip: <S as GossipService>::GossipSubscription,
@@ -498,8 +500,8 @@ where
 
 impl<S> Client<S>
 where
-    S: P2pService<NodeId = topology::NodeId>,
-    S: GossipService<Node = topology::NodeData>,
+    S: P2pService<NodeId = Id>,
+    S: GossipService<Node = NodeData>,
     S: BlockService + FragmentService,
 {
     fn process_gossip(&mut self) -> Poll<ProcessingOutcome, ()> {
@@ -535,10 +537,10 @@ where
 impl<S> Future for Client<S>
 where
     S: core_client::Client,
-    S: P2pService<NodeId = topology::NodeId>,
+    S: P2pService<NodeId = Id>,
     S: BlockService<Block = Block>,
     S: FragmentService<Fragment = Fragment>,
-    S: GossipService<Node = topology::NodeData>,
+    S: GossipService<Node = NodeData>,
     S::GetBlocksFuture: Send + 'static,
     S::GetBlocksStream: Send + 'static,
     S::PullBlocksToTipFuture: Send + 'static,

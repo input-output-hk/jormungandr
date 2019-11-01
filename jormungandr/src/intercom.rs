@@ -1,6 +1,6 @@
 use crate::blockcfg::{Block, Epoch, Fragment, FragmentId, Header, HeaderHash};
 use crate::network::p2p::comm::PeerStats;
-use crate::network::p2p::topology::NodeId;
+use crate::network::p2p::Id as NodeId;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use blockchain::Checkpoints;
 use futures::prelude::*;

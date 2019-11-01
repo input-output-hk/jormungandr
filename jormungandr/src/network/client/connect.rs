@@ -1,6 +1,6 @@
 use super::super::{
     grpc,
-    p2p::{comm::PeerComms, topology},
+    p2p::{comm::PeerComms, Gossip as NodeData, Id},
     Channels, ConnectionState,
 };
 use super::{Client, ClientBuilder, GlobalStateR, InboundSubscriptions};
@@ -8,7 +8,6 @@ use crate::blockcfg::{Block, Fragment, HeaderHash};
 use network_core::client::{self as core_client};
 use network_core::client::{BlockService, FragmentService, GossipService, P2pService};
 use network_core::error as core_error;
-use network_core::gossip::Node as _;
 
 use futures::prelude::*;
 use futures::sync::oneshot;
@@ -30,7 +29,7 @@ pub fn connect(
 ) -> (ConnectHandle, ConnectFuture<grpc::ConnectFuture>) {
     let (sender, receiver) = oneshot::channel();
     let addr = state.connection;
-    let node_id = state.global.topology.node().id();
+    let node_id = (*state.global.topology.node().id()).into();
     let builder = Some(ClientBuilder {
         channels,
         logger: state.logger,
@@ -110,10 +109,7 @@ where
     #[error(
         "node identifier {peer_responded} reported by the peer is not the expected {expected}"
     )]
-    NodeIdMismatch {
-        expected: topology::NodeId,
-        peer_responded: topology::NodeId,
-    },
+    IdMismatch { expected: Id, peer_responded: Id },
 }
 
 enum State<F>
@@ -164,10 +160,10 @@ where
     F: Future,
     F::Error: error::Error + 'static,
     F::Item: core_client::Client,
-    F::Item: P2pService<NodeId = topology::NodeId>,
+    F::Item: P2pService<NodeId = Id>,
     F::Item: BlockService<Block = Block>,
     F::Item: FragmentService<Fragment = Fragment>,
-    F::Item: GossipService<Node = topology::NodeData>,
+    F::Item: GossipService<Node = NodeData>,
 {
     type Item = Client<F::Item>;
     type Error = ConnectError<F::Error>;
@@ -261,7 +257,7 @@ struct SubscriptionStaging<T>
 where
     T: BlockService + FragmentService + GossipService,
 {
-    pub node_id: Option<topology::NodeId>,
+    pub node_id: Option<Id>,
     pub block_events: Option<<T as BlockService>::BlockSubscription>,
     pub fragments: Option<<T as FragmentService>::FragmentSubscription>,
     pub gossip: Option<<T as GossipService>::GossipSubscription>,
@@ -300,10 +296,10 @@ where
 impl<T> SubscriptionStaging<T>
 where
     T: core_client::Client,
-    T: P2pService<NodeId = topology::NodeId>,
+    T: P2pService<NodeId = Id>,
     T: BlockService<Block = Block>,
     T: FragmentService<Fragment = Fragment>,
-    T: GossipService<Node = topology::NodeData>,
+    T: GossipService<Node = NodeData>,
 {
     fn poll_complete<E>(
         &mut self,
@@ -370,11 +366,11 @@ where
 fn drive_subscribe_request<R, S, E>(
     req: &mut Option<R>,
     sub: &mut Option<S>,
-    discovered_node_id: &mut Option<topology::NodeId>,
+    discovered_node_id: &mut Option<Id>,
     ready: &mut Async<()>,
 ) -> Result<(), ConnectError<E>>
 where
-    R: Future<Item = (S, topology::NodeId), Error = core_error::Error>,
+    R: Future<Item = (S, Id), Error = core_error::Error>,
     E: error::Error + 'static,
 {
     if let Some(future) = req {
@@ -393,8 +389,8 @@ where
 }
 
 fn handle_subscription_node_id<E>(
-    staged: &mut Option<topology::NodeId>,
-    node_id: topology::NodeId,
+    staged: &mut Option<Id>,
+    node_id: Id,
 ) -> Result<(), ConnectError<E>>
 where
     E: error::Error + 'static,
@@ -405,7 +401,7 @@ where
         }
         Some(expected) => {
             if node_id != expected {
-                return Err(ConnectError::NodeIdMismatch {
+                return Err(ConnectError::IdMismatch {
                     expected,
                     peer_responded: node_id,
                 });

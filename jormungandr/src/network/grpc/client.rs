@@ -1,7 +1,6 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
-    network::p2p::topology::NodeId,
-    network::BlockConfig,
+    network::{p2p::Id, BlockConfig},
     settings::start::network::Peer,
 };
 use futures::prelude::*;
@@ -39,7 +38,7 @@ pub type ConnectFuture =
     network_grpc::client::ConnectFuture<BlockConfig, HttpConnector, TaskExecutor>;
 pub type ConnectError = network_grpc::client::ConnectError<io::Error>;
 
-pub fn connect(addr: SocketAddr, node_id: Option<NodeId>, executor: TaskExecutor) -> ConnectFuture {
+pub fn connect(addr: SocketAddr, node_id: Option<Id>, executor: TaskExecutor) -> ConnectFuture {
     let uri = destination_uri(addr);
     let mut connector = HttpConnector::new(2);
     connector.set_nodelay(true);
