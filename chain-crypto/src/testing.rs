@@ -40,8 +40,7 @@ impl TestCryptoGen {
 
 #[allow(dead_code)]
 pub fn arbitrary_public_key<A: AsymmetricKey, G: Gen>(g: &mut G) -> PublicKey<A::PubAlg> {
-    let sk: SecretKey<A> = arbitrary_secret_key(g);
-    sk.to_public()
+    TestCryptoGen::arbitrary(g).keypair::<A>(0).public_key().clone()
 }
 
 pub fn arbitrary_secret_key<A, G>(g: &mut G) -> SecretKey<A>
@@ -49,8 +48,7 @@ where
     A: AsymmetricKey,
     G: Gen,
 {
-    let rng = ChaChaRng::seed_from_u64(Arbitrary::arbitrary(g));
-    SecretKey::generate(rng)
+    TestCryptoGen::arbitrary(g).secret_key(0)
 }
 
 impl<A> Arbitrary for SecretKey<A>
