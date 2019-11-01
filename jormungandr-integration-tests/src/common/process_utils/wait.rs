@@ -11,7 +11,7 @@ impl Wait {
         Wait { sleep, attempts }
     }
 
-    pub fn sleep(&self) -> Duration {
+    pub fn sleep_duration(&self) -> Duration {
         self.sleep
     }
 

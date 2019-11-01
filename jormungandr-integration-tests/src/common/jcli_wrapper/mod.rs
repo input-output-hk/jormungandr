@@ -289,7 +289,8 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
 
 pub fn assert_transaction_in_block(transaction_message: &str, host: &str) -> Hash {
     let fragment_id = assert_post_transaction(&transaction_message, &host);
-    wait_until_transaction_processed(fragment_id, &host, &Default::default());
+    let wait: Wait = Default::default();
+    wait_until_transaction_processed(fragment_id, &host, &wait);
     assert_transaction_log_shows_in_block(fragment_id, &host);
     fragment_id.clone()
 }
@@ -307,7 +308,8 @@ pub fn assert_transaction_in_block_with_wait(
 
 pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_reason: &str) {
     let fragment_id = assert_post_transaction(&transaction_message, &host);
-    wait_until_transaction_processed(fragment_id, &host, &Default::default());
+    let wait: Wait = Default::default();
+    wait_until_transaction_processed(fragment_id, &host, &wait);
     assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
 }
 
@@ -323,7 +325,7 @@ pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str, wait: &Wa
                 None => false,
             }
         },
-        wait.sleep().as_secs(),
+        wait.sleep_duration().as_secs(),
         wait.attempts(),
         "Waiting for last transaction to be inBlock or rejected",
         "transaction is pending for too long",
