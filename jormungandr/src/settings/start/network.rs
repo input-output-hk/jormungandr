@@ -1,7 +1,6 @@
-use crate::network::p2p::topology::NodeId;
-use crate::settings::start::config::{Address, InterestLevel, Topic};
-use poldercast::PrivateId;
-use std::{collections::BTreeMap, net::SocketAddr, str, time::Duration};
+use crate::network::p2p::Id;
+use poldercast::NodeProfile;
+use std::{net::SocketAddr, str, time::Duration};
 
 /// Protocol to use for a connection.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -44,26 +43,18 @@ const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 /// The network static configuration settings
 #[derive(Clone)]
 pub struct Configuration {
-    /// Optional public IP address to advertise.
-    /// Also used as the binding address unless the `listen` field
-    /// is set with an address value.
-    pub public_address: Option<Address>,
-
-    pub private_id: PrivateId,
-
     /// Local socket address to listen to, if different from public address.
     /// The IP address can be given as 0.0.0.0 or :: to bind to all
     /// network interfaces.
     pub listen_address: Option<SocketAddr>,
+
+    pub profile: NodeProfile,
 
     /// list of trusted addresses
     pub trusted_peers: Vec<TrustedPeer>,
 
     /// the protocol to utilise for the p2p network
     pub protocol: Protocol,
-
-    /// the topic we are interested to hear about
-    pub subscriptions: BTreeMap<Topic, InterestLevel>,
 
     /// Maximum allowed number of peer connections.
     pub max_connections: usize,
@@ -78,22 +69,14 @@ pub struct Configuration {
 #[derive(Clone)]
 pub struct TrustedPeer {
     pub address: poldercast::Address,
-    pub id: poldercast::Id,
+    pub id: Id,
 }
 
 impl From<super::config::TrustedPeer> for TrustedPeer {
     fn from(tp: super::config::TrustedPeer) -> Self {
-        use bech32::FromBase32 as _;
-
-        let (_, data) = bech32::decode(&tp.id.to_bech32_str()).unwrap();
-        let data = Vec::<u8>::from_base32(&data).unwrap();
-        let mut bytes = [0; 32];
-        bytes.copy_from_slice(&data);
-        let id = poldercast::Id::from(bytes);
-
         TrustedPeer {
             address: tp.address.0,
-            id,
+            id: tp.id,
         }
     }
 }
@@ -126,12 +109,8 @@ impl Listen {
 }
 
 impl Configuration {
-    pub fn private_id(&self) -> &PrivateId {
-        &self.private_id
-    }
-
-    pub fn public_id(&self) -> NodeId {
-        NodeId(self.private_id().id())
+    pub fn public_id(&self) -> Id {
+        (*self.profile.id()).into()
     }
 
     /// Returns the listener configuration, if the options defining it
@@ -139,8 +118,8 @@ impl Configuration {
     pub fn listen(&self) -> Option<Listen> {
         self.listen_address
             .or(self
-                .public_address
-                .as_ref()
+                .profile
+                .address()
                 .and_then(|address| address.to_socketaddr()))
             .map(|addr| Listen::new(addr, self.protocol))
     }

@@ -162,7 +162,7 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) {
     let mut controller = scenario_settings.build(context).unwrap();
 
     let leader1 = controller.spawn_node("Leader1", true).unwrap();
-    thread::sleep(Duration::from_secs(1));
+    thread::sleep(Duration::from_secs(2));
     let passive1 = controller.spawn_node("Passive1", false).unwrap();
     let _passive2 = controller.spawn_node("Passive2", false).unwrap();
     let _passive3 = controller.spawn_node("Passive3", false).unwrap();

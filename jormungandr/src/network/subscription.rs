@@ -1,6 +1,6 @@
 use super::{
     buffer_sizes,
-    p2p::topology::{NodeData, NodeId},
+    p2p::{Gossip as NodeData, Id},
     GlobalStateR,
 };
 use crate::{
@@ -188,7 +188,7 @@ fn filter_gossip_node(node: &NodeData, config: &Configuration) -> bool {
 #[must_use = "sinks do nothing unless polled"]
 pub struct BlockAnnouncementProcessor {
     mbox: MessageBox<BlockMsg>,
-    node_id: NodeId,
+    node_id: Id,
     global_state: GlobalStateR,
     logger: Logger,
 }
@@ -196,7 +196,7 @@ pub struct BlockAnnouncementProcessor {
 impl BlockAnnouncementProcessor {
     pub fn new(
         mbox: MessageBox<BlockMsg>,
-        node_id: NodeId,
+        node_id: Id,
         global_state: GlobalStateR,
         logger: Logger,
     ) -> Self {
@@ -216,7 +216,7 @@ impl BlockAnnouncementProcessor {
 #[must_use = "sinks do nothing unless polled"]
 pub struct FragmentProcessor {
     mbox: MessageBox<TransactionMsg>,
-    node_id: NodeId,
+    node_id: Id,
     global_state: GlobalStateR,
     logger: Logger,
     buffered_fragments: Vec<Fragment>,
@@ -225,7 +225,7 @@ pub struct FragmentProcessor {
 impl FragmentProcessor {
     pub fn new(
         mbox: MessageBox<TransactionMsg>,
-        node_id: NodeId,
+        node_id: Id,
         global_state: GlobalStateR,
         logger: Logger,
     ) -> Self {
@@ -240,13 +240,13 @@ impl FragmentProcessor {
 }
 
 pub struct GossipProcessor {
-    node_id: NodeId,
+    node_id: Id,
     global_state: GlobalStateR,
     logger: Logger,
 }
 
 impl GossipProcessor {
-    pub fn new(node_id: NodeId, global_state: GlobalStateR, logger: Logger) -> Self {
+    pub fn new(node_id: Id, global_state: GlobalStateR, logger: Logger) -> Self {
         GossipProcessor {
             node_id,
             global_state,
@@ -268,7 +268,9 @@ impl GossipProcessor {
                 "received gossip from node that is not in the peer map",
             );
         }
-        self.global_state.topology.update(nodes);
+        self.global_state
+            .topology
+            .accept_gossips(self.node_id, nodes.into());
     }
 }
 

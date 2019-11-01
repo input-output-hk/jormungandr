@@ -66,8 +66,8 @@ pub use self::logs::{LeadershipLogHandle, Logs};
 pub use self::schedule::{Schedule, Schedules};
 use crate::{
     blockcfg::{
-        Block, BlockDate, BlockVersion, Contents, Epoch, HeaderBuilderNew,
-        HeaderContentEvalContext, LeaderOutput, Leadership, Ledger, LedgerParameters,
+        Block, BlockVersion, Contents, Epoch, HeaderBuilderNew, HeaderContentEvalContext,
+        LeaderOutput, Leadership, Ledger, LedgerParameters,
     },
     blockchain::Tip,
     fragment,

@@ -1,8 +1,10 @@
 mod peer_map;
 
-use super::topology;
 use crate::blockcfg::{Block, Fragment, Header, HeaderHash};
-use crate::network::client::ConnectHandle;
+use crate::network::{
+    client::ConnectHandle,
+    p2p::{Gossip as NodeData, Id, Node as NodeRef},
+};
 use futures::prelude::*;
 use futures::stream;
 use futures::sync::mpsc;
@@ -214,7 +216,7 @@ pub struct PeerComms {
     block_solicitations: CommHandle<Vec<HeaderHash>>,
     chain_pulls: CommHandle<ChainPullRequest<HeaderHash>>,
     fragments: CommHandle<Fragment>,
-    gossip: CommHandle<Gossip<topology::NodeData>>,
+    gossip: CommHandle<Gossip<NodeData>>,
 }
 
 impl PeerComms {
@@ -249,7 +251,7 @@ impl PeerComms {
         self.fragments = CommHandle::pending(fragment);
     }
 
-    pub fn set_pending_gossip(&mut self, gossip: Gossip<topology::NodeData>) {
+    pub fn set_pending_gossip(&mut self, gossip: Gossip<NodeData>) {
         self.gossip = CommHandle::pending(gossip);
     }
 
@@ -269,8 +271,8 @@ impl PeerComms {
 
     pub fn try_send_gossip(
         &mut self,
-        gossip: Gossip<topology::NodeData>,
-    ) -> Result<(), PropagateError<Gossip<topology::NodeData>>> {
+        gossip: Gossip<NodeData>,
+    ) -> Result<(), PropagateError<Gossip<NodeData>>> {
         self.gossip.try_send(gossip)
     }
 
@@ -292,7 +294,7 @@ impl PeerComms {
         self.fragments.subscribe()
     }
 
-    pub fn subscribe_to_gossip(&mut self) -> OutboundSubscription<Gossip<topology::NodeData>> {
+    pub fn subscribe_to_gossip(&mut self) -> OutboundSubscription<Gossip<NodeData>> {
         self.gossip.subscribe()
     }
 
@@ -376,12 +378,12 @@ impl Peers {
         }
     }
 
-    pub fn insert_peer(&self, id: topology::NodeId, comms: PeerComms) {
+    pub fn insert_peer(&self, id: Id, comms: PeerComms) {
         let mut map = self.mutex.lock().unwrap();
         map.insert_peer(id, comms)
     }
 
-    pub fn connecting_with<F>(&self, id: topology::NodeId, handle: ConnectHandle, modify_comms: F)
+    pub fn connecting_with<F>(&self, id: Id, handle: ConnectHandle, modify_comms: F)
     where
         F: FnOnce(&mut PeerComms),
     {
@@ -390,12 +392,12 @@ impl Peers {
         modify_comms(comms);
     }
 
-    pub fn remove_peer(&self, id: topology::NodeId) -> Option<PeerComms> {
+    pub fn remove_peer(&self, id: Id) -> Option<PeerComms> {
         let mut map = self.mutex.lock().unwrap();
         map.remove_peer(id)
     }
 
-    pub fn serve_block_events(&self, id: topology::NodeId) -> BlockEventSubscription {
+    pub fn serve_block_events(&self, id: Id) -> BlockEventSubscription {
         let mut map = self.mutex.lock().unwrap();
         let handles = map.server_comms(id);
         let announce_events: BlockEventAnnounceStream = handles
@@ -413,26 +415,19 @@ impl Peers {
             .select(missing_events)
     }
 
-    pub fn serve_fragments(&self, id: topology::NodeId) -> OutboundSubscription<Fragment> {
+    pub fn serve_fragments(&self, id: Id) -> OutboundSubscription<Fragment> {
         let mut map = self.mutex.lock().unwrap();
         let handles = map.server_comms(id);
         handles.fragments.subscribe()
     }
 
-    pub fn serve_gossip(
-        &self,
-        id: topology::NodeId,
-    ) -> OutboundSubscription<Gossip<topology::NodeData>> {
+    pub fn serve_gossip(&self, id: Id) -> OutboundSubscription<Gossip<NodeData>> {
         let mut map = self.mutex.lock().unwrap();
         let handles = map.server_comms(id);
         handles.gossip.subscribe()
     }
 
-    fn propagate_with<T, F>(
-        &self,
-        nodes: Vec<topology::NodeData>,
-        f: F,
-    ) -> Result<(), Vec<topology::NodeData>>
+    fn propagate_with<T, F>(&self, nodes: Vec<NodeRef>, f: F) -> Result<(), Vec<NodeRef>>
     where
         F: Fn(&mut PeerComms) -> Result<(), PropagateError<T>>,
     {
@@ -467,11 +462,7 @@ impl Peers {
         }
     }
 
-    pub fn propagate_block(
-        &self,
-        nodes: Vec<topology::NodeData>,
-        header: Header,
-    ) -> Result<(), Vec<topology::NodeData>> {
+    pub fn propagate_block(&self, nodes: Vec<NodeRef>, header: Header) -> Result<(), Vec<NodeRef>> {
         debug!(
             self.logger,
             "propagating block";
@@ -484,9 +475,9 @@ impl Peers {
 
     pub fn propagate_fragment(
         &self,
-        nodes: Vec<topology::NodeData>,
+        nodes: Vec<NodeRef>,
         fragment: Fragment,
-    ) -> Result<(), Vec<topology::NodeData>> {
+    ) -> Result<(), Vec<NodeRef>> {
         debug!(
             self.logger,
             "propagating fragment";
@@ -496,9 +487,9 @@ impl Peers {
 
     pub fn propagate_gossip_to(
         &self,
-        target: topology::NodeId,
-        gossip: Gossip<topology::NodeData>,
-    ) -> Result<(), Gossip<topology::NodeData>> {
+        target: Id,
+        gossip: Gossip<NodeData>,
+    ) -> Result<(), Gossip<NodeData>> {
         debug!(
             self.logger,
             "sending gossip";
@@ -525,7 +516,7 @@ impl Peers {
         }
     }
 
-    pub fn refresh_peer_on_block(&self, node_id: topology::NodeId) -> bool {
+    pub fn refresh_peer_on_block(&self, node_id: Id) -> bool {
         let mut map = self.mutex.lock().unwrap();
         match map.refresh_peer(node_id) {
             Some(stats) => {
@@ -536,7 +527,7 @@ impl Peers {
         }
     }
 
-    pub fn refresh_peer_on_fragment(&self, node_id: topology::NodeId) -> bool {
+    pub fn refresh_peer_on_fragment(&self, node_id: Id) -> bool {
         let mut map = self.mutex.lock().unwrap();
         match map.refresh_peer(node_id) {
             Some(stats) => {
@@ -547,7 +538,7 @@ impl Peers {
         }
     }
 
-    pub fn refresh_peer_on_gossip(&self, node_id: topology::NodeId) -> bool {
+    pub fn refresh_peer_on_gossip(&self, node_id: Id) -> bool {
         let mut map = self.mutex.lock().unwrap();
         match map.refresh_peer(node_id) {
             Some(stats) => {
@@ -575,7 +566,7 @@ impl Peers {
         }
     }
 
-    pub fn solicit_blocks(&self, node_id: topology::NodeId, hashes: Vec<HeaderHash>) {
+    pub fn solicit_blocks(&self, node_id: Id, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
         match map.peer_comms(node_id) {
             Some(comms) => {
@@ -603,7 +594,7 @@ impl Peers {
         }
     }
 
-    pub fn pull_headers(&self, node_id: topology::NodeId, from: Vec<HeaderHash>, to: HeaderHash) {
+    pub fn pull_headers(&self, node_id: Id, from: Vec<HeaderHash>, to: HeaderHash) {
         let mut map = self.mutex.lock().unwrap();
         match map.peer_comms(node_id) {
             Some(comms) => {
@@ -631,7 +622,7 @@ impl Peers {
         }
     }
 
-    pub fn stats(&self) -> Vec<(topology::NodeId, PeerStats)> {
+    pub fn stats(&self) -> Vec<(Id, PeerStats)> {
         let map = self.mutex.lock().unwrap();
         map.stats()
     }

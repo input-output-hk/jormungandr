@@ -32,7 +32,7 @@ mod buffer_sizes {
 use self::client::ConnectError;
 use self::p2p::{
     comm::{PeerComms, Peers},
-    topology::{self, P2pTopology},
+    P2pTopology,
 };
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
@@ -45,6 +45,7 @@ use crate::utils::{
 use futures::future;
 use futures::prelude::*;
 use network_core::gossip::{Gossip, Node};
+use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
 use tokio::runtime::TaskExecutor;
@@ -119,27 +120,8 @@ impl GlobalState {
         executor: TaskExecutor,
         logger: Logger,
     ) -> Self {
-        let node_address = config.public_address.clone().map(|addr| addr.0.into());
-        let mut node = topology::Node::new(config.private_id.clone(), node_address);
-
-        use self::p2p::topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC};
-
-        for (topic, interest) in config.subscriptions.iter() {
-            if topic.0 == NEW_BLOCKS_TOPIC.into() {
-                node.add_block_subscription(interest.0)
-            }
-            if topic.0 == NEW_MESSAGES_TOPIC.into() {
-                node.add_message_subscription(interest.0)
-            }
-        }
-
-        let mut topology = P2pTopology::new(node, logger.clone());
+        let mut topology = P2pTopology::new(config.profile.clone(), logger.clone());
         topology.set_poldercast_modules();
-        topology.add_module(topology::modules::TrustedPeers::new_with(
-            config.trusted_peers.iter().cloned().map(|trusted_peer| {
-                poldercast::NodeData::new_with(trusted_peer.id, trusted_peer.address)
-            }),
-        ));
 
         let peers = Peers::new(config.max_connections, logger.clone());
 
@@ -243,7 +225,7 @@ pub fn start(
     let self_node = global_state.topology.node();
     for node in initial_nodes {
         connect_and_propagate_with(node, global_state.clone(), channels.clone(), |comms| {
-            let gossip = Gossip::from_nodes(iter::once(self_node.clone()));
+            let gossip = Gossip::from_nodes(iter::once(self_node.clone().into()));
             comms.set_pending_gossip(gossip);
         });
     }
@@ -296,7 +278,7 @@ fn handle_network_input(
 
 fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
     trace!(state.logger(), "to propagate: {:?}", &msg);
-    let nodes = state.topology.view().collect::<Vec<_>>();
+    let nodes = state.topology.view();
     let res = match msg {
         PropagateMsg::Block(ref header) => state.peers.propagate_block(nodes, header.clone()),
         PropagateMsg::Fragment(ref fragment) => {
@@ -324,7 +306,7 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
 
 fn send_gossip(state: GlobalStateR, channels: Channels) {
     for node in state.topology.view() {
-        let gossip = Gossip::from_nodes(state.topology.select_gossips(&node));
+        let gossip = Gossip::from(state.topology.initiate_gossips(node.id()));
         let res = state.peers.propagate_gossip_to(node.id(), gossip);
         if let Err(gossip) = res {
             connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| {
@@ -335,7 +317,7 @@ fn send_gossip(state: GlobalStateR, channels: Channels) {
 }
 
 fn connect_and_propagate_with<F>(
-    node: topology::NodeData,
+    node: p2p::Node,
     state: GlobalStateR,
     channels: Channels,
     modify_comms: F,
@@ -347,21 +329,18 @@ fn connect_and_propagate_with<F>(
         None => {
             debug!(
                 state.logger(),
-                "ignoring P2P node without an IP address: {:?}", node
+                "ignoring P2P node without an IP address" ;
+                "node" => %node.id()
             );
             return;
         }
     };
     let node_id = node.id();
-    // TODO: turn this into an assertion once poldercast is fixed
-    // to never do this.
-    if node_id == state.topology.node().id() {
-        warn!(
-            state.logger(),
-            "topology tells the node to connect to itself",
-        );
-        return;
-    }
+    assert_ne!(
+        node_id,
+        (*state.topology.node().id()).into(),
+        "topology tells the node to connect to itself"
+    );
     let peer = Peer::new(addr, Protocol::Grpc);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let conn_logger = conn_state
@@ -389,7 +368,7 @@ fn connect_and_propagate_with<F>(
                 }
             }
             conn_err_state.peers.remove_peer(node_id);
-            conn_err_state.topology.evict_node(node_id);
+            conn_err_state.topology.report_node(node_id, StrikeReason::CannotConnect);
         })
         .and_then(move |client| {
             let connected_node_id = client.remote_node_id();
@@ -398,8 +377,8 @@ fn connect_and_propagate_with<F>(
                     client.logger(),
                     "peer node ID differs from the expected {}", node_id
                 );
-                state.topology.evict_node(node_id);
-                if connected_node_id == state.topology.node().id() {
+                state.topology.report_node(node_id, StrikeReason::InvalidPublicId);
+                if connected_node_id == (*state.topology.node().id()).into() {
                     warn!(
                         client.logger(),
                         "expected node {} but connected to self", node_id

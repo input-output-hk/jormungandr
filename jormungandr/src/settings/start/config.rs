@@ -1,13 +1,9 @@
 use crate::{
-    network::p2p::topology::{NEW_BLOCKS_TOPIC, NEW_MESSAGES_TOPIC},
+    network::p2p::{topic, Id},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
-use chain_crypto::Ed25519;
-use jormungandr_lib::{
-    crypto::key::{Identifier, SigningKey},
-    time::Duration,
-};
+use jormungandr_lib::time::Duration;
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
@@ -76,7 +72,7 @@ pub struct P2pConfig {
     /// all network interfaces.
     pub listen_address: Option<Address>,
 
-    pub private_id: Option<SigningKey<Ed25519>>,
+    pub public_id: Option<Id>,
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
@@ -102,7 +98,7 @@ pub struct P2pConfig {
 #[serde(deny_unknown_fields)]
 pub struct TrustedPeer {
     pub address: Address,
-    pub id: Identifier<Ed25519>,
+    pub id: Id,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -148,7 +144,7 @@ impl Default for P2pConfig {
         P2pConfig {
             public_address: None,
             listen_address: None,
-            private_id: None,
+            public_id: None,
             trusted_peers: None,
             topics_of_interest: None,
             max_connections: None,
@@ -190,7 +186,7 @@ impl std::str::FromStr for TrustedPeer {
         };
 
         let id = if let Some(id) = split.next() {
-            Identifier::from_bech32_str(id).map_err(|e| e.to_string())?
+            id.parse::<Id>().map_err(|e| e.to_string())?
         } else {
             return Err("Missing id component".to_owned());
         };
@@ -225,9 +221,9 @@ impl Serialize for Topic {
         S: Serializer,
     {
         use serde::ser::Error;
-        if self.0 == NEW_MESSAGES_TOPIC.into() {
+        if self.0 == topic::MESSAGES.into() {
             serializer.serialize_str("messages")
-        } else if self.0 == NEW_BLOCKS_TOPIC.into() {
+        } else if self.0 == topic::BLOCKS.into() {
             serializer.serialize_str("blocks")
         } else {
             Err(S::Error::custom("invalid state... should not happen"))
@@ -295,8 +291,8 @@ impl<'de> Deserialize<'de> for Topic {
                 use serde::de::Unexpected;
 
                 match v {
-                    "messages" => Ok(Topic(NEW_MESSAGES_TOPIC.into())),
-                    "blocks" => Ok(Topic(NEW_BLOCKS_TOPIC.into())),
+                    "messages" => Ok(Topic(topic::MESSAGES.into())),
+                    "blocks" => Ok(Topic(topic::BLOCKS.into())),
                     err => Err(E::invalid_value(Unexpected::Str(err), &self)),
                 }
             }

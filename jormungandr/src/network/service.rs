@@ -2,7 +2,7 @@ use super::{
     buffer_sizes,
     inbound::InboundProcessing,
     p2p::comm::{BlockEventSubscription, OutboundSubscription},
-    p2p::topology,
+    p2p::{Gossip as NodeData, Id},
     subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor, Subscription},
     Channels, GlobalStateR,
 };
@@ -11,7 +11,7 @@ use crate::intercom::{self, BlockMsg, ClientMsg, ReplyFuture, ReplyStream, Reque
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use network_core::error as core_error;
-use network_core::gossip::{Gossip, Node as _};
+use network_core::gossip::Gossip;
 use network_core::server::{BlockService, FragmentService, GossipService, Node, P2pService};
 use slog::Logger;
 
@@ -66,10 +66,10 @@ impl Node for NodeService {
 }
 
 impl P2pService for NodeService {
-    type NodeId = topology::NodeId;
+    type NodeId = Id;
 
-    fn node_id(&self) -> topology::NodeId {
-        self.global_state.topology.node().id()
+    fn node_id(&self) -> Id {
+        (*self.global_state.topology.node().id()).into()
     }
 }
 
@@ -237,9 +237,8 @@ impl FragmentService for NodeService {
 }
 
 impl GossipService for NodeService {
-    type Node = topology::NodeData;
-    type GossipSubscription =
-        Subscription<GossipProcessor, OutboundSubscription<Gossip<topology::NodeData>>>;
+    type Node = NodeData;
+    type GossipSubscription = Subscription<GossipProcessor, OutboundSubscription<Gossip<NodeData>>>;
     type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
 
     fn gossip_subscription(&mut self, subscriber: Self::NodeId) -> Self::GossipSubscriptionFuture {

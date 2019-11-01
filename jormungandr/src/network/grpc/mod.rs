@@ -1,8 +1,13 @@
 mod client;
 mod server;
 
-use super::{p2p::topology as p2p, BlockConfig};
-use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
+use crate::{
+    blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash},
+    network::{
+        p2p::{Gossip as NodeData, Id},
+        BlockConfig,
+    },
+};
 
 pub use self::client::{
     connect, fetch_block, ConnectError, ConnectFuture, Connection, FetchBlockError,
@@ -16,6 +21,6 @@ impl network_grpc::client::ProtocolConfig for BlockConfig {
     type BlockDate = BlockDate;
     type Fragment = Fragment;
     type FragmentId = FragmentId;
-    type Node = p2p::NodeData;
-    type NodeId = p2p::NodeId;
+    type Node = NodeData;
+    type NodeId = Id;
 }

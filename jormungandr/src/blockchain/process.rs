@@ -6,7 +6,7 @@ use crate::{
     blockcfg::{Block, Epoch, FragmentId, Header, HeaderHash},
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     leadership::NewEpochToSchedule,
-    network::p2p::topology::NodeId,
+    network::p2p::Id as NodeId,
     stats_counter::StatsCounter,
     utils::{
         async_msg::MessageBox,

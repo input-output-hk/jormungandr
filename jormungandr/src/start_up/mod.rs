@@ -2,7 +2,7 @@ mod error;
 
 pub use self::error::{Error, ErrorKind};
 use crate::{
-    blockcfg::{Block, Leadership},
+    blockcfg::Block,
     blockchain::{Blockchain, Branch, ErrorKind as BlockchainError, Tip},
     leadership::NewEpochToSchedule,
     network,
@@ -11,7 +11,7 @@ use crate::{
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 use slog::Logger;
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<dyn BlockStore<Block = Block> + Send + Sync>;
