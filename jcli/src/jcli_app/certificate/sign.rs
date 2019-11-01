@@ -18,9 +18,11 @@ pub struct Sign {
     pub signing_keys: Vec<PathBuf>,
     /// get the certificate to sign from the given file. If no file
     /// provided, it will be read from the standard input
+    #[structopt(short = "c", long = "certificate")]
     pub input: Option<PathBuf>,
     /// write the signed certificate into the given file. If no file
     /// provided it will be written into the standard output
+    #[structopt(short = "o", long = "output")]
     pub output: Option<PathBuf>,
 }
 
