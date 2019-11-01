@@ -10,6 +10,7 @@ use chain_impl_mockchain::{
     },
 };
 use jcli_app::transaction::Error;
+use jcli_app::certificate::{pool_owner_sign, stake_delegation_account_binding_sign};
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
 use jormungandr_lib::interfaces;
@@ -18,7 +19,9 @@ use std::path::Path;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub enum StagingKind {
+    /// Settings inputs and outputs
     Balancing,
+    /// Settings witnesses
     Finalizing,
     Sealed,
     Authed,
@@ -110,7 +113,32 @@ impl Staging {
         Ok(self.witnesses.push(witness.into()))
     }
 
-    pub fn set_auth(&mut self) -> Result<(), Error> {
+    pub fn set_auth(&mut self, keys: &[String]) -> Result<(), Error> {
+        if self.kind != StagingKind::Sealed {
+            return Err(Error::TxKindToSealInvalid { kind: self.kind });
+        }
+
+        if !self.need_auth() {
+            return Err(Error::TxDoesntNeedPayloadAuth)
+        }
+
+        match &self.extra {
+            None => {},
+            Some(c) => {
+                match c.clone().into() {
+                    Certificate::StakeDelegation(s) => {
+                        let c = unimplemented!();
+                        self.extra_authed = Some(SignedCertificate::StakeDelegation(s, c).into());
+                    }
+                    Certificate::PoolRegistration(s) => {
+                        let c = unimplemented!();
+                        self.extra_authed = Some(SignedCertificate::PoolRegistration(s, c).into())
+                    }
+                    _ => unimplemented!()
+                }
+            }
+        };
+        self.kind = StagingKind::Authed;
         Ok(())
     }
 

@@ -2,7 +2,7 @@ use chain_impl_mockchain::certificate::{
     Certificate, PoolOwnersSigned, PoolRegistration, SignedCertificate, StakeDelegation,
 };
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
-use chain_impl_mockchain::transaction::{AccountBindingSignature, Payload, Transaction, TxBuilder, TxBuilderState, SetAuthData};
+use chain_impl_mockchain::transaction::{AccountBindingSignature, Payload, Transaction, TxBuilderState, SetAuthData};
 use chain_crypto::{Ed25519, PublicKey};
 use jcli_app::certificate::{read_cert, read_input, write_signed_cert, Error};
 use jcli_app::utils::key_parser::{self, parse_ed25519_secret_key};

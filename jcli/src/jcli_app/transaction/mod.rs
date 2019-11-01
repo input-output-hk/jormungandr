@@ -120,6 +120,11 @@ custom_error! { pub Error
     InfoExpectedSingleAccount = "expected a single account, multisig is not supported yet",
     MakeWitnessLegacyUtxoUnsupported = "making legacy UTxO witness unsupported",
     MakeWitnessAccountCounterMissing = "making account witness requires passing spending counter",
+    TxDoesntNeedPayloadAuth = "transaction type doesn't need payload authentification",
+    NoSigningKeys = "No signing keys specified (use -k or --key to specify)",
+    ExpectingOnlyOneSigningKey { got: usize }
+        = "expecting only one signing keys but got {got}",
+    KeyInvalid = "reading key invalid",
 }
 
 /*

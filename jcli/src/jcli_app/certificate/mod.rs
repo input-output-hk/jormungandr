@@ -146,7 +146,7 @@ fn read_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
     Ok(cert)
 }
 
-fn read_input(input: Option<&Path>) -> Result<String, Error> {
+pub(crate) fn read_input(input: Option<&Path>) -> Result<String, Error> {
     let reader = io::open_file_read(&input).map_err(|source| Error::InputInvalid {
         source,
         path: input.map(|x| x.to_path_buf()).unwrap_or_default(),

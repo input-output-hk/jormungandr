@@ -1,22 +1,35 @@
 use jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces::Certificate;
+use jcli_app::certificate::{read_input};
 use structopt::StructOpt;
+use std::path::PathBuf;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Auth {
     #[structopt(flatten)]
     pub common: common::CommonTransaction,
-    // the value
-    //#[structopt(name = "VALUE", parse(try_from_str))]
-    //pub certificate: Certificate,
+    /// path to the file with the signing key
+    #[structopt(short = "k", long = "key")]
+    pub signing_keys: Vec<PathBuf>,
 }
 
 impl Auth {
     pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
 
-        transaction.set_auth()?; //self.certificate.into())?;
+        if self.signing_keys.len() == 0 {
+            return Err(Error::NoSigningKeys);
+        }
+
+        let keys_str: Result<Vec<String>, Error> = self
+            .signing_keys
+            .iter()
+            .map(|sk| read_input(Some(sk.as_ref())).map_err(|_| Error::KeyInvalid))
+            .collect();
+        let keys_str = keys_str?;
+
+        transaction.set_auth(&keys_str)?;
 
         self.common.store(&transaction)
     }
