@@ -123,6 +123,25 @@ impl GlobalState {
         let mut topology = P2pTopology::new(config.profile.clone(), logger.clone());
         topology.set_poldercast_modules();
 
+        // inject the trusted peers as initial gossips, this will make the node
+        // gossip with them at least at the beginning
+        topology.accept_gossips(
+            (*config.profile.id()).into(),
+            config
+                .trusted_peers
+                .clone()
+                .into_iter()
+                .map(|tp| {
+                    let mut builder = poldercast::NodeProfileBuilder::new();
+                    builder.id(tp.id.into());
+                    builder.address(tp.address.into());
+                    builder.build()
+                })
+                .map(p2p::Gossip::from)
+                .collect::<Vec<p2p::Gossip>>()
+                .into(),
+        );
+
         let peers = Peers::new(config.max_connections, logger.clone());
 
         GlobalState {

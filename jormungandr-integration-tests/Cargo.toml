@@ -38,7 +38,7 @@ custom_error = "1.7"
 error-chain = "0.12"
 jormungandr = { path = "../jormungandr" }
 jcli = { path = "../jcli" }
-poldercast = "0.9.1"
+poldercast = "0.9"
 
 [dev-dependencies]
 chain-core           = { path = "../chain-deps/chain-core", features=["property-test-api"]}
