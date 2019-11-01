@@ -2,12 +2,15 @@ use super::CertificateSlice;
 use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
-use crate::transaction::{Payload, PayloadAuthData, PayloadData, PayloadSlice};
+use crate::transaction::{
+    AccountBindingSignature, Payload, PayloadAuthData, PayloadData, PayloadSlice,
+    TransactionBindingAuthData,
+};
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
 };
-use chain_crypto::{digest::DigestOf, Blake2b256, Ed25519, PublicKey, Signature, Verification};
+use chain_crypto::{digest::DigestOf, Blake2b256, Ed25519, PublicKey, Verification};
 use chain_time::{DurationSeconds, TimeOffsetSeconds};
 use std::marker::PhantomData;
 use typed_bytes::{ByteArray, ByteBuilder};
@@ -16,7 +19,7 @@ use typed_bytes::{ByteArray, ByteBuilder};
 pub type PoolId = DigestOf<Blake2b256, PoolRegistration>;
 
 /// signatures with indices
-pub type IndexSignatures<T> = Vec<(u16, Signature<ByteArray<T>, Ed25519>)>;
+pub type IndexSignatures = Vec<(u16, AccountBindingSignature)>;
 
 /// Pool information
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,17 +57,9 @@ pub struct PoolRetirement {
 }
 
 /// Representant of a structure signed by a pool's owners
-#[derive(Debug)]
-pub struct PoolOwnersSigned<T: ?Sized> {
-    pub signatures: IndexSignatures<T>,
-}
-
-impl<T: ?Sized> Clone for PoolOwnersSigned<T> {
-    fn clone(&self) -> Self {
-        PoolOwnersSigned {
-            signatures: self.signatures.clone(),
-        }
-    }
+#[derive(Debug, Clone)]
+pub struct PoolOwnersSigned {
+    pub signatures: IndexSignatures,
 }
 
 impl PoolRegistration {
@@ -157,7 +152,7 @@ impl property::Serialize for PoolRetirement {
 impl Payload for PoolUpdate {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = true;
-    type Auth = PoolOwnersSigned<[u8]>;
+    type Auth = PoolOwnersSigned;
     fn payload_data(&self) -> PayloadData<Self> {
         PayloadData(
             self.serialize_in(ByteBuilder::new())
@@ -182,7 +177,7 @@ impl Payload for PoolUpdate {
 impl Payload for PoolRetirement {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = true;
-    type Auth = PoolOwnersSigned<[u8]>;
+    type Auth = PoolOwnersSigned;
     fn payload_data(&self) -> PayloadData<Self> {
         PayloadData(
             self.serialize_in(ByteBuilder::new())
@@ -242,7 +237,7 @@ impl Readable for PoolRegistration {
 impl Payload for PoolRegistration {
     const HAS_DATA: bool = true;
     const HAS_AUTH: bool = true;
-    type Auth = PoolOwnersSigned<[u8]>;
+    type Auth = PoolOwnersSigned;
     fn payload_data(&self) -> PayloadData<Self> {
         PayloadData(
             self.serialize_in(ByteBuilder::new())
@@ -266,14 +261,18 @@ impl Payload for PoolRegistration {
     }
 }
 
-impl<T: ?Sized> PoolOwnersSigned<T> {
+impl PoolOwnersSigned {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.iter16(&mut self.signatures.iter(), |bb, (i, s)| {
             bb.u16(*i).bytes(s.as_ref())
         })
     }
 
-    pub fn verify(&self, pool_info: &PoolRegistration, verify_data: &[u8]) -> Verification {
+    pub fn verify<'a>(
+        &self,
+        pool_info: &PoolRegistration,
+        verify_data: &TransactionBindingAuthData<'a>,
+    ) -> Verification {
         // fast track if we don't meet the management threshold already
         if self.signatures.len() < pool_info.management_threshold as usize {
             return Verification::Failed;
@@ -314,14 +313,14 @@ impl<T: ?Sized> PoolOwnersSigned<T> {
     }
 }
 
-impl<T: ?Sized> Readable for PoolOwnersSigned<T> {
+impl Readable for PoolOwnersSigned {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let sigs_nb = buf.get_u16()? as usize;
         let mut signatures = Vec::new();
         for _ in 0..sigs_nb {
             let nb = buf.get_u16()?;
             let sig = deserialize_signature(buf)?;
-            signatures.push((nb, sig))
+            signatures.push((nb, AccountBindingSignature(sig)))
         }
         Ok(PoolOwnersSigned { signatures })
     }

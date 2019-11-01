@@ -400,7 +400,7 @@ impl Ledger {
                     Some(account_pk) => {
                         let signature = tx.payload_auth().into_payload_auth();
                         let verified = signature
-                            .verify_slice(&account_pk.into(), tx.transaction_binding_auth_data());
+                            .verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data());
                         if verified == Verification::Failed {
                             return Err(Error::StakeDelegationSignatureFailed);
                         }
@@ -416,7 +416,7 @@ impl Ledger {
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_pool_registration_signcheck(
                     &tx.payload().into_payload(),
-                    tx.transaction_binding_auth_data(),
+                    &tx.transaction_binding_auth_data(),
                     tx.payload_auth().into_payload_auth(),
                 )?;
             }
@@ -427,7 +427,7 @@ impl Ledger {
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_pool_retirement(
                     &tx.payload().into_payload(),
-                    tx.transaction_binding_auth_data(),
+                    &tx.transaction_binding_auth_data(),
                     tx.payload_auth().into_payload_auth(),
                 )?;
             }
@@ -438,7 +438,7 @@ impl Ledger {
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_pool_update(
                     &tx.payload().into_payload(),
-                    tx.transaction_binding_auth_data(),
+                    &tx.transaction_binding_auth_data(),
                     tx.payload_auth().into_payload_auth(),
                 )?;
             }
@@ -507,13 +507,13 @@ impl Ledger {
     pub fn apply_pool_registration_signcheck<'a>(
         self,
         cert: &certificate::PoolRegistration,
-        bad: TransactionBindingAuthData<'a>,
-        sig: certificate::PoolOwnersSigned<[u8]>,
+        bad: &TransactionBindingAuthData<'a>,
+        sig: certificate::PoolOwnersSigned,
     ) -> Result<Self, Error> {
         check::valid_pool_registration_certificate(cert)?;
         check::valid_pool_owner_signature(&sig)?;
 
-        if sig.verify(cert, bad.0) == Verification::Failed {
+        if sig.verify(cert, bad) == Verification::Failed {
             return Err(Error::PoolRetirementSignatureFailed);
         }
 
@@ -533,14 +533,14 @@ impl Ledger {
     pub fn apply_pool_retirement<'a>(
         mut self,
         auth_cert: &certificate::PoolRetirement,
-        bad: TransactionBindingAuthData<'a>,
-        sig: certificate::PoolOwnersSigned<[u8]>,
+        bad: &TransactionBindingAuthData<'a>,
+        sig: certificate::PoolOwnersSigned,
     ) -> Result<Self, Error> {
         check::valid_pool_retirement_certificate(auth_cert)?;
         check::valid_pool_owner_signature(&sig)?;
 
         let reg = self.delegation.stake_pool_get(&auth_cert.pool_id)?;
-        if sig.verify(reg, bad.0) == Verification::Failed {
+        if sig.verify(reg, bad) == Verification::Failed {
             return Err(Error::PoolRetirementSignatureFailed);
         }
 
@@ -551,14 +551,14 @@ impl Ledger {
     pub fn apply_pool_update<'a>(
         self,
         auth_cert: &certificate::PoolUpdate,
-        bad: TransactionBindingAuthData<'a>,
-        sig: certificate::PoolOwnersSigned<[u8]>,
+        bad: &TransactionBindingAuthData<'a>,
+        sig: certificate::PoolOwnersSigned,
     ) -> Result<Self, Error> {
         check::valid_pool_update_certificate(auth_cert)?;
         check::valid_pool_owner_signature(&sig)?;
 
         let reg = self.delegation.stake_pool_get(&auth_cert.pool_id)?;
-        if sig.verify(reg, bad.0) == Verification::Failed {
+        if sig.verify(reg, bad) == Verification::Failed {
             return Err(Error::PoolUpdateSignatureFailed);
         }
         // TODO do things

@@ -21,13 +21,13 @@ impl AsRef<[u8]> for TransactionSignData {
 pub type TransactionSignDataHash = DigestOf<Blake2b256, TransactionSignData>;
 
 #[derive(Debug, Clone)]
-pub struct AccountBindingSignature(pub(super) Signature<u32, Ed25519>);
+pub struct AccountBindingSignature(pub(crate) Signature<u32, Ed25519>);
 
 impl AccountBindingSignature {
     pub fn verify_slice<'a>(
         &self,
         pk: &PublicKey<Ed25519>,
-        data: TransactionBindingAuthData<'a>,
+        data: &TransactionBindingAuthData<'a>,
     ) -> Verification {
         self.0.verify_slice(pk, data.0)
     }
