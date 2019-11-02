@@ -3,7 +3,12 @@ mod utxo;
 
 use crate::scenario::Wallet as WalletTemplate;
 use chain_addr::Discrimination;
-use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment, transaction::AccountIdentifier};
+use chain_impl_mockchain::{
+    certificate::{PoolId, SignedCertificate},
+    fee::LinearFee,
+    fragment::Fragment,
+    transaction::AccountIdentifier,
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Value},
@@ -107,6 +112,13 @@ impl Wallet {
         }
     }
 
+    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> SignedCertificate {
+        match &self.inner {
+            Inner::Account(account) => account.delegation_cert_for_block0(pool_id),
+            Inner::UTxO(_utxo) => unimplemented!(),
+        }
+    }
+
     pub(crate) fn template(&self) -> &WalletTemplate {
         &self.template
     }
@@ -128,25 +140,31 @@ impl Wallet {
         address: Address,
         value: Value,
     ) -> Result<Fragment> {
-        use chain_impl_mockchain::txbuilder::{TransactionBuilder, TransactionFinalizer};
+        use chain_impl_mockchain::transaction::{InputOutputBuilder, NoExtra, Payload, TxBuilder};
 
-        let mut txbuilder = TransactionBuilder::no_payload();
+        let mut iobuilder = InputOutputBuilder::empty();
+        iobuilder.add_output(address.into(), value.into()).unwrap();
 
-        txbuilder.add_output(address.into(), value.into());
+        let payload_data = NoExtra.payload_data();
 
-        let output_policy = match &mut self.inner {
+        match &mut self.inner {
             Inner::Account(account) => account
-                .add_input(&mut txbuilder, fees)
+                .add_input(payload_data.borrow(), &mut iobuilder, fees)
                 .chain_err(|| "Cannot get inputs from the account")?,
             Inner::UTxO(_utxo) => unimplemented!(),
         };
 
-        let (_, tx) = txbuilder
-            .seal_with_output_policy(fees, output_policy)
-            .chain_err(|| "Cannot finalize the transaction")?;
-        let mut finalizer = TransactionFinalizer::new(tx.replace_extra(None));
+        //let (_, tx) = txbuilder
+        //    .seal_with_output_policy(fees, output_policy)
+        //    .chain_err(|| "Cannot finalize the transaction")?;
+        //let mut finalizer = TransactionFinalizer::new(tx.replace_extra(None));
 
-        let sign_data = finalizer.get_tx_sign_data_hash();
+        let ios = iobuilder.build();
+        let txbuilder = TxBuilder::new()
+            .set_nopayload()
+            .set_ios(&ios.inputs, &ios.outputs);
+
+        let sign_data = txbuilder.get_auth_data_for_witness().hash();
 
         let witness = match &mut self.inner {
             Inner::Account(account) => account
@@ -155,12 +173,8 @@ impl Wallet {
             Inner::UTxO(_utxo) => unimplemented!(),
         };
 
-        finalizer
-            .set_witness(0, witness)
-            .chain_err(|| "Cannot add witness")?;
-
-        finalizer
-            .to_fragment()
-            .chain_err(|| "Cannot generate the finalized transaction")
+        let witnesses = vec![witness];
+        let tx = txbuilder.set_witnesses(&witnesses).set_payload_auth(&());
+        Ok(Fragment::Transaction(tx))
     }
 }

@@ -1,4 +1,4 @@
-use chain_core::property::{Block as _, Deserialize, HasFragments, Serialize};
+use chain_core::property::{Block as _, Deserialize, Serialize};
 use chain_impl_mockchain::{
     block::Block,
     ledger::{self, Ledger},

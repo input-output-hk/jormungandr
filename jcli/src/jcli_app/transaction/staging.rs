@@ -1,12 +1,15 @@
 use chain_addr::Address;
 use chain_impl_mockchain::{
     self as chain,
+    certificate::{Certificate, SignedCertificate},
     fee::FeeAlgorithm,
     fragment::Fragment,
-    transaction::{Output, Transaction, TransactionSignDataHash},
-    txbuilder,
-    value::Value,
+    transaction::{
+        self, InputOutput, InputOutputBuilder, Output, Payload, PayloadSlice, SetAuthData, SetIOs,
+        Transaction, TransactionSignDataHash, TxBuilder, TxBuilderState,
+    },
 };
+use jcli_app::certificate::{pool_owner_sign, stake_delegation_account_binding_sign};
 use jcli_app::transaction::Error;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
@@ -14,29 +17,24 @@ use jormungandr_lib::interfaces;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-const INPUT_PTR_SIZE: usize = 32;
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub enum StagingKind {
+    /// Settings inputs and outputs
     Balancing,
+    /// Settings witnesses
     Finalizing,
     Sealed,
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct Input {
-    index_or_account: u8,
-    value: interfaces::Value,
-    input_ptr: [u8; INPUT_PTR_SIZE],
+    Authed,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Staging {
     kind: StagingKind,
-    inputs: Vec<Input>,
+    inputs: Vec<interfaces::TransactionInput>,
     outputs: Vec<interfaces::TransactionOutput>,
     witnesses: Vec<interfaces::TransactionWitness>,
     extra: Option<interfaces::Certificate>,
+    extra_authed: Option<interfaces::SignedCertificate>,
 }
 
 impl std::fmt::Display for StagingKind {
@@ -45,6 +43,7 @@ impl std::fmt::Display for StagingKind {
             StagingKind::Balancing => write!(f, "balancing"),
             StagingKind::Finalizing => write!(f, "finalizing"),
             StagingKind::Sealed => write!(f, "sealed"),
+            StagingKind::Authed => write!(f, "authed"),
         }
     }
 }
@@ -57,6 +56,7 @@ impl Staging {
             outputs: Vec::new(),
             witnesses: Vec::new(),
             extra: None,
+            extra_authed: None,
         }
     }
 
@@ -82,16 +82,12 @@ impl Staging {
         })
     }
 
-    pub fn add_input(&mut self, input: chain::transaction::Input) -> Result<(), Error> {
+    pub fn add_input(&mut self, input: interfaces::TransactionInput) -> Result<(), Error> {
         if self.kind != StagingKind::Balancing {
             return Err(Error::TxKindToAddInputInvalid { kind: self.kind });
         }
 
-        Ok(self.inputs.push(Input {
-            index_or_account: input.index_or_account,
-            value: input.value.into(),
-            input_ptr: input.input_ptr,
-        }))
+        Ok(self.inputs.push(input))
     }
 
     pub fn add_output(&mut self, output: Output<Address>) -> Result<(), Error> {
@@ -117,6 +113,59 @@ impl Staging {
         Ok(self.witnesses.push(witness.into()))
     }
 
+    pub fn set_auth(&mut self, keys: &[String]) -> Result<(), Error> {
+        if self.kind != StagingKind::Sealed {
+            return Err(Error::TxKindToSealInvalid { kind: self.kind });
+        }
+
+        if !self.need_auth() {
+            return Err(Error::TxDoesntNeedPayloadAuth);
+        }
+
+        match &self.extra {
+            None => unreachable!(),
+            Some(c) => match c.clone().into() {
+                Certificate::StakeDelegation(s) => {
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
+                    let sc = stake_delegation_account_binding_sign(s, keys, builder)
+                        .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into());
+                }
+                Certificate::PoolRegistration(s) => {
+                    let sclone = s.clone();
+                    let pool_reg = Some(&sclone);
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
+                    let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
+                        SignedCertificate::PoolRegistration(p, pos)
+                    })
+                    .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
+                Certificate::PoolRetirement(s) => {
+                    let pool_reg = None; // TODO eventually ask for optional extra registration cert to do a better job
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
+                    let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
+                        SignedCertificate::PoolRetirement(p, pos)
+                    })
+                    .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
+                Certificate::PoolUpdate(s) => {
+                    let pool_reg = None; // TODO eventually ask for optional extra registration cert to do a better job
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
+                    let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
+                        SignedCertificate::PoolUpdate(p, pos)
+                    })
+                    .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
+                Certificate::OwnerStakeDelegation(_) => unreachable!(),
+            },
+        };
+        self.kind = StagingKind::Authed;
+        Ok(())
+    }
+
     pub fn set_extra(&mut self, extra: chain::certificate::Certificate) -> Result<(), Error> {
         match self.kind {
             StagingKind::Balancing => Ok(self.extra = Some(extra.into())),
@@ -132,41 +181,70 @@ impl Staging {
         self.kind.to_string()
     }
 
-    fn update_tx<Extra>(&mut self, tx: Transaction<Address, Extra>) {
-        self.inputs = tx
-            .inputs
-            .into_iter()
-            .map(|input| Input {
-                index_or_account: input.index_or_account,
-                value: input.value.into(),
-                input_ptr: input.input_ptr,
-            })
-            .collect();
-        self.outputs = tx
-            .outputs
-            .into_iter()
-            .map(interfaces::TransactionOutput::from)
-            .collect();
+    fn get_inputs_outputs(&self) -> InputOutputBuilder {
+        let inputs: Vec<_> = self.inputs.iter().map(|i| i.clone().into()).collect();
+        let outputs: Vec<_> = self.outputs.iter().map(|o| o.clone().into()).collect();
+        InputOutputBuilder::new(inputs.iter(), outputs.iter()).unwrap() // TODO better error than unwrap
     }
 
-    pub fn finalize<FA>(
+    fn finalize_payload<'a, P, FA>(
         &mut self,
-        fee_algorithm: FA,
-        output_policy: chain::txbuilder::OutputPolicy,
+        payload: &P,
+        fee_algorithm: &FA,
+        output_policy: chain::transaction::OutputPolicy,
     ) -> Result<chain::transaction::Balance, Error>
     where
-        FA: FeeAlgorithm<Transaction<Address, Option<chain::certificate::Certificate>>>,
+        FA: FeeAlgorithm,
+        P: Payload,
+    {
+        let ios = self.get_inputs_outputs();
+        let pdata = payload.payload_data();
+        let (balance, added_outputs, _) =
+            ios.seal_with_output_policy(pdata.borrow(), fee_algorithm, output_policy)?;
+
+        for o in added_outputs {
+            self.add_output(o.clone().into())?;
+        }
+
+        self.kind = StagingKind::Finalizing;
+
+        Ok(balance)
+    }
+
+    pub fn balance_inputs_outputs<FA>(
+        &mut self,
+        fee_algorithm: &FA,
+        output_policy: chain::transaction::OutputPolicy,
+    ) -> Result<chain::transaction::Balance, Error>
+    where
+        FA: FeeAlgorithm,
     {
         if self.kind != StagingKind::Balancing {
             return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
         }
 
-        let (balance, tx) = txbuilder::TransactionBuilder::from(self.transaction())
-            .seal_with_output_policy(fee_algorithm, output_policy)?;
-        self.update_tx(tx);
-        self.kind = StagingKind::Finalizing;
-
-        Ok(balance)
+        match &self.extra {
+            None => {
+                self.finalize_payload(&chain::transaction::NoExtra, fee_algorithm, output_policy)
+            }
+            Some(ref c) => match c.clone().into() {
+                Certificate::PoolRegistration(c) => {
+                    self.finalize_payload(&c, fee_algorithm, output_policy)
+                }
+                Certificate::PoolUpdate(c) => {
+                    self.finalize_payload(&c, fee_algorithm, output_policy)
+                }
+                Certificate::PoolRetirement(c) => {
+                    self.finalize_payload(&c, fee_algorithm, output_policy)
+                }
+                Certificate::StakeDelegation(c) => {
+                    self.finalize_payload(&c, fee_algorithm, output_policy)
+                }
+                Certificate::OwnerStakeDelegation(c) => {
+                    self.finalize_payload(&c, fee_algorithm, output_policy)
+                }
+            },
+        }
     }
 
     pub fn seal(&mut self) -> Result<(), Error> {
@@ -184,20 +262,130 @@ impl Staging {
         Ok(self.kind = StagingKind::Sealed)
     }
 
-    pub fn message(&self) -> Result<Fragment, Error> {
-        if self.kind != StagingKind::Sealed {
-            Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
+    pub fn need_auth(&self) -> bool {
+        match &self.extra {
+            None => false,
+            Some(ref c) => {
+                let x: Certificate = c.clone().into();
+                x.need_auth()
+            }
         }
-
-        self.finalizer()?
-            .to_fragment()
-            .map_err(|source| Error::GeneratedTxBuildingFailed {
-                source,
-                filler: CustomErrorFiller,
-            })
     }
 
-    pub fn transaction(
+    fn builder_after_witness<P: Payload>(
+        &self,
+        builder: TxBuilderState<SetIOs<P>>,
+    ) -> Result<TxBuilderState<SetAuthData<P>>, Error> {
+        if self.witnesses.len() != self.inputs.len() {
+            return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
+        }
+
+        let ios = self.get_inputs_outputs().build();
+        let witnesses: Vec<_> = self.witnesses.iter().map(|w| w.clone().into()).collect();
+        Ok(builder
+            .set_ios(&ios.inputs, &ios.outputs)
+            .set_witnesses(&witnesses))
+    }
+
+    fn make_fragment<P: Payload, F>(
+        &self,
+        payload: &P,
+        auth: &P::Auth,
+        to_fragment: F,
+    ) -> Result<Fragment, Error>
+    where
+        F: FnOnce(Transaction<P>) -> Fragment,
+    {
+        let tx = self
+            .builder_after_witness(TxBuilder::new().set_payload(payload))?
+            .set_payload_auth(auth);
+        Ok(to_fragment(tx))
+    }
+
+    pub fn fragment(&self) -> Result<Fragment, Error> {
+        match &self.extra_authed {
+            None => {
+                if self.kind != StagingKind::Sealed {
+                    Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
+                }
+                if self.need_auth() {
+                    Err(Error::TxNeedPayloadAuth)?
+                }
+                match &self.extra {
+                    None => {
+                        self.make_fragment(&chain::transaction::NoExtra, &(), Fragment::Transaction)
+                    }
+                    Some(cert) => match cert.clone().into() {
+                        Certificate::OwnerStakeDelegation(osd) => {
+                            self.make_fragment(&osd, &(), Fragment::OwnerStakeDelegation)
+                        }
+                        _ => unreachable!(),
+                    },
+                }
+            }
+            Some(signed_cert) => {
+                if self.kind != StagingKind::Authed {
+                    Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
+                }
+                match signed_cert.clone().into() {
+                    SignedCertificate::PoolRegistration(c, a) => {
+                        self.make_fragment(&c, &a, Fragment::PoolRegistration)
+                    }
+                    SignedCertificate::PoolUpdate(c, a) => {
+                        self.make_fragment(&c, &a, Fragment::PoolUpdate)
+                    }
+                    SignedCertificate::PoolRetirement(c, a) => {
+                        self.make_fragment(&c, &a, Fragment::PoolRetirement)
+                    }
+                    SignedCertificate::StakeDelegation(c, a) => {
+                        self.make_fragment(&c, &a, Fragment::StakeDelegation)
+                    }
+                    SignedCertificate::OwnerStakeDelegation(c, a) => {
+                        self.make_fragment(&c, &a, Fragment::OwnerStakeDelegation)
+                    }
+                }
+            }
+        }
+    }
+
+    fn transaction_sign_data_hash_on<P>(
+        &self,
+        builder: TxBuilderState<SetIOs<P>>,
+    ) -> TransactionSignDataHash {
+        let inputs: Vec<transaction::Input> =
+            self.inputs.iter().map(|i| i.clone().into()).collect();
+        let outputs: Vec<_> = self.outputs.iter().map(|o| o.clone().into()).collect();
+        builder
+            .set_ios(&inputs, &outputs)
+            .get_auth_data_for_witness()
+            .hash()
+    }
+
+    pub fn transaction_sign_data_hash(&self) -> TransactionSignDataHash {
+        match &self.extra {
+            None => self.transaction_sign_data_hash_on(TxBuilder::new().set_nopayload()),
+            Some(ref c) => match c.clone().into() {
+                Certificate::PoolRegistration(c) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&c))
+                }
+                Certificate::PoolUpdate(c) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&c))
+                }
+                Certificate::PoolRetirement(c) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&c))
+                }
+                Certificate::StakeDelegation(c) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&c))
+                }
+                Certificate::OwnerStakeDelegation(c) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&c))
+                }
+            },
+        }
+    }
+
+    /*
+    pub fn transaction<P>(
         &self,
     ) -> chain::transaction::Transaction<Address, Option<chain::certificate::Certificate>> {
         chain::transaction::Transaction {
@@ -205,11 +393,6 @@ impl Staging {
             outputs: self.outputs(),
             extra: self.extra.clone().map(|c| c.0),
         }
-    }
-
-    pub fn id(&self) -> TransactionSignDataHash {
-        let finalizer = chain::txbuilder::TransactionFinalizer::new(self.transaction());
-        finalizer.get_tx_sign_data_hash()
     }
 
     pub fn fees<FA>(&self, fee_algorithm: FA) -> Result<Value, Error>
@@ -246,20 +429,14 @@ impl Staging {
 
         Ok(finalizer)
     }
+    */
 
-    pub fn inputs(&self) -> Vec<chain::transaction::Input> {
-        self.inputs
-            .iter()
-            .map(|input| chain::transaction::Input {
-                index_or_account: input.index_or_account,
-                value: input.value.into(),
-                input_ptr: input.input_ptr,
-            })
-            .collect()
+    pub fn inputs(&self) -> &[interfaces::TransactionInput] {
+        &self.inputs
     }
 
-    pub fn outputs(&self) -> Vec<Output<Address>> {
-        self.outputs.iter().cloned().map(Output::from).collect()
+    pub fn outputs(&self) -> &[interfaces::TransactionOutput] {
+        &self.outputs
     }
 }
 
@@ -268,7 +445,7 @@ mod tests {
 
     use super::*;
     use chain_impl_mockchain as chain;
-    use chain_impl_mockchain::key::Hash;
+    use chain_impl_mockchain::{key::Hash, transaction::Input, value::Value};
     use std::str::FromStr;
 
     #[test]
@@ -292,14 +469,10 @@ mod tests {
         let mut staging = Staging::new();
         staging.kind = incorrect_stage.clone();
 
-        let mut input_ptr = [0u8; INPUT_PTR_SIZE];
+        let mut input_ptr = [0u8; chain::transaction::INPUT_PTR_SIZE];
         input_ptr.clone_from_slice(hash.as_ref());
 
-        let result = staging.add_input(chain::transaction::Input {
-            input_ptr: input_ptr,
-            index_or_account: 0,
-            value: Value(200),
-        });
+        let result = staging.add_input(Input::new(0, Value(200), input_ptr).into());
 
         assert!(
             result.is_err(),

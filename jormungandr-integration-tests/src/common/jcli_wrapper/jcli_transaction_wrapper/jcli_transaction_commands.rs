@@ -181,6 +181,18 @@ impl TransactionCommands {
         command
     }
 
+    pub fn get_auth_command(&self, signing_key: &PathBuf, staging_file: &PathBuf) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("transaction")
+            .arg("auth")
+            .arg("--staging")
+            .arg(staging_file.as_os_str())
+            .arg("--key")
+            .arg(&signing_key.as_os_str());
+        command
+    }
+
     pub fn get_transaction_message_to_command(&self, staging_file: &PathBuf) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command

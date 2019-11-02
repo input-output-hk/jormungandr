@@ -3,6 +3,7 @@ mod add_certificate;
 mod add_input;
 mod add_output;
 mod add_witness;
+mod auth;
 mod common;
 mod finalize;
 mod info;
@@ -14,6 +15,7 @@ mod staging;
 use self::staging::StagingKind;
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
+use jcli_app::certificate;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::key_parser;
 use std::path::PathBuf;
@@ -49,6 +51,8 @@ pub enum Transaction {
     Info(info::Info),
     /// create witnesses
     MakeWitness(mk_witness::MkWitness),
+    /// make auth
+    Auth(auth::Auth),
     /// get the message format out of a sealed transaction
     ToMessage(common::CommonTransaction),
 }
@@ -102,11 +106,11 @@ custom_error! { pub Error
     AccountAddressSingle = "invalid input account, this is a UTxO address",
     AccountAddressGroup = "invalid input account, this is a UTxO address with delegation",
     AccountAddressMultisig = "invalid input account, this is a multisig account address",
-    AddingWitnessToFinalizedTxFailed { source: chain::txbuilder::BuildError, filler: CustomErrorFiller }
+    AddingWitnessToFinalizedTxFailed { filler: CustomErrorFiller }
         = "could not add witness to finalized transaction",
-    GeneratedTxBuildingFailed { source: chain::txbuilder::BuildError, filler: CustomErrorFiller }
+    GeneratedTxBuildingFailed { filler: CustomErrorFiller }
         = "generated transaction building failed",
-    TxFinalizationFailed { source: chain::txbuilder::Error }
+    TxFinalizationFailed { source: chain::transaction::Error }
         = "transaction finalization failed",
     GeneratedTxTypeUnexpected = "unexpected generated transaction type",
     MessageSerializationFailed { source: std::io::Error, filler: CustomErrorFiller }
@@ -117,6 +121,12 @@ custom_error! { pub Error
     InfoExpectedSingleAccount = "expected a single account, multisig is not supported yet",
     MakeWitnessLegacyUtxoUnsupported = "making legacy UTxO witness unsupported",
     MakeWitnessAccountCounterMissing = "making account witness requires passing spending counter",
+    TxDoesntNeedPayloadAuth = "transaction type doesn't need payload authentification",
+    TxNeedPayloadAuth = "transaction type need payload authentification",
+    NoSigningKeys = "No signing keys specified (use -k or --key to specify)",
+    ExpectingOnlyOneSigningKey { got: usize }
+        = "expecting only one signing keys but got {got}",
+    CertificateError { error: certificate::Error } = "certificate error {error}",
 }
 
 /*
@@ -141,19 +151,20 @@ impl Transaction {
             Transaction::Id(common) => display_id(common),
             Transaction::Info(info) => info.exec(),
             Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
+            Transaction::Auth(auth) => auth.exec(),
             Transaction::ToMessage(common) => display_message(common),
         }
     }
 }
 
 fn display_id(common: common::CommonTransaction) -> Result<(), Error> {
-    let id = common.load()?.id();
+    let id = common.load()?.transaction_sign_data_hash();
     println!("{}", id);
     Ok(())
 }
 
 fn display_message(common: common::CommonTransaction) -> Result<(), Error> {
-    let message = common.load()?.message()?;
+    let message = common.load()?.fragment()?;
     let bytes: Vec<u8> =
         message
             .serialize_as_vec()

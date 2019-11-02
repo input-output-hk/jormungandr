@@ -1,5 +1,5 @@
 use chain_impl_mockchain::fragment::FragmentId;
-use chain_impl_mockchain::transaction::{Input, InputEnum, TransactionIndex, UtxoPointer};
+use chain_impl_mockchain::transaction::TransactionIndex;
 use jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
@@ -27,11 +27,10 @@ impl AddInput {
     pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
 
-        transaction.add_input(Input::from_enum(InputEnum::UtxoInput(UtxoPointer {
-            transaction_id: self.transaction_id,
-            output_index: self.index,
+        transaction.add_input(interfaces::TransactionInput {
+            input: interfaces::TransactionInputType::Utxo(self.transaction_id.into(), self.index),
             value: self.value.into(),
-        })))?;
+        })?;
 
         self.common.store(&transaction)?;
         Ok(())
@@ -83,11 +82,15 @@ mod tests {
             "only one input should be created"
         );
         let input = &staging.inputs()[0];
-        assert_eq!(transaction_id.as_ref(), &input.input_ptr, "transaction_id");
-        assert_eq!(
-            transaction_index, input.index_or_account,
-            "transaction_index"
-        );
-        assert_eq!(value, input.value, "value");
+        match input.input {
+            interfaces::TransactionInputType::Account(_) => {
+                panic!("didn't create an account input")
+            }
+            interfaces::TransactionInputType::Utxo(fid, index) => {
+                assert_eq!(transaction_id.as_ref(), &fid, "fragment_id");
+                assert_eq!(transaction_index, index, "fragment_index");
+            }
+        }
+        assert_eq!(value, input.value.into(), "value");
     }
 }

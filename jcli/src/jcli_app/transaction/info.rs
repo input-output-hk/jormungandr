@@ -1,9 +1,11 @@
 use chain_addr::{Address, AddressReadable};
-use chain_impl_mockchain::transaction::{Balance, Input, InputEnum, InputType, Output};
+use chain_impl_mockchain::transaction::{AccountIdentifier, Balance, Output};
 use jcli_app::{
     transaction::{common, staging::Staging, Error},
     utils::io,
 };
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::{TransactionInput, TransactionInputType, TransactionOutput};
 use std::{collections::HashMap, io::Write, path::PathBuf};
 use strfmt::strfmt;
 use structopt::StructOpt;
@@ -97,7 +99,7 @@ impl Info {
         self.display_inputs(&mut output, &transaction.inputs())?;
 
         if !self.only_accounts || !self.only_utxos {
-            self.display_outputs(&mut output, &transaction.outputs())?;
+            self.display_outputs(&mut output, transaction.outputs())?;
         }
         Ok(())
     }
@@ -105,7 +107,7 @@ impl Info {
     fn display_outputs(
         &self,
         mut writer: impl Write,
-        outputs: &[Output<Address>],
+        outputs: &[TransactionOutput],
     ) -> Result<(), Error> {
         for output in outputs {
             self.display_output(&mut writer, output)?;
@@ -113,27 +115,34 @@ impl Info {
         Ok(())
     }
 
-    fn display_inputs(&self, mut writer: impl Write, inputs: &[Input]) -> Result<(), Error> {
+    fn display_inputs(
+        &self,
+        mut writer: impl Write,
+        inputs: &[TransactionInput],
+    ) -> Result<(), Error> {
         for input in inputs {
-            match input.get_type() {
-                InputType::Account => {
+            match input.input {
+                TransactionInputType::Account(_) => {
                     if self.only_outputs || self.only_utxos {
                         continue;
                     }
+                    self.display_input(&mut writer, input)?;
                 }
-                InputType::Utxo => {
+                TransactionInputType::Utxo(..) => {
                     if self.only_outputs || self.only_accounts {
                         continue;
                     }
+                    self.display_input(&mut writer, input)?;
                 }
             }
-            self.display_input(&mut writer, input.to_enum())?;
         }
         Ok(())
     }
 
-    fn display_output(&self, writer: impl Write, output: &Output<Address>) -> Result<(), Error> {
+    fn display_output(&self, writer: impl Write, output: &TransactionOutput) -> Result<(), Error> {
         let mut vars = HashMap::new();
+
+        let output: Output<Address> = output.clone().into();
 
         vars.insert(
             "address".to_owned(),
@@ -143,22 +152,23 @@ impl Info {
         self.write_info(writer, &self.format_output, vars)
     }
 
-    fn display_input(&self, writer: impl Write, input: InputEnum) -> Result<(), Error> {
+    fn display_input(&self, writer: impl Write, input: &TransactionInput) -> Result<(), Error> {
         let mut vars = HashMap::new();
-        match input {
-            InputEnum::UtxoInput(utxo_ptr) => {
-                vars.insert("txid".to_owned(), utxo_ptr.transaction_id.to_string());
-                vars.insert("index".to_owned(), utxo_ptr.output_index.to_string());
-                vars.insert("value".to_owned(), utxo_ptr.value.0.to_string());
+        match input.input {
+            TransactionInputType::Utxo(utxo_ptr, index) => {
+                vars.insert("txid".to_owned(), Hash::from(utxo_ptr).to_string());
+                vars.insert("index".to_owned(), index.to_string());
+                vars.insert("value".to_owned(), input.value.to_string());
                 self.write_info(writer, &self.format_utxo_input, vars)
             }
-            InputEnum::AccountInput(account, value) => {
-                let account: chain_crypto::PublicKey<_> = account
+            TransactionInputType::Account(account_id) => {
+                let account_id: AccountIdentifier = account_id.into();
+                let account: chain_crypto::PublicKey<_> = account_id
                     .to_single_account()
                     .ok_or(Error::InfoExpectedSingleAccount)?
                     .into();
                 vars.insert("account".to_owned(), account.to_string());
-                vars.insert("value".to_owned(), value.0.to_string());
+                vars.insert("value".to_owned(), input.value.to_string());
                 self.write_info(writer, &self.format_account_input, vars)
             }
         }
@@ -167,17 +177,27 @@ impl Info {
     fn display_info(&self, writer: impl Write, transaction: &Staging) -> Result<(), Error> {
         let mut vars = HashMap::new();
 
-        let fee_algo = self.fee.linear_fee();
-        let tx = transaction.transaction();
+        //let fee_algo = self.fee.linear_fee();
+        //let tx = transaction.transaction();
 
         vars.insert("status".to_owned(), transaction.staging_kind_name());
-        vars.insert("id".to_owned(), transaction.id().to_string());
-        vars.insert("num_inputs".to_owned(), tx.inputs.len().to_string());
-        vars.insert("num_outputs".to_owned(), tx.outputs.len().to_string());
+        vars.insert(
+            "sign-data-hash".to_owned(),
+            transaction.transaction_sign_data_hash().to_string(),
+        );
+        vars.insert(
+            "num_inputs".to_owned(),
+            transaction.inputs().len().to_string(),
+        );
+        vars.insert(
+            "num_outputs".to_owned(),
+            transaction.outputs().len().to_string(),
+        );
         vars.insert(
             "num_witnesses".to_owned(),
             transaction.witness_count().to_string(),
         );
+        /*
         vars.insert("input".to_owned(), tx.total_input()?.0.to_string());
         vars.insert("output".to_owned(), tx.total_output()?.0.to_string());
         vars.insert("fee".to_owned(), transaction.fees(&fee_algo)?.0.to_string());
@@ -189,6 +209,7 @@ impl Info {
                 Balance::Zero => "0".to_string(),
             },
         );
+        */
         self.write_info(writer, &self.format, vars)
     }
 

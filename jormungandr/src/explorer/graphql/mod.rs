@@ -445,6 +445,7 @@ impl OwnerStakeDelegation {
     }
 }
 
+// TODO can we use jormungandr-lib Certificate ?
 enum Certificate {
     StakeDelegation(StakeDelegation),
     OwnerStakeDelegation(OwnerStakeDelegation),
@@ -467,7 +468,8 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::PoolRegistration(c) => {
                 Ok(Certificate::PoolRegistration(PoolRegistration::from(c)))
             }
-            certificate::Certificate::PoolManagement(_) => Err(ErrorKind::Unimplemented.into()),
+            certificate::Certificate::PoolRetirement(_) => Err(ErrorKind::Unimplemented.into()),
+            certificate::Certificate::PoolUpdate(_) => Err(ErrorKind::Unimplemented.into()),
         }
     }
 }

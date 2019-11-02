@@ -13,6 +13,7 @@ chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
 cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
+typed-bytes = { path = "../chain-deps/typed-bytes" }
 rand_core = "0.3"
 rand_chacha = "0.1"
 chrono = { version = "0.4", features = ["serde"] }

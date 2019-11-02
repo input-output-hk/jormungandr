@@ -6,7 +6,13 @@ use crate::{
     style, NodeAlias, Wallet, WalletAlias, WalletType,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
-use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee, rewards::TaxType};
+use chain_impl_mockchain::{
+    block::ConsensusVersion,
+    fee::LinearFee,
+    key::EitherEd25519SecretKey,
+    rewards::TaxType,
+    transaction::{AccountBindingSignature, TxBuilder},
+};
 use chain_time::DurationSeconds;
 use jormungandr_lib::{
     crypto::{hash::Hash, key::SigningKey},
@@ -168,7 +174,7 @@ impl Settings {
 
             if let Some(delegation) = wallet_template.delegate() {
                 use chain_impl_mockchain::certificate::{
-                    Certificate, PoolId as StakePoolId, StakeDelegation,
+                    PoolId as StakePoolId, PoolOwnersSigned, SignedCertificate,
                 };
 
                 // 1. retrieve the public data (we may need to create a stake pool
@@ -186,16 +192,14 @@ impl Settings {
                         let serial: u128 = context.rng_mut().sample(Standard);
                         let kes_signing_key = SigningKey::generate(context.rng_mut());
                         let vrf_signing_key = SigningKey::generate(context.rng_mut());
+                        let owner = chain_crypto::SecretKey::<chain_crypto::Ed25519>::generate(
+                            context.rng_mut(),
+                        );
                         let stake_pool_info = PoolRegistration {
                             serial,
                             management_threshold: 1,
                             start_validity: DurationSeconds(0).into(),
-                            owners: vec![
-                                chain_crypto::SecretKey::<chain_crypto::Ed25519>::generate(
-                                    context.rng_mut(),
-                                )
-                                .to_public(),
-                            ],
+                            owners: vec![owner.to_public()],
                             rewards: TaxType::zero(),
                             keys: GenesisPraosLeader {
                                 kes_public_key: kes_signing_key.identifier().into_public_key(),
@@ -212,8 +216,21 @@ impl Settings {
                             },
                         });
 
+                        let txb = TxBuilder::new()
+                            .set_payload(&stake_pool_info)
+                            .set_ios(&[], &[])
+                            .set_witnesses(&[]);
+                        let auth_data = txb.get_auth_data();
+                        let sig0 = AccountBindingSignature::new(
+                            &EitherEd25519SecretKey::Normal(owner),
+                            &auth_data,
+                        );
+                        let owner_signed = PoolOwnersSigned {
+                            signatures: vec![(0, sig0)],
+                        };
+
                         let stake_pool_registration_certificate =
-                            Certificate::PoolRegistration(stake_pool_info);
+                            SignedCertificate::PoolRegistration(stake_pool_info, owner_signed);
 
                         self.block0
                             .initial
@@ -228,20 +245,9 @@ impl Settings {
                     unimplemented!("delegating stake to a stake pool that is not a node is not supported (yet)")
                 };
 
-                // 2. retrieve the wallet delegation identifier
-                let stake_key_id = if let Some(stake_key_id) = wallet.stake_key() {
-                    stake_key_id
-                } else {
-                    unimplemented!(
-                        "delegation from a wallet that is not an Account is not supported (yet)"
-                    )
-                };
-
-                // 3. create delegation certificate and add it to the block0.initial array
-                let delegation_certificate = Certificate::StakeDelegation(StakeDelegation {
-                    account_id: stake_key_id, // 2
-                    pool_id: stake_pool_id,   // 1
-                });
+                // 2. create delegation certificate for the wallet stake key
+                // and add it to the block0.initial array
+                let delegation_certificate = wallet.delegation_cert_for_block0(stake_pool_id);
 
                 self.block0
                     .initial
