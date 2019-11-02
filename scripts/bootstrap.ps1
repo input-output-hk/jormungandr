@@ -205,6 +205,7 @@ if([System.IO.File]::Exists($MYCLI)){
 	# note we use the faucet as the owner to this pool
 	$STAKE_KEY=$FAUCET_SK
 	$STAKE_KEY_PUB=$FAUCET_PK
+	echo $LEADER_SK | Out-File $WORKDIR"\"$SECRET_PATH\leader.sk -Encoding Oem
 	echo $STAKE_KEY | Out-File $WORKDIR"\"$SECRET_PATH\stake_key.sk -Encoding Oem
 	echo $FIXED_SK | Out-File $WORKDIR"\"$SECRET_PATH\fixed_key.sk -Encoding Oem
 	echo $POOL_VRF_SK | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.vrf.sk -Encoding Oem
@@ -213,7 +214,7 @@ if([System.IO.File]::Exists($MYCLI)){
 
 	$STAKEPOOLCERT = & $MYCLI certificate new stake-pool-registration --kes-key $POOL_KES_PK --vrf-key $POOL_VRF_PK --serial 1010101010 --management-threshold 1 --start-validity 0 --owner $LEADER_PK
 	echo $STAKEPOOLCERT | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.cert -Encoding Oem
-	$STAKEPOOLCERTSIGN = echo $STAKEPOOLCERT | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\stake_key.sk 
+	$STAKEPOOLCERTSIGN = echo $STAKEPOOLCERT | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\leader.sk
 	echo $STAKEPOOLCERTSIGN | Out-File $WORKDIR"\"$SECRET_PATH\stake_pool.signcert -Encoding Oem
 	$STAKE_POOL_ID = echo $STAKEPOOLCERTSIGN | & $MYCLI certificate get-stake-pool-id
 	write-host "stake-pool-registration certificate: done" -ForegroundColor DarkGreen
