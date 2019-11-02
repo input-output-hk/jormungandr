@@ -1686,6 +1686,7 @@ dependencies = [
  "rand_core 0.3.1",
  "serde",
  "serde_yaml",
+ "typed-bytes",
 ]
 
 [[package]]
