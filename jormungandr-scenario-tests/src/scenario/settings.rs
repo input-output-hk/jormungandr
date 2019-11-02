@@ -7,8 +7,11 @@ use crate::{
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{
-    block::ConsensusVersion, fee::LinearFee, rewards::TaxType, transaction::{AccountBindingSignature, TxBuilder},
+    block::ConsensusVersion,
+    fee::LinearFee,
     key::EitherEd25519SecretKey,
+    rewards::TaxType,
+    transaction::{AccountBindingSignature, TxBuilder},
 };
 use chain_time::DurationSeconds;
 use jormungandr_lib::{
@@ -218,7 +221,10 @@ impl Settings {
                             .set_ios(&[], &[])
                             .set_witnesses(&[]);
                         let auth_data = txb.get_auth_data();
-                        let sig0 = AccountBindingSignature::new(&EitherEd25519SecretKey::Normal(owner), &auth_data);
+                        let sig0 = AccountBindingSignature::new(
+                            &EitherEd25519SecretKey::Normal(owner),
+                            &auth_data,
+                        );
                         let owner_signed = PoolOwnersSigned {
                             signatures: vec![(0, sig0)],
                         };

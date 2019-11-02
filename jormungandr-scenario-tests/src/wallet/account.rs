@@ -5,9 +5,8 @@ use chain_impl_mockchain::{
     certificate::{PoolId, SignedCertificate, StakeDelegation},
     fee::{FeeAlgorithm, LinearFee},
     transaction::{
-        AccountBindingSignature, AccountIdentifier, Balance, Input, InputOutputBuilder,
-        Payload, PayloadSlice,
-        TransactionSignDataHash, TxBuilder, Witness,
+        AccountBindingSignature, AccountIdentifier, Balance, Input, InputOutputBuilder, Payload,
+        PayloadSlice, TransactionSignDataHash, TxBuilder, Witness,
     },
 };
 use jormungandr_lib::{
