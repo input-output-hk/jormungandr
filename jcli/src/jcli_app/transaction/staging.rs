@@ -9,8 +9,8 @@ use chain_impl_mockchain::{
         Transaction, TransactionSignDataHash, TxBuilder, TxBuilderState,
     },
 };
-use jcli_app::transaction::Error;
 use jcli_app::certificate::{pool_owner_sign, stake_delegation_account_binding_sign};
+use jcli_app::transaction::Error;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
 use jormungandr_lib::interfaces;
@@ -119,24 +119,48 @@ impl Staging {
         }
 
         if !self.need_auth() {
-            return Err(Error::TxDoesntNeedPayloadAuth)
+            return Err(Error::TxDoesntNeedPayloadAuth);
         }
 
         match &self.extra {
-            None => {},
-            Some(c) => {
-                match c.clone().into() {
-                    Certificate::StakeDelegation(s) => {
-                        let c = unimplemented!();
-                        self.extra_authed = Some(SignedCertificate::StakeDelegation(s, c).into());
-                    }
-                    Certificate::PoolRegistration(s) => {
-                        let c = unimplemented!();
-                        self.extra_authed = Some(SignedCertificate::PoolRegistration(s, c).into())
-                    }
-                    _ => unimplemented!()
+            None => unreachable!(),
+            Some(c) => match c.clone().into() {
+                Certificate::StakeDelegation(s) => {
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
+                    let sc = stake_delegation_account_binding_sign(s, keys, builder)
+                        .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into());
                 }
-            }
+                Certificate::PoolRegistration(s) => {
+                    let sclone = s.clone();
+                    let pool_reg = Some(&sclone);
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
+                    let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
+                        SignedCertificate::PoolRegistration(p, pos)
+                    })
+                    .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
+                Certificate::PoolRetirement(s) => {
+                    let pool_reg = None; // TODO eventually ask for optional extra registration cert to do a better job
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
+                    let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
+                        SignedCertificate::PoolRetirement(p, pos)
+                    })
+                    .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
+                Certificate::PoolUpdate(s) => {
+                    let pool_reg = None; // TODO eventually ask for optional extra registration cert to do a better job
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
+                    let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
+                        SignedCertificate::PoolUpdate(p, pos)
+                    })
+                    .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
+                Certificate::OwnerStakeDelegation(_) => unreachable!(),
+            },
         };
         self.kind = StagingKind::Authed;
         Ok(())
@@ -284,8 +308,20 @@ impl Staging {
                 if self.kind != StagingKind::Sealed {
                     Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
                 }
-                assert!(self.extra.is_none());
-                self.make_fragment(&chain::transaction::NoExtra, &(), Fragment::Transaction)
+                if self.need_auth() {
+                    Err(Error::TxNeedPayloadAuth)?
+                }
+                match &self.extra {
+                    None => self.make_fragment(&chain::transaction::NoExtra, &(), Fragment::Transaction),
+                    Some(cert) => {
+                        match cert.clone().into() {
+                            Certificate::OwnerStakeDelegation(osd) => {
+                                self.make_fragment(&osd, &(), Fragment::OwnerStakeDelegation)
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                }
             }
             Some(signed_cert) => {
                 if self.kind != StagingKind::Authed {

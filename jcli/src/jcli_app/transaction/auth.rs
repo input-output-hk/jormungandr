@@ -1,8 +1,7 @@
+use jcli_app::certificate::read_input;
 use jcli_app::transaction::{common, Error};
-use jormungandr_lib::interfaces::Certificate;
-use jcli_app::certificate::{read_input};
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -25,7 +24,9 @@ impl Auth {
         let keys_str: Result<Vec<String>, Error> = self
             .signing_keys
             .iter()
-            .map(|sk| read_input(Some(sk.as_ref())).map_err(|_| Error::KeyInvalid))
+            .map(|sk| {
+                read_input(Some(sk.as_ref())).map_err(|e| Error::CertificateError { error: e })
+            })
             .collect();
         let keys_str = keys_str?;
 

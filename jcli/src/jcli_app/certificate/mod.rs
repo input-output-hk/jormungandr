@@ -2,8 +2,8 @@ use jcli_app::utils::{io, key_parser};
 use jormungandr_lib::interfaces::{self, CertificateFromStrError};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
 use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 mod get_stake_pool_id;
@@ -11,7 +11,7 @@ mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod sign;
 
-pub(crate) use self::sign::{stake_delegation_account_binding_sign, pool_owner_sign};
+pub(crate) use self::sign::{pool_owner_sign, stake_delegation_account_binding_sign};
 
 custom_error! {pub Error
     KeyInvalid { source: key_parser::Error } = "invalid private key",

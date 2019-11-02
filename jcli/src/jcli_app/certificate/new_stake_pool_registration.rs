@@ -7,8 +7,8 @@ use chain_impl_mockchain::{
 use chain_time::DurationSeconds;
 use jcli_app::certificate::{write_cert, Error};
 use jcli_app::utils::key_parser::parse_pub_key;
-use std::path::PathBuf;
 use std::ops::Deref;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

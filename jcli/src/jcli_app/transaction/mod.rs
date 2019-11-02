@@ -15,6 +15,7 @@ mod staging;
 use self::staging::StagingKind;
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
+use jcli_app::certificate;
 use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::key_parser;
 use std::path::PathBuf;
@@ -121,10 +122,11 @@ custom_error! { pub Error
     MakeWitnessLegacyUtxoUnsupported = "making legacy UTxO witness unsupported",
     MakeWitnessAccountCounterMissing = "making account witness requires passing spending counter",
     TxDoesntNeedPayloadAuth = "transaction type doesn't need payload authentification",
+    TxNeedPayloadAuth = "transaction type need payload authentification",
     NoSigningKeys = "No signing keys specified (use -k or --key to specify)",
     ExpectingOnlyOneSigningKey { got: usize }
         = "expecting only one signing keys but got {got}",
-    KeyInvalid = "reading key invalid",
+    CertificateError { error: certificate::Error } = "certificate error {error}",
 }
 
 /*

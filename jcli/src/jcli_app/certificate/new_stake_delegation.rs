@@ -28,6 +28,9 @@ impl StakeDelegation {
             pool_id: self.pool_id.into(),
         };
         let cert = Certificate::StakeDelegation(content);
-        write_cert(self.output.as_ref().map(|x| x.deref()), CertificateType(cert))
+        write_cert(
+            self.output.as_ref().map(|x| x.deref()),
+            CertificateType(cert),
+        )
     }
 }

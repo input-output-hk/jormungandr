@@ -1,9 +1,11 @@
+use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::certificate::{
     Certificate, PoolOwnersSigned, PoolRegistration, SignedCertificate, StakeDelegation,
 };
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
-use chain_impl_mockchain::transaction::{AccountBindingSignature, Payload, Transaction, TxBuilderState, SetAuthData};
-use chain_crypto::{Ed25519, PublicKey};
+use chain_impl_mockchain::transaction::{
+    AccountBindingSignature, Payload, SetAuthData, Transaction, TxBuilderState,
+};
 use jcli_app::certificate::{read_cert, read_input, write_signed_cert, Error};
 use jcli_app::utils::key_parser::{self, parse_ed25519_secret_key};
 use jormungandr_lib::interfaces;
@@ -51,7 +53,7 @@ impl Sign {
             Certificate::PoolRegistration(s) => {
                 let sclone = s.clone();
                 let txbuilder = Transaction::block0_payload_builder(&s);
-                pool_owner_sign(s, Some(sclone), &keys_str, txbuilder, |c, a| {
+                pool_owner_sign(s, Some(&sclone), &keys_str, txbuilder, |c, a| {
                     SignedCertificate::PoolRegistration(c, a)
                 })?
             }
@@ -79,8 +81,7 @@ pub(crate) fn stake_delegation_account_binding_sign(
     delegation: StakeDelegation,
     keys_str: &[String],
     builder: TxBuilderState<SetAuthData<StakeDelegation>>,
-) -> Result<SignedCertificate, Error>
-{
+) -> Result<SignedCertificate, Error> {
     if keys_str.len() > 1 {
         return Err(Error::ExpectingOnlyOneSigningKey {
             got: keys_str.len(),
@@ -91,14 +92,13 @@ pub(crate) fn stake_delegation_account_binding_sign(
 
     // check that it match the stake delegation account
     match delegation.account_id.to_single_account() {
-        None => {},
+        None => {}
         Some(acid) => {
             let pk = private_key.to_public();
-            let cert_pk : PublicKey<Ed25519> = acid.into();
+            let cert_pk: PublicKey<Ed25519> = acid.into();
             if &cert_pk != &pk {
-                return Err(Error::KeyNotFound { index: 0 })
+                return Err(Error::KeyNotFound { index: 0 });
             }
-
         }
     }
 
@@ -109,7 +109,7 @@ pub(crate) fn stake_delegation_account_binding_sign(
 
 pub(crate) fn pool_owner_sign<F, P: Payload>(
     payload: P,
-    mreg: Option<PoolRegistration>, // if present we verify the secret key against the expectations
+    mreg: Option<&PoolRegistration>, // if present we verify the secret key against the expectations
     keys: &[String],
     builder: TxBuilderState<SetAuthData<P>>,
     to_signed_certificate: F,
@@ -132,18 +132,14 @@ where
                 .collect()
         }
         Some(reg) => {
-            let pks = reg.owners;
+            //let pks = &reg.owners;
             let mut found = Vec::new();
             for (isk, k) in keys.iter().enumerate() {
                 let pk = k.to_public();
                 // look for the owner's index of k
-                match pks.iter().enumerate().find(|(_, p)| *p == &pk) {
-                    None => {
-                        return Err(Error::KeyNotFound { index: isk })
-                    }
-                    Some((ipk, _)) => {
-                        found.push((ipk as u16, k))
-                    }
+                match reg.owners.iter().enumerate().find(|(_, p)| *p == &pk) {
+                    None => return Err(Error::KeyNotFound { index: isk }),
+                    Some((ipk, _)) => found.push((ipk as u16, k)),
                 }
             }
             found
