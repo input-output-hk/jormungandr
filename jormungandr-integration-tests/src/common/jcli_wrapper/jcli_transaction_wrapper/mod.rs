@@ -232,6 +232,16 @@ impl JCLITransactionWrapper {
         process_assert::assert_process_failed(output);
     }
 
+    pub fn assert_add_auth(&mut self, key: &PathBuf) -> &mut Self {
+        let output =
+            process_utils::run_process_and_get_output(self.commands.get_auth_command(
+                &key,
+                &self.staging_file_path,
+            ));
+        process_assert::assert_process_exited_successfully(output);
+        self
+    }
+
     pub fn make_and_add_witness_default(
         &mut self,
         private_key: &str,

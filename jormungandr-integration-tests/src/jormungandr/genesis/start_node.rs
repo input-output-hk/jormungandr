@@ -103,6 +103,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
 
     let stake_pool_id = jcli_certificate.assert_get_stake_pool_id(&stake_pool_signcert_file);
 
+    // WRONG
     let stake_delegation_signcert = jcli_certificate.assert_new_signed_stake_pool_delegation(
         &stake_pool_id,
         &stake_key_pub,
