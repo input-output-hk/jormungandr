@@ -5,7 +5,7 @@ use crate::{
     date::BlockDate,
     ledger::ledger::Ledger,
     testing::arbitrary::update_proposal::UpdateProposalData,
-    testing::ledger as mock_ledger,
+    testing::{ConfigBuilder, LedgerBuilder},
 };
 use chain_core::property::ChainLength as ChainLengthProperty;
 use chain_crypto::{Ed25519, SecretKey};
@@ -16,11 +16,10 @@ use quickcheck_macros::quickcheck;
 pub fn ledger_adopt_settings_from_update_proposal(
     update_proposal_data: UpdateProposalData,
 ) -> TestResult {
-    let config = mock_ledger::ConfigBuilder::new()
-        .with_leaders(&update_proposal_data.leaders_ids())
-        .build();
+    let cb = ConfigBuilder::new(0).with_leaders(&update_proposal_data.leaders_ids());
 
-    let (block0_hash, mut ledger) = mock_ledger::create_initial_fake_ledger(&[], config).unwrap();
+    let testledger = LedgerBuilder::from_config(cb).build().expect("cannot build test ledger");
+    let mut ledger = testledger.ledger;
 
     // apply proposal
     let date = ledger.date();
@@ -40,7 +39,7 @@ pub fn ledger_adopt_settings_from_update_proposal(
     // trigger proposal process (build block)
     let block = build_block(
         &ledger,
-        block0_hash,
+        testledger.block0_hash,
         date.next_epoch(),
         &update_proposal_data.block_signing_key,
     );

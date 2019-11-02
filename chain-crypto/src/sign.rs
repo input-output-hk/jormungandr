@@ -189,7 +189,7 @@ impl<T, A: VerificationAlgorithm> Clone for Signature<T, A> {
     }
 }
 
-impl<T, A: VerificationAlgorithm> AsRef<[u8]> for Signature<T, A> {
+impl<T: ?Sized, A: VerificationAlgorithm> AsRef<[u8]> for Signature<T, A> {
     fn as_ref(&self) -> &[u8] {
         self.signdata.as_ref()
     }

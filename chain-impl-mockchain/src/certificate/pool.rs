@@ -1,19 +1,25 @@
+use super::CertificateSlice;
 use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
+use crate::transaction::{
+    AccountBindingSignature, Payload, PayloadAuthData, PayloadData, PayloadSlice,
+    TransactionBindingAuthData,
+};
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
 };
-use chain_crypto::{digest::DigestOf, Blake2b256, Ed25519, PublicKey, Signature, Verification};
+use chain_crypto::{digest::DigestOf, Blake2b256, Ed25519, PublicKey, Verification};
 use chain_time::{DurationSeconds, TimeOffsetSeconds};
+use std::marker::PhantomData;
 use typed_bytes::{ByteArray, ByteBuilder};
 
 /// Pool ID
 pub type PoolId = DigestOf<Blake2b256, PoolRegistration>;
 
 /// signatures with indices
-pub type IndexSignatures<T> = Vec<(u16, Signature<ByteArray<T>, Ed25519>)>;
+pub type IndexSignatures = Vec<(u16, AccountBindingSignature)>;
 
 /// Pool information
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,15 +58,8 @@ pub struct PoolRetirement {
 
 /// Representant of a structure signed by a pool's owners
 #[derive(Debug, Clone)]
-pub struct PoolOwnersSigned<T> {
-    pub inner: T,
-    pub signatures: IndexSignatures<T>,
-}
-
-#[derive(Debug, Clone)]
-pub enum PoolManagement {
-    Update(PoolOwnersSigned<PoolUpdate>),
-    Retirement(PoolOwnersSigned<PoolRetirement>),
+pub struct PoolOwnersSigned {
+    pub signatures: IndexSignatures,
 }
 
 impl PoolRegistration {
@@ -91,6 +90,10 @@ impl PoolUpdate {
             .bytes(self.updated_keys.vrf_public_key.as_ref())
             .bytes(self.updated_keys.kes_public_key.as_ref())
     }
+
+    pub fn serialize(&self) -> ByteArray<Self> {
+        self.serialize_in(ByteBuilder::new()).finalize()
+    }
 }
 
 impl Readable for PoolUpdate {
@@ -113,6 +116,10 @@ impl PoolRetirement {
         bb.bytes(self.pool_id.as_ref())
             .u64(self.retirement_time.into())
     }
+
+    pub fn serialize(&self) -> ByteArray<Self> {
+        self.serialize_in(ByteBuilder::new()).finalize()
+    }
 }
 
 impl Readable for PoolRetirement {
@@ -126,22 +133,7 @@ impl Readable for PoolRetirement {
     }
 }
 
-impl PoolManagement {
-    pub fn serialize(&self) -> ByteArray<Self> {
-        match self {
-            PoolManagement::Update(os) => ByteBuilder::new()
-                .u8(1)
-                .sub(|bb| os.serialize_in(|u, bbi| u.serialize_in(bbi), bb))
-                .finalize(),
-            PoolManagement::Retirement(os) => ByteBuilder::new()
-                .u8(2)
-                .sub(|bb| os.serialize_in(|u, bbi| u.serialize_in(bbi), bb))
-                .finalize(),
-        }
-    }
-}
-
-impl property::Serialize for PoolManagement {
+impl property::Serialize for PoolUpdate {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
         writer.write_all(self.serialize().as_slice())?;
@@ -149,19 +141,61 @@ impl property::Serialize for PoolManagement {
     }
 }
 
-impl Readable for PoolManagement {
-    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        match buf.get_u8()? {
-            1 => {
-                let pos = PoolOwnersSigned::read(buf)?;
-                Ok(PoolManagement::Update(pos))
-            }
-            2 => {
-                let pos = PoolOwnersSigned::read(buf)?;
-                Ok(PoolManagement::Retirement(pos))
-            }
-            tag => Err(ReadError::UnknownTag(tag as u32)),
-        }
+impl property::Serialize for PoolRetirement {
+    type Error = std::io::Error;
+    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+        writer.write_all(self.serialize().as_slice())?;
+        Ok(())
+    }
+}
+
+impl Payload for PoolUpdate {
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = true;
+    type Auth = PoolOwnersSigned;
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
+    }
+    fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(
+            auth.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
+    }
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
+    }
+}
+
+impl Payload for PoolRetirement {
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = true;
+    type Auth = PoolOwnersSigned;
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
+    }
+    fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(
+            auth.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
+    }
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
     }
 }
 
@@ -200,53 +234,94 @@ impl Readable for PoolRegistration {
     }
 }
 
-impl<T> PoolOwnersSigned<T> {
-    pub fn serialize_in<F>(&self, serialize_inner: F, bb: ByteBuilder<Self>) -> ByteBuilder<Self>
-    where
-        F: Fn(&T, ByteBuilder<T>) -> ByteBuilder<T>,
-    {
-        bb.sub(|bbi| serialize_inner(&self.inner, bbi))
-            .iter16(&mut self.signatures.iter(), |bb, (i, s)| {
-                bb.u16(*i).bytes(s.as_ref())
-            })
+impl Payload for PoolRegistration {
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = true;
+    type Auth = PoolOwnersSigned;
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
     }
 
-    pub fn verify<F>(&self, pool_info: &PoolRegistration, serialize_inner: F) -> Verification
-    where
-        F: Fn(&T, ByteBuilder<T>) -> ByteBuilder<T>,
-    {
-        let ba = ByteBuilder::new()
-            .sub(|bb| serialize_inner(&self.inner, bb))
-            .finalize();
-        let signatories = self.signatures.len();
+    fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(
+            auth.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
+    }
 
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
+    }
+}
+
+impl PoolOwnersSigned {
+    pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
+        bb.iter16(&mut self.signatures.iter(), |bb, (i, s)| {
+            bb.u16(*i).bytes(s.as_ref())
+        })
+    }
+
+    pub fn verify<'a>(
+        &self,
+        pool_info: &PoolRegistration,
+        verify_data: &TransactionBindingAuthData<'a>,
+    ) -> Verification {
+        // fast track if we don't meet the management threshold already
+        if self.signatures.len() < pool_info.management_threshold as usize {
+            return Verification::Failed;
+        }
+
+        let mut present = vec![false; pool_info.owners.len()];
+        let mut signatories = 0;
+
+        for (i, sig) in self.signatures.iter() {
+            let i = *i as usize;
+            // Check for out of bounds indices
+            if i >= pool_info.owners.len() {
+                return Verification::Failed;
+            }
+
+            // If already present, then we have a duplicate hence fail
+            if present[i] {
+                return Verification::Failed;
+            } else {
+                present[i] = true;
+            }
+
+            // Verify the cryptographic signature of a signatory
+            let pk = &pool_info.owners[i];
+            if sig.verify_slice(pk, verify_data) == Verification::Failed {
+                return Verification::Failed;
+            }
+            signatories += 1
+        }
+
+        // check if we seen enough unique signatures; it is a redundant check
+        // from the duplicated check + the threshold check
         if signatories < pool_info.management_threshold as usize {
             return Verification::Failed;
         }
 
-        for (i, sig) in self.signatures.iter() {
-            if *i as usize >= pool_info.owners.len() {
-                return Verification::Failed;
-            }
-            let pk = &pool_info.owners[*i as usize];
-            if sig.verify(pk, &ba) == Verification::Failed {
-                return Verification::Failed;
-            }
-        }
-        return Verification::Success;
+        Verification::Success
     }
 }
 
-impl<T: Readable> Readable for PoolOwnersSigned<T> {
+impl Readable for PoolOwnersSigned {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let inner = T::read(buf)?;
         let sigs_nb = buf.get_u16()? as usize;
         let mut signatures = Vec::new();
         for _ in 0..sigs_nb {
             let nb = buf.get_u16()?;
             let sig = deserialize_signature(buf)?;
-            signatures.push((nb, sig))
+            signatures.push((nb, AccountBindingSignature(sig)))
         }
-        Ok(PoolOwnersSigned { inner, signatures })
+        Ok(PoolOwnersSigned { signatures })
     }
 }

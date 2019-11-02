@@ -1,132 +1,144 @@
 use crate::{
-    block::HeaderId,
-    fee::LinearFee,
-    fragment::Fragment,
-    ledger::OutputAddress,
-    testing::{data::AddressData, witness_builder},
-    transaction::{
-        AuthenticatedTransaction, Input, NoExtra, Transaction, TransactionSignDataHash, Witness,
-    },
-    txbuilder::{OutputPolicy, TransactionBuilder as Builder},
+    account::SpendingCounter,
+    fragment::{FragmentId, Fragment},
+    header::HeaderId,
+    testing::{KeysDb, ledger::TestLedger},
+    transaction::{AccountIdentifier, Transaction, NoExtra, TxBuilder, Input, InputEnum, Output, Witness, UtxoPointer},
+    value::Value,
 };
-use chain_addr::Address;
+use chain_addr::{Address, Kind};
 
-pub struct TransactionBuilder {
-    inputs: Vec<Input>,
-    outputs: Vec<OutputAddress>,
+pub struct TestTxBuilder {
+    block0_hash: HeaderId,
 }
 
-impl TransactionBuilder {
-    pub fn new() -> Self {
-        TransactionBuilder {
-            inputs: Vec::new(),
-            outputs: Vec::new(),
-        }
+#[derive(Debug, Clone, PartialEq)]
+pub struct TestTx {
+    tx: Transaction<NoExtra>,
+}
+
+impl TestTx {
+    pub fn get_fragment_id(&self) -> FragmentId {
+        self.clone().get_fragment().hash()
     }
 
-    pub fn with_inputs(&mut self, inputs: Vec<Input>) -> &mut Self {
-        self.inputs.extend(inputs.iter().cloned());
-        self
+    pub fn get_fragment(self) -> Fragment {
+        Fragment::Transaction(self.tx)
     }
 
-    pub fn with_input(&mut self, input: Input) -> &mut Self {
-        self.inputs.push(input);
-        self
-    }
-
-    pub fn with_output(&mut self, output: OutputAddress) -> &mut Self {
-        self.outputs.push(output);
-        self
-    }
-
-    pub fn with_outputs(&mut self, outputs: Vec<OutputAddress>) -> &mut Self {
-        self.outputs.extend(outputs.iter().cloned());
-        self
-    }
-
-    pub fn authenticate(&self) -> TransactionAuthenticator {
-        let transaction = Transaction {
-            inputs: self.inputs.clone(),
-            outputs: self.outputs.clone(),
-            extra: NoExtra,
-        };
-        TransactionAuthenticator::new(transaction)
-    }
-
-    pub fn authenticate_with(
-        &mut self,
-        fee_algorithm: LinearFee,
-        output_policy: OutputPolicy,
-    ) -> TransactionAuthenticator {
-        let transaction = Transaction {
-            inputs: self.inputs.clone(),
-            outputs: self.outputs.clone(),
-            extra: NoExtra,
-        };
-        let tx_builder = Builder::from(transaction);
-        let (_, tx) = tx_builder
-            .seal_with_output_policy(fee_algorithm, output_policy)
-            .unwrap();
-
-        self.inputs = tx.inputs.iter().cloned().collect();
-
-        self.outputs = tx.outputs.iter().cloned().collect();
-
-        TransactionAuthenticator::new(tx)
+    pub fn get_tx(self) -> Transaction<NoExtra> {
+        self.tx
     }
 }
 
-pub struct TransactionAuthenticator {
-    witnesses: Vec<Witness>,
-    transaction: Transaction<Address, NoExtra>,
-}
-
-impl TransactionAuthenticator {
-    pub fn new(transaction: Transaction<Address, NoExtra>) -> Self {
-        TransactionAuthenticator {
-            witnesses: Vec::new(),
-            transaction: transaction,
+impl TestTxBuilder {
+    pub fn new(block0_hash: &HeaderId) -> Self {
+        Self {
+            block0_hash: block0_hash.clone(),
         }
     }
 
-    pub fn transaction_hash(&self) -> TransactionSignDataHash {
-        self.transaction.hash()
+    pub fn move_from_faucet(self, testledger: &mut TestLedger, destination: &Address, value: Value) -> TestTx {
+        let faucet = testledger.faucet.as_mut().expect("test ledger with no faucet configured");
+        assert_eq!(faucet.block0_hash, self.block0_hash);
+        let inputs = vec![faucet.get_input_of(value)];
+        let outputs = vec![Output { address: destination.clone(), value: value }];
+        let tx_builder = TxBuilder::new()
+            .set_payload(&NoExtra)
+            .set_ios(&inputs, &outputs);
+
+        let witness = faucet.make_witness(tx_builder.get_auth_data_for_witness());
+        let witnesses = vec![witness];
+
+        let tx = tx_builder
+            .set_witnesses(&witnesses)
+            .set_payload_auth(&());
+        TestTx { tx }
     }
 
-    pub fn with_witnesses(
-        &mut self,
-        block0: &HeaderId,
-        addreses_data: &Vec<AddressData>,
-    ) -> &mut Self {
-        for address in addreses_data {
-            self.with_witness(&block0, &address);
+    pub fn move_to_outputs_from_faucet(self, testledger: &mut TestLedger, destination: &[Output<Address>]) -> TestTx {
+        let faucet = testledger.faucet.as_mut().expect("test ledger with no faucet configured");
+        assert_eq!(faucet.block0_hash, self.block0_hash);
+        let input_val = Value::sum(destination.iter().map(|o| o.value)).unwrap();
+        let inputs = vec![faucet.get_input_of(input_val)];
+        let tx_builder = TxBuilder::new()
+            .set_payload(&NoExtra)
+            .set_ios(&inputs, &destination);
+
+        let witness = faucet.make_witness(tx_builder.get_auth_data_for_witness());
+        let witnesses = vec![witness];
+
+        let tx = tx_builder
+            .set_witnesses(&witnesses)
+            .set_payload_auth(&());
+        TestTx { tx }
+    }
+
+    pub fn inputs_to_outputs(self, kdb: &KeysDb, testledger: &mut TestLedger, sources: &[Output<Address>], destination: &[Output<Address>]) -> TestTx {
+        let inputs : Vec<_> = sources.iter().map(|out| {
+            match out.address.kind() {
+                Kind::Single(_) | Kind::Group(..) => {
+                    let fragments = testledger.utxodb.find_fragments(&out);
+
+                    if fragments.len() == 0 {
+                        panic!("trying to do a inputs_to_outputs with unknown single utxo")
+                    }
+
+                    // Take the first one ..
+                    let (fragment_id, idx) = fragments[0];
+
+                    Input::from_utxo(UtxoPointer {
+                        transaction_id: fragment_id,
+                        output_index: idx,
+                        value: out.value,
+                    })
+                }
+                Kind::Account(pk) => {
+                    let aid = AccountIdentifier::from_single_account(pk.clone().into());
+                    Input::from_account(aid, out.value)
+                }
+                Kind::Multisig(_) => {
+                    unimplemented!()
+                }
+            }
+        }).collect();
+
+        let tx_builder = TxBuilder::new()
+            .set_payload(&NoExtra)
+            .set_ios(&inputs, &destination);
+
+        let auth_data_hash = tx_builder.get_auth_data_for_witness().hash();
+        let mut witnesses = Vec::with_capacity(inputs.len());
+
+        for (inp, _) in inputs.iter().zip(sources.iter()) {
+            let witness = {
+                match inp.to_enum() {
+                    InputEnum::AccountInput(account_id, _) => {
+                        let aid = account_id.to_single_account().unwrap();
+                        let sk = kdb.find_ed25519_secret_key(&aid.into()).unwrap();
+                        // FIXME - TODO need accountdb to get the latest state of account counter
+                        let counter = SpendingCounter::zero();
+                        Witness::new_account(&self.block0_hash, &auth_data_hash, &counter, sk)
+                    }
+                    InputEnum::UtxoInput(utxopointer) => {
+                        match testledger.utxodb.get(&(utxopointer.transaction_id, utxopointer.output_index)) {
+                            None => {
+                                panic!("cannot find utxo input")
+                            },
+                            Some(output) => {
+                                let sk = kdb.find_by_address(&output.address).unwrap();
+                                Witness::new_utxo(&self.block0_hash, &auth_data_hash, sk)
+                            }
+                        }
+                    }
+                }
+            };
+            witnesses.push(witness)
         }
-        self
-    }
 
-    pub fn with_witness(&mut self, block0: &HeaderId, address_data: &AddressData) -> &mut Self {
-        self.witnesses.push(witness_builder::make_witness(
-            &block0,
-            &address_data,
-            self.transaction_hash(),
-        ));
-        self
-    }
-
-    pub fn with_witness_from(&mut self, witness: Witness) -> &mut Self {
-        self.witnesses.push(witness);
-        self
-    }
-
-    pub fn as_message(&self) -> Fragment {
-        let signed_tx = self.seal();
-        Fragment::Transaction(signed_tx)
-    }
-
-    pub fn seal(&self) -> AuthenticatedTransaction<Address, NoExtra> {
-        AuthenticatedTransaction {
-            transaction: self.transaction.clone(),
-            witnesses: self.witnesses.clone(),
-        }
+        let tx = tx_builder
+            .set_witnesses(&witnesses)
+            .set_payload_auth(&());
+        TestTx { tx }
     }
 }

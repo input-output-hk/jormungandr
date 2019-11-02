@@ -29,6 +29,10 @@ impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.root.is_empty()
+    }
+
     pub fn size(&self) -> usize {
         size_rec(&self.root)
     }
@@ -227,9 +231,15 @@ impl<H: Default + Hasher, K: Eq + Hash, V> FromIterator<(K, V)> for Hamt<H, K, V
 
 impl<H: Default + Hasher, K: Eq + Hash, V: PartialEq> PartialEq for Hamt<H, K, V> {
     fn eq(&self, other: &Self) -> bool {
-        if self.size() != other.size() {
+        // optimised the obvious cases first
+        if self.is_empty() && other.is_empty() {
+            return true;
+        }
+        if self.is_empty() != other.is_empty() {
             return false;
         }
+        // then compare key and values
+        // TODO : optimise by comparing nodes directly
         for (k, v) in self.iter() {
             if let Some(v2) = other.lookup(k) {
                 if v != v2 {
@@ -239,7 +249,7 @@ impl<H: Default + Hasher, K: Eq + Hash, V: PartialEq> PartialEq for Hamt<H, K, V
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 

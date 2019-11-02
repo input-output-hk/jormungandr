@@ -12,7 +12,7 @@ pub struct ByteSlice<'a, T> {
 
 /// A typed Array of bytes
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ByteArray<T> {
+pub struct ByteArray<T: ?Sized> {
     array: Box<[u8]>,
     phantom: PhantomData<T>,
 }

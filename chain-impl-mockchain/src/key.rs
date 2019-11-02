@@ -35,6 +35,13 @@ impl EitherEd25519SecretKey {
             EitherEd25519SecretKey::Normal(sk) => sk.sign(dat),
         }
     }
+
+    pub fn sign_slice<T: ?Sized>(&self, dat: &[u8]) -> crypto::Signature<T, crypto::Ed25519> {
+        match self {
+            EitherEd25519SecretKey::Extended(sk) => sk.sign_slice(dat),
+            EitherEd25519SecretKey::Normal(sk) => sk.sign_slice(dat),
+        }
+    }
 }
 
 pub type SpendingPublicKey = crypto::PublicKey<crypto::Ed25519>;

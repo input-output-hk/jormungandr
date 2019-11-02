@@ -74,7 +74,6 @@ mod test {
     use super::*;
     use crate::timeframe::*;
     use crate::timeline::Timeline;
-    use quickcheck::{Arbitrary, Gen};
     use std::time::{Duration, SystemTime};
 
     #[test]

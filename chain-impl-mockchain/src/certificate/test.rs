@@ -32,26 +32,15 @@ impl Arbitrary for PoolUpdate {
     }
 }
 
-impl<A: Arbitrary> Arbitrary for PoolOwnersSigned<A> {
+impl Arbitrary for PoolOwnersSigned {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let signatoree = Arbitrary::arbitrary(g);
-        let inner = Arbitrary::arbitrary(g);
         let mut signatures = Vec::new();
         for i in 0..signatoree {
             let s = Arbitrary::arbitrary(g);
             signatures.push((i, s));
         }
-        PoolOwnersSigned { inner, signatures }
-    }
-}
-
-impl Arbitrary for PoolManagement {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        if Arbitrary::arbitrary(g) {
-            PoolManagement::Update(Arbitrary::arbitrary(g))
-        } else {
-            PoolManagement::Retirement(Arbitrary::arbitrary(g))
-        }
+        PoolOwnersSigned { signatures }
     }
 }
 
@@ -83,12 +72,13 @@ impl Arbitrary for PoolRegistration {
 
 impl Arbitrary for Certificate {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let option = u8::arbitrary(g) % 4;
+        let option = u8::arbitrary(g) % 5;
         match option {
             0 => Certificate::StakeDelegation(Arbitrary::arbitrary(g)),
             1 => Certificate::OwnerStakeDelegation(Arbitrary::arbitrary(g)),
             2 => Certificate::PoolRegistration(Arbitrary::arbitrary(g)),
-            3 => Certificate::PoolManagement(Arbitrary::arbitrary(g)),
+            3 => Certificate::PoolRetirement(Arbitrary::arbitrary(g)),
+            4 => Certificate::PoolUpdate(Arbitrary::arbitrary(g)),
             _ => panic!("unimplemented"),
         }
     }

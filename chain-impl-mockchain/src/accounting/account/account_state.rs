@@ -127,7 +127,7 @@ impl SpendingCounter {
         SpendingCounter(0)
     }
 
-    fn increment(&self) -> Option<Self> {
+    pub fn increment(&self) -> Option<Self> {
         self.0.checked_add(1).map(SpendingCounter)
     }
 

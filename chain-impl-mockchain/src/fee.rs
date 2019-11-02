@@ -1,9 +1,6 @@
-use crate::certificate::{
-    Certificate, OwnerStakeDelegation, PoolManagement, PoolRegistration, StakeDelegation,
-};
+use crate::certificate::CertificateSlice;
 use crate::transaction as tx;
 use crate::value::Value;
-use chain_addr::Address;
 
 /// Linear fee using the basic affine formula
 /// `COEFFICIENT * bytes(COUNT(tx.inputs) + COUNT(tx.outputs)) + CONSTANT + CERTIFICATE*COUNT(certificates)`.
@@ -24,96 +21,38 @@ impl LinearFee {
     }
 }
 
-pub trait FeeAlgorithm<P> {
-    fn calculate(&self, part: &P) -> Option<Value>;
-}
+pub trait FeeAlgorithm {
+    fn baseline(&self) -> Value;
+    fn fees_for_inputs_outputs(&self, inputs: u8, outputs: u8) -> Value;
+    fn fees_for_certificate<'a>(&self, cert: CertificateSlice<'a>) -> Value;
 
-impl<'a, P, FA: FeeAlgorithm<P>> FeeAlgorithm<P> for &'a FA {
-    fn calculate(&self, part: &P) -> Option<Value> {
-        (*self).calculate(part)
+    fn calculate<'a>(&self, cert: Option<CertificateSlice<'a>>, inputs: u8, outputs: u8) -> Value {
+        self.baseline()
+            .saturating_add(self.fees_for_inputs_outputs(inputs, outputs))
+            .saturating_add(cert.map_or(Value::zero(), |c| self.fees_for_certificate(c)))
+    }
+
+    fn calculate_tx<P: tx::Payload>(&self, tx: &tx::Transaction<P>) -> Value {
+        self.calculate(
+            tx.as_slice().payload().to_certificate_slice(),
+            tx.nb_inputs(),
+            tx.nb_outputs(),
+        )
     }
 }
 
-impl FeeAlgorithm<tx::Transaction<Address, tx::NoExtra>> for LinearFee {
-    fn calculate(&self, tx: &tx::Transaction<Address, tx::NoExtra>) -> Option<Value> {
-        let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
-        let fee = self
-            .coefficient
-            .checked_mul(msz)?
-            .checked_add(self.constant)?;
-        Some(Value(fee))
+impl FeeAlgorithm for LinearFee {
+    fn baseline(&self) -> Value {
+        Value(self.constant)
     }
-}
-
-impl FeeAlgorithm<tx::Transaction<Address, PoolRegistration>> for LinearFee {
-    fn calculate(&self, tx: &tx::Transaction<Address, PoolRegistration>) -> Option<Value> {
-        let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
-        let fee = self
-            .coefficient
-            .checked_mul(msz)?
-            .checked_add(self.constant)?
-            .checked_add(self.certificate)?;
-        Some(Value(fee))
+    fn fees_for_inputs_outputs(&self, inputs: u8, outputs: u8) -> Value {
+        Value(
+            self.coefficient
+                .saturating_mul((inputs as u64) + (outputs as u64)),
+        )
     }
-}
-
-impl FeeAlgorithm<tx::Transaction<Address, PoolManagement>> for LinearFee {
-    fn calculate(&self, tx: &tx::Transaction<Address, PoolManagement>) -> Option<Value> {
-        let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
-        let fee = self
-            .coefficient
-            .checked_mul(msz)?
-            .checked_add(self.constant)?
-            .checked_add(self.certificate)?;
-        Some(Value(fee))
-    }
-}
-
-impl FeeAlgorithm<tx::Transaction<Address, OwnerStakeDelegation>> for LinearFee {
-    fn calculate(&self, tx: &tx::Transaction<Address, OwnerStakeDelegation>) -> Option<Value> {
-        let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
-        let fee = self
-            .coefficient
-            .checked_mul(msz)?
-            .checked_add(self.constant)?
-            .checked_add(self.certificate)?;
-        Some(Value(fee))
-    }
-}
-
-impl FeeAlgorithm<tx::Transaction<Address, StakeDelegation>> for LinearFee {
-    fn calculate(&self, tx: &tx::Transaction<Address, StakeDelegation>) -> Option<Value> {
-        let msz = (tx.inputs.len() as u64).checked_add(tx.outputs.len() as u64)?;
-        let fee = self
-            .coefficient
-            .checked_mul(msz)?
-            .checked_add(self.constant)?
-            .checked_add(self.certificate)?;
-        Some(Value(fee))
-    }
-}
-
-impl FeeAlgorithm<tx::Transaction<Address, Certificate>> for LinearFee {
-    fn calculate(&self, tx: &tx::Transaction<Address, Certificate>) -> Option<Value> {
-        match &tx.extra {
-            Certificate::PoolManagement(c) => self.calculate(&tx.clone().replace_extra(c.clone())),
-            Certificate::PoolRegistration(c) => {
-                self.calculate(&tx.clone().replace_extra(c.clone()))
-            }
-            Certificate::StakeDelegation(c) => self.calculate(&tx.clone().replace_extra(c.clone())),
-            Certificate::OwnerStakeDelegation(c) => {
-                self.calculate(&tx.clone().replace_extra(c.clone()))
-            }
-        }
-    }
-}
-
-impl FeeAlgorithm<tx::Transaction<Address, Option<Certificate>>> for LinearFee {
-    fn calculate(&self, tx: &tx::Transaction<Address, Option<Certificate>>) -> Option<Value> {
-        match &tx.extra {
-            None => self.calculate(&tx.clone().replace_extra(tx::NoExtra)),
-            Some(c) => self.calculate(&tx.clone().replace_extra(c.clone())),
-        }
+    fn fees_for_certificate<'a>(&self, _: CertificateSlice<'a>) -> Value {
+        Value(self.certificate)
     }
 }
 

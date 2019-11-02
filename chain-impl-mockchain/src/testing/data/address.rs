@@ -161,10 +161,7 @@ impl AddressData {
     }
 
     pub fn confirm_transaction(&mut self) {
-        if let Some(spending_counter) = self.spending_counter {
-            let counter: u32 = spending_counter.into();
-            self.spending_counter = Some((counter + 1).into());
-        }
+        self.spending_counter = self.spending_counter.map(|sp| sp.increment().unwrap())
     }
 
     pub fn private_key(&self) -> EitherEd25519SecretKey {
@@ -200,10 +197,6 @@ impl AddressData {
             Kind::Group(other.public_key().clone(), delegation_public_key.clone()),
         );
         AddressData::new(other.private_key, other.spending_counter, user_address)
-    }
-
-    fn generate_random_secret_key() -> EitherEd25519SecretKey {
-        EitherEd25519SecretKey::generate(rand_os::OsRng::new().unwrap())
     }
 }
 

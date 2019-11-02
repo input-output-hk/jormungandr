@@ -17,46 +17,6 @@ use crate::value::{Value, ValueError};
 use chain_addr::Address;
 use std::{error, fmt};
 
-/// Possible error for the builder.
-#[derive(Debug, Clone)]
-pub enum Error {
-    TxInvalidNoInput,
-    TxInvalidNoOutput,
-    TxNotEnoughTotalInput,
-    TxTooMuchTotalInput,
-    MathErr(ValueError),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::TxInvalidNoInput => write!(f, "transaction has no inputs"),
-            Error::TxInvalidNoOutput => write!(f, "transaction has no outputs"),
-            Error::TxNotEnoughTotalInput => write!(f, "not enough input for making transaction"),
-            Error::TxTooMuchTotalInput => write!(f, "too muny input value for making transaction"),
-            Error::MathErr(v) => write!(f, "error in arithmetics {:?}", v),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-}
-
-/// Output policy to be used in transaction. This policy is used then
-/// there is positive balance on in the OUTPUT+FEE-INPUT. Policy
-/// explains how to use that balance. Rember that policy application
-/// may change the amount of the fee.
-#[derive(Debug, Clone)]
-pub enum OutputPolicy {
-    /// Send all extra balance to the given address.
-    One(Address),
-    /// Forget everything, do not try to return money.
-    Forget,
-}
-
 #[derive(Clone, Debug)]
 /// Transaction builder is an object to construct
 /// a transaction with iterative steps (inputs, outputs)
@@ -110,22 +70,22 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
     }
 
     /// Calculate the fees on a given fee algorithm for the current transaction
-    pub fn estimate_fee<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    pub fn estimate_fee<F: FeeAlgorithm<Extra>>(
         &self,
         fee_algorithm: F,
     ) -> Result<Value, ValueError> {
         fee_algorithm
-            .calculate(&self.tx)
+            .calculate(&self.tx.extra, &self.tx.inputs, &self.tx.outputs)
             .ok_or(ValueError::Overflow)
     }
 
     /// Get balance including current feee.
-    pub fn get_balance<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    pub fn get_balance<F: FeeAlgorithm<Extra>>(
         &self,
         fee_algorithm: F,
     ) -> Result<Balance, ValueError> {
         let fee = fee_algorithm
-            .calculate(&self.tx)
+            .calculate(&self.tx.extra, &self.tx.inputs, &self.tx.outputs)
             .ok_or(ValueError::Overflow)?;
         self.tx.balance(fee)
     }
@@ -141,7 +101,7 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
     }
 
     /// Seal the transaction checking that the transaction fits the fee algorithm
-    pub fn seal<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    pub fn seal<F: FeeAlgorithm<Extra>>(
         self,
         fee_algorithm: F,
     ) -> Result<tx::Transaction<Address, Extra>, Error> {
@@ -157,7 +117,7 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
     ///
     /// Along with the transaction, this return the balance unassigned to output policy
     /// if any
-    pub fn seal_with_output_policy<F: FeeAlgorithm<tx::Transaction<Address, Extra>>>(
+    pub fn seal_with_output_policy<F: FeeAlgorithm<Extra>>(
         mut self,
         fee_algorithm: F,
         policy: OutputPolicy,
@@ -165,7 +125,7 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
         // calculate initial fee, maybe we can fit it without any
         // additional calculations.
         let fee = fee_algorithm
-            .calculate(&self.tx)
+            .calculate(&self.tx.extra, &self.tx.inputs, &self.tx.outputs)
             .ok_or(Error::MathErr(ValueError::Overflow))?;
         let pos = match self.tx.balance(fee) {
             Ok(Balance::Negative(_)) => return Err(Error::TxNotEnoughTotalInput),
@@ -198,7 +158,7 @@ impl<Extra: Clone> TransactionBuilder<Extra> {
                     value: Value(0),
                 });
                 let fee = fee_algorithm
-                    .calculate(&tx)
+                    .calculate(&self.tx.extra, &self.tx.inputs, &self.tx.outputs)
                     .ok_or(Error::MathErr(ValueError::Overflow))?;
                 match tx.balance(fee) {
                     Ok(Balance::Positive(value)) => {
@@ -263,7 +223,8 @@ impl TransactionFinalizer {
             None => self.tx.clone().replace_extra(tx::NoExtra).hash(),
             Some(c) => match c {
                 Certificate::PoolRegistration(c) => self.tx.clone().replace_extra(c.clone()).hash(),
-                Certificate::PoolManagement(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::PoolRetirement(c) => self.tx.clone().replace_extra(c.clone()).hash(),
+                Certificate::PoolUpdate(c) => self.tx.clone().replace_extra(c.clone()).hash(),
                 Certificate::StakeDelegation(c) => self.tx.clone().replace_extra(c.clone()).hash(),
                 Certificate::OwnerStakeDelegation(c) => {
                     self.tx.clone().replace_extra(c.clone()).hash()
@@ -285,9 +246,7 @@ impl TransactionFinalizer {
     ///
     /// This doesn't guarantee that the cryptographic witnesses are valid
     /// or that the transaction is valid on any chain.
-    pub fn finalize(
-        self,
-    ) -> Result<tx::AuthenticatedTransaction<Address, Option<Certificate>>, BuildError> {
+    pub fn finalize(self) -> Result<tx::Transaction<Option<Certificate>>, BuildError> {
         let mut witnesses_flatten = Vec::new();
         for (i, w) in self.witnesses.iter().enumerate() {
             match w {
@@ -319,12 +278,19 @@ impl TransactionFinalizer {
                     };
                     Ok(Fragment::PoolRegistration(atx))
                 }
-                Certificate::PoolManagement(c) => {
+                Certificate::PoolRetirement(c) => {
                     let atx = tx::AuthenticatedTransaction {
                         transaction: tx.transaction.clone().replace_extra(c.clone()),
                         witnesses: tx.witnesses,
                     };
-                    Ok(Fragment::PoolManagement(atx))
+                    Ok(Fragment::PoolRetirement(atx))
+                }
+                Certificate::PoolUpdate(c) => {
+                    let atx = tx::AuthenticatedTransaction {
+                        transaction: tx.transaction.clone().replace_extra(c.clone()),
+                        witnesses: tx.witnesses,
+                    };
+                    Ok(Fragment::PoolUpdate(atx))
                 }
                 Certificate::StakeDelegation(c) => {
                     let atx = tx::AuthenticatedTransaction {
@@ -363,7 +329,9 @@ mod tests {
         fee: LinearFee,
     ) -> TestResult {
         let builder = builder_ios(&inputs, &outputs);
-        let fee_value = fee.calculate(&builder.tx).unwrap();
+        let fee_value = fee
+            .calculate(&builder.tx.extra, &builder.tx.inputs, &builder.tx.outputs)
+            .unwrap();
 
         let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
 
@@ -401,7 +369,7 @@ mod tests {
         outputs: &ArbitraryOutputs,
         fee: Value,
     ) -> Result<Value, ValueError> {
-        let input_sum = Value::sum(inputs.0.iter().map(|input| input.value)).unwrap();
+        let input_sum = Value::sum(inputs.0.iter().map(|input| input.value())).unwrap();
         let output_sum = Value::sum(outputs.0.iter().map(|output| output.1)).unwrap();
         (input_sum - output_sum).and_then(|balance| balance - fee)
     }
@@ -476,11 +444,7 @@ mod tests {
     fn arbitrary_input(gen: &mut impl Gen, value: u64) -> Input {
         let mut input_ptr = [0; INPUT_PTR_SIZE];
         gen.fill_bytes(&mut input_ptr);
-        Input {
-            index_or_account: u8::arbitrary(gen),
-            value: Value(value),
-            input_ptr,
-        }
+        Input::new(u8::arbitrary(gen), Value(value), input_ptr)
     }
 
     fn split_value(gen: &mut impl Gen, value: u64, parts: u16) -> Vec<u64> {
@@ -543,9 +507,11 @@ mod tests {
     ) -> TestResult {
         let mut builder = TransactionBuilder::new_payload(certificate);
         builder.add_input(&input);
-        let fee_value = fee.calculate(&builder.tx).unwrap();
+        let fee_value = fee
+            .calculate(&builder.tx.extra, &builder.tx.inputs, &builder.tx.outputs)
+            .unwrap();
         let result = builder.seal_with_output_policy(fee, OutputPolicy::Forget);
-        let expected_balance_res = input.value - fee_value;
+        let expected_balance_res = input.value() - fee_value;
         match (expected_balance_res, result) {
             (Ok(expected_balance), Ok((builder_balance, tx))) => {
                 let result = validate_builder_balance(expected_balance, builder_balance);

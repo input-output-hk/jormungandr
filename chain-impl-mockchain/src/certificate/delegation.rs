@@ -1,10 +1,14 @@
-use crate::certificate::PoolId;
-use crate::transaction::AccountIdentifier;
+use crate::accounting::account::DelegationType;
+use crate::certificate::{CertificateSlice, PoolId};
+use crate::transaction::{
+    AccountBindingSignature, AccountIdentifier, Payload, PayloadAuthData, PayloadData, PayloadSlice,
+};
 
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
     property,
 };
+use std::marker::PhantomData;
 use typed_bytes::ByteBuilder;
 
 /// A self delegation to a specific StakePoolId.
@@ -20,6 +24,10 @@ impl OwnerStakeDelegation {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.bytes(self.pool_id.as_ref())
     }
+
+    pub fn get_delegation_type(&self) -> DelegationType {
+        DelegationType::Full(self.pool_id.clone())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +40,10 @@ impl StakeDelegation {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.bytes(self.account_id.as_ref())
             .bytes(self.pool_id.as_ref())
+    }
+
+    pub fn get_delegation_type(&self) -> DelegationType {
+        DelegationType::Full(self.pool_id.clone())
     }
 }
 
@@ -46,6 +58,26 @@ impl Readable for OwnerStakeDelegation {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let pool_id = <[u8; 32]>::read(buf)?.into();
         Ok(Self { pool_id })
+    }
+}
+
+impl Payload for OwnerStakeDelegation {
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = false;
+    type Auth = ();
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
+    }
+    fn payload_auth_data(_: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(Vec::with_capacity(0).into(), PhantomData)
+    }
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
     }
 }
 
@@ -69,6 +101,27 @@ impl Readable for StakeDelegation {
             account_id: account_identifier.into(),
             pool_id,
         })
+    }
+}
+
+impl Payload for StakeDelegation {
+    const HAS_DATA: bool = true;
+    const HAS_AUTH: bool = true;
+    type Auth = AccountBindingSignature;
+    fn payload_data(&self) -> PayloadData<Self> {
+        PayloadData(
+            self.serialize_in(ByteBuilder::new())
+                .finalize_as_vec()
+                .into(),
+            PhantomData,
+        )
+    }
+
+    fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
+        PayloadAuthData(auth.as_ref().to_owned().into(), PhantomData)
+    }
+    fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
+        Some(CertificateSlice::from(p))
     }
 }
 

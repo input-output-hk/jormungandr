@@ -44,11 +44,18 @@
 //!
 
 use super::hash::LevelIndex;
+use std::fmt;
 
 /// This is a node size bitmap to allow to find element
 /// in the node's array
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct SmallBitmap(u32);
+
+impl fmt::Debug for SmallBitmap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SmallBitmap {:032b}", self.0)
+    }
+}
 
 impl SmallBitmap {
     /// Create a new bitmap with no element

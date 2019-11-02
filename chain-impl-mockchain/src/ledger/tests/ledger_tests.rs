@@ -1,3 +1,4 @@
+/*
 #![cfg(test)]
 
 use crate::fee::FeeAlgorithm;
@@ -15,8 +16,6 @@ use crate::{
         },
         data::AddressData,
         ledger::{self, ConfigBuilder},
-        requests,
-        tx_builder::TransactionBuilder,
         TestGen,
     },
     transaction::*,
@@ -25,28 +24,6 @@ use crate::{
 use chain_addr::Discrimination;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
-
-macro_rules! assert_err {
-    ($left: expr, $right: expr) => {
-        match &($left) {
-            left_val => match &($right) {
-                Err(e) => {
-                    if !(e == left_val) {
-                        panic!(
-                            "assertion failed: error mismatch \
-                             (left: `{:?}, right: `{:?}`)",
-                            *left_val, *e
-                        )
-                    }
-                }
-                Ok(_) => panic!(
-                    "assertion failed: expected error {:?} but got success",
-                    *left_val
-                ),
-            },
-        }
-    };
-}
 
 #[quickcheck]
 pub fn ledger_accepts_correct_transaction(
@@ -100,7 +77,7 @@ pub fn total_funds_are_const_in_ledger(
     mut transaction_data: ArbitraryValidTransactionData,
 ) -> TestResult {
     let message =
-        requests::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
+        ledger::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
     let (block0_hash, ledger) = ledger::create_initial_fake_ledger(
         &[message],
         ConfigBuilder::new()
@@ -114,9 +91,9 @@ pub fn total_funds_are_const_in_ledger(
     let outputs = transaction_data.make_outputs();
     let input_addresses = transaction_data.input_addresses();
 
-    let signed_tx = TransactionBuilder::new()
-        .with_inputs(inputs)
-        .with_outputs(outputs)
+    let signed_tx = TxBuilder::new()
+        .set_nopayload()
+        .set_ios(&inputs, &outputs)
         .authenticate()
         .with_witnesses(&block0_hash, &input_addresses)
         .seal();
@@ -133,7 +110,7 @@ pub fn total_funds_are_const_in_ledger(
             let total_funds_after = calculate_total_funds_in_ledger(&ledger);
             let fee = transaction_data
                 .fee
-                .calculate(&signed_tx.transaction)
+                .calculate_tx(&signed_tx.transaction)
                 .unwrap()
                 .0;
 
@@ -163,166 +140,4 @@ pub fn total_funds_are_const_in_ledger(
         }
     }
 }
-
-#[test]
-pub fn utxo_no_enough_signatures() {
-    let faucet = AddressData::utxo(Discrimination::Test);
-    let receiver = AddressData::utxo(Discrimination::Test);
-
-    let message = requests::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(42000),
-    ));
-    let (_, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-    let mut utxos = ledger.utxos();
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo_entry(utxos.next().unwrap()))
-        .with_output(Output::from_address(receiver.address.clone(), Value(1)))
-        .authenticate()
-        .seal();
-    let fragment_id = Fragment::Transaction(signed_tx.clone()).hash();
-
-    let fees = ledger.get_ledger_parameters();
-    assert_err!(
-        TransactionMalformed {
-            source: TxVerifyError::NumberOfSignaturesInvalid {
-                actual: 0,
-                expected: 1
-            }
-        },
-        ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
-    )
-}
-
-#[test]
-pub fn transaction_with_more_than_253_outputs() {
-    let faucet = AddressData::utxo(Discrimination::Test);
-    let mut outputs = vec![];
-    for _ in 0..=254 {
-        let receiver = AddressData::utxo(Discrimination::Test);
-        outputs.push(Output::from_address(receiver.address.clone(), Value(1)));
-    }
-
-    let message = requests::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(256),
-    ));
-
-    let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-    let mut utxos = ledger.utxos();
-    let signed_tx = TransactionBuilder::new()
-        .with_input(Input::from_utxo_entry(utxos.next().unwrap()))
-        .with_outputs(outputs)
-        .authenticate()
-        .with_witness(&block0_hash, &faucet)
-        .seal();
-    let fragment_id = TestGen::hash();
-
-    let fees = ledger.get_ledger_parameters();
-    assert_err!(
-        TransactionMalformed {
-            source: TxVerifyError::TooManyOutputs {
-                expected: 254,
-                actual: 255
-            }
-        },
-        ledger.apply_transaction(&fragment_id, &signed_tx, &fees)
-    );
-}
-
-#[test]
-pub fn iterate() {
-    let faucet = AddressData::utxo(Discrimination::Test);
-
-    let message = requests::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        Value(42000),
-    ));
-    let (_block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-
-    // FIXME: generate arbitrary ledger
-
-    for item in ledger.iter() {
-        match item {
-            Entry::Globals(globals) => {
-                println!(
-                    "Globals date={} length={} block0_hash={} start_time={:?} discr={} kes_update_speed={}",
-                    globals.date,
-                    globals.chain_length,
-                    globals.static_params.block0_initial_hash,
-                    globals.static_params.block0_start_time,
-                    globals.static_params.discrimination,
-                    globals.static_params.kes_update_speed,
-                );
-            }
-            Entry::Utxo(entry) => {
-                println!(
-                    "Utxo {} {} {}",
-                    entry.fragment_id, entry.output_index, entry.output
-                );
-            }
-            Entry::OldUtxo(entry) => {
-                println!(
-                    "OldUtxo {} {} {}",
-                    entry.fragment_id, entry.output_index, entry.output
-                );
-            }
-            Entry::Account((id, state)) => {
-                println!(
-                    "Account {} {} {:?} {}",
-                    id,
-                    u32::from(state.counter),
-                    state.delegation,
-                    state.value,
-                );
-            }
-            Entry::ConfigParam(param) => {
-                println!(
-                    "ConfigParam {:?} {:?}",
-                    crate::config::Tag::from(&param),
-                    param,
-                );
-            }
-            Entry::UpdateProposal((id, state)) => {
-                println!(
-                    "UpdateProposal {} {:?} {} {:?}",
-                    id, state.proposal, state.proposal_date, state.votes
-                );
-            }
-            Entry::MultisigAccount((id, state)) => {
-                println!(
-                    "MultisigAccount {} {} {:?} {}",
-                    id,
-                    u32::from(state.counter),
-                    state.delegation,
-                    state.value,
-                );
-            }
-            Entry::MultisigDeclaration((id, decl)) => {
-                println!(
-                    "MultisigDeclaration {} {} {}",
-                    id,
-                    decl.threshold(),
-                    decl.total(),
-                );
-            }
-            Entry::StakePool((id, info)) => {
-                println!(
-                    "StakePool {} {} {:?} {:?}",
-                    id, info.serial, info.owners, info.keys,
-                );
-            }
-            Entry::Pot(ent) => {
-                println!("Pot {:?} {}", ent.entry_type(), ent.value())
-            }
-        }
-    }
-
-    let ledger2: Result<Ledger, _> = ledger.iter().collect();
-    let ledger2 = ledger2.unwrap();
-
-    assert!(ledger == ledger2);
-}
+*/

@@ -1,4 +1,4 @@
-use super::transaction::*;
+use super::element::TransactionSignDataHash;
 use crate::account;
 use crate::header::HeaderId;
 use crate::key::{
@@ -163,6 +163,12 @@ impl Witness {
             Witness::Account(_) => Verification::Failed,
             Witness::Multisig(_) => Verification::Failed,
         }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        use chain_core::property::Serialize;
+        self.serialize_as_vec()
+            .expect("memory serialize is expected to just work")
     }
 }
 
