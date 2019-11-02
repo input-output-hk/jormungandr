@@ -83,10 +83,12 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     let pool_kes = startup::create_new_key_pair("SumEd25519_12");
 
     // note we use the faucet as the owner to this pool
-    let stake_key = faucet.private_key;
-    let stake_key_pub = faucet.delegation_key;
+    let owner_key = faucet.private_key;
+    let owner_pubkey = faucet.public_key;
+    let stake_key_pub = &faucet.delegation_key;
 
-    let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key);
+    let owner_key_file = file_utils::create_file_in_temp("owner_key.sk", &owner_key);
+    let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key.private_key);
 
     let jcli_certificate = JCLICertificateWrapper::new();
 
@@ -94,10 +96,10 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         &pool_kes.public_key,
         "1010101010",
         &pool_vrf.public_key,
-        &stake_key_file,
+        &owner_key_file,
         0,
         1,
-        &faucet.public_key,
+        &owner_pubkey,
     );
     let stake_pool_signcert = file_utils::read_file(&stake_pool_signcert_file);
 
@@ -116,14 +118,14 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_consensus_leaders_ids(vec![leader.public_key.clone()])
         .with_kes_update_speed(43200)
-        .with_initial_certs(vec![
-            stake_pool_signcert.clone(),
-            stake_delegation_signcert.clone(),
-        ])
         .with_funds(vec![Fund {
             address: faucet.address.clone(),
             value: 100.into(),
         }])
+        .with_initial_certs(vec![
+            stake_pool_signcert.clone(),
+            stake_delegation_signcert.clone(),
+        ])
         .build();
 
     let secret =
