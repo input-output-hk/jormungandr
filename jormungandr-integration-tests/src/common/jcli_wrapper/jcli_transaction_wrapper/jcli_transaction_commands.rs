@@ -181,11 +181,7 @@ impl TransactionCommands {
         command
     }
 
-    pub fn get_auth_command(
-        &self,
-        signing_key: &PathBuf,
-        staging_file: &PathBuf,
-    ) -> Command {
+    pub fn get_auth_command(&self, signing_key: &PathBuf, staging_file: &PathBuf) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command
             .arg("transaction")

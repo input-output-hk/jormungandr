@@ -87,7 +87,8 @@ pub fn create_new_stake_pool(
         1u32,
         &account.public_key,
     );
-    let stake_pool_certificate_file = file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_certificate);
+    let stake_pool_certificate_file =
+        file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_certificate);
 
     //  &owner_stake_key,
 
@@ -102,8 +103,7 @@ pub fn create_new_stake_pool(
     account.confirm_transaction();
     jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr_rest_address);
 
-    let stake_pool_id =
-        certificate_wrapper.assert_get_stake_pool_id(&stake_pool_certificate_file);
+    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(&stake_pool_certificate_file);
 
     assert!(
         jcli_wrapper::assert_rest_get_stake_pools(&jormungandr_rest_address)
@@ -123,10 +123,8 @@ pub fn delegate_stake(
     let owner_stake_key =
         file_utils::create_file_in_temp("stake_key.private_key", &account.private_key);
     let certificate_wrapper = JCLICertificateWrapper::new();
-    let stake_pool_delegation = certificate_wrapper.assert_new_stake_delegation(
-        &stake_pool_id,
-        &account.public_key,
-    );
+    let stake_pool_delegation =
+        certificate_wrapper.assert_new_stake_delegation(&stake_pool_id, &account.public_key);
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr_rest_address);
     let fees: LinearFees = settings.fees.into();

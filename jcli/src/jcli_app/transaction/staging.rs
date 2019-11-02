@@ -312,15 +312,15 @@ impl Staging {
                     Err(Error::TxNeedPayloadAuth)?
                 }
                 match &self.extra {
-                    None => self.make_fragment(&chain::transaction::NoExtra, &(), Fragment::Transaction),
-                    Some(cert) => {
-                        match cert.clone().into() {
-                            Certificate::OwnerStakeDelegation(osd) => {
-                                self.make_fragment(&osd, &(), Fragment::OwnerStakeDelegation)
-                            }
-                            _ => unreachable!(),
-                        }
+                    None => {
+                        self.make_fragment(&chain::transaction::NoExtra, &(), Fragment::Transaction)
                     }
+                    Some(cert) => match cert.clone().into() {
+                        Certificate::OwnerStakeDelegation(osd) => {
+                            self.make_fragment(&osd, &(), Fragment::OwnerStakeDelegation)
+                        }
+                        _ => unreachable!(),
+                    },
                 }
             }
             Some(signed_cert) => {

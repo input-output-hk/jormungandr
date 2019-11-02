@@ -143,10 +143,7 @@ impl JCLICertificateWrapper {
         file_utils::read_file(&stake_delegation_signcert_file)
     }
 
-    pub fn assert_new_stake_pool_retirement(
-        &self,
-        stake_pool_id: &str,
-    ) -> String {
+    pub fn assert_new_stake_pool_retirement(&self, stake_pool_id: &str) -> String {
         let pool_id = PoolId::from_str(&stake_pool_id).unwrap();
         let start_validity = 0u64;
         let certificate = build_stake_pool_retirement_cert(pool_id, start_validity);
