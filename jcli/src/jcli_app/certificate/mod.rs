@@ -87,7 +87,7 @@ impl NewArgs {
 
 impl PrintArgs {
     pub fn exec(self) -> Result<(), Error> {
-        let cert = read_cert(self.input.as_ref().map(|x| x.deref()))?;
+        let cert = read_cert_or_signed_cert(self.input.as_ref().map(|x| x.deref()))?;
         println!("{:?}", cert);
         Ok(())
     }
