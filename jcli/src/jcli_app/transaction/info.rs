@@ -31,7 +31,7 @@ pub struct Info {
     ///
     #[structopt(
         long = "format",
-        default_value = "Transaction `{id}' ({status})\n  Input:   {input}\n  Output:  {output}\n  Fees:    {fee}\n  Balance: {balance}\n"
+        default_value = "Transaction {sign-data-hash} ({status})\n  Input:   {input}\n  Output:  {output}\n  Fees:    {fee}\n  Balance: {balance}\n"
     )]
     pub format: String,
 
@@ -176,10 +176,6 @@ impl Info {
 
     fn display_info(&self, writer: impl Write, transaction: &Staging) -> Result<(), Error> {
         let mut vars = HashMap::new();
-
-        //let fee_algo = self.fee.linear_fee();
-        //let tx = transaction.transaction();
-
         vars.insert("status".to_owned(), transaction.staging_kind_name());
         vars.insert(
             "sign-data-hash".to_owned(),
@@ -197,19 +193,21 @@ impl Info {
             "num_witnesses".to_owned(),
             transaction.witness_count().to_string(),
         );
-        /*
-        vars.insert("input".to_owned(), tx.total_input()?.0.to_string());
-        vars.insert("output".to_owned(), tx.total_output()?.0.to_string());
-        vars.insert("fee".to_owned(), transaction.fees(&fee_algo)?.0.to_string());
+        vars.insert("input".to_owned(), transaction.total_input()?.0.to_string());
+        vars.insert(
+            "output".to_owned(),
+            transaction.total_output()?.0.to_string(),
+        );
+        let fee_algo = self.fee.linear_fee();
+        vars.insert("fee".to_owned(), transaction.fees(&fee_algo).0.to_string());
         vars.insert(
             "balance".to_owned(),
-            match transaction.balance(fee_algo)? {
+            match transaction.balance(&fee_algo)? {
                 Balance::Negative(value) => format!("-{}", value.0),
                 Balance::Positive(value) => format!("+{}", value.0),
                 Balance::Zero => "0".to_string(),
             },
         );
-        */
         self.write_info(writer, &self.format, vars)
     }
 
