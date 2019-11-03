@@ -1,3 +1,4 @@
+use crate::network::p2p::limits;
 use bincode;
 use chain_core::property;
 use network_core::gossip;
@@ -39,7 +40,10 @@ impl property::Serialize for Id {
     type Error = bincode::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        bincode::serialize_into(writer, &self.0)
+        let mut config = bincode::config();
+        config.limit(limits::MAX_ID_SIZE);
+
+        config.serialize_into(writer, &self.0)
     }
 }
 
@@ -47,6 +51,9 @@ impl property::Deserialize for Id {
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        bincode::deserialize_from(reader).map(Id)
+        let mut config = bincode::config();
+        config.limit(limits::MAX_ID_SIZE);
+
+        config.deserialize_from(reader).map(Id)
     }
 }
