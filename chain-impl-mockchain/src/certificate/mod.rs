@@ -4,7 +4,7 @@ mod pool;
 #[cfg(test)]
 mod test;
 
-use crate::transaction::{Payload, PayloadSlice};
+use crate::transaction::{Payload, PayloadData, PayloadSlice};
 
 pub use delegation::{OwnerStakeDelegation, StakeDelegation};
 pub use pool::{
@@ -60,6 +60,49 @@ impl<'a> CertificateSlice<'a> {
             CertificateSlice::OwnerStakeDelegation(c) => {
                 Certificate::OwnerStakeDelegation(c.into_payload())
             }
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum CertificatePayload {
+    StakeDelegation(PayloadData<StakeDelegation>),
+    OwnerStakeDelegation(PayloadData<OwnerStakeDelegation>),
+    PoolRegistration(PayloadData<PoolRegistration>),
+    PoolRetirement(PayloadData<PoolRetirement>),
+    PoolUpdate(PayloadData<PoolUpdate>),
+}
+
+impl<'a> From<&'a Certificate> for CertificatePayload {
+    fn from(certificate: &'a Certificate) -> Self {
+        match certificate {
+            Certificate::StakeDelegation(payload) => {
+                CertificatePayload::StakeDelegation(payload.payload_data())
+            }
+            Certificate::OwnerStakeDelegation(payload) => {
+                CertificatePayload::OwnerStakeDelegation(payload.payload_data())
+            }
+            Certificate::PoolRegistration(payload) => {
+                CertificatePayload::PoolRegistration(payload.payload_data())
+            }
+            Certificate::PoolRetirement(payload) => {
+                CertificatePayload::PoolRetirement(payload.payload_data())
+            }
+            Certificate::PoolUpdate(payload) => {
+                CertificatePayload::PoolUpdate(payload.payload_data())
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a CertificatePayload> for CertificateSlice<'a> {
+    fn from(certificate: &'a CertificatePayload) -> Self {
+        match certificate {
+            CertificatePayload::StakeDelegation(payload) => payload.borrow().into(),
+            CertificatePayload::OwnerStakeDelegation(payload) => payload.borrow().into(),
+            CertificatePayload::PoolRegistration(payload) => payload.borrow().into(),
+            CertificatePayload::PoolRetirement(payload) => payload.borrow().into(),
+            CertificatePayload::PoolUpdate(payload) => payload.borrow().into(),
         }
     }
 }
