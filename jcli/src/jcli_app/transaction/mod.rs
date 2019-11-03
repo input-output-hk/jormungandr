@@ -44,9 +44,11 @@ pub enum Transaction {
     Finalize(finalize::Finalize),
     /// Finalize the transaction
     Seal(seal::Seal),
-    /// get the Transaction ID from the given transaction
-    /// (if the transaction is edited, the returned value will change)
+    /// get the Transaction ID from the given sealed transaction
     Id(common::CommonTransaction),
+    /// get the data to sign from the given transaction
+    /// (if the transaction is edited, the returned value will change)
+    DataForWitness(common::CommonTransaction),
     /// display the info regarding a given transaction
     Info(info::Info),
     /// create witnesses
@@ -149,6 +151,7 @@ impl Transaction {
             Transaction::Finalize(finalize) => finalize.exec(),
             Transaction::Seal(seal) => seal.exec(),
             Transaction::Id(common) => display_id(common),
+            Transaction::DataForWitness(common) => display_data_for_witness(common),
             Transaction::Info(info) => info.exec(),
             Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
             Transaction::Auth(auth) => auth.exec(),
@@ -158,8 +161,14 @@ impl Transaction {
 }
 
 fn display_id(common: common::CommonTransaction) -> Result<(), Error> {
-    let id = common.load()?.transaction_sign_data_hash();
+    let id = common.load()?.fragment()?.hash();
     println!("{}", id);
+    Ok(())
+}
+
+fn display_data_for_witness(common: common::CommonTransaction) -> Result<(), Error> {
+    let old_id = common.load()?.transaction_sign_data_hash();
+    println!("{}", old_id);
     Ok(())
 }
 
