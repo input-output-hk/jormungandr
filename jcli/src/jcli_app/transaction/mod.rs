@@ -44,9 +44,13 @@ pub enum Transaction {
     Finalize(finalize::Finalize),
     /// Finalize the transaction
     Seal(seal::Seal),
-    /// get the Transaction ID from the given transaction
-    /// (if the transaction is edited, the returned value will change)
+    /// get the Fragment ID from the given 'sealed' transaction
+    FragmentId(common::CommonTransaction),
+    /// DEPRECATED: use 'data-for-witness' instead
     Id(common::CommonTransaction),
+    /// get the data to sign from the given transaction
+    /// (if the transaction is edited, the returned value will change)
+    DataForWitness(common::CommonTransaction),
     /// display the info regarding a given transaction
     Info(info::Info),
     /// create witnesses
@@ -148,7 +152,9 @@ impl Transaction {
             Transaction::AddCertificate(add_certificate) => add_certificate.exec(),
             Transaction::Finalize(finalize) => finalize.exec(),
             Transaction::Seal(seal) => seal.exec(),
+            Transaction::FragmentId(common) => display_fragment_id(common),
             Transaction::Id(common) => display_id(common),
+            Transaction::DataForWitness(common) => display_data_for_witness(common),
             Transaction::Info(info) => info.exec(),
             Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
             Transaction::Auth(auth) => auth.exec(),
@@ -158,7 +164,18 @@ impl Transaction {
 }
 
 fn display_id(common: common::CommonTransaction) -> Result<(), Error> {
+    eprintln!("DEPRECATED: use 'data-for-witness' instead");
+    display_data_for_witness(common)
+}
+
+fn display_data_for_witness(common: common::CommonTransaction) -> Result<(), Error> {
     let id = common.load()?.transaction_sign_data_hash();
+    println!("{}", id);
+    Ok(())
+}
+
+fn display_fragment_id(common: common::CommonTransaction) -> Result<(), Error> {
+    let id = common.load()?.fragment()?.hash();
     println!("{}", id);
     Ok(())
 }

@@ -26,7 +26,7 @@ pub struct Info {
     /// formatting for the output to displays
     /// user "{name}" to display the variable with the named `name'.
     ///
-    /// available variables: id, num_inputs, num_outputs, num_witnesses, fee
+    /// available variables: sign-data-hash, num_inputs, num_outputs, num_witnesses, fee
     /// balance, input, output and status
     ///
     #[structopt(
