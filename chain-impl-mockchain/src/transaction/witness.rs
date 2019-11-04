@@ -3,12 +3,12 @@ use crate::account;
 use crate::header::HeaderId;
 use crate::key::{
     deserialize_public_key, deserialize_signature, serialize_public_key, serialize_signature,
-    EitherEd25519SecretKey, SpendingPublicKey, SpendingSignature,
+    EitherEd25519SecretKey, SpendingSignature,
 };
 use crate::multisig;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
-use chain_crypto::{Ed25519Bip32, PublicKey, SecretKey, Signature, Verification};
+use chain_crypto::{Ed25519Bip32, PublicKey, SecretKey, Signature};
 
 /// Structure that proofs that certain user agrees with
 /// some data. This structure is used to sign `Transaction`
@@ -148,23 +148,6 @@ impl Witness {
         Witness::Account(sig)
     }
 
-    // Verify the given `TransactionSignDataHash` using the witness.
-    pub fn verify_utxo(
-        &self,
-        public_key: &SpendingPublicKey,
-        block0: &HeaderId,
-        sign_data_hash: &TransactionSignDataHash,
-    ) -> Verification {
-        match self {
-            Witness::OldUtxo(_xpub, _signature) => unimplemented!(),
-            Witness::Utxo(signature) => {
-                signature.verify(public_key, &WitnessUtxoData::new(block0, sign_data_hash))
-            }
-            Witness::Account(_) => Verification::Failed,
-            Witness::Multisig(_) => Verification::Failed,
-        }
-    }
-
     pub fn to_bytes(&self) -> Vec<u8> {
         use chain_core::property::Serialize;
         self.serialize_as_vec()
@@ -267,18 +250,6 @@ pub mod test {
                 }
                 _ => panic!("not implemented"),
             }
-        }
-    }
-
-    quickcheck! {
-
-        /// ```
-        /// \forall w=Witness(tx) => w.verifies(tx)
-        /// ```
-        fn prop_witness_verifies_own_tx(sk: TransactionSigningKey, tx:TransactionSignDataHash, block0: HeaderId) -> bool {
-            let pk = sk.0.to_public();
-            let witness = Witness::new_utxo(&block0, &tx, &sk.0);
-            witness.verify_utxo(&pk, &block0, &tx) == Verification::Success
         }
     }
 }
