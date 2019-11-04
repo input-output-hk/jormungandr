@@ -675,6 +675,16 @@ impl Ledger {
         self.settings.consensus_version
     }
 
+    pub fn utxo_out(
+        &self,
+        fragment_id: FragmentId,
+        index: TransactionIndex,
+    ) -> Option<&Output<Address>> {
+        self.utxos
+            .get(&fragment_id, &index)
+            .map(|entry| entry.output)
+    }
+
     pub fn utxos<'a>(&'a self) -> utxo::Iter<'a, Address> {
         self.utxos.iter()
     }
