@@ -390,22 +390,17 @@ impl Ledger {
             Fragment::StakeDelegation(tx) => {
                 let tx = tx.as_slice();
                 let payload = tx.payload().into_payload();
-                match payload.account_id.to_single_account() {
-                    None => {
-                        return Err(DelegationError::StakeDelegationAccountIsInvalid(
-                            payload.account_id.clone(),
-                        )
-                        .into());
-                    }
-                    Some(account_pk) => {
-                        let signature = tx.payload_auth().into_payload_auth();
-                        let verified = signature
-                            .verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data());
-                        if verified == Verification::Failed {
-                            return Err(Error::StakeDelegationSignatureFailed);
-                        }
-                    }
+                let account_pk = payload
+                    .account_id
+                    .to_single_account()
+                    .ok_or(Error::AccountIdentifierInvalid)?;
+                let signature = tx.payload_auth().into_payload_auth();
+                let verified =
+                    signature.verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data());
+                if verified == Verification::Failed {
+                    return Err(Error::StakeDelegationSignatureFailed);
                 }
+
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_stake_delegation(&payload)?;
@@ -571,20 +566,13 @@ impl Ledger {
     ) -> Result<Self, Error> {
         let pool_id = &auth_cert.pool_id;
 
-        if !self.delegation.stake_pool_exists(pool_id) {
-            return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(pool_id.clone()).into());
-        }
-
-        if let Some(account_key) = auth_cert.account_id.to_single_account() {
-            self.accounts = self
-                .accounts
-                .set_delegation(&account_key, DelegationType::Full(pool_id.clone()))?;
-        } else {
-            return Err(DelegationError::StakeDelegationAccountIsInvalid(
-                auth_cert.account_id.clone(),
-            )
-            .into());
-        }
+        let account_key = auth_cert
+            .account_id
+            .to_single_account()
+            .ok_or(Error::AccountIdentifierInvalid)?;
+        self.accounts = self
+            .accounts
+            .set_delegation(&account_key, DelegationType::Full(pool_id.clone()))?;
         Ok(self)
     }
 

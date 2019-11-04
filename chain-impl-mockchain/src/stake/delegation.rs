@@ -1,5 +1,4 @@
 use crate::certificate::{PoolId, PoolRegistration};
-use crate::transaction::AccountIdentifier;
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Debug};
@@ -12,12 +11,7 @@ pub struct PoolsState {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DelegationError {
-    StakeDelegationSigIsInvalid,
-    StakeDelegationPoolKeyIsInvalid(PoolId),
-    StakeDelegationAccountIsInvalid(AccountIdentifier),
-    StakePoolRegistrationPoolSigIsInvalid,
     StakePoolAlreadyExists(PoolId),
-    StakePoolRetirementSigIsInvalid,
     StakePoolDoesNotExist(PoolId),
 }
 
@@ -37,32 +31,10 @@ impl Debug for PoolsState {
 impl std::fmt::Display for DelegationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            DelegationError::StakeDelegationSigIsInvalid => write!(
-                f,
-                "Block has a stake delegation certificate with an invalid signature"
-            ),
-            DelegationError::StakeDelegationPoolKeyIsInvalid(pool_id) => write!(
-                f,
-                "Block has a stake delegation certificate that delegates to a pool '{:?} that does not exist",
-                pool_id
-            ),
-            DelegationError::StakeDelegationAccountIsInvalid(account_id) => write!(
-                f,
-                "Block has a stake delegation certificate that delegates from an account '{:?} that does not exist",
-                account_id
-            ),
-            DelegationError::StakePoolRegistrationPoolSigIsInvalid => write!(
-                f,
-                "Block has a pool registration certificate with an invalid pool signature"
-            ),
             DelegationError::StakePoolAlreadyExists(pool_id) => write!(
                 f,
                 "Block attempts to register pool '{:?}' which already exists",
                 pool_id
-            ),
-            DelegationError::StakePoolRetirementSigIsInvalid => write!(
-                f,
-                "Block has a pool retirement certificate with an invalid pool signature"
             ),
             DelegationError::StakePoolDoesNotExist(pool_id) => write!(
                 f,

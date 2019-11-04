@@ -7,7 +7,7 @@ use crate::{
     key::deserialize_public_key,
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
-    stake::{StakeDistribution, PoolsState},
+    stake::{PoolsState, StakeDistribution},
     value::Value,
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
