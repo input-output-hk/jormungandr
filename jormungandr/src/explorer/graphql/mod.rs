@@ -1,11 +1,13 @@
 mod connections;
 mod error;
 mod scalars;
-use self::connections::{BlockConnection, BlockCursor};
-use self::error::ErrorKind;
-use super::indexing::{
-    BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction, PersistentSequence,
+use self::connections::{
+    BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
+    TransactionConnection,
 };
+use self::error::ErrorKind;
+use super::indexing::{BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction};
+use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
@@ -17,11 +19,13 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, PoolId, PublicKey, Serial, Slot, TimeOffsetSeconds, Value,
+    BlockCount, ChainLength, EpochNumber, IndexCursor, PoolId, PublicKey, Serial, Slot,
+    TimeOffsetSeconds, Value,
 };
 
 use crate::explorer::{ExplorerDB, Settings};
 
+#[derive(Clone)]
 pub struct Block {
     hash: HeaderHash,
 }
@@ -63,16 +67,61 @@ impl Block {
     }
 
     /// The transactions contained in the block
-    pub fn transactions(&self, context: &Context) -> FieldResult<Vec<Transaction>> {
-        Ok(self
-            .get_explorer_block(&context.db)?
-            .transactions
-            .iter()
-            .map(|(id, _tx)| Transaction {
-                id: id.clone(),
-                in_block: self.hash.clone(),
+    pub fn transactions(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
+        context: &Context,
+    ) -> FieldResult<TransactionConnection> {
+        let explorer_block = self.get_explorer_block(&context.db)?;
+        let mut transactions: Vec<&ExplorerTransaction> =
+            explorer_block.transactions.values().collect();
+
+        // TODO: This may be expensive at some point, but I can't rely in
+        // the HashMap's order (also, I'm assuming the order in the block matters)
+        transactions
+            .as_mut_slice()
+            .sort_unstable_by_key(|tx| tx.offset_in_block);
+
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        let boundaries = if transactions.len() > 0 {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u32,
+                upper_bound: transactions
+                    .len()
+                    .checked_sub(1)
+                    .unwrap()
+                    .try_into()
+                    .expect("tried to paginate more than 2^32 elements"),
             })
-            .collect())
+        } else {
+            PaginationInterval::Empty
+        };
+
+        TransactionConnection::new(
+            boundaries,
+            pagination_arguments,
+            |range: PaginationInterval<u32>| match range {
+                PaginationInterval::Empty => vec![],
+                PaginationInterval::Inclusive(range) => {
+                    let from = usize::try_from(range.lower_bound).unwrap();
+                    let to = usize::try_from(range.upper_bound).unwrap();
+
+                    (from..=to)
+                        .map(|i| (transactions[i].id().clone(), i.try_into().unwrap()))
+                        .collect::<Vec<(FragmentId, u32)>>()
+                }
+            },
+        )
     }
 
     pub fn previous_block(&self, context: &Context) -> FieldResult<Block> {
@@ -85,7 +134,6 @@ impl Block {
             .map(|block| block.chain_length().into())
     }
 
-    // TODO: Rename this?
     pub fn leader(&self, context: &Context) -> FieldResult<Option<Leader>> {
         self.get_explorer_block(&context.db)
             .map(|block| match block.producer() {
@@ -162,28 +210,51 @@ impl From<blockcfg::BlockDate> for BlockDate {
     }
 }
 
+#[derive(Clone)]
 struct Transaction {
     id: FragmentId,
-    in_block: HeaderHash,
+    block_hash: Option<HeaderHash>,
 }
 
 impl Transaction {
     fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let in_block =
-            context
-                .db
-                .find_block_by_transaction(&id)
-                .wait()?
-                .ok_or(ErrorKind::NotFound(format!(
-                    "transaction not found: {}",
-                    &id,
-                )))?;
+        let block_hash = context
+            .db
+            .find_block_hash_by_transaction(&id)
+            .wait()
+            .unwrap()
+            .ok_or(ErrorKind::NotFound(format!(
+                "transaction not found: {}",
+                &id,
+            )))?;
 
-        Ok(Transaction { id, in_block })
+        Ok(Transaction {
+            id,
+            block_hash: Some(block_hash),
+        })
+    }
+
+    fn from_valid_id(id: FragmentId) -> Transaction {
+        Transaction {
+            id,
+            block_hash: None,
+        }
     }
 
     fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
-        context.db.get_block(&self.in_block).wait()?.ok_or(
+        let block_id = match self.block_hash {
+            Some(block_id) => block_id,
+            None => context
+                .db
+                .find_block_hash_by_transaction(&self.id)
+                .wait()
+                .unwrap()
+                .ok_or(ErrorKind::InternalError(
+                    "Transaction's block was not found".to_owned(),
+                ))?,
+        };
+
+        context.db.get_block(&block_id).wait()?.ok_or(
             ErrorKind::InternalError(
                 "transaction is in explorer but couldn't find its block".to_owned(),
             )
@@ -320,8 +391,15 @@ impl Address {
         Err(ErrorKind::Unimplemented.into())
     }
 
-    fn transactions(&self, context: &Context) -> FieldResult<Vec<Transaction>> {
-        let ids = context
+    fn transactions(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
+        context: &Context,
+    ) -> FieldResult<TransactionConnection> {
+        let transactions = context
             .db
             .get_transactions_by_address(&self.id)
             .wait()?
@@ -329,9 +407,33 @@ impl Address {
                 "Expected address to be indexed".to_owned(),
             ))?;
 
-        ids.iter()
-            .map(|id| Transaction::from_id(id.clone(), context))
-            .collect()
+        let boundaries = if transactions.len() > 0 {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u64,
+                upper_bound: transactions.len(),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
+
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u64::from),
+            after: after.map(u64::from),
+        }
+        .validate()?;
+
+        TransactionConnection::new(
+            boundaries,
+            pagination_arguments,
+            |range: PaginationInterval<u64>| match range {
+                PaginationInterval::Empty => vec![],
+                PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
+                    .filter_map(|i| transactions.get(i).map(|h| ((*h).clone(), i.into())))
+                    .collect(),
+            },
+        )
     }
 }
 
@@ -520,8 +622,8 @@ impl Pool {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<BlockCursor>,
-        after: Option<BlockCursor>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<BlockConnection> {
         let blocks = match &self.blocks {
@@ -536,22 +638,32 @@ impl Pool {
                 ))?,
         };
 
-        let lower_bound = 0u32;
-        let upper_bound = blocks.len();
+        let bounds = if blocks.len() > 0 {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u32,
+                upper_bound: blocks
+                    .len()
+                    .try_into()
+                    .expect("Tried to paginate more than 2^32 blocks"),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
 
-        BlockConnection::new(
-            lower_bound,
-            upper_bound,
+        let pagination_arguments = PaginationArguments {
             first,
             last,
-            before.map(u32::from),
-            after.map(u32::from),
-            |from: u32, to: u32| {
-                (from..to)
-                    .filter_map(|i| blocks.get(i.into()).map(|h| ((*h).clone(), i.into())))
-                    .collect()
-            },
-        )
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        BlockConnection::new(bounds, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => vec![],
+            PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
+                .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
+                .collect(),
+        })
     }
 }
 
@@ -623,8 +735,8 @@ impl Epoch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<BlockCursor>,
-        after: Option<BlockCursor>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<Option<BlockConnection>> {
         let epoch_data = match self.get_epoch_data(&context.db) {
@@ -632,27 +744,48 @@ impl Epoch {
             None => return Ok(None),
         };
 
-        let lower_bound = context
+        let epoch_lower_bound = context
             .db
             .get_block(&epoch_data.first_block)
-            .map(|block| block.expect("The block to be indexed").chain_length)
+            .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
             .wait()?;
 
-        let upper_bound = context
+        let epoch_upper_bound = context
             .db
             .get_block(&epoch_data.last_block)
-            .map(|block| block.expect("The block to be indexed").chain_length)
+            .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
             .wait()?;
 
-        BlockConnection::new(
-            u32::from(lower_bound),
-            u32::from(upper_bound),
+        let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
+            lower_bound: epoch_lower_bound,
+            upper_bound: epoch_upper_bound
+                .checked_sub(epoch_lower_bound)
+                .expect("pagination upper_bound to be greater or equal than lower_bound"),
+        });
+
+        let pagination_arguments = PaginationArguments {
             first,
             last,
-            before.map(u32::from),
-            after.map(u32::from),
-            |a, b| context.db.get_block_hash_range(a, b).wait().unwrap(),
-        )
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        BlockConnection::new(boundaries, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => unreachable!("No blocks found (not even genesis)"),
+            PaginationInterval::Inclusive(range) => context
+                .db
+                .get_block_hash_range(
+                    (range.lower_bound + epoch_lower_bound).into(),
+                    (range.upper_bound + epoch_lower_bound + 1).into(),
+                )
+                .wait()
+                // Error = Infallible
+                .unwrap()
+                .iter()
+                .map(|(hash, index)| (hash.clone(), u32::from(index.clone()) - epoch_lower_bound))
+                .collect(),
+        })
         .map(Some)
     }
 
@@ -668,7 +801,7 @@ impl Epoch {
 
     pub fn total_blocks(&self, context: &Context) -> BlockCount {
         self.get_epoch_data(&context.db)
-            .map_or(0.into(), |data| data.total_blocks.into())
+            .map_or(0u32.into(), |data| data.total_blocks.into())
     }
 }
 
@@ -726,8 +859,8 @@ impl Query {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<BlockCursor>,
-        after: Option<BlockCursor>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<BlockConnection> {
         let longest_chain = context
@@ -742,15 +875,34 @@ impl Query {
 
         let block0 = 0u32;
 
-        BlockConnection::new(
-            block0,
-            longest_chain.into(),
+        let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
+            lower_bound: block0,
+            upper_bound: u32::from(longest_chain),
+        });
+
+        let pagination_arguments = PaginationArguments {
             first,
             last,
-            before.map(u32::from),
-            after.map(u32::from),
-            |a, b| context.db.get_block_hash_range(a, b).wait().unwrap(),
-        )
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        BlockConnection::new(boundaries, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => vec![],
+            PaginationInterval::Inclusive(range) => {
+                let a = range.lower_bound.into();
+                let b = range.upper_bound.checked_add(1).unwrap().into();
+                context
+                    .db
+                    .get_block_hash_range(a, b)
+                    .wait()
+                    .unwrap()
+                    .iter_mut()
+                    .map(|(hash, chain_length)| (hash.clone(), u32::from(*chain_length)))
+                    .collect()
+            }
+        })
     }
 
     fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {

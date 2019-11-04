@@ -1,4 +1,4 @@
-use super::set::HamtSet as Set;
+use super::persistent_sequence::PersistentSequence;
 use imhamt;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
@@ -12,6 +12,7 @@ use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
+use std::convert::TryInto;
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, V>;
 
@@ -19,16 +20,8 @@ pub type Transactions = Hamt<FragmentId, HeaderHash>;
 pub type Blocks = Hamt<HeaderHash, ExplorerBlock>;
 pub type ChainLengths = Hamt<ChainLength, HeaderHash>;
 
-pub type Addresses = Hamt<Address, Set<FragmentId>>;
+pub type Addresses = Hamt<Address, PersistentSequence<FragmentId>>;
 pub type Epochs = Hamt<Epoch, EpochData>;
-
-// Use a Hamt to store a sequence, the indexes can be used for pagination
-#[derive(Clone)]
-pub struct PersistentSequence<T> {
-    // Could be usize, but it's only used to store blocks for now
-    len: u32,
-    elements: Hamt<u32, T>,
-}
 
 pub type StakePools = Hamt<PoolId, PersistentSequence<HeaderHash>>;
 
@@ -57,6 +50,7 @@ pub struct ExplorerTransaction {
     pub inputs: Vec<ExplorerInput>,
     pub outputs: Vec<ExplorerOutput>,
     pub certificate: Option<Certificate>,
+    pub offset_in_block: u32,
 }
 
 /// Unified Input representation for utxo and account inputs as used in the graphql API
@@ -96,7 +90,8 @@ impl ExplorerBlock {
         let chain_length = block.chain_length();
 
         let transactions = fragments
-            .filter_map(|fragment| {
+            .enumerate()
+            .filter_map(|(offset, fragment)| {
                 let fragment_id = fragment.id();
                 let metx = match fragment {
                     Fragment::Transaction(tx) => {
@@ -108,6 +103,7 @@ impl ExplorerBlock {
                             prev_transactions,
                             prev_blocks,
                             None,
+                            offset.try_into().unwrap(),
                         ))
                     }
                     Fragment::OwnerStakeDelegation(tx) => {
@@ -121,6 +117,7 @@ impl ExplorerBlock {
                             Some(Certificate::OwnerStakeDelegation(
                                 tx.payload().into_payload(),
                             )),
+                            offset.try_into().unwrap(),
                         ))
                     }
                     Fragment::StakeDelegation(tx) => {
@@ -132,6 +129,7 @@ impl ExplorerBlock {
                             prev_transactions,
                             prev_blocks,
                             Some(Certificate::StakeDelegation(tx.payload().into_payload())),
+                            offset.try_into().unwrap(),
                         ))
                     }
                     Fragment::PoolRegistration(tx) => {
@@ -143,6 +141,7 @@ impl ExplorerBlock {
                             prev_transactions,
                             prev_blocks,
                             Some(Certificate::PoolRegistration(tx.payload().into_payload())),
+                            offset.try_into().unwrap(),
                         ))
                     }
                     Fragment::PoolRetirement(tx) => {
@@ -154,6 +153,7 @@ impl ExplorerBlock {
                             prev_transactions,
                             prev_blocks,
                             Some(Certificate::PoolRetirement(tx.payload().into_payload())),
+                            offset.try_into().unwrap(),
                         ))
                     }
                     Fragment::PoolUpdate(tx) => {
@@ -165,6 +165,7 @@ impl ExplorerBlock {
                             prev_transactions,
                             prev_blocks,
                             Some(Certificate::PoolUpdate(tx.payload().into_payload())),
+                            offset.try_into().unwrap(),
                         ))
                     }
                     _ => None,
@@ -223,6 +224,7 @@ impl ExplorerTransaction {
         transactions: &Transactions,
         blocks: &Blocks,
         certificate: Option<Certificate>,
+        offset_in_block: u32,
     ) -> ExplorerTransaction {
         let outputs = tx.outputs().iter();
         let inputs = tx.inputs().iter();
@@ -276,6 +278,7 @@ impl ExplorerTransaction {
             inputs: new_inputs,
             outputs: new_outputs,
             certificate,
+            offset_in_block,
         }
     }
 
@@ -289,30 +292,5 @@ impl ExplorerTransaction {
 
     pub fn outputs(&self) -> &Vec<ExplorerOutput> {
         &self.outputs
-    }
-}
-
-impl<T> PersistentSequence<T> {
-    pub fn new() -> Self {
-        PersistentSequence {
-            len: 0,
-            elements: Hamt::new(),
-        }
-    }
-
-    pub fn append(&self, t: T) -> Self {
-        let len = self.len + 1;
-        PersistentSequence {
-            len,
-            elements: self.elements.insert(len - 1, t).unwrap(),
-        }
-    }
-
-    pub fn get(&self, i: u32) -> Option<&T> {
-        self.elements.lookup(&i)
-    }
-
-    pub fn len(&self) -> u32 {
-        self.len
     }
 }
