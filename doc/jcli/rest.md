@@ -57,13 +57,16 @@ txRecvCnt: 5440
 uptime: 20032
 ```
 
-## Whole UTXO
+## Get UTxO
 
-Fetches whole UTXO
+Fetches UTxO details
 
 ```
-jcli rest v0 utxo get <options>
+jcli rest v0 utxo <fragment-id> <output-index> get <options>
 ```
+
+<fragment-id>   - hex-encoded ID of the transaction fragment
+<output-index>  - index of the transaction output
 
 The options are
 
@@ -76,10 +79,10 @@ YAML printed on success
 
 ```yaml
 ---
-- in_idx: 0                                                                 # input index
-  in_txid: 50f21ac6bd3f57f231c4bf9c5fff7c45e2529c4dffed68f92410dbf7647541f1 # input transaction hash in hex
-  out_addr: ca1qvqsyqcyq5rqwzqfpg9scrgwpugpzysnzs23v9ccrydpk8qarc0jqxuzx4s  # output address in bech32
-  out_value: 999999999                                                      # output value
+# UTxO owner address
+address: ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w
+# UTxO value
+value: 10000
 ```
 
 ## Post transaction
