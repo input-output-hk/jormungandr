@@ -1,17 +1,17 @@
 use chain_addr::Address;
 use chain_impl_mockchain::{
     self as chain,
-    certificate::{Certificate, SignedCertificate},
+    certificate::{Certificate, CertificatePayload, SignedCertificate},
     fee::FeeAlgorithm,
     fragment::Fragment,
     transaction::{
-        self, InputOutput, InputOutputBuilder, Output, Payload, PayloadSlice, SetAuthData, SetIOs,
-        Transaction, TransactionSignDataHash, TxBuilder, TxBuilderState,
+        self, Balance, InputOutputBuilder, Output, Payload, SetAuthData, SetIOs, Transaction,
+        TransactionSignDataHash, TxBuilder, TxBuilderState,
     },
+    value::{Value, ValueError},
 };
 use jcli_app::certificate::{pool_owner_sign, stake_delegation_account_binding_sign};
 use jcli_app::transaction::Error;
-use jcli_app::utils::error::CustomErrorFiller;
 use jcli_app::utils::io;
 use jormungandr_lib::interfaces;
 use serde::{Deserialize, Serialize};
@@ -395,26 +395,6 @@ impl Staging {
         }
     }
 
-    pub fn fees<FA>(&self, fee_algorithm: FA) -> Result<Value, Error>
-    where
-        FA: FeeAlgorithm<Transaction<Address, Option<chain::certificate::Certificate>>>,
-    {
-        let v = fee_algorithm
-            .calculate(&self.transaction())
-            .ok_or(Error::FeeCalculationFailed)?;
-        Ok(v)
-    }
-
-    pub fn balance<FA>(&self, fee_algorithm: FA) -> Result<chain::transaction::Balance, Error>
-    where
-        FA: FeeAlgorithm<Transaction<Address, Option<chain::certificate::Certificate>>>,
-    {
-        let fees = self.fees(fee_algorithm)?;
-        let transaction = self.transaction();
-        let balance = transaction.balance(fees)?;
-        Ok(balance)
-    }
-
     pub fn finalizer(&self) -> Result<chain::txbuilder::TransactionFinalizer, Error> {
         let mut finalizer = chain::txbuilder::TransactionFinalizer::new(self.transaction());
 
@@ -437,6 +417,40 @@ impl Staging {
 
     pub fn outputs(&self) -> &[interfaces::TransactionOutput] {
         &self.outputs
+    }
+
+    pub fn total_input(&self) -> Result<Value, ValueError> {
+        Value::sum(self.inputs().iter().map(|input| input.value.into()))
+    }
+
+    pub fn total_output(&self) -> Result<Value, ValueError> {
+        Value::sum(self.outputs().iter().map(|output| *output.value().as_ref()))
+    }
+
+    pub fn fees(&self, fee_algorithm: &impl FeeAlgorithm) -> Value {
+        let cert_extra = self.extra_authed.clone().map(|cert| cert.strip_auth());
+        let cert_payload = cert_extra
+            .as_ref()
+            .or_else(|| self.extra.as_ref())
+            .map(|cert| CertificatePayload::from(&cert.0));
+        let cert_slice = cert_payload.as_ref().map(CertificatePayload::as_slice);
+        let inputs_count = self.inputs().len() as u8;
+        let outputs_count = self.outputs().len() as u8;
+        fee_algorithm.calculate(cert_slice, inputs_count, outputs_count)
+    }
+
+    pub fn balance(&self, fee_algorithm: &impl FeeAlgorithm) -> Result<Balance, ValueError> {
+        let fees = self.fees(fee_algorithm);
+        let inputs = Value::sum(self.inputs().iter().map(|i| i.value.into()))?;
+        let outputs = Value::sum(self.outputs().iter().map(|o| (*o.value()).into()))?;
+        let z = (outputs + fees)?;
+        if inputs > z {
+            Ok(Balance::Positive((inputs - z)?))
+        } else if inputs < z {
+            Ok(Balance::Negative((z - inputs)?))
+        } else {
+            Ok(Balance::Zero)
+        }
     }
 }
 
