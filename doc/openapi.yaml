@@ -645,44 +645,46 @@ paths:
                 type: string
                 pattern: '[0-9a-fA-F]+'
               example: 8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7
-  /api/v0/utxo:
+  /api/v0/utxo/{fragment_id}/{output_index}:
     get:
-      description: Fetches whole UTXO
+      description: Fetches UTxO details
+      parameters:
+        - name: fragment_id
+          in: path
+          required: true
+          schema:
+            description: Hex-encoded fragment ID
+            type: string
+            pattern: '[0-9a-fA-F]+'
+        - name: output_index
+          in: path
+          required: true
+          schema:
+            description: Index of the transaction output
+            type: integer
+            minimum: 0
+            maximum: 255
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                description: List of UTXOs
-                type: array
-                items:
-                  description: Single UTXO
-                  type: object
-                  required: [transaction_id, index_in_transaction, address, associated_fund]
-                  properties:
-                    transaction_id:
-                      description: Hex-encoded ID of transaction that created this UTXO
-                      type: string
-                      pattern: '[0-9a-fA-F]+'
-                    index_in_transaction:
-                      description: Output index inside transaction that created this UTXO
-                      type: integer
-                      minimum: 0
-                      maximum: 253
-                    address:
-                      description: Bech32-encoded address of owner of UTXO
-                      type: string
-                    associated_fund:
-                      description: Amount that is held in this UTXO
-                      type: integer
-                      minimum: 0
+                description: UTXOs details
+                type: object
+                required: [address, value]
+                properties:
+                  address:
+                    description: Bech32-encoded address of owner of UTXO
+                    type: string
+                  value:
+                    description: Amount that is held in this UTXO
+                    type: integer
+                    minimum: 0
               example: |
-                [
-                  {
-                    "transaction_id": "586ed9ea0b1094c739e2a9611a1dd720679d2f718626f5fe05201b3ae68dfb14",
-                    "index_in_transaction": 0,
-                    "address": "ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w",
-                    "associated_fund": 10000
-                  }
-                ]
+                {
+                  "address": "ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w",
+                  "value": 10000
+                }
+        404:
+          description: Fragment with given ID or its output with given index was not found in the UTxO
