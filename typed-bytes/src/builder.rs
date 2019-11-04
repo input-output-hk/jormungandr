@@ -60,34 +60,28 @@ impl<T> ByteBuilder<T> {
     ///
     /// note that the buffer contains a byte to represent the size
     /// of the list
-    pub fn iter8<F, I>(self, mut l: I, f: F) -> Self
+    pub fn iter8<F, I>(self, l: I, f: F) -> Self
     where
         I: Iterator + ExactSizeIterator,
-        F: Fn(Self, &I::Item) -> Self,
+        F: FnMut(Self, I::Item) -> Self,
     {
         assert!(l.len() < 256);
-        let mut bb = self.u8(l.len() as u8);
-        while let Some(ref i) = l.next() {
-            bb = f(bb, i)
-        }
-        bb
+        let bb = self.u8(l.len() as u8);
+        l.fold(bb, f)
     }
 
     /// write an iterator of maximum 2^16 items using the closure F
     ///
     /// note that the buffer contains 2 bytes to represent the size
     /// of the list
-    pub fn iter16<F, I>(self, mut l: I, f: F) -> Self
+    pub fn iter16<F, I>(self, l: I, f: F) -> Self
     where
         I: Iterator + ExactSizeIterator,
-        F: Fn(Self, &I::Item) -> Self,
+        F: FnMut(Self, I::Item) -> Self,
     {
         assert!(l.len() < 65536);
-        let mut bb = self.u16(l.len() as u16);
-        while let Some(ref i) = l.next() {
-            bb = f(bb, i)
-        }
-        bb
+        let bb = self.u16(l.len() as u16);
+        l.fold(bb, f)
     }
 
     pub fn sub<F, U>(self, f: F) -> Self

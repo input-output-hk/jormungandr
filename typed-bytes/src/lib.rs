@@ -30,7 +30,7 @@ impl<'a, T> AsRef<[u8]> for ByteSlice<'a, T> {
 }
 
 impl<T> ByteArray<T> {
-    pub fn as_byteslice<'a>(&'a self) -> ByteSlice<'a, T> {
+    pub fn as_byteslice(&self) -> ByteSlice<'_, T> {
         ByteSlice {
             slice: &self.array[..],
             phantom: self.phantom,
@@ -72,7 +72,7 @@ pub trait ByteAccessor<A> {
 }
 
 impl<T> ByteArray<T> {
-    pub fn sub<'a, U>(&'a self) -> ByteSlice<'a, U>
+    pub fn sub<U>(&self) -> ByteSlice<'_, U>
     where
         T: ByteAccessor<U>,
     {
