@@ -96,10 +96,6 @@ impl PoolsState {
             .map_or_else(|| false, |_| true)
     }
 
-    pub fn stake_pool_lookup(&self, pool_id: &PoolId) -> Option<&PoolRegistration> {
-        self.stake_pools.lookup(pool_id)
-    }
-
     pub fn stake_pool_get(&self, pool_id: &PoolId) -> Result<&PoolRegistration, DelegationError> {
         self.stake_pools
             .lookup(pool_id)
