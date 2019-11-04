@@ -21,4 +21,5 @@ p2p:
   topics_of_interest:
     messages: low
     blocks: normal
+  allow_private_addresses: false
 ```
