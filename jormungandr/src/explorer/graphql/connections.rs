@@ -170,6 +170,8 @@ where
                 let has_previous_page = page.lower_bound > lower_bound;
 
                 let total_count = upper_bound
+                    .checked_add(1)
+                    .unwrap()
                     .checked_sub(lower_bound)
                     .expect("upper_bound should be >= than lower_bound")
                     .into();
