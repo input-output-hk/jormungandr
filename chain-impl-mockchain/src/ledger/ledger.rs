@@ -10,7 +10,7 @@ use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
 use crate::header::HeaderId;
 use crate::leadership::genesis::ActiveSlotsCoeffError;
-use crate::stake::{DelegationError, DelegationState, StakeDistribution};
+use crate::stake::{DelegationError, PoolsState, StakeDistribution};
 use crate::transaction::*;
 use crate::treasury::Treasury;
 use crate::value::*;
@@ -52,7 +52,7 @@ pub struct Ledger {
     pub(crate) settings: setting::Settings,
     pub(crate) updates: update::UpdateState,
     pub(crate) multisig: multisig::Ledger,
-    pub(crate) delegation: DelegationState,
+    pub(crate) delegation: PoolsState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
     pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
@@ -149,7 +149,7 @@ impl Ledger {
             settings,
             updates: update::UpdateState::new(),
             multisig: multisig::Ledger::new(),
-            delegation: DelegationState::new(),
+            delegation: PoolsState::new(),
             static_params: Arc::new(static_params),
             date: BlockDate::first(),
             chain_length: ChainLength(0),
@@ -697,11 +697,11 @@ impl Ledger {
         &mut self.settings
     }
 
-    pub fn delegation(&self) -> &DelegationState {
+    pub fn delegation(&self) -> &PoolsState {
         &self.delegation
     }
 
-    pub fn delegation_mut(&mut self) -> &mut DelegationState {
+    pub fn delegation_mut(&mut self) -> &mut PoolsState {
         &mut self.delegation
     }
 

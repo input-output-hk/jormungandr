@@ -2,7 +2,7 @@ use super::ledger::{Error, Ledger, LedgerStaticParameters};
 use super::pots::{self, Pots};
 use crate::block::{BlockDate, ChainLength};
 use crate::config::ConfigParam;
-use crate::stake::DelegationState;
+use crate::stake::PoolsState;
 use crate::{account, legacy, multisig, setting, update, utxo};
 use chain_addr::Address;
 use chain_time::TimeEra;
@@ -184,7 +184,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
         let mut updates = update::UpdateState::new();
         let mut multisig_accounts = vec![];
         let mut multisig_declarations = vec![];
-        let delegation = DelegationState::new();
+        let delegation = PoolsState::new();
         let mut globals = None;
         let mut pots = Pots::zero();
 

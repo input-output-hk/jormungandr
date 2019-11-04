@@ -4,13 +4,10 @@ use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Debug};
 
-/// All registered Stake Node
-pub type PoolTable = Hamt<DefaultHasher, PoolId, PoolRegistration>;
-
 /// A structure that keeps track of stake keys and stake pools.
 #[derive(Clone, PartialEq, Eq)]
-pub struct DelegationState {
-    pub(crate) stake_pools: PoolTable,
+pub struct PoolsState {
+    pub(crate) stake_pools: Hamt<DefaultHasher, PoolId, PoolRegistration>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,7 +21,7 @@ pub enum DelegationError {
     StakePoolDoesNotExist(PoolId),
 }
 
-impl Debug for DelegationState {
+impl Debug for PoolsState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -78,11 +75,15 @@ impl std::fmt::Display for DelegationError {
 
 impl std::error::Error for DelegationError {}
 
-impl DelegationState {
+impl PoolsState {
     pub fn new() -> Self {
-        DelegationState {
+        PoolsState {
             stake_pools: Hamt::new(),
         }
+    }
+
+    pub fn lookup(&self, id: &PoolId) -> Option<&PoolRegistration> {
+        self.stake_pools.lookup(id)
     }
 
     pub fn stake_pool_ids<'a>(&'a self) -> impl Iterator<Item = PoolId> + 'a {
@@ -111,13 +112,13 @@ impl DelegationState {
             .stake_pools
             .insert(id.clone(), owner)
             .map_err(|_| DelegationError::StakePoolAlreadyExists(id))?;
-        Ok(DelegationState {
+        Ok(PoolsState {
             stake_pools: new_pools,
         })
     }
 
     pub fn deregister_stake_pool(&self, pool_id: &PoolId) -> Result<Self, DelegationError> {
-        Ok(DelegationState {
+        Ok(PoolsState {
             stake_pools: self
                 .stake_pools
                 .remove(pool_id)
@@ -129,19 +130,19 @@ impl DelegationState {
 #[cfg(test)]
 mod tests {
 
-    use super::DelegationState;
+    use super::PoolsState;
     use crate::certificate::PoolRegistration;
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
     use std::iter;
 
-    impl Arbitrary for DelegationState {
+    impl Arbitrary for PoolsState {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             let size = usize::arbitrary(gen);
             let arbitrary_stake_pools = iter::from_fn(|| Some(PoolRegistration::arbitrary(gen)))
                 .take(size)
                 .collect::<Vec<PoolRegistration>>();
-            let mut delegation_state = DelegationState::new();
+            let mut delegation_state = PoolsState::new();
             for stake_pool in arbitrary_stake_pools {
                 delegation_state = delegation_state.register_stake_pool(stake_pool).unwrap();
             }
@@ -151,7 +152,7 @@ mod tests {
 
     #[quickcheck]
     pub fn delegation_state_tests(
-        delegation_state: DelegationState,
+        delegation_state: PoolsState,
         stake_pool: PoolRegistration,
     ) -> TestResult {
         // register stake pool first time should be ok
