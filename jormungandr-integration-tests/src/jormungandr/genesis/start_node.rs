@@ -5,6 +5,7 @@ use crate::common::{
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
+use chain_crypto::{Curve25519_2HashDH, Ed25519, Ed25519Extended, SumEd25519_12};
 
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
@@ -12,11 +13,11 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
     let faucet = startup::create_new_account_address();
 
     // leader
-    let leader = startup::create_new_key_pair("Ed25519");
+    let leader = startup::create_new_key_pair::<Ed25519>();
 
     // stake pool
-    let pool_vrf = startup::create_new_key_pair("Curve25519_2HashDH");
-    let pool_kes = startup::create_new_key_pair("SumEd25519_12");
+    let pool_vrf = startup::create_new_key_pair::<Curve25519_2HashDH>();
+    let pool_kes = startup::create_new_key_pair::<SumEd25519_12>();
 
     // note we use the faucet as the owner to this pool
     let stake_key = faucet.private_key;
@@ -27,9 +28,9 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
     let jcli_certificate = JCLICertificateWrapper::new();
 
     let stake_pool_signcert_file = jcli_certificate.assert_new_signed_stake_pool_cert(
-        &pool_kes.public_key,
+        &pool_kes.identifier().to_bech32_str(),
         "1010101010",
-        &pool_vrf.public_key,
+        &pool_vrf.identifier().to_bech32_str(),
         &stake_key_file,
         0,
         1,
@@ -49,7 +50,7 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
         .with_block0_consensus("genesis_praos")
         .with_bft_slots_ratio("0".to_owned())
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
-        .with_consensus_leaders_ids(vec![leader.public_key.clone()])
+        .with_consensus_leaders_ids(vec![leader.identifier().to_bech32_str()])
         .with_kes_update_speed(43200)
         .with_initial_certs(vec![
             stake_pool_signcert.clone(),
@@ -61,8 +62,11 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
         }])
         .build();
 
-    let secret =
-        SecretModel::new_genesis(&pool_kes.private_key, &pool_vrf.private_key, &stake_pool_id);
+    let secret = SecretModel::new_genesis(
+        &pool_kes.signing_key().to_bech32_str(),
+        &pool_vrf.signing_key().to_bech32_str(),
+        &stake_pool_id,
+    );
     let secret_file = SecretModel::serialize(&secret);
     config.secret_model = secret;
     config.secret_model_path = secret_file;
@@ -72,15 +76,16 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
 #[test]
 pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     // stake key
-    let stake_key = startup::create_new_key_pair("Ed25519Extended");
+    let stake_key = startup::create_new_key_pair::<Ed25519Extended>();
     //faucet
-    let faucet = startup::create_new_delegation_address_for(&stake_key.public_key);
+    let faucet =
+        startup::create_new_delegation_address_for(&stake_key.identifier().to_bech32_str());
     // leader
-    let leader = startup::create_new_key_pair("Ed25519");
+    let leader = startup::create_new_key_pair::<Ed25519>();
 
     // stake pool
-    let pool_vrf = startup::create_new_key_pair("Curve25519_2HashDH");
-    let pool_kes = startup::create_new_key_pair("SumEd25519_12");
+    let pool_vrf = startup::create_new_key_pair::<Curve25519_2HashDH>();
+    let pool_kes = startup::create_new_key_pair::<SumEd25519_12>();
 
     // note we use the faucet as the owner to this pool
     let owner_key = faucet.private_key;
@@ -88,14 +93,15 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     let stake_key_pub = &faucet.delegation_key;
 
     let owner_key_file = file_utils::create_file_in_temp("owner_key.sk", &owner_key);
-    let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key.private_key);
+    let stake_key_file =
+        file_utils::create_file_in_temp("stake_key.sk", &stake_key.signing_key().to_bech32_str());
 
     let jcli_certificate = JCLICertificateWrapper::new();
 
     let stake_pool_signcert_file = jcli_certificate.assert_new_signed_stake_pool_cert(
-        &pool_kes.public_key,
+        &pool_kes.identifier().to_bech32_str(),
         "1010101010",
-        &pool_vrf.public_key,
+        &pool_vrf.identifier().to_bech32_str(),
         &owner_key_file,
         0,
         1,
@@ -116,7 +122,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         .with_block0_consensus("genesis_praos")
         .with_bft_slots_ratio("0".to_owned())
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
-        .with_consensus_leaders_ids(vec![leader.public_key.clone()])
+        .with_consensus_leaders_ids(vec![leader.identifier().to_bech32_str()])
         .with_kes_update_speed(43200)
         .with_funds(vec![Fund {
             address: faucet.address.clone(),
@@ -128,8 +134,11 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         ])
         .build();
 
-    let secret =
-        SecretModel::new_genesis(&pool_kes.private_key, &pool_vrf.private_key, &stake_pool_id);
+    let secret = SecretModel::new_genesis(
+        &pool_kes.signing_key().to_bech32_str(),
+        &pool_vrf.signing_key().to_bech32_str(),
+        &stake_pool_id,
+    );
     let secret_file = SecretModel::serialize(&secret);
     config.secret_model = secret;
     config.secret_model_path = secret_file;
