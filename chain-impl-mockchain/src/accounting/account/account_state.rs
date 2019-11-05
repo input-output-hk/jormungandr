@@ -32,18 +32,30 @@ pub struct DelegationRatio {
     pools: Box<[(PoolId, u8)]>,
 }
 
+/// The maximum number of pools
+pub const DELEGATION_RATIO_MAX_DECLS: usize = 8;
+
 impl DelegationRatio {
     pub fn is_valid(&self) -> bool {
         // map to u32 before summing to make sure we don't overflow
         let total: u32 = self.pools.iter().map(|x| x.1 as u32).sum();
         let has_no_zero = self.pools.iter().find(|x| x.1 == 0).is_none();
-        has_no_zero && self.parts > 1 && self.pools.len() > 1 && total == (self.parts as u32)
+        has_no_zero
+            && self.parts > 1
+            && self.pools.len() > 1
+            && self.pools.len() <= DELEGATION_RATIO_MAX_DECLS
+            && total == (self.parts as u32)
     }
 
     pub fn new(parts: u8, pools: Vec<(PoolId, u8)>) -> Option<DelegationRatio> {
         let total: u32 = pools.iter().map(|x| x.1 as u32).sum();
         let has_no_zero = pools.iter().find(|x| x.1 == 0).is_none();
-        if has_no_zero && parts > 1 && pools.len() > 1 && total == (parts as u32) {
+        if has_no_zero
+            && parts > 1
+            && pools.len() > 1
+            && pools.len() <= DELEGATION_RATIO_MAX_DECLS
+            && total == (parts as u32)
+        {
             Some(Self {
                 parts,
                 pools: pools.into(),

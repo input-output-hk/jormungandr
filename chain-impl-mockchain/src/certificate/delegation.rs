@@ -1,4 +1,4 @@
-use crate::accounting::account::{DelegationRatio, DelegationType};
+use crate::accounting::account::{DelegationRatio, DelegationType, DELEGATION_RATIO_MAX_DECLS};
 use crate::certificate::CertificateSlice;
 use crate::transaction::{
     AccountBindingSignature, AccountIdentifier, Payload, PayloadAuthData, PayloadData, PayloadSlice,
@@ -10,8 +10,6 @@ use chain_core::{
 };
 use std::marker::PhantomData;
 use typed_bytes::ByteBuilder;
-
-pub const NB_MAX_RATIO_DECLS: u8 = 8;
 
 /// A self delegation to a specific StakePoolId.
 ///
@@ -164,10 +162,10 @@ fn deserialize_delegation_type<'a>(buf: &mut ReadBuf<'a>) -> Result<DelegationTy
         }
         _ => {
             let sz = buf.get_u8()?;
-            if sz > NB_MAX_RATIO_DECLS {
+            if sz as usize > DELEGATION_RATIO_MAX_DECLS {
                 Err(ReadError::SizeTooBig(
                     sz as usize,
-                    NB_MAX_RATIO_DECLS as usize,
+                    DELEGATION_RATIO_MAX_DECLS,
                 ))?
             }
             let mut pools = Vec::with_capacity(sz as usize);
