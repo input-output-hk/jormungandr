@@ -235,6 +235,8 @@ fn try_request_fragment_removal(
 
 /// process a new candidate block on top of the blockchain, this function may:
 ///
+/// * remove the candidate from the CandidateForest (chain pulls pending
+///   validation);
 /// * update the current tip if the candidate's parent is the current tip;
 /// * update a branch if the candidate parent is that branch's tip;
 /// * create a new branch if none of the above;
@@ -439,12 +441,23 @@ pub fn process_network_block(
                     .post_check_header(header, parent_ref)
                     .and_then(move |post_checked| {
                         end_blockchain.apply_and_store_block(post_checked, block)
-                        // TODO: look up a branch starting with this block
-                        // in the candidate repo and apply all cached blocks
-                        // that follow up.
                     })
-                    .map(move |block_ref| {
+                    .and_then(move |block_ref| {
+                        candidate_forest
+                            .on_applied_block(block_ref.hash())
+                            .map_err(|never| match never {})
+                            .map(|more_blocks| (block_ref, more_blocks))
+                    })
+                    .map(move |(block_ref, more_blocks)| {
                         info!(logger, "block successfully applied");
+                        if !more_blocks.is_empty() {
+                            warn!(
+                                logger,
+                                "{} more blocks have arrived out of order, \
+                                 but I don't know what to do with them yet!",
+                                more_blocks.len(),
+                            );
+                        }
                         Some(block_ref)
                     });
                 B(post_check_and_apply)
