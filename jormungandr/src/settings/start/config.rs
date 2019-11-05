@@ -3,12 +3,7 @@ use crate::{
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
-use chain_crypto::Ed25519;
-use jormungandr_lib::{
-    crypto::key::{Identifier, SigningKey},
-    interfaces::Mempool,
-    time::Duration,
-};
+use jormungandr_lib::{interfaces::Mempool, time::Duration};
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
