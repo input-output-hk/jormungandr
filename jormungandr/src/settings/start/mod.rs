@@ -226,6 +226,7 @@ fn generate_network(
             .map(Into::into)
             .collect(),
         protocol: Protocol::Grpc,
+        policy: p2p.policy.clone(),
         max_connections: p2p
             .max_connections
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),

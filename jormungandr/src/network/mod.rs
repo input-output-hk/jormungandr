@@ -122,6 +122,7 @@ impl GlobalState {
     ) -> Self {
         let mut topology = P2pTopology::new(config.profile.clone(), logger.clone());
         topology.set_poldercast_modules();
+        topology.set_policy(config.policy.clone());
 
         // inject the trusted peers as initial gossips, this will make the node
         // gossip with them at least at the beginning

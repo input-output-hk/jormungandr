@@ -1,5 +1,5 @@
 use crate::{
-    network::p2p::{topic, Id},
+    network::p2p::{topic, Id, PolicyConfig},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
@@ -92,6 +92,10 @@ pub struct P2pConfig {
     /// The default is to not allow advertising non-public IP addresses.
     #[serde(default)]
     pub allow_private_addresses: bool,
+
+    /// setting for the policy
+    #[serde(default)]
+    pub policy: PolicyConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,6 +155,7 @@ impl Default for P2pConfig {
             topics_of_interest: None,
             max_connections: None,
             allow_private_addresses: false,
+            policy: PolicyConfig::default(),
         }
     }
 }

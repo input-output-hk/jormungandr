@@ -2,11 +2,13 @@ pub mod comm;
 mod gossip;
 mod id;
 mod node;
+mod policy;
 mod topology;
 
 pub use self::gossip::{Gossip, Gossips};
 pub use self::id::Id;
 pub use self::node::Node;
+pub use self::policy::{Policy, PolicyConfig};
 pub use self::topology::P2pTopology;
 
 /**

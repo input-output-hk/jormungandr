@@ -1,7 +1,7 @@
 //! module defining the p2p topology management objects
 //!
 
-use crate::network::p2p::{Gossips, Id, Node};
+use crate::network::p2p::{Gossips, Id, Node, Policy, PolicyConfig};
 use poldercast::{
     poldercast::{Cyclon, Rings, Vicinity},
     Layer, NodeProfile, PolicyReport, StrikeReason, Topology,
@@ -36,6 +36,11 @@ impl P2pTopology {
             module.alias()
         );
         topology.add_layer(module)
+    }
+
+    pub fn set_policy(&mut self, policy: PolicyConfig) {
+        let mut topology = self.lock.write().unwrap();
+        topology.set_policy(Policy::new(policy, self.logger.new(o!("task" => "policy"))));
     }
 
     /// set all the default poldercast modules (Rings, Vicinity and Cyclon)

@@ -39,6 +39,10 @@ p2p:
     typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`.
 - `max_connections`: the maximum number of P2P connections this node should
     maintain. If not specified, an internal limit is used by default.
+- `policy`: (optional) set the setting for the policy module
+    - `quarantine_duration` set the time to leave a node in quarantine before allowing
+    it back (or not) into the fold.
+    It is recommended to leave the default value `[default: 30min]`.
 
 ### The trusted peers
 
