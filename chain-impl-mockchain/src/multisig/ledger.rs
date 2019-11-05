@@ -125,7 +125,7 @@ impl Ledger {
     pub fn set_delegation(
         &self,
         identifier: &Identifier,
-        delegation: DelegationType,
+        delegation: &DelegationType,
     ) -> Result<Self, LedgerError> {
         let new_accounts = self.accounts.set_delegation(identifier, delegation)?;
         Ok(Self {

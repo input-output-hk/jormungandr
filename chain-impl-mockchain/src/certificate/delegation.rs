@@ -1,5 +1,5 @@
-use crate::accounting::account::DelegationType;
-use crate::certificate::{CertificateSlice, PoolId};
+use crate::accounting::account::{DelegationRatio, DelegationType};
+use crate::certificate::CertificateSlice;
 use crate::transaction::{
     AccountBindingSignature, AccountIdentifier, Payload, PayloadAuthData, PayloadData, PayloadSlice,
 };
@@ -11,53 +11,57 @@ use chain_core::{
 use std::marker::PhantomData;
 use typed_bytes::ByteBuilder;
 
+pub const NB_MAX_RATIO_DECLS: u8 = 8;
+
 /// A self delegation to a specific StakePoolId.
 ///
 /// This structure is not sufficient to identify the owner, and instead we rely on a special
 /// authenticated transaction, which has 1 input.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnerStakeDelegation {
-    pub pool_id: PoolId,
+    pub delegation: DelegationType,
 }
 
 impl OwnerStakeDelegation {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
-        bb.bytes(self.pool_id.as_ref())
+        bb.sub(|sb| serialize_delegation_type(&self.delegation, sb))
     }
 
-    pub fn get_delegation_type(&self) -> DelegationType {
-        DelegationType::Full(self.pool_id.clone())
+    pub fn get_delegation_type(&self) -> &DelegationType {
+        &self.delegation
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeDelegation {
     pub account_id: AccountIdentifier,
-    pub pool_id: PoolId,
+    pub delegation: DelegationType,
 }
 
 impl StakeDelegation {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.bytes(self.account_id.as_ref())
-            .bytes(self.pool_id.as_ref())
+            .sub(|sb| serialize_delegation_type(&self.delegation, sb))
     }
 
-    pub fn get_delegation_type(&self) -> DelegationType {
-        DelegationType::Full(self.pool_id.clone())
+    pub fn get_delegation_type(&self) -> &DelegationType {
+        &self.delegation
     }
 }
 
 impl property::Serialize for OwnerStakeDelegation {
     type Error = std::io::Error;
     fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
-        writer.write_all(self.pool_id.as_ref())
+        let delegation_buf =
+            serialize_delegation_type(&self.delegation, ByteBuilder::new()).finalize_as_vec();
+        writer.write_all(&delegation_buf)
     }
 }
 
 impl Readable for OwnerStakeDelegation {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        let pool_id = <[u8; 32]>::read(buf)?.into();
-        Ok(Self { pool_id })
+        let delegation = deserialize_delegation_type(buf)?;
+        Ok(Self { delegation })
     }
 }
 
@@ -86,9 +90,12 @@ impl property::Serialize for StakeDelegation {
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         use chain_core::packer::*;
         use std::io::Write;
+
+        let delegation_buf =
+            serialize_delegation_type(&self.delegation, ByteBuilder::new()).finalize_as_vec();
         let mut codec = Codec::new(writer);
         codec.write_all(self.account_id.as_ref())?;
-        codec.write_all(self.pool_id.as_ref())?;
+        codec.write_all(&delegation_buf)?;
         Ok(())
     }
 }
@@ -96,10 +103,10 @@ impl property::Serialize for StakeDelegation {
 impl Readable for StakeDelegation {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let account_identifier = <[u8; 32]>::read(buf)?;
-        let pool_id = <[u8; 32]>::read(buf)?.into();
+        let delegation = deserialize_delegation_type(buf)?;
         Ok(StakeDelegation {
             account_id: account_identifier.into(),
-            pool_id,
+            delegation,
         })
     }
 }
@@ -125,15 +132,55 @@ impl Payload for StakeDelegation {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use quickcheck::{Arbitrary, Gen};
+// Format is either:
+// 0 (byte)
+// 1 (byte)     POOL_ID (32 bytes)
+// PARTS (byte) #POOLS (bytes) [ POOL_PART (1 byte) POOL_ID (32 bytes)] (repeated #POOLS time)
+fn serialize_delegation_type(
+    d: &DelegationType,
+    bb: ByteBuilder<DelegationType>,
+) -> ByteBuilder<DelegationType> {
+    match d {
+        DelegationType::NonDelegated => bb.u8(0),
+        DelegationType::Full(pool_id) => bb.u8(1).bytes(pool_id.as_ref()),
+        DelegationType::Ratio(ratio) => {
+            let parts = ratio.parts();
+            assert!(parts >= 2);
+            bb.u8(parts)
+                .iter8(ratio.pools().iter(), |b, (pool_id, pool_part)| {
+                    b.u8(*pool_part).bytes(pool_id.as_ref())
+                })
+        }
+    }
+}
 
-    impl Arbitrary for OwnerStakeDelegation {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Self {
-                pool_id: Arbitrary::arbitrary(g),
+fn deserialize_delegation_type<'a>(buf: &mut ReadBuf<'a>) -> Result<DelegationType, ReadError> {
+    let parts = buf.get_u8()?;
+    match parts {
+        0 => Ok(DelegationType::NonDelegated),
+        1 => {
+            let pool_id = <[u8; 32]>::read(buf)?.into();
+            Ok(DelegationType::Full(pool_id))
+        }
+        _ => {
+            let sz = buf.get_u8()?;
+            if sz > NB_MAX_RATIO_DECLS {
+                Err(ReadError::SizeTooBig(
+                    sz as usize,
+                    NB_MAX_RATIO_DECLS as usize,
+                ))?
+            }
+            let mut pools = Vec::with_capacity(sz as usize);
+            for _ in 0..sz {
+                let pool_parts = buf.get_u8()?;
+                let pool_id = <[u8; 32]>::read(buf)?.into();
+                pools.push((pool_id, pool_parts))
+            }
+            match DelegationRatio::new(parts, pools) {
+                None => Err(ReadError::StructureInvalid(
+                    "invalid delegation ratio".to_string(),
+                )),
+                Some(dr) => Ok(DelegationType::Ratio(dr)),
             }
         }
     }

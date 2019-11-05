@@ -69,10 +69,12 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
     pub fn set_delegation(
         &self,
         identifier: &ID,
-        delegation: DelegationType,
+        delegation: &DelegationType,
     ) -> Result<Self, LedgerError> {
         self.0
-            .update(identifier, |st| Ok(Some(st.set_delegation(delegation))))
+            .update(identifier, |st| {
+                Ok(Some(st.set_delegation(delegation.clone())))
+            })
             .map(Ledger)
             .map_err(|e| e.into())
     }
@@ -214,7 +216,10 @@ mod tests {
                 let random_stake_pool =
                     arbitrary_utils::choose_random_item(&arbitrary_stake_pools, gen);
                 ledger = ledger
-                    .set_delegation(&account_id, DelegationType::Full(random_stake_pool.to_id()))
+                    .set_delegation(
+                        &account_id,
+                        &DelegationType::Full(random_stake_pool.to_id()),
+                    )
                     .unwrap();
             }
             ledger
@@ -273,16 +278,17 @@ mod tests {
         }
 
         // set delegation to stake pool
-        ledger =
-            match ledger.set_delegation(&account_id, DelegationType::Full(stake_pool_id.clone())) {
-                Ok(ledger) => ledger,
-                Err(err) => {
-                    return TestResult::error(format!(
-                        "Error for id {} should be successful: {:?}",
-                        account_id, err
-                    ))
-                }
-            };
+        ledger = match ledger
+            .set_delegation(&account_id, &DelegationType::Full(stake_pool_id.clone()))
+        {
+            Ok(ledger) => ledger,
+            Err(err) => {
+                return TestResult::error(format!(
+                    "Error for id {} should be successful: {:?}",
+                    account_id, err
+                ))
+            }
+        };
 
         // verify total value is still the same
         assert!(!test_total_value(

@@ -114,10 +114,9 @@ fn assign_account_value(
             // separate the total in as many parts as pools, and try to assign from the first to the last,
             // the stake associated plus if there's any remaining from the division.
             if dr.is_valid() {
-                assert!(dr.pools.len() > 0); // verified by is_valid
-                let sin = value.split_in(dr.pools.len() as u32);
+                let sin = value.split_in(dr.parts() as u32);
                 let mut r = sin.remaining;
-                for (pool_id, ratio) in dr.pools.iter() {
+                for (pool_id, ratio) in dr.pools().iter() {
                     match sd.to_pools.get_mut(pool_id) {
                         None => sd.dangling = (sd.dangling + value).unwrap(),
                         Some(pool_info) => {
@@ -416,7 +415,7 @@ mod tests {
             accounts = accounts
                 .set_delegation(
                     &Identifier::from(account_public_key.clone()),
-                    DelegationType::Full(id_active_pool.clone()),
+                    &DelegationType::Full(id_active_pool.clone()),
                 )
                 .unwrap();
         }
@@ -439,7 +438,7 @@ mod tests {
         for (id, value) in stake_distribution_data.assigned_accounts.iter().cloned() {
             accounts = accounts.add_account(&id, value, ()).unwrap();
             accounts = accounts
-                .set_delegation(&id, DelegationType::Full(id_active_pool.clone()))
+                .set_delegation(&id, &DelegationType::Full(id_active_pool.clone()))
                 .unwrap();
         }
 
@@ -451,7 +450,7 @@ mod tests {
         accounts = accounts
             .set_delegation(
                 &single_account.0.clone(),
-                DelegationType::Full(id_active_pool.clone()),
+                &DelegationType::Full(id_active_pool.clone()),
             )
             .unwrap();
 
@@ -459,7 +458,7 @@ mod tests {
         for (id, value) in stake_distribution_data.dangling_accounts.iter().cloned() {
             accounts = accounts.add_account(&id, value, ()).unwrap();
             accounts = accounts
-                .set_delegation(&id, DelegationType::Full(id_retired_pool.clone()))
+                .set_delegation(&id, &DelegationType::Full(id_retired_pool.clone()))
                 .unwrap();
         }
 

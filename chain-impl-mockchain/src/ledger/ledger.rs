@@ -3,7 +3,6 @@
 
 use super::check::{self, TxVerifyError};
 use super::pots::Pots;
-use crate::accounting::account::DelegationType;
 use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext};
 use crate::config::{self, ConfigParam, RewardParams};
 use crate::fee::{FeeAlgorithm, LinearFee};
@@ -564,15 +563,13 @@ impl Ledger {
         mut self,
         auth_cert: &certificate::StakeDelegation,
     ) -> Result<Self, Error> {
-        let pool_id = &auth_cert.pool_id;
+        let delegation = &auth_cert.delegation;
 
         let account_key = auth_cert
             .account_id
             .to_single_account()
             .ok_or(Error::AccountIdentifierInvalid)?;
-        self.accounts = self
-            .accounts
-            .set_delegation(&account_key, DelegationType::Full(pool_id.clone()))?;
+        self.accounts = self.accounts.set_delegation(&account_key, delegation)?;
         Ok(self)
     }
 

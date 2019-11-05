@@ -1,5 +1,5 @@
 use crate::{
-    account::Identifier,
+    account::{DelegationType, Identifier},
     certificate::{
         Certificate, OwnerStakeDelegation, PoolId,
         PoolRegistration, PoolRetirement, StakeDelegation,
@@ -17,7 +17,7 @@ pub fn build_stake_delegation_cert(
         AccountIdentifier::from_single_account(Identifier::from(delegate_from.delegation_key()));
     Certificate::StakeDelegation(StakeDelegation {
         account_id: account_id,
-        pool_id: stake_pool.to_id(),
+        delegation: DelegationType::Full(stake_pool.to_id()),
     })
 }
 
@@ -27,7 +27,7 @@ pub fn build_stake_pool_registration_cert(stake_pool: &PoolRegistration) -> Cert
 
 pub fn build_owner_stake_delegation(stake_pool: PoolId) -> Certificate {
     Certificate::OwnerStakeDelegation(OwnerStakeDelegation {
-        pool_id: stake_pool,
+        delegation: DelegationType::Full(stake_pool),
     })
 }
 
