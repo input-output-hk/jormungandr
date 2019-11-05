@@ -16,17 +16,49 @@ pub enum DelegationType {
     Ratio(DelegationRatio),
 }
 
+/// Delegation Ratio type express a number of parts
+/// and a list of pools and their
+///
+/// E.g. parts: 7, pools: [(A, 3), (B,1), (C,4)] means that
+/// A is associated with 3/7 of the stake, B has 1/7 of stake and C
+/// has 4/7 of the stake.
+///
+/// It's invalid to have less than 2 elements in the array,
+/// and by extension parts need to be equal to the sum of individual
+/// pools parts.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DelegationRatio {
-    pub parts: u8,
-    pub pools: Vec<(PoolId, u8)>,
+    parts: u8,
+    pools: Box<[(PoolId, u8)]>,
 }
 
 impl DelegationRatio {
     pub fn is_valid(&self) -> bool {
         // map to u32 before summing to make sure we don't overflow
         let total: u32 = self.pools.iter().map(|x| x.1 as u32).sum();
-        self.parts > 0 && self.pools.len() > 0 && total == (self.parts as u32)
+        let has_no_zero = self.pools.iter().find(|x| x.1 == 0).is_none();
+        has_no_zero && self.parts > 1 && self.pools.len() > 1 && total == (self.parts as u32)
+    }
+
+    pub fn new(parts: u8, pools: Vec<(PoolId, u8)>) -> Option<DelegationRatio> {
+        let total: u32 = pools.iter().map(|x| x.1 as u32).sum();
+        let has_no_zero = pools.iter().find(|x| x.1 == 0).is_none();
+        if has_no_zero && parts > 1 && pools.len() > 1 && total == (parts as u32) {
+            Some(Self {
+                parts,
+                pools: pools.into(),
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn parts(&self) -> u8 {
+        self.parts
+    }
+
+    pub fn pools(&self) -> &[(PoolId, u8)] {
+        &self.pools
     }
 }
 
