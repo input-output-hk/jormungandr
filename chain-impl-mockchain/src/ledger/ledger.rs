@@ -835,7 +835,9 @@ impl Ledger {
                     });
                 };
 
-                if !legacy::oldaddress_from_xpub(&associated_output.address, xpub) {
+                if legacy::oldaddress_from_xpub(&associated_output.address, xpub)
+                    == legacy::OldAddressMatchXPub::No
+                {
                     return Err(Error::OldUtxoInvalidPublicKey {
                         utxo: utxo.clone(),
                         output: associated_output.clone(),

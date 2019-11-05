@@ -155,6 +155,12 @@ fn hash_spending_data(xpub: &XPub, attrs: &Attributes) -> [u8; 28] {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Addr(Vec<u8>);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AddressMatchXPub {
+    Yes,
+    No,
+}
+
 impl Addr {
     pub fn deconstruct(&self) -> ExtendedAddr {
         let mut raw = Deserializer::from(std::io::Cursor::new(&self.0));
@@ -162,17 +168,21 @@ impl Addr {
     }
 
     /// Check if the Addr can be reconstructed with a specific xpub
-    pub fn identical_with_pubkey(&self, xpub: &XPub) -> bool {
+    pub fn identical_with_pubkey(&self, xpub: &XPub) -> AddressMatchXPub {
         let ea = self.deconstruct();
         let newea = ExtendedAddr::new(xpub, ea.attributes);
-        self == &newea.to_address()
+        if self == &newea.to_address() {
+            AddressMatchXPub::Yes
+        } else {
+            AddressMatchXPub::No
+        }
     }
 
     /// mostly helper of the previous function, so not to have to expose the xpub construction
-    pub fn identical_with_pubkey_raw(&self, xpub: &[u8]) -> bool {
+    pub fn identical_with_pubkey_raw(&self, xpub: &[u8]) -> AddressMatchXPub {
         match XPub::from_slice(xpub) {
             Ok(xpub) => self.identical_with_pubkey(&xpub),
-            _ => false,
+            _ => AddressMatchXPub::No,
         }
     }
 }
@@ -356,12 +366,13 @@ impl<'a> cbor_event::se::Serialize for SpendingData<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::Addr;
+    use super::{Addr, AddressMatchXPub};
     use ed25519_bip32::XPub;
 
     fn assert_same_address(address: Addr, xpub: XPub) {
-        assert!(
+        assert_eq!(
             address.identical_with_pubkey(&xpub),
+            AddressMatchXPub::Yes,
             "expected public key {} to match address {}",
             xpub,
             address,

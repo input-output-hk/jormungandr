@@ -1,6 +1,7 @@
 use crate::value::Value;
 
 pub use cardano_legacy_address::Addr as OldAddress;
+pub use cardano_legacy_address::AddressMatchXPub as OldAddressMatchXPub;
 
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
@@ -11,7 +12,10 @@ pub struct UtxoDeclaration {
     pub addrs: Vec<(OldAddress, Value)>,
 }
 
-pub fn oldaddress_from_xpub(address: &OldAddress, xpub: &PublicKey<Ed25519Bip32>) -> bool {
+pub fn oldaddress_from_xpub(
+    address: &OldAddress,
+    xpub: &PublicKey<Ed25519Bip32>,
+) -> OldAddressMatchXPub {
     address.identical_with_pubkey_raw(xpub.as_ref())
 }
 
