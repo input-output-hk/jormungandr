@@ -2346,9 +2346,9 @@ checksum = "feb3b2b1033b8a60b4da6ee470325f887758c95d5320f52f9ce0df055a55940e"
 
 [[package]]
 name = "poldercast"
-version = "0.9.3"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb3522a4768c86cabd46f4ba4d4abe06d79ab94babb8228ece627d4f14654bf4"
+checksum = "6b2bea90465325528b27fe4d500f7fa01cf8d1bc5e3e28fddaeefb91d1050cea"
 dependencies = [
  "hex 0.4.0",
  "multiaddr",
