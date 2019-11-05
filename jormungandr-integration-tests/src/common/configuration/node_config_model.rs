@@ -3,7 +3,10 @@
 extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
+
+use jormungandr_lib::interfaces::Mempool;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Log {
     pub level: Option<String>,
@@ -45,6 +48,7 @@ pub struct NodeConfig {
     pub log: Option<Log>,
     pub rest: Option<Rest>,
     pub p2p: Peer2Peer,
+    pub mempool: Mempool,
 }
 
 const DEFAULT_HOST: &str = "127.0.0.1";
@@ -88,6 +92,11 @@ impl NodeConfig {
                     messages: String::from("high"),
                     blocks: String::from("high"),
                 },
+            },
+            mempool: Mempool {
+                fragment_ttl: Duration::from_secs(30 * 60).into(),
+                log_ttl: Duration::from_secs(60 * 60).into(),
+                garbage_collection_interval: Duration::from_secs(15 * 60).into(),
             },
         }
     }

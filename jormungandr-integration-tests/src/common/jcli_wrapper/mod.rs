@@ -9,6 +9,8 @@ pub mod certificate;
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
 
+pub use jcli_transaction_wrapper::JCLITransactionWrapper;
+
 use super::configuration;
 use super::configuration::genesis_model::GenesisYaml;
 use super::file_assert;

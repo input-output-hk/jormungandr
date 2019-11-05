@@ -3,6 +3,7 @@ mod address;
 mod block0_configuration;
 mod blockdate;
 mod certificate;
+mod config;
 mod fragment_log;
 mod leadership_log;
 mod linear_fee;
@@ -22,6 +23,7 @@ pub use self::certificate::{
     Certificate, CertificateFromBech32Error, CertificateFromStrError, CertificateToBech32Error,
     SignedCertificate, CERTIFICATE_HRP, SIGNED_CERTIFICATE_HRP,
 };
+pub use self::config::*;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::leadership_log::{EnclaveLeaderId, LeadershipLog, LeadershipLogId};
 pub use self::linear_fee::LinearFeeDef;

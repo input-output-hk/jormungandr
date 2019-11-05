@@ -3,7 +3,12 @@ use crate::{
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
-use jormungandr_lib::time::Duration;
+use chain_crypto::Ed25519;
+use jormungandr_lib::{
+    crypto::key::{Identifier, SigningKey},
+    interfaces::Mempool,
+    time::Duration,
+};
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
@@ -111,19 +116,6 @@ pub struct Leadership {
     pub garbage_collection_interval: Duration,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct Mempool {
-    /// time to live in the mempool before being discarded. If the value is not applied
-    /// in a block within this duration it will be discarded.
-    pub fragment_ttl: Duration,
-    /// FragmentLog time to live, it is for information purposes, we log all the fragments
-    /// logs in a cache. The log will be discarded at the end of the ttl.
-    pub log_ttl: Duration,
-    /// interval between 2 garbage collection check of the mempool and the log cache.
-    pub garbage_collection_interval: Duration,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Address(pub poldercast::Address);
 
@@ -164,15 +156,6 @@ impl Default for P2pConfig {
             topics_of_interest: None,
             max_connections: None,
             allow_private_addresses: false,
-        }
-    }
-}
-impl Default for Mempool {
-    fn default() -> Self {
-        Mempool {
-            fragment_ttl: Duration::new(30 * 60, 0),
-            log_ttl: Duration::new(3600, 0),
-            garbage_collection_interval: Duration::new(3600 / 4, 0),
         }
     }
 }

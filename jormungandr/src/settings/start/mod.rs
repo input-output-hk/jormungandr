@@ -1,14 +1,14 @@
 pub mod config;
 pub mod network;
 
-use self::config::{Config, Leadership, Mempool};
+use self::config::{Config, Leadership};
 pub use self::config::{Cors, Rest};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
+use jormungandr_lib::interfaces::Mempool;
 use slog::{FilterLevel, Logger};
-
 use std::{fs::File, path::PathBuf};
 
 custom_error! {pub Error

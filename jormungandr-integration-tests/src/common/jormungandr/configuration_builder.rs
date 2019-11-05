@@ -9,6 +9,8 @@ use crate::common::{
     startup::build_genesis_block,
 };
 
+use jormungandr_lib::interfaces::Mempool;
+
 pub struct ConfigurationBuilder {
     funds: Vec<Fund>,
     trusted_peers: Option<Vec<TrustedPeer>>,
@@ -26,6 +28,7 @@ pub struct ConfigurationBuilder {
     linear_fees: LinearFees,
     certs: Vec<String>,
     consensus_leader_ids: Vec<String>,
+    mempool: Option<Mempool>,
 }
 
 impl ConfigurationBuilder {
@@ -51,6 +54,7 @@ impl ConfigurationBuilder {
             bft_slots_ratio: Some("0.222".to_owned()),
             consensus_genesis_praos_active_slot_coeff: Some("0.1".to_owned()),
             kes_update_speed: 12 * 3600,
+            mempool: None,
         }
     }
 
@@ -137,6 +141,11 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_mempool(&mut self, mempool: Mempool) -> &mut Self {
+        self.mempool = Some(mempool);
+        self
+    }
+
     pub fn build(&self) -> JormungandrConfig {
         let mut node_config = NodeConfig::new();
 
@@ -146,9 +155,13 @@ impl ConfigurationBuilder {
         if let Some(public_address) = &self.public_address {
             node_config.p2p.public_address = public_address.to_string();
         }
+        if let Some(mempool) = &self.mempool {
+            node_config.mempool = mempool.clone();
+        }
 
         node_config.p2p.trusted_peers = self.trusted_peers.clone();
         node_config.log = self.log.clone();
+
         let node_config_path = NodeConfig::serialize(&node_config);
 
         let secret_key = jcli_wrapper::assert_key_generate("ed25519");
