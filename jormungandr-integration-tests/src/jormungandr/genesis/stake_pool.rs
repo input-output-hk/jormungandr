@@ -7,6 +7,7 @@ use crate::common::{
         jcli_transaction_wrapper::JCLITransactionWrapper,
     },
     jormungandr::{ConfigurationBuilder, Starter},
+    process_utils::Wait,
     startup,
 };
 
@@ -44,18 +45,21 @@ pub fn create_delegate_retire_stake_pool() {
         "1234",
         &block0_hash,
         &jormungandr.rest_address(),
+        &Default::default(),
     );
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
         &block0_hash,
         &jormungandr.rest_address(),
+        &Default::default(),
     );
     retire_stake_pool(
         &stake_pool_id,
         &mut actor_account,
         &block0_hash,
         &jormungandr.rest_address(),
+        &Default::default(),
     );
 }
 
@@ -64,6 +68,7 @@ pub fn create_new_stake_pool(
     node_id: &str,
     genesis_block_hash: &str,
     jormungandr_rest_address: &str,
+    wait: &Wait,
 ) -> String {
     let kes_secret_key = jcli_wrapper::assert_key_generate("Curve25519_2HashDH");
     let kes_public_key = jcli_wrapper::assert_key_to_public_default(&kes_secret_key);
@@ -101,7 +106,11 @@ pub fn create_new_stake_pool(
         .assert_to_message();
 
     account.confirm_transaction();
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr_rest_address);
+    jcli_wrapper::assert_transaction_in_block_with_wait(
+        &transaction,
+        &jormungandr_rest_address,
+        wait,
+    );
 
     let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(&stake_pool_certificate_file);
 
@@ -119,6 +128,7 @@ pub fn delegate_stake(
     stake_pool_id: &str,
     genesis_block_hash: &str,
     jormungandr_rest_address: &str,
+    wait: &Wait,
 ) {
     let owner_stake_key =
         file_utils::create_file_in_temp("stake_key.private_key", &account.private_key);
@@ -139,7 +149,11 @@ pub fn delegate_stake(
         .assert_to_message();
 
     account.confirm_transaction();
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr_rest_address);
+    jcli_wrapper::assert_transaction_in_block_with_wait(
+        &transaction,
+        &jormungandr_rest_address,
+        wait,
+    );
 
     let account_state_after_delegation =
         jcli_wrapper::assert_rest_account_get_stats(&account.address, &jormungandr_rest_address);
@@ -160,6 +174,7 @@ pub fn retire_stake_pool(
     account: &mut Account,
     genesis_block_hash: &str,
     jormungandr_rest_address: &str,
+    wait: &Wait,
 ) {
     let owner_private_key =
         file_utils::create_file_in_temp("stake_key.private_key", &account.private_key);
@@ -181,7 +196,11 @@ pub fn retire_stake_pool(
         .assert_to_message();
 
     account.confirm_transaction();
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr_rest_address);
+    jcli_wrapper::assert_transaction_in_block_with_wait(
+        &transaction,
+        &jormungandr_rest_address,
+        wait,
+    );
 
     let account_state_after_stake_pool_retire =
         jcli_wrapper::assert_rest_account_get_stats(&account.address, &jormungandr_rest_address);

@@ -4,11 +4,16 @@ extern crate custom_error;
 extern crate serde_yaml;
 
 pub mod output_extensions;
+mod wait;
+
+pub use wait::{Wait, WaitBuilder};
 
 use self::custom_error::custom_error;
 use self::output_extensions::ProcessOutput;
-use std::process::{Command, Output, Stdio};
-use std::{thread, time};
+use std::{
+    process::{Command, Output, Stdio},
+    thread, time,
+};
 
 custom_error! {pub ProcessError
      ProcessExited{message: String} = "could not start process '{message}'",

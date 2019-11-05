@@ -102,13 +102,14 @@ impl LogStartupVerification {
 impl StartupVerification for LogStartupVerification {
     fn stop(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
+        logger.contains_error().unwrap_or_else(|_| false)
+    }
+
+    fn success(&self) -> bool {
+        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger
             .message_logged_multiple_times("initial bootstrap completed", 2)
             .unwrap_or_else(|_| false)
-    }
-    fn success(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
-        logger.contains_error().unwrap_or_else(|_| false)
     }
 }
 
