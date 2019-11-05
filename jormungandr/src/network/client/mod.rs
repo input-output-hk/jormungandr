@@ -235,15 +235,12 @@ where
                     "peer requests missing part of the chain";
                     "checkpoints" => ?req.from,
                     "to" => ?req.to);
-                self.push_missing_blocks(req);
+                self.push_missing_headers(req);
             }
         }
         Ok(Continue.into())
     }
 
-    // FIXME: use this to handle BlockEvent::Missing events when two-stage
-    // chain pull processing is implemented in the blockchain task.
-    #[allow(dead_code)]
     fn push_missing_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
         let (reply_handle, stream) =
             intercom::stream_reply::<Header, network_core::error::Error>(self.logger.clone());
@@ -261,31 +258,6 @@ where
                     info!(
                         err_logger,
                         "PushHeaders request failed";
-                        "error" => ?e,
-                    );
-                }),
-        );
-    }
-
-    // Temporary support for pushing chain blocks without two-stage
-    // retrieval.
-    fn push_missing_blocks(&mut self, req: ChainPullRequest<HeaderHash>) {
-        let (reply_handle, stream) =
-            intercom::stream_reply::<Block, core_error::Error>(self.logger.clone());
-        self.client_box
-            .send_to(ClientMsg::PullBlocksToTip(req.from, reply_handle));
-        let done_logger = self.logger.clone();
-        let err_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.service
-                .upload_blocks(stream)
-                .map(move |_| {
-                    debug!(done_logger, "finished pushing blocks");
-                })
-                .map_err(move |e| {
-                    info!(
-                        err_logger,
-                        "UploadBlocks request failed";
                         "error" => ?e,
                     );
                 }),
