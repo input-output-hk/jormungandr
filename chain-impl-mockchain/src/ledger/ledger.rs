@@ -10,7 +10,7 @@ use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
 use crate::header::HeaderId;
 use crate::leadership::genesis::ActiveSlotsCoeffError;
-use crate::stake::{DelegationError, DelegationState, StakeDistribution};
+use crate::stake::{PoolError, PoolsState, StakeDistribution};
 use crate::transaction::*;
 use crate::treasury::Treasury;
 use crate::value::*;
@@ -52,7 +52,7 @@ pub struct Ledger {
     pub(crate) settings: setting::Settings,
     pub(crate) updates: update::UpdateState,
     pub(crate) multisig: multisig::Ledger,
-    pub(crate) delegation: DelegationState,
+    pub(crate) delegation: PoolsState,
     pub(crate) static_params: Arc<LedgerStaticParameters>,
     pub(crate) date: BlockDate,
     pub(crate) chain_length: ChainLength,
@@ -114,7 +114,7 @@ custom_error! {
         NotBalanced { inputs: Value, outputs: Value } = "Inputs, outputs and fees are not balanced, transaction with {inputs} input and {outputs} output",
         ZeroOutput { output: Output<Address> } = "Empty output",
         OutputGroupInvalid { output: Output<Address> } = "Output group invalid",
-        Delegation { source: DelegationError } = "Error or Invalid delegation",
+        Delegation { source: PoolError } = "Error or Invalid delegation",
         AccountIdentifierInvalid = "Invalid account identifier",
         InvalidDiscrimination = "Invalid discrimination",
         ExpectingAccountWitness = "Expected an account witness",
@@ -149,7 +149,7 @@ impl Ledger {
             settings,
             updates: update::UpdateState::new(),
             multisig: multisig::Ledger::new(),
-            delegation: DelegationState::new(),
+            delegation: PoolsState::new(),
             static_params: Arc::new(static_params),
             date: BlockDate::first(),
             chain_length: ChainLength(0),
@@ -390,22 +390,17 @@ impl Ledger {
             Fragment::StakeDelegation(tx) => {
                 let tx = tx.as_slice();
                 let payload = tx.payload().into_payload();
-                match payload.account_id.to_single_account() {
-                    None => {
-                        return Err(DelegationError::StakeDelegationAccountIsInvalid(
-                            payload.account_id.clone(),
-                        )
-                        .into());
-                    }
-                    Some(account_pk) => {
-                        let signature = tx.payload_auth().into_payload_auth();
-                        let verified = signature
-                            .verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data());
-                        if verified == Verification::Failed {
-                            return Err(Error::StakeDelegationSignatureFailed);
-                        }
-                    }
+                let account_pk = payload
+                    .account_id
+                    .to_single_account()
+                    .ok_or(Error::AccountIdentifierInvalid)?;
+                let signature = tx.payload_auth().into_payload_auth();
+                let verified =
+                    signature.verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data());
+                if verified == Verification::Failed {
+                    return Err(Error::StakeDelegationSignatureFailed);
                 }
+
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_stake_delegation(&payload)?;
@@ -571,20 +566,13 @@ impl Ledger {
     ) -> Result<Self, Error> {
         let pool_id = &auth_cert.pool_id;
 
-        if !self.delegation.stake_pool_exists(pool_id) {
-            return Err(DelegationError::StakeDelegationPoolKeyIsInvalid(pool_id.clone()).into());
-        }
-
-        if let Some(account_key) = auth_cert.account_id.to_single_account() {
-            self.accounts = self
-                .accounts
-                .set_delegation(&account_key, DelegationType::Full(pool_id.clone()))?;
-        } else {
-            return Err(DelegationError::StakeDelegationAccountIsInvalid(
-                auth_cert.account_id.clone(),
-            )
-            .into());
-        }
+        let account_key = auth_cert
+            .account_id
+            .to_single_account()
+            .ok_or(Error::AccountIdentifierInvalid)?;
+        self.accounts = self
+            .accounts
+            .set_delegation(&account_key, DelegationType::Full(pool_id.clone()))?;
         Ok(self)
     }
 
@@ -697,11 +685,11 @@ impl Ledger {
         &mut self.settings
     }
 
-    pub fn delegation(&self) -> &DelegationState {
+    pub fn delegation(&self) -> &PoolsState {
         &self.delegation
     }
 
-    pub fn delegation_mut(&mut self) -> &mut DelegationState {
+    pub fn delegation_mut(&mut self) -> &mut PoolsState {
         &mut self.delegation
     }
 

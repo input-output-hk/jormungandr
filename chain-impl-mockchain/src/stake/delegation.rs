@@ -1,30 +1,21 @@
 use crate::certificate::{PoolId, PoolRegistration};
-use crate::transaction::AccountIdentifier;
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Debug};
 
-/// All registered Stake Node
-pub type PoolTable = Hamt<DefaultHasher, PoolId, PoolRegistration>;
-
 /// A structure that keeps track of stake keys and stake pools.
 #[derive(Clone, PartialEq, Eq)]
-pub struct DelegationState {
-    pub(crate) stake_pools: PoolTable,
+pub struct PoolsState {
+    pub(crate) stake_pools: Hamt<DefaultHasher, PoolId, PoolRegistration>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DelegationError {
-    StakeDelegationSigIsInvalid,
-    StakeDelegationPoolKeyIsInvalid(PoolId),
-    StakeDelegationAccountIsInvalid(AccountIdentifier),
-    StakePoolRegistrationPoolSigIsInvalid,
-    StakePoolAlreadyExists(PoolId),
-    StakePoolRetirementSigIsInvalid,
-    StakePoolDoesNotExist(PoolId),
+pub enum PoolError {
+    AlreadyExists(PoolId),
+    NotFound(PoolId),
 }
 
-impl Debug for DelegationState {
+impl Debug for PoolsState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -37,37 +28,15 @@ impl Debug for DelegationState {
     }
 }
 
-impl std::fmt::Display for DelegationError {
+impl std::fmt::Display for PoolError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            DelegationError::StakeDelegationSigIsInvalid => write!(
-                f,
-                "Block has a stake delegation certificate with an invalid signature"
-            ),
-            DelegationError::StakeDelegationPoolKeyIsInvalid(pool_id) => write!(
-                f,
-                "Block has a stake delegation certificate that delegates to a pool '{:?} that does not exist",
-                pool_id
-            ),
-            DelegationError::StakeDelegationAccountIsInvalid(account_id) => write!(
-                f,
-                "Block has a stake delegation certificate that delegates from an account '{:?} that does not exist",
-                account_id
-            ),
-            DelegationError::StakePoolRegistrationPoolSigIsInvalid => write!(
-                f,
-                "Block has a pool registration certificate with an invalid pool signature"
-            ),
-            DelegationError::StakePoolAlreadyExists(pool_id) => write!(
+            PoolError::AlreadyExists(pool_id) => write!(
                 f,
                 "Block attempts to register pool '{:?}' which already exists",
                 pool_id
             ),
-            DelegationError::StakePoolRetirementSigIsInvalid => write!(
-                f,
-                "Block has a pool retirement certificate with an invalid pool signature"
-            ),
-            DelegationError::StakePoolDoesNotExist(pool_id) => write!(
+            PoolError::NotFound(pool_id) => write!(
                 f,
                 "Block references a pool '{:?}' which does not exist",
                 pool_id
@@ -76,13 +45,17 @@ impl std::fmt::Display for DelegationError {
     }
 }
 
-impl std::error::Error for DelegationError {}
+impl std::error::Error for PoolError {}
 
-impl DelegationState {
+impl PoolsState {
     pub fn new() -> Self {
-        DelegationState {
+        PoolsState {
             stake_pools: Hamt::new(),
         }
+    }
+
+    pub fn lookup(&self, id: &PoolId) -> Option<&PoolRegistration> {
+        self.stake_pools.lookup(id)
     }
 
     pub fn stake_pool_ids<'a>(&'a self) -> impl Iterator<Item = PoolId> + 'a {
@@ -95,33 +68,29 @@ impl DelegationState {
             .map_or_else(|| false, |_| true)
     }
 
-    pub fn stake_pool_lookup(&self, pool_id: &PoolId) -> Option<&PoolRegistration> {
-        self.stake_pools.lookup(pool_id)
-    }
-
-    pub fn stake_pool_get(&self, pool_id: &PoolId) -> Result<&PoolRegistration, DelegationError> {
+    pub fn stake_pool_get(&self, pool_id: &PoolId) -> Result<&PoolRegistration, PoolError> {
         self.stake_pools
             .lookup(pool_id)
-            .ok_or(DelegationError::StakePoolDoesNotExist(pool_id.clone()))
+            .ok_or(PoolError::NotFound(pool_id.clone()))
     }
 
-    pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, DelegationError> {
+    pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, PoolError> {
         let id = owner.to_id();
         let new_pools = self
             .stake_pools
             .insert(id.clone(), owner)
-            .map_err(|_| DelegationError::StakePoolAlreadyExists(id))?;
-        Ok(DelegationState {
+            .map_err(|_| PoolError::AlreadyExists(id))?;
+        Ok(PoolsState {
             stake_pools: new_pools,
         })
     }
 
-    pub fn deregister_stake_pool(&self, pool_id: &PoolId) -> Result<Self, DelegationError> {
-        Ok(DelegationState {
+    pub fn deregister_stake_pool(&self, pool_id: &PoolId) -> Result<Self, PoolError> {
+        Ok(PoolsState {
             stake_pools: self
                 .stake_pools
                 .remove(pool_id)
-                .map_err(|_| DelegationError::StakePoolDoesNotExist(pool_id.clone()))?,
+                .map_err(|_| PoolError::NotFound(pool_id.clone()))?,
         })
     }
 }
@@ -129,19 +98,19 @@ impl DelegationState {
 #[cfg(test)]
 mod tests {
 
-    use super::DelegationState;
+    use super::PoolsState;
     use crate::certificate::PoolRegistration;
     use quickcheck::{Arbitrary, Gen, TestResult};
     use quickcheck_macros::quickcheck;
     use std::iter;
 
-    impl Arbitrary for DelegationState {
+    impl Arbitrary for PoolsState {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             let size = usize::arbitrary(gen);
             let arbitrary_stake_pools = iter::from_fn(|| Some(PoolRegistration::arbitrary(gen)))
                 .take(size)
                 .collect::<Vec<PoolRegistration>>();
-            let mut delegation_state = DelegationState::new();
+            let mut delegation_state = PoolsState::new();
             for stake_pool in arbitrary_stake_pools {
                 delegation_state = delegation_state.register_stake_pool(stake_pool).unwrap();
             }
@@ -151,7 +120,7 @@ mod tests {
 
     #[quickcheck]
     pub fn delegation_state_tests(
-        delegation_state: DelegationState,
+        delegation_state: PoolsState,
         stake_pool: PoolRegistration,
     ) -> TestResult {
         // register stake pool first time should be ok

@@ -7,7 +7,7 @@ use crate::{
     key::deserialize_public_key,
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
-    stake::{self, StakeDistribution},
+    stake::{PoolsState, StakeDistribution},
     value::Value,
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
@@ -42,7 +42,7 @@ impl GenesisPraosLeader {
 /// Genesis Praos leadership data for a specific epoch
 pub struct LeadershipData {
     epoch_nonce: Nonce,
-    nodes: stake::PoolTable,
+    nodes: PoolsState,
     distribution: StakeDistribution,
     // the epoch this leader selection is valid for
     epoch: Epoch,
@@ -58,7 +58,7 @@ impl LeadershipData {
     pub fn new(epoch: Epoch, ledger: &Ledger) -> Self {
         LeadershipData {
             epoch_nonce: ledger.settings.consensus_nonce.clone(),
-            nodes: ledger.delegation.stake_pools.clone(),
+            nodes: ledger.delegation.clone(),
             distribution: ledger.get_stake_distribution(),
             epoch,
             active_slots_coeff: ledger.settings.active_slots_coeff,
@@ -69,7 +69,7 @@ impl LeadershipData {
         &self.distribution
     }
 
-    pub fn nodes(&self) -> &stake::PoolTable {
+    pub fn nodes(&self) -> &PoolsState {
         &self.nodes
     }
 

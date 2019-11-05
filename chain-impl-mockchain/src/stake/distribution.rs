@@ -5,7 +5,7 @@ use crate::{utxo, value::Value};
 use chain_addr::{Address, Kind};
 use std::collections::HashMap;
 
-use super::delegation::DelegationState;
+use super::delegation::PoolsState;
 
 /// Stake distribution at a given time.
 ///
@@ -150,7 +150,7 @@ fn assign_account_value(
 /// the unassigned stake.
 pub fn get_distribution(
     accounts: &account::Ledger,
-    dstate: &DelegationState,
+    dstate: &PoolsState,
     utxos: &utxo::Ledger<Address>,
 ) -> StakeDistribution {
     use std::iter::FromIterator;
@@ -216,7 +216,7 @@ pub fn get_distribution(
 mod tests {
     use crate::account;
     use crate::accounting::account::DelegationType;
-    use crate::stake::delegation::DelegationState;
+    use crate::stake::delegation::PoolsState;
     use crate::{
         account::{AccountAlg, Identifier},
         certificate::PoolRegistration,
@@ -382,7 +382,7 @@ mod tests {
         stake_distribution_data: StakeDistributionArbitraryData,
     ) -> TestResult {
         let mut accounts = account::Ledger::new();
-        let mut dstate = DelegationState::new();
+        let mut dstate = PoolsState::new();
         let mut utxos = utxo::Ledger::new();
 
         // create two stake pools, one active and one inactive
