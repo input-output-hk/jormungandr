@@ -2,6 +2,8 @@
 extern crate jormungandr_scenario_tests;
 
 use jormungandr_scenario_tests::{prepare_command, style, Context, Seed};
+#[macro_use]
+extern crate jormungandr_integration_tests;
 use std::{path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;
 
@@ -122,10 +124,10 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) {
 
     controller.monitor_nodes();
     std::thread::sleep(std::time::Duration::from_secs(10));
-    let tip1 = node1.get_tip().unwrap();
+    let tip1 = node1.tip().unwrap();
     std::thread::sleep(std::time::Duration::from_secs(1));
     node1.shutdown().unwrap();
-    let _block = node2.get_block(&tip1).unwrap();
+    let _block = node2.block(&tip1).unwrap();
 
     std::thread::sleep(std::time::Duration::from_secs(1));
 

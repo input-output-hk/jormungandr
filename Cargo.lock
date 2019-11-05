@@ -1704,6 +1704,7 @@ dependencies = [
  "error-chain 0.12.1",
  "hex 0.3.2",
  "indicatif",
+ "jormungandr-integration-tests",
  "jormungandr-lib",
  "lazy_static",
  "mktemp",
