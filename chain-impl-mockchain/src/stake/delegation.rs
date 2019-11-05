@@ -10,9 +10,9 @@ pub struct PoolsState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DelegationError {
-    StakePoolAlreadyExists(PoolId),
-    StakePoolDoesNotExist(PoolId),
+pub enum PoolError {
+    AlreadyExists(PoolId),
+    NotFound(PoolId),
 }
 
 impl Debug for PoolsState {
@@ -28,15 +28,15 @@ impl Debug for PoolsState {
     }
 }
 
-impl std::fmt::Display for DelegationError {
+impl std::fmt::Display for PoolError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            DelegationError::StakePoolAlreadyExists(pool_id) => write!(
+            PoolError::AlreadyExists(pool_id) => write!(
                 f,
                 "Block attempts to register pool '{:?}' which already exists",
                 pool_id
             ),
-            DelegationError::StakePoolDoesNotExist(pool_id) => write!(
+            PoolError::NotFound(pool_id) => write!(
                 f,
                 "Block references a pool '{:?}' which does not exist",
                 pool_id
@@ -45,7 +45,7 @@ impl std::fmt::Display for DelegationError {
     }
 }
 
-impl std::error::Error for DelegationError {}
+impl std::error::Error for PoolError {}
 
 impl PoolsState {
     pub fn new() -> Self {
@@ -68,29 +68,29 @@ impl PoolsState {
             .map_or_else(|| false, |_| true)
     }
 
-    pub fn stake_pool_get(&self, pool_id: &PoolId) -> Result<&PoolRegistration, DelegationError> {
+    pub fn stake_pool_get(&self, pool_id: &PoolId) -> Result<&PoolRegistration, PoolError> {
         self.stake_pools
             .lookup(pool_id)
-            .ok_or(DelegationError::StakePoolDoesNotExist(pool_id.clone()))
+            .ok_or(PoolError::NotFound(pool_id.clone()))
     }
 
-    pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, DelegationError> {
+    pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, PoolError> {
         let id = owner.to_id();
         let new_pools = self
             .stake_pools
             .insert(id.clone(), owner)
-            .map_err(|_| DelegationError::StakePoolAlreadyExists(id))?;
+            .map_err(|_| PoolError::AlreadyExists(id))?;
         Ok(PoolsState {
             stake_pools: new_pools,
         })
     }
 
-    pub fn deregister_stake_pool(&self, pool_id: &PoolId) -> Result<Self, DelegationError> {
+    pub fn deregister_stake_pool(&self, pool_id: &PoolId) -> Result<Self, PoolError> {
         Ok(PoolsState {
             stake_pools: self
                 .stake_pools
                 .remove(pool_id)
-                .map_err(|_| DelegationError::StakePoolDoesNotExist(pool_id.clone()))?,
+                .map_err(|_| PoolError::NotFound(pool_id.clone()))?,
         })
     }
 }

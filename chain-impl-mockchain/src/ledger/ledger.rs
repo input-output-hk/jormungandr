@@ -10,7 +10,7 @@ use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
 use crate::header::HeaderId;
 use crate::leadership::genesis::ActiveSlotsCoeffError;
-use crate::stake::{DelegationError, PoolsState, StakeDistribution};
+use crate::stake::{PoolError, PoolsState, StakeDistribution};
 use crate::transaction::*;
 use crate::treasury::Treasury;
 use crate::value::*;
@@ -114,7 +114,7 @@ custom_error! {
         NotBalanced { inputs: Value, outputs: Value } = "Inputs, outputs and fees are not balanced, transaction with {inputs} input and {outputs} output",
         ZeroOutput { output: Output<Address> } = "Empty output",
         OutputGroupInvalid { output: Output<Address> } = "Output group invalid",
-        Delegation { source: DelegationError } = "Error or Invalid delegation",
+        Delegation { source: PoolError } = "Error or Invalid delegation",
         AccountIdentifierInvalid = "Invalid account identifier",
         InvalidDiscrimination = "Invalid discrimination",
         ExpectingAccountWitness = "Expected an account witness",
