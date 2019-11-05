@@ -34,7 +34,7 @@ rest:
 p2p:
   trusted_peers:
     - address: "/ip4/104.24.28.11/tcp/8299"
-      id: ed25519_pk14uednfkcqq2u2w4uhy7saahyqapn78huu8fj7tv84rqeer78hcvs8h6r6u
+      id: ad24537cb009bedaebae3d247fecee9e14c57fe942e9bb0d
 ```
 
 Description of the fields:
@@ -65,7 +65,8 @@ Description of the fields:
 - `p2p`: P2P network settings
     - `trusted_peers`: (optional) the list of nodes's [multiaddr][multiaddr] with their associated `public_id`
       to connect to in order to bootstrap the P2P topology (and bootstrap our local blockchain);
-    - `private_id`: the node's private key ([`Ed25519`]) that will be used to identify this node to the network
+    - `public_id`: (optional) the node's public ID that will be used to
+      identify this node to the network.
     - `public_address`: [multiaddr][multiaddr] string specifying address of the
       P2P service. This is the public address that will be distributed to other
       peers of the network that may find interest in participating to the
