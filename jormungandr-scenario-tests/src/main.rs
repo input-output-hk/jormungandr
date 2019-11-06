@@ -6,7 +6,7 @@ extern crate jormungandr_integration_tests;
 
 use jormungandr_scenario_tests::{
     node::{LeadershipMode, PersistenceMode},
-    prepare_command, style, Context, Seed,
+    prepare_command, style, Context, ScenariosRepository, Seed,
 };
 use std::{collections::HashMap, path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;

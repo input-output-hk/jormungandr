@@ -8,6 +8,7 @@ mod programs;
 #[macro_use]
 pub mod scenario;
 pub mod example_scenarios;
+mod scenarios_repository;
 mod slog;
 pub mod style;
 pub mod test;
