@@ -22,7 +22,7 @@ struct CommandArgs {
     #[structopt(long = "jcli", default_value = "jcli")]
     jcli: PathBuf,
 
-    #[structopt(long = "scenario", default_value = "scenario_1")]
+    #[structopt(long = "scenario", default_value = "*")]
     scenario: String,
     /// set a directory in which the tests will be run, allowing every details
     /// to be save persistently. By default it will create temporary directories
