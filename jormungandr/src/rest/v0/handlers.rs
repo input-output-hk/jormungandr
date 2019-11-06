@@ -23,10 +23,11 @@ use futures::{
     },
     Future, IntoFuture, Stream,
 };
+use jormungandr_lib::interfaces::NodeState;
 use std::str::FromStr;
 use std::sync::Arc;
 
-pub use crate::rest::{Context, FullContext, NodeState};
+pub use crate::rest::{Context, FullContext};
 
 macro_rules! ActixFuture {
     () => { impl Future<Item = impl Responder + 'static, Error = impl Into<Error> + 'static> + 'static }

@@ -30,7 +30,7 @@ pub use self::leadership_log::{EnclaveLeaderId, LeadershipLog, LeadershipLogId};
 pub use self::linear_fee::LinearFeeDef;
 pub use self::old_address::OldAddress;
 pub use self::settings::*;
-pub use self::stats::Stats;
+pub use self::stats::{NodeState, Stats};
 pub use self::transaction_input::{TransactionInput, TransactionInputType};
 pub use self::transaction_output::TransactionOutput;
 pub use self::transaction_witness::TransactionWitness;
