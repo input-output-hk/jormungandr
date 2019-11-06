@@ -17,10 +17,10 @@ pub enum DelegationType {
 }
 
 /// Delegation Ratio type express a number of parts
-/// and a list of pools and their
+/// and a list of pools and their individual parts
 ///
-/// E.g. parts: 7, pools: [(A, 3), (B,1), (C,4)] means that
-/// A is associated with 3/7 of the stake, B has 1/7 of stake and C
+/// E.g. parts: 7, pools: [(A,2), (B,1), (C,4)] means that
+/// A is associated with 2/7 of the stake, B has 1/7 of stake and C
 /// has 4/7 of the stake.
 ///
 /// It's invalid to have less than 2 elements in the array,
