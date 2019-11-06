@@ -3,32 +3,32 @@ Jörmungandr network capabilities are split into:
 1. the REST API, used for informational queries or control of the node;
 2. the gRPC API for blockchain protocol exchange and participation;
 
-Here we will only talk of the later, the REST API is described in another
-chapter already: [go to REST documentation](../quickstart/03_rest_api.md)
+Here we will only review the gRPC API as the REST API is described in another
+chapter: [go to the REST documentation](../quickstart/03_rest_api.md)
 
 # The protocol
 
-The protocol is based on commonly used in the industry tools: HTTP/2 and RPC.
-More precisely, Jörmungandr utilises [`gRPC`].
+The protocol is based on [`gRPC`] that combines commonly used protocols like HTTP/2 and RPC.
+More precisely, Jörmungandr utilises.
 
-This choice has been made for it is already widely supported across the world,
-it is utilising HTTP/2 which makes it easier for Proxy and Firewall to recognise
-the protocol and allow it.
+This choice was made because  [`gRPC`] is already widely supported around the world because
+of it's uitilization of standard protocols HTTP/2 which makes it much easier for Proxies and Firewalls to recognise
+the protocol and permit the traffic.
 
 ## Type of queries
 
-The protocol allows to send multiple types of messages between nodes:
+The protocol allows you to send multiple types of messages between nodes:
 
 * sync block to remote peer's _Last Block_ (`tip`).
 * propose new fragments (new transactions, certificates, ...):
   this is for the fragment propagation.
-* propose new blocks: for the block propagation.
+* propose new blocks: for block propagation.
 
-There are other commands to optimise the communication and synchronisation
-between nodes.
+There are other commands that optimise the communication and synchronisation
+between nodes that will be documented here in the future.
 
-Another type of messages is the `Gossip` message. It allows Nodes to exchange
-information (gossips) about other nodes on the network, allowing the peer
+Another type of messages is the `Gossip` message. These gossip messages allow Nodes to exchange
+information (gossips) about other nodes on the network, allowing for peer
 discovery.
 
 ## Peer to peer
@@ -43,17 +43,17 @@ The peer 2 peer connections are established utilising multiple components:
 
 ### Multilayered topology
 
-Just as described in the [Poldercast] paper we allow for our network topology
-to be built on multiple layers, behaving slightly differently and allowing for
-better granular control. In practice it means the node will have different
-group of nodes it connects to based on different algorithms, each of these
-groups being a subset of the whole known list of nodes.
+As described in the [Poldercast] paper, our network topology is
+built on multiple layers that allow for granular control of it's behavior. In 
+practice this means a node will have different groups of nodes that it connects to 
+based on different algorithms, each of these groups are a subset of the whole 
+known list of nodes.
 
 In short we have:
 
-* The rings layer, which select a predecessor(s) and a successor(s) for each
+* The rings layer selects a predecessor(s) and a successor(s) for each
   topic (Fragment or Blocks);
-* The Vicinity layer, will select nodes we are close to in terms of interests;
+* The Vicinity layer will select nodes that have similar interests;
 * The Cyclon layer, will select nodes randomly.
 
 However, we keep the option open to remove some of these layers or to add new
