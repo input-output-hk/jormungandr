@@ -73,7 +73,7 @@ The block body is formed of the following stream of data:
 
 Where HEADER is:
 
-	SIZE (2 bytes) | TYPE (1 byte)
+	SIZE (2 bytes) | TYPE (1 byte) | 00 (1 byte)
 
 Additionally, we introduce the capability to refer to each fragment
 individually by FragmentId, using a cryptographic hash function :
