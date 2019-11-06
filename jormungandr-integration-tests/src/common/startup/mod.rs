@@ -1,14 +1,11 @@
 use crate::common::{
     configuration::genesis_model::GenesisYaml,
-    data::{
-        address::{Account, AddressDataProvider, Delegation, Utxo},
-        keys::KeyPair,
-    },
+    data::address::{Account, AddressDataProvider, Delegation, Utxo},
     file_utils, jcli_wrapper,
 };
-
 use chain_addr::Discrimination;
-use jormungandr_lib::interfaces::UTxOInfo;
+use chain_crypto::AsymmetricKey;
+use jormungandr_lib::{crypto::key::KeyPair, interfaces::UTxOInfo};
 use std::path::PathBuf;
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
@@ -72,13 +69,8 @@ pub fn create_new_delegation_address_for(delegation_public_key: &str) -> Delegat
     utxo_with_delegation
 }
 
-pub fn create_new_key_pair(key_type: &str) -> KeyPair {
-    let private_key = jcli_wrapper::assert_key_generate(&key_type);
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    KeyPair {
-        private_key,
-        public_key,
-    }
+pub fn create_new_key_pair<K: AsymmetricKey>() -> KeyPair<K> {
+    KeyPair::generate(&mut rand::rngs::OsRng::new().unwrap())
 }
 
 pub fn get_utxo_for_address<T: AddressDataProvider>(

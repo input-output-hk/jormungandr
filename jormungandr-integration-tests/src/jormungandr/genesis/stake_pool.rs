@@ -12,6 +12,7 @@ use crate::common::{
 };
 
 use chain_addr::Discrimination;
+use chain_crypto::{Curve25519_2HashDH, SumEd25519_12};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
 use std::str::FromStr;
 
@@ -70,10 +71,8 @@ pub fn create_new_stake_pool(
     jormungandr_rest_address: &str,
     wait: &Wait,
 ) -> String {
-    let kes_secret_key = jcli_wrapper::assert_key_generate("Curve25519_2HashDH");
-    let kes_public_key = jcli_wrapper::assert_key_to_public_default(&kes_secret_key);
-    let vrf_secret_key = jcli_wrapper::assert_key_generate("SumEd25519_12");
-    let vrf_public_key = jcli_wrapper::assert_key_to_public_default(&vrf_secret_key);
+    let kes = startup::create_new_key_pair::<Curve25519_2HashDH>();
+    let vrf = startup::create_new_key_pair::<SumEd25519_12>();
 
     let owner_stake_key =
         file_utils::create_file_in_temp("stake_key.private_key", &account.private_key);
@@ -85,9 +84,9 @@ pub fn create_new_stake_pool(
     let certificate_wrapper = JCLICertificateWrapper::new();
 
     let stake_pool_certificate = certificate_wrapper.assert_new_stake_pool_registration(
-        &vrf_public_key,
+        &vrf.identifier().to_bech32_str(),
         node_id,
-        &kes_public_key,
+        &kes.identifier().to_bech32_str(),
         0u32,
         1u32,
         &account.public_key,
