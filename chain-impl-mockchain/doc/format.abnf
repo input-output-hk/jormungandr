@@ -1,0 +1,186 @@
+; VERSION 0.7
+
+; ####################
+; HEADER
+; ####################
+
+HEADER-ID        = *32OCTET
+HEADER           = HEADER-SIZE HEADER-COMMON HEADER-CONSENSUS
+HEADER-SIZE      = SIZE-BYTES-16BIT
+HEADER-COMMON    = HEADER-VERSION CONTENT-SIZE BLOCK-DATE
+                   CHAIN-LENGTH CONTENT-ID PARENT-ID
+HEADER-VERSION   = %00 / %01 / %02
+CONTENT-SIZE     = SIZE-BYTES-32BITS
+BLOCK-DATE       = BLOCK-EPOCH BLOCK-SLOT
+BLOCK-EPOCH      = U32
+BLOCK-SLOT       = U32
+CHAIN-LENGTH     = U64
+PARENT-ID        = HEADER-ID
+HEADER-CONSENSUS = [CONSENSUS-BFT / CONSENSUS-GP] ; optionally BFP or GP consensus metadata
+
+CONSENSUS-BFT    = BFT-LEADER-ID BFT-SIGNATURE
+CONSENSUS-GP     = POOL-ID VRF-OUTPUT KES-SIGNATURE
+
+; ####################
+; CONTENT
+; ####################
+
+CONTENT-ID       = *32OCTET
+CONTENT          = *FRAGMENT
+
+; ####################
+; FRAGMENT
+; ####################
+
+FRAGMENT-ID      = *32OCTET
+FRAGMENT         = FRAGMENT-SIZE FRAGMENT-SPEC
+FRAGMENT-SIZE    = SIZE-BYTES-16BIT
+; currently the second %x00 is not present.
+FRAGMENT-SPEC    = %x00 %x00 INITIAL
+                 / %x01 %x00 OLD-UTXO-DECL
+                 / %x02 %x00 SIMPLE-TRANSACTION
+                 / %x03 %x00 OWNER-STAKE-DELEGATION
+                 / %x04 %x00 STAKE-DELEGATION
+                 / %x05 %x00 POOL-REGISTRATION
+                 / %x06 %x00 POOL-RETIREMENT
+                 / %x07 %x00 POOL-UPDATE
+                 / %x08 %x00 UPDATE-PROPOSAL
+                 / %x09 %x00 UPDATE-VOTE
+    
+; ####################
+; FRAGMENT only present in genesis block
+; ####################
+
+INITIAL          = SIZE-ELEMENT-16BIT *CONFIG-ELEMENT
+CONFIG-ELEMENT   = CONFIG-TAGLEN CONFIG-VALUE
+CONFIG-TAGLEN    = U16                        ; tag number + length
+CONFIG-VALUE     = 0*64OCTET                  ; using length
+
+OLD-UTXO-DECLS   = SIZE-ELEMENT-8BIT 1*254OLD_UTXO_DECL
+OLD-UTXO-DECL    = VALUE SIZE-BYTE-16BIT OLD-ADDRESS
+OLD-ADDRESS      = *OCTET
+
+; ####################
+; FRAGMENT common transaction
+; ####################
+
+TRANSACTION      = IOW
+
+; ####################
+; FRAGMENT stake delegation
+; ####################
+
+OWNER-DELEGATION = OWNER-DLG-CERT IOW
+OWNER-DLG-CERT   = DLG-TYPE
+
+STAKE-DELEGATION = DLG-CERT IOW STAKE-AUTH
+DLG-CERT         = ACCOUNT-ID DLG-TYPE
+STAKE-AUTH       = ACCOUNT-SIG
+
+DLG-TYPE         = DLG-NONE / DLG-FULL / DLG-RATIO
+DLG-NONE         = %x00
+DLG-FULL         = %x01 POOL-ID
+DLG-RATIO        = %x02-%xFF %x02-%x08 2*8DLG-RATIO-POOL
+DLG-RATIO-POOL   = %x01-%xFF POOL-ID
+
+POOL-ID          = *32OCTET
+
+; ####################
+; FRAGMENT Pool management
+; ####################
+
+POOL-REGISTRATION = REGISTRATION-CERT IOW OWNERS-SIGNATURE
+POOL-RETIREMENT   = RETIREMENT-CERT IOW OWNERS-SIGNATURE
+POOL-UPDATE       = UPDATE-CERT IOW OWNERS-SIGNATURE
+
+REGISTRATION-CERT = POOL-SERIAL
+                    TIME-SINCE-EPOCH0
+                    U16 ; management threshold
+                    POOL-OWNERS
+                    POOL-REWARD-SCHM
+                    POOL-KEYS
+POOL-SERIAL       = *16OCTET
+POOL-REWARD-SCHM  = 4*U64 ; fixed, ratio numerator, denominator, and optional limit value
+POOL-OWNERS       = SIZE-ELEMENT-16BIT 1*POOL-OWNER
+POOL-OWNER        = SINGLE-ACNT-ID
+POOL-KEYS         = VRF_PUBLICKEY KES_PUBLICKEY
+
+RETIREMENT-CERT   = POOL-ID
+                    TIME-SINCE-EPOCH0 ; time in seconds
+UPDATE-CERT       = TODO
+
+OWNERS-SIGNATURE  = SIZE-ELEMENT-16BIT OWNER-SIGNATURE
+OWNER-SIGANTURE   = U16 ; owner index in registration
+                    SINGLE-ACNT-SIG
+
+; ####################
+; FRAGMENT Update proposal and vote
+; ####################
+
+UPDATE-PROPOSAL   = TODO
+UPDATE-VOTE       = TODO
+
+; ####################
+; TRANSACTION CONSTRUCTION
+;
+; note: IOW stand for Inputs-Outputs-Witnesses
+; ####################
+
+IOW               = SIZE-ELEMENT-8BIT ; number of inputs
+                    SIZE-ELEMENT-8BIT ; number of outputs
+                    *INPUT            ; as many as indicated in the number of inputs
+                    *OUTPUT           ; sa many as indicated in the number of outputs
+                    *WITNESS          ; as many as indicated in the number of inputs
+INPUT             = INPUT-UTXO / INPUT_ACCOUNT
+INPUT-UTXO        = IDX VALUE FRAGMENT-ID
+INPUT-ACCOUNT     = %xff VALUE ACCOUNT-ID
+IDX               = %x00-%xfe
+OUTPUT            = ADDRESS VALUE
+WITNESS           = WITNESS-OLDUTXO / WITNESS-UTXO / WITNESS-ACCOUNT / WITNESS-MULTISIG
+WITNESS-OLDUTXO   = %x00 LEGACY-XPUB LEGACY-SIGNATURE
+WITNESS-UTXO      = %x01 ED25519-SIGNATURE
+WITNESS-ACCOUNT   = %x02 SINGLE-ACNT-SIG
+WITNESS-MULTISIG  = %x03 MULTI-ACNT-SIG
+
+VALUE             = U64
+
+ADDRESS           = ADDRESS-DISCRIMINIATION (ADDRESS-SINGLE / ADDRESS-GROUP / ADDRESS-ACCOUNT / ADDRESS-MULTISIG)
+ADDRESS-DISCR     = "0" / "1" ; testnets or mainnets on the highest bit of the next byte
+ADDRESS-SINGLE    = %x03 SPENDINGKEY
+ADDRESS-GROUP     = %x04 SPENDINGKEY ACCOUNT-ID
+ADDRESS-ACCOUNT   = %x05 SINGLE-ACNT-ID
+ADDRESS-MULTISIG  = %x06 MULTI-ACNT-ID
+
+; ####################
+; CRYPTO
+; ####################
+
+BFT-LEADER-ID     = ED25519-PUBLICKEY
+BFT-SIGNATURE     = ED25519-SIGNATURE
+ACCOUNT-ID        = SINGLE-ACNT-ID / MULTI_ACNT-ID
+ACCOUNT-SIG       = SINGLE-ACNT-SIG / MULTI-ACNT-SIG ; NOT FINAL
+SINGLE-ACNT-ID    = ED25519-PUBLICKEY
+SINGLE-ACNT-SIG   = ED25519-SIGNATURE
+MULTI-ACNT-ID     = *32OCTET
+MULTI-ACNT-SIG    = TODO
+LEGACY-SIGNATURE  = ED25519-SIGNATURE
+LEGACY-XPUB       = *64OCTET
+VRF-PUBLICKEY     = *32OCTET
+VRF-OUTPUT        = *96OCTET
+KES-PUBLICKEY     = *32OCTET
+KES-SIGNATURE     = *484OCTET
+ED25519-PUBLICKEY = *32OCTET ; ed25519 public key
+ED25519-SIGNATURE = *64OCTET
+
+; ####################
+; PRIMITIVES
+; ####################
+
+TIME-SINCE-EPOCH0 = U64 ; in seconds since genesis block
+SIZE-ELEMENT-8BIT = U8  ; size in elements (8 bits)
+SIZE-ELEMENT-16BIT = U8  ; size in elements (8 bits)
+SIZE-BYTES-16BIT  = U16 ; size in bytes (16 bits)
+SIZE-BYTES-32BIT  = U32 ; size in bytes (32 bits)
+U16               = *2OCTET ; unsigned integer 16 bit (BE)
+U32               = *4OCTET ; unsigned integer 32 bit (BE)
+U64               = *8OCTET ; unsigned integer 64 bit (BE)
