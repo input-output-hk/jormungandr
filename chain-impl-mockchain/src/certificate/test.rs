@@ -1,4 +1,5 @@
 use super::*;
+use crate::accounting::account::DelegationType;
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
 use chain_crypto::{testing, Ed25519};
@@ -44,11 +45,25 @@ impl Arbitrary for PoolOwnersSigned {
     }
 }
 
+impl Arbitrary for DelegationType {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        DelegationType::Full(Arbitrary::arbitrary(g))
+    }
+}
+
 impl Arbitrary for StakeDelegation {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         StakeDelegation {
             account_id: Arbitrary::arbitrary(g),
-            pool_id: Arbitrary::arbitrary(g),
+            delegation: Arbitrary::arbitrary(g),
+        }
+    }
+}
+
+impl Arbitrary for OwnerStakeDelegation {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        Self {
+            delegation: Arbitrary::arbitrary(g),
         }
     }
 }
