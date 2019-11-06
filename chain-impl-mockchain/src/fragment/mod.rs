@@ -134,7 +134,10 @@ impl Readable for Fragment {
         let tag = buf.get_u8()?;
         let after_tag = buf.get_u8()?;
         if after_tag != 0 {
-            Err(ReadError::StructureInvalid(format!("fragment after tag expected at 0 but got {}", after_tag)))?
+            Err(ReadError::StructureInvalid(format!(
+                "fragment after tag expected at 0 but got {}",
+                after_tag
+            )))?
         }
         match FragmentTag::from_u8(tag) {
             Some(FragmentTag::Initial) => ConfigParams::read(buf).map(Fragment::Initial),
