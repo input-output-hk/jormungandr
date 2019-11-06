@@ -34,5 +34,5 @@ pub use self::stats::Stats;
 pub use self::transaction_input::{TransactionInput, TransactionInputType};
 pub use self::transaction_output::TransactionOutput;
 pub use self::transaction_witness::TransactionWitness;
-pub use self::utxo_info::UTxOInfo;
+pub use self::utxo_info::{UTxOInfo, UTxOOutputInfo};
 pub use self::value::Value;

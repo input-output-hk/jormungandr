@@ -23,6 +23,20 @@ pub struct UTxOInfo {
 }
 
 impl UTxOInfo {
+    pub fn new(
+        transaction_id: Hash,
+        index_in_transaction: u8,
+        address: Address,
+        associated_fund: Value,
+    ) -> Self {
+        UTxOInfo {
+            transaction_id,
+            index_in_transaction,
+            address,
+            associated_fund,
+        }
+    }
+
     /// the Transaction identifier (its hash) that will be used to reference
     /// to this UTxO as an input in a new transaction.
     ///
@@ -64,6 +78,25 @@ impl<'a> From<Entry<'a, chain_addr::Address>> for UTxOInfo {
             index_in_transaction: utxo_entry.output_index,
             address: utxo_entry.output.address.clone().into(),
             associated_fund: utxo_entry.output.value.into(),
+        }
+    }
+}
+
+/// The UTxO data about output without its location in blockchain
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct UTxOOutputInfo {
+    address: Address,
+    value: Value,
+}
+
+/* ---------------- Conversion --------------------------------------------- */
+impl UTxOOutputInfo {
+    pub fn into_utxo_info(self, fragment_id: Hash, index_in_transaction: u8) -> UTxOInfo {
+        UTxOInfo {
+            transaction_id: fragment_id,
+            index_in_transaction,
+            address: self.address,
+            associated_fund: self.value,
         }
     }
 }
