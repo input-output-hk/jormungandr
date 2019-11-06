@@ -3,7 +3,12 @@
 use crate::common::configuration::genesis_model::GenesisYaml;
 use crate::common::configuration::node_config_model::NodeConfig;
 use crate::common::configuration::secret_model::SecretModel;
+use crate::common::data::address::AddressDataProvider;
 use crate::common::file_utils;
+use chain_core::mempack;
+use chain_impl_mockchain::block::Block;
+use chain_impl_mockchain::fragment::Fragment;
+use jormungandr_lib::interfaces::UTxOInfo;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -48,5 +53,52 @@ impl JormungandrConfig {
             node_config: node_config,
             secret_model: SecretModel::empty(),
         }
+    }
+
+    pub fn block0_utxo(&self) -> Vec<UTxOInfo> {
+        let block0_bytes = std::fs::read(&self.genesis_block_path).expect(&format!(
+            "Failed to load block 0 binary file '{}'",
+            self.genesis_block_path.display()
+        ));
+        mempack::read_from_raw::<Block>(&block0_bytes)
+            .expect(&format!(
+                "Failed to parse block in block 0 file '{}'",
+                self.genesis_block_path.display()
+            ))
+            .contents
+            .iter()
+            .filter_map(|fragment| match fragment {
+                Fragment::Transaction(transaction) => Some((transaction, fragment.hash())),
+                _ => None,
+            })
+            .map(|(transaction, fragment_id)| {
+                transaction
+                    .as_slice()
+                    .outputs()
+                    .iter()
+                    .enumerate()
+                    .map(move |(idx, output)| {
+                        UTxOInfo::new(
+                            fragment_id.into(),
+                            idx as u8,
+                            output.address.clone().into(),
+                            output.value.into(),
+                        )
+                    })
+            })
+            .flatten()
+            .collect()
+    }
+
+    pub fn block0_utxo_for_address<T: AddressDataProvider>(&self, address: &T) -> UTxOInfo {
+        let utxo_address = address.get_address();
+        self.block0_utxo()
+            .into_iter()
+            .find(|utxo| utxo.address().to_string() == utxo_address)
+            .expect(&format!(
+                "No UTxO found in block 0 for address '{}' of type '{}'",
+                utxo_address,
+                address.get_address_type()
+            ))
     }
 }

@@ -24,7 +24,7 @@ pub fn test_100_transaction_is_processed() {
     let jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
 
     for _i in 0..100 {
-        let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
+        let utxo = startup::get_utxos_for_address(&sender, &jormungandr_rest_address);
 
         let transaction = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
             .assert_add_input_from_utxo(&utxo)
@@ -44,7 +44,7 @@ pub fn test_100_transaction_is_processed() {
 }
 
 fn assert_funds_transferred_to(address: &str, host: &str) {
-    let utxos = jcli_wrapper::assert_rest_utxo_get(&host);
+    let utxos = jcli_wrapper::assert_rest_utxos_get(&host);
     assert_eq!(utxos.len(), 1, "Only one utxo expected");
     assert_eq!(
         &utxos[0].address().to_string(),
@@ -76,7 +76,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
     let jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
     let now = SystemTime::now();
     loop {
-        let utxo = startup::get_utxo_for_address(&sender, &jormungandr_rest_address);
+        let utxo = startup::get_utxos_for_address(&sender, &jormungandr_rest_address);
 
         let new_transaction = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
             .assert_add_input_from_utxo(&utxo)

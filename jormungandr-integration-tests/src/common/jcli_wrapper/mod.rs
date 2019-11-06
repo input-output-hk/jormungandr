@@ -2,7 +2,7 @@
 
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{
-    AccountState, FragmentLog, FragmentStatus, SettingsDto, UTxOInfo,
+    AccountState, FragmentLog, FragmentStatus, SettingsDto, UTxOInfo, UTxOOutputInfo,
 };
 
 pub mod certificate;
@@ -65,13 +65,46 @@ pub fn assert_rest_stats(host: &str) -> BTreeMap<String, String> {
     content
 }
 
-pub fn assert_rest_utxo_get(host: &str) -> Vec<UTxOInfo> {
-    let output =
-        process_utils::run_process_and_get_output(jcli_commands::get_rest_utxo_get_command(&host));
+pub fn assert_rest_utxo_get_returns_same_utxo(host: &str, utxo: &UTxOInfo) {
+    let rest_utxo = assert_rest_utxo_get_by_utxo(host, utxo);
+    assert_eq!(utxo, &rest_utxo, "UTxO returned from REST is invalid");
+}
+
+pub fn assert_rest_utxo_get_by_utxo(host: &str, utxo: &UTxOInfo) -> UTxOInfo {
+    assert_rest_utxo_get(
+        host,
+        &utxo.transaction_id().to_string(),
+        utxo.index_in_transaction(),
+    )
+}
+
+pub fn assert_rest_utxo_get(host: &str, fragment_id_bech32: &str, output_index: u8) -> UTxOInfo {
+    let command = jcli_commands::get_rest_utxo_get_command(&host, fragment_id_bech32, output_index);
+    let output = process_utils::run_process_and_get_output(command);
     let content = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output);
-    let utxos: Vec<UTxOInfo> = serde_yaml::from_str(&content).unwrap();
-    utxos
+    let fragment_id = fragment_id_bech32
+        .parse()
+        .expect("UTxO fragment ID is not a valid hex value");
+    serde_yaml::from_str::<UTxOOutputInfo>(&content)
+        .expect("JCLI returned malformed UTxO")
+        .into_utxo_info(fragment_id, output_index)
+}
+
+pub fn assert_rest_utxo_get_by_utxo_not_found(host: &str, utxo: &UTxOInfo) {
+    assert_rest_utxo_get_not_found(
+        host,
+        &utxo.transaction_id().to_string(),
+        utxo.index_in_transaction(),
+    )
+}
+
+pub fn assert_rest_utxo_get_not_found(host: &str, fragment_id_bech32: &str, output_index: u8) {
+    let command = jcli_commands::get_rest_utxo_get_command(&host, fragment_id_bech32, output_index);
+    process_assert::assert_process_failed_and_contains_message(
+        command,
+        "Client Error: 404 Not Found",
+    );
 }
 
 pub fn assert_get_address_info(address: &str) -> BTreeMap<String, String> {
@@ -151,8 +184,6 @@ pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) 
         "Transaction was NOT accepted by node:
      txRecvCnt counter wasn't incremented after post"
     );
-
-    assert_rest_utxo_get(&host);
 }
 
 pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) -> () {
@@ -167,8 +198,6 @@ pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) ->
         "Transaction was accepted by node while it should not be
      txRecvCnt counter was incremented after post"
     );
-
-    assert_rest_utxo_get(&host);
 }
 
 pub fn assert_key_generate_default() -> String {

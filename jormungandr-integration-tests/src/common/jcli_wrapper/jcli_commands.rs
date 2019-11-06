@@ -131,12 +131,14 @@ pub fn get_rest_get_next_block_id_command(block_id: &str, id_count: &i32, host: 
 }
 
 /// Get utxo get command.
-pub fn get_rest_utxo_get_command(host: &str) -> Command {
+pub fn get_rest_utxo_get_command(host: &str, fragment_id_hex: &str, output_index: u8) -> Command {
     let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
         .arg("utxo")
+        .arg(fragment_id_hex)
+        .arg(output_index.to_string())
         .arg("get")
         .arg("-h")
         .arg(&host);

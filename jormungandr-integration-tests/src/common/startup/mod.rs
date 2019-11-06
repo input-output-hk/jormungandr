@@ -1,11 +1,11 @@
 use crate::common::{
     configuration::genesis_model::GenesisYaml,
-    data::address::{Account, AddressDataProvider, Delegation, Utxo},
+    data::address::{Account, Delegation, Utxo},
     file_utils, jcli_wrapper,
 };
 use chain_addr::Discrimination;
 use chain_crypto::AsymmetricKey;
-use jormungandr_lib::{crypto::key::KeyPair, interfaces::UTxOInfo};
+use jormungandr_lib::crypto::key::KeyPair;
 use std::path::PathBuf;
 
 pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
@@ -71,19 +71,4 @@ pub fn create_new_delegation_address_for(delegation_public_key: &str) -> Delegat
 
 pub fn create_new_key_pair<K: AsymmetricKey>() -> KeyPair<K> {
     KeyPair::generate(&mut rand::rngs::OsRng::new().unwrap())
-}
-
-pub fn get_utxo_for_address<T: AddressDataProvider>(
-    utxo_address: &T,
-    jormungandr_rest_address: &str,
-) -> UTxOInfo {
-    let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr_rest_address);
-    utxos
-        .into_iter()
-        .find(|x| x.address().to_string() == utxo_address.get_address())
-        .expect(&format!(
-            "None utxo record found for {} of type({})",
-            &utxo_address.get_address(),
-            &utxo_address.get_address_type()
-        ))
 }

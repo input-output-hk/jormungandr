@@ -11,6 +11,8 @@ use crate::common::jcli_wrapper;
 use crate::common::process_assert;
 use crate::common::process_utils;
 use crate::common::process_utils::output_extensions::ProcessOutput;
+use chain_core::property::Deserialize;
+use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{UTxOInfo, Value},
@@ -390,5 +392,14 @@ impl JCLITransactionWrapper {
                 .get_transaction_info_command(&format, &self.staging_file_path),
         );
         output.as_single_line()
+    }
+
+    pub fn get_fragment_id(&self) -> Hash {
+        let fragment_hex = self.assert_to_message();
+        let fragment_bytes = hex::decode(&fragment_hex).expect("Failed to parse message hex");
+        Fragment::deserialize(fragment_bytes.as_slice())
+            .expect("Failed to parse message")
+            .hash()
+            .into()
     }
 }

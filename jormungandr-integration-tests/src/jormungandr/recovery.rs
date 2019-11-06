@@ -11,61 +11,65 @@ use crate::common::{
 
 use jormungandr_lib::interfaces::{AccountState, SettingsDto, UTxOInfo};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct LedgerSnapshot {
     settings: SettingsDto,
-    utxos: Vec<UTxOInfo>,
+    utxo_info: UTxOInfo,
     account_state: AccountState,
 }
 
-impl PartialEq for LedgerSnapshot {
-    fn eq(&self, other: &Self) -> bool {
-        self.settings == other.settings
-            && self.utxos == other.utxos
-            && self.account_state == other.account_state
-    }
-}
-impl Eq for LedgerSnapshot {}
-
 impl LedgerSnapshot {
-    pub fn new(settings: SettingsDto, utxos: Vec<UTxOInfo>, account_state: AccountState) -> Self {
+    pub fn new(settings: SettingsDto, utxo_info: UTxOInfo, account_state: AccountState) -> Self {
         LedgerSnapshot {
             settings,
-            utxos,
+            utxo_info,
             account_state,
         }
     }
 }
 
-fn take_snapshot(account_receiver: &Account, jormungandr: &JormungandrProcess) -> LedgerSnapshot {
+fn take_snapshot(
+    account_receiver: &Account,
+    jormungandr: &JormungandrProcess,
+    utxo_info: UTxOInfo,
+) -> LedgerSnapshot {
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
-    let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr.rest_address());
     let account = jcli_wrapper::assert_rest_account_get_stats(
         &account_receiver.address,
         &jormungandr.rest_address(),
     );
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&jormungandr.rest_address(), &utxo_info);
 
-    LedgerSnapshot::new(settings, utxos, account)
+    LedgerSnapshot::new(settings, utxo_info, account)
 }
 
 pub fn do_simple_transaction<T: AddressDataProvider>(
     sender: &T,
     account_receiver: &Account,
+    utxo_sender: &UTxOInfo,
     utxo_receiver: &Utxo,
     jormungandr: &JormungandrProcess,
-) {
+) -> UTxOInfo {
+    const TX_VALUE: u64 = 50;
     let config = jormungandr.config();
-    let utxo = startup::get_utxo_for_address(sender, &jormungandr.rest_address());
-
-    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
-        .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&account_receiver.address, &50.into())
-        .assert_add_output(&utxo_receiver.address, &50.into())
+    let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+    let transaction_message = tx
+        .assert_add_input_from_utxo(utxo_sender)
+        .assert_add_output(&account_receiver.address, &TX_VALUE.into())
+        .assert_add_output(&utxo_receiver.address, &TX_VALUE.into())
         .assert_finalize()
         .seal_with_witness_for_address(sender)
         .assert_to_message();
+    let tx_id = tx.get_fragment_id();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+
+    UTxOInfo::new(
+        tx_id,
+        1,
+        utxo_receiver.address.parse().unwrap(),
+        TX_VALUE.into(),
+    )
 }
 
 #[test]
@@ -82,11 +86,18 @@ pub fn test_node_recovers_from_node_restart() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let utxo_sender = config.block0_utxo_for_address(&sender);
 
-    do_simple_transaction(&sender, &account_receiver, &utxo_receiver, &jormungandr);
-    let snapshot_before = take_snapshot(&account_receiver, &jormungandr);
+    let new_utxo = do_simple_transaction(
+        &sender,
+        &account_receiver,
+        &utxo_sender,
+        &utxo_receiver,
+        &jormungandr,
+    );
+    let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
     let jormungandr = restart_jormungandr_node(jormungandr, Role::Leader);
-    let snapshot_after = take_snapshot(&account_receiver, &jormungandr);
+    let snapshot_after = take_snapshot(&account_receiver, &jormungandr, new_utxo);
 
     assert_eq!(
         snapshot_before, snapshot_after,
@@ -109,11 +120,18 @@ pub fn test_node_recovers_kill_signal() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let utxo_sender = config.block0_utxo_for_address(&sender);
 
-    do_simple_transaction(&sender, &account_receiver, &utxo_receiver, &jormungandr);
-    let snapshot_before = take_snapshot(&account_receiver, &jormungandr);
+    let new_utxo = do_simple_transaction(
+        &sender,
+        &account_receiver,
+        &utxo_sender,
+        &utxo_receiver,
+        &jormungandr,
+    );
+    let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
     let jormungandr = restart_jormungandr_node(jormungandr, Role::Passive);
-    let snapshot_after = take_snapshot(&account_receiver, &jormungandr);
+    let snapshot_after = take_snapshot(&account_receiver, &jormungandr, new_utxo);
 
     assert_eq!(
         snapshot_before, snapshot_after,

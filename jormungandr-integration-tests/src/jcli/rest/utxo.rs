@@ -1,5 +1,6 @@
 use crate::common::{
     configuration::genesis_model::Fund,
+    data::address::Utxo,
     jcli_wrapper,
     jormungandr::{starter::Starter, ConfigurationBuilder},
 };
@@ -10,26 +11,38 @@ pub fn test_correct_utxos_are_read_from_node() {
     let sender_private_key = jcli_wrapper::assert_key_generate_default();
     println!("Sender private key generated: {}", &sender_private_key);
 
-    let reciever_private_key = jcli_wrapper::assert_key_generate_default();
-    println!("Reciever private key generated: {}", &reciever_private_key);
+    let receiver_private_key = jcli_wrapper::assert_key_generate_default();
+    println!("Receiver private key generated: {}", &receiver_private_key);
 
     let sender_public_key = jcli_wrapper::assert_key_to_public_default(&sender_private_key);
     println!("Sender public key generated: {}", &sender_public_key);
 
-    let reciever_public_key = jcli_wrapper::assert_key_to_public_default(&reciever_private_key);
-    println!("Reciever public key generated: {}", &reciever_public_key);
+    let receiver_public_key = jcli_wrapper::assert_key_to_public_default(&receiver_private_key);
+    println!("Receiver public key generated: {}", &receiver_public_key);
 
     let sender_address =
         jcli_wrapper::assert_address_single(&sender_public_key, Discrimination::Test);
     println!("Sender address generated: {}", &sender_address);
 
-    let reciever_address =
-        jcli_wrapper::assert_address_single(&reciever_public_key, Discrimination::Test);
-    println!("Reciever address generated: {}", &reciever_address);
+    let receiver_address =
+        jcli_wrapper::assert_address_single(&receiver_public_key, Discrimination::Test);
+    println!("Receiver address generated: {}", &receiver_address);
 
-    let mut funds = vec![
+    let sender_utxo_address = Utxo {
+        private_key: sender_private_key.clone(),
+        public_key: sender_public_key.clone(),
+        address: sender_address.clone(),
+    };
+
+    let receiver_utxo_address = Utxo {
+        private_key: receiver_private_key.clone(),
+        public_key: receiver_public_key.clone(),
+        address: receiver_address.clone(),
+    };
+
+    let funds = vec![
         Fund {
-            address: reciever_address.clone(),
+            address: receiver_address.clone(),
             value: 100.into(),
         },
         Fund {
@@ -38,25 +51,14 @@ pub fn test_correct_utxos_are_read_from_node() {
         },
     ];
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(funds.clone())
-        .build();
+    let config = ConfigurationBuilder::new().with_funds(funds).build();
 
-    let jormungandr = Starter::new().config(config).start().unwrap();
+    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let rest_addr = jormungandr.rest_address();
 
-    let mut content = jcli_wrapper::assert_rest_utxo_get(&jormungandr.rest_address());
+    let sender_block0_utxo = config.block0_utxo_for_address(&sender_utxo_address);
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &sender_block0_utxo);
 
-    funds.sort_by_key(|fund| fund.address.clone());
-    content.sort_by_key(|utxo| utxo.address().to_string());
-    assert_eq!(content.len(), funds.len());
-    assert_eq!(funds[0].address, content[0].address().to_string());
-    assert_eq!(
-        funds[0].value.to_string(),
-        content[0].associated_fund().to_string()
-    );
-    assert_eq!(funds[1].address, content[1].address().to_string());
-    assert_eq!(
-        funds[1].value.to_string(),
-        content[1].associated_fund().to_string()
-    );
+    let receiver_block0_utxo = config.block0_utxo_for_address(&receiver_utxo_address);
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &receiver_block0_utxo);
 }

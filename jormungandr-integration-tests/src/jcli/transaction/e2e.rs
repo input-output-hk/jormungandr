@@ -4,7 +4,7 @@ use crate::common::{
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::UTxOInfo};
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {
@@ -25,8 +25,8 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
         }])
         .build();
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let _ = Starter::new().config(config.clone()).start().unwrap();
+    let utxo = config.block0_utxo_for_address(&sender);
 
     let mut transaction_wrapper =
         JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
@@ -63,7 +63,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
     let first_transaction = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
@@ -103,7 +103,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &utxo.associated_fund())
@@ -116,56 +116,43 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
 
 #[test]
 pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
+    const TX_VALUE: u64 = 100;
+
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![Fund {
             address: sender.address.clone(),
-            value: 100.into(),
+            value: TX_VALUE.into(),
         }])
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let rest_addr = jormungandr.rest_address();
+    let utxo = config.block0_utxo_for_address(&sender);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
+    let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+    let tx_message = tx
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &utxo.associated_fund())
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
-
-    let transaction_id = jcli_wrapper::assert_transaction_in_block(
-        &transaction_message,
-        &jormungandr.rest_address(),
-    );
-
-    let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr.rest_address());
-    assert_eq!(utxos.len(), 1);
-
-    let utxo = &utxos[0];
-    assert_eq!(
-        utxo.address().to_string(),
-        receiver.address,
-        "after successful transaction out_addr for utxo should be equal to receiver address"
-    );
-    assert_eq!(
-        *utxo.associated_fund(),
-        Value::from(100),
-        "out value should be equal to output of first transaction"
-    );
-    assert_eq!(
-        utxo.index_in_transaction(),
+    let new_utxo = UTxOInfo::new(
+        tx.get_fragment_id(),
         0,
-        "since only one transaction was made, idx should be equal to 0"
+        receiver.address.parse().unwrap(),
+        TX_VALUE.into(),
     );
 
-    assert_eq!(
-        *utxo.transaction_id(),
-        transaction_id,
-        "transaction hash should be equal to new transaction"
-    );
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &utxo);
+    jcli_wrapper::assert_rest_utxo_get_by_utxo_not_found(&rest_addr, &new_utxo);
+
+    jcli_wrapper::assert_transaction_in_block(&tx_message, &rest_addr);
+
+    jcli_wrapper::assert_rest_utxo_get_by_utxo_not_found(&rest_addr, &utxo);
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &new_utxo);
 }
 
 #[test]
@@ -182,7 +169,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
 
     let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
@@ -190,6 +177,9 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
+
+    // assert utxo does contains TX
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&jormungandr.rest_address(), &utxo);
 
     // assert account received funds
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
@@ -202,9 +192,12 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         "Account did not receive correct amount of funds"
     );
 
-    // assert utxo are empty now
-    let utxos = jcli_wrapper::assert_rest_utxo_get(&jormungandr.rest_address());
-    assert_eq!(utxos.len(), 0);
+    // assert utxo does not contain TX anymore
+    jcli_wrapper::assert_rest_utxo_get_not_found(
+        &jormungandr.rest_address(),
+        &utxo.transaction_id().to_string(),
+        utxo.index_in_transaction(),
+    );
 }
 
 #[test]
@@ -221,7 +214,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
@@ -247,7 +240,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
@@ -273,7 +266,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
@@ -298,7 +291,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
@@ -373,7 +366,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
@@ -398,7 +391,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
         &99.into(),
@@ -453,7 +446,7 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
         &utxo.associated_fund(),
@@ -478,7 +471,7 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
+    let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
         &100.into(),
@@ -498,7 +491,7 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
 #[test]
 pub fn test_transaction_with_non_zero_linear_fees() {
     let sender = startup::create_new_utxo_address();
-    let reciever = startup::create_new_utxo_address();
+    let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
         .with_funds(vec![Fund {
             address: sender.address.clone(),
@@ -512,10 +505,11 @@ pub fn test_transaction_with_non_zero_linear_fees() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
-    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
+    let utxo = config.block0_utxo_for_address(&sender);
+    let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+    let transaction_message = tx
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&reciever.address, &50.into())
+        .assert_add_output(&receiver.address, &50.into())
         .assert_finalize_with_fee(
             &sender.address,
             &LinearFees {
@@ -526,19 +520,18 @@ pub fn test_transaction_with_non_zero_linear_fees() {
         )
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
+    let tx_id = tx.get_fragment_id();
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&jormungandr.rest_address(), &utxo);
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
 
-    let utxo = startup::get_utxo_for_address(&reciever, &jormungandr.rest_address());
-    assert_eq!(
-        utxo.associated_fund(),
-        &Value::from(50),
-        "Wrong funds amount on receiver account"
+    jcli_wrapper::assert_rest_utxo_get_by_utxo_not_found(&jormungandr.rest_address(), &utxo);
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(
+        &jormungandr.rest_address(),
+        &UTxOInfo::new(tx_id, 0, receiver.address.parse().unwrap(), 50.into()),
     );
-    let utxo = startup::get_utxo_for_address(&sender, &jormungandr.rest_address());
-    assert_eq!(
-        utxo.associated_fund(),
-        &Value::from(37),
-        "Wrong remaining funds amount on sender account"
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(
+        &jormungandr.rest_address(),
+        &UTxOInfo::new(tx_id, 1, sender.address.parse().unwrap(), 37.into()),
     );
 }
