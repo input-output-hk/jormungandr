@@ -56,12 +56,12 @@ extern crate tokio;
 use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::{Blockchain, CandidateForest},
-    rest::NodeState,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
 use futures::Future;
+use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::thread;

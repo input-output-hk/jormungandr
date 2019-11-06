@@ -25,6 +25,8 @@ use crate::stats_counter::StatsCounter;
 use crate::intercom::{NetworkMsg, TransactionMsg};
 use crate::utils::async_msg::MessageBox;
 
+use jormungandr_lib::interfaces::NodeState;
+
 #[derive(Clone)]
 pub struct Context {
     full: Arc<RwLock<Option<Arc<FullContext>>>>,
@@ -96,16 +98,6 @@ pub struct FullContext {
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
     pub explorer: Option<crate::explorer::Explorer>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub enum NodeState {
-    StartingRestServer,
-    PreparingStorage,
-    PreparingBlock0,
-    Bootstrapping,
-    StartingWorkers,
-    Running,
 }
 
 pub fn start_rest_server(
