@@ -37,7 +37,7 @@ pub fn two_nodes_communication() {
         .start()
         .unwrap();
 
-    let utxo = startup::get_utxo_for_address(&sender, &trusted_jormungandr.rest_address());
+    let utxo = leader_config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
         &utxo.associated_fund(),
