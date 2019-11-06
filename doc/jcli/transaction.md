@@ -26,9 +26,12 @@ There are also functions to help decode and display the
 content information of a transaction:
 
 * `info`
-* `id` to get the **Transaction ID** of the transaction
+* `data-for-witness` get the data to sign from a given transaction
+* `fragment-id` get the **Fragment ID** from a transaction in *sealed* state
 * `to-message` to get the hexadecimal encoded message, ready to send with `cli rest message`
 
+**DEPRECATED**:
+* `id` get the data to sign from a given transaction (use `data-for-witness` instead)
 
 # Examples
 
@@ -41,9 +44,9 @@ Let's use the following utxo as input and transfer 50 lovelaces to the destinati
 
 | Field                     | Value        |
 | ------------------------- |:------------:|
-| UTXO's transaction ID     | 55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c| 
-| UTXO's output index       | 0     | 
-| associated address        |  ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu    | 
+| UTXO's transaction ID     | 55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c|
+| UTXO's output index       | 0     |
+| associated address        |  ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu    |
 | associated value          | 100             |
 
 ## Destination address
@@ -118,7 +121,7 @@ For signing the transaction, you need the private key associated with the input 
 
 The genesis' hash is needed for ensuring that the transaction cannot be re-used in another blockchain and for security concerns on offline transaction signing, as we are signing the transaction for the specific blockchain started by this block0 hash.
 
-The following command takes the private key in the *key.prv* file and creates a witness in a file named *witness* in the current directory. 
+The following command takes the private key in the *key.prv* file and creates a witness in a file named *witness* in the current directory.
 
 ```sh
 jcli transaction make-witness --genesis-block-hash abcdef987654321... --type utxo txid witness key.prv
@@ -159,7 +162,7 @@ jcli rest v0 message post -f txmsg --host http://127.0.0.1:8443/api
 
 ## Checking if the transaction was accepted
 
-You can check if the transaction was accepted by checking the node logs, for example, if the transaction is accepted 
+You can check if the transaction was accepted by checking the node logs, for example, if the transaction is accepted
 
 `jcli rest v0 message logs -h http://127.0.0.1:8443/api`
 
@@ -178,10 +181,10 @@ You can check if the transaction was accepted by checking the node logs, for exa
 Where the InABlock status means that the transaction was accepted in the block with date "4.707"
 and for block `d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174`.
 
-The status here could also be: 
+The status here could also be:
 
 Pending: if the transaction is received and is pending being added in the blockchain (or rejected).
 
 or
 
-Rejected: with an attached message of the reason the transaction was rejected. 
+Rejected: with an attached message of the reason the transaction was rejected.
