@@ -16,12 +16,7 @@ mod subscription;
 // Constants
 
 mod buffer_sizes {
-    // Size of chunks to split processing of chain pull streams.
-    // Apart from sizing data chunks for intercom messages, it also
-    // determines how many blocks will be requested per each GetBlocks request
-    // distributed between different peers.
-    //
-    // This may need to be made into a configuration parameter.
+    // Size of buffer for processing of header push/pull streams.
     pub const CHAIN_PULL: usize = 32;
 
     // The maximum number of fragments to buffer from an incoming subscription

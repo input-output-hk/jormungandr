@@ -49,11 +49,13 @@ See Internal documentation for more details: doc/internal_design.md
 [`Branch`]: ./struct.Branch.html
 */
 
+use super::{branch::Branches, reference_cache::RefCache};
 use crate::{
     blockcfg::{
-        Block, Block0Error, Epoch, Header, HeaderHash, Leadership, Ledger, LedgerParameters,
+        Block, Block0Error, BlockDate, ChainLength, Epoch, Header, HeaderHash, Leadership, Ledger,
+        LedgerParameters,
     },
-    blockchain::{Branch, Branches, Checkpoints, Multiverse, Ref, RefCache, Storage},
+    blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
     start_up::NodeStorage,
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
@@ -61,6 +63,9 @@ use chain_storage::error::Error as StorageError;
 use chain_time::TimeFrame;
 use std::{convert::Infallible, sync::Arc, time::Duration};
 use tokio::prelude::*;
+
+// derive
+use thiserror::Error;
 
 error_chain! {
     foreign_links {
@@ -82,9 +87,14 @@ error_chain! {
             description("Block0 is not yet in the storage")
         }
 
-        MissingParentBlockFromStorage(header: Header) {
+        MissingParentBlock(hash: HeaderHash) {
             description("missing a parent block from the storage"),
-            display("Missing a block from the storage. The process was recovering the blockchain and the block parent block '{}' was not already in the cache", header.block_parent_hash()),
+            display(
+                "Missing a block from the storage. The node was recovering \
+                 the blockchain and the parent block '{}' was not \
+                 already stored",
+                hash,
+            ),
         }
 
         NoTag (tag: String) {
@@ -97,13 +107,61 @@ error_chain! {
             display("The block header verification failed: {}", reason),
         }
 
+        BlockNotRequested (hash: HeaderHash) {
+            description("Received an unknown block"),
+            display("Received block {} is not known from previously received headers", hash)
+        }
+
         CannotApplyBlock {
             description("Block cannot be applied on top of the previous block's ledger state"),
         }
     }
 }
 
+#[derive(Error, Debug)]
+pub enum HeaderChainVerifyError {
+    #[error("date is set before parent; new block: {child}, parent: {parent}")]
+    BlockDateBeforeParent { child: BlockDate, parent: BlockDate },
+    #[error("chain length is not incrementally increasing; new block: {child}, parent: {parent}")]
+    ChainLengthNotIncremental {
+        child: ChainLength,
+        parent: ChainLength,
+    },
+}
+
 pub const MAIN_BRANCH_TAG: &str = "HEAD";
+
+/// Performs lightweight sanity checks on information fields of a block header
+/// against those in the header of the block's parent.
+/// The `parent` header must have been retrieved based on, or otherwise
+/// matched to, the parent block hash of `header`.
+///
+/// # Panics
+///
+/// If the parent hash in the header does not match that of the parent,
+/// this function may panic.
+pub fn pre_verify_link(
+    header: &Header,
+    parent: &Header,
+) -> ::std::result::Result<(), HeaderChainVerifyError> {
+    use chain_core::property::ChainLength as _;
+
+    debug_assert_eq!(header.block_parent_hash(), parent.hash());
+
+    if header.block_date() <= parent.block_date() {
+        return Err(HeaderChainVerifyError::BlockDateBeforeParent {
+            child: header.block_date(),
+            parent: parent.block_date(),
+        });
+    }
+    if header.chain_length() != parent.chain_length().next() {
+        return Err(HeaderChainVerifyError::ChainLengthNotIncremental {
+            child: header.chain_length(),
+            parent: parent.chain_length(),
+        });
+    }
+    Ok(())
+}
 
 /// blockchain object, can be safely shared across multiple threads. However it is better not
 /// to as some operations may require a mutex.
@@ -331,23 +389,13 @@ impl Blockchain {
                 PreCheckedHeader::HeaderWithCache {
                     ref header,
                     ref parent_ref,
-                } => {
-                    use chain_core::property::ChainLength as _;
-
-                    if header.block_date() <= parent_ref.block_date() {
-                        return future::err(
-                            "block is not valid, date is set before parent's".into(),
-                        );
-                    }
-                    if header.chain_length() != parent_ref.chain_length().next() {
-                        return future::err(
-                            "block is not valid, chain length is not monotonically increasing"
-                                .into(),
-                        );
-                    }
-
-                    future::ok(pre_check)
-                }
+                } => future::result(
+                    pre_verify_link(header, parent_ref.header())
+                        .map(|()| pre_check)
+                        .map_err(|e| {
+                            ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into()
+                        }),
+                ),
                 _ => future::ok(pre_check),
             })
     }
@@ -717,7 +765,7 @@ impl Blockchain {
                                                 unreachable!("block already present, this should not happen. {:#?}", header)
                                             },
                                             PreCheckedHeader::MissingParent { header } =>
-                                                future::Either::B(future::err(ErrorKind::MissingParentBlockFromStorage(header).into())),
+                                                future::Either::B(future::err(ErrorKind::MissingParentBlock(header.block_parent_hash()).into())),
                                         }
                                     })
                                     .and_then(move |post_checked_header: PostCheckedHeader| {

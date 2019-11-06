@@ -302,13 +302,8 @@ pub struct RequestSink<T, R, E> {
 }
 
 impl<T, R> RequestStreamHandle<T, R> {
-    pub fn stream(&mut self) -> &mut MessageQueue<T> {
-        &mut self.receiver
-    }
-
-    /// Drops the request stream and returns the reply handle.
-    pub fn into_reply(self) -> ReplyHandle<R> {
-        self.reply
+    pub fn into_stream_and_reply(self) -> (MessageQueue<T>, ReplyHandle<R>) {
+        (self.receiver, self.reply)
     }
 }
 
