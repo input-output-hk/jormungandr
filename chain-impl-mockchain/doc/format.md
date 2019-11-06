@@ -255,7 +255,7 @@ TODO:
 
     TokenTransfer<PAYLOAD = OwnerStakeDelegation> | Witnesses
 
-    OwnerStakeDelegation = StakePoolId
+    OwnerStakeDelegation = DelegationType
 
 ## Type 3: Certificate
 
@@ -303,3 +303,48 @@ where `ProposalId` is the message ID of an earlier update proposal
 message, `VoterId` is an ed25519 extended public key, and `Signature`
 is a signature by the corresponding secret key over `ProposalId |
 VoterId`.
+
+## Shared formats
+
+Delegation Type has 3 different encodings:
+
+```
+No Delegation:
+
+    00
+
+Full delegation to 1 node:
+
+    01 POOL-ID
+
+Ratio delegation:
+
+    Byte(PARTS) Byte(#POOLS) ( Byte(POOL-PARTS) POOL-ID )[#POOLS times]
+
+    with PARTS >= 2 and #POOLS >= 2
+```
+
+Thus the encodings in hexadecimal:
+
+```
+
+No Delegation:
+
+    00
+
+Full Delegation to POOL-ID f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0
+
+    01 f0 f0 f0 f0 f0 f0 f0  f0 f0 f0 f0 f0 f0 f0 f0
+    f0 f0 f0 f0 f0 f0 f0 f0  f0 f0 f0 f0 f0 f0 f0 f0
+    f0
+
+Ratio Delegation of:
+* 1/4 to POOL-ID f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0
+* 3/4 to POOL-ID abababababababababababababababababababababababababababababababab
+
+    04 02 01 f0 f0 f0 f0 f0  f0 f0 f0 f0 f0 f0 f0 f0
+    f0 f0 f0 f0 f0 f0 f0 f0  f0 f0 f0 f0 f0 f0 f0 f0
+    f0 f0 f0 03 ab ab ab ab  ab ab ab ab ab ab ab ab
+    ab ab ab ab ab ab ab ab  ab ab ab ab ab ab ab ab
+    ab ab ab ab 
+```
