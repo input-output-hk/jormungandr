@@ -1,4 +1,5 @@
 use chain_crypto::{Ed25519, PublicKey};
+use chain_impl_mockchain::account::DelegationType;
 use chain_impl_mockchain::certificate::{Certificate, StakeDelegation as Delegation};
 use chain_impl_mockchain::transaction::AccountIdentifier;
 use jcli_app::certificate::{write_cert, Error};
@@ -25,7 +26,7 @@ impl StakeDelegation {
     pub fn exec(self) -> Result<(), Error> {
         let content = Delegation {
             account_id: AccountIdentifier::from_single_account(self.stake_id.into()),
-            pool_id: self.pool_id.into(),
+            delegation: DelegationType::Full(self.pool_id.into()),
         };
         let cert = Certificate::StakeDelegation(content);
         write_cert(

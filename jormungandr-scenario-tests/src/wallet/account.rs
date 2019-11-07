@@ -78,7 +78,7 @@ impl Wallet {
     pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> SignedCertificate {
         let stake_delegation = StakeDelegation {
             account_id: self.stake_key(), // 2
-            pool_id,                      // 1
+            delegation: chain_impl_mockchain::account::DelegationType::Full(pool_id), // 1
         };
         let txb = TxBuilder::new()
             .set_payload(&stake_delegation)

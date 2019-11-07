@@ -471,8 +471,21 @@ impl StakeDelegation {
             .map(|addr| Address::from(&addr))
     }
 
-    pub fn pool(&self, context: &Context) -> Pool {
-        Pool::from_valid_id(self.delegation.pool_id.clone())
+    pub fn pool(&self, context: &Context) -> Vec<Pool> {
+        use chain_impl_mockchain::account::DelegationType;
+        use std::iter::FromIterator as _;
+
+        match self.delegation.get_delegation_type() {
+            DelegationType::NonDelegated => vec![],
+            DelegationType::Full(id) => vec![Pool::from_valid_id(id.clone())],
+            DelegationType::Ratio(delegation_ratio) => Vec::from_iter(
+                delegation_ratio
+                    .pools()
+                    .iter()
+                    .cloned()
+                    .map(|(p, _)| Pool::from_valid_id(p)),
+            ),
+        }
     }
 }
 
@@ -542,8 +555,21 @@ impl From<certificate::OwnerStakeDelegation> for OwnerStakeDelegation {
     Context = Context,
 )]
 impl OwnerStakeDelegation {
-    fn pool(&self) -> Pool {
-        Pool::from_valid_id(self.owner_stake_delegation.pool_id.clone())
+    fn pool(&self) -> Vec<Pool> {
+        use chain_impl_mockchain::account::DelegationType;
+        use std::iter::FromIterator as _;
+
+        match self.owner_stake_delegation.get_delegation_type() {
+            DelegationType::NonDelegated => vec![],
+            DelegationType::Full(id) => vec![Pool::from_valid_id(id.clone())],
+            DelegationType::Ratio(delegation_ratio) => Vec::from_iter(
+                delegation_ratio
+                    .pools()
+                    .iter()
+                    .cloned()
+                    .map(|(p, _)| Pool::from_valid_id(p)),
+            ),
+        }
     }
 }
 
