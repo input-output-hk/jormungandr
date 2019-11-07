@@ -102,6 +102,7 @@ impl Fragment {
         let v = Vec::new();
         let mut codec = Codec::new(v);
         codec.put_u8(self.get_tag() as u8).unwrap();
+        codec.put_u8(0).unwrap();
         match self {
             Fragment::Initial(i) => i.serialize(&mut codec).unwrap(),
             Fragment::OldUtxoDeclaration(s) => s.serialize(&mut codec).unwrap(),
@@ -131,6 +132,13 @@ impl Fragment {
 impl Readable for Fragment {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let tag = buf.get_u8()?;
+        let after_tag = buf.get_u8()?;
+        if after_tag != 0 {
+            Err(ReadError::StructureInvalid(format!(
+                "fragment after tag expected at 0 but got {}",
+                after_tag
+            )))?
+        }
         match FragmentTag::from_u8(tag) {
             Some(FragmentTag::Initial) => ConfigParams::read(buf).map(Fragment::Initial),
             Some(FragmentTag::OldUtxoDeclaration) => {

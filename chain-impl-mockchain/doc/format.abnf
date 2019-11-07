@@ -35,7 +35,6 @@ CONTENT          = *FRAGMENT
 FRAGMENT-ID      = *32OCTET
 FRAGMENT         = FRAGMENT-SIZE FRAGMENT-SPEC
 FRAGMENT-SIZE    = SIZE-BYTES-16BIT
-; currently the second %x00 is not present.
 FRAGMENT-SPEC    = %x00 %x00 INITIAL
                  / %x01 %x00 OLD-UTXO-DECL
                  / %x02 %x00 SIMPLE-TRANSACTION
