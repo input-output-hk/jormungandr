@@ -4,6 +4,15 @@ use crate::transaction::*;
 use crate::value::Value;
 use chain_addr::Address;
 
+const CHECK_TX_MAXIMUM_INPUTS: u8 = 255;
+const CHECK_TX_MAXIMUM_OUTPUTS: u8 = 254;
+const CHECK_POOL_REG_MAXIMUM_OWNERS: usize = 32;
+
+// if condition, then fail_with
+//
+// `if_cond_fail_with(a == b, MyError)`
+//
+// `if a == b { Err(MyError) } else { Ok() }`
 macro_rules! if_cond_fail_with(
     ($cond: expr, $err: expr) => {
         if $cond {
@@ -25,23 +34,23 @@ pub(super) fn valid_block0_transaction_no_inputs<'a, Extra>(
         Error::Block0 {
             source: Block0Error::TransactionHasInput
         }
-    )?;
-    if_cond_fail_with!(
-        tx.nb_inputs() != 0,
-        Error::Block0 {
-            source: Block0Error::TransactionHasWitnesses
-        }
     )
 }
 
 // Check that a specific block0 transaction has no outputs
-pub(super) fn valid_block0_transaction_no_outputs<'a, Extra>(
+pub(super) fn valid_block0_cert_transaction<'a, Extra>(
     tx: &TransactionSlice<'a, Extra>,
 ) -> LedgerCheck {
     if_cond_fail_with!(
+        tx.nb_inputs() != 0,
+        Error::Block0 {
+            source: Block0Error::CertTransactionHasInput
+        }
+    )?;
+    if_cond_fail_with!(
         tx.nb_outputs() != 0,
         Error::Block0 {
-            source: Block0Error::TransactionHasOutput
+            source: Block0Error::CertTransactionHasOutput
         }
     )
 }
@@ -57,31 +66,41 @@ pub(super) fn valid_output_value(output: &Output<Address>) -> LedgerCheck {
 }
 
 /// check that the transaction input/outputs/witnesses is valid for stake_owner_delegation
+///
+/// * Only 1 input (subsequently 1 witness), no output
 pub(super) fn valid_stake_owner_delegation_transaction<'a>(
-    auth_cert: &TransactionSlice<'a, certificate::OwnerStakeDelegation>,
+    tx: &TransactionSlice<'a, certificate::OwnerStakeDelegation>,
 ) -> LedgerCheck {
     if_cond_fail_with!(
-        auth_cert.inputs().nb_inputs() != 1
-            || auth_cert.witnesses().nb_witnesses() != 1
-            || auth_cert.outputs().nb_outputs() != 0,
+        tx.inputs().nb_inputs() != 1
+            || tx.witnesses().nb_witnesses() != 1
+            || tx.outputs().nb_outputs() != 0,
         Error::OwnerStakeDelegationInvalidTransaction
     )
 }
 
+/// check that the pool registration certificate is valid
+///
+/// * management threshold T is valid: 0 < T <= #owners
+/// * there is no more than MAXIMUM_OWNERS
 pub(super) fn valid_pool_registration_certificate(
     auth_cert: &certificate::PoolRegistration,
 ) -> LedgerCheck {
     if_cond_fail_with!(
         auth_cert.management_threshold == 0,
-        Error::PoolRegistrationInvalid
+        Error::PoolRegistrationManagementThresholdZero
     )?;
     if_cond_fail_with!(
         auth_cert.management_threshold as usize > auth_cert.owners.len(),
-        Error::PoolRegistrationInvalid
+        Error::PoolRegistrationManagementThresholdAbove
     )?;
     if_cond_fail_with!(
-        auth_cert.owners.len() >= 256,
-        Error::PoolRegistrationInvalid
+        auth_cert.owners.len() == 0,
+        Error::PoolRegistrationHasNoOwner
+    )?;
+    if_cond_fail_with!(
+        auth_cert.owners.len() > CHECK_POOL_REG_MAXIMUM_OWNERS,
+        Error::PoolRegistrationHasTooManyOwners
     )?;
     Ok(())
 }
@@ -92,7 +111,7 @@ pub(super) fn valid_pool_owner_signature(pos: &certificate::PoolOwnersSigned) ->
         Error::CertificateInvalidSignature
     )?;
     if_cond_fail_with!(
-        pos.signatures.len() > 255,
+        pos.signatures.len() > CHECK_POOL_REG_MAXIMUM_OWNERS,
         Error::CertificateInvalidSignature
     )?;
     Ok(())
@@ -116,9 +135,16 @@ custom_error! {
 pub(super) fn valid_transaction_ios_number<'a, P>(
     tx: &TransactionSlice<'a, P>,
 ) -> Result<(), TxVerifyError> {
-    if tx.nb_outputs() >= 255 {
+    // note this is always false at the moment, but just in case we change the maximum inputs.
+    if tx.nb_inputs() > CHECK_TX_MAXIMUM_INPUTS {
         return Err(TxVerifyError::TooManyOutputs {
-            expected: 254,
+            expected: CHECK_TX_MAXIMUM_INPUTS,
+            actual: tx.nb_outputs(),
+        });
+    }
+    if tx.nb_outputs() > CHECK_TX_MAXIMUM_OUTPUTS {
+        return Err(TxVerifyError::TooManyOutputs {
+            expected: CHECK_TX_MAXIMUM_OUTPUTS,
             actual: tx.nb_outputs(),
         });
     }
@@ -149,10 +175,10 @@ mod tests {
     pub fn test_valid_block0_transaction_outputs(
         tx: Transaction<certificate::OwnerStakeDelegation>,
     ) -> TestResult {
-        let has_valid_outputs = tx.nb_outputs() == 0;
+        let has_valid_ios = tx.nb_inputs() == 0 && tx.nb_outputs() == 0;
 
-        let result = valid_block0_transaction_no_outputs(&tx.as_slice());
-        to_quickchek_result(result, has_valid_outputs)
+        let result = valid_block0_cert_transaction(&tx.as_slice());
+        to_quickchek_result(result, has_valid_ios)
     }
 
     #[quickcheck]
@@ -168,7 +194,7 @@ mod tests {
     ) -> TestResult {
         let is_valid = pool_registration.management_threshold != 0
             && (pool_registration.management_threshold as usize) <= pool_registration.owners.len()
-            && pool_registration.owners.len() < 256;
+            && pool_registration.owners.len() < CHECK_POOL_REG_MAXIMUM_OWNERS;
         let result = valid_pool_registration_certificate(&pool_registration);
         to_quickchek_result(result, is_valid)
     }

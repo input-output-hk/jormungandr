@@ -63,7 +63,8 @@ custom_error! {
     #[derive(Clone, PartialEq, Eq)]
     pub Block0Error
         TransactionHasInput = "Transaction should not have inputs in a block0",
-        TransactionHasOutput = "Transaction should not have outputs in a block0",
+        CertTransactionHasInput = "Certificate should not have inputs in a block0",
+        CertTransactionHasOutput = "Certificate should not have outputs in a block0",
         TransactionHasWitnesses = "Transaction should not have witnesses in a block0",
         InitialMessageMissing = "The initial message is missing.",
         InitialMessageMany = "Only one initial message is required",
@@ -126,7 +127,10 @@ custom_error! {
         NonMonotonicDate { block_date: BlockDate, chain_date: BlockDate } = "Non Monotonic date, chain date is at {chain_date} but the block is at {block_date}",
         IncompleteLedger = "Ledger cannot be reconstructed from serialized state because of missing entries",
         PotValueInvalid { error: ValueError } = "Ledger pot value invalid: {error}",
-        PoolRegistrationInvalid = "Pool Registration certificate invalid",
+        PoolRegistrationHasNoOwner = "Pool registration with no owner",
+        PoolRegistrationHasTooManyOwners = "Pool registration with too many owners",
+        PoolRegistrationManagementThresholdZero = "Pool registration management threshold is zero",
+        PoolRegistrationManagementThresholdAbove = "Pool registration management threshold above owners",
         PoolUpdateNotAllowedYet = "Pool Update not allowed yet",
         StakeDelegationSignatureFailed = "Stake Delegation payload signature failed",
         PoolRetirementSignatureFailed = "Pool Retirement payload signature failed",
@@ -282,14 +286,12 @@ impl Ledger {
                 }
                 Fragment::StakeDelegation(tx) => {
                     let tx = tx.as_slice();
-                    check::valid_block0_transaction_no_inputs(&tx)?;
-                    check::valid_block0_transaction_no_outputs(&tx)?;
+                    check::valid_block0_cert_transaction(&tx)?;
                     ledger = ledger.apply_stake_delegation(&tx.payload().into_payload())?;
                 }
                 Fragment::PoolRegistration(tx) => {
                     let tx = tx.as_slice();
-                    check::valid_block0_transaction_no_inputs(&tx)?;
-                    check::valid_block0_transaction_no_outputs(&tx)?;
+                    check::valid_block0_cert_transaction(&tx)?;
                     ledger = ledger.apply_pool_registration(&tx.payload().into_payload())?;
                 }
                 Fragment::PoolRetirement(_) => {
