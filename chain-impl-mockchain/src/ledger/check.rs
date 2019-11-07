@@ -8,6 +8,11 @@ const CHECK_TX_MAXIMUM_INPUTS: u8 = 255;
 const CHECK_TX_MAXIMUM_OUTPUTS: u8 = 254;
 const CHECK_POOL_REG_MAXIMUM_OWNERS: usize = 32;
 
+// if condition, then fail_with
+//
+// `if_cond_fail_with(a == b, MyError)`
+//
+// `if a == b { Err(MyError) } else { Ok() }`
 macro_rules! if_cond_fail_with(
     ($cond: expr, $err: expr) => {
         if $cond {
