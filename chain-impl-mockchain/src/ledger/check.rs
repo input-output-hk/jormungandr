@@ -88,15 +88,15 @@ pub(super) fn valid_pool_registration_certificate(
 ) -> LedgerCheck {
     if_cond_fail_with!(
         auth_cert.management_threshold == 0,
-        Error::PoolRegistrationInvalid
+        Error::PoolRegistrationManagementThresholdZero
     )?;
     if_cond_fail_with!(
         auth_cert.management_threshold as usize > auth_cert.owners.len(),
-        Error::PoolRegistrationInvalid
+        Error::PoolRegistrationManagementThresholdAbove
     )?;
     if_cond_fail_with!(
         auth_cert.owners.len() > CHECK_POOL_REG_MAXIMUM_OWNERS,
-        Error::PoolRegistrationInvalid
+        Error::PoolRegistrationHasTooManyOwners
     )?;
     Ok(())
 }
