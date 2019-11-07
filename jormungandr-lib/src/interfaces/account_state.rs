@@ -23,7 +23,7 @@ impl From<account::DelegationType> for DelegationType {
             },
             account::DelegationType::Ratio(v) => DelegationType {
                 pools: v
-                    .pools
+                    .pools()
                     .iter()
                     .map(|(h, pp)| (h.clone().into(), *pp))
                     .collect(),
@@ -43,14 +43,14 @@ impl From<DelegationType> for account::DelegationType {
             match v.try_into() {
                 Err(_) => panic!("delegation type pool overflow"),
                 Ok(parts) => {
-                    let ratio = account::DelegationRatio {
+                    let ratio = account::DelegationRatio::new(
                         parts,
-                        pools: dt
-                            .pools
+                        dt.pools()
                             .iter()
                             .map(|(h, pp)| (h.into_digest_of(), *pp))
                             .collect(),
-                    };
+                    )
+                    .expect("Assume this is always correct for a delegation type");
                     account::DelegationType::Ratio(ratio)
                 }
             }
