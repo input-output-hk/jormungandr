@@ -95,6 +95,10 @@ pub(super) fn valid_pool_registration_certificate(
         Error::PoolRegistrationManagementThresholdAbove
     )?;
     if_cond_fail_with!(
+        auth_cert.owners.len() == 0,
+        Error::PoolRegistrationHasNoOwner
+    )?;
+    if_cond_fail_with!(
         auth_cert.owners.len() > CHECK_POOL_REG_MAXIMUM_OWNERS,
         Error::PoolRegistrationHasTooManyOwners
     )?;

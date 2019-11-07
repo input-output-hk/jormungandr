@@ -127,6 +127,7 @@ custom_error! {
         NonMonotonicDate { block_date: BlockDate, chain_date: BlockDate } = "Non Monotonic date, chain date is at {chain_date} but the block is at {block_date}",
         IncompleteLedger = "Ledger cannot be reconstructed from serialized state because of missing entries",
         PotValueInvalid { error: ValueError } = "Ledger pot value invalid: {error}",
+        PoolRegistrationHasNoOwner = "Pool registration with no owner",
         PoolRegistrationHasTooManyOwners = "Pool registration with too many owners",
         PoolRegistrationManagementThresholdZero = "Pool registration management threshold is zero",
         PoolRegistrationManagementThresholdAbove = "Pool registration management threshold above owners",
