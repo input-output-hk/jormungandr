@@ -1,5 +1,46 @@
 # Change Log
 
+## [v0.7.0-rc5](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc5) (2019-11-07)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc4...v0.7.0-rc5)
+
+**Implemented enhancements:**
+
+- UTxO query by FragmentID [\#1048](https://github.com/input-output-hk/jormungandr/issues/1048)
+- update chain-deps to have support for ratio delegation [\#1084](https://github.com/input-output-hk/jormungandr/pull/1084)
+- Reimplemented chain pull [\#1078](https://github.com/input-output-hk/jormungandr/pull/1078)
+- jcli transaction - add data-for-witness \(alias id\) and fragment-id [\#1073](https://github.com/input-output-hk/jormungandr/pull/1073)
+- Transaction update \(major breaking changes\) [\#1063](https://github.com/input-output-hk/jormungandr/pull/1063)
+
+**Fixed bugs:**
+
+- Memory allocation error after update to 0.7.0-rc4 [\#1064](https://github.com/input-output-hk/jormungandr/issues/1064)
+- Crash on Jormungandr 0.6.0 on Mac OSX Catalina [\#953](https://github.com/input-output-hk/jormungandr/issues/953)
+- fix mis-handling of legacy UTxO in the ledger [\#1071](https://github.com/input-output-hk/jormungandr/pull/1071)
+- prevent blowing up limit and mitigate generic serialisation format [\#1066](https://github.com/input-output-hk/jormungandr/pull/1066)
+
+**Closed issues:**
+
+- v0.7.0-rc4 Unable to read previously node config [\#1061](https://github.com/input-output-hk/jormungandr/issues/1061)
+- Transactions lost on rollbacks [\#1043](https://github.com/input-output-hk/jormungandr/issues/1043)
+- Leader node crash during leader event processing on Windows 10 [\#975](https://github.com/input-output-hk/jormungandr/issues/975)
+
+**Merged pull requests:**
+
+- Rest utxo [\#1081](https://github.com/input-output-hk/jormungandr/pull/1081)
+- \[Tests\] move NodeState to jormungandr-lib [\#1080](https://github.com/input-output-hk/jormungandr/pull/1080)
+- doc: Remove remaining traces of private\_id [\#1079](https://github.com/input-output-hk/jormungandr/pull/1079)
+- \[Tests \] Stats rest method for node [\#1077](https://github.com/input-output-hk/jormungandr/pull/1077)
+- Implement a custom policy object [\#1076](https://github.com/input-output-hk/jormungandr/pull/1076)
+- remove unused imports [\#1075](https://github.com/input-output-hk/jormungandr/pull/1075)
+- \[Tests\] Use KeyPair from jormungandr-libs [\#1074](https://github.com/input-output-hk/jormungandr/pull/1074)
+- Restore REST TX info functionality [\#1070](https://github.com/input-output-hk/jormungandr/pull/1070)
+- jcli: certificate print - also signedcert [\#1068](https://github.com/input-output-hk/jormungandr/pull/1068)
+- Update introduction.md [\#1062](https://github.com/input-output-hk/jormungandr/pull/1062)
+- Docs: allow\_private\_addresses - add to sample cfg [\#1059](https://github.com/input-output-hk/jormungandr/pull/1059)
+- \[Tests\] Testnet test case stability fix [\#1051](https://github.com/input-output-hk/jormungandr/pull/1051)
+- \[Tests\] Jormungandr-scenario-tests added grpc calls to node [\#1047](https://github.com/input-output-hk/jormungandr/pull/1047)
+- \[Tests\] Genesis initial  test cases [\#1023](https://github.com/input-output-hk/jormungandr/pull/1023)
+
 ## [v0.7.0-rc4](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc4) (2019-11-01)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc3...v0.7.0-rc4)
 
