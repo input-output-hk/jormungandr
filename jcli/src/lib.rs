@@ -21,7 +21,6 @@ extern crate serde_yaml;
 extern crate structopt;
 #[macro_use(custom_error)]
 extern crate custom_error;
-extern crate strfmt;
 extern crate valico;
 
 pub mod jcli_app;

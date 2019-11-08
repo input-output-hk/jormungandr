@@ -32,7 +32,6 @@ chain-time    = { path = "../chain-deps/chain-time" }
 reqwest = "0.9.11"
 custom_error = "1.7"
 jormungandr-lib = { path = "../jormungandr-lib" }
-strfmt = "0.1"
 gtmpl = "0.5.6"
 openapiv3 = "0.3.0"
 valico = "3.1.0"
