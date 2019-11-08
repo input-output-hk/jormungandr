@@ -202,12 +202,6 @@ impl ExplorerDB {
                         .map_err(|err| Error::from(err)),
                 ),
             })
-            .and_then(move |stream_option| match stream_option {
-                None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
-                    "Couldn't iterate from Block0 to HEAD".to_owned(),
-                )))),
-                Some(stream) => Either::B(future::ok(stream)),
-            })
             .and_then(move |stream| {
                 stream
                     .map_err(|err| Error::from(err))
