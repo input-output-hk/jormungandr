@@ -15,7 +15,7 @@ mod staging;
 use self::staging::StagingKind;
 use crate::jcli_app::certificate;
 use crate::jcli_app::utils::error::CustomErrorFiller;
-use crate::jcli_app::utils::key_parser;
+use crate::jcli_app::utils::{key_parser, output_format};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
 use std::path::PathBuf;
@@ -94,6 +94,7 @@ custom_error! { pub Error
         = "could not serialize witness data",
     InfoFileWriteFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not write info file '{}'", path.display()) }},
+    OutputFormatFailed { source: output_format::Error } = "formatting output failed",
 
     TxKindToAddExtraInvalid { kind: StagingKind } = "adding certificate to {kind} transaction is not valid",
     TxKindToAddInputInvalid { kind: StagingKind } = "adding input to {kind} transaction is not valid",
@@ -119,7 +120,6 @@ custom_error! { pub Error
     GeneratedTxTypeUnexpected = "unexpected generated transaction type",
     MessageSerializationFailed { source: std::io::Error, filler: CustomErrorFiller }
         = "serialization of message to bytes failed",
-    InfoOutputFormatInvalid { source: strfmt::FmtError, format: String } = "invalid info output format '{format}'",
     InfoCalculationFailed { source: chain::value::ValueError } = "calculation of info failed",
     FeeCalculationFailed = "fee calculation failed",
     InfoExpectedSingleAccount = "expected a single account, multisig is not supported yet",
