@@ -1,5 +1,20 @@
 # Change Log
 
+## [v0.7.0-rc7](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc7) (2019-11-08)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc6...v0.7.0-rc7)
+
+**Implemented enhancements:**
+
+- Logging improvements for network and chain pull [\#1092](https://github.com/input-output-hk/jormungandr/pull/1092)
+
+**Fixed bugs:**
+
+- Fix blocks in epoch first cursor not being 0 [\#1096](https://github.com/input-output-hk/jormungandr/pull/1096)
+
+**Merged pull requests:**
+
+- Revert "Flip the switch on PushHeaders" [\#1095](https://github.com/input-output-hk/jormungandr/pull/1095)
+
 ## [v0.7.0-rc6](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc6) (2019-11-08)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc5...v0.7.0-rc6)
 
