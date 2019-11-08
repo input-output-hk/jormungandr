@@ -8,7 +8,7 @@ use crate::{
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{
     block::ConsensusVersion,
-    certificate::{PoolSignature, PoolPermissions},
+    certificate::{PoolPermissions, PoolSignature},
     fee::LinearFee,
     key::EitherEd25519SecretKey,
     rewards::TaxType,
@@ -236,7 +236,10 @@ impl Settings {
                         };
 
                         let stake_pool_registration_certificate =
-                            SignedCertificate::PoolRegistration(stake_pool_info, PoolSignature::Owners(owner_signed));
+                            SignedCertificate::PoolRegistration(
+                                stake_pool_info,
+                                PoolSignature::Owners(owner_signed),
+                            );
 
                         self.block0
                             .initial

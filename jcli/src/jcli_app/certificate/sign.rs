@@ -1,6 +1,7 @@
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::certificate::{
-    Certificate, PoolOwnersSigned, PoolSignature, PoolRegistration, SignedCertificate, StakeDelegation,
+    Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
+    StakeDelegation,
 };
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::{
@@ -126,10 +127,7 @@ where
     let keys: Vec<(u8, &EitherEd25519SecretKey)> = match mreg {
         None => {
             // here we don't know the order of things, so just assume sequential index from 0
-            keys.iter()
-                .enumerate()
-                .map(|(i, k)| (i as u8, k))
-                .collect()
+            keys.iter().enumerate().map(|(i, k)| (i as u8, k)).collect()
         }
         Some(reg) => {
             //let pks = &reg.owners;
