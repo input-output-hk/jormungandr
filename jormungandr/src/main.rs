@@ -181,9 +181,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(3600);
-        let candidate_repo = CandidateForest::new(blockchain.storage().clone(), block_cache_ttl);
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
+            let candidate_repo = CandidateForest::new(
+                blockchain.storage().clone(),
+                block_cache_ttl,
+                info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull")),
+            );
             blockchain::handle_input(
                 info,
                 &mut blockchain,
@@ -407,12 +411,16 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let raw_settings = RawSettings::load(command_line)?;
 
-    let logger = raw_settings.to_logger()?;
+    let log_settings = raw_settings.log_settings();
+    let logger = log_settings.to_logger()?;
 
     // The log crate is used by some libraries, e.g. tower-grpc.
-    // Set up forwarding from log to slog.
-    slog_scope::set_global_logger(logger.new(o!(log::KEY_SCOPE => "global"))).cancel_reset();
-    let _ = slog_stdlog::init().unwrap();
+    // Set up forwarding from log to slog, but only when trace log level is
+    // requested, because the logs are very verbose.
+    if log_settings.level >= slog::FilterLevel::Trace {
+        slog_scope::set_global_logger(logger.new(o!(log::KEY_SCOPE => "global"))).cancel_reset();
+        slog_stdlog::init().unwrap();
+    }
 
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);

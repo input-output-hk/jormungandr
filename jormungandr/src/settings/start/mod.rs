@@ -5,7 +5,7 @@ use self::config::{Config, Leadership};
 pub use self::config::{Cors, Rest};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
-use crate::settings::logging::{self, LogFormat, LogOutput, LogSettings};
+use crate::settings::logging::{LogFormat, LogOutput, LogSettings};
 use crate::settings::{command_arguments::*, Block0Info};
 use jormungandr_lib::interfaces::Mempool;
 use slog::{FilterLevel, Logger};
@@ -50,13 +50,12 @@ impl RawSettings {
         })
     }
 
-    pub fn to_logger(&self) -> Result<Logger, logging::Error> {
+    pub fn log_settings(&self) -> LogSettings {
         LogSettings {
             level: self.logger_level(),
             format: self.logger_format(),
             output: self.logger_output(),
         }
-        .to_logger()
     }
 
     fn logger_level(&self) -> FilterLevel {

@@ -200,7 +200,6 @@ where
         );
         match event {
             BlockEvent::Announce(header) => {
-                info!(self.logger, "received block announcement"; "hash" => %header.hash());
                 debug_assert!(self.incoming_block_announcement.is_none());
                 self.incoming_block_announcement = Some(header);
             }
