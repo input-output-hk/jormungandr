@@ -14,6 +14,8 @@ use tokio::sync::lock::Lock;
 use tokio::timer::{self, delay_queue, DelayQueue};
 
 use std::collections::HashMap;
+use std::convert::Infallible;
+use std::hint::unreachable_unchecked;
 use std::time::Duration;
 
 // derive
@@ -394,6 +396,15 @@ impl CandidateForest {
         })
     }
 
+    pub fn on_applied_block(
+        &self,
+        block_hash: HeaderHash,
+    ) -> impl Future<Item = Vec<Block>, Error = Infallible> {
+        let mut inner = self.inner.clone();
+        future::poll_fn(move || Ok(inner.poll_lock()))
+            .and_then(move |mut forest| Ok(forest.on_applied_block(block_hash)))
+    }
+
     pub fn purge(&self) -> impl Future<Item = (), Error = timer::Error> {
         let mut inner = self.inner.clone();
 
@@ -403,6 +414,11 @@ impl CandidateForest {
 }
 
 impl CandidateForestThickets {
+    fn enroll_root(&mut self, root_hash: HeaderHash) -> RootData {
+        let expiration_key = self.expirations.insert(root_hash, self.root_ttl);
+        RootData { expiration_key }
+    }
+
     fn add_or_refresh_root(&mut self, header: Header) -> (HeaderHash, bool) {
         use std::collections::hash_map::Entry::*;
 
@@ -433,17 +449,71 @@ impl CandidateForestThickets {
         (root_hash, is_new)
     }
 
-    fn expunge_root(&mut self, root_hash: HeaderHash) {
+    fn remove_root(&mut self, root_hash: &HeaderHash) -> bool {
         match self.roots.remove(&root_hash) {
             Some(root_data) => {
                 self.expirations.remove(&root_data.expiration_key);
+                true
             }
             None => {
                 assert!(!self.candidate_map.contains_key(&root_hash));
-                return;
+                false
             }
         }
-        // Walk up the tree and remove all the candidates
+    }
+
+    fn on_applied_block(&mut self, block_hash: HeaderHash) -> Vec<Block> {
+        use std::collections::hash_map::Entry::*;
+
+        let mut block_avalanche = Vec::new();
+        if self.remove_root(&block_hash) {
+            let candidate = self
+                .candidate_map
+                .remove(&block_hash)
+                .expect("referential integrity failure in CandidateForest");
+            debug_assert!(
+                candidate.has_only_header(),
+                "a chain pull root candidate should not cache a block",
+            );
+            let mut child_hashes = candidate.children;
+            while let Some(child_hash) = child_hashes.pop() {
+                match self.candidate_map.entry(child_hash) {
+                    Occupied(entry) => match &entry.get().data {
+                        CandidateData::Header(_header) => {
+                            debug_assert_eq!(child_hash, _header.hash());
+                            // Bump this one down to become a new root
+                            let root_data = self.enroll_root(child_hash);
+                            let _old = self.roots.insert(child_hash, root_data);
+                            debug_assert!(_old.is_none());
+                        }
+                        CandidateData::Block(_block) => {
+                            debug_assert_eq!(child_hash, _block.header().hash());
+                            // Extract the block and descend to children
+                            let candidate = entry.remove();
+                            if let CandidateData::Block(block) = candidate.data {
+                                block_avalanche.push(block);
+                            } else {
+                                unsafe { unreachable_unchecked() }
+                            }
+                            child_hashes.extend(candidate.children);
+                        }
+                    },
+                    Vacant(_) => panic!("referential integrity failure in CandidateForest"),
+                }
+            }
+        } else {
+            assert!(
+                !self.candidate_map.contains_key(&block_hash),
+                "missed when a chain pull root candidate got committed to storage",
+            );
+        }
+        block_avalanche
+    }
+
+    // Removes the root from, then walks up the tree and
+    // removes all the descendant candidates.
+    fn expunge_root(&mut self, root_hash: HeaderHash) {
+        self.remove_root(&root_hash);
         let mut hashes = vec![root_hash];
         while let Some(hash) = hashes.pop() {
             let candidate = self
