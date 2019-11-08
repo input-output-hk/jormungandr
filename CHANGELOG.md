@@ -1,5 +1,22 @@
 # Change Log
 
+## [v0.7.0-rc6](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc6) (2019-11-08)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc5...v0.7.0-rc6)
+
+**Implemented enhancements:**
+
+- add default custom modules to handle unreachable nodes [\#1091](https://github.com/input-output-hk/jormungandr/pull/1091)
+
+**Closed issues:**
+
+- when is coming out new block for RC5! [\#1087](https://github.com/input-output-hk/jormungandr/issues/1087)
+- compilation errors "no method named `pools` found" [\#1085](https://github.com/input-output-hk/jormungandr/issues/1085)
+- Transactions are not propagated to the Stake Pool nodes [\#966](https://github.com/input-output-hk/jormungandr/issues/966)
+
+**Merged pull requests:**
+
+- \[Tests\] Jormungandr-scenario-tests node in persistent mode [\#1046](https://github.com/input-output-hk/jormungandr/pull/1046)
+
 ## [v0.7.0-rc5](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc5) (2019-11-07)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc4...v0.7.0-rc5)
 
