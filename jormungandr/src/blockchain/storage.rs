@@ -166,6 +166,45 @@ impl Storage {
             Ok(checkpoints)
         })
     }
+
+    pub fn find_closest_ancestor(
+        &self,
+        checkpoints: Vec<HeaderHash>,
+        descendant: HeaderHash,
+    ) -> impl Future<Item = Option<HeaderHash>, Error = StorageError> {
+        let mut inner = self.inner.clone();
+        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
+            let mut ancestor = None;
+            let mut closest_found = std::u64::MAX;
+            for checkpoint in checkpoints {
+                // Checkpoints sent by a peer may not
+                // be present locally, so we need to ignore certain errors
+                match store.is_ancestor(&checkpoint, &descendant) {
+                    Ok(None) => {}
+                    Ok(Some(distance)) => {
+                        if closest_found > distance {
+                            ancestor = Some(checkpoint);
+                            closest_found = distance;
+                        }
+                    }
+                    Err(e) => {
+                        // Checkpoints sent by a peer may not
+                        // be present locally, so we need to ignore certain errors
+                        match e {
+                            StorageError::BlockNotFound => {
+                                // FIXME: add block hash into the error so we
+                                // can see which of the two it is.
+                                // For now, just ignore either.
+                            }
+                            _ => return Err(e),
+                        }
+                    }
+                }
+            }
+            // Could return the distance alongside in a struct?
+            Ok(ancestor)
+        })
+    }
 }
 
 impl Stream for BlockStream {

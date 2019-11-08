@@ -4,6 +4,8 @@ use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
 use crate::utils::task::{Input, ThreadServiceInfo};
 use chain_core::property::HasHeader;
 use chain_storage::store;
+
+use futures::future::Either;
 use tokio::prelude::*;
 
 pub struct TaskData {
@@ -27,13 +29,7 @@ pub fn handle_input(_info: &ThreadServiceInfo, task_data: &mut TaskData, input: 
         }),
         ClientMsg::GetHeadersRange(checkpoints, to, handler) => {
             do_stream_reply(handler, |handler| {
-                handle_get_headers_range(
-                    &task_data.storage,
-                    &task_data.block0_hash,
-                    checkpoints,
-                    to,
-                    handler,
-                )
+                handle_get_headers_range(&task_data.storage, checkpoints, to, handler)
             })
         }
         ClientMsg::GetBlocks(ids, handler) => do_stream_reply(handler, |handler| {
@@ -43,13 +39,7 @@ pub fn handle_input(_info: &ThreadServiceInfo, task_data: &mut TaskData, input: 
             handle_get_blocks_range(&task_data.storage, from, to, handler)
         }),
         ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
-            handle_pull_blocks_to_tip(
-                &task_data.storage,
-                &task_data.block0_hash,
-                &task_data.blockchain_tip,
-                from,
-                handler,
-            )
+            handle_pull_blocks_to_tip(&task_data.storage, &task_data.blockchain_tip, from, handler)
         }),
     }
 }
@@ -60,67 +50,39 @@ fn handle_get_block_tip(blockchain_tip: &Tip) -> Result<Header, Error> {
     Ok(blockchain_tip.header().clone())
 }
 
-const MAX_HEADERS: usize = 2000;
-
-fn find_latest_checkpoint(
-    checkpoints: &[HeaderHash],
-    storage: &Storage,
-    block0_hash: &HeaderHash,
-) -> Result<HeaderHash, Error> {
-    // Filter out the checkpoints that don't exist in the storage;
-    // among the checkpoints present, find the latest by chain length.
-    let mut latest_checkpoint = None;
-    for hash in checkpoints {
-        match storage.get_with_info(hash.clone()).wait() {
-            Ok(Some((_, info))) => match latest_checkpoint {
-                None => {
-                    latest_checkpoint = Some((info.depth, hash));
-                }
-                Some((latest_depth, _)) => {
-                    if info.depth > latest_depth {
-                        latest_checkpoint = Some((info.depth, hash));
-                    }
-                }
-            },
-            Ok(None) => continue,
-            Err(e) => return Err(e.into()),
-        }
-    }
-    match latest_checkpoint {
-        Some((_, hash)) => Ok(hash.clone()),
-        None => Ok(block0_hash.clone()),
-    }
-}
+const MAX_HEADERS: u64 = 2000;
 
 fn handle_get_headers_range(
     storage: &Storage,
-    block0_hash: &HeaderHash,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
     reply: &mut ReplyStreamHandle<Header>,
 ) -> Result<(), Error> {
-    let from = find_latest_checkpoint(&checkpoints, storage, block0_hash)?;
+    let future = storage
+        .find_closest_ancestor(checkpoints, to)
+        .map_err(|e| e.into())
+        .and_then(move |maybe_ancestor| match maybe_ancestor {
+            Some(from) => Either::A(storage.stream_from_to(from, to).map_err(|e| e.into())),
+            None => Either::B(future::err(Error::failed_precondition(
+                "none of the checkpoints found in the local storage are ancestors \
+                 of the requested end block",
+            ))),
+        })
+        .and_then(move |maybe_stream| {
+            let stream = maybe_stream.unwrap();
+            // Send headers up to the maximum
+            stream
+                .map_err(|e| e.into())
+                .take(MAX_HEADERS)
+                .for_each(move |block| {
+                    reply
+                        .send(block.header())
+                        .map_err(|_| Error::failed("failed to send reply"))?;
+                    Ok(())
+                })
+        });
 
-    /* Send headers up to the maximum. */
-    let mut header_count = 0usize;
-    let storage = storage.get_inner().wait().unwrap();
-    for x in store::iterate_range(&*storage, &from, &to)? {
-        match x {
-            Err(err) => return Err(Error::from(err)),
-            Ok(info) => {
-                let (block, _) = storage.get_block(&info.block_hash)?;
-                if let Err(_) = reply.send(block.header()) {
-                    break;
-                }
-                header_count += 1;
-                if header_count >= MAX_HEADERS {
-                    break;
-                }
-            }
-        };
-    }
-
-    Ok(())
+    future.wait()
 }
 
 fn handle_get_blocks_range(
@@ -183,23 +145,36 @@ fn handle_get_headers(
 
 fn handle_pull_blocks_to_tip(
     storage: &Storage,
-    block0_hash: &HeaderHash,
     blockchain_tip: &Tip,
     checkpoints: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
-    let from = find_latest_checkpoint(&checkpoints, &storage, &block0_hash)?;
-
     let tip = blockchain_tip.get_ref().wait().unwrap();
+    let tip_hash = tip.hash();
 
-    let storage = storage.get_inner().wait().unwrap();
-    for x in store::iterate_range(&*storage, &from, &tip.hash())? {
-        let info = x?;
-        let (blk, _) = storage.get_block(&info.block_hash)?;
-        if let Err(_) = reply.send(blk) {
-            break;
-        }
-    }
+    let future = storage
+        .find_closest_ancestor(checkpoints, tip_hash)
+        .map_err(|e| e.into())
+        .and_then(move |maybe_ancestor| match maybe_ancestor {
+            Some(from) => Either::A(storage.stream_from_to(from, tip_hash).map_err(|e| e.into())),
+            None => Either::B(future::err(Error::failed_precondition(
+                "none of the checkpoints found in the local storage \
+                 are ancestors of the current tip",
+            ))),
+        })
+        .and_then(move |maybe_stream| {
+            let stream = maybe_stream.unwrap();
+            // Send headers up to the maximum
+            stream
+                .map_err(|e| e.into())
+                .take(MAX_HEADERS)
+                .for_each(move |block| {
+                    reply
+                        .send(block)
+                        .map_err(|_| Error::failed("failed to send reply"))?;
+                    Ok(())
+                })
+        });
 
-    Ok(())
+    future.wait()
 }

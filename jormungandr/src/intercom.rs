@@ -214,6 +214,7 @@ impl fmt::Display for ReplySendError {
 
 impl error::Error for ReplySendError {}
 
+// FIXME: change to bounded Sender and implement Sink for it
 #[derive(Debug)]
 pub struct ReplyStreamHandle<T> {
     sender: mpsc::UnboundedSender<Result<T, Error>>,
