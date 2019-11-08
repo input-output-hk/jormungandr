@@ -4,7 +4,7 @@ use super::{
     GlobalStateR,
 };
 use crate::{
-    blockcfg::{Fragment, Header},
+    blockcfg::{Fragment, Header, HeaderHash},
     intercom::{BlockMsg, TransactionMsg},
     settings::start::network::Configuration,
     utils::async_msg::MessageBox,
@@ -18,6 +18,7 @@ use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use slog::Logger;
 
+use std::collections::HashSet;
 use std::fmt::Debug;
 
 #[must_use = "`Subscription` needs to be plugged into a service trait implementation"]
@@ -191,6 +192,7 @@ pub struct BlockAnnouncementProcessor {
     node_id: Id,
     global_state: GlobalStateR,
     logger: Logger,
+    seen_blocks: HashSet<HeaderHash>,
 }
 
 impl BlockAnnouncementProcessor {
@@ -205,6 +207,7 @@ impl BlockAnnouncementProcessor {
             node_id,
             global_state,
             logger,
+            seen_blocks: HashSet::new(),
         }
     }
 
@@ -279,6 +282,10 @@ impl Sink for BlockAnnouncementProcessor {
     type SinkError = core_error::Error;
 
     fn start_send(&mut self, header: Header) -> StartSend<Header, core_error::Error> {
+        let block_hash = header.hash();
+        if self.seen_blocks.insert(block_hash) {
+            info!(self.logger, "received block announcement"; "hash" => %block_hash);
+        }
         let polled = self
             .mbox
             .start_send(BlockMsg::AnnouncedBlock(header, self.node_id))
@@ -288,10 +295,12 @@ impl Sink for BlockAnnouncementProcessor {
                     "failed to send block announcement to the block task";
                     "reason" => %e,
                 );
+                self.seen_blocks.remove(&block_hash);
                 core_error::Error::new(core_error::Code::Internal, e)
             })?;
         match polled {
             AsyncSink::Ready => {
+                self.seen_blocks.remove(&block_hash);
                 self.global_state.peers.refresh_peer_on_block(self.node_id);
                 Ok(AsyncSink::Ready)
             }
