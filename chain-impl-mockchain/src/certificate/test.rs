@@ -76,7 +76,7 @@ impl Arbitrary for PoolRegistration {
         let pk = testing::arbitrary_public_key::<Ed25519, G>(g);
         PoolRegistration {
             serial: Arbitrary::arbitrary(g),
-            management_threshold: 1,
+            permissions: PoolPermissions::new(1),
             start_validity: start_validity.into(),
             owners: vec![pk],
             rewards: TaxType::zero(),

@@ -1,5 +1,5 @@
 use crate::{
-    certificate::PoolRegistration, leadership::genesis::GenesisPraosLeader, rewards::TaxType,
+    certificate::{PoolRegistration, PoolPermissions}, leadership::genesis::GenesisPraosLeader, rewards::TaxType,
     testing::data::StakePool,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, KeyPair, PublicKey, SumEd25519_12};
@@ -24,7 +24,7 @@ impl StakePoolBuilder {
             serial: 1234,
             owners: self.owners.iter().cloned().collect(),
             start_validity: DurationSeconds::from(0).into(),
-            management_threshold: std::cmp::max(self.owners.len() as u16 / 2, 1),
+            permissions: PoolPermissions::new(std::cmp::max(self.owners.len() as u16 / 2, 1)),
             rewards: TaxType::zero(),
             keys: GenesisPraosLeader {
                 vrf_public_key: pool_vrf.public_key().clone(),

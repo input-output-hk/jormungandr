@@ -87,11 +87,11 @@ pub(super) fn valid_pool_registration_certificate(
     auth_cert: &certificate::PoolRegistration,
 ) -> LedgerCheck {
     if_cond_fail_with!(
-        auth_cert.management_threshold == 0,
+        auth_cert.management_threshold() == 0,
         Error::PoolRegistrationManagementThresholdZero
     )?;
     if_cond_fail_with!(
-        auth_cert.management_threshold as usize > auth_cert.owners.len(),
+        auth_cert.management_threshold() as usize > auth_cert.owners.len(),
         Error::PoolRegistrationManagementThresholdAbove
     )?;
     if_cond_fail_with!(
@@ -192,8 +192,9 @@ mod tests {
     pub fn test_valid_pool_registration_certificate(
         pool_registration: certificate::PoolRegistration,
     ) -> TestResult {
-        let is_valid = pool_registration.management_threshold != 0
-            && (pool_registration.management_threshold as usize) <= pool_registration.owners.len()
+        let is_valid = pool_registration.management_threshold() > 0
+            && (pool_registration.management_threshold() as usize)
+                <= pool_registration.owners.len()
             && pool_registration.owners.len() < CHECK_POOL_REG_MAXIMUM_OWNERS;
         let result = valid_pool_registration_certificate(&pool_registration);
         to_quickchek_result(result, is_valid)

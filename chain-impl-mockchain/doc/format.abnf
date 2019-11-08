@@ -94,11 +94,12 @@ POOL-UPDATE       = UPDATE-CERT IOW OWNERS-SIGNATURE
 
 REGISTRATION-CERT = POOL-SERIAL
                     TIME-SINCE-EPOCH0
-                    U16 ; management threshold
+                    POOL-PERMISSIONS
                     POOL-OWNERS
                     POOL-REWARD-SCHM
                     POOL-KEYS
 POOL-SERIAL       = *16OCTET
+POOL-PERMISSIONS  = U64 ; for now management threshold
 POOL-REWARD-SCHM  = 4*U64 ; fixed, ratio numerator, denominator, and optional limit value
 POOL-OWNERS       = SIZE-ELEMENT-16BIT 1*POOL-OWNER
 POOL-OWNER        = SINGLE-ACNT-ID

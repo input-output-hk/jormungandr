@@ -30,14 +30,43 @@ pub struct PoolRegistration {
     /// Beginning of validity for this pool, this is used
     /// to keep track of the period of the expected key and the expiry
     pub start_validity: TimeOffsetSeconds,
-    /// Management threshold for owners, this need to be <= #owners and > 0
-    pub management_threshold: u16,
+    /// Permission system for this pool
+    /// * Management threshold for owners, this need to be <= #owners and > 0.
+    pub permissions: PoolPermissions,
+    //pub management_threshold: u16,
     /// Owners of this pool
     pub owners: Vec<PublicKey<Ed25519>>,
     /// Rewarding
     pub rewards: TaxType,
     /// Genesis Praos keys
     pub keys: GenesisPraosLeader,
+}
+
+/// Permission system related to the pool
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PoolPermissions(u64);
+
+const MANAGEMENT_THRESHOLD_BITMASK: u64 = 0b111111;
+const ALL_USED_BITMASK: u64 =
+    0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00111111;
+
+impl PoolPermissions {
+    pub fn new(management_threshold: u16) -> PoolPermissions {
+        let v = management_threshold as u64 & MANAGEMENT_THRESHOLD_BITMASK;
+        PoolPermissions(v)
+    }
+
+    pub fn from_u64(v: u64) -> Option<PoolPermissions> {
+        if (v & !ALL_USED_BITMASK) > 0 {
+            None
+        } else {
+            Some(PoolPermissions(v))
+        }
+    }
+
+    pub fn management_threshold(self) -> u16 {
+        (self.0 & !MANAGEMENT_THRESHOLD_BITMASK) as u16
+    }
 }
 
 /// Updating info for a pool
@@ -66,7 +95,7 @@ impl PoolRegistration {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.u128(self.serial)
             .u64(self.start_validity.into())
-            .u16(self.management_threshold)
+            .u64(self.permissions.0)
             .iter16(&mut self.owners.iter(), |bb, o| bb.bytes(o.as_ref()))
             .sub(|sbb| self.rewards.serialize_in(sbb))
             .bytes(self.keys.vrf_public_key.as_ref())
@@ -79,6 +108,10 @@ impl PoolRegistration {
     pub fn to_id(&self) -> PoolId {
         let ba = self.serialize();
         DigestOf::digest_byteslice(&ba.as_byteslice())
+    }
+
+    pub fn management_threshold(&self) -> u16 {
+        self.permissions.management_threshold()
     }
 }
 
@@ -211,7 +244,9 @@ impl Readable for PoolRegistration {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let serial = buf.get_u128()?;
         let start_validity = DurationSeconds::from(buf.get_u64()?).into();
-        let management_threshold = buf.get_u16()?;
+        let permissions = PoolPermissions::from_u64(buf.get_u64()?).ok_or(
+            ReadError::StructureInvalid("permission value not correct".to_string()),
+        )?;
         let owners_nb = buf.get_u16()?;
 
         let mut owners = Vec::with_capacity(owners_nb as usize);
@@ -225,7 +260,7 @@ impl Readable for PoolRegistration {
         let info = Self {
             serial,
             start_validity,
-            management_threshold,
+            permissions,
             owners,
             rewards,
             keys,
@@ -274,7 +309,7 @@ impl PoolOwnersSigned {
         verify_data: &TransactionBindingAuthData<'a>,
     ) -> Verification {
         // fast track if we don't meet the management threshold already
-        if self.signatures.len() < pool_info.management_threshold as usize {
+        if self.signatures.len() < pool_info.management_threshold() as usize {
             return Verification::Failed;
         }
 
@@ -305,7 +340,7 @@ impl PoolOwnersSigned {
 
         // check if we seen enough unique signatures; it is a redundant check
         // from the duplicated check + the threshold check
-        if signatories < pool_info.management_threshold as usize {
+        if signatories < pool_info.management_threshold() as usize {
             return Verification::Failed;
         }
 
