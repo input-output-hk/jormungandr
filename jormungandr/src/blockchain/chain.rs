@@ -686,13 +686,6 @@ impl Blockchain {
                     .storage
                     .stream_from_to(block0_id_2, head_hash)
                     .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))
-                    .and_then(|block_stream| {
-                        if let Some(block_stream) = block_stream {
-                            future::ok(block_stream)
-                        } else {
-                            future::err("Cannot iterate between block0 and HEAD".into())
-                        }
-                    })
                     .and_then(move |block_stream| {
                         block_stream
                             .map_err(|e| {

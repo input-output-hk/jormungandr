@@ -11,6 +11,7 @@ use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
 use chain_impl_mockchain::value::{Value, ValueError};
+use chain_storage::error::Error as StorageError;
 
 use crate::blockchain::Ref;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
@@ -223,9 +224,14 @@ pub fn get_block_next_id(
                     .storage()
                     .stream_from_to(block_id, tip.hash())
                     .then(|res| match res {
-                        Ok(Some(stream)) => Ok(stream.map_err(ErrorInternalServerError)),
-                        Ok(None) => Err(ErrorNotFound("Block is not in chain of the tip")),
-                        Err(e) => Err(ErrorNotFound(e)),
+                        Ok(stream) => Ok(stream.map_err(ErrorInternalServerError)),
+                        Err(e) => match e {
+                            StorageError::CannotIterate => {
+                                Err(ErrorNotFound("Block is not in chain of the tip"))
+                            }
+                            StorageError::BlockNotFound => Err(ErrorNotFound(e)),
+                            _ => Err(ErrorInternalServerError(e)),
+                        },
                     })
             })
         })

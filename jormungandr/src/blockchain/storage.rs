@@ -123,29 +123,30 @@ impl Storage {
     }
 
     /// Return values:
-    /// - `Ok(Some(stream))` - `from` is ancestor of `to`, returns blocks between them
-    /// - `Ok(None)` - `from` is not ancestor of `to`
-    /// - `Err(error)` - `from` or `to` was not found
+    /// - `Ok(stream)` - `from` is ancestor of `to`, returns blocks between them
+    /// - `Err(CannotIterate)` - `from` is not ancestor of `to`
+    /// - `Err(BlockNotFound)` - `from` or `to` was not found
+    /// - `Err(_)` - some other storage error
     pub fn stream_from_to(
         &self,
         from: HeaderHash,
         to: HeaderHash,
-    ) -> impl Future<Item = Option<BlockStream>, Error = StorageError> {
+    ) -> impl Future<Item = BlockStream, Error = StorageError> {
         let mut inner = self.inner.clone();
         let inner_2 = self.inner.clone();
 
         future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
             match store.is_ancestor(&from, &to) {
                 Err(error) => future::err(error),
-                Ok(None) => future::ok(None),
+                Ok(None) => future::err(StorageError::CannotIterate),
                 Ok(Some(distance)) => match store.get_block_info(&to) {
                     Err(error) => future::err(error),
-                    Ok(to_info) => future::ok(Some(BlockStream {
+                    Ok(to_info) => future::ok(BlockStream {
                         lock: inner_2,
                         to_depth: to_info.depth,
                         cur_depth: to_info.depth - distance,
                         pending_infos: vec![to_info],
-                    })),
+                    }),
                 },
             }
         })

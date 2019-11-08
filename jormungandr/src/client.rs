@@ -68,8 +68,7 @@ fn handle_get_headers_range(
                  of the requested end block",
             ))),
         })
-        .and_then(move |maybe_stream| {
-            let stream = maybe_stream.unwrap();
+        .and_then(move |stream| {
             // Send headers up to the maximum
             stream
                 .map_err(|e| e.into())
@@ -162,8 +161,7 @@ fn handle_pull_blocks_to_tip(
                  are ancestors of the current tip",
             ))),
         })
-        .and_then(move |maybe_stream| {
-            let stream = maybe_stream.unwrap();
+        .and_then(move |stream| {
             // Send headers up to the maximum
             stream
                 .map_err(|e| e.into())
