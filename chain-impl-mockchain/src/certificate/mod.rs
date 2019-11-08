@@ -8,7 +8,9 @@ use crate::transaction::{Payload, PayloadData, PayloadSlice};
 
 pub use delegation::{OwnerStakeDelegation, StakeDelegation};
 pub use pool::{
-    IndexSignatures, PoolId, PoolOwnersSigned, PoolPermissions, PoolRegistration, PoolRetirement,
+    IndexSignatures, ManagementThreshold, PoolId,
+    PoolOwnersSigned, PoolPermissions,
+    PoolRegistration, PoolRetirement, PoolSignature,
     PoolUpdate,
 };
 

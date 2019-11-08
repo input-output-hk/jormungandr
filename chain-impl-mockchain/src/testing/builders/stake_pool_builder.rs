@@ -23,6 +23,7 @@ impl StakePoolBuilder {
         let pool_info = PoolRegistration {
             serial: 1234,
             owners: self.owners.iter().cloned().collect(),
+            operators: vec![].into(),
             start_validity: DurationSeconds::from(0).into(),
             permissions: PoolPermissions::new(std::cmp::max(self.owners.len() as u16 / 2, 1)),
             rewards: TaxType::zero(),

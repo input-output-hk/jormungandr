@@ -6,7 +6,8 @@ use chain_addr::Address;
 
 const CHECK_TX_MAXIMUM_INPUTS: u8 = 255;
 const CHECK_TX_MAXIMUM_OUTPUTS: u8 = 254;
-const CHECK_POOL_REG_MAXIMUM_OWNERS: usize = 32;
+const CHECK_POOL_REG_MAXIMUM_OWNERS: usize = 31;
+const CHECK_POOL_REG_MAXIMUM_OPERATORS: usize = 3;
 
 // if condition, then fail_with
 //
@@ -102,6 +103,10 @@ pub(super) fn valid_pool_registration_certificate(
         auth_cert.owners.len() > CHECK_POOL_REG_MAXIMUM_OWNERS,
         Error::PoolRegistrationHasTooManyOwners
     )?;
+    if_cond_fail_with!(
+        auth_cert.operators.len() > CHECK_POOL_REG_MAXIMUM_OPERATORS,
+        Error::PoolRegistrationHasTooManyOperators
+    )?;
     Ok(())
 }
 
@@ -115,6 +120,13 @@ pub(super) fn valid_pool_owner_signature(pos: &certificate::PoolOwnersSigned) ->
         Error::CertificateInvalidSignature
     )?;
     Ok(())
+}
+
+pub(super) fn valid_pool_signature(ps: &certificate::PoolSignature) -> LedgerCheck {
+    match ps {
+        certificate::PoolSignature::Operator(_) => Ok(()),
+        certificate::PoolSignature::Owners(pos) => valid_pool_owner_signature(pos),
+    }
 }
 
 pub(super) fn valid_pool_retirement_certificate(_: &certificate::PoolRetirement) -> LedgerCheck {
@@ -195,7 +207,8 @@ mod tests {
         let is_valid = pool_registration.management_threshold() > 0
             && (pool_registration.management_threshold() as usize)
                 <= pool_registration.owners.len()
-            && pool_registration.owners.len() < CHECK_POOL_REG_MAXIMUM_OWNERS;
+            && pool_registration.owners.len() <= CHECK_POOL_REG_MAXIMUM_OWNERS
+            && pool_registration.operators.len() <= CHECK_POOL_REG_MAXIMUM_OPERATORS;
         let result = valid_pool_registration_certificate(&pool_registration);
         to_quickchek_result(result, is_valid)
     }
