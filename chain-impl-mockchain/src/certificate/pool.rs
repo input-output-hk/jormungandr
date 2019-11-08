@@ -54,7 +54,7 @@ const ALL_USED_BITMASK: u64 =
     0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00111111;
 
 impl PoolPermissions {
-    pub fn new(management_threshold: u16) -> PoolPermissions {
+    pub fn new(management_threshold: u8) -> PoolPermissions {
         let v = management_threshold as u64 & MANAGEMENT_THRESHOLD_BITMASK;
         PoolPermissions(v)
     }
