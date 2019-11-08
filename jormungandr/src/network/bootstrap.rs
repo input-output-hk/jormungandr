@@ -36,7 +36,7 @@ pub enum Error {
     #[error("failed to apply block to the blockchain")]
     ApplyBlockFailed { source: BlockchainError },
     #[error("failed to select the new tip")]
-    ChainSelectionFailed { source: blockchain::ProcessError },
+    ChainSelectionFailed { source: BlockchainError },
 }
 
 pub fn bootstrap_from_peer(

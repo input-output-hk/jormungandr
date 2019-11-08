@@ -299,9 +299,6 @@ where
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
 {
-    // FIXME: use this to handle chain pull requests when two-stage
-    // chain pull processing is implemented in the blockchain task.
-    #[allow(dead_code)]
     fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
         let block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "PullHeaders"));
@@ -591,9 +588,7 @@ where
                     .unwrap()
                     .map(|maybe_item| match maybe_item {
                         Some(req) => {
-                            // FIXME: implement two-stage chain pull processing
-                            // in the blockchain task and use pull_headers here.
-                            self.pull_blocks_to_tip(req);
+                            self.pull_headers(req);
                             Continue
                         }
                         None => {
