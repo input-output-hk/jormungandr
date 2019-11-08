@@ -9,6 +9,7 @@ use chain_core::property::HasHeader;
 
 use futures::future::{self, Either, Loop};
 use futures::prelude::*;
+use slog::Logger;
 use tokio::sync::lock::Lock;
 use tokio::timer::{self, delay_queue, DelayQueue};
 
@@ -50,6 +51,7 @@ pub enum Error {
 pub struct CandidateForest {
     inner: Lock<CandidateForestThickets>,
     storage: Storage,
+    logger: Logger,
 }
 
 struct CandidateForestThickets {
@@ -200,6 +202,7 @@ struct ChainAdvance {
     parent_hash: HeaderHash,
     header: Option<Header>,
     new_hashes: Vec<HeaderHash>,
+    logger: Logger,
 }
 
 mod chain_advance {
@@ -229,6 +232,11 @@ impl ChainAdvance {
                 if forest.candidate_map.contains_key(&block_hash) {
                     // Hey, it has the same crypto hash, so it's the
                     // same header, what could possibly go wrong?
+                    debug!(
+                        self.logger,
+                        "block is already cached as a candidate";
+                        "hash" => %block_hash,
+                    );
                 } else {
                     let parent_hash = header.block_parent_hash();
                     if parent_hash != self.parent_hash {
@@ -244,6 +252,7 @@ impl ChainAdvance {
                     forest
                         .candidate_map
                         .insert(block_hash, Candidate::from_header(header));
+                    debug!(self.logger, "will fetch block"; "hash" => %block_hash);
                     self.new_hashes.push(block_hash);
                 }
                 self.parent_hash = block_hash;
@@ -278,7 +287,7 @@ impl ChainAdvance {
 }
 
 impl CandidateForest {
-    pub fn new(storage: Storage, root_ttl: Duration) -> Self {
+    pub fn new(storage: Storage, root_ttl: Duration, logger: Logger) -> Self {
         let inner = CandidateForestThickets {
             candidate_map: HashMap::new(),
             roots: HashMap::new(),
@@ -288,6 +297,7 @@ impl CandidateForest {
         CandidateForest {
             inner: Lock::new(inner),
             storage: storage.clone(),
+            logger,
         }
     }
 
@@ -297,6 +307,7 @@ impl CandidateForest {
     ) -> impl Future<Item = ChainAdvance, Error = Error> {
         let storage = self.storage.clone();
         let mut inner = self.inner.clone();
+        let logger = self.logger.clone();
 
         chain_landing::State::start(stream.map_err(|()| unreachable!()), storage)
             .and_then(move |state| state.skip_present_blocks())
@@ -312,6 +323,7 @@ impl CandidateForest {
                         parent_hash: root_hash,
                         header: None,
                         new_hashes: Vec::new(),
+                        logger,
                     };
                     Ok(landing)
                 })
