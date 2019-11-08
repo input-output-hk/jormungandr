@@ -55,13 +55,6 @@ $ jcli certificate new stake-pool-registration \
     --serial 1010101010 > stake_pool.cert
 ```
 
-Now you need to sign this certificate with the owner key:
-
-```
-$ cat stake_pool.cert | jcli certificate sign stake_key.prv | tee stake_pool.cert
-cert1qsqqqqqqqqqqqqqqqqqqq0p5avfqp9tzusr26...cegxaz
-```
-
 And now you can retrieve your stake pool id (`NodeId`):
 
 ```
@@ -70,3 +63,27 @@ ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74
 ```
 
 [**VRF**]: https://en.wikipedia.org/wiki/Verifiable_random_function
+
+
+## submitting to a node
+
+The `jcli transaction add-certificate` command should be used to add a certificate **before finalizing** the transaction.
+
+For example:
+
+```sh
+
+...
+
+jcli transaction add-certificate $(cat stake_delegation.cert) --staging tx
+
+jcli transaction finalize CHANGE_ADDRESS --fee-constant 5 --fee-coefficient 2 --fee-certificate 2 --staging tx
+
+...
+jcli transaction auth -k stake_key.prv --staging tx
+
+```
+
+The `--fee-certificate` flag indicates the cost of adding a certificate, used for computing the fees, it can be omitted if it is zero.
+
+See [here](../jcli/transaction.md) for more documentation on transaction creation.
