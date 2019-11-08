@@ -1,5 +1,4 @@
 mod branch;
-mod candidate;
 mod chain;
 mod chain_selection;
 mod checkpoints;
@@ -10,26 +9,15 @@ mod reference_cache;
 mod storage;
 mod tip;
 
-// Constants
-
-mod chunk_sizes {
-    // The maximum number of blocks to request per each GetBlocks request
-    // when pulling missing blocks.
-    //
-    // This may need to be made into a configuration parameter.
-    pub const BLOCKS: usize = 32;
-}
-
-// Re-exports
-
 pub use self::{
-    branch::Branch,
-    candidate::CandidateForest,
+    branch::{Branch, Branches},
     chain::{Blockchain, Error, ErrorKind, PreCheckedHeader, MAIN_BRANCH_TAG},
+    chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
     multiverse::Multiverse,
-    process::{handle_input, process_new_ref},
+    process::{handle_input, process_new_ref, Error as ProcessError},
     reference::Ref,
+    reference_cache::RefCache,
     storage::Storage,
     tip::Tip,
 };

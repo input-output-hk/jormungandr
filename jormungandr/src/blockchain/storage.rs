@@ -2,12 +2,13 @@ use crate::{
     blockcfg::{Block, HeaderHash},
     start_up::NodeStorage,
 };
-use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
+use chain_storage::{
+    error::Error as StorageError,
+    store::{for_path_to_nth_ancestor, BlockInfo, BlockStore},
+};
 use std::ops::Deref as _;
 use tokio::prelude::*;
 use tokio::sync::lock::{Lock, LockGuard};
-
-pub use chain_storage::error::Error as StorageError;
 
 #[derive(Clone)]
 pub struct Storage {
