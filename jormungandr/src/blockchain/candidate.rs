@@ -423,14 +423,9 @@ impl CandidateForestThickets {
     }
 
     fn expunge_root(&mut self, root_hash: HeaderHash) {
-        match self.roots.remove(&root_hash) {
-            Some(root_data) => {
-                self.expirations.remove(&root_data.expiration_key);
-            }
-            None => {
-                assert!(!self.candidate_map.contains_key(&root_hash));
-                return;
-            }
+        if let None = self.roots.remove(&root_hash) {
+            assert!(!self.candidate_map.contains_key(&root_hash));
+            return;
         }
         // Walk up the tree and remove all the candidates
         let mut hashes = vec![root_hash];
