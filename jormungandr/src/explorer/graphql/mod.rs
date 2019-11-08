@@ -783,7 +783,7 @@ impl Epoch {
             .wait()?;
 
         let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
-            lower_bound: epoch_lower_bound,
+            lower_bound: 0,
             upper_bound: epoch_upper_bound
                 .checked_sub(epoch_lower_bound)
                 .expect("pagination upper_bound to be greater or equal than lower_bound"),
