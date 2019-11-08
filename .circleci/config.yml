@@ -21,21 +21,21 @@ jobs:
             - /usr/local/cargo/registry
             - /usr/local/cargo/git
 
-  rustfmt:
-    docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
-    steps:
-      - checkout
-      - run:
-          name: Install rustfmt
-          command: rustup component add rustfmt
-      - run:
-          name: Print version information
-          command: cargo fmt -- --version
-      - run:
-          name: Check rustfmt
-          command: cargo fmt -- --check
+  #rustfmt:
+  #  docker:
+  #    - image: rust:latest
+  #  working_directory: /mnt/crate
+  #  steps:
+  #    - checkout
+  #    - run:
+  #        name: Install rustfmt
+  #        command: rustup component add rustfmt
+  #    - run:
+  #        name: Print version information
+  #        command: cargo fmt -- --version
+  #    - run:
+  #        name: Check rustfmt
+  #        command: cargo fmt -- --check
 
   test_debug:
     docker:
@@ -109,16 +109,16 @@ workflows:
   test_all:
     jobs:
       - cargo_fetch
-      - rustfmt
+      #- rustfmt
       - test_debug:
           requires:
-            - rustfmt
+            #- rustfmt
             - cargo_fetch
       - test_release:
           requires:
-            - rustfmt
+            #- rustfmt
             - cargo_fetch
       - test_nightly:
           requires:
-            - rustfmt
+            #- rustfmt
             - cargo_fetch
