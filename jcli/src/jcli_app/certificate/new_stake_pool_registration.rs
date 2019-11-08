@@ -1,6 +1,6 @@
 use chain_crypto::{Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
-    certificate::{Certificate, PoolRegistration},
+    certificate::{Certificate, PoolPermissions, PoolRegistration},
     leadership::genesis::GenesisPraosLeader,
     rewards,
 };
@@ -18,7 +18,7 @@ pub struct StakePoolRegistration {
     pub serial: u128,
     /// management threshold
     #[structopt(long = "management-threshold", name = "THRESHOLD")]
-    pub management_threshold: u16,
+    pub management_threshold: u8,
     /// start validity
     #[structopt(long = "start-validity", name = "SECONDS-SINCE-START")]
     pub start_validity: u64,
@@ -30,6 +30,14 @@ pub struct StakePoolRegistration {
         required = true
     )]
     pub owners: Vec<PublicKey<Ed25519>>,
+    /// public key of the operators(s)
+    #[structopt(
+        long = "operators",
+        name = "PUBLIC_KEY",
+        parse(try_from_str = "parse_pub_key"),
+        required = true
+    )]
+    pub operators: Vec<PublicKey<Ed25519>>,
     /// Public key of the block signing key
     #[structopt(
         long = "kes-key",
@@ -54,7 +62,8 @@ impl StakePoolRegistration {
         let content = PoolRegistration {
             serial: self.serial,
             owners: self.owners.clone(),
-            management_threshold: self.management_threshold,
+            operators: self.operators.clone().into(),
+            permissions: PoolPermissions::new(self.management_threshold),
             start_validity: DurationSeconds::from(self.start_validity).into(),
             rewards: rewards::TaxType::zero(),
             keys: GenesisPraosLeader {

@@ -8,6 +8,7 @@ use crate::{
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{
     block::ConsensusVersion,
+    certificate::{PoolSignature, PoolPermissions},
     fee::LinearFee,
     key::EitherEd25519SecretKey,
     rewards::TaxType,
@@ -201,9 +202,10 @@ impl Settings {
                         );
                         let stake_pool_info = PoolRegistration {
                             serial,
-                            management_threshold: 1,
+                            permissions: PoolPermissions::new(1),
                             start_validity: DurationSeconds(0).into(),
                             owners: vec![owner.to_public()],
+                            operators: vec![].into(),
                             rewards: TaxType::zero(),
                             keys: GenesisPraosLeader {
                                 kes_public_key: kes_signing_key.identifier().into_public_key(),
@@ -234,7 +236,7 @@ impl Settings {
                         };
 
                         let stake_pool_registration_certificate =
-                            SignedCertificate::PoolRegistration(stake_pool_info, owner_signed);
+                            SignedCertificate::PoolRegistration(stake_pool_info, PoolSignature::Owners(owner_signed));
 
                         self.block0
                             .initial

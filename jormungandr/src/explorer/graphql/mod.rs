@@ -523,7 +523,7 @@ impl PoolRegistration {
     /// Management threshold for owners, this need to be <= #owners and > 0
     pub fn management_threshold(&self) -> i32 {
         // XXX: u16 fits in i32, but maybe some kind of custom scalar is better?
-        self.registration.management_threshold.into()
+        self.registration.management_threshold().into()
     }
 
     /// Owners of this pool
