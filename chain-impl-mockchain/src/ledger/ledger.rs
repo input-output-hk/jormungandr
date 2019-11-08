@@ -129,6 +129,7 @@ custom_error! {
         PotValueInvalid { error: ValueError } = "Ledger pot value invalid: {error}",
         PoolRegistrationHasNoOwner = "Pool registration with no owner",
         PoolRegistrationHasTooManyOwners = "Pool registration with too many owners",
+        PoolRegistrationHasTooManyOperators = "Pool registration with too many operators",
         PoolRegistrationManagementThresholdZero = "Pool registration management threshold is zero",
         PoolRegistrationManagementThresholdAbove = "Pool registration management threshold above owners",
         PoolUpdateNotAllowedYet = "Pool Update not allowed yet",
@@ -504,10 +505,10 @@ impl Ledger {
         self,
         cert: &certificate::PoolRegistration,
         bad: &TransactionBindingAuthData<'a>,
-        sig: certificate::PoolOwnersSigned,
+        sig: certificate::PoolSignature,
     ) -> Result<Self, Error> {
         check::valid_pool_registration_certificate(cert)?;
-        check::valid_pool_owner_signature(&sig)?;
+        check::valid_pool_signature(&sig)?;
 
         if sig.verify(cert, bad) == Verification::Failed {
             return Err(Error::PoolRetirementSignatureFailed);
@@ -530,10 +531,10 @@ impl Ledger {
         mut self,
         auth_cert: &certificate::PoolRetirement,
         bad: &TransactionBindingAuthData<'a>,
-        sig: certificate::PoolOwnersSigned,
+        sig: certificate::PoolSignature,
     ) -> Result<Self, Error> {
         check::valid_pool_retirement_certificate(auth_cert)?;
-        check::valid_pool_owner_signature(&sig)?;
+        check::valid_pool_signature(&sig)?;
 
         let reg = self.delegation.stake_pool_get(&auth_cert.pool_id)?;
         if sig.verify(reg, bad) == Verification::Failed {
@@ -548,10 +549,10 @@ impl Ledger {
         self,
         auth_cert: &certificate::PoolUpdate,
         bad: &TransactionBindingAuthData<'a>,
-        sig: certificate::PoolOwnersSigned,
+        sig: certificate::PoolSignature,
     ) -> Result<Self, Error> {
         check::valid_pool_update_certificate(auth_cert)?;
-        check::valid_pool_owner_signature(&sig)?;
+        check::valid_pool_signature(&sig)?;
 
         let reg = self.delegation.stake_pool_get(&auth_cert.pool_id)?;
         if sig.verify(reg, bad) == Verification::Failed {

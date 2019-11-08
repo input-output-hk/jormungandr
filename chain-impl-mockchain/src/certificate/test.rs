@@ -3,8 +3,10 @@ use crate::accounting::account::DelegationType;
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
 use chain_crypto::{testing, Ed25519};
+use chain_core::mempack::{Readable, ReadBuf};
 use chain_time::DurationSeconds;
-use quickcheck::{Arbitrary, Gen};
+use quickcheck::{Arbitrary, Gen, TestResult};
+use quickcheck_macros::quickcheck;
 
 impl Arbitrary for PoolRetirement {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -35,13 +37,27 @@ impl Arbitrary for PoolUpdate {
 
 impl Arbitrary for PoolOwnersSigned {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let signatoree = Arbitrary::arbitrary(g);
+        let mut signatoree = u8::arbitrary(g) % 32;
+        if signatoree == 0 {
+            signatoree = 1;
+        }
+        
         let mut signatures = Vec::new();
         for i in 0..signatoree {
             let s = Arbitrary::arbitrary(g);
             signatures.push((i, s));
         }
         PoolOwnersSigned { signatures }
+    }
+}
+
+impl Arbitrary for PoolSignature {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        if bool::arbitrary(g) {
+            PoolSignature::Operator(Arbitrary::arbitrary(g))
+        } else {
+            PoolSignature::Owners(Arbitrary::arbitrary(g))
+        }
     }
 }
 
@@ -73,12 +89,27 @@ impl Arbitrary for PoolRegistration {
         let start_validity: DurationSeconds = u64::arbitrary(g).into();
         let keys = Arbitrary::arbitrary(g);
 
-        let pk = testing::arbitrary_public_key::<Ed25519, G>(g);
+        let nb_owners = usize::arbitrary(g) % 32;
+        let nb_operators = usize::arbitrary(g) % 4;
+
+        let mut owners = Vec::new();
+        for _ in 0..nb_owners {
+            let pk = testing::arbitrary_public_key::<Ed25519, G>(g);
+            owners.push(pk)
+        }
+
+        let mut operators = Vec::new();
+        for _ in 0..nb_operators {
+            let pk = testing::arbitrary_public_key::<Ed25519, G>(g);
+            operators.push(pk)
+        }
+
         PoolRegistration {
             serial: Arbitrary::arbitrary(g),
-            management_threshold: 1,
+            permissions: PoolPermissions::new(1),
             start_validity: start_validity.into(),
-            owners: vec![pk],
+            owners: owners,
+            operators: operators.into(),
             rewards: TaxType::zero(),
             keys,
         }
@@ -97,4 +128,15 @@ impl Arbitrary for Certificate {
             _ => panic!("unimplemented"),
         }
     }
+}
+
+#[quickcheck]
+fn pool_reg_serialization_bijection(b: PoolRegistration) -> TestResult {
+    let b_got = b.serialize();
+    let mut buf = ReadBuf::from(b_got.as_ref());
+    let result = PoolRegistration::read(&mut buf);
+    let left = Ok(b);
+    assert_eq!(left, result);
+    assert_eq!(buf.get_slice_end(), &[]);
+    TestResult::from_bool(left == result)
 }

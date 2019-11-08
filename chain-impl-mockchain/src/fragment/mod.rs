@@ -196,6 +196,7 @@ impl property::Fragment for Fragment {
 mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen, TestResult};
+    use quickcheck_macros::quickcheck;
 
     impl Arbitrary for Fragment {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -214,10 +215,10 @@ mod test {
         }
     }
 
-    quickcheck! {
-        fn fragment_serialization_bijection(b: Fragment) -> TestResult {
-            let b_got = Fragment::from_raw(&b.to_raw()).unwrap();
-            TestResult::from_bool(b == b_got)
-        }
+
+    #[quickcheck]
+    fn fragment_serialization_bijection(b: Fragment) -> TestResult {
+        let b_got = Fragment::from_raw(&b.to_raw()).unwrap();
+        TestResult::from_bool(b == b_got)
     }
 }

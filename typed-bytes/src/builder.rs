@@ -56,6 +56,15 @@ impl<T> ByteBuilder<T> {
         }
     }
 
+    /// fold over an iterator
+    pub fn fold<F, I>(self, l: I, f: F) -> Self
+    where
+        I: Iterator,
+        F: FnMut(Self, I::Item) -> Self,
+    {
+        l.fold(self, f)
+    }
+
     /// write an iterator of maximum 256 items using the closure F
     ///
     /// note that the buffer contains a byte to represent the size

@@ -142,6 +142,13 @@ impl<'a> ReadBuf<'a> {
         Ok(ReadBuf::from(slice))
     }
 
+    /// Peek at the next u8 from the buffer. the cursor is **not** advanced to the next byte.
+    pub fn peek_u8(&mut self) -> Result<u8, ReadError> {
+        self.assure_size(1)?;
+        let v = self.data[self.offset];
+        Ok(v)
+    }
+
     /// Return the next u8 from the buffer
     pub fn get_u8(&mut self) -> Result<u8, ReadError> {
         self.assure_size(1)?;
