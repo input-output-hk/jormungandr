@@ -321,11 +321,6 @@ impl Blockchain {
         header: Header,
         force: bool,
     ) -> impl Future<Item = PreCheckedHeader, Error = Error> {
-        // TODO: before loading the parent's header we can check
-        //       the crypto of the header (i.e. check that they
-        //       actually sign the header signing data against
-        //       the public key).
-
         self.load_header_parent(header, force)
             .and_then(|pre_check| match &pre_check {
                 PreCheckedHeader::HeaderWithCache {
