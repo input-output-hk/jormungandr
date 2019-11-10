@@ -257,16 +257,16 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let enclave = leadership::Enclave::new(enclave.clone());
 
         services.spawn_future("leadership", move |info| {
-            leadership::LeadershipModule::start(
+            leadership::rewrite::Module::new(
                 info,
                 leadership_logs,
                 leadership_garbage_collection_interval,
-                enclave,
-                fragment_pool,
                 blockchain_tip,
-                new_epoch_notifier,
+                fragment_pool,
+                enclave,
                 block_task,
             )
+            .run()
             .map_err(|e| unimplemented!("error in leadership {}", e))
         });
     }

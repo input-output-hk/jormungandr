@@ -78,6 +78,7 @@ pub fn run_handle_input(
 
     match bquery {
         BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
+            /*
             handle_end_of_epoch(
                 info.logger().new(o!()),
                 new_epoch_announcements.clone(),
@@ -93,6 +94,7 @@ pub fn run_handle_input(
                     "reason" => err.to_string()
                 )
             });
+            */
         }
         BlockMsg::LeadershipBlock(block) => {
             let logger = info.logger().new(o!(
