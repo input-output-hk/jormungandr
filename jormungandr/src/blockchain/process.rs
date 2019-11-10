@@ -276,7 +276,7 @@ pub fn handle_end_of_epoch(
         .map_err(|_: std::convert::Infallible| unreachable!())
         .and_then(move |ref_tip| {
             let (new_schedule, new_parameters, time_frame, _) =
-                blockchain.new_epoch_leadership_from(epoch, ref_tip);
+                chain::new_epoch_leadership_from(epoch, ref_tip);
 
             new_epoch_announcements
                 .send(NewEpochToSchedule {

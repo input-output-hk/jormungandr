@@ -3,7 +3,9 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
-    blockchain::{Blockchain, Branch, ErrorKind as BlockchainError, Tip},
+    blockchain::{
+        new_epoch_leadership_from, Blockchain, Branch, ErrorKind as BlockchainError, Tip,
+    },
     leadership::NewEpochToSchedule,
     network,
     settings::start::Settings,
@@ -92,7 +94,6 @@ pub fn load_blockchain(
     use tokio::prelude::*;
 
     let mut blockchain = Blockchain::new(storage, block_cache_ttl);
-    let mut blockchain_clone = blockchain.clone();
 
     let main_branch: Branch = match blockchain.load_from_block0(block0.clone()).wait() {
         Err(error) => match error.kind() {
@@ -119,7 +120,7 @@ pub fn load_blockchain(
                 .unwrap();
 
             let (new_schedule, new_parameters, time_frame, _) =
-                blockchain_clone.new_epoch_leadership_from(date.epoch.0, reference);
+                new_epoch_leadership_from(date.epoch.0, reference);
 
             epoch_event
                 .send(NewEpochToSchedule {
