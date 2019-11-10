@@ -99,8 +99,6 @@ pub struct BootstrappedNode {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    new_epoch_announcements: tokio::sync::mpsc::Sender<self::leadership::NewEpochToSchedule>,
-    new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,
     logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
@@ -119,8 +117,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
-    let mut new_epoch_announcements = bootstrapped_node.new_epoch_announcements;
-    let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
     let leadership_logs =
@@ -188,7 +184,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 &mut blockchain,
                 &mut blockchain_tip,
                 &stats_counter,
-                &mut new_epoch_announcements,
                 &mut network_msgbox,
                 &mut fragment_msgbox,
                 &mut explorer_msg_box,
@@ -257,7 +252,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let enclave = leadership::Enclave::new(enclave.clone());
 
         services.spawn_future("leadership", move |info| {
-            leadership::rewrite::Module::new(
+            leadership::Module::new(
                 info,
                 leadership_logs,
                 leadership_garbage_collection_interval,
@@ -332,8 +327,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
-    let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
-
     let block0_hash = block0.header.hash();
 
     let block0_explorer = block0.clone();
@@ -341,12 +334,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     // TODO: we should get this value from the configuration
     let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
 
-    let (blockchain, blockchain_tip) = start_up::load_blockchain(
-        block0,
-        storage,
-        new_epoch_announcements.clone(),
-        block_cache_ttl,
-    )?;
+    let (blockchain, blockchain_tip) = start_up::load_blockchain(block0, storage, block_cache_ttl)?;
 
     let bootstrapped = network::bootstrap(
         &settings.network,
@@ -376,8 +364,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block0_hash,
         blockchain,
         blockchain_tip,
-        new_epoch_announcements,
-        new_epoch_notifier,
         logger,
         explorer_db,
         rest_context,

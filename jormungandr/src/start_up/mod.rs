@@ -3,10 +3,7 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
-    blockchain::{
-        new_epoch_leadership_from, Blockchain, Branch, ErrorKind as BlockchainError, Tip,
-    },
-    leadership::NewEpochToSchedule,
+    blockchain::{Blockchain, Branch, ErrorKind as BlockchainError, Tip},
     network,
     settings::start::Settings,
 };
@@ -14,7 +11,6 @@ use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
 use chain_storage_sqlite::SQLiteBlockStore;
 use slog::Logger;
 use std::time::Duration;
-use tokio::sync::mpsc;
 
 pub type NodeStorage = Box<dyn BlockStore<Block = Block> + Send + Sync>;
 
@@ -88,7 +84,6 @@ pub fn prepare_block_0(
 pub fn load_blockchain(
     block0: Block,
     storage: NodeStorage,
-    epoch_event: mpsc::Sender<NewEpochToSchedule>,
     block_cache_ttl: Duration,
 ) -> Result<(Blockchain, Tip), Error> {
     use tokio::prelude::*;
@@ -102,36 +97,6 @@ pub fn load_blockchain(
         },
         Ok(branch) => Ok(branch),
     }?;
-
-    main_branch
-        .get_ref()
-        .map_err(|_: std::convert::Infallible| unreachable!())
-        .and_then(move |reference| {
-            let time_frame = reference.time_frame();
-            let current_known_leadership = reference.epoch_leadership_schedule();
-
-            let slot = time_frame
-                .slot_at(&std::time::SystemTime::now())
-                .ok_or(Error::Block0InFuture)
-                .unwrap();
-            let date = current_known_leadership
-                .era()
-                .from_slot_to_era(slot)
-                .unwrap();
-
-            let (new_schedule, new_parameters, time_frame, _) =
-                new_epoch_leadership_from(date.epoch.0, reference);
-
-            epoch_event
-                .send(NewEpochToSchedule {
-                    new_schedule,
-                    new_parameters,
-                    time_frame: (*time_frame).clone(),
-                })
-                .into_future()
-        })
-        .wait()
-        .unwrap();
 
     Ok((blockchain, Tip::new(main_branch)))
 }

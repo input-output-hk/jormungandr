@@ -11,10 +11,10 @@ mod tip;
 
 pub use self::{
     branch::{Branch, Branches},
-    candidate::CandidateForest,
     chain::{
         new_epoch_leadership_from, Blockchain, Error, ErrorKind, PreCheckedHeader, MAIN_BRANCH_TAG,
     },
+    chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
     multiverse::Multiverse,
     process::{handle_input, process_new_ref, Error as ProcessError},
