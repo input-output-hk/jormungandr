@@ -59,6 +59,7 @@
 
 mod enclave;
 mod logs;
+pub mod rewrite;
 mod schedule;
 
 pub use self::enclave::{Enclave, EnclaveError, LeaderEvent};
