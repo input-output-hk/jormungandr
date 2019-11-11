@@ -32,18 +32,18 @@ CONTENT          = *FRAGMENT
 ; ####################
 
 FRAGMENT-ID      = *32OCTET
-FRAGMENT         = FRAGMENT-SIZE FRAGMENT-SPEC
+FRAGMENT         = FRAGMENT-SIZE %x00 FRAGMENT-SPEC
 FRAGMENT-SIZE    = SIZE-BYTES-16BIT
-FRAGMENT-SPEC    = %x00 %x00 INITIAL
-                 / %x01 %x00 OLD-UTXO-DECL
-                 / %x02 %x00 SIMPLE-TRANSACTION
-                 / %x03 %x00 OWNER-STAKE-DELEGATION
-                 / %x04 %x00 STAKE-DELEGATION
-                 / %x05 %x00 POOL-REGISTRATION
-                 / %x06 %x00 POOL-RETIREMENT
-                 / %x07 %x00 POOL-UPDATE
-                 / %x08 %x00 UPDATE-PROPOSAL
-                 / %x09 %x00 UPDATE-VOTE
+FRAGMENT-SPEC    = %x00 INITIAL
+                 / %x01 OLD-UTXO-DECL
+                 / %x02 SIMPLE-TRANSACTION
+                 / %x03 OWNER-STAKE-DELEGATION
+                 / %x04 STAKE-DELEGATION
+                 / %x05 POOL-REGISTRATION
+                 / %x06 POOL-RETIREMENT
+                 / %x07 POOL-UPDATE
+                 / %x08 UPDATE-PROPOSAL
+                 / %x09 UPDATE-VOTE
     
 ; ####################
 ; FRAGMENT only present in genesis block
