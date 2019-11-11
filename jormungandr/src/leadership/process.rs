@@ -300,6 +300,22 @@ impl Module {
     }
 
     fn action_entry(self, entry: Entry) -> impl Future<Item = Self, Error = LeadershipError> {
+        let wake_log = entry.log.clone();
+        let end_log = entry.log.clone();
+
+        wake_log
+            .mark_wake()
+            .map_err(|()| unreachable!())
+            .and_then(|()| self.action_run_entry(entry))
+            .and_then(move |module| {
+                end_log
+                    .mark_finished()
+                    .map_err(|()| unreachable!())
+                    .map(|()| module)
+            })
+    }
+
+    fn action_run_entry(self, entry: Entry) -> impl Future<Item = Self, Error = LeadershipError> {
         let event = entry.event;
         let event_logs = entry.log;
         let now = SystemTime::now();
@@ -366,10 +382,7 @@ impl Module {
                 nonce: None,
             };
 
-            let preparation = event_logs
-                .mark_wake()
-                .map_err(|()| unreachable!())
-                .and_then(move |()| prepare_block(pool, eval_context, &ledger, ledger_parameters));
+            let preparation = prepare_block(pool, eval_context, &ledger, ledger_parameters);
 
             let signing = preparation.and_then(move |contents| {
                 let ver = match event.output {
