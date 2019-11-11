@@ -14,13 +14,15 @@ use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
 use std::convert::TryInto;
 
+use cardano_legacy_address::Addr as OldAddress;
+
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, V>;
 
 pub type Transactions = Hamt<FragmentId, HeaderHash>;
 pub type Blocks = Hamt<HeaderHash, ExplorerBlock>;
 pub type ChainLengths = Hamt<ChainLength, HeaderHash>;
 
-pub type Addresses = Hamt<Address, PersistentSequence<FragmentId>>;
+pub type Addresses = Hamt<ExplorerAddress, PersistentSequence<FragmentId>>;
 pub type Epochs = Hamt<Epoch, EpochData>;
 
 pub type StakePools = Hamt<PoolId, PersistentSequence<HeaderHash>>;
@@ -56,13 +58,13 @@ pub struct ExplorerTransaction {
 /// Unified Input representation for utxo and account inputs as used in the graphql API
 #[derive(Clone)]
 pub struct ExplorerInput {
-    pub address: Address,
+    pub address: ExplorerAddress,
     pub value: Value,
 }
 
 #[derive(Clone)]
 pub struct ExplorerOutput {
-    pub address: Address,
+    pub address: ExplorerAddress,
     pub value: Value,
 }
 
@@ -71,6 +73,23 @@ pub struct EpochData {
     pub first_block: HeaderHash,
     pub last_block: HeaderHash,
     pub total_blocks: u32,
+}
+
+#[derive(Eq, PartialEq, Clone)]
+pub enum ExplorerAddress {
+    New(Address),
+    Old(OldAddress),
+}
+
+// TODO: derive Hash in legacy address?
+use std::hash::{Hash, Hasher};
+impl Hash for ExplorerAddress {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            ExplorerAddress::New(addr) => addr.hash(state),
+            ExplorerAddress::Old(addr) => addr.as_ref().hash(state),
+        }
+    }
 }
 
 impl ExplorerBlock {
@@ -168,6 +187,23 @@ impl ExplorerBlock {
                             offset.try_into().unwrap(),
                         ))
                     }
+                    Fragment::OldUtxoDeclaration(decl) => {
+                        let outputs = decl
+                            .addrs
+                            .iter()
+                            .map(|(old_address, value)| ExplorerOutput {
+                                address: ExplorerAddress::Old(old_address.clone()),
+                                value: *value,
+                            })
+                            .collect();
+                        Some(ExplorerTransaction {
+                            id: fragment_id,
+                            inputs: vec![],
+                            outputs,
+                            certificate: None,
+                            offset_in_block: offset.try_into().unwrap(),
+                        })
+                    }
                     _ => None,
                 };
                 metx.map(|etx| (fragment_id, etx))
@@ -232,7 +268,7 @@ impl ExplorerTransaction {
 
         let new_outputs = outputs
             .map(|output| ExplorerOutput {
-                address: output.address.clone(),
+                address: ExplorerAddress::New(output.address.clone()),
                 value: output.value,
             })
             .collect();
@@ -247,7 +283,7 @@ impl ExplorerTransaction {
                             .expect("the input to be validated")
                             .into(),
                     );
-                    let address = Address(discrimination, kind);
+                    let address = ExplorerAddress::New(Address(discrimination, kind));
                     Some(ExplorerInput { address, value })
                 }
                 (InputEnum::AccountInput(_id, _value), Witness::Multisig(_)) => {

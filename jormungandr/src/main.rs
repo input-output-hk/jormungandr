@@ -4,6 +4,7 @@ extern crate actix_web;
 extern crate bech32;
 extern crate bincode;
 extern crate bytes;
+extern crate cardano_legacy_address;
 extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_crypto;

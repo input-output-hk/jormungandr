@@ -6,7 +6,8 @@ mod persistent_sequence;
 use self::error::{Error, ErrorKind, Result};
 use self::graphql::Context;
 use self::indexing::{
-    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerBlock, StakePools, Transactions,
+    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock, StakePools,
+    Transactions,
 };
 use self::persistent_sequence::PersistentSequence;
 
@@ -18,7 +19,7 @@ use crate::blockcfg::{
 use crate::blockchain::{Blockchain, Multiverse, MAIN_BRANCH_TAG};
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
-use chain_addr::{Address, Discrimination};
+use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::multiverse::GCRoot;
@@ -335,7 +336,7 @@ impl ExplorerDB {
 
     pub fn get_transactions_by_address(
         &self,
-        address: &Address,
+        address: &ExplorerAddress,
     ) -> impl Future<Item = Option<PersistentSequence<FragmentId>>, Error = Infallible> {
         let address = address.clone();
         self.with_latest_state(move |state| state.addresses.lookup(&address).map(|set| set.clone()))
