@@ -91,9 +91,7 @@ impl Module {
         pool: fragment::Pool,
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
-    ) -> Self {
-        let tip_ref = tip.get_ref().wait().unwrap();
-
+    ) -> impl Future<Item = Self, Error = LeadershipError> {
         let mut logs_to_purge = logs.clone();
         let garbage_collection_interval = garbage_collection_interval;
         let logger = service_info
@@ -101,25 +99,28 @@ impl Module {
             .new(o!("sub task" => "garbage collection"));
         let error_logger = logger.clone();
         let purge_logs = Interval::new_interval(garbage_collection_interval)
-            .for_each(move |_instant| {
-                debug!(logger, "garbage collect entries in the logs");
-                logs_to_purge.poll_purge()
-            })
-            .map_err(move |error| {
-                error!(error_logger, "Cannot run the garbage collection" ; "reason" => error.to_string());
-            });
+                .for_each(move |_instant| {
+                    debug!(logger, "garbage collect entries in the logs");
+                    logs_to_purge.poll_purge()
+                })
+                .map_err(move |error| {
+                    error!(error_logger, "Cannot run the garbage collection" ; "reason" => error.to_string());
+                });
 
         service_info.spawn(purge_logs);
-        Self {
-            schedule: Schedule::default(),
-            service_info,
-            logs,
-            tip_ref,
-            tip,
-            pool,
-            enclave,
-            block_message,
-        }
+
+        tip.get_ref()
+            .map(move |tip_ref| Self {
+                schedule: Schedule::default(),
+                service_info,
+                logs,
+                tip_ref,
+                tip,
+                pool,
+                enclave,
+                block_message,
+            })
+            .map_err(|_: std::convert::Infallible| unreachable!())
     }
 
     pub fn run(self) -> impl Future<Item = (), Error = LeadershipError> {

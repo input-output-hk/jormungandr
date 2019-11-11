@@ -261,7 +261,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 enclave,
                 block_task,
             )
-            .run()
+            .and_then(|module| module.run())
             .map_err(|e| unimplemented!("error in leadership {}", e))
         });
     }
