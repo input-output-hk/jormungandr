@@ -64,23 +64,3 @@ mod process;
 pub use self::enclave::{Enclave, EnclaveError, LeaderEvent};
 pub use self::logs::{LeadershipLogHandle, Logs};
 pub use self::process::Module;
-
-error_chain! {
-    errors {
-        ScheduleError {
-            description("error while polling for scheduled events"),
-        }
-        NewEpochToScheduleReceiverError {
-            description("cannot receive new epoch to schedule notification "),
-        }
-        FragmentSelectionFailed {
-            description("fragment selection failed")
-        }
-        Enclave {
-            description("error while querying the enclave")
-        }
-        CannotSendLeadershipBlock {
-            description("Cannot send the leadership's new created block")
-        }
-    }
-}
