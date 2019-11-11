@@ -26,7 +26,9 @@ pub use self::certificate::{
 };
 pub use self::config::*;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
-pub use self::leadership_log::{EnclaveLeaderId, LeadershipLog, LeadershipLogId};
+pub use self::leadership_log::{
+    EnclaveLeaderId, LeadershipLog, LeadershipLogId, LeadershipLogStatus,
+};
 pub use self::linear_fee::LinearFeeDef;
 pub use self::old_address::OldAddress;
 pub use self::settings::*;

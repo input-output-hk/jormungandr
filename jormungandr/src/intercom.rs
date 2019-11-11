@@ -1,4 +1,4 @@
-use crate::blockcfg::{Block, Epoch, Fragment, FragmentId, Header, HeaderHash};
+use crate::blockcfg::{Block, Fragment, FragmentId, Header, HeaderHash};
 use crate::network::p2p::comm::PeerStats;
 use crate::network::p2p::Id as NodeId;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
@@ -449,8 +449,6 @@ impl Debug for ClientMsg {
 pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
-    /// Leadership process expect a new end of epoch
-    LeadershipExpectEndOfEpoch(Epoch),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, NodeId),
     /// An untrusted Block has been received from the network task.

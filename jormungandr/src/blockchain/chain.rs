@@ -321,11 +321,6 @@ impl Blockchain {
         header: Header,
         force: bool,
     ) -> impl Future<Item = PreCheckedHeader, Error = Error> {
-        // TODO: before loading the parent's header we can check
-        //       the crypto of the header (i.e. check that they
-        //       actually sign the header signing data against
-        //       the public key).
-
         self.load_header_parent(header, force)
             .and_then(|pre_check| match &pre_check {
                 PreCheckedHeader::HeaderWithCache {
@@ -369,7 +364,7 @@ impl Blockchain {
         let current_date = header.block_date();
 
         let (epoch_leadership_schedule, epoch_ledger_parameters, time_frame, previous_epoch_state) =
-            self.new_epoch_leadership_from(current_date.epoch, parent);
+            new_epoch_leadership_from(current_date.epoch, parent);
 
         match epoch_leadership_schedule.verify(&header) {
             Verification::Success => future::ok(PostCheckedHeader {
@@ -383,60 +378,6 @@ impl Blockchain {
             Verification::Failure(error) => {
                 future::err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()).into())
             }
-        }
-    }
-
-    pub fn new_epoch_leadership_from(
-        &mut self,
-        epoch: Epoch,
-        parent: Arc<Ref>,
-    ) -> (
-        Arc<Leadership>,
-        Arc<LedgerParameters>,
-        Arc<TimeFrame>,
-        Option<Arc<Ref>>,
-    ) {
-        let parent_ledger_state = parent.ledger().clone();
-        let parent_epoch_leadership_schedule = parent.epoch_leadership_schedule().clone();
-        let parent_epoch_ledger_parameters = parent.epoch_ledger_parameters().clone();
-        let parent_time_frame = parent.time_frame().clone();
-
-        let parent_date = parent.block_date();
-
-        if parent_date.epoch < epoch {
-            // TODO: the time frame may change in the future, we will need to handle this
-            //       special case but it is not actually clear how to modify the time frame
-            //       for the blockchain
-            use chain_impl_mockchain::block::ConsensusVersion;
-
-            let epoch_state =
-                if parent_ledger_state.consensus_version() == ConsensusVersion::GenesisPraos {
-                    // if there is no parent state available this might be because it is not
-                    // available in memory or it is the epoch0 or epoch1
-                    parent
-                        .last_ref_previous_epoch()
-                        .map(|r| r.ledger().clone())
-                        .unwrap_or(parent_ledger_state.clone())
-                } else {
-                    parent_ledger_state.clone()
-                };
-
-            let leadership = Arc::new(Leadership::new(epoch, &epoch_state));
-            let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
-            let previous_epoch_state = Some(parent);
-            (
-                leadership,
-                ledger_parameters,
-                parent_time_frame,
-                previous_epoch_state,
-            )
-        } else {
-            (
-                parent_epoch_leadership_schedule,
-                parent_epoch_ledger_parameters,
-                parent_time_frame,
-                parent.last_ref_previous_epoch().map(Arc::clone),
-            )
         }
     }
 
@@ -733,9 +674,59 @@ impl Blockchain {
         &self,
         branch: Branch,
     ) -> impl Future<Item = Checkpoints, Error = Error> {
-        branch
-            .get_ref()
-            .map_err(|_| unreachable!())
-            .map(Checkpoints::new_from)
+        branch.get_ref().map(Checkpoints::new_from)
+    }
+}
+
+pub fn new_epoch_leadership_from(
+    epoch: Epoch,
+    parent: Arc<Ref>,
+) -> (
+    Arc<Leadership>,
+    Arc<LedgerParameters>,
+    Arc<TimeFrame>,
+    Option<Arc<Ref>>,
+) {
+    let parent_ledger_state = parent.ledger().clone();
+    let parent_epoch_leadership_schedule = parent.epoch_leadership_schedule().clone();
+    let parent_epoch_ledger_parameters = parent.epoch_ledger_parameters().clone();
+    let parent_time_frame = parent.time_frame().clone();
+
+    let parent_date = parent.block_date();
+
+    if parent_date.epoch < epoch {
+        // TODO: the time frame may change in the future, we will need to handle this
+        //       special case but it is not actually clear how to modify the time frame
+        //       for the blockchain
+        use chain_impl_mockchain::block::ConsensusVersion;
+
+        let epoch_state =
+            if parent_ledger_state.consensus_version() == ConsensusVersion::GenesisPraos {
+                // if there is no parent state available this might be because it is not
+                // available in memory or it is the epoch0 or epoch1
+                parent
+                    .last_ref_previous_epoch()
+                    .map(|r| r.ledger().clone())
+                    .unwrap_or(parent_ledger_state.clone())
+            } else {
+                parent_ledger_state.clone()
+            };
+
+        let leadership = Arc::new(Leadership::new(epoch, &epoch_state));
+        let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
+        let previous_epoch_state = Some(parent);
+        (
+            leadership,
+            ledger_parameters,
+            parent_time_frame,
+            previous_epoch_state,
+        )
+    } else {
+        (
+            parent_epoch_leadership_schedule,
+            parent_epoch_ledger_parameters,
+            parent_time_frame,
+            parent.last_ref_previous_epoch().map(Arc::clone),
+        )
     }
 }

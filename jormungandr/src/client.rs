@@ -45,7 +45,7 @@ pub fn handle_input(_info: &ThreadServiceInfo, task_data: &mut TaskData, input: 
 }
 
 fn handle_get_block_tip(blockchain_tip: &Tip) -> Result<Header, Error> {
-    let blockchain_tip = blockchain_tip.get_ref().wait().unwrap();
+    let blockchain_tip = blockchain_tip.get_ref::<Error>().wait().unwrap();
 
     Ok(blockchain_tip.header().clone())
 }
@@ -148,7 +148,7 @@ fn handle_pull_blocks_to_tip(
     checkpoints: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
-    let tip = blockchain_tip.get_ref().wait().unwrap();
+    let tip = blockchain_tip.get_ref::<Error>().wait().unwrap();
     let tip_hash = tip.hash();
 
     let future = storage

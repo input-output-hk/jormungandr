@@ -3,9 +3,8 @@ use super::{
     MAIN_BRANCH_TAG,
 };
 use crate::{
-    blockcfg::{Block, Epoch, FragmentId, Header, HeaderHash},
+    blockcfg::{Block, FragmentId, Header, HeaderHash},
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
-    leadership::NewEpochToSchedule,
     network::p2p::Id as NodeId,
     stats_counter::StatsCounter,
     utils::{
@@ -19,7 +18,7 @@ use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::future::Either;
 use slog::Logger;
-use tokio::{prelude::*, sync::mpsc::Sender};
+use tokio::prelude::*;
 
 use std::{convert::identity, sync::Arc};
 
@@ -34,7 +33,6 @@ pub fn handle_input(
     blockchain: &mut Blockchain,
     blockchain_tip: &mut Tip,
     stats_counter: &StatsCounter,
-    new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
@@ -46,7 +44,6 @@ pub fn handle_input(
             blockchain,
             blockchain_tip,
             stats_counter,
-            new_epoch_announcements,
             network_msg_box,
             tx_msg_box,
             explorer_msg_box,
@@ -61,7 +58,6 @@ pub fn run_handle_input(
     blockchain: &mut Blockchain,
     blockchain_tip: &mut Tip,
     stats_counter: &StatsCounter,
-    new_epoch_announcements: &mut Sender<NewEpochToSchedule>,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
@@ -77,23 +73,6 @@ pub fn run_handle_input(
     };
 
     match bquery {
-        BlockMsg::LeadershipExpectEndOfEpoch(epoch) => {
-            handle_end_of_epoch(
-                info.logger().new(o!()),
-                new_epoch_announcements.clone(),
-                blockchain.clone(),
-                blockchain_tip.clone(),
-                epoch + 1, // next epoch
-            )
-            .wait()
-            .unwrap_or_else(|err| {
-                crit!(
-                    info.logger(),
-                    "cannot send new leader schedule data to leadership module";
-                    "reason" => err.to_string()
-                )
-            });
-        }
         BlockMsg::LeadershipBlock(block) => {
             let logger = info.logger().new(o!(
                 "hash" => block.header.hash().to_string(),
@@ -261,38 +240,6 @@ pub fn process_new_ref(
                 B(future::ok(()))
             }
         })
-}
-
-pub fn handle_end_of_epoch(
-    logger: Logger,
-    new_epoch_announcements: Sender<NewEpochToSchedule>,
-    mut blockchain: Blockchain,
-    blockchain_tip: Tip,
-    epoch: Epoch,
-) -> impl Future<Item = (), Error = Error> {
-    debug!(logger, "preparing new epoch schedule" ; "epoch" => epoch);
-    blockchain_tip
-        .get_ref()
-        .map_err(|_: std::convert::Infallible| unreachable!())
-        .and_then(move |ref_tip| {
-            let (new_schedule, new_parameters, time_frame, _) =
-                blockchain.new_epoch_leadership_from(epoch, ref_tip);
-
-            new_epoch_announcements
-                .send(NewEpochToSchedule {
-                    new_schedule,
-                    new_parameters,
-                    time_frame: (*time_frame).clone(),
-                })
-                .map_err(move |_err| {
-                    crit!(
-                        logger,
-                        "cannot send new epoch schedule data to leadership module"
-                    );
-                    "unable to process new epoch schedule".into()
-                })
-        })
-        .map(|_| ())
 }
 
 pub fn process_leadership_block(

@@ -1,3 +1,4 @@
+pub use jormungandr_lib::interfaces::LeadershipLogStatus;
 use jormungandr_lib::interfaces::{LeadershipLog, LeadershipLogId};
 use std::time::Duration;
 use tokio::{
@@ -15,6 +16,7 @@ pub struct Logs(Lock<internal::Logs>);
 /// without having to hold the [`Logs`]
 ///
 /// [`Logs`]: ./struct.Logs.html
+#[derive(Clone)]
 pub struct LeadershipLogHandle {
     internal_id: LeadershipLogId,
     logs: Logs,
@@ -30,8 +32,12 @@ impl LeadershipLogHandle {
     /// on non-release build, this function will panic if the log was already
     /// marked as awaken.
     ///
-    pub fn mark_wake(&self) -> impl Future<Item = (), Error = ()> {
+    pub fn mark_wake<E>(&self) -> impl Future<Item = (), Error = E> {
         self.logs.mark_wake(self.internal_id)
+    }
+
+    pub fn set_status<E>(&self, status: LeadershipLogStatus) -> impl Future<Item = (), Error = E> {
+        self.logs.set_status(self.internal_id, status)
     }
 
     /// make a leadership event as finished.
@@ -44,7 +50,7 @@ impl LeadershipLogHandle {
     /// on non-release build, this function will panic if the log was already
     /// marked as finished.
     ///
-    pub fn mark_finished(&self) -> impl Future<Item = (), Error = ()> {
+    pub fn mark_finished<E>(&self) -> impl Future<Item = (), Error = E> {
         self.logs.mark_finished(self.internal_id)
     }
 }
@@ -76,17 +82,31 @@ impl Logs {
         })
     }
 
-    fn mark_wake(&self, leadership_log_id: LeadershipLogId) -> impl Future<Item = (), Error = ()> {
+    fn mark_wake<E>(
+        &self,
+        leadership_log_id: LeadershipLogId,
+    ) -> impl Future<Item = (), Error = E> {
         self.inner().and_then(move |mut guard| {
             guard.mark_wake(&leadership_log_id.into());
             future::ok(())
         })
     }
 
-    fn mark_finished(
+    fn set_status<E>(
         &self,
         leadership_log_id: LeadershipLogId,
-    ) -> impl Future<Item = (), Error = ()> {
+        status: LeadershipLogStatus,
+    ) -> impl Future<Item = (), Error = E> {
+        self.inner().and_then(move |mut guard| {
+            guard.set_status(&leadership_log_id.into(), status);
+            future::ok(())
+        })
+    }
+
+    fn mark_finished<E>(
+        &self,
+        leadership_log_id: LeadershipLogId,
+    ) -> impl Future<Item = (), Error = E> {
         self.inner().and_then(move |mut guard| {
             guard.mark_finished(&leadership_log_id.into());
             future::ok(())
@@ -110,7 +130,7 @@ impl Logs {
 }
 
 pub(super) mod internal {
-    use super::{LeadershipLog, LeadershipLogId};
+    use super::{LeadershipLog, LeadershipLogId, LeadershipLogStatus};
     use std::{
         collections::HashMap,
         time::{Duration, Instant},
@@ -158,6 +178,20 @@ pub(super) mod internal {
         pub fn mark_wake(&mut self, leadership_log_id: &LeadershipLogId) {
             if let Some((ref mut log, ref key)) = self.entries.get_mut(leadership_log_id) {
                 log.mark_wake();
+
+                self.expirations.reset_at(key, Instant::now() + self.ttl);
+            } else {
+                unimplemented!()
+            }
+        }
+
+        pub fn set_status(
+            &mut self,
+            leadership_log_id: &LeadershipLogId,
+            status: LeadershipLogStatus,
+        ) {
+            if let Some((ref mut log, ref key)) = self.entries.get_mut(leadership_log_id) {
+                log.set_status(status);
 
                 self.expirations.reset_at(key, Instant::now() + self.ttl);
             } else {

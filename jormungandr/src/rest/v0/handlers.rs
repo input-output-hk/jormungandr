@@ -41,10 +41,7 @@ fn chain_tip_fut<'a>(context: &State<Context>) -> impl Future<Item = Arc<Ref>, E
 }
 
 fn chain_tip_fut_raw<'a>(context: &FullContext) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    context
-        .blockchain_tip
-        .get_ref()
-        .map_err(|infallible| match infallible {})
+    context.blockchain_tip.get_ref()
 }
 
 pub fn get_account_state(context: State<Context>, account_id_hex: Path<String>) -> ActixFuture!() {
