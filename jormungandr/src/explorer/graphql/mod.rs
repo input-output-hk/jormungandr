@@ -6,9 +6,12 @@ use self::connections::{
     TransactionConnection,
 };
 use self::error::ErrorKind;
-use super::indexing::{BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction};
+use super::indexing::{
+    BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction,
+};
 use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
+use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
 pub use juniper::http::GraphQLRequest;
@@ -360,19 +363,22 @@ impl TransactionOutput {
 }
 
 struct Address {
-    id: chain_addr::Address,
+    id: ExplorerAddress,
 }
 
 impl Address {
     fn from_bech32(bech32: &String) -> FieldResult<Address> {
-        Ok(Address {
-            id: chain_addr::AddressReadable::from_string_anyprefix(bech32)?.to_address(),
-        })
+        let addr = chain_addr::AddressReadable::from_string_anyprefix(bech32)
+            .map(|adr| ExplorerAddress::New(adr.to_address()))
+            .or_else(|_| OldAddress::from_str(bech32).map(|a| ExplorerAddress::Old(a)))
+            .map_err(|_| ErrorKind::InvalidAddress(bech32.clone()))?;
+
+        Ok(Address { id: addr })
     }
 }
 
-impl From<&chain_addr::Address> for Address {
-    fn from(addr: &chain_addr::Address) -> Address {
+impl From<&ExplorerAddress> for Address {
+    fn from(addr: &ExplorerAddress) -> Address {
         Address { id: addr.clone() }
     }
 }
@@ -383,8 +389,14 @@ impl From<&chain_addr::Address> for Address {
 impl Address {
     /// The base32 representation of an address
     fn id(&self, context: &Context) -> String {
-        chain_addr::AddressReadable::from_address(&context.settings.address_bech32_prefix, &self.id)
-            .to_string()
+        match &self.id {
+            ExplorerAddress::New(addr) => chain_addr::AddressReadable::from_address(
+                &context.settings.address_bech32_prefix,
+                addr,
+            )
+            .to_string(),
+            ExplorerAddress::Old(addr) => format!("{}", addr),
+        }
     }
 
     fn delegation() -> FieldResult<Pool> {
@@ -468,7 +480,7 @@ impl StakeDelegation {
             .map(|single| {
                 chain_addr::Address(discrimination, chain_addr::Kind::Account(single.into()))
             })
-            .map(|addr| Address::from(&addr))
+            .map(|addr| Address::from(&ExplorerAddress::New(addr)))
     }
 
     pub fn pool(&self, context: &Context) -> Vec<Pool> {

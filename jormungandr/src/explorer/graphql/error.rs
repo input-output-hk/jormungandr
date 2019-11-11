@@ -20,5 +20,9 @@ error_chain! {
             description("invalid cursor in pagination query"),
             display("invalid cursor in pagination query: {}", msg)
         }
+        InvalidAddress(address: String) {
+            description("failed to parse address"),
+            display("invalid address: {}", address)
+        }
     }
 }

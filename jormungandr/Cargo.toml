@@ -24,6 +24,7 @@ chain-storage   = { path = "../chain-deps/chain-storage" }
 chain-storage-sqlite = { path = "../chain-deps/chain-storage-sqlite" }
 chain-time      = { path = "../chain-deps/chain-time" }
 chain-addr = { path = "../chain-deps/chain-addr" }
+cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 imhamt = { path = "../chain-deps/imhamt" }
 custom_error = "1.7"
 error-chain = "0.12"
