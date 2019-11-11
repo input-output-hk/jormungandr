@@ -106,14 +106,17 @@ run of bootstrap:
 Both scripts can be used to do simple limited operation through the jcli debugging tools.
 
 ## Quick-Start in public mode
-
-:warning: This is not currently functional :warning:
-
+With release of 0.6.0, public mode became available; there are currently two testnets operating at any given time:
+- beta testnet
+- nightly testnet
+ 
 To start a new node from scratch on a given blockchain, you need to know the
 block0 hash of this blockchain for trust purpose and internet peers to connect
 to. The simplest way to start such a node is:
 
     jormungandr --block0-hash <HASH> --trusted-peers <IPs>
+    
+In order to connect your node to a IOHK operated beta testnet, [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/). In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool WSorkgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
 
 # Documentation
 
