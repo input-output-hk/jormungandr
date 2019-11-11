@@ -32,6 +32,10 @@ custom_error! {pub Error
         = "secret key number {index} matching the expected public key has not been found",
     ExpectedSignedOrNotCertificate = "Invalid input, expected Signed Certificate or just Certificate",
     InvalidBech32 { source: bech32::Error } = "Invalid data",
+    PoolDelegationWithZeroWeight = "attempted to build delegation with zero weight",
+    InvalidPoolDelegationWeights { actual: u64, max: u64 } = "pool delegation rates sum up to {actual}, maximum is 255",
+    TooManyPoolDelegations { actual: usize, max: usize } = "attempted to build delegation to {actual} pools, maximum is {max}",
+    InvalidPoolDelegation = "failed to build pool delegation",
 }
 
 #[derive(StructOpt)]
