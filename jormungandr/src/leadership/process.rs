@@ -49,7 +49,6 @@ pub enum LeadershipError {
 
     #[error("Cannot query enclave for leader schedules")]
     CannotScheduleWithEnclave {
-        #[from]
         #[source]
         source: EnclaveError,
     },
@@ -382,6 +381,7 @@ impl Module {
 
             let preparation = prepare_block(pool, eval_context, &ledger, ledger_parameters);
 
+            let event_logs_error = event_logs.clone();
             let signing = preparation.and_then(move |contents| {
                 let ver = match event.output {
                     LeaderOutput::None => BlockVersion::Genesis,
@@ -394,7 +394,7 @@ impl Module {
                 match event.output {
                     LeaderOutput::None => {
                         let header = hdr_builder.to_unsigned_header().unwrap().generalize();
-                        Either::A(future::ok(Block { header, contents }))
+                        Either::A(future::ok(Some(Block { header, contents })))
                     }
                     LeaderOutput::Bft(leader_id) => {
                         let final_builder = hdr_builder
@@ -404,15 +404,18 @@ impl Module {
                         Either::B(Either::A(
                             enclave
                                 .query_header_bft_finalize(final_builder, event.id)
-                                .map(|h| Block {
-                                    header: h.generalize(),
-                                    contents,
+                                .map(|h| {
+                                    Some(Block {
+                                        header: h.generalize(),
+                                        contents,
+                                    })
                                 })
-                                .map_err(|_| {
-                                    // the only reason this may happen is if the leader
-                                    // has been removed from the enclave
-                                    // which is not supported at the moment
-                                    unimplemented!()
+                                .or_else(move |e| {
+                                    event_logs_error
+                                        .set_status(LeadershipLogStatus::Rejected {
+                                            reason: format!("Cannot sign the block: {}", e),
+                                        })
+                                        .map(|()| None)
                                 }),
                         ))
                     }
@@ -424,15 +427,18 @@ impl Module {
                         Either::B(Either::B(
                             enclave
                                 .query_header_genesis_praos_finalize(final_builder, event.id)
-                                .map(|h| Block {
-                                    header: h.generalize(),
-                                    contents,
+                                .map(|h| {
+                                    Some(Block {
+                                        header: h.generalize(),
+                                        contents,
+                                    })
                                 })
-                                .map_err(|_| {
-                                    // the only reason this may happen is if the leader
-                                    // has been removed from the enclave
-                                    // which is not supported at the moment
-                                    unimplemented!()
+                                .or_else(move |e| {
+                                    event_logs_error
+                                        .set_status(LeadershipLogStatus::Rejected {
+                                            reason: format!("Cannot sign the block: {}", e),
+                                        })
+                                        .map(|()| None)
                                 }),
                         ))
                     }
@@ -441,17 +447,23 @@ impl Module {
 
             let event_logs_success = event_logs.clone();
             let send_block = signing.and_then(|block| {
-                let id = block.header.hash();
-                let chain_length: u32 = block.header.chain_length().into();
-                sender
-                    .send(BlockMsg::LeadershipBlock(block))
-                    .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
-                    .and_then(move |_| {
-                        event_logs_success.set_status(LeadershipLogStatus::Block {
-                            block: id.into(),
-                            chain_length,
-                        })
-                    })
+                if let Some(block) = block {
+                    let id = block.header.hash();
+                    let chain_length: u32 = block.header.chain_length().into();
+                    Either::A(
+                        sender
+                            .send(BlockMsg::LeadershipBlock(block))
+                            .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
+                            .and_then(move |_| {
+                                event_logs_success.set_status(LeadershipLogStatus::Block {
+                                    block: id.into(),
+                                    chain_length,
+                                })
+                            }),
+                    )
+                } else {
+                    Either::B(future::ok(()))
+                }
             });
 
             let timeout = Timeout::new_at(send_block, deadline)
