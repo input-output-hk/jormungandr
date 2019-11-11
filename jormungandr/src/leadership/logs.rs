@@ -1,3 +1,4 @@
+pub use jormungandr_lib::interfaces::LeadershipLogStatus;
 use jormungandr_lib::interfaces::{LeadershipLog, LeadershipLogId};
 use std::time::Duration;
 use tokio::{
@@ -15,6 +16,7 @@ pub struct Logs(Lock<internal::Logs>);
 /// without having to hold the [`Logs`]
 ///
 /// [`Logs`]: ./struct.Logs.html
+#[derive(Clone)]
 pub struct LeadershipLogHandle {
     internal_id: LeadershipLogId,
     logs: Logs,
@@ -32,6 +34,10 @@ impl LeadershipLogHandle {
     ///
     pub fn mark_wake(&self) -> impl Future<Item = (), Error = ()> {
         self.logs.mark_wake(self.internal_id)
+    }
+
+    pub fn set_status(&self, status: LeadershipLogStatus) -> impl Future<Item = (), Error = ()> {
+        self.logs.set_status(self.internal_id, status)
     }
 
     /// make a leadership event as finished.
@@ -83,6 +89,17 @@ impl Logs {
         })
     }
 
+    fn set_status(
+        &self,
+        leadership_log_id: LeadershipLogId,
+        status: LeadershipLogStatus,
+    ) -> impl Future<Item = (), Error = ()> {
+        self.inner().and_then(move |mut guard| {
+            guard.set_status(&leadership_log_id.into(), status);
+            future::ok(())
+        })
+    }
+
     fn mark_finished(
         &self,
         leadership_log_id: LeadershipLogId,
@@ -110,7 +127,7 @@ impl Logs {
 }
 
 pub(super) mod internal {
-    use super::{LeadershipLog, LeadershipLogId};
+    use super::{LeadershipLog, LeadershipLogId, LeadershipLogStatus};
     use std::{
         collections::HashMap,
         time::{Duration, Instant},
@@ -158,6 +175,20 @@ pub(super) mod internal {
         pub fn mark_wake(&mut self, leadership_log_id: &LeadershipLogId) {
             if let Some((ref mut log, ref key)) = self.entries.get_mut(leadership_log_id) {
                 log.mark_wake();
+
+                self.expirations.reset_at(key, Instant::now() + self.ttl);
+            } else {
+                unimplemented!()
+            }
+        }
+
+        pub fn set_status(
+            &mut self,
+            leadership_log_id: &LeadershipLogId,
+            status: LeadershipLogStatus,
+        ) {
+            if let Some((ref mut log, ref key)) = self.entries.get_mut(leadership_log_id) {
+                log.set_status(status);
 
                 self.expirations.reset_at(key, Instant::now() + self.ttl);
             } else {
