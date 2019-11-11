@@ -32,11 +32,11 @@ impl LeadershipLogHandle {
     /// on non-release build, this function will panic if the log was already
     /// marked as awaken.
     ///
-    pub fn mark_wake(&self) -> impl Future<Item = (), Error = ()> {
+    pub fn mark_wake<E>(&self) -> impl Future<Item = (), Error = E> {
         self.logs.mark_wake(self.internal_id)
     }
 
-    pub fn set_status(&self, status: LeadershipLogStatus) -> impl Future<Item = (), Error = ()> {
+    pub fn set_status<E>(&self, status: LeadershipLogStatus) -> impl Future<Item = (), Error = E> {
         self.logs.set_status(self.internal_id, status)
     }
 
@@ -50,7 +50,7 @@ impl LeadershipLogHandle {
     /// on non-release build, this function will panic if the log was already
     /// marked as finished.
     ///
-    pub fn mark_finished(&self) -> impl Future<Item = (), Error = ()> {
+    pub fn mark_finished<E>(&self) -> impl Future<Item = (), Error = E> {
         self.logs.mark_finished(self.internal_id)
     }
 }
@@ -82,28 +82,31 @@ impl Logs {
         })
     }
 
-    fn mark_wake(&self, leadership_log_id: LeadershipLogId) -> impl Future<Item = (), Error = ()> {
+    fn mark_wake<E>(
+        &self,
+        leadership_log_id: LeadershipLogId,
+    ) -> impl Future<Item = (), Error = E> {
         self.inner().and_then(move |mut guard| {
             guard.mark_wake(&leadership_log_id.into());
             future::ok(())
         })
     }
 
-    fn set_status(
+    fn set_status<E>(
         &self,
         leadership_log_id: LeadershipLogId,
         status: LeadershipLogStatus,
-    ) -> impl Future<Item = (), Error = ()> {
+    ) -> impl Future<Item = (), Error = E> {
         self.inner().and_then(move |mut guard| {
             guard.set_status(&leadership_log_id.into(), status);
             future::ok(())
         })
     }
 
-    fn mark_finished(
+    fn mark_finished<E>(
         &self,
         leadership_log_id: LeadershipLogId,
-    ) -> impl Future<Item = (), Error = ()> {
+    ) -> impl Future<Item = (), Error = E> {
         self.inner().and_then(move |mut guard| {
             guard.mark_finished(&leadership_log_id.into());
             future::ok(())

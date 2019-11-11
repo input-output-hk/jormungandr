@@ -308,14 +308,8 @@ impl Module {
 
         wake_log
             .mark_wake()
-            .map_err(|()| unreachable!())
             .and_then(|()| self.action_run_entry(entry))
-            .and_then(move |module| {
-                end_log
-                    .mark_finished()
-                    .map_err(|()| unreachable!())
-                    .map(|()| module)
-            })
+            .and_then(move |module| end_log.mark_finished().map(|()| module))
     }
 
     fn action_run_entry(self, entry: Entry) -> impl Future<Item = Self, Error = LeadershipError> {
@@ -380,7 +374,7 @@ impl Module {
                     LeadershipLogStatus::Rejected {
                         reason: "Not computing this schedule because of invalid state against the network blockchain".to_owned()
                     }
-                ).map_err(|()| unreachable!());
+                );
 
                 return Either::B(Either::A(tell_user_about_failure.map(|()| self)));
             };
@@ -458,12 +452,10 @@ impl Module {
                     .send(BlockMsg::LeadershipBlock(block))
                     .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
                     .and_then(move |_| {
-                        event_logs_success
-                            .set_status(LeadershipLogStatus::Block {
-                                block: id.into(),
-                                chain_length,
-                            })
-                            .map_err(|()| unreachable!())
+                        event_logs_success.set_status(LeadershipLogStatus::Block {
+                            block: id.into(),
+                            chain_length,
+                        })
                     })
             });
 
@@ -472,7 +464,7 @@ impl Module {
                     error!(logger, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
                     event_logs.set_status(LeadershipLogStatus::Rejected {
                         reason: "Failed to compute the schedule within time boundaries".to_owned()
-                    }).map_err(|()| unreachable!())
+                    })
                 })
                 .map(|_| self);
 
@@ -484,11 +476,9 @@ impl Module {
                 "Eek... we missed an event schedule, system time might be off?"
             );
 
-            let tell_user_about_failure = event_logs
-                .set_status(LeadershipLogStatus::Rejected {
-                    reason: "Missed the deadline to compute the schedule".to_owned(),
-                })
-                .map_err(|()| unreachable!());
+            let tell_user_about_failure = event_logs.set_status(LeadershipLogStatus::Rejected {
+                reason: "Missed the deadline to compute the schedule".to_owned(),
+            });
 
             Either::B(Either::B(tell_user_about_failure.map(|()| self)))
         }
