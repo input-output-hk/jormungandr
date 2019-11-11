@@ -11,6 +11,7 @@ use super::indexing::{
 };
 use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
+use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
 pub use juniper::http::GraphQLRequest;
@@ -367,10 +368,11 @@ struct Address {
 
 impl Address {
     fn from_bech32(bech32: &String) -> FieldResult<Address> {
-        // TODO: Try to parse legacy address too
-        let addr = ExplorerAddress::New(
-            chain_addr::AddressReadable::from_string_anyprefix(bech32)?.to_address(),
-        );
+        let addr = chain_addr::AddressReadable::from_string_anyprefix(bech32)
+            .map(|adr| ExplorerAddress::New(adr.to_address()))
+            .or_else(|_| OldAddress::from_str(bech32).map(|a| ExplorerAddress::Old(a)))
+            .map_err(|_| ErrorKind::InvalidAddress(bech32.clone()))?;
+
         Ok(Address { id: addr })
     }
 }
