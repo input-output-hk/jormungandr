@@ -253,14 +253,26 @@ impl Module {
                 // the schedule is empty we were in the _action_ mode, so that means
                 // there is no other schedule to have for the current epoch. Better
                 // wait for the next epoch
+
+                debug!(
+                    self.service_info.logger(),
+                    "no item scheduled, waiting for next epoch"
+                );
                 self.next_epoch_instant().unwrap()
             }
             Some(entry) => {
+                let logger = self.service_info.logger().new(o!(
+                    "event_date" => entry.event.date.to_string(),
+                    "leader_id" => entry.event.id.to_string(),
+                ));
                 if let Some(instant) = entry.instant(&self).unwrap() {
+                    debug!(logger, "awaiting");
                     instant
                 } else {
                     // if the entry didn't have a valid epoch instant it means
-                    // we are looking at passed entry already
+                    // we are looking at passed entry already or it is happening
+                    // now. so don't wait any further
+                    debug!(logger, "scheduled time for event was missed");
                     Instant::now()
                 }
             }
@@ -295,6 +307,7 @@ impl Module {
         let event_end = self.event_following_slot_time(&event);
 
         let logger = self.service_info.logger().new(o!(
+            "leader_id" => event.id.to_string(),
             "event_date" => event.date.to_string(),
             "event_start" => event_start.to_string(),
             "event_end" => event_end.to_string(),
@@ -309,6 +322,12 @@ impl Module {
             // to the network.
             let remaining_time = event_end.as_ref().duration_since(now.into()).unwrap();
             let deadline = Instant::now() + remaining_time;
+
+            info!(
+                logger,
+                "Leader event started" ;
+                "event_remaining_time" => jormungandr_lib::time::Duration::from(remaining_time).to_string()
+            );
 
             let enclave = self.enclave.clone();
             let sender = self.block_message.clone();
@@ -440,6 +459,12 @@ impl Module {
 
         let epoch_tip = Epoch(self.tip_ref.block_date().epoch);
 
+        let logger = self.service_info.logger().new(o!(
+            "epoch_tip" => epoch_tip.0,
+            "current_epoch" => current_slot_position.epoch.0,
+            "current_slot" => current_slot_position.slot.0,
+        ));
+
         if epoch_tip < current_slot_position.epoch {
             let (leadership, _, _, _) =
                 new_epoch_leadership_from(current_slot_position.epoch.0, Arc::clone(&self.tip_ref));
@@ -448,7 +473,12 @@ impl Module {
             let nb_slots = leadership.era().slots_per_epoch() - slot_start;
             let running_ref = leadership;
 
-            self.action_run_schedule(running_ref, slot_start, nb_slots)
+            debug!(logger, "scheduling events" ;
+                "slot_start" => slot_start,
+                "nb_slots" => nb_slots,
+            );
+
+            Either::A(self.action_run_schedule(running_ref, slot_start, nb_slots))
         } else if epoch_tip == current_slot_position.epoch {
             // check for current epoch
             let slot_start = current_slot_position.slot.0 + 1;
@@ -460,12 +490,21 @@ impl Module {
                 - slot_start;
             let running_ref = Arc::clone(self.tip_ref.epoch_leadership_schedule());
 
-            self.action_run_schedule(running_ref, slot_start, nb_slots)
+            debug!(logger, "scheduling events" ;
+                "slot_start" => slot_start,
+                "nb_slots" => nb_slots,
+            );
+
+            Either::A(self.action_run_schedule(running_ref, slot_start, nb_slots))
         } else {
             // The only reason this would happen is if we had accepted a block
             // that is set in the future or our system local date time is off
 
-            unreachable!()
+            crit!(
+                logger,
+                "It seems the current epoch tip is way ahead of its time."
+            );
+            Either::B(future::ok(self))
         }
     }
 
