@@ -248,7 +248,23 @@ impl Module {
     }
 
     fn wait(mut self) -> impl Future<Item = Self, Error = LeadershipError> {
-        let deadline = match self.schedule.peek() {
+        let deadline = future::result(self.wait_peek_deadline());
+
+        let tip = self.tip.clone();
+
+        deadline
+            .and_then(|deadline| {
+                Delay::new(deadline).map_err(|source| LeadershipError::AwaitError { source })
+            })
+            .and_then(move |()| tip.get_ref())
+            .map(|tip_ref| {
+                self.tip_ref = tip_ref;
+                self
+            })
+    }
+
+    fn wait_peek_deadline(&self) -> Result<Instant, LeadershipError> {
+        match self.schedule.peek() {
             None => {
                 // the schedule is empty we were in the _action_ mode, so that means
                 // there is no other schedule to have for the current epoch. Better
@@ -258,37 +274,26 @@ impl Module {
                     self.service_info.logger(),
                     "no item scheduled, waiting for next epoch"
                 );
-                self.next_epoch_instant().unwrap()
+                self.next_epoch_instant()
             }
             Some(entry) => {
                 let logger = self.service_info.logger().new(o!(
                     "event_date" => entry.event.date.to_string(),
                     "leader_id" => entry.event.id.to_string(),
                 ));
-                if let Some(instant) = entry.instant(&self).unwrap() {
+                if let Some(instant) = entry.instant(&self)? {
                     debug!(logger, "awaiting");
-                    instant
+                    Ok(instant)
                 } else {
                     // if the entry didn't have a valid epoch instant it means
                     // we are looking at passed entry already or it is happening
                     // now. so don't wait any further
                     debug!(logger, "scheduled time for event was missed");
-                    Instant::now()
+                    Ok(Instant::now())
                 }
             }
-        };
-
-        let tip = self.tip.clone();
-
-        Delay::new(deadline)
-            .map_err(|source| LeadershipError::AwaitError { source })
-            .and_then(move |()| tip.get_ref())
-            .map(|tip_ref| {
-                self.tip_ref = tip_ref;
-                self
-            })
+        }
     }
-
     fn action(mut self) -> impl Future<Item = Self, Error = LeadershipError> {
         match self.schedule.pop() {
             None => Either::A(self.action_schedule()),
