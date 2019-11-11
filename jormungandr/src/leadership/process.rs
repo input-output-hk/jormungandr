@@ -16,7 +16,10 @@ use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot,
 };
-use jormungandr_lib::{interfaces::LeadershipLog, time::SystemTime};
+use jormungandr_lib::{
+    interfaces::{LeadershipLog, LeadershipLogStatus},
+    time::SystemTime,
+};
 use std::{
     collections::VecDeque,
     sync::Arc,
@@ -373,7 +376,13 @@ impl Module {
                         "It appears the node is running a bit behind schedule, system time might be off?"
                     );
 
-                return Either::B(future::ok(self));
+                let tell_user_about_failure = event_logs.set_status(
+                    LeadershipLogStatus::Rejected {
+                        reason: "Not computing this schedule because of invalid state against the network blockchain".to_owned()
+                    }
+                ).map_err(|()| unreachable!());
+
+                return Either::B(Either::A(tell_user_about_failure.map(|()| self)));
             };
 
             let eval_context = HeaderContentEvalContext {
@@ -441,18 +450,29 @@ impl Module {
                 }
             });
 
-            let send_block = signing
-                .and_then(|block| {
-                    sender
-                        .send(BlockMsg::LeadershipBlock(block))
-                        .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
-                })
-                .and_then(move |_| event_logs.mark_finished().map_err(|()| unreachable!()));
+            let event_logs_success = event_logs.clone();
+            let send_block = signing.and_then(|block| {
+                let id = block.header.hash();
+                let chain_length: u32 = block.header.chain_length().into();
+                sender
+                    .send(BlockMsg::LeadershipBlock(block))
+                    .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
+                    .and_then(move |_| {
+                        event_logs_success
+                            .set_status(LeadershipLogStatus::Block {
+                                block: id.into(),
+                                chain_length,
+                            })
+                            .map_err(|()| unreachable!())
+                    })
+            });
 
             let timeout = Timeout::new_at(send_block, deadline)
                 .or_else(move |timeout_error| {
                     error!(logger, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
-                    future::ok(())
+                    event_logs.set_status(LeadershipLogStatus::Rejected {
+                        reason: "Failed to compute the schedule within time boundaries".to_owned()
+                    }).map_err(|()| unreachable!())
                 })
                 .map(|_| self);
 
@@ -463,7 +483,14 @@ impl Module {
                 logger,
                 "Eek... we missed an event schedule, system time might be off?"
             );
-            Either::B(future::ok(self))
+
+            let tell_user_about_failure = event_logs.set_status(
+                    LeadershipLogStatus::Rejected {
+                        reason: "Not computing this schedule because of invalid state against the network blockchain".to_owned()
+                    }
+                ).map_err(|()| unreachable!());
+
+            Either::B(Either::B(tell_user_about_failure.map(|()| self)))
         }
     }
 
