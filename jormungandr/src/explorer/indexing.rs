@@ -294,9 +294,13 @@ impl ExplorerTransaction {
                     let tx = utxo_pointer.transaction_id;
                     let index = utxo_pointer.output_index;
 
-                    let block_id = transactions.lookup(&tx).expect("transaction not found for utxo input");
+                    let block_id = transactions
+                        .lookup(&tx)
+                        .expect("transaction not found for utxo input");
 
-                    let block = blocks.lookup(&block_id).expect("transaction not found for utxo input");
+                    let block = blocks
+                        .lookup(&block_id)
+                        .expect("transaction not found for utxo input");
 
                     let output = &block.transactions[&tx].outputs[index as usize];
 
