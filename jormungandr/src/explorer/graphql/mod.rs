@@ -393,7 +393,6 @@ impl Address {
                 addr,
             )
             .to_string(),
-            // XXX: bech32 here?
             ExplorerAddress::Old(addr) => format!("{}", addr),
         }
     }
