@@ -484,11 +484,11 @@ impl Module {
                 "Eek... we missed an event schedule, system time might be off?"
             );
 
-            let tell_user_about_failure = event_logs.set_status(
-                    LeadershipLogStatus::Rejected {
-                        reason: "Not computing this schedule because of invalid state against the network blockchain".to_owned()
-                    }
-                ).map_err(|()| unreachable!());
+            let tell_user_about_failure = event_logs
+                .set_status(LeadershipLogStatus::Rejected {
+                    reason: "Missed the deadline to compute the schedule".to_owned(),
+                })
+                .map_err(|()| unreachable!());
 
             Either::B(Either::B(tell_user_about_failure.map(|()| self)))
         }
