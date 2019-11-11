@@ -1,8 +1,6 @@
 #!/bin/sh
-# figure out if this actually POSIX shell and not Bash
 
 ### CONFIGURATION
-
 
 ### TEMPLATE
 FAUCET_SK="####FAUCET_SK####"
@@ -93,10 +91,6 @@ $CLI certificate new stake-delegation \
     ${STAKE_POOL_ID} \
     ${ACCOUNT_PK} \
     ${CERTIFICATE_FILE}
-$CLI certificate sign \
-    ${ACCOUNT_SK_FILE} \
-    ${CERTIFICATE_FILE} \
-    ${SIGNED_CERTIFICATE_FILE}
 
 ##
 # 3. now create a transaction and sign it
@@ -116,20 +110,23 @@ POST_CERTIFICATE_FEE=$((${FEE_CONSTANT} + ${FEE_CERTIFICATE} + ${FEE_COEFFICIENT
 
 $CLI transaction new --staging=${TRANSACTION_FILE}
 $CLI transaction add-account --staging=${TRANSACTION_FILE} ${ACCOUNT_ADDR} ${POST_CERTIFICATE_FEE}
-cat ${SIGNED_CERTIFICATE_FILE} | xargs $CLI transaction add-certificate --staging=${TRANSACTION_FILE}
+$CLI transaction add-certificate --staging=${TRANSACTION_FILE} $(cat ${CERTIFICATE_FILE})
 $CLI transaction finalize --staging=${TRANSACTION_FILE}
 
 # get the transaction id
-TRANSACTION_ID=$($CLI transaction id --staging=${TRANSACTION_FILE})
+TRANSACTION_ID=$($CLI transaction data-for-witness --staging=${TRANSACTION_FILE})
 
 # create the witness
 $CLI transaction make-witness ${TRANSACTION_ID} \
     --genesis-block-hash ${BLOCK0_HASH} \
     --type "account" --account-spending-counter "${ACCOUNT_COUNTER}" \
     ${WITNESS_FILE} ${ACCOUNT_SK_FILE}
+
 $CLI transaction add-witness --staging=${TRANSACTION_FILE} ${WITNESS_FILE}
 
 $CLI transaction seal --staging=${TRANSACTION_FILE}
+
+$CLI transaction auth --key=${ACCOUNT_SK_FILE} --staging=${TRANSACTION_FILE}
 
 $CLI transaction to-message --staging ${TRANSACTION_FILE} | $CLI rest v0 message post -h "${REST_URL}"
 
